@@ -15,13 +15,13 @@ void test_array_resolution() {
         int32_t __rep_0 = 0;
         ::tpy::array_from_index<int32_t, 5>([&](std::size_t) -> int32_t { return __rep_0; });
     });
-    std::cout << ::tpy::__len__(x) << "\n";
+    std::cout << ::tpy::__len__(x) << "\n" << ::tpy::check_signals;
     auto& __obj_1 = x;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t v = *__beg_1;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -35,13 +35,13 @@ void test_array_resolution() {
 void test_list_promotion() {
     std::vector<int32_t> y = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(3, {0}));
     y.push_back(42);
-    std::cout << ::tpy::__len__(y) << "\n";
+    std::cout << ::tpy::__len__(y) << "\n" << ::tpy::check_signals;
     auto& __obj_0 = y;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -55,13 +55,13 @@ void test_list_promotion() {
 void test_annotated_list() {
     std::vector<int32_t> z = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(4, {1}));
     z.push_back(5);
-    std::cout << ::tpy::__len__(z) << "\n";
+    std::cout << ::tpy::__len__(z) << "\n" << ::tpy::check_signals;
     auto& __obj_0 = z;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -76,9 +76,9 @@ void test_subscript_stays_array() {
         int32_t __rep_0 = 9;
         ::tpy::array_from_index<int32_t, 3>([&](std::size_t) -> int32_t { return __rep_0; });
     });
-    std::cout << ::tpy::__getitem__(w, 0) << "\n";
-    std::cout << ::tpy::__getitem__(w, 1) << "\n";
-    std::cout << ::tpy::__getitem__(w, 2) << "\n";
+    std::cout << ::tpy::__getitem__(w, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(w, 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(w, 2) << "\n" << ::tpy::check_signals;
 }
 
 // def takes_span(s: Span[int32]) -> None:
@@ -90,7 +90,7 @@ void takes_span(std::span<int32_t> s) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
 }
 

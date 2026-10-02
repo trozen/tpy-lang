@@ -13,11 +13,11 @@ namespace tpyapp::main {
 //     print(r.area())
 void main() {
     Rect r = Rect(3, 4);
-    std::cout << r << "\n";
-    std::cout << r.area() << "\n";
+    std::cout << r << "\n" << ::tpy::check_signals;
+    std::cout << r.area() << "\n" << ::tpy::check_signals;
     r.scale(2);
-    std::cout << r << "\n";
-    std::cout << r.area() << "\n";
+    std::cout << r << "\n" << ::tpy::check_signals;
+    std::cout << r.area() << "\n" << ::tpy::check_signals;
 }
 
 // # @dataclass with user-defined methods alongside auto-generated __init__

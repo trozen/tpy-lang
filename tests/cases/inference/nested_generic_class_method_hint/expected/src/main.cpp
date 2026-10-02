@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Container<int32_t> c = Container<int32_t>(0);
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Greeter>> r = c.wrap<::tpystd::tplib::box::Box<Greeter>>(::tpystd::tplib::box::Box<Greeter>(::tpy::make_adapter<Greeter>(Cat("Whiskers"))));
-    std::cout << r.get().get().greet() << "\n";
+    std::cout << r.get().get().greet() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box, Rc

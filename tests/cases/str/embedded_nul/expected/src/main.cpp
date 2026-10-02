@@ -47,23 +47,23 @@ namespace tpyapp::main {
 //     print(interp == "a\x00bworld")
 void main() {
     std::string_view s = std::string_view{"\000null", 5};
-    std::cout << ::tpy::__len__(s) << "\n";
-    std::cout << ::tpy::print_bool((s == std::string_view{"\000null", 5})) << "\n";
-    std::cout << ::tpyapp::main::take_str(std::string_view{"ab\000cd", 5}) << "\n";
-    std::cout << ::tpyapp::main::use_default() << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((s == std::string_view{"\000null", 5})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take_str(std::string_view{"ab\000cd", 5}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use_default() << "\n" << ::tpy::check_signals;
     std::string_view target = std::string_view{"\000x", 2};
     auto& __match_subject_1 = target;
     if (__match_subject_1 == std::string_view{"\000x", 2}) {
-        std::cout << "matched" << "\n";
+        std::cout << "matched" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "no match" << "\n";
+        std::cout << "no match" << "\n" << ::tpy::check_signals;
     }
     std::string pure = std::string("a\000b", 3);
-    std::cout << ::tpy::__len__(pure) << "\n";
+    std::cout << ::tpy::__len__(pure) << "\n" << ::tpy::check_signals;
     std::string_view name = "world";
     std::string interp = std::vformat(std::string_view{"a\000b{}", 5}, std::make_format_args(name));
-    std::cout << ::tpy::__len__(interp) << "\n";
-    std::cout << ::tpy::print_bool((interp == std::string_view{"a\000bworld", 8})) << "\n";
+    std::cout << ::tpy::__len__(interp) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((interp == std::string_view{"a\000bworld", 8})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -26,7 +26,7 @@ void __tpy_init() {
     a = &__global_slot_1;
     static ::tpyapp::b::BType __global_slot_2 = a->make_b();
     b = &__global_slot_2;
-    std::cout << b->use_a((*a)) << "\n";
+    std::cout << b->use_a((*a)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

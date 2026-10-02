@@ -15,9 +15,9 @@ void main() {
     Grid<int32_t, 4> g = Grid<int32_t, 4>(10);
     Grid<int32_t, 4> g2 = g.copy();
     Grid<int32_t, 4> g3 = g.with_value(99);
-    std::cout << g._value << "\n";
-    std::cout << g2._value << "\n";
-    std::cout << g3._value << "\n";
+    std::cout << g._value << "\n" << ::tpy::check_signals;
+    std::cout << g2._value << "\n" << ::tpy::check_signals;
+    std::cout << g3._value << "\n" << ::tpy::check_signals;
 }
 
 // main()

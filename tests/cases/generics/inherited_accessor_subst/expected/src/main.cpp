@@ -46,20 +46,20 @@ __gen_bump_gen bump_gen(Holder<int32_t, std::vector<Rec>>& h) {
 //     print("owner:", g._v[0].x, g._v[1].x)
 void main() {
     Sub h = Sub(5, Rec(7));
-    std::cout << h.key() << "\n";
+    std::cout << h.key() << "\n" << ::tpy::check_signals;
     h.set_key(6);
-    std::cout << h.key() << "\n";
+    std::cout << h.key() << "\n" << ::tpy::check_signals;
     h.val().x = 8;
-    std::cout << h._v.x << "\n";
+    std::cout << h._v.x << "\n" << ::tpy::check_signals;
     Rec* r = h.find(1);
     if ((r != nullptr)) {
-        std::cout << r->x << "\n";
+        std::cout << r->x << "\n" << ::tpy::check_signals;
     }
     Holder<int32_t, Rec> d = Holder<int32_t, Rec>(1, Rec(9));
-    std::cout << d.val().x << "\n";
+    std::cout << d.val().x << "\n" << ::tpy::check_signals;
     Holder<int32_t, std::vector<Rec>> g = Holder<int32_t, std::vector<Rec>>(1, {Rec(1), Rec(2)});
     ::tpyapp::main::bump_all(g);
-    std::cout << "sync:" << " " << ::tpy::__getitem__(g._v, 0).x << " " << ::tpy::__getitem__(g._v, 1).x << "\n";
+    std::cout << "sync:" << " " << ::tpy::__getitem__(g._v, 0).x << " " << ::tpy::__getitem__(g._v, 1).x << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::bump_gen(g);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -67,10 +67,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "frame:" << " " << n << "\n";
+            std::cout << "frame:" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "owner:" << " " << ::tpy::__getitem__(g._v, 0).x << " " << ::tpy::__getitem__(g._v, 1).x << "\n";
+    std::cout << "owner:" << " " << ::tpy::__getitem__(g._v, 0).x << " " << ::tpy::__getitem__(g._v, 1).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

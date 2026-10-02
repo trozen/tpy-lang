@@ -42,7 +42,7 @@ int32_t sum_not_last_use() {
         int32_t x = *__beg_0;
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
     return total;
 }
 
@@ -50,8 +50,8 @@ int32_t sum_not_last_use() {
 //     print(sum_last_use())
 //     print(sum_not_last_use())
 void main() {
-    std::cout << ::tpyapp::main::sum_last_use() << "\n";
-    std::cout << ::tpyapp::main::sum_not_last_use() << "\n";
+    std::cout << ::tpyapp::main::sum_last_use() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_not_last_use() << "\n" << ::tpy::check_signals;
 }
 
 // main()

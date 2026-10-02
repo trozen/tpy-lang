@@ -18,7 +18,7 @@ void main() {
     items.push_back(std::string(s));
     items.push_back("literal");
     items.push_back((::tpy::str_concat(s, " world")));
-    std::cout << ::tpy::ListPrinter(items) << "\n";
+    std::cout << ::tpy::ListPrinter(items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

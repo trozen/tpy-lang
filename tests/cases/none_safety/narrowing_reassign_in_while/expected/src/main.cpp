@@ -33,8 +33,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpyapp::main::narrowing_cleared_on_reassign(1, 2, 3) << "\n";
-    std::cout << ::tpyapp::main::narrowing_cleared_on_reassign(std::nullopt, 2, 3) << "\n";
+    std::cout << ::tpyapp::main::narrowing_cleared_on_reassign(1, 2, 3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::narrowing_cleared_on_reassign(std::nullopt, 2, 3) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

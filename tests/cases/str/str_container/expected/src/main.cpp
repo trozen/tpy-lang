@@ -39,25 +39,25 @@ namespace tpyapp::main {
 //     print(f"nums={nums}")
 void main() {
     std::tuple<::tpy::BigInt, std::string> t = std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), "hello"};
-    std::cout << ::tpy::tuple_to_str(t) << "\n";
-    std::cout << ::tpy::tuple_to_str(t) << "\n";
-    std::cout << std::format("{}", ::tpy::tuple_to_str(t)) << "\n";
-    std::cout << std::format("{}", ::tpy::tuple_to_str(t)) << "\n";
-    std::cout << std::format("{}", ::tpy::tuple_to_str(t)) << "\n";
+    std::cout << ::tpy::tuple_to_str(t) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::tuple_to_str(t) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", ::tpy::tuple_to_str(t)) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", ::tpy::tuple_to_str(t)) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", ::tpy::tuple_to_str(t)) << "\n" << ::tpy::check_signals;
     std::tuple<::tpy::BigInt> t1 = std::tuple<::tpy::BigInt>(::tpy::BigInt(42));
-    std::cout << ::tpy::tuple_to_str(t1) << "\n";
+    std::cout << ::tpy::tuple_to_str(t1) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> xs = {1, 2, 3};
-    std::cout << ::tpy::list_to_str(xs) << "\n";
-    std::cout << ::tpy::list_to_str(xs) << "\n";
-    std::cout << std::format("{}", ::tpy::list_to_str(xs)) << "\n";
+    std::cout << ::tpy::list_to_str(xs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::list_to_str(xs) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", ::tpy::list_to_str(xs)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ::tpy::BigInt> d = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}, {"b", ::tpy::BigInt(2)}});
-    std::cout << ::tpy::dict_to_str(d) << "\n";
-    std::cout << ::tpy::dict_to_str(d) << "\n";
-    std::cout << std::format("{}", ::tpy::dict_to_str(d)) << "\n";
+    std::cout << ::tpy::dict_to_str(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::dict_to_str(d) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", ::tpy::dict_to_str(d)) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<::tpy::BigInt, std::string>> nested = {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), "a"}, std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(2), "b"}};
-    std::cout << ::tpy::list_to_str(nested) << "\n";
+    std::cout << ::tpy::list_to_str(nested) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> nums = {10, 20};
-    std::cout << std::format("nums={}", ::tpy::list_to_str(nums)) << "\n";
+    std::cout << std::format("nums={}", ::tpy::list_to_str(nums)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

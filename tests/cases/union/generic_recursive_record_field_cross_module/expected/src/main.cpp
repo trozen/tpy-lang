@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(f.size())
 void main() {
     Forest f = Forest();
-    std::cout << f.size() << "\n";
+    std::cout << f.size() << "\n" << ::tpy::check_signals;
 }
 
 // # A record in `main` embeds a cross-module generic recursive alias by value

@@ -17,7 +17,7 @@ void main() {
             auto __ctx_1 = Bouncer();
             auto x = __ctx_1.__enter__();
             try {
-                std::cout << std::format("x={}", (x).to_string()) << "\n";
+                std::cout << std::format("x={}", (x).to_string()) << "\n" << ::tpy::check_signals;
                 throw ::tpy::ValueError("propagate me");
             } catch (::tpy::BaseException& __exc_1) {
                 if (!__ctx_1.__exit__({}, &__exc_1, {})) throw;
@@ -26,7 +26,7 @@ void main() {
                 throw;
             }
         } catch (const ::tpy::ValueError& e) {
-            std::cout << std::format("outer caught: {}", std::string(::tpy::__str__(e))) << "\n";
+            std::cout << std::format("outer caught: {}", std::string(::tpy::__str__(e))) << "\n" << ::tpy::check_signals;
         }
     }
 }

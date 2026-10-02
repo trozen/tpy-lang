@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(c.get_minus_five())  # 5
 void main() {
     Container<std::string, 10> c = Container<std::string, 10>();
-    std::cout << c.get_double() << "\n";
-    std::cout << c.get_plus_one() << "\n";
-    std::cout << c.get_minus_five() << "\n";
+    std::cout << c.get_double() << "\n" << ::tpy::check_signals;
+    std::cout << c.get_plus_one() << "\n" << ::tpy::check_signals;
+    std::cout << c.get_minus_five() << "\n" << ::tpy::check_signals;
 }
 
 // main()

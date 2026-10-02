@@ -28,19 +28,19 @@ void main() {
     c.add(10);
     c.add(20);
     c.add(30);
-    std::cout << c[1] << "\n";
+    std::cout << c[1] << "\n" << ::tpy::check_signals;
     std::span<const int32_t> sp = c.__getitem__(::tpy::BasicSlice{0, 2});
     auto& __obj_0 = sp;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     Container<std::string> s = Container<std::string>();
     s.add("hello");
     s.add("world");
-    std::cout << s[0] << "\n";
+    std::cout << s[0] << "\n" << ::tpy::check_signals;
 }
 
 // main()

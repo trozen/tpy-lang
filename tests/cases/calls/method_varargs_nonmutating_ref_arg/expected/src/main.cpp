@@ -13,7 +13,7 @@ void main() {
     Pile p = Pile();
     Box x = Box(3);
     Box y = Box(4);
-    std::cout << p.via_param(x, y) << "\n";
+    std::cout << p.via_param(x, y) << "\n" << ::tpy::check_signals;
 }
 
 // main()

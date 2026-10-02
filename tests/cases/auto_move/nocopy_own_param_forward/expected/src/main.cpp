@@ -23,7 +23,7 @@ int32_t forward(Handle&& h) {
 void main() {
     Handle h = Handle();
     h.fd = 77;
-    std::cout << ::tpyapp::main::forward(std::move(h)) << "\n";
+    std::cout << ::tpyapp::main::forward(std::move(h)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

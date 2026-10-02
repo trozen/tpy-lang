@@ -10,10 +10,10 @@ namespace tpyapp::main {
 //     print(Color.BLUE)
 //     print(Color.RED.value)
 void main() {
-    std::cout << ::tpy::__repr__(::lib::Color::RED) << "\n";
-    std::cout << ::tpy::__repr__(::lib::Color::GREEN) << "\n";
-    std::cout << ::tpy::__repr__(::lib::Color::BLUE) << "\n";
-    std::cout << static_cast<int32_t>(::lib::Color::RED) << "\n";
+    std::cout << ::tpy::__repr__(::lib::Color::RED) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__repr__(::lib::Color::GREEN) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__repr__(::lib::Color::BLUE) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(::lib::Color::RED) << "\n" << ::tpy::check_signals;
 }
 
 // # Cross-module import of a @native enum.

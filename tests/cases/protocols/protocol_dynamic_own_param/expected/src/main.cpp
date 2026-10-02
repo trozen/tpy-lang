@@ -37,7 +37,7 @@ std::unique_ptr<Pet> widen_to_pet(std::unique_ptr<NamedPet> np) {
 //     print(p.name())
 //     return p
 std::unique_ptr<Pet> speak_and_forward(std::unique_ptr<Pet> p) {
-    std::cout << p->name() << "\n";
+    std::cout << p->name() << "\n" << ::tpy::check_signals;
     return p;
 }
 
@@ -63,10 +63,10 @@ std::unique_ptr<Pet> pick(bool use_parrot) {
 void main() {
     ::tpyapp::main::speak_and_forward(::tpyapp::main::make_parrot());
     ::tpyapp::main::speak_and_forward(::tpyapp::main::make_dog());
-    std::cout << ::tpyapp::main::make_parrot()->name() << "\n";
-    std::cout << ::tpyapp::main::pick(true)->name() << "\n";
-    std::cout << ::tpyapp::main::pick(false)->name() << "\n";
-    std::cout << ::tpyapp::main::widen_to_pet(::tpyapp::main::make_tabby())->name() << "\n";
+    std::cout << ::tpyapp::main::make_parrot()->name() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick(true)->name() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick(false)->name() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::widen_to_pet(::tpyapp::main::make_tabby())->name() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -67,13 +67,13 @@ std::string bump_dict(::tpy::ordered_map<std::string, std::optional<Box>>& d) {
 //           h.xs[0].val if h.xs[0] is not None else -1)  # tpyc: warning(/Potential None access/)
 void main() {
     std::vector<std::optional<Box>> xs = {Box(1), std::nullopt};
-    std::cout << "list" << " " << ::tpyapp::main::bump(xs) << " " << (((::tpy::__getitem__(xs, 0).has_value())) ? (::tpy::deref_optional_check(::tpy::__getitem__(xs, 0)).val) : (-1)) << "\n";
+    std::cout << "list" << " " << ::tpyapp::main::bump(xs) << " " << (((::tpy::__getitem__(xs, 0).has_value())) ? (::tpy::deref_optional_check(::tpy::__getitem__(xs, 0)).val) : (-1)) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<Box>> empty = {std::nullopt};
-    std::cout << "list-none" << " " << ::tpyapp::main::bump(empty) << "\n";
+    std::cout << "list-none" << " " << ::tpyapp::main::bump(empty) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::optional<Box>> d = ::tpy::ordered_map<std::string, std::optional<Box>>({{"k", Box(2)}});
-    std::cout << "dict" << " " << ::tpyapp::main::bump_dict(d) << " " << (((::tpy::__getitem__(d, "k").has_value())) ? (::tpy::deref_optional_check(::tpy::__getitem__(d, "k")).val) : (-1)) << "\n";
+    std::cout << "dict" << " " << ::tpyapp::main::bump_dict(d) << " " << (((::tpy::__getitem__(d, "k").has_value())) ? (::tpy::deref_optional_check(::tpy::__getitem__(d, "k")).val) : (-1)) << "\n" << ::tpy::check_signals;
     Holder h = Holder({Box(3), std::nullopt});
-    std::cout << "method" << " " << h.touch() << " " << (((::tpy::__getitem__(h.xs, 0).has_value())) ? (::tpy::deref_optional_check(::tpy::__getitem__(h.xs, 0)).val) : (-1)) << "\n";
+    std::cout << "method" << " " << h.touch() << " " << (((::tpy::__getitem__(h.xs, 0).has_value())) ? (::tpy::deref_optional_check(::tpy::__getitem__(h.xs, 0)).val) : (-1)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

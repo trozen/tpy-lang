@@ -38,13 +38,13 @@ std::string classify__lit_rb__wb(std::string_view mode) {
 //         print(classify(mode))
 void dispatch_str(std::string_view mode) {
     if ((mode == "rb")) {
-        std::cout << ::tpyapp::main::classify__lit_rb__wb(mode) << "\n";
+        std::cout << ::tpyapp::main::classify__lit_rb__wb(mode) << "\n" << ::tpy::check_signals;
     } else if ((mode == "wb")) {
-        std::cout << ::tpyapp::main::classify__lit_rb__wb(mode) << "\n";
+        std::cout << ::tpyapp::main::classify__lit_rb__wb(mode) << "\n" << ::tpy::check_signals;
     } else if ((mode == "r")) {
-        std::cout << ::tpyapp::main::classify__lit_r__w(mode) << "\n";
+        std::cout << ::tpyapp::main::classify__lit_r__w(mode) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << ::tpyapp::main::classify__lit_r__w(mode) << "\n";
+        std::cout << ::tpyapp::main::classify__lit_r__w(mode) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -95,11 +95,11 @@ std::string bucket(int32_t x) {
 //         print(bucket(x))
 void dispatch_int(int32_t x) {
     if ((x == 1)) {
-        std::cout << ::tpyapp::main::bucket__lit_1__2(x) << "\n";
+        std::cout << ::tpyapp::main::bucket__lit_1__2(x) << "\n" << ::tpy::check_signals;
     } else if ((x == 3)) {
-        std::cout << ::tpyapp::main::bucket__lit_3__4(x) << "\n";
+        std::cout << ::tpyapp::main::bucket__lit_3__4(x) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << ::tpyapp::main::bucket(x) << "\n";
+        std::cout << ::tpyapp::main::bucket(x) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -112,9 +112,9 @@ void dispatch_int(int32_t x) {
 //         print(classify(mode))
 void dispatch_ne(std::string_view mode) {
     if ((mode != "r")) {
-        std::cout << ::tpyapp::main::classify__lit_rb__wb(mode) << "\n";
+        std::cout << ::tpyapp::main::classify__lit_rb__wb(mode) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << ::tpyapp::main::classify__lit_r__w(mode) << "\n";
+        std::cout << ::tpyapp::main::classify__lit_r__w(mode) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -128,9 +128,9 @@ void dispatch_ne(std::string_view mode) {
 //         print(classify(mode))
 void dispatch_or(std::string_view mode) {
     if (((mode == "rb") || (mode == "wb"))) {
-        std::cout << ::tpyapp::main::classify__lit_rb__wb(mode) << "\n";
+        std::cout << ::tpyapp::main::classify__lit_rb__wb(mode) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << ::tpyapp::main::classify__lit_r__w(mode) << "\n";
+        std::cout << ::tpyapp::main::classify__lit_r__w(mode) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -142,9 +142,9 @@ void dispatch_or(std::string_view mode) {
 //         print("ok")
 void dispatch_out_of_range(std::string_view mode) {
     if ((mode == "rb")) {
-        std::cout << "unreachable" << "\n";
+        std::cout << "unreachable" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "ok" << "\n";
+        std::cout << "ok" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -160,13 +160,13 @@ void dispatch_out_of_range(std::string_view mode) {
 void nested_fold(std::string_view mode) {
     if ((mode == "rb")) {
         if (true) {
-            std::cout << "always" << "\n";
+            std::cout << "always" << "\n" << ::tpy::check_signals;
         }
         if (false) {
-            std::cout << "never" << "\n";
+            std::cout << "never" << "\n" << ::tpy::check_signals;
         }
     } else {
-        std::cout << "text" << "\n";
+        std::cout << "text" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -185,12 +185,12 @@ void reassign_clears_fold(int32_t x) {
     if ((x == 1)) {
         x = 2;
         if ((x == 1)) {
-            std::cout << "never" << "\n";
+            std::cout << "never" << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << "reassigned" << "\n";
+            std::cout << "reassigned" << "\n" << ::tpy::check_signals;
         }
     } else {
-        std::cout << "two" << "\n";
+        std::cout << "two" << "\n" << ::tpy::check_signals;
     }
 }
 

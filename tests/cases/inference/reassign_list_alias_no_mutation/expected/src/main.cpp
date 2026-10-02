@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void main() {
     std::array<int32_t, 3> a = {1, 2, 3};
     std::array<int32_t, 3> b = std::move(a);
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // main()

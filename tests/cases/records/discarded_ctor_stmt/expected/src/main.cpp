@@ -80,7 +80,7 @@ Tick mk() {
 //     print("  note", n)
 //     return n
 int32_t note(int32_t n) {
-    std::cout << "  note" << " " << n << "\n";
+    std::cout << "  note" << " " << n << "\n" << ::tpy::check_signals;
     return n;
 }
 
@@ -116,20 +116,20 @@ __gen_gen gen(int32_t n) {
 void free_fn(bool flag) {
     int32_t k = 3;
     Tick t = Tick(1);
-    std::cout << "same-block:" << "\n";
+    std::cout << "same-block:" << "\n" << ::tpy::check_signals;
     (void)(Tick(k));
     (void)(Wrap(t));
     (void)(Cell<int32_t>(k));
     (void)(Cell<int32_t>(k));
     (void)(Point(k));
-    std::cout << "call-arg:" << "\n";
+    std::cout << "call-arg:" << "\n" << ::tpy::check_signals;
     (void)(Wrap(::tpyapp::main::mk()));
-    std::cout << "nested-block:" << "\n";
+    std::cout << "nested-block:" << "\n" << ::tpy::check_signals;
     if (flag) {
         (void)(Tick(k));
         (void)(Wrap(t));
     }
-    std::cout << "other-args:" << "\n";
+    std::cout << "other-args:" << "\n" << ::tpy::check_signals;
     (void)(Tick());
     (void)(Tick(k));
     (void)(Tick((::tpy::add_check<int32_t>(k, 1))));
@@ -162,26 +162,26 @@ void free_fn(bool flag) {
 //         print("  bad kind")
 void spellings(bool flag) {
     int32_t k = 3;
-    std::cout << "spellings:" << "\n";
+    std::cout << "spellings:" << "\n" << ::tpy::check_signals;
     if (flag) {
         (void)(::tpyapp::shapes::Tock(k));
         (void)(Outer::Inner(k));
         (void)(Tick(k));
         (void)(k);
-        std::cout << "  after" << " " << k << "\n";
+        std::cout << "  after" << " " << k << "\n" << ::tpy::check_signals;
     }
     {
         try {
             (void)(::tpy::EnumUtil<Color>::from_value(k));
         } catch (const ::tpy::ValueError&) {
-            std::cout << "  bad color" << "\n";
+            std::cout << "  bad color" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             (void)(::tpy::EnumUtil<Outer::Kind>::from_value(k));
         } catch (const ::tpy::ValueError&) {
-            std::cout << "  bad kind" << "\n";
+            std::cout << "  bad kind" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -215,14 +215,14 @@ void spellings(bool flag) {
 //         ValueError(msg)  # tpyc: ok
 //     print("  ok", msg)
 void positions(int32_t n) {
-    std::cout << "closure:" << "\n";
+    std::cout << "closure:" << "\n" << ::tpy::check_signals;
     auto inner = [&n]() {
         if ((n > 0)) {
             (void)(Tick(n));
         }
     };
     inner();
-    std::cout << "with:" << "\n";
+    std::cout << "with:" << "\n" << ::tpy::check_signals;
     auto __ctx_1 = Scope();
     __ctx_1.__enter__();
     try {
@@ -237,7 +237,7 @@ void positions(int32_t n) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << "try-finally:" << "\n";
+    std::cout << "try-finally:" << "\n" << ::tpy::check_signals;
     {
         try {
             (void)(Tick(n));
@@ -247,7 +247,7 @@ void positions(int32_t n) {
         }
         (void)(Tick(n));
     }
-    std::cout << "match:" << "\n";
+    std::cout << "match:" << "\n" << ::tpy::check_signals;
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
     case 4: {
@@ -258,12 +258,12 @@ void positions(int32_t n) {
         break;
     }
     }
-    std::cout << "exception:" << "\n";
+    std::cout << "exception:" << "\n" << ::tpy::check_signals;
     std::string_view msg = "unraised";
     if ((n > 0)) {
         (void)(::tpy::ValueError(msg));
     }
-    std::cout << "  ok" << " " << msg << "\n";
+    std::cout << "  ok" << " " << msg << "\n" << ::tpy::check_signals;
 }
 
 // def conversions(flag: bool) -> None:
@@ -292,7 +292,7 @@ void positions(int32_t n) {
 //         float(note(k))  # tpyc: ok
 //         print("  after", s, len(b), k, digits)
 void conversions(bool flag) {
-    std::cout << "conversions:" << "\n";
+    std::cout << "conversions:" << "\n" << ::tpy::check_signals;
     int32_t k = 3;
     std::string_view s = "abc";
     ::tpy::BytesView b = ::tpy::bytes_literal("xy", 2);
@@ -310,7 +310,7 @@ void conversions(bool flag) {
         (void)(::tpy::float_from_str(digits));
         (void)(::tpyapp::main::note(k));
         (void)(static_cast<double>(::tpyapp::main::note(k)));
-        std::cout << "  after" << " " << s << " " << ::tpy::__len__(b) << " " << k << " " << digits << "\n";
+        std::cout << "  after" << " " << s << " " << ::tpy::__len__(b) << " " << k << " " << digits << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -318,7 +318,7 @@ void conversions(bool flag) {
 //     print("  free init", n)
 //     return n
 int32_t __init__(int32_t n) {
-    std::cout << "  free init" << " " << n << "\n";
+    std::cout << "  free init" << " " << n << "\n" << ::tpy::check_signals;
     return n;
 }
 
@@ -330,7 +330,7 @@ int32_t __init__(int32_t n) {
 //     # A free FUNCTION of this name is not a type's initializer.
 //     __init__(n)
 void calls_stay_bare(int32_t n) {
-    std::cout << "plain-calls:" << "\n";
+    std::cout << "plain-calls:" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::note(n);
     Holder(n).method();
     ::tpyapp::main::__init__(n);
@@ -350,9 +350,9 @@ void calls_stay_bare(int32_t n) {
 void main() {
     ::tpyapp::main::free_fn(true);
     ::tpyapp::main::spellings(true);
-    std::cout << "ctor+method:" << "\n";
+    std::cout << "ctor+method:" << "\n" << ::tpy::check_signals;
     Holder(5).method();
-    std::cout << "generator:" << "\n";
+    std::cout << "generator:" << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen(6);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -360,7 +360,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "  yielded" << " " << v << "\n";
+            std::cout << "  yielded" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpyapp::main::positions(4);
@@ -390,7 +390,7 @@ void __tpy_init() {
     ::tpyapp::shapes::__tpy_init();
     ::tpyapp::main::main();
     g = 9;
-    std::cout << "module-level:" << "\n";
+    std::cout << "module-level:" << "\n" << ::tpy::check_signals;
     (void)(Tick(g));
     if ((g > 0)) {
         (void)(Tick(g));

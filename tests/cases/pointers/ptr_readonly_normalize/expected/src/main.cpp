@@ -17,7 +17,7 @@ int32_t read_via_ptr(const Data* p) {
 void main() {
     Data d = Data(42);
     const Data* p = &d;
-    std::cout << ::tpyapp::main::read_via_ptr(p) << "\n";
+    std::cout << ::tpyapp::main::read_via_ptr(p) << "\n" << ::tpy::check_signals;
 }
 
 // main()

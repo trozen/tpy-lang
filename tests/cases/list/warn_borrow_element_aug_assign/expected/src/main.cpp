@@ -17,9 +17,9 @@ void test_list_aug_assign() {
     std::vector<Point> items = {Point(1), Point(2)};
     Point& v = ::tpy::__getitem__(items, 0);
     v.x = 50;
-    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n" << ::tpy::check_signals;
     ::tpy::list_extend(items, std::vector<Point>{Point(3)});
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_method_still_warns() -> None:
@@ -34,9 +34,9 @@ void test_list_method_still_warns() {
     std::vector<Point> items = {Point(1)};
     Point& v = ::tpy::__getitem__(items, 0);
     v.x = 60;
-    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n" << ::tpy::check_signals;
     items.push_back(Point(2));
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_value_type_no_warn() -> None:
@@ -49,7 +49,7 @@ void test_value_type_no_warn() {
     std::vector<int32_t> items = {1, 2};
     int32_t v = ::tpy::__getitem__(items, 0);
     ::tpy::list_extend(items, std::vector<int32_t>{3});
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_iter_borrow_aug_assign() -> None:
@@ -83,7 +83,7 @@ void test_reassign_borrower_clears() {
     Point* v = &(::tpy::__getitem__(items, 0));
     v = &*(__slot_1 = Point(9));
     ::tpy::list_extend(items, std::vector<Point>{Point(2)});
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // test_list_aug_assign()

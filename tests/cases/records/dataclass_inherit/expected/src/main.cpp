@@ -26,21 +26,21 @@ namespace tpyapp::main {
 //     print("multi-base:", t.z, t.count, t.label)
 void main() {
     Child c = Child(1, 2, 3);
-    std::cout << c.x << "\n";
-    std::cout << c.y << "\n";
-    std::cout << c.z << "\n";
-    std::cout << c << "\n";
-    std::cout << ::tpy::print_bool(((c) == (Child(1, 2, 3)))) << "\n";
-    std::cout << ::tpy::print_bool(((c) == (Child(1, 2, 4)))) << "\n";
-    std::cout << ::tpy::print_bool(((c) == (Child(9, 9, 3)))) << "\n";
+    std::cout << c.x << "\n" << ::tpy::check_signals;
+    std::cout << c.y << "\n" << ::tpy::check_signals;
+    std::cout << c.z << "\n" << ::tpy::check_signals;
+    std::cout << c << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((c) == (Child(1, 2, 3)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((c) == (Child(1, 2, 4)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((c) == (Child(9, 9, 3)))) << "\n" << ::tpy::check_signals;
     Child c2 = Child(1, 2, 3);
-    std::cout << ::tpy::print_bool(((c) == (c2))) << "\n";
+    std::cout << ::tpy::print_bool(((c) == (c2))) << "\n" << ::tpy::check_signals;
     Base b = Base(1, 2);
-    std::cout << b << "\n";
-    std::cout << ::tpy::print_bool(((b) == (Base(1, 2)))) << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((b) == (Base(1, 2)))) << "\n" << ::tpy::check_signals;
     Tagged t = Tagged(5);
     t.label = "l";
-    std::cout << "multi-base:" << " " << t.z << " " << t.count << " " << t.label << "\n";
+    std::cout << "multi-base:" << " " << t.z << " " << t.count << " " << t.label << "\n" << ::tpy::check_signals;
 }
 
 // # @dataclass inheritance: child includes parent fields in __init__ and __eq__

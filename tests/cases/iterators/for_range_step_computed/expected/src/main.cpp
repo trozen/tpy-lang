@@ -98,8 +98,8 @@ int32_t fixed_steps(int32_t end) {
 //     print(fixed_steps(60))
 //     print(bigint_step(60))
 void main() {
-    std::cout << ::tpyapp::main::fixed_steps(60) << "\n";
-    std::cout << ::tpyapp::main::bigint_step(::tpy::BigInt(60)) << "\n";
+    std::cout << ::tpyapp::main::fixed_steps(60) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::bigint_step(::tpy::BigInt(60)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

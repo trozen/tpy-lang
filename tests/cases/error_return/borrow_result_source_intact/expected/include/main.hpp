@@ -100,7 +100,7 @@ inline void Holder::grab() {
         goto __after_try_1;
         // except E:
         __except_1:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }

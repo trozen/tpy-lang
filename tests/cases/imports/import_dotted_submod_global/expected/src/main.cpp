@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(geo.codec.hi_nibble(58))   # ':' -> _HEX[3] == '3' (51); empty _HEX would panic
 void main() {
-    std::cout << ::tpyapp::geo::codec::hi_nibble(58) << "\n";
+    std::cout << ::tpyapp::geo::codec::hi_nibble(58) << "\n" << ::tpy::check_signals;
 }
 
 // # `import pkg.sub` (dotted) must also run the submodule's __tpy_init -- the sibling

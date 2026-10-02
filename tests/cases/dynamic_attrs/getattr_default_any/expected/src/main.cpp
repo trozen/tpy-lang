@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void main() {
     Bag b = Bag();
     ::tpy::Any a = ({ std::optional<::tpy::Any> __r; try { __r.emplace(b.__getattr__("count")); } catch (const ::tpy::AttributeError&) { __r.emplace(::tpy::make_any(::tpy::BigInt(-1))); } std::move(*__r); });
-    std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(a) << "\n";
+    std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(a) << "\n" << ::tpy::check_signals;
     a = ({ std::optional<::tpy::Any> __r; try { __r.emplace(b.__getattr__("missing")); } catch (const ::tpy::AttributeError&) { __r.emplace(::tpy::make_any(::tpy::BigInt(-1))); } std::move(*__r); });
-    std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(a) << "\n";
+    std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(a) << "\n" << ::tpy::check_signals;
 }
 
 // main()

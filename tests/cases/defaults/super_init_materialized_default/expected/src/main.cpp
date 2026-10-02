@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(Sub(4).v)
 //     print(Passing(6).v)
 void main() {
-    std::cout << Base(1, std::nullopt, 3).v << "\n";
-    std::cout << Sub(4).v << "\n";
-    std::cout << Passing(6).v << "\n";
+    std::cout << Base(1, std::nullopt, 3).v << "\n" << ::tpy::check_signals;
+    std::cout << Sub(4).v << "\n" << ::tpy::check_signals;
+    std::cout << Passing(6).v << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -26,7 +26,7 @@ void main() {
     Point p = Point();
     p.x = 5;
     p.y = 7;
-    std::cout << ::tpyapp::main::forward(std::move(p)) << "\n";
+    std::cout << ::tpyapp::main::forward(std::move(p)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

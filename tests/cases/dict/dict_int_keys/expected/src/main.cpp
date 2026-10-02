@@ -14,16 +14,16 @@ namespace tpyapp::main {
 //         print(k, d[k])
 void main() {
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::ordered_map<int32_t, std::string>({{1, "one"}, {2, "two"}, {3, "three"}});
-    std::cout << ::tpy::DictPrinter(d) << "\n";
-    std::cout << ::tpy::__getitem__(d, 2) << "\n";
-    std::cout << ::tpy::print_bool((d.contains(1))) << "\n";
-    std::cout << ::tpy::print_bool((d.contains(99))) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, 2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((d.contains(1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((d.contains(99))) << "\n" << ::tpy::check_signals;
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t k = *__beg_0;
-        std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n" << ::tpy::check_signals;
     }
 }
 

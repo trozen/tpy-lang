@@ -13,8 +13,8 @@ std::tuple<int32_t, Cell> g;
 //     print(g[1].v)
 void main() {
     std::get<1>(g).v = 9;
-    std::cout << std::get<0>(g) << "\n";
-    std::cout << std::get<1>(g).v << "\n";
+    std::cout << std::get<0>(g) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(g).v << "\n" << ::tpy::check_signals;
 }
 
 // # The subject: both elements are fresh, so the literal is spelled in storage

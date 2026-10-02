@@ -31,14 +31,14 @@ namespace tpyapp::main {
 //     print(re.findall("é+", "aéébé"))
 void main() {
     ::tpystd::re::Pattern p = ::tpystd::re::compile("x*");
-    std::cout << ::tpy::ListPrinter(::tpystd::re::split("x*", "abc")) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpystd::re::split("x*", "a\xc3\xa9")) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpystd::re::split("\xc3\xa9", "a\xc3\xa9" "b\xc3\xa9")) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpystd::re::split("x*", "abc", 2)) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpystd::re::split(",", "")) << "\n";
-    std::cout << ::tpystd::re::sub("x*", "-", "a\xc3\xa9", 5) << "\n";
-    std::cout << ::tpystd::re::sub("x*", "-", "h\xc3\xa9llo", 3) << "\n";
-    std::cout << ::tpy::ListPrinter(p.findall("a\xc3\xa9")) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpystd::re::split("x*", "abc")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpystd::re::split("x*", "a\xc3\xa9")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpystd::re::split("\xc3\xa9", "a\xc3\xa9" "b\xc3\xa9")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpystd::re::split("x*", "abc", 2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpystd::re::split(",", "")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::re::sub("x*", "-", "a\xc3\xa9", 5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::re::sub("x*", "-", "h\xc3\xa9llo", 3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(p.findall("a\xc3\xa9")) << "\n" << ::tpy::check_signals;
     int32_t n = 0;
     {
         auto __src_0 = p.finditer("a\xc3\xa9");
@@ -50,8 +50,8 @@ void main() {
             n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
-    std::cout << n << "\n";
-    std::cout << ::tpy::ListPrinter(::tpystd::re::findall("\xc3\xa9+", "a\xc3\xa9\xc3\xa9" "b\xc3\xa9")) << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpystd::re::findall("\xc3\xa9+", "a\xc3\xa9\xc3\xa9" "b\xc3\xa9")) << "\n" << ::tpy::check_signals;
 }
 
 // # Zero-width matches advance by a full UTF-8 character (not one byte), so

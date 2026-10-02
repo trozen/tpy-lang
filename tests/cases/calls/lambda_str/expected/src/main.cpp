@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(transform(lambda s: s + "!", "hello"))
 //     print(transform(lambda s: s + s, "ab"))
 void main() {
-    std::cout << ::tpyapp::main::transform([](std::string_view s) -> std::string { return (::tpy::str_concat(s, "!")); }, "hello") << "\n";
-    std::cout << ::tpyapp::main::transform([](std::string_view s) -> std::string { return (::tpy::str_concat(s, s)); }, "ab") << "\n";
+    std::cout << ::tpyapp::main::transform([](std::string_view s) -> std::string { return (::tpy::str_concat(s, "!")); }, "hello") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::transform([](std::string_view s) -> std::string { return (::tpy::str_concat(s, s)); }, "ab") << "\n" << ::tpy::check_signals;
 }
 
 // main()

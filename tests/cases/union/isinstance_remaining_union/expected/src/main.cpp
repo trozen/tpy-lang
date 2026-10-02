@@ -30,11 +30,11 @@ namespace tpyapp::main {
 //     print(f(C(3)))
 void main() {
     A __tmp_1 = A(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::f(::tpy::Union<const A*, const B*, const C*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::f(::tpy::Union<const A*, const B*, const C*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
     B __tmp_2 = B(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::f(::tpy::Union<const A*, const B*, const C*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::f(::tpy::Union<const A*, const B*, const C*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
     C __tmp_3 = C(::tpy::BigInt(3));
-    std::cout << ::tpyapp::main::f(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n";
+    std::cout << ::tpyapp::main::f(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

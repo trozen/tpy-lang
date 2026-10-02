@@ -38,24 +38,24 @@ void test_equality() {
     std::string_view b = "hello";
     std::string_view c = "world";
     if ((a == b)) {
-        std::cout << "hello == hello: yes" << "\n";
+        std::cout << "hello == hello: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "hello == hello: no" << "\n";
+        std::cout << "hello == hello: no" << "\n" << ::tpy::check_signals;
     }
     if ((a == c)) {
-        std::cout << "hello == world: yes" << "\n";
+        std::cout << "hello == world: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "hello == world: no" << "\n";
+        std::cout << "hello == world: no" << "\n" << ::tpy::check_signals;
     }
     if ((a != c)) {
-        std::cout << "hello != world: yes" << "\n";
+        std::cout << "hello != world: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "hello != world: no" << "\n";
+        std::cout << "hello != world: no" << "\n" << ::tpy::check_signals;
     }
     if ((a != b)) {
-        std::cout << "hello != hello: yes" << "\n";
+        std::cout << "hello != hello: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "hello != hello: no" << "\n";
+        std::cout << "hello != hello: no" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -93,24 +93,24 @@ void test_ordering() {
     std::string_view b = "banana";
     std::string_view c = "apple";
     if ((a < b)) {
-        std::cout << "apple < banana: yes" << "\n";
+        std::cout << "apple < banana: yes" << "\n" << ::tpy::check_signals;
     }
     if ((b < a)) {
-        std::cout << "banana < apple: yes" << "\n";
+        std::cout << "banana < apple: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "banana < apple: no" << "\n";
+        std::cout << "banana < apple: no" << "\n" << ::tpy::check_signals;
     }
     if ((a <= c)) {
-        std::cout << "apple <= apple: yes" << "\n";
+        std::cout << "apple <= apple: yes" << "\n" << ::tpy::check_signals;
     }
     if ((a <= b)) {
-        std::cout << "apple <= banana: yes" << "\n";
+        std::cout << "apple <= banana: yes" << "\n" << ::tpy::check_signals;
     }
     if ((b > a)) {
-        std::cout << "banana > apple: yes" << "\n";
+        std::cout << "banana > apple: yes" << "\n" << ::tpy::check_signals;
     }
     if ((c >= a)) {
-        std::cout << "apple >= apple: yes" << "\n";
+        std::cout << "apple >= apple: yes" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -133,13 +133,13 @@ void test_empty_strings() {
     std::string_view nonempty = "x";
     std::string_view empty2 = "";
     if ((empty == empty2)) {
-        std::cout << "empty == empty: yes" << "\n";
+        std::cout << "empty == empty: yes" << "\n" << ::tpy::check_signals;
     }
     if ((empty < nonempty)) {
-        std::cout << "empty < x: yes" << "\n";
+        std::cout << "empty < x: yes" << "\n" << ::tpy::check_signals;
     }
     if ((empty != nonempty)) {
-        std::cout << "empty != x: yes" << "\n";
+        std::cout << "empty != x: yes" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -161,12 +161,12 @@ bool strings_equal(std::string_view s1, std::string_view s2) {
 //         print("foo == bar: no")
 void test_comparison_in_function() {
     if (::tpyapp::main::strings_equal("test", "test")) {
-        std::cout << "test == test: yes" << "\n";
+        std::cout << "test == test: yes" << "\n" << ::tpy::check_signals;
     }
     if (::tpyapp::main::strings_equal("foo", "bar")) {
-        std::cout << "foo == bar: yes" << "\n";
+        std::cout << "foo == bar: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "foo == bar: no" << "\n";
+        std::cout << "foo == bar: no" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -185,13 +185,13 @@ void test_comparison_in_function() {
 void test_comparison_with_literals() {
     std::string_view name = "Alice";
     if ((name == "Alice")) {
-        std::cout << "name is Alice" << "\n";
+        std::cout << "name is Alice" << "\n" << ::tpy::check_signals;
     }
     if ((name != "Bob")) {
-        std::cout << "name is not Bob" << "\n";
+        std::cout << "name is not Bob" << "\n" << ::tpy::check_signals;
     }
     if ((name < "Bob")) {
-        std::cout << "Alice < Bob: yes" << "\n";
+        std::cout << "Alice < Bob: yes" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -226,9 +226,9 @@ int32_t find_string(const std::vector<std::string>& items, std::string_view targ
 void test_comparison_in_loop() {
     std::vector<std::string> names = {"Alice", "Bob", "Charlie"};
     int32_t idx = ::tpyapp::main::find_string(names, "Bob");
-    std::cout << idx << "\n";
+    std::cout << idx << "\n" << ::tpy::check_signals;
     idx = ::tpyapp::main::find_string(names, "Dave");
-    std::cout << idx << "\n";
+    std::cout << idx << "\n" << ::tpy::check_signals;
 }
 
 // # Run all tests
@@ -249,17 +249,17 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << "=== equality ===" << "\n";
+    std::cout << "=== equality ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_equality();
-    std::cout << "=== ordering ===" << "\n";
+    std::cout << "=== ordering ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_ordering();
-    std::cout << "=== empty ===" << "\n";
+    std::cout << "=== empty ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_empty_strings();
-    std::cout << "=== function ===" << "\n";
+    std::cout << "=== function ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_comparison_in_function();
-    std::cout << "=== literals ===" << "\n";
+    std::cout << "=== literals ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_comparison_with_literals();
-    std::cout << "=== loop ===" << "\n";
+    std::cout << "=== loop ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_comparison_in_loop();
 }
 

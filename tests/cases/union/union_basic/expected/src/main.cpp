@@ -29,7 +29,7 @@ void test() {
     ::tpyapp::main::accept_two(b);
     ::tpy::Union<bool, int32_t, std::string> c = true;
     ::tpyapp::main::accept_three(c);
-    std::cout << "ok" << "\n";
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // test()

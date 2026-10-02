@@ -38,7 +38,7 @@ __coro_sub sub() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "before-1" << "\n";
+        std::cout << "before-1" << "\n" << ::tpy::check_signals;
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -48,7 +48,7 @@ __coro_sub sub() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         x = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "between-1-2" << "\n";
+        std::cout << "between-1-2" << "\n" << ::tpy::check_signals;
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -59,7 +59,7 @@ __coro_sub sub() {
         y = std::move(__r1).value();
         __sub_1.reset();
         z = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(x, y)), 1));
-        std::cout << "after-2" << "\n";
+        std::cout << "after-2" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         int32_t __tpy_async_ret = z;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -79,7 +79,7 @@ __coro_caller caller() {
 //     print(poll_once(caller()).value())
 void main() {
     auto __tmp_1 = ::tpyapp::main::caller();
-    std::cout << ::tpystd::coro::poll_once<int32_t>(__tmp_1).value() << "\n";
+    std::cout << ::tpystd::coro::poll_once<int32_t>(__tmp_1).value() << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.coro import poll_once

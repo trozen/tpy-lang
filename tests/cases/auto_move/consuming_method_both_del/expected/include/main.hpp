@@ -69,7 +69,7 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 //     self._ptr = unsafe_alloc()
 //     unsafe_init(self._ptr, value)
 inline Base::Base(int32_t value) {
-    std::cout << "Base.init" << " " << value << "\n";
+    std::cout << "Base.init" << " " << value << "\n" << ::tpy::check_signals;
     this->_ptr = static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))));
     ::new(static_cast<void*>(this->_ptr)) int32_t(value);
 }
@@ -91,7 +91,7 @@ inline Base& Base::operator=(Base&& other) noexcept {
 //     unsafe_free(self._ptr)
 inline Base::~Base() {
     if (!this->__tpy_owned_) return;
-    std::cout << "Base.del" << "\n";
+    std::cout << "Base.del" << "\n" << ::tpy::check_signals;
     ::tpy::destroy_at(this->_ptr);
     ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
 }
@@ -103,7 +103,7 @@ inline Base::~Base() {
 inline Child::Child(int32_t value, int32_t extra)
     : Base(value),
       _extra(extra) {
-    std::cout << "Child.init" << " " << extra << "\n";
+    std::cout << "Child.init" << " " << extra << "\n" << ::tpy::check_signals;
 }
 
 inline Child::Child(Child&& other) noexcept
@@ -123,7 +123,7 @@ inline Child& Child::operator=(Child&& other) noexcept {
 //     print("Child.del")
 inline Child::~Child() {
     if (!this->__tpy_owned_) return;
-    std::cout << "Child.del" << "\n";
+    std::cout << "Child.del" << "\n" << ::tpy::check_signals;
 }
 
 // def take(self: Own[Self]) -> int32:
@@ -133,7 +133,7 @@ inline Child::~Child() {
 //     return val
 inline int32_t Child::take() && {
     this->__tpy_owned_ = false;
-    std::cout << "take" << "\n";
+    std::cout << "take" << "\n" << ::tpy::check_signals;
     int32_t val = std::move(*this->_ptr);
     ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
     return val;

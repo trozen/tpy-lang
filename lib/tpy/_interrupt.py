@@ -30,7 +30,7 @@ _INTERRUPTED: Final[int32] = -3
 
 def check() -> None:
     """Raise KeyboardInterrupt if a Ctrl-C is pending for this thread."""
-    posix_signal.check_interrupt()
+    posix_signal.check_signals()
 
 
 def deadline_after(timeout: float) -> float:

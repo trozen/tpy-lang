@@ -9,7 +9,7 @@ namespace tpyapp::main {
 // def take(g: list[list[int]]) -> None:  # tpyc: ok
 //     print(g)
 void take(const std::vector<std::vector<::tpy::BigInt>>& g) {
-    std::cout << ::tpy::ListPrinter(g) << "\n";
+    std::cout << ::tpy::ListPrinter(g) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -37,14 +37,14 @@ void main() {
         std::move(__result);
     });
     rows.push_back({9, 9});
-    std::cout << ::tpy::ListPrinter(rows) << "\n";
+    std::cout << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(::tpy::__getitem__(rows, 0), 0, 99);
-    std::cout << ::tpy::ListPrinter(rows) << "\n";
+    std::cout << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<::tpy::BigInt>> __tmp_1 = {{1, 2}, {3, 4}};
     ::tpyapp::main::take(__tmp_1);
     std::vector<std::array<int32_t, 2>> lits = {{1, 2}};
     lits.push_back({3, 4});
-    std::cout << ::tpy::ListPrinter(lits) << "\n";
+    std::cout << ::tpy::ListPrinter(lits) << "\n" << ::tpy::check_signals;
 }
 
 // main()

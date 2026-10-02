@@ -61,7 +61,7 @@ void test_missing_field() {
         __except_3:;
         {
             auto& e = *__err_opt_3;
-            std::cout << e.message << "\n";
+            std::cout << e.message << "\n" << ::tpy::check_signals;
         }
         __after_try_3:;
     }
@@ -86,7 +86,7 @@ void test_invalid_enum() {
         __except_5:;
         {
             auto& e = *__err_opt_5;
-            std::cout << e.message << "\n";
+            std::cout << e.message << "\n" << ::tpy::check_signals;
         }
         __after_try_5:;
     }
@@ -111,7 +111,7 @@ void test_malformed_with_describe() {
         __except_7:;
         {
             auto& e = *__err_opt_7;
-            std::cout << e.describe(data) << "\n";
+            std::cout << e.describe(data) << "\n" << ::tpy::check_signals;
         }
         __after_try_7:;
     }

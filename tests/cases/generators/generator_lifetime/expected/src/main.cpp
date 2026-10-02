@@ -65,7 +65,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_items::__next__() {
 }
 
 void __gen_items::__finally_0() {
-    std::cout << "items finally" << " " << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0) << "\n";
+    std::cout << "items finally" << " " << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def items(xs: list[int32]) -> Iterator[int32]:
@@ -133,7 +133,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_mutating::__next__() {
 
 void __gen_mutating::__finally_0() {
     ::tpy::__setitem__(xs, 0, 9);
-    std::cout << "mutating finally" << "\n";
+    std::cout << "mutating finally" << "\n" << ::tpy::check_signals;
 }
 
 // def mutating(xs: list[int32]) -> Iterator[int32]:
@@ -211,7 +211,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_cell_gen::__next__() {
 }
 
 void __gen_cell_gen::__finally_0() {
-    std::cout << "cell finally" << " " << c.v << "\n";
+    std::cout << "cell finally" << " " << c.v << "\n" << ::tpy::check_signals;
 }
 
 // def cell_gen(c: Cell) -> Iterator[int32]:
@@ -285,7 +285,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_watched::__next__() {
 
 void __gen_watched::__finally_0() {
     done.push_back(::tpy::__len__(xs));
-    std::cout << "watched finally" << " " << ::tpy::__len__(done) << "\n";
+    std::cout << "watched finally" << " " << ::tpy::__len__(done) << "\n" << ::tpy::check_signals;
 }
 
 // def watched(xs: list[int32], done: list[int32]) -> Iterator[int32]:
@@ -377,11 +377,11 @@ void plain_branch(bool c, const std::vector<int32_t>& xs) {
         std::vector<int32_t> ys = {10, 11};
         __gen_items __slot_1 = ::tpyapp::main::items(ys);
         __gen_items* g = &__slot_1;
-        std::cout << "plain_branch" << " " << ::tpyapp::main::first((*g)) << "\n";
+        std::cout << "plain_branch" << " " << ::tpyapp::main::first((*g)) << "\n" << ::tpy::check_signals;
     } else {
         __gen_items __slot_2 = ::tpyapp::main::items(xs);
         __gen_items* g = &__slot_2;
-        std::cout << "plain_branch" << " " << ::tpyapp::main::first((*g)) << "\n";
+        std::cout << "plain_branch" << " " << ::tpyapp::main::first((*g)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -404,8 +404,8 @@ void plain_branch_param(bool c, const std::vector<int32_t>& xs) {
     } else {
         g = &__slot_2.emplace(::tpyapp::main::items(xs));
     }
-    std::cout << "plain_branch_param" << " " << ::tpyapp::main::first((*g)) << "\n";
-    std::cout << "plain_branch_param after" << "\n";
+    std::cout << "plain_branch_param" << " " << ::tpyapp::main::first((*g)) << "\n" << ::tpy::check_signals;
+    std::cout << "plain_branch_param after" << "\n" << ::tpy::check_signals;
 }
 
 // def plain_with() -> None:
@@ -422,7 +422,7 @@ void plain_with() {
     try {
         ys = {20, 21};
         __gen_plain_items g = ::tpyapp::main::plain_items((*ys));
-        std::cout << "plain_with" << " " << ::tpyapp::main::first(g) << "\n";
+        std::cout << "plain_with" << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -449,7 +449,7 @@ void plain_with_exit() {
     __ctx_2.__enter__();
     try {
         __gen_plain_items g = ::tpyapp::main::plain_items(r.xs);
-        std::cout << "plain_with_exit" << " " << ::tpyapp::main::first(g) << "\n";
+        std::cout << "plain_with_exit" << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -460,7 +460,7 @@ void plain_with_exit() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    std::cout << "plain_with_exit after" << " " << ::tpy::__getitem__(r.xs, 0) << "\n";
+    std::cout << "plain_with_exit after" << " " << ::tpy::__getitem__(r.xs, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def plain_with_param(t: Tally) -> None:
@@ -476,7 +476,7 @@ void plain_with_param(Tally& t) {
     __ctx_3.__enter__();
     try {
         g.emplace(::tpyapp::main::items(t.xs));
-        std::cout << "plain_with_param" << " " << ::tpyapp::main::first((*g)) << "\n";
+        std::cout << "plain_with_param" << " " << ::tpyapp::main::first((*g)) << "\n" << ::tpy::check_signals;
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
@@ -487,7 +487,7 @@ void plain_with_param(Tally& t) {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    std::cout << "plain_with_param after" << " " << ::tpyapp::main::first((*g)) << "\n";
+    std::cout << "plain_with_param after" << " " << ::tpyapp::main::first((*g)) << "\n" << ::tpy::check_signals;
 }
 
 // def plain_finally(xs: list[int32]) -> None:
@@ -499,7 +499,7 @@ void plain_with_param(Tally& t) {
 void plain_finally(std::vector<int32_t>& xs) {
     if ((::tpy::__len__(xs) > 0)) {
         __gen_mutating g = ::tpyapp::main::mutating(xs);
-        std::cout << "plain_finally" << " " << ::tpyapp::main::first(g) << "\n";
+        std::cout << "plain_finally" << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -517,12 +517,12 @@ void plain_block_then_grow(bool k, std::vector<int32_t>& log) {
     std::vector<Cell> xs = {Cell(1), Cell(2)};
     if (k) {
         __gen_cell_items g = ::tpyapp::main::cell_items(xs, log);
-        std::cout << "plain_block_then_grow" << " " << ::tpyapp::main::first(g) << "\n";
+        std::cout << "plain_block_then_grow" << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
     }
     for (int32_t i = 0; i < 100; ++i) {
         xs.push_back(Cell(9));
     }
-    std::cout << "plain_block_then_grow end" << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << "plain_block_then_grow end" << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def plain_refill(rows: list[list[int32]]) -> None:
@@ -539,7 +539,7 @@ void plain_refill(const std::vector<std::vector<int32_t>>& rows) {
         const auto& row = *__beg_0;
         std::vector<int32_t> xs = {::tpy::__getitem__(row, 0), ::tpy::__getitem__(row, 1)};
         __gen_items g = ::tpyapp::main::items(xs);
-        std::cout << "plain_refill" << " " << ::tpyapp::main::first(g) << "\n";
+        std::cout << "plain_refill" << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -560,10 +560,10 @@ void plain_refill_del(const std::vector<std::vector<int32_t>>& rows) {
         std::vector<int32_t> xs = {::tpy::__getitem__(row, 0), ::tpy::__getitem__(row, 1)};
         std::optional<__gen_items> g;
         g.emplace(::tpyapp::main::items(xs));
-        std::cout << "plain_refill_del" << " " << ::tpyapp::main::first((*g)) << "\n";
+        std::cout << "plain_refill_del" << " " << ::tpyapp::main::first((*g)) << "\n" << ::tpy::check_signals;
         g.reset();
     }
-    std::cout << "plain_refill_del after" << "\n";
+    std::cout << "plain_refill_del after" << "\n" << ::tpy::check_signals;
 }
 
 // def plain_param_after_loop(xs: list[int32]) -> None:
@@ -578,10 +578,10 @@ void plain_param_after_loop(const std::vector<int32_t>& xs) {
     std::optional<__gen_items> g;
     for (int32_t i = 0; i < 2; ++i) {
         g.emplace(::tpyapp::main::items(xs));
-        std::cout << "plain_param_after_loop" << " " << i << " " << ::tpyapp::main::first((*g)) << "\n";
+        std::cout << "plain_param_after_loop" << " " << i << " " << ::tpyapp::main::first((*g)) << "\n" << ::tpy::check_signals;
     }
     int32_t v = ::tpyapp::main::first((*g));
-    std::cout << "plain_param_after_loop after" << " " << v << "\n";
+    std::cout << "plain_param_after_loop after" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 
@@ -610,7 +610,7 @@ void plain_loop_var() {
             if (!__r_1.has_value()) break;
             const auto& c = ::tpy::unwrap_ref(*__r_1);
             __gen_cell_gen g = ::tpyapp::main::cell_gen(c);
-            std::cout << "plain_loop_var" << " " << ::tpyapp::main::first(g) << "\n";
+            std::cout << "plain_loop_var" << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -623,7 +623,7 @@ void plain_loop_var() {
 void plain_alias(const std::vector<int32_t>& xs) {
     __gen_items g = ::tpyapp::main::items(xs);
     __gen_items& h = g;
-    std::cout << "plain_alias" << " " << ::tpyapp::main::first(g) << " " << ::tpyapp::main::first(h) << "\n";
+    std::cout << "plain_alias" << " " << ::tpyapp::main::first(g) << " " << ::tpyapp::main::first(h) << "\n" << ::tpy::check_signals;
 }
 
 // def plain_del(xs: list[int32]) -> None:
@@ -635,9 +635,9 @@ void plain_alias(const std::vector<int32_t>& xs) {
 void plain_del(std::vector<int32_t>& xs) {
     std::optional<__gen_mutating> g;
     g.emplace(::tpyapp::main::mutating(xs));
-    std::cout << "plain_del" << " " << ::tpyapp::main::first((*g)) << "\n";
+    std::cout << "plain_del" << " " << ::tpyapp::main::first((*g)) << "\n" << ::tpy::check_signals;
     g.reset();
-    std::cout << "plain_del after" << " " << ::tpy::__getitem__(xs, 0) << "\n";
+    std::cout << "plain_del after" << " " << ::tpy::__getitem__(xs, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def plain_abandon(rows: list[list[int32]]) -> None:
@@ -656,7 +656,7 @@ void plain_abandon(const std::vector<std::vector<int32_t>>& rows) {
         const auto& row = *__beg_0;
         std::vector<int32_t> xs = {::tpy::__getitem__(row, 0), ::tpy::__getitem__(row, 1)};
         __gen_items g = ::tpyapp::main::items(xs);
-        std::cout << "plain_abandon" << " " << ::tpyapp::main::first(g) << "\n";
+        std::cout << "plain_abandon" << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
         if ((::tpy::__getitem__(row, 0) > 1)) {
             return;
         }
@@ -677,7 +677,7 @@ void plain_refill_holder(const std::vector<std::vector<int32_t>>& rows) {
         const auto& row = *__beg_0;
         std::vector<int32_t> xs = {::tpy::__getitem__(row, 0), ::tpy::__getitem__(row, 1)};
         __gen_holding g = ::tpyapp::main::holding(xs);
-        std::cout << "plain_refill_holder" << " " << ::tpyapp::main::first(g) << "\n";
+        std::cout << "plain_refill_holder" << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -853,7 +853,7 @@ __gen_gen_del gen_del(std::vector<int32_t>& xs) {
 }
 
 void __coro_work::__finally_0() {
-    std::cout << "work finally" << " " << ::tpy::__getitem__(xs, 0) << "\n";
+    std::cout << "work finally" << " " << ::tpy::__getitem__(xs, 0) << "\n" << ::tpy::check_signals;
 }
 
 // async def work(xs: list[int32]) -> int32:
@@ -882,7 +882,7 @@ __coro_work work(const std::vector<int32_t>& xs) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         c.reset();
-        std::cout << "async_loop" << " " << __await_lift_0 << "\n";
+        std::cout << "async_loop" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
     }
@@ -943,7 +943,7 @@ __coro_async_loop async_loop(const std::vector<std::vector<int32_t>>& rows) {
         row = &(*((*__for_it_0))++);
         xs.emplace(std::vector<int32_t>{::tpy::__getitem__((*row), 0), ::tpy::__getitem__((*row), 1)});
         g.emplace(::tpyapp::main::items((*xs)));
-        std::cout << "async_gen_refill" << " " << ::tpyapp::main::first((*g)) << "\n";
+        std::cout << "async_gen_refill" << " " << ::tpyapp::main::first((*g)) << "\n" << ::tpy::check_signals;
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -1106,7 +1106,7 @@ void abandon_method(Rows& r) {
 void run_method_count(Rows& r) {
     __gen_Rows_walk_count w = r.walk_count();
     ::tpyapp::main::drive("method_count", w);
-    std::cout << "method_count seen" << " " << r.seen << "\n";
+    std::cout << "method_count seen" << " " << r.seen << "\n" << ::tpy::check_signals;
 }
 
 // def run_method_plain(r: Rows) -> None:
@@ -1182,25 +1182,25 @@ void main() {
     ::tpyapp::main::plain_with_param(__tmp_4);
     std::vector<int32_t> fxs = {0};
     ::tpyapp::main::plain_finally(fxs);
-    std::cout << "plain_finally after" << " " << ::tpy::__getitem__(fxs, 0) << "\n";
+    std::cout << "plain_finally after" << " " << ::tpy::__getitem__(fxs, 0) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> log = std::vector<int32_t>{};
     ::tpyapp::main::plain_block_then_grow(true, log);
-    std::cout << "plain_block_then_grow log" << " " << ::tpy::__getitem__(log, 0) << "\n";
+    std::cout << "plain_block_then_grow log" << " " << ::tpy::__getitem__(log, 0) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::plain_refill(rows);
-    std::cout << "plain_refill after" << "\n";
+    std::cout << "plain_refill after" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::plain_refill_del(rows);
     std::vector<int32_t> __tmp_5 = {5, 6};
     ::tpyapp::main::plain_param_after_loop(__tmp_5);
     ::tpyapp::main::plain_loop_var();
-    std::cout << "plain_loop_var after" << "\n";
+    std::cout << "plain_loop_var after" << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_6 = {1, 2, 3};
     ::tpyapp::main::plain_alias(__tmp_6);
     std::vector<int32_t> __tmp_7 = {0};
     ::tpyapp::main::plain_del(__tmp_7);
     ::tpyapp::main::plain_abandon(rows);
-    std::cout << "plain_abandon after" << "\n";
+    std::cout << "plain_abandon after" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::plain_refill_holder(rows);
-    std::cout << "plain_refill_holder after" << "\n";
+    std::cout << "plain_refill_holder after" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::run_gen_branch();
     ::tpyapp::main::abandon_gen_branch();
     ::tpyapp::main::run_gen_finally();
@@ -1223,7 +1223,7 @@ void main() {
     ::tpyapp::main::run_method(r);
     ::tpyapp::main::abandon_method(r);
     ::tpyapp::main::run_method_plain(r);
-    std::cout << "method seen" << " " << r.seen << "\n";
+    std::cout << "method seen" << " " << r.seen << "\n" << ::tpy::check_signals;
     ::tpyapp::main::run_method_count(r);
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_loop(rows)));
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_gen_refill(rows)));

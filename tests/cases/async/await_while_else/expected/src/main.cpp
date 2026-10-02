@@ -49,12 +49,12 @@ __coro_below below(::tpy::BigInt i, ::tpy::BigInt limit) {
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
         if (__await_lift_0) {
-            std::cout << "iter" << " " << i << "\n";
+            std::cout << "iter" << " " << i << "\n" << ::tpy::check_signals;
             i = ::tpy::add_check<int32_t>(i, 1);
             __state = S_JOIN_0;
             continue;
         } else {
-            std::cout << "else ran" << "\n";
+            std::cout << "else ran" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_1;
             continue;
         }
@@ -111,13 +111,13 @@ __coro_normal_exit normal_exit() {
                 __state = S_JOIN_1;
                 continue;
             } else {
-                std::cout << "b-iter" << " " << i << "\n";
+                std::cout << "b-iter" << " " << i << "\n" << ::tpy::check_signals;
                 i = ::tpy::add_check<int32_t>(i, 1);
                 __state = S_JOIN_0;
                 continue;
             }
         } else {
-            std::cout << "else should NOT run" << "\n";
+            std::cout << "else should NOT run" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_1;
             continue;
         }

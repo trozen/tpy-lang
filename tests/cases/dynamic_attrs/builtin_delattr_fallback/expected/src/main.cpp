@@ -13,7 +13,7 @@ void main() {
     Bag b = Bag();
     b.__setattr__("x", ::tpy::make_any(std::string("hello")));
     b.__delattr__("x");
-    std::cout << ::tpy::__len__(b._data) << "\n";
+    std::cout << ::tpy::__len__(b._data) << "\n" << ::tpy::check_signals;
 }
 
 // main()

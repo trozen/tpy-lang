@@ -27,22 +27,22 @@ namespace tpyapp::main {
 //     print(identity(v))
 void main() {
     Box<int32_t> box_int = Box<int32_t>(42);
-    std::cout << box_int.get() << "\n";
+    std::cout << box_int.get() << "\n" << ::tpy::check_signals;
     box_int.set(100);
-    std::cout << box_int.get() << "\n";
+    std::cout << box_int.get() << "\n" << ::tpy::check_signals;
     Box<bool> box_bool = Box<bool>(true);
-    std::cout << ::tpy::print_bool(box_bool.get()) << "\n";
+    std::cout << ::tpy::print_bool(box_bool.get()) << "\n" << ::tpy::check_signals;
     box_bool.set(false);
-    std::cout << ::tpy::print_bool(box_bool.get()) << "\n";
+    std::cout << ::tpy::print_bool(box_bool.get()) << "\n" << ::tpy::check_signals;
     Ring<int32_t> ring = Ring<int32_t>(0);
     ring.put(10);
     ring.put(20);
-    std::cout << ring.get(0) << "\n";
-    std::cout << ring.get(1) << "\n";
-    std::cout << "pop:" << " " << ring.pop() << "\n";
-    std::cout << "pop: size" << " " << ring.size << "\n";
+    std::cout << ring.get(0) << "\n" << ::tpy::check_signals;
+    std::cout << ring.get(1) << "\n" << ::tpy::check_signals;
+    std::cout << "pop:" << " " << ring.pop() << "\n" << ::tpy::check_signals;
+    std::cout << "pop: size" << " " << ring.size << "\n" << ::tpy::check_signals;
     int32_t v = 99;
-    std::cout << ::tpyapp::main::identity<int32_t>(v) << "\n";
+    std::cout << ::tpyapp::main::identity<int32_t>(v) << "\n" << ::tpy::check_signals;
 }
 
 // main()

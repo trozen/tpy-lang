@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(p.y)
 void test_basic() {
     Point p = Point(1, 2);
-    std::cout << p.x << "\n";
-    std::cout << p.y << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
+    std::cout << p.y << "\n" << ::tpy::check_signals;
 }
 
 // def test_setter() -> None:
@@ -24,8 +24,8 @@ void test_setter() {
     Point p = Point(0, 0);
     p.set_x(10);
     p.set_y(20);
-    std::cout << p.x << "\n";
-    std::cout << p.y << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
+    std::cout << p.y << "\n" << ::tpy::check_signals;
 }
 
 // def test_eq() -> None:
@@ -38,8 +38,8 @@ void test_eq() {
     Point a = Point(1, 2);
     Point b = Point(1, 2);
     Point c = Point(3, 4);
-    std::cout << ::tpy::print_bool(((a) == (b))) << "\n";
-    std::cout << ::tpy::print_bool(((a) == (c))) << "\n";
+    std::cout << ::tpy::print_bool(((a) == (b))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) == (c))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_describe() -> None:
@@ -49,9 +49,9 @@ void test_eq() {
 //     print(q.describe())
 void test_describe() {
     Point p = Point(5, 10);
-    std::cout << p.describe() << "\n";
+    std::cout << p.describe() << "\n" << ::tpy::check_signals;
     Person q = Person("Alice", 30);
-    std::cout << q.describe() << "\n";
+    std::cout << q.describe() << "\n" << ::tpy::check_signals;
 }
 
 // def test_reset() -> None:
@@ -62,8 +62,8 @@ void test_describe() {
 void test_reset() {
     Point p = Point(5, 10);
     p.reset();
-    std::cout << p.x << "\n";
-    std::cout << p.y << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
+    std::cout << p.y << "\n" << ::tpy::check_signals;
 }
 
 // def test_static() -> None:
@@ -72,10 +72,10 @@ void test_reset() {
 //     p = Point(1, 2)
 //     print(p.field_count())
 void test_static() {
-    std::cout << Point::field_count() << "\n";
-    std::cout << Person::field_count() << "\n";
+    std::cout << Point::field_count() << "\n" << ::tpy::check_signals;
+    std::cout << Person::field_count() << "\n" << ::tpy::check_signals;
     Point p = Point(1, 2);
-    std::cout << p.field_count() << "\n";
+    std::cout << p.field_count() << "\n" << ::tpy::check_signals;
 }
 
 // def test_quote_expr() -> None:
@@ -85,9 +85,9 @@ void test_static() {
 //     print(q.default_first())
 void test_quote_expr() {
     Point p = Point(5, 10);
-    std::cout << p.default_first() << "\n";
+    std::cout << p.default_first() << "\n" << ::tpy::check_signals;
     Person q = Person("Alice", 30);
-    std::cout << q.default_first() << "\n";
+    std::cout << q.default_first() << "\n" << ::tpy::check_signals;
 }
 
 // from builder import builder

@@ -12,14 +12,14 @@ namespace tpyapp::main {
 //         print("body fall-through")
 //     print("after with")
 void fall_through(bool do_raise) {
-    std::cout << std::format("-- do_raise={} --", ::tpy::bool_to_str(do_raise)) << "\n";
+    std::cout << std::format("-- do_raise={} --", ::tpy::bool_to_str(do_raise)) << "\n" << ::tpy::check_signals;
     auto __ctx_1 = Suppressor();
     __ctx_1.__enter__();
     try {
         if (do_raise) {
             throw ::tpy::ValueError("boom");
         }
-        std::cout << "body fall-through" << "\n";
+        std::cout << "body fall-through" << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         if (!__ctx_1.__exit__({}, &__exc_1, {})) throw;
@@ -31,7 +31,7 @@ void fall_through(bool do_raise) {
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
     __with_after_1:;
-    std::cout << "after with" << "\n";
+    std::cout << "after with" << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

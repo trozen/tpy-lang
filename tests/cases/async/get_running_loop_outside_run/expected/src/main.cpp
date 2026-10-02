@@ -16,9 +16,9 @@ void main() {
     {
         try {
             ::tpystd::asyncio::get_running_loop();
-            std::cout << "no error" << "\n";
+            std::cout << "no error" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::RuntimeError&) {
-            std::cout << "RuntimeError" << "\n";
+            std::cout << "RuntimeError" << "\n" << ::tpy::check_signals;
         }
     }
 }

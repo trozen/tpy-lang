@@ -51,7 +51,7 @@ inline std::string Message::to_string() const {
 //     print(p.to_string())
 template<::tpyapp::traits::Printable T_p>
 void show(T_p& p) {
-    std::cout << p.to_string() << "\n";
+    std::cout << p.to_string() << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

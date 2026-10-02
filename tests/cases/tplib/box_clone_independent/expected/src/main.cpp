@@ -14,7 +14,7 @@ void sec_value() {
     ::tpystd::tplib::box::Box<int32_t> b = ::tpystd::tplib::box::Box<int32_t>(1);
     ::tpystd::tplib::box::Box<int32_t> c = b.clone();
     b.set(99);
-    std::cout << "value:" << " " << b.get() << " " << c.get() << "\n";
+    std::cout << "value:" << " " << b.get() << " " << c.get() << "\n" << ::tpy::check_signals;
 }
 
 // # reference payload: the motivating shape -- the clone deep-copies the Cell.
@@ -27,7 +27,7 @@ void sec_reference() {
     ::tpystd::tplib::box::Box<Cell> b = ::tpystd::tplib::box::Box<Cell>(Cell(1));
     ::tpystd::tplib::box::Box<Cell> c = b.clone();
     b.get().n = 99;
-    std::cout << "reference:" << " " << b.get().n << " " << c.get().n << "\n";
+    std::cout << "reference:" << " " << b.get().n << " " << c.get().n << "\n" << ::tpy::check_signals;
 }
 
 // def bump(p: Ptr[Cell]) -> None:
@@ -52,7 +52,7 @@ void sec_ptr_field() {
     PtrHolder& live = b.get();
     ::tpyapp::main::bump(live.p);
     PtrHolder& cloned = c.get();
-    std::cout << "ptr-field:" << " " << ::tpy::deref_check(live.p).n << " " << ::tpy::deref_check(cloned.p).n << "\n";
+    std::cout << "ptr-field:" << " " << ::tpy::deref_check(live.p).n << " " << ::tpy::deref_check(cloned.p).n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

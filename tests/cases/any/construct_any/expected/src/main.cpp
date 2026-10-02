@@ -21,12 +21,12 @@ void main() {
     ::tpy::Any b = ::tpy::make_any(std::string("hello"));
     ::tpy::Any c = ::tpy::make_any(static_cast<double>(3.14));
     ::tpy::Any d = ::tpy::make_any(std::monostate{});
-    std::cout << a << "\n";
-    std::cout << b << "\n";
-    std::cout << c << "\n";
-    std::cout << d << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
+    std::cout << c << "\n" << ::tpy::check_signals;
+    std::cout << d << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Any> items = {::tpy::make_any(::tpy::BigInt(1)), ::tpy::make_any(std::string("two")), ::tpy::make_any(bool(true))};
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

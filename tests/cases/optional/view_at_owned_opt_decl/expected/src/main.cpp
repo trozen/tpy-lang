@@ -262,33 +262,33 @@ std::string branch_strview_field(Rec& r, bool c) {
 //     print("branch strview field:", branch_strview_field(Rec("hello"), True),
 //           branch_strview_field(Rec("hello"), False))
 void main() {
-    std::cout << "str param:" << " " << ::tpyapp::main::str_param("abcd") << "\n";
-    std::cout << "bytes param:" << " " << ::tpyapp::main::bytes_param(::tpy::bytes_literal("xyz", 3)) << "\n";
-    std::cout << "strview local:" << " " << ::tpyapp::main::strview_local() << "\n";
-    std::cout << "method:" << " " << Holder("hello").tagged("ab") << "\n";
-    std::cout << "branch first:" << " " << ::tpyapp::main::branch_first("abc", true) << " " << ::tpyapp::main::branch_first("abc", false) << "\n";
-    std::cout << "self field:" << " " << Holder("hello").own_field() << "\n";
+    std::cout << "str param:" << " " << ::tpyapp::main::str_param("abcd") << "\n" << ::tpy::check_signals;
+    std::cout << "bytes param:" << " " << ::tpyapp::main::bytes_param(::tpy::bytes_literal("xyz", 3)) << "\n" << ::tpy::check_signals;
+    std::cout << "strview local:" << " " << ::tpyapp::main::strview_local() << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << Holder("hello").tagged("ab") << "\n" << ::tpy::check_signals;
+    std::cout << "branch first:" << " " << ::tpyapp::main::branch_first("abc", true) << " " << ::tpyapp::main::branch_first("abc", false) << "\n" << ::tpy::check_signals;
+    std::cout << "self field:" << " " << Holder("hello").own_field() << "\n" << ::tpy::check_signals;
     Rec __tmp_1 = Rec("hello");
-    std::cout << "str field:" << " " << ::tpyapp::main::str_field(__tmp_1) << "\n";
+    std::cout << "str field:" << " " << ::tpyapp::main::str_field(__tmp_1) << "\n" << ::tpy::check_signals;
     Rec __tmp_2 = Rec("hello");
-    std::cout << "chained field:" << " " << ::tpyapp::main::chained_field(__tmp_2) << "\n";
+    std::cout << "chained field:" << " " << ::tpyapp::main::chained_field(__tmp_2) << "\n" << ::tpy::check_signals;
     std::vector<Rec> __tmp_3 = {Rec("hello")};
-    std::cout << "field off subscript:" << " " << ::tpyapp::main::field_off_subscript(__tmp_3) << "\n";
+    std::cout << "field off subscript:" << " " << ::tpyapp::main::field_off_subscript(__tmp_3) << "\n" << ::tpy::check_signals;
     Rec __tmp_4 = Rec("hello");
-    std::cout << "bytes field:" << " " << ::tpy::BytesPrinter(::tpyapp::main::bytes_field(__tmp_4)) << "\n";
+    std::cout << "bytes field:" << " " << ::tpy::BytesPrinter(::tpyapp::main::bytes_field(__tmp_4)) << "\n" << ::tpy::check_signals;
     Rec __tmp_5 = Rec("hello");
-    std::cout << "strview field:" << " " << ::tpyapp::main::strview_field(__tmp_5) << "\n";
+    std::cout << "strview field:" << " " << ::tpyapp::main::strview_field(__tmp_5) << "\n" << ::tpy::check_signals;
     Rec __tmp_6 = Rec("hello");
-    std::cout << "call source:" << " " << ::tpyapp::main::call_source(__tmp_6) << "\n";
+    std::cout << "call source:" << " " << ::tpyapp::main::call_source(__tmp_6) << "\n" << ::tpy::check_signals;
     Rec __tmp_7 = Rec("hello");
     Rec __tmp_8 = Rec("hello");
-    std::cout << "branch str field:" << " " << ::tpyapp::main::branch_str_field(__tmp_7, true) << " " << ::tpyapp::main::branch_str_field(__tmp_8, false) << "\n";
+    std::cout << "branch str field:" << " " << ::tpyapp::main::branch_str_field(__tmp_7, true) << " " << ::tpyapp::main::branch_str_field(__tmp_8, false) << "\n" << ::tpy::check_signals;
     Rec __tmp_9 = Rec("hello");
     Rec __tmp_10 = Rec("hello");
-    std::cout << "branch bytes field:" << " " << ::tpy::BytesPrinter(::tpyapp::main::branch_bytes_field(__tmp_9, true)) << " " << ::tpy::BytesPrinter(::tpyapp::main::branch_bytes_field(__tmp_10, false)) << "\n";
+    std::cout << "branch bytes field:" << " " << ::tpy::BytesPrinter(::tpyapp::main::branch_bytes_field(__tmp_9, true)) << " " << ::tpy::BytesPrinter(::tpyapp::main::branch_bytes_field(__tmp_10, false)) << "\n" << ::tpy::check_signals;
     Rec __tmp_11 = Rec("hello");
     Rec __tmp_12 = Rec("hello");
-    std::cout << "branch strview field:" << " " << ::tpyapp::main::branch_strview_field(__tmp_11, true) << " " << ::tpyapp::main::branch_strview_field(__tmp_12, false) << "\n";
+    std::cout << "branch strview field:" << " " << ::tpyapp::main::branch_strview_field(__tmp_11, true) << " " << ::tpyapp::main::branch_strview_field(__tmp_12, false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

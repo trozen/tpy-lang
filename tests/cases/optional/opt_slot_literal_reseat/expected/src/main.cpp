@@ -209,17 +209,17 @@ __coro_coro_literal coro_literal(bool c) {
 //     print("coro literal:", asyncio.run(coro_literal(True)),
 //           asyncio.run(coro_literal(False)))
 void main() {
-    std::cout << "none then literal:" << " " << ::tpyapp::main::none_then_literal(true) << " " << ::tpyapp::main::none_then_literal(false) << "\n";
+    std::cout << "none then literal:" << " " << ::tpyapp::main::none_then_literal(true) << " " << ::tpyapp::main::none_then_literal(false) << "\n" << ::tpy::check_signals;
     F __tmp_1 = F(3);
-    std::cout << "call then literal:" << " " << ::tpyapp::main::call_then_literal(__tmp_1) << "\n";
-    std::cout << "literal then literal:" << " " << ::tpyapp::main::literal_then_literal(true) << " " << ::tpyapp::main::literal_then_literal(false) << "\n";
-    std::cout << "literal none literal:" << " " << ::tpyapp::main::literal_none_literal(true) << " " << ::tpyapp::main::literal_none_literal(false) << "\n";
-    std::cout << "dict:" << " " << Holder(3).build(true) << " " << Holder(3).build(false) << "\n";
+    std::cout << "call then literal:" << " " << ::tpyapp::main::call_then_literal(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "literal then literal:" << " " << ::tpyapp::main::literal_then_literal(true) << " " << ::tpyapp::main::literal_then_literal(false) << "\n" << ::tpy::check_signals;
+    std::cout << "literal none literal:" << " " << ::tpyapp::main::literal_none_literal(true) << " " << ::tpyapp::main::literal_none_literal(false) << "\n" << ::tpy::check_signals;
+    std::cout << "dict:" << " " << Holder(3).build(true) << " " << Holder(3).build(false) << "\n" << ::tpy::check_signals;
     F __tmp_2 = F(3);
     F __tmp_3 = F(3);
     F __tmp_4 = F(3);
     F __tmp_5 = F(3);
-    std::cout << "branch hoisted:" << " " << ::tpyapp::main::branch_hoisted(__tmp_2, true, true) << " " << ::tpyapp::main::branch_hoisted(__tmp_3, true, false) << " " << ::tpyapp::main::branch_hoisted(__tmp_4, false, true) << " " << ::tpyapp::main::branch_hoisted(__tmp_5, false, false) << "\n";
+    std::cout << "branch hoisted:" << " " << ::tpyapp::main::branch_hoisted(__tmp_2, true, true) << " " << ::tpyapp::main::branch_hoisted(__tmp_3, true, false) << " " << ::tpyapp::main::branch_hoisted(__tmp_4, false, true) << " " << ::tpyapp::main::branch_hoisted(__tmp_5, false, false) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen_literal(true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -227,7 +227,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen literal:" << " " << n << "\n";
+            std::cout << "gen literal:" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -237,7 +237,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "gen literal off:" << " " << n << "\n";
+            std::cout << "gen literal off:" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -248,10 +248,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "gen call then literal:" << " " << n << "\n";
+            std::cout << "gen call then literal:" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "coro literal:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro_literal(true))) << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro_literal(false))) << "\n";
+    std::cout << "coro literal:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro_literal(true))) << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro_literal(false))) << "\n" << ::tpy::check_signals;
 }
 
 // # REBINDING a pointer-repr `Optional[container]` local to a container LITERAL.

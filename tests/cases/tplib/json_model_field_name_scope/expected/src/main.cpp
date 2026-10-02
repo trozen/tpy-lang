@@ -55,14 +55,14 @@ namespace tpyapp::main {
 //     print(r.items[2].color.name)
 void main() {
     Msg msg = Msg::from_json("{\"color\": \"RED\", \"value\": 42}");
-    std::cout << msg.color << "\n";
-    std::cout << msg.value << "\n";
+    std::cout << msg.color << "\n" << ::tpy::check_signals;
+    std::cout << msg.value << "\n" << ::tpy::check_signals;
     Registry r = Registry();
     r.update(1, Color::RED);
     r.update(2, Color::BLUE);
     r.update(1, Color::BLUE);
-    std::cout << ::tpy::EnumUtil<Color>::name(::tpy::__getitem__(r.items, 1).color) << "\n";
-    std::cout << ::tpy::EnumUtil<Color>::name(::tpy::__getitem__(r.items, 2).color) << "\n";
+    std::cout << ::tpy::EnumUtil<Color>::name(::tpy::__getitem__(r.items, 1).color) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<Color>::name(::tpy::__getitem__(r.items, 2).color) << "\n" << ::tpy::check_signals;
 }
 
 

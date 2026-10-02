@@ -112,15 +112,15 @@ std::string only_lit__lit_2(int32_t x) {
 //     # No fallback stub: each literal still resolves to its own stub.
 //     print("only_lit:", only_lit(1) + 1, only_lit(2) + "!")
 void main() {
-    std::cout << ::tpyapp::main::classify__lit_1__2(1) << "\n";
-    std::cout << ::tpyapp::main::classify__lit_1__2(2) << "\n";
-    std::cout << ::tpyapp::main::classify__lit_3__4(3) << "\n";
-    std::cout << ::tpyapp::main::classify__lit_3__4(4) << "\n";
-    std::cout << ::tpyapp::main::classify__lit_neg1__neg2(-1) << "\n";
-    std::cout << ::tpyapp::main::classify__lit_neg1__neg2(-2) << "\n";
+    std::cout << ::tpyapp::main::classify__lit_1__2(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify__lit_1__2(2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify__lit_3__4(3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify__lit_3__4(4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify__lit_neg1__neg2(-1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify__lit_neg1__neg2(-2) << "\n" << ::tpy::check_signals;
     int32_t x = 5;
-    std::cout << ::tpyapp::main::classify(x) << "\n";
-    std::cout << "only_lit:" << " " << (::tpy::add_check<int32_t>(::tpyapp::main::only_lit__lit_1(1), 1)) << " " << (::tpy::str_concat(::tpyapp::main::only_lit__lit_2(2), "!")) << "\n";
+    std::cout << ::tpyapp::main::classify(x) << "\n" << ::tpy::check_signals;
+    std::cout << "only_lit:" << " " << (::tpy::add_check<int32_t>(::tpyapp::main::only_lit__lit_1(1), 1)) << " " << (::tpy::str_concat(::tpyapp::main::only_lit__lit_2(2), "!")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(use_renamed(b).is_pending())
 void main() {
     MyTask<int32_t> a = MyTask<int32_t>();
-    std::cout << ::tpy::print_bool(::tpyapp::main::use_shadowed<int32_t>(a).is_pending()) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::use_shadowed<int32_t>(a).is_pending()) << "\n" << ::tpy::check_signals;
     MyTask<int32_t> b = MyTask<int32_t>();
-    std::cout << ::tpy::print_bool(::tpyapp::main::use_renamed<int32_t>(b).is_pending()) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::use_renamed<int32_t>(b).is_pending()) << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.coro import Awaitable, Poll, Waker, poll_once, poll_pending

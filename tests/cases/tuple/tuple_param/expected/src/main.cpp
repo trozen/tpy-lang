@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(p[0])
 //     print(p[1])
 void print_pair(const std::tuple<int32_t, std::string>& p) {
-    std::cout << std::get<0>(p) << "\n";
-    std::cout << std::get<1>(p) << "\n";
+    std::cout << std::get<0>(p) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(p) << "\n" << ::tpy::check_signals;
 }
 
 // def sum_triple(t: tuple[int32, int32, int32]) -> int32:
@@ -30,7 +30,7 @@ void main() {
     ::tpyapp::main::print_pair(pair);
     std::tuple<int32_t, int32_t, int32_t> nums = std::tuple<int32_t, int32_t, int32_t>{10, 20, 30};
     int32_t result = ::tpyapp::main::sum_triple(nums);
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
 }
 
 // main()

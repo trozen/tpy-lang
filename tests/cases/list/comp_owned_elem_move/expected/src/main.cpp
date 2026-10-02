@@ -25,7 +25,7 @@ void array_comp() {
         int32_t __tmp_1 = i;
         return ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1));
     });
-    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).get() << " " << ::tpy::__getitem__(xs, 3).get() << "\n";
+    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).get() << " " << ::tpy::__getitem__(xs, 3).get() << "\n" << ::tpy::check_signals;
 }
 
 // def list_comp(n: int32) -> None:
@@ -42,7 +42,7 @@ void list_comp(int32_t n) {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(ys) << " " << ::tpy::__getitem__(ys, 0).get() << "\n";
+    std::cout << ::tpy::__len__(ys) << " " << ::tpy::__getitem__(ys, 0).get() << "\n" << ::tpy::check_signals;
 }
 
 namespace {
@@ -111,7 +111,7 @@ __genexpr_genexpr_1_frame __genexpr_genexpr_1(int32_t __r0) {
 //     # condition (is_small(Box(i))) -- each must flush inside the frame body.
 //     print(sum(score(Box(i)) for i in range(n) if is_small(Box(i))))
 void genexpr(int32_t n) {
-    std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_genexpr_1(n)) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_genexpr_1(n)) << "\n" << ::tpy::check_signals;
 }
 
 // def filtered(n: int32) -> None:
@@ -132,7 +132,7 @@ void filtered(int32_t n) {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(zs) << "\n";
+    std::cout << ::tpy::__len__(zs) << "\n" << ::tpy::check_signals;
 }
 
 // def walrus_owned(n: int32) -> None:
@@ -156,7 +156,7 @@ void walrus_owned(int32_t n) {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(zs) << " " << y << "\n";
+    std::cout << ::tpy::__len__(zs) << " " << y << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

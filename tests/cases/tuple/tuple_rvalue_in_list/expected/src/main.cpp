@@ -20,8 +20,8 @@ void main() {
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(it);
         auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        std::cout << a.x << "\n";
-        std::cout << b.x << "\n";
+        std::cout << a.x << "\n" << ::tpy::check_signals;
+        std::cout << b.x << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -37,9 +37,9 @@ void main() {
     Box y = Box(2);
     Box z = Box(3);
     ::tpyapp::main::via_three(x, y, z);
-    std::cout << x.val << "\n";
-    std::cout << y.val << "\n";
-    std::cout << z.val << "\n";
+    std::cout << x.val << "\n" << ::tpy::check_signals;
+    std::cout << y.val << "\n" << ::tpy::check_signals;
+    std::cout << z.val << "\n" << ::tpy::check_signals;
 }
 
 // main()

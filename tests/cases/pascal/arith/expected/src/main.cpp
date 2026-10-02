@@ -21,7 +21,7 @@ void __tpy_init() {
     a = 10;
     b = 20;
     c = (::tpy::sub_check<int32_t>((::tpy::add_check<int32_t>(a, (::tpy::mul_check<int32_t>(b, 2)))), 1));
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -16,14 +16,14 @@ namespace tpyapp::main {
 //     print("via-root:", vr.r, vr.s)
 void main() {
     Combined c = Combined(10, 20);
-    std::cout << c.a << "\n";
-    std::cout << c.b << "\n";
+    std::cout << c.a << "\n" << ::tpy::check_signals;
+    std::cout << c.b << "\n" << ::tpy::check_signals;
     ViaSuper vs = ViaSuper();
-    std::cout << "via-super:" << " " << vs.r << " " << vs.s << "\n";
+    std::cout << "via-super:" << " " << vs.r << " " << vs.s << "\n" << ::tpy::check_signals;
     ViaLane vl = ViaLane();
-    std::cout << "via-lane:" << " " << vl.r << " " << vl.s << "\n";
+    std::cout << "via-lane:" << " " << vl.r << " " << vl.s << "\n" << ::tpy::check_signals;
     ViaRoot vr = ViaRoot();
-    std::cout << "via-root:" << " " << vr.r << " " << vr.s << "\n";
+    std::cout << "via-root:" << " " << vr.r << " " << vr.s << "\n" << ::tpy::check_signals;
 }
 
 // main()

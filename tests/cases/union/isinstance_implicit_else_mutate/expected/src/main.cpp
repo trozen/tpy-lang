@@ -24,7 +24,7 @@ void bump(::tpy::Union<Box*, Other*> x) {
 void main() {
     Box b = Box(::tpy::BigInt(5));
     ::tpyapp::main::bump(::tpy::Union<Box*, Other*>{&(b)});
-    std::cout << b.n << "\n";
+    std::cout << b.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

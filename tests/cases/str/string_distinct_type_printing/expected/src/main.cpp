@@ -8,14 +8,14 @@ namespace tpyapp::main {
 //     # repr must still quote (the formattable fallback would print it raw)
 //     print("repr", repr(s), str(s), len(s))
 void repr_and_str(const ::tpy::String& s) {
-    std::cout << "repr" << " " << ::tpy::repr_of(s) << " " << std::string(s) << " " << ::tpy::__len__(s) << "\n";
+    std::cout << "repr" << " " << ::tpy::repr_of(s) << " " << std::string(s) << " " << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // def fstring(s: String) -> None:
 //     # an f-string operand goes through std::format, which needs a formatter
 //     print("fstring", f"[{s}]")
 void fstring(const ::tpy::String& s) {
-    std::cout << "fstring" << " " << std::format("[{}]", s) << "\n";
+    std::cout << "fstring" << " " << std::format("[{}]", s) << "\n" << ::tpy::check_signals;
 }
 
 // def container_element(s: String) -> None:
@@ -24,7 +24,7 @@ void fstring(const ::tpy::String& s) {
 //     print("element", xs)
 void container_element(const ::tpy::String& s) {
     std::vector<::tpy::String> xs = {s, ::tpy::String("b")};
-    std::cout << "element" << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << "element" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def dict_key(s: String) -> None:
@@ -36,7 +36,7 @@ void container_element(const ::tpy::String& s) {
 void dict_key(const ::tpy::String& s) {
     ::tpy::ordered_map<::tpy::String, int32_t> d = ::tpy::ordered_map<::tpy::String, int32_t>();
     ::tpy::__setitem__(d, s, 1);
-    std::cout << "dictkey" << " " << ::tpy::print_bool((d.contains("a"))) << " " << ::tpy::__getitem__(d, "a") << " " << ::tpy::__len__(d) << "\n";
+    std::cout << "dictkey" << " " << ::tpy::print_bool((d.contains("a"))) << " " << ::tpy::__getitem__(d, "a") << " " << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

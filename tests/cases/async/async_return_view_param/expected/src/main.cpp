@@ -43,12 +43,12 @@ __coro_direct direct(std::string_view tag) {
             try {
                 std::string __tpy_async_ret_0 = std::string(tag);
                 __fin_ran_1 = true;
-                std::cout << "cleanup" << "\n";
+                std::cout << "cleanup" << "\n" << ::tpy::check_signals;
                 __state = S_DONE;
                 return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret_0));
             } catch (...) {
                 if (!__fin_ran_1) {
-                    std::cout << "cleanup" << "\n";
+                    std::cout << "cleanup" << "\n" << ::tpy::check_signals;
                 }
                 throw;
             }
@@ -79,7 +79,7 @@ __coro_in_finally in_finally(std::string_view tag) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "done" << "\n";
+        std::cout << "done" << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
     }
@@ -169,7 +169,7 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << __await_lift_0 << "\n";
+        std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
         __sub_1.emplace("b");
         __state = S_RESUME_1;
         continue;
@@ -179,7 +179,7 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << __await_lift_1 << "\n";
+        std::cout << __await_lift_1 << "\n" << ::tpy::check_signals;
         __sub_2.emplace("c");
         __state = S_RESUME_2;
         continue;
@@ -189,7 +189,7 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << __await_lift_2 << "\n";
+        std::cout << __await_lift_2 << "\n" << ::tpy::check_signals;
         __coro_arg_0 = "d";
         __sub_3.emplace(__coro_arg_0);
         __state = S_RESUME_3;
@@ -200,7 +200,7 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();
         __sub_3.reset();
-        std::cout << __await_lift_3 << "\n";
+        std::cout << __await_lift_3 << "\n" << ::tpy::check_signals;
         __sub_4.emplace(std::nullopt);
         __state = S_RESUME_4;
         continue;
@@ -210,7 +210,7 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_4 = std::move(__r4).value();
         __sub_4.reset();
-        std::cout << __await_lift_4 << "\n";
+        std::cout << __await_lift_4 << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

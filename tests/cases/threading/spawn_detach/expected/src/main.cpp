@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     ::tpystd::tpy::thread::JoinHandle<::tpy::BigInt> h = ::tpystd::tpy::thread::spawn<::tpy::BigInt, Work>(Work(::tpy::BigInt(21)));
     h.detach();
-    std::cout << "detached" << "\n";
+    std::cout << "detached" << "\n" << ::tpy::check_signals;
 }
 
 // # detach() consumes the handle: the thread runs independently and dropping the

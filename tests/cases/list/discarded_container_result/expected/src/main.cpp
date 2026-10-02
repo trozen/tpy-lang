@@ -39,11 +39,11 @@ void main() {
     xs.push_back(4);
     ss.insert(9);
     ba.push_back(120);
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
-    std::cout << ::tpy::__len__(ss) << "\n";
-    std::cout << ::tpy::print_bool((ss.contains(2))) << "\n";
-    std::cout << ::tpy::print_bool((ss.contains(9))) << "\n";
-    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(ss) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((ss.contains(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((ss.contains(9))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void test_literal() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
     ::tpy::__setitem__(d, "hello", 42);
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict_ctor() -> None:
@@ -23,7 +23,7 @@ void test_dict_ctor() {
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::ordered_map<int32_t, std::string>();
     ::tpy::__setitem__(d, 1, "a");
     ::tpy::__setitem__(d, 2, "b");
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
 }
 
 // def test_multiple() -> None:
@@ -37,7 +37,7 @@ void test_multiple() {
     ::tpy::__setitem__(d, "x", 10);
     ::tpy::__setitem__(d, "y", 20);
     ::tpy::__setitem__(d, "z", 30);
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
 }
 
 // def test_numeric_widen() -> None:
@@ -49,7 +49,7 @@ void test_numeric_widen() {
     ::tpy::ordered_map<std::string, int64_t> d = ::tpy::ordered_map<std::string, int64_t>();
     ::tpy::__setitem__(d, "a", 1);
     ::tpy::__setitem__(d, "b", 2);
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
 }
 
 // def test_getitem_after_infer() -> None:
@@ -61,7 +61,7 @@ void test_getitem_after_infer() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
     ::tpy::__setitem__(d, "x", 10);
     int32_t v = ::tpy::__getitem__(d, "x");
-    std::cout << v << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
 }
 
 // def takes_dict(d: dict[str, int32]) -> None:
@@ -73,7 +73,7 @@ void takes_dict(const ::tpy::ordered_map<std::string, int32_t>& d) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n" << ::tpy::check_signals;
     }
 }
 

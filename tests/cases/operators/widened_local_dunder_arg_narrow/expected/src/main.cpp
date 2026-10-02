@@ -17,9 +17,9 @@ namespace tpyapp::main {
 //     print(p)
 void forward(const Bag& b) {
     ::tpy::BigInt p = ::tpy::BigInt(1);
-    std::cout << ((b) + ((p).to_fixed_check<int32_t>())) << "\n";
+    std::cout << ((b) + ((p).to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
     p = ::tpyapp::main::widen();
-    std::cout << p << "\n";
+    std::cout << p << "\n" << ::tpy::check_signals;
 }
 
 // def reflected(b: Bag) -> None:
@@ -29,9 +29,9 @@ void forward(const Bag& b) {
 //     print(p)
 void reflected(const Bag& b) {
     ::tpy::BigInt p = ::tpy::BigInt(1);
-    std::cout << (((p).to_fixed_check<int32_t>()) + (b)) << "\n";
+    std::cout << (((p).to_fixed_check<int32_t>()) + (b)) << "\n" << ::tpy::check_signals;
     p = ::tpyapp::main::widen();
-    std::cout << p << "\n";
+    std::cout << p << "\n" << ::tpy::check_signals;
 }
 
 // def composite(b: Bag) -> None:
@@ -41,9 +41,9 @@ void reflected(const Bag& b) {
 //     print(p)
 void composite(const Bag& b) {
     ::tpy::BigInt p = ::tpy::BigInt(0);
-    std::cout << ((b) + ((((p) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>())) << "\n";
+    std::cout << ((b) + ((((p) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
     p = ::tpyapp::main::widen();
-    std::cout << p << "\n";
+    std::cout << p << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -24,14 +24,14 @@ void pick(bool c) {
     } else {
         z = Noisy(2);
     }
-    std::cout << "noisy" << " " << z.n << "\n";
+    std::cout << "noisy" << " " << z.n << "\n" << ::tpy::check_signals;
     Plain p{};
     if (c) {
         p = Plain(3);
     } else {
         p = Plain(4);
     }
-    std::cout << "plain" << " " << p.n << "\n";
+    std::cout << "plain" << " " << p.n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

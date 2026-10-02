@@ -51,8 +51,8 @@ void __tpy_init() {
         }
     }
     descending = total;
-    std::cout << ascending << "\n";
-    std::cout << descending << "\n";
+    std::cout << ascending << "\n" << ::tpy::check_signals;
+    std::cout << descending << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

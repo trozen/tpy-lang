@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //     print(d.MAX)
 void main() {
     C<int32_t> c = C<int32_t>();
-    std::cout << C<int32_t>::MAX << "\n";
-    std::cout << ::tpy::print_float(C<int32_t>::SCALE) << "\n";
+    std::cout << C<int32_t>::MAX << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(C<int32_t>::SCALE) << "\n" << ::tpy::check_signals;
     C<double> d = C<double>();
-    std::cout << C<double>::MAX << "\n";
+    std::cout << C<double>::MAX << "\n" << ::tpy::check_signals;
 }
 
 // main()

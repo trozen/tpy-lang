@@ -46,13 +46,13 @@ namespace tpyapp::main {
         continue;
     }
     case S_JOIN_1: {
-        std::cout << "after:" << " " << c.n << "\n";
+        std::cout << "after:" << " " << c.n << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_2: {
         try {
-            std::cout << "inside:" << " " << c.n << "\n";
+            std::cout << "inside:" << " " << c.n << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -91,7 +91,7 @@ __coro_guard_scope guard_scope(Counter& c) {
             continue;
         } catch (const ::tpy::ValueError&) {
             __sub_0.reset();
-            std::cout << "caught, n:" << " " << c.n << "\n";
+            std::cout << "caught, n:" << " " << c.n << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -114,7 +114,7 @@ __coro_guard_scope guard_scope(Counter& c) {
             continue;
         } catch (const ::tpy::ValueError&) {
             __sub_1.reset();
-            std::cout << "caught, n:" << " " << c.n << "\n";
+            std::cout << "caught, n:" << " " << c.n << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -137,7 +137,7 @@ __coro_guard_scope guard_scope(Counter& c) {
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught, n:" << " " << c.n << "\n";
+            std::cout << "caught, n:" << " " << c.n << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -154,7 +154,7 @@ __coro_guard_scope guard_scope(Counter& c) {
                 continue;
             }
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught, n:" << " " << c.n << "\n";
+            std::cout << "caught, n:" << " " << c.n << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -198,7 +198,7 @@ __coro_raise_scope raise_scope(Counter& c) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "final:" << " " << (*c).n << "\n";
+        std::cout << "final:" << " " << (*c).n << "\n" << ::tpy::check_signals;
         d.emplace(Counter());
         __sub_1.emplace((*d));
         __state = S_RESUME_1;
@@ -209,7 +209,7 @@ __coro_raise_scope raise_scope(Counter& c) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "raised final:" << " " << (*d).n << "\n";
+        std::cout << "raised final:" << " " << (*d).n << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

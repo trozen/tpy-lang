@@ -63,12 +63,12 @@ inline Logged::~Logged() {
     try {
         {
             try {
-                std::cout << "body" << " " << this->_id << "\n";
+                std::cout << "body" << " " << this->_id << "\n" << ::tpy::check_signals;
             } catch (...) {
-                std::cout << "finally" << " " << this->_id << "\n";
+                std::cout << "finally" << " " << this->_id << "\n" << ::tpy::check_signals;
                 throw;
             }
-            std::cout << "finally" << " " << this->_id << "\n";
+            std::cout << "finally" << " " << this->_id << "\n" << ::tpy::check_signals;
         }
     } catch (const std::exception& __del_exc) {
         ::tpy::report_del_exception(__del_exc);

@@ -121,7 +121,7 @@ int32_t take_self(std::tuple<H, int32_t> t) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "async_return" << " " << __await_lift_0 << "\n";
+        std::cout << "async_return" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -180,47 +180,47 @@ __coro_run_async run_async() {
 //     print("super_in_return", Sub().super_in_return())
 //     asyncio.run(run_async())
 void main() {
-    std::cout << "after" << " " << H().after() << "\n";
-    std::cout << "last_use" << " " << H().last_use() << "\n";
-    std::cout << "bare_return" << " " << H().bare_return() << "\n";
-    std::cout << "loop_return" << " " << H().loop_return() << "\n";
+    std::cout << "after" << " " << H().after() << "\n" << ::tpy::check_signals;
+    std::cout << "last_use" << " " << H().last_use() << "\n" << ::tpy::check_signals;
+    std::cout << "bare_return" << " " << H().bare_return() << "\n" << ::tpy::check_signals;
+    std::cout << "loop_return" << " " << H().loop_return() << "\n" << ::tpy::check_signals;
     int32_t r = H().try_return();
-    std::cout << "try_return" << " " << r << "\n";
+    std::cout << "try_return" << " " << r << "\n" << ::tpy::check_signals;
     ::tpy::BigInt s = H().try_return_scalar();
-    std::cout << "try_return_scalar" << " " << s << "\n";
-    std::cout << "with_return" << " " << H().with_return() << "\n";
-    std::cout << "same_field_twice" << " " << H().same_field_twice() << "\n";
-    std::cout << "whole_self_in_return" << " " << H().whole_self_in_return() << "\n";
-    std::cout << "nonscalar_local_in_return" << " " << H().nonscalar_local_in_return() << "\n";
-    std::cout << "scalar_local_ok" << " " << H().scalar_local_ok() << "\n";
+    std::cout << "try_return_scalar" << " " << s << "\n" << ::tpy::check_signals;
+    std::cout << "with_return" << " " << H().with_return() << "\n" << ::tpy::check_signals;
+    std::cout << "same_field_twice" << " " << H().same_field_twice() << "\n" << ::tpy::check_signals;
+    std::cout << "whole_self_in_return" << " " << H().whole_self_in_return() << "\n" << ::tpy::check_signals;
+    std::cout << "nonscalar_local_in_return" << " " << H().nonscalar_local_in_return() << "\n" << ::tpy::check_signals;
+    std::cout << "scalar_local_ok" << " " << H().scalar_local_ok() << "\n" << ::tpy::check_signals;
     O o = O();
-    std::cout << "field_store" << " " << H().field_store(o) << "\n";
-    std::cout << "escape_copy" << " " << H().escape_copy() << "\n";
-    std::cout << "nested_def_return" << " " << H().nested_def_return() << "\n";
-    std::cout << "lambda_body" << " " << H().lambda_body() << "\n";
-    std::cout << "nested_def_in_return" << " " << H().nested_def_in_return() << "\n";
-    std::cout << "while_return" << " " << H().while_return() << "\n";
+    std::cout << "field_store" << " " << H().field_store(o) << "\n" << ::tpy::check_signals;
+    std::cout << "escape_copy" << " " << H().escape_copy() << "\n" << ::tpy::check_signals;
+    std::cout << "nested_def_return" << " " << H().nested_def_return() << "\n" << ::tpy::check_signals;
+    std::cout << "lambda_body" << " " << H().lambda_body() << "\n" << ::tpy::check_signals;
+    std::cout << "nested_def_in_return" << " " << H().nested_def_in_return() << "\n" << ::tpy::check_signals;
+    std::cout << "while_return" << " " << H().while_return() << "\n" << ::tpy::check_signals;
     int32_t t = H().try_handler_return();
-    std::cout << "try_handler_return" << " " << t << "\n";
+    std::cout << "try_handler_return" << " " << t << "\n" << ::tpy::check_signals;
     int32_t e = H().try_else_return();
-    std::cout << "try_else_return" << " " << e << "\n";
-    std::cout << "comprehension_in_return" << " " << H().comprehension_in_return() << "\n";
-    std::cout << "walrus_in_return" << " " << H().walrus_in_return() << "\n";
-    std::cout << "property_in_return" << " " << H().property_in_return() << "\n";
-    std::cout << "nonscalar_param_in_return" << " " << H().nonscalar_param_in_return(O()) << "\n";
-    std::cout << "module_var_in_return" << " " << H().module_var_in_return() << "\n";
-    std::cout << "scalar_kinds_ok" << " " << H().scalar_kinds_ok() << "\n";
-    std::cout << "scalar_field_twice_ok" << " " << H().scalar_field_twice_ok() << "\n";
-    std::cout << "ptr_field_in_return" << " " << HPtr().ptr_field_in_return() << "\n";
+    std::cout << "try_else_return" << " " << e << "\n" << ::tpy::check_signals;
+    std::cout << "comprehension_in_return" << " " << H().comprehension_in_return() << "\n" << ::tpy::check_signals;
+    std::cout << "walrus_in_return" << " " << H().walrus_in_return() << "\n" << ::tpy::check_signals;
+    std::cout << "property_in_return" << " " << H().property_in_return() << "\n" << ::tpy::check_signals;
+    std::cout << "nonscalar_param_in_return" << " " << H().nonscalar_param_in_return(O()) << "\n" << ::tpy::check_signals;
+    std::cout << "module_var_in_return" << " " << H().module_var_in_return() << "\n" << ::tpy::check_signals;
+    std::cout << "scalar_kinds_ok" << " " << H().scalar_kinds_ok() << "\n" << ::tpy::check_signals;
+    std::cout << "scalar_field_twice_ok" << " " << H().scalar_field_twice_ok() << "\n" << ::tpy::check_signals;
+    std::cout << "ptr_field_in_return" << " " << HPtr().ptr_field_in_return() << "\n" << ::tpy::check_signals;
     int32_t lg = H().local_generator();
-    std::cout << "local_generator" << " " << lg << "\n";
-    std::cout << "local_list_in_scope" << " " << H().local_list_in_scope() << "\n";
-    std::cout << "scalar_locals_only" << " " << H().scalar_locals_only() << "\n";
+    std::cout << "local_generator" << " " << lg << "\n" << ::tpy::check_signals;
+    std::cout << "local_list_in_scope" << " " << H().local_list_in_scope() << "\n" << ::tpy::check_signals;
+    std::cout << "scalar_locals_only" << " " << H().scalar_locals_only() << "\n" << ::tpy::check_signals;
     int32_t sg = H().sibling_loop_guard();
-    std::cout << "sibling_loop_guard" << " " << sg << "\n";
-    std::cout << "loop_body_list" << " " << H().loop_body_list() << "\n";
-    std::cout << "self_in_nested_def" << " " << H().self_in_nested_def() << "\n";
-    std::cout << "super_in_return" << " " << Sub().super_in_return() << "\n";
+    std::cout << "sibling_loop_guard" << " " << sg << "\n" << ::tpy::check_signals;
+    std::cout << "loop_body_list" << " " << H().loop_body_list() << "\n" << ::tpy::check_signals;
+    std::cout << "self_in_nested_def" << " " << H().self_in_nested_def() << "\n" << ::tpy::check_signals;
+    std::cout << "super_in_return" << " " << Sub().super_in_return() << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::run_async()));
 }
 
@@ -277,7 +277,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_H_gen::__next__() {
 }
 
 void __gen_H_gen::__finally_0() {
-    std::cout << "local_generator finally" << " " << ::tpy::__len__(__self.a.xs) << "\n";
+    std::cout << "local_generator finally" << " " << ::tpy::__len__(__self.a.xs) << "\n" << ::tpy::check_signals;
 }
 
 // # async_return: an async frame outlives the return statement

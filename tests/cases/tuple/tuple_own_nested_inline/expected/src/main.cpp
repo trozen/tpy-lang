@@ -26,10 +26,10 @@ std::tuple<std::tuple<Handle, Handle>, std::tuple<Handle, Handle>> two_pairs() {
 //     print(pp[1][1].fd)
 void main() {
     std::tuple<std::tuple<Handle, Handle>, std::tuple<Handle, Handle>> pp = ::tpyapp::main::two_pairs();
-    std::cout << std::get<0>(std::get<0>(pp)).fd << "\n";
-    std::cout << std::get<1>(std::get<0>(pp)).fd << "\n";
-    std::cout << std::get<0>(std::get<1>(pp)).fd << "\n";
-    std::cout << std::get<1>(std::get<1>(pp)).fd << "\n";
+    std::cout << std::get<0>(std::get<0>(pp)).fd << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(std::get<0>(pp)).fd << "\n" << ::tpy::check_signals;
+    std::cout << std::get<0>(std::get<1>(pp)).fd << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(std::get<1>(pp)).fd << "\n" << ::tpy::check_signals;
 }
 
 // main()

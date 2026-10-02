@@ -28,17 +28,17 @@ void main() {
     ::tpystd::datetime::datetime dt = ::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(6), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(45), ::tpy::BigInt(123456));
     ::tpystd::datetime::date d = dt.date();
     ::tpystd::datetime::time t = dt.time();
-    std::cout << d.year() << " " << d.month() << " " << d.day() << "\n";
-    std::cout << t.hour() << " " << t.minute() << " " << t.second() << " " << t.microsecond() << "\n";
-    std::cout << d.isoformat() << " " << t.isoformat() << "\n";
-    std::cout << ::tpy::print_bool(((datetime::combine(d, t)) == (dt))) << "\n";
+    std::cout << d.year() << " " << d.month() << " " << d.day() << "\n" << ::tpy::check_signals;
+    std::cout << t.hour() << " " << t.minute() << " " << t.second() << " " << t.microsecond() << "\n" << ::tpy::check_signals;
+    std::cout << d.isoformat() << " " << t.isoformat() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((datetime::combine(d, t)) == (dt))) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)));
     ::tpystd::datetime::datetime aware = ::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(8), ::tpy::BigInt(15), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1);
     ::tpystd::datetime::time at = aware.time();
-    std::cout << at.hour() << " " << at.minute() << " " << at.second() << "\n";
-    std::cout << aware.date().isoformat() << "\n";
+    std::cout << at.hour() << " " << at.minute() << " " << at.second() << "\n" << ::tpy::check_signals;
+    std::cout << aware.date().isoformat() << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime z = ::tpystd::datetime::datetime(::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(1));
-    std::cout << z.date().isoformat() << " " << z.time().isoformat() << "\n";
+    std::cout << z.date().isoformat() << " " << z.time().isoformat() << "\n" << ::tpy::check_signals;
 }
 
 // # datetime.date() / datetime.time() accessors: split a datetime into its date

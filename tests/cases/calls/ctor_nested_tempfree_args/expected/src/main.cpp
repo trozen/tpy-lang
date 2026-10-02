@@ -32,19 +32,19 @@ void main() {
     W w = W();
     std::vector<int32_t> xs = {7, 8, 9};
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<DynP>> rc1 = Rc<::tpystd::tplib::box::Box<DynP>>::new_<::tpystd::tplib::box::Box<DynP>>(::tpystd::tplib::box::Box<DynP>(::tpy::make_adapter<DynP>(KList(xs))));
-    std::cout << "name" << " " << rc1.get().get().ping() << "\n";
+    std::cout << "name" << " " << rc1.get().get().ping() << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<DynP>> rc2 = Rc<::tpystd::tplib::box::Box<DynP>>::new_<::tpystd::tplib::box::Box<DynP>>(::tpystd::tplib::box::Box<DynP>(::tpy::make_adapter<DynP>(KList(w.items))));
-    std::cout << "field" << " " << rc2.get().get().ping() << "\n";
+    std::cout << "field" << " " << rc2.get().get().ping() << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<DynP>> rc3 = Rc<::tpystd::tplib::box::Box<DynP>>::new_<::tpystd::tplib::box::Box<DynP>>(::tpystd::tplib::box::Box<DynP>(::tpy::make_adapter<DynP>(KRec(w.rec))));
-    std::cout << "rec_field" << " " << rc3.get().get().ping() << "\n";
+    std::cout << "rec_field" << " " << rc3.get().get().ping() << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<DynP>> rc4 = Rc<::tpystd::tplib::box::Box<DynP>>::new_<::tpystd::tplib::box::Box<DynP>>(::tpystd::tplib::box::Box<DynP>(::tpy::make_adapter<DynP>(KList({1, 2, 3, 4}))));
-    std::cout << "literal" << " " << rc4.get().get().ping() << "\n";
+    std::cout << "literal" << " " << rc4.get().get().ping() << "\n" << ::tpy::check_signals;
     Rec r = Rec(5);
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<DynP>> rc5 = Rc<::tpystd::tplib::box::Box<DynP>>::new_<::tpystd::tplib::box::Box<DynP>>(::tpystd::tplib::box::Box<DynP>(::tpy::make_adapter<DynP>(KOpt(&(r)))));
-    std::cout << "opt_ptr" << " " << rc5.get().get().ping() << "\n";
+    std::cout << "opt_ptr" << " " << rc5.get().get().ping() << "\n" << ::tpy::check_signals;
     std::vector<int32_t> ys = {7, 8};
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<DynP>> rc6 = Rc<::tpystd::tplib::box::Box<DynP>>::new_<::tpystd::tplib::box::Box<DynP>>(::tpystd::tplib::box::Box<DynP>(::tpy::make_adapter<DynP>(KMut(ys))));
-    std::cout << "mutated" << " " << rc6.get().get().ping() << " " << ::tpy::ListPrinter(ys) << "\n";
+    std::cout << "mutated" << " " << rc6.get().get().ping() << " " << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box, Rc

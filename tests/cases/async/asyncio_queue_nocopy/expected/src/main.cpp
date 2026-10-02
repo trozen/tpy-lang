@@ -38,7 +38,7 @@ namespace tpyapp::main {
         a.emplace(std::move(__r1).value());
         __sub_1.reset();
         b.emplace((*q).get_nowait());
-        std::cout << (*a).get() << " " << (*b).get() << "\n";
+        std::cout << (*a).get() << " " << (*b).get() << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

@@ -15,7 +15,7 @@ void main() {
     Value v = Value(21);
     ::tpyapp::main::double_it(v);
     Value v2 = v.duplicate();
-    std::cout << v2.x << "\n";
+    std::cout << v2.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

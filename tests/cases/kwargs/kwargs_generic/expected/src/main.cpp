@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(first(10, b=20))
 //     print(first(b="world", a="hello"))
 void main() {
-    std::cout << ::tpyapp::main::first<int32_t>(1, 2) << "\n";
-    std::cout << ::tpyapp::main::first<int32_t>(10, 20) << "\n";
-    std::cout << ::tpyapp::main::first<std::string>("hello", "world") << "\n";
+    std::cout << ::tpyapp::main::first<int32_t>(1, 2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first<int32_t>(10, 20) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first<std::string>("hello", "world") << "\n" << ::tpy::check_signals;
 }
 
 // main()

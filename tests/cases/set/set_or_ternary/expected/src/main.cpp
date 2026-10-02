@@ -15,7 +15,7 @@ namespace tpyapp::main {
 //     print(x)
 void test_or(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b) {
     ::tpy::ordered_set<int32_t>& x = ((::tpy::__len__(a) != 0) ? a : b);
-    std::cout << ::tpy::SetPrinter(x) << "\n";
+    std::cout << ::tpy::SetPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_and(a: set[int32], b: set[int32]) -> None:
@@ -23,7 +23,7 @@ void test_or(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b) {
 //     print(x)
 void test_and(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b) {
     ::tpy::ordered_set<int32_t>& x = ((::tpy::__len__(a) != 0) ? b : a);
-    std::cout << ::tpy::SetPrinter(x) << "\n";
+    std::cout << ::tpy::SetPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_ternary(a: set[int32], b: set[int32], cond: bool) -> None:
@@ -31,7 +31,7 @@ void test_and(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b) {
 //     print(x)
 void test_ternary(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b, bool cond) {
     ::tpy::ordered_set<int32_t>& x = ((cond) ? (a) : (b));
-    std::cout << ::tpy::SetPrinter(x) << "\n";
+    std::cout << ::tpy::SetPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_literal_or() -> None:
@@ -40,7 +40,7 @@ void test_ternary(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b
 void test_literal_or() {
     auto&& __tmp_1 = ::tpy::ordered_set<int32_t>({1, 2});
     ::tpy::ordered_set<int32_t> x = ((::tpy::__len__(__tmp_1) != 0) ? std::move(__tmp_1) : ::tpy::ordered_set<int32_t>({3, 4}));
-    std::cout << ::tpy::SetPrinter(x) << "\n";
+    std::cout << ::tpy::SetPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_literal_ternary(cond: bool) -> None:
@@ -48,7 +48,7 @@ void test_literal_or() {
 //     print(x)
 void test_literal_ternary(bool cond) {
     ::tpy::ordered_set<int32_t> x = ((cond) ? (::tpy::ordered_set<int32_t>({1, 2})) : (::tpy::ordered_set<int32_t>({3, 4})));
-    std::cout << ::tpy::SetPrinter(x) << "\n";
+    std::cout << ::tpy::SetPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_ternary_alias(a: set[int32], b: set[int32], cond: bool) -> None:
@@ -60,8 +60,8 @@ void test_literal_ternary(bool cond) {
 void test_ternary_alias(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b, bool cond) {
     ::tpy::ordered_set<int32_t>& x = ((cond) ? (a) : (b));
     x.insert(99);
-    std::cout << ::tpy::print_bool((a.contains(99))) << "\n";
-    std::cout << ::tpy::print_bool((b.contains(99))) << "\n";
+    std::cout << ::tpy::print_bool((a.contains(99))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((b.contains(99))) << "\n" << ::tpy::check_signals;
 }
 
 // s1 = {int32(1), int32(2)}

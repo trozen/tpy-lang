@@ -13,8 +13,8 @@ namespace tpyapp::main {
 void main() {
     Point pt = Point(10, 20);
     Point* p = &pt;
-    std::cout << p->sum() << "\n";
-    std::cout << p->describe() << "\n";
+    std::cout << p->sum() << "\n" << ::tpy::check_signals;
+    std::cout << p->describe() << "\n" << ::tpy::check_signals;
 }
 
 // main()

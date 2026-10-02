@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print("in main")
 void main() {
     Maybe m = Maybe(4);
-    std::cout << "in main" << "\n";
+    std::cout << "in main" << "\n" << ::tpy::check_signals;
 }
 
 // main()

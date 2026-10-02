@@ -88,7 +88,7 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 //     print("drop", self.id)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
-    std::cout << "drop" << " " << this->id << "\n";
+    std::cout << "drop" << " " << this->id << "\n" << ::tpy::check_signals;
 }
 
 // @staticmethod

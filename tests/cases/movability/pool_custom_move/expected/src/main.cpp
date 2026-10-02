@@ -26,10 +26,10 @@ Pool<Item, 4> make() {
 void main() {
     Pool<Item, 4> pool = ::tpyapp::main::make();
     Pool<Item, 4> relocated = std::move(pool);
-    std::cout << relocated.get(0).name << " " << relocated.get(1).name << "\n";
+    std::cout << relocated.get(0).name << " " << relocated.get(1).name << "\n" << ::tpy::check_signals;
     Tagged tag = Tagged(7);
     Tagged moved = std::move(tag);
-    std::cout << "move_raise_guarded" << " " << moved.n << "\n";
+    std::cout << "move_raise_guarded" << " " << moved.n << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.mem import UninitArrayStorage

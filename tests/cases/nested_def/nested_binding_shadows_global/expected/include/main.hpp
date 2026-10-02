@@ -306,13 +306,13 @@ inline void Ctx::__exit__(std::monostate exc_type, std::monostate exc_val, std::
 inline void K::m() const {
     auto inner = []() {
         double label = 2.5;
-        std::cout << "method:" << " " << ::tpy::print_float(label) << "\n";
+        std::cout << "method:" << " " << ::tpy::print_float(label) << "\n" << ::tpy::check_signals;
     };
     auto ident = [](int32_t hh) -> int32_t {
         return (::tpy::add_check<int32_t>(hh, 2));
     };
     inner();
-    std::cout << "method ident:" << " " << ident(4) << " " << label << "\n";
+    std::cout << "method ident:" << " " << ident(4) << " " << label << "\n" << ::tpy::check_signals;
 }
 
 // def bump(self) -> int:

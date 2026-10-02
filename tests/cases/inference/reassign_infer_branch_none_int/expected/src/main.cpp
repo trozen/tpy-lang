@@ -22,9 +22,9 @@ void pick(bool cond) {
         x = 5;
     }
     if ((!x.has_value())) {
-        std::cout << 0 << "\n";
+        std::cout << 0 << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << ::tpy::print_optional_val(x) << "\n";
+        std::cout << ::tpy::print_optional_val(x) << "\n" << ::tpy::check_signals;
     }
 }
 

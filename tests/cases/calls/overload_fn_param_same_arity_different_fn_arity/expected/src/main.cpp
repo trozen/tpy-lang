@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(g(lambda a, b: a + b, xs))               # picks the 2-param overload
 void main() {
     std::vector<int32_t> xs = {1, 2, 3};
-    std::cout << ::tpyapp::main::g<int32_t>([](int32_t a) -> int32_t { return (::tpy::add_check<int32_t>(a, 1)); }, xs) << "\n";
-    std::cout << ::tpyapp::main::g<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, xs) << "\n";
+    std::cout << ::tpyapp::main::g<int32_t>([](int32_t a) -> int32_t { return (::tpy::add_check<int32_t>(a, 1)); }, xs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::g<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, xs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

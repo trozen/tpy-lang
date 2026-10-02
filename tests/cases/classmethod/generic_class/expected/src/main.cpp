@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Box<int32_t> n = Box<int32_t>::of(7);
     Box<std::string> s = Box<std::string>::of("hi");
-    std::cout << n.v << " " << s.v << "\n";
+    std::cout << n.v << " " << s.v << "\n" << ::tpy::check_signals;
 }
 
 // main()

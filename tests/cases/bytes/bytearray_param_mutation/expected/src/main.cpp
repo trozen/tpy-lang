@@ -36,15 +36,15 @@ void main() {
     ::tpy::ByteArray buf = ::tpy::ByteArray();
     ::tpyapp::main::pack(buf, ::tpy::BigInt(65));
     ::tpyapp::main::pack(buf, ::tpy::BigInt(67));
-    std::cout << ::tpy::__len__(buf) << "\n";
+    std::cout << ::tpy::__len__(buf) << "\n" << ::tpy::check_signals;
     auto& __obj_0 = buf;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         uint8_t b = *__beg_0;
-        std::cout << static_cast<int>(b) << "\n";
+        std::cout << static_cast<int>(b) << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpyapp::main::borrow(buf) << "\n";
+    std::cout << ::tpyapp::main::borrow(buf) << "\n" << ::tpy::check_signals;
 }
 
 // main()

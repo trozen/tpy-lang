@@ -21,9 +21,9 @@ void main() {
     Point p = Point(1, 2);
     auto t = std::tuple<Point, int32_t>{std::move(p), 10};
     auto result = ::tpyapp::main::swap(::tpy::tuple_to_pointer<std::tuple<Point*, int32_t>>(t));
-    std::cout << std::get<0>(result) << "\n";
-    std::cout << std::get<1>(result)->x << "\n";
-    std::cout << std::get<1>(result)->y << "\n";
+    std::cout << std::get<0>(result) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(result)->x << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(result)->y << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -44,12 +44,12 @@ const Awaker* read_only_take(const Awaker& h) {
 void main() {
     Executor e = Executor();
     ::tpyapp::main::make_waker(e, 7);
-    std::cout << ::tpy::__getitem__(e.log, 0) << "\n";
+    std::cout << ::tpy::__getitem__(e.log, 0) << "\n" << ::tpy::check_signals;
     Holder h = Holder(e);
     ::tpy::deref_check(h.awaker).mark(99);
-    std::cout << ::tpy::__getitem__(e.log, 1) << "\n";
+    std::cout << ::tpy::__getitem__(e.log, 1) << "\n" << ::tpy::check_signals;
     auto rp = ::tpyapp::main::read_only_take(e);
-    std::cout << ::tpy::print_bool((rp != nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((rp != nullptr)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

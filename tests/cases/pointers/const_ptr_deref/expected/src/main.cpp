@@ -19,13 +19,13 @@ namespace tpyapp::main {
 void main() {
     int32_t x = 42;
     const int32_t* cp = &x;
-    std::cout << ::tpy::deref_check(cp) << "\n";
+    std::cout << ::tpy::deref_check(cp) << "\n" << ::tpy::check_signals;
     Point pt = Point(10, 20);
     const Point* cpp = &pt;
-    std::cout << ::tpy::deref_check(cpp).x << "\n";
-    std::cout << ::tpy::deref_check(cpp).y << "\n";
-    std::cout << cpp->x << "\n";
-    std::cout << cpp->y << "\n";
+    std::cout << ::tpy::deref_check(cpp).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::deref_check(cpp).y << "\n" << ::tpy::check_signals;
+    std::cout << cpp->x << "\n" << ::tpy::check_signals;
+    std::cout << cpp->y << "\n" << ::tpy::check_signals;
 }
 
 // main()

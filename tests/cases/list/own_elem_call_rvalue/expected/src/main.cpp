@@ -46,12 +46,12 @@ void main() {
     MAKERS->push_back(Maker(3.0));
     MAKERS->push_back(Maker(5.0));
     std::vector<std::vector<double>> rows = ::tpyapp::main::build();
-    std::cout << ::tpy::__len__(rows) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(rows, 0), 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(rows, 1), 1)) << "\n";
+    std::cout << ::tpy::__len__(rows) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(rows, 0), 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(rows, 1), 1)) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<double>> annotated = std::vector<std::vector<double>>{};
     annotated.push_back(::tpyapp::main::make_row(1.0));
     annotated.push_back(::tpyapp::main::make_row(10.0));
     ::tpy::__getitem__(annotated, 0).push_back(99.0);
-    std::cout << ::tpy::__len__(annotated) << " " << ::tpy::__len__(::tpy::__getitem__(annotated, 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(annotated, 0), 2)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(annotated, 1), 0)) << "\n";
+    std::cout << ::tpy::__len__(annotated) << " " << ::tpy::__len__(::tpy::__getitem__(annotated, 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(annotated, 0), 2)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(annotated, 1), 0)) << "\n" << ::tpy::check_signals;
 }
 
 // MAKERS: list[Maker] = []

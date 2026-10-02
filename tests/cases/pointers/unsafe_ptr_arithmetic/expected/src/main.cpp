@@ -39,13 +39,13 @@ void __tpy_init() {
     arr = &__global_slot_1;
     base = (*arr).data();
     p2 = (base + 2);
-    std::cout << p2[0] << "\n";
+    std::cout << p2[0] << "\n" << ::tpy::check_signals;
     p0 = (p2 + -2);
-    std::cout << p0[0] << "\n";
+    std::cout << p0[0] << "\n" << ::tpy::check_signals;
     diff = static_cast<int64_t>(p2 - base);
-    std::cout << diff << "\n";
+    std::cout << diff << "\n" << ::tpy::check_signals;
     diff2 = static_cast<int64_t>(base - p2);
-    std::cout << diff2 << "\n";
+    std::cout << diff2 << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

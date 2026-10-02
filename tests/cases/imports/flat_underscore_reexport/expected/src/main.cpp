@@ -16,7 +16,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::c::__tpy_init();
-    std::cout << ::tpyapp::c::_secret_value << "\n";
+    std::cout << ::tpyapp::c::_secret_value << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

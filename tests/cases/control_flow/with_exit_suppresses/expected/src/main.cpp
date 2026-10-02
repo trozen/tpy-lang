@@ -13,7 +13,7 @@ void raises_inside() {
     auto __ctx_1 = Suppressor("S");
     auto s = __ctx_1.__enter__();
     try {
-        std::cout << std::format("using {}", s) << "\n";
+        std::cout << std::format("using {}", s) << "\n" << ::tpy::check_signals;
         throw ::tpy::ValueError("boom");
     } catch (::tpy::BaseException& __exc_1) {
         if (!__ctx_1.__exit__({}, &__exc_1, {})) throw;
@@ -21,7 +21,7 @@ void raises_inside() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    std::cout << "control reached post-with (suppressed)" << "\n";
+    std::cout << "control reached post-with (suppressed)" << "\n" << ::tpy::check_signals;
 }
 
 // def normal_inside() -> None:
@@ -32,7 +32,7 @@ void normal_inside() {
     auto __ctx_2 = Suppressor("S");
     auto s = __ctx_2.__enter__();
     try {
-        std::cout << std::format("using {}", s) << "\n";
+        std::cout << std::format("using {}", s) << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         if (!__ctx_2.__exit__({}, &__exc_2, {})) throw;
@@ -44,7 +44,7 @@ void normal_inside() {
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
     __with_after_2:;
-    std::cout << "post-with" << "\n";
+    std::cout << "post-with" << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -53,7 +53,7 @@ void normal_inside() {
 //     normal_inside()
 void main() {
     ::tpyapp::main::raises_inside();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::normal_inside();
 }
 

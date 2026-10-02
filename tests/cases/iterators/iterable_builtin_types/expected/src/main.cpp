@@ -44,25 +44,25 @@ namespace tpyapp::main {
 //     print(sum_strs(d))
 void test_iterable_params() {
     std::vector<int32_t> nums = {10, 20, 30};
-    std::cout << ::tpyapp::main::sum_items(nums) << "\n";
+    std::cout << ::tpyapp::main::sum_items(nums) << "\n" << ::tpy::check_signals;
     auto __tmp_1 = ::tpy::Range<int32_t>(5);
-    std::cout << ::tpyapp::main::sum_items(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_1) << "\n" << ::tpy::check_signals;
     auto __tmp_2 = "hello";
-    std::cout << ::tpyapp::main::count_chars(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::count_chars(__tmp_2) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> arr = {1, 2, 3};
-    std::cout << ::tpyapp::main::sum_items(arr) << "\n";
+    std::cout << ::tpyapp::main::sum_items(arr) << "\n" << ::tpy::check_signals;
     std::span<int32_t> sp = std::span<int32_t>(&::tpy::__getitem__(arr, 0), static_cast<size_t>(3));
-    std::cout << ::tpyapp::main::sum_items(sp) << "\n";
+    std::cout << ::tpyapp::main::sum_items(sp) << "\n" << ::tpy::check_signals;
     std::span<const int32_t> rosp = ::tpy::as_span(arr);
-    std::cout << ::tpyapp::main::sum_items(rosp) << "\n";
+    std::cout << ::tpyapp::main::sum_items(rosp) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> sl = {100, 200};
-    std::cout << ::tpyapp::main::sum_items(sl) << "\n";
+    std::cout << ::tpyapp::main::sum_items(sl) << "\n" << ::tpy::check_signals;
     ::tpy::String s = ::tpy::String("ab");
-    std::cout << ::tpyapp::main::count_chars(s) << "\n";
+    std::cout << ::tpyapp::main::count_chars(s) << "\n" << ::tpy::check_signals;
     std::string_view sv = "xyz";
-    std::cout << ::tpyapp::main::count_chars(sv) << "\n";
+    std::cout << ::tpyapp::main::count_chars(sv) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    std::cout << ::tpyapp::main::sum_strs(d) << "\n";
+    std::cout << ::tpyapp::main::sum_strs(d) << "\n" << ::tpy::check_signals;
 }
 
 // def test_manual_iter() -> None:
@@ -103,7 +103,7 @@ void test_manual_iter() {
         int32_t x = ::tpy::unwrap_ref(*__r_1);
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
     std::string_view chars = "hi";
     auto char_it = ::tpy::__iter__(chars);
     auto& __src_2 = char_it;
@@ -112,7 +112,7 @@ void test_manual_iter() {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         char c = ::tpy::unwrap_ref(*__r_3);
-        std::cout << c << "\n";
+        std::cout << c << "\n" << ::tpy::check_signals;
     }
     std::array<int32_t, 2> arr = {7, 8};
     auto arr_it = ::tpy::__iter__(arr);
@@ -122,7 +122,7 @@ void test_manual_iter() {
         auto __r_5 = __itr_4.__next__();
         if (!__r_5.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_5);
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}});
     auto d_it = ::tpy::__iter__(d);
@@ -132,7 +132,7 @@ void test_manual_iter() {
         auto __r_7 = __itr_6.__next__();
         if (!__r_7.has_value()) break;
         std::string_view k = ::tpy::unwrap_ref(*__r_7);
-        std::cout << k << "\n";
+        std::cout << k << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -162,7 +162,7 @@ void test_iter_builtin() {
         int32_t x = ::tpy::unwrap_ref(*__r_1);
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"p", 1}, {"q", 2}});
     auto d_it = ::tpy::__iter__(d);
     auto& __src_2 = d_it;
@@ -171,7 +171,7 @@ void test_iter_builtin() {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         std::string_view k = ::tpy::unwrap_ref(*__r_3);
-        std::cout << k << "\n";
+        std::cout << k << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -192,7 +192,7 @@ void main() {
     ::tpyapp::main::test_iter_on_protocol(proto_input);
     ::tpyapp::main::test_iter_builtin();
     std::vector<::tpy::BigInt> bigints = {100, 200, 300};
-    std::cout << ::tpyapp::main::sum_bigints(bigints) << "\n";
+    std::cout << ::tpyapp::main::sum_bigints(bigints) << "\n" << ::tpy::check_signals;
 }
 
 // main()

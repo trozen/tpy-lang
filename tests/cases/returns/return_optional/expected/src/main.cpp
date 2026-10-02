@@ -45,10 +45,10 @@ void __tpy_init() {
     points->push_back(Point(3, 30));
     result = ::tpyapp::main::find((*points), 2);
     if ((result != nullptr)) {
-        std::cout << result->y << "\n";
+        std::cout << result->y << "\n" << ::tpy::check_signals;
     }
     result = ::tpyapp::main::find((*points), 99);
-    std::cout << ::tpy::print_bool((result == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((result == nullptr)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

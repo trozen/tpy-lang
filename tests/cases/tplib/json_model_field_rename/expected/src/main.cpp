@@ -33,20 +33,20 @@ namespace tpyapp::main {
 void main() {
     User u = User("Alice", "Smith", 30);
     std::string s = u.to_json();
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
     User u2 = User::from_json("{\"firstName\": \"Bob\", \"lastName\": \"Jones\", \"age\": 25}");
-    std::cout << u2.first_name << " " << u2.last_name << " " << u2.age << "\n";
+    std::cout << u2.first_name << " " << u2.last_name << " " << u2.age << "\n" << ::tpy::check_signals;
     User u3 = User::from_json(u.to_json());
-    std::cout << ::tpy::print_bool(((u) == (u3))) << "\n";
+    std::cout << ::tpy::print_bool(((u) == (u3))) << "\n" << ::tpy::check_signals;
     WithDefault w = WithDefault();
-    std::cout << w.to_json() << "\n";
+    std::cout << w.to_json() << "\n" << ::tpy::check_signals;
     WithDefault w2 = WithDefault::from_json("{\"lbl\": \"hi\", \"score\": 7}");
-    std::cout << w2.label << " " << ::tpy::print_optional_val(w2.note) << " " << w2.score << "\n";
+    std::cout << w2.label << " " << ::tpy::print_optional_val(w2.note) << " " << w2.score << "\n" << ::tpy::check_signals;
     Extended e = Extended(42, "hello");
     std::string s2 = e.to_json();
-    std::cout << s2 << "\n";
+    std::cout << s2 << "\n" << ::tpy::check_signals;
     Extended e2 = Extended::from_json("{\"id\": 99, \"label\": \"world\"}");
-    std::cout << e2.item_id << " " << e2.label << "\n";
+    std::cout << e2.item_id << " " << e2.label << "\n" << ::tpy::check_signals;
 }
 
 

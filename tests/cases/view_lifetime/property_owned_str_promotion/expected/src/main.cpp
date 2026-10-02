@@ -32,20 +32,20 @@ std::string free_text(::tpy::BytesView b) {
 void main() {
     Box b = Box(::tpy::bytes_literal("a payload well beyond the sixteen byte small-string buffer here", 63), "a-stable-field-label");
     std::string f = ::tpyapp::main::free_text(b.payload);
-    std::cout << f << "\n";
+    std::cout << f << "\n" << ::tpy::check_signals;
     std::string m = b.m_text();
-    std::cout << m << "\n";
+    std::cout << m << "\n" << ::tpy::check_signals;
     std::string t = b.text();
-    std::cout << t << "\n";
-    std::cout << ::tpy::__len__(t) << "\n";
+    std::cout << t << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(t) << "\n" << ::tpy::check_signals;
     std::string g = b.tagged();
-    std::cout << g << "\n";
+    std::cout << g << "\n" << ::tpy::check_signals;
     std::string_view mn = b.m_name();
-    std::cout << mn << "\n";
+    std::cout << mn << "\n" << ::tpy::check_signals;
     std::string_view n = b.name();
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
     ::tpy::Bytes r = b.raw();
-    std::cout << ::tpy::__len__(r) << "\n";
+    std::cout << ::tpy::__len__(r) << "\n" << ::tpy::check_signals;
 }
 
 // main()

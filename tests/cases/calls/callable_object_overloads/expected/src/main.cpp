@@ -11,8 +11,8 @@ namespace tpyapp::main {
 //     use(a)
 void main() {
     Adder a = Adder(10);
-    std::cout << a.__call__(1) << "\n";
-    std::cout << a.__call__(1, 2) << "\n";
+    std::cout << a.__call__(1) << "\n" << ::tpy::check_signals;
+    std::cout << a.__call__(1, 2) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::use(a);
 }
 

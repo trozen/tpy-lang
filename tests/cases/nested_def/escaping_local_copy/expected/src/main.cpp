@@ -17,7 +17,7 @@ std::function<int32_t()> make_getter() {
         return cfg.value;
     };
     cfg.value = 999;
-    std::cout << cfg.value << "\n";
+    std::cout << cfg.value << "\n" << ::tpy::check_signals;
     return get_value;
 }
 
@@ -42,7 +42,7 @@ std::function<int32_t()> make_sibling_reader() {
     };
     auto grow = [&data]() {
         data.push_back(3);
-        std::cout << "outer:" << " " << ::tpy::__len__(data) << "\n";
+        std::cout << "outer:" << " " << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
     };
     grow();
     return size;
@@ -63,7 +63,7 @@ std::function<int32_t()> make_before_sibling() {
     std::vector<int32_t> data = {4};
     auto grow = [&data]() {
         data.push_back(5);
-        std::cout << "before:" << " " << ::tpy::__len__(data) << "\n";
+        std::cout << "before:" << " " << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
     };
     auto size = [data]() -> int32_t {
         return ::tpy::__len__(data);
@@ -93,7 +93,7 @@ std::function<int32_t()> make_if_arm_sibling() {
     if (flag) {
         auto grow = [&data]() {
             data.push_back(7);
-            std::cout << "if_arm:" << " " << ::tpy::__len__(data) << "\n";
+            std::cout << "if_arm:" << " " << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
         };
         grow();
     }
@@ -121,7 +121,7 @@ std::function<int32_t()> make_lambda_reader() {
         return ::tpy::__len__(data);
     };
     std::function<int32_t()> read = [data]() -> int32_t { return ::tpy::__len__(data); };
-    std::cout << "lambda:" << " " << read() << "\n";
+    std::cout << "lambda:" << " " << read() << "\n" << ::tpy::check_signals;
     return size;
 }
 
@@ -146,7 +146,7 @@ std::function<int32_t()> make_nonlocal_sibling() {
     };
     auto replace = [&data]() {
         data = {12, 13, 14};
-        std::cout << "nonlocal:" << " " << ::tpy::__len__(data) << "\n";
+        std::cout << "nonlocal:" << " " << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
     };
     replace();
     return size;
@@ -169,7 +169,7 @@ std::function<int32_t()> make_transitive_sibling() {
     std::vector<int32_t> data = {15};
     auto reader = [&data]() {
         data.push_back(16);
-        std::cout << "transitive:" << " " << ::tpy::__len__(data) << "\n";
+        std::cout << "transitive:" << " " << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
     };
     auto size = [data]() -> int32_t {
         return ::tpy::__len__(data);
@@ -206,13 +206,13 @@ std::function<int32_t()> make_two_arms_same_name() {
     };
     if (flag) {
         auto h = []() {
-            std::cout << "arms: noop" << "\n";
+            std::cout << "arms: noop" << "\n" << ::tpy::check_signals;
         };
         h();
     } else {
         auto h = [&data]() {
             data.push_back(18);
-            std::cout << "arms:" << " " << ::tpy::__len__(data) << "\n";
+            std::cout << "arms:" << " " << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
         };
         h();
     }
@@ -234,7 +234,7 @@ std::function<int32_t()> make_two_arms_same_name() {
 std::function<int32_t()> make_named_not_called() {
     std::vector<int32_t> data = {19};
     data.push_back(20);
-    std::cout << "named_not_called:" << " " << ::tpy::__len__(data) << "\n";
+    std::cout << "named_not_called:" << " " << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
     auto size = [data]() -> int32_t {
         return ::tpy::__len__(data);
     };
@@ -262,7 +262,7 @@ std::function<int32_t()> make_lambda_param_shadow() {
         return ::tpy::__len__(data);
     };
     std::function<int32_t(int32_t)> step = [](int32_t data) -> int32_t { return (::tpy::add_check<int32_t>(data, 1)); };
-    std::cout << "lambda_param_shadow:" << " " << step(1) << "\n";
+    std::cout << "lambda_param_shadow:" << " " << step(1) << "\n" << ::tpy::check_signals;
     return size;
 }
 
@@ -292,25 +292,25 @@ std::function<int32_t()> make_lambda_param_shadow() {
 //     print("lambda_param_sibling:", shadow)
 void main() {
     std::function<int32_t()> getter = ::tpyapp::main::make_getter();
-    std::cout << getter() << "\n";
+    std::cout << getter() << "\n" << ::tpy::check_signals;
     int32_t seen = (::tpyapp::main::make_sibling_reader())();
-    std::cout << "sibling:" << " " << seen << "\n";
+    std::cout << "sibling:" << " " << seen << "\n" << ::tpy::check_signals;
     int32_t before = (::tpyapp::main::make_before_sibling())();
-    std::cout << "before_sibling:" << " " << before << "\n";
+    std::cout << "before_sibling:" << " " << before << "\n" << ::tpy::check_signals;
     int32_t arm = (::tpyapp::main::make_if_arm_sibling())();
-    std::cout << "if_arm_sibling:" << " " << arm << "\n";
+    std::cout << "if_arm_sibling:" << " " << arm << "\n" << ::tpy::check_signals;
     int32_t lam = (::tpyapp::main::make_lambda_reader())();
-    std::cout << "lambda_sibling:" << " " << lam << "\n";
+    std::cout << "lambda_sibling:" << " " << lam << "\n" << ::tpy::check_signals;
     int32_t nl = (::tpyapp::main::make_nonlocal_sibling())();
-    std::cout << "nonlocal_sibling:" << " " << nl << "\n";
+    std::cout << "nonlocal_sibling:" << " " << nl << "\n" << ::tpy::check_signals;
     int32_t chain = (::tpyapp::main::make_transitive_sibling())();
-    std::cout << "transitive_sibling:" << " " << chain << "\n";
+    std::cout << "transitive_sibling:" << " " << chain << "\n" << ::tpy::check_signals;
     int32_t arms = (::tpyapp::main::make_two_arms_same_name())();
-    std::cout << "arms_sibling:" << " " << arms << "\n";
+    std::cout << "arms_sibling:" << " " << arms << "\n" << ::tpy::check_signals;
     int32_t uncalled = (::tpyapp::main::make_named_not_called())();
-    std::cout << "named_not_called_sibling:" << " " << uncalled << "\n";
+    std::cout << "named_not_called_sibling:" << " " << uncalled << "\n" << ::tpy::check_signals;
     int32_t shadow = (::tpyapp::main::make_lambda_param_shadow())();
-    std::cout << "lambda_param_sibling:" << " " << shadow << "\n";
+    std::cout << "lambda_param_sibling:" << " " << shadow << "\n" << ::tpy::check_signals;
 }
 
 // main()

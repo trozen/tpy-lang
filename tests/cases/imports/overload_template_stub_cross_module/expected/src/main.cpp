@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(total(nums))
 void main() {
     std::vector<int32_t> nums = {3, 1, 2};
-    std::cout << ::tpyapp::agg::total(::tpy::own_iter(std::move(nums))) << "\n";
+    std::cout << ::tpyapp::agg::total(::tpy::own_iter(std::move(nums))) << "\n" << ::tpy::check_signals;
 }
 
 // # Cross-module call of a template (protocol-param) overload: guards that

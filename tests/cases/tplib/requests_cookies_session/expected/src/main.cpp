@@ -20,11 +20,11 @@ void _cookie_line(::tpy::BytesView sent) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         ::tpy::BytesView line = *__beg_0;
         if (::tpy::bytes_startswith(line, ::tpy::bytes_literal("Cookie:", 7))) {
-            std::cout << ::tpy::BytesPrinter(line) << "\n";
+            std::cout << ::tpy::BytesPrinter(line) << "\n" << ::tpy::check_signals;
             return;
         }
     }
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_literal_owned("<no Cookie header>", 18)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_literal_owned("<no Cookie header>", 18)) << "\n" << ::tpy::check_signals;
 }
 
 // def cookies_arg_not_persisted() -> None:
@@ -76,7 +76,7 @@ void cookies_arg_not_persisted() {
     s.get("http://api.test/two");
     ::tpyapp::main::_cookie_line(b2.recv(65536));
     b2.close();
-    std::cout << ::tpy::print_bool((s.cookies.__contains__("tok"))) << "\n";
+    std::cout << ::tpy::print_bool((s.cookies.__contains__("tok"))) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -118,7 +118,7 @@ void main() {
     c1.sock = std::move(a1);
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(c1));
     ::tpystd::tplib::requests::Response r1 = s.get("http://api.test/login");
-    std::cout << r1.status_code << "\n";
+    std::cout << r1.status_code << "\n" << ::tpy::check_signals;
     ::tpyapp::main::_cookie_line(b1.recv(65536));
     b1.close();
     auto __tup_2 = ::tpystd::socket::socketpair();
@@ -129,7 +129,7 @@ void main() {
     c2.sock = std::move(a2);
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(c2));
     ::tpystd::tplib::requests::Response r2 = s.get("http://api.test/profile");
-    std::cout << r2.status_code << "\n";
+    std::cout << r2.status_code << "\n" << ::tpy::check_signals;
     ::tpyapp::main::_cookie_line(b2.recv(65536));
     b2.close();
     ::tpyapp::main::cookies_arg_not_persisted();

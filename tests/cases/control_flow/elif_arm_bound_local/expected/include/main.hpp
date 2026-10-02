@@ -171,13 +171,13 @@ inline Node::Node(int32_t v) : v(v) {}
 //         print("method " + r)
 inline void Holder::show(int32_t k) const {
     if ((k == 1)) {
-        std::cout << "method one" << "\n";
+        std::cout << "method one" << "\n" << ::tpy::check_signals;
     } else if ((k == 2)) {
         std::string_view r = "two";
-        std::cout << (::tpy::str_concat("method ", r)) << "\n";
+        std::cout << (::tpy::str_concat("method ", r)) << "\n" << ::tpy::check_signals;
     } else {
         std::string_view r = "other";
-        std::cout << (::tpy::str_concat("method ", r)) << "\n";
+        std::cout << (::tpy::str_concat("method ", r)) << "\n" << ::tpy::check_signals;
     }
 }
 void __tpy_init();

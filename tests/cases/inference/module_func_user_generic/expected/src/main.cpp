@@ -11,8 +11,8 @@ namespace tpyapp::main {
 //     print("done")
 void main() {
     int32_t y = ::tpyapp::helpers::identity<int32_t>(7);
-    std::cout << y << "\n";
-    std::cout << "done" << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // import helpers

@@ -1,0 +1,21 @@
+free: line printed
+free: caught after the line
+lambda: line printed
+lambda: caught after the line
+generator: got 1
+generator: line printed
+generator: finally ran
+generator: caught
+error_return: line printed
+error_return: caught
+flush: line printed
+flush: caught after the flush
+sink: write 11
+sink: caught, pieces: 1
+tail: caught, pieces: 5, ,6
+thread: worker line printed
+thread: caught at join
+async: line printed, no raise
+async: run raised KeyboardInterrupt
+module: line printed
+module: caught after the line

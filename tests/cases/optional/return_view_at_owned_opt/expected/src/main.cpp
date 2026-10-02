@@ -29,13 +29,13 @@ std::optional<::tpy::Bytes> bytes_position(::tpy::BytesView b) {
 //     print("method empty:", -1 if e is None else len(e))
 void main() {
     std::optional<std::string> r = ::tpyapp::main::str_position("hello");
-    std::cout << "str:" << " " << (((!r.has_value())) ? (-1) : (::tpy::__len__((*r)))) << "\n";
+    std::cout << "str:" << " " << (((!r.has_value())) ? (-1) : (::tpy::__len__((*r)))) << "\n" << ::tpy::check_signals;
     std::optional<::tpy::Bytes> rb = ::tpyapp::main::bytes_position(::tpy::bytes_literal("xyz", 3));
-    std::cout << "bytes:" << " " << (((!rb.has_value())) ? (-1) : (::tpy::__len__((*rb)))) << "\n";
+    std::cout << "bytes:" << " " << (((!rb.has_value())) ? (-1) : (::tpy::__len__((*rb)))) << "\n" << ::tpy::check_signals;
     std::optional<std::string> t = Tagger("p").tag("abc");
-    std::cout << "method:" << " " << (((!t.has_value())) ? (-1) : (::tpy::__len__((*t)))) << "\n";
+    std::cout << "method:" << " " << (((!t.has_value())) ? (-1) : (::tpy::__len__((*t)))) << "\n" << ::tpy::check_signals;
     std::optional<std::string> e = Tagger("p").tag("");
-    std::cout << "method empty:" << " " << (((!e.has_value())) ? (-1) : (::tpy::__len__((*e)))) << "\n";
+    std::cout << "method empty:" << " " << (((!e.has_value())) ? (-1) : (::tpy::__len__((*e)))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

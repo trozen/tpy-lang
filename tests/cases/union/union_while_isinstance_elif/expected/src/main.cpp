@@ -19,13 +19,13 @@ void describe(::tpy::Union<const Circle*, const Rect*, const Triangle*> s) {
     while ((i < 2)) {
         if (std::holds_alternative<const Circle*>(s)) {
             auto& __s = *std::get<const Circle*>(s);
-            std::cout << ::tpy::print_float(__s.radius) << "\n";
+            std::cout << ::tpy::print_float(__s.radius) << "\n" << ::tpy::check_signals;
         } else if (std::holds_alternative<const Rect*>(s)) {
             auto& __s = *std::get<const Rect*>(s);
-            std::cout << ::tpy::print_float(__s.width) << "\n";
+            std::cout << ::tpy::print_float(__s.width) << "\n" << ::tpy::check_signals;
         } else {
             auto& __s = *std::get<const Triangle*>(s);
-            std::cout << ::tpy::print_float(__s.base) << "\n";
+            std::cout << ::tpy::print_float(__s.base) << "\n" << ::tpy::check_signals;
         }
         i = ::tpy::add_check<int32_t>(i, 1);
     }

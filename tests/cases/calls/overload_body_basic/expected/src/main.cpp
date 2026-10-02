@@ -22,8 +22,8 @@ std::string describe(std::string_view x) {
 //     print(describe(42))
 //     print(describe("hello"))
 void main() {
-    std::cout << ::tpyapp::main::describe(::tpy::BigInt(42)) << "\n";
-    std::cout << ::tpyapp::main::describe(std::string_view("hello")) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::BigInt(42)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(std::string_view("hello")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

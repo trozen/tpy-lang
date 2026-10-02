@@ -20,7 +20,7 @@ void main() {
     Sink s = Sink();
     s.add_view(::tpy::bytes_literal("ab", 2));
     s.add_owned(::tpy::bytes_literal("cd", 2));
-    std::cout << ::tpy::__len__(s.chunks) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(s.chunks, 0)) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(s.owned, 0)) << "\n";
+    std::cout << ::tpy::__len__(s.chunks) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(s.chunks, 0)) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(s.owned, 0)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -13,7 +13,7 @@ void main() {
     P a = P(1);
     P b = P(2);
     ::tpy::ordered_set<P> s = ::tpy::make_ordered_set<P>(std::move(a), std::move(b));
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // # A last-use copyable reference local in a set LITERAL routes through the

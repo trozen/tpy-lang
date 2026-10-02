@@ -18,7 +18,7 @@ std::tuple<::tpystd::tplib::rc::Weak<Cell>, ::tpystd::tplib::rc::Weak<Cell>, ::t
     ::tpystd::tplib::rc::Weak<Cell> w1 = rc.downgrade();
     ::tpystd::tplib::rc::Weak<Cell> w2 = w1.clone();
     ::tpystd::tplib::rc::Weak<Cell> w3 = w2.clone();
-    std::cout << "alive before drop:" << " " << rc.get().val << "\n";
+    std::cout << "alive before drop:" << " " << rc.get().val << "\n" << ::tpy::check_signals;
     return std::tuple<::tpystd::tplib::rc::Weak<Cell>, ::tpystd::tplib::rc::Weak<Cell>, ::tpystd::tplib::rc::Weak<Cell>>{std::move(w1), std::move(w2), std::move(w3)};
 }
 
@@ -32,10 +32,10 @@ std::tuple<::tpystd::tplib::rc::Weak<Cell>, ::tpystd::tplib::rc::Weak<Cell>, ::t
 //     print("w3:", weaks[2].upgrade() is None)
 void main() {
     auto weaks = ::tpyapp::main::make_weaks();
-    std::cout << "--- after strong death ---" << "\n";
-    std::cout << "w1:" << " " << ::tpy::print_bool((!std::get<0>(weaks).upgrade().has_value())) << "\n";
-    std::cout << "w2:" << " " << ::tpy::print_bool((!std::get<1>(weaks).upgrade().has_value())) << "\n";
-    std::cout << "w3:" << " " << ::tpy::print_bool((!std::get<2>(weaks).upgrade().has_value())) << "\n";
+    std::cout << "--- after strong death ---" << "\n" << ::tpy::check_signals;
+    std::cout << "w1:" << " " << ::tpy::print_bool((!std::get<0>(weaks).upgrade().has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << "w2:" << " " << ::tpy::print_bool((!std::get<1>(weaks).upgrade().has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << "w3:" << " " << ::tpy::print_bool((!std::get<2>(weaks).upgrade().has_value())) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.rc import Rc, Weak

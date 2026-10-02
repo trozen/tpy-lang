@@ -20,8 +20,8 @@ void main() {
     const auto& __tup_1 = t;
     x = std::get<0>(__tup_1);
     y = std::get<1>(__tup_1);
-    std::cout << x << "\n";
-    std::cout << y << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // main()

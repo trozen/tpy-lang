@@ -54,22 +54,22 @@ void main() {
     while ((::tpy::__len__(h) > 0)) {
         out.push_back(::tpystd::heapq::heappop<Box>(h).val);
     }
-    std::cout << ::tpy::ListPrinter(out) << "\n";
+    std::cout << ::tpy::ListPrinter(out) << "\n" << ::tpy::check_signals;
     std::vector<Box> h_empty = std::vector<Box>{};
-    std::cout << ::tpystd::heapq::heappushpop<Box>(h_empty, Box(::tpy::BigInt(7))).val << "\n";
-    std::cout << ::tpy::__len__(h_empty) << "\n";
+    std::cout << ::tpystd::heapq::heappushpop<Box>(h_empty, Box(::tpy::BigInt(7))).val << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(h_empty) << "\n" << ::tpy::check_signals;
     std::vector<Box> h2 = {Box(::tpy::BigInt(2)), Box(::tpy::BigInt(4)), Box(::tpy::BigInt(6))};
     ::tpystd::heapq::heapify<Box>(h2);
-    std::cout << ::tpystd::heapq::heappushpop<Box>(h2, Box(::tpy::BigInt(1))).val << "\n";
-    std::cout << ::tpystd::heapq::heappushpop<Box>(h2, Box(::tpy::BigInt(5))).val << "\n";
-    std::cout << ::tpy::__getitem__(h2, 0).val << "\n";
+    std::cout << ::tpystd::heapq::heappushpop<Box>(h2, Box(::tpy::BigInt(1))).val << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::heapq::heappushpop<Box>(h2, Box(::tpy::BigInt(5))).val << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(h2, 0).val << "\n" << ::tpy::check_signals;
     std::vector<Box> h3 = {Box(::tpy::BigInt(1)), Box(::tpy::BigInt(3)), Box(::tpy::BigInt(5))};
     ::tpystd::heapq::heapify<Box>(h3);
-    std::cout << ::tpystd::heapq::heapreplace<Box>(h3, Box(::tpy::BigInt(10))).val << "\n";
-    std::cout << ::tpy::__getitem__(h3, 0).val << "\n";
+    std::cout << ::tpystd::heapq::heapreplace<Box>(h3, Box(::tpy::BigInt(10))).val << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(h3, 0).val << "\n" << ::tpy::check_signals;
     std::vector<Box> h4 = {Box(::tpy::BigInt(42))};
-    std::cout << ::tpystd::heapq::heapreplace<Box>(h4, Box(::tpy::BigInt(99))).val << "\n";
-    std::cout << ::tpy::__getitem__(h4, 0).val << "\n";
+    std::cout << ::tpystd::heapq::heapreplace<Box>(h4, Box(::tpy::BigInt(99))).val << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(h4, 0).val << "\n" << ::tpy::check_signals;
 }
 
 // # heapq with reference-type T: regression guard for rvalue-arg acceptance on

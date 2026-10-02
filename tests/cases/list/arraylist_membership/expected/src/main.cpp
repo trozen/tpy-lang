@@ -37,11 +37,11 @@ void main() {
     a.append(10);
     a.append(20);
     a.append(30);
-    std::cout << ::tpy::print_bool((a.__contains__(20))) << "\n";
-    std::cout << ::tpy::print_bool((a.__contains__(99))) << "\n";
+    std::cout << ::tpy::print_bool((a.__contains__(20))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a.__contains__(99))) << "\n" << ::tpy::check_signals;
     SimpleBuffer b = SimpleBuffer();
-    std::cout << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 20) { __found = true; break; } } __found; })) << "\n";
-    std::cout << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 99) { __found = true; break; } } __found; })) << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 20) { __found = true; break; } } __found; })) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 99) { __found = true; break; } } __found; })) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> doubled = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = a;
@@ -53,7 +53,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(doubled) << "\n";
+    std::cout << ::tpy::ListPrinter(doubled) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> unique = ({
         ::tpy::ordered_set<int32_t> __result;
         auto& __obj_1 = a;
@@ -65,7 +65,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(unique) << "\n";
+    std::cout << ::tpy::__len__(unique) << "\n" << ::tpy::check_signals;
     int32_t total = 0;
     auto& __src_2 = a;
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -75,7 +75,7 @@ void main() {
         int32_t x = ::tpy::unwrap_ref(*__r_3);
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

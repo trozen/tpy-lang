@@ -126,7 +126,7 @@ __coro_worker worker(::tpystd::asyncio::Semaphore& sem, Counters& c) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         counter.emplace(::tpystd::asyncio::Semaphore(2));
-        std::cout << "locked0:" << " " << ::tpy::print_bool((*counter).locked()) << "\n";
+        std::cout << "locked0:" << " " << ::tpy::print_bool((*counter).locked()) << "\n" << ::tpy::check_signals;
         __sub_0.emplace((*counter));
         __state = S_RESUME_0;
         continue;
@@ -145,11 +145,11 @@ __coro_worker worker(::tpystd::asyncio::Semaphore& sem, Counters& c) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "locked_full:" << " " << ::tpy::print_bool((*counter).locked()) << "\n";
+        std::cout << "locked_full:" << " " << ::tpy::print_bool((*counter).locked()) << "\n" << ::tpy::check_signals;
         (*counter).release();
         (*counter).release();
         (*counter).release();
-        std::cout << "locked_extra:" << " " << ::tpy::print_bool((*counter).locked()) << "\n";
+        std::cout << "locked_extra:" << " " << ::tpy::print_bool((*counter).locked()) << "\n" << ::tpy::check_signals;
         sem.emplace(::tpystd::asyncio::Semaphore(2));
         c.emplace(Counters());
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<std::monostate>>{});
@@ -167,13 +167,13 @@ __coro_worker worker(::tpystd::asyncio::Semaphore& sem, Counters& c) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r2).value();
         __sub_2.reset();
-        std::cout << "peak:" << " " << (*c).peak << "\n";
+        std::cout << "peak:" << " " << (*c).peak << "\n" << ::tpy::check_signals;
         {
             try {
                 bad.emplace(::tpystd::asyncio::Semaphore(-1));
-                std::cout << "no error" << "\n";
+                std::cout << "no error" << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::ValueError&) {
-                std::cout << "caught negative" << "\n";
+                std::cout << "caught negative" << "\n" << ::tpy::check_signals;
             }
         }
         __state = S_DONE;

@@ -15,7 +15,7 @@ void test_literal_iter() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char ch = *__beg_0;
-        std::cout << ch << "\n";
+        std::cout << ch << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -30,7 +30,7 @@ void test_var_iter() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char ch = *__beg_0;
-        std::cout << ch << "\n";
+        std::cout << ch << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -48,7 +48,7 @@ void test_empty_literal() {
         char ch = *__beg_0;
         count = ::tpy::add_check<int32_t>(count, 1);
     }
-    std::cout << "empty:" << " " << count << "\n";
+    std::cout << "empty:" << " " << count << "\n" << ::tpy::check_signals;
 }
 
 // def test_single_char() -> None:
@@ -60,7 +60,7 @@ void test_single_char() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char ch = *__beg_0;
-        std::cout << ch << "\n";
+        std::cout << ch << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -58,14 +58,14 @@ std::string with_capture(std::optional<int32_t> x, bool flag) {
 //     print(with_capture(int32(5), True))
 //     print(with_capture(int32(5), False))
 void main() {
-    std::cout << ::tpyapp::main::with_wildcard(std::nullopt, true) << "\n";
-    std::cout << ::tpyapp::main::with_wildcard(std::nullopt, false) << "\n";
-    std::cout << ::tpyapp::main::with_wildcard(5, true) << "\n";
-    std::cout << ::tpyapp::main::with_wildcard(5, false) << "\n";
-    std::cout << ::tpyapp::main::with_capture(std::nullopt, true) << "\n";
-    std::cout << ::tpyapp::main::with_capture(std::nullopt, false) << "\n";
-    std::cout << ::tpyapp::main::with_capture(5, true) << "\n";
-    std::cout << ::tpyapp::main::with_capture(5, false) << "\n";
+    std::cout << ::tpyapp::main::with_wildcard(std::nullopt, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_wildcard(std::nullopt, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_wildcard(5, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_wildcard(5, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_capture(std::nullopt, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_capture(std::nullopt, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_capture(5, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_capture(5, false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

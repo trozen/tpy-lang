@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(c.get_x())        # base method sees the child-assigned value -> 7
 void main() {
     Child c = Child(7);
-    std::cout << c.get_x() << "\n";
+    std::cout << c.get_x() << "\n" << ::tpy::check_signals;
 }
 
 // main()

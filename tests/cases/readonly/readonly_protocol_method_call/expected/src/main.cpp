@@ -20,7 +20,7 @@ void __tpy_init() {
     items->push_back(1);
     items->push_back(2);
     items->push_back(3);
-    std::cout << ::tpyapp::main::get_len((*items)) << "\n";
+    std::cout << ::tpyapp::main::get_len((*items)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

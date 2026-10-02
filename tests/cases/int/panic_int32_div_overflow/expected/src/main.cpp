@@ -21,7 +21,7 @@ void __tpy_init() {
     x = -2147483648;
     y = -1;
     z = (::tpy::div_check<int32_t>(x, y));
-    std::cout << z << "\n";
+    std::cout << z << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

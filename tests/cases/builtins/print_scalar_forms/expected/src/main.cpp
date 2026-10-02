@@ -11,17 +11,17 @@ namespace tpyapp::main {
 //     print()
 //     banner()              # a bare call statement
 void show(int32_t n, bool ok, double ratio, uint8_t small) {
-    std::cout << "n =" << " " << n << "\n";
-    std::cout << n << " " << ::tpy::print_bool(ok) << " " << ::tpy::print_float(ratio) << "\n";
-    std::cout << static_cast<int>(small) << "\n";
-    std::cout << "\n";
+    std::cout << "n =" << " " << n << "\n" << ::tpy::check_signals;
+    std::cout << n << " " << ::tpy::print_bool(ok) << " " << ::tpy::print_float(ratio) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(small) << "\n" << ::tpy::check_signals;
+    std::cout << "\n" << ::tpy::check_signals;
     ::tpyapp::main::banner();
 }
 
 // def banner() -> None:
 //     print("----")
 void banner() {
-    std::cout << "----" << "\n";
+    std::cout << "----" << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

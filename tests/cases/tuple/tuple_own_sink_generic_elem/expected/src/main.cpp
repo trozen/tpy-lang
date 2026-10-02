@@ -35,7 +35,7 @@ void main() {
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Item*, int32_t>>(__for_tup_0);
         auto&& it = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
         int32_t i = std::get<1>(__tup_1);
-        std::cout << i << " " << it.n << "\n";
+        std::cout << i << " " << it.n << "\n" << ::tpy::check_signals;
     }
     auto& __obj_1 = ps;
     auto __beg_1 = __obj_1.begin();
@@ -54,9 +54,9 @@ void main() {
         auto __tup_3 = ::tpy::tuple_to_pointer<std::tuple<Item*, int32_t>>(__for_tup_2);
         auto&& it3 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
         int32_t i3 = std::get<1>(__tup_3);
-        std::cout << i3 << " " << it3.n << "\n";
+        std::cout << i3 << " " << it3.n << "\n" << ::tpy::check_signals;
     }
-    std::cout << t.get(0).n << "\n";
+    std::cout << t.get(0).n << "\n" << ::tpy::check_signals;
 }
 
 // main()

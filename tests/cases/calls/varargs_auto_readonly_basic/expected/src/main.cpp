@@ -35,7 +35,7 @@ int32_t via_param(const Box& b, const Box& c) {
 void main() {
     Box x = Box(3);
     Box y = Box(4);
-    std::cout << ::tpyapp::main::via_param(x, y) << "\n";
+    std::cout << ::tpyapp::main::via_param(x, y) << "\n" << ::tpy::check_signals;
 }
 
 // main()

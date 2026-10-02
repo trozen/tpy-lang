@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(x)
 void main() {
     int64_t x = (::tpy::lshift_check<int64_t>(1, 63));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // main()

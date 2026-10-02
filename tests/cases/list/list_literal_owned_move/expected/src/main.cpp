@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void array_lit() {
     ::tpystd::tplib::box::Box<int32_t> p = ::tpystd::tplib::box::Box<int32_t>(1);
     std::array<::tpystd::tplib::box::Box<int32_t>, 1> xs = {std::move(p)};
-    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).get() << "\n";
+    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).get() << "\n" << ::tpy::check_signals;
 }
 
 // def vector_lit() -> None:
@@ -24,7 +24,7 @@ void vector_lit() {
     ::tpystd::tplib::box::Box<int32_t> p = ::tpystd::tplib::box::Box<int32_t>(2);
     ::tpystd::tplib::box::Box<int32_t> q = ::tpystd::tplib::box::Box<int32_t>(3);
     std::vector<::tpystd::tplib::box::Box<int32_t>> xs = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(std::move(p), std::move(q));
-    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).get() << " " << ::tpy::__getitem__(xs, 1).get() << "\n";
+    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).get() << " " << ::tpy::__getitem__(xs, 1).get() << "\n" << ::tpy::check_signals;
 }
 
 // def not_last_use() -> None:
@@ -37,7 +37,7 @@ void not_last_use() {
     std::vector<int32_t> inner = {1, 2};
     std::array<std::vector<int32_t>, 1> xs = {{inner}};
     inner.push_back(3);
-    std::cout << ::tpy::__len__(inner) << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(inner) << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

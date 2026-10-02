@@ -27,16 +27,16 @@ void __tpy_init() {
 
     static Square __global_slot_1 = Square(5);
     s = &__global_slot_1;
-    std::cout << s->describe() << "\n";
-    std::cout << s->area() << "\n";
+    std::cout << s->describe() << "\n" << ::tpy::check_signals;
+    std::cout << s->area() << "\n" << ::tpy::check_signals;
     static Rectangle __global_slot_2 = Rectangle(4, 6);
     r = &__global_slot_2;
-    std::cout << r->describe() << "\n";
-    std::cout << r->area() << "\n";
+    std::cout << r->describe() << "\n" << ::tpy::check_signals;
+    std::cout << r->area() << "\n" << ::tpy::check_signals;
     static Shape __global_slot_3 = Shape("Base");
     base = &__global_slot_3;
-    std::cout << base->describe() << "\n";
-    std::cout << base->area() << "\n";
+    std::cout << base->describe() << "\n" << ::tpy::check_signals;
+    std::cout << base->area() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

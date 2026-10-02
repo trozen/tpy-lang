@@ -24,7 +24,7 @@ int32_t read_then_shadow() {
 // def main() -> None:
 //     print(read(), read_then_shadow())
 void main() {
-    std::cout << ::tpyapp::main::read() << " " << ::tpyapp::main::read_then_shadow() << "\n";
+    std::cout << ::tpyapp::main::read() << " " << ::tpyapp::main::read_then_shadow() << "\n" << ::tpy::check_signals;
 }
 
 // gate: Gate = Gate(7)

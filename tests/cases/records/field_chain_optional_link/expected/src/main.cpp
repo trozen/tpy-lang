@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     # the checked form: the Optional link is not proven at this read
 //     print("unproven", o.inner.items[0])  # tpyc: warning(/Potential None access/)
 void unproven(const Outer& o) {
-    std::cout << "unproven" << " " << ::tpy::__getitem__(::tpy::deref_optional_check(o.inner).items, 0) << "\n";
+    std::cout << "unproven" << " " << ::tpy::__getitem__(::tpy::deref_optional_check(o.inner).items, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def proven(o: Outer) -> None:
@@ -20,7 +20,7 @@ void unproven(const Outer& o) {
 void proven(Outer& o) {
     if ((o.inner.has_value())) {
         ::tpy::__setitem__((*o.inner).items, 0, 9);
-        std::cout << "proven" << " " << ::tpy::__getitem__((*o.inner).items, 0) << "\n";
+        std::cout << "proven" << " " << ::tpy::__getitem__((*o.inner).items, 0) << "\n" << ::tpy::check_signals;
     }
 }
 

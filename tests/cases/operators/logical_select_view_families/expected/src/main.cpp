@@ -78,26 +78,26 @@ int32_t pick_rebound(::tpy::BytesView a, ::tpy::BytesView __param_b) {
 void main() {
     ::tpy::BytesView empty = ::tpy::BytesView{};
     ::tpy::BytesView data = ::tpy::bytes_literal("xy", 2);
-    std::cout << ::tpy::__len__(((!empty.empty()) ? empty : data)) << "\n";
-    std::cout << ::tpy::__len__(((!data.empty()) ? empty : data)) << "\n";
-    std::cout << ::tpy::__len__(((!data.empty()) ? data : empty)) << "\n";
-    std::cout << ::tpyapp::main::pick(::tpy::BytesView{}, ::tpy::bytes_literal("xyz", 3)) << "\n";
-    std::cout << ::tpyapp::main::pick_local(::tpy::BytesView{}, ::tpy::bytes_literal("abcd", 4)) << "\n";
-    std::cout << ::tpyapp::main::pick_rebound(::tpy::BytesView{}, ::tpy::bytes_literal("z", 1)) << "\n";
+    std::cout << ::tpy::__len__(((!empty.empty()) ? empty : data)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(((!data.empty()) ? empty : data)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(((!data.empty()) ? data : empty)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick(::tpy::BytesView{}, ::tpy::bytes_literal("xyz", 3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick_local(::tpy::BytesView{}, ::tpy::bytes_literal("abcd", 4)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick_rebound(::tpy::BytesView{}, ::tpy::bytes_literal("z", 1)) << "\n" << ::tpy::check_signals;
     Store st = Store(::tpy::bytes_literal("z", 1));
     st.put(::tpy::BytesView{}, ::tpy::bytes_literal("pq", 2));
-    std::cout << ::tpy::BytesPrinter(st.data) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpyapp::main::pick_owned(::tpy::BytesView{}, ::tpy::bytes_literal("ab", 2))) << "\n";
+    std::cout << ::tpy::BytesPrinter(st.data) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpyapp::main::pick_owned(::tpy::BytesView{}, ::tpy::bytes_literal("ab", 2))) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> xs = {1, 2, 3};
     std::vector<int32_t> ys = std::vector<int32_t>{};
     std::span<int32_t> s = std::span<int32_t>(xs);
     std::span<int32_t> t = std::span<int32_t>(ys);
     std::span<int32_t> u = ((::tpy::__len__(t) != 0) ? t : s);
-    std::cout << ::tpy::__len__(u) << "\n";
+    std::cout << ::tpy::__len__(u) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("z", 1));
     ::tpy::ByteArray bb = ::tpy::ByteArray();
     ::tpy::ByteArray& picked = ((!bb.empty()) ? bb : ba);
-    std::cout << ::tpy::__len__(picked) << "\n";
+    std::cout << ::tpy::__len__(picked) << "\n" << ::tpy::check_signals;
 }
 
 // main()

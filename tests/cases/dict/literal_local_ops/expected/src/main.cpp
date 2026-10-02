@@ -33,7 +33,7 @@ int32_t dict_ops() {
 //     return e.pop(k, v)
 int32_t empty_dict(int32_t k, int32_t v) {
     ::tpy::ordered_map<int32_t, int32_t> e = ::tpy::ordered_map<int32_t, int32_t>();
-    std::cout << ::tpy::__len__(e) << "\n";
+    std::cout << ::tpy::__len__(e) << "\n" << ::tpy::check_signals;
     return ::tpy::dict_pop_default(e, k, v);
 }
 
@@ -61,9 +61,9 @@ int32_t set_ops() {
 //     print(empty_dict(1, 42))
 //     print(set_ops())
 void main() {
-    std::cout << ::tpyapp::main::dict_ops() << "\n";
-    std::cout << ::tpyapp::main::empty_dict(1, 42) << "\n";
-    std::cout << ::tpyapp::main::set_ops() << "\n";
+    std::cout << ::tpyapp::main::dict_ops() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::empty_dict(1, 42) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::set_ops() << "\n" << ::tpy::check_signals;
 }
 
 // main()

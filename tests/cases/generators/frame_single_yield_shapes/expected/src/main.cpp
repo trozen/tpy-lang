@@ -52,7 +52,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t u = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "own_container" << " " << u << "\n";
+            std::cout << "own_container" << " " << u << "\n" << ::tpy::check_signals;
         }
     }
     int32_t total = 0;
@@ -69,8 +69,8 @@ void main() {
             }
         }
     }
-    std::cout << "over_global" << " " << total << " " << ::tpy::__getitem__((*xs), 2) << "\n";
-    std::cout << "value_instantiation" << " " << ::tpyapp::main::value_instantiation_in_head() << "\n";
+    std::cout << "over_global" << " " << total << " " << ::tpy::__getitem__((*xs), 2) << "\n" << ::tpy::check_signals;
+    std::cout << "value_instantiation" << " " << ::tpyapp::main::value_instantiation_in_head() << "\n" << ::tpy::check_signals;
 }
 
 // xs = [1, 2, 3]

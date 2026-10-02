@@ -60,7 +60,7 @@ namespace tpyapp::main {
 }
 
 void __coro_worker::__finally_0() {
-    std::cout << "worker cleanup" << "\n";
+    std::cout << "worker cleanup" << "\n" << ::tpy::check_signals;
 }
 
 // async def worker() -> None:
@@ -86,7 +86,7 @@ __coro_worker worker() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "main done" << "\n";
+        std::cout << "main done" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -106,7 +106,7 @@ __coro_main_coro main_coro() {
 //     print("after run")
 void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
-    std::cout << "after run" << "\n";
+    std::cout << "after run" << "\n" << ::tpy::check_signals;
 }
 
 // # A coroutine frame dropped mid-suspension (task never completed before

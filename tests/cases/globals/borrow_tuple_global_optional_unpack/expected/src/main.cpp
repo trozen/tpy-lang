@@ -19,7 +19,7 @@ void main() {
     if ((a != nullptr)) {
         a->x = 11;
     }
-    std::cout << t1->x << " " << ::tpy::print_bool((b == nullptr)) << "\n";
+    std::cout << t1->x << " " << ::tpy::print_bool((b == nullptr)) << "\n" << ::tpy::check_signals;
 }
 
 // t1 = Elem(10)

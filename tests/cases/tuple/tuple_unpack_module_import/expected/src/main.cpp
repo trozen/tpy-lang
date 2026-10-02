@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(lo)
 //     print(hi)
 void show() {
-    std::cout << ::tpyapp::config::lo << "\n";
-    std::cout << ::tpyapp::config::hi << "\n";
+    std::cout << ::tpyapp::config::lo << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::config::hi << "\n" << ::tpy::check_signals;
 }
 
 // from config import lo, hi
@@ -23,8 +23,8 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::config::__tpy_init();
-    std::cout << ::tpyapp::config::lo << "\n";
-    std::cout << ::tpyapp::config::hi << "\n";
+    std::cout << ::tpyapp::config::lo << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::config::hi << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show();
 }
 

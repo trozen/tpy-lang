@@ -13,7 +13,7 @@ void value_move() {
     ::tpystd::tplib::box::Box<int32_t> p = ::tpystd::tplib::box::Box<int32_t>(7);
     ::tpystd::tplib::box::Box<int32_t> q = ::tpystd::tplib::box::Box<int32_t>(8);
     ::tpy::ordered_map<int32_t, ::tpystd::tplib::box::Box<int32_t>> d = ::tpy::make_ordered_map<int32_t, ::tpystd::tplib::box::Box<int32_t>>(0, std::move(p), 1, std::move(q));
-    std::cout << ::tpy::__getitem__(d, 0).get() << " " << ::tpy::__getitem__(d, 1).get() << "\n";
+    std::cout << ::tpy::__getitem__(d, 0).get() << " " << ::tpy::__getitem__(d, 1).get() << "\n" << ::tpy::check_signals;
 }
 
 // def not_last_use() -> None:
@@ -26,7 +26,7 @@ void not_last_use() {
     std::vector<int32_t> inner = {1, 2};
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> d = ::tpy::ordered_map<int32_t, std::vector<int32_t>>({{0, inner}});
     inner.push_back(3);
-    std::cout << ::tpy::__len__(inner) << " " << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(inner) << " " << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

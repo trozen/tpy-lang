@@ -8,15 +8,15 @@ namespace tpyapp::main {
 //     print(kwargs["host"])
 //     print(kwargs["port"])
 void connect(const Options& kwargs) {
-    std::cout << kwargs.host << "\n";
-    std::cout << kwargs.port << "\n";
+    std::cout << kwargs.host << "\n" << ::tpy::check_signals;
+    std::cout << kwargs.port << "\n" << ::tpy::check_signals;
 }
 
 // def wrapper(**kwargs: Unpack[Options]) -> None:
 //     print("forwarding...")
 //     connect(**kwargs)
 void wrapper(const Options& kwargs) {
-    std::cout << "forwarding..." << "\n";
+    std::cout << "forwarding..." << "\n" << ::tpy::check_signals;
     ::tpyapp::main::connect(kwargs);
 }
 

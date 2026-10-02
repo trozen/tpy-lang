@@ -35,7 +35,7 @@ std::function<int32_t()> make_counter() {
     auto unrelated = []() -> int32_t {
         return 1;
     };
-    std::cout << "unrelated:" << " " << unrelated() << "\n";
+    std::cout << "unrelated:" << " " << unrelated() << "\n" << ::tpy::check_signals;
     return read;
 }
 
@@ -60,7 +60,7 @@ std::function<int32_t()> make_reader() {
     auto other = []() -> int32_t {
         return 0;
     };
-    std::cout << "other:" << " " << other() << "\n";
+    std::cout << "other:" << " " << other() << "\n" << ::tpy::check_signals;
     return total;
 }
 
@@ -85,7 +85,7 @@ std::function<int32_t()> make_param_shadow() {
         return ::tpy::__len__(xs);
     };
     std::vector<int32_t> __tmp_1 = {0};
-    std::cout << "param_shadow:" << " " << unrelated(__tmp_1) << "\n";
+    std::cout << "param_shadow:" << " " << unrelated(__tmp_1) << "\n" << ::tpy::check_signals;
     return total;
 }
 
@@ -103,13 +103,13 @@ std::function<int32_t()> make_param_shadow() {
 //     print("param_shadow_read:", shadowed)
 void main() {
     std::function<int32_t()> getter = ::tpyapp::main::make_getter();
-    std::cout << getter() << "\n";
+    std::cout << getter() << "\n" << ::tpy::check_signals;
     int32_t counted = (::tpyapp::main::make_counter())();
-    std::cout << "counter:" << " " << counted << "\n";
+    std::cout << "counter:" << " " << counted << "\n" << ::tpy::check_signals;
     int32_t read = (::tpyapp::main::make_reader())();
-    std::cout << "reader:" << " " << read << "\n";
+    std::cout << "reader:" << " " << read << "\n" << ::tpy::check_signals;
     int32_t shadowed = (::tpyapp::main::make_param_shadow())();
-    std::cout << "param_shadow_read:" << " " << shadowed << "\n";
+    std::cout << "param_shadow_read:" << " " << shadowed << "\n" << ::tpy::check_signals;
 }
 
 // main()

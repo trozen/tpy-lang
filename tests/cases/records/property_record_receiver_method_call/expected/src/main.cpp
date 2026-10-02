@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void use_record(C& c) {
     c.p().bump();
     c.p().bump();
-    std::cout << "free_fn:" << " " << c._p.x << "\n";
+    std::cout << "free_fn:" << " " << c._p.x << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -26,7 +26,7 @@ void main() {
     ::tpyapp::main::use_record(c);
     Owner o = Owner();
     o.bump_twice();
-    std::cout << "method:" << " " << o.c._p.x << "\n";
+    std::cout << "method:" << " " << o.c._p.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

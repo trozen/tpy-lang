@@ -113,27 +113,27 @@ void __tpy_init() {
     s->id = 1;
     s->kind = shapekind::sccircle;
     s->radius = 2.0;
-    std::cout << "id=";
-    std::cout << s->id;
-    std::cout << " area=";
-    std::cout << ::tpy::print_float(::tpyapp::main::area(&(*s))) << "\n";
+    std::cout << "id=" << ::tpy::check_signals;
+    std::cout << s->id << ::tpy::check_signals;
+    std::cout << " area=" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpyapp::main::area(&(*s))) << "\n" << ::tpy::check_signals;
     s->id = 2;
     s->kind = shapekind::screct;
     s->w = 3.0;
     s->h = 4.0;
-    std::cout << "id=";
-    std::cout << s->id;
-    std::cout << " area=";
-    std::cout << ::tpy::print_float(::tpyapp::main::area(&(*s))) << "\n";
+    std::cout << "id=" << ::tpy::check_signals;
+    std::cout << s->id << ::tpy::check_signals;
+    std::cout << " area=" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpyapp::main::area(&(*s))) << "\n" << ::tpy::check_signals;
     s->id = 3;
     s->kind = shapekind::sctri;
     s->a = 5.0;
     s->b = 6.0;
     s->c = 7.0;
-    std::cout << "id=";
-    std::cout << s->id;
-    std::cout << " area=";
-    std::cout << ::tpy::print_float(::tpyapp::main::area(&(*s))) << "\n";
+    std::cout << "id=" << ::tpy::check_signals;
+    std::cout << s->id << ::tpy::check_signals;
+    std::cout << " area=" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpyapp::main::area(&(*s))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -68,7 +68,7 @@ inline ::tpy::BigInt Thrower::__enter__() const {
 //     print("exit ran")
 //     raise RuntimeError("from exit")
 inline void Thrower::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    std::cout << "exit ran" << "\n";
+    std::cout << "exit ran" << "\n" << ::tpy::check_signals;
     throw ::tpy::RuntimeError("from exit");
 }
 
@@ -82,7 +82,7 @@ inline ::tpy::BigInt Suppressor::__enter__() const {
 //     print("exit suppress")
 //     return True
 inline bool Suppressor::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    std::cout << "exit suppress" << "\n";
+    std::cout << "exit suppress" << "\n" << ::tpy::check_signals;
     return true;
 }
 void __tpy_init();

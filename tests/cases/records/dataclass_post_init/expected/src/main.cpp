@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(r.area)  # 12 -- derived by __post_init__; stays 0 if the hook never runs
 void main() {
     Rect r = Rect(3, 4);
-    std::cout << r.w << "\n";
-    std::cout << r.h << "\n";
-    std::cout << r.area << "\n";
+    std::cout << r.w << "\n" << ::tpy::check_signals;
+    std::cout << r.h << "\n" << ::tpy::check_signals;
+    std::cout << r.area << "\n" << ::tpy::check_signals;
 }
 
 // # @dataclass __post_init__ runs after the synthesized __init__ sets the fields,

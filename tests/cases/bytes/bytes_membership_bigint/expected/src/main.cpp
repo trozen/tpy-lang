@@ -20,14 +20,14 @@ namespace tpyapp::main {
 void main() {
     ::tpy::BytesView b = ::tpy::bytes_literal("ABC", 3);
     ::tpy::BigInt k = ::tpy::BigInt(66);
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains(b, k))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains(b, 200))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains(b, k))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains(b, 200))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt big = ::tpy::BigInt(static_cast<int64_t>(1099511627776LL));
     {
         try {
-            std::cout << ::tpy::print_bool((::tpy::bytes_contains(b, big))) << "\n";
+            std::cout << ::tpy::print_bool((::tpy::bytes_contains(b, big))) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "out of byte range" << "\n";
+            std::cout << "out of byte range" << "\n" << ::tpy::check_signals;
         }
     }
 }

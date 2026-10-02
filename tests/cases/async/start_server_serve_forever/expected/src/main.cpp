@@ -165,7 +165,7 @@ __coro_client client(int32_t port, std::string_view msg) {
             if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             __await_lift_0 = std::move(__r2).value();
             __sub_2.reset();
-            std::cout << __await_lift_0 << "\n";
+            std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
             __state = S_JOIN_1;
             continue;
         } catch (...) {
@@ -206,7 +206,7 @@ __coro_client client(int32_t port, std::string_view msg) {
         }
     }
     case S_JOIN_0: {
-        std::cout << "served" << "\n";
+        std::cout << "served" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

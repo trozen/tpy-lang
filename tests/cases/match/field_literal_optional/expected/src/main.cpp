@@ -37,13 +37,13 @@ std::string describe(const P& p) {
 //     print(describe(P(None, None)))
 void main() {
     P __tmp_1 = P(3, std::nullopt);
-    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n" << ::tpy::check_signals;
     P __tmp_2 = P(4, "hi");
-    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n" << ::tpy::check_signals;
     P __tmp_3 = P(7, std::nullopt);
-    std::cout << ::tpyapp::main::describe(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_3) << "\n" << ::tpy::check_signals;
     P __tmp_4 = P(std::nullopt, std::nullopt);
-    std::cout << ::tpyapp::main::describe(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_4) << "\n" << ::tpy::check_signals;
 }
 
 // main()

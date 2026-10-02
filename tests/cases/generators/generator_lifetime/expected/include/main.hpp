@@ -1213,14 +1213,14 @@ inline Cell::Cell(int32_t v) : v(v) {}
 //     print("ctx enter")
 //     return self
 inline Ctx& Ctx::__enter__() {
-    std::cout << "ctx enter" << "\n";
+    std::cout << "ctx enter" << "\n" << ::tpy::check_signals;
     return (*this);
 }
 
 // def __exit__(self, et, ev, tb) -> None:
 //     print("ctx exit")
 inline void Ctx::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    std::cout << "ctx exit" << "\n";
+    std::cout << "ctx exit" << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self) -> None:
@@ -1257,7 +1257,7 @@ inline Tally& Tally::__enter__() {
 //     print("tally exit", self.n)
 inline void Tally::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) {
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
-    std::cout << "tally exit" << " " << this->n << "\n";
+    std::cout << "tally exit" << " " << this->n << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, tag: int32) -> None:
@@ -1279,7 +1279,7 @@ inline Noisy& Noisy::operator=(Noisy&& other) noexcept {
 //     print("noisy del", self.tag)
 inline Noisy::~Noisy() {
     if (!this->__tpy_owned_) return;
-    std::cout << "noisy del" << " " << this->tag << "\n";
+    std::cout << "noisy del" << " " << this->tag << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, base: int32) -> None:
@@ -1331,7 +1331,7 @@ void drive(std::string_view tag, T_g& g) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << tag << " " << v << "\n";
+        std::cout << tag << " " << v << "\n" << ::tpy::check_signals;
     }
 }
 // def abandon(tag: str, g: Iterator[int32]) -> None:
@@ -1340,7 +1340,7 @@ void drive(std::string_view tag, T_g& g) {
 template<::tpystd::typing::Iterator<int32_t> T_g>
 void abandon(std::string_view tag, T_g& g) {
     int32_t v = ::tpyapp::main::first(g);
-    std::cout << tag << " " << "abandoned at" << " " << v << "\n";
+    std::cout << tag << " " << "abandoned at" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

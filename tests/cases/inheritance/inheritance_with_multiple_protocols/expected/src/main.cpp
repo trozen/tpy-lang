@@ -30,14 +30,14 @@ void __tpy_init() {
 
     static Car __global_slot_1 = Car("Toyota", 2023, "Camry", 1500);
     c = &__global_slot_1;
-    std::cout << c->brand << "\n";
-    std::cout << c->year << "\n";
-    std::cout << c->model << "\n";
-    std::cout << c->car_weight << "\n";
-    std::cout << c->get_brand() << "\n";
-    std::cout << c->__str__() << "\n";
-    std::cout << c->weight() << "\n";
-    std::cout << c->describe() << "\n";
+    std::cout << c->brand << "\n" << ::tpy::check_signals;
+    std::cout << c->year << "\n" << ::tpy::check_signals;
+    std::cout << c->model << "\n" << ::tpy::check_signals;
+    std::cout << c->car_weight << "\n" << ::tpy::check_signals;
+    std::cout << c->get_brand() << "\n" << ::tpy::check_signals;
+    std::cout << c->__str__() << "\n" << ::tpy::check_signals;
+    std::cout << c->weight() << "\n" << ::tpy::check_signals;
+    std::cout << c->describe() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

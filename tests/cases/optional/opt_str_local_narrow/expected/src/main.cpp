@@ -61,10 +61,10 @@ std::string pick_str(const std::vector<std::string>& argv) {
 //     print(pick_bytes(1))
 void main() {
     std::vector<std::string> __tmp_1 = {"a", "cmd", "b"};
-    std::cout << ::tpyapp::main::pick_str(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::pick_str(__tmp_1) << "\n" << ::tpy::check_signals;
     std::vector<std::string> __tmp_2 = {"x", "y"};
-    std::cout << ::tpyapp::main::pick_str(__tmp_2) << "\n";
-    std::cout << ::tpyapp::main::pick_bytes(::tpy::BigInt(1)) << "\n";
+    std::cout << ::tpyapp::main::pick_str(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick_bytes(::tpy::BigInt(1)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

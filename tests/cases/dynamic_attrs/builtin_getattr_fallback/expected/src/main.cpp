@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Bag b = Bag(::tpy::ordered_map<std::string, ::tpy::Any>({{"alpha", ::tpy::make_any(std::string("first"))}, {"beta", ::tpy::make_any(std::string("second"))}}));
     std::string a = ::tpy::any_cast_or_panic<std::string>(b.__getattr__("alpha"));
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
 }
 
 // main()

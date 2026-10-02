@@ -12,7 +12,7 @@ void greet(std::optional<std::string_view> name) {
     if ((!name.has_value())) {
         return;
     }
-    std::cout << std::format("hello, {}", (*name)) << "\n";
+    std::cout << std::format("hello, {}", (*name)) << "\n" << ::tpy::check_signals;
 }
 
 // def show_int(x: Optional[int32]) -> None:
@@ -23,7 +23,7 @@ void show_int(std::optional<int32_t> x) {
     if ((!x.has_value())) {
         return;
     }
-    std::cout << std::format("value is {}", (*x)) << "\n";
+    std::cout << std::format("value is {}", (*x)) << "\n" << ::tpy::check_signals;
 }
 
 // def show_if_else(x: Optional[str]) -> None:
@@ -33,9 +33,9 @@ void show_int(std::optional<int32_t> x) {
 //         print("nothing")
 void show_if_else(std::optional<std::string_view> x) {
     if ((x.has_value())) {
-        std::cout << std::format("got: {}", (*x)) << "\n";
+        std::cout << std::format("got: {}", (*x)) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "nothing" << "\n";
+        std::cout << "nothing" << "\n" << ::tpy::check_signals;
     }
 }
 

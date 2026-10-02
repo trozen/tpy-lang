@@ -14,7 +14,7 @@ namespace tpyapp::main {
 void main() {
     ::tpy::BigInt a = ::tpy::BigInt(10);
     ::tpy::BigInt b = ::tpy::BigInt(0);
-    std::cout << ((a) / (b)) << "\n";
+    std::cout << ((a) / (b)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

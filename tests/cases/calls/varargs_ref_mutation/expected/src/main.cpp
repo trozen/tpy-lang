@@ -51,14 +51,14 @@ void main() {
     Counter c = Counter(::tpy::BigInt(0));
     std::array<Counter*, 3> __tmp_1{&a, &b, &c};
     ::tpyapp::main::increment_all(::tpy::varargs<Counter>(__tmp_1));
-    std::cout << a.value << "\n";
-    std::cout << b.value << "\n";
-    std::cout << c.value << "\n";
+    std::cout << a.value << "\n" << ::tpy::check_signals;
+    std::cout << b.value << "\n" << ::tpy::check_signals;
+    std::cout << c.value << "\n" << ::tpy::check_signals;
     std::array<Counter*, 2> __tmp_2{&a, &b};
     ::tpyapp::main::set_values(::tpy::varargs<Counter>(__tmp_2));
-    std::cout << a.value << "\n";
-    std::cout << b.value << "\n";
-    std::cout << c.value << "\n";
+    std::cout << a.value << "\n" << ::tpy::check_signals;
+    std::cout << b.value << "\n" << ::tpy::check_signals;
+    std::cout << c.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

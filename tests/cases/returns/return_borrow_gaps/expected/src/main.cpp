@@ -30,7 +30,7 @@ void test_reassign_then_mutate_warns() {
     Point* x = &__slot_1;
     x = &(::tpyapp::main::get_first(items));
     items.push_back(Point(5, 6));
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_reassign_no_mutation_ok() -> None:
@@ -44,7 +44,7 @@ void test_reassign_no_mutation_ok() {
     Point __slot_1 = Point(0, 0);
     Point* x = &__slot_1;
     x = &(::tpyapp::main::get_first(items));
-    std::cout << x->x << "\n";
+    std::cout << x->x << "\n" << ::tpy::check_signals;
 }
 
 // def test_reassign_overwrite_clears_borrow() -> None:
@@ -64,7 +64,7 @@ void test_reassign_overwrite_clears_borrow() {
     x = &(::tpyapp::main::get_first(items));
     x = &(::tpyapp::main::get_first(other));
     items.push_back(Point(5, 6));
-    std::cout << x->x << "\n";
+    std::cout << x->x << "\n" << ::tpy::check_signals;
 }
 
 // # --- Gap (b): call iterable ---
@@ -85,7 +85,7 @@ void test_for_call_iterable_warns() {
         items.push_back(Point(9, 9));
         break;
     }
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_for_call_iterable_readonly_ok() -> None:
@@ -105,7 +105,7 @@ void test_for_call_iterable_readonly_ok() {
         const auto& p = *__beg_0;
         total = (::tpy::add_check<int32_t>(total, p.x));
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // # --- Gap (c): transitive return inference ---
@@ -126,7 +126,7 @@ void test_transitive_return_warns() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     Point& x = ::tpyapp::main::get_first_wrapper(items);
     items.push_back(Point(5, 6));
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_transitive_return_no_mutation_ok() -> None:
@@ -137,7 +137,7 @@ void test_transitive_return_warns() {
 void test_transitive_return_no_mutation_ok() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     Point& x = ::tpyapp::main::get_first_wrapper(items);
-    std::cout << x.x << "\n";
+    std::cout << x.x << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

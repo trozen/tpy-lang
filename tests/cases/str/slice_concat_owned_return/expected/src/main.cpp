@@ -31,7 +31,7 @@ void iter_slice(std::string_view s) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char c = *__beg_0;
-        std::cout << c << "\n";
+        std::cout << c << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -41,7 +41,7 @@ void iter_slice(std::string_view s) {
 //     iter_slice(s)
 void main() {
     std::string_view s = "hello";
-    std::cout << ::tpyapp::main::cut_join(s) << " " << ::tpyapp::main::fmt_slice(s) << "\n";
+    std::cout << ::tpyapp::main::cut_join(s) << " " << ::tpyapp::main::fmt_slice(s) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::iter_slice(s);
 }
 

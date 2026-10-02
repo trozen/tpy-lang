@@ -16,12 +16,12 @@ namespace tpyapp::main {
 void main() {
     A a = A(42);
     Mut m = Mut(a);
-    std::cout << ::tpy::deref_check(m._a).v << "\n";
+    std::cout << ::tpy::deref_check(m._a).v << "\n" << ::tpy::check_signals;
     A b = A(99);
     m.set_a(b);
-    std::cout << ::tpy::deref_check(m._a).v << "\n";
+    std::cout << ::tpy::deref_check(m._a).v << "\n" << ::tpy::check_signals;
     Const c = Const(a);
-    std::cout << ::tpy::deref_check(c._a).v << "\n";
+    std::cout << ::tpy::deref_check(c._a).v << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -21,7 +21,7 @@ int32_t consume(std::tuple<A, int32_t>&& p) {
 //     print(consume(t))
 void main() {
     std::tuple<A, int32_t> t = ::tpyapp::main::make();
-    std::cout << ::tpyapp::main::consume(std::move(t)) << "\n";
+    std::cout << ::tpyapp::main::consume(std::move(t)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -33,8 +33,8 @@ bool f(Lock& lk) {
 //     print(lk.held)
 void main() {
     Lock lk = Lock();
-    std::cout << ::tpy::print_bool(::tpyapp::main::f(lk)) << "\n";
-    std::cout << ::tpy::print_bool(lk.held) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::f(lk)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(lk.held) << "\n" << ::tpy::check_signals;
 }
 
 // main()

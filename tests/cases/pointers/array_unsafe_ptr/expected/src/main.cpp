@@ -14,10 +14,10 @@ namespace tpyapp::main {
 void test_array_to_ptr() {
     std::array<int32_t, 4> arr = {10, 20, 30, 40};
     int32_t* p = arr.data();
-    std::cout << p[0] << "\n";
-    std::cout << p[1] << "\n";
-    std::cout << p[2] << "\n";
-    std::cout << p[3] << "\n";
+    std::cout << p[0] << "\n" << ::tpy::check_signals;
+    std::cout << p[1] << "\n" << ::tpy::check_signals;
+    std::cout << p[2] << "\n" << ::tpy::check_signals;
+    std::cout << p[3] << "\n" << ::tpy::check_signals;
 }
 
 // def test_write_through_array_ptr() -> None:
@@ -29,7 +29,7 @@ void test_write_through_array_ptr() {
     std::array<int32_t, 3> arr = {1, 2, 3};
     int32_t* p = arr.data();
     p[1] = 99;
-    std::cout << ::tpy::__getitem__(arr, 1) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 1) << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store

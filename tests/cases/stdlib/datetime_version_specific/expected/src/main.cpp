@@ -12,13 +12,13 @@ namespace tpyapp::main {
 //     except ValueError:
 //         print("ValueError")
 void main() {
-    std::cout << ::tpystd::datetime::date(::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%Y %G") << "\n";
-    std::cout << ::tpystd::datetime::date(::tpy::BigInt(42), ::tpy::BigInt(5), ::tpy::BigInt(1)).strftime("%Y %G") << "\n";
+    std::cout << ::tpystd::datetime::date(::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%Y %G") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::date(::tpy::BigInt(42), ::tpy::BigInt(5), ::tpy::BigInt(1)).strftime("%Y %G") << "\n" << ::tpy::check_signals;
     {
         try {
-            std::cout << ::tpy::repr_of(time::fromisoformat("24:00")) << "\n";
+            std::cout << ::tpy::repr_of(time::fromisoformat("24:00")) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "ValueError" << "\n";
+            std::cout << "ValueError" << "\n" << ::tpy::check_signals;
         }
     }
 }

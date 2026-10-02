@@ -75,9 +75,9 @@ std::string describe(Color c) {
 //     print(describe(Color.Green))
 //     print(describe(Color.Blue))
 void main() {
-    std::cout << ::tpyapp::main::describe(Color::Red) << "\n";
-    std::cout << ::tpyapp::main::describe(Color::Green) << "\n";
-    std::cout << ::tpyapp::main::describe(Color::Blue) << "\n";
+    std::cout << ::tpyapp::main::describe(Color::Red) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Color::Green) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Color::Blue) << "\n" << ::tpy::check_signals;
 }
 
 // # match/case on enum subject with value patterns (Color.RED)

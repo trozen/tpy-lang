@@ -22,12 +22,12 @@ namespace tpyapp::main {
 void main() {
     std::vector<int32_t> nums = {10, 20, 30, 40};
     IntWrapper wrapper = IntWrapper(nums);
-    std::cout << wrapper[0] << "\n";
-    std::cout << wrapper[-1] << "\n";
-    std::cout << ::tpyapp::main::sum_seq(wrapper) << "\n";
-    std::cout << ::tpyapp::main::first(wrapper) << "\n";
-    std::cout << ::tpyapp::main::sum_seq(nums) << "\n";
-    std::cout << ::tpyapp::main::first(nums) << "\n";
+    std::cout << wrapper[0] << "\n" << ::tpy::check_signals;
+    std::cout << wrapper[-1] << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_seq(wrapper) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first(wrapper) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_seq(nums) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first(nums) << "\n" << ::tpy::check_signals;
 }
 
 // main()

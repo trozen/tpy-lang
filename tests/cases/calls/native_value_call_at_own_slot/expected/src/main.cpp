@@ -14,7 +14,7 @@ int32_t take(::tpy::Bytes b) {
 //     # A bytes method result at an owning parameter.
 //     print(take(v.strip()))
 void f(::tpy::BytesView v) {
-    std::cout << ::tpyapp::main::take(::tpy::Bytes(::tpy::bytes_strip_view(v))) << "\n";
+    std::cout << ::tpyapp::main::take(::tpy::Bytes(::tpy::bytes_strip_view(v))) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

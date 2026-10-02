@@ -17,10 +17,10 @@ void main() {
     Processor p = Processor();
     Ruler r = Ruler();
     p.process(r);
-    std::cout << p.count << "\n";
+    std::cout << p.count << "\n" << ::tpy::check_signals;
     Walker w = Walker();
     p.process(w);
-    std::cout << p.count << "\n";
+    std::cout << p.count << "\n" << ::tpy::check_signals;
 }
 
 // main()

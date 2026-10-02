@@ -30,7 +30,7 @@ std::string describe(const Expr& e) {
 //     print(describe(a))
 void main() {
     Expr a = Lit(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::describe(a) << "\n";
+    std::cout << ::tpyapp::main::describe(a) << "\n" << ::tpy::check_signals;
 }
 
 // # Cycle detection should accept a recursive union broken by a user-defined

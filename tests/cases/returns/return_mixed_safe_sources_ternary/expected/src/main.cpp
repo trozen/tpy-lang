@@ -40,10 +40,10 @@ std::string_view ternary_strview(std::string_view p, bool flag) {
 //     print(ternary_strview("hello", False))
 void main() {
     Point seed = Point(13);
-    std::cout << ::tpyapp::main::ternary_record(seed, true).x << "\n";
-    std::cout << ::tpyapp::main::ternary_record(seed, false).x << "\n";
-    std::cout << ::tpyapp::main::ternary_strview("hello", true) << "\n";
-    std::cout << ::tpyapp::main::ternary_strview("hello", false) << "\n";
+    std::cout << ::tpyapp::main::ternary_record(seed, true).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::ternary_record(seed, false).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::ternary_strview("hello", true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::ternary_strview("hello", false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

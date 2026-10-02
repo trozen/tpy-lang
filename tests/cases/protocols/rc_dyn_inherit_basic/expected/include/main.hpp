@@ -102,7 +102,7 @@ inline Parrot& Parrot::operator=(Parrot&& other) noexcept {
 //     print(f"~Parrot({self.label})")
 inline Parrot::~Parrot() {
     if (!this->__tpy_owned_) return;
-    std::cout << std::format("~Parrot({})", this->label) << "\n";
+    std::cout << std::format("~Parrot({})", this->label) << "\n" << ::tpy::check_signals;
 }
 
 // def name(self) -> str:

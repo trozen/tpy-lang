@@ -18,10 +18,10 @@ void main() {
     Point b = Point::make(1, 5);
     Point c = Point::blank();
     Point d = Point::blank(7);
-    std::cout << a.x << " " << a.y << "\n";
-    std::cout << b.x << " " << b.y << "\n";
-    std::cout << c.x << " " << c.y << "\n";
-    std::cout << d.x << " " << d.y << "\n";
+    std::cout << a.x << " " << a.y << "\n" << ::tpy::check_signals;
+    std::cout << b.x << " " << b.y << "\n" << ::tpy::check_signals;
+    std::cout << c.x << " " << c.y << "\n" << ::tpy::check_signals;
+    std::cout << d.x << " " << d.y << "\n" << ::tpy::check_signals;
 }
 
 // main()

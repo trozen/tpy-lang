@@ -194,22 +194,22 @@ void main() {
     Tree leaf = 5;
     Tree branch = std::vector<Tree>{1, 2, 3};
     Tree nested = std::vector<Tree>{1, std::vector<Tree>{2, std::vector<Tree>{3, 4}}};
-    std::cout << ::tpyapp::main::depth(leaf) << "\n";
-    std::cout << ::tpyapp::main::depth(branch) << "\n";
-    std::cout << ::tpyapp::main::depth(nested) << "\n";
-    std::cout << ::tpyapp::main::count(leaf) << "\n";
-    std::cout << ::tpyapp::main::count(branch) << "\n";
-    std::cout << ::tpyapp::main::count(nested) << "\n";
-    std::cout << ::tpyapp::main::leaf_sum(leaf) << "\n";
-    std::cout << ::tpyapp::main::leaf_sum(branch) << "\n";
-    std::cout << ::tpyapp::main::leaf_sum(nested) << "\n";
-    std::cout << ::tpyapp::main::child_count(leaf) << "\n";
-    std::cout << ::tpyapp::main::child_count(branch) << "\n";
-    std::cout << ::tpyapp::main::depth_nested(branch, 1) << "\n";
-    std::cout << ::tpyapp::main::depth_nested(leaf, 1) << "\n";
-    std::cout << ::tpyapp::main::eval_expr(42) << "\n";
+    std::cout << ::tpyapp::main::depth(leaf) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::depth(branch) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::depth(nested) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::count(leaf) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::count(branch) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::count(nested) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::leaf_sum(leaf) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::leaf_sum(branch) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::leaf_sum(nested) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::child_count(leaf) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::child_count(branch) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::depth_nested(branch, 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::depth_nested(leaf, 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::eval_expr(42) << "\n" << ::tpy::check_signals;
     Expr __tmp_1 = std::vector<Expr>{1, "two", std::vector<Expr>{3}};
-    std::cout << ::tpyapp::main::eval_expr(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::eval_expr(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

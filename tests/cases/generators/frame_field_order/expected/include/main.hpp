@@ -474,7 +474,7 @@ void first_of(std::string_view tag, T_g& g) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << tag << " " << "first" << " " << v << "\n";
+        std::cout << tag << " " << "first" << " " << v << "\n" << ::tpy::check_signals;
         break;
     }
 }

@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(Calc.add(1, 2))
 //     print(Calc.add(1, b=3))
 void main() {
-    std::cout << Calc::add(1, 2) << "\n";
-    std::cout << Calc::add(1, 3) << "\n";
+    std::cout << Calc::add(1, 2) << "\n" << ::tpy::check_signals;
+    std::cout << Calc::add(1, 3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

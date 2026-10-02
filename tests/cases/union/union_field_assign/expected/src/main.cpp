@@ -45,21 +45,21 @@ void main() {
     ::tpy::Union<Cat*, Dog*> p = ::tpy::to_ptr_variant(z.pet);
     if (std::holds_alternative<Cat*>(p)) {
         auto& __p = *std::get<Cat*>(p);
-        std::cout << __p.name << "\n";
+        std::cout << __p.name << "\n" << ::tpy::check_signals;
     }
     z.pet = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(::tpyapp::main::identity(new_pet));
     ::tpy::Union<Cat*, Dog*> p2 = ::tpy::to_ptr_variant(z.pet);
     if (std::holds_alternative<Cat*>(p2)) {
         auto& __p2 = *std::get<Cat*>(p2);
-        std::cout << __p2.name << "\n";
+        std::cout << __p2.name << "\n" << ::tpy::check_signals;
     }
     z.pet = Dog("Buddy");
     ::tpy::Union<Cat*, Dog*> p3 = ::tpy::to_ptr_variant(z.pet);
     if (std::holds_alternative<Dog*>(p3)) {
         auto& __p3 = *std::get<Dog*>(p3);
-        std::cout << __p3.name << "\n";
+        std::cout << __p3.name << "\n" << ::tpy::check_signals;
     }
-    std::cout << z.tag << "\n";
+    std::cout << z.tag << "\n" << ::tpy::check_signals;
 }
 
 // main()

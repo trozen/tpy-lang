@@ -16,7 +16,7 @@ void main() {
     Adder<Sink> a = ::tpyapp::main::make_adder<Sink>(s);
     a.push(10);
     a.push(5);
-    std::cout << s.total << "\n";
+    std::cout << s.total << "\n" << ::tpy::check_signals;
 }
 
 // main()

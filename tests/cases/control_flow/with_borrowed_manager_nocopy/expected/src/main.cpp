@@ -12,7 +12,7 @@ void run(Guard& g) {
     auto& __ctx_1 = g;
     __ctx_1.__enter__();
     try {
-        std::cout << "inside:" << " " << g.n << "\n";
+        std::cout << "inside:" << " " << g.n << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (...) {
         __ctx_1.__exit__({}, {}, {});
@@ -20,7 +20,7 @@ void run(Guard& g) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, {}, {});
-    std::cout << "after:" << " " << g.n << "\n";
+    std::cout << "after:" << " " << g.n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

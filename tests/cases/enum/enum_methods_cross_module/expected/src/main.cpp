@@ -26,14 +26,14 @@ void main() {
     ::tpyapp::shades::Shade b = ::tpyapp::shades::__enum_Shade::darkest();
     ::tpyapp::shades::Shade c = ::tpyapp::shades::__enum_Shade::parse("Dark");
     ::tpyapp::shades::Shade d = ::tpyapp::shades::pick();
-    std::cout << "plain:" << " " << ::tpyapp::shades::__enum_Shade{a}.flip() << " " << ::tpyapp::shades::__enum_Shade{a}.weight() << "\n";
-    std::cout << "alias:" << " " << ::tpyapp::shades::__enum_Shade{b}.flip() << " " << ::tpyapp::shades::__enum_Shade{b}.weight() << "\n";
-    std::cout << "qualified:" << " " << ::tpyapp::shades::__enum_Shade{c}.flip() << " " << ::tpyapp::shades::__enum_Shade{c}.weight() << "\n";
-    std::cout << "member:" << " " << ::tpyapp::shades::__enum_Shade{d}.flip() << " " << ::tpyapp::shades::__enum_Shade{::tpyapp::shades::pick()}.flip() << "\n";
-    std::cout << "collision:" << " " << ::tpyapp::tones::__enum_Shade{::tpyapp::tones::pick()}.flip() << " " << ::tpyapp::shades::__enum_Shade{d}.flip() << "\n";
-    std::cout << "qualified static:" << " " << ::tpyapp::tones::__enum_Shade::loudest() << " " << ::tpyapp::tones::__enum_Shade::loudest() << "\n";
-    std::cout << "property:" << " " << ::tpy::print_bool(::tpyapp::shades::__enum_Shade{a}.heavy()) << " " << ::tpy::print_bool(::tpyapp::shades::__enum_Shade{::tpyapp::shades::__enum_Shade::darkest()}.heavy()) << "\n";
-    std::cout << "generic:" << " " << ::tpyapp::shades::__enum_Shade{a}.tag<std::string>("x") << " " << ::tpyapp::shades::__enum_Shade::ident<int32_t>(3) << " " << ::tpyapp::shades::__enum_Shade::ident<int32_t>(4) << "\n";
+    std::cout << "plain:" << " " << ::tpyapp::shades::__enum_Shade{a}.flip() << " " << ::tpyapp::shades::__enum_Shade{a}.weight() << "\n" << ::tpy::check_signals;
+    std::cout << "alias:" << " " << ::tpyapp::shades::__enum_Shade{b}.flip() << " " << ::tpyapp::shades::__enum_Shade{b}.weight() << "\n" << ::tpy::check_signals;
+    std::cout << "qualified:" << " " << ::tpyapp::shades::__enum_Shade{c}.flip() << " " << ::tpyapp::shades::__enum_Shade{c}.weight() << "\n" << ::tpy::check_signals;
+    std::cout << "member:" << " " << ::tpyapp::shades::__enum_Shade{d}.flip() << " " << ::tpyapp::shades::__enum_Shade{::tpyapp::shades::pick()}.flip() << "\n" << ::tpy::check_signals;
+    std::cout << "collision:" << " " << ::tpyapp::tones::__enum_Shade{::tpyapp::tones::pick()}.flip() << " " << ::tpyapp::shades::__enum_Shade{d}.flip() << "\n" << ::tpy::check_signals;
+    std::cout << "qualified static:" << " " << ::tpyapp::tones::__enum_Shade::loudest() << " " << ::tpyapp::tones::__enum_Shade::loudest() << "\n" << ::tpy::check_signals;
+    std::cout << "property:" << " " << ::tpy::print_bool(::tpyapp::shades::__enum_Shade{a}.heavy()) << " " << ::tpy::print_bool(::tpyapp::shades::__enum_Shade{::tpyapp::shades::__enum_Shade::darkest()}.heavy()) << "\n" << ::tpy::check_signals;
+    std::cout << "generic:" << " " << ::tpyapp::shades::__enum_Shade{a}.tag<std::string>("x") << " " << ::tpyapp::shades::__enum_Shade::ident<int32_t>(3) << " " << ::tpyapp::shades::__enum_Shade::ident<int32_t>(4) << "\n" << ::tpy::check_signals;
 }
 
 // # Enum methods called from another module under every import spelling, and

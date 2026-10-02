@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(h)
 void main() {
     Handler h = Handler();
-    std::cout << h << "\n";
+    std::cout << h << "\n" << ::tpy::check_signals;
 }
 
 // main()

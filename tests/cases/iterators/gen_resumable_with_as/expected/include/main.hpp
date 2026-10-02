@@ -121,7 +121,7 @@ inline Item& Resource::__enter__() {
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 //     print("exit")
 inline void Resource::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    std::cout << "exit" << "\n";
+    std::cout << "exit" << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

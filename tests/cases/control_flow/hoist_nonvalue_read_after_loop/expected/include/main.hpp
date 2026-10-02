@@ -706,10 +706,10 @@ inline void SibHolder::run() const {
         f = Flat(i);
     }
     for (int32_t k = 0; k < 2; ++k) {
-        std::cout << "sib_method" << " " << k << "\n";
+        std::cout << "sib_method" << " " << k << "\n" << ::tpy::check_signals;
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 100);
-    std::cout << "sib_method" << " " << f->n << "\n";
+    std::cout << "sib_method" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // # Constructor position, sibling loop.

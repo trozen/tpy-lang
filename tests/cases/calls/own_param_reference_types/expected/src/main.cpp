@@ -40,11 +40,11 @@ int32_t consume_boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>&& bs) {
 //     print(consume_boxes(boxes))  # tpyc: ok
 void main() {
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
-    std::cout << ::tpyapp::main::consume(std::move(ba)) << "\n";
+    std::cout << ::tpyapp::main::consume(std::move(ba)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> ls = {1, 2};
-    std::cout << ::tpyapp::main::consume_list(std::move(ls)) << "\n";
+    std::cout << ::tpyapp::main::consume_list(std::move(ls)) << "\n" << ::tpy::check_signals;
     std::vector<::tpystd::tplib::box::Box<int32_t>> boxes = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(1));
-    std::cout << ::tpyapp::main::consume_boxes(std::move(boxes)) << "\n";
+    std::cout << ::tpyapp::main::consume_boxes(std::move(boxes)) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.box import Box

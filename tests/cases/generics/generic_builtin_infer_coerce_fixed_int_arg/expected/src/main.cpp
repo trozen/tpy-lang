@@ -26,7 +26,7 @@ void __tpy_init() {
     base = (*arr).data();
     delta = 1;
     p1 = (base + static_cast<int64_t>(delta));
-    std::cout << p1[0] << "\n";
+    std::cout << p1[0] << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

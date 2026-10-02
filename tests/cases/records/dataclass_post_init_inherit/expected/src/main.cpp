@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(c.b)  # "post_init" printed once above, not twice
 void main() {
     Child c = Child(1, 2);
-    std::cout << c.a << "\n";
-    std::cout << c.b << "\n";
+    std::cout << c.a << "\n" << ::tpy::check_signals;
+    std::cout << c.b << "\n" << ::tpy::check_signals;
 }
 
 // # An inherited __post_init__ fires exactly once, via the super().__init__ chain.

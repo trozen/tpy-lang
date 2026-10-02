@@ -14,8 +14,8 @@ void main() {
     Handle a = Handle(1);
     Handle b = Handle(2);
     auto p = std::tuple<Handle, Handle>{std::move(a), std::move(b)};
-    std::cout << std::get<0>(p).fd << "\n";
-    std::cout << std::get<1>(p).fd << "\n";
+    std::cout << std::get<0>(p).fd << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(p).fd << "\n" << ::tpy::check_signals;
 }
 
 // main()

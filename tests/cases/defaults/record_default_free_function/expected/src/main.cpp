@@ -55,17 +55,17 @@ int64_t barks_of(const Dog* d) {
 //     print(barks_of())
 //     print(barks_of(Dog(2)))
 void main() {
-    std::cout << ::tpyapp::main::offset_of(std::nullopt) << "\n";
-    std::cout << ::tpyapp::main::offset_of(Fixed(7)) << "\n";
+    std::cout << ::tpyapp::main::offset_of(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::offset_of(Fixed(7)) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, Fixed, Wide> __tmp_1 = std::monostate{};
-    std::cout << ::tpyapp::main::kind_of(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::kind_of(__tmp_1) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, Fixed, Wide> __tmp_2 = Fixed(3);
-    std::cout << ::tpyapp::main::kind_of(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::kind_of(__tmp_2) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, Fixed, Wide> __tmp_3 = Wide(88);
-    std::cout << ::tpyapp::main::kind_of(__tmp_3) << "\n";
-    std::cout << ::tpyapp::main::barks_of() << "\n";
+    std::cout << ::tpyapp::main::kind_of(__tmp_3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::barks_of() << "\n" << ::tpy::check_signals;
     Dog __tmp_4 = Dog(2);
-    std::cout << ::tpyapp::main::barks_of(&(__tmp_4)) << "\n";
+    std::cout << ::tpyapp::main::barks_of(&(__tmp_4)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -17,15 +17,15 @@ namespace tpyapp::main {
 int32_t main() {
     std::vector<std::string> __tmp_1 = {"--verbose", "-c", "-c", "-c"};
     __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
-    std::cout << ::tpy::print_bool(args.verbose) << "\n";
-    std::cout << ::tpy::print_bool(args.no_cache) << "\n";
-    std::cout << args.c << "\n";
+    std::cout << ::tpy::print_bool(args.verbose) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(args.no_cache) << "\n" << ::tpy::check_signals;
+    std::cout << args.c << "\n" << ::tpy::check_signals;
     return 0;
 }
 
 // args = parser.parse_args(["--verbose", "-c", "-c", "-c"])
 void __tpy_builder_argparse_help_1() {
-    std::cout << "usage: prog [-h] [-v] [--no-cache] [-c]\n\noptions:\n  -h, --help     show this help message and exit\n  -v, --verbose\n  --no-cache\n  -c" << "\n";
+    std::cout << "usage: prog [-h] [-v] [--no-cache] [-c]\n\noptions:\n  -h, --help     show this help message and exit\n  -v, --verbose\n  --no-cache\n  -c" << "\n" << ::tpy::check_signals;
     ::tpy::sys_exit(0);
 }
 
@@ -55,7 +55,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
             c = (::tpy::add_check<int32_t>(c, 1));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
         } else {
-            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n";
+            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
             ::tpy::sys_exit(2);
         }
     }

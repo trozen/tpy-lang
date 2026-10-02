@@ -36,11 +36,11 @@ int32_t free_read(::tpy::Union<const Other*, const R*> v) {
 void main() {
     R r = R(1);
     Other o = Other(2);
-    std::cout << "free_read" << " " << ::tpyapp::main::free_read(::tpy::Union<const Other*, const R*>{&(r)}) << " " << ::tpyapp::main::free_read(::tpy::Union<const Other*, const R*>{&(o)}) << "\n";
-    std::cout << "static_read" << " " << K::read(::tpy::Union<const Other*, const R*>{&(r)}) << " " << K::read(::tpy::Union<const Other*, const R*>{&(o)}) << "\n";
+    std::cout << "free_read" << " " << ::tpyapp::main::free_read(::tpy::Union<const Other*, const R*>{&(r)}) << " " << ::tpyapp::main::free_read(::tpy::Union<const Other*, const R*>{&(o)}) << "\n" << ::tpy::check_signals;
+    std::cout << "static_read" << " " << K::read(::tpy::Union<const Other*, const R*>{&(r)}) << " " << K::read(::tpy::Union<const Other*, const R*>{&(o)}) << "\n" << ::tpy::check_signals;
     K::bump(::tpy::Union<Other*, R*>{&(r)});
     K::bump(::tpy::Union<Other*, R*>{&(o)});
-    std::cout << "static_bump" << " " << r.x << " " << o.y << "\n";
+    std::cout << "static_bump" << " " << r.x << " " << o.y << "\n" << ::tpy::check_signals;
 }
 
 // main()

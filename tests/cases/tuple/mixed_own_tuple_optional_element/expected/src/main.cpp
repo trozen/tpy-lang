@@ -68,9 +68,9 @@ int32_t none_element() {
 //     print("none:", none_element())
 void main() {
     Box b = Box(7);
-    std::cout << "write:" << " " << ::tpyapp::main::write_through(b) << " " << b.val << "\n";
-    std::cout << "read:" << " " << ::tpyapp::main::read_direct(b) << "\n";
-    std::cout << "none:" << " " << ::tpyapp::main::none_element() << "\n";
+    std::cout << "write:" << " " << ::tpyapp::main::write_through(b) << " " << b.val << "\n" << ::tpy::check_signals;
+    std::cout << "read:" << " " << ::tpyapp::main::read_direct(b) << "\n" << ::tpy::check_signals;
+    std::cout << "none:" << " " << ::tpyapp::main::none_element() << "\n" << ::tpy::check_signals;
 }
 
 // main()

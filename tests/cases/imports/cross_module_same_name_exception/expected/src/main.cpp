@@ -15,16 +15,16 @@ namespace tpyapp::main {
 //     print(b.msg)            # oops
 void main() {
     ::tpyapp::ea::Err a = ::tpyapp::ea::Err(::tpy::BigInt(7));
-    std::cout << a.code << "\n";
+    std::cout << a.code << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::ea::Err(::tpy::BigInt(9)).__raise__();
         } catch (const ::tpyapp::ea::Err& e) {
-            std::cout << e.code << "\n";
+            std::cout << e.code << "\n" << ::tpy::check_signals;
         }
     }
     ::tpyapp::eb::Err b = ::tpyapp::eb::Err("oops");
-    std::cout << b.msg << "\n";
+    std::cout << b.msg << "\n" << ::tpy::check_signals;
 }
 
 // # Two same-name Exception subclasses from different modules coexist: the

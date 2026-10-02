@@ -27,16 +27,16 @@ void main() {
     ::tpy::dict_setdefault(groups, "a", std::vector<int32_t>{}).push_back(1);
     ::tpy::dict_setdefault(groups, "a", std::vector<int32_t>{}).push_back(2);
     ::tpy::dict_setdefault(groups, "b", std::vector<int32_t>{}).push_back(3);
-    std::cout << ::tpy::__len__(::tpy::__getitem__(groups, "a")) << " " << ::tpy::__len__(::tpy::__getitem__(groups, "b")) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(groups, "a")) << "\n";
+    std::cout << ::tpy::__len__(::tpy::__getitem__(groups, "a")) << " " << ::tpy::__len__(::tpy::__getitem__(groups, "b")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(groups, "a")) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     std::vector<int32_t>& lst = ::tpy::dict_setdefault(d, "k", std::vector<int32_t>{});
     lst.push_back(42);
-    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(d, "k")) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(d, "k")) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> counts = ::tpy::ordered_map<std::string, int32_t>();
     int32_t n = ::tpy::dict_setdefault(counts, "hits", 5);
     n = (::tpy::add_check<int32_t>(n, 1));
-    std::cout << n << " " << ::tpy::__getitem__(counts, "hits") << "\n";
+    std::cout << n << " " << ::tpy::__getitem__(counts, "hits") << "\n" << ::tpy::check_signals;
 }
 
 // main()

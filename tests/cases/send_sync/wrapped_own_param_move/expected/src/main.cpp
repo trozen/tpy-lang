@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //     print("kept:", kept.value())
 void main() {
     Token kept = ::tpyapp::main::dispatch<Token>(Token(42));
-    std::cout << "kept:" << " " << kept.value() << "\n";
+    std::cout << "kept:" << " " << kept.value() << "\n" << ::tpy::check_signals;
 }
 
 // main()

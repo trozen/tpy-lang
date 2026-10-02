@@ -21,7 +21,7 @@ const Cell& choose(bool flag, const Cell& first, const Cell& second) {
 //     print("payload", value)
 //     return value
 int32_t payload(int32_t value) {
-    std::cout << "payload" << " " << value << "\n";
+    std::cout << "payload" << " " << value << "\n" << ::tpy::check_signals;
     return value;
 }
 
@@ -32,7 +32,7 @@ int32_t payload(int32_t value) {
 void fixed() {
     Cell __tmp_1 = Cell(::tpyapp::main::payload(1));
     const Cell& saved = ::tpyapp::main::observe(__tmp_1);
-    std::cout << "fixed" << " " << saved.value << "\n";
+    std::cout << "fixed" << " " << saved.value << "\n" << ::tpy::check_signals;
 }
 
 // def external(flag: bool):
@@ -46,7 +46,7 @@ void external(bool flag) {
     Cell __tmp_1 = Cell(22);
     const Cell& saved = ::tpyapp::main::choose(flag, owner, __tmp_1);
     owner.value = 23;
-    std::cout << "external" << " " << saved.value << "\n";
+    std::cout << "external" << " " << saved.value << "\n" << ::tpy::check_signals;
 }
 
 // def loops():
@@ -65,13 +65,13 @@ void loops() {
     while ((remaining > 0)) {
         Cell __tmp_1 = Cell(remaining);
         const Cell& saved = ::tpyapp::main::observe(__tmp_1);
-        std::cout << "while" << " " << saved.value << "\n";
+        std::cout << "while" << " " << saved.value << "\n" << ::tpy::check_signals;
         remaining = ::tpy::sub_check<int32_t>(remaining, 1);
     }
     for (int32_t index = 0; index < 2; ++index) {
         Cell __tmp_2 = Cell(index);
         const Cell& item = ::tpyapp::main::observe(__tmp_2);
-        std::cout << "for" << " " << item.value << "\n";
+        std::cout << "for" << " " << item.value << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -89,9 +89,9 @@ void main() {
     ::tpyapp::main::external(true);
     ::tpyapp::main::external(false);
     Cell cell = Cell(1);
-    std::cout << "method" << " " << cell.inspect(30) << "\n";
+    std::cout << "method" << " " << cell.inspect(30) << "\n" << ::tpy::check_signals;
     Caller caller = Caller(40);
-    std::cout << "constructor" << " " << caller.value << "\n";
+    std::cout << "constructor" << " " << caller.value << "\n" << ::tpy::check_signals;
     ::tpyapp::main::loops();
 }
 

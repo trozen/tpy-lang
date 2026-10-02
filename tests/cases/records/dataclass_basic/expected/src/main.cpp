@@ -13,11 +13,11 @@ namespace tpyapp::main {
 //     print(p2)
 void main() {
     Point p = Point(1, 2);
-    std::cout << p << "\n";
-    std::cout << p.x << " " << p.y << "\n";
-    std::cout << ::tpy::repr_of(p) << "\n";
+    std::cout << p << "\n" << ::tpy::check_signals;
+    std::cout << p.x << " " << p.y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(p) << "\n" << ::tpy::check_signals;
     Point p2 = Point(10, 20);
-    std::cout << p2 << "\n";
+    std::cout << p2 << "\n" << ::tpy::check_signals;
 }
 
 // # Basic @dataclass: auto-generated __init__ from field annotations

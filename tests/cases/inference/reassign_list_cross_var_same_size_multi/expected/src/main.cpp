@@ -21,7 +21,7 @@ void main() {
     a = &(b);
     a = &(c);
     a->push_back(10);
-    std::cout << ::tpy::__len__(c) << "\n";
+    std::cout << ::tpy::__len__(c) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -11,8 +11,8 @@ namespace tpyapp::main {
 //     print(b.val)
 void main() {
     Box b = Box(5);
-    std::cout << b.bump() << "\n";
-    std::cout << b.val << "\n";
+    std::cout << b.bump() << "\n" << ::tpy::check_signals;
+    std::cout << b.val << "\n" << ::tpy::check_signals;
 }
 
 // main()

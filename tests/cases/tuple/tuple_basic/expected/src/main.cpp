@@ -18,11 +18,11 @@ namespace tpyapp::main {
 //     print(t3)
 void main() {
     std::tuple<int32_t, std::string> t = std::tuple<int32_t, std::string>{1, "hello"};
-    std::cout << ::tpy::TuplePrinter(t) << "\n";
+    std::cout << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;
     std::tuple<int32_t, bool, std::string> t2 = std::tuple<int32_t, bool, std::string>{42, true, "world"};
-    std::cout << ::tpy::TuplePrinter(t2) << "\n";
+    std::cout << ::tpy::TuplePrinter(t2) << "\n" << ::tpy::check_signals;
     std::tuple<int32_t, std::tuple<std::string, bool>> t3 = std::tuple<int32_t, std::tuple<std::string, bool>>{10, std::tuple<std::string, bool>{"inner", false}};
-    std::cout << ::tpy::TuplePrinter(t3) << "\n";
+    std::cout << ::tpy::TuplePrinter(t3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

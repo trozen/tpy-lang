@@ -222,7 +222,7 @@ inline void Driver::collect(int32_t n) const {
     std::vector<std::string> got = h.join();
     std::string __tmp_1{this->label};
     got.push_back(std::move(__tmp_1));
-    std::cout << "method:" << " " << ::tpy::str_join(" ", got) << "\n";
+    std::cout << "method:" << " " << ::tpy::str_join(" ", got) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

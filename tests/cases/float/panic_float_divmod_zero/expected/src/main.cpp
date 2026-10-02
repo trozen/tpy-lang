@@ -14,7 +14,7 @@ namespace tpyapp::main {
 void main() {
     double a = 10.0;
     double b = 0.0;
-    std::cout << ::tpy::TuplePrinter(::tpy::divmod_float(a, b)) << "\n";
+    std::cout << ::tpy::TuplePrinter(::tpy::divmod_float(a, b)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

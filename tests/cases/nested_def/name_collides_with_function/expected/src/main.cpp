@@ -35,7 +35,7 @@ void free_position() {
         return ::tpy::__getitem__(xs, 0);
     };
     std::vector<int32_t> data = {1, 2};
-    std::cout << "free:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+    std::cout << "free:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
 }
 
 // def closure_position() -> None:
@@ -55,7 +55,7 @@ void closure_position() {
         return ::tpy::__len__(xs);
     };
     std::vector<int32_t> data = {4};
-    std::cout << "closure:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+    std::cout << "closure:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
 }
 
 // def own_param_position() -> None:
@@ -73,7 +73,7 @@ void own_param_position() {
         return ::tpy::__len__(tally);
     };
     std::vector<int32_t> data = {1};
-    std::cout << "own_param:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+    std::cout << "own_param:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
 }
 
 // def own_local_position() -> None:
@@ -94,7 +94,7 @@ void own_local_position() {
         return tally;
     };
     std::vector<int32_t> data = {2};
-    std::cout << "own_local:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+    std::cout << "own_local:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
 }
 
 // def sibling_after_position() -> None:
@@ -119,7 +119,7 @@ void sibling_after_position() {
         return tally(xs);
     };
     std::vector<int32_t> data = {1};
-    std::cout << "sibling_after:" << " " << via_sibling(data) << " " << ::tpy::ListPrinter(data) << "\n";
+    std::cout << "sibling_after:" << " " << via_sibling(data) << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
 }
 
 // def lambda_param_position() -> None:
@@ -141,7 +141,7 @@ void lambda_param_position() {
         return ::tpy::__len__(xs);
     };
     std::vector<int32_t> data = {1};
-    std::cout << "lambda_param:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+    std::cout << "lambda_param:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
 }
 
 // def comp_var_position() -> None:
@@ -171,7 +171,7 @@ void comp_var_position() {
         return ::tpy::__len__(xs);
     };
     std::vector<int32_t> data = {3};
-    std::cout << "comp_var:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+    std::cout << "comp_var:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
 }
 
 // def except_as_position() -> None:
@@ -196,7 +196,7 @@ void except_as_position() {
             try {
                 throw ::tpy::ValueError("boom");
             } catch (const ::tpy::ValueError& tally) {
-                std::cout << "except_as caught:" << " " << tally << "\n";
+                std::cout << "except_as caught:" << " " << tally << "\n" << ::tpy::check_signals;
             }
         }
         xs.push_back(6);
@@ -204,7 +204,7 @@ void except_as_position() {
     };
     std::vector<int32_t> data = {1};
     int32_t n = tally(data);
-    std::cout << "except_as:" << " " << n << " " << ::tpy::ListPrinter(data) << "\n";
+    std::cout << "except_as:" << " " << n << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
 }
 
 // def match_capture_position() -> None:
@@ -233,7 +233,7 @@ void match_capture_position() {
         return ::tpy::__len__(xs);
     };
     std::vector<int32_t> data = {4};
-    std::cout << "match_capture:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+    std::cout << "match_capture:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
 }
 
 // def branch_body_position() -> None:
@@ -257,7 +257,7 @@ void branch_body_position() {
             return ::tpy::__len__(xs);
         };
         std::vector<int32_t> data = {1};
-        std::cout << "branch_body:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+        std::cout << "branch_body:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -278,7 +278,7 @@ void loop_body_position() {
             xs.push_back(12);
             return ::tpy::__len__(xs);
         };
-        std::cout << "loop_body:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+        std::cout << "loop_body:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -301,7 +301,7 @@ void while_body_position() {
             xs.push_back(15);
             return ::tpy::__len__(xs);
         };
-        std::cout << "while_body:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+        std::cout << "while_body:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
         n = ::tpy::add_check<int32_t>(n, 1);
     }
 }
@@ -324,7 +324,7 @@ void with_body_position() {
             xs.push_back(16);
             return ::tpy::__len__(xs);
         };
-        std::cout << "with_body:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+        std::cout << "with_body:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -356,7 +356,7 @@ void try_body_position() {
                 return ::tpy::__len__(xs);
             };
             std::vector<int32_t> data = {3};
-            std::cout << "try_body:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+            std::cout << "try_body:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
         }
     }
@@ -385,11 +385,11 @@ void match_arm_position() {
             return ::tpy::__len__(xs);
         };
         std::vector<int32_t> data = {4};
-        std::cout << "match_arm:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+        std::cout << "match_arm:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
-        std::cout << "match_arm: other" << "\n";
+        std::cout << "match_arm: other" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -416,10 +416,10 @@ void scope_above_block_position() {
     bool flag = true;
     if (flag) {
         std::vector<int32_t> inner = {7};
-        std::cout << "scope_above_block inside:" << " " << tally(inner) << " " << ::tpy::ListPrinter(inner) << "\n";
+        std::cout << "scope_above_block inside:" << " " << tally(inner) << " " << ::tpy::ListPrinter(inner) << "\n" << ::tpy::check_signals;
     }
     std::vector<int32_t> after = {8};
-    std::cout << "scope_above_block:" << " " << tally(after) << " " << ::tpy::ListPrinter(after) << "\n";
+    std::cout << "scope_above_block:" << " " << tally(after) << " " << ::tpy::ListPrinter(after) << "\n" << ::tpy::check_signals;
 }
 
 // def block_then_scope_position() -> None:
@@ -449,14 +449,14 @@ void block_then_scope_position() {
             return ::tpy::__len__(xs);
         };
         std::vector<int32_t> inner = {9};
-        std::cout << "block_then_scope inside:" << " " << tally(inner) << " " << ::tpy::ListPrinter(inner) << "\n";
+        std::cout << "block_then_scope inside:" << " " << tally(inner) << " " << ::tpy::ListPrinter(inner) << "\n" << ::tpy::check_signals;
     }
     auto tally = [](std::vector<int32_t>& xs) -> int32_t {
         xs.push_back(19);
         return ::tpy::__len__(xs);
     };
     std::vector<int32_t> data = {10};
-    std::cout << "block_then_scope:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+    std::cout << "block_then_scope:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
 }
 
 // def two_block_defs_position() -> None:
@@ -492,14 +492,14 @@ void two_block_defs_position() {
             return (::tpy::add_check<int32_t>(tally(xs), tally(xs)));
         };
         std::vector<int32_t> inner = {11};
-        std::cout << "two_block_defs inside:" << " " << twice(inner) << " " << ::tpy::ListPrinter(inner) << "\n";
+        std::cout << "two_block_defs inside:" << " " << twice(inner) << " " << ::tpy::ListPrinter(inner) << "\n" << ::tpy::check_signals;
     }
     auto tally = [](std::vector<int32_t>& xs) -> int32_t {
         xs.push_back(21);
         return ::tpy::__len__(xs);
     };
     std::vector<int32_t> data = {12};
-    std::cout << "two_block_defs:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n";
+    std::cout << "two_block_defs:" << " " << tally(data) << " " << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
 }
 
 // def method_position() -> None:
@@ -509,7 +509,7 @@ void two_block_defs_position() {
 void method_position() {
     Counter c = Counter();
     std::vector<int32_t> m = {5};
-    std::cout << "method:" << " " << c.tally(m) << " " << ::tpy::ListPrinter(m) << "\n";
+    std::cout << "method:" << " " << c.tally(m) << " " << ::tpy::ListPrinter(m) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -536,7 +536,7 @@ void method_position() {
 //     method_position()
 void main() {
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << "module:" << " " << ::tpyapp::main::tally(__tmp_1) << "\n";
+    std::cout << "module:" << " " << ::tpyapp::main::tally(__tmp_1) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::free_position();
     ::tpyapp::main::closure_position();
     ::tpyapp::main::own_param_position();

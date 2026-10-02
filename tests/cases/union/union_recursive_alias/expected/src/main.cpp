@@ -49,10 +49,10 @@ void main() {
     Tree branch = std::vector<Tree>{1, 2};
     std::vector<Tree> inner = {3, 4};
     std::vector<Tree> nested = ::tpy::make_vector<Tree>(1, std::move(inner));
-    std::cout << ::tpyapp::main::depth(leaf) << "\n";
-    std::cout << ::tpyapp::main::depth(branch) << "\n";
+    std::cout << ::tpyapp::main::depth(leaf) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::depth(branch) << "\n" << ::tpy::check_signals;
     Tree __tmp_1 = std::move(nested);
-    std::cout << ::tpyapp::main::depth(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::depth(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

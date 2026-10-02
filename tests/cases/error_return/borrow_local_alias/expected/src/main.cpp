@@ -49,19 +49,19 @@ void main() {
             v = &(::tpy::unwrap_ref(*__try_tmp_3));
         }
         v->push_back(9);
-        std::cout << ::tpy::ListPrinter(h.items) << "\n";
+        std::cout << ::tpy::ListPrinter(h.items) << "\n" << ::tpy::check_signals;
         goto __after_try_2;
         // except E:
         __except_2:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_2:;
     }
     {
-        std::cout << ({ auto __er_5 = ::tpyapp::main::propagate(h); if (!__er_5.has_value()) goto __except_4; ::tpy::unwrap_ref_move(*__er_5); }) << "\n";
+        std::cout << ({ auto __er_5 = ::tpyapp::main::propagate(h); if (!__er_5.has_value()) goto __except_4; ::tpy::unwrap_ref_move(*__er_5); }) << "\n" << ::tpy::check_signals;
         goto __after_try_4;
         // except E:
         __except_4:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_4:;
     }
     const std::vector<int32_t>* r;
@@ -71,11 +71,11 @@ void main() {
             if (!__try_tmp_7.has_value()) goto __except_6;
             r = &(::tpy::unwrap_ref(*__try_tmp_7));
         }
-        std::cout << ::tpy::__len__((*r)) << "\n";
+        std::cout << ::tpy::__len__((*r)) << "\n" << ::tpy::check_signals;
         goto __after_try_6;
         // except E:
         __except_6:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_6:;
     }
 }

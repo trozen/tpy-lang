@@ -15,7 +15,7 @@ namespace tpyapp::main {
 //     print(len(xs))
 void main() {
     std::vector<int32_t> xs = {(::tpyapp::main::too_big()).to_fixed_check<int32_t>()};
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

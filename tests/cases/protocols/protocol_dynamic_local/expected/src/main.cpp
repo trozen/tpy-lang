@@ -10,7 +10,7 @@ namespace tpyapp::main {
 void main() {
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    std::cout << pet->make_noise() << "\n";
+    std::cout << pet->make_noise() << "\n" << ::tpy::check_signals;
 }
 
 // main()

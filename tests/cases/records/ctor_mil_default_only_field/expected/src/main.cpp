@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Grid g = Grid();
     g.cells.push_back(9);
-    std::cout << g.n << " " << ::tpy::__len__(g.cells) << " " << ::tpy::__getitem__(g.cells, 4) << "\n";
+    std::cout << g.n << " " << ::tpy::__len__(g.cells) << " " << ::tpy::__getitem__(g.cells, 4) << "\n" << ::tpy::check_signals;
 }
 
 // main()

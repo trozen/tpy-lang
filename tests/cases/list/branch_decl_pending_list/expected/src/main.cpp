@@ -133,16 +133,16 @@ namespace tpyapp::main {
 //     print(pick_with())
 //     print(pick_loop())
 void main() {
-    std::cout << ::tpyapp::main::pick_list(true) << "\n";
-    std::cout << ::tpyapp::main::pick_list(false) << "\n";
-    std::cout << ::tpyapp::main::pick_dict(true) << "\n";
-    std::cout << ::tpyapp::main::pick_dict(false) << "\n";
-    std::cout << ::tpyapp::main::pick_set(true) << "\n";
-    std::cout << ::tpyapp::main::pick_set(false) << "\n";
-    std::cout << ::tpyapp::main::pick_try(false) << "\n";
-    std::cout << ::tpyapp::main::pick_try(true) << "\n";
-    std::cout << ::tpyapp::main::pick_with() << "\n";
-    std::cout << ::tpyapp::main::pick_loop() << "\n";
+    std::cout << ::tpyapp::main::pick_list(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick_list(false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick_dict(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick_dict(false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick_set(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick_set(false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick_try(false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick_try(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick_with() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick_loop() << "\n" << ::tpy::check_signals;
 }
 
 // main()

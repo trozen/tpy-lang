@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print("name" not in r)  # always False
 void test_in_total_true() {
     Required r = Required("Alice", 30);
-    std::cout << ::tpy::print_bool((static_cast<void>(r), true)) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<void>(r), true)) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<void>(r), false)) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<void>(r), true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<void>(r), true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<void>(r), false)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_in_nullable_field() -> None:
@@ -23,8 +23,8 @@ void test_in_total_true() {
 //     print("count" in n)  # True
 void test_in_nullable_field() {
     NullableField n = NullableField(std::nullopt, 1);
-    std::cout << ::tpy::print_bool((static_cast<void>(n), true)) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<void>(n), true)) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<void>(n), true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<void>(n), true)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_in_total_false() -> None:
@@ -42,13 +42,13 @@ void test_in_total_false() {
     Partial full = Partial("Bob", 25);
     Partial empty = Partial();
     Partial partial = Partial("Carol");
-    std::cout << ::tpy::print_bool(full.name.has_value()) << "\n";
-    std::cout << ::tpy::print_bool(full.age.has_value()) << "\n";
-    std::cout << ::tpy::print_bool(empty.name.has_value()) << "\n";
-    std::cout << ::tpy::print_bool(empty.age.has_value()) << "\n";
-    std::cout << ::tpy::print_bool(partial.name.has_value()) << "\n";
-    std::cout << ::tpy::print_bool(partial.age.has_value()) << "\n";
-    std::cout << ::tpy::print_bool((!empty.name.has_value())) << "\n";
+    std::cout << ::tpy::print_bool(full.name.has_value()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(full.age.has_value()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(empty.name.has_value()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(empty.age.has_value()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(partial.name.has_value()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(partial.age.has_value()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!empty.name.has_value())) << "\n" << ::tpy::check_signals;
 }
 
 // def test_get_total_true() -> None:
@@ -64,10 +64,10 @@ void test_get_total_true() {
     Required r = Required("Alice", 30);
     std::optional<std::string> v = std::make_optional(r.name);
     if ((v.has_value())) {
-        std::cout << ::tpy::print_optional_val(v) << "\n";
+        std::cout << ::tpy::print_optional_val(v) << "\n" << ::tpy::check_signals;
     }
-    std::cout << ((void)"default", r.name) << "\n";
-    std::cout << ((void)0, r.age) << "\n";
+    std::cout << ((void)"default", r.name) << "\n" << ::tpy::check_signals;
+    std::cout << ((void)0, r.age) << "\n" << ::tpy::check_signals;
 }
 
 // def test_get_nullable_field() -> None:
@@ -85,12 +85,12 @@ void test_get_nullable_field() {
     NullableField n = NullableField(std::nullopt, 1);
     std::optional<std::string> v = n.name;
     if ((v.has_value())) {
-        std::cout << "unexpected" << "\n";
+        std::cout << "unexpected" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "None" << "\n";
+        std::cout << "None" << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::print_optional_val(((void)"fallback", n.name)) << "\n";
-    std::cout << ((void)0, n.count) << "\n";
+    std::cout << ::tpy::print_optional_val(((void)"fallback", n.name)) << "\n" << ::tpy::check_signals;
+    std::cout << ((void)0, n.count) << "\n" << ::tpy::check_signals;
 }
 
 // def test_get_total_false() -> None:
@@ -115,18 +115,18 @@ void test_get_total_false() {
     Partial empty = Partial();
     std::optional<std::string> v = full.name;
     if ((v.has_value())) {
-        std::cout << ::tpy::print_optional_val(v) << "\n";
+        std::cout << ::tpy::print_optional_val(v) << "\n" << ::tpy::check_signals;
     }
     std::optional<std::string> v2 = empty.name;
     if ((v2.has_value())) {
-        std::cout << "unexpected" << "\n";
+        std::cout << "unexpected" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "None" << "\n";
+        std::cout << "None" << "\n" << ::tpy::check_signals;
     }
-    std::cout << full.name.value_or(std::string("fallback")) << "\n";
-    std::cout << empty.name.value_or(std::string("fallback")) << "\n";
-    std::cout << full.age.value_or(99) << "\n";
-    std::cout << empty.age.value_or(99) << "\n";
+    std::cout << full.name.value_or(std::string("fallback")) << "\n" << ::tpy::check_signals;
+    std::cout << empty.name.value_or(std::string("fallback")) << "\n" << ::tpy::check_signals;
+    std::cout << full.age.value_or(99) << "\n" << ::tpy::check_signals;
+    std::cout << empty.age.value_or(99) << "\n" << ::tpy::check_signals;
 }
 
 // def test_get_str_param_default(s: str) -> None:
@@ -135,7 +135,7 @@ void test_get_total_false() {
 //     print(empty.get("name", s))
 void test_get_str_param_default(std::string_view s) {
     Partial empty = Partial();
-    std::cout << empty.name.value_or(std::string(s)) << "\n";
+    std::cout << empty.name.value_or(std::string(s)) << "\n" << ::tpy::check_signals;
 }
 
 // test_in_total_true()

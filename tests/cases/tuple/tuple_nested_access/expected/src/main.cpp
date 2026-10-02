@@ -16,10 +16,10 @@ namespace tpyapp::main {
 void main() {
     std::tuple<int32_t, std::tuple<std::string, bool>> n = std::tuple<int32_t, std::tuple<std::string, bool>>{10, std::tuple<std::string, bool>{"inner", true}};
     std::tuple<std::string, bool> inner = std::get<1>(n);
-    std::cout << std::get<0>(inner) << "\n";
-    std::cout << ::tpy::print_bool(std::get<1>(inner)) << "\n";
-    std::cout << std::get<0>(n) << "\n";
-    std::cout << ::tpy::TuplePrinter(std::get<1>(n)) << "\n";
+    std::cout << std::get<0>(inner) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(std::get<1>(inner)) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<0>(n) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(std::get<1>(n)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

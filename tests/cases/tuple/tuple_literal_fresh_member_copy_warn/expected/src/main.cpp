@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void list_member() {
     P c = P(5);
     std::vector<std::tuple<int32_t, P>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{1, &(c)})};
-    std::cout << c.x << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << c.x << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def exempt_fresh(n: int32) -> None:
@@ -19,7 +19,7 @@ void list_member() {
 //     print(len(xs))
 void exempt_fresh(int32_t n) {
     std::vector<std::tuple<int32_t, P>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(9)})};
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def exempt_copy() -> None:
@@ -29,7 +29,7 @@ void exempt_fresh(int32_t n) {
 void exempt_copy() {
     P c = P(2);
     std::vector<std::tuple<int32_t, P>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(c)})};
-    std::cout << c.x << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << c.x << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

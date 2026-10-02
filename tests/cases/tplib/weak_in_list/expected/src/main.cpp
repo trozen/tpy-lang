@@ -56,12 +56,12 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
     a.get().value = 99;
     std::optional<::tpystd::tplib::rc::Rc<Node>> upgraded = ::tpy::__getitem__(observers, 0).upgrade();
     if (!((upgraded.has_value()))) ::tpy::raise_assertion_error();
-    std::cout << (*upgraded).get().value << "\n";
+    std::cout << (*upgraded).get().value << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.rc import Rc, Weak

@@ -9,7 +9,8 @@
  *     standalone program takes, pinned by tests/test_cli_signals.py);
  *   - an interrupt requested from another thread is delivered only on the
  *     thread that armed the layer;
- *   - a stdout / file write delivers a pending interrupt after writing;
+ *   - a stdout / file write and a print chain deliver a pending interrupt
+ *     after writing;
  *   - install_interrupt_handler(true) on a layer armed without a handler
  *     installs it then;
  *   - the disarm / re-arm path (a forked child, so it starts unarmed): the
@@ -118,7 +119,7 @@ int main() {
     std::thread worker([&] {
         tpy::request_interrupt();
         try {
-            tpy::check_interrupt();
+            tpy::check_signals();
         } catch (const tpy::KeyboardInterrupt&) {
             worker_saw = true;
         }
@@ -127,7 +128,7 @@ int main() {
     check(!worker_saw, "no KeyboardInterrupt off the target thread");
     bool main_saw = false;
     try {
-        tpy::check_interrupt();
+        tpy::check_signals();
     } catch (const tpy::KeyboardInterrupt&) {
         main_saw = true;
     }
@@ -150,6 +151,24 @@ int main() {
         file_saw = true;
     }
     check(file_saw, "a pending interrupt is raised by a file write");
+    // A generated print chain ends in the check_signals manipulator: the
+    // line is written, then the pending interrupt raised; nothing pending is
+    // a no-op.
+    tpy::request_interrupt();
+    bool print_saw = false;
+    try {
+        std::cout << "" << tpy::check_signals;
+    } catch (const tpy::KeyboardInterrupt&) {
+        print_saw = true;
+    }
+    check(print_saw, "a pending interrupt is raised by a print chain");
+    bool print_quiet = true;
+    try {
+        std::cout << "" << tpy::check_signals;
+    } catch (const tpy::KeyboardInterrupt&) {
+        print_quiet = false;
+    }
+    check(print_quiet, "a print chain with nothing pending is a no-op");
 
     // A later call asking for the handler installs it over the host's.
     host_handler_ran = 0;

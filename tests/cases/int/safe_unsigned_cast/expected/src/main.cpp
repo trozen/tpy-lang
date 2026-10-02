@@ -14,7 +14,7 @@ void test_assert_non_negative() {
     int32_t x = 42;
     if (!((x >= 0))) ::tpy::raise_assertion_error();
     uint32_t y = static_cast<uint32_t>(x);
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_if_positive() -> None:
@@ -27,7 +27,7 @@ void test_if_positive() {
     int32_t x = 10;
     if ((x > 0)) {
         uint64_t y = static_cast<uint64_t>(x);
-        std::cout << y << "\n";
+        std::cout << y << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -39,7 +39,7 @@ void test_if_positive() {
 void test_no_elision_unchecked() {
     int32_t x = 5;
     uint32_t y = ::tpy::int_cast_check<uint32_t>(x);
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_no_elision_narrowing() -> None:
@@ -52,7 +52,7 @@ void test_no_elision_narrowing() {
     int64_t x = 100;
     if (!((x >= 0))) ::tpy::raise_assertion_error();
     uint32_t y = ::tpy::int_cast_check<uint32_t>(x);
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_no_elision_after_reassign() -> None:
@@ -67,7 +67,7 @@ void test_no_elision_after_reassign() {
     if (!((x >= 0))) ::tpy::raise_assertion_error();
     x = 3;
     uint32_t y = ::tpy::int_cast_check<uint32_t>(x);
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_for_range_index() -> None:
@@ -81,7 +81,7 @@ void test_for_range_index() {
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
         uint32_t u = static_cast<uint32_t>(i);
-        std::cout << u << "\n";
+        std::cout << u << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -95,7 +95,7 @@ void test_int64_to_uint64() {
     int64_t x = 1000;
     if (!((x >= 0))) ::tpy::raise_assertion_error();
     uint64_t y = static_cast<uint64_t>(x);
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // test_assert_non_negative()

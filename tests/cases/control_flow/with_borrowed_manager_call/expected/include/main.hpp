@@ -244,7 +244,7 @@ inline Host::Host(B& b) {
     auto& __ctx_1 = b.guard_m();
     auto q = __ctx_1.__enter__();
     try {
-        std::cout << "ctor" << " " << q << "\n";
+        std::cout << "ctor" << " " << q << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -267,7 +267,7 @@ inline void Host::run(B& b) const {
     auto& __ctx_2 = b.guard_m();
     auto q = __ctx_2.__enter__();
     try {
-        std::cout << "method" << " " << q << "\n";
+        std::cout << "method" << " " << q << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -278,7 +278,7 @@ inline void Host::run(B& b) const {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    std::cout << "method after" << " " << b._guard.n << "\n";
+    std::cout << "method after" << " " << b._guard.n << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

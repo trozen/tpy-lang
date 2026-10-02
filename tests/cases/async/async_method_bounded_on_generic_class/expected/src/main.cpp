@@ -13,7 +13,7 @@ namespace tpyapp::main {
 void main() {
     std::vector<int32_t> xs = {1, 2, 3, 4, 5};
     Summer<std::vector<int32_t>> s = Summer<std::vector<int32_t>>(xs);
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(s.total())) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(s.total())) << "\n" << ::tpy::check_signals;
 }
 
 // # Async method on a generic class with a BOUNDED type param. The

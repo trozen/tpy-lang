@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     ::tpyapp::main::forward<int32_t>(5);
     Wrap<int32_t> w = Wrap<int32_t>(7);
-    std::cout << w.inner.item << "\n";
+    std::cout << w.inner.item << "\n" << ::tpy::check_signals;
 }
 
 // main()

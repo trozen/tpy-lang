@@ -16,7 +16,7 @@ void fall_through() {
             auto __ctx_1 = Thrower();
             __ctx_1.__enter__();
             try {
-                std::cout << "body" << "\n";
+                std::cout << "body" << "\n" << ::tpy::check_signals;
                 goto __with_exit_1;
             } catch (::tpy::BaseException& __exc_1) {
                 __ctx_1.__exit__({}, &__exc_1, {});
@@ -28,7 +28,7 @@ void fall_through() {
             __with_exit_1:
             __ctx_1.__exit__({}, nullptr, {});
         } catch (const ::tpy::RuntimeError& e) {
-            std::cout << std::format("caught: {}", std::string(::tpy::__str__(e))) << "\n";
+            std::cout << std::format("caught: {}", std::string(::tpy::__str__(e))) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -51,7 +51,7 @@ void nested_inner_throws() {
                 auto __ctx_3 = Thrower();
                 __ctx_3.__enter__();
                 try {
-                    std::cout << "nested body" << "\n";
+                    std::cout << "nested body" << "\n" << ::tpy::check_signals;
                     goto __with_exit_3;
                 } catch (::tpy::BaseException& __exc_3) {
                     __ctx_3.__exit__({}, &__exc_3, {});
@@ -73,7 +73,7 @@ void nested_inner_throws() {
             __with_exit_2:
             __ctx_2.__exit__({}, nullptr, {});
         } catch (const ::tpy::RuntimeError& e) {
-            std::cout << std::format("caught nested: {}", std::string(::tpy::__str__(e))) << "\n";
+            std::cout << std::format("caught nested: {}", std::string(::tpy::__str__(e))) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -101,7 +101,7 @@ void body_raises_exit_throws() {
                 throw;
             }
         } catch (const ::tpy::RuntimeError& e) {
-            std::cout << std::format("caught replaced: {}", std::string(::tpy::__str__(e))) << "\n";
+            std::cout << std::format("caught replaced: {}", std::string(::tpy::__str__(e))) << "\n" << ::tpy::check_signals;
         }
     }
 }

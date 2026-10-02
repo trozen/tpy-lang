@@ -27,10 +27,10 @@ void __tpy_init() {
     a = &__global_slot_1;
     static Child __global_slot_2 = Child(5);
     b = &__global_slot_2;
-    std::cout << ::tpy::print_bool(((*a) < (*b))) << "\n";
-    std::cout << ::tpy::print_bool((((*a)) <= ((*b)))) << "\n";
-    std::cout << ::tpy::print_bool((((*a)) > ((*b)))) << "\n";
-    std::cout << ::tpy::print_bool((((*a)) >= ((*b)))) << "\n";
+    std::cout << ::tpy::print_bool(((*a) < (*b))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*a)) <= ((*b)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*a)) > ((*b)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*a)) >= ((*b)))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

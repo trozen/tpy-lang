@@ -13,10 +13,10 @@ namespace tpyapp::main {
 //     print(single_str)
 void main() {
     std::tuple<int32_t> single = std::tuple<int32_t>(42);
-    std::cout << ::tpy::TuplePrinter(single) << "\n";
-    std::cout << std::get<0>(single) << "\n";
+    std::cout << ::tpy::TuplePrinter(single) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<0>(single) << "\n" << ::tpy::check_signals;
     std::tuple<std::string> single_str = std::tuple<std::string>("only");
-    std::cout << ::tpy::TuplePrinter(single_str) << "\n";
+    std::cout << ::tpy::TuplePrinter(single_str) << "\n" << ::tpy::check_signals;
 }
 
 // main()

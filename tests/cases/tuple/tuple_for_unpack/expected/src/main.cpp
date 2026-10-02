@@ -29,7 +29,7 @@ void main() {
         const auto& __tup_1 = __for_tup_0;
         int32_t n = std::get<0>(__tup_1);
         std::string_view s = std::get<1>(__tup_1);
-        std::cout << n << " " << s << "\n";
+        std::cout << n << " " << s << "\n" << ::tpy::check_signals;
     }
     std::array<std::tuple<int32_t, bool>, 2> pairs = {std::tuple<int32_t, bool>{10, true}, std::tuple<int32_t, bool>{20, false}};
     auto& __obj_1 = pairs;
@@ -40,7 +40,7 @@ void main() {
         const auto& __tup_2 = __for_tup_1;
         int32_t n = std::get<0>(__tup_2);
         bool flag = std::get<1>(__tup_2);
-        std::cout << n << " " << ::tpy::print_bool(flag) << "\n";
+        std::cout << n << " " << ::tpy::print_bool(flag) << "\n" << ::tpy::check_signals;
     }
     std::array<std::tuple<std::string, std::string>, 2> names = {std::tuple<std::string, std::string>{"Alice", "A"}, std::tuple<std::string, std::string>{"Bob", "B"}};
     auto& __obj_2 = names;
@@ -51,7 +51,7 @@ void main() {
         const auto& __tup_3 = __for_tup_2;
         std::string_view full = std::get<0>(__tup_3);
         std::string_view initial = std::get<1>(__tup_3);
-        std::cout << full << " " << initial << "\n";
+        std::cout << full << " " << initial << "\n" << ::tpy::check_signals;
     }
 }
 

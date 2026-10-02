@@ -87,13 +87,13 @@ namespace tpyapp::main {
 //     print(fn.k)
 void main() {
     Direct d = Direct();
-    std::cout << d.e << "\n";
+    std::cout << d.e << "\n" << ::tpy::check_signals;
     FromModule fm = FromModule();
-    std::cout << ::tpy::print_bool((fm.n >= 1)) << "\n";
+    std::cout << ::tpy::print_bool((fm.n >= 1)) << "\n" << ::tpy::check_signals;
     FromImport fi = FromImport();
-    std::cout << fi.c << "\n";
+    std::cout << fi.c << "\n" << ::tpy::check_signals;
     FromNested fn = FromNested();
-    std::cout << fn.k << "\n";
+    std::cout << fn.k << "\n" << ::tpy::check_signals;
 }
 
 // # Field-init RHS in __init__ exercises binding-based dispatch in expression

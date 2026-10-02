@@ -61,7 +61,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_src::__next__() {
 }
 
 void __gen_src::__finally_0() {
-    std::cout << tag << " " << "source finally" << "\n";
+    std::cout << tag << " " << "source finally" << "\n" << ::tpy::check_signals;
 }
 
 // def src(tag: str) -> Iterator[int32]:
@@ -193,10 +193,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_unwind::__next__() {
 }
 
 void __gen_gen_unwind::__finally_0() {
-    std::cout << "gen outer finally" << "\n";
+    std::cout << "gen outer finally" << "\n" << ::tpy::check_signals;
 }
 void __gen_gen_unwind::__finally_1() {
-    std::cout << "gen inner finally" << " " << v << "\n";
+    std::cout << "gen inner finally" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // def gen_unwind() -> Iterator[int32]:
@@ -284,7 +284,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_with_unwind::__next__() {
 }
 
 void __gen_with_unwind::__finally_0() {
-    std::cout << "with inner finally" << "\n";
+    std::cout << "with inner finally" << "\n" << ::tpy::check_signals;
 }
 
 // def with_unwind() -> Iterator[int32]:
@@ -326,7 +326,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_once_unwind::__next__() {
                 throw;
             }
         } catch (const ::tpy::KeyError&) {
-            std::cout << "once caught" << "\n";
+            std::cout << "once caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -348,7 +348,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_once_unwind::__next__() {
                 throw;
             }
         } catch (const ::tpy::KeyError&) {
-            std::cout << "once caught" << "\n";
+            std::cout << "once caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -363,7 +363,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_once_unwind::__next__() {
         try {
             throw ::tpy::KeyError("k");
         } catch (const ::tpy::KeyError&) {
-            std::cout << "once caught" << "\n";
+            std::cout << "once caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -388,7 +388,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_once_unwind::__next__() {
 }
 
 void __gen_once_unwind::__finally_0() {
-    std::cout << "once inner finally" << "\n";
+    std::cout << "once inner finally" << "\n" << ::tpy::check_signals;
 }
 
 // def once_unwind() -> Iterator[int32]:
@@ -432,7 +432,7 @@ __gen_once_unwind once_unwind() {
             }
         } catch (const ::tpy::KeyError&) {
             __sub_0.reset();
-            std::cout << "async caught" << "\n";
+            std::cout << "async caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -462,7 +462,7 @@ __gen_once_unwind once_unwind() {
                 throw;
             }
         } catch (const ::tpy::KeyError&) {
-            std::cout << "async caught" << "\n";
+            std::cout << "async caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -478,7 +478,7 @@ __gen_once_unwind once_unwind() {
             __state = S_JOIN_1;
             continue;
         } catch (const ::tpy::KeyError&) {
-            std::cout << "async caught" << "\n";
+            std::cout << "async caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -508,7 +508,7 @@ __gen_once_unwind once_unwind() {
                 throw;
             }
         } catch (const ::tpy::KeyError&) {
-            std::cout << "async caught" << "\n";
+            std::cout << "async caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -525,7 +525,7 @@ __gen_once_unwind once_unwind() {
 }
 
 void __coro_async_unwind::__finally_0() {
-    std::cout << "async inner finally" << " " << v << "\n";
+    std::cout << "async inner finally" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // async def async_unwind() -> None:
@@ -569,11 +569,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_raises_caught::__next__()
                 throw;
             }
         } catch (const ::tpy::KeyError&) {
-            std::cout << "caught K" << "\n";
+            std::cout << "caught K" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::IndexError&) {
-            std::cout << "caught I" << "\n";
+            std::cout << "caught I" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -589,11 +589,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_raises_caught::__next__()
                 throw;
             }
         } catch (const ::tpy::KeyError&) {
-            std::cout << "caught K" << "\n";
+            std::cout << "caught K" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::IndexError&) {
-            std::cout << "caught I" << "\n";
+            std::cout << "caught I" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -622,7 +622,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_raises_caught::__next__()
 }
 
 void __gen_fin_raises_caught::__finally_0() {
-    std::cout << "caught inner finally" << "\n";
+    std::cout << "caught inner finally" << "\n" << ::tpy::check_signals;
     throw ::tpy::IndexError("i");
 }
 
@@ -675,12 +675,12 @@ __gen_fin_raises_caught fin_raises_caught() {
             }
         } catch (const ::tpy::KeyError&) {
             __sub_0.reset();
-            std::cout << "async-caught K" << "\n";
+            std::cout << "async-caught K" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::IndexError&) {
             __sub_0.reset();
-            std::cout << "async-caught I" << "\n";
+            std::cout << "async-caught I" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -702,12 +702,12 @@ __gen_fin_raises_caught fin_raises_caught() {
             }
         } catch (const ::tpy::KeyError&) {
             __sub_1.reset();
-            std::cout << "async-caught K" << "\n";
+            std::cout << "async-caught K" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::IndexError&) {
             __sub_1.reset();
-            std::cout << "async-caught I" << "\n";
+            std::cout << "async-caught I" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -743,11 +743,11 @@ __gen_fin_raises_caught fin_raises_caught() {
                 throw;
             }
         } catch (const ::tpy::KeyError&) {
-            std::cout << "async-caught K" << "\n";
+            std::cout << "async-caught K" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::IndexError&) {
-            std::cout << "async-caught I" << "\n";
+            std::cout << "async-caught I" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -764,7 +764,7 @@ __gen_fin_raises_caught fin_raises_caught() {
 }
 
 void __coro_async_fin_raises_caught::__finally_0() {
-    std::cout << "async-caught inner finally" << "\n";
+    std::cout << "async-caught inner finally" << "\n" << ::tpy::check_signals;
     throw ::tpy::IndexError("i");
 }
 
@@ -854,7 +854,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_raises_in_with::__next__(
 }
 
 void __gen_fin_raises_in_with::__finally_0() {
-    std::cout << "in-with inner finally" << "\n";
+    std::cout << "in-with inner finally" << "\n" << ::tpy::check_signals;
     throw ::tpy::IndexError("i");
 }
 
@@ -901,7 +901,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_raises_outer_finally::__n
         } catch (const ::tpy::KeyError&) {
             bool __fin_ran_40 = false;
             try {
-                std::cout << "outer-fin caught K" << "\n";
+                std::cout << "outer-fin caught K" << "\n" << ::tpy::check_signals;
                 __fin_ran_40 = true;
                 this->__finally_0();
                 __state = S_JOIN_0;
@@ -928,7 +928,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_raises_outer_finally::__n
         } catch (const ::tpy::KeyError&) {
             bool __fin_ran_43 = false;
             try {
-                std::cout << "outer-fin caught K" << "\n";
+                std::cout << "outer-fin caught K" << "\n" << ::tpy::check_signals;
                 __fin_ran_43 = true;
                 this->__finally_0();
                 __state = S_JOIN_0;
@@ -966,10 +966,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_raises_outer_finally::__n
 }
 
 void __gen_fin_raises_outer_finally::__finally_0() {
-    std::cout << "outer-fin outer finally" << "\n";
+    std::cout << "outer-fin outer finally" << "\n" << ::tpy::check_signals;
 }
 void __gen_fin_raises_outer_finally::__finally_1() {
-    std::cout << "outer-fin inner finally" << "\n";
+    std::cout << "outer-fin inner finally" << "\n" << ::tpy::check_signals;
     throw ::tpy::IndexError("i");
 }
 
@@ -1011,7 +1011,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_raises_catch_all::__next_
                 throw;
             }
         } catch (const ::tpy::IndexError&) {
-            std::cout << "catch-all caught I" << "\n";
+            std::cout << "catch-all caught I" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -1020,7 +1020,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_raises_catch_all::__next_
     }
     case S_JOIN_3:
     case S_JOIN_0: {
-        std::cout << "catch-all end" << "\n";
+        std::cout << "catch-all end" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -1041,7 +1041,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_raises_catch_all::__next_
                 throw;
             }
         } catch (const ::tpy::IndexError&) {
-            std::cout << "catch-all caught I" << "\n";
+            std::cout << "catch-all caught I" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -1057,7 +1057,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_raises_catch_all::__next_
             __state = S_JOIN_1;
             continue;
         } catch (const ::tpy::IndexError&) {
-            std::cout << "catch-all caught I" << "\n";
+            std::cout << "catch-all caught I" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -1086,7 +1086,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_raises_catch_all::__next_
                 throw;
             }
         } catch (const ::tpy::IndexError&) {
-            std::cout << "catch-all caught I" << "\n";
+            std::cout << "catch-all caught I" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -1103,7 +1103,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_raises_catch_all::__next_
 }
 
 void __gen_fin_raises_catch_all::__finally_0() {
-    std::cout << "catch-all inner finally" << "\n";
+    std::cout << "catch-all inner finally" << "\n" << ::tpy::check_signals;
     throw ::tpy::IndexError("i");
 }
 
@@ -1167,7 +1167,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_returns_outer_finally::__
             this->__finally_stop = false;
             bool __fin_ran_51 = false;
             try {
-                std::cout << "ret outer handler" << "\n";
+                std::cout << "ret outer handler" << "\n" << ::tpy::check_signals;
                 __fin_ran_51 = true;
                 this->__finally_0();
                 if (this->__finally_stop) {
@@ -1217,7 +1217,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_returns_outer_finally::__
             this->__finally_stop = false;
             bool __fin_ran_54 = false;
             try {
-                std::cout << "ret outer handler" << "\n";
+                std::cout << "ret outer handler" << "\n" << ::tpy::check_signals;
                 __fin_ran_54 = true;
                 this->__finally_0();
                 if (this->__finally_stop) {
@@ -1269,10 +1269,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_returns_outer_finally::__
 }
 
 void __gen_fin_returns_outer_finally::__finally_0() {
-    std::cout << "ret outer finally" << "\n";
+    std::cout << "ret outer finally" << "\n" << ::tpy::check_signals;
 }
 void __gen_fin_returns_outer_finally::__finally_1() {
-    std::cout << "ret inner finally" << "\n";
+    std::cout << "ret inner finally" << "\n" << ::tpy::check_signals;
     this->__finally_stop = true;
     return;
 }
@@ -1388,7 +1388,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fin_returns_in_with::__next__
 }
 
 void __gen_fin_returns_in_with::__finally_0() {
-    std::cout << "ret-with inner finally" << "\n";
+    std::cout << "ret-with inner finally" << "\n" << ::tpy::check_signals;
     this->__finally_stop = true;
     return;
 }
@@ -1399,7 +1399,7 @@ __gen_fin_returns_in_with fin_returns_in_with() {
 }
 
 void __gen_handler_finally_unguarded::__finally_0() {
-    std::cout << "outermost finally" << "\n";
+    std::cout << "outermost finally" << "\n" << ::tpy::check_signals;
 }
 
 // def handler_finally_unguarded() -> Iterator[int32]:
@@ -1436,7 +1436,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_handler_normal::__next__(
                 if (__fin_ran_65) throw;
                 bool __fin_ran_66 = false;
                 try {
-                    std::cout << "own-normal handler BAD" << "\n";
+                    std::cout << "own-normal handler BAD" << "\n" << ::tpy::check_signals;
                     __fin_ran_66 = true;
                     this->__finally_0();
                     __state = S_JOIN_1;
@@ -1454,7 +1454,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_handler_normal::__next__(
                 throw;
             }
         } catch (const ::tpy::IndexError&) {
-            std::cout << "own-normal outer caught I" << "\n";
+            std::cout << "own-normal outer caught I" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -1484,7 +1484,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_handler_normal::__next__(
 }
 
 void __gen_own_handler_normal::__finally_0() {
-    std::cout << "own-normal fin" << "\n";
+    std::cout << "own-normal fin" << "\n" << ::tpy::check_signals;
     throw ::tpy::IndexError("i");
 }
 
@@ -1525,7 +1525,7 @@ __gen_own_handler_normal own_handler_normal() {
                 if (__fin_ran_67) throw;
                 bool __fin_ran_68 = false;
                 try {
-                    std::cout << "async-own-normal handler BAD" << "\n";
+                    std::cout << "async-own-normal handler BAD" << "\n" << ::tpy::check_signals;
                     __fin_ran_68 = true;
                     this->__finally_0();
                     __state = S_JOIN_1;
@@ -1545,7 +1545,7 @@ __gen_own_handler_normal own_handler_normal() {
             }
         } catch (const ::tpy::IndexError&) {
             __sub_0.reset();
-            std::cout << "async-own-normal outer caught I" << "\n";
+            std::cout << "async-own-normal outer caught I" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -1571,7 +1571,7 @@ __gen_own_handler_normal own_handler_normal() {
             } catch (const ::tpy::IndexError&) {
                 bool __fin_ran_70 = false;
                 try {
-                    std::cout << "async-own-normal handler BAD" << "\n";
+                    std::cout << "async-own-normal handler BAD" << "\n" << ::tpy::check_signals;
                     __fin_ran_70 = true;
                     this->__finally_0();
                     __state = S_JOIN_1;
@@ -1587,7 +1587,7 @@ __gen_own_handler_normal own_handler_normal() {
                 throw;
             }
         } catch (const ::tpy::IndexError&) {
-            std::cout << "async-own-normal outer caught I" << "\n";
+            std::cout << "async-own-normal outer caught I" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -1604,7 +1604,7 @@ __gen_own_handler_normal own_handler_normal() {
 }
 
 void __coro_async_own_handler_normal::__finally_0() {
-    std::cout << "async-own-normal fin" << "\n";
+    std::cout << "async-own-normal fin" << "\n" << ::tpy::check_signals;
     throw ::tpy::IndexError("i");
 }
 
@@ -1673,7 +1673,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_handler_unwind::__next__(
                 this->__finally_stop = false;
                 bool __fin_ran_74 = false;
                 try {
-                    std::cout << "own-unwind mid handler BAD" << "\n";
+                    std::cout << "own-unwind mid handler BAD" << "\n" << ::tpy::check_signals;
                     __fin_ran_74 = true;
                     this->__finally_0();
                     if (this->__finally_stop) {
@@ -1704,7 +1704,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_handler_unwind::__next__(
             }
         } catch (const ::tpy::IndexError&) {
             this->__finally_stop = false;
-            std::cout << "own-unwind outer caught I" << "\n";
+            std::cout << "own-unwind outer caught I" << "\n" << ::tpy::check_signals;
             if (this->__finally_stop) {
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -1736,7 +1736,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_handler_unwind::__next__(
                 this->__finally_stop = false;
                 bool __fin_ran_77 = false;
                 try {
-                    std::cout << "own-unwind mid handler BAD" << "\n";
+                    std::cout << "own-unwind mid handler BAD" << "\n" << ::tpy::check_signals;
                     __fin_ran_77 = true;
                     this->__finally_0();
                     if (this->__finally_stop) {
@@ -1767,7 +1767,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_handler_unwind::__next__(
             }
         } catch (const ::tpy::IndexError&) {
             this->__finally_stop = false;
-            std::cout << "own-unwind outer caught I" << "\n";
+            std::cout << "own-unwind outer caught I" << "\n" << ::tpy::check_signals;
             if (this->__finally_stop) {
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -1792,7 +1792,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_handler_unwind::__next__(
             continue;
         } catch (const ::tpy::IndexError&) {
             this->__finally_stop = false;
-            std::cout << "own-unwind outer caught I" << "\n";
+            std::cout << "own-unwind outer caught I" << "\n" << ::tpy::check_signals;
             if (this->__finally_stop) {
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -1822,11 +1822,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_handler_unwind::__next__(
 }
 
 void __gen_own_handler_unwind::__finally_0() {
-    std::cout << "own-unwind mid fin" << "\n";
+    std::cout << "own-unwind mid fin" << "\n" << ::tpy::check_signals;
     throw ::tpy::IndexError("i");
 }
 void __gen_own_handler_unwind::__finally_1() {
-    std::cout << "own-unwind inner fin" << "\n";
+    std::cout << "own-unwind inner fin" << "\n" << ::tpy::check_signals;
     this->__finally_stop = true;
     return;
 }
@@ -1904,7 +1904,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stale_unwind::__next__() {
             }
         } catch (const ::tpy::IndexError&) {
             this->__finally_stop = false;
-            std::cout << "stale-unwind outer caught I" << "\n";
+            std::cout << "stale-unwind outer caught I" << "\n" << ::tpy::check_signals;
             if (this->__finally_stop) {
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -1943,7 +1943,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stale_unwind::__next__() {
             }
         } catch (const ::tpy::IndexError&) {
             this->__finally_stop = false;
-            std::cout << "stale-unwind outer caught I" << "\n";
+            std::cout << "stale-unwind outer caught I" << "\n" << ::tpy::check_signals;
             if (this->__finally_stop) {
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -1955,7 +1955,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stale_unwind::__next__() {
         }
     }
     case S_RESUME_2: {  // after: yield 3
-        std::cout << "stale-unwind end" << "\n";
+        std::cout << "stale-unwind end" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -1973,7 +1973,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stale_unwind::__next__() {
             continue;
         } catch (const ::tpy::IndexError&) {
             this->__finally_stop = false;
-            std::cout << "stale-unwind outer caught I" << "\n";
+            std::cout << "stale-unwind outer caught I" << "\n" << ::tpy::check_signals;
             if (this->__finally_stop) {
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -2003,11 +2003,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stale_unwind::__next__() {
 }
 
 void __gen_stale_unwind::__finally_0() {
-    std::cout << "stale-unwind mid fin" << "\n";
+    std::cout << "stale-unwind mid fin" << "\n" << ::tpy::check_signals;
     throw ::tpy::IndexError("i");
 }
 void __gen_stale_unwind::__finally_1() {
-    std::cout << "stale-unwind inner fin" << "\n";
+    std::cout << "stale-unwind inner fin" << "\n" << ::tpy::check_signals;
     this->__finally_stop = true;
     return;
 }
@@ -2070,7 +2070,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stale_normal::__next__() {
             }
         } catch (const ::tpy::IndexError&) {
             this->__finally_stop = false;
-            std::cout << "stale-normal outer caught I" << "\n";
+            std::cout << "stale-normal outer caught I" << "\n" << ::tpy::check_signals;
             if (this->__finally_stop) {
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -2082,7 +2082,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stale_normal::__next__() {
         }
     }
     case S_RESUME_1: {  // after: yield 3
-        std::cout << "stale-normal end" << "\n";
+        std::cout << "stale-normal end" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -2100,7 +2100,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stale_normal::__next__() {
             continue;
         } catch (const ::tpy::IndexError&) {
             this->__finally_stop = false;
-            std::cout << "stale-normal outer caught I" << "\n";
+            std::cout << "stale-normal outer caught I" << "\n" << ::tpy::check_signals;
             if (this->__finally_stop) {
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -2135,7 +2135,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stale_normal::__next__() {
             }
         } catch (const ::tpy::IndexError&) {
             this->__finally_stop = false;
-            std::cout << "stale-normal outer caught I" << "\n";
+            std::cout << "stale-normal outer caught I" << "\n" << ::tpy::check_signals;
             if (this->__finally_stop) {
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -2165,11 +2165,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stale_normal::__next__() {
 }
 
 void __gen_stale_normal::__finally_0() {
-    std::cout << "stale-normal mid fin" << "\n";
+    std::cout << "stale-normal mid fin" << "\n" << ::tpy::check_signals;
     throw ::tpy::IndexError("i");
 }
 void __gen_stale_normal::__finally_1() {
-    std::cout << "stale-normal inner fin" << "\n";
+    std::cout << "stale-normal inner fin" << "\n" << ::tpy::check_signals;
     this->__finally_stop = true;
     return;
 }
@@ -2241,7 +2241,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stale_exit_raises::__next__()
             }
         } catch (const ::tpy::IndexError&) {
             this->__finally_stop = false;
-            std::cout << "stale-exit caught I" << "\n";
+            std::cout << "stale-exit caught I" << "\n" << ::tpy::check_signals;
             if (this->__finally_stop) {
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -2279,7 +2279,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stale_exit_raises::__next__()
             }
         } catch (const ::tpy::IndexError&) {
             this->__finally_stop = false;
-            std::cout << "stale-exit caught I" << "\n";
+            std::cout << "stale-exit caught I" << "\n" << ::tpy::check_signals;
             if (this->__finally_stop) {
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -2291,7 +2291,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stale_exit_raises::__next__()
         }
     }
     case S_JOIN_0: {
-        std::cout << "stale-exit end" << "\n";
+        std::cout << "stale-exit end" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -2306,7 +2306,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stale_exit_raises::__next__()
             continue;
         } catch (const ::tpy::IndexError&) {
             this->__finally_stop = false;
-            std::cout << "stale-exit caught I" << "\n";
+            std::cout << "stale-exit caught I" << "\n" << ::tpy::check_signals;
             if (this->__finally_stop) {
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -2327,7 +2327,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stale_exit_raises::__next__()
             continue;
         } catch (const ::tpy::IndexError&) {
             this->__finally_stop = false;
-            std::cout << "stale-exit caught I" << "\n";
+            std::cout << "stale-exit caught I" << "\n" << ::tpy::check_signals;
             if (this->__finally_stop) {
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -2353,7 +2353,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stale_exit_raises::__next__()
 }
 
 void __gen_stale_exit_raises::__finally_0() {
-    std::cout << "stale-exit inner fin" << "\n";
+    std::cout << "stale-exit inner fin" << "\n" << ::tpy::check_signals;
     this->__finally_stop = true;
     return;
 }
@@ -2385,7 +2385,7 @@ void lent_after_finish() {
         if (!__r_1.has_value()) break;
         const auto& n = ::tpy::unwrap_ref(*__r_1);
         ::tpyapp::main::drain(g);
-        std::cout << "lent" << " " << n.tag << "\n";
+        std::cout << "lent" << " " << n.tag << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -2449,11 +2449,11 @@ void main() {
                     auto __r_1 = __itr_0.__next__();
                     if (!__r_1.has_value()) break;
                     int32_t v = ::tpy::unwrap_ref(*__r_1);
-                    std::cout << "gen got" << " " << v << "\n";
+                    std::cout << "gen got" << " " << v << "\n" << ::tpy::check_signals;
                 }
             }
         } catch (const ::tpy::KeyError&) {
-            std::cout << "gen caught" << "\n";
+            std::cout << "gen caught" << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -2465,11 +2465,11 @@ void main() {
                     auto __r_3 = __itr_2.__next__();
                     if (!__r_3.has_value()) break;
                     int32_t v = ::tpy::unwrap_ref(*__r_3);
-                    std::cout << "with got" << " " << v << "\n";
+                    std::cout << "with got" << " " << v << "\n" << ::tpy::check_signals;
                 }
             }
         } catch (const ::tpy::KeyError&) {
-            std::cout << "with caught" << "\n";
+            std::cout << "with caught" << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -2479,7 +2479,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "once got" << " " << v << "\n";
+            std::cout << "once got" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -2490,7 +2490,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "method got" << " " << v << "\n";
+            std::cout << "method got" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_unwind()));
@@ -2501,7 +2501,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "caught got" << " " << v << "\n";
+            std::cout << "caught got" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_fin_raises_caught()));
@@ -2514,11 +2514,11 @@ void main() {
                     auto __r_11 = __itr_10.__next__();
                     if (!__r_11.has_value()) break;
                     int32_t v = ::tpy::unwrap_ref(*__r_11);
-                    std::cout << "in-with got" << " " << v << "\n";
+                    std::cout << "in-with got" << " " << v << "\n" << ::tpy::check_signals;
                 }
             }
         } catch (const ::tpy::IndexError&) {
-            std::cout << "in-with main caught I" << "\n";
+            std::cout << "in-with main caught I" << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -2530,11 +2530,11 @@ void main() {
                     auto __r_13 = __itr_12.__next__();
                     if (!__r_13.has_value()) break;
                     int32_t v = ::tpy::unwrap_ref(*__r_13);
-                    std::cout << "outer-fin got" << " " << v << "\n";
+                    std::cout << "outer-fin got" << " " << v << "\n" << ::tpy::check_signals;
                 }
             }
         } catch (const ::tpy::IndexError&) {
-            std::cout << "outer-fin main caught I" << "\n";
+            std::cout << "outer-fin main caught I" << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -2544,7 +2544,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-            std::cout << "catch-all got" << " " << v << "\n";
+            std::cout << "catch-all got" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -2554,10 +2554,10 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
-            std::cout << "ret got" << " " << v << "\n";
+            std::cout << "ret got" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "ret done" << "\n";
+    std::cout << "ret done" << "\n" << ::tpy::check_signals;
     {
         auto __src_18 = ::tpyapp::main::fin_returns_in_with();
         auto&& __itr_18 = ::tpy::__iter__(__src_18);
@@ -2565,10 +2565,10 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_19);
-            std::cout << "ret-with got" << " " << v << "\n";
+            std::cout << "ret-with got" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "ret-with done" << "\n";
+    std::cout << "ret-with done" << "\n" << ::tpy::check_signals;
     {
         try {
             {
@@ -2578,11 +2578,11 @@ void main() {
                     auto __r_21 = __itr_20.__next__();
                     if (!__r_21.has_value()) break;
                     int32_t v = ::tpy::unwrap_ref(*__r_21);
-                    std::cout << "outermost got" << " " << v << "\n";
+                    std::cout << "outermost got" << " " << v << "\n" << ::tpy::check_signals;
                 }
             }
         } catch (const ::tpy::KeyError&) {
-            std::cout << "outermost caught K" << "\n";
+            std::cout << "outermost caught K" << "\n" << ::tpy::check_signals;
         }
     }
     auto __tmp_2 = ::tpyapp::main::own_handler_normal();
@@ -2597,7 +2597,7 @@ void main() {
     auto __tmp_6 = ::tpyapp::main::stale_exit_raises();
     ::tpyapp::main::show("stale-exit", __tmp_6);
     ::tpyapp::main::lent_after_finish();
-    std::cout << "dropped" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>((*DROPPED))) << "\n";
+    std::cout << "dropped" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>((*DROPPED))) << "\n" << ::tpy::check_signals;
 }
 
 // def walk(self) -> Iterator[int32]:
@@ -2630,7 +2630,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Walker_walk::__next__() {
                 throw;
             }
         } catch (const ::tpy::KeyError&) {
-            std::cout << __self.tag << " " << "caught" << "\n";
+            std::cout << __self.tag << " " << "caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -2659,7 +2659,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Walker_walk::__next__() {
                 throw;
             }
         } catch (const ::tpy::KeyError&) {
-            std::cout << __self.tag << " " << "caught" << "\n";
+            std::cout << __self.tag << " " << "caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -2675,7 +2675,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Walker_walk::__next__() {
             __state = S_JOIN_1;
             continue;
         } catch (const ::tpy::KeyError&) {
-            std::cout << __self.tag << " " << "caught" << "\n";
+            std::cout << __self.tag << " " << "caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -2704,7 +2704,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Walker_walk::__next__() {
                 throw;
             }
         } catch (const ::tpy::KeyError&) {
-            std::cout << __self.tag << " " << "caught" << "\n";
+            std::cout << __self.tag << " " << "caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -2721,7 +2721,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Walker_walk::__next__() {
 }
 
 void __gen_Walker_walk::__finally_0() {
-    std::cout << __self.tag << " " << "inner finally" << " " << v << "\n";
+    std::cout << __self.tag << " " << "inner finally" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // # A resumable frame's cleanup on an escaping exception runs innermost first,

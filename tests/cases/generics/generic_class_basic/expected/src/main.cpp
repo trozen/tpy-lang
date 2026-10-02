@@ -22,15 +22,15 @@ namespace tpyapp::main {
 //     print(box_deduced.get())
 void main() {
     Box<int32_t> box_int = Box<int32_t>(42);
-    std::cout << box_int.get() << "\n";
+    std::cout << box_int.get() << "\n" << ::tpy::check_signals;
     box_int.set(100);
-    std::cout << box_int.get() << "\n";
+    std::cout << box_int.get() << "\n" << ::tpy::check_signals;
     Box<std::string> box_str = Box<std::string>("hello");
-    std::cout << box_str.get() << "\n";
+    std::cout << box_str.get() << "\n" << ::tpy::check_signals;
     box_str.set("world");
-    std::cout << box_str.get() << "\n";
+    std::cout << box_str.get() << "\n" << ::tpy::check_signals;
     Box<int32_t> box_deduced = Box<int32_t>(999);
-    std::cout << box_deduced.get() << "\n";
+    std::cout << box_deduced.get() << "\n" << ::tpy::check_signals;
 }
 
 // main()

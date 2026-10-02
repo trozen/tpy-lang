@@ -13,7 +13,7 @@ namespace tpyapp::main {
 int32_t parse_a() {
     std::vector<std::string> __tmp_1 = {"alice"};
     __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
-    std::cout << args.name << "\n";
+    std::cout << args.name << "\n" << ::tpy::check_signals;
     return 0;
 }
 
@@ -26,7 +26,7 @@ int32_t parse_a() {
 int32_t parse_b() {
     std::vector<std::string> __tmp_1 = {"--count", "7"};
     __tpy_builder_argparse_args_2 args = ::tpyapp::main::__tpy_builder_argparse_parse_2(__tmp_1);
-    std::cout << args.count << "\n";
+    std::cout << args.count << "\n" << ::tpy::check_signals;
     return 0;
 }
 
@@ -42,7 +42,7 @@ int32_t main() {
 
 // args = parser.parse_args(["alice"])
 void __tpy_builder_argparse_help_1() {
-    std::cout << "usage: prog [-h] name\n\npositional arguments:\n  name\n\noptions:\n  -h, --help  show this help message and exit" << "\n";
+    std::cout << "usage: prog [-h] name\n\npositional arguments:\n  name\n\noptions:\n  -h, --help  show this help message and exit" << "\n" << ::tpy::check_signals;
     ::tpy::sys_exit(0);
 }
 
@@ -67,13 +67,13 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
                 __tpy_argparse_pi = (::tpy::add_check<int32_t>(__tpy_argparse_pi, 1));
                 __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
             } else {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unexpected positional argument: ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unexpected positional argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
                 ::tpy::sys_exit(2);
             }
         }
     }
     if ((__tpy_argparse_pi < 1)) {
-        ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat("prog: error: ", "missing required positional argument(s)")) << "\n";
+        ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat("prog: error: ", "missing required positional argument(s)")) << "\n" << ::tpy::check_signals;
         ::tpy::sys_exit(2);
     }
     return __tpy_builder_argparse_args_1(name);
@@ -81,7 +81,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
 
 // args = parser.parse_args(["--count", "7"])
 void __tpy_builder_argparse_help_2() {
-    std::cout << "usage: prog [-h] [--count COUNT]\n\noptions:\n  -h, --help     show this help message and exit\n  --count COUNT" << "\n";
+    std::cout << "usage: prog [-h] [--count COUNT]\n\noptions:\n  -h, --help     show this help message and exit\n  --count COUNT" << "\n" << ::tpy::check_signals;
     ::tpy::sys_exit(0);
 }
 
@@ -101,13 +101,13 @@ __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<s
         std::string_view __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "--count")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
                 ::tpy::sys_exit(2);
             }
             count = ::tpy::BigInt::from_str(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1))));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
         } else {
-            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n";
+            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
             ::tpy::sys_exit(2);
         }
     }

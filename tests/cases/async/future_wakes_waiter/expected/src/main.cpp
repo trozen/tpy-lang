@@ -57,7 +57,7 @@ __coro_producer producer(::tpystd::asyncio::Future<int32_t>& f) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         result = std::move(__r0).value();
         __sub_0 = nullptr;
-        std::cout << result << "\n";
+        std::cout << result << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

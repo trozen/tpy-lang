@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>({{"name", ::tpy::make_any(std::string("tpy"))}, {"version", ::tpy::make_any(::tpy::BigInt(1))}, {"debug", ::tpy::make_any(bool(true))}});
     std::vector<::tpy::Any> lst = {::tpy::make_any(::tpy::BigInt(1)), ::tpy::make_any(std::string("hi")), ::tpy::make_any(nullptr), ::tpy::make_any(static_cast<double>(2.5))};
-    std::cout << ::tpy::DictPrinter(d) << "\n";
-    std::cout << ::tpy::ListPrinter(lst) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(lst) << "\n" << ::tpy::check_signals;
 }
 
 // main()

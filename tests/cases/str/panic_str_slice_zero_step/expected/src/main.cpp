@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(s[::0])
 void main() {
     std::string_view s = "hello";
-    std::cout << ::tpy::str_stepped_slice(s, ::tpy::Slice{std::nullopt, std::nullopt, 0}) << "\n";
+    std::cout << ::tpy::str_stepped_slice(s, ::tpy::Slice{std::nullopt, std::nullopt, 0}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

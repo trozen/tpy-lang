@@ -46,23 +46,23 @@ void main() {
     std::optional<Obj> __slot_2;
     Obj a = Obj(::tpy::BigInt(5));
     Obj b = std::move(a);
-    std::cout << b.val << "\n";
+    std::cout << b.val << "\n" << ::tpy::check_signals;
     Obj c = ::tpyapp::main::make();
     Obj d = std::move(c);
-    std::cout << d.val << "\n";
+    std::cout << d.val << "\n" << ::tpy::check_signals;
     Obj __slot_1 = Obj(::tpy::BigInt(99));
     Obj* e = &__slot_1;
     Obj& f = (*e);
     e = &*(__slot_2 = Obj(::tpy::BigInt(0)));
-    std::cout << e->val << " " << f.val << "\n";
+    std::cout << e->val << " " << f.val << "\n" << ::tpy::check_signals;
     Obj g = Obj(::tpy::BigInt(7));
     Obj& h = g;
-    std::cout << g.val << "\n";
+    std::cout << g.val << "\n" << ::tpy::check_signals;
     Obj i = Obj(::tpy::BigInt(50));
     Obj& j = i;
-    std::cout << i.val << "\n";
+    std::cout << i.val << "\n" << ::tpy::check_signals;
     Obj standalone = Obj(::tpy::BigInt(100));
-    std::cout << standalone.val << "\n";
+    std::cout << standalone.val << "\n" << ::tpy::check_signals;
     { auto __del_sink = std::move(standalone); }
 }
 

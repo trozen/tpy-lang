@@ -10,10 +10,10 @@ namespace tpyapp::main {
 //     print("done")
 void main() {
     auto __tmp_1 = Int32One();
-    std::cout << ::tpyapp::main::drain<int32_t>(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::drain<int32_t>(__tmp_1) << "\n" << ::tpy::check_signals;
     auto __tmp_2 = Nothing();
     ::tpyapp::main::drain<std::monostate>(__tmp_2);
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.coro import Awaitable, Poll, Waker, poll_once, poll_ready, poll_ready_none

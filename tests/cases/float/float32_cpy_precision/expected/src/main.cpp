@@ -17,12 +17,12 @@ namespace tpyapp::main {
 void ops() {
     float a = 0.1f;
     float b = 0.2f;
-    std::cout << "ctor" << " " << ::tpy::print_float(static_cast<double>(a)) << " " << ::tpy::print_float(static_cast<double>(b)) << "\n";
-    std::cout << "add" << " " << ::tpy::print_float(static_cast<double>(((a) + (b)))) << "\n";
-    std::cout << "sub" << " " << ::tpy::print_float(static_cast<double>(((b) - (a)))) << "\n";
-    std::cout << "mul" << " " << ::tpy::print_float(static_cast<double>(((a) * (3)))) << "\n";
-    std::cout << "div" << " " << ::tpy::print_float(static_cast<double>((::tpy::truediv_f32(b, 3)))) << "\n";
-    std::cout << "lit" << " " << ::tpy::print_float(static_cast<double>(((a) + (0.5f)))) << "\n";
+    std::cout << "ctor" << " " << ::tpy::print_float(static_cast<double>(a)) << " " << ::tpy::print_float(static_cast<double>(b)) << "\n" << ::tpy::check_signals;
+    std::cout << "add" << " " << ::tpy::print_float(static_cast<double>(((a) + (b)))) << "\n" << ::tpy::check_signals;
+    std::cout << "sub" << " " << ::tpy::print_float(static_cast<double>(((b) - (a)))) << "\n" << ::tpy::check_signals;
+    std::cout << "mul" << " " << ::tpy::print_float(static_cast<double>(((a) * (3)))) << "\n" << ::tpy::check_signals;
+    std::cout << "div" << " " << ::tpy::print_float(static_cast<double>((::tpy::truediv_f32(b, 3)))) << "\n" << ::tpy::check_signals;
+    std::cout << "lit" << " " << ::tpy::print_float(static_cast<double>(((a) + (0.5f)))) << "\n" << ::tpy::check_signals;
 }
 
 // # free function: the reflected forms, floor division, modulo and power
@@ -36,12 +36,12 @@ void ops() {
 //     print("powf", float32(1.1) ** float32(2.0))
 void reflected() {
     float a = 0.1f;
-    std::cout << "radd" << " " << ::tpy::print_float(static_cast<double>(((1) + (a)))) << "\n";
-    std::cout << "rmul" << " " << ::tpy::print_float(static_cast<double>(((3) * (a)))) << "\n";
-    std::cout << "floordiv" << " " << ::tpy::print_float(static_cast<double>((::tpy::floordiv_f32(7.5f, 2)))) << "\n";
-    std::cout << "mod" << " " << ::tpy::print_float(static_cast<double>((::tpy::fmod_f32(7.5f, 2)))) << "\n";
-    std::cout << "pow" << " " << ::tpy::print_float(static_cast<double>((std::pow(1.1f, static_cast<float>(2))))) << "\n";
-    std::cout << "powf" << " " << ::tpy::print_float(static_cast<double>((std::pow(1.1f, static_cast<float>(2.0f))))) << "\n";
+    std::cout << "radd" << " " << ::tpy::print_float(static_cast<double>(((1) + (a)))) << "\n" << ::tpy::check_signals;
+    std::cout << "rmul" << " " << ::tpy::print_float(static_cast<double>(((3) * (a)))) << "\n" << ::tpy::check_signals;
+    std::cout << "floordiv" << " " << ::tpy::print_float(static_cast<double>((::tpy::floordiv_f32(7.5f, 2)))) << "\n" << ::tpy::check_signals;
+    std::cout << "mod" << " " << ::tpy::print_float(static_cast<double>((::tpy::fmod_f32(7.5f, 2)))) << "\n" << ::tpy::check_signals;
+    std::cout << "pow" << " " << ::tpy::print_float(static_cast<double>((std::pow(1.1f, static_cast<float>(2))))) << "\n" << ::tpy::check_signals;
+    std::cout << "powf" << " " << ::tpy::print_float(static_cast<double>((std::pow(1.1f, static_cast<float>(2.0f))))) << "\n" << ::tpy::check_signals;
 }
 
 // # free function: unary operators
@@ -51,8 +51,8 @@ void reflected() {
 //     print("abs", abs(-a))
 void unary() {
     float a = 0.1f;
-    std::cout << "neg" << " " << ::tpy::print_float(static_cast<double>(-(a))) << "\n";
-    std::cout << "abs" << " " << ::tpy::print_float(::std::fabs(static_cast<double>(-(a)))) << "\n";
+    std::cout << "neg" << " " << ::tpy::print_float(static_cast<double>(-(a))) << "\n" << ::tpy::check_signals;
+    std::cout << "abs" << " " << ::tpy::print_float(::std::fabs(static_cast<double>(-(a)))) << "\n" << ::tpy::check_signals;
 }
 
 // # free function: accumulation drifts the single-precision way
@@ -66,7 +66,7 @@ void accumulate() {
     for (int32_t _ = 0; _ < 10; ++_) {
         acc = ((acc) + (0.1f));
     }
-    std::cout << "acc" << " " << ::tpy::print_float(static_cast<double>(acc)) << "\n";
+    std::cout << "acc" << " " << ::tpy::print_float(static_cast<double>(acc)) << "\n" << ::tpy::check_signals;
 }
 
 // def method() -> None:
@@ -78,7 +78,7 @@ void method() {
     Meter m = Meter();
     m.add(0.1f);
     m.add(0.7f);
-    std::cout << "method" << " " << ::tpy::print_float(static_cast<double>(m.total)) << "\n";
+    std::cout << "method" << " " << ::tpy::print_float(static_cast<double>(m.total)) << "\n" << ::tpy::check_signals;
 }
 
 // # comprehension: element-wise rounding
@@ -90,7 +90,7 @@ void comprehension() {
         int32_t k = 1 + int32_t(__i_0);
         return ((0.1f) * static_cast<float>(k));
     });
-    std::cout << "comp" << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << "comp" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // # union slot: a float literal is a double, so it lands in float
@@ -107,12 +107,12 @@ void union_literal() {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "union-literal float32" << "\n";
+        std::cout << "union-literal float32" << "\n" << ::tpy::check_signals;
         break;
     }
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
-        std::cout << "union-literal float" << "\n";
+        std::cout << "union-literal float" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -125,7 +125,7 @@ void union_literal() {
 //     print("union-value", u)
 void union_value(float v) {
     ::tpy::Union<double, float> u = v;
-    std::cout << "union-value" << " " << ::tpy::__str__(u) << "\n";
+    std::cout << "union-value" << " " << ::tpy::__str__(u) << "\n" << ::tpy::check_signals;
 }
 
 // def union_param(u: float32 | float) -> None:
@@ -139,12 +139,12 @@ void union_param(const ::tpy::Union<double, float>& u) {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "union-param float32" << "\n";
+        std::cout << "union-param float32" << "\n" << ::tpy::check_signals;
         break;
     }
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
-        std::cout << "union-param float" << "\n";
+        std::cout << "union-param float" << "\n" << ::tpy::check_signals;
         break;
     }
     }

@@ -58,10 +58,10 @@ Message::Kind lookup(int32_t n) {
 //     print(m == Message.Kind.IMAGE)
 void main() {
     Message::Kind k = ::tpy::EnumUtil<Message::Kind>::from_value(1);
-    std::cout << k << "\n";
-    std::cout << ::tpy::EnumUtil<Message::Kind>::name(k) << "\n";
+    std::cout << k << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<Message::Kind>::name(k) << "\n" << ::tpy::check_signals;
     Message::Kind m = ::tpyapp::main::lookup(2);
-    std::cout << ::tpy::print_bool((m == Message::Kind::IMAGE)) << "\n";
+    std::cout << ::tpy::print_bool((m == Message::Kind::IMAGE)) << "\n" << ::tpy::check_signals;
 }
 
 // # Nested enum value lookup: Outer.Kind(v) resolves through EnumUtil from_value.

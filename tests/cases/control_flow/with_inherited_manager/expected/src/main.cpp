@@ -14,7 +14,7 @@ void main() {
     auto& __ctx_1 = cm;
     __ctx_1.__enter__();
     try {
-        std::cout << "inside:" << " " << cm.n << "\n";
+        std::cout << "inside:" << " " << cm.n << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (...) {
         __ctx_1.__exit__({}, {}, {});
@@ -22,7 +22,7 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, {}, {});
-    std::cout << "after:" << " " << cm.n << "\n";
+    std::cout << "after:" << " " << cm.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void main() {
     Line line = Line(Point(1, 2), Point(3, 4));
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> d = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"start", ::tpy::ordered_map<std::string, int32_t>({{"x", line.start.x}, {"y", line.start.y}})}, {"end", ::tpy::ordered_map<std::string, int32_t>({{"x", line.end.x}, {"y", line.end.y}})}});
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
     std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>> t = std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{line.start.x, line.start.y}, std::tuple<int32_t, int32_t>{line.end.x, line.end.y}};
-    std::cout << ::tpy::TuplePrinter(t) << "\n";
+    std::cout << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;
 }
 
 // # Test asdict() with nested dataclass fields

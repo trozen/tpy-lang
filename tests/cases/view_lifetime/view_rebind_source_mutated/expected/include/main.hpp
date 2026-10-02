@@ -72,7 +72,7 @@ inline void Holder::method() {
     this->ys.clear();
     std::string __tmp_1{PAD};
     this->ys.push_back(std::move(__tmp_1));
-    std::cout << "method" << " " << v << "\n";
+    std::cout << "method" << " " << v << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

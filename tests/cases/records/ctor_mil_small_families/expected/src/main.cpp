@@ -24,19 +24,19 @@ int32_t G{};
 void main() {
     A a = A(1);
     H h = H(::tpy::Union<const A*, const B*>{&(a)}, std::tuple<A*, int32_t>{&(a), 2}, std::tuple<int32_t, int32_t>{3, 4});
-    std::cout << ::tpy::print_bool((!h.items.has_value())) << " " << ::tpy::print_bool((!h.ox.has_value())) << "\n";
-    std::cout << ::tpy::__str__(h.vu) << "\n";
-    std::cout << ::tpy::print_bool((std::holds_alternative<std::monostate>(h.un))) << "\n";
+    std::cout << ::tpy::print_bool((!h.items.has_value())) << " " << ::tpy::print_bool((!h.ox.has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__str__(h.vu) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((std::holds_alternative<std::monostate>(h.un))) << "\n" << ::tpy::check_signals;
     ::tpy::Union<A*, B*> pu = ::tpy::to_ptr_variant(h.pu);
-    std::cout << ::tpy::print_bool(std::holds_alternative<A*>(pu)) << "\n";
+    std::cout << ::tpy::print_bool(std::holds_alternative<A*>(pu)) << "\n" << ::tpy::check_signals;
     ::tpy::Union<A*, B*> pr = ::tpy::to_ptr_variant(h.pr);
-    std::cout << ::tpy::print_bool(std::holds_alternative<A*>(pr)) << "\n";
-    std::cout << ::tpy::print_bool((std::holds_alternative<std::monostate>(h.pn))) << "\n";
-    std::cout << std::get<1>(h.ft) << " " << std::get<0>(h.vt) << " " << std::get<1>(h.tl) << "\n";
+    std::cout << ::tpy::print_bool(std::holds_alternative<A*>(pr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((std::holds_alternative<std::monostate>(h.pn))) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(h.ft) << " " << std::get<0>(h.vt) << " " << std::get<1>(h.tl) << "\n" << ::tpy::check_signals;
     P q = P();
-    std::cout << ::tpy::print_bool((q.p == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((q.p == nullptr)) << "\n" << ::tpy::check_signals;
     D d = D();
-    std::cout << d.n << " " << ::tpy::print_bool(d.strict) << "\n";
+    std::cout << d.n << " " << ::tpy::print_bool(d.strict) << "\n" << ::tpy::check_signals;
 }
 
 

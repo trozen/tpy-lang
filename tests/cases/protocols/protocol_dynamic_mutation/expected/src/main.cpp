@@ -34,20 +34,20 @@ void bump(Counter& c) {
 void main() {
     MyCounter mc = MyCounter();
     ::tpyapp::main::bump(mc);
-    std::cout << mc.value() << "\n";
+    std::cout << mc.value() << "\n" << ::tpy::check_signals;
     Tally t = Tally();
     ::tpy::RefAdapter<Counter, Tally> __tmp_1{t};
     ::tpyapp::main::bump(__tmp_1);
-    std::cout << t.value() << "\n";
+    std::cout << t.value() << "\n" << ::tpy::check_signals;
     MyCounter __slot_1{MyCounter()};
     Counter* c = &__slot_1;
     c->increment();
     c->increment();
-    std::cout << c->value() << "\n";
+    std::cout << c->value() << "\n" << ::tpy::check_signals;
     ::tpy::Adapter<Counter, Tally> __slot_2{Tally()};
     Counter* c2 = &__slot_2;
     c2->increment();
-    std::cout << c2->value() << "\n";
+    std::cout << c2->value() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -21,12 +21,12 @@ void main() {
     Container<int32_t> c = Container<int32_t>();
     c.set(10);
     int32_t x = c.get();
-    std::cout << x << "\n";
-    std::cout << c.get_count() << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
+    std::cout << c.get_count() << "\n" << ::tpy::check_signals;
     Container<int32_t> c2 = Container<int32_t>();
-    std::cout << c2.get_count() << "\n";
+    std::cout << c2.get_count() << "\n" << ::tpy::check_signals;
     c2.set(42);
-    std::cout << c2.get() << "\n";
+    std::cout << c2.get() << "\n" << ::tpy::check_signals;
 }
 
 // main()

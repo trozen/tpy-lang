@@ -17,12 +17,12 @@ namespace tpyapp::main {
 //     print(di.lookup[Tag("x", 10)])
 void main() {
     SetItem si = SetItem("test", ::tpy::ordered_set<Tag>({Tag("a", 1), Tag("b", 2)}));
-    std::cout << si.name << "\n";
-    std::cout << ::tpy::__len__(si.tags) << "\n";
-    std::cout << ::tpy::print_bool((si.tags.contains(Tag("a", 1)))) << "\n";
+    std::cout << si.name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(si.tags) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((si.tags.contains(Tag("a", 1)))) << "\n" << ::tpy::check_signals;
     DictItem di = DictItem(::tpy::ordered_map<Tag, std::string>({{Tag("x", 10), "hello"}, {Tag("y", 20), "world"}}));
-    std::cout << ::tpy::__len__(di.lookup) << "\n";
-    std::cout << ::tpy::__getitem__(di.lookup, Tag("x", 10)) << "\n";
+    std::cout << ::tpy::__len__(di.lookup) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(di.lookup, Tag("x", 10)) << "\n" << ::tpy::check_signals;
 }
 
 // # Test set/dict with frozen dataclass as record field (hash specialization ordering)

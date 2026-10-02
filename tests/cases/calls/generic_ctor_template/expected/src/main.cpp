@@ -23,14 +23,14 @@ namespace tpyapp::main {
 //     print(len(items2))
 void main() {
     std::vector<int32_t> items = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(5));
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> s = ::tpy::set_construct<int32_t>(::tpy::own_iter(std::move(items)));
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}};
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> items2 = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(3));
-    std::cout << ::tpy::__len__(items2) << "\n";
+    std::cout << ::tpy::__len__(items2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

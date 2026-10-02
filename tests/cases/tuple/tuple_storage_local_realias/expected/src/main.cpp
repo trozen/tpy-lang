@@ -18,8 +18,8 @@ void main() {
     std::get<1>(t)->val = 99;
     t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(items, 1));
     std::get<1>(t)->val = 88;
-    std::cout << std::get<1>(::tpy::__getitem__(items, 0)).val << "\n";
-    std::cout << std::get<1>(::tpy::__getitem__(items, 1)).val << "\n";
+    std::cout << std::get<1>(::tpy::__getitem__(items, 0)).val << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(::tpy::__getitem__(items, 1)).val << "\n" << ::tpy::check_signals;
 }
 
 // main()

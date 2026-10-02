@@ -13,10 +13,10 @@ void main() {
     std::optional<Cat> __slot_2;
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    std::cout << pet->make_noise() << "\n";
+    std::cout << pet->make_noise() << "\n" << ::tpy::check_signals;
     __slot_2.emplace(Cat());
     pet = &*__slot_2;
-    std::cout << pet->make_noise() << "\n";
+    std::cout << pet->make_noise() << "\n" << ::tpy::check_signals;
 }
 
 // main()

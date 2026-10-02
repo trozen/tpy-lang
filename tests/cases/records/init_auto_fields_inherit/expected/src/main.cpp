@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //     print(c.y)
 void main() {
     Child c = Child(3, 4);
-    std::cout << c.x << "\n";
-    std::cout << c.y << "\n";
+    std::cout << c.x << "\n" << ::tpy::check_signals;
+    std::cout << c.y << "\n" << ::tpy::check_signals;
     c.y = ::tpy::add_check<int32_t>(c.y, 10);
-    std::cout << c.y << "\n";
+    std::cout << c.y << "\n" << ::tpy::check_signals;
 }
 
 // main()

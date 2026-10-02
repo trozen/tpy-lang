@@ -24,20 +24,20 @@ void main() {
     Dog d = Dog("Rex");
     ::tpy::Union<Cat*, Dog*> pet{&(d)};
     Zoo z = Zoo(pet.as_const(), "test");
-    std::cout << z.tag << "\n";
+    std::cout << z.tag << "\n" << ::tpy::check_signals;
     ::tpy::Union<Cat*, Dog*> p = ::tpy::to_ptr_variant(z.pet);
     if (std::holds_alternative<Dog*>(p)) {
         auto& __p = *std::get<Dog*>(p);
-        std::cout << __p.name << "\n";
+        std::cout << __p.name << "\n" << ::tpy::check_signals;
     }
     Cat c = Cat("Whiskers");
     ::tpy::Union<Cat*, Dog*> pet2{&(c)};
     Zoo z2 = Zoo(pet2.as_const(), "cats");
-    std::cout << z2.tag << "\n";
+    std::cout << z2.tag << "\n" << ::tpy::check_signals;
     ::tpy::Union<Cat*, Dog*> p2 = ::tpy::to_ptr_variant(z2.pet);
     if (std::holds_alternative<Cat*>(p2)) {
         auto& __p2 = *std::get<Cat*>(p2);
-        std::cout << __p2.name << "\n";
+        std::cout << __p2.name << "\n" << ::tpy::check_signals;
     }
 }
 

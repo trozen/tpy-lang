@@ -16,10 +16,10 @@ void test_roundtrip() {
     Item item = Item("widget", 42, true);
     item.save_json("_tpy_test_json_io.json");
     Item loaded = Item::load_json("_tpy_test_json_io.json");
-    std::cout << loaded.name << "\n";
-    std::cout << loaded.count << "\n";
-    std::cout << ::tpy::print_bool(loaded.active) << "\n";
-    std::cout << ::tpy::print_bool(((item) == (loaded))) << "\n";
+    std::cout << loaded.name << "\n" << ::tpy::check_signals;
+    std::cout << loaded.count << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(loaded.active) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((item) == (loaded))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_pretty() -> None:
@@ -32,8 +32,8 @@ void test_pretty() {
     Item item = Item("gadget", 7, false);
     item.save_json("_tpy_test_json_io2.json", 2);
     Item loaded = Item::load_json("_tpy_test_json_io2.json");
-    std::cout << loaded.name << "\n";
-    std::cout << ::tpy::print_bool(((item) == (loaded))) << "\n";
+    std::cout << loaded.name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((item) == (loaded))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_try_load() -> None:
@@ -53,13 +53,13 @@ void test_try_load() {
             if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
             c = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
-        std::cout << c->name << "\n";
+        std::cout << c->name << "\n" << ::tpy::check_signals;
         goto __after_try_3;
         // except JsonError:
         __except_3:;
         {
             auto& e = *__err_opt_3;
-            std::cout << (::tpy::str_concat("error: ", e.message)) << "\n";
+            std::cout << (::tpy::str_concat("error: ", e.message)) << "\n" << ::tpy::check_signals;
         }
         __after_try_3:;
     }
@@ -96,13 +96,13 @@ void test_try_load_bad() {
             if (!__try_tmp_6.has_value()) { __err_opt_5 = std::move(__try_tmp_6.error()); goto __except_5; }
             c = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
-        std::cout << c->name << "\n";
+        std::cout << c->name << "\n" << ::tpy::check_signals;
         goto __after_try_5;
         // except JsonError:
         __except_5:;
         {
             auto& e = *__err_opt_5;
-            std::cout << (::tpy::str_concat("caught: ", e.message)) << "\n";
+            std::cout << (::tpy::str_concat("caught: ", e.message)) << "\n" << ::tpy::check_signals;
         }
         __after_try_5:;
     }

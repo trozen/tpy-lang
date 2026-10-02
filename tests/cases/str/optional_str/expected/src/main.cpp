@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //         print("falsy")
 void check_truthy(std::optional<std::string_view> s) {
     if (::tpy::is_truthy(s)) {
-        std::cout << ::tpy::print_optional_val(s) << "\n";
+        std::cout << ::tpy::print_optional_val(s) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "falsy" << "\n";
+        std::cout << "falsy" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -24,9 +24,9 @@ void check_truthy(std::optional<std::string_view> s) {
 //         print("none")
 void check_none(std::optional<std::string_view> s) {
     if ((s.has_value())) {
-        std::cout << ::tpy::print_optional_val(s) << "\n";
+        std::cout << ::tpy::print_optional_val(s) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "none" << "\n";
+        std::cout << "none" << "\n" << ::tpy::check_signals;
     }
 }
 

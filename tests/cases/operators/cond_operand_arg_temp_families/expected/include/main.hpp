@@ -345,7 +345,7 @@ inline bool Sink::take(std::string_view tag, const std::vector<int32_t>* xs) {
     if ((xs != nullptr)) {
         this->seen = ::tpy::__len__((*xs));
     }
-    std::cout << tag << " " << this->seen << "\n";
+    std::cout << tag << " " << this->seen << "\n" << ::tpy::check_signals;
     return true;
 }
 
@@ -373,7 +373,7 @@ inline Outer::Outer(Inner& i) {
 //     print("genrecv build", n)
 //     self.n = n
 inline Counter::Counter(int32_t n) {
-    std::cout << "genrecv build" << " " << n << "\n";
+    std::cout << "genrecv build" << " " << n << "\n" << ::tpy::check_signals;
     this->n = n;
 }
 
@@ -420,7 +420,7 @@ struct Value {
 //     return True
 template<typename T>
 bool anyslot(std::string_view tag, ::tpy::param_val_or_ref_t<T> v) {
-    std::cout << tag << " " << "took" << "\n";
+    std::cout << tag << " " << "took" << "\n" << ::tpy::check_signals;
     return true;
 }
 // def listslot[T](tag: str, v: list[T]) -> bool:
@@ -428,7 +428,7 @@ bool anyslot(std::string_view tag, ::tpy::param_val_or_ref_t<T> v) {
 //     return True
 template<typename T>
 bool listslot(std::string_view tag, const std::vector<T>& v) {
-    std::cout << tag << " " << ::tpy::__len__(v) << "\n";
+    std::cout << tag << " " << ::tpy::__len__(v) << "\n" << ::tpy::check_signals;
     return true;
 }
 

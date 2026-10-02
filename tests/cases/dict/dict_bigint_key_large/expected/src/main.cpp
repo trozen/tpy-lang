@@ -32,17 +32,17 @@ void main() {
     ::tpy::ordered_map<::tpy::BigInt, std::string> d = ::tpy::ordered_map<::tpy::BigInt, std::string>();
     ::tpy::BigInt k = ::tpy::BigInt(static_cast<int64_t>(1099511627776LL));
     ::tpy::__setitem__(d, k, "big");
-    std::cout << ::tpy::__getitem__(d, k) << "\n";
-    std::cout << ::tpy::print_bool((d.contains(k))) << "\n";
+    std::cout << ::tpy::__getitem__(d, k) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((d.contains(k))) << "\n" << ::tpy::check_signals;
     ::tpy::__delitem__(d, k);
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(d, static_cast<int64_t>(1125899906842624), "lit");
-    std::cout << ::tpy::__getitem__(d, static_cast<int64_t>(1125899906842624)) << "\n";
+    std::cout << ::tpy::__getitem__(d, static_cast<int64_t>(1125899906842624)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> counts = ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>();
     ::tpy::__setitem__(counts, k, ::tpy::BigInt(1));
     ::tpyapp::main::bump(counts, k);
-    std::cout << ::tpy::__getitem__(counts, k) << "\n";
-    std::cout << ::tpy::dict_pop(counts, k) << "\n";
+    std::cout << ::tpy::__getitem__(counts, k) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::dict_pop(counts, k) << "\n" << ::tpy::check_signals;
 }
 
 // main()

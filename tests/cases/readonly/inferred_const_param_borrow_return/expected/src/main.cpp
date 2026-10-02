@@ -63,40 +63,40 @@ void main() {
     B b = B(1);
     Rec& r = k.rec(b);
     r.x = ::tpy::add_check<int32_t>(r.x, 10);
-    std::cout << "rec" << " " << b.m.x << "\n";
+    std::cout << "rec" << " " << b.m.x << "\n" << ::tpy::check_signals;
     Rec* o = k.opt(b);
     if ((o != nullptr)) {
         o->x = ::tpy::add_check<int32_t>(o->x, 10);
     }
     Rec* p = ::tpy::optional_to_ptr(b.o);
     if ((p != nullptr)) {
-        std::cout << "opt" << " " << p->x << "\n";
+        std::cout << "opt" << " " << p->x << "\n" << ::tpy::check_signals;
     }
     std::vector<Rec>& rs = k.recs(b);
     ::tpy::__getitem__(rs, 0).x = ::tpy::add_check<int32_t>(::tpy::__getitem__(rs, 0).x, 10);
-    std::cout << "recs" << " " << ::tpy::__getitem__(b.rs, 0).x << "\n";
+    std::cout << "recs" << " " << ::tpy::__getitem__(b.rs, 0).x << "\n" << ::tpy::check_signals;
     std::vector<int32_t>& ns = k.ints(b);
     ns.push_back(5);
-    std::cout << "ints" << " " << ::tpy::__len__(b.ns) << "\n";
+    std::cout << "ints" << " " << ::tpy::__len__(b.ns) << "\n" << ::tpy::check_signals;
     B& w = k.whole(b);
     w.bump();
-    std::cout << "whole" << " " << b.m.x << "\n";
+    std::cout << "whole" << " " << b.m.x << "\n" << ::tpy::check_signals;
     B a = B(50);
     Rec& s = k.second(a, b);
     s.x = ::tpy::add_check<int32_t>(s.x, 100);
-    std::cout << "second" << " " << a.m.x << " " << b.m.x << "\n";
+    std::cout << "second" << " " << a.m.x << " " << b.m.x << "\n" << ::tpy::check_signals;
     G<int32_t> g = G<int32_t>(7);
     Rec& gr = g.rec(b);
     gr.x = ::tpy::add_check<int32_t>(gr.x, 1000);
-    std::cout << "generic" << " " << b.m.x << "\n";
+    std::cout << "generic" << " " << b.m.x << "\n" << ::tpy::check_signals;
     Rec& fr = ::tpyapp::main::free_rec(b);
     fr.x = ::tpy::add_check<int32_t>(fr.x, 1);
-    std::cout << "free" << " " << b.m.x << "\n";
+    std::cout << "free" << " " << b.m.x << "\n" << ::tpy::check_signals;
     Rec own = Rec(7);
     Rec& out = k.echo<Rec>(own);
     out.x = ::tpy::add_check<int32_t>(out.x, 1);
-    std::cout << "generic_method" << " " << own.x << "\n";
-    std::cout << "peek" << " " << k.peek(b).x << "\n";
+    std::cout << "generic_method" << " " << own.x << "\n" << ::tpy::check_signals;
+    std::cout << "peek" << " " << k.peek(b).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -40,7 +40,7 @@ void main() {
         q = &(__match_subject_1);
         q->v = ::tpy::BigInt(99);
     }
-    std::cout << b.v << "\n";
+    std::cout << b.v << "\n" << ::tpy::check_signals;
     Box b2 = Box(::tpy::BigInt(2));
     Box* r;
     auto& __match_subject_2 = b2;
@@ -48,13 +48,13 @@ void main() {
         r = &(__match_subject_2);
         r->v = ::tpy::BigInt(50);
     }
-    std::cout << b2.v << "\n";
+    std::cout << b2.v << "\n" << ::tpy::check_signals;
     std::optional<Box> s;
     auto __match_subject_3 = ::tpyapp::main::make();
     {
         s = std::move(__match_subject_3);
         s->v = ::tpy::BigInt(11);
-        std::cout << s->v << "\n";
+        std::cout << s->v << "\n" << ::tpy::check_signals;
     }
     int32_t n = 5;
     int32_t m;
@@ -62,7 +62,7 @@ void main() {
     switch (__match_subject_4) {
     default: {
         m = __match_subject_4;
-        std::cout << m << "\n";
+        std::cout << m << "\n" << ::tpy::check_signals;
         break;
     }
     }

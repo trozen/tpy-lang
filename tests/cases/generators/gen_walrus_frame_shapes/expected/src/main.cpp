@@ -131,7 +131,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_exc_binding::__next__() {
         continue;
     }
     case S_RESUME_2: {  // after: yield 0
-        std::cout << "exc resume" << " " << (*caught).msg << "\n";
+        std::cout << "exc resume" << " " << (*caught).msg << "\n" << ::tpy::check_signals;
         __state = S_JOIN_1;
         continue;
     }
@@ -155,7 +155,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_exc_binding::__next__() {
             __state = S_RESUME_1;
             return ::tpyapp::main::raiser(i);
         } catch (const Boom& err) {
-            std::cout << "caught" << " " << caught.emplace(err).msg << "\n";
+            std::cout << "caught" << " " << caught.emplace(err).msg << "\n" << ::tpy::check_signals;
             __state = S_RESUME_2;
             return 0;
         } catch (...) {
@@ -198,7 +198,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_exc_binding_for::__next__() {
         continue;
     }
     case S_RESUME_2: {  // after: yield 0
-        std::cout << "exc resume" << " " << (*caught).msg << "\n";
+        std::cout << "exc resume" << " " << (*caught).msg << "\n" << ::tpy::check_signals;
         __state = S_JOIN_1;
         continue;
     }
@@ -218,7 +218,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_exc_binding_for::__next__() {
             __state = S_RESUME_1;
             return ::tpyapp::main::raiser(i);
         } catch (const Boom& err) {
-            std::cout << "caught" << " " << caught.emplace(err).msg << "\n";
+            std::cout << "caught" << " " << caught.emplace(err).msg << "\n" << ::tpy::check_signals;
             __state = S_RESUME_2;
             return 0;
         } catch (...) {
@@ -280,7 +280,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t a = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "got" << " " << a << "\n";
+            std::cout << "got" << " " << a << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -291,7 +291,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& b = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "got" << " " << b << "\n";
+            std::cout << "got" << " " << b << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -301,7 +301,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t c = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "got" << " " << c << "\n";
+            std::cout << "got" << " " << c << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -311,7 +311,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t d = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "got" << " " << d << "\n";
+            std::cout << "got" << " " << d << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<std::vector<int32_t>> rows = {{1, 2}, {3, 4, 5}};
@@ -322,10 +322,10 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t e = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "got" << " " << e << "\n";
+            std::cout << "got" << " " << e << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "rows after" << " " << ::tpy::ListPrinter(::tpy::__getitem__(rows, 0)) << " " << ::tpy::ListPrinter(::tpy::__getitem__(rows, 1)) << "\n";
+    std::cout << "rows after" << " " << ::tpy::ListPrinter(::tpy::__getitem__(rows, 0)) << " " << ::tpy::ListPrinter(::tpy::__getitem__(rows, 1)) << "\n" << ::tpy::check_signals;
     std::vector<Node> nodes = {Node(7), Node(8)};
     {
         auto __src_10 = ::tpyapp::main::opt_ptr(nodes);
@@ -334,10 +334,10 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t f = ::tpy::unwrap_ref(*__r_11);
-            std::cout << "got" << " " << f << "\n";
+            std::cout << "got" << " " << f << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "nodes after" << " " << ::tpy::__getitem__(nodes, 0).v << " " << ::tpy::__getitem__(nodes, 1).v << "\n";
+    std::cout << "nodes after" << " " << ::tpy::__getitem__(nodes, 0).v << " " << ::tpy::__getitem__(nodes, 1).v << "\n" << ::tpy::check_signals;
     std::vector<Node> more = {Node(1), Node(2)};
     {
         auto __src_12 = ::tpyapp::main::borrow_tuple(more);
@@ -346,10 +346,10 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t g = ::tpy::unwrap_ref(*__r_13);
-            std::cout << "got" << " " << g << "\n";
+            std::cout << "got" << " " << g << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "more after" << " " << ::tpy::__getitem__(more, 0).v << " " << ::tpy::__getitem__(more, 1).v << "\n";
+    std::cout << "more after" << " " << ::tpy::__getitem__(more, 0).v << " " << ::tpy::__getitem__(more, 1).v << "\n" << ::tpy::check_signals;
     {
         auto __src_14 = ::tpyapp::main::own_tuple();
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
@@ -357,7 +357,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t h = ::tpy::unwrap_ref(*__r_15);
-            std::cout << "got" << " " << h << "\n";
+            std::cout << "got" << " " << h << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -367,7 +367,7 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_17);
-            std::cout << "got" << " " << x << "\n";
+            std::cout << "got" << " " << x << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -377,7 +377,7 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_19);
-            std::cout << "got" << " " << x << "\n";
+            std::cout << "got" << " " << x << "\n" << ::tpy::check_signals;
         }
     }
     Src s = Src(2);
@@ -388,7 +388,7 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             int32_t m = ::tpy::unwrap_ref(*__r_21);
-            std::cout << "got" << " " << m << "\n";
+            std::cout << "got" << " " << m << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -25,12 +25,12 @@ namespace tpyapp::main {
 //     except ValueError as e:
 //         print("caught:", str(e))
 void main() {
-    std::cout << ::tpyapp::main::parse_positive("42") << "\n";
+    std::cout << ::tpyapp::main::parse_positive("42") << "\n" << ::tpy::check_signals;
     {
         try {
-            std::cout << ::tpyapp::main::parse_positive("") << "\n";
+            std::cout << ::tpyapp::main::parse_positive("") << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -21,7 +21,7 @@ void main() {
     std::vector<Point> items = std::vector<Point>{};
     ::tpyapp::main::stash(items, p);
     p.x = 9;
-    std::cout << ::tpy::__len__(items) << " " << ::tpy::__getitem__(items, 0).x << " " << p.x << "\n";
+    std::cout << ::tpy::__len__(items) << " " << ::tpy::__getitem__(items, 0).x << " " << p.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

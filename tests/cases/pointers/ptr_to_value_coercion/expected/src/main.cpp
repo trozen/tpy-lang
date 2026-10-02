@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(p.x)
 //     print(p.y)
 void print_point(const Point& p) {
-    std::cout << p.x << "\n";
-    std::cout << p.y << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
+    std::cout << p.y << "\n" << ::tpy::check_signals;
 }
 
 // def get_sum(p: Point) -> int32:
@@ -49,9 +49,9 @@ void test_ptr_to_value() {
     Point* ptr = &pt;
     ::tpyapp::main::print_point(::tpy::deref_check(ptr));
     int32_t result = ::tpyapp::main::get_sum(::tpy::deref_check(ptr));
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
     ::tpyapp::main::modify_point(::tpy::deref_check(ptr));
-    std::cout << pt.x << "\n";
+    std::cout << pt.x << "\n" << ::tpy::check_signals;
 }
 
 // def test_ptr_to_value_assign() -> None:
@@ -66,8 +66,8 @@ void test_ptr_to_value_assign() {
     Point pt = Point(5, 7);
     Point* ptr = &pt;
     Point& p2 = ::tpy::deref_check(ptr);
-    std::cout << p2.x << "\n";
-    std::cout << p2.y << "\n";
+    std::cout << p2.x << "\n" << ::tpy::check_signals;
+    std::cout << p2.y << "\n" << ::tpy::check_signals;
 }
 
 // def test_ptr_to_value_return() -> None:
@@ -81,7 +81,7 @@ void test_ptr_to_value_return() {
     Point pt = Point(100, 200);
     Point* ptr = &pt;
     Point& p2 = ::tpyapp::main::deref_and_return(ptr);
-    std::cout << p2.x << "\n";
+    std::cout << p2.x << "\n" << ::tpy::check_signals;
 }
 
 // # Run tests
@@ -96,11 +96,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << "=== call ===" << "\n";
+    std::cout << "=== call ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_ptr_to_value();
-    std::cout << "=== assign ===" << "\n";
+    std::cout << "=== assign ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_ptr_to_value_assign();
-    std::cout << "=== return ===" << "\n";
+    std::cout << "=== return ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_ptr_to_value_return();
 }
 

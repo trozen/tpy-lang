@@ -9,7 +9,7 @@ namespace tpyapp::main {
 // def peek(app: list[bytes]) -> None:
 //     print(len(app[0][1:]))
 void peek(const std::vector<::tpy::Bytes>& app) {
-    std::cout << ::tpy::__len__(::tpy::bytes_slice(::tpy::__getitem__(app, 0), ::tpy::BasicSlice{1, std::nullopt})) << "\n";
+    std::cout << ::tpy::__len__(::tpy::bytes_slice(::tpy::__getitem__(app, 0), ::tpy::BasicSlice{1, std::nullopt})) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

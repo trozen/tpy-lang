@@ -160,7 +160,7 @@ inline Announcer::Announcer(std::string_view prefix) : prefix(prefix) {}
 // def announce(self, s: Speaker) -> None:
 //     print(self.prefix + s.speak())
 inline void Announcer::announce(Speaker& s) const {
-    std::cout << (::tpy::str_concat(this->prefix, s.speak())) << "\n";
+    std::cout << (::tpy::str_concat(this->prefix, s.speak())) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

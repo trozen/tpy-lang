@@ -36,7 +36,7 @@ void reference_element() {
             if (((::tpy::mod_floor<int32_t>(seen, 2)) == 0)) {
                 p.x = ::tpy::add_check<int32_t>(p.x, 100);
             } else {
-                std::cout << "reference:" << " " << i << " " << p.x << "\n";
+                std::cout << "reference:" << " " << i << " " << p.x << "\n" << ::tpy::check_signals;
             }
             seen = ::tpy::add_check<int32_t>(seen, 1);
         }
@@ -59,7 +59,7 @@ void value_element() {
             const auto& __tup_1 = __for_tup_1;
             int32_t i = std::get<0>(__tup_1);
             int32_t n = std::get<1>(__tup_1);
-            std::cout << "value:" << " " << i << " " << n << "\n";
+            std::cout << "value:" << " " << i << " " << n << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -88,11 +88,11 @@ void reused_source() {
             const auto& __tup_1 = __for_tup_2;
             int32_t i = std::get<0>(__tup_1);
             int32_t n = std::get<1>(__tup_1);
-            std::cout << "reuse:" << " " << i << " " << n << "\n";
+            std::cout << "reuse:" << " " << i << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     nums.push_back(50);
-    std::cout << "reuse: len" << " " << ::tpy::__len__(nums) << "\n";
+    std::cout << "reuse: len" << " " << ::tpy::__len__(nums) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

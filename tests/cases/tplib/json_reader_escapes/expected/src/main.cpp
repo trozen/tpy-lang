@@ -26,8 +26,8 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_reader_standa
             if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_2.error()));
             s = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        std::cout << ::tpy::__len__(s) << "\n";
-        std::cout << s << "\n";
+        std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
+        std::cout << s << "\n" << ::tpy::check_signals;
     }
     {
         auto __try_tmp_3 = reader.read_array_end();
@@ -58,8 +58,8 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_reader_bf() {
             if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_5.error()));
             s = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
-        std::cout << ::tpy::__len__(s) << "\n";
-        std::cout << static_cast<int32_t>(static_cast<unsigned char>(::tpy::__getitem__(s, 1))) << "\n";
+        std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
+        std::cout << static_cast<int32_t>(static_cast<unsigned char>(::tpy::__getitem__(s, 1))) << "\n" << ::tpy::check_signals;
     }
     {
         auto __try_tmp_6 = reader.read_array_end();
@@ -89,7 +89,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_reader_unicod
             if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_8.error()));
             s = ::tpy::unwrap_ref_move(*__try_tmp_8);
         }
-        std::cout << s << "\n";
+        std::cout << s << "\n" << ::tpy::check_signals;
     }
     {
         auto __try_tmp_9 = reader.read_array_end();
@@ -117,7 +117,7 @@ void test_writer_control_chars() {
     w.write_str((::tpy::str_concat(::tpy::char_to_str(static_cast<char>(12)), "y")));
     w.write_str((::tpy::str_concat(::tpy::char_to_str(static_cast<char>(0)), "z")));
     w.array_end();
-    std::cout << w.finish() << "\n";
+    std::cout << w.finish() << "\n" << ::tpy::check_signals;
 }
 
 // @error_return(JsonError)
@@ -153,7 +153,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_roundtrip() {
             if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_11.error()));
             s = ::tpy::unwrap_ref_move(*__try_tmp_11);
         }
-        std::cout << s << "\n";
+        std::cout << s << "\n" << ::tpy::check_signals;
     }
     {
         auto __try_tmp_12 = reader.read_array_end();
@@ -189,7 +189,7 @@ void main() {
         goto __after_try_13;
         // except JsonError:
         __except_13:;
-        std::cout << "ERROR" << "\n";
+        std::cout << "ERROR" << "\n" << ::tpy::check_signals;
         __after_try_13:;
     }
     {
@@ -200,7 +200,7 @@ void main() {
         goto __after_try_15;
         // except JsonError:
         __except_15:;
-        std::cout << "ERROR" << "\n";
+        std::cout << "ERROR" << "\n" << ::tpy::check_signals;
         __after_try_15:;
     }
     {
@@ -211,7 +211,7 @@ void main() {
         goto __after_try_17;
         // except JsonError:
         __except_17:;
-        std::cout << "ERROR" << "\n";
+        std::cout << "ERROR" << "\n" << ::tpy::check_signals;
         __after_try_17:;
     }
     ::tpyapp::main::test_writer_control_chars();
@@ -223,7 +223,7 @@ void main() {
         goto __after_try_19;
         // except JsonError:
         __except_19:;
-        std::cout << "ERROR" << "\n";
+        std::cout << "ERROR" << "\n" << ::tpy::check_signals;
         __after_try_19:;
     }
 }

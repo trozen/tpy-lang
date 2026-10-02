@@ -15,8 +15,8 @@ void main() {
     Blob b = Blob();
     Blob __tmp_1 = b;
     b.n = k.take(std::move(__tmp_1));
-    std::cout << b.n << "\n";
-    std::cout << ::tpy::__len__(b.items) << "\n";
+    std::cout << b.n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(b.items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

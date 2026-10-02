@@ -50,7 +50,7 @@ __coro_fact fact(::tpy::BigInt n) {
 // def main() -> None:
 //     print(asyncio.run(fact(5)))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::fact(::tpy::BigInt(5)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::fact(::tpy::BigInt(5)))) << "\n" << ::tpy::check_signals;
 }
 
 // # Recursion through create_task works: the Task is the heap indirection

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(t.value)
 void main() {
     time t = time(::tpy::BigInt(99));
-    std::cout << t.value << "\n";
+    std::cout << t.value << "\n" << ::tpy::check_signals;
 }
 
 // import time

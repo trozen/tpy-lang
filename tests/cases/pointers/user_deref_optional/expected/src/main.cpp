@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     Ref __slot_1 = Ref(Point(10, 20));
     Ref* r = &__slot_1;
-    std::cout << r->__deref__().x << "\n";
-    std::cout << r->__deref__().sum() << "\n";
+    std::cout << r->__deref__().x << "\n" << ::tpy::check_signals;
+    std::cout << r->__deref__().sum() << "\n" << ::tpy::check_signals;
 }
 
 // main()

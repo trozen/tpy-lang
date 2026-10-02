@@ -50,22 +50,22 @@ void pooled_reuse() {
     conn.sock = std::move(a);
     ::tpy::Union<bool, std::string> __tmp_1 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/v1/a", __tmp_1);
-    std::cout << "key:" << " " << key << "\n";
+    std::cout << "key:" << " " << key << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nr1", 40));
     ::tpystd::tplib::requests::Response r1 = s.get("http://api.test/v1/a");
-    std::cout << r1.status_code << " " << r1.text() << "\n";
-    std::cout << "req1:" << " " << ::tpy::__getitem__(::tpy::str_split(::tpy::bytes_decode(b.recv(65536)), "\r\n"), 0) << "\n";
+    std::cout << r1.status_code << " " << r1.text() << "\n" << ::tpy::check_signals;
+    std::cout << "req1:" << " " << ::tpy::__getitem__(::tpy::str_split(::tpy::bytes_decode(b.recv(65536)), "\r\n"), 0) << "\n" << ::tpy::check_signals;
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nr2", 40));
     ::tpystd::tplib::requests::Response r2 = s.get("http://api.test/v1/b");
-    std::cout << r2.status_code << " " << r2.text() << "\n";
-    std::cout << "req2:" << " " << ::tpy::__getitem__(::tpy::str_split(::tpy::bytes_decode(b.recv(65536)), "\r\n"), 0) << "\n";
+    std::cout << r2.status_code << " " << r2.text() << "\n" << ::tpy::check_signals;
+    std::cout << "req2:" << " " << ::tpy::__getitem__(::tpy::str_split(::tpy::bytes_decode(b.recv(65536)), "\r\n"), 0) << "\n" << ::tpy::check_signals;
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nr3", 59));
     ::tpystd::tplib::requests::Response r3 = s.get("http://api.test/v1/c");
-    std::cout << r3.status_code << " " << r3.text() << "\n";
+    std::cout << r3.status_code << " " << r3.text() << "\n" << ::tpy::check_signals;
     b.recv(65536);
-    std::cout << "peer EOF after close:" << " " << ::tpy::print_bool((b.recv(10) == ::tpy::BytesView{})) << "\n";
-    std::cout << "pool keeps handle:" << " " << ::tpy::print_bool((s._pool.contains(key))) << "\n";
+    std::cout << "peer EOF after close:" << " " << ::tpy::print_bool((b.recv(10) == ::tpy::BytesView{})) << "\n" << ::tpy::check_signals;
+    std::cout << "pool keeps handle:" << " " << ::tpy::print_bool((s._pool.contains(key))) << "\n" << ::tpy::check_signals;
     b.close();
 }
 
@@ -76,11 +76,11 @@ void pooled_reuse() {
 //     print(requests._pool_key("https://api.test/x", "/etc/ca.pem"))
 void pool_key_shapes() {
     ::tpy::Union<bool, std::string> __tmp_1 = true;
-    std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test/x", __tmp_1) << "\n";
+    std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test/x", __tmp_1) << "\n" << ::tpy::check_signals;
     ::tpy::Union<bool, std::string> __tmp_2 = false;
-    std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test:8443/x", __tmp_2) << "\n";
+    std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test:8443/x", __tmp_2) << "\n" << ::tpy::check_signals;
     ::tpy::Union<bool, std::string> __tmp_3 = "/etc/ca.pem";
-    std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test/x", __tmp_3) << "\n";
+    std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test/x", __tmp_3) << "\n" << ::tpy::check_signals;
 }
 
 // def failed_request_drops_entry() -> None:
@@ -118,9 +118,9 @@ void failed_request_drops_entry() {
     {
         try {
             s.get("http://api.test/x");
-            std::cout << "unexpected success" << "\n";
+            std::cout << "unexpected success" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::http::client::BadStatusLine&) {
-            std::cout << "bad status; entry dropped:" << " " << ::tpy::print_bool((!(s._pool.contains(key)))) << "\n";
+            std::cout << "bad status; entry dropped:" << " " << ::tpy::print_bool((!(s._pool.contains(key)))) << "\n" << ::tpy::check_signals;
         }
     }
     b.close();
@@ -157,7 +157,7 @@ void exit_closes_pool() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << "closed on exit:" << " " << ::tpy::print_bool((b.recv(10) == ::tpy::BytesView{})) << "\n";
+    std::cout << "closed on exit:" << " " << ::tpy::print_bool((b.recv(10) == ::tpy::BytesView{})) << "\n" << ::tpy::check_signals;
     b.close();
 }
 

@@ -46,17 +46,17 @@ void main() {
     ::tpy::Union<int32_t, std::string> b = ::tpyapp::main::make_su();
     ::tpy::Union<Point, int32_t, std::string> __slot_1 = ::tpyapp::main::make_3u();
     ::tpy::Union<Point*, int32_t*, std::string*> c = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << ::tpy::repr_of(a) << "\n";
-    std::cout << ::tpy::repr_of(b) << "\n";
-    std::cout << ::tpy::repr_of(c) << "\n";
-    std::cout << std::format("{} and {}", ::tpy::__str__(a), ::tpy::__str__(b)) << "\n";
-    std::cout << std::format("{}", ::tpy::__str__(b)) << "\n";
-    std::cout << std::format("{}", ::tpy::repr_of(b)) << "\n";
-    std::cout << std::format("{}", ::tpy::__str__(c)) << "\n";
-    std::cout << std::format("{}", ::tpy::__str__(c)) << "\n";
-    std::cout << std::format("{}", ::tpy::repr_of(c)) << "\n";
+    std::cout << ::tpy::repr_of(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(c) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{} and {}", ::tpy::__str__(a), ::tpy::__str__(b)) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", ::tpy::__str__(b)) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", ::tpy::repr_of(b)) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", ::tpy::__str__(c)) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", ::tpy::__str__(c)) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", ::tpy::repr_of(c)) << "\n" << ::tpy::check_signals;
     int32_t n = 99;
-    std::cout << std::format("{}", ::tpy::repr_of(n)) << "\n";
+    std::cout << std::format("{}", ::tpy::repr_of(n)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -27,21 +27,21 @@ namespace tpyapp::main {
 //     print(cv2.origin)
 void main() {
     Config c1 = Config("test");
-    std::cout << c1.name << "\n";
-    std::cout << c1.value << "\n";
-    std::cout << ::tpy::__len__(c1.tags) << "\n";
-    std::cout << ::tpy::__len__(c1.lookup) << "\n";
+    std::cout << c1.name << "\n" << ::tpy::check_signals;
+    std::cout << c1.value << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(c1.tags) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(c1.lookup) << "\n" << ::tpy::check_signals;
     Config c2 = Config("prod", 99, {"a", "b"});
-    std::cout << c2.name << "\n";
-    std::cout << c2.value << "\n";
-    std::cout << ::tpy::__len__(c2.tags) << "\n";
+    std::cout << c2.name << "\n" << ::tpy::check_signals;
+    std::cout << c2.value << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(c2.tags) << "\n" << ::tpy::check_signals;
     c1.tags.push_back("x");
-    std::cout << ::tpy::__len__(c1.tags) << "\n";
-    std::cout << ::tpy::__len__(c2.tags) << "\n";
+    std::cout << ::tpy::__len__(c1.tags) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(c2.tags) << "\n" << ::tpy::check_signals;
     Canvas cv = Canvas("drawing");
-    std::cout << cv.origin << "\n";
+    std::cout << cv.origin << "\n" << ::tpy::check_signals;
     Canvas cv2 = Canvas("art", Point(10, 20));
-    std::cout << cv2.origin << "\n";
+    std::cout << cv2.origin << "\n" << ::tpy::check_signals;
 }
 
 // # field(default=...) and field(default_factory=...) for @dataclass

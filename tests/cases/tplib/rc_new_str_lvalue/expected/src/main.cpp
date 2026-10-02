@@ -16,11 +16,11 @@ void main() {
     std::string_view s = "world";
     std::string_view __tmp_1{s};
     ::tpystd::tplib::rc::Rc<std::string_view> r = Rc<std::string_view>::new_<std::string_view>(std::move(__tmp_1));
-    std::cout << r.get() << "\n";
+    std::cout << r.get() << "\n" << ::tpy::check_signals;
     std::string_view t = "hello";
     std::string_view __tmp_2{t};
     ::tpystd::tplib::rc::Rc<std::string_view> r2 = Rc<std::string_view>::new_<std::string_view>(std::move(__tmp_2));
-    std::cout << r2.get() << "\n";
+    std::cout << r2.get() << "\n" << ::tpy::check_signals;
 }
 
 // # Regression: Rc.new(s) on a str lvalue used to crash codegen with

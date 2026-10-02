@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(c.item)
 void main() {
     Cell<int32_t> c = Cell<int32_t>(11);
-    std::cout << c.item << "\n";
+    std::cout << c.item << "\n" << ::tpy::check_signals;
     c.replace(22);
-    std::cout << c.item << "\n";
+    std::cout << c.item << "\n" << ::tpy::check_signals;
 }
 
 // main()

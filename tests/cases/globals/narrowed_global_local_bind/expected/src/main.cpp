@@ -55,8 +55,8 @@ int32_t shadowed() {
 //     print(shadowed())
 void main() {
     ::tpyapp::main::enable();
-    std::cout << ::tpyapp::main::local_bind() << "\n";
-    std::cout << ::tpyapp::main::shadowed() << "\n";
+    std::cout << ::tpyapp::main::local_bind() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::shadowed() << "\n" << ::tpy::check_signals;
 }
 
 // GO: int32 | None = None

@@ -89,7 +89,7 @@ namespace tpyapp::main {
 //     print(f"Parrot({label}) ctor")
 //     self.label = label
 inline Parrot::Parrot(std::string_view label) {
-    std::cout << std::format("Parrot({}) ctor", label) << "\n";
+    std::cout << std::format("Parrot({}) ctor", label) << "\n" << ::tpy::check_signals;
     this->label = label;
 }
 
@@ -108,7 +108,7 @@ inline Parrot& Parrot::operator=(Parrot&& other) noexcept {
 //     print(f"~Parrot({self.label})")
 inline Parrot::~Parrot() {
     if (!this->__tpy_owned_) return;
-    std::cout << std::format("~Parrot({})", this->label) << "\n";
+    std::cout << std::format("~Parrot({})", this->label) << "\n" << ::tpy::check_signals;
 }
 
 // def name(self) -> str:

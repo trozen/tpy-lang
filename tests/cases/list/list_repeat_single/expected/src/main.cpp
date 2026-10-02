@@ -40,23 +40,23 @@ void __tpy_init() {
 
     static std::vector<int32_t> __global_slot_1 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(5, {0}));
     zeros = &__global_slot_1;
-    std::cout << ::tpy::__len__((*zeros)) << "\n";
-    std::cout << ::tpy::__getitem__((*zeros), 0) << "\n";
-    std::cout << ::tpy::__getitem__((*zeros), 4) << "\n";
+    std::cout << ::tpy::__len__((*zeros)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*zeros), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*zeros), 4) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_2 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(10, {42}));
     filled = &__global_slot_2;
-    std::cout << ::tpy::__len__((*filled)) << "\n";
-    std::cout << ::tpy::__getitem__((*filled), 0) << "\n";
-    std::cout << ::tpy::__getitem__((*filled), 9) << "\n";
+    std::cout << ::tpy::__len__((*filled)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*filled), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*filled), 9) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_3 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(0, {99}));
     empty = &__global_slot_3;
-    std::cout << ::tpy::__len__((*empty)) << "\n";
+    std::cout << ::tpy::__len__((*empty)) << "\n" << ::tpy::check_signals;
     n = 3;
     static std::vector<int32_t> __global_slot_4 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(n, {7}));
     dynamic = &__global_slot_4;
-    std::cout << ::tpy::__len__((*dynamic)) << "\n";
-    std::cout << ::tpy::__getitem__((*dynamic), 0) << "\n";
-    std::cout << ::tpy::__getitem__((*dynamic), 2) << "\n";
+    std::cout << ::tpy::__len__((*dynamic)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*dynamic), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*dynamic), 2) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

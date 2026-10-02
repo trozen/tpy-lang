@@ -21,7 +21,7 @@ int32_t forward(NamedPet& np) {
 //     print(forward(c))
 void main() {
     Cat c = Cat(7);
-    std::cout << ::tpyapp::main::forward(c) << "\n";
+    std::cout << ::tpyapp::main::forward(c) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -57,7 +57,7 @@ void for_break() {
             break;
         }
     }
-    std::cout << "for_break" << " " << ::tpy::__len__(p.xs) << "\n";
+    std::cout << "for_break" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
 }
 
 // def while_break() -> None:
@@ -80,7 +80,7 @@ void while_break() {
             break;
         }
     }
-    std::cout << "while_break" << " " << ::tpy::__len__(p.xs) << "\n";
+    std::cout << "while_break" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
 }
 
 // def while_true_break() -> None:
@@ -103,7 +103,7 @@ void while_true_break() {
             break;
         }
     }
-    std::cout << "while_true_break" << " " << ::tpy::__len__(p.xs) << "\n";
+    std::cout << "while_true_break" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
 }
 
 // def match_break() -> None:
@@ -132,7 +132,7 @@ void match_break() {
         }
     }
     __loop_break_1:;
-    std::cout << "match_break" << " " << ::tpy::__len__(p.xs) << "\n";
+    std::cout << "match_break" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
 }
 
 // def continue_rebind() -> None:
@@ -147,7 +147,7 @@ void continue_rebind() {
     P __slot_1 = P(1);
     P* p = &__slot_1;
     for (int32_t i = 0; i < 3; ++i) {
-        std::cout << "continue_rebind" << " " << i << " " << ::tpy::__len__(p->xs) << "\n";
+        std::cout << "continue_rebind" << " " << i << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
         if ((i == 0)) {
             P __tmp_1 = (*p);
             ::tpyapp::main::take(std::move(__tmp_1));
@@ -191,7 +191,7 @@ void finally_break() {
             n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
-    std::cout << "finally_break" << " " << n << " " << ::tpy::__len__(p.xs) << "\n";
+    std::cout << "finally_break" << " " << n << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
 }
 
 // def with_break() -> None:
@@ -231,7 +231,7 @@ void with_break() {
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
     }
-    std::cout << "with_break" << " " << g.n << " " << ::tpy::__len__(p.xs) << "\n";
+    std::cout << "with_break" << " " << g.n << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
 }
 
 // def try_else_break() -> None:
@@ -255,7 +255,7 @@ void try_else_break() {
                     throw ::tpy::ValueError("retry");
                 }
             } catch (const ::tpy::ValueError&) {
-                std::cout << "try_else_break" << " " << i << " " << ::tpy::__len__(p.xs) << "\n";
+                std::cout << "try_else_break" << " " << i << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
                 goto __after_else_1;
             }
             // else:
@@ -289,7 +289,7 @@ void except_break() {
             }
         }
     }
-    std::cout << "except_break" << " " << ::tpy::__len__(p.xs) << "\n";
+    std::cout << "except_break" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
 }
 
 // def handler_break_finally() -> None:
@@ -315,16 +315,16 @@ void handler_break_finally() {
                     P __tmp_1 = p;
                     ::tpyapp::main::take(std::move(__tmp_1));
                     __fin_ran_3 = true;
-                    std::cout << "handler_break_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n";
+                    std::cout << "handler_break_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
                     break;
                 }
             } catch (...) {
                 if (!__fin_ran_3) {
-                    std::cout << "handler_break_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n";
+                    std::cout << "handler_break_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
                 }
                 throw;
             }
-            std::cout << "handler_break_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n";
+            std::cout << "handler_break_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -351,16 +351,16 @@ void handler_continue_finally() {
                     P __tmp_1 = p;
                     ::tpyapp::main::take(std::move(__tmp_1));
                     __fin_ran_4 = true;
-                    std::cout << "handler_continue_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n";
+                    std::cout << "handler_continue_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
                     continue;
                 }
             } catch (...) {
                 if (!__fin_ran_4) {
-                    std::cout << "handler_continue_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n";
+                    std::cout << "handler_continue_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
                 }
                 throw;
             }
-            std::cout << "handler_continue_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n";
+            std::cout << "handler_continue_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -402,17 +402,17 @@ void with_target_finally() {
                     __with_exit_2:
                     __ctx_2.__exit__({}, nullptr, {});
                     __fin_ran_5 = true;
-                    std::cout << "with_target_finally" << " " << i << " " << ::tpy::__getitem__(t->n, 0) << "\n";
+                    std::cout << "with_target_finally" << " " << i << " " << ::tpy::__getitem__(t->n, 0) << "\n" << ::tpy::check_signals;
                     break;
                 } catch (const ::tpy::ValueError&) {
                 }
             } catch (...) {
                 if (!__fin_ran_5) {
-                    std::cout << "with_target_finally" << " " << i << " " << ::tpy::__getitem__(t->n, 0) << "\n";
+                    std::cout << "with_target_finally" << " " << i << " " << ::tpy::__getitem__(t->n, 0) << "\n" << ::tpy::check_signals;
                 }
                 throw;
             }
-            std::cout << "with_target_finally" << " " << i << " " << ::tpy::__getitem__(t->n, 0) << "\n";
+            std::cout << "with_target_finally" << " " << i << " " << ::tpy::__getitem__(t->n, 0) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -440,16 +440,16 @@ int32_t return_finally() {
                 ::tpyapp::main::take(std::move(__tmp_1));
                 int32_t __tpy_ret_0 = 1;
                 __fin_ran_7 = true;
-                std::cout << "return_finally" << " " << ::tpy::__len__(p.xs) << "\n";
+                std::cout << "return_finally" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
                 return __tpy_ret_0;
             }
         } catch (...) {
             if (!__fin_ran_7) {
-                std::cout << "return_finally" << " " << ::tpy::__len__(p.xs) << "\n";
+                std::cout << "return_finally" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
             }
             throw;
         }
-        std::cout << "return_finally" << " " << ::tpy::__len__(p.xs) << "\n";
+        std::cout << "return_finally" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
     }
     return 0;
 }
@@ -475,10 +475,10 @@ void raise_finally() {
                 throw;
             }
         } catch (...) {
-            std::cout << "raise_finally" << " " << ::tpy::__len__(p.xs) << "\n";
+            std::cout << "raise_finally" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "raise_finally" << " " << ::tpy::__len__(p.xs) << "\n";
+        std::cout << "raise_finally" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -507,10 +507,10 @@ void assert_finally(bool c) {
                 }
             }
         } catch (...) {
-            std::cout << "assert_finally" << " " << ::tpy::__len__(p.xs) << "\n";
+            std::cout << "assert_finally" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "assert_finally" << " " << ::tpy::__len__(p.xs) << "\n";
+        std::cout << "assert_finally" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -543,26 +543,26 @@ int32_t nested_return_finally() {
                         ::tpyapp::main::take(std::move(__tmp_1));
                         int32_t __tpy_ret_0 = 1;
                         __fin_ran_11 = true;
-                        std::cout << "nested_return_finally inner" << "\n";
+                        std::cout << "nested_return_finally inner" << "\n" << ::tpy::check_signals;
                         __fin_ran_10 = true;
-                        std::cout << "nested_return_finally" << " " << ::tpy::__len__(p.xs) << "\n";
+                        std::cout << "nested_return_finally" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
                         return __tpy_ret_0;
                     }
                 } catch (...) {
                     if (!__fin_ran_11) {
-                        std::cout << "nested_return_finally inner" << "\n";
+                        std::cout << "nested_return_finally inner" << "\n" << ::tpy::check_signals;
                     }
                     throw;
                 }
-                std::cout << "nested_return_finally inner" << "\n";
+                std::cout << "nested_return_finally inner" << "\n" << ::tpy::check_signals;
             }
         } catch (...) {
             if (!__fin_ran_10) {
-                std::cout << "nested_return_finally" << " " << ::tpy::__len__(p.xs) << "\n";
+                std::cout << "nested_return_finally" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
             }
             throw;
         }
-        std::cout << "nested_return_finally" << " " << ::tpy::__len__(p.xs) << "\n";
+        std::cout << "nested_return_finally" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
     }
     return 0;
 }
@@ -587,16 +587,16 @@ P deferred_return_finally() {
             } catch (const ::tpy::ValueError&) {
                 auto* __tpy_retp_0 = &(p);
                 __fin_ran_12 = true;
-                std::cout << "deferred_return_finally" << " " << ::tpy::__len__(p.xs) << "\n";
+                std::cout << "deferred_return_finally" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
                 return std::move(*__tpy_retp_0);
             }
         } catch (...) {
             if (!__fin_ran_12) {
-                std::cout << "deferred_return_finally" << " " << ::tpy::__len__(p.xs) << "\n";
+                std::cout << "deferred_return_finally" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
             }
             throw;
         }
-        std::cout << "deferred_return_finally" << " " << ::tpy::__len__(p.xs) << "\n";
+        std::cout << "deferred_return_finally" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
     }
     return P(0);
 }
@@ -631,10 +631,10 @@ void with_target_exception_finally() {
             __with_exit_3:
             __ctx_3.__exit__({}, nullptr, {});
         } catch (...) {
-            std::cout << "with_target_exception_finally" << " " << ::tpy::__getitem__(t->n, 0) << "\n";
+            std::cout << "with_target_exception_finally" << " " << ::tpy::__getitem__(t->n, 0) << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "with_target_exception_finally" << " " << ::tpy::__getitem__(t->n, 0) << "\n";
+        std::cout << "with_target_exception_finally" << " " << ::tpy::__getitem__(t->n, 0) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -655,7 +655,7 @@ void finally_continue() {
     P* p = &*(__slot_1 = P(1));
     int32_t n = 0;
     for (int32_t i = 0; i < 3; ++i) {
-        std::cout << "finally_continue" << " " << i << " " << ::tpy::__len__(p->xs) << "\n";
+        std::cout << "finally_continue" << " " << i << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
         {
             bool __fin_ran_15 = false;
             try {
@@ -700,7 +700,7 @@ void inner_else_break() {
         }
         __after_else_1:;
     }
-    std::cout << "inner_else_break" << " " << ::tpy::__len__(p.xs) << "\n";
+    std::cout << "inner_else_break" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
 }
 
 // def suppressed_while_true() -> None:
@@ -734,7 +734,7 @@ void suppressed_while_true() {
         __ctx_4.__exit__({}, nullptr, {});
         throw;
     }
-    std::cout << "suppressed_while_true" << " " << ::tpy::__len__(p->xs) << "\n";
+    std::cout << "suppressed_while_true" << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
 }
 
 // def with_target_break() -> None:
@@ -767,7 +767,7 @@ void with_target_break() {
             throw;
         }
     }
-    std::cout << "with_target_break" << " " << ::tpy::__getitem__(t->n, 0) << "\n";
+    std::cout << "with_target_break" << " " << ::tpy::__getitem__(t->n, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def nested_break() -> None:
@@ -781,7 +781,7 @@ void with_target_break() {
 void nested_break() {
     P p = P(1);
     for (int32_t j = 0; j < 2; ++j) {
-        std::cout << "nested_break" << " " << j << " " << ::tpy::__len__(p.xs) << "\n";
+        std::cout << "nested_break" << " " << j << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
         for (int32_t i = 0; i < 2; ++i) {
             if ((j == 0)) {
                 P __tmp_1 = p;
@@ -810,7 +810,7 @@ void zero_trip_for(const std::vector<int32_t>& xs) {
         int32_t x = *__beg_0;
         (*y) = P(2);
     }
-    std::cout << "zero_trip_for" << " " << ::tpy::__len__(y->xs) << "\n";
+    std::cout << "zero_trip_for" << " " << ::tpy::__len__(y->xs) << "\n" << ::tpy::check_signals;
 }
 
 // def zero_trip_while(n: int32) -> None:
@@ -831,7 +831,7 @@ void zero_trip_while(int32_t n) {
         (*y) = P(2);
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "zero_trip_while" << " " << ::tpy::__len__(y->xs) << "\n";
+    std::cout << "zero_trip_while" << " " << ::tpy::__len__(y->xs) << "\n" << ::tpy::check_signals;
 }
 
 // def while_true_rebind() -> None:
@@ -850,7 +850,7 @@ void while_true_rebind() {
         (*y) = P(2);
         break;
     }
-    std::cout << "while_true_rebind" << " " << ::tpy::__len__(y->xs) << "\n";
+    std::cout << "while_true_rebind" << " " << ::tpy::__len__(y->xs) << "\n" << ::tpy::check_signals;
 }
 
 // def gen_break() -> Iterator[int32]:
@@ -985,7 +985,7 @@ void iterable_consumed() {
         const auto& x = *__beg_0;
         std::vector<P> __tmp_1 = xs;
         int32_t n = ::tpyapp::main::take_list(std::move(__tmp_1));
-        std::cout << "iterable_consumed" << " " << n << " " << ::tpy::__len__(x.xs) << "\n";
+        std::cout << "iterable_consumed" << " " << n << " " << ::tpy::__len__(x.xs) << "\n" << ::tpy::check_signals;
         break;
     }
 }
@@ -1027,7 +1027,7 @@ void alias_iterable_consumed() {
         const auto& x = *__beg_0;
         std::vector<P> __tmp_1 = xs;
         int32_t n = ::tpyapp::main::take_list(std::move(__tmp_1));
-        std::cout << "alias_iterable_consumed" << " " << n << " " << ::tpy::__len__(x.xs) << "\n";
+        std::cout << "alias_iterable_consumed" << " " << n << " " << ::tpy::__len__(x.xs) << "\n" << ::tpy::check_signals;
         break;
     }
 }
@@ -1045,7 +1045,7 @@ void alias_call_borrow() {
     P& v = ::tpyapp::main::first(ys);
     std::vector<P> __tmp_1 = xs;
     int32_t n = ::tpyapp::main::take_list(std::move(__tmp_1));
-    std::cout << "alias_call_borrow" << " " << n << " " << ::tpy::__len__(v.xs) << "\n";
+    std::cout << "alias_call_borrow" << " " << n << " " << ::tpy::__len__(v.xs) << "\n" << ::tpy::check_signals;
 }
 
 // def last_use_break() -> None:
@@ -1066,7 +1066,7 @@ void last_use_break() {
             break;
         }
     }
-    std::cout << "last_use_break" << " " << n << "\n";
+    std::cout << "last_use_break" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // def else_skipped_by_break() -> None:
@@ -1093,7 +1093,7 @@ void else_skipped_by_break() {
         n = ::tpy::__len__(p.xs);
     }
     __after_else_0:;
-    std::cout << "else_skipped_by_break" << " " << n << "\n";
+    std::cout << "else_skipped_by_break" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -1159,24 +1159,24 @@ void main() {
         try {
             ::tpyapp::main::raise_finally();
         } catch (const ::tpy::ValueError&) {
-            std::cout << "raise_finally caught" << "\n";
+            std::cout << "raise_finally caught" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::assert_finally(true);
         } catch (const ::tpy::AssertionError&) {
-            std::cout << "assert_finally caught" << "\n";
+            std::cout << "assert_finally caught" << "\n" << ::tpy::check_signals;
         }
     }
     ::tpyapp::main::nested_return_finally();
     P d = ::tpyapp::main::deferred_return_finally();
-    std::cout << "deferred_return_finally" << " " << ::tpy::__len__(d.xs) << "\n";
+    std::cout << "deferred_return_finally" << " " << ::tpy::__len__(d.xs) << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::with_target_exception_finally();
         } catch (const ::tpy::ValueError&) {
-            std::cout << "with_target_exception_finally caught" << "\n";
+            std::cout << "with_target_exception_finally caught" << "\n" << ::tpy::check_signals;
         }
     }
     ::tpyapp::main::finally_continue();
@@ -1189,11 +1189,11 @@ void main() {
     ::tpyapp::main::zero_trip_for(__tmp_1);
     ::tpyapp::main::zero_trip_while(0);
     ::tpyapp::main::while_true_rebind();
-    std::cout << "gen_break" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_break())) << "\n";
-    std::cout << "async_break" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_break())) << "\n";
+    std::cout << "gen_break" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_break())) << "\n" << ::tpy::check_signals;
+    std::cout << "async_break" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_break())) << "\n" << ::tpy::check_signals;
     Runner().run();
     ::tpyapp::main::iterable_consumed();
-    std::cout << "iterable_consumed_return" << " " << ::tpyapp::main::iterable_consumed_return() << "\n";
+    std::cout << "iterable_consumed_return" << " " << ::tpyapp::main::iterable_consumed_return() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::alias_iterable_consumed();
     ::tpyapp::main::alias_call_borrow();
     ::tpyapp::main::last_use_break();

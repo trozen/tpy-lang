@@ -38,7 +38,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t v = *__beg_1;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
     std::vector<int32_t> items = {1, 2, 2, 3, 3, 3};
     ::tpy::ordered_set<int32_t> unique = ({
@@ -52,7 +52,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(unique) << "\n";
+    std::cout << ::tpy::__len__(unique) << "\n" << ::tpy::check_signals;
     std::vector<std::string> names = {"alice", "bob", "alice", "charlie"};
     ::tpy::ordered_set<std::string> name_set = ({
         ::tpy::ordered_set<std::string> __result;
@@ -65,7 +65,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(name_set) << "\n";
+    std::cout << ::tpy::__len__(name_set) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> r2 = ({
         ::tpy::ordered_set<int32_t> __result;
         const int32_t __start_4 = 3;
@@ -80,7 +80,7 @@ void main() {
     auto __end_6 = __obj_6.end();
     for (; __beg_6 != __end_6; ++__beg_6) {
         int32_t v = *__beg_6;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
 }
 

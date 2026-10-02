@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     ::tpy::BigInt x = ::tpy::BigInt(42);
     ::tpy::BigInt n = x;
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -23,17 +23,17 @@ void main() {
     Empty e = Empty();
     e.buf.push_back(65);
     e.tags.push_back(1);
-    std::cout << ::tpy::__len__(e.buf) << "\n";
-    std::cout << ::tpy::__len__(e.tags) << "\n";
+    std::cout << ::tpy::__len__(e.buf) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(e.tags) << "\n" << ::tpy::check_signals;
     Seeded s = Seeded(::tpy::bytes_literal("abc", 3));
     s.buf.push_back(66);
-    std::cout << ::tpy::__len__(s.buf) << "\n";
+    std::cout << ::tpy::__len__(s.buf) << "\n" << ::tpy::check_signals;
     Sized z = Sized(3);
-    std::cout << ::tpy::__len__(z.buf) << "\n";
-    std::cout << static_cast<int>(::tpy::bytes_getitem(z.buf, 0)) << "\n";
+    std::cout << ::tpy::__len__(z.buf) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpy::bytes_getitem(z.buf, 0)) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray src = ::tpy::ByteArray(::tpy::bytes_literal("xy", 2));
     Copied c = Copied(src);
-    std::cout << ::tpy::__len__(c.buf) << "\n";
+    std::cout << ::tpy::__len__(c.buf) << "\n" << ::tpy::check_signals;
 }
 
 // main()

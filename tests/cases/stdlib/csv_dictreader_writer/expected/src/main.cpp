@@ -21,7 +21,7 @@ void read_header_derived() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-            std::cout << ::tpy::__getitem__(row, "name") << " " << ::tpy::__getitem__(row, "age") << " " << ::tpy::__getitem__(row, "city") << "\n";
+            std::cout << ::tpy::__getitem__(row, "name") << " " << ::tpy::__getitem__(row, "age") << " " << ::tpy::__getitem__(row, "city") << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -45,7 +45,7 @@ void read_explicit_fieldnames() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-            std::cout << ::tpy::__getitem__(row, "name") << " " << ::tpy::__getitem__(row, "age") << "\n";
+            std::cout << ::tpy::__getitem__(row, "name") << " " << ::tpy::__getitem__(row, "age") << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -64,7 +64,7 @@ void read_quoted() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-            std::cout << ::tpy::__getitem__(row, "name") << " " << "::" << " " << ::tpy::__getitem__(row, "note") << "\n";
+            std::cout << ::tpy::__getitem__(row, "name") << " " << "::" << " " << ::tpy::__getitem__(row, "note") << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -87,7 +87,7 @@ void read_short_row() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-            std::cout << ::tpy::__len__(row) << " " << ::tpy::print_bool((row.contains("c"))) << " " << ::tpy::__getitem__(row, "a") << " " << ::tpy::__getitem__(row, "b") << "\n";
+            std::cout << ::tpy::__len__(row) << " " << ::tpy::print_bool((row.contains("c"))) << " " << ::tpy::__getitem__(row, "a") << " " << ::tpy::__getitem__(row, "b") << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -109,7 +109,7 @@ void read_long_row() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-            std::cout << ::tpy::__getitem__(row, "a") << " " << ::tpy::__getitem__(row, "b") << "\n";
+            std::cout << ::tpy::__getitem__(row, "a") << " " << ::tpy::__getitem__(row, "b") << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -127,7 +127,7 @@ void write_basic() {
     w.writeheader();
     w.writerow(::tpy::ordered_map<std::string, std::string>({{"name", "Alice"}, {"age", "30"}}));
     w.writerows({::tpy::ordered_map<std::string, std::string>({{"name", "Bob"}, {"age", "25"}}), ::tpy::ordered_map<std::string, std::string>({{"name", "Cy"}, {"age", "40"}})});
-    std::cout << ::tpy::repr_of(out.getvalue()) << "\n";
+    std::cout << ::tpy::repr_of(out.getvalue()) << "\n" << ::tpy::check_signals;
 }
 
 // def write_quoting() -> None:
@@ -141,7 +141,7 @@ void write_quoting() {
     ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, {"k", "v"});
     w.writeheader();
     w.writerow(::tpy::ordered_map<std::string, std::string>({{"k", "x"}, {"v", "has,comma"}}));
-    std::cout << ::tpy::repr_of(out.getvalue()) << "\n";
+    std::cout << ::tpy::repr_of(out.getvalue()) << "\n" << ::tpy::check_signals;
 }
 
 // def write_missing_key() -> None:
@@ -154,7 +154,7 @@ void write_missing_key() {
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
     ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, {"name", "age"});
     w.writerow(::tpy::ordered_map<std::string, std::string>({{"name", "Alice"}}));
-    std::cout << ::tpy::repr_of(out.getvalue()) << "\n";
+    std::cout << ::tpy::repr_of(out.getvalue()) << "\n" << ::tpy::check_signals;
 }
 
 // def write_extra_key_raises() -> None:
@@ -172,9 +172,9 @@ void write_extra_key_raises() {
     {
         try {
             w.writerow(::tpy::ordered_map<std::string, std::string>({{"name", "Alice"}, {"extra", "x"}}));
-            std::cout << "FAIL: no ValueError" << "\n";
+            std::cout << "FAIL: no ValueError" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "got ValueError" << "\n";
+            std::cout << "got ValueError" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -199,7 +199,7 @@ void roundtrip() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-            std::cout << ::tpy::__getitem__(row, "name") << " " << "->" << " " << ::tpy::__getitem__(row, "note") << "\n";
+            std::cout << ::tpy::__getitem__(row, "name") << " " << "->" << " " << ::tpy::__getitem__(row, "note") << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -226,23 +226,23 @@ void roundtrip() {
 //     roundtrip()
 void main() {
     ::tpyapp::main::read_header_derived();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_explicit_fieldnames();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_quoted();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_short_row();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_long_row();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::write_basic();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::write_quoting();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::write_missing_key();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::write_extra_key_raises();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::roundtrip();
 }
 

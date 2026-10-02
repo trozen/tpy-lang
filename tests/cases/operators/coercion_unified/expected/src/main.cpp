@@ -76,17 +76,17 @@ int32_t return_bigint_as_int32() {
 //     big = 300
 //     print(take_int32(big))  # 300
 void test_bigint_to_int32() {
-    std::cout << "BigInt -> int32 coercions:" << "\n";
+    std::cout << "BigInt -> int32 coercions:" << "\n" << ::tpy::check_signals;
     ::tpy::BigInt big = ::tpy::BigInt(100);
     int32_t small = (big).to_fixed_check<int32_t>();
-    std::cout << small << "\n";
+    std::cout << small << "\n" << ::tpy::check_signals;
     big = ::tpy::BigInt(200);
     small = (big).to_fixed_check<int32_t>();
-    std::cout << small << "\n";
+    std::cout << small << "\n" << ::tpy::check_signals;
     int32_t result = ::tpyapp::main::return_bigint_as_int32();
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
     big = ::tpy::BigInt(300);
-    std::cout << ::tpyapp::main::take_int32((big).to_fixed_check<int32_t>()) << "\n";
+    std::cout << ::tpyapp::main::take_int32((big).to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
 }
 
 // # --- Record -> Ptr coercion ---
@@ -109,16 +109,16 @@ void test_bigint_to_int32() {
 //     take_ptr(pt3)
 //     print(pt3.x)  # 51 (modified by take_ptr)
 void test_record_to_ptr() {
-    std::cout << "Record -> Ptr coercions:" << "\n";
+    std::cout << "Record -> Ptr coercions:" << "\n" << ::tpy::check_signals;
     Point pt = Point(10, 20);
     Point* ptr = &pt;
-    std::cout << ptr->x << "\n";
+    std::cout << ptr->x << "\n" << ::tpy::check_signals;
     Point pt2 = Point(30, 40);
     ptr = &pt2;
-    std::cout << ptr->x << "\n";
+    std::cout << ptr->x << "\n" << ::tpy::check_signals;
     Point pt3 = Point(50, 60);
     ::tpyapp::main::take_ptr(&pt3);
-    std::cout << pt3.x << "\n";
+    std::cout << pt3.x << "\n" << ::tpy::check_signals;
 }
 
 // # --- Record -> Ptr[readonly[...]] coercion ---
@@ -140,15 +140,15 @@ void test_record_to_ptr() {
 //     pt3: Point = Point(100, 200)
 //     print(take_const_ptr(pt3))  # 300
 void test_record_to_const_ptr() {
-    std::cout << "Record -> Ptr[readonly[...]] coercions:" << "\n";
+    std::cout << "Record -> Ptr[readonly[...]] coercions:" << "\n" << ::tpy::check_signals;
     Point pt = Point(5, 15);
     const Point* cptr = &pt;
-    std::cout << cptr->x << "\n";
+    std::cout << cptr->x << "\n" << ::tpy::check_signals;
     Point pt2 = Point(25, 35);
     cptr = &pt2;
-    std::cout << cptr->x << "\n";
+    std::cout << cptr->x << "\n" << ::tpy::check_signals;
     Point pt3 = Point(100, 200);
-    std::cout << ::tpyapp::main::take_const_ptr(&pt3) << "\n";
+    std::cout << ::tpyapp::main::take_const_ptr(&pt3) << "\n" << ::tpy::check_signals;
 }
 
 // # --- Ptr -> Record coercion (dereference) ---
@@ -184,21 +184,21 @@ Point& return_record_from_ptr(Point* p) {
 //     ptr4: Ptr[Point] = pt4
 //     print(take_point(ptr4))  # 27
 void test_ptr_to_record() {
-    std::cout << "Ptr -> Record coercions:" << "\n";
+    std::cout << "Ptr -> Record coercions:" << "\n" << ::tpy::check_signals;
     Point pt = Point(7, 8);
     Point* ptr = &pt;
     Point* copy = &(::tpy::deref_check(ptr));
-    std::cout << copy->x << "\n";
+    std::cout << copy->x << "\n" << ::tpy::check_signals;
     Point pt2 = Point(9, 10);
     Point* ptr2 = &pt2;
     copy = &(::tpy::deref_check(ptr2));
-    std::cout << copy->x << "\n";
+    std::cout << copy->x << "\n" << ::tpy::check_signals;
     Point pt3 = Point(11, 12);
     Point& returned = ::tpyapp::main::return_record_from_ptr(&pt3);
-    std::cout << returned.x << "\n";
+    std::cout << returned.x << "\n" << ::tpy::check_signals;
     Point pt4 = Point(13, 14);
     Point* ptr4 = &pt4;
-    std::cout << ::tpyapp::main::take_point(::tpy::deref_check(ptr4)) << "\n";
+    std::cout << ::tpyapp::main::take_point(::tpy::deref_check(ptr4)) << "\n" << ::tpy::check_signals;
 }
 
 // # --- Ptr -> Ptr[readonly[...]] coercion ---
@@ -229,18 +229,18 @@ int32_t take_const_ptr_val(const Point* p) {
 //     ptr3: Ptr[Point] = pt3
 //     print(take_const_ptr_val(ptr3))  # 7
 void test_ptr_to_const_ptr() {
-    std::cout << "Ptr -> Ptr[readonly[...]] coercions:" << "\n";
+    std::cout << "Ptr -> Ptr[readonly[...]] coercions:" << "\n" << ::tpy::check_signals;
     Point pt = Point(3, 4);
     Point* ptr = &pt;
     const Point* cptr = ptr;
-    std::cout << cptr->x << "\n";
+    std::cout << cptr->x << "\n" << ::tpy::check_signals;
     Point pt2 = Point(5, 6);
     Point* ptr2 = &pt2;
     cptr = ptr2;
-    std::cout << cptr->x << "\n";
+    std::cout << cptr->x << "\n" << ::tpy::check_signals;
     Point pt3 = Point(7, 8);
     Point* ptr3 = &pt3;
-    std::cout << ::tpyapp::main::take_const_ptr_val(ptr3) << "\n";
+    std::cout << ::tpyapp::main::take_const_ptr_val(ptr3) << "\n" << ::tpy::check_signals;
 }
 
 // # --- ArrayList -> Span coercion ---
@@ -255,12 +255,12 @@ void test_ptr_to_const_ptr() {
 //     # Function argument
 //     print(take_span(al))  # 6
 void test_arraylist_to_span() {
-    std::cout << "ArrayList -> Span coercions:" << "\n";
+    std::cout << "ArrayList -> Span coercions:" << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     al.append(1);
     al.append(2);
     al.append(3);
-    std::cout << ::tpyapp::main::take_span(al.__span__()) << "\n";
+    std::cout << ::tpyapp::main::take_span(al.__span__()) << "\n" << ::tpy::check_signals;
 }
 
 // # --- Array -> Span coercion ---
@@ -272,9 +272,9 @@ void test_arraylist_to_span() {
 //     # Function argument
 //     print(take_span(arr))  # 60
 void test_array_to_span() {
-    std::cout << "Array -> Span coercions:" << "\n";
+    std::cout << "Array -> Span coercions:" << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> arr = {10, 20, 30};
-    std::cout << ::tpyapp::main::take_span(::tpy::as_mut_span(arr)) << "\n";
+    std::cout << ::tpyapp::main::take_span(::tpy::as_mut_span(arr)) << "\n" << ::tpy::check_signals;
 }
 
 // # --- List -> Span coercion ---
@@ -286,9 +286,9 @@ void test_array_to_span() {
 //     # Function argument
 //     print(take_span(lst))  # 600
 void test_list_to_span() {
-    std::cout << "List -> Span coercions:" << "\n";
+    std::cout << "List -> Span coercions:" << "\n" << ::tpy::check_signals;
     std::vector<int32_t> lst = {100, 200, 300};
-    std::cout << ::tpyapp::main::take_span(::tpy::as_mut_span(lst)) << "\n";
+    std::cout << ::tpyapp::main::take_span(::tpy::as_mut_span(lst)) << "\n" << ::tpy::check_signals;
 }
 
 // # --- Chained coercions: subscript -> Ptr ---
@@ -304,11 +304,11 @@ void test_list_to_span() {
 //     # arr[1] passed to Ptr[readonly[...]] param
 //     print(take_const_ptr(arr[1]))  # 7
 void test_subscript_to_ptr() {
-    std::cout << "Subscript -> Ptr coercions:" << "\n";
+    std::cout << "Subscript -> Ptr coercions:" << "\n" << ::tpy::check_signals;
     std::array<Point, 2> arr = {Point(1, 2), Point(3, 4)};
     ::tpyapp::main::take_ptr(&::tpy::__getitem__(arr, 0));
-    std::cout << ::tpy::__getitem__(arr, 0).x << "\n";
-    std::cout << ::tpyapp::main::take_const_ptr(&::tpy::__getitem__(arr, 1)) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take_const_ptr(&::tpy::__getitem__(arr, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // """Tests all type coercions through the unified _apply_coercion path.

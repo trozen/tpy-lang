@@ -31,27 +31,27 @@ int32_t main() {
     std::vector<std::string> __tmp_1 = std::vector<std::string>{};
     __tpy_builder_argparse_args_1 a1 = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
     if ((!a1.tag.has_value())) {
-        std::cout << "tag none" << "\n";
+        std::cout << "tag none" << "\n" << ::tpy::check_signals;
     }
     if ((!a1.num.has_value())) {
-        std::cout << "num none" << "\n";
+        std::cout << "num none" << "\n" << ::tpy::check_signals;
     }
     std::vector<std::string> __tmp_2 = {"--tag", "x", "--tag", "y"};
     __tpy_builder_argparse_args_2 a2 = ::tpyapp::main::__tpy_builder_argparse_parse_2(__tmp_2);
     if (!((a2.tag.has_value()))) ::tpy::raise_assertion_error();
-    std::cout << ::tpy::__getitem__((*a2.tag), 0) << "\n";
-    std::cout << ::tpy::__getitem__((*a2.tag), 1) << "\n";
+    std::cout << ::tpy::__getitem__((*a2.tag), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*a2.tag), 1) << "\n" << ::tpy::check_signals;
     std::vector<std::string> __tmp_3 = std::vector<std::string>{};
     __tpy_builder_argparse_args_3 a3 = ::tpyapp::main::__tpy_builder_argparse_parse_3(__tmp_3);
     if ((!a3.coord.has_value())) {
-        std::cout << "coord none" << "\n";
+        std::cout << "coord none" << "\n" << ::tpy::check_signals;
     }
     return 0;
 }
 
 // a1 = p1.parse_args([])
 void __tpy_builder_argparse_help_1() {
-    std::cout << "usage: prog [-h] [--tag TAG] [--num NUM]\n\noptions:\n  -h, --help  show this help message and exit\n  --tag TAG\n  --num NUM" << "\n";
+    std::cout << "usage: prog [-h] [--tag TAG] [--num NUM]\n\noptions:\n  -h, --help  show this help message and exit\n  --tag TAG\n  --num NUM" << "\n" << ::tpy::check_signals;
     ::tpy::sys_exit(0);
 }
 
@@ -78,7 +78,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         std::string_view __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "--tag")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
                 ::tpy::sys_exit(2);
             }
             __tpy_argparse_acc_tag.push_back(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1))));
@@ -86,14 +86,14 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
             __tpy_argparse_seen_tag = true;
         } else if ((__tpy_argparse_tok == "--num")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
                 ::tpy::sys_exit(2);
             }
             __tpy_argparse_acc_num.push_back(::tpy::BigInt::from_str(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1)))));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
             __tpy_argparse_seen_num = true;
         } else {
-            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n";
+            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
             ::tpy::sys_exit(2);
         }
     }
@@ -108,7 +108,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
 
 // a2 = p2.parse_args(["--tag", "x", "--tag", "y"])
 void __tpy_builder_argparse_help_2() {
-    std::cout << "usage: prog [-h] [--tag TAG]\n\noptions:\n  -h, --help  show this help message and exit\n  --tag TAG" << "\n";
+    std::cout << "usage: prog [-h] [--tag TAG]\n\noptions:\n  -h, --help  show this help message and exit\n  --tag TAG" << "\n" << ::tpy::check_signals;
     ::tpy::sys_exit(0);
 }
 
@@ -131,14 +131,14 @@ __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<s
         std::string_view __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "--tag")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
                 ::tpy::sys_exit(2);
             }
             __tpy_argparse_acc_tag.push_back(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1))));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
             __tpy_argparse_seen_tag = true;
         } else {
-            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n";
+            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
             ::tpy::sys_exit(2);
         }
     }
@@ -150,7 +150,7 @@ __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<s
 
 // a3 = p3.parse_args([])
 void __tpy_builder_argparse_help_3() {
-    std::cout << "usage: prog [-h] [--coord COORD COORD]\n\noptions:\n  -h, --help           show this help message and exit\n  --coord COORD COORD" << "\n";
+    std::cout << "usage: prog [-h] [--coord COORD COORD]\n\noptions:\n  -h, --help           show this help message and exit\n  --coord COORD COORD" << "\n" << ::tpy::check_signals;
     ::tpy::sys_exit(0);
 }
 
@@ -180,13 +180,13 @@ __tpy_builder_argparse_args_3 __tpy_builder_argparse_parse_3(const std::vector<s
                 __tpy_argparse_j = (::tpy::add_check<int32_t>(__tpy_argparse_j, 1));
             }
             if (((::tpy::sub_check<int32_t>((::tpy::sub_check<int32_t>(__tpy_argparse_j, __tpy_argparse_i)), 1)) != 2)) {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", __tpy_argparse_tok)), " requires exactly 2 value(s)")) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", __tpy_argparse_tok)), " requires exactly 2 value(s)")) << "\n" << ::tpy::check_signals;
                 ::tpy::sys_exit(2);
             }
             __tpy_argparse_i = __tpy_argparse_j;
             __tpy_argparse_seen_coord = true;
         } else {
-            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n";
+            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
             ::tpy::sys_exit(2);
         }
     }

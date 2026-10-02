@@ -46,18 +46,18 @@ bool is_null(const ::tpyapp::pkg_v::V& v) {
 void main() {
     ::tpyapp::pkg_v::V a = ::tpyapp::pkg_v::make_int();
     ::tpyapp::pkg_v::V b = ::tpyapp::pkg_v::make_dict();
-    std::cout << ::tpy::__str__(a) << "\n";
-    std::cout << ::tpy::__str__(b) << "\n";
-    std::cout << ::tpyapp::pkg_v::kind(a) << "\n";
-    std::cout << ::tpyapp::pkg_v::kind(b) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_null(a)) << "\n";
+    std::cout << ::tpy::__str__(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__str__(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::pkg_v::kind(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::pkg_v::kind(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_null(a)) << "\n" << ::tpy::check_signals;
     ::tpyapp::pkg_v::V nl = std::monostate{};
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_null(nl)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_null(nl)) << "\n" << ::tpy::check_signals;
     Holder h = Holder(7);
-    std::cout << ::tpyapp::pkg_v::kind(h.value) << "\n";
+    std::cout << ::tpyapp::pkg_v::kind(h.value) << "\n" << ::tpy::check_signals;
     ::tpyapp::pkg_v::V tmp = ::tpyapp::pkg_v::make_int();
     ::tpyapp::pkg_v::V w = ::tpyapp::main::wrap(tmp);
-    std::cout << ::tpyapp::pkg_v::kind(w) << "\n";
+    std::cout << ::tpyapp::pkg_v::kind(w) << "\n" << ::tpy::check_signals;
 }
 
 // # Cross-module use of a recursive union alias defined in another module.

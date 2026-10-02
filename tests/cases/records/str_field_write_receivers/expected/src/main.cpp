@@ -21,17 +21,17 @@ void read_root(const Outer& o) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& r = *__beg_0;
-        std::cout << "  row:" << " " << r.name << " " << r.count << "\n";
+        std::cout << "  row:" << " " << r.name << " " << r.count << "\n" << ::tpy::check_signals;
     }
     auto& __obj_1 = o.table;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        std::cout << "  tab:" << " " << ::tpy::__getitem__(o.table, k).name << "\n";
+        std::cout << "  tab:" << " " << ::tpy::__getitem__(o.table, k).name << "\n" << ::tpy::check_signals;
     }
-    std::cout << "  nested:" << " " << o.inner.name << " " << ::tpy::bytes_decode(o.inner.tag) << "\n";
-    std::cout << "  hops:" << " " << o.mid.inner.name << "\n";
+    std::cout << "  nested:" << " " << o.inner.name << " " << ::tpy::bytes_decode(o.inner.tag) << "\n" << ::tpy::check_signals;
+    std::cout << "  hops:" << " " << o.mid.inner.name << "\n" << ::tpy::check_signals;
 }
 
 // def free_function() -> None:
@@ -52,7 +52,7 @@ void free_function() {
     o.mid.inner.name = "f-hops";
     ::tpy::__getitem__(o.rows, 0).count = 4;
     ::tpy::__getitem__(o.table, "k").count = 6;
-    std::cout << "free:" << "\n";
+    std::cout << "free:" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_root(o);
 }
 
@@ -69,7 +69,7 @@ void value_sources() {
     std::string_view s = "f-view";
     o.inner.name = s;
     o.mid.inner.name = (::tpy::str_concat(o.mid.inner.name, "!"));
-    std::cout << "values:" << " " << o.inner.name << " " << o.mid.inner.name << "\n";
+    std::cout << "values:" << " " << o.inner.name << " " << o.mid.inner.name << "\n" << ::tpy::check_signals;
 }
 
 // def local_element_receivers() -> None:
@@ -104,7 +104,7 @@ void local_element_receivers() {
         r.count = 3;
         r.name = (::tpy::str_concat(r.name, "+"));
     }
-    std::cout << "locals:" << " " << ::tpy::__getitem__(rows, 0).name << " " << ::tpy::__getitem__(rows, 1).name << " " << ::tpy::bytes_decode(::tpy::__getitem__(rows, 1).tag) << " " << ::tpy::__getitem__(table, "k").name << " " << ::tpy::__getitem__(rows, 0).count << "\n";
+    std::cout << "locals:" << " " << ::tpy::__getitem__(rows, 0).name << " " << ::tpy::__getitem__(rows, 1).name << " " << ::tpy::bytes_decode(::tpy::__getitem__(rows, 1).tag) << " " << ::tpy::__getitem__(table, "k").name << " " << ::tpy::__getitem__(rows, 0).count << "\n" << ::tpy::check_signals;
 }
 
 // def property_receiver_workaround() -> None:
@@ -121,7 +121,7 @@ void property_receiver_workaround() {
     Inner& r = o.held();
     std::string v = r.name;
     r.name = "p-getter-replacement-long-enough-to-reallocate";
-    std::cout << "property:" << " " << v << " " << o.inner.name << "\n";
+    std::cout << "property:" << " " << v << " " << o.inner.name << "\n" << ::tpy::check_signals;
 }
 
 // def box_receiver() -> None:
@@ -136,7 +136,7 @@ void box_receiver() {
     Inner& m = b.get();
     m.name = "b-call";
     b.get().count = 2;
-    std::cout << "box:" << " " << b.get().name << " " << b.get().count << "\n";
+    std::cout << "box:" << " " << b.get().name << " " << b.get().count << "\n" << ::tpy::check_signals;
 }
 
 // def held_view_demotion() -> None:
@@ -159,7 +159,7 @@ void held_view_demotion() {
     Inner& m = o.inner;
     std::string v = m.name;
     o.inner.name = "d-nested-replacement-long-enough-to-reallocate";
-    std::cout << "demote nested:" << " " << v << " " << o.inner.name << "\n";
+    std::cout << "demote nested:" << " " << v << " " << o.inner.name << "\n" << ::tpy::check_signals;
     std::array<Inner, 1> rows = {Inner("held")};
     auto& __obj_0 = rows;
     auto __beg_0 = __obj_0.begin();
@@ -168,7 +168,7 @@ void held_view_demotion() {
         auto&& r = *__beg_0;
         std::string w = r.name;
         r.name = "d-loop-replacement-long-enough-to-reallocate";
-        std::cout << "demote loop:" << " " << w << " " << r.name << "\n";
+        std::cout << "demote loop:" << " " << w << " " << r.name << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -191,7 +191,7 @@ void generator_position() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen:" << " " << v << " " << o.inner.name << " " << ::tpy::__getitem__(o.rows, 0).count << "\n";
+            std::cout << "gen:" << " " << v << " " << o.inner.name << " " << ::tpy::__getitem__(o.rows, 0).count << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -217,7 +217,7 @@ void with_body() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << "with:" << " " << o.inner.name << "\n";
+    std::cout << "with:" << " " << o.inner.name << "\n" << ::tpy::check_signals;
 }
 
 // def try_finally() -> None:
@@ -238,7 +238,7 @@ void try_finally() {
         }
         o.mid.inner.name = "t-hops";
     }
-    std::cout << "try:" << " " << ::tpy::bytes_decode(o.inner.tag) << " " << o.mid.inner.name << "\n";
+    std::cout << "try:" << " " << ::tpy::bytes_decode(o.inner.tag) << " " << o.mid.inner.name << "\n" << ::tpy::check_signals;
 }
 
 // def match_arm(n: int32) -> None:
@@ -262,7 +262,7 @@ void match_arm(int32_t n) {
         break;
     }
     }
-    std::cout << "match:" << " " << o.inner.name << "\n";
+    std::cout << "match:" << " " << o.inner.name << "\n" << ::tpy::check_signals;
 }
 
 // def nested_def() -> None:
@@ -278,7 +278,7 @@ void nested_def() {
     };
     Outer o = Outer();
     inner_write(o);
-    std::cout << "nested_def:" << " " << o.inner.name << "\n";
+    std::cout << "nested_def:" << " " << o.inner.name << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -301,7 +301,7 @@ void nested_def() {
 //     match_arm(1)
 //     nested_def()
 void main() {
-    std::cout << "module:" << " " << MODULE_OUTER->inner.name << " " << ::tpy::__getitem__(MODULE_OUTER->rows, 0).count << " " << ::tpy::bytes_decode(MODULE_OUTER->mid.inner.tag) << "\n";
+    std::cout << "module:" << " " << MODULE_OUTER->inner.name << " " << ::tpy::__getitem__(MODULE_OUTER->rows, 0).count << " " << ::tpy::bytes_decode(MODULE_OUTER->mid.inner.tag) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::free_function();
     ::tpyapp::main::value_sources();
     ::tpyapp::main::local_element_receivers();
@@ -310,8 +310,8 @@ void main() {
     ::tpyapp::main::held_view_demotion();
     Outer o = Outer();
     o.write_through_self();
-    std::cout << "method:" << " " << o.inner.name << " " << ::tpy::__getitem__(o.rows, 0).count << " " << ::tpy::bytes_decode(o.mid.inner.tag) << "\n";
-    std::cout << "ctor:" << " " << Ctor().inner.name << "\n";
+    std::cout << "method:" << " " << o.inner.name << " " << ::tpy::__getitem__(o.rows, 0).count << " " << ::tpy::bytes_decode(o.mid.inner.tag) << "\n" << ::tpy::check_signals;
+    std::cout << "ctor:" << " " << Ctor().inner.name << "\n" << ::tpy::check_signals;
     ::tpyapp::main::generator_position();
     ::tpyapp::main::with_body();
     ::tpyapp::main::try_finally();

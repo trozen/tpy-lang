@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(label, len(label))
 void view_from_param(std::string_view sv) {
     std::string_view label = sv;
-    std::cout << label << " " << ::tpy::__len__(label) << "\n";
+    std::cout << label << " " << ::tpy::__len__(label) << "\n" << ::tpy::check_signals;
 }
 
 // def view_from_borrowing_call(s: str) -> None:
@@ -18,7 +18,7 @@ void view_from_param(std::string_view sv) {
 //     print(t, len(t))
 void view_from_borrowing_call(std::string_view s) {
     std::string_view t = ::tpy::str_strip(s);
-    std::cout << t << " " << ::tpy::__len__(t) << "\n";
+    std::cout << t << " " << ::tpy::__len__(t) << "\n" << ::tpy::check_signals;
 }
 
 // def bytes_view_from_param(bv: BytesView) -> None:
@@ -26,7 +26,7 @@ void view_from_borrowing_call(std::string_view s) {
 //     print(label, len(label))
 void bytes_view_from_param(::tpy::BytesView bv) {
     ::tpy::BytesView label = bv;
-    std::cout << ::tpy::BytesPrinter(label) << " " << ::tpy::__len__(label) << "\n";
+    std::cout << ::tpy::BytesPrinter(label) << " " << ::tpy::__len__(label) << "\n" << ::tpy::check_signals;
 }
 
 // def view_reassigned_from_view(sv: StrView, sv2: StrView) -> None:
@@ -36,7 +36,7 @@ void bytes_view_from_param(::tpy::BytesView bv) {
 void view_reassigned_from_view(std::string_view sv, std::string_view sv2) {
     std::string_view label = sv;
     label = sv2;
-    std::cout << label << "\n";
+    std::cout << label << "\n" << ::tpy::check_signals;
 }
 
 // def mutated_stays_owned(sv: StrView) -> str:
@@ -68,7 +68,7 @@ void hoisted_branch(std::string_view sv, bool flag) {
     } else {
         label = "other";
     }
-    std::cout << label << "\n";
+    std::cout << label << "\n" << ::tpy::check_signals;
 }
 
 
@@ -93,8 +93,8 @@ void main() {
     ::tpyapp::main::view_from_borrowing_call("  hi  ");
     ::tpyapp::main::bytes_view_from_param(::tpy::bytes_literal("abc", 3));
     ::tpyapp::main::view_reassigned_from_view("one", "two");
-    std::cout << ::tpyapp::main::mutated_stays_owned("own") << "\n";
-    std::cout << ::tpyapp::main::owned_return_still_copies("ret") << "\n";
+    std::cout << ::tpyapp::main::mutated_stays_owned("own") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::owned_return_still_copies("ret") << "\n" << ::tpy::check_signals;
     ::tpyapp::main::hoisted_branch("first", true);
     ::tpyapp::main::hoisted_branch("first", false);
     {
@@ -104,7 +104,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& n = ::tpy::unwrap_ref(*__r_1);
-            std::cout << n << "\n";
+            std::cout << n << "\n" << ::tpy::check_signals;
         }
     }
 }

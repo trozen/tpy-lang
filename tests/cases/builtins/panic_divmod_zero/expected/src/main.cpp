@@ -15,7 +15,7 @@ void main() {
     auto __tup_1 = ::tpy::divmod_fixed<int32_t>(a, b);
     int32_t q = std::get<0>(__tup_1);
     int32_t r = std::get<1>(__tup_1);
-    std::cout << q << "\n";
+    std::cout << q << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print("in main")
 void main() {
     Fussy f = Fussy(9);
-    std::cout << "in main" << "\n";
+    std::cout << "in main" << "\n" << ::tpy::check_signals;
 }
 
 // main()

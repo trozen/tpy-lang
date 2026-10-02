@@ -14,8 +14,8 @@ std::unique_ptr<Pet> adopt(std::unique_ptr<Pet> p) {
 //     print(adopt(Dog()).name())       # inheritance rvalue
 //     print(adopt(Cat("felix")).name())  # structural rvalue -> Adapter
 void main() {
-    std::cout << ::tpyapp::main::adopt(std::make_unique<Dog>(Dog()))->name() << "\n";
-    std::cout << ::tpyapp::main::adopt(::tpy::make_adapter<Pet>(Cat("felix")))->name() << "\n";
+    std::cout << ::tpyapp::main::adopt(std::make_unique<Dog>(Dog()))->name() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::adopt(::tpy::make_adapter<Pet>(Cat("felix")))->name() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -21,9 +21,9 @@ void main() {
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r1_share = r1.clone();
     ::tpystd::tplib::box::Box<Pet> b2 = ::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex")));
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r2 = Rc<::tpystd::tplib::box::Box<Pet>>::new_<::tpystd::tplib::box::Box<Pet>>(std::move(b2));
-    std::cout << r1.get().get().name() << "\n";
-    std::cout << r1_share.get().get().name() << "\n";
-    std::cout << r2.get().get().name() << "\n";
+    std::cout << r1.get().get().name() << "\n" << ::tpy::check_signals;
+    std::cout << r1_share.get().get().name() << "\n" << ::tpy::check_signals;
+    std::cout << r2.get().get().name() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box, Rc

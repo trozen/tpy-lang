@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(bools)
 void test_bool_list() {
     std::vector<bool> bools = {true, false, true};
-    std::cout << ::tpy::ListPrinter(bools) << "\n";
+    std::cout << ::tpy::ListPrinter(bools) << "\n" << ::tpy::check_signals;
 }
 
 // def test_float_list() -> None:
@@ -17,7 +17,7 @@ void test_bool_list() {
 //     print(floats)
 void test_float_list() {
     std::vector<double> floats = {1.0, 2.5, 0.0, -(3.0)};
-    std::cout << ::tpy::ListPrinter(floats) << "\n";
+    std::cout << ::tpy::ListPrinter(floats) << "\n" << ::tpy::check_signals;
 }
 
 // def test_str_list() -> None:
@@ -25,7 +25,7 @@ void test_float_list() {
 //     print(strs)
 void test_str_list() {
     std::vector<std::string> strs = {"hello", "world"};
-    std::cout << ::tpy::ListPrinter(strs) << "\n";
+    std::cout << ::tpy::ListPrinter(strs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_bool_array() -> None:
@@ -33,7 +33,7 @@ void test_str_list() {
 //     print(arr)
 void test_bool_array() {
     std::array<bool, 3> arr = {true, false, true};
-    std::cout << ::tpy::ListPrinter(arr) << "\n";
+    std::cout << ::tpy::ListPrinter(arr) << "\n" << ::tpy::check_signals;
 }
 
 // def test_nested_bool() -> None:
@@ -41,7 +41,7 @@ void test_bool_array() {
 //     print(nested)
 void test_nested_bool() {
     std::vector<std::vector<bool>> nested = {{true, false}, {false, true}};
-    std::cout << ::tpy::ListPrinter(nested) << "\n";
+    std::cout << ::tpy::ListPrinter(nested) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

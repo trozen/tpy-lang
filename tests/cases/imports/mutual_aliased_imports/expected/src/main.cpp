@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(A().go())
 void main() {
-    std::cout << ::tpyapp::a::A().go() << "\n";
+    std::cout << ::tpyapp::a::A().go() << "\n" << ::tpy::check_signals;
 }
 
 // # Cycle members can use `import as` aliases; the alias still finds

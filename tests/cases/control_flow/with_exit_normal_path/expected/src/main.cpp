@@ -12,7 +12,7 @@ void fall_through() {
     auto __ctx_1 = Tracker();
     auto x = __ctx_1.__enter__();
     try {
-        std::cout << std::format("body sees x={}", (x).to_string()) << "\n";
+        std::cout << std::format("body sees x={}", (x).to_string()) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -23,7 +23,7 @@ void fall_through() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << "after fall_through" << "\n";
+    std::cout << "after fall_through" << "\n" << ::tpy::check_signals;
 }
 
 // def early_return() -> int:
@@ -56,9 +56,9 @@ void fall_through() {
 //     print(f"got {r}")
 void main() {
     ::tpyapp::main::fall_through();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpy::BigInt r = ::tpyapp::main::early_return();
-    std::cout << std::format("got {}", (r).to_string()) << "\n";
+    std::cout << std::format("got {}", (r).to_string()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

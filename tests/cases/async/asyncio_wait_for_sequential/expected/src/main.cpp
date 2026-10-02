@@ -94,7 +94,7 @@ __coro_second second() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         b = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << ((a) + (b)) << "\n";
+        std::cout << ((a) + (b)) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

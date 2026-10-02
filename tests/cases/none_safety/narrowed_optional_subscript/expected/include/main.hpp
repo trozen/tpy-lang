@@ -45,7 +45,7 @@ inline Wrapper::Wrapper(std::optional<std::string_view> text) : text(text ? std:
 //         print(self.text[0])
 inline void Wrapper::first_char() const {
     if ((this->text.has_value())) {
-        std::cout << ::tpy::__getitem__((*this->text), 0) << "\n";
+        std::cout << ::tpy::__getitem__((*this->text), 0) << "\n" << ::tpy::check_signals;
     }
 }
 void __tpy_init();

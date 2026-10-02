@@ -17,7 +17,7 @@ void main() {
     std::vector<int32_t> b = {4, 5, 6};
     a = &(b);
     a->push_back(7);
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // main()

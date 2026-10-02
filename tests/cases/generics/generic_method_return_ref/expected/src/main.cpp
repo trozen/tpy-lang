@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void test() {
     ::tpystd::tplib::box::Box<Point> b = ::tpystd::tplib::box::Box<Point>(Point(::tpy::BigInt(1)));
     ::tpyapp::main::process<Point>(b);
-    std::cout << b.get().x << "\n";
+    std::cout << b.get().x << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

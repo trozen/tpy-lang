@@ -39,16 +39,16 @@ namespace tpyapp::main {
 //     print(items[100::-1])
 void main() {
     std::array<int32_t, 5> items = {1, 2, 3, 4, 5};
-    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, 2})) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, -1})) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{3, 0, -1})) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{1, std::nullopt, 2})) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{0, 4, 2})) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{4, 1, -1})) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, 1})) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{0, 4, -1})) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{-100, std::nullopt, -1})) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{100, std::nullopt, -1})) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, -1})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{3, 0, -1})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{1, std::nullopt, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{0, 4, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{4, 1, -1})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, 1})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{0, 4, -1})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{-100, std::nullopt, -1})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{100, std::nullopt, -1})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

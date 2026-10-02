@@ -233,14 +233,14 @@ int32_t walrus_cond(int32_t stop) {
 //     print(nested_loops())
 //     print(walrus_cond(0))
 void main() {
-    std::cout << ::tpyapp::main::countdown(5) << "\n";
-    std::cout << ::tpyapp::main::fresh_literal() << "\n";
-    std::cout << ::tpyapp::main::literal_reads_loop_var(::tpy::BigInt(4)) << "\n";
-    std::cout << ::tpyapp::main::else_break_continue(::tpy::BigInt(5), ::tpy::BigInt(3)) << "\n";
-    std::cout << ::tpyapp::main::else_break_continue(::tpy::BigInt(5), ::tpy::BigInt(-1)) << "\n";
-    std::cout << ::tpyapp::main::ctor_rvalue_cond(3) << "\n";
-    std::cout << ::tpyapp::main::nested_loops() << "\n";
-    std::cout << ::tpyapp::main::walrus_cond(0) << "\n";
+    std::cout << ::tpyapp::main::countdown(5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::fresh_literal() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::literal_reads_loop_var(::tpy::BigInt(4)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::else_break_continue(::tpy::BigInt(5), ::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::else_break_continue(::tpy::BigInt(5), ::tpy::BigInt(-1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::ctor_rvalue_cond(3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::nested_loops() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::walrus_cond(0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //     print(user.email)
 void test_deserialize() {
     User user = User::from_json("{\"name\": \"Alice\", \"age\": 30, \"active\": true, \"email\": \"a@b.com\"}");
-    std::cout << user.name << "\n";
-    std::cout << user.age << "\n";
-    std::cout << ::tpy::print_bool(user.active) << "\n";
-    std::cout << ::tpy::print_optional_val(user.email) << "\n";
+    std::cout << user.name << "\n" << ::tpy::check_signals;
+    std::cout << user.age << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(user.active) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(user.email) << "\n" << ::tpy::check_signals;
 }
 
 // def test_optional_missing() -> None:
@@ -24,8 +24,8 @@ void test_deserialize() {
 //     print(user.email)
 void test_optional_missing() {
     User user = User::from_json("{\"name\": \"Bob\", \"age\": 25, \"active\": false}");
-    std::cout << user.name << "\n";
-    std::cout << ::tpy::print_optional_val(user.email) << "\n";
+    std::cout << user.name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(user.email) << "\n" << ::tpy::check_signals;
 }
 
 // def test_optional_null() -> None:
@@ -33,7 +33,7 @@ void test_optional_missing() {
 //     print(user.email)
 void test_optional_null() {
     User user = User::from_json("{\"name\": \"Eve\", \"age\": 40, \"active\": true, \"email\": null}");
-    std::cout << ::tpy::print_optional_val(user.email) << "\n";
+    std::cout << ::tpy::print_optional_val(user.email) << "\n" << ::tpy::check_signals;
 }
 
 // def test_serialize() -> None:
@@ -41,7 +41,7 @@ void test_optional_null() {
 //     print(user.to_json())
 void test_serialize() {
     User user = User("Alice", 30, true, "a@b.com");
-    std::cout << user.to_json() << "\n";
+    std::cout << user.to_json() << "\n" << ::tpy::check_signals;
 }
 
 // def test_serialize_null() -> None:
@@ -49,7 +49,7 @@ void test_serialize() {
 //     print(user.to_json())
 void test_serialize_null() {
     User user = User("Bob", 25, false, std::nullopt);
-    std::cout << user.to_json() << "\n";
+    std::cout << user.to_json() << "\n" << ::tpy::check_signals;
 }
 
 // def test_roundtrip() -> None:
@@ -61,7 +61,7 @@ void test_roundtrip() {
     std::string_view json = "{\"name\": \"Eve\", \"age\": 40, \"active\": true, \"email\": null}";
     User user = User::from_json(json);
     User user2 = User::from_json(user.to_json());
-    std::cout << ::tpy::print_bool(((user) == (user2))) << "\n";
+    std::cout << ::tpy::print_bool(((user) == (user2))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_skip_unknown() -> None:
@@ -70,8 +70,8 @@ void test_roundtrip() {
 //     print(user.age)
 void test_skip_unknown() {
     User user = User::from_json("{\"name\": \"X\", \"extra\": 999, \"age\": 1, \"active\": false}");
-    std::cout << user.name << "\n";
-    std::cout << user.age << "\n";
+    std::cout << user.name << "\n" << ::tpy::check_signals;
+    std::cout << user.age << "\n" << ::tpy::check_signals;
 }
 
 // def test_pretty() -> None:
@@ -79,7 +79,7 @@ void test_skip_unknown() {
 //     print(user.to_json(indent=2))
 void test_pretty() {
     User user = User("Alice", 30, true, "a@b.com");
-    std::cout << user.to_json(2) << "\n";
+    std::cout << user.to_json(2) << "\n" << ::tpy::check_signals;
 }
 
 

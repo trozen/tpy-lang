@@ -22,13 +22,13 @@ void main() {
     Child a = Child(1, 2, 3);
     Child b = Child(1, 2, 4);
     Child c = Child(2, 0, 0);
-    std::cout << ::tpy::print_bool(((a) < (b))) << "\n";
-    std::cout << ::tpy::print_bool(((b) < (a))) << "\n";
-    std::cout << ::tpy::print_bool(((a) < (c))) << "\n";
-    std::cout << ::tpy::print_bool(((c) < (a))) << "\n";
-    std::cout << ::tpy::print_bool(((a) <= (Child(1, 2, 3)))) << "\n";
-    std::cout << ::tpy::print_bool(((a) >= (Child(1, 2, 3)))) << "\n";
-    std::cout << a << "\n";
+    std::cout << ::tpy::print_bool(((a) < (b))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((b) < (a))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) < (c))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((c) < (a))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) <= (Child(1, 2, 3)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) >= (Child(1, 2, 3)))) << "\n" << ::tpy::check_signals;
+    std::cout << a << "\n" << ::tpy::check_signals;
 }
 
 // # @dataclass(order=True) inheritance: comparison uses parent + child fields

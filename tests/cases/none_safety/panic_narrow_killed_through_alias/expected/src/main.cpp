@@ -15,7 +15,7 @@ void main() {
     Holder& h2 = h;
     if ((h.opt.has_value())) {
         h2.clear();
-        std::cout << ::tpy::deref_optional_check(h.opt).x << "\n";
+        std::cout << ::tpy::deref_optional_check(h.opt).x << "\n" << ::tpy::check_signals;
     }
 }
 

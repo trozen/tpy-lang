@@ -41,37 +41,37 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::ordered_map<int32_t, std::string>({{1, "a"}, {2, "b"}});
     ::tpy::BigInt k = ::tpy::BigInt(2);
-    std::cout << ::tpy::print_bool((d.contains(k))) << "\n";
+    std::cout << ::tpy::print_bool((d.contains(k))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt k3 = ::tpy::BigInt(3);
-    std::cout << ::tpy::print_bool((d.contains(k3))) << "\n";
+    std::cout << ::tpy::print_bool((d.contains(k3))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt big = ::tpy::BigInt(static_cast<int64_t>(1099511627776LL));
-    std::cout << ::tpy::print_bool((d.contains(big))) << "\n";
+    std::cout << ::tpy::print_bool((d.contains(big))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt neg = ::tpy::BigInt(static_cast<int64_t>(-1099511627776LL));
-    std::cout << ::tpy::print_bool((d.contains(neg))) << "\n";
-    std::cout << ::tpy::print_bool((!(d.contains(big)))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::dict_keys(d).contains(big))) << "\n";
+    std::cout << ::tpy::print_bool((d.contains(neg))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!(d.contains(big)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::dict_keys(d).contains(big))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> counts = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    std::cout << ::tpy::print_bool((::tpy::dict_values(counts).contains(big))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::dict_values(counts).contains(big))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt one = ::tpy::BigInt(1);
-    std::cout << ::tpy::print_bool((::tpy::dict_values(counts).contains(one))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::dict_values(counts).contains(one))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int64_t, std::string> d64 = ::tpy::ordered_map<int64_t, std::string>();
     ::tpy::__setitem__(d64, (big).to_fixed_check<int64_t>(), "wide");
-    std::cout << ::tpy::print_bool((d64.contains(big))) << "\n";
+    std::cout << ::tpy::print_bool((d64.contains(big))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt huge = ::tpy::BigInt::from_str("1180591620717411303424");
-    std::cout << ::tpy::print_bool((d64.contains(huge))) << "\n";
+    std::cout << ::tpy::print_bool((d64.contains(huge))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt b63 = ::tpy::BigInt::from_str("9223372036854775808");
-    std::cout << ::tpy::print_bool((d64.contains(b63))) << "\n";
+    std::cout << ::tpy::print_bool((d64.contains(b63))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<uint32_t, std::string> du = ::tpy::ordered_map<uint32_t, std::string>({{7, "u"}});
     ::tpy::BigInt seven = ::tpy::BigInt(7);
-    std::cout << ::tpy::print_bool((du.contains(seven))) << "\n";
-    std::cout << ::tpy::print_bool((du.contains(neg))) << "\n";
-    std::cout << ::tpy::print_bool((du.contains(big))) << "\n";
+    std::cout << ::tpy::print_bool((du.contains(seven))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((du.contains(neg))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((du.contains(big))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, uint32_t> ucounts = ::tpy::ordered_map<std::string, uint32_t>({{"a", 7}});
-    std::cout << ::tpy::print_bool((::tpy::dict_values(ucounts).contains(seven))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::dict_values(ucounts).contains(neg))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::dict_values(ucounts).contains(seven))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::dict_values(ucounts).contains(neg))) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = {1, 2};
-    std::cout << ::tpy::print_bool(::tpy::seq_contains(xs, big)) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::seq_contains(xs, k)) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::seq_contains(xs, big)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::seq_contains(xs, k)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

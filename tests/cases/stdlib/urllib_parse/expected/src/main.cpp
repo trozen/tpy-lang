@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //           + " | " + p.fragment)
 void show(std::string_view u) {
     ::tpystd::urllib::parse::SplitResult p = ::tpystd::urllib::parse::urlsplit(u);
-    std::cout << (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(p.scheme, " | ")), p.netloc)), " | ")), p.path)), " | ")), p.query)), " | ")), p.fragment)) << "\n";
+    std::cout << (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(p.scheme, " | ")), p.netloc)), " | ")), p.path)), " | ")), p.query)), " | ")), p.fragment)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -76,46 +76,46 @@ void main() {
     ::tpyapp::main::show("");
     ::tpystd::urllib::parse::SplitResult full = ::tpystd::urllib::parse::urlsplit("http://user:secret@Host.Example:8002/p?q=1#f");
     std::optional<std::string> host = full.hostname();
-    std::cout << (::tpy::str_concat("hostname=", (((host.has_value())) ? ((*host)) : ("None")))) << "\n";
+    std::cout << (::tpy::str_concat("hostname=", (((host.has_value())) ? ((*host)) : ("None")))) << "\n" << ::tpy::check_signals;
     std::optional<::tpy::BigInt> port = full.port();
     if ((!port.has_value())) {
-        std::cout << "port=None" << "\n";
+        std::cout << "port=None" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "port=" << " " << ::tpy::print_optional_val(port) << "\n";
+        std::cout << "port=" << " " << ::tpy::print_optional_val(port) << "\n" << ::tpy::check_signals;
     }
     std::optional<std::string> user = full.username();
-    std::cout << (::tpy::str_concat("user=", (((user.has_value())) ? ((*user)) : ("None")))) << "\n";
+    std::cout << (::tpy::str_concat("user=", (((user.has_value())) ? ((*user)) : ("None")))) << "\n" << ::tpy::check_signals;
     std::optional<std::string> pw = full.password();
-    std::cout << (::tpy::str_concat("pass=", (((pw.has_value())) ? ((*pw)) : ("None")))) << "\n";
-    std::cout << (::tpy::str_concat("geturl=", full.geturl())) << "\n";
+    std::cout << (::tpy::str_concat("pass=", (((pw.has_value())) ? ((*pw)) : ("None")))) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat("geturl=", full.geturl())) << "\n" << ::tpy::check_signals;
     ::tpystd::urllib::parse::SplitResult bare = ::tpystd::urllib::parse::urlsplit("http://plainhost/p");
-    std::cout << "bare-port-none=" << " " << ::tpy::print_bool((!bare.port().has_value())) << "\n";
-    std::cout << "bare-user-none=" << " " << ::tpy::print_bool((!bare.username().has_value())) << "\n";
+    std::cout << "bare-port-none=" << " " << ::tpy::print_bool((!bare.port().has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << "bare-user-none=" << " " << ::tpy::print_bool((!bare.username().has_value())) << "\n" << ::tpy::check_signals;
     ::tpystd::urllib::parse::ParseResult pr = ::tpystd::urllib::parse::urlparse("http://h/a/b;type=d?q=1#f");
-    std::cout << (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("params=", pr.params)), " path=")), pr.path)) << "\n";
-    std::cout << (::tpy::str_concat("rebuilt=", pr.geturl())) << "\n";
-    std::cout << ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{"http", "h:9", "/p", "a=b", "frag"}) << "\n";
-    std::cout << ::tpystd::urllib::parse::urlunparse(std::tuple<std::string, std::string, std::string, std::string, std::string, std::string>{"http", "h", "/p", "k=v", "q=1", "f"}) << "\n";
+    std::cout << (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("params=", pr.params)), " path=")), pr.path)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat("rebuilt=", pr.geturl())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{"http", "h:9", "/p", "a=b", "frag"}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urlunparse(std::tuple<std::string, std::string, std::string, std::string, std::string, std::string>{"http", "h", "/p", "k=v", "q=1", "f"}) << "\n" << ::tpy::check_signals;
     ::tpystd::urllib::parse::SplitResult v6 = ::tpystd::urllib::parse::urlsplit("http://[::1]:9000/v6");
     std::optional<std::string> vh = v6.hostname();
-    std::cout << (::tpy::str_concat("v6=", (((vh.has_value())) ? ((*vh)) : ("None")))) << "\n";
+    std::cout << (::tpy::str_concat("v6=", (((vh.has_value())) ? ((*vh)) : ("None")))) << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpystd::urllib::parse::SplitResult bad = ::tpystd::urllib::parse::urlsplit("http://[::1/x");
-            std::cout << (::tpy::str_concat("no-raise ", bad.netloc)) << "\n";
+            std::cout << (::tpy::str_concat("no-raise ", bad.netloc)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "ipv6-ValueError" << "\n";
+            std::cout << "ipv6-ValueError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             std::optional<::tpy::BigInt> bp = ::tpystd::urllib::parse::urlsplit("http://h:zz/x").port();
-            std::cout << "no-raise port" << "\n";
+            std::cout << "no-raise port" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "port-ValueError" << "\n";
+            std::cout << "port-ValueError" << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::urllib::parse::urlsplit("  http://h/a\tb/p  ").path)), "]")) << "\n";
+    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::urllib::parse::urlsplit("  http://h/a\tb/p  ").path)), "]")) << "\n" << ::tpy::check_signals;
 }
 
 // # urllib.parse: urlsplit/urlparse components, the netloc-derived

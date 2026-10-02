@@ -12,7 +12,7 @@ namespace tpyapp::main {
 int32_t main() {
     ::tpyapp::utils::Point p = ::tpyapp::utils::Point(1, 2);
     int32_t result = ::tpyapp::utils::add(p.x, p.y);
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
     return 0;
 }
 

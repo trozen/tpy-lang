@@ -43,8 +43,8 @@ void main() {
     std::vector<Box> items = std::vector<Box>{};
     items.push_back(Box(3));
     items.push_back(Box(4));
-    std::cout << ::tpyapp::main::from_ro_span(::tpy::as_span(items)) << "\n";
-    std::cout << ::tpyapp::main::from_mut_span(::tpy::as_mut_span(items)) << "\n";
+    std::cout << ::tpyapp::main::from_ro_span(::tpy::as_span(items)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::from_mut_span(::tpy::as_mut_span(items)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

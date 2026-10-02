@@ -13,10 +13,10 @@ namespace tpyapp::main {
 //     print("z" not in d)
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 1}, {"y", 2}});
-    std::cout << ::tpy::print_bool((d.contains("x"))) << "\n";
-    std::cout << ::tpy::print_bool((d.contains("z"))) << "\n";
-    std::cout << ::tpy::print_bool((!(d.contains("x")))) << "\n";
-    std::cout << ::tpy::print_bool((!(d.contains("z")))) << "\n";
+    std::cout << ::tpy::print_bool((d.contains("x"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((d.contains("z"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!(d.contains("x")))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!(d.contains("z")))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

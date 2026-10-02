@@ -36,7 +36,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& r = *__beg_0;
-        std::cout << r.val << "\n";
+        std::cout << r.val << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, Resource> d = ::tpy::dict_construct<std::string, Resource>(::tpy::builtin_map<std::tuple<std::string, Resource>>(make_pair, vals));
     auto& __obj_1 = d;
@@ -44,7 +44,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        std::cout << k << " " << ::tpy::__getitem__(d, k).val << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(d, k).val << "\n" << ::tpy::check_signals;
     }
 }
 

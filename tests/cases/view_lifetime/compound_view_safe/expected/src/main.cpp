@@ -14,7 +14,7 @@ namespace tpyapp::main {
 void compound_of_params(std::string_view a, std::string_view b, bool cond) {
     std::string_view x = ((cond) ? (a) : (b));
     std::string_view y = ((!a.empty()) ? a : b);
-    std::cout << x << " " << y << "\n";
+    std::cout << x << " " << y << "\n" << ::tpy::check_signals;
 }
 
 // def compound_of_unmutated_elems(c: list[str], d: list[str], cond: bool) -> None:
@@ -23,7 +23,7 @@ void compound_of_params(std::string_view a, std::string_view b, bool cond) {
 //     print(x, c[0], d[0])
 void compound_of_unmutated_elems(const std::vector<std::string>& c, const std::vector<std::string>& d, bool cond) {
     std::string_view x = ((cond) ? (::tpy::__getitem__(c, 0)) : (::tpy::__getitem__(d, 0)));
-    std::cout << x << " " << ::tpy::__getitem__(c, 0) << " " << ::tpy::__getitem__(d, 0) << "\n";
+    std::cout << x << " " << ::tpy::__getitem__(c, 0) << " " << ::tpy::__getitem__(d, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def owning_rvalue_arm(a: str, cond: bool) -> None:
@@ -33,7 +33,7 @@ void compound_of_unmutated_elems(const std::vector<std::string>& c, const std::v
 //     print(x)
 void owning_rvalue_arm(std::string_view a, bool cond) {
     std::string x = ((cond) ? (std::string(a)) : (::tpyapp::main::mk()));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def mk() -> str:

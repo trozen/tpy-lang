@@ -280,7 +280,7 @@ inline void Holder::method() {
         ::tpy::__getitem__((*this->d), "o").push_back(3);
         std::vector<int32_t>& row = ::tpy::__getitem__((*this->d), "o");
         ::tpy::__setitem__(::tpy::__getitem__((*this->d), "o"), 0, 9);
-        std::cout << "method" << " " << ::tpy::__getitem__(row, 0) << " " << ::tpy::__getitem__(row, 2) << " " << ::tpy::__getitem__(::tpy::__getitem__((*this->d), "o"), 0) << " " << this->n << "\n";
+        std::cout << "method" << " " << ::tpy::__getitem__(row, 0) << " " << ::tpy::__getitem__(row, 2) << " " << ::tpy::__getitem__(::tpy::__getitem__((*this->d), "o"), 0) << " " << this->n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -295,7 +295,7 @@ inline void Holder::elem_field_method() {
     if ((this->recs.has_value())) {
         ::tpy::__getitem__((*this->recs), "o").rows.push_back(3);
         ::tpy::__getitem__((*this->recs), "o").n = ::tpy::add_check<int32_t>(::tpy::__getitem__((*this->recs), "o").n, 1);
-        std::cout << "holder_elem_field" << " " << ::tpy::ListPrinter(::tpy::__getitem__((*this->recs), "o").rows) << " " << ::tpy::__getitem__((*this->recs), "o").n << " " << ::tpy::__len__(::tpy::__getitem__((*this->recs), "o").rows) << "\n";
+        std::cout << "holder_elem_field" << " " << ::tpy::ListPrinter(::tpy::__getitem__((*this->recs), "o").rows) << " " << ::tpy::__getitem__((*this->recs), "o").n << " " << ::tpy::__len__(::tpy::__getitem__((*this->recs), "o").rows) << "\n" << ::tpy::check_signals;
     }
 }
 void __tpy_init();

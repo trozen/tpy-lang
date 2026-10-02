@@ -41,11 +41,11 @@ int32_t add3(int32_t a, int32_t b, int32_t c) {
 void main() {
     std::array<int32_t, 3> xs = {1, 2, 3};
     std::array<int32_t, 3> ys = {10, 20, 30};
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, xs, ys))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>([](int32_t x, int32_t y) -> int32_t { return (::tpy::mul_check<int32_t>(x, y)); }, std::array<int32_t, 3>{2, 3, 4}, std::array<int32_t, 3>{5, 6, 7}))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, std::array<int32_t, 2>{1, 2}, std::array<int32_t, 3>{10, 20, 30}))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add3, xs, ys, std::array<int32_t, 3>{100, 200, 300}))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>([](int32_t a, int32_t b, int32_t c) -> int32_t { return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(a, b)), c)); }, std::array<int32_t, 2>{1, 2}, std::array<int32_t, 2>{10, 20}, std::array<int32_t, 2>{100, 200}))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, xs, ys))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>([](int32_t x, int32_t y) -> int32_t { return (::tpy::mul_check<int32_t>(x, y)); }, std::array<int32_t, 3>{2, 3, 4}, std::array<int32_t, 3>{5, 6, 7}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, std::array<int32_t, 2>{1, 2}, std::array<int32_t, 3>{10, 20, 30}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add3, xs, ys, std::array<int32_t, 3>{100, 200, 300}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>([](int32_t a, int32_t b, int32_t c) -> int32_t { return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(a, b)), c)); }, std::array<int32_t, 2>{1, 2}, std::array<int32_t, 2>{10, 20}, std::array<int32_t, 2>{100, 200}))) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpy::builtin_map_n<int32_t>(add, xs, ys);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -53,7 +53,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -15,7 +15,7 @@ void main() {
         try {
             throw ::tpy::ValueError("test");
         } catch (const ::tpy::Exception&) {
-            std::cout << "caught as Exception" << "\n";
+            std::cout << "caught as Exception" << "\n" << ::tpy::check_signals;
         }
     }
 }

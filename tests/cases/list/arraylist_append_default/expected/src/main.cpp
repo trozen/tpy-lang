@@ -18,10 +18,10 @@ void main() {
     a.append(10);
     a.append_default();
     a.append(30);
-    std::cout << ::tpy::__len__(a) << "\n";
-    std::cout << a[0] << "\n";
-    std::cout << a[1] << "\n";
-    std::cout << a[2] << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
+    std::cout << a[0] << "\n" << ::tpy::check_signals;
+    std::cout << a[1] << "\n" << ::tpy::check_signals;
+    std::cout << a[2] << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.array_list import ArrayList

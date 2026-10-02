@@ -21,7 +21,7 @@ void branch_init(bool cond) {
         __slot_2.emplace(Cat());
         pet = &*__slot_2;
     }
-    std::cout << pet->name() << "\n";
+    std::cout << pet->name() << "\n" << ::tpy::check_signals;
 }
 
 // def branch_reassign(cond: bool) -> None:
@@ -37,7 +37,7 @@ void branch_reassign(bool cond) {
         __slot_2.emplace(Cat());
         pet = &*__slot_2;
     }
-    std::cout << pet->name() << "\n";
+    std::cout << pet->name() << "\n" << ::tpy::check_signals;
 }
 
 // def nested_branches(a: bool, b: bool) -> None:
@@ -62,7 +62,7 @@ void nested_branches(bool a, bool b) {
             pet = &*__slot_3;
         }
     }
-    std::cout << pet->name() << "\n";
+    std::cout << pet->name() << "\n" << ::tpy::check_signals;
 }
 
 // def loop_reassign(n: int32) -> None:
@@ -82,7 +82,7 @@ void loop_reassign(int32_t n) {
         pet = &*__slot_2;
         i = (::tpy::add_check<int32_t>(i, 1));
     }
-    std::cout << pet->name() << "\n";
+    std::cout << pet->name() << "\n" << ::tpy::check_signals;
 }
 
 // def branch_in_loop(n: int32) -> None:
@@ -111,7 +111,7 @@ void branch_in_loop(int32_t n) {
         }
         i = (::tpy::add_check<int32_t>(i, 1));
     }
-    std::cout << pet->name() << "\n";
+    std::cout << pet->name() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

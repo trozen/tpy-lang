@@ -30,18 +30,18 @@ int32_t borrow(const P* p) {
 void main() {
     ::tpy::ordered_map<std::string, std::optional<P>> d = ::tpy::ordered_map<std::string, std::optional<P>>({{"a", P(10)}, {"b", std::nullopt}, {"c", P(30)}});
     if ((::tpy::__getitem__(d, "a").has_value())) {
-        std::cout << ::tpy::deref_optional_check(::tpy::__getitem__(d, "a")).x << "\n";
+        std::cout << ::tpy::deref_optional_check(::tpy::__getitem__(d, "a")).x << "\n" << ::tpy::check_signals;
     }
     P* a = ::tpy::optional_to_ptr(::tpy::__getitem__(d, "a"));
     if ((a != nullptr)) {
-        std::cout << a->x << "\n";
+        std::cout << a->x << "\n" << ::tpy::check_signals;
     }
     auto __obj_0 = ::tpy::dict_values(d);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& v = *__beg_0;
-        std::cout << ::tpyapp::main::borrow(::tpy::optional_to_ptr(v)) << "\n";
+        std::cout << ::tpyapp::main::borrow(::tpy::optional_to_ptr(v)) << "\n" << ::tpy::check_signals;
     }
 }
 

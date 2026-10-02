@@ -58,9 +58,9 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         Color c = *__beg_0;
-        std::cout << c << "\n";
+        std::cout << c << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::__len__(colors) << "\n";
+    std::cout << ::tpy::__len__(colors) << "\n" << ::tpy::check_signals;
 }
 
 // # Enum values stored in a list

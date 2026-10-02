@@ -19,14 +19,14 @@ namespace tpyapp::main {
 //     print(o1 == Outer("a", Inner(42)))
 void main() {
     Outer o1 = Outer("a", Inner(42));
-    std::cout << o1 << "\n";
+    std::cout << o1 << "\n" << ::tpy::check_signals;
     Outer o2 = Outer("b");
-    std::cout << o2 << "\n";
+    std::cout << o2 << "\n" << ::tpy::check_signals;
     Outer o3 = Outer("c", std::nullopt);
-    std::cout << o3 << "\n";
-    std::cout << ::tpy::print_bool(((o1) == (o2))) << "\n";
-    std::cout << ::tpy::print_bool(((o2) == (o3))) << "\n";
-    std::cout << ::tpy::print_bool(((o1) == (Outer("a", Inner(42))))) << "\n";
+    std::cout << o3 << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((o1) == (o2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((o2) == (o3))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((o1) == (Outer("a", Inner(42))))) << "\n" << ::tpy::check_signals;
 }
 
 // from dataclasses import dataclass

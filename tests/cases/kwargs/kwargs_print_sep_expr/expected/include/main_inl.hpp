@@ -16,16 +16,16 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "gen:" << " ";
+        std::cout << "gen:" << " " << ::tpy::check_signals;
         const auto& __tmp_1 = (::tpy::str_concat(d, "%"));
-        std::cout << "p" << __tmp_1 << "q" << "\n";
+        std::cout << "p" << __tmp_1 << "q" << "\n" << ::tpy::check_signals;
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {  // after: yield 1
-        std::cout << "gen:" << " ";
+        std::cout << "gen:" << " " << ::tpy::check_signals;
         const auto& __tmp_2 = (::tpy::str_concat(d, "%"));
-        std::cout << "r" << __tmp_2 << "s" << "\n";
+        std::cout << "r" << __tmp_2 << "s" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

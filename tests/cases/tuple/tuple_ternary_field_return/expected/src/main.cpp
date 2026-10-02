@@ -22,10 +22,10 @@ void main() {
     Holder h = Holder();
     auto t = ::tpyapp::main::pick(h, true);
     std::get<1>(t)->val = 99;
-    std::cout << std::get<1>(h.a).val << "\n";
+    std::cout << std::get<1>(h.a).val << "\n" << ::tpy::check_signals;
     auto u = ::tpyapp::main::pick(h, false);
     std::get<1>(u)->val = 88;
-    std::cout << std::get<1>(h.b).val << "\n";
+    std::cout << std::get<1>(h.b).val << "\n" << ::tpy::check_signals;
 }
 
 // main()

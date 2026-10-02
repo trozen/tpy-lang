@@ -35,22 +35,22 @@ void main() {
         try {
             ::tpyapp::main::fail(false);
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught" << "\n";
+            std::cout << "caught" << "\n" << ::tpy::check_signals;
             goto __after_else_1;
         }
         // else:
-        std::cout << "else 1" << "\n";
+        std::cout << "else 1" << "\n" << ::tpy::check_signals;
         __after_else_1:;
     }
     {
         try {
             ::tpyapp::main::fail(true);
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught" << "\n";
+            std::cout << "caught" << "\n" << ::tpy::check_signals;
             goto __after_else_2;
         }
         // else:
-        std::cout << "else 2" << "\n";
+        std::cout << "else 2" << "\n" << ::tpy::check_signals;
         __after_else_2:;
     }
 }

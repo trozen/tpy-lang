@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(f.get_x())
 void main() {
     Foo f = Foo(42);
-    std::cout << f.get_x() << "\n";
+    std::cout << f.get_x() << "\n" << ::tpy::check_signals;
 }
 
 // main()

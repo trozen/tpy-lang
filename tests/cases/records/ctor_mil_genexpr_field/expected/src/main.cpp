@@ -16,9 +16,9 @@ void main() {
     auto __tup_1 = h.t;
     int32_t a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
-    std::cout << a << " " << b << "\n";
+    std::cout << a << " " << b << "\n" << ::tpy::check_signals;
     N n = N(::tpy::ordered_map<int32_t, int32_t>({{3, 4}, {7, 8}}));
-    std::cout << n.inner() << "\n";
+    std::cout << n.inner() << "\n" << ::tpy::check_signals;
 }
 
 

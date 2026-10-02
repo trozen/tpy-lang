@@ -20,8 +20,8 @@ std::tuple<Handle, Handle> make_pair() {
 //     print(pair[1].fd)
 void main() {
     auto pair = ::tpyapp::main::make_pair();
-    std::cout << std::get<0>(pair).fd << "\n";
-    std::cout << std::get<1>(pair).fd << "\n";
+    std::cout << std::get<0>(pair).fd << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(pair).fd << "\n" << ::tpy::check_signals;
 }
 
 // main()

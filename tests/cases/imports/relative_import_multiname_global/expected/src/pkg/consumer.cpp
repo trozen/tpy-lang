@@ -8,8 +8,8 @@ namespace tpyapp::pkg::consumer {
 //     print(amod.a_first())
 //     print(bmod.b_first())
 void check() {
-    std::cout << ::tpyapp::pkg::amod::a_first() << "\n";
-    std::cout << ::tpyapp::pkg::bmod::b_first() << "\n";
+    std::cout << ::tpyapp::pkg::amod::a_first() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::pkg::bmod::b_first() << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init() {

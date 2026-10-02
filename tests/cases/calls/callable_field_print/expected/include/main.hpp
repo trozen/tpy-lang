@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
 
 // def __init__(self) -> None:
 //     self.action = lambda: print(0)
-inline Handler::Handler() : action([]() { std::cout << 0 << "\n"; }) {}
+inline Handler::Handler() : action([]() { std::cout << 0 << "\n" << ::tpy::check_signals; }) {}
 
 // def __repr__(self) -> str:
 //     return "Handler(action=<function>)"

@@ -17,11 +17,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::print_float((::tpy::truediv(::tpy::BigInt(10), ::tpy::BigInt(4)))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::truediv(::tpy::BigInt(10), ::tpy::BigInt(2)))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::truediv(::tpy::BigInt(9), ::tpy::BigInt(3)))) << "\n";
-    std::cout << 2 << "\n";
-    std::cout << ::tpy::print_float((::tpy::floordiv(10.0, 4.0))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(::tpy::BigInt(10), ::tpy::BigInt(4)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::truediv(::tpy::BigInt(10), ::tpy::BigInt(2)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::truediv(::tpy::BigInt(9), ::tpy::BigInt(3)))) << "\n" << ::tpy::check_signals;
+    std::cout << 2 << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::floordiv(10.0, 4.0))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

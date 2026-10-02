@@ -28,7 +28,7 @@ namespace tpyapp::main {
 //     print(f(Cat(Pet(5))))   # 3 + 5 = 8
 void main() {
     Cat __tmp_1 = Cat(Pet(::tpy::BigInt(5)));
-    std::cout << ::tpyapp::main::f(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::f(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

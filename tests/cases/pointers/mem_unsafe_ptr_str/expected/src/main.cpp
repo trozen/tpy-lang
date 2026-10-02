@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void test_str_ptr() {
     std::string_view s = "hello";
     const char* cp = s.data();
-    std::cout << cp[0] << "\n";
-    std::cout << cp[4] << "\n";
+    std::cout << cp[0] << "\n" << ::tpy::check_signals;
+    std::cout << cp[4] << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_ptr, unsafe_load

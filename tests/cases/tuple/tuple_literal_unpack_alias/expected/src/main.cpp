@@ -49,28 +49,28 @@ void main() {
     Counter& b = __unpack_0_1;
     a.n = ::tpy::add_check<int32_t>(a.n, 10);
     b.n = ::tpy::add_check<int32_t>(b.n, 20);
-    std::cout << ::tpy::__getitem__(items, 0).n << "\n";
-    std::cout << ::tpy::__getitem__(items, 1).n << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(items, 1).n << "\n" << ::tpy::check_signals;
     Counter& __unpack_1_0 = ::tpy::__getitem__(items, 2);
     ::tpy::__getitem__(items, 0);
     Counter& c = __unpack_1_0;
     c.n = ::tpy::add_check<int32_t>(c.n, 5);
-    std::cout << ::tpy::__getitem__(items, 2).n << "\n";
+    std::cout << ::tpy::__getitem__(items, 2).n << "\n" << ::tpy::check_signals;
     Counter& __unpack_2_0 = ::tpy::__getitem__(items, 1);
     Counter __unpack_2_1 = ::tpyapp::main::fresh();
     Counter& d = __unpack_2_0;
     Counter e = std::move(__unpack_2_1);
     d.n = ::tpy::add_check<int32_t>(d.n, 1);
-    std::cout << ::tpy::__getitem__(items, 1).n << "\n";
-    std::cout << e.n << "\n";
+    std::cout << ::tpy::__getitem__(items, 1).n << "\n" << ::tpy::check_signals;
+    std::cout << e.n << "\n" << ::tpy::check_signals;
     Counter& src0 = ::tpy::__getitem__(items, 0);
     Counter& src2 = ::tpy::__getitem__(items, 2);
     Counter& f = src0;
     Counter& g = src2;
     f.n = ::tpy::add_check<int32_t>(f.n, 100);
     g.n = ::tpy::add_check<int32_t>(g.n, 200);
-    std::cout << ::tpy::__getitem__(items, 0).n << "\n";
-    std::cout << ::tpy::__getitem__(items, 2).n << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(items, 2).n << "\n" << ::tpy::check_signals;
 }
 
 // main()

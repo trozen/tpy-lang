@@ -26,10 +26,10 @@ void __tpy_init() {
     arr = &__global_slot_1;
     p = (*arr).data();
     val = p[0];
-    std::cout << val << "\n";
+    std::cout << val << "\n" << ::tpy::check_signals;
     p[1] = 99;
     val2 = p[1];
-    std::cout << val2 << "\n";
+    std::cout << val2 << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

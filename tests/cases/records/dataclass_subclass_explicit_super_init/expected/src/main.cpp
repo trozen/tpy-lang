@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(c.extra)
 void main() {
     Child c = Child(42, 7);
-    std::cout << c.extra << "\n";
+    std::cout << c.extra << "\n" << ::tpy::check_signals;
 }
 
 // # Happy-path escape hatch from the macro-aware super-init error: when a

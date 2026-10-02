@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //         print(s.o.x)
 void main() {
     Slot s = Slot();
-    std::cout << ::tpy::print_bool((!s.o.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!s.o.has_value())) << "\n" << ::tpy::check_signals;
     s.put(Point(5));
     if ((s.o.has_value())) {
-        std::cout << (*s.o).x << "\n";
+        std::cout << (*s.o).x << "\n" << ::tpy::check_signals;
     }
 }
 

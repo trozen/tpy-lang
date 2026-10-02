@@ -49,12 +49,12 @@ namespace tpyapp::main {
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r1).value();
             __sub_1.reset();
-            std::cout << "no value error" << "\n";
+            std::cout << "no value error" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ValueError&) {
             __sub_1.reset();
-            std::cout << "empty sep rejected" << "\n";
+            std::cout << "empty sep rejected" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -67,7 +67,7 @@ namespace tpyapp::main {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         first = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << (::tpy::str_concat("first=", ::tpy::bytes_decode(first))) << "\n";
+        std::cout << (::tpy::str_concat("first=", ::tpy::bytes_decode(first))) << "\n" << ::tpy::check_signals;
         __sub_3.emplace((*reader), ::tpy::bytes_literal("|", 1));
         __state = S_RESUME_3;
         continue;
@@ -77,7 +77,7 @@ namespace tpyapp::main {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         second = std::move(__r3).value();
         __sub_3.reset();
-        std::cout << (::tpy::str_concat("second=", ::tpy::bytes_decode(second))) << "\n";
+        std::cout << (::tpy::str_concat("second=", ::tpy::bytes_decode(second))) << "\n" << ::tpy::check_signals;
         __state = S_JOIN_3;
         continue;
     }
@@ -87,12 +87,12 @@ namespace tpyapp::main {
             if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r4).value();
             __sub_4.reset();
-            std::cout << "no incomplete" << "\n";
+            std::cout << "no incomplete" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_1;
             continue;
         } catch (const ::tpystd::asyncio::IncompleteReadError& e) {
             __sub_4.reset();
-            std::cout << (::tpy::str_concat("incomplete partial=", ::tpy::bytes_decode(e.partial))) << "\n";
+            std::cout << (::tpy::str_concat("incomplete partial=", ::tpy::bytes_decode(e.partial))) << "\n" << ::tpy::check_signals;
             __state = S_JOIN_1;
             continue;
         } catch (...) {
@@ -125,7 +125,7 @@ namespace tpyapp::main {
             __state = S_RESUME_1;
             continue;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "empty sep rejected" << "\n";
+            std::cout << "empty sep rejected" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -138,7 +138,7 @@ namespace tpyapp::main {
             __state = S_RESUME_4;
             continue;
         } catch (const ::tpystd::asyncio::IncompleteReadError& e) {
-            std::cout << (::tpy::str_concat("incomplete partial=", ::tpy::bytes_decode(e.partial))) << "\n";
+            std::cout << (::tpy::str_concat("incomplete partial=", ::tpy::bytes_decode(e.partial))) << "\n" << ::tpy::check_signals;
             __state = S_JOIN_1;
             continue;
         } catch (...) {

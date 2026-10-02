@@ -16,7 +16,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n" << ::tpy::check_signals;
     }
 }
 

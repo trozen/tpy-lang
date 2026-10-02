@@ -385,7 +385,7 @@ inline Holder& Holder::operator=(Holder&& other) noexcept {
 //     print("holder sees", self.f())
 inline Holder::~Holder() {
     if (!this->__tpy_owned_) return;
-    std::cout << "holder sees" << " " << (*this).f() << "\n";
+    std::cout << "holder sees" << " " << (*this).f() << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, f: Callable[[], int32]):
@@ -400,7 +400,7 @@ inline void Ctx::__enter__() const {
 // def __exit__(self, a, b, c) -> None:
 //     print("with_exit sees", self.f())
 inline void Ctx::__exit__(std::monostate a, const ::tpy::BaseException* b, std::monostate c) const {
-    std::cout << "with_exit sees" << " " << (*this).f() << "\n";
+    std::cout << "with_exit sees" << " " << (*this).f() << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, p: Own[Point]):

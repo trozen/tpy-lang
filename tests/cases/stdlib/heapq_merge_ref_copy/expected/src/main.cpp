@@ -24,10 +24,10 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& it = *__beg_0;
-        std::cout << it.key << " " << it.tag << "\n";
+        std::cout << it.key << " " << it.tag << "\n" << ::tpy::check_signals;
     }
     ::tpy::__getitem__(a, 0).tag = 1000;
-    std::cout << "after source mutate:" << " " << ::tpy::__getitem__(merged, 0).tag << "\n";
+    std::cout << "after source mutate:" << " " << ::tpy::__getitem__(merged, 0).tag << "\n" << ::tpy::check_signals;
 }
 
 // # heapq.merge yields Own[T] -- owned COPIES, not the source objects. TPy-only

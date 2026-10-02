@@ -49,12 +49,12 @@ std::string test_negated(const Config& cfg) {
 void main() {
     Config c1 = Config("hello", 8080);
     Config c2 = Config(std::nullopt, std::nullopt);
-    std::cout << ::tpyapp::main::get_name(c1) << "\n";
-    std::cout << ::tpyapp::main::get_name(c2) << "\n";
-    std::cout << ::tpyapp::main::get_port(c1) << "\n";
-    std::cout << ::tpyapp::main::get_port(c2) << "\n";
-    std::cout << ::tpyapp::main::test_negated(c1) << "\n";
-    std::cout << ::tpyapp::main::test_negated(c2) << "\n";
+    std::cout << ::tpyapp::main::get_name(c1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::get_name(c2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::get_port(c1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::get_port(c2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_negated(c1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_negated(c2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

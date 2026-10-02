@@ -12,7 +12,7 @@ namespace tpyapp::main {
 //     print(len(xs))
 void list_literal(const std::vector<std::tuple<int32_t, P>>& items) {
     std::vector<std::tuple<int32_t, P>> xs = {::tpy::__getitem__(items, 0)};
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def dict_value(items: list[tuple[int32, P]]) -> None:
@@ -20,7 +20,7 @@ void list_literal(const std::vector<std::tuple<int32_t, P>>& items) {
 //     print(len(d))
 void dict_value(const std::vector<std::tuple<int32_t, P>>& items) {
     ::tpy::ordered_map<int32_t, std::tuple<int32_t, P>> d = ::tpy::ordered_map<int32_t, std::tuple<int32_t, P>>({{0, ::tpy::__getitem__(items, 0)}});
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // def via_append(items: list[tuple[int32, P]]) -> None:
@@ -30,7 +30,7 @@ void dict_value(const std::vector<std::tuple<int32_t, P>>& items) {
 void via_append(const std::vector<std::tuple<int32_t, P>>& items) {
     std::vector<std::tuple<int32_t, P>> out = std::vector<std::tuple<int32_t, P>>{};
     out.push_back(::tpy::__getitem__(items, 0));
-    std::cout << ::tpy::__len__(out) << "\n";
+    std::cout << ::tpy::__len__(out) << "\n" << ::tpy::check_signals;
 }
 
 // def exempt_fresh(n: int32) -> None:
@@ -38,7 +38,7 @@ void via_append(const std::vector<std::tuple<int32_t, P>>& items) {
 //     print(len(xs))
 void exempt_fresh(int32_t n) {
     std::vector<std::tuple<int32_t, P>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(9)})};
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def exempt_copy(p: P) -> None:
@@ -46,7 +46,7 @@ void exempt_fresh(int32_t n) {
 //     print(len(xs))
 void exempt_copy(const P& p) {
     std::vector<std::tuple<int32_t, P>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(p)})};
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

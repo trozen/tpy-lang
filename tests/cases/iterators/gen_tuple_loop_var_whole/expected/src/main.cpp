@@ -147,8 +147,8 @@ __coro_sum_items sum_items(const ::tpy::ordered_map<int32_t, int32_t>& d) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "async" << " " << __await_lift_0 << "\n";
-        std::cout << "async src" << " " << std::get<1>(::tpy::__getitem__((*ays), 0)).v << "\n";
+        std::cout << "async" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
+        std::cout << "async src" << " " << std::get<1>(::tpy::__getitem__((*ays), 0)).v << "\n" << ::tpy::check_signals;
         __coro_arg_0.emplace(::tpy::ordered_map<int32_t, int32_t>({{1, 2}}));
         __sub_1.emplace((*__coro_arg_0));
         __state = S_RESUME_1;
@@ -159,7 +159,7 @@ __coro_sum_items sum_items(const ::tpy::ordered_map<int32_t, int32_t>& d) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "async items" << " " << __await_lift_1 << "\n";
+        std::cout << "async items" << " " << __await_lift_1 << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -207,10 +207,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "free" << " " << n << "\n";
+            std::cout << "free" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "free src" << " " << std::get<1>(::tpy::__getitem__(xs, 0)).v << " " << std::get<1>(::tpy::__getitem__(xs, 1)).v << "\n";
+    std::cout << "free src" << " " << std::get<1>(::tpy::__getitem__(xs, 0)).v << " " << std::get<1>(::tpy::__getitem__(xs, 1)).v << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<int32_t, int32_t>> vs = {std::tuple<int32_t, int32_t>{1, 10}, std::tuple<int32_t, int32_t>{2, 20}};
     {
         auto __src_2 = ::tpyapp::main::walk_value(vs);
@@ -219,7 +219,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "value" << " " << n << "\n";
+            std::cout << "value" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     Holder h = Holder({::tpy::tuple_to_storage<std::tuple<int32_t, A>>(std::tuple<int32_t, A>{3, A(30)})});
@@ -230,10 +230,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "method" << " " << n << "\n";
+            std::cout << "method" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "method src" << " " << std::get<1>(::tpy::__getitem__(h.xs, 0)).v << "\n";
+    std::cout << "method src" << " " << std::get<1>(::tpy::__getitem__(h.xs, 0)).v << "\n" << ::tpy::check_signals;
     {
         auto __src_6 = h.peek();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -241,7 +241,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "readonly" << " " << n << "\n";
+            std::cout << "readonly" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_section()));
@@ -253,10 +253,10 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "items" << " " << n << "\n";
+            std::cout << "items" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "items src" << " " << ::tpy::__getitem__(d, 7).v << "\n";
+    std::cout << "items src" << " " << ::tpy::__getitem__(d, 7).v << "\n" << ::tpy::check_signals;
 }
 
 

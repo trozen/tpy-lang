@@ -13,11 +13,11 @@ namespace tpyapp::main {
 //     print(h.get())
 void main() {
     Holder h = Holder();
-    std::cout << h.get() << "\n";
+    std::cout << h.get() << "\n" << ::tpy::check_signals;
     h.set_name(Inner(10));
-    std::cout << h.get() << "\n";
+    std::cout << h.get() << "\n" << ::tpy::check_signals;
     h.set_rvalue(20);
-    std::cout << h.get() << "\n";
+    std::cout << h.get() << "\n" << ::tpy::check_signals;
 }
 
 // main()

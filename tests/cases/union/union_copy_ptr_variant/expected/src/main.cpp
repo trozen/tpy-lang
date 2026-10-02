@@ -15,11 +15,11 @@ void print_copy_param(::tpy::Union<const Cat*, const Dog*> pet) {
     ::tpy::Union<Cat*, Dog*> pet2 = ::tpy::to_ptr_variant(__slot_1);
     if (std::holds_alternative<Dog*>(pet2)) {
         auto& __pet2 = *std::get<Dog*>(pet2);
-        std::cout << __pet2.name << "\n";
+        std::cout << __pet2.name << "\n" << ::tpy::check_signals;
     } else {
         if (true) {
             auto& __pet2 = *std::get<Cat*>(pet2);
-            std::cout << __pet2.name << "\n";
+            std::cout << __pet2.name << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -40,7 +40,7 @@ void copy_module_spelling(::tpy::Union<Cat*, Dog*> pet) {
     }
     if (std::holds_alternative<Dog*>(q)) {
         auto& __q = *std::get<Dog*>(q);
-        std::cout << "module" << " " << __q.name << "\n";
+        std::cout << "module" << " " << __q.name << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -90,7 +90,7 @@ void main() {
     d.name = "Changed";
     if (std::holds_alternative<Dog*>(pet2)) {
         auto& __pet2 = *std::get<Dog*>(pet2);
-        std::cout << __pet2.name << "\n";
+        std::cout << __pet2.name << "\n" << ::tpy::check_signals;
     }
     Cat c = Cat("Whiskers");
     ::tpy::Union<Cat*, Dog*> pet3{&(c)};
@@ -98,7 +98,7 @@ void main() {
     ::tpy::Union<Cat*, Dog*> pet4 = ::tpy::to_ptr_variant(__slot_2);
     if (std::holds_alternative<Cat*>(pet4)) {
         auto& __pet4 = *std::get<Cat*>(pet4);
-        std::cout << __pet4.name << "\n";
+        std::cout << __pet4.name << "\n" << ::tpy::check_signals;
     }
     Dog d2 = Dog("Fido");
     ::tpy::Union<Cat*, Dog*> param_pet{&(d2)};
@@ -111,7 +111,7 @@ void main() {
         ::tpy::Union<Cat*, Dog*> pet7 = ::tpy::to_ptr_variant(__slot_3);
         if (std::holds_alternative<Cat*>(pet7)) {
             auto& __pet7 = *std::get<Cat*>(pet7);
-            std::cout << __pet7.name << "\n";
+            std::cout << __pet7.name << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::Union<std::monostate, Cat, Dog> __slot_4 = Dog("Buddy");
@@ -121,7 +121,7 @@ void main() {
     if ((!std::holds_alternative<std::monostate>(pet9))) {
         if (std::holds_alternative<Dog*>(pet9)) {
             auto& __pet9 = *std::get<Dog*>(pet9);
-            std::cout << __pet9.name << "\n";
+            std::cout << __pet9.name << "\n" << ::tpy::check_signals;
         }
     }
     Dog __tmp_1 = Dog("Spot");

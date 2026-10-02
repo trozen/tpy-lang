@@ -8,14 +8,14 @@ namespace tpyapp::main {
 //     # Multiple field accesses on same pointer in one expression
 //     print(p.x + p.y)  # tpyc: nullable(p)
 void use_fields(Point* p) {
-    std::cout << (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, ::tpy::deref_check(p).y)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, ::tpy::deref_check(p).y)) << "\n" << ::tpy::check_signals;
 }
 
 // def use_methods(p: Ptr[Point]) -> None:
 //     # Method + field access on same pointer
 //     print(p.sum(), p.x)  # tpyc: nullable(p)
 void use_methods(Point* p) {
-    std::cout << ::tpy::deref_check(p).sum() << " " << ::tpy::deref_check(p).x << "\n";
+    std::cout << ::tpy::deref_check(p).sum() << " " << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
 }
 
 // def test() -> None:

@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void describe(::tpystd::tplib::box::Box<Pet>& b) {
     int32_t __b_ptr = 21;
     if (Bird* __b_ptr_2 = dynamic_cast<Bird*>(&(b.__deref__())); (__b_ptr_2 != nullptr)) {
-        std::cout << "deref_view" << " " << (*__b_ptr_2).chirp() << " " << __b_ptr << "\n";
+        std::cout << "deref_view" << " " << (*__b_ptr_2).chirp() << " " << __b_ptr << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "other" << " " << b.__deref__().name() << " " << __b_ptr << "\n";
+        std::cout << "other" << " " << b.__deref__().name() << " " << __b_ptr << "\n" << ::tpy::check_signals;
     }
 }
 

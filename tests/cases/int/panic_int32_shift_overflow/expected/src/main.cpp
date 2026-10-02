@@ -13,7 +13,7 @@ void __tpy_init() {
     initialized = true;
 
     x = 1;
-    std::cout << (::tpy::lshift_check<int32_t>(x, 100)) << "\n";
+    std::cout << (::tpy::lshift_check<int32_t>(x, 100)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

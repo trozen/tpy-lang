@@ -77,17 +77,17 @@ int32_t via_param(A& a) {
 //     print(xs[0].x, xs[1].x)  # loop-var lifts alias the list elements
 void main() {
     A a = A(5);
-    std::cout << ::tpyapp::main::via_param(a) << "\n";
-    std::cout << a.x << "\n";
-    std::cout << ::tpyapp::main::describe(::tpy::Union<std::monostate, const A*, const B*>{&(a)}) << "\n";
-    std::cout << ::tpyapp::main::describe(::tpy::Union<std::monostate, const A*, const B*>{std::monostate{}}) << "\n";
+    std::cout << ::tpyapp::main::via_param(a) << "\n" << ::tpy::check_signals;
+    std::cout << a.x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<std::monostate, const A*, const B*>{&(a)}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::Union<std::monostate, const A*, const B*>{std::monostate{}}) << "\n" << ::tpy::check_signals;
     Counter c = Counter(1);
     c.bump_via_union();
-    std::cout << c.n << "\n";
+    std::cout << c.n << "\n" << ::tpy::check_signals;
     Pair pair = Pair(3, 30);
     pair.bump_picked(false);
     pair.bump_picked(true);
-    std::cout << pair.a1.x << " " << pair.a2.x << "\n";
+    std::cout << pair.a1.x << " " << pair.a2.x << "\n" << ::tpy::check_signals;
     std::array<A, 2> xs = {A(7), A(8)};
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
@@ -96,7 +96,7 @@ void main() {
         auto&& elem = *__beg_0;
         ::tpyapp::main::bump(::tpy::Union<A*, B*>{&(elem)});
     }
-    std::cout << ::tpy::__getitem__(xs, 0).x << " " << ::tpy::__getitem__(xs, 1).x << "\n";
+    std::cout << ::tpy::__getitem__(xs, 0).x << " " << ::tpy::__getitem__(xs, 1).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

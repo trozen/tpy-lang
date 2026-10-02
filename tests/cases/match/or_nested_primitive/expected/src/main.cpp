@@ -44,13 +44,13 @@ std::string classify(int32_t n) {
 //     print(classify(6))
 //     print(classify(7))
 void main() {
-    std::cout << ::tpyapp::main::classify(1) << "\n";
-    std::cout << ::tpyapp::main::classify(2) << "\n";
-    std::cout << ::tpyapp::main::classify(3) << "\n";
-    std::cout << ::tpyapp::main::classify(4) << "\n";
-    std::cout << ::tpyapp::main::classify(5) << "\n";
-    std::cout << ::tpyapp::main::classify(6) << "\n";
-    std::cout << ::tpyapp::main::classify(7) << "\n";
+    std::cout << ::tpyapp::main::classify(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(6) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(7) << "\n" << ::tpy::check_signals;
 }
 
 // main()

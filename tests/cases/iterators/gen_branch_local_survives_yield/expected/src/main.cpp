@@ -34,7 +34,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_1);
-            std::cout << y << "\n";
+            std::cout << y << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -44,7 +44,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_3);
-            std::cout << y << "\n";
+            std::cout << y << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -54,7 +54,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_5);
-            std::cout << y << "\n";
+            std::cout << y << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -64,7 +64,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_7);
-            std::cout << y << "\n";
+            std::cout << y << "\n" << ::tpy::check_signals;
         }
     }
 }

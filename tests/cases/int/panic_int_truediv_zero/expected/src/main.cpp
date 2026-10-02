@@ -14,7 +14,7 @@ void main() {
     ::tpy::BigInt x = ::tpy::BigInt(10);
     ::tpy::BigInt y = ::tpy::BigInt(0);
     double z = (::tpy::truediv(x, y));
-    std::cout << ::tpy::print_float(z) << "\n";
+    std::cout << ::tpy::print_float(z) << "\n" << ::tpy::check_signals;
 }
 
 // main()

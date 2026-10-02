@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     int32_t a = 5;
     int32_t b = 0;
-    std::cout << ::tpy::print_float((::tpy::truediv(static_cast<int64_t>(a), static_cast<int64_t>(b)))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(static_cast<int64_t>(a), static_cast<int64_t>(b)))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

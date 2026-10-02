@@ -66,7 +66,7 @@ __coro_producer producer(::tpystd::tpy::channel::Sender<Counter> tx) {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             c.emplace(std::move(__r0).value());
             __sub_0.reset();
-            std::cout << (*c).n << "\n";
+            std::cout << (*c).n << "\n" << ::tpy::check_signals;
             __state = S_JOIN_2;
             continue;
         } catch (const ::tpystd::tpy::channel::ChannelClosed&) {

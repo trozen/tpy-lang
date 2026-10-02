@@ -44,9 +44,9 @@ int32_t outer(std::string_view key) {
 //     print(outer("y"))
 //     print(Registry.code)
 void main() {
-    std::cout << ::tpyapp::main::outer("x") << "\n";
-    std::cout << ::tpyapp::main::outer("y") << "\n";
-    std::cout << Registry::code << "\n";
+    std::cout << ::tpyapp::main::outer("x") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::outer("y") << "\n" << ::tpy::check_signals;
+    std::cout << Registry::code << "\n" << ::tpy::check_signals;
 }
 
 // main()

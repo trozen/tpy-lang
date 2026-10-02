@@ -15,7 +15,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& item = *__beg_0;
-        std::cout << ::tpy::TuplePrinter(item) << "\n";
+        std::cout << ::tpy::TuplePrinter(item) << "\n" << ::tpy::check_signals;
     }
 }
 

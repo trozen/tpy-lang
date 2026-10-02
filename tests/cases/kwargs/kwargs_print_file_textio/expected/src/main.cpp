@@ -19,13 +19,13 @@ namespace tpyapp::main {
 void main() {
     std::string_view path = "tpy_test_print_file_textio.txt";
     ::tpy::TextFile f = ::tpy::builtin_open_mode(path, "w");
-    ::tpy::as_ostream(f) << "hello" << " " << "file" << " " << 42 << "\n";
-    ::tpy::as_ostream(f) << "line 2" << "!\n";
+    ::tpy::as_ostream(f) << "hello" << " " << "file" << " " << 42 << "\n" << ::tpy::check_signals;
+    ::tpy::as_ostream(f) << "line 2" << "!\n" << ::tpy::check_signals;
     f.close();
     auto __ctx_1 = ::tpy::builtin_open(path);
     auto& r = __ctx_1.__enter__();
     try {
-        std::cout << r.read();
+        std::cout << r.read() << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});

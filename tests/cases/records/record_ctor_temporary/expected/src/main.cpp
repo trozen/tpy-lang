@@ -15,10 +15,10 @@ namespace tpyapp::main {
 //     print(n2.sum())  # 60
 void main() {
     Numbers n1 = Numbers({1, 2, 3, 4, 5});
-    std::cout << n1.sum() << "\n";
+    std::cout << n1.sum() << "\n" << ::tpy::check_signals;
     std::vector<int32_t> items = {10, 20, 30};
     Numbers n2 = Numbers(items);
-    std::cout << n2.sum() << "\n";
+    std::cout << n2.sum() << "\n" << ::tpy::check_signals;
 }
 
 // main()

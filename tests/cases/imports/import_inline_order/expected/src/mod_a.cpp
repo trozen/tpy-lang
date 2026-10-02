@@ -7,7 +7,7 @@ namespace tpyapp::mod_a {
 // def func_a() -> None:
 //     print("func_a called")
 void func_a() {
-    std::cout << "func_a called" << "\n";
+    std::cout << "func_a called" << "\n" << ::tpy::check_signals;
 }
 
 // from mod_c import shared_value
@@ -19,7 +19,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::mod_c::__tpy_init();
-    std::cout << "mod_a init" << "\n";
+    std::cout << "mod_a init" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::mod_a

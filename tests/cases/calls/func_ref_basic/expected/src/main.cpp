@@ -25,7 +25,7 @@ int32_t add(int32_t a, int32_t b) {
 // def print_val(x: int32) -> None:
 //     print(x)
 void print_val(int32_t x) {
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -36,9 +36,9 @@ void print_val(int32_t x) {
 //     # Non-void function passed to void hint (return value discarded)
 //     run_void(double, 7)        # (no output -- double returns int32, discarded)
 void main() {
-    std::cout << ::tpyapp::main::apply(double_, 21) << "\n";
-    std::cout << ::tpyapp::main::apply(negate, 5) << "\n";
-    std::cout << ::tpyapp::main::apply2(add, 3, 4) << "\n";
+    std::cout << ::tpyapp::main::apply(double_, 21) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::apply(negate, 5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::apply2(add, 3, 4) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::run_void(print_val, 99);
     ::tpyapp::main::run_void(double_, 7);
 }

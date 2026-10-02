@@ -20,8 +20,8 @@ int32_t safe_inc(std::optional<int32_t> x) {
 //     print(safe_inc(None))
 //     hello(Person("Alice"))
 void main() {
-    std::cout << ::tpyapp::main::safe_inc(9) << "\n";
-    std::cout << ::tpyapp::main::safe_inc(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::safe_inc(9) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::safe_inc(std::nullopt) << "\n" << ::tpy::check_signals;
     auto __tmp_1 = Person("Alice");
     ::tpyapp::main::hello(__tmp_1);
 }

@@ -359,32 +359,32 @@ int32_t in_match_arm(::tpy::Union<Other*, Rec*> v, int32_t sel) {
 //     print("other", free_fn(Other(1)))
 void main() {
     Rec a = Rec(1, 2);
-    std::cout << "free_fn" << " " << ::tpyapp::main::free_fn(::tpy::Union<Other*, Rec*>{&(a)}) << " " << a.n << "\n";
+    std::cout << "free_fn" << " " << ::tpyapp::main::free_fn(::tpy::Union<Other*, Rec*>{&(a)}) << " " << a.n << "\n" << ::tpy::check_signals;
     Rec b = Rec(1, 2);
-    std::cout << "field_cond" << " " << ::tpyapp::main::field_cond(::tpy::Union<Other*, Rec*>{&(b)}) << " " << b.q << "\n";
+    std::cout << "field_cond" << " " << ::tpyapp::main::field_cond(::tpy::Union<Other*, Rec*>{&(b)}) << " " << b.q << "\n" << ::tpy::check_signals;
     Rec c = Rec(3, 0);
-    std::cout << "as_bind" << " " << ::tpyapp::main::as_bind(::tpy::Union<Other*, Rec*>{&(c)}) << " " << c.n << "\n";
+    std::cout << "as_bind" << " " << ::tpyapp::main::as_bind(::tpy::Union<Other*, Rec*>{&(c)}) << " " << c.n << "\n" << ::tpy::check_signals;
     Rec d = Rec(7, 0);
-    std::cout << "same_index" << " " << ::tpyapp::main::same_index(::tpy::Union<Other*, Rec*, Third*>{&(d)}) << " " << d.n << "\n";
+    std::cout << "same_index" << " " << ::tpyapp::main::same_index(::tpy::Union<Other*, Rec*, Third*>{&(d)}) << " " << d.n << "\n" << ::tpy::check_signals;
     Rec e = Rec(2, 0);
-    std::cout << "with_none" << " " << ::tpyapp::main::with_none(::tpy::Union<std::monostate, Other*, Rec*>{&(e)}) << " " << e.n << "\n";
-    std::cout << "with_none_none" << " " << ::tpyapp::main::with_none(::tpy::Union<std::monostate, Other*, Rec*>{std::monostate{}}) << "\n";
+    std::cout << "with_none" << " " << ::tpyapp::main::with_none(::tpy::Union<std::monostate, Other*, Rec*>{&(e)}) << " " << e.n << "\n" << ::tpy::check_signals;
+    std::cout << "with_none_none" << " " << ::tpyapp::main::with_none(::tpy::Union<std::monostate, Other*, Rec*>{std::monostate{}}) << "\n" << ::tpy::check_signals;
     Rec f = Rec(4, 0);
-    std::cout << "ctor" << " " << Holder(::tpy::Union<Other*, Rec*>{&(f)}).seen << " " << f.n << "\n";
+    std::cout << "ctor" << " " << Holder(::tpy::Union<Other*, Rec*>{&(f)}).seen << " " << f.n << "\n" << ::tpy::check_signals;
     Rec g = Rec(5, 0);
     ::tpy::Union<Other*, Rec*> gu{&(g)};
     ::tpy::Union<Other, Rec> __slot_1 = Other(0);
     ::tpy::Union<Other*, Rec*> other = ::tpy::to_ptr_variant(__slot_1);
     Holder holder = Holder(other);
-    std::cout << "method" << " " << holder.bump(gu) << " " << g.n << "\n";
+    std::cout << "method" << " " << holder.bump(gu) << " " << g.n << "\n" << ::tpy::check_signals;
     Rec h = Rec(6, 0);
-    std::cout << "in_blocks" << " " << ::tpyapp::main::in_blocks(::tpy::Union<Other*, Rec*>{&(h)}) << " " << h.n << "\n";
+    std::cout << "in_blocks" << " " << ::tpyapp::main::in_blocks(::tpy::Union<Other*, Rec*>{&(h)}) << " " << h.n << "\n" << ::tpy::check_signals;
     Rec i = Rec(8, 0);
-    std::cout << "in_closure" << " " << ::tpyapp::main::in_closure(::tpy::Union<Other*, Rec*>{&(i)}) << " " << i.n << "\n";
+    std::cout << "in_closure" << " " << ::tpyapp::main::in_closure(::tpy::Union<Other*, Rec*>{&(i)}) << " " << i.n << "\n" << ::tpy::check_signals;
     Rec j = Rec(9, 0);
-    std::cout << "in_match_arm" << " " << ::tpyapp::main::in_match_arm(::tpy::Union<Other*, Rec*>{&(j)}, 1) << " " << j.n << "\n";
+    std::cout << "in_match_arm" << " " << ::tpyapp::main::in_match_arm(::tpy::Union<Other*, Rec*>{&(j)}, 1) << " " << j.n << "\n" << ::tpy::check_signals;
     Other __tmp_1 = Other(1);
-    std::cout << "other" << " " << ::tpyapp::main::free_fn(::tpy::Union<Other*, Rec*>{&__tmp_1}) << "\n";
+    std::cout << "other" << " " << ::tpyapp::main::free_fn(::tpy::Union<Other*, Rec*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

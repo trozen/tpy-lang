@@ -31,14 +31,14 @@ void __tpy_init() {
     a = &__global_slot_1;
     a->init(0, 10);
     a->init(1, 20);
-    std::cout << a->load(0) << "\n";
-    std::cout << a->load(1) << "\n";
+    std::cout << a->load(0) << "\n" << ::tpy::check_signals;
+    std::cout << a->load(1) << "\n" << ::tpy::check_signals;
     a->drop(0);
     a->drop(1);
     static ::tpy::UninitHeapStorage<int32_t> __global_slot_2 = ::tpy::UninitHeapStorage<int32_t>(2);
     h = &__global_slot_2;
     h->init(0, 30);
-    std::cout << h->load(0) << "\n";
+    std::cout << h->load(0) << "\n" << ::tpy::check_signals;
     h->drop(0);
 }
 

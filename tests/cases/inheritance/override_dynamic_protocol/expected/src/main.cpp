@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def greet(s: Speaker) -> None:
 //     print(s.speak())
 void greet(Speaker& s) {
-    std::cout << s.speak() << "\n";
+    std::cout << s.speak() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

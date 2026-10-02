@@ -7,19 +7,19 @@ namespace tpyapp::explib {
 // def one() -> None:
 //     print("one")
 void one() {
-    std::cout << "one" << "\n";
+    std::cout << "one" << "\n" << ::tpy::check_signals;
 }
 
 // def two() -> None:
 //     print("two")
 void two() {
-    std::cout << "two" << "\n";
+    std::cout << "two" << "\n" << ::tpy::check_signals;
 }
 
 // def _private() -> None:
 //     print("private")
 void _private() {
-    std::cout << "private" << "\n";
+    std::cout << "private" << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init() {

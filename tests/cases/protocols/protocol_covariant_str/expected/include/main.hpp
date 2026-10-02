@@ -116,7 +116,7 @@ inline ::tpy::String Bird::name() const {
 //     print(x.name())
 template<Named T_x>
 void greet(T_x& x) {
-    std::cout << x.name() << "\n";
+    std::cout << x.name() << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

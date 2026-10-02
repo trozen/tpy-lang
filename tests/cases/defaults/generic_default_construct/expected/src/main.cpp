@@ -27,18 +27,18 @@ namespace tpyapp::main {
 //     print(f.n)
 void main() {
     int32_t a = ::tpyapp::main::make_default<int32_t>();
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
     std::string b = ::tpyapp::main::make_default<std::string>();
-    std::cout << b << "\n";
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
     bool c = ::tpyapp::main::make_default<bool>();
-    std::cout << ::tpy::print_bool(c) << "\n";
+    std::cout << ::tpy::print_bool(c) << "\n" << ::tpy::check_signals;
     int32_t d = ::tpyapp::main::make_default<int32_t>(42);
-    std::cout << d << "\n";
+    std::cout << d << "\n" << ::tpy::check_signals;
     int32_t e = ::tpyapp::main::make_default<int32_t>(42);
-    std::cout << e << "\n";
+    std::cout << e << "\n" << ::tpy::check_signals;
     NoisyHeir f = ::tpyapp::main::make_default<NoisyHeir>();
-    std::cout << f.n << "\n";
+    std::cout << f.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

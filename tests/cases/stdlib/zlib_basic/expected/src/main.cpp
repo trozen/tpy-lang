@@ -17,9 +17,9 @@ void report(std::string_view label, ::tpy::BytesView data, int32_t wbits) {
     {
         try {
             ::tpy::Bytes out = ::tpystd::zlib::decompress(data, wbits);
-            std::cout << label << " " << "ok" << " " << ::tpy::__len__(out) << "\n";
+            std::cout << label << " " << "ok" << " " << ::tpy::__len__(out) << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::zlib::error& e) {
-            std::cout << label << " " << "zlib.error" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << label << " " << "zlib.error" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -43,21 +43,21 @@ void report(std::string_view label, ::tpy::BytesView data, int32_t wbits) {
 //     print("free big", zlib.decompress(zlib.compress(big, 9)) == big)
 //     print("free empty", zlib.decompress(zlib.compress(b"")) == b"")
 void one_shot() {
-    std::cout << "free fixture" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(FIXTURE) == RAW)) << "\n";
-    std::cout << "free default" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW)) == RAW)) << "\n";
-    std::cout << "free level1" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW, 1)) == RAW)) << "\n";
-    std::cout << "free gzip" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW, 9, 31), 31) == RAW)) << "\n";
-    std::cout << "free auto" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW, 9, 31), 47) == RAW)) << "\n";
-    std::cout << "free raw" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW, 6, -15), -15) == RAW)) << "\n";
-    std::cout << "free wbits kw" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW, -1, -9), -9) == RAW)) << "\n";
-    std::cout << "free bufsize" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(FIXTURE, 15, 1) == RAW)) << " " << ::tpy::print_bool((::tpystd::zlib::decompress(FIXTURE, 15, 0) == RAW)) << "\n";
-    std::cout << "free bytearray" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpy::ByteArray(FIXTURE)) == RAW)) << "\n";
+    std::cout << "free fixture" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(FIXTURE) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "free default" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW)) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "free level1" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW, 1)) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "free gzip" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW, 9, 31), 31) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "free auto" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW, 9, 31), 47) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "free raw" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW, 6, -15), -15) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "free wbits kw" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW, -1, -9), -9) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "free bufsize" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(FIXTURE, 15, 1) == RAW)) << " " << ::tpy::print_bool((::tpystd::zlib::decompress(FIXTURE, 15, 0) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "free bytearray" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpy::ByteArray(FIXTURE)) == RAW)) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes padded = (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("??", 2), FIXTURE)), ::tpy::bytes_literal_owned("??", 2)));
-    std::cout << "free slice" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpy::Bytes(::tpy::bytes_slice(padded, ::tpy::BasicSlice{2, (::tpy::sub_check<int32_t>(::tpy::__len__(padded), 2))}))) == RAW)) << "\n";
-    std::cout << "free trailing" << " " << ::tpy::print_bool((::tpystd::zlib::decompress((::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal_owned("junk", 4)))) == RAW)) << "\n";
+    std::cout << "free slice" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpy::Bytes(::tpy::bytes_slice(padded, ::tpy::BasicSlice{2, (::tpy::sub_check<int32_t>(::tpy::__len__(padded), 2))}))) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "free trailing" << " " << ::tpy::print_bool((::tpystd::zlib::decompress((::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal_owned("junk", 4)))) == RAW)) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes big = (::tpy::bytes_repeat(::tpy::bytes_from_int_iterable(::tpy::Range<int32_t>(256)), 2000));
-    std::cout << "free big" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(big, 9)) == big)) << "\n";
-    std::cout << "free empty" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(::tpy::BytesView{})) == ::tpy::BytesView{})) << "\n";
+    std::cout << "free big" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(big, 9)) == big)) << "\n" << ::tpy::check_signals;
+    std::cout << "free empty" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(::tpy::BytesView{})) == ::tpy::BytesView{})) << "\n" << ::tpy::check_signals;
 }
 
 // def checksums() -> None:
@@ -68,12 +68,12 @@ void one_shot() {
 //     crc = zlib.crc32(bytearray(b"hello"))
 //     print("crc32 mask", crc & 0xffffffff, hex(crc))
 void checksums() {
-    std::cout << "crc32" << " " << ::tpystd::zlib::crc32(::tpy::bytes_literal("hello", 5)) << " " << ::tpystd::zlib::crc32(::tpy::BytesView{}) << " " << ::tpystd::zlib::crc32((::tpy::bytes_repeat(::tpy::bytes_literal_owned("\xff", 1), 1000))) << "\n";
-    std::cout << "crc32 chain" << " " << ::tpy::print_bool((::tpystd::zlib::crc32(::tpy::bytes_literal("world", 5), ::tpystd::zlib::crc32(::tpy::bytes_literal("hello ", 6))) == ::tpystd::zlib::crc32(::tpy::bytes_literal("hello world", 11)))) << "\n";
-    std::cout << "adler32" << " " << ::tpystd::zlib::adler32(::tpy::bytes_literal("hello", 5)) << " " << ::tpystd::zlib::adler32(::tpy::BytesView{}) << "\n";
-    std::cout << "adler32 chain" << " " << ::tpystd::zlib::adler32(::tpy::bytes_literal("world", 5), ::tpystd::zlib::adler32(::tpy::bytes_literal("hello ", 6))) << "\n";
+    std::cout << "crc32" << " " << ::tpystd::zlib::crc32(::tpy::bytes_literal("hello", 5)) << " " << ::tpystd::zlib::crc32(::tpy::BytesView{}) << " " << ::tpystd::zlib::crc32((::tpy::bytes_repeat(::tpy::bytes_literal_owned("\xff", 1), 1000))) << "\n" << ::tpy::check_signals;
+    std::cout << "crc32 chain" << " " << ::tpy::print_bool((::tpystd::zlib::crc32(::tpy::bytes_literal("world", 5), ::tpystd::zlib::crc32(::tpy::bytes_literal("hello ", 6))) == ::tpystd::zlib::crc32(::tpy::bytes_literal("hello world", 11)))) << "\n" << ::tpy::check_signals;
+    std::cout << "adler32" << " " << ::tpystd::zlib::adler32(::tpy::bytes_literal("hello", 5)) << " " << ::tpystd::zlib::adler32(::tpy::BytesView{}) << "\n" << ::tpy::check_signals;
+    std::cout << "adler32 chain" << " " << ::tpystd::zlib::adler32(::tpy::bytes_literal("world", 5), ::tpystd::zlib::adler32(::tpy::bytes_literal("hello ", 6))) << "\n" << ::tpy::check_signals;
     uint32_t crc = ::tpystd::zlib::crc32(::tpy::ByteArray(::tpy::bytes_literal("hello", 5)));
-    std::cout << "crc32 mask" << " " << (static_cast<uint32_t>(crc & static_cast<uint32_t>(4294967295))) << " " << ::tpy::builtin_hex(crc) << "\n";
+    std::cout << "crc32 mask" << " " << (static_cast<uint32_t>(crc & static_cast<uint32_t>(4294967295))) << " " << ::tpy::builtin_hex(crc) << "\n" << ::tpy::check_signals;
 }
 
 // def errors() -> None:
@@ -114,35 +114,35 @@ void errors() {
         try {
             ::tpystd::zlib::compress(RAW, 12);
         } catch (const ::tpystd::zlib::error& e) {
-            std::cout << "err level" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "err level" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::zlib::compress(RAW, 6, 99);
         } catch (const ::tpystd::zlib::error& e) {
-            std::cout << "err compress wbits" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "err compress wbits" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::zlib::decompress(FIXTURE, 15, -1);
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "err bufsize" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "err bufsize" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::zlib::decompressobj(99);
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "err decompressobj" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "err decompressobj" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::zlib::compressobj(6, 7);
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "err compressobj" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "err compressobj" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -159,7 +159,7 @@ void method_streaming() {
     for (int32_t i = 0; i < __stop_0; i += 4) {
         u.feed(::tpy::Bytes(::tpy::bytes_slice(FIXTURE, ::tpy::BasicSlice{i, (::tpy::add_check<int32_t>(i, 4))})));
     }
-    std::cout << "method chunks" << " " << ::tpy::print_bool((u.out == RAW)) << " " << ::tpy::print_bool(u.d.eof()) << " " << ::tpy::BytesPrinter(u.d.unused_data()) << " " << ::tpy::BytesPrinter(u.d.unconsumed_tail()) << "\n";
+    std::cout << "method chunks" << " " << ::tpy::print_bool((u.out == RAW)) << " " << ::tpy::print_bool(u.d.eof()) << " " << ::tpy::BytesPrinter(u.d.unused_data()) << " " << ::tpy::BytesPrinter(u.d.unconsumed_tail()) << "\n" << ::tpy::check_signals;
 }
 
 // def objects() -> None:
@@ -247,105 +247,105 @@ void method_streaming() {
 void objects() {
     ::tpystd::zlib::_Decompress d = ::tpystd::zlib::decompressobj();
     ::tpy::Bytes out = d.decompress((::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal_owned("XY", 2))));
-    std::cout << "obj unused" << " " << ::tpy::print_bool((out == RAW)) << " " << ::tpy::print_bool(d.eof()) << " " << ::tpy::BytesPrinter(d.unused_data()) << " " << ::tpy::BytesPrinter(d.unconsumed_tail()) << "\n";
-    std::cout << "obj after eof" << " " << ::tpy::BytesPrinter(d.decompress(::tpy::bytes_literal("more", 4))) << " " << ::tpy::BytesPrinter(d.unused_data()) << "\n";
+    std::cout << "obj unused" << " " << ::tpy::print_bool((out == RAW)) << " " << ::tpy::print_bool(d.eof()) << " " << ::tpy::BytesPrinter(d.unused_data()) << " " << ::tpy::BytesPrinter(d.unconsumed_tail()) << "\n" << ::tpy::check_signals;
+    std::cout << "obj after eof" << " " << ::tpy::BytesPrinter(d.decompress(::tpy::bytes_literal("more", 4))) << " " << ::tpy::BytesPrinter(d.unused_data()) << "\n" << ::tpy::check_signals;
     ::tpystd::zlib::_Decompress d2 = ::tpystd::zlib::decompressobj();
     ::tpy::Bytes head = d2.decompress(FIXTURE, 5);
-    std::cout << "obj max_length" << " " << ::tpy::BytesPrinter(head) << " " << ::tpy::print_bool((::tpy::__len__(d2.unconsumed_tail()) > 0)) << " " << ::tpy::print_bool(d2.eof()) << "\n";
+    std::cout << "obj max_length" << " " << ::tpy::BytesPrinter(head) << " " << ::tpy::print_bool((::tpy::__len__(d2.unconsumed_tail()) > 0)) << " " << ::tpy::print_bool(d2.eof()) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes rest = d2.flush();
-    std::cout << "obj flush" << " " << ::tpy::print_bool(((::tpy::bytes_concat(head, rest)) == RAW)) << " " << ::tpy::BytesPrinter(d2.unconsumed_tail()) << " " << ::tpy::print_bool(d2.eof()) << "\n";
-    std::cout << "obj flush again" << " " << ::tpy::BytesPrinter(d2.flush()) << "\n";
+    std::cout << "obj flush" << " " << ::tpy::print_bool(((::tpy::bytes_concat(head, rest)) == RAW)) << " " << ::tpy::BytesPrinter(d2.unconsumed_tail()) << " " << ::tpy::print_bool(d2.eof()) << "\n" << ::tpy::check_signals;
+    std::cout << "obj flush again" << " " << ::tpy::BytesPrinter(d2.flush()) << "\n" << ::tpy::check_signals;
     {
         try {
             d2.decompress(::tpy::bytes_literal("abc", 3));
         } catch (const ::tpystd::zlib::error& e) {
-            std::cout << "obj after flush" << " " << std::string(::tpy::__str__(e)) << " " << ::tpy::BytesPrinter(d2.unconsumed_tail()) << "\n";
+            std::cout << "obj after flush" << " " << std::string(::tpy::__str__(e)) << " " << ::tpy::BytesPrinter(d2.unconsumed_tail()) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::zlib::_Decompress d3 = ::tpystd::zlib::decompressobj();
-    std::cout << "obj partial" << " " << ::tpy::BytesPrinter(d3.decompress(::tpy::Bytes(::tpy::bytes_slice(FIXTURE, ::tpy::BasicSlice{std::nullopt, 10})))) << " " << ::tpy::BytesPrinter(d3.flush()) << " " << ::tpy::print_bool(d3.eof()) << "\n";
+    std::cout << "obj partial" << " " << ::tpy::BytesPrinter(d3.decompress(::tpy::Bytes(::tpy::bytes_slice(FIXTURE, ::tpy::BasicSlice{std::nullopt, 10})))) << " " << ::tpy::BytesPrinter(d3.flush()) << " " << ::tpy::print_bool(d3.eof()) << "\n" << ::tpy::check_signals;
     ::tpystd::zlib::_Decompress d4 = ::tpystd::zlib::decompressobj();
     {
         try {
             d4.decompress(::tpy::bytes_literal("garbage!", 8));
         } catch (const ::tpystd::zlib::error& e) {
-            std::cout << "obj error" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "obj error" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             d4.decompress(::tpy::bytes_literal("more", 4));
         } catch (const ::tpystd::zlib::error& e) {
-            std::cout << "obj error sticky" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "obj error sticky" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             d4.decompress(FIXTURE, -1);
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "obj max_length" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "obj max_length" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             d4.flush(0);
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "obj flush length" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "obj flush length" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::zlib::_Compress c = ::tpystd::zlib::compressobj(9);
     ::tpy::Bytes packed = c.compress(RAW);
     packed = (::tpy::bytes_concat(packed, c.flush()));
-    std::cout << "cobj roundtrip" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(packed) == RAW)) << "\n";
-    std::cout << "cobj no flush" << " " << ::tpy::BytesPrinter(c.flush(::tpystd::zlib::Z_NO_FLUSH)) << "\n";
+    std::cout << "cobj roundtrip" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(packed) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "cobj no flush" << " " << ::tpy::BytesPrinter(c.flush(::tpystd::zlib::Z_NO_FLUSH)) << "\n" << ::tpy::check_signals;
     {
         try {
             c.compress(::tpy::bytes_literal("x", 1));
         } catch (const ::tpystd::zlib::error& e) {
-            std::cout << "cobj after finish" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "cobj after finish" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             c.flush();
         } catch (const ::tpystd::zlib::error& e) {
-            std::cout << "cobj flush after finish" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "cobj flush after finish" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::zlib::_Compress c2 = ::tpystd::zlib::compressobj(6, ::tpystd::zlib::DEFLATED, -15);
     ::tpy::Bytes part = c2.compress(RAW);
     part = (::tpy::bytes_concat(part, c2.flush(::tpystd::zlib::Z_SYNC_FLUSH)));
     part = (::tpy::bytes_concat(part, c2.flush()));
-    std::cout << "cobj sync" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(part, -15) == RAW)) << "\n";
+    std::cout << "cobj sync" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(part, -15) == RAW)) << "\n" << ::tpy::check_signals;
     ::tpystd::zlib::_Compress c3 = ::tpystd::zlib::compressobj();
     {
         try {
             c3.flush(99);
         } catch (const ::tpystd::zlib::error& e) {
-            std::cout << "cobj bad mode" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "cobj bad mode" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::zlib::_Compress c4 = ::tpystd::zlib::compressobj(6, ::tpystd::zlib::DEFLATED, 15, 9, ::tpystd::zlib::Z_RLE);
     ::tpy::Bytes rle = c4.compress(RAW);
     rle = (::tpy::bytes_concat(rle, c4.flush()));
-    std::cout << "cobj rle" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(rle) == RAW)) << "\n";
+    std::cout << "cobj rle" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(rle) == RAW)) << "\n" << ::tpy::check_signals;
     ::tpystd::zlib::_Compress c5 = ::tpystd::zlib::compressobj();
     ::tpy::Bytes full = c5.compress(::tpy::bytes_literal("abc", 3));
     full = (::tpy::bytes_concat(full, c5.flush(::tpystd::zlib::Z_FULL_FLUSH)));
     full = (::tpy::bytes_concat(full, c5.flush(::tpystd::zlib::Z_FULL_FLUSH)));
     full = (::tpy::bytes_concat(full, c5.flush()));
-    std::cout << "cobj full flush" << " " << ::tpy::BytesPrinter(::tpystd::zlib::decompress(full)) << "\n";
+    std::cout << "cobj full flush" << " " << ::tpy::BytesPrinter(::tpystd::zlib::decompress(full)) << "\n" << ::tpy::check_signals;
     {
         try {
             c5.flush(::tpystd::zlib::Z_SYNC_FLUSH);
         } catch (const ::tpystd::zlib::error& e) {
-            std::cout << "cobj sync after finish" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "cobj sync after finish" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::zlib::_Decompress d5 = ::tpystd::zlib::decompressobj();
     d5.decompress((::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal_owned("JUNK", 4))), 5);
     ::tpy::Bytes rest5 = d5.decompress(d5.unconsumed_tail());
-    std::cout << "obj tail at end" << " " << ::tpy::__len__(rest5) << " " << ::tpy::BytesPrinter(d5.unconsumed_tail()) << " " << ::tpy::BytesPrinter(d5.unused_data()) << " " << ::tpy::print_bool(d5.eof()) << "\n";
+    std::cout << "obj tail at end" << " " << ::tpy::__len__(rest5) << " " << ::tpy::BytesPrinter(d5.unconsumed_tail()) << " " << ::tpy::BytesPrinter(d5.unused_data()) << " " << ::tpy::print_bool(d5.eof()) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -371,7 +371,7 @@ void generator_body() {
             got = (::tpy::bytes_concat(got, piece));
         }
     }
-    std::cout << "generator" << " " << ::tpy::print_bool((got == RAW)) << "\n";
+    std::cout << "generator" << " " << ::tpy::print_bool((got == RAW)) << "\n" << ::tpy::check_signals;
 }
 
 // def comprehension() -> None:
@@ -402,7 +402,7 @@ void comprehension() {
             __result.push_back(::tpystd::zlib::adler32(w));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
 }
 
 // def with_body() -> None:
@@ -429,7 +429,7 @@ void with_body() {
     auto __ctx_2 = ::tpy::builtin_open_binary("zlib_basic.bin", "rb");
     f = &(__ctx_2.__enter__());
     try {
-        std::cout << "with" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(f->read()) == RAW)) << "\n";
+        std::cout << "with" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(f->read()) == RAW)) << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -449,11 +449,11 @@ void with_body() {
 //     print("flush", zlib.Z_NO_FLUSH, zlib.Z_PARTIAL_FLUSH, zlib.Z_SYNC_FLUSH, zlib.Z_FULL_FLUSH, zlib.Z_FINISH, zlib.Z_BLOCK, zlib.Z_TREES)
 //     print("versions", len(zlib.ZLIB_VERSION) > 0, len(zlib.ZLIB_RUNTIME_VERSION) > 0)
 void constants() {
-    std::cout << "consts" << " " << ::tpystd::zlib::MAX_WBITS << " " << ::tpystd::zlib::DEFLATED << " " << ::tpystd::zlib::DEF_MEM_LEVEL << " " << ::tpystd::zlib::DEF_BUF_SIZE << "\n";
-    std::cout << "levels" << " " << ::tpystd::zlib::Z_NO_COMPRESSION << " " << ::tpystd::zlib::Z_BEST_SPEED << " " << ::tpystd::zlib::Z_BEST_COMPRESSION << " " << ::tpystd::zlib::Z_DEFAULT_COMPRESSION << "\n";
-    std::cout << "strategies" << " " << ::tpystd::zlib::Z_DEFAULT_STRATEGY << " " << ::tpystd::zlib::Z_FILTERED << " " << ::tpystd::zlib::Z_HUFFMAN_ONLY << " " << ::tpystd::zlib::Z_RLE << " " << ::tpystd::zlib::Z_FIXED << "\n";
-    std::cout << "flush" << " " << ::tpystd::zlib::Z_NO_FLUSH << " " << ::tpystd::zlib::Z_PARTIAL_FLUSH << " " << ::tpystd::zlib::Z_SYNC_FLUSH << " " << ::tpystd::zlib::Z_FULL_FLUSH << " " << ::tpystd::zlib::Z_FINISH << " " << ::tpystd::zlib::Z_BLOCK << " " << ::tpystd::zlib::Z_TREES << "\n";
-    std::cout << "versions" << " " << ::tpy::print_bool((::tpy::__len__(::tpystd::zlib::ZLIB_VERSION) > 0)) << " " << ::tpy::print_bool((::tpy::__len__(::tpystd::zlib::ZLIB_RUNTIME_VERSION) > 0)) << "\n";
+    std::cout << "consts" << " " << ::tpystd::zlib::MAX_WBITS << " " << ::tpystd::zlib::DEFLATED << " " << ::tpystd::zlib::DEF_MEM_LEVEL << " " << ::tpystd::zlib::DEF_BUF_SIZE << "\n" << ::tpy::check_signals;
+    std::cout << "levels" << " " << ::tpystd::zlib::Z_NO_COMPRESSION << " " << ::tpystd::zlib::Z_BEST_SPEED << " " << ::tpystd::zlib::Z_BEST_COMPRESSION << " " << ::tpystd::zlib::Z_DEFAULT_COMPRESSION << "\n" << ::tpy::check_signals;
+    std::cout << "strategies" << " " << ::tpystd::zlib::Z_DEFAULT_STRATEGY << " " << ::tpystd::zlib::Z_FILTERED << " " << ::tpystd::zlib::Z_HUFFMAN_ONLY << " " << ::tpystd::zlib::Z_RLE << " " << ::tpystd::zlib::Z_FIXED << "\n" << ::tpy::check_signals;
+    std::cout << "flush" << " " << ::tpystd::zlib::Z_NO_FLUSH << " " << ::tpystd::zlib::Z_PARTIAL_FLUSH << " " << ::tpystd::zlib::Z_SYNC_FLUSH << " " << ::tpystd::zlib::Z_FULL_FLUSH << " " << ::tpystd::zlib::Z_FINISH << " " << ::tpystd::zlib::Z_BLOCK << " " << ::tpystd::zlib::Z_TREES << "\n" << ::tpy::check_signals;
+    std::cout << "versions" << " " << ::tpy::print_bool((::tpy::__len__(::tpystd::zlib::ZLIB_VERSION) > 0)) << " " << ::tpy::print_bool((::tpy::__len__(::tpystd::zlib::ZLIB_RUNTIME_VERSION) > 0)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -113,7 +113,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "free" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+            std::cout << "free" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -124,7 +124,7 @@ void main() {
             if (!__r_3.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_3);
             std::get<1>(pair).val = ::tpy::add_check<int32_t>(std::get<1>(pair).val, 1);
-            std::cout << "twice" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+            std::cout << "twice" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -134,7 +134,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "call" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+            std::cout << "call" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -145,7 +145,7 @@ void main() {
             if (!__r_7.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_7);
             std::get<1>(pair).val = ::tpy::add_check<int32_t>(std::get<1>(pair).val, 1);
-            std::cout << "call-once" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+            std::cout << "call-once" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -155,7 +155,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "borrowed-consumer" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+            std::cout << "borrowed-consumer" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -165,7 +165,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_11);
-            std::cout << "dead-consumer" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+            std::cout << "dead-consumer" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -175,7 +175,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_13);
-            std::cout << "preloop" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+            std::cout << "preloop" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -185,7 +185,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_15);
-            std::cout << "live" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+            std::cout << "live" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n" << ::tpy::check_signals;
         }
     }
     Src s = Src(100);
@@ -196,7 +196,7 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_17);
-            std::cout << "method" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+            std::cout << "method" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -20,7 +20,7 @@ int32_t make_value() {
 // def main() -> None:
 //     print(make_value())
 void main() {
-    std::cout << ::tpyapp::main::make_value() << "\n";
+    std::cout << ::tpyapp::main::make_value() << "\n" << ::tpy::check_signals;
 }
 
 // from widgets import Widget

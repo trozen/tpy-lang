@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(w.is_less(10, 3))
 void main() {
     Wrapper<int32_t> w = Wrapper<int32_t>(5);
-    std::cout << ::tpy::print_bool(w.is_less<int32_t>(1, 2)) << "\n";
-    std::cout << ::tpy::print_bool(w.is_less<int32_t>(10, 3)) << "\n";
+    std::cout << ::tpy::print_bool(w.is_less<int32_t>(1, 2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(w.is_less<int32_t>(10, 3)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

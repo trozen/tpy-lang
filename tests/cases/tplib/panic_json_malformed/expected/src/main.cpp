@@ -43,7 +43,7 @@ void main() {
         goto __after_try_4;
         // except JsonError:
         __except_4:;
-        std::cout << "caught: malformed json" << "\n";
+        std::cout << "caught: malformed json" << "\n" << ::tpy::check_signals;
         __after_try_4:;
     }
 }

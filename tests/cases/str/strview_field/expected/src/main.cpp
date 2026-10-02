@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(w.get())
 void main() {
     Wrapper w = Wrapper("hello");
-    std::cout << w.get() << "\n";
+    std::cout << w.get() << "\n" << ::tpy::check_signals;
 }
 
 // main()

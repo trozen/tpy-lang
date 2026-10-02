@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def sink(b: Own[Box[int32]]) -> None:
 //     print(b.val)
 void sink(Box<int32_t>&& b) {
-    std::cout << b.val << "\n";
+    std::cout << b.val << "\n" << ::tpy::check_signals;
 }
 
 // def take_two(a: Own[Box[int32]], b: Own[Box[int32]]) -> None:
 //     print(a.val + b.val)
 void take_two(Box<int32_t>&& a, Box<int32_t>&& b) {
-    std::cout << (::tpy::add_check<int32_t>(a.val, b.val)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(a.val, b.val)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -29,7 +29,7 @@ void main() {
     ::tpyapp::main::take_two(::tpyapp::main::wrap<int32_t>(3), ::tpyapp::main::wrap<int32_t>(7));
     ::tpyapp::main::sink(::tpyapp::main::wrap<int32_t>(20));
     ::tpyapp::main::take_two(::tpyapp::main::wrap<int32_t>(5), ::tpyapp::main::wrap<int32_t>(9));
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // main()

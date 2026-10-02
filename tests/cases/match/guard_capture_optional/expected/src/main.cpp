@@ -17,16 +17,16 @@ void classify(std::optional<int32_t> v) {
     {
         auto& x = __match_subject_1;
         if (((x.has_value()) && ((*x) > 5))) {
-            std::cout << "big" << " " << ::tpy::print_optional_val(x) << "\n";
+            std::cout << "big" << " " << ::tpy::print_optional_val(x) << "\n" << ::tpy::check_signals;
             goto __match_end_2;
         }
     }
     if (!__match_subject_1.has_value()) {
-        std::cout << "none" << "\n";
+        std::cout << "none" << "\n" << ::tpy::check_signals;
         goto __match_end_2;
     }
     {
-        std::cout << "small" << "\n";
+        std::cout << "small" << "\n" << ::tpy::check_signals;
         goto __match_end_2;
     }
     __match_end_2:;

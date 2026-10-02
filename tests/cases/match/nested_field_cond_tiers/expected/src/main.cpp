@@ -83,15 +83,15 @@ __gen_steps steps(const Outer& o) {
 void main() {
     Outer __tmp_1 = Outer(Inner(1));
     Outer __tmp_2 = Outer(Inner(7));
-    std::cout << "opt_chain:" << " " << ::tpyapp::main::opt_chain(&(__tmp_1)) << " " << ::tpyapp::main::opt_chain(nullptr) << " " << ::tpyapp::main::opt_chain(&(__tmp_2)) << "\n";
+    std::cout << "opt_chain:" << " " << ::tpyapp::main::opt_chain(&(__tmp_1)) << " " << ::tpyapp::main::opt_chain(nullptr) << " " << ::tpyapp::main::opt_chain(&(__tmp_2)) << "\n" << ::tpy::check_signals;
     Dog __tmp_3{Dog(Collar("x"))};
     Dog __tmp_4{Dog(Collar("y"))};
     Cat __tmp_5{Cat()};
-    std::cout << "poly:" << " " << ::tpyapp::main::poly(__tmp_3) << " " << ::tpyapp::main::poly(__tmp_4) << " " << ::tpyapp::main::poly(__tmp_5) << "\n";
+    std::cout << "poly:" << " " << ::tpyapp::main::poly(__tmp_3) << " " << ::tpyapp::main::poly(__tmp_4) << " " << ::tpyapp::main::poly(__tmp_5) << "\n" << ::tpy::check_signals;
     Outer __tmp_6 = Outer(Inner(1));
     Outer __tmp_7 = Outer(Inner(7));
-    std::cout << "record:" << " " << ::tpyapp::main::record(__tmp_6) << " " << ::tpyapp::main::record(__tmp_7) << "\n";
-    std::cout << "method:" << " " << Kennel(Outer(Inner(1))).label() << " " << Kennel(Outer(Inner(7))).label() << "\n";
+    std::cout << "record:" << " " << ::tpyapp::main::record(__tmp_6) << " " << ::tpyapp::main::record(__tmp_7) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << Kennel(Outer(Inner(1))).label() << " " << Kennel(Outer(Inner(7))).label() << "\n" << ::tpy::check_signals;
     {
         Outer __tmp_8 = Outer(Inner(1));
         auto __src_0 = ::tpyapp::main::steps(__tmp_8);
@@ -100,7 +100,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen_one:" << " " << v << "\n";
+            std::cout << "gen_one:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -111,7 +111,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "gen_other:" << " " << v << "\n";
+            std::cout << "gen_other:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
 }

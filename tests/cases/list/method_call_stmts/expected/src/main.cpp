@@ -39,7 +39,7 @@ void wipe(std::vector<int32_t>& xs) {
 // def show_last(xs: list[int32]) -> None:
 //     print(xs.pop())
 void show_last(std::vector<int32_t>& xs) {
-    std::cout << ::tpy::pop_back(xs) << "\n";
+    std::cout << ::tpy::pop_back(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -57,18 +57,18 @@ void main() {
     std::vector<int32_t> xs = {3, 1};
     ::tpyapp::main::grow(xs, 9);
     ::tpyapp::main::show_last(xs);
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpyapp::main::take_two(xs) << "\n";
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpyapp::main::take_two(xs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::wipe(xs);
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

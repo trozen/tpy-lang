@@ -49,11 +49,11 @@ int32_t field_read(const Holder& h) {
 //     print("method", Holder(Box(6)).total())
 void main() {
     std::vector<std::tuple<int32_t, Box>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(2)})};
-    std::cout << "read" << " " << ::tpyapp::main::read_only(xs) << "\n";
-    std::cout << "mut" << " " << ::tpyapp::main::mutating(xs) << " " << std::get<1>(::tpy::__getitem__(xs, 0)).n << "\n";
+    std::cout << "read" << " " << ::tpyapp::main::read_only(xs) << "\n" << ::tpy::check_signals;
+    std::cout << "mut" << " " << ::tpyapp::main::mutating(xs) << " " << std::get<1>(::tpy::__getitem__(xs, 0)).n << "\n" << ::tpy::check_signals;
     Holder __tmp_1 = Holder(Box(5));
-    std::cout << "field" << " " << ::tpyapp::main::field_read(__tmp_1) << "\n";
-    std::cout << "method" << " " << Holder(Box(6)).total() << "\n";
+    std::cout << "field" << " " << ::tpyapp::main::field_read(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << Holder(Box(6)).total() << "\n" << ::tpy::check_signals;
 }
 
 // main()

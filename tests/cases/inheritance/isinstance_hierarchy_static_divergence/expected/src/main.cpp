@@ -15,7 +15,7 @@ bool ptr_downcast(Animal* a) {
 //     print(ptr_downcast(d))  # tpyc: False, CPython: True
 void main() {
     Dog d = Dog("Rex", "lab");
-    std::cout << ::tpy::print_bool(::tpyapp::main::ptr_downcast(&d)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::ptr_downcast(&d)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

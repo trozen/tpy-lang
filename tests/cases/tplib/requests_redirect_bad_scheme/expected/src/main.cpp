@@ -34,9 +34,9 @@ void main() {
     {
         try {
             s.get("http://api.test/start");
-            std::cout << "NO RAISE" << "\n";
+            std::cout << "NO RAISE" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::tplib::requests::ConnectionError&) {
-            std::cout << "caught ConnectionError for ftp redirect" << "\n";
+            std::cout << "caught ConnectionError for ftp redirect" << "\n" << ::tpy::check_signals;
         }
     }
     b.close();

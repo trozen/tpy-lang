@@ -39,10 +39,10 @@ void merge_and_clear() {
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"limit", "10"}});
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"X-App", "override"}});
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/v1/tables", &(__tmp_1), &(__tmp_2));
-    std::cout << r.status_code << "\n";
-    std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n";
+    std::cout << r.status_code << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n" << ::tpy::check_signals;
     if ((!s._connection.has_value())) {
-        std::cout << "connection cleared" << "\n";
+        std::cout << "connection cleared" << "\n" << ::tpy::check_signals;
     }
     b.close();
 }
@@ -71,8 +71,8 @@ void session_post() {
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
     ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("payload", 7);
     ::tpystd::tplib::requests::Response r = s.post("http://api.test/v1/items", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1});
-    std::cout << r.status_code << "\n";
-    std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n";
+    std::cout << r.status_code << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n" << ::tpy::check_signals;
     b.close();
 }
 
@@ -106,7 +106,7 @@ void context_manager_closes() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << ::tpy::BytesPrinter(b.recv(10)) << "\n";
+    std::cout << ::tpy::BytesPrinter(b.recv(10)) << "\n" << ::tpy::check_signals;
     b.close();
 }
 

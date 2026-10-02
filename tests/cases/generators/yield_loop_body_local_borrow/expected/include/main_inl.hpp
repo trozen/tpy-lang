@@ -23,7 +23,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
         continue;
     }
     case S_RESUME_0: {  // after: yield buf                 # tpyc: ok
-        std::cout << "resume sees len" << " " << ::tpy::__len__((*buf)) << "\n";
+        std::cout << "resume sees len" << " " << ::tpy::__len__((*buf)) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -116,7 +116,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
         continue;
     }
     case S_RESUME_0: {  // after: yield buf                 # tpyc: ok
-        std::cout << "range resume len" << " " << ::tpy::__len__((*buf)) << "\n";
+        std::cout << "range resume len" << " " << ::tpy::__len__((*buf)) << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
     }
@@ -157,7 +157,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
         continue;
     }
     case S_RESUME_0: {  // after: yield (a if flag else b)  # tpyc: ok
-        std::cout << "ternary resume" << " " << ::tpy::__len__(((flag) ? ((*a)) : ((*b)))) << "\n";
+        std::cout << "ternary resume" << " " << ::tpy::__len__(((flag) ? ((*a)) : ((*b)))) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -197,7 +197,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
         continue;
     }
     case S_RESUME_0: {  // after: yield (x := buf)          # tpyc: ok
-        std::cout << "walrus resume" << " " << ::tpy::__len__((*buf)) << "\n";
+        std::cout << "walrus resume" << " " << ::tpy::__len__((*buf)) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -235,7 +235,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
         continue;
     }
     case S_RESUME_0: {  // after: yield buf             # tpyc: ok
-        std::cout << "method resume" << " " << ::tpy::__len__((*buf)) << "\n";
+        std::cout << "method resume" << " " << ::tpy::__len__((*buf)) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;

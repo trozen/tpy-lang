@@ -32,18 +32,18 @@ namespace tpyapp::main {
 //     print(c.name)
 void main() {
     Container c = Container();
-    std::cout << c.name() << "\n";
-    std::cout << ::tpy::ListPrinter(c.items()) << "\n";
+    std::cout << c.name() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(c.items()) << "\n" << ::tpy::check_signals;
     c.items().push_back(4);
-    std::cout << ::tpy::ListPrinter(c.items()) << "\n";
-    std::cout << c.pt().x << "\n";
+    std::cout << ::tpy::ListPrinter(c.items()) << "\n" << ::tpy::check_signals;
+    std::cout << c.pt().x << "\n" << ::tpy::check_signals;
     c.pt().x = 99;
-    std::cout << c.pt().x << "\n";
-    std::cout << c.big() << "\n";
+    std::cout << c.pt().x << "\n" << ::tpy::check_signals;
+    std::cout << c.big() << "\n" << ::tpy::check_signals;
     std::string s = Container().name();
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
     c.set_name("world");
-    std::cout << c.name() << "\n";
+    std::cout << c.name() << "\n" << ::tpy::check_signals;
 }
 
 // main()

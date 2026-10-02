@@ -29,13 +29,13 @@ void __tpy_init() {
     initialized = true;
 
     a = -2147483648;
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
     b = ::tpy::BigInt(static_cast<int64_t>(-2147483649LL));
-    std::cout << b << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
     c = 2147483647;
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
     d = ::tpy::BigInt(static_cast<int64_t>(2147483648LL));
-    std::cout << d << "\n";
+    std::cout << d << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

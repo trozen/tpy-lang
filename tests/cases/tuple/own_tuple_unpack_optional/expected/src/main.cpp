@@ -29,8 +29,8 @@ void main() {
     auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, int32_t>>(::tpyapp::main::pair());
     P* p = std::get<0>(__tup_1);
     int32_t n = std::get<1>(__tup_1);
-    std::cout << ::tpyapp::main::borrow(p) << "\n";
-    std::cout << n << "\n";
+    std::cout << ::tpyapp::main::borrow(p) << "\n" << ::tpy::check_signals;
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // main()

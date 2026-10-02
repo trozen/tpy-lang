@@ -43,7 +43,7 @@ void main() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         const auto& p = *__beg_2;
-        std::cout << p.x << "\n";
+        std::cout << p.x << "\n" << ::tpy::check_signals;
     }
 }
 

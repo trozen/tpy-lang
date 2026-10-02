@@ -24,9 +24,9 @@ void for_body(const std::vector<int32_t>& xs) {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         n = *__beg_1;
-        std::cout << "for_body in" << " " << n << "\n";
+        std::cout << "for_body in" << " " << n << "\n" << ::tpy::check_signals;
     }
-    std::cout << "for_body after" << " " << n << "\n";
+    std::cout << "for_body after" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // # `while` body binds first
@@ -50,9 +50,9 @@ void while_body(const std::vector<int32_t>& xs) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         n = *__beg_0;
-        std::cout << "while_body in" << " " << n << "\n";
+        std::cout << "while_body in" << " " << n << "\n" << ::tpy::check_signals;
     }
-    std::cout << "while_body after" << " " << n << "\n";
+    std::cout << "while_body after" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // # both arms of an `if` inside the body bind
@@ -79,9 +79,9 @@ void if_in_body(const std::vector<int32_t>& xs) {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         n = *__beg_1;
-        std::cout << "if_in_body in" << " " << n << "\n";
+        std::cout << "if_in_body in" << " " << n << "\n" << ::tpy::check_signals;
     }
-    std::cout << "if_in_body after" << " " << n << "\n";
+    std::cout << "if_in_body after" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // # the loop's `else` clause binds first
@@ -106,9 +106,9 @@ void loop_else(const std::vector<int32_t>& xs) {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         n = *__beg_2;
-        std::cout << "loop_else in" << " " << n << "\n";
+        std::cout << "loop_else in" << " " << n << "\n" << ::tpy::check_signals;
     }
-    std::cout << "loop_else after" << " " << n << "\n";
+    std::cout << "loop_else after" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // # the binding is two loops deep
@@ -131,9 +131,9 @@ void nested_loops(const std::vector<int32_t>& xs) {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         n = *__beg_2;
-        std::cout << "nested_loops in" << " " << n << "\n";
+        std::cout << "nested_loops in" << " " << n << "\n" << ::tpy::check_signals;
     }
-    std::cout << "nested_loops after" << " " << n << "\n";
+    std::cout << "nested_loops after" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // # first loop, head and read all inside one `if`
@@ -155,9 +155,9 @@ void inside_if(const std::vector<int32_t>& xs) {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             n = *__beg_1;
-            std::cout << "inside_if in" << " " << n << "\n";
+            std::cout << "inside_if in" << " " << n << "\n" << ::tpy::check_signals;
         }
-        std::cout << "inside_if after" << " " << n << "\n";
+        std::cout << "inside_if after" << " " << n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -180,10 +180,10 @@ void head_in_if(const std::vector<int32_t>& xs) {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             n = *__beg_1;
-            std::cout << "head_in_if in" << " " << n << "\n";
+            std::cout << "head_in_if in" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "head_in_if after" << " " << n << "\n";
+    std::cout << "head_in_if after" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // # two later heads bind the same local
@@ -205,16 +205,16 @@ void two_heads(const std::vector<int32_t>& xs) {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         n = *__beg_1;
-        std::cout << "two_heads in" << " " << n << "\n";
+        std::cout << "two_heads in" << " " << n << "\n" << ::tpy::check_signals;
     }
     auto& __obj_2 = xs;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         n = *__beg_2;
-        std::cout << "two_heads in2" << " " << n << "\n";
+        std::cout << "two_heads in2" << " " << n << "\n" << ::tpy::check_signals;
     }
-    std::cout << "two_heads after" << " " << n << "\n";
+    std::cout << "two_heads after" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // # BigInt element
@@ -247,9 +247,9 @@ void bigint_elem(const std::vector<int32_t>& xs) {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         n = *__beg_2;
-        std::cout << "bigint_elem in" << " " << n << "\n";
+        std::cout << "bigint_elem in" << " " << n << "\n" << ::tpy::check_signals;
     }
-    std::cout << "bigint_elem after" << " " << n << "\n";
+    std::cout << "bigint_elem after" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // # Optional element
@@ -280,9 +280,9 @@ void optional_elem(const std::vector<int32_t>& xs) {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         n = *__beg_2;
-        std::cout << "optional_elem in" << " " << ::tpy::print_optional_val(n) << "\n";
+        std::cout << "optional_elem in" << " " << ::tpy::print_optional_val(n) << "\n" << ::tpy::check_signals;
     }
-    std::cout << "optional_elem after" << " " << ::tpy::print_optional_val(n) << "\n";
+    std::cout << "optional_elem after" << " " << ::tpy::print_optional_val(n) << "\n" << ::tpy::check_signals;
 }
 
 // # nested def
@@ -305,9 +305,9 @@ void nested_def(std::vector<int32_t>& xs) {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             n = *__beg_1;
-            std::cout << "nested_def in" << " " << n << "\n";
+            std::cout << "nested_def in" << " " << n << "\n" << ::tpy::check_signals;
         }
-        std::cout << "nested_def after" << " " << n << "\n";
+        std::cout << "nested_def after" << " " << n << "\n" << ::tpy::check_signals;
     };
     inner(xs);
 }
@@ -362,7 +362,7 @@ __gen_gen_unpack_body gen_unpack_body(const std::vector<int32_t>& xs) {
             auto __end_0 = __obj_0.end();
             for (; __beg_0 != __end_0; ++__beg_0) {
                 n = *__beg_0;
-                std::cout << "async_body in" << " " << n << "\n";
+                std::cout << "async_body in" << " " << n << "\n" << ::tpy::check_signals;
             }
             __state = S_DONE;
             int32_t __tpy_async_ret = n;
@@ -422,7 +422,7 @@ __coro_async_body async_body(const std::vector<int32_t>& xs) {
             auto __end_1 = __obj_1.end();
             for (; __beg_1 != __end_1; ++__beg_1) {
                 n = *__beg_1;
-                std::cout << "async_two_siblings in" << " " << n << "\n";
+                std::cout << "async_two_siblings in" << " " << n << "\n" << ::tpy::check_signals;
             }
             __state = S_DONE;
             int32_t __tpy_async_ret = n;
@@ -467,9 +467,9 @@ void two_siblings(const std::vector<int32_t>& xs) {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         n = *__beg_2;
-        std::cout << "two_siblings in" << " " << n << "\n";
+        std::cout << "two_siblings in" << " " << n << "\n" << ::tpy::check_signals;
     }
-    std::cout << "two_siblings after" << " " << n << "\n";
+    std::cout << "two_siblings after" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // # inverse: no read after the head -- nothing can see the zero-trip value, so
@@ -496,14 +496,14 @@ void no_read_after(const std::vector<int32_t>& xs) {
     });
     for (int32_t a = 1; a < 3; ++a) {
         ::tpy::BigInt n = ((::tpy::BigInt(static_cast<int64_t>(a))) * (::tpy::BigInt(10)));
-        std::cout << "no_read_after body" << " " << n << "\n";
+        std::cout << "no_read_after body" << " " << n << "\n" << ::tpy::check_signals;
     }
     auto& __obj_2 = ys;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         const ::tpy::BigInt& n = *__beg_2;
-        std::cout << "no_read_after in" << " " << n << "\n";
+        std::cout << "no_read_after in" << " " << n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -520,15 +520,15 @@ void read_between(const std::vector<int32_t>& xs) {
     for (int32_t a = 1; a < 3; ++a) {
         n = (::tpy::mul_check<int32_t>(a, 10));
     }
-    std::cout << "read_between mid" << " " << n << "\n";
+    std::cout << "read_between mid" << " " << n << "\n" << ::tpy::check_signals;
     auto& __obj_1 = xs;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         n = *__beg_1;
-        std::cout << "read_between in" << " " << n << "\n";
+        std::cout << "read_between in" << " " << n << "\n" << ::tpy::check_signals;
     }
-    std::cout << "read_between after" << " " << n << "\n";
+    std::cout << "read_between after" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // # the only read is in the head loop's own `else` clause
@@ -549,10 +549,10 @@ void else_read(const std::vector<int32_t>& xs) {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         n = *__beg_2;
-        std::cout << "else_read in" << " " << n << "\n";
+        std::cout << "else_read in" << " " << n << "\n" << ::tpy::check_signals;
     }
     {
-        std::cout << "else_read else" << " " << n << "\n";
+        std::cout << "else_read else" << " " << n << "\n" << ::tpy::check_signals;
     }
     __after_else_1:;
 }
@@ -575,14 +575,14 @@ void finally_head(const std::vector<int32_t>& xs) {
     }
     {
         try {
-            std::cout << "finally_head try" << "\n";
+            std::cout << "finally_head try" << "\n" << ::tpy::check_signals;
         } catch (...) {
             auto& __obj_1 = xs;
             auto __beg_1 = __obj_1.begin();
             auto __end_1 = __obj_1.end();
             for (; __beg_1 != __end_1; ++__beg_1) {
                 n = *__beg_1;
-                std::cout << "finally_head in" << " " << n << "\n";
+                std::cout << "finally_head in" << " " << n << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -591,10 +591,10 @@ void finally_head(const std::vector<int32_t>& xs) {
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             n = *__beg_2;
-            std::cout << "finally_head in" << " " << n << "\n";
+            std::cout << "finally_head in" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "finally_head after" << " " << n << "\n";
+    std::cout << "finally_head after" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // # inverse: a tuple with a reference element and no read after -- the head
@@ -623,7 +623,7 @@ void ref_tuple_no_read_after(const std::vector<int32_t>& xs) {
     });
     for (int32_t a = 1; a < 3; ++a) {
         auto p = std::tuple<Cell, int32_t>{Cell(a), a};
-        std::cout << "ref_tuple_no_read_after body" << " " << std::get<0>(p).v << "\n";
+        std::cout << "ref_tuple_no_read_after body" << " " << std::get<0>(p).v << "\n" << ::tpy::check_signals;
     }
     auto& __obj_2 = cells;
     auto __beg_2 = __obj_2.begin();
@@ -637,7 +637,7 @@ void ref_tuple_no_read_after(const std::vector<int32_t>& xs) {
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         auto&& c = *__beg_3;
-        std::cout << "ref_tuple_no_read_after cell" << " " << std::get<0>(c).v << " " << std::get<1>(c) << "\n";
+        std::cout << "ref_tuple_no_read_after cell" << " " << std::get<0>(c).v << " " << std::get<1>(c) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -664,14 +664,14 @@ void str_no_read_after(const std::vector<int32_t>& xs) {
     });
     for (int32_t a = 1; a < 3; ++a) {
         std::string s = ::tpy::fixed_to_str<int32_t>(a);
-        std::cout << "str_no_read_after body" << " " << s << "\n";
+        std::cout << "str_no_read_after body" << " " << s << "\n" << ::tpy::check_signals;
     }
     auto& __obj_2 = names;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         std::string_view s = *__beg_2;
-        std::cout << "str_no_read_after in" << " " << s << "\n";
+        std::cout << "str_no_read_after in" << " " << s << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -695,9 +695,9 @@ void bind_between(const std::vector<int32_t>& xs) {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         n = *__beg_1;
-        std::cout << "bind_between in" << " " << n << "\n";
+        std::cout << "bind_between in" << " " << n << "\n" << ::tpy::check_signals;
     }
-    std::cout << "bind_between after" << " " << n << "\n";
+    std::cout << "bind_between after" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // # each section runs over an empty list (the zero-trip head) and a full one
@@ -752,7 +752,7 @@ void sections(std::vector<int32_t>& xs) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen got" << " " << v << "\n";
+            std::cout << "gen got" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -762,7 +762,7 @@ void sections(std::vector<int32_t>& xs) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "gen_two_siblings got" << " " << v << "\n";
+            std::cout << "gen_two_siblings got" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -772,13 +772,13 @@ void sections(std::vector<int32_t>& xs) {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "gen_unpack_body got" << " " << v << "\n";
+            std::cout << "gen_unpack_body got" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     int32_t r = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_body(xs)));
-    std::cout << "async_body after" << " " << r << "\n";
+    std::cout << "async_body after" << " " << r << "\n" << ::tpy::check_signals;
     int32_t r2 = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_two_siblings(xs)));
-    std::cout << "async_two_siblings after" << " " << r2 << "\n";
+    std::cout << "async_two_siblings after" << " " << r2 << "\n" << ::tpy::check_signals;
     ::tpyapp::main::two_siblings(xs);
     ::tpyapp::main::no_read_after(xs);
     ::tpyapp::main::read_between(xs);

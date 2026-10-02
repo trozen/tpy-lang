@@ -16,16 +16,16 @@ namespace tpyapp::main {
 //         print("is not False")
 void check_is(bool x) {
     if ((x == true)) {
-        std::cout << "is True" << "\n";
+        std::cout << "is True" << "\n" << ::tpy::check_signals;
     }
     if ((x == false)) {
-        std::cout << "is False" << "\n";
+        std::cout << "is False" << "\n" << ::tpy::check_signals;
     }
     if ((x != true)) {
-        std::cout << "is not True" << "\n";
+        std::cout << "is not True" << "\n" << ::tpy::check_signals;
     }
     if ((x != false)) {
-        std::cout << "is not False" << "\n";
+        std::cout << "is not False" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -36,10 +36,10 @@ void check_is(bool x) {
 //         print("False is not x")
 void check_reversed(bool x) {
     if ((true == x)) {
-        std::cout << "True is x" << "\n";
+        std::cout << "True is x" << "\n" << ::tpy::check_signals;
     }
     if ((false != x)) {
-        std::cout << "False is not x" << "\n";
+        std::cout << "False is not x" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -51,9 +51,9 @@ void check_reversed(bool x) {
 //     check_reversed(True)
 void main() {
     ::tpyapp::main::check_is(true);
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::check_is(false);
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::check_reversed(true);
 }
 

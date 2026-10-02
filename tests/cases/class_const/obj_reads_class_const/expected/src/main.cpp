@@ -11,8 +11,8 @@ namespace tpyapp::main {
 //     c.show()
 void main() {
     C c = C();
-    std::cout << C::LIMIT << "\n";
-    std::cout << C::NAME << "\n";
+    std::cout << C::LIMIT << "\n" << ::tpy::check_signals;
+    std::cout << C::NAME << "\n" << ::tpy::check_signals;
     c.show();
 }
 

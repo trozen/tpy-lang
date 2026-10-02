@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(p.x, p.y)
 void main() {
     Point p = Point(1, 2);
-    std::cout << p.x << " " << p.y << "\n";
+    std::cout << p.x << " " << p.y << "\n" << ::tpy::check_signals;
 }
 
 // # @dataclass with user-defined __init__ (user wins, no synthesis)

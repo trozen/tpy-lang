@@ -24,12 +24,12 @@ namespace tpyapp::main {
 //     except ZeroDivisionError as e:
 //         print("caught:", str(e))
 void main() {
-    std::cout << ::tpyapp::main::safe_div(::tpy::BigInt(10), ::tpy::BigInt(2)) << "\n";
+    std::cout << ::tpyapp::main::safe_div(::tpy::BigInt(10), ::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
     {
         try {
-            std::cout << ::tpyapp::main::safe_div(::tpy::BigInt(10), ::tpy::BigInt(0)) << "\n";
+            std::cout << ::tpyapp::main::safe_div(::tpy::BigInt(10), ::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

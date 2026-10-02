@@ -23,7 +23,7 @@ void hoist_and_reassign() {
         (*p) = Point(i, (::tpy::add_check<int32_t>(i, 10)));
         saved = p;
     }
-    std::cout << saved->x << " " << saved->y << "\n";
+    std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
 
 // hoist_and_reassign()

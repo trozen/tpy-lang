@@ -20,11 +20,11 @@ void _cookie_line(::tpy::BytesView sent) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         ::tpy::BytesView line = *__beg_0;
         if (::tpy::bytes_startswith(line, ::tpy::bytes_literal("Cookie:", 7))) {
-            std::cout << ::tpy::BytesPrinter(line) << "\n";
+            std::cout << ::tpy::BytesPrinter(line) << "\n" << ::tpy::check_signals;
             return;
         }
     }
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_literal_owned("<no Cookie header>", 18)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_literal_owned("<no Cookie header>", 18)) << "\n" << ::tpy::check_signals;
 }
 
 // def redirect_cookie(set_cookies: bytes, location: bytes) -> None:
@@ -146,9 +146,9 @@ void path_scoping() {
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
     ::tpystd::tplib::requests::CookieJar jar = s.get("http://api.test/login").cookies;
     b.close();
-    std::cout << (::tpy::str_concat((::tpy::str_concat("/foobar: '", jar.header_for("api.test", "/foobar", false, 0.0))), "'")) << "\n";
-    std::cout << (::tpy::str_concat((::tpy::str_concat("/foo/bar: '", jar.header_for("api.test", "/foo/bar", false, 0.0))), "'")) << "\n";
-    std::cout << (::tpy::str_concat((::tpy::str_concat("/foo: '", jar.header_for("api.test", "/foo", false, 0.0))), "'")) << "\n";
+    std::cout << (::tpy::str_concat((::tpy::str_concat("/foobar: '", jar.header_for("api.test", "/foobar", false, 0.0))), "'")) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat((::tpy::str_concat("/foo/bar: '", jar.header_for("api.test", "/foo/bar", false, 0.0))), "'")) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat((::tpy::str_concat("/foo: '", jar.header_for("api.test", "/foo", false, 0.0))), "'")) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

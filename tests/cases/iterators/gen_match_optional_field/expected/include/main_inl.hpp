@@ -27,7 +27,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() 
     }
     case S_RESUME_0: {  // after: yield 1
         if ((v != nullptr)) {
-            std::cout << v->n << "\n";
+            std::cout << v->n << "\n" << ::tpy::check_signals;
         }
         __state = S_RESUME_1;
         return ::tpy::BigInt(2);

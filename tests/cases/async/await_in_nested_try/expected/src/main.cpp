@@ -84,7 +84,7 @@ __coro_fail fail() {
                 __sub_0.reset();
                 if (__fin_ran_2) throw;
                 try {
-                    std::cout << "inner-handler" << "\n";
+                    std::cout << "inner-handler" << "\n" << ::tpy::check_signals;
                     __sub_1.emplace(5);
                     __state = S_RESUME_1;
                     continue;
@@ -159,10 +159,10 @@ __coro_fail fail() {
 }
 
 void __coro_go::__finally_0() {
-    std::cout << "outer-finally" << "\n";
+    std::cout << "outer-finally" << "\n" << ::tpy::check_signals;
 }
 void __coro_go::__finally_1() {
-    std::cout << "inner-finally" << "\n";
+    std::cout << "inner-finally" << "\n" << ::tpy::check_signals;
 }
 
 // async def go() -> int32:
@@ -173,7 +173,7 @@ __coro_go go() {
 // def main() -> None:
 //     print(asyncio.run(go()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::go())) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::go())) << "\n" << ::tpy::check_signals;
 }
 
 // # Nested try/except/finally with awaits at each level.

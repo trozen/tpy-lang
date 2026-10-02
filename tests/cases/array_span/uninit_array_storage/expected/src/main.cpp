@@ -61,11 +61,11 @@ void __tpy_init() {
     storage->init(0, 10);
     storage->init(1, 20);
     storage->init(2, 30);
-    std::cout << storage->load(0) << "\n";
-    std::cout << storage->load(1) << "\n";
-    std::cout << storage->load(2) << "\n";
+    std::cout << storage->load(0) << "\n" << ::tpy::check_signals;
+    std::cout << storage->load(1) << "\n" << ::tpy::check_signals;
+    std::cout << storage->load(2) << "\n" << ::tpy::check_signals;
     p = storage->ptr();
-    std::cout << p[0] << "\n";
+    std::cout << p[0] << "\n" << ::tpy::check_signals;
     storage->drop(0);
     storage->drop(1);
     storage->drop(2);
@@ -73,13 +73,13 @@ void __tpy_init() {
     points->init(0, Point(1, 2));
     points->init(1, Point(3, 4));
     pt = &(points->load(0));
-    std::cout << pt->x << "\n";
-    std::cout << pt->y << "\n";
+    std::cout << pt->x << "\n" << ::tpy::check_signals;
+    std::cout << pt->y << "\n" << ::tpy::check_signals;
     pt2 = &(points->load(1));
-    std::cout << pt2->x << "\n";
-    std::cout << pt2->y << "\n";
+    std::cout << pt2->x << "\n" << ::tpy::check_signals;
+    std::cout << pt2->y << "\n" << ::tpy::check_signals;
     pt->x = 99;
-    std::cout << points->load(0).x << "\n";
+    std::cout << points->load(0).x << "\n" << ::tpy::check_signals;
     points->drop(0);
     points->drop(1);
 }

@@ -17,9 +17,9 @@ std::string_view get_r() {
 //     print(m)
 void main() {
     std::string_view m = "r";
-    std::cout << m << "\n";
+    std::cout << m << "\n" << ::tpy::check_signals;
     m = ::tpyapp::main::get_r();
-    std::cout << m << "\n";
+    std::cout << m << "\n" << ::tpy::check_signals;
 }
 
 // main()

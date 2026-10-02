@@ -21,8 +21,8 @@ void main() {
         t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(*__beg_0);
     }
     std::get<1>(t)->val = 99;
-    std::cout << std::get<0>(t) << "\n";
-    std::cout << std::get<1>(::tpy::__getitem__(items, 1)).val << "\n";
+    std::cout << std::get<0>(t) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(::tpy::__getitem__(items, 1)).val << "\n" << ::tpy::check_signals;
 }
 
 // main()

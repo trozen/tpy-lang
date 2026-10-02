@@ -12,7 +12,7 @@ namespace tpyapp::main {
 //     print("ran")
 void main() {
     ::tpyapp::main::identity<std::monostate>(std::monostate{});
-    std::cout << "ran" << "\n";
+    std::cout << "ran" << "\n" << ::tpy::check_signals;
 }
 
 // main()

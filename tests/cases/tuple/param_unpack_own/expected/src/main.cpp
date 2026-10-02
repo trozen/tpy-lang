@@ -36,12 +36,12 @@ std::tuple<A, A> relay(std::tuple<A, A>&& p) {
 //     a, b = relay((A(3), A(4)))
 //     print(a.n + b.n)
 void main() {
-    std::cout << ::tpyapp::main::consume(std::tuple<A, A>{A(1), A(2)}) << "\n";
-    std::cout << ::tpyapp::main::forward(std::tuple<A, A>{A(1), A(2)}) << "\n";
+    std::cout << ::tpyapp::main::consume(std::tuple<A, A>{A(1), A(2)}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::forward(std::tuple<A, A>{A(1), A(2)}) << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpyapp::main::relay(std::tuple<A, A>{A(3), A(4)});
     A a = std::move(std::get<0>(__tup_1));
     A b = std::move(std::get<1>(__tup_1));
-    std::cout << (::tpy::add_check<int32_t>(a.n, b.n)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(a.n, b.n)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

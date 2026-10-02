@@ -27,7 +27,7 @@ int32_t total{};
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "total =" << " " << total << "\n";
+        std::cout << "total =" << " " << total << "\n" << ::tpy::check_signals;
         __sub_1.emplace((*w), 3);
         __state = S_RESUME_1;
         continue;
@@ -37,7 +37,7 @@ int32_t total{};
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "total =" << " " << total << "\n";
+        std::cout << "total =" << " " << total << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

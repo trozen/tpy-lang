@@ -40,30 +40,30 @@ namespace tpyapp::main {
 //     print(int32.shl_wrap(int32(42), int32(0)))
 //     print(int32.shr_wrap(int32(-42), int32(0)))
 void main() {
-    std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(64) << (2))) << "\n";
-    std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(1) << (7))) << "\n";
-    std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(-2) << (7))) << "\n";
-    std::cout << static_cast<int16_t>(static_cast<uint16_t>(16384) << (2)) << "\n";
-    std::cout << static_cast<int32_t>(static_cast<uint32_t>(1073741824) << (2)) << "\n";
-    std::cout << static_cast<int64_t>(static_cast<uint64_t>(1) << (63)) << "\n";
-    std::cout << static_cast<int>(static_cast<uint8_t>(static_cast<uint8_t>(128) << (1))) << "\n";
-    std::cout << static_cast<uint16_t>(static_cast<uint16_t>(32768) << (1)) << "\n";
-    std::cout << static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(2147483648)) << (1)) << "\n";
-    std::cout << static_cast<uint32_t>(static_cast<uint32_t>(1) << (31)) << "\n";
-    std::cout << static_cast<uint64_t>(static_cast<uint64_t>(1) << (63)) << "\n";
-    std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(-128) >> (1))) << "\n";
-    std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(-1) >> (1))) << "\n";
-    std::cout << static_cast<int16_t>(static_cast<uint16_t>(-32768) >> (1)) << "\n";
-    std::cout << static_cast<int32_t>(static_cast<uint32_t>(-2147483648) >> (1)) << "\n";
-    std::cout << static_cast<int32_t>(static_cast<uint32_t>(-1) >> (1)) << "\n";
-    std::cout << static_cast<int32_t>(static_cast<uint32_t>(-256) >> (8)) << "\n";
-    std::cout << static_cast<int64_t>(static_cast<uint64_t>(-1) >> (1)) << "\n";
-    std::cout << static_cast<int>(static_cast<uint8_t>(static_cast<uint8_t>(255) >> (1))) << "\n";
-    std::cout << static_cast<uint16_t>(static_cast<uint16_t>(65535) >> (1)) << "\n";
-    std::cout << static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(4294967295)) >> (1)) << "\n";
-    std::cout << static_cast<uint64_t>(static_cast<uint64_t>(static_cast<uint64_t>(18446744073709551615ull)) >> (63)) << "\n";
-    std::cout << static_cast<int32_t>(static_cast<uint32_t>(42) << (0)) << "\n";
-    std::cout << static_cast<int32_t>(static_cast<uint32_t>(-42) >> (0)) << "\n";
+    std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(64) << (2))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(1) << (7))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(-2) << (7))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int16_t>(static_cast<uint16_t>(16384) << (2)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(static_cast<uint32_t>(1073741824) << (2)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int64_t>(static_cast<uint64_t>(1) << (63)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<uint8_t>(static_cast<uint8_t>(128) << (1))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<uint16_t>(static_cast<uint16_t>(32768) << (1)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(2147483648)) << (1)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<uint32_t>(static_cast<uint32_t>(1) << (31)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<uint64_t>(static_cast<uint64_t>(1) << (63)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(-128) >> (1))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(-1) >> (1))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int16_t>(static_cast<uint16_t>(-32768) >> (1)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(static_cast<uint32_t>(-2147483648) >> (1)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(static_cast<uint32_t>(-1) >> (1)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(static_cast<uint32_t>(-256) >> (8)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int64_t>(static_cast<uint64_t>(-1) >> (1)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<uint8_t>(static_cast<uint8_t>(255) >> (1))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<uint16_t>(static_cast<uint16_t>(65535) >> (1)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(4294967295)) >> (1)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<uint64_t>(static_cast<uint64_t>(static_cast<uint64_t>(18446744073709551615ull)) >> (63)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(static_cast<uint32_t>(42) << (0)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(static_cast<uint32_t>(-42) >> (0)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

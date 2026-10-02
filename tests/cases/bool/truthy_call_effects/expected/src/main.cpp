@@ -53,32 +53,32 @@ bool yes() {
 //     print("total:", calls)
 void main() {
     if ((static_cast<void>(::tpyapp::main::make()), true)) {
-        std::cout << "if:" << " " << calls << "\n";
+        std::cout << "if:" << " " << calls << "\n" << ::tpy::check_signals;
     }
     while ((static_cast<void>(::tpyapp::main::make()), true)) {
         break;
     }
-    std::cout << "while:" << " " << calls << "\n";
+    std::cout << "while:" << " " << calls << "\n" << ::tpy::check_signals;
     if (!((static_cast<void>(::tpyapp::main::make()), true))) ::tpy::raise_assertion_error();
-    std::cout << "assert:" << " " << calls << "\n";
+    std::cout << "assert:" << " " << calls << "\n" << ::tpy::check_signals;
     if (((static_cast<void>(::tpyapp::main::make()), true) && ::tpyapp::main::yes())) {
-        std::cout << "and:" << " " << calls << "\n";
+        std::cout << "and:" << " " << calls << "\n" << ::tpy::check_signals;
     }
     if ((::tpyapp::main::yes() || (static_cast<void>(::tpyapp::main::make()), true))) {
-        std::cout << "or short-circuits:" << " " << calls << "\n";
+        std::cout << "or short-circuits:" << " " << calls << "\n" << ::tpy::check_signals;
     }
     Holder h = Holder();
     if ((static_cast<void>(h.made()), true)) {
-        std::cout << "property:" << " " << calls << "\n";
+        std::cout << "property:" << " " << calls << "\n" << ::tpy::check_signals;
     }
     Rec r = Rec(::tpy::BigInt(2));
     if ((static_cast<void>(r), true)) {
-        std::cout << "name operand ok" << "\n";
+        std::cout << "name operand ok" << "\n" << ::tpy::check_signals;
     }
     if ((static_cast<void>(h.r), true)) {
-        std::cout << "field operand ok" << "\n";
+        std::cout << "field operand ok" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "total:" << " " << calls << "\n";
+    std::cout << "total:" << " " << calls << "\n" << ::tpy::check_signals;
 }
 
 // calls = 0

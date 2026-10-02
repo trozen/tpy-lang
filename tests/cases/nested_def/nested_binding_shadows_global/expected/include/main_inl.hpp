@@ -53,7 +53,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     case S_RESUME_1:  // after: yield r.v
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            std::cout << "gen after:" << " " << step << "\n";
+            std::cout << "gen after:" << " " << step << "\n" << ::tpy::check_signals;
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
@@ -94,7 +94,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_frame_field::__nex
         if (!((*__for_i_0) < (*__for_stop_0))) {
             // def helper: frame member
             helper();
-            std::cout << "frame_field after:" << " " << wf << "\n";
+            std::cout << "frame_field after:" << " " << wf << "\n" << ::tpy::check_signals;
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }

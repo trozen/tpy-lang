@@ -22,7 +22,7 @@ void __tpy_init() {
     x = nullptr;
     static Point __global_slot_1 = ::tpyapp::main::make_owned_point();
     x = &__global_slot_1;
-    std::cout << x->x << "\n";
+    std::cout << x->x << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

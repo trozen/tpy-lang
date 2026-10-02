@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def greet(name: str, greeting: str = "Hello", punctuation: str = "!") -> None:
 //     print(f"{greeting}, {name}{punctuation}")
 void greet(std::string_view name, std::string_view greeting, std::string_view punctuation) {
-    std::cout << std::format("{}, {}{}", greeting, name, punctuation) << "\n";
+    std::cout << std::format("{}, {}{}", greeting, name, punctuation) << "\n" << ::tpy::check_signals;
 }
 
 // def compute(a: int, b: int, c: int) -> int:
@@ -24,7 +24,7 @@ void greet(std::string_view name, std::string_view greeting, std::string_view pu
 void main() {
     ::tpyapp::main::greet("World", "Hi");
     ::tpyapp::main::greet("Bob", "Hello", ".");
-    std::cout << ::tpyapp::main::compute(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)) << "\n";
+    std::cout << ::tpyapp::main::compute(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

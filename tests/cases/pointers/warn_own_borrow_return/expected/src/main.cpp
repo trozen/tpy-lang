@@ -21,7 +21,7 @@ Box good_return(const Box& b) {
 //     print(bad_return(b).value, good_return(b).value, b.value)
 void main() {
     Box b = Box(1);
-    std::cout << ::tpyapp::main::bad_return(b).value << " " << ::tpyapp::main::good_return(b).value << " " << b.value << "\n";
+    std::cout << ::tpyapp::main::bad_return(b).value << " " << ::tpyapp::main::good_return(b).value << " " << b.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

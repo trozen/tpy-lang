@@ -31,9 +31,9 @@ std::string handle(std::string_view cmd) {
 //     print(handle("help"))
 //     print(handle("foo"))
 void main() {
-    std::cout << ::tpyapp::main::handle("quit") << "\n";
-    std::cout << ::tpyapp::main::handle("help") << "\n";
-    std::cout << ::tpyapp::main::handle("foo") << "\n";
+    std::cout << ::tpyapp::main::handle("quit") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::handle("help") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::handle("foo") << "\n" << ::tpy::check_signals;
 }
 
 // main()

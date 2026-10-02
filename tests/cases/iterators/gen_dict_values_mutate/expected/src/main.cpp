@@ -29,10 +29,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-            std::cout << n << "\n";
+            std::cout << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(d, "a")) << " " << ::tpy::ListPrinter(::tpy::__getitem__(d, "b")) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(d, "a")) << " " << ::tpy::ListPrinter(::tpy::__getitem__(d, "b")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

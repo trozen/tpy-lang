@@ -26,8 +26,8 @@ void __tpy_init() {
 
     static Point __global_slot_1 = Point(2);
     pt = &__global_slot_1;
-    std::cout << ::tpyapp::main::score(pt) << "\n";
-    std::cout << ::tpyapp::main::score(nullptr) << "\n";
+    std::cout << ::tpyapp::main::score(pt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::score(nullptr) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

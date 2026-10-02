@@ -149,9 +149,9 @@ inline Row::Row(std::string_view a, std::string_view b)
 //     print("method:", end=" ")
 //     print(self.a, self.b, sep=d + ">")  # tpyc: ok
 inline void Row::show(std::string_view d) const {
-    std::cout << "method:" << " ";
+    std::cout << "method:" << " " << ::tpy::check_signals;
     const auto& __tmp_1 = (::tpy::str_concat(d, ">"));
-    std::cout << this->a << __tmp_1 << this->b << "\n";
+    std::cout << this->a << __tmp_1 << this->b << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     TaggedValue<Handle> v = TaggedValue<Handle>(42);
     TaggedValue<Handle> v2 = TaggedValue<Handle>(v);
-    std::cout << v.data << "\n";
-    std::cout << v2.data << "\n";
+    std::cout << v.data << "\n" << ::tpy::check_signals;
+    std::cout << v2.data << "\n" << ::tpy::check_signals;
 }
 
 // main()

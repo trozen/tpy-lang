@@ -51,7 +51,7 @@ void to_name() {
     auto&& y = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     x = &(q);
     x->n = 80;
-    std::cout << "to_name" << " " << p.n << " " << q.n << " " << y.n << "\n";
+    std::cout << "to_name" << " " << p.n << " " << q.n << " " << y.n << "\n" << ::tpy::check_signals;
 }
 
 // # free function, rebind to a fresh object: it takes storage of its own.
@@ -69,7 +69,7 @@ void to_fresh() {
     int32_t k = std::get<1>(__tup_1);
     x = &*(__slot_1 = Cell(5));
     x->n = 6;
-    std::cout << "to_fresh" << " " << b.n << " " << x->n << " " << k << "\n";
+    std::cout << "to_fresh" << " " << b.n << " " << x->n << " " << k << "\n" << ::tpy::check_signals;
 }
 
 // # mixed borrow + Own result: only the borrowed target is re-pointed.
@@ -88,7 +88,7 @@ void mixed() {
     Cell owned = std::move(std::get<1>(__tup_1));
     ref = &(q);
     ref->n = 80;
-    std::cout << "mixed" << " " << p.n << " " << q.n << " " << owned.n << "\n";
+    std::cout << "mixed" << " " << p.n << " " << q.n << " " << owned.n << "\n" << ::tpy::check_signals;
 }
 
 // # tuple param source: a write before the rebind reaches the element, one
@@ -106,7 +106,7 @@ void param_src(const std::tuple<Cell*, int32_t>& t, Cell& q) {
     x->n = 70;
     x = &(q);
     x->n = 80;
-    std::cout << "param_src" << " " << std::get<0>(t)->n << " " << q.n << " " << k << "\n";
+    std::cout << "param_src" << " " << std::get<0>(t)->n << " " << q.n << " " << k << "\n" << ::tpy::check_signals;
 }
 
 // # rebind under a branch, write after the join.
@@ -124,7 +124,7 @@ void branch(Cell& b, Cell& q, bool c) {
         x = &(q);
     }
     x->n = 83;
-    std::cout << "branch" << " " << b.n << " " << q.n << "\n";
+    std::cout << "branch" << " " << b.n << " " << q.n << "\n" << ::tpy::check_signals;
 }
 
 // # rebind inside a loop: the first write reaches the element, later ones q.
@@ -146,7 +146,7 @@ void loop(Cell& b, Cell& q) {
         x = &(q);
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "loop" << " " << b.n << " " << q.n << "\n";
+    std::cout << "loop" << " " << b.n << " " << q.n << "\n" << ::tpy::check_signals;
 }
 
 // # a closure reads the rebound name.
@@ -168,7 +168,7 @@ void closure(Cell& b, Cell& q) {
         return x->n;
     };
     x->n = 85;
-    std::cout << "closure" << " " << b.n << " " << show() << "\n";
+    std::cout << "closure" << " " << b.n << " " << show() << "\n" << ::tpy::check_signals;
 }
 
 // # for-each head over zip: the loop target is re-pointed per iteration.
@@ -196,7 +196,7 @@ void zip_head(Cell& q) {
             c->n = n;
         }
     }
-    std::cout << "zip_head" << " " << ::tpy::__getitem__(cs, 0).n << " " << ::tpy::__getitem__(cs, 1).n << " " << q.n << "\n";
+    std::cout << "zip_head" << " " << ::tpy::__getitem__(cs, 0).n << " " << ::tpy::__getitem__(cs, 1).n << " " << q.n << "\n" << ::tpy::check_signals;
 }
 
 // # for-each head over a generator yielding borrowed tuples.
@@ -226,7 +226,7 @@ void gen_head(Cell& q) {
             c->n = n;
         }
     }
-    std::cout << "gen_head" << " " << a.n << " " << b.n << " " << q.n << "\n";
+    std::cout << "gen_head" << " " << a.n << " " << b.n << " " << q.n << "\n" << ::tpy::check_signals;
 }
 
 // # @error_return body.
@@ -243,7 +243,7 @@ std::expected<int32_t, Stop> er_body(Cell& b, Cell& q) {
     int32_t k = std::get<1>(__tup_1);
     x = &(q);
     x->n = 87;
-    std::cout << "er_body" << " " << b.n << " " << q.n << "\n";
+    std::cout << "er_body" << " " << b.n << " " << q.n << "\n" << ::tpy::check_signals;
     return k;
 }
 
@@ -272,7 +272,7 @@ void match_arm(Cell& b, Cell& q, int32_t tag) {
         break;
     }
     }
-    std::cout << "match_arm" << " " << b.n << " " << q.n << "\n";
+    std::cout << "match_arm" << " " << b.n << " " << q.n << "\n" << ::tpy::check_signals;
 }
 
 // # try body with an except handler.
@@ -295,7 +295,7 @@ void try_except(Cell& b, Cell& q) {
         } catch (const ::tpy::ValueError&) {
         }
     }
-    std::cout << "try_except" << " " << b.n << " " << q.n << "\n";
+    std::cout << "try_except" << " " << b.n << " " << q.n << "\n" << ::tpy::check_signals;
 }
 
 // # two loops binding the same name: only the loop whose body rebinds `c`
@@ -338,7 +338,7 @@ void two_loops() {
             c->n = 6;
         }
     }
-    std::cout << "two_loops" << " " << ::tpy::__getitem__(cs, 0).n << "\n";
+    std::cout << "two_loops" << " " << ::tpy::__getitem__(cs, 0).n << "\n" << ::tpy::check_signals;
 }
 
 // # a tuple param written ONLY through the rebound name: the rebind keeps the
@@ -354,7 +354,7 @@ void unwritten_param(const std::tuple<Cell*, int32_t>& t, Cell& q) {
     int32_t k = std::get<1>(__tup_1);
     x = &(q);
     x->n = 81;
-    std::cout << "unwritten_param" << " " << std::get<0>(t)->n << " " << q.n << "\n";
+    std::cout << "unwritten_param" << " " << std::get<0>(t)->n << " " << q.n << "\n" << ::tpy::check_signals;
 }
 
 // # the same over a zip head off a list param: only the list the rebound
@@ -379,7 +379,7 @@ void unwritten_zip(std::vector<Cell>& cs, const std::vector<Cell>& ds, Cell& q) 
             c->n = 82;
         }
     }
-    std::cout << "unwritten_zip" << " " << ::tpy::__getitem__(cs, 0).n << " " << ::tpy::__getitem__(ds, 0).n << " " << q.n << "\n";
+    std::cout << "unwritten_zip" << " " << ::tpy::__getitem__(cs, 0).n << " " << ::tpy::__getitem__(ds, 0).n << " " << q.n << "\n" << ::tpy::check_signals;
 }
 
 // # context manager: `with ... as x` rebinds the unpack target.
@@ -406,7 +406,7 @@ void with_as(Cell& b, Ctx& ctx) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << "with_as" << " " << b.n << " " << ctx.c.n << "\n";
+    std::cout << "with_as" << " " << b.n << " " << ctx.c.n << "\n" << ::tpy::check_signals;
 }
 
 // # swap: both targets are re-pointed, neither referent is written.
@@ -424,7 +424,7 @@ void swap(Cell& p, Cell& q) {
     x = &(__unpack_0_0);
     y = &(__unpack_0_1);
     x->n = 80;
-    std::cout << "swap" << " " << p.n << " " << q.n << " " << y->n << "\n";
+    std::cout << "swap" << " " << p.n << " " << q.n << " " << y->n << "\n" << ::tpy::check_signals;
 }
 
 // # for heads: enumerate, dict.items() and a list of tuples.
@@ -450,7 +450,7 @@ void enum_head(Cell& q) {
             c->n = (::tpy::add_check<int32_t>(50, i));
         }
     }
-    std::cout << "enum_head" << " " << ::tpy::__getitem__(cs, 0).n << " " << ::tpy::__getitem__(cs, 1).n << " " << q.n << "\n";
+    std::cout << "enum_head" << " " << ::tpy::__getitem__(cs, 0).n << " " << ::tpy::__getitem__(cs, 1).n << " " << q.n << "\n" << ::tpy::check_signals;
 }
 
 // def items_head(q: Cell) -> None:
@@ -472,7 +472,7 @@ void items_head(Cell& q) {
         c = &(q);
         c->n = 50;
     }
-    std::cout << "items_head" << " " << ::tpy::__getitem__(d, "a").n << " " << q.n << "\n";
+    std::cout << "items_head" << " " << ::tpy::__getitem__(d, "a").n << " " << q.n << "\n" << ::tpy::check_signals;
 }
 
 // def list_tuple_head(q: Cell) -> None:
@@ -494,7 +494,7 @@ void list_tuple_head(Cell& q) {
         c = &(q);
         c->n = 50;
     }
-    std::cout << "list_tuple_head" << " " << std::get<0>(::tpy::__getitem__(ts, 0)).n << " " << q.n << "\n";
+    std::cout << "list_tuple_head" << " " << std::get<0>(::tpy::__getitem__(ts, 0)).n << " " << q.n << "\n" << ::tpy::check_signals;
 }
 
 // # conditional rebind in a zip head: writes before it reach the element.
@@ -525,7 +525,7 @@ void cond_head(Cell& q) {
             c->n = (::tpy::add_check<int32_t>(20, n));
         }
     }
-    std::cout << "cond_head" << " " << ::tpy::__getitem__(cs, 0).n << " " << ::tpy::__getitem__(cs, 1).n << " " << q.n << "\n";
+    std::cout << "cond_head" << " " << ::tpy::__getitem__(cs, 0).n << " " << ::tpy::__getitem__(cs, 1).n << " " << q.n << "\n" << ::tpy::check_signals;
 }
 
 // # closure late binding: the rebind after the def is what the call sees.
@@ -547,7 +547,7 @@ void late_closure(Cell& b, Cell& q) {
     };
     x = &(q);
     x->n = 85;
-    std::cout << "late_closure" << " " << b.n << " " << show() << "\n";
+    std::cout << "late_closure" << " " << b.n << " " << show() << "\n" << ::tpy::check_signals;
 }
 
 // # @nocopy element: a write-through would be a copy-assign, which cannot exist.
@@ -566,7 +566,7 @@ void nocopy_target() {
     int32_t k = std::get<1>(__tup_1);
     x = &(other);
     x->n = 9;
-    std::cout << "nocopy" << " " << a.n << " " << other.n << "\n";
+    std::cout << "nocopy" << " " << a.n << " " << other.n << "\n" << ::tpy::check_signals;
 }
 
 // # inverse: a target that is never rebound stays a plain alias of the element.
@@ -581,7 +581,7 @@ void not_rebound() {
     auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t k = std::get<1>(__tup_1);
     x.n = 42;
-    std::cout << "not_rebound" << " " << b.n << " " << k << "\n";
+    std::cout << "not_rebound" << " " << b.n << " " << k << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -674,7 +674,7 @@ void main() {
     Cell bb = Cell(1);
     Cell bq = Cell(8);
     Built built = Built(bb, bq);
-    std::cout << "ctor" << " " << built.m << " " << bq.n << "\n";
+    std::cout << "ctor" << " " << built.m << " " << bq.n << "\n" << ::tpy::check_signals;
     Cell __tmp_22 = Cell(1);
     Cell __tmp_23 = Cell(8);
     ::tpyapp::main::swap(__tmp_22, __tmp_23);

@@ -31,9 +31,9 @@ void main() {
         k = *__beg_0;
         v = &(::tpy::__getitem__(d, k));
     }
-    std::cout << k << " " << ::tpy::__len__((*v)) << "\n";
+    std::cout << k << " " << ::tpy::__len__((*v)) << "\n" << ::tpy::check_signals;
     v->push_back(6);
-    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(d, "b")) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(d, "b")) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<int32_t, std::vector<int32_t>>> pairs = {::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{1, {10}}), ::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{2, {20}})};
     std::vector<int32_t>* xs = nullptr;
     int32_t n;
@@ -47,7 +47,7 @@ void main() {
         xs = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
     }
     xs->push_back(30);
-    std::cout << n << " " << ::tpy::ListPrinter(std::get<1>(::tpy::__getitem__(pairs, 1))) << "\n";
+    std::cout << n << " " << ::tpy::ListPrinter(std::get<1>(::tpy::__getitem__(pairs, 1))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

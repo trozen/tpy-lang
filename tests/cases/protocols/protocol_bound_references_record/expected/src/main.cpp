@@ -13,7 +13,7 @@ void main() {
     DefaultFooMaker factory = DefaultFooMaker();
     Bar<DefaultFooMaker> bar = Bar<DefaultFooMaker>(factory);
     Foo foo = bar.create_foo();
-    std::cout << foo.value << "\n";
+    std::cout << foo.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

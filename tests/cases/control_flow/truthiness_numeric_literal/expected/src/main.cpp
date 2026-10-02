@@ -49,13 +49,13 @@ namespace tpyapp::main {
 //         print("assert_zero:", e)
 void conditions(int32_t a, bool c) {
     if (true) {
-        std::cout << "if_float" << "\n";
+        std::cout << "if_float" << "\n" << ::tpy::check_signals;
     }
     if ((false || false)) {
-        std::cout << "if_zero_float" << "\n";
+        std::cout << "if_zero_float" << "\n" << ::tpy::check_signals;
     }
     if (true) {
-        std::cout << "if_neg_float" << "\n";
+        std::cout << "if_neg_float" << "\n" << ::tpy::check_signals;
     }
     int32_t n = 0;
     while (true) {
@@ -64,39 +64,39 @@ void conditions(int32_t a, bool c) {
             break;
         }
     }
-    std::cout << "while_int:" << " " << n << "\n";
+    std::cout << "while_int:" << " " << n << "\n" << ::tpy::check_signals;
     if ((a || true)) {
-        std::cout << "or_float" << "\n";
+        std::cout << "or_float" << "\n" << ::tpy::check_signals;
     }
     if ((true && a)) {
-        std::cout << "and_float_left" << "\n";
+        std::cout << "and_float_left" << "\n" << ::tpy::check_signals;
     }
     if ((a && true)) {
-        std::cout << "and_int" << "\n";
+        std::cout << "and_int" << "\n" << ::tpy::check_signals;
     }
     if ((a || false)) {
-        std::cout << "or_zero" << "\n";
+        std::cout << "or_zero" << "\n" << ::tpy::check_signals;
     }
     if ((a || true)) {
-        std::cout << "or_big_float" << "\n";
+        std::cout << "or_big_float" << "\n" << ::tpy::check_signals;
     }
     if ((a || true)) {
-        std::cout << "or_unary_plus" << "\n";
+        std::cout << "or_unary_plus" << "\n" << ::tpy::check_signals;
     }
     if ((a && true)) {
-        std::cout << "and_fixed_int" << "\n";
+        std::cout << "and_fixed_int" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "not_literal:" << " " << ::tpy::print_bool((!(true))) << " " << ::tpy::print_bool((!((a || false)))) << "\n";
-    std::cout << "ternary_test:" << " " << ((true) ? (1) : (0)) << "\n";
+    std::cout << "not_literal:" << " " << ::tpy::print_bool((!(true))) << " " << ::tpy::print_bool((!((a || false)))) << "\n" << ::tpy::check_signals;
+    std::cout << "ternary_test:" << " " << ((true) ? (1) : (0)) << "\n" << ::tpy::check_signals;
     if (((c) ? (static_cast<bool>(a)) : (true))) {
-        std::cout << "ternary_arm" << "\n";
+        std::cout << "ternary_arm" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "assert_ok" << "\n";
+    std::cout << "assert_ok" << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpy::raise_assertion_error("zero");
         } catch (const ::tpy::AssertionError& e) {
-            std::cout << "assert_zero:" << " " << e << "\n";
+            std::cout << "assert_zero:" << " " << e << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -194,8 +194,8 @@ void filters(int32_t a) {
         }
         std::move(__result);
     });
-    std::cout << "comp_filter:" << " " << ::tpy::__len__(xs) << "\n";
-    std::cout << "genexpr_filter:" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_filters_1(std::in_place, [&]() { return std::array<int32_t, 3>{1, 2, 3}; })) << "\n";
+    std::cout << "comp_filter:" << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
+    std::cout << "genexpr_filter:" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_filters_1(std::in_place, [&]() { return std::array<int32_t, 3>{1, 2, 3}; })) << "\n" << ::tpy::check_signals;
 }
 
 // def guard(k: int32) -> str:
@@ -254,7 +254,7 @@ void main() {
         const auto& __tup_1 = __for_tup_0;
         int32_t a = std::get<0>(__tup_1);
         bool c = std::get<1>(__tup_1);
-        std::cout << "a =" << " " << a << " " << ::tpy::print_bool(c) << "\n";
+        std::cout << "a =" << " " << a << " " << ::tpy::print_bool(c) << "\n" << ::tpy::check_signals;
         ::tpyapp::main::conditions(a, c);
         ::tpyapp::main::filters(a);
         std::cout << "gen:" << " " << ::tpy::ListPrinter(({
@@ -267,12 +267,12 @@ void main() {
                 __result.push_back(v);
             }
             std::move(__result);
-        })) << "\n";
+        })) << "\n" << ::tpy::check_signals;
     }
-    std::cout << "guard:" << " " << ::tpyapp::main::guard(1) << " " << ::tpyapp::main::guard(2) << "\n";
+    std::cout << "guard:" << " " << ::tpyapp::main::guard(1) << " " << ::tpyapp::main::guard(2) << "\n" << ::tpy::check_signals;
     Counter k = Counter();
     k.run();
-    std::cout << "method:" << " " << k.n << "\n";
+    std::cout << "method:" << " " << k.n << "\n" << ::tpy::check_signals;
 }
 
 // main()
@@ -288,10 +288,10 @@ void __tpy_init() {
 
     ::tpyapp::main::main();
     if ((true && false)) {
-        std::cout << "module_never" << "\n";
+        std::cout << "module_never" << "\n" << ::tpy::check_signals;
     }
     if ((false || true)) {
-        std::cout << "module_if" << "\n";
+        std::cout << "module_if" << "\n" << ::tpy::check_signals;
     }
 }
 

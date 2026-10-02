@@ -844,7 +844,7 @@ int32_t assign_narrowed() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "async" << " " << __await_lift_0 << " " << (*t).n << "\n";
+        std::cout << "async" << " " << __await_lift_0 << " " << (*t).n << "\n" << ::tpy::check_signals;
         u.emplace(A(150));
         __sub_1.emplace(::tpy::Union<A*, B*>{&((*u))});
         __state = S_RESUME_1;
@@ -855,7 +855,7 @@ int32_t assign_narrowed() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "async-match" << " " << __await_lift_1 << " " << (*u).n << "\n";
+        std::cout << "async-match" << " " << __await_lift_1 << " " << (*u).n << "\n" << ::tpy::check_signals;
         w.emplace(A(240));
         __sub_2.emplace(::tpy::to_const_ptr_variant((*w)));
         __state = S_RESUME_2;
@@ -866,7 +866,7 @@ int32_t assign_narrowed() {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << "async-const" << " " << __await_lift_2 << "\n";
+        std::cout << "async-const" << " " << __await_lift_2 << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -992,32 +992,32 @@ __coro_async_main async_main() {
 //     asyncio.run(async_main())
 void main() {
     A a = A(1);
-    std::cout << "free" << " " << ::tpyapp::main::free(::tpy::Union<A*, B*>{&(a)}) << " " << a.n << "\n";
+    std::cout << "free" << " " << ::tpyapp::main::free(::tpy::Union<A*, B*>{&(a)}) << " " << a.n << "\n" << ::tpy::check_signals;
     A b = A(10);
     Relay r = Relay(::tpy::Union<A*, B*>{&(b)});
-    std::cout << "ctor-body" << " " << b.n << " " << r.hits << "\n";
+    std::cout << "ctor-body" << " " << b.n << " " << r.hits << "\n" << ::tpy::check_signals;
     ::tpy::Union<A, B> __slot_1 = A(15);
     ::tpy::Union<A*, B*> mv = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << "method" << " " << r.go(mv) << " " << ::tpyapp::main::peek(mv.as_const()) << " " << r.hits << "\n";
+    std::cout << "method" << " " << r.go(mv) << " " << ::tpyapp::main::peek(mv.as_const()) << " " << r.hits << "\n" << ::tpy::check_signals;
     A c = A(20);
-    std::cout << "comprehension" << " " << ::tpyapp::main::comprehension(::tpy::Union<A*, B*>{&(c)}) << " " << c.n << "\n";
+    std::cout << "comprehension" << " " << ::tpyapp::main::comprehension(::tpy::Union<A*, B*>{&(c)}) << " " << c.n << "\n" << ::tpy::check_signals;
     A d = A(30);
-    std::cout << "with" << " " << ::tpyapp::main::with_body(::tpy::Union<A*, B*>{&(d)}) << " " << d.n << "\n";
+    std::cout << "with" << " " << ::tpyapp::main::with_body(::tpy::Union<A*, B*>{&(d)}) << " " << d.n << "\n" << ::tpy::check_signals;
     A e = A(40);
-    std::cout << "try-finally" << " " << ::tpyapp::main::try_finally(::tpy::Union<A*, B*>{&(e)}) << " " << e.n << "\n";
+    std::cout << "try-finally" << " " << ::tpyapp::main::try_finally(::tpy::Union<A*, B*>{&(e)}) << " " << e.n << "\n" << ::tpy::check_signals;
     A f = A(50);
     {
-        std::cout << "error-return" << " " << ({ auto __er_2 = ::tpyapp::main::error_body(::tpy::Union<A*, B*>{&(f)}); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << " " << f.n << "\n";
+        std::cout << "error-return" << " " << ({ auto __er_2 = ::tpyapp::main::error_body(::tpy::Union<A*, B*>{&(f)}); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << " " << f.n << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Err:
         __except_1:;
-        std::cout << "error-return raised" << "\n";
+        std::cout << "error-return raised" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     A g = A(60);
-    std::cout << "match" << " " << ::tpyapp::main::match_arm(::tpy::Union<A*, B*>{&(g)}) << " " << g.n << "\n";
+    std::cout << "match" << " " << ::tpyapp::main::match_arm(::tpy::Union<A*, B*>{&(g)}) << " " << g.n << "\n" << ::tpy::check_signals;
     A h = A(70);
-    std::cout << "match-capture" << " " << ::tpyapp::main::match_capture(::tpy::Union<A*, B*>{&(h)}) << " " << h.n << "\n";
+    std::cout << "match-capture" << " " << ::tpyapp::main::match_capture(::tpy::Union<A*, B*>{&(h)}) << " " << h.n << "\n" << ::tpy::check_signals;
     int32_t gt = 0;
     A gv = A(160);
     {
@@ -1030,7 +1030,7 @@ void main() {
             gt = (::tpy::add_check<int32_t>(gt, y));
         }
     }
-    std::cout << "generator" << " " << gt << " " << gv.n << "\n";
+    std::cout << "generator" << " " << gt << " " << gv.n << "\n" << ::tpy::check_signals;
     int32_t gt2 = 0;
     A gw = A(170);
     {
@@ -1043,26 +1043,26 @@ void main() {
             gt2 = (::tpy::add_check<int32_t>(gt2, y));
         }
     }
-    std::cout << "gen-match" << " " << gt2 << " " << gw.n << "\n";
+    std::cout << "gen-match" << " " << gt2 << " " << gw.n << "\n" << ::tpy::check_signals;
     A i = A(80);
-    std::cout << "inline" << " " << ::tpyapp::main::inline_(::tpy::Union<A*, B*>{&(i)}) << " " << i.n << "\n";
+    std::cout << "inline" << " " << ::tpyapp::main::inline_(::tpy::Union<A*, B*>{&(i)}) << " " << i.n << "\n" << ::tpy::check_signals;
     A j = A(90);
-    std::cout << "walrus" << " " << ::tpyapp::main::walrus(::tpy::Union<A*, B*>{&(j)}) << " " << j.n << "\n";
+    std::cout << "walrus" << " " << ::tpyapp::main::walrus(::tpy::Union<A*, B*>{&(j)}) << " " << j.n << "\n" << ::tpy::check_signals;
     A k = A(100);
-    std::cout << "readonly" << " " << ::tpyapp::main::readonly_slot(::tpy::Union<const A*, const B*>{&(k)}) << " " << k.n << "\n";
+    std::cout << "readonly" << " " << ::tpyapp::main::readonly_slot(::tpy::Union<const A*, const B*>{&(k)}) << " " << k.n << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Union<A, B>> xs = {A(1), A(2)};
-    std::cout << "loop-var" << " " << ::tpyapp::main::loop_var(xs) << "\n";
+    std::cout << "loop-var" << " " << ::tpyapp::main::loop_var(xs) << "\n" << ::tpy::check_signals;
     A p = A(110);
-    std::cout << "ctor-slot" << " " << ::tpyapp::main::ctor_slot(::tpy::Union<A*, B*>{&(p)}) << " " << p.n << "\n";
+    std::cout << "ctor-slot" << " " << ::tpyapp::main::ctor_slot(::tpy::Union<A*, B*>{&(p)}) << " " << p.n << "\n" << ::tpy::check_signals;
     A q = A(120);
-    std::cout << "str-member" << " " << ::tpyapp::main::str_member(::tpy::Union<const A*, const std::string*>{&(q)}) << "\n";
+    std::cout << "str-member" << " " << ::tpyapp::main::str_member(::tpy::Union<const A*, const std::string*>{&(q)}) << "\n" << ::tpy::check_signals;
     A cm = A(210);
-    std::cout << "const-member" << " " << ::tpyapp::main::const_member(cm) << " " << Reader(1000).read(mv.as_const()) << "\n";
-    std::cout << "ctor-call-arg" << " " << ::tpyapp::main::ctor_call_arg(cm) << " " << ::tpyapp::main::own_forward(A(220)) << "\n";
+    std::cout << "const-member" << " " << ::tpyapp::main::const_member(cm) << " " << Reader(1000).read(mv.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << "ctor-call-arg" << " " << ::tpyapp::main::ctor_call_arg(cm) << " " << ::tpyapp::main::own_forward(A(220)) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Union<A, B>> cxs = {A(1), A(2)};
     Reader __tmp_1 = Reader(1000);
-    std::cout << "loop-const" << " " << ::tpyapp::main::loop_const(cxs) << " " << ::tpyapp::main::loop_method(cxs, __tmp_1) << "\n";
-    std::cout << "closure" << " " << ::tpyapp::main::closure_narrow(mv.as_const()) << " " << ::tpyapp::main::closure_forward(mv.as_const()) << "\n";
+    std::cout << "loop-const" << " " << ::tpyapp::main::loop_const(cxs) << " " << ::tpyapp::main::loop_method(cxs, __tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "closure" << " " << ::tpyapp::main::closure_narrow(mv.as_const()) << " " << ::tpyapp::main::closure_forward(mv.as_const()) << "\n" << ::tpy::check_signals;
     int32_t gt3 = 0;
     {
         auto __src_4 = ::tpyapp::main::gen_total(::tpy::Union<const A*, const B*>{&(cm)});
@@ -1074,52 +1074,52 @@ void main() {
             gt3 = (::tpy::add_check<int32_t>(gt3, y));
         }
     }
-    std::cout << "gen-const" << " " << gt3 << "\n";
+    std::cout << "gen-const" << " " << gt3 << "\n" << ::tpy::check_signals;
     ::tpy::Union<A, B> __slot_2 = A(230);
     ::tpy::Union<A*, B*> wm = ::tpy::to_ptr_variant(__slot_2);
-    std::cout << "as-const" << " " << ::tpyapp::main::wrap_then_mutate(wm) << " " << ::tpyapp::main::forward_union(wm.as_const()) << " " << ::tpyapp::main::total(wm.as_const()) << "\n";
+    std::cout << "as-const" << " " << ::tpyapp::main::wrap_then_mutate(wm) << " " << ::tpyapp::main::forward_union(wm.as_const()) << " " << ::tpyapp::main::total(wm.as_const()) << "\n" << ::tpy::check_signals;
     A s = A(130);
     ::tpy::Union<A*, B*> ret = ::tpyapp::main::pick_isinstance(::tpy::Union<A*, B*>{&(s)});
     s.n = (::tpy::add_check<int32_t>(s.n, 1));
     if (std::holds_alternative<A*>(ret)) {
         auto& __ret = *std::get<A*>(ret);
-        std::cout << "return-isinstance" << " " << __ret.n << " " << s.n << "\n";
+        std::cout << "return-isinstance" << " " << __ret.n << " " << s.n << "\n" << ::tpy::check_signals;
     }
     ::tpy::Union<A*, B*> ret2 = ::tpyapp::main::pick_match(::tpy::Union<A*, B*>{&(s)});
     s.n = (::tpy::add_check<int32_t>(s.n, 1));
     if (std::holds_alternative<A*>(ret2)) {
         auto& __ret2 = *std::get<A*>(ret2);
-        std::cout << "return-match" << " " << __ret2.n << " " << s.n << "\n";
+        std::cout << "return-match" << " " << __ret2.n << " " << s.n << "\n" << ::tpy::check_signals;
     }
     int32_t vv = 180;
     ::tpy::Union<double, int32_t> __tmp_2 = vv;
     ::tpy::Union<double, int32_t> __tmp_3 = vv;
-    std::cout << "value-union" << " " << ::tpyapp::main::value_union(__tmp_2) << " " << ::tpyapp::main::vu_total(__tmp_3) << "\n";
+    std::cout << "value-union" << " " << ::tpyapp::main::value_union(__tmp_2) << " " << ::tpyapp::main::vu_total(__tmp_3) << "\n" << ::tpy::check_signals;
     ::tpy::Union<double, int32_t> __tmp_4 = vv;
     ::tpy::Union<double, int32_t> __tmp_5 = vv;
-    std::cout << "value-union-match" << " " << ::tpyapp::main::value_union_match(__tmp_4) << " " << ::tpyapp::main::vu_total(__tmp_5) << "\n";
+    std::cout << "value-union-match" << " " << ::tpyapp::main::value_union_match(__tmp_4) << " " << ::tpyapp::main::vu_total(__tmp_5) << "\n" << ::tpy::check_signals;
     VuBox box = VuBox(1);
     ::tpy::Union<double, int32_t> __tmp_6 = vv;
     ::tpy::Union<double, int32_t> __tmp_7 = vv;
-    std::cout << "value-union-method" << " " << ::tpyapp::main::value_union_method(__tmp_6, box) << " " << box.go(__tmp_7) << "\n";
+    std::cout << "value-union-method" << " " << ::tpyapp::main::value_union_method(__tmp_6, box) << " " << box.go(__tmp_7) << "\n" << ::tpy::check_signals;
     ::tpy::Union<double, int32_t> __tmp_8 = vv;
     ::tpy::Union<double, int32_t> __tmp_9 = vv;
-    std::cout << "value-union-ctor" << " " << ::tpyapp::main::value_union_ctor(__tmp_8) << " " << VuSink(__tmp_9).k << "\n";
+    std::cout << "value-union-ctor" << " " << ::tpyapp::main::value_union_ctor(__tmp_8) << " " << VuSink(__tmp_9).k << "\n" << ::tpy::check_signals;
     ::tpy::Union<double, int32_t> __tmp_10 = vv;
     ::tpy::Union<double, int32_t> __tmp_11 = vv;
-    std::cout << "value-union-comp" << " " << ::tpyapp::main::value_union_comp(__tmp_10) << " " << ::tpyapp::main::vu_total(__tmp_11) << "\n";
+    std::cout << "value-union-comp" << " " << ::tpyapp::main::value_union_comp(__tmp_10) << " " << ::tpyapp::main::vu_total(__tmp_11) << "\n" << ::tpy::check_signals;
     ::tpy::Union<double, int32_t> __tmp_12 = vv;
     ::tpy::Union<double, int32_t> __tmp_13 = vv;
-    std::cout << "value-union-readonly" << " " << ::tpyapp::main::value_union_readonly(__tmp_12) << " " << ::tpyapp::main::vu_peek(__tmp_13) << "\n";
+    std::cout << "value-union-readonly" << " " << ::tpyapp::main::value_union_readonly(__tmp_12) << " " << ::tpyapp::main::vu_peek(__tmp_13) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt bb = ::tpy::BigInt(190);
     ::tpy::Union<double, ::tpy::BigInt> __tmp_14 = bb;
     ::tpy::Union<double, ::tpy::BigInt> __tmp_15 = bb;
-    std::cout << "value-union-big" << " " << ::tpyapp::main::value_union_big(__tmp_14) << " " << ::tpyapp::main::big_total(__tmp_15) << "\n";
+    std::cout << "value-union-big" << " " << ::tpyapp::main::value_union_big(__tmp_14) << " " << ::tpyapp::main::big_total(__tmp_15) << "\n" << ::tpy::check_signals;
     Pt pp = Pt(3);
     ::tpy::Union<Pt, double> __tmp_16 = pp;
     ::tpy::Union<Pt, double> __tmp_17 = pp;
-    std::cout << "value-union-record" << " " << ::tpyapp::main::value_union_record(__tmp_16) << " " << ::tpyapp::main::pt_total(__tmp_17) << "\n";
-    std::cout << "assign-narrowed" << " " << ::tpyapp::main::assign_narrowed() << "\n";
+    std::cout << "value-union-record" << " " << ::tpyapp::main::value_union_record(__tmp_16) << " " << ::tpyapp::main::pt_total(__tmp_17) << "\n" << ::tpy::check_signals;
+    std::cout << "assign-narrowed" << " " << ::tpyapp::main::assign_narrowed() << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_main()));
 }
 
@@ -1150,7 +1150,7 @@ void __tpy_init() {
     if (std::holds_alternative<A>((*G))) {
         auto& __G = std::get<A>((*G));
         ::tpyapp::main::bump(::tpy::Union<A*, B*>{&(__G)});
-        std::cout << "module" << " " << __G.n << "\n";
+        std::cout << "module" << " " << __G.n << "\n" << ::tpy::check_signals;
     }
 }
 

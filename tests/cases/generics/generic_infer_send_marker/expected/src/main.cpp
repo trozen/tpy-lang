@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(x.v)
 void main() {
     Item x = ::tpyapp::main::fwd<Item>(Item(::tpy::BigInt(7)));
-    std::cout << x.v << "\n";
+    std::cout << x.v << "\n" << ::tpy::check_signals;
 }
 
 // main()

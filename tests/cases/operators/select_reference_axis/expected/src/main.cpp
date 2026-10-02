@@ -78,22 +78,22 @@ int32_t pick_array(std::array<int32_t, 2>& a, std::array<int32_t, 2>& b) {
 void main() {
     std::vector<Tag> e1 = std::vector<Tag>{};
     std::vector<Tag> l1 = ::tpy::make_vector<Tag>(Tag(1));
-    std::cout << ::tpyapp::main::pick_list(e1, l1) << "\n";
+    std::cout << ::tpyapp::main::pick_list(e1, l1) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, Tag> de = ::tpy::ordered_map<std::string, Tag>();
     ::tpy::ordered_map<std::string, Tag> d1 = ::tpy::make_ordered_map<std::string, Tag>("a", Tag(1));
-    std::cout << ::tpyapp::main::pick_dict(de, d1) << "\n";
+    std::cout << ::tpyapp::main::pick_dict(de, d1) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> se = ::tpy::ordered_set<int32_t>();
     ::tpy::ordered_set<int32_t> s1 = ::tpy::ordered_set<int32_t>({1, 2});
-    std::cout << ::tpyapp::main::pick_set(se, s1) << "\n";
-    std::cout << ::tpy::__len__(s1) << " " << ::tpy::__len__(se) << "\n";
+    std::cout << ::tpyapp::main::pick_set(se, s1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(s1) << " " << ::tpy::__len__(se) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray be = ::tpy::ByteArray(::tpy::BytesView{});
     ::tpy::ByteArray b1 = ::tpy::ByteArray(::tpy::bytes_literal("xyz", 3));
-    std::cout << ::tpyapp::main::pick_bytearray(be, b1) << "\n";
-    std::cout << ::tpy::__len__(b1) << " " << ::tpy::__len__(be) << "\n";
+    std::cout << ::tpyapp::main::pick_bytearray(be, b1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(b1) << " " << ::tpy::__len__(be) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> a1 = std::array<int32_t, 2>({7, 8});
     std::array<int32_t, 2> a2 = std::array<int32_t, 2>({1, 2});
-    std::cout << ::tpyapp::main::pick_array(a1, a2) << "\n";
-    std::cout << ::tpy::__getitem__(a1, 0) << " " << ::tpy::__getitem__(a2, 0) << "\n";
+    std::cout << ::tpyapp::main::pick_array(a1, a2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(a1, 0) << " " << ::tpy::__getitem__(a2, 0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

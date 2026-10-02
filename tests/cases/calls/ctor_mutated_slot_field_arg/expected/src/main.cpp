@@ -46,23 +46,23 @@ std::vector<int32_t> mk() {
 void main() {
     W w = W();
     ::tpyapp::main::fill(w.items);
-    std::cout << "fn" << " " << ::tpy::ListPrinter(w.items) << "\n";
+    std::cout << "fn" << " " << ::tpy::ListPrinter(w.items) << "\n" << ::tpy::check_signals;
     ListTaker lt = ListTaker(w.items);
-    std::cout << "ctor_list" << " " << ::tpy::ListPrinter(w.items) << " " << lt.n << "\n";
+    std::cout << "ctor_list" << " " << ::tpy::ListPrinter(w.items) << " " << lt.n << "\n" << ::tpy::check_signals;
     DictTaker dt = DictTaker(w.counts);
-    std::cout << "ctor_dict" << " " << ::tpy::DictPrinter(w.counts) << " " << dt.n << "\n";
+    std::cout << "ctor_dict" << " " << ::tpy::DictPrinter(w.counts) << " " << dt.n << "\n" << ::tpy::check_signals;
     SetTaker st = SetTaker(w.tags);
-    std::cout << "ctor_set" << " " << ::tpy::__len__(w.tags) << " " << st.n << "\n";
+    std::cout << "ctor_set" << " " << ::tpy::__len__(w.tags) << " " << st.n << "\n" << ::tpy::check_signals;
     RecListTaker rt = RecListTaker(w.recs);
-    std::cout << "ctor_reclist" << " " << ::tpy::__len__(w.recs) << " " << rt.n << "\n";
+    std::cout << "ctor_reclist" << " " << ::tpy::__len__(w.recs) << " " << rt.n << "\n" << ::tpy::check_signals;
     BufTaker bt = BufTaker(w.buf);
-    std::cout << "ctor_bytearray" << " " << ::tpy::__len__(w.buf) << " " << bt.n << "\n";
+    std::cout << "ctor_bytearray" << " " << ::tpy::__len__(w.buf) << " " << bt.n << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = std::vector<int32_t>(w.items);
     ListTaker ct = ListTaker(__tmp_1);
-    std::cout << "ctor_copy_temp" << " " << ::tpy::ListPrinter(w.items) << " " << ct.n << "\n";
+    std::cout << "ctor_copy_temp" << " " << ::tpy::ListPrinter(w.items) << " " << ct.n << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_2 = ::tpyapp::main::mk();
     ListTaker ot = ListTaker(__tmp_2);
-    std::cout << "ctor_own_call" << " " << ot.n << "\n";
+    std::cout << "ctor_own_call" << " " << ot.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

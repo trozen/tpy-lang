@@ -89,9 +89,9 @@ namespace tpyapp::main {
 void try_it(std::string_view name) {
     std::optional<Direction> d = ::tpy::EnumUtil<Direction>::try_parse(name);
     if ((d.has_value())) {
-        std::cout << ::tpy::print_optional_val(d) << "\n";
+        std::cout << ::tpy::print_optional_val(d) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "not found" << "\n";
+        std::cout << "not found" << "\n" << ::tpy::check_signals;
     }
 }
 

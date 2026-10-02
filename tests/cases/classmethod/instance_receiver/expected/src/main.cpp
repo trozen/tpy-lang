@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Point p = Point(7);
     Point q = p.origin();
-    std::cout << p.x << " " << q.x << "\n";
+    std::cout << p.x << " " << q.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

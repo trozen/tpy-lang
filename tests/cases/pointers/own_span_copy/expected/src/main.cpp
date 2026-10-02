@@ -26,10 +26,10 @@ void main() {
     std::vector<int32_t> nums = {1, 2, 3};
     std::span<int32_t> span = ::tpyapp::main::get_span(nums);
     std::span<int32_t> span_copy = std::span<int32_t>(span);
-    std::cout << ::tpy::__getitem__(span, 0) << "\n";
-    std::cout << ::tpy::__getitem__(span_copy, 0) << "\n";
-    std::cout << ::tpy::__len__(span) << "\n";
-    std::cout << ::tpy::__len__(span_copy) << "\n";
+    std::cout << ::tpy::__getitem__(span, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(span_copy, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(span) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(span_copy) << "\n" << ::tpy::check_signals;
 }
 
 // main()

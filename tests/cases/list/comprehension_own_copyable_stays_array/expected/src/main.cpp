@@ -29,7 +29,7 @@ void main() {
         const auto& p = *__beg_1;
         total = ::tpy::add_check<int32_t>(total, p.x);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // main()

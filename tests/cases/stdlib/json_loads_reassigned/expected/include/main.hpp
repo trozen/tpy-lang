@@ -101,7 +101,7 @@ struct __gen_in_generator : public ::tpy::next_iter_mixin<__gen_in_generator, st
 inline Holder::Holder() {
     ::tpystd::json::JsonValue v = ::tpystd::json::loads("{}");
     v = ::tpystd::json::loads("{\"a\": 1}");
-    std::cout << "constructor" << " " << ::tpystd::json::dumps(v, 0, false) << "\n";
+    std::cout << "constructor" << " " << ::tpystd::json::dumps(v, 0, false) << "\n" << ::tpy::check_signals;
 }
 
 // # method
@@ -112,7 +112,7 @@ inline Holder::Holder() {
 inline void Holder::run() const {
     ::tpystd::json::JsonValue v = ::tpystd::json::loads("[]");
     v = ::tpystd::json::loads("[4]");
-    std::cout << "method" << " " << ::tpystd::json::dumps(v, 0, false) << "\n";
+    std::cout << "method" << " " << ::tpystd::json::dumps(v, 0, false) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -64,15 +64,15 @@ void __tpy_init() {
     auto& __match_subject_1 = c;
     switch (__match_subject_1) {
     case color::red: {
-        std::cout << "red" << "\n";
+        std::cout << "red" << "\n" << ::tpy::check_signals;
         break;
     }
     case color::green: {
-        std::cout << "green" << "\n";
+        std::cout << "green" << "\n" << ::tpy::check_signals;
         break;
     }
     case color::blue: {
-        std::cout << "blue" << "\n";
+        std::cout << "blue" << "\n" << ::tpy::check_signals;
         break;
     }
     }

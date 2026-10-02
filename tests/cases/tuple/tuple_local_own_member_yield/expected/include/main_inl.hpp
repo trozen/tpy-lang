@@ -185,7 +185,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_c
         continue;
     }
     case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies tuple.* into owned storage/)
-        std::cout << "borrowed" << " " << ::tpy::__getitem__(saved->items, 0) << "\n";
+        std::cout << "borrowed" << " " << ::tpy::__getitem__(saved->items, 0) << "\n" << ::tpy::check_signals;
         u.emplace(::tpyapp::main::mk((::tpy::add_check<int32_t>(i, 100))));
         __state = S_RESUME_1;
         return std::move((*u));
@@ -248,7 +248,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_c
         if ((i < n)) {
             t.emplace(::tpyapp::main::mk(i));
             saved = &std::get<1>((*t));
-            std::cout << "dead-borrow" << " " << ::tpy::__getitem__(saved->items, 0) << "\n";
+            std::cout << "dead-borrow" << " " << ::tpy::__getitem__(saved->items, 0) << "\n" << ::tpy::check_signals;
             __state = S_RESUME_0;
             return (*t);
         } else {
@@ -282,7 +282,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_p
     case S_RESUME_0:  // after: yield t  # tpyc: warning(/copies tuple.* into owned storage/)
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
-            std::cout << "preloop-kept" << " " << ::tpyapp::main::first_item(std::get<1>((*t))) << "\n";
+            std::cout << "preloop-kept" << " " << ::tpyapp::main::first_item(std::get<1>((*t))) << "\n" << ::tpy::check_signals;
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
@@ -319,7 +319,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_l
         continue;
     }
     case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies tuple.* into owned storage/)
-        std::cout << "live-gen" << " " << std::get<1>((*t)).val << "\n";
+        std::cout << "live-gen" << " " << std::get<1>((*t)).val << "\n" << ::tpy::check_signals;
         u.emplace(std::tuple<int32_t, Box>{i, Box(i)});
         __state = S_RESUME_1;
         return std::move((*u));

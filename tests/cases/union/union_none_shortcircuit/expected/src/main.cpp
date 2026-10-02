@@ -57,22 +57,22 @@ std::string test_or(::tpy::Union<std::monostate, const Dog*, const int32_t*> v, 
 //     print(test_or(int32(1), None))
 void main() {
     int32_t __tmp_1 = 1;
-    std::cout << ::tpyapp::main::test_and_flag(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_1}, true) << "\n";
+    std::cout << ::tpyapp::main::test_and_flag(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_1}, true) << "\n" << ::tpy::check_signals;
     int32_t __tmp_2 = 1;
-    std::cout << ::tpyapp::main::test_and_flag(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_2}, false) << "\n";
-    std::cout << ::tpyapp::main::test_and_flag(::tpy::Union<std::monostate, const Dog*, const int32_t*>{std::monostate{}}, true) << "\n";
+    std::cout << ::tpyapp::main::test_and_flag(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_2}, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_and_flag(::tpy::Union<std::monostate, const Dog*, const int32_t*>{std::monostate{}}, true) << "\n" << ::tpy::check_signals;
     int32_t __tmp_3 = 5;
-    std::cout << ::tpyapp::main::test_and_isinstance(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_3}) << "\n";
+    std::cout << ::tpyapp::main::test_and_isinstance(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
     Dog __tmp_4 = Dog("Rex");
-    std::cout << ::tpyapp::main::test_and_isinstance(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_4}) << "\n";
-    std::cout << ::tpyapp::main::test_and_isinstance(::tpy::Union<std::monostate, const Dog*, const int32_t*>{std::monostate{}}) << "\n";
+    std::cout << ::tpyapp::main::test_and_isinstance(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_4}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_and_isinstance(::tpy::Union<std::monostate, const Dog*, const int32_t*>{std::monostate{}}) << "\n" << ::tpy::check_signals;
     int32_t __tmp_5 = 1;
     Dog __tmp_6 = Dog("Rex");
-    std::cout << ::tpyapp::main::test_or(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_5}, ::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_6}) << "\n";
+    std::cout << ::tpyapp::main::test_or(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_5}, ::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_6}) << "\n" << ::tpy::check_signals;
     Dog __tmp_7 = Dog("Rex");
-    std::cout << ::tpyapp::main::test_or(::tpy::Union<std::monostate, const Dog*, const int32_t*>{std::monostate{}}, ::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_7}) << "\n";
+    std::cout << ::tpyapp::main::test_or(::tpy::Union<std::monostate, const Dog*, const int32_t*>{std::monostate{}}, ::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_7}) << "\n" << ::tpy::check_signals;
     int32_t __tmp_8 = 1;
-    std::cout << ::tpyapp::main::test_or(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_8}, ::tpy::Union<std::monostate, const Dog*, const int32_t*>{std::monostate{}}) << "\n";
+    std::cout << ::tpyapp::main::test_or(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_8}, ::tpy::Union<std::monostate, const Dog*, const int32_t*>{std::monostate{}}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

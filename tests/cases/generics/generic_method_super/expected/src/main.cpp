@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(c.wrap("hello"))
 void main() {
     Child<int32_t> c = Child<int32_t>(5);
-    std::cout << c.wrap<int32_t>(42) << "\n";
-    std::cout << c.wrap<std::string>("hello") << "\n";
+    std::cout << c.wrap<int32_t>(42) << "\n" << ::tpy::check_signals;
+    std::cout << c.wrap<std::string>("hello") << "\n" << ::tpy::check_signals;
 }
 
 // main()

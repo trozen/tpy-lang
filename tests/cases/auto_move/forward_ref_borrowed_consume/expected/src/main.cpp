@@ -13,8 +13,8 @@ void main() {
     std::vector<P> xs = {P()};
     P& n = ::tpyapp::main::first(xs);
     std::vector<P> __tmp_1 = xs;
-    std::cout << ::tpyapp::main::drop(std::move(__tmp_1)) << "\n";
-    std::cout << ::tpy::__getitem__(n.vals, 0) << "\n";
+    std::cout << ::tpyapp::main::drop(std::move(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(n.vals, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def first(xs: list[P]) -> P:

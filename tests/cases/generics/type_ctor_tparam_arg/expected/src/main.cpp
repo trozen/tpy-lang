@@ -11,11 +11,11 @@ namespace tpyapp::main {
 //     print("unsigned", narrow_unsigned(uint32(9)))
 //     print("method", Counter(int64(9)).as_int32())
 void main() {
-    std::cout << "narrow" << " " << ::tpyapp::main::narrow<int64_t>(7) << " " << ::tpyapp::main::narrow<int32_t>(-2) << "\n";
-    std::cout << "widen" << " " << ::tpyapp::main::widen<int32_t>(8) << "\n";
-    std::cout << "signed" << " " << ::tpyapp::main::narrow_signed<int64_t>(-3) << "\n";
-    std::cout << "unsigned" << " " << ::tpyapp::main::narrow_unsigned<uint32_t>(9) << "\n";
-    std::cout << "method" << " " << Counter<int64_t>(9).as_int32() << "\n";
+    std::cout << "narrow" << " " << ::tpyapp::main::narrow<int64_t>(7) << " " << ::tpyapp::main::narrow<int32_t>(-2) << "\n" << ::tpy::check_signals;
+    std::cout << "widen" << " " << ::tpyapp::main::widen<int32_t>(8) << "\n" << ::tpy::check_signals;
+    std::cout << "signed" << " " << ::tpyapp::main::narrow_signed<int64_t>(-3) << "\n" << ::tpy::check_signals;
+    std::cout << "unsigned" << " " << ::tpyapp::main::narrow_unsigned<uint32_t>(9) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << Counter<int64_t>(9).as_int32() << "\n" << ::tpy::check_signals;
 }
 
 // main()

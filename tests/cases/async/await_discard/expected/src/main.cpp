@@ -11,7 +11,7 @@ namespace tpyapp::main {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "inside-side-effect" << "\n";
+        std::cout << "inside-side-effect" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -42,7 +42,7 @@ __coro_side_effect side_effect() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "after-await" << "\n";
+        std::cout << "after-await" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -63,7 +63,7 @@ __coro_caller caller() {
 void main() {
     auto __tmp_1 = ::tpyapp::main::caller();
     if (::tpystd::coro::poll_once<std::monostate>(__tmp_1).is_ready()) {
-        std::cout << "done" << "\n";
+        std::cout << "done" << "\n" << ::tpy::check_signals;
     }
 }
 

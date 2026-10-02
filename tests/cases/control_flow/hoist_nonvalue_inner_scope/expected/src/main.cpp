@@ -34,7 +34,7 @@ void for_record() {
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
         Flat& g = (*f);
         g.n = ::tpy::add_check<int32_t>(g.n, 1);
-        std::cout << "for_record" << " " << f->n << " " << g.n << "\n";
+        std::cout << "for_record" << " " << f->n << " " << g.n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -58,7 +58,7 @@ void for_list() {
             xs = &*(__slot_2 = {i, i});
         }
         xs->push_back(7);
-        std::cout << "for_list" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+        std::cout << "for_list" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -82,7 +82,7 @@ void for_own_call(bool flag) {
             items = &*(__slot_2 = {i});
         }
         items->push_back(99);
-        std::cout << "for_own_call" << " " << ::tpy::ListPrinter((*items)) << "\n";
+        std::cout << "for_own_call" << " " << ::tpy::ListPrinter((*items)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -108,7 +108,7 @@ void while_one_arm() {
             continue;
         }
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        std::cout << "while_one_arm" << " " << f->n << "\n";
+        std::cout << "while_one_arm" << " " << f->n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -134,9 +134,9 @@ void nested_if(bool a, bool b) {
             f = &*(__slot_2 = Flat(2));
         }
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        std::cout << "nested_if" << " " << f->n << "\n";
+        std::cout << "nested_if" << " " << f->n << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "nested_if none" << "\n";
+        std::cout << "nested_if none" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -166,13 +166,13 @@ void sibling_decl(bool a) {
                 f = &*(__slot_2 = Flat((::tpy::add_check<int32_t>(i, 10))));
             }
             f->n = ::tpy::add_check<int32_t>(f->n, 1);
-            std::cout << "sibling_decl" << " " << f->n << "\n";
+            std::cout << "sibling_decl" << " " << f->n << "\n" << ::tpy::check_signals;
         }
     } else {
         Flat __slot_3 = Flat(5);
         Flat* f = &__slot_3;
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        std::cout << "sibling_decl" << " " << f->n << "\n";
+        std::cout << "sibling_decl" << " " << f->n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -198,11 +198,11 @@ void post_loop_redecl() {
         } else {
             f = &*(__slot_2 = Flat((::tpy::add_check<int32_t>(i, 10))));
         }
-        std::cout << "post_loop_redecl" << " " << f->n << "\n";
+        std::cout << "post_loop_redecl" << " " << f->n << "\n" << ::tpy::check_signals;
     }
     f = &*(__slot_3 = Flat(99));
     f->n = ::tpy::add_check<int32_t>(f->n, 1);
-    std::cout << "post_loop_redecl" << " " << f->n << "\n";
+    std::cout << "post_loop_redecl" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // # @dynamic protocol local in a loop: `Base* s;` + per-arm adapter slots. Rvalue
@@ -226,7 +226,7 @@ void dyn_protocol() {
             __slot_2.emplace(Rect(i, 2));
             s = &*__slot_2;
         }
-        std::cout << "dyn_protocol" << " " << s->area() << "\n";
+        std::cout << "dyn_protocol" << " " << s->area() << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -253,9 +253,9 @@ void optional_both_arms() {
         }
         if ((p != nullptr)) {
             p->n = ::tpy::add_check<int32_t>(p->n, 1);
-            std::cout << "optional_both_arms" << " " << p->n << "\n";
+            std::cout << "optional_both_arms" << " " << p->n << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << "optional_both_arms none" << "\n";
+            std::cout << "optional_both_arms none" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -285,9 +285,9 @@ void optional_slot_loop() {
             q->n = ::tpy::add_check<int32_t>(q->n, 5);
         }
         if ((p != nullptr)) {
-            std::cout << "optional_slot_loop" << " " << p->n << "\n";
+            std::cout << "optional_slot_loop" << " " << p->n << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << "optional_slot_loop none" << "\n";
+            std::cout << "optional_slot_loop none" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -306,7 +306,7 @@ void optional_rvalue_init() {
         Pic* p = &__slot_1;
         if ((p != nullptr)) {
             p->n = ::tpy::add_check<int32_t>(p->n, 1);
-            std::cout << "optional_rvalue_init" << " " << p->n << "\n";
+            std::cout << "optional_rvalue_init" << " " << p->n << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -324,7 +324,7 @@ void optional_list_init() {
         std::vector<int32_t>* xs = &__slot_1;
         if ((xs != nullptr)) {
             xs->push_back(5);
-            std::cout << "optional_list_init" << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(xs) << "\n";
+            std::cout << "optional_list_init" << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(xs) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -353,14 +353,14 @@ void optional_redecl_post_loop() {
             p = &*(__slot_1 = Pic(i));
         }
         if ((p != nullptr)) {
-            std::cout << "optional_redecl_post_loop" << " " << p->n << "\n";
+            std::cout << "optional_redecl_post_loop" << " " << p->n << "\n" << ::tpy::check_signals;
         }
     }
     p = &*(__slot_2 = Pic(9));
     (*p) = Pic(10);
     if ((p != nullptr)) {
         p->n = ::tpy::add_check<int32_t>(p->n, 1);
-        std::cout << "optional_redecl_post_loop" << " " << p->n << "\n";
+        std::cout << "optional_redecl_post_loop" << " " << p->n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -387,7 +387,7 @@ void with_body() {
             f = &*(__slot_2 = Flat(0));
         }
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        std::cout << "with_body" << " " << f->n << "\n";
+        std::cout << "with_body" << " " << f->n << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -425,9 +425,9 @@ void try_body() {
                     f = &*(__slot_2 = Flat(2));
                 }
                 f->n = ::tpy::add_check<int32_t>(f->n, 1);
-                std::cout << "try_body" << " " << f->n << "\n";
+                std::cout << "try_body" << " " << f->n << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::ValueError&) {
-                std::cout << "try_body err" << "\n";
+                std::cout << "try_body err" << "\n" << ::tpy::check_signals;
             }
         }
     }
@@ -458,11 +458,11 @@ void match_arm(int32_t k) {
             f = &*(__slot_2 = Flat(11));
         }
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        std::cout << "match_arm" << " " << f->n << "\n";
+        std::cout << "match_arm" << " " << f->n << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
-        std::cout << "match_arm other" << "\n";
+        std::cout << "match_arm other" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -497,7 +497,7 @@ void closure() {
         }
         return k;
     };
-    std::cout << "closure" << " " << inner(1) << "\n";
+    std::cout << "closure" << " " << inner(1) << "\n" << ::tpy::check_signals;
 }
 
 // # @error_return body.
@@ -561,9 +561,9 @@ void with_optional(int32_t k) {
     __ctx_2.__exit__({}, nullptr, {});
     if ((p != nullptr)) {
         p->n = ::tpy::add_check<int32_t>(p->n, 1);
-        std::cout << "with_optional" << " " << p->n << "\n";
+        std::cout << "with_optional" << " " << p->n << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "with_optional none" << "\n";
+        std::cout << "with_optional none" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -595,9 +595,9 @@ void try_optional(int32_t k) {
     }
     if ((p != nullptr)) {
         p->n = ::tpy::add_check<int32_t>(p->n, 1);
-        std::cout << "try_optional" << " " << p->n << "\n";
+        std::cout << "try_optional" << " " << p->n << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "try_optional none" << "\n";
+        std::cout << "try_optional none" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -621,7 +621,7 @@ void with_const_alias(bool flag, const Pic& a, const Pic& b) {
         } else {
             f = &(b);
         }
-        std::cout << "with_const_alias" << " " << (::tpy::add_check<int32_t>(f->n, n)) << "\n";
+        std::cout << "with_const_alias" << " " << (::tpy::add_check<int32_t>(f->n, n)) << "\n" << ::tpy::check_signals;
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
@@ -632,7 +632,7 @@ void with_const_alias(bool flag, const Pic& a, const Pic& b) {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    std::cout << "with_const_alias" << " " << f->n << "\n";
+    std::cout << "with_const_alias" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -689,7 +689,7 @@ void main() {
     ::tpyapp::main::optional_redecl_post_loop();
     Builder b = Builder(3);
     b.add(4);
-    std::cout << "ctor_method" << " " << b.total << "\n";
+    std::cout << "ctor_method" << " " << b.total << "\n" << ::tpy::check_signals;
     ::tpyapp::main::with_body();
     ::tpyapp::main::try_body();
     ::tpyapp::main::with_optional(0);
@@ -702,11 +702,11 @@ void main() {
     ::tpyapp::main::match_arm(1);
     ::tpyapp::main::closure();
     {
-        std::cout << "error_return_body" << " " << ({ auto __er_2 = ::tpyapp::main::error_return_body(1); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "error_return_body" << " " << ({ auto __er_2 = ::tpyapp::main::error_return_body(1); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except MyErr:
         __except_1:;
-        std::cout << "error_return_body err" << "\n";
+        std::cout << "error_return_body err" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }

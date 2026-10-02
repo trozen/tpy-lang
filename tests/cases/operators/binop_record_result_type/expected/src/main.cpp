@@ -37,22 +37,22 @@ namespace tpyapp::main {
 void main() {
     Frac f = Frac(::tpy::BigInt(1), ::tpy::BigInt(2));
     Frac f2 = Frac(::tpy::BigInt(1), ::tpy::BigInt(3));
-    std::cout << ((f) / (::tpy::BigInt(2))) << "\n";
+    std::cout << ((f) / (::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
     Frac q = ((f) / (::tpy::BigInt(2)));
-    std::cout << q.den << "\n";
-    std::cout << ((f) / (::tpy::BigInt(2))).num << "\n";
+    std::cout << q.den << "\n" << ::tpy::check_signals;
+    std::cout << ((f) / (::tpy::BigInt(2))).num << "\n" << ::tpy::check_signals;
     double r = ((f) / (f2));
-    std::cout << ::tpy::print_float(r) << "\n";
+    std::cout << ::tpy::print_float(r) << "\n" << ::tpy::check_signals;
     Vec v = Vec(1.0, 2.0);
-    std::cout << ((v) * (2.0)) << "\n";
-    std::cout << ((2.0) * (v)) << "\n";
+    std::cout << ((v) * (2.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ((2.0) * (v)) << "\n" << ::tpy::check_signals;
     Acc a = Acc(::tpy::BigInt(10));
     ::tpy::BigInt n = ::tpy::BigInt(5);
-    std::cout << ((a) + (n)) << "\n";
-    std::cout << ::tpy::print_float((::tpy::truediv(::tpy::BigInt(7), ::tpy::BigInt(2)))) << "\n";
+    std::cout << ((a) + (n)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::truediv(::tpy::BigInt(7), ::tpy::BigInt(2)))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt ai = ::tpy::BigInt(7);
     ::tpy::BigInt bi = ::tpy::BigInt(2);
-    std::cout << ::tpy::print_float((::tpy::truediv(ai, bi))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(ai, bi))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

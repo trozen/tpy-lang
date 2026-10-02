@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Bag b = Bag();
     b.__setattr__("name", ::tpy::make_any(std::string("alice")));
-    std::cout << ::tpy::any_cast_or_panic<std::string>(b.__getattr__("name")) << "\n";
+    std::cout << ::tpy::any_cast_or_panic<std::string>(b.__getattr__("name")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

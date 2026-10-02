@@ -31,10 +31,10 @@ int32_t f(Point& p) {
 //     print(pt.y)
 void main() {
     Point __tmp_1 = Point(1, 0);
-    std::cout << ::tpyapp::main::f(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::f(__tmp_1) << "\n" << ::tpy::check_signals;
     Point pt = Point(2, 3);
-    std::cout << ::tpyapp::main::f(pt) << "\n";
-    std::cout << pt.y << "\n";
+    std::cout << ::tpyapp::main::f(pt) << "\n" << ::tpy::check_signals;
+    std::cout << pt.y << "\n" << ::tpy::check_signals;
 }
 
 // # A record arm whose or-alternatives include a bare wildcard: the arm always

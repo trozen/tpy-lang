@@ -79,13 +79,13 @@ __coro_fetch fetch(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         multi_results.emplace(std::move(__r0).value());
         __sub_0.reset();
-        std::cout << "multi:" << "\n";
+        std::cout << "multi:" << "\n" << ::tpy::check_signals;
         auto& __obj_0 = (*multi_results);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t r = *__beg_0;
-            std::cout << r << "\n";
+            std::cout << r << "\n" << ::tpy::check_signals;
         }
         s1.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::fetch(10))));
         std::array<::tpystd::asyncio::_executor::Task<int32_t>*, 1> __tmp_2{&(*s1)};
@@ -98,13 +98,13 @@ __coro_fetch fetch(int32_t n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         single_results.emplace(std::move(__r1).value());
         __sub_1.reset();
-        std::cout << "single:" << "\n";
+        std::cout << "single:" << "\n" << ::tpy::check_signals;
         auto& __obj_1 = (*single_results);
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             int32_t r = *__beg_1;
-            std::cout << r << "\n";
+            std::cout << r << "\n" << ::tpy::check_signals;
         }
         pending.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         (*pending).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::fetch(4))));
@@ -118,13 +118,13 @@ __coro_fetch fetch(int32_t n) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         unpacked_results.emplace(std::move(__r2).value());
         __sub_2.reset();
-        std::cout << "unpacked:" << "\n";
+        std::cout << "unpacked:" << "\n" << ::tpy::check_signals;
         auto& __obj_2 = (*unpacked_results);
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             int32_t r = *__beg_2;
-            std::cout << r << "\n";
+            std::cout << r << "\n" << ::tpy::check_signals;
         }
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});

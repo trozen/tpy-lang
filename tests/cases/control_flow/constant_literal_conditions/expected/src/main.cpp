@@ -42,7 +42,7 @@ int32_t spin(int32_t n) {
 // def main() -> None:
 //     print(checked(1), dead(2), spin(3))
 void main() {
-    std::cout << ::tpyapp::main::checked(1) << " " << ::tpyapp::main::dead(2) << " " << ::tpyapp::main::spin(3) << "\n";
+    std::cout << ::tpyapp::main::checked(1) << " " << ::tpyapp::main::dead(2) << " " << ::tpyapp::main::spin(3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -150,33 +150,33 @@ __gen_banners banners() {
 //         print("yield", b)
 void main() {
     Registry r = Registry();
-    std::cout << "method" << " " << r.banner() << "\n";
-    std::cout << "owned" << " " << ::tpyapp::main::label() << "\n";
+    std::cout << "method" << " " << r.banner() << "\n" << ::tpy::check_signals;
+    std::cout << "owned" << " " << ::tpyapp::main::label() << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpyapp::main::label_size();
     int32_t n = std::get<0>(__tup_1);
     int32_t k = std::get<1>(__tup_1);
-    std::cout << "valueelem" << " " << n << " " << k << "\n";
+    std::cout << "valueelem" << " " << n << " " << k << "\n" << ::tpy::check_signals;
     ::tpyapp::main::relabel();
-    std::cout << "owned" << " " << ::tpyapp::main::label() << "\n";
-    std::cout << "motto" << " " << ::tpyapp::main::motto() << "\n";
+    std::cout << "owned" << " " << ::tpyapp::main::label() << "\n" << ::tpy::check_signals;
+    std::cout << "motto" << " " << ::tpyapp::main::motto() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::extend_motto();
-    std::cout << "motto" << " " << ::tpyapp::main::motto() << "\n";
+    std::cout << "motto" << " " << ::tpyapp::main::motto() << "\n" << ::tpy::check_signals;
     auto __tup_2 = ::tpyapp::main::label_size();
     n = std::get<0>(__tup_2);
     k = std::get<1>(__tup_2);
-    std::cout << "valueelem" << " " << n << " " << k << "\n";
+    std::cout << "valueelem" << " " << n << " " << k << "\n" << ::tpy::check_signals;
     ::tpyapp::main::retitle();
-    std::cout << "walrus" << " " << ::tpyapp::main::title() << "\n";
-    std::cout << "readonly-global" << " " << ::tpyapp::main::read_tagline() << "\n";
+    std::cout << "walrus" << " " << ::tpyapp::main::title() << "\n" << ::tpy::check_signals;
+    std::cout << "readonly-global" << " " << ::tpyapp::main::read_tagline() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bump();
-    std::cout << "readonly" << " " << ::tpyapp::main::read_count() << "\n";
+    std::cout << "readonly" << " " << ::tpyapp::main::read_count() << "\n" << ::tpy::check_signals;
     std::vector<int32_t>& got = ::tpyapp::main::items();
     got.push_back(4);
-    std::cout << "alias" << " " << ::tpy::__len__((*XS)) << " " << ::tpy::__getitem__((*XS), 3) << "\n";
+    std::cout << "alias" << " " << ::tpy::__len__((*XS)) << " " << ::tpy::__getitem__((*XS), 3) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::point_at(&(*LEFT));
-    std::cout << "handle" << " " << ::tpy::deref_check(::tpyapp::main::current()).v << "\n";
+    std::cout << "handle" << " " << ::tpy::deref_check(::tpyapp::main::current()).v << "\n" << ::tpy::check_signals;
     ::tpyapp::main::point_at(&(*RIGHT));
-    std::cout << "handle" << " " << ::tpy::deref_check(::tpyapp::main::current()).v << "\n";
+    std::cout << "handle" << " " << ::tpy::deref_check(::tpyapp::main::current()).v << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::banners();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -184,7 +184,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view b = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "yield" << " " << b << "\n";
+            std::cout << "yield" << " " << b << "\n" << ::tpy::check_signals;
         }
     }
 }

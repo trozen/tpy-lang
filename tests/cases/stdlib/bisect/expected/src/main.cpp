@@ -21,17 +21,17 @@ namespace tpyapp::main {
 //     print(c[1], c[2])
 void main() {
     std::vector<int32_t> a = {1, 3, 5, 7};
-    std::cout << ::tpystd::bisect::bisect_left<int32_t>(a, 4) << "\n";
-    std::cout << ::tpystd::bisect::bisect_right<int32_t>(a, 5) << "\n";
-    std::cout << ::tpystd::bisect::bisect<int32_t>(a, 5) << "\n";
+    std::cout << ::tpystd::bisect::bisect_left<int32_t>(a, 4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::bisect::bisect_right<int32_t>(a, 5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::bisect::bisect<int32_t>(a, 5) << "\n" << ::tpy::check_signals;
     ::tpystd::bisect::insort_left<int32_t>(a, 4);
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> b = {1, 3, 5, 7};
     ::tpystd::bisect::insort_right<int32_t>(b, 3);
-    std::cout << ::tpy::__getitem__(b, 1) << " " << ::tpy::__getitem__(b, 2) << "\n";
+    std::cout << ::tpy::__getitem__(b, 1) << " " << ::tpy::__getitem__(b, 2) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> c = {1, 3, 5, 7};
     ::tpystd::bisect::insort<int32_t>(c, 3);
-    std::cout << ::tpy::__getitem__(c, 1) << " " << ::tpy::__getitem__(c, 2) << "\n";
+    std::cout << ::tpy::__getitem__(c, 1) << " " << ::tpy::__getitem__(c, 2) << "\n" << ::tpy::check_signals;
 }
 
 // # Test importing bisect from stdlib

@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(Counter.total_through_cls(4))
 //     print(Counter.total_through_name(4))
 void main() {
-    std::cout << Counter::total_through_cls(4) << "\n";
-    std::cout << Counter::total_through_name(4) << "\n";
+    std::cout << Counter::total_through_cls(4) << "\n" << ::tpy::check_signals;
+    std::cout << Counter::total_through_name(4) << "\n" << ::tpy::check_signals;
 }
 
 // main()

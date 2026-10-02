@@ -21,7 +21,7 @@ void main() {
         try {
             ::tpyapp::main::fail();
         } catch (...) {
-            std::cout << "caught something" << "\n";
+            std::cout << "caught something" << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -47,9 +47,9 @@ void main() {
         int32_t i = int32_t(__i_2);
         return xs;
     });
-    std::cout << ::tpy::__len__(ls) << " " << ::tpy::__len__(::tpy::__getitem__(ls, 0)) << " " << ::tpy::__len__(dv) << " " << ::tpy::__len__(::tpy::__getitem__(dv, 0)) << " " << ::tpy::__len__(arr) << " " << ::tpy::__len__(::tpy::__getitem__(arr, 2)) << "\n";
-    std::cout << ::tpy::__getitem__(::tpy::__getitem__(ls, 1), 2) << " " << ::tpy::__getitem__(::tpy::__getitem__(dv, 1), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(arr, 0), 1) << "\n";
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(ls) << " " << ::tpy::__len__(::tpy::__getitem__(ls, 0)) << " " << ::tpy::__len__(dv) << " " << ::tpy::__len__(::tpy::__getitem__(dv, 0)) << " " << ::tpy::__len__(arr) << " " << ::tpy::__len__(::tpy::__getitem__(arr, 2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(ls, 1), 2) << " " << ::tpy::__getitem__(::tpy::__getitem__(dv, 1), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(arr, 0), 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -21,7 +21,7 @@ void main() {
     Holder h = Holder(Box(5));
     Box& b = ::tpyapp::main::ret(h);
     b.val = 99;
-    std::cout << h.box.val << "\n";
+    std::cout << h.box.val << "\n" << ::tpy::check_signals;
 }
 
 // main()

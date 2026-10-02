@@ -27,7 +27,7 @@ namespace tpyapp::main {
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
         (*xs).push_back((*__await_lift_0));
-        std::cout << ::tpy::__getitem__((*xs), 0).v << "\n";
+        std::cout << ::tpy::__getitem__((*xs), 0).v << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

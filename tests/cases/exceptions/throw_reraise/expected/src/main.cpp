@@ -21,7 +21,7 @@ void middle() {
         try {
             ::tpyapp::main::fail();
         } catch (const MyError& e) {
-            std::cout << e.code << "\n";
+            std::cout << e.code << "\n" << ::tpy::check_signals;
             throw;
         }
     }
@@ -37,7 +37,7 @@ void main() {
         try {
             ::tpyapp::main::middle();
         } catch (const MyError& e) {
-            std::cout << e.code << "\n";
+            std::cout << e.code << "\n" << ::tpy::check_signals;
         }
     }
 }

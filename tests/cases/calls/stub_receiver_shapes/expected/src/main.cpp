@@ -42,25 +42,25 @@ void main() {
     Buf holder = Buf(std::move(seed));
     holder.data.push_back(100);
     holder.view().push_back(101);
-    std::cout << ::tpy::__len__(holder.data) << "\n";
-    std::cout << static_cast<int>(::tpy::bytes_getitem(holder.data, 2)) << "\n";
-    std::cout << static_cast<int>(::tpy::bytes_getitem(holder.data, 3)) << "\n";
-    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_upper(::tpy::bytes_strip(ba))) << "\n";
+    std::cout << ::tpy::__len__(holder.data) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpy::bytes_getitem(holder.data, 2)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpy::bytes_getitem(holder.data, 3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_upper(::tpy::bytes_strip(ba))) << "\n" << ::tpy::check_signals;
     Tagged t = Tagged();
     t.push_back(65);
     t.push_back(66);
-    std::cout << ::tpy::__len__(t) << "\n";
-    std::cout << t.tag << "\n";
-    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
+    std::cout << ::tpy::__len__(t) << "\n" << ::tpy::check_signals;
+    std::cout << t.tag << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = {1};
     xs.push_back(2);
     holder.nums.push_back(3);
     holder.rows().push_back(4);
-    std::cout << ::tpy::__len__(holder.nums) << "\n";
-    std::cout << ::tpy::list_index(::tpy::list_copy(xs), 2) << "\n";
+    std::cout << ::tpy::__len__(holder.nums) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::list_index(::tpy::list_copy(xs), 2) << "\n" << ::tpy::check_signals;
     TaggedList tl = TaggedList();
     tl.push_back(5);
-    std::cout << ::tpy::__len__(tl) << " " << tl.tag << "\n";
+    std::cout << ::tpy::__len__(tl) << " " << tl.tag << "\n" << ::tpy::check_signals;
 }
 
 // main()

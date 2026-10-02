@@ -55,29 +55,29 @@ std::string roundtrip(std::string_view s) {
 void main() {
     {
         try {
-            std::cout << ::tpyapp::main::roundtrip("null") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("true") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("false") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("42") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("-7") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("0") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("3.14") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("\"hello\"") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("{\"name\": \"Alice\", \"age\": 30}") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("[1, 2, 3]") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("{\"users\": [{\"id\": 1, \"name\": \"Alice\"}, {\"id\": 2, \"name\": \"Bob\"}], \"count\": 2}") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("[1, 2, 3]") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("[1.0, 2.0, 3.0]") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("[1, null, \"x\"]") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("{\"a\": null}") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("\"line1\\nline2\"") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("\"quote\\\"\"") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("{}") << "\n";
-            std::cout << ::tpyapp::main::roundtrip("[]") << "\n";
+            std::cout << ::tpyapp::main::roundtrip("null") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("true") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("false") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("42") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("-7") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("0") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("3.14") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("\"hello\"") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("{\"name\": \"Alice\", \"age\": 30}") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("[1, 2, 3]") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("{\"users\": [{\"id\": 1, \"name\": \"Alice\"}, {\"id\": 2, \"name\": \"Bob\"}], \"count\": 2}") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("[1, 2, 3]") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("[1.0, 2.0, 3.0]") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("[1, null, \"x\"]") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("{\"a\": null}") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("\"line1\\nline2\"") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("\"quote\\\"\"") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("{}") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpyapp::main::roundtrip("[]") << "\n" << ::tpy::check_signals;
             ::tpystd::json::JsonValue sk = ::tpystd::json::loads("{\"b\": 1, \"a\": 2, \"c\": 3}");
-            std::cout << ::tpystd::json::dumps(sk, 0, true) << "\n";
+            std::cout << ::tpystd::json::dumps(sk, 0, true) << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::json::JSONDecodeError& e) {
-            std::cout << "ERR:" << " " << e.msg << "\n";
+            std::cout << "ERR:" << " " << e.msg << "\n" << ::tpy::check_signals;
         }
     }
 }

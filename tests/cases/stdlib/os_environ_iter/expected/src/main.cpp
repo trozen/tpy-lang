@@ -57,7 +57,7 @@ void main() {
     ::tpy::__setitem__((*::tpystd::os::_environ::environ), "TPY_ITER_A", "va");
     ::tpy::__setitem__((*::tpystd::os::_environ::environ), "TPY_ITER_B", "vb");
     ::tpy::__setitem__((*::tpystd::os::_environ::environ), "TPY_ITER_C", "vc");
-    std::cout << ::tpy::print_bool((::tpy::__len__((*::tpystd::os::_environ::environ)) == (::tpy::add_check<int32_t>(base_len, 3)))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__len__((*::tpystd::os::_environ::environ)) == (::tpy::add_check<int32_t>(base_len, 3)))) << "\n" << ::tpy::check_signals;
     std::vector<std::string> iter_keys = std::vector<std::string>{};
     auto& __src_0 = (*::tpystd::os::_environ::environ);
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -70,7 +70,7 @@ void main() {
         }
     }
     ::tpy::sort_in_place(iter_keys);
-    std::cout << ::tpy::ListPrinter(iter_keys) << "\n";
+    std::cout << ::tpy::ListPrinter(iter_keys) << "\n" << ::tpy::check_signals;
     std::vector<std::string> key_list = std::vector<std::string>{};
     auto __obj_2 = (*::tpystd::os::_environ::environ).keys();
     auto __beg_2 = __obj_2.begin();
@@ -82,7 +82,7 @@ void main() {
         }
     }
     ::tpy::sort_in_place(key_list);
-    std::cout << ::tpy::print_bool((key_list == iter_keys)) << "\n";
+    std::cout << ::tpy::print_bool((key_list == iter_keys)) << "\n" << ::tpy::check_signals;
     std::vector<std::string> pairs = std::vector<std::string>{};
     auto __obj_3 = (*::tpystd::os::_environ::environ).items();
     auto __beg_3 = __obj_3.begin();
@@ -97,7 +97,7 @@ void main() {
         }
     }
     ::tpy::sort_in_place(pairs);
-    std::cout << ::tpy::ListPrinter(pairs) << "\n";
+    std::cout << ::tpy::ListPrinter(pairs) << "\n" << ::tpy::check_signals;
     std::vector<std::string> vals = std::vector<std::string>{};
     auto __obj_4 = (*::tpystd::os::_environ::environ).items();
     auto __beg_4 = __obj_4.begin();
@@ -130,7 +130,7 @@ void main() {
             matched.push_back(std::string(v));
         }
     }
-    std::cout << ::tpy::ListPrinter(matched) << "\n";
+    std::cout << ::tpy::ListPrinter(matched) << "\n" << ::tpy::check_signals;
 }
 
 // # os.environ iteration: __iter__/keys/values/items/__len__. Filters to vars

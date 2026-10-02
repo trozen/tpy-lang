@@ -49,20 +49,20 @@ void main() {
     Point q = Point(::tpy::BigInt(3), ::tpy::BigInt(4));
     Point* r1 = ::tpyapp::main::get_or_none(true, p);
     if ((r1 != nullptr)) {
-        std::cout << r1->x << "\n";
+        std::cout << r1->x << "\n" << ::tpy::check_signals;
     }
     Point* r2 = ::tpyapp::main::get_or_none(false, p);
-    std::cout << ::tpy::print_optional(r2) << "\n";
+    std::cout << ::tpy::print_optional(r2) << "\n" << ::tpy::check_signals;
     Point* r3 = ::tpyapp::main::pick(true, &(p), &(q));
     if ((r3 != nullptr)) {
-        std::cout << r3->x << "\n";
+        std::cout << r3->x << "\n" << ::tpy::check_signals;
     }
     Point* r4 = ::tpyapp::main::pick(false, &(p), &(q));
     if ((r4 != nullptr)) {
-        std::cout << r4->x << "\n";
+        std::cout << r4->x << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpyapp::main::narrowed_field(&(p)) << "\n";
-    std::cout << ::tpyapp::main::narrowed_field(nullptr) << "\n";
+    std::cout << ::tpyapp::main::narrowed_field(&(p)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::narrowed_field(nullptr) << "\n" << ::tpy::check_signals;
 }
 
 // main()

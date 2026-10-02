@@ -33,7 +33,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const ::tpy::BigInt& k = *__beg_1;
-        std::cout << k << " " << ::tpy::__getitem__(widened, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(widened, k) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<int32_t, int64_t> wide64 = ({
         ::tpy::ordered_map<int32_t, int64_t> __result;
@@ -48,7 +48,7 @@ void main() {
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         int32_t k = *__beg_3;
-        std::cout << k << " " << ::tpy::__getitem__(wide64, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(wide64, k) << "\n" << ::tpy::check_signals;
     }
 }
 

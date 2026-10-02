@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(Owner(Box(Dog())).describe())
 //     print(Owner(Box(Snake())).describe())
 void main() {
-    std::cout << Owner(::tpystd::tplib::box::Box<Dog>(Dog())).describe() << "\n";
-    std::cout << Owner(::tpystd::tplib::box::Box<Snake>(Snake())).describe() << "\n";
+    std::cout << Owner(::tpystd::tplib::box::Box<Dog>(Dog())).describe() << "\n" << ::tpy::check_signals;
+    std::cout << Owner(::tpystd::tplib::box::Box<Snake>(Snake())).describe() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

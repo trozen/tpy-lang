@@ -16,7 +16,7 @@ void test_mut() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -32,7 +32,7 @@ void test_ro() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -63,7 +63,7 @@ void test_iterate_twice() {
         int32_t x = ::tpy::unwrap_ref(*__r_3);
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def test_readonly_param(buf: readonly[MutBuffer]) -> None:
@@ -81,7 +81,7 @@ void test_readonly_param(const MutBuffer& buf) {
         int32_t x = ::tpy::unwrap_ref(*__r_1);
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def test_rvalue_span() -> None:
@@ -102,7 +102,7 @@ void test_rvalue_span() {
             total = ::tpy::add_check<int32_t>(total, x);
         }
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // test_mut()
@@ -121,7 +121,7 @@ void __tpy_init() {
     ::tpyapp::main::test_iterate_twice();
     ::tpyapp::main::test_readonly_param(MutBuffer());
     ::tpyapp::main::test_rvalue_span();
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

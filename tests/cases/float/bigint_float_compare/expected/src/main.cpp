@@ -13,8 +13,8 @@ namespace tpyapp::main {
 void test_eq() {
     ::tpy::BigInt a = ::tpy::BigInt(5);
     double b = 5.0;
-    std::cout << ::tpy::print_bool((static_cast<double>(a) == b)) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<double>(a) != b)) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<double>(a) == b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<double>(a) != b)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_ordering() -> None:
@@ -27,10 +27,10 @@ void test_eq() {
 void test_ordering() {
     ::tpy::BigInt x = ::tpy::BigInt(3);
     double y = 3.5;
-    std::cout << ::tpy::print_bool((static_cast<double>(x) < y)) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<double>(x) > y)) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<double>(x) <= y)) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<double>(x) >= y)) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<double>(x) < y)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<double>(x) > y)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<double>(x) <= y)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<double>(x) >= y)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_float_gt_int() -> None:
@@ -41,8 +41,8 @@ void test_ordering() {
 void test_float_gt_int() {
     double f = 10.0;
     ::tpy::BigInt i = ::tpy::BigInt(7);
-    std::cout << ::tpy::print_bool((f > static_cast<double>(i))) << "\n";
-    std::cout << ::tpy::print_bool((f < static_cast<double>(i))) << "\n";
+    std::cout << ::tpy::print_bool((f > static_cast<double>(i))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((f < static_cast<double>(i))) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

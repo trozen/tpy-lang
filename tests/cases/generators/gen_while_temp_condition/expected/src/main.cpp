@@ -75,7 +75,7 @@ void main() {
             }
         }
     }
-    std::cout << pulls << "\n";
+    std::cout << pulls << "\n" << ::tpy::check_signals;
     {
         auto __src_2 = ::tpyapp::main::walrus_gen(::tpy::BigInt(3));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -83,7 +83,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
     int32_t framed = 0;
@@ -100,8 +100,8 @@ void main() {
             }
         }
     }
-    std::cout << "framed" << " " << framed << "\n";
-    std::cout << "if_cond" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::if_cond_temp(::tpy::BigInt(2)))) << "\n";
+    std::cout << "framed" << " " << framed << "\n" << ::tpy::check_signals;
+    std::cout << "if_cond" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::if_cond_temp(::tpy::BigInt(2)))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

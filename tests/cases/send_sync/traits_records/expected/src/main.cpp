@@ -16,12 +16,12 @@ namespace tpyapp::main {
 void main() {
     Point p = Point(1, 2);
     Bag b = Bag();
-    Handler h = Handler([](int32_t n) { std::cout << n << "\n"; });
+    Handler h = Handler([](int32_t n) { std::cout << n << "\n" << ::tpy::check_signals; });
     Pair<int32_t> pv = Pair<int32_t>(1, 2);
     Pair<std::vector<int32_t>> pl = Pair<std::vector<int32_t>>({1}, {2});
-    std::cout << p.x << " " << p.y << " " << ::tpy::__len__(b.items) << "\n";
+    std::cout << p.x << " " << p.y << " " << ::tpy::__len__(b.items) << "\n" << ::tpy::check_signals;
     h.cb(3);
-    std::cout << pv.first << " " << ::tpy::__len__(pl.second) << "\n";
+    std::cout << pv.first << " " << ::tpy::__len__(pl.second) << "\n" << ::tpy::check_signals;
 }
 
 // main()

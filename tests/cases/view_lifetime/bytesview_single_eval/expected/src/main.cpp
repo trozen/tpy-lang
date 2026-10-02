@@ -21,7 +21,7 @@ int32_t calls{};
 void single_eval_into_list() {
     std::vector<::tpy::Bytes> out = std::vector<::tpy::Bytes>{};
     out.push_back(::tpy::Bytes(::tpy::bytes_slice(::tpyapp::main::make(), ::tpy::BasicSlice{1, 3})));
-    std::cout << calls << " " << ::tpy::__len__(::tpy::__getitem__(out, 0)) << "\n";
+    std::cout << calls << " " << ::tpy::__len__(::tpy::__getitem__(out, 0)) << "\n" << ::tpy::check_signals;
 }
 
 // def single_eval_into_field() -> None:
@@ -34,7 +34,7 @@ void single_eval_into_field() {
     calls = 0;
     Holder h = Holder();
     h.b = ::tpy::Bytes(::tpy::bytes_slice(::tpyapp::main::make(), ::tpy::BasicSlice{0, 2}));
-    std::cout << calls << " " << ::tpy::__len__(h.b) << "\n";
+    std::cout << calls << " " << ::tpy::__len__(h.b) << "\n" << ::tpy::check_signals;
 }
 
 // def single_eval_into_bytearray() -> None:
@@ -45,7 +45,7 @@ void single_eval_into_field() {
 void single_eval_into_bytearray() {
     calls = 0;
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_slice(::tpyapp::main::make(), ::tpy::BasicSlice{1, 3}));
-    std::cout << calls << " " << ::tpy::__len__(ba) << "\n";
+    std::cout << calls << " " << ::tpy::__len__(ba) << "\n" << ::tpy::check_signals;
 }
 
 // def single_eval_into_any() -> None:
@@ -58,7 +58,7 @@ void single_eval_into_any() {
     calls = 0;
     std::vector<::tpy::Any> items = std::vector<::tpy::Any>{};
     items.push_back(::tpy::make_any(::tpy::Bytes(::tpy::bytes_slice(::tpyapp::main::make(), ::tpy::BasicSlice{1, 3}))));
-    std::cout << calls << " " << ::tpy::__len__(items) << "\n";
+    std::cout << calls << " " << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -78,7 +78,7 @@ void main() {
     Holder h = Holder();
     h.set_bytes(::tpy::bytes_literal("hello", 5));
     h.set_str("world");
-    std::cout << ::tpy::__len__(h.b) << " " << h.s << "\n";
+    std::cout << ::tpy::__len__(h.b) << " " << h.s << "\n" << ::tpy::check_signals;
 }
 
 // calls = 0

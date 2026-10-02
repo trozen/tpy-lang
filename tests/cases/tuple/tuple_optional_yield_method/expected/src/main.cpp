@@ -25,7 +25,7 @@ void main() {
             P* a = std::get<0>(__tup_1);
             P* b = std::get<1>(__tup_1);
             if ((a != nullptr)) {
-                std::cout << a->x << "\n";
+                std::cout << a->x << "\n" << ::tpy::check_signals;
             }
         }
     }

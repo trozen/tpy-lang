@@ -123,12 +123,12 @@ namespace tpyapp::main {
 //     print(or_rebind())
 //     print(not_rebind())
 void main() {
-    std::cout << ::tpyapp::main::drain({1, 2, 3}) << "\n";
-    std::cout << ::tpyapp::main::invariant({7, 8}) << "\n";
-    std::cout << ::tpyapp::main::compound({4, 5}, true) << "\n";
-    std::cout << ::tpyapp::main::compound({4, 5}, false) << "\n";
-    std::cout << ::tpyapp::main::or_rebind() << "\n";
-    std::cout << ::tpyapp::main::not_rebind() << "\n";
+    std::cout << ::tpyapp::main::drain({1, 2, 3}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::invariant({7, 8}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::compound({4, 5}, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::compound({4, 5}, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::or_rebind() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::not_rebind() << "\n" << ::tpy::check_signals;
 }
 
 // main()

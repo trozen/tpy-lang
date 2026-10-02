@@ -29,12 +29,12 @@ void main() {
     v.push_back(20);
     v.push_back(30);
     int32_t n = static_cast<int32_t>(v.size());
-    std::cout << n << "\n";
-    std::cout << static_cast<int32_t>(v.size()) << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(v.size()) << "\n" << ::tpy::check_signals;
     v.reserve(100);
     int32_t c = static_cast<int32_t>(v.capacity());
-    std::cout << c << "\n";
-    std::cout << static_cast<int32_t>(v.size()) << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(v.size()) << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native, cpp_template

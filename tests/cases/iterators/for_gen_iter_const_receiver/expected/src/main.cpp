@@ -11,8 +11,8 @@ namespace tpyapp::main {
 //     print(c.sum_all())   # non-draining -> same
 void main() {
     Consumer c = Consumer(Source(4));
-    std::cout << c.sum_all() << "\n";
-    std::cout << c.sum_all() << "\n";
+    std::cout << c.sum_all() << "\n" << ::tpy::check_signals;
+    std::cout << c.sum_all() << "\n" << ::tpy::check_signals;
 }
 
 

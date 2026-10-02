@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def greet(pet: Pet) -> None:
 //     print(pet.speak())
 void greet(::tpyapp::pet::Pet& pet) {
-    std::cout << pet.speak() << "\n";
+    std::cout << pet.speak() << "\n" << ::tpy::check_signals;
 }
 
 // def echo(pet: Pet) -> Pet:
@@ -35,16 +35,16 @@ void greet(::tpyapp::pet::Pet& pet) {
 void main() {
     Dog __slot_1{Dog()};
     ::tpyapp::pet::Pet* dog = &__slot_1;
-    std::cout << dog->speak() << "\n";
+    std::cout << dog->speak() << "\n" << ::tpy::check_signals;
     ::tpy::Adapter<::tpyapp::pet::Pet, Cat> __slot_2{Cat()};
     ::tpyapp::pet::Pet* cat = &__slot_2;
-    std::cout << cat->speak() << "\n";
+    std::cout << cat->speak() << "\n" << ::tpy::check_signals;
     Dog __tmp_1{Dog()};
     ::tpyapp::main::greet(__tmp_1);
     ::tpy::Adapter<::tpyapp::pet::Pet, Cat> __tmp_2{Cat()};
     ::tpyapp::main::greet(__tmp_2);
     ::tpyapp::pet::Pet* p = &::tpyapp::main::echo((*dog));
-    std::cout << p->speak() << "\n";
+    std::cout << p->speak() << "\n" << ::tpy::check_signals;
 }
 
 // # Tests cross-module @dynamic protocol: import, local vars, params, return, structural conformance.

@@ -30,8 +30,8 @@ namespace tpyapp::main {
         (void)std::move(__r0).value();
         __sub_0.reset();
         a->n = ::tpy::add_check<int32_t>(a->n, 10);
-        std::cout << ::tpy::__getitem__(items, 0).n << "\n";
-        std::cout << b->n << "\n";
+        std::cout << ::tpy::__getitem__(items, 0).n << "\n" << ::tpy::check_signals;
+        std::cout << b->n << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

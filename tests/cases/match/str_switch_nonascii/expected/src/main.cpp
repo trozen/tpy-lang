@@ -63,9 +63,9 @@ int32_t classify(std::string_view s) {
 //     print(classify("caf\u00e9"))
 //     print(classify("nope"))
 void main() {
-    std::cout << ::tpyapp::main::classify("x") << "\n";
-    std::cout << ::tpyapp::main::classify("caf\xc3\xa9") << "\n";
-    std::cout << ::tpyapp::main::classify("nope") << "\n";
+    std::cout << ::tpyapp::main::classify("x") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify("caf\xc3\xa9") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify("nope") << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(Limits.DOUBLE)
 //     print(Limits.TRIPLE)
 void main() {
-    std::cout << Limits::BASE << "\n";
-    std::cout << Limits::DOUBLE << "\n";
-    std::cout << Limits::TRIPLE << "\n";
+    std::cout << Limits::BASE << "\n" << ::tpy::check_signals;
+    std::cout << Limits::DOUBLE << "\n" << ::tpy::check_signals;
+    std::cout << Limits::TRIPLE << "\n" << ::tpy::check_signals;
 }
 
 // main()

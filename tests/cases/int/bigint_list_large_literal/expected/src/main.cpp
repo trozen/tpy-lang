@@ -44,25 +44,25 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const ::tpy::BigInt& x = *__beg_0;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::vector<::tpy::BigInt> neg = {static_cast<int64_t>(-1234567890123456789), 5};
-    std::cout << ::tpy::__getitem__(neg, 0) << " " << ::tpy::__getitem__(neg, 1) << "\n";
+    std::cout << ::tpy::__getitem__(neg, 0) << " " << ::tpy::__getitem__(neg, 1) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<::tpy::BigInt>> nested = {{static_cast<int64_t>(1234567890123456789), 5}};
-    std::cout << ::tpy::__getitem__(::tpy::__getitem__(nested, 0), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(nested, 0), 1) << "\n";
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(nested, 0), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(nested, 0), 1) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> edges = {2147483647, -2147483647, static_cast<int64_t>(2147483648), static_cast<int64_t>(-2147483648), static_cast<int64_t>(9223372036854775807), static_cast<int64_t>((-9223372036854775807LL - 1)), static_cast<uint64_t>(9223372036854775808ull), ::tpy::BigInt::from_str("18446744073709551616"), ::tpy::BigInt::from_str("-9223372036854775809")};
     auto& __obj_1 = edges;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const ::tpy::BigInt& x = *__beg_1;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     ::tpy::BigInt tmin = ::tpy::BigInt(static_cast<int64_t>(-9223372036854775807LL - 1));
     ::tpy::BigInt tbig = ::tpy::BigInt::from_str("18446744073709551616");
-    std::cout << tmin << " " << tbig << "\n";
+    std::cout << tmin << " " << tbig << "\n" << ::tpy::check_signals;
     std::vector<int64_t> fixed = {static_cast<int64_t>(1234567890123456789), 5};
-    std::cout << ::tpy::__getitem__(fixed, 0) << " " << ::tpy::__getitem__(fixed, 1) << "\n";
+    std::cout << ::tpy::__getitem__(fixed, 0) << " " << ::tpy::__getitem__(fixed, 1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

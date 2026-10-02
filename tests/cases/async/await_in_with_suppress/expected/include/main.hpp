@@ -131,7 +131,7 @@ inline std::string Suppressor::__enter__() const {
 //     return False
 inline bool Suppressor::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
     if ((exc_val != nullptr)) {
-        std::cout << std::format("{} suppressing", this->name) << "\n";
+        std::cout << std::format("{} suppressing", this->name) << "\n" << ::tpy::check_signals;
         return true;
     }
     return false;

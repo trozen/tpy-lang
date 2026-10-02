@@ -16,9 +16,9 @@ void __tpy_init() {
 
     static IntContainer __global_slot_1 = IntContainer(42, 100);
     c = &__global_slot_1;
-    std::cout << c->value << "\n";
-    std::cout << c->get() << "\n";
-    std::cout << c->extra << "\n";
+    std::cout << c->value << "\n" << ::tpy::check_signals;
+    std::cout << c->get() << "\n" << ::tpy::check_signals;
+    std::cout << c->extra << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

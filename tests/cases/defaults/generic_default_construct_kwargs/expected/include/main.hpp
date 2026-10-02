@@ -21,9 +21,9 @@ void main();
 //     print(c)
 template<typename T>
 void three_params(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b, ::tpy::param_val_or_ref_t<T> c) {
-    std::cout << ::tpy::ValuePrinter(a) << "\n";
-    std::cout << ::tpy::ValuePrinter(b) << "\n";
-    std::cout << ::tpy::ValuePrinter(c) << "\n";
+    std::cout << ::tpy::ValuePrinter(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ValuePrinter(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ValuePrinter(c) << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

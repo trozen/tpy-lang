@@ -117,7 +117,7 @@ inline Pinned::~Pinned() {
 //     print("  built", n)
 //     self.n = n
 inline Noisy::Noisy(int32_t n) {
-    std::cout << "  built" << " " << n << "\n";
+    std::cout << "  built" << " " << n << "\n" << ::tpy::check_signals;
     this->n = n;
 }
 

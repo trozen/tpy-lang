@@ -58,7 +58,7 @@ __coro_step step(int32_t i) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "scalar val" << " " << (n = __await_lift_0) << "\n";
+        std::cout << "scalar val" << " " << (n = __await_lift_0) << "\n" << ::tpy::check_signals;
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_1;
         continue;
@@ -68,7 +68,7 @@ __coro_step step(int32_t i) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "scalar resume" << " " << n << "\n";
+        std::cout << "scalar resume" << " " << n << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -115,14 +115,14 @@ __coro_val_scalar val_scalar() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "owning resume" << " " << ::tpy::__len__((*xs)) << " " << ::tpy::__getitem__((*xs), 0) << "\n";
+        std::cout << "owning resume" << " " << ::tpy::__len__((*xs)) << " " << ::tpy::__getitem__((*xs), 0) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < 2)) {
-            std::cout << "owning len" << " " << ::tpy::__len__(xs.emplace(std::array<int32_t, 2>{i, (::tpy::add_check<int32_t>(i, 1))})) << "\n";
+            std::cout << "owning len" << " " << ::tpy::__len__(xs.emplace(std::array<int32_t, 2>{i, (::tpy::add_check<int32_t>(i, 1))})) << "\n" << ::tpy::check_signals;
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
@@ -165,14 +165,14 @@ __coro_owning owning() {
         (void)std::move(__r0).value();
         __sub_0.reset();
         row->push_back(99);
-        std::cout << "borrow resume" << " " << ::tpy::__len__((*row)) << " " << ::tpy::__getitem__((*row), 0) << "\n";
+        std::cout << "borrow resume" << " " << ::tpy::__len__((*row)) << " " << ::tpy::__getitem__((*row), 0) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < ::tpy::__len__(rows))) {
-            std::cout << "borrow len" << " " << ::tpy::__len__((row = &(rows[static_cast<std::size_t>(i)]), *row)) << "\n";
+            std::cout << "borrow len" << " " << ::tpy::__len__((row = &(rows[static_cast<std::size_t>(i)]), *row)) << "\n" << ::tpy::check_signals;
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
@@ -232,9 +232,9 @@ Node* pick(std::vector<Node>& nodes, int32_t i) {
         __sub_0.reset();
         if ((p != nullptr)) {
             p->v = ::tpy::add_check<int32_t>(p->v, 100);
-            std::cout << "optptr resume" << " " << p->v << "\n";
+            std::cout << "optptr resume" << " " << p->v << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << "optptr resume none" << "\n";
+            std::cout << "optptr resume none" << "\n" << ::tpy::check_signals;
         }
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
@@ -243,7 +243,7 @@ Node* pick(std::vector<Node>& nodes, int32_t i) {
     case S_JOIN_0: {
         if ((i < 3)) {
             m = ::tpyapp::main::pick(nodes, i);
-            std::cout << "optptr bound" << " " << ::tpy::print_bool(((p = m) != nullptr)) << "\n";
+            std::cout << "optptr bound" << " " << ::tpy::print_bool(((p = m) != nullptr)) << "\n" << ::tpy::check_signals;
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
@@ -304,7 +304,7 @@ __coro_opt_ptr opt_ptr(std::vector<Node>& nodes) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r2).value();
         __sub_2.reset();
-        std::cout << "rows after" << " " << ::tpy::ListPrinter(::tpy::__getitem__((*rows), 0)) << " " << ::tpy::ListPrinter(::tpy::__getitem__((*rows), 1)) << "\n";
+        std::cout << "rows after" << " " << ::tpy::ListPrinter(::tpy::__getitem__((*rows), 0)) << " " << ::tpy::ListPrinter(::tpy::__getitem__((*rows), 1)) << "\n" << ::tpy::check_signals;
         nodes.emplace(std::vector<Node>{Node(7), Node(8)});
         __sub_3.emplace((*nodes));
         __state = S_RESUME_3;
@@ -315,7 +315,7 @@ __coro_opt_ptr opt_ptr(std::vector<Node>& nodes) {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r3).value();
         __sub_3.reset();
-        std::cout << "nodes after" << " " << ::tpy::__getitem__((*nodes), 0).v << " " << ::tpy::__getitem__((*nodes), 1).v << "\n";
+        std::cout << "nodes after" << " " << ::tpy::__getitem__((*nodes), 0).v << " " << ::tpy::__getitem__((*nodes), 1).v << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

@@ -65,17 +65,17 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_chatty::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "  callee: before 1" << "\n";
+        std::cout << "  callee: before 1" << "\n" << ::tpy::check_signals;
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {  // after: yield 1
-        std::cout << "  callee: after 1" << "\n";
+        std::cout << "  callee: after 1" << "\n" << ::tpy::check_signals;
         __state = S_RESUME_1;
         return 2;
     }
     case S_RESUME_1: {  // after: yield 2
-        std::cout << "  callee: after 2" << "\n";
+        std::cout << "  callee: after 2" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

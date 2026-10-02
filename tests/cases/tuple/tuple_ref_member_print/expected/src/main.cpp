@@ -15,11 +15,11 @@ namespace tpyapp::main {
 void main() {
     Box b = Box(5);
     auto t = std::tuple<int32_t, Box*>{1, &(b)};
-    std::cout << ::tpy::TuplePrinter(t) << "\n";
-    std::cout << (*std::get<1>(t)) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::__hash__(t) == ::tpy::__hash__(std::tuple<int32_t, Box>{1, Box(5)}))) << "\n";
+    std::cout << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;
+    std::cout << (*std::get<1>(t)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::__hash__(t) == ::tpy::__hash__(std::tuple<int32_t, Box>{1, Box(5)}))) << "\n" << ::tpy::check_signals;
     b.val = 7;
-    std::cout << ::tpy::TuplePrinter(t) << "\n";
+    std::cout << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;
 }
 
 // main()

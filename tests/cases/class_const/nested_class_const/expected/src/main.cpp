@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(Outer.Inner.LIMIT)
 //     print(Outer.Inner.TAG)
 void main() {
-    std::cout << Outer::Inner::LIMIT << "\n";
-    std::cout << Outer::Inner::TAG << "\n";
+    std::cout << Outer::Inner::LIMIT << "\n" << ::tpy::check_signals;
+    std::cout << Outer::Inner::TAG << "\n" << ::tpy::check_signals;
 }
 
 // main()

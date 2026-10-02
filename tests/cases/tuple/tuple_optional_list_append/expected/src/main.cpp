@@ -54,28 +54,28 @@ void main() {
     P keep = P(6);
     pairs.push_back(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P*>{P(keep), nullptr})));
     pairs.push_back(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P*>{P(keep), nullptr})));
-    std::cout << ::tpy::__len__(pairs) << "\n";
+    std::cout << ::tpy::__len__(pairs) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<std::optional<P>, std::optional<P>>> pairs2 = std::vector<std::tuple<std::optional<P>, std::optional<P>>>{};
     pairs2.push_back(::tpy::__getitem__(pairs, 0));
     pairs2.push_back(::tpy::__getitem__(pairs, 1));
-    std::cout << ::tpy::__len__(pairs2) << "\n";
+    std::cout << ::tpy::__len__(pairs2) << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(::tpy::__getitem__(pairs, 0));
     P* a0 = std::get<0>(__tup_1);
     P* b0 = std::get<1>(__tup_1);
     if ((a0 != nullptr)) {
-        std::cout << a0->x << "\n";
+        std::cout << a0->x << "\n" << ::tpy::check_signals;
     }
     if ((b0 != nullptr)) {
-        std::cout << b0->x << "\n";
+        std::cout << b0->x << "\n" << ::tpy::check_signals;
     }
     auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(::tpy::__getitem__(pairs, 1));
     P* a1 = std::get<0>(__tup_2);
     P* b1 = std::get<1>(__tup_2);
     if ((a1 != nullptr)) {
-        std::cout << a1->x << "\n";
+        std::cout << a1->x << "\n" << ::tpy::check_signals;
     }
     if ((b1 != nullptr)) {
-        std::cout << b1->x << "\n";
+        std::cout << b1->x << "\n" << ::tpy::check_signals;
     }
 }
 

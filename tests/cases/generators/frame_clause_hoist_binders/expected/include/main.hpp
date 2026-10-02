@@ -1054,7 +1054,7 @@ void show(std::string_view name, T_g& g) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         std::string_view v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << std::format("{}: {}", name, v) << "\n";
+        std::cout << std::format("{}: {}", name, v) << "\n" << ::tpy::check_signals;
     }
 }
 

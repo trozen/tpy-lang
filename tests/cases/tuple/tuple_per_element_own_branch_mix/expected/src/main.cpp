@@ -38,11 +38,11 @@ int32_t use(Holder& h, bool c) {
 //     print(h2.pair[1].val)   # 8 (owning slot mutated, field untouched)
 void main() {
     Holder h = Holder(Box(5));
-    std::cout << ::tpyapp::main::use(h, false) << "\n";
-    std::cout << std::get<1>(h.pair).val << "\n";
+    std::cout << ::tpyapp::main::use(h, false) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(h.pair).val << "\n" << ::tpy::check_signals;
     Holder h2 = Holder(Box(8));
-    std::cout << ::tpyapp::main::use(h2, true) << "\n";
-    std::cout << std::get<1>(h2.pair).val << "\n";
+    std::cout << ::tpyapp::main::use(h2, true) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(h2.pair).val << "\n" << ::tpy::check_signals;
 }
 
 // main()

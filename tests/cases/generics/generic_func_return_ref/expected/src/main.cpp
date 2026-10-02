@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void test() {
     std::vector<Point> pts = {Point(::tpy::BigInt(1)), Point(::tpy::BigInt(2))};
     ::tpyapp::main::process<Point>(pts);
-    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n" << ::tpy::check_signals;
 }
 
 // test()

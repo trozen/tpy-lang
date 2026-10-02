@@ -20,10 +20,10 @@ void main() {
     Bag b = Bag(::tpy::BigInt(5));
     calls = 0;
     bool in_range = ({ auto&& _cmp1 = b.__getattr__("anything"); (1 < _cmp1) && (_cmp1 < 10); });
-    std::cout << "in range:" << " " << ::tpy::print_bool(in_range) << " " << "calls:" << " " << calls << "\n";
+    std::cout << "in range:" << " " << ::tpy::print_bool(in_range) << " " << "calls:" << " " << calls << "\n" << ::tpy::check_signals;
     calls = 0;
     bool member = ({ auto&& __in_lhs = b.__getattr__("anything"); (__in_lhs == 5) || (__in_lhs == 9); });
-    std::cout << "membership:" << " " << ::tpy::print_bool(member) << " " << "calls:" << " " << calls << "\n";
+    std::cout << "membership:" << " " << ::tpy::print_bool(member) << " " << "calls:" << " " << calls << "\n" << ::tpy::check_signals;
 }
 
 // # A `__getattr__` fallback is the other hidden call behind field-access syntax,

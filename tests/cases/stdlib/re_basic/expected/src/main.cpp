@@ -122,79 +122,79 @@ namespace tpyapp::main {
 //     print("ok")
 void main() {
     ::tpystd::re::Pattern p = ::tpystd::re::compile("(\\w+)\\s+(\\w+)");
-    std::cout << std::format("pat='{}'", p.pattern) << "\n";
+    std::cout << std::format("pat='{}'", p.pattern) << "\n" << ::tpy::check_signals;
     std::optional<::tpystd::re::Match> m = p.search("hello world");
     if ((!m.has_value())) {
-        std::cout << "FAIL: search None" << "\n";
+        std::cout << "FAIL: search None" << "\n" << ::tpy::check_signals;
         return;
     }
-    std::cout << std::format("g0='{}'", (*m).group()) << "\n";
-    std::cout << std::format("g1='{}'", (*m).group(1)) << "\n";
-    std::cout << std::format("g2='{}'", (*m).group(2)) << "\n";
-    std::cout << std::format("span={}", ::tpy::tuple_to_str((*m).span())) << "\n";
-    std::cout << std::format("start={} end={}", (*m).start(), (*m).end()) << "\n";
-    std::cout << std::format("g1.span={} g2.span={}", ::tpy::tuple_to_str((*m).span(1)), ::tpy::tuple_to_str((*m).span(2))) << "\n";
+    std::cout << std::format("g0='{}'", (*m).group()) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("g1='{}'", (*m).group(1)) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("g2='{}'", (*m).group(2)) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("span={}", ::tpy::tuple_to_str((*m).span())) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("start={} end={}", (*m).start(), (*m).end()) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("g1.span={} g2.span={}", ::tpy::tuple_to_str((*m).span(1)), ::tpy::tuple_to_str((*m).span(2))) << "\n" << ::tpy::check_signals;
     ::tpystd::re::Pattern p_dig = ::tpystd::re::compile("\\d+");
-    std::cout << std::format("match-yes={}", ::tpy::bool_to_str((p_dig.match("123abc").has_value()))) << "\n";
-    std::cout << std::format("match-no={}", ::tpy::bool_to_str((!p_dig.match("abc123").has_value()))) << "\n";
-    std::cout << std::format("full-yes={}", ::tpy::bool_to_str((p_dig.fullmatch("123").has_value()))) << "\n";
-    std::cout << std::format("full-no-tail={}", ::tpy::bool_to_str((!p_dig.fullmatch("123x").has_value()))) << "\n";
-    std::cout << std::format("full-no-head={}", ::tpy::bool_to_str((!p_dig.fullmatch("x123").has_value()))) << "\n";
-    std::cout << std::format("none={}", ::tpy::bool_to_str((!::tpystd::re::search("zzz", "hello").has_value()))) << "\n";
-    std::cout << std::format("findall-digits={}", ::tpy::list_to_str(p_dig.findall("a1 b22 c333"))) << "\n";
-    std::cout << std::format("findall-words={}", ::tpy::list_to_str(::tpystd::re::compile("\\w+").findall("foo bar baz"))) << "\n";
-    std::cout << std::format("findall-empty={}", ::tpy::list_to_str(p_dig.findall("no digits here"))) << "\n";
-    std::cout << std::format("split-comma={}", ::tpy::list_to_str(::tpystd::re::compile(",").split("a,b,c,d"))) << "\n";
-    std::cout << std::format("split-ws={}", ::tpy::list_to_str(::tpystd::re::compile("\\s+").split("one  two   three"))) << "\n";
-    std::cout << std::format("split-max2={}", ::tpy::list_to_str(::tpystd::re::compile(",").split("a,b,c,d,e", 2))) << "\n";
-    std::cout << std::format("split-no-match={}", ::tpy::list_to_str(::tpystd::re::compile("X").split("abc"))) << "\n";
-    std::cout << std::format("split-edges={}", ::tpy::list_to_str(::tpystd::re::compile(",").split(",a,b,"))) << "\n";
-    std::cout << std::format("sub-lit={}", ::tpystd::re::sub("\\d+", "NUM", "a1 b22 c333")) << "\n";
-    std::cout << std::format("sub-no-match={}", ::tpystd::re::sub("X", "Y", "abc")) << "\n";
-    std::cout << std::format("sub-empty={}", ::tpystd::re::sub("\\s+", "", "a b  c   d")) << "\n";
-    std::cout << std::format("sub-zerow={}", ::tpystd::re::sub("x*", "-", "abc")) << "\n";
+    std::cout << std::format("match-yes={}", ::tpy::bool_to_str((p_dig.match("123abc").has_value()))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("match-no={}", ::tpy::bool_to_str((!p_dig.match("abc123").has_value()))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("full-yes={}", ::tpy::bool_to_str((p_dig.fullmatch("123").has_value()))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("full-no-tail={}", ::tpy::bool_to_str((!p_dig.fullmatch("123x").has_value()))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("full-no-head={}", ::tpy::bool_to_str((!p_dig.fullmatch("x123").has_value()))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("none={}", ::tpy::bool_to_str((!::tpystd::re::search("zzz", "hello").has_value()))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("findall-digits={}", ::tpy::list_to_str(p_dig.findall("a1 b22 c333"))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("findall-words={}", ::tpy::list_to_str(::tpystd::re::compile("\\w+").findall("foo bar baz"))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("findall-empty={}", ::tpy::list_to_str(p_dig.findall("no digits here"))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("split-comma={}", ::tpy::list_to_str(::tpystd::re::compile(",").split("a,b,c,d"))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("split-ws={}", ::tpy::list_to_str(::tpystd::re::compile("\\s+").split("one  two   three"))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("split-max2={}", ::tpy::list_to_str(::tpystd::re::compile(",").split("a,b,c,d,e", 2))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("split-no-match={}", ::tpy::list_to_str(::tpystd::re::compile("X").split("abc"))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("split-edges={}", ::tpy::list_to_str(::tpystd::re::compile(",").split(",a,b,"))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("sub-lit={}", ::tpystd::re::sub("\\d+", "NUM", "a1 b22 c333")) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("sub-no-match={}", ::tpystd::re::sub("X", "Y", "abc")) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("sub-empty={}", ::tpystd::re::sub("\\s+", "", "a b  c   d")) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("sub-zerow={}", ::tpystd::re::sub("x*", "-", "abc")) << "\n" << ::tpy::check_signals;
     std::optional<::tpystd::re::Match> m_mod = ::tpystd::re::search("(\\w+)", "foo bar");
     if ((m_mod.has_value())) {
-        std::cout << std::format("mod-search='{}'", (*m_mod).group()) << "\n";
+        std::cout << std::format("mod-search='{}'", (*m_mod).group()) << "\n" << ::tpy::check_signals;
     }
-    std::cout << std::format("mod-match={}", ::tpy::bool_to_str((::tpystd::re::match("\\d", "5x").has_value()))) << "\n";
-    std::cout << std::format("mod-fullmatch={}", ::tpy::bool_to_str((::tpystd::re::fullmatch("\\d+", "42").has_value()))) << "\n";
-    std::cout << std::format("icase-search={}", ::tpy::bool_to_str((::tpystd::re::compile("hello", ::tpystd::re::IGNORECASE).search("HELLO World").has_value()))) << "\n";
-    std::cout << std::format("icase-no={}", ::tpy::bool_to_str((!::tpystd::re::compile("hello").search("HELLO").has_value()))) << "\n";
+    std::cout << std::format("mod-match={}", ::tpy::bool_to_str((::tpystd::re::match("\\d", "5x").has_value()))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("mod-fullmatch={}", ::tpy::bool_to_str((::tpystd::re::fullmatch("\\d+", "42").has_value()))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("icase-search={}", ::tpy::bool_to_str((::tpystd::re::compile("hello", ::tpystd::re::IGNORECASE).search("HELLO World").has_value()))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("icase-no={}", ::tpy::bool_to_str((!::tpystd::re::compile("hello").search("HELLO").has_value()))) << "\n" << ::tpy::check_signals;
     ::tpystd::re::Pattern p_ml = ::tpystd::re::compile("^line", ::tpystd::re::MULTILINE);
-    std::cout << std::format("ml-count={}", ::tpy::__len__(p_ml.findall("line1\nline2\nfoo\nline3"))) << "\n";
-    std::cout << std::format("ml-off={}", ::tpy::__len__(::tpystd::re::compile("^line").findall("line1\nline2\nfoo"))) << "\n";
-    std::cout << std::format("dotall-yes={}", ::tpy::bool_to_str((::tpystd::re::compile("a.c", ::tpystd::re::DOTALL).search("a\nc").has_value()))) << "\n";
-    std::cout << std::format("dotall-no={}", ::tpy::bool_to_str((!::tpystd::re::compile("a.c").search("a\nc").has_value()))) << "\n";
+    std::cout << std::format("ml-count={}", ::tpy::__len__(p_ml.findall("line1\nline2\nfoo\nline3"))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("ml-off={}", ::tpy::__len__(::tpystd::re::compile("^line").findall("line1\nline2\nfoo"))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("dotall-yes={}", ::tpy::bool_to_str((::tpystd::re::compile("a.c", ::tpystd::re::DOTALL).search("a\nc").has_value()))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("dotall-no={}", ::tpy::bool_to_str((!::tpystd::re::compile("a.c").search("a\nc").has_value()))) << "\n" << ::tpy::check_signals;
     ::tpystd::re::Pattern p_v = ::tpystd::re::compile("\n        \\d+    # one or more digits\n        \\s+    # whitespace\n        \\w+    # word characters\n    ", ::tpystd::re::VERBOSE);
     std::optional<::tpystd::re::Match> m_v = p_v.search("123 abc");
-    std::cout << std::format("verbose-match={}", ::tpy::bool_to_str((m_v.has_value()))) << "\n";
+    std::cout << std::format("verbose-match={}", ::tpy::bool_to_str((m_v.has_value()))) << "\n" << ::tpy::check_signals;
     if ((m_v.has_value())) {
-        std::cout << std::format("verbose-g0='{}'", (*m_v).group()) << "\n";
+        std::cout << std::format("verbose-g0='{}'", (*m_v).group()) << "\n" << ::tpy::check_signals;
     }
     std::optional<::tpystd::re::Match> m_a = ::tpystd::re::compile("\\w+", ::tpystd::re::ASCII).search("hello");
-    std::cout << std::format("ascii-yes={}", ::tpy::bool_to_str((m_a.has_value()))) << "\n";
-    std::cout << std::format("q-star={}", ::tpy::list_to_str(::tpystd::re::compile("a*").findall("aaabaa"))) << "\n";
-    std::cout << std::format("q-range={}", ::tpy::list_to_str(::tpystd::re::compile("\\d{2,3}").findall("1 22 333 4444"))) << "\n";
-    std::cout << std::format("alt={}", ::tpy::list_to_str(::tpystd::re::compile("cat|dog").findall("a cat and a dog"))) << "\n";
-    std::cout << std::format("anchor-start={}", ::tpy::list_to_str(::tpystd::re::compile("^foo").findall("foo bar"))) << "\n";
-    std::cout << std::format("anchor-end={}", ::tpy::list_to_str(::tpystd::re::compile("baz$").findall("foo bar baz"))) << "\n";
-    std::cout << std::format("word-bound={}", ::tpy::list_to_str(::tpystd::re::compile("\\bcat\\b").findall("cat scatter category cat"))) << "\n";
-    std::cout << std::format("backref-pat={}", ::tpy::bool_to_str((::tpystd::re::compile("(\\w+) \\1").search("foo foo bar").has_value()))) << "\n";
-    std::cout << std::format("backref-no={}", ::tpy::bool_to_str((!::tpystd::re::compile("(\\w+) \\1").search("foo bar").has_value()))) << "\n";
+    std::cout << std::format("ascii-yes={}", ::tpy::bool_to_str((m_a.has_value()))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("q-star={}", ::tpy::list_to_str(::tpystd::re::compile("a*").findall("aaabaa"))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("q-range={}", ::tpy::list_to_str(::tpystd::re::compile("\\d{2,3}").findall("1 22 333 4444"))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("alt={}", ::tpy::list_to_str(::tpystd::re::compile("cat|dog").findall("a cat and a dog"))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("anchor-start={}", ::tpy::list_to_str(::tpystd::re::compile("^foo").findall("foo bar"))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("anchor-end={}", ::tpy::list_to_str(::tpystd::re::compile("baz$").findall("foo bar baz"))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("word-bound={}", ::tpy::list_to_str(::tpystd::re::compile("\\bcat\\b").findall("cat scatter category cat"))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("backref-pat={}", ::tpy::bool_to_str((::tpystd::re::compile("(\\w+) \\1").search("foo foo bar").has_value()))) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("backref-no={}", ::tpy::bool_to_str((!::tpystd::re::compile("(\\w+) \\1").search("foo bar").has_value()))) << "\n" << ::tpy::check_signals;
     std::optional<::tpystd::re::Match> m_nc = ::tpystd::re::compile("(?:\\d+)-(\\w+)").search("123-abc");
     if ((m_nc.has_value())) {
-        std::cout << std::format("non-cap-g1='{}'", (*m_nc).group(1)) << "\n";
+        std::cout << std::format("non-cap-g1='{}'", (*m_nc).group(1)) << "\n" << ::tpy::check_signals;
     }
     {
         try {
             ::tpystd::re::compile("(unclosed");
-            std::cout << "FAIL: should have raised" << "\n";
+            std::cout << "FAIL: should have raised" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::re::error&) {
-            std::cout << "err-caught=True" << "\n";
+            std::cout << "err-caught=True" << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "ok" << "\n";
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // # re: CPython-compatible surface -- compile/search/match/fullmatch/findall/

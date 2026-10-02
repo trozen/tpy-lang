@@ -22,7 +22,7 @@ void __tpy_init() {
         x = &__global_slot_1;
     }
     if ((x != nullptr)) {
-        std::cout << x->x << "\n";
+        std::cout << x->x << "\n" << ::tpy::check_signals;
     }
 }
 

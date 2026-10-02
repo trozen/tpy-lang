@@ -55,7 +55,7 @@ __coro_relay relay(Box2& b) {
         r = std::move(__r0).value();
         __sub_0.reset();
         r->v = ::tpy::BigInt(77);
-        std::cout << (*b).v << "\n";
+        std::cout << (*b).v << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

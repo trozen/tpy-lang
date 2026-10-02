@@ -131,46 +131,46 @@ __gen_gen_chars gen_chars() {
 //     print("gen", out)
 void main() {
     std::vector<std::string> two = {std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 1))), std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 2)))};
-    std::cout << "listlit" << " " << ::tpy::__len__(two) << " " << ::tpy::str_join("", two) << "\n";
+    std::cout << "listlit" << " " << ::tpy::__len__(two) << " " << ::tpy::str_join("", two) << "\n" << ::tpy::check_signals;
     std::vector<std::string> lut = ::tpyapp::main::extend_loop();
-    std::cout << "extend" << " " << ::tpy::__len__(lut) << " " << ::tpy::str_join("", lut) << "\n";
+    std::cout << "extend" << " " << ::tpy::__len__(lut) << " " << ::tpy::str_join("", lut) << "\n" << ::tpy::check_signals;
     std::vector<std::string> app = std::vector<std::string>{};
     app.push_back(std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 1))));
     char c = ::tpy::__getitem__(CHARS, 2);
     app.push_back(std::string(::tpy::char_to_str(c)));
     ::tpy::list_insert(app, 0, std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 3))));
     ::tpy::__setitem__(app, 0, std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 4))));
-    std::cout << "methods" << " " << ::tpy::__len__(app) << " " << ::tpy::str_join("", app) << "\n";
+    std::cout << "methods" << " " << ::tpy::__len__(app) << " " << ::tpy::str_join("", app) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<std::string> st = ::tpy::ordered_set<std::string>();
     st.insert(std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 5))));
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>();
     ::tpy::__setitem__(d, ::tpy::char_to_str(::tpy::__getitem__(CHARS, 6)), std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 7))));
-    std::cout << "setdict" << " " << ::tpy::__len__(st) << " " << ::tpy::__len__(d) << " " << ::tpy::__getitem__(d, ::tpy::char_to_str(::tpy::__getitem__(CHARS, 6))) << "\n";
+    std::cout << "setdict" << " " << ::tpy::__len__(st) << " " << ::tpy::__len__(d) << " " << ::tpy::__getitem__(d, ::tpy::char_to_str(::tpy::__getitem__(CHARS, 6))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::string> dd = ::tpy::ordered_map<std::string, std::string>({{std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 6))), std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 7)))}});
     std::string hit = ::tpy::dict_get_default(dd, ::tpy::char_to_str(::tpy::__getitem__(CHARS, 6)), ::tpy::char_to_str(::tpy::__getitem__(CHARS, 1)));
     std::string miss = ::tpy::dict_get_default(dd, ::tpy::char_to_str(::tpy::__getitem__(CHARS, 0)), ::tpy::char_to_str(::tpy::__getitem__(CHARS, 1)));
-    std::cout << "getdef" << " " << hit << " " << miss << "\n";
+    std::cout << "getdef" << " " << hit << " " << miss << "\n" << ::tpy::check_signals;
     std::string pmiss = ::tpy::dict_pop_default(dd, ::tpy::char_to_str(::tpy::__getitem__(CHARS, 0)), ::tpy::char_to_str(::tpy::__getitem__(CHARS, 2)));
     std::string phit = ::tpy::dict_pop_default(dd, ::tpy::char_to_str(::tpy::__getitem__(CHARS, 6)), ::tpy::char_to_str(::tpy::__getitem__(CHARS, 2)));
-    std::cout << "popdef" << " " << pmiss << " " << phit << " " << ::tpy::__len__(dd) << "\n";
+    std::cout << "popdef" << " " << pmiss << " " << phit << " " << ::tpy::__len__(dd) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<std::string> slit = ::tpy::ordered_set<std::string>({std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 1)))});
     ::tpy::set_update(slit, ::tpy::ordered_set<std::string>({std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 2)))}));
     ::tpy::ordered_map<std::string, std::string> dlit = ::tpy::ordered_map<std::string, std::string>({{std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 3))), std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 4)))}});
     ::tpy::__delitem__(dlit, ::tpy::char_to_str(::tpy::__getitem__(CHARS, 3)));
-    std::cout << "literals" << " " << ::tpy::__len__(slit) << " " << ::tpy::__len__(dlit) << "\n";
+    std::cout << "literals" << " " << ::tpy::__len__(slit) << " " << ::tpy::__len__(dlit) << "\n" << ::tpy::check_signals;
     std::tuple<std::string, int32_t> pair = std::tuple<std::string, int32_t>{std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 2))), 1};
-    std::cout << "tuple" << " " << std::get<0>(pair) << " " << std::get<1>(pair) << "\n";
+    std::cout << "tuple" << " " << std::get<0>(pair) << " " << std::get<1>(pair) << "\n" << ::tpy::check_signals;
     std::string one = std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 8)));
-    std::cout << "params" << " " << one << " " << ::tpyapp::main::take_str(::tpy::char_to_str(::tpy::__getitem__(CHARS, 9))) << " " << ::tpyapp::main::take_own(std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 10)))) << " " << ::tpyapp::main::take_view(::tpy::char_to_str(::tpy::__getitem__(CHARS, 11))) << "\n";
+    std::cout << "params" << " " << one << " " << ::tpyapp::main::take_str(::tpy::char_to_str(::tpy::__getitem__(CHARS, 9))) << " " << ::tpyapp::main::take_own(std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, 10)))) << " " << ::tpyapp::main::take_view(::tpy::char_to_str(::tpy::__getitem__(CHARS, 11))) << "\n" << ::tpy::check_signals;
     Tag t = Tag("ab");
-    std::cout << "ctor" << " " << t.name << " " << TOP << "\n";
+    std::cout << "ctor" << " " << t.name << " " << TOP << "\n" << ::tpy::check_signals;
     t.pick("xy");
-    std::cout << "field" << " " << t.name << " " << ::tpyapp::main::ret_slot(::tpy::BigInt(1)) << "\n";
+    std::cout << "field" << " " << t.name << " " << ::tpyapp::main::ret_slot(::tpy::BigInt(1)) << "\n" << ::tpy::check_signals;
     char ch = 'x';
     std::vector<std::string> chars = {std::string(::tpy::char_to_str(ch))};
-    std::cout << "charvar" << " " << ::tpy::__len__(chars) << " " << ::tpy::__getitem__(chars, 0) << "\n";
+    std::cout << "charvar" << " " << ::tpy::__len__(chars) << " " << ::tpy::__getitem__(chars, 0) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::String> owned = {::tpy::String(1, ::tpy::__getitem__(CHARS, 1))};
-    std::cout << "string" << " " << ::tpy::__len__(owned) << " " << ::tpy::__getitem__(owned, 0) << "\n";
+    std::cout << "string" << " " << ::tpy::__len__(owned) << " " << ::tpy::__getitem__(owned, 0) << "\n" << ::tpy::check_signals;
     std::vector<std::string> comp = ({
         std::vector<std::string> __result;
         const int32_t __stop_0 = 3;
@@ -180,7 +180,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << "comp" << " " << ::tpy::__len__(comp) << " " << ::tpy::str_join("", comp) << "\n";
+    std::cout << "comp" << " " << ::tpy::__len__(comp) << " " << ::tpy::str_join("", comp) << "\n" << ::tpy::check_signals;
     std::string out = "";
     {
         auto __src_1 = ::tpyapp::main::gen_chars();
@@ -192,7 +192,7 @@ void main() {
             out += g;
         }
     }
-    std::cout << "gen" << " " << out << "\n";
+    std::cout << "gen" << " " << out << "\n" << ::tpy::check_signals;
 }
 
 // # module-level position: a char at a top-level str slot

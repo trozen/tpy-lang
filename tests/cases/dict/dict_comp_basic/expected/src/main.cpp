@@ -41,7 +41,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t k = *__beg_1;
-        std::cout << k << " " << ::tpy::__getitem__(squares, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(squares, k) << "\n" << ::tpy::check_signals;
     }
     std::vector<std::string> names = {"alice", "bob", "charlie"};
     ::tpy::ordered_map<std::string, int32_t> name_lens = ({
@@ -55,9 +55,9 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__getitem__(name_lens, "alice") << "\n";
-    std::cout << ::tpy::__getitem__(name_lens, "bob") << "\n";
-    std::cout << ::tpy::__getitem__(name_lens, "charlie") << "\n";
+    std::cout << ::tpy::__getitem__(name_lens, "alice") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(name_lens, "bob") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(name_lens, "charlie") << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> src = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     ::tpy::ordered_map<std::string, int32_t> copy = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
@@ -72,8 +72,8 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__getitem__(copy, "a") << "\n";
-    std::cout << ::tpy::__getitem__(copy, "b") << "\n";
+    std::cout << ::tpy::__getitem__(copy, "a") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(copy, "b") << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, int32_t> r2 = ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
         const int32_t __start_4 = 2;
@@ -88,7 +88,7 @@ void main() {
     auto __end_6 = __obj_6.end();
     for (; __beg_6 != __end_6; ++__beg_6) {
         int32_t k = *__beg_6;
-        std::cout << k << " " << ::tpy::__getitem__(r2, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(r2, k) << "\n" << ::tpy::check_signals;
     }
 }
 

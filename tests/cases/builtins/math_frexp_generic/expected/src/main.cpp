@@ -37,25 +37,25 @@ void main() {
     auto __tup_1 = ::tpy::stdlib::math::frexp<int32_t>(12.0);
     double m1 = std::get<0>(__tup_1);
     int32_t e1 = std::get<1>(__tup_1);
-    std::cout << ::tpy::print_float(m1) << " " << e1 << "\n";
+    std::cout << ::tpy::print_float(m1) << " " << e1 << "\n" << ::tpy::check_signals;
     auto __tup_2 = ::tpy::stdlib::math::frexp<int64_t>(12.0);
     double m2 = std::get<0>(__tup_2);
     int64_t e2 = std::get<1>(__tup_2);
-    std::cout << ::tpy::print_float(m2) << " " << e2 << "\n";
+    std::cout << ::tpy::print_float(m2) << " " << e2 << "\n" << ::tpy::check_signals;
     auto __tup_3 = ::tpy::stdlib::math::frexp<::tpy::BigInt>(12.0);
     double m3 = std::get<0>(__tup_3);
     const ::tpy::BigInt& e3 = std::get<1>(__tup_3);
-    std::cout << ::tpy::print_float(m3) << " " << e3 << "\n";
+    std::cout << ::tpy::print_float(m3) << " " << e3 << "\n" << ::tpy::check_signals;
     std::tuple<double, ::tpy::BigInt> result = ::tpy::stdlib::math::frexp<::tpy::BigInt>(1.5);
-    std::cout << ::tpy::print_float(std::get<0>(result)) << " " << std::get<1>(result) << "\n";
+    std::cout << ::tpy::print_float(std::get<0>(result)) << " " << std::get<1>(result) << "\n" << ::tpy::check_signals;
     auto __tup_4 = ::tpyapp::main::wrap_bigint();
     double a = std::get<0>(__tup_4);
     const ::tpy::BigInt& b = std::get<1>(__tup_4);
-    std::cout << ::tpy::print_float(a) << " " << b << "\n";
+    std::cout << ::tpy::print_float(a) << " " << b << "\n" << ::tpy::check_signals;
     auto __tup_5 = ::tpy::stdlib::math::frexp<int32_t>(7.25);
     double mm = std::get<0>(__tup_5);
     int32_t ee = std::get<1>(__tup_5);
-    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_ldexp(mm, ee)) << "\n";
+    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_ldexp(mm, ee)) << "\n" << ::tpy::check_signals;
 }
 
 // # math.frexp is generic over the exponent type. Covers three ways to pick T:

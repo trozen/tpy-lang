@@ -19,7 +19,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::lib::__tpy_init();
-    std::cout << ::tpyapp::lib::PUBLIC_VAL << "\n";
+    std::cout << ::tpyapp::lib::PUBLIC_VAL << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

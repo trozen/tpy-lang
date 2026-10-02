@@ -61,7 +61,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::span<int32_t> sp2 = a.__getitem__(::tpy::BasicSlice{std::nullopt, 2});
     auto& __obj_2 = sp2;
@@ -69,7 +69,7 @@ void main() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         int32_t x = *__beg_2;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::span<int32_t> sp3 = a.__getitem__(::tpy::BasicSlice{3, std::nullopt});
     auto& __obj_3 = sp3;
@@ -77,7 +77,7 @@ void main() {
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         int32_t x = *__beg_3;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::span<int32_t> sp4 = a.__getitem__(::tpy::BasicSlice{std::nullopt, std::nullopt});
     auto& __obj_4 = sp4;
@@ -85,7 +85,7 @@ void main() {
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
         int32_t x = *__beg_4;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::span<int32_t> sp5 = a.__getitem__(::tpy::BasicSlice{-2, std::nullopt});
     auto& __obj_5 = sp5;
@@ -93,7 +93,7 @@ void main() {
     auto __end_5 = __obj_5.end();
     for (; __beg_5 != __end_5; ++__beg_5) {
         int32_t x = *__beg_5;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::span<int32_t> sp6 = a.__getitem__(::tpy::BasicSlice{std::nullopt, -1});
     auto& __obj_6 = sp6;
@@ -101,12 +101,12 @@ void main() {
     auto __end_6 = __obj_6.end();
     for (; __beg_6 != __end_6; ++__beg_6) {
         int32_t x = *__beg_6;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::span<int32_t> sp7 = a.__getitem__(::tpy::BasicSlice{3, 1});
-    std::cout << ::tpy::__len__(sp7) << "\n";
-    std::cout << a[0] << "\n";
-    std::cout << a[4] << "\n";
+    std::cout << ::tpy::__len__(sp7) << "\n" << ::tpy::check_signals;
+    std::cout << a[0] << "\n" << ::tpy::check_signals;
+    std::cout << a[4] << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

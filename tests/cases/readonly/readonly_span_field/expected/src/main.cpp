@@ -17,7 +17,7 @@ int32_t read_box(const Box& b) {
 void main() {
     std::array<int32_t, 3> arr = {10, 20, 30};
     Box b = Box(::tpy::as_mut_span(arr));
-    std::cout << ::tpyapp::main::read_box(b) << "\n";
+    std::cout << ::tpyapp::main::read_box(b) << "\n" << ::tpy::check_signals;
 }
 
 // main()

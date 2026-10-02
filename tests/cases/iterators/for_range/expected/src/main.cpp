@@ -11,7 +11,7 @@ void print_range(int32_t start, int32_t end) {
     int32_t __start_0 = start;
     int32_t __stop_0 = end;
     for (int32_t i = __start_0; i < __stop_0; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -44,10 +44,10 @@ void __tpy_init() {
     initialized = true;
 
     for (int32_t i = 0; i < 5; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     ::tpyapp::main::print_range(10, 15);
-    std::cout << ::tpyapp::main::sum_range(10) << "\n";
+    std::cout << ::tpyapp::main::sum_range(10) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

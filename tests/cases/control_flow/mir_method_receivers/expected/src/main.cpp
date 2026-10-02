@@ -18,14 +18,14 @@ namespace tpyapp::main {
 void main() {
     Cell first = Cell(1);
     Cell second = Cell(2);
-    std::cout << "singleton" << " " << first.singleton() << " " << first.value << "\n";
-    std::cout << "mixed" << " " << first.mixed() << " " << first.value << "\n";
-    std::cout << "readonly-distinct" << " " << first.inferred(second) << " " << second.value << "\n";
-    std::cout << "readonly-shared" << " " << first.inferred(first) << " " << first.value << "\n";
+    std::cout << "singleton" << " " << first.singleton() << " " << first.value << "\n" << ::tpy::check_signals;
+    std::cout << "mixed" << " " << first.mixed() << " " << first.value << "\n" << ::tpy::check_signals;
+    std::cout << "readonly-distinct" << " " << first.inferred(second) << " " << second.value << "\n" << ::tpy::check_signals;
+    std::cout << "readonly-shared" << " " << first.inferred(first) << " " << first.value << "\n" << ::tpy::check_signals;
     first.value = 15;
-    std::cout << "optional-distinct" << " " << first.optional(second) << " " << second.value << "\n";
-    std::cout << "optional-shared" << " " << first.optional(first) << " " << first.value << "\n";
-    std::cout << "copy" << " " << first.owned_copy() << " " << first.value << "\n";
+    std::cout << "optional-distinct" << " " << first.optional(second) << " " << second.value << "\n" << ::tpy::check_signals;
+    std::cout << "optional-shared" << " " << first.optional(first) << " " << first.value << "\n" << ::tpy::check_signals;
+    std::cout << "copy" << " " << first.owned_copy() << " " << first.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -19,8 +19,8 @@ void main() {
     auto sum_all = [&a, &b, &c](int32_t x) -> int32_t {
         return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(x, a)), b)), c));
     };
-    std::cout << sum_all(0) << "\n";
-    std::cout << sum_all(40) << "\n";
+    std::cout << sum_all(0) << "\n" << ::tpy::check_signals;
+    std::cout << sum_all(40) << "\n" << ::tpy::check_signals;
 }
 
 // main()

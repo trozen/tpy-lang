@@ -13,7 +13,7 @@ std::tuple<Counter, Counter, Counter> make_triple() {
 // def consume(c: Own[Counter]) -> None:
 //     print(c.n)
 void consume(Counter&& c) {
-    std::cout << c.n << "\n";
+    std::cout << c.n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

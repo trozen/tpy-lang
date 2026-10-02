@@ -154,18 +154,18 @@ int32_t match_all_arms(Box&& b, int32_t x) {
 //     print(match_partial_arm(Box(10), 1))
 //     print(match_all_arms(Box(11), 2))
 void main() {
-    std::cout << ::tpyapp::main::borrow_only(Box(1)) << "\n";
-    std::cout << ::tpyapp::main::forward(Box(2)) << "\n";
-    std::cout << ::tpyapp::main::passthrough(Box(3)).value << "\n";
-    std::cout << ::tpyapp::main::copy_store(Box(4)) << "\n";
-    std::cout << Holder(Box(5)).item.value << "\n";
-    std::cout << ::tpyapp::main::partial_consume(Box(6), true) << "\n";
-    std::cout << ::tpyapp::main::both_branches(Box(7), false) << "\n";
-    std::cout << ::tpyapp::main::early_return(Box(8), false) << "\n";
+    std::cout << ::tpyapp::main::borrow_only(Box(1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::forward(Box(2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::passthrough(Box(3)).value << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::copy_store(Box(4)) << "\n" << ::tpy::check_signals;
+    std::cout << Holder(Box(5)).item.value << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::partial_consume(Box(6), true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::both_branches(Box(7), false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::early_return(Box(8), false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = {1};
-    std::cout << ::tpyapp::main::loop_consume(Box(9), __tmp_1) << "\n";
-    std::cout << ::tpyapp::main::match_partial_arm(Box(10), 1) << "\n";
-    std::cout << ::tpyapp::main::match_all_arms(Box(11), 2) << "\n";
+    std::cout << ::tpyapp::main::loop_consume(Box(9), __tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::match_partial_arm(Box(10), 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::match_all_arms(Box(11), 2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

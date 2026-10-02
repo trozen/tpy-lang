@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void main() {
     Point pt = Point(10, 20);
     Ref r = Ref(pt);
-    std::cout << r.__deref__().sum() << "\n";
+    std::cout << r.__deref__().sum() << "\n" << ::tpy::check_signals;
 }
 
 // main()

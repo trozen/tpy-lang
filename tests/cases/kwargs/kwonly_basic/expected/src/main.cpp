@@ -9,8 +9,8 @@ namespace tpyapp::main {
 //     print(greeting, name, sep="", end="")
 //     print(punctuation)
 void greet(std::string_view name, std::string_view greeting, std::string_view punctuation) {
-    std::cout << greeting << name;
-    std::cout << punctuation << "\n";
+    std::cout << greeting << name << ::tpy::check_signals;
+    std::cout << punctuation << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

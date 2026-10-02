@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(c.get())
 void consume(Container<int32_t>& c) {
     c.set(99);
-    std::cout << c.get() << "\n";
+    std::cout << c.get() << "\n" << ::tpy::check_signals;
 }
 
 // def make_container() -> Own[Container[int64]]:
@@ -56,18 +56,18 @@ void setup_pair(Pair<int32_t, int64_t>& p) {
 void main() {
     Container<int32_t> c = Container<int32_t>();
     ::tpyapp::main::consume(c);
-    std::cout << c.get() << "\n";
+    std::cout << c.get() << "\n" << ::tpy::check_signals;
     Container<int64_t> c2 = ::tpyapp::main::make_container();
     c2.set(42);
-    std::cout << c2.get() << "\n";
+    std::cout << c2.get() << "\n" << ::tpy::check_signals;
     Pair<int32_t, int64_t> p = Pair<int32_t, int64_t>();
     ::tpyapp::main::setup_pair(p);
-    std::cout << p.get_a() << "\n";
-    std::cout << p.get_b() << "\n";
+    std::cout << p.get_a() << "\n" << ::tpy::check_signals;
+    std::cout << p.get_b() << "\n" << ::tpy::check_signals;
     Container<int32_t> c3 = Container<int32_t>();
     c3.set(7);
     ::tpyapp::main::consume(c3);
-    std::cout << c3.get() << "\n";
+    std::cout << c3.get() << "\n" << ::tpy::check_signals;
     Container<int32_t> __tmp_1 = Container<int32_t>();
     ::tpyapp::main::consume(__tmp_1);
 }

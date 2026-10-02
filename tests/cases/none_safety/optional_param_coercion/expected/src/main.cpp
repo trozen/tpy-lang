@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //         print("None")
 void show(std::optional<int32_t> x) {
     if ((x.has_value())) {
-        std::cout << ::tpy::print_optional_val(x) << "\n";
+        std::cout << ::tpy::print_optional_val(x) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "None" << "\n";
+        std::cout << "None" << "\n" << ::tpy::check_signals;
     }
 }
 

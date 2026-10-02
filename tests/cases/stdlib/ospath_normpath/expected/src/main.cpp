@@ -32,7 +32,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view c = *__beg_0;
-        std::cout << ::tpystd::os::path::normpath(c) << "\n";
+        std::cout << ::tpystd::os::path::normpath(c) << "\n" << ::tpy::check_signals;
     }
 }
 

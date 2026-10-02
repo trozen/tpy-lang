@@ -276,7 +276,7 @@ __gen_gen_nested_with_return_in_finally gen_nested_with_return_in_finally() {
 //     for x in gen_nested_with_return_in_finally():
 //         print(x)
 void main() {
-    std::cout << "--- gen_with_outer_return_in_finally ---" << "\n";
+    std::cout << "--- gen_with_outer_return_in_finally ---" << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen_with_outer_return_in_finally();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -284,10 +284,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "--- gen_nested_with_return_in_finally ---" << "\n";
+    std::cout << "--- gen_nested_with_return_in_finally ---" << "\n" << ::tpy::check_signals;
     {
         auto __src_2 = ::tpyapp::main::gen_nested_with_return_in_finally();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -295,7 +295,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_3);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
 }

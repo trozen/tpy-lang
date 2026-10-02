@@ -7,20 +7,20 @@ namespace tpyapp::main {
 // def f(a: int, b: int = 10, c: int = 20) -> None:
 //     print(f"a={a} b={b} c={c}")
 void f(const ::tpy::BigInt& a, const ::tpy::BigInt& b, const ::tpy::BigInt& c) {
-    std::cout << std::format("a={} b={} c={}", (a).to_string(), (b).to_string(), (c).to_string()) << "\n";
+    std::cout << std::format("a={} b={} c={}", (a).to_string(), (b).to_string(), (c).to_string()) << "\n" << ::tpy::check_signals;
 }
 
 // def g(x: str, y: str = "default_y", z: str = "default_z") -> None:
 //     print(f"x={x} y={y} z={z}")
 void g(std::string_view x, std::string_view y, std::string_view z) {
-    std::cout << std::format("x={} y={} z={}", x, y, z) << "\n";
+    std::cout << std::format("x={} y={} z={}", x, y, z) << "\n" << ::tpy::check_signals;
 }
 
 // # Also test with int32 to cover the fixed-int default path
 // def h(a: int32, b: int32 = int32(100)) -> None:
 //     print(f"a={a} b={b}")
 void h(int32_t a, int32_t b) {
-    std::cout << std::format("a={} b={}", a, b) << "\n";
+    std::cout << std::format("a={} b={}", a, b) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

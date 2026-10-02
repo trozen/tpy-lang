@@ -97,15 +97,15 @@ void main() {
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/");
     b.recv(65536);
     b.close();
-    std::cout << r.headers["content-type"] << " " << r.headers["Content-Type"] << " " << r.headers["CONTENT-TYPE"] << "\n";
-    std::cout << ::tpy::print_bool((r.headers.__contains__("x-custom-header"))) << " " << ::tpy::print_bool((r.headers.__contains__("X-CUSTOM-HEADER"))) << " " << ::tpy::print_bool((r.headers.__contains__("missing"))) << "\n";
+    std::cout << r.headers["content-type"] << " " << r.headers["Content-Type"] << " " << r.headers["CONTENT-TYPE"] << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((r.headers.__contains__("x-custom-header"))) << " " << ::tpy::print_bool((r.headers.__contains__("X-CUSTOM-HEADER"))) << " " << ::tpy::print_bool((r.headers.__contains__("missing"))) << "\n" << ::tpy::check_signals;
     std::optional<std::string> cl = r.headers.get("content-length");
     if ((cl.has_value())) {
-        std::cout << "len:" << " " << ::tpy::print_optional_val(cl) << "\n";
+        std::cout << "len:" << " " << ::tpy::print_optional_val(cl) << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::print_optional_val(r.headers.get("nope", "dflt")) << "\n";
-    std::cout << r.headers["x-multi"] << "\n";
-    std::cout << ::tpy::__len__(r.headers) << "\n";
+    std::cout << ::tpy::print_optional_val(r.headers.get("nope", "dflt")) << "\n" << ::tpy::check_signals;
+    std::cout << r.headers["x-multi"] << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(r.headers) << "\n" << ::tpy::check_signals;
     std::vector<std::string> names = std::vector<std::string>{};
     auto& __src_0 = r.headers;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -115,49 +115,49 @@ void main() {
         std::string_view k = ::tpy::unwrap_ref(*__r_1);
         names.push_back(std::string(k));
     }
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(names)) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(r.headers.keys())) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(r.headers.values())) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(names)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(r.headers.keys())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(r.headers.values())) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::requests::CaseInsensitiveDict other = ::tpystd::tplib::requests::CaseInsensitiveDict();
     ::tpy::__setitem__(other, "CONTENT-TYPE", "application/json");
     ::tpy::__setitem__(other, "x-custom-header", "Yes");
     ::tpy::__setitem__(other, "X-Multi", "a, b");
     ::tpy::__setitem__(other, "Content-Length", "2");
-    std::cout << ::tpy::print_bool(((r.headers) == (other))) << "\n";
+    std::cout << ::tpy::print_bool(((r.headers) == (other))) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(other, "content-length", "3");
-    std::cout << ::tpy::print_bool(((r.headers) == (other))) << "\n";
+    std::cout << ::tpy::print_bool(((r.headers) == (other))) << "\n" << ::tpy::check_signals;
     ::tpy::__delitem__(other, "CONTENT-length");
-    std::cout << ::tpy::print_bool((other.__contains__("content-length"))) << " " << ::tpy::__len__(other) << "\n";
+    std::cout << ::tpy::print_bool((other.__contains__("content-length"))) << " " << ::tpy::__len__(other) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::requests::CaseInsensitiveDict cid = ::tpystd::tplib::requests::CaseInsensitiveDict();
     ::tpy::__setitem__(cid, "Accept", "text/html");
     ::tpy::__setitem__(cid, "ACCEPT", "application/json");
-    std::cout << ::tpy::__len__(cid) << " " << cid["accept"] << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(cid.keys())) << "\n";
+    std::cout << ::tpy::__len__(cid) << " " << cid["accept"] << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(cid.keys())) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::requests::CaseInsensitiveDict lhs = ::tpystd::tplib::requests::CaseInsensitiveDict();
     ::tpy::__setitem__(lhs, "A", "1");
     ::tpystd::tplib::requests::CaseInsensitiveDict rhs = ::tpystd::tplib::requests::CaseInsensitiveDict();
     ::tpy::__setitem__(rhs, "B", "1");
-    std::cout << ::tpy::print_bool(((lhs) == (rhs))) << "\n";
+    std::cout << ::tpy::print_bool(((lhs) == (rhs))) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::requests::CaseInsensitiveDict m = ::tpystd::tplib::requests::CaseInsensitiveDict();
     ::tpy::__setitem__(m, "Accept", "text/html");
     ::tpy::__setitem__(m, "X-N", "1");
-    std::cout << ::tpy::print_optional_val(m.pop("accept")) << " " << ::tpy::print_bool((m.__contains__("accept"))) << "\n";
-    std::cout << ::tpy::print_optional_val(m.pop("gone", "fallback")) << "\n";
-    std::cout << m.setdefault("X-N", "z") << " " << m.setdefault("X-M", "new") << "\n";
+    std::cout << ::tpy::print_optional_val(m.pop("accept")) << " " << ::tpy::print_bool((m.__contains__("accept"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(m.pop("gone", "fallback")) << "\n" << ::tpy::check_signals;
+    std::cout << m.setdefault("X-N", "z") << " " << m.setdefault("X-M", "new") << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::requests::CaseInsensitiveDict dup = m.copy();
     ::tpy::__setitem__(dup, "X-O", "9");
-    std::cout << ::tpy::__len__(m) << " " << ::tpy::__len__(dup) << "\n";
+    std::cout << ::tpy::__len__(m) << " " << ::tpy::__len__(dup) << "\n" << ::tpy::check_signals;
     m.update(dup);
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(m.keys())) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(m.keys())) << "\n" << ::tpy::check_signals;
     std::tuple<std::string, std::string> kv = m.popitem();
-    std::cout << ::tpy::print_bool((std::get<0>(kv) != "")) << " " << ::tpy::__len__(m) << "\n";
+    std::cout << ::tpy::print_bool((std::get<0>(kv) != "")) << " " << ::tpy::__len__(m) << "\n" << ::tpy::check_signals;
     m.clear();
-    std::cout << ::tpy::__len__(m) << "\n";
+    std::cout << ::tpy::__len__(m) << "\n" << ::tpy::check_signals;
     {
         try {
             m.popitem();
-            std::cout << "no raise" << "\n";
+            std::cout << "no raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::KeyError&) {
-            std::cout << "KeyError" << "\n";
+            std::cout << "KeyError" << "\n" << ::tpy::check_signals;
         }
     }
 }

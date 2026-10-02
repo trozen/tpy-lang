@@ -86,9 +86,9 @@ __coro_async_body async_body() {
 //     print("free", first(h), first(g))
 void free_function() {
     __gen_counter g = ::tpyapp::main::counter(0);
-    std::cout << "free" << " " << ::tpyapp::main::first(g) << "\n";
+    std::cout << "free" << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
     __gen_counter& h = g;
-    std::cout << "free" << " " << ::tpyapp::main::first(h) << " " << ::tpyapp::main::first(g) << "\n";
+    std::cout << "free" << " " << ::tpyapp::main::first(h) << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
 }
 
 // def loop_body_binding() -> None:
@@ -99,7 +99,7 @@ void free_function() {
 void loop_body_binding() {
     for (int32_t i = 0; i < 3; ++i) {
         __gen_counter g = ::tpyapp::main::counter((::tpy::mul_check<int32_t>(i, 100)));
-        std::cout << "loop" << " " << ::tpyapp::main::first(g) << " " << ::tpyapp::main::first(g) << "\n";
+        std::cout << "loop" << " " << ::tpyapp::main::first(g) << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -113,7 +113,7 @@ void block_bind(bool c) {
     std::vector<int32_t> xs = {4, 5, 6};
     if (c) {
         __gen_iter_list it = ::tpyapp::main::iter_list(xs);
-        std::cout << "block" << " " << ::tpyapp::main::first(it) << " " << ::tpyapp::main::first(it) << "\n";
+        std::cout << "block" << " " << ::tpyapp::main::first(it) << " " << ::tpyapp::main::first(it) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -135,9 +135,9 @@ void try_body() {
     {
         try {
             __gen_counter& h = g;
-            std::cout << "try" << " " << ::tpyapp::main::first(h) << " " << ::tpyapp::main::first(g) << "\n";
+            std::cout << "try" << " " << ::tpyapp::main::first(h) << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "try unreachable" << "\n";
+            std::cout << "try unreachable" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -156,7 +156,7 @@ void with_body() {
     try {
         h = &(g);
         f.write("x");
-        std::cout << "with" << " " << ::tpyapp::main::first((*h)) << " " << ::tpyapp::main::first(g) << "\n";
+        std::cout << "with" << " " << ::tpyapp::main::first((*h)) << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -183,11 +183,11 @@ void match_arm(int32_t k) {
     switch (__match_subject_1) {
     case 1: {
         __gen_counter& h = g;
-        std::cout << "match" << " " << ::tpyapp::main::first(h) << " " << ::tpyapp::main::first(g) << "\n";
+        std::cout << "match" << " " << ::tpyapp::main::first(h) << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
-        std::cout << "match other" << "\n";
+        std::cout << "match other" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -204,7 +204,7 @@ void tuple_unpack() {
     int32_t k = __unpack_0_1;
     __gen_counter& h = g;
     int32_t j = k;
-    std::cout << "unpack" << " " << ::tpyapp::main::first(h) << " " << ::tpyapp::main::first(g) << " " << j << "\n";
+    std::cout << "unpack" << " " << ::tpyapp::main::first(h) << " " << ::tpyapp::main::first(g) << " " << j << "\n" << ::tpy::check_signals;
 }
 
 // def swap() -> None:
@@ -222,7 +222,7 @@ void swap() {
     __gen_counter& __unpack_1_1 = (*g);
     g = &(__unpack_1_0);
     h = &(__unpack_1_1);
-    std::cout << "swap" << " " << ::tpyapp::main::first((*g)) << " " << ::tpyapp::main::first((*h)) << "\n";
+    std::cout << "swap" << " " << ::tpyapp::main::first((*g)) << " " << ::tpyapp::main::first((*h)) << "\n" << ::tpy::check_signals;
 }
 
 // def exhaust_one_name() -> None:
@@ -256,7 +256,7 @@ void exhaust_one_name() {
         int32_t v = ::tpy::unwrap_ref(*__r_3);
         left = ::tpy::add_check<int32_t>(left, 1);
     }
-    std::cout << "exhaust" << " " << total << " " << left << "\n";
+    std::cout << "exhaust" << " " << total << " " << left << "\n" << ::tpy::check_signals;
 }
 
 // def interleave() -> None:
@@ -285,7 +285,7 @@ void interleave() {
             break;
         }
     }
-    std::cout << "interleave" << " " << ::tpy::ListPrinter(out) << "\n";
+    std::cout << "interleave" << " " << ::tpy::ListPrinter(out) << "\n" << ::tpy::check_signals;
 }
 
 // def loop_reuse() -> None:
@@ -316,7 +316,7 @@ void loop_reuse() {
         auto __r_2 = __itr_1.__next__();
         if (!__r_2.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_2);
-        std::cout << "loop_reuse read" << "\n";
+        std::cout << "loop_reuse read" << "\n" << ::tpy::check_signals;
         break;
     }
 }
@@ -341,10 +341,10 @@ void raise_before_first_yield() {
         try {
             ::tpyapp::main::first(g);
         } catch (const ::tpy::ValueError&) {
-            std::cout << "raise_before_first_yield raised" << "\n";
+            std::cout << "raise_before_first_yield raised" << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "raise_before_first_yield" << " " << ::tpyapp::main::first(g) << "\n";
+    std::cout << "raise_before_first_yield" << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
 }
 
 // def try_first_bound() -> None:
@@ -363,7 +363,7 @@ void try_first_bound() {
             return;
         }
     }
-    std::cout << "try_first_bound" << " " << ::tpyapp::main::first((*g)) << " " << ::tpyapp::main::first((*g)) << "\n";
+    std::cout << "try_first_bound" << " " << ::tpyapp::main::first((*g)) << " " << ::tpyapp::main::first((*g)) << "\n" << ::tpy::check_signals;
 }
 
 // def comprehension() -> None:
@@ -376,7 +376,7 @@ void comprehension() {
     std::cout << "comprehension" << " " << ::tpy::ListPrinter(::tpy::array_from_index<int32_t, 3>([&](std::size_t __i_0) -> int32_t {
         int32_t _ = int32_t(__i_0);
         return ::tpyapp::main::first(h);
-    })) << " " << ::tpyapp::main::first(g) << "\n";
+    })) << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
 }
 
 // def chained() -> None:
@@ -385,7 +385,7 @@ void comprehension() {
 void chained() {
     __gen_counter g = ::tpyapp::main::counter(0);
     __gen_counter& h = g;
-    std::cout << "chained" << " " << ::tpyapp::main::first(g) << " " << ::tpyapp::main::first(h) << "\n";
+    std::cout << "chained" << " " << ::tpyapp::main::first(g) << " " << ::tpyapp::main::first(h) << "\n" << ::tpy::check_signals;
 }
 
 // def closing(tag: int32) -> Iterator[int32]:
@@ -441,7 +441,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_closing::__next__() {
 }
 
 void __gen_closing::__finally_0() {
-    std::cout << "closing finally" << " " << tag << "\n";
+    std::cout << "closing finally" << " " << tag << "\n" << ::tpy::check_signals;
 }
 
 // def closing(tag: int32) -> Iterator[int32]:
@@ -459,7 +459,7 @@ void loop_closes_each() {
     for (int32_t i = 0; i < 2; ++i) {
         __gen_closing g = ::tpyapp::main::closing((::tpy::mul_check<int32_t>(i, 10)));
         ::tpyapp::main::first(g);
-        std::cout << "loop_closes_each pass" << " " << i << "\n";
+        std::cout << "loop_closes_each pass" << " " << i << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -486,7 +486,7 @@ void with_first_bound() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    std::cout << "with_first_bound" << " " << ::tpyapp::main::first((*g)) << " " << ::tpyapp::main::first((*g)) << "\n";
+    std::cout << "with_first_bound" << " " << ::tpyapp::main::first((*g)) << " " << ::tpyapp::main::first((*g)) << "\n" << ::tpy::check_signals;
 }
 
 // def branch_first_bound(xs: list[int32], c: bool) -> None:
@@ -505,7 +505,7 @@ void branch_first_bound(const std::vector<int32_t>& xs, bool c) {
     } else {
         h = &__slot_2.emplace(::tpyapp::main::iter_list(xs));
     }
-    std::cout << "branch_first_bound" << " " << ::tpyapp::main::first((*h)) << " " << ::tpyapp::main::first((*h)) << "\n";
+    std::cout << "branch_first_bound" << " " << ::tpyapp::main::first((*h)) << " " << ::tpyapp::main::first((*h)) << "\n" << ::tpy::check_signals;
 }
 
 // def branch_alias(xs: list[int32], c: bool) -> None:
@@ -518,7 +518,7 @@ void branch_alias(std::vector<int32_t>& xs, bool c) {
     auto h = ::tpyapp::main::relay(xs);
     if (c) {
         auto& j = h;
-        std::cout << "branch_alias" << " " << ::tpyapp::main::first(j) << " " << ::tpyapp::main::first(h) << "\n";
+        std::cout << "branch_alias" << " " << ::tpyapp::main::first(j) << " " << ::tpyapp::main::first(h) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -592,7 +592,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_reading_fin::__next__() {
 }
 
 void __gen_reading_fin::__finally_0() {
-    std::cout << "reading_fin finally" << " " << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0) << "\n";
+    std::cout << "reading_fin finally" << " " << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def reading_fin(xs: list[str]) -> Iterator[str]:
@@ -619,7 +619,7 @@ void closure() {
     auto pull = [&g]() -> int32_t {
         return ::tpyapp::main::first(g);
     };
-    std::cout << "closure" << " " << pull() << " " << ::tpyapp::main::first(g) << " " << pull() << "\n";
+    std::cout << "closure" << " " << pull() << " " << ::tpyapp::main::first(g) << " " << pull() << "\n" << ::tpy::check_signals;
 }
 
 // def method_generator() -> None:
@@ -631,7 +631,7 @@ void method_generator() {
     Src s = Src(5);
     __gen_Src_items g = s.items();
     __gen_Src_items& h = g;
-    std::cout << "member" << " " << ::tpyapp::main::first(g) << " " << ::tpyapp::main::first(h) << " " << ::tpyapp::main::first(g) << "\n";
+    std::cout << "member" << " " << ::tpyapp::main::first(g) << " " << ::tpyapp::main::first(h) << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
 }
 
 // def deduced_frame() -> None:
@@ -650,7 +650,7 @@ void deduced_frame() {
     int32_t __unpack_2_1 = 9;
     auto& g = __unpack_2_0;
     int32_t k = __unpack_2_1;
-    std::cout << "deduced" << " " << ::tpyapp::main::first(j) << " " << ::tpyapp::main::first(h) << " " << ::tpyapp::main::first(g) << " " << k << "\n";
+    std::cout << "deduced" << " " << ::tpyapp::main::first(j) << " " << ::tpyapp::main::first(h) << " " << ::tpyapp::main::first(g) << " " << k << "\n" << ::tpy::check_signals;
 }
 
 // def last_use_alias() -> None:
@@ -663,7 +663,7 @@ void last_use_alias() {
     __gen_counter h = ::tpyapp::main::counter(0);
     ::tpyapp::main::first(h);
     __gen_counter& g = h;
-    std::cout << "last_use_alias" << " " << ::tpyapp::main::first(g) << "\n";
+    std::cout << "last_use_alias" << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
 }
 
 // def last_use_unpack() -> None:
@@ -677,7 +677,7 @@ void last_use_unpack() {
     ::tpyapp::main::first(h);
     __gen_counter& g = h;
     int32_t k = 1;
-    std::cout << "last_use_unpack" << " " << ::tpyapp::main::first(g) << " " << k << "\n";
+    std::cout << "last_use_unpack" << " " << ::tpyapp::main::first(g) << " " << k << "\n" << ::tpy::check_signals;
 }
 
 // def last_use_try() -> None:
@@ -700,7 +700,7 @@ void last_use_try() {
             return;
         }
     }
-    std::cout << "last_use_try" << " " << ::tpyapp::main::first((*g)) << "\n";
+    std::cout << "last_use_try" << " " << ::tpyapp::main::first((*g)) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -841,7 +841,7 @@ void generic_generator() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         std::string_view v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "generic" << " " << v << "\n";
+        std::cout << "generic" << " " << v << "\n" << ::tpy::check_signals;
         break;
     }
     auto& __src_2 = g;
@@ -850,7 +850,7 @@ void generic_generator() {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         std::string_view v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "generic" << " " << v << "\n";
+        std::cout << "generic" << " " << v << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -906,17 +906,17 @@ void main() {
     ::tpyapp::main::free_function();
     Holder().run();
     Holder hd = Holder();
-    std::cout << "ctor" << " " << hd.a << " " << hd.b << "\n";
+    std::cout << "ctor" << " " << hd.a << " " << hd.b << "\n" << ::tpy::check_signals;
     {
-        std::cout << "error_return" << " " << ({ auto __er_2 = ::tpyapp::main::er_body(0); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "error_return" << " " << ({ auto __er_2 = ::tpyapp::main::er_body(0); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except ParseError:
         __except_1:;
-        std::cout << "error_return failed" << "\n";
+        std::cout << "error_return failed" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
-    std::cout << "generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_body())) << "\n";
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_body())) << "\n";
+    std::cout << "generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_body())) << "\n" << ::tpy::check_signals;
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_body())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::loop_body_binding();
     ::tpyapp::main::block_bind(true);
     ::tpyapp::main::try_body();
@@ -934,36 +934,36 @@ void main() {
     ::tpyapp::main::try_first_bound();
     ::tpyapp::main::comprehension();
     ::tpyapp::main::chained();
-    std::cout << "generic_owner" << " " << Bag<int32_t>(1, 2).count() << "\n";
+    std::cout << "generic_owner" << " " << Bag<int32_t>(1, 2).count() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::loop_closes_each();
     ::tpyapp::main::with_first_bound();
     std::vector<int32_t> __tmp_1 = {40, 41};
     ::tpyapp::main::branch_first_bound(__tmp_1, true);
     std::vector<int32_t> __tmp_2 = {50, 51};
     ::tpyapp::main::branch_alias(__tmp_2, true);
-    std::cout << "outer_lift" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::outer_lift())) << "\n";
+    std::cout << "outer_lift" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::outer_lift())) << "\n" << ::tpy::check_signals;
     std::vector<std::string> order = ::tpy::construct<std::vector<std::string>>(::tpyapp::main::frame_order(true));
-    std::cout << "frame_order" << " " << ::tpy::ListPrinter(order) << "\n";
+    std::cout << "frame_order" << " " << ::tpy::ListPrinter(order) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::generic_generator();
     ::tpyapp::main::last_use_alias();
     ::tpyapp::main::last_use_unpack();
     ::tpyapp::main::last_use_try();
-    std::cout << "last_use_method" << " " << Holder().last_use() << "\n";
+    std::cout << "last_use_method" << " " << Holder().last_use() << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_3 = {60, 61};
-    std::cout << "loop_over_param" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::loop_over_param(__tmp_3))) << "\n";
-    std::cout << "await_then_new_name" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::await_then_new_name())) << "\n";
+    std::cout << "loop_over_param" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::loop_over_param(__tmp_3))) << "\n" << ::tpy::check_signals;
+    std::cout << "await_then_new_name" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::await_then_new_name())) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_4 = {80, 81};
     std::vector<int32_t> __tmp_5 = {90};
-    std::cout << "ternary_bound" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::ternary_bound(__tmp_4, __tmp_5, true))) << "\n";
+    std::cout << "ternary_bound" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::ternary_bound(__tmp_4, __tmp_5, true))) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_6 = {85, 86};
-    std::cout << "walrus_bound" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::walrus_bound(__tmp_6))) << "\n";
+    std::cout << "walrus_bound" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::walrus_bound(__tmp_6))) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_7 = {1, 2};
     std::vector<int32_t> __tmp_8 = {3};
-    std::cout << "ternary_bound_async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::ternary_bound_async(__tmp_7, __tmp_8, false))) << "\n";
+    std::cout << "ternary_bound_async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::ternary_bound_async(__tmp_7, __tmp_8, false))) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> __tmp_9 = {{5, 6}, {7}};
-    std::cout << "loop_var_over_list" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::loop_var_over_list(__tmp_9))) << "\n";
+    std::cout << "loop_var_over_list" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::loop_var_over_list(__tmp_9))) << "\n" << ::tpy::check_signals;
     ::tpy::Adapter<Getter, Val> __tmp_10{Val(5)};
-    std::cout << "relay_getter" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::relay_getter(__tmp_10))) << "\n";
+    std::cout << "relay_getter" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::relay_getter(__tmp_10))) << "\n" << ::tpy::check_signals;
 }
 
 

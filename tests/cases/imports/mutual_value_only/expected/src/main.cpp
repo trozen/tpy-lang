@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(H())
 //     print(K_then_H())
 void main() {
-    std::cout << ::tpyapp::a::K() << "\n";
-    std::cout << ::tpyapp::b::H() << "\n";
-    std::cout << ::tpyapp::a::K_then_H() << "\n";
+    std::cout << ::tpyapp::a::K() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::b::H() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::a::K_then_H() << "\n" << ::tpy::check_signals;
 }
 
 // # Pure value-level mutual reference. a.py defines K(), imports H from b

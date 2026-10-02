@@ -24,7 +24,7 @@ void main() {
             p = nullptr;
             throw ::tpy::ValueError("boom");
         } catch (const ::tpy::ValueError&) {
-            std::cout << ::tpy::deref_check(p).x << "\n";
+            std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
         }
     }
 }

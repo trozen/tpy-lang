@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //         print("list falsy")
 void check_list(const std::vector<::tpy::BigInt>& items, const std::vector<::tpy::BigInt>& empty) {
     if ((::tpy::__len__(items) != 0)) {
-        std::cout << "list truthy" << "\n";
+        std::cout << "list truthy" << "\n" << ::tpy::check_signals;
     }
     if ((!((::tpy::__len__(empty) != 0)))) {
-        std::cout << "list falsy" << "\n";
+        std::cout << "list falsy" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -26,10 +26,10 @@ void check_list(const std::vector<::tpy::BigInt>& items, const std::vector<::tpy
 //         print("str falsy")
 void check_str(std::string_view s, std::string_view e) {
     if ((!s.empty())) {
-        std::cout << "str truthy" << "\n";
+        std::cout << "str truthy" << "\n" << ::tpy::check_signals;
     }
     if ((!((!e.empty())))) {
-        std::cout << "str falsy" << "\n";
+        std::cout << "str falsy" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -38,7 +38,7 @@ void check_str(std::string_view s, std::string_view e) {
 //         print("and/or works")
 void check_and_or(const std::vector<::tpy::BigInt>& items, const std::vector<::tpy::BigInt>& empty) {
     if (((::tpy::__len__(items) != 0) && (!((::tpy::__len__(empty) != 0))))) {
-        std::cout << "and/or works" << "\n";
+        std::cout << "and/or works" << "\n" << ::tpy::check_signals;
     }
 }
 

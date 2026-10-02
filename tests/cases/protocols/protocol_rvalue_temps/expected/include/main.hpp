@@ -106,7 +106,7 @@ inline const IntBox& BoxContainer::__getitem__(int32_t i) const {
 //     print(h.get())
 template<HasValue T_h>
 void show(T_h& h) {
-    std::cout << h.get() << "\n";
+    std::cout << h.get() << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

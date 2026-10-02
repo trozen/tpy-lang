@@ -31,13 +31,13 @@ void main() {
     Container<Point> c = Container<Point>(Point(1, 2));
     Point* p = c.get();
     if ((p != nullptr)) {
-        std::cout << p->x << " " << p->y << "\n";
+        std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
         p->x = 10;
         p->y = 20;
     }
     Point* p2 = c.get();
     if ((p2 != nullptr)) {
-        std::cout << p2->x << " " << p2->y << "\n";
+        std::cout << p2->x << " " << p2->y << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, Point> d = ::tpy::ordered_map<std::string, Point>({{"a", Point(3, 4)}});
     Point* dp = ::tpy::dict_get(d, "a");
@@ -47,7 +47,7 @@ void main() {
     }
     Point* dp2 = ::tpy::dict_get(d, "a");
     if ((dp2 != nullptr)) {
-        std::cout << dp2->x << " " << dp2->y << "\n";
+        std::cout << dp2->x << " " << dp2->y << "\n" << ::tpy::check_signals;
     }
 }
 

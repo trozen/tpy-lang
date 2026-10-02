@@ -13,7 +13,7 @@ void __tpy_init() {
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::amod::__tpy_init();
     ::tpyapp::pkg::bmod::__tpy_init();
-    std::cout << "consumer done" << "\n";
+    std::cout << "consumer done" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::pkg::consumer

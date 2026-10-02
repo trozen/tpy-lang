@@ -25,14 +25,14 @@ std::tuple<Box*, int32_t> pair2{};
 //     print("rebound", W.n, V.n)
 void main() {
     singleton->n = 42;
-    std::cout << "scalar" << " " << V->n << "\n";
+    std::cout << "scalar" << " " << V->n << "\n" << ::tpy::check_signals;
     V->n = 2;
     std::get<0>(pair)->n = 43;
-    std::cout << "tuple" << " " << V->n << "\n";
+    std::cout << "tuple" << " " << V->n << "\n" << ::tpy::check_signals;
     std::get<1>(owned).n = 9;
-    std::cout << "owned" << " " << std::get<1>(owned).n << "\n";
+    std::cout << "owned" << " " << std::get<1>(owned).n << "\n" << ::tpy::check_signals;
     std::get<0>(pair2)->n = 7;
-    std::cout << "rebound" << " " << W->n << " " << V->n << "\n";
+    std::cout << "rebound" << " " << W->n << " " << V->n << "\n" << ::tpy::check_signals;
 }
 
 // V = Box(2)

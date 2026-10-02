@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(o.item.tag)
 void main() {
     Owner o = Owner(Tagged<Greeter>(42));
-    std::cout << o.item.tag << "\n";
+    std::cout << o.item.tag << "\n" << ::tpy::check_signals;
 }
 
 // main()

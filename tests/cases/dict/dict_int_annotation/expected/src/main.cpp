@@ -11,8 +11,8 @@ namespace tpyapp::main {
 //     print(d)
 void main() {
     ::tpy::ordered_map<std::string, ::tpy::BigInt> d = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}, {"b", ::tpy::BigInt(2)}});
-    std::cout << ::tpy::__getitem__(d, "a") << "\n";
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::__getitem__(d, "a") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -61,7 +61,7 @@ inline Handle& Handle::operator=(Handle&& other) noexcept {
 //     print("close", self.id)
 inline Handle::~Handle() {
     if (!this->__tpy_owned_) return;
-    std::cout << "close" << " " << this->id << "\n";
+    std::cout << "close" << " " << this->id << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

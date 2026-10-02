@@ -23,16 +23,16 @@ int32_t twice(int32_t x) {
 //     y: int32 = MAX_SIZE + NEG_VAL
 //     print(y)
 void main() {
-    std::cout << MAX_SIZE << "\n";
-    std::cout << NEG_VAL << "\n";
-    std::cout << ::tpy::print_float(PI) << "\n";
-    std::cout << ::tpy::print_bool(DEBUG) << "\n";
-    std::cout << ::tpy::print_bool(DISABLED) << "\n";
-    std::cout << NAME << "\n";
-    std::cout << LETTER << "\n";
-    std::cout << ::tpyapp::main::twice(MAX_SIZE) << "\n";
+    std::cout << MAX_SIZE << "\n" << ::tpy::check_signals;
+    std::cout << NEG_VAL << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(PI) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(DEBUG) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(DISABLED) << "\n" << ::tpy::check_signals;
+    std::cout << NAME << "\n" << ::tpy::check_signals;
+    std::cout << LETTER << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::twice(MAX_SIZE) << "\n" << ::tpy::check_signals;
     int32_t y = (::tpy::add_check<int32_t>(MAX_SIZE, NEG_VAL));
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // main()

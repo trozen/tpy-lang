@@ -285,7 +285,7 @@ int32_t call_then_rebind(Point&& x) {
     };
     Point __tmp_1 = x;
     s.consume(std::move(__tmp_1));
-    std::cout << "call_then_rebind" << " " << grow() << "\n";
+    std::cout << "call_then_rebind" << " " << grow() << "\n" << ::tpy::check_signals;
     x = Point();
     return ::tpy::__len__(x.items);
 }
@@ -316,11 +316,11 @@ int32_t finally_landing(Point&& x) {
             s.consume(std::move(__tmp_1));
             int32_t __tpy_ret_0 = ::tpy::__len__(s.stored);
             __fin_ran_2 = true;
-            std::cout << "finally_landing sees" << " " << grow() << "\n";
+            std::cout << "finally_landing sees" << " " << grow() << "\n" << ::tpy::check_signals;
             return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_2) {
-                std::cout << "finally_landing sees" << " " << grow() << "\n";
+                std::cout << "finally_landing sees" << " " << grow() << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -640,7 +640,7 @@ void rebind_after_consume() {
     Point __slot_1 = Point();
     Point* p = &__slot_1;
     auto show = [&p]() {
-        std::cout << "rebind_after_consume" << " " << ::tpy::__len__(p->items) << "\n";
+        std::cout << "rebind_after_consume" << " " << ::tpy::__len__(p->items) << "\n" << ::tpy::check_signals;
     };
     Point __tmp_1 = (*p);
     s.consume(std::move(__tmp_1));
@@ -722,11 +722,11 @@ Point finally_return_defers(Point&& x) {
         try {
             auto* __tpy_retp_0 = &(x);
             __fin_ran_4 = true;
-            std::cout << "finally_return_defers sees" << " " << grow() << "\n";
+            std::cout << "finally_return_defers sees" << " " << grow() << "\n" << ::tpy::check_signals;
             return std::move(*__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_4) {
-                std::cout << "finally_return_defers sees" << " " << grow() << "\n";
+                std::cout << "finally_return_defers sees" << " " << grow() << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -867,68 +867,68 @@ void main() {
     Sink s = Sink();
     Point p = Point();
     auto show = [&p]() {
-        std::cout << ::tpy::__len__(p.items) << "\n";
+        std::cout << ::tpy::__len__(p.items) << "\n" << ::tpy::check_signals;
     };
     Point __tmp_1 = p;
     s.consume(std::move(__tmp_1));
     show();
-    std::cout << "param_return" << " " << ::tpyapp::main::param_return(Point()) << "\n";
-    std::cout << "indirect" << " " << ::tpyapp::main::indirect(Point()) << "\n";
+    std::cout << "param_return" << " " << ::tpyapp::main::param_return(Point()) << "\n" << ::tpy::check_signals;
+    std::cout << "indirect" << " " << ::tpyapp::main::indirect(Point()) << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::raising(Point());
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "raise" << " " << e << "\n";
+            std::cout << "raise" << " " << e << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "lambda" << " " << ::tpyapp::main::via_lambda(Point()) << "\n";
-    std::cout << "never_called" << " " << ::tpyapp::main::never_called(Point()) << "\n";
+    std::cout << "lambda" << " " << ::tpyapp::main::via_lambda(Point()) << "\n" << ::tpy::check_signals;
+    std::cout << "never_called" << " " << ::tpyapp::main::never_called(Point()) << "\n" << ::tpy::check_signals;
     Point __slot_1 = ::tpyapp::main::return_copies(Point());
     Point* r = &__slot_1;
-    std::cout << "return_copies" << " " << ::tpy::__len__(r->items) << "\n";
+    std::cout << "return_copies" << " " << ::tpy::__len__(r->items) << "\n" << ::tpy::check_signals;
     int32_t early = ::tpyapp::main::def_after_return_copies(Point(), true);
     int32_t late = ::tpyapp::main::def_after_return_copies(Point(), false);
-    std::cout << "def_after_return_copies" << " " << early << " " << late << "\n";
+    std::cout << "def_after_return_copies" << " " << early << " " << late << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::raise_copies(Point(), true);
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "raise_copies" << " " << e << "\n";
+            std::cout << "raise_copies" << " " << e << "\n" << ::tpy::check_signals;
         }
     }
     late = ::tpyapp::main::raise_copies(Point(), false);
-    std::cout << "raise_copies" << " " << late << "\n";
+    std::cout << "raise_copies" << " " << late << "\n" << ::tpy::check_signals;
     int32_t n = ::tpyapp::main::lambda_local(Point());
-    std::cout << "lambda_local" << " " << n << "\n";
+    std::cout << "lambda_local" << " " << n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::with_exit(Point(), true);
     n = ::tpyapp::main::call_then_rebind(Point());
-    std::cout << "call_then_rebind returns" << " " << n << "\n";
+    std::cout << "call_then_rebind returns" << " " << n << "\n" << ::tpy::check_signals;
     n = ::tpyapp::main::finally_landing(Point());
-    std::cout << "finally_landing returns" << " " << n << "\n";
-    std::cout << "via_generator" << " " << ::tpyapp::main::via_generator(Point()) << "\n";
-    std::cout << "via_map" << " " << ::tpyapp::main::via_map(Point()) << "\n";
-    std::cout << "via_callee" << " " << ::tpyapp::main::via_callee(Point()) << "\n";
+    std::cout << "finally_landing returns" << " " << n << "\n" << ::tpy::check_signals;
+    std::cout << "via_generator" << " " << ::tpyapp::main::via_generator(Point()) << "\n" << ::tpy::check_signals;
+    std::cout << "via_map" << " " << ::tpyapp::main::via_map(Point()) << "\n" << ::tpy::check_signals;
+    std::cout << "via_callee" << " " << ::tpyapp::main::via_callee(Point()) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> out = std::vector<int32_t>{};
     ::tpyapp::main::held_then_rebind(Point(), out);
-    std::cout << "held_then_rebind" << " " << ::tpy::__getitem__(out, 0) << " " << ::tpy::__getitem__(out, 1) << "\n";
-    std::cout << "chained" << " " << ::tpyapp::main::chained() << "\n";
-    std::cout << "held_on_break" << " " << ::tpyapp::main::held_on_break(true) << "\n";
-    std::cout << "held_on_raise" << " " << ::tpyapp::main::held_on_raise(true) << "\n";
-    std::cout << "via_property" << " " << ::tpyapp::main::via_property() << "\n";
-    std::cout << "via_getitem" << " " << ::tpyapp::main::via_getitem() << "\n";
+    std::cout << "held_then_rebind" << " " << ::tpy::__getitem__(out, 0) << " " << ::tpy::__getitem__(out, 1) << "\n" << ::tpy::check_signals;
+    std::cout << "chained" << " " << ::tpyapp::main::chained() << "\n" << ::tpy::check_signals;
+    std::cout << "held_on_break" << " " << ::tpyapp::main::held_on_break(true) << "\n" << ::tpy::check_signals;
+    std::cout << "held_on_raise" << " " << ::tpyapp::main::held_on_raise(true) << "\n" << ::tpy::check_signals;
+    std::cout << "via_property" << " " << ::tpyapp::main::via_property() << "\n" << ::tpy::check_signals;
+    std::cout << "via_getitem" << " " << ::tpyapp::main::via_getitem() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::rebind_after_consume();
-    std::cout << "finally_after_handler" << " " << ::tpyapp::main::finally_after_handler(true) << "\n";
+    std::cout << "finally_after_handler" << " " << ::tpyapp::main::finally_after_handler(true) << "\n" << ::tpy::check_signals;
     (*r) = ::tpyapp::main::finally_return_defers(Point());
-    std::cout << "finally_return_defers" << " " << ::tpy::__len__(r->items) << "\n";
+    std::cout << "finally_return_defers" << " " << ::tpy::__len__(r->items) << "\n" << ::tpy::check_signals;
     (*r) = ::tpyapp::main::del_holder_return(Point());
-    std::cout << "del_holder_return done" << "\n";
+    std::cout << "del_holder_return done" << "\n" << ::tpy::check_signals;
     std::tuple<Point, int32_t> t = ::tpyapp::main::del_holder_tuple();
-    std::cout << "del_holder_tuple" << " " << std::get<1>(t) << "\n";
-    std::cout << "lambda_same_call" << " " << ::tpyapp::main::lambda_same_call() << "\n";
+    std::cout << "del_holder_tuple" << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
+    std::cout << "lambda_same_call" << " " << ::tpyapp::main::lambda_same_call() << "\n" << ::tpy::check_signals;
     Point g = ::tpyapp::main::del_holder_generic<Point>(Point());
-    std::cout << "del_holder_generic done" << "\n";
+    std::cout << "del_holder_generic done" << "\n" << ::tpy::check_signals;
     std::tuple<Point, Point> u = ::tpyapp::main::del_holder_tuple_name(std::tuple<Point, Point>{Point(), Point()});
-    std::cout << "del_holder_tuple_name done" << "\n";
+    std::cout << "del_holder_tuple_name done" << "\n" << ::tpy::check_signals;
 }
 
 // main()

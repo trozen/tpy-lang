@@ -24,10 +24,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpyapp::main::pick(3, true) << "\n";
-    std::cout << ::tpyapp::main::pick(0, true) << "\n";
-    std::cout << ::tpyapp::main::pick(std::nullopt, true) << "\n";
-    std::cout << ::tpyapp::main::pick(3, false) << "\n";
+    std::cout << ::tpyapp::main::pick(3, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick(0, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick(std::nullopt, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick(3, false) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

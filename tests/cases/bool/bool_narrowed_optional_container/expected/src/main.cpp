@@ -70,11 +70,11 @@ void main() {
     ::tpy::ordered_map<std::string, std::string> empty_dict = ::tpy::ordered_map<std::string, std::string>();
     ::tpy::ordered_set<std::string> empty_set = ::tpy::ordered_set<std::string>();
     std::vector<std::string> __tmp_1 = std::vector<std::string>{"a"};
-    std::cout << ::tpyapp::main::narrowed_list(&(empty_list)) << " " << ::tpyapp::main::narrowed_list(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::narrowed_list(&(empty_list)) << " " << ::tpyapp::main::narrowed_list(&(__tmp_1)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"k", "v"}});
-    std::cout << ::tpyapp::main::narrowed_dict(&(empty_dict)) << " " << ::tpyapp::main::narrowed_dict(&(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::narrowed_dict(&(empty_dict)) << " " << ::tpyapp::main::narrowed_dict(&(__tmp_2)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<std::string> __tmp_3 = ::tpy::ordered_set<std::string>({"x"});
-    std::cout << ::tpyapp::main::narrowed_set(&(empty_set)) << " " << ::tpyapp::main::narrowed_set(&(__tmp_3)) << "\n";
+    std::cout << ::tpyapp::main::narrowed_set(&(empty_set)) << " " << ::tpyapp::main::narrowed_set(&(__tmp_3)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

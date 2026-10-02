@@ -60,14 +60,14 @@ std::string ret_copy(std::string_view s) {
 // def global_print() -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary output effect$/)
 //     print(G, N, B)
 void global_print() {
-    std::cout << G << " " << N << " " << ::tpy::BytesPrinter(B) << "\n";
+    std::cout << G << " " << N << " " << ::tpy::BytesPrinter(B) << "\n" << ::tpy::check_signals;
 }
 
 // # free function: print reads owned leaves through holders
 // def prints(s: str, n: int, b: bytes) -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary output effect$/)
 //     print(s, n, b, "lit")
 void prints(std::string_view s, const ::tpy::BigInt& n, ::tpy::BytesView b) {
-    std::cout << s << " " << n << " " << ::tpy::BytesPrinter(b) << " " << "lit" << "\n";
+    std::cout << s << " " << n << " " << ::tpy::BytesPrinter(b) << " " << "lit" << "\n" << ::tpy::check_signals;
 }
 
 // # free function: element reads are raising operations
@@ -286,7 +286,7 @@ bool overlap_write(std::string_view s) {
 // def bytes_print() -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary output effect$/)
 //     print(b"xy")
 void bytes_print() {
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_literal_owned("xy", 2)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_literal_owned("xy", 2)) << "\n" << ::tpy::check_signals;
 }
 
 // # free function: admitted expressions are arguments, each evaluated into a temporary before the call
@@ -300,7 +300,7 @@ int32_t expression_arguments(double x, const ::tpy::BigInt& n) {
 // def print_call(s: str) -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary output effect$/)
 //     print(ret_copy(s), end="")
 void print_call(std::string_view s) {
-    std::cout << ::tpyapp::main::ret_copy(s);
+    std::cout << ::tpyapp::main::ret_copy(s) << ::tpy::check_signals;
 }
 
 // # free function: an owned bytes literal return
@@ -343,7 +343,7 @@ void conditional_hoist() {
             saved = p;
         }
     }
-    std::cout << "conditional_hoist:" << " " << saved->x << " " << saved->y << "\n";
+    std::cout << "conditional_hoist:" << " " << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
 
 // # covered: a view local borrows the parameter it slices
@@ -514,64 +514,64 @@ __gen_countdown countdown(::tpy::BigInt n) {
 //     for k in countdown(3):
 //         print("generator:", k)
 void main() {
-    std::cout << "param_borrow:" << " " << ::tpy::print_bool(::tpyapp::main::param_borrow("x", ::tpy::BigInt(1), ::tpy::String("t"), ::tpy::bytes_literal("b", 1))) << "\n";
-    std::cout << "by_value:" << " " << ::tpyapp::main::by_value("s") << "\n";
-    std::cout << "local:" << " " << ::tpyapp::main::local(::tpy::BigInt(3)) << "\n";
-    std::cout << "temporary:" << " " << ::tpy::print_bool(::tpyapp::main::temporary(::tpy::BigInt(2), ::tpy::BigInt(3))) << "\n";
-    std::cout << "ret_copy:" << " " << ::tpyapp::main::ret_copy("r") << "\n";
-    std::cout << "global_read:" << " " << ::tpyapp::main::global_read() << "\n";
-    std::cout << "global_print:" << " ";
+    std::cout << "param_borrow:" << " " << ::tpy::print_bool(::tpyapp::main::param_borrow("x", ::tpy::BigInt(1), ::tpy::String("t"), ::tpy::bytes_literal("b", 1))) << "\n" << ::tpy::check_signals;
+    std::cout << "by_value:" << " " << ::tpyapp::main::by_value("s") << "\n" << ::tpy::check_signals;
+    std::cout << "local:" << " " << ::tpyapp::main::local(::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
+    std::cout << "temporary:" << " " << ::tpy::print_bool(::tpyapp::main::temporary(::tpy::BigInt(2), ::tpy::BigInt(3))) << "\n" << ::tpy::check_signals;
+    std::cout << "ret_copy:" << " " << ::tpyapp::main::ret_copy("r") << "\n" << ::tpy::check_signals;
+    std::cout << "global_read:" << " " << ::tpyapp::main::global_read() << "\n" << ::tpy::check_signals;
+    std::cout << "global_print:" << " " << ::tpy::check_signals;
     ::tpyapp::main::global_print();
-    std::cout << "prints:" << " ";
+    std::cout << "prints:" << " " << ::tpy::check_signals;
     ::tpyapp::main::prints("s", ::tpy::BigInt(1), ::tpy::bytes_literal("b", 1));
-    std::cout << "element:" << " " << ::tpy::print_bool(::tpyapp::main::element("abc", ::tpy::bytes_literal("abc", 3), 1)) << "\n";
-    std::cout << "param_copy:" << " " << ::tpyapp::main::param_copy("p") << "\n";
-    std::cout << "append:" << " " << ::tpyapp::main::append("a") << "\n";
-    std::cout << "convert:" << " " << ::tpyapp::main::convert('c', 3) << "\n";
-    std::cout << "literal:" << " " << ::tpyapp::main::literal() << "\n";
-    std::cout << "promoted:" << " " << ::tpyapp::main::promoted(::tpy::BigInt(10), 3) << " " << ::tpy::print_bool(::tpyapp::main::promoted_compare(3, ::tpy::BigInt(3))) << "\n";
-    std::cout << "big_copy:" << " " << ::tpyapp::main::big_copy(::tpy::BigInt(8)) << "\n";
-    std::cout << "loop:" << " " << ::tpyapp::main::loop(::tpy::BigInt(4)) << "\n";
-    std::cout << "float_big:" << " " << ::tpy::print_float(::tpyapp::main::float_big(1.5, ::tpy::BigInt(2))) << "\n";
-    std::cout << "mixed:" << " " << ::tpy::print_bool(::tpyapp::main::mixed(::tpy::BigInt(3), 4)) << "\n";
-    std::cout << "neg:" << " " << ::tpyapp::main::neg(::tpy::BigInt(5)) << "\n";
-    std::cout << "calls_with_str:" << " " << ::tpyapp::main::calls_with_str("c") << "\n";
-    std::cout << "lends:" << " " << ::tpyapp::main::lends("l", ::tpy::BigInt(2)) << "\n";
-    std::cout << "copies:" << " " << ::tpyapp::main::copies("c") << "\n";
-    std::cout << "literal_arguments:" << " " << ::tpyapp::main::literal_arguments() << "\n";
-    std::cout << "owned_result_caller:" << " " << ::tpy::print_bool(::tpyapp::main::owned_result_caller("x")) << "\n";
-    std::cout << "fresh_result:" << " " << ::tpy::print_bool(::tpyapp::main::fresh_result("y")) << "\n";
-    std::cout << "temporary_argument:" << " " << ::tpyapp::main::temporary_argument("t") << "\n";
-    std::cout << "result_local:" << " " << ::tpyapp::main::result_local("rl") << "\n";
-    std::cout << "global_arguments:" << " " << ::tpyapp::main::global_arguments() << "\n";
-    std::cout << "overlap:" << " " << ::tpy::print_bool(::tpyapp::main::overlap("glob")) << "\n";
-    std::cout << "overlap_write:" << " " << ::tpy::print_bool(::tpyapp::main::overlap_write("glob")) << " " << hits << "\n";
-    std::cout << "bytes_print:" << " ";
+    std::cout << "element:" << " " << ::tpy::print_bool(::tpyapp::main::element("abc", ::tpy::bytes_literal("abc", 3), 1)) << "\n" << ::tpy::check_signals;
+    std::cout << "param_copy:" << " " << ::tpyapp::main::param_copy("p") << "\n" << ::tpy::check_signals;
+    std::cout << "append:" << " " << ::tpyapp::main::append("a") << "\n" << ::tpy::check_signals;
+    std::cout << "convert:" << " " << ::tpyapp::main::convert('c', 3) << "\n" << ::tpy::check_signals;
+    std::cout << "literal:" << " " << ::tpyapp::main::literal() << "\n" << ::tpy::check_signals;
+    std::cout << "promoted:" << " " << ::tpyapp::main::promoted(::tpy::BigInt(10), 3) << " " << ::tpy::print_bool(::tpyapp::main::promoted_compare(3, ::tpy::BigInt(3))) << "\n" << ::tpy::check_signals;
+    std::cout << "big_copy:" << " " << ::tpyapp::main::big_copy(::tpy::BigInt(8)) << "\n" << ::tpy::check_signals;
+    std::cout << "loop:" << " " << ::tpyapp::main::loop(::tpy::BigInt(4)) << "\n" << ::tpy::check_signals;
+    std::cout << "float_big:" << " " << ::tpy::print_float(::tpyapp::main::float_big(1.5, ::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
+    std::cout << "mixed:" << " " << ::tpy::print_bool(::tpyapp::main::mixed(::tpy::BigInt(3), 4)) << "\n" << ::tpy::check_signals;
+    std::cout << "neg:" << " " << ::tpyapp::main::neg(::tpy::BigInt(5)) << "\n" << ::tpy::check_signals;
+    std::cout << "calls_with_str:" << " " << ::tpyapp::main::calls_with_str("c") << "\n" << ::tpy::check_signals;
+    std::cout << "lends:" << " " << ::tpyapp::main::lends("l", ::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
+    std::cout << "copies:" << " " << ::tpyapp::main::copies("c") << "\n" << ::tpy::check_signals;
+    std::cout << "literal_arguments:" << " " << ::tpyapp::main::literal_arguments() << "\n" << ::tpy::check_signals;
+    std::cout << "owned_result_caller:" << " " << ::tpy::print_bool(::tpyapp::main::owned_result_caller("x")) << "\n" << ::tpy::check_signals;
+    std::cout << "fresh_result:" << " " << ::tpy::print_bool(::tpyapp::main::fresh_result("y")) << "\n" << ::tpy::check_signals;
+    std::cout << "temporary_argument:" << " " << ::tpyapp::main::temporary_argument("t") << "\n" << ::tpy::check_signals;
+    std::cout << "result_local:" << " " << ::tpyapp::main::result_local("rl") << "\n" << ::tpy::check_signals;
+    std::cout << "global_arguments:" << " " << ::tpyapp::main::global_arguments() << "\n" << ::tpy::check_signals;
+    std::cout << "overlap:" << " " << ::tpy::print_bool(::tpyapp::main::overlap("glob")) << "\n" << ::tpy::check_signals;
+    std::cout << "overlap_write:" << " " << ::tpy::print_bool(::tpyapp::main::overlap_write("glob")) << " " << hits << "\n" << ::tpy::check_signals;
+    std::cout << "bytes_print:" << " " << ::tpy::check_signals;
     ::tpyapp::main::bytes_print();
-    std::cout << "expression_arguments:" << " " << ::tpyapp::main::expression_arguments(0.5, ::tpy::BigInt(2)) << "\n";
-    std::cout << "print_call:" << " ";
+    std::cout << "expression_arguments:" << " " << ::tpyapp::main::expression_arguments(0.5, ::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
+    std::cout << "print_call:" << " " << ::tpy::check_signals;
     ::tpyapp::main::print_call("pc");
-    std::cout << "\n";
-    std::cout << "bytes_literal:" << " " << ::tpy::BytesPrinter(::tpyapp::main::bytes_literal()) << "\n";
-    std::cout << "rvalue_temp:" << " " << ::tpyapp::main::rvalue_temp() << "\n";
+    std::cout << "\n" << ::tpy::check_signals;
+    std::cout << "bytes_literal:" << " " << ::tpy::BytesPrinter(::tpyapp::main::bytes_literal()) << "\n" << ::tpy::check_signals;
+    std::cout << "rvalue_temp:" << " " << ::tpyapp::main::rvalue_temp() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::conditional_hoist();
-    std::cout << "view_local:" << " " << ::tpyapp::main::view_local("vl") << "\n";
+    std::cout << "view_local:" << " " << ::tpyapp::main::view_local("vl") << "\n" << ::tpy::check_signals;
     Rec r = Rec("x", 2);
-    std::cout << "str_field:" << " " << ::tpy::print_bool(::tpyapp::main::str_field(r)) << "\n";
+    std::cout << "str_field:" << " " << ::tpy::print_bool(::tpyapp::main::str_field(r)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::str_field_write(r, "w");
-    std::cout << "str_field_write:" << " " << r.name << "\n";
-    std::cout << "method:" << " " << ::tpy::print_bool(r.positive_x("x")) << " " << ::tpy::print_bool(r.positive_x("y")) << "\n";
-    std::cout << "view_return:" << " " << ::tpyapp::main::view_return("vr") << "\n";
+    std::cout << "str_field_write:" << " " << r.name << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << ::tpy::print_bool(r.positive_x("x")) << " " << ::tpy::print_bool(r.positive_x("y")) << "\n" << ::tpy::check_signals;
+    std::cout << "view_return:" << " " << ::tpyapp::main::view_return("vr") << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray __tmp_1 = ::tpy::ByteArray(::tpy::bytes_literal("ba", 2));
-    std::cout << "buffer:" << " " << ::tpyapp::main::buffer(__tmp_1) << "\n";
-    std::cout << "global_copy:" << " " << ::tpyapp::main::global_copy() << "\n";
-    std::cout << "view_caller:" << " " << ::tpyapp::main::view_caller("vc") << "\n";
-    std::cout << "fstring:" << " " << ::tpyapp::main::fstring(::tpy::BigInt(42)) << "\n";
-    std::cout << "concat_mixed:" << " " << ::tpy::print_bool(::tpyapp::main::concat_mixed("", "x")) << "\n";
-    std::cout << "no_init:" << " " << ::tpyapp::main::no_init(true) << " " << ::tpyapp::main::no_init(false) << "\n";
-    std::cout << "string_as_str:" << " " << ::tpyapp::main::string_as_str("s") << "\n";
+    std::cout << "buffer:" << " " << ::tpyapp::main::buffer(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "global_copy:" << " " << ::tpyapp::main::global_copy() << "\n" << ::tpy::check_signals;
+    std::cout << "view_caller:" << " " << ::tpyapp::main::view_caller("vc") << "\n" << ::tpy::check_signals;
+    std::cout << "fstring:" << " " << ::tpyapp::main::fstring(::tpy::BigInt(42)) << "\n" << ::tpy::check_signals;
+    std::cout << "concat_mixed:" << " " << ::tpy::print_bool(::tpyapp::main::concat_mixed("", "x")) << "\n" << ::tpy::check_signals;
+    std::cout << "no_init:" << " " << ::tpyapp::main::no_init(true) << " " << ::tpyapp::main::no_init(false) << "\n" << ::tpy::check_signals;
+    std::cout << "string_as_str:" << " " << ::tpyapp::main::string_as_str("s") << "\n" << ::tpy::check_signals;
     ::tpyapp::main::global_write();
-    std::cout << "global_write:" << " " << G << "\n";
+    std::cout << "global_write:" << " " << G << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::countdown(::tpy::BigInt(3));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -579,7 +579,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& k = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator:" << " " << k << "\n";
+            std::cout << "generator:" << " " << k << "\n" << ::tpy::check_signals;
         }
     }
 }

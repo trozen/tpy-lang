@@ -55,9 +55,9 @@ namespace tpyapp::main {
 //     print(Priority.HIGH < Priority.LOW)
 void main() {
     Widget w = Widget(42);
-    std::cout << ::tpyapp::main::use_user_comparable(w) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::LOW) < static_cast<int32_t>(Priority::HIGH))) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::HIGH) < static_cast<int32_t>(Priority::LOW))) << "\n";
+    std::cout << ::tpyapp::main::use_user_comparable(w) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::LOW) < static_cast<int32_t>(Priority::HIGH))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::HIGH) < static_cast<int32_t>(Priority::LOW))) << "\n" << ::tpy::check_signals;
 }
 
 // from enum import IntEnum

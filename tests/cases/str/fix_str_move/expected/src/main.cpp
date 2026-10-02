@@ -31,11 +31,11 @@ namespace tpyapp::main {
 void main() {
     ::tpystd::tplib::fix_str::FixStr<16> src = ::tpyapp::main::make();
     ::tpystd::tplib::fix_str::FixStr<16> moved = std::move(src);
-    std::cout << ::tpy::__len__(moved) << "\n";
-    std::cout << moved[0] << " " << moved[1] << "\n";
+    std::cout << ::tpy::__len__(moved) << "\n" << ::tpy::check_signals;
+    std::cout << moved[0] << " " << moved[1] << "\n" << ::tpy::check_signals;
     char c = 'c';
     moved.append(c);
-    std::cout << ::tpy::__len__(moved) << " " << moved[2] << "\n";
+    std::cout << ::tpy::__len__(moved) << " " << moved[2] << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import FixStr

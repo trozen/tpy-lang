@@ -24,7 +24,7 @@ void use_thing(::other::Thing* t) {
 // def main() -> None:
 //     print("ok")
 void main() {
-    std::cout << "ok" << "\n";
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // from mypkg.types import Vec2, add_vecs, Thing

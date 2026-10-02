@@ -33,7 +33,7 @@ namespace tpyapp::main {
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
     ::tpy::Union<bool, std::string> __tmp_1 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/x", nullptr, headers, std::nullopt, true, __tmp_1, cookies);
-    std::cout << r.status_code << "\n";
+    std::cout << r.status_code << "\n" << ::tpy::check_signals;
     ::tpy::Bytes sent = b.recv(65536);
     b.close();
     return sent;
@@ -52,11 +52,11 @@ void _cookie_line(::tpy::BytesView sent) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         ::tpy::BytesView line = *__beg_0;
         if (::tpy::bytes_startswith(line, ::tpy::bytes_literal("Cookie:", 7))) {
-            std::cout << ::tpy::BytesPrinter(line) << "\n";
+            std::cout << ::tpy::BytesPrinter(line) << "\n" << ::tpy::check_signals;
             return;
         }
     }
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_literal_owned("<no Cookie header>", 18)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_literal_owned("<no Cookie header>", 18)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

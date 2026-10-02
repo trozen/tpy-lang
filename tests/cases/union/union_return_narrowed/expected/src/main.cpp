@@ -57,13 +57,13 @@ void main() {
     ::tpy::Union<Cat*, Dog*> result = ::tpyapp::main::ensure_dog(pet);
     if (std::holds_alternative<Dog*>(result)) {
         auto& __result = *std::get<Dog*>(result);
-        std::cout << __result.name << "\n";
+        std::cout << __result.name << "\n" << ::tpy::check_signals;
     }
     ::tpy::Union<Cat*, Dog*> pet2{&(c)};
     ::tpy::Union<Cat*, Dog*> result2 = ::tpyapp::main::pick_first_dog(pet2, pet);
     if (std::holds_alternative<Dog*>(result2)) {
         auto& __result2 = *std::get<Dog*>(result2);
-        std::cout << __result2.name << "\n";
+        std::cout << __result2.name << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 //     print("outer enter")
 //     return 10
 inline ::tpy::BigInt Outer::__enter__() const {
-    std::cout << "outer enter" << "\n";
+    std::cout << "outer enter" << "\n" << ::tpy::check_signals;
     return ::tpy::BigInt(10);
 }
 
@@ -67,9 +67,9 @@ inline ::tpy::BigInt Outer::__enter__() const {
 //         print(f"outer exit (exc: {str(exc_val)})")
 inline void Outer::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
     if ((exc_val == nullptr)) {
-        std::cout << "outer exit (normal)" << "\n";
+        std::cout << "outer exit (normal)" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << std::format("outer exit (exc: {})", std::string(::tpy::__str__((*exc_val)))) << "\n";
+        std::cout << std::format("outer exit (exc: {})", std::string(::tpy::__str__((*exc_val)))) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -77,7 +77,7 @@ inline void Outer::__exit__(std::monostate exc_type, const ::tpy::BaseException*
 //     print("inner enter")
 //     return 20
 inline ::tpy::BigInt Inner::__enter__() const {
-    std::cout << "inner enter" << "\n";
+    std::cout << "inner enter" << "\n" << ::tpy::check_signals;
     return ::tpy::BigInt(20);
 }
 
@@ -89,10 +89,10 @@ inline ::tpy::BigInt Inner::__enter__() const {
 //     return False
 inline bool Inner::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
     if ((exc_val != nullptr)) {
-        std::cout << std::format("inner suppressing: {}", std::string(::tpy::__str__((*exc_val)))) << "\n";
+        std::cout << std::format("inner suppressing: {}", std::string(::tpy::__str__((*exc_val)))) << "\n" << ::tpy::check_signals;
         return true;
     }
-    std::cout << "inner exit (normal)" << "\n";
+    std::cout << "inner exit (normal)" << "\n" << ::tpy::check_signals;
     return false;
 }
 void __tpy_init();

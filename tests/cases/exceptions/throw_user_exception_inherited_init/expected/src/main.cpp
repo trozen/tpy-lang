@@ -25,21 +25,21 @@ void main() {
         try {
             throw MyError("first");
         } catch (const MyError&) {
-            std::cout << "caught MyError" << "\n";
+            std::cout << "caught MyError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw Outer("nested");
         } catch (const MyError&) {
-            std::cout << "caught Outer as MyError" << "\n";
+            std::cout << "caught Outer as MyError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw MyError{};
         } catch (const MyError&) {
-            std::cout << "bare" << "\n";
+            std::cout << "bare" << "\n" << ::tpy::check_signals;
         }
     }
 }

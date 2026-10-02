@@ -32,9 +32,9 @@ namespace tpyapp::main {
         {
             try {
                 (*b).recv(-1);
-                std::cout << "sync: no error" << "\n";
+                std::cout << "sync: no error" << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::ValueError&) {
-                std::cout << "sync: ValueError" << "\n";
+                std::cout << "sync: ValueError" << "\n" << ::tpy::check_signals;
             }
         }
         loop.emplace(::tpystd::asyncio::get_running_loop());
@@ -47,12 +47,12 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            std::cout << "async: no error" << "\n";
+            std::cout << "async: no error" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ValueError&) {
             __sub_0.reset();
-            std::cout << "async: ValueError" << "\n";
+            std::cout << "async: ValueError" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -70,7 +70,7 @@ namespace tpyapp::main {
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "async: ValueError" << "\n";
+            std::cout << "async: ValueError" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

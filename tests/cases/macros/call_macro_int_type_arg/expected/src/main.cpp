@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(describe(b))
 void main() {
     Box<int32_t, 8> b = Box<int32_t, 8>();
-    std::cout << "2 args: int32, 8" << "\n";
+    std::cout << "2 args: int32, 8" << "\n" << ::tpy::check_signals;
 }
 
 // # Regression: a MacroArg whose inferred type is a generic with an `N: int`

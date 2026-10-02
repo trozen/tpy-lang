@@ -31,8 +31,8 @@ void main() {
         std::string_view tail = std::get<1>(__tup_1);
         acc = (::tpy::add_check<int32_t>(acc, ::tpy::__len__(tail)));
     }
-    std::cout << acc << "\n";
-    std::cout << head << "\n";
+    std::cout << acc << "\n" << ::tpy::check_signals;
+    std::cout << head << "\n" << ::tpy::check_signals;
 }
 
 // main()

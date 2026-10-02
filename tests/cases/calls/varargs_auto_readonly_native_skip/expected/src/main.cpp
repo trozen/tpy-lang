@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(user_sum_ints(1, 2, 3))
 void main() {
     std::array<int32_t, 3> __tmp_1{1, 2, 3};
-    std::cout << ::__user_sum_ints(::tpy::varargs<int32_t>(__tmp_1)) << "\n";
+    std::cout << ::__user_sum_ints(::tpy::varargs<int32_t>(__tmp_1)) << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native

@@ -32,18 +32,18 @@ void main() {
     std::tuple<int32_t, int32_t, int32_t> a = std::tuple<int32_t, int32_t, int32_t>{1, 2, 3};
     std::tuple<int32_t, int32_t, int32_t> b = std::tuple<int32_t, int32_t, int32_t>{1, 2, 4};
     std::tuple<int32_t, int32_t, int32_t> c = std::tuple<int32_t, int32_t, int32_t>{1, 2, 3};
-    std::cout << ::tpy::print_bool((a < b)) << "\n";
-    std::cout << ::tpy::print_bool((a > b)) << "\n";
-    std::cout << ::tpy::print_bool((a <= c)) << "\n";
-    std::cout << ::tpy::print_bool((a >= c)) << "\n";
-    std::cout << ::tpy::print_bool((b > a)) << "\n";
-    std::cout << ::tpy::print_bool((b <= a)) << "\n";
+    std::cout << ::tpy::print_bool((a < b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a > b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a <= c)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a >= c)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((b > a)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((b <= a)) << "\n" << ::tpy::check_signals;
     std::tuple<std::string, std::string> x = std::tuple<std::string, std::string>{"apple", "banana"};
     std::tuple<std::string, std::string> y = std::tuple<std::string, std::string>{"apple", "cherry"};
-    std::cout << ::tpy::print_bool((x < y)) << "\n";
-    std::cout << ::tpy::print_bool((x >= y)) << "\n";
+    std::cout << ::tpy::print_bool((x < y)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((x >= y)) << "\n" << ::tpy::check_signals;
     if ((std::tuple<int32_t, int32_t>{1, 0} < std::tuple<int32_t, int32_t>{1, 1})) {
-        std::cout << "less" << "\n";
+        std::cout << "less" << "\n" << ::tpy::check_signals;
     }
     ::tpyapp::main::test_nocopy_ordering();
 }
@@ -60,10 +60,10 @@ void test_nocopy_ordering() {
     Rank r1 = Rank(1);
     Rank r2 = Rank(2);
     Rank r3 = Rank(3);
-    std::cout << ::tpy::print_bool(::tpy::tuple_lt(std::tuple<Rank*, Rank*>{&(r1), &(r2)}, std::tuple<Rank*, Rank*>{&(r1), &(r3)})) << "\n";
-    std::cout << ::tpy::print_bool((!::tpy::tuple_lt(std::tuple<Rank*, Rank*>{&(r1), &(r2)}, std::tuple<Rank*, Rank*>{&(r1), &(r3)}))) << "\n";
-    std::cout << ::tpy::print_bool((!::tpy::tuple_lt(std::tuple<Rank*, Rank*, Rank*>{&(r1), &(r2), &(r3)}, std::tuple<Rank*, Rank*, Rank*>{&(r1), &(r2), &(r3)}))) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::tuple_eq(std::tuple<Rank*, Rank*, Rank*>{&(r1), &(r2), &(r3)}, std::tuple<Rank*, Rank*, Rank*>{&(r1), &(r2), &(r3)})) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::tuple_lt(std::tuple<Rank*, Rank*>{&(r1), &(r2)}, std::tuple<Rank*, Rank*>{&(r1), &(r3)})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!::tpy::tuple_lt(std::tuple<Rank*, Rank*>{&(r1), &(r2)}, std::tuple<Rank*, Rank*>{&(r1), &(r3)}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!::tpy::tuple_lt(std::tuple<Rank*, Rank*, Rank*>{&(r1), &(r2), &(r3)}, std::tuple<Rank*, Rank*, Rank*>{&(r1), &(r2), &(r3)}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::tuple_eq(std::tuple<Rank*, Rank*, Rank*>{&(r1), &(r2), &(r3)}, std::tuple<Rank*, Rank*, Rank*>{&(r1), &(r2), &(r3)})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -77,7 +77,7 @@ __coro_sum_n sum_n(::tpy::BigInt n) {
 // def main() -> None:
 //     print(asyncio.run(sum_n(5)))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::sum_n(::tpy::BigInt(5)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::sum_n(::tpy::BigInt(5)))) << "\n" << ::tpy::check_signals;
 }
 
 // # `await` inside a sync `for i in range(N):` body. v1.5 M3.1

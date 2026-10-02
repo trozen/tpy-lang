@@ -15,11 +15,11 @@ namespace tpyapp::main {
 void test_list_aug_assign() {
     std::vector<int32_t> nums = {1, 2, 3};
     ::tpy::__setitem__(nums, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(nums, 0), 10));
-    std::cout << ::tpy::__getitem__(nums, 0) << "\n";
+    std::cout << ::tpy::__getitem__(nums, 0) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(nums, 1, ::tpy::mul_check<int32_t>(::tpy::__getitem__(nums, 1), 5));
-    std::cout << ::tpy::__getitem__(nums, 1) << "\n";
+    std::cout << ::tpy::__getitem__(nums, 1) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(nums, 2, ::tpy::sub_check<int32_t>(::tpy::__getitem__(nums, 2), 1));
-    std::cout << ::tpy::__getitem__(nums, 2) << "\n";
+    std::cout << ::tpy::__getitem__(nums, 2) << "\n" << ::tpy::check_signals;
 }
 
 // def test_arraylist_aug_assign() -> None:
@@ -35,9 +35,9 @@ void test_arraylist_aug_assign() {
     items.append(100);
     items.append(200);
     ::tpy::__setitem__(items, 0, ::tpy::add_check<int32_t>(items[0], 5));
-    std::cout << items[0] << "\n";
+    std::cout << items[0] << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(items, 1, ::tpy::sub_check<int32_t>(items[1], 50));
-    std::cout << items[1] << "\n";
+    std::cout << items[1] << "\n" << ::tpy::check_signals;
 }
 
 // def test_negative_index_aug_assign() -> None:
@@ -49,9 +49,9 @@ void test_arraylist_aug_assign() {
 void test_negative_index_aug_assign() {
     std::vector<int32_t> nums = {10, 20, 30};
     ::tpy::__setitem__(nums, -1, ::tpy::add_check<int32_t>(::tpy::__getitem__(nums, -1), 5));
-    std::cout << ::tpy::__getitem__(nums, -1) << "\n";
+    std::cout << ::tpy::__getitem__(nums, -1) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(nums, -2, ::tpy::mul_check<int32_t>(::tpy::__getitem__(nums, -2), 2));
-    std::cout << ::tpy::__getitem__(nums, -2) << "\n";
+    std::cout << ::tpy::__getitem__(nums, -2) << "\n" << ::tpy::check_signals;
 }
 
 // def test_array_aug_assign() -> None:
@@ -63,9 +63,9 @@ void test_negative_index_aug_assign() {
 void test_array_aug_assign() {
     std::array<int32_t, 3> arr = {10, 20, 30};
     ::tpy::__setitem__(arr, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(arr, 0), 5));
-    std::cout << ::tpy::__getitem__(arr, 0) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 0) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(arr, -1, ::tpy::mul_check<int32_t>(::tpy::__getitem__(arr, -1), 2));
-    std::cout << ::tpy::__getitem__(arr, -1) << "\n";
+    std::cout << ::tpy::__getitem__(arr, -1) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

@@ -188,7 +188,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << __await_lift_0 << "\n";
+        std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
         __coro_arg_1.emplace(Cat("tom"));
         __sub_1.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_1))});
         __state = S_RESUME_1;
@@ -199,7 +199,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << __await_lift_1 << "\n";
+        std::cout << __await_lift_1 << "\n" << ::tpy::check_signals;
         __coro_arg_2.emplace(Dog("fido"));
         __sub_2.emplace(&((*__coro_arg_2)));
         __state = S_RESUME_2;
@@ -210,7 +210,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << __await_lift_2 << "\n";
+        std::cout << __await_lift_2 << "\n" << ::tpy::check_signals;
         __coro_arg_3.emplace(Dog("spot"));
         __sub_3.emplace((*__coro_arg_3));
         __state = S_RESUME_3;
@@ -221,7 +221,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();
         __sub_3.reset();
-        std::cout << __await_lift_3 << "\n";
+        std::cout << __await_lift_3 << "\n" << ::tpy::check_signals;
         __sub_4.emplace(nullptr);
         __state = S_RESUME_4;
         continue;
@@ -231,7 +231,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_4 = std::move(__r4).value();
         __sub_4.reset();
-        std::cout << __await_lift_4 << "\n";
+        std::cout << __await_lift_4 << "\n" << ::tpy::check_signals;
         held.emplace(Dog("held"));
         __sub_5.emplace((*held));
         __state = S_RESUME_5;
@@ -242,7 +242,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_5 = std::move(__r5).value();
         __sub_5.reset();
-        std::cout << __await_lift_5 << "\n";
+        std::cout << __await_lift_5 << "\n" << ::tpy::check_signals;
         __coro_arg_4.emplace(Dog("max"));
         __sub_6.emplace("tag", ::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_4))});
         __state = S_RESUME_6;
@@ -253,7 +253,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         if (__r6.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_6 = std::move(__r6).value();
         __sub_6.reset();
-        std::cout << __await_lift_6 << "\n";
+        std::cout << __await_lift_6 << "\n" << ::tpy::check_signals;
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
         __state = S_JOIN_0;
@@ -264,7 +264,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         if (__r7.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_7 = std::move(__r7).value();
         __sub_7.reset();
-        std::cout << __await_lift_7 << "\n";
+        std::cout << __await_lift_7 << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
     }

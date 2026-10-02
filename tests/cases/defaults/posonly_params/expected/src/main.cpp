@@ -24,12 +24,12 @@ int32_t g(int32_t a, int32_t b, int32_t c) {
 //     print(Calc().scale(4))
 //     print(Calc().scale(4, k=3))
 void main() {
-    std::cout << ::tpyapp::main::f(7) << "\n";
-    std::cout << ::tpyapp::main::f(7, 1) << "\n";
-    std::cout << ::tpyapp::main::g(1, 2) << "\n";
-    std::cout << ::tpyapp::main::g(1, 2, 3) << "\n";
-    std::cout << Calc().scale(4) << "\n";
-    std::cout << Calc().scale(4, 3) << "\n";
+    std::cout << ::tpyapp::main::f(7) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::f(7, 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::g(1, 2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::g(1, 2, 3) << "\n" << ::tpy::check_signals;
+    std::cout << Calc().scale(4) << "\n" << ::tpy::check_signals;
+    std::cout << Calc().scale(4, 3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

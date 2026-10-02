@@ -17,9 +17,9 @@ void basic_write_read() {
     ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO();
     int32_t n1 = b.write(::tpy::bytes_literal("hello ", 6));
     int32_t n2 = b.write(::tpy::bytes_literal("world", 5));
-    std::cout << "wrote:" << " " << (::tpy::add_check<int32_t>(n1, n2)) << "\n";
-    std::cout << "getvalue:" << " " << ::tpy::BytesPrinter(b.getvalue()) << "\n";
-    std::cout << "tell:" << " " << b.tell() << "\n";
+    std::cout << "wrote:" << " " << (::tpy::add_check<int32_t>(n1, n2)) << "\n" << ::tpy::check_signals;
+    std::cout << "getvalue:" << " " << ::tpy::BytesPrinter(b.getvalue()) << "\n" << ::tpy::check_signals;
+    std::cout << "tell:" << " " << b.tell() << "\n" << ::tpy::check_signals;
 }
 
 // def initial_value_and_overwrite() -> None:
@@ -31,11 +31,11 @@ void basic_write_read() {
 //     print("after-extend:", b.getvalue())
 void initial_value_and_overwrite() {
     ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("hello", 5));
-    std::cout << "initial pos:" << " " << b.tell() << "\n";
+    std::cout << "initial pos:" << " " << b.tell() << "\n" << ::tpy::check_signals;
     b.write(::tpy::bytes_literal("HE", 2));
-    std::cout << "after-overwrite:" << " " << ::tpy::BytesPrinter(b.getvalue()) << "\n";
+    std::cout << "after-overwrite:" << " " << ::tpy::BytesPrinter(b.getvalue()) << "\n" << ::tpy::check_signals;
     b.write(::tpy::bytes_literal("LLO WORLD", 9));
-    std::cout << "after-extend:" << " " << ::tpy::BytesPrinter(b.getvalue()) << "\n";
+    std::cout << "after-extend:" << " " << ::tpy::BytesPrinter(b.getvalue()) << "\n" << ::tpy::check_signals;
 }
 
 // def seek_then_read() -> None:
@@ -47,9 +47,9 @@ void initial_value_and_overwrite() {
 void seek_then_read() {
     ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("abcdefgh", 8));
     b.seek(3);
-    std::cout << "read-from-3:" << " " << ::tpy::BytesPrinter(b.read()) << "\n";
+    std::cout << "read-from-3:" << " " << ::tpy::BytesPrinter(b.read()) << "\n" << ::tpy::check_signals;
     b.seek(0);
-    std::cout << "read-all:" << " " << ::tpy::BytesPrinter(b.read()) << "\n";
+    std::cout << "read-all:" << " " << ::tpy::BytesPrinter(b.read()) << "\n" << ::tpy::check_signals;
 }
 
 // def readline_iteration() -> None:
@@ -60,10 +60,10 @@ void seek_then_read() {
 //     print("readline-4-eof-len:", len(b.readline()))
 void readline_iteration() {
     ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("line1\nline2\nline3", 17));
-    std::cout << "readline-1:" << " " << ::tpy::BytesPrinter(b.readline()) << "\n";
-    std::cout << "readline-2:" << " " << ::tpy::BytesPrinter(b.readline()) << "\n";
-    std::cout << "readline-3:" << " " << ::tpy::BytesPrinter(b.readline()) << "\n";
-    std::cout << "readline-4-eof-len:" << " " << ::tpy::__len__(b.readline()) << "\n";
+    std::cout << "readline-1:" << " " << ::tpy::BytesPrinter(b.readline()) << "\n" << ::tpy::check_signals;
+    std::cout << "readline-2:" << " " << ::tpy::BytesPrinter(b.readline()) << "\n" << ::tpy::check_signals;
+    std::cout << "readline-3:" << " " << ::tpy::BytesPrinter(b.readline()) << "\n" << ::tpy::check_signals;
+    std::cout << "readline-4-eof-len:" << " " << ::tpy::__len__(b.readline()) << "\n" << ::tpy::check_signals;
 }
 
 // def context_manager_and_close() -> None:
@@ -81,7 +81,7 @@ void context_manager_and_close() {
     auto __ctx_1 = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("ctx", 3));
     auto& b = __ctx_1.__enter__();
     try {
-        std::cout << "inside:" << " " << ::tpy::BytesPrinter(b.read()) << "\n";
+        std::cout << "inside:" << " " << ::tpy::BytesPrinter(b.read()) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -94,13 +94,13 @@ void context_manager_and_close() {
     __ctx_1.__exit__({}, nullptr, {});
     ::tpystd::io::BytesIO b2 = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("x", 1));
     b2.close();
-    std::cout << "closed:" << " " << ::tpy::print_bool(b2.closed()) << "\n";
+    std::cout << "closed:" << " " << ::tpy::print_bool(b2.closed()) << "\n" << ::tpy::check_signals;
     {
         try {
             b2.write(::tpy::bytes_literal("y", 1));
-            std::cout << "FAIL" << "\n";
+            std::cout << "FAIL" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "got ValueError on write:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "got ValueError on write:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -117,13 +117,13 @@ void context_manager_and_close() {
 //     context_manager_and_close()
 void main() {
     ::tpyapp::main::basic_write_read();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::initial_value_and_overwrite();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::seek_then_read();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::readline_iteration();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::context_manager_and_close();
 }
 

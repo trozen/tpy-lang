@@ -31,10 +31,10 @@ void __tpy_init() {
     p->x = 3;
     p->y = 4;
     p->name.assign("origin-offset");
-    std::cout << p->x;
-    std::cout << ",";
-    std::cout << p->y << "\n";
-    std::cout << std::string(::tpy::__str__(p->name)) << "\n";
+    std::cout << p->x << ::tpy::check_signals;
+    std::cout << "," << ::tpy::check_signals;
+    std::cout << p->y << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(p->name)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -95,7 +95,7 @@ __coro_first_match first_match() {
 // def main() -> None:
 //     print(asyncio.run(first_match()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::first_match())) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::first_match())) << "\n" << ::tpy::check_signals;
 }
 
 // # `break` / `continue` inside a CFG-lowered `for`-with-await

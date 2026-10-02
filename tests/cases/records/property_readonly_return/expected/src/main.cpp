@@ -16,7 +16,7 @@ int32_t get_count(const Foo& f) {
 //     print(get_count(f))
 void main() {
     Foo f = Foo();
-    std::cout << ::tpyapp::main::get_count(f) << "\n";
+    std::cout << ::tpyapp::main::get_count(f) << "\n" << ::tpy::check_signals;
 }
 
 // main()

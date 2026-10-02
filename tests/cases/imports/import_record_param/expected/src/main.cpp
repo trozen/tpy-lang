@@ -15,7 +15,7 @@ int32_t get_radius(const ::tpyapp::shapes::Circle& c) {
 //     print(get_radius(c))
 void main() {
     ::tpyapp::shapes::Circle c = ::tpyapp::shapes::Circle(10);
-    std::cout << ::tpyapp::main::get_radius(c) << "\n";
+    std::cout << ::tpyapp::main::get_radius(c) << "\n" << ::tpy::check_signals;
 }
 
 // from shapes import Circle

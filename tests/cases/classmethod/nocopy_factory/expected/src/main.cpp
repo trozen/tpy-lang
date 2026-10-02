@@ -16,8 +16,8 @@ int32_t consume(Handle&& h) {
 //     print(consume(h))
 void main() {
     Handle h = Handle::opened(7);
-    std::cout << h.fd << "\n";
-    std::cout << ::tpyapp::main::consume(std::move(h)) << "\n";
+    std::cout << h.fd << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::consume(std::move(h)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

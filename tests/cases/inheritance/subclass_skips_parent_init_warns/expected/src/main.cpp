@@ -33,13 +33,13 @@ std::expected<int32_t, Failed> run(bool ok) {
 //     b.append(1)
 //     print("list base:", b.n, len(b))
 void main() {
-    std::cout << "tag:" << " " << Tag(1).n << "\n";
-    std::cout << "dog:" << " " << Dog(2).n << "\n";
+    std::cout << "tag:" << " " << Tag(1).n << "\n" << ::tpy::check_signals;
+    std::cout << "dog:" << " " << Dog(2).n << "\n" << ::tpy::check_signals;
     {
         try {
             throw CodeError(3);
         } catch (const CodeError& e) {
-            std::cout << "native exception:" << " " << e.code << "\n";
+            std::cout << "native exception:" << " " << e.code << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -53,15 +53,15 @@ void main() {
         __except_1:;
         {
             auto& e = *__err_opt_1;
-            std::cout << "return exception:" << " " << e.code << "\n";
+            std::cout << "return exception:" << " " << e.code << "\n" << ::tpy::check_signals;
         }
         __after_try_1:;
     }
-    std::cout << "multi-base:" << " " << Both(4).n << "\n";
-    std::cout << "dataclass:" << " " << Kid(5).z << "\n";
+    std::cout << "multi-base:" << " " << Both(4).n << "\n" << ::tpy::check_signals;
+    std::cout << "dataclass:" << " " << Kid(5).z << "\n" << ::tpy::check_signals;
     Bag b = Bag(6);
     b.push_back(1);
-    std::cout << "list base:" << " " << b.n << " " << ::tpy::__len__(b) << "\n";
+    std::cout << "list base:" << " " << b.n << " " << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // # A subclass __init__ that skips an initializer its base is owed compiles with

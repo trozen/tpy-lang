@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(f.tag)
 void main() {
     ::tpyapp::pkg::Foo f = ::tpyapp::pkg::Foo();
-    std::cout << f.tag << "\n";
+    std::cout << f.tag << "\n" << ::tpy::check_signals;
 }
 
 // # When `from pkg import Foo` resolves, it should pick up pkg.__init__.py's

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(len(h.grab()), len(h.grab_copy()), len(h.items))
 void main() {
     Holder h = Holder();
-    std::cout << ::tpy::__len__(h.grab()) << " " << ::tpy::__len__(h.grab_copy()) << " " << ::tpy::__len__(h.items) << "\n";
+    std::cout << ::tpy::__len__(h.grab()) << " " << ::tpy::__len__(h.grab_copy()) << " " << ::tpy::__len__(h.items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

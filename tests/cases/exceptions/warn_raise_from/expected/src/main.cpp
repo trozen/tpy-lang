@@ -32,7 +32,7 @@ void main() {
                 }
             }
         } catch (const ::tpy::RuntimeError& r) {
-            std::cout << "caught" << " " << r << "\n";
+            std::cout << "caught" << " " << r << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -45,7 +45,7 @@ void main() {
                 }
             }
         } catch (const ::tpy::RuntimeError& r2) {
-            std::cout << "caught" << " " << r2 << "\n";
+            std::cout << "caught" << " " << r2 << "\n" << ::tpy::check_signals;
         }
     }
 }

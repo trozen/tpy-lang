@@ -37,12 +37,12 @@ int64_t spread(int64_t a, int64_t b, ::tpy::varargs<const int64_t> rest, int64_t
 //     print(spread(1, 2, 5, 6))
 void main() {
     Options __tmp_1 = Options("a");
-    std::cout << ::tpyapp::main::probe(Fixed(3), __tmp_1) << "\n";
+    std::cout << ::tpyapp::main::probe(Fixed(3), __tmp_1) << "\n" << ::tpy::check_signals;
     Options __tmp_2 = Options("b");
-    std::cout << ::tpyapp::main::probe(std::nullopt, __tmp_2) << "\n";
-    std::cout << ::tpyapp::main::spread(1, 2, ::tpy::varargs<const int64_t>(), 9) << "\n";
+    std::cout << ::tpyapp::main::probe(std::nullopt, __tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::spread(1, 2, ::tpy::varargs<const int64_t>(), 9) << "\n" << ::tpy::check_signals;
     std::array<const int64_t, 2> __tmp_3{5, 6};
-    std::cout << ::tpyapp::main::spread(1, 2, ::tpy::varargs<const int64_t>(__tmp_3), 9) << "\n";
+    std::cout << ::tpyapp::main::spread(1, 2, ::tpy::varargs<const int64_t>(__tmp_3), 9) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(invoke(lambda: 42))
 //     print(invoke(lambda: 0))
 void main() {
-    std::cout << ::tpyapp::main::invoke([]() -> int32_t { return 42; }) << "\n";
-    std::cout << ::tpyapp::main::invoke([]() -> int32_t { return 0; }) << "\n";
+    std::cout << ::tpyapp::main::invoke([]() -> int32_t { return 42; }) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::invoke([]() -> int32_t { return 0; }) << "\n" << ::tpy::check_signals;
 }
 
 // main()

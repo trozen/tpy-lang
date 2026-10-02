@@ -22,13 +22,13 @@ namespace tpyapp::main {
 //     print(ord(chr(n)))
 void main() {
     char c = static_cast<char>(65);
-    std::cout << static_cast<int32_t>(static_cast<unsigned char>(c)) << "\n";
+    std::cout << static_cast<int32_t>(static_cast<unsigned char>(c)) << "\n" << ::tpy::check_signals;
     char d = static_cast<char>(122);
-    std::cout << static_cast<int32_t>(static_cast<unsigned char>(d)) << "\n";
+    std::cout << static_cast<int32_t>(static_cast<unsigned char>(d)) << "\n" << ::tpy::check_signals;
     char zero = static_cast<char>(0);
-    std::cout << static_cast<int32_t>(static_cast<unsigned char>(zero)) << "\n";
+    std::cout << static_cast<int32_t>(static_cast<unsigned char>(zero)) << "\n" << ::tpy::check_signals;
     int32_t n = 97;
-    std::cout << static_cast<int32_t>(static_cast<unsigned char>(static_cast<char>(n))) << "\n";
+    std::cout << static_cast<int32_t>(static_cast<unsigned char>(static_cast<char>(n))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

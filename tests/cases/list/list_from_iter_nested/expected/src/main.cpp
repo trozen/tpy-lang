@@ -131,15 +131,15 @@ __genexpr_main_2_frame __genexpr_main_2(const std::array<int32_t, 5>& __src) {
 //     bools = [True, True, False]
 //     print(all(list(iter(bools))))
 void main() {
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(5))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_1(std::in_place, [&]() { return std::array<int32_t, 3>{1, 2, 3}; }))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_1(std::in_place, [&]() { return std::array<int32_t, 3>{1, 2, 3}; }))) << "\n" << ::tpy::check_signals;
     std::array<std::string, 2> words = {"hello", "world"};
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpy::__iter__(words))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpy::__iter__(words))) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 5> nums = {5, 3, 1, 4, 2};
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_2(nums)))) << "\n";
-    std::cout << ::tpy::builtin_sum<int32_t>(::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(5))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_2(nums)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_sum<int32_t>(::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(5))) << "\n" << ::tpy::check_signals;
     std::array<bool, 3> bools = {true, true, false};
-    std::cout << ::tpy::print_bool(::tpy::builtin_all(::tpy::construct<std::vector<bool>>(::tpy::__iter__(bools)))) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::builtin_all(::tpy::construct<std::vector<bool>>(::tpy::__iter__(bools)))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

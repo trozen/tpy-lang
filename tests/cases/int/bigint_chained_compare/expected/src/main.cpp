@@ -32,26 +32,26 @@ namespace tpyapp::main {
 void main() {
     ::tpy::BigInt x = ::tpy::BigInt(5);
     if (((1 <= x) && (x <= 12))) {
-        std::cout << "in range" << "\n";
+        std::cout << "in range" << "\n" << ::tpy::check_signals;
     }
     if ((!(((6 <= x) && (x <= 12))))) {
-        std::cout << "below" << "\n";
+        std::cout << "below" << "\n" << ::tpy::check_signals;
     }
     ::tpy::BigInt lo = ::tpy::BigInt(1);
     ::tpy::BigInt hi = ::tpy::BigInt(12);
     if (((lo <= x) && (x <= hi))) {
-        std::cout << "var bounds" << "\n";
+        std::cout << "var bounds" << "\n" << ::tpy::check_signals;
     }
     bool b = (1 <= x);
-    std::cout << ::tpy::print_bool(b) << "\n";
-    std::cout << ::tpy::print_bool((20 > x)) << "\n";
-    std::cout << ::tpy::print_bool((1 >= x)) << "\n";
-    std::cout << ::tpy::print_bool((3 != x)) << "\n";
+    std::cout << ::tpy::print_bool(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((20 > x)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((1 >= x)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((3 != x)) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt n = ::tpy::BigInt(3);
     while (((::tpy::BigInt(0) < n) && (n <= 3))) {
         n = (n) - (::tpy::BigInt(1));
     }
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // main()

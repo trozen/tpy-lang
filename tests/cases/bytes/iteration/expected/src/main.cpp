@@ -28,17 +28,17 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         uint8_t b = *__beg_0;
-        std::cout << static_cast<int>(b) << "\n";
+        std::cout << static_cast<int>(b) << "\n" << ::tpy::check_signals;
     }
-    std::cout << static_cast<int>(::tpy::bytes_getitem(data, 0)) << "\n";
-    std::cout << static_cast<int>(::tpy::bytes_getitem(data, 2)) << "\n";
-    std::cout << static_cast<int>(::tpy::bytes_getitem(data, -1)) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 65))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 0))) << "\n";
+    std::cout << static_cast<int>(::tpy::bytes_getitem(data, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpy::bytes_getitem(data, 2)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpy::bytes_getitem(data, -1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 65))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 0))) << "\n" << ::tpy::check_signals;
     ::tpy::BytesView a = ::tpy::bytes_literal("hello", 5);
     ::tpy::BytesView b2 = ::tpy::bytes_literal(" world", 6);
-    std::cout << ::tpy::BytesPrinter((::tpy::bytes_concat(a, b2))) << "\n";
-    std::cout << ::tpy::BytesPrinter((::tpy::bytes_repeat(a, 3))) << "\n";
+    std::cout << ::tpy::BytesPrinter((::tpy::bytes_concat(a, b2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter((::tpy::bytes_repeat(a, 3))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

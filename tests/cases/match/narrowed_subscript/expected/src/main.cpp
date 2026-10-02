@@ -31,30 +31,30 @@ void string_reads(const ::tpy::Union<int32_t, std::string>& x, const ::tpy::BigI
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "str-match" << " " << ::tpy::__getitem__(__case_0, 0) << " " << ::tpy::__getitem__(__case_0, -1) << " " << ::tpy::__getitem__(__case_0, index.to_fixed_check<int32_t>()) << "\n";
-        std::cout << "str-slice" << " " << ::tpy::str_slice(__case_0, ::tpy::BasicSlice{1, std::nullopt}) << "\n";
+        std::cout << "str-match" << " " << ::tpy::__getitem__(__case_0, 0) << " " << ::tpy::__getitem__(__case_0, -1) << " " << ::tpy::__getitem__(__case_0, index.to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
+        std::cout << "str-slice" << " " << ::tpy::str_slice(__case_0, ::tpy::BasicSlice{1, std::nullopt}) << "\n" << ::tpy::check_signals;
         {
             try {
-                std::cout << ::tpy::__getitem__(__case_0, ((index) + (::tpy::BigInt(10))).to_fixed_check<int32_t>()) << "\n";
+                std::cout << ::tpy::__getitem__(__case_0, ((index) + (::tpy::BigInt(10))).to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::IndexError&) {
-                std::cout << "str-match-bounds" << "\n";
+                std::cout << "str-match-bounds" << "\n" << ::tpy::check_signals;
             }
         }
         break;
     }
     default: {
-        std::cout << "str-other" << "\n";
+        std::cout << "str-other" << "\n" << ::tpy::check_signals;
         break;
     }
     }
     if (std::holds_alternative<std::string>(x)) {
         const auto& __x = std::get<std::string>(x);
-        std::cout << "str-isinstance" << " " << ::tpy::__getitem__(__x, 0) << " " << ::tpy::__getitem__(__x, -1) << " " << ::tpy::__getitem__(__x, index.to_fixed_check<int32_t>()) << "\n";
+        std::cout << "str-isinstance" << " " << ::tpy::__getitem__(__x, 0) << " " << ::tpy::__getitem__(__x, -1) << " " << ::tpy::__getitem__(__x, index.to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
         {
             try {
-                std::cout << ::tpy::__getitem__(__x, -10) << "\n";
+                std::cout << ::tpy::__getitem__(__x, -10) << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::IndexError&) {
-                std::cout << "str-isinstance-bounds" << "\n";
+                std::cout << "str-isinstance-bounds" << "\n" << ::tpy::check_signals;
             }
         }
     }
@@ -78,25 +78,25 @@ void bytes_reads(::tpy::Union<const Indexed*, const ::tpy::Bytes*> x, const ::tp
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
-        std::cout << "bytes-match" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, index.to_fixed_check<int32_t>())) << "\n";
-        std::cout << "bytes-slice" << " " << ::tpy::BytesPrinter(::tpy::bytes_slice(__case_0, ::tpy::BasicSlice{1, std::nullopt})) << "\n";
+        std::cout << "bytes-match" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, index.to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
+        std::cout << "bytes-slice" << " " << ::tpy::BytesPrinter(::tpy::bytes_slice(__case_0, ::tpy::BasicSlice{1, std::nullopt})) << "\n" << ::tpy::check_signals;
         {
             try {
-                std::cout << static_cast<int>(::tpy::bytes_getitem(__case_0, ((index) + (::tpy::BigInt(10))).to_fixed_check<int32_t>())) << "\n";
+                std::cout << static_cast<int>(::tpy::bytes_getitem(__case_0, ((index) + (::tpy::BigInt(10))).to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::IndexError&) {
-                std::cout << "bytes-match-bounds" << "\n";
+                std::cout << "bytes-match-bounds" << "\n" << ::tpy::check_signals;
             }
         }
         break;
     }
     default: {
-        std::cout << "bytes-other" << "\n";
+        std::cout << "bytes-other" << "\n" << ::tpy::check_signals;
         break;
     }
     }
     if (std::holds_alternative<const ::tpy::Bytes*>(x)) {
         auto& __x = *std::get<const ::tpy::Bytes*>(x);
-        std::cout << "bytes-isinstance" << " " << static_cast<int>(::tpy::bytes_getitem(__x, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, index.to_fixed_check<int32_t>())) << "\n";
+        std::cout << "bytes-isinstance" << " " << static_cast<int>(::tpy::bytes_getitem(__x, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, index.to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -112,7 +112,7 @@ void bytes_value_union(const ::tpy::Union<::tpy::Bytes, int32_t>& x) {
     switch (__match_subject_1.index()) {
     case 0: {
         auto& __case_0 = std::get<0>(__match_subject_1);
-        std::cout << "bytes-value-union" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << "\n";
+        std::cout << "bytes-value-union" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
@@ -142,29 +142,29 @@ void bytearray_reads(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x, co
     switch (__match_subject_1.index()) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        std::cout << "bytearray-match" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, index.to_fixed_check<int32_t>())) << "\n";
+        std::cout << "bytearray-match" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, index.to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
         {
             try {
-                std::cout << static_cast<int>(::tpy::bytes_getitem(__case_0, ((index) + (::tpy::BigInt(10))).to_fixed_check<int32_t>())) << "\n";
+                std::cout << static_cast<int>(::tpy::bytes_getitem(__case_0, ((index) + (::tpy::BigInt(10))).to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::IndexError&) {
-                std::cout << "bytearray-match-bounds" << "\n";
+                std::cout << "bytearray-match-bounds" << "\n" << ::tpy::check_signals;
             }
         }
         break;
     }
     default: {
-        std::cout << "bytearray-other" << "\n";
+        std::cout << "bytearray-other" << "\n" << ::tpy::check_signals;
         break;
     }
     }
     if (std::holds_alternative<const ::tpy::ByteArray*>(x)) {
         auto& __x = *std::get<const ::tpy::ByteArray*>(x);
-        std::cout << "bytearray-isinstance" << " " << static_cast<int>(::tpy::bytes_getitem(__x, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, index.to_fixed_check<int32_t>())) << "\n";
+        std::cout << "bytearray-isinstance" << " " << static_cast<int>(::tpy::bytes_getitem(__x, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, index.to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
         {
             try {
-                std::cout << static_cast<int>(::tpy::bytes_getitem(__x, -10)) << "\n";
+                std::cout << static_cast<int>(::tpy::bytes_getitem(__x, -10)) << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::IndexError&) {
-                std::cout << "bytearray-isinstance-bounds" << "\n";
+                std::cout << "bytearray-isinstance-bounds" << "\n" << ::tpy::check_signals;
             }
         }
     }
@@ -185,18 +185,18 @@ void capture_reads(const ::tpy::Union<int32_t, std::string>& x, bool allowed) {
         {
             auto& captured = __case_1;
             if (allowed) {
-                std::cout << "capture" << " " << ::tpy::__getitem__(captured, 0) << " " << ::tpy::__getitem__(captured, -1) << "\n";
+                std::cout << "capture" << " " << ::tpy::__getitem__(captured, 0) << " " << ::tpy::__getitem__(captured, -1) << "\n" << ::tpy::check_signals;
                 goto __match_end_2;
             }
         }
         {
-            std::cout << "capture-other" << "\n";
+            std::cout << "capture-other" << "\n" << ::tpy::check_signals;
             goto __match_end_2;
         }
         break;
     }
     default: {
-        std::cout << "capture-other" << "\n";
+        std::cout << "capture-other" << "\n" << ::tpy::check_signals;
         goto __match_end_2;
         break;
     }
@@ -218,7 +218,7 @@ void monomorphic_read(int32_t marker) {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "monomorphic" << " " << ::tpy::__getitem__(__case_0, 0) << " " << marker << "\n";
+        std::cout << "monomorphic" << " " << ::tpy::__getitem__(__case_0, 0) << " " << marker << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
@@ -242,7 +242,7 @@ void tuple_reads(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x) {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         std::tuple<uint8_t> one = std::tuple<uint8_t>(::tpy::bytes_getitem(__case_0, 0));
         std::tuple<uint8_t, uint8_t> two = std::tuple<uint8_t, uint8_t>{::tpy::bytes_getitem(__case_0, 0), ::tpy::bytes_getitem(__case_0, -1)};
-        std::cout << "tuple" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << " " << static_cast<int>(std::get<0>(one)) << " " << static_cast<int>(std::get<0>(two)) << " " << static_cast<int>(std::get<1>(two)) << "\n";
+        std::cout << "tuple" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << " " << static_cast<int>(std::get<0>(one)) << " " << static_cast<int>(std::get<0>(two)) << " " << static_cast<int>(std::get<1>(two)) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
@@ -326,7 +326,7 @@ void comprehension(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x) {
             int32_t i = int32_t(__i_0);
             return ::tpy::bytes_getitem(__case_0, i);
         });
-        std::cout << "comprehension" << " " << ::tpy::ListPrinter(values) << "\n";
+        std::cout << "comprehension" << " " << ::tpy::ListPrinter(values) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
@@ -365,7 +365,7 @@ void closure(bool choose_text) {
         switch (__match_subject_1.index()) {
         case 1: {
             auto& __case_0 = std::get<1>(__match_subject_1);
-            std::cout << "closure" << " " << ::tpy::__getitem__(__case_0, -1) << "\n";
+            std::cout << "closure" << " " << ::tpy::__getitem__(__case_0, -1) << "\n" << ::tpy::check_signals;
             break;
         }
         default: {
@@ -396,7 +396,7 @@ void cleanup_reads(const ::tpy::Union<int32_t, std::string>& x) {
         auto __ctx_1 = Guard();
         __ctx_1.__enter__();
         try {
-            std::cout << "context" << " " << ::tpy::__getitem__(__case_0, 0) << "\n";
+            std::cout << "context" << " " << ::tpy::__getitem__(__case_0, 0) << "\n" << ::tpy::check_signals;
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
@@ -409,12 +409,12 @@ void cleanup_reads(const ::tpy::Union<int32_t, std::string>& x) {
         __ctx_1.__exit__({}, nullptr, {});
         {
             try {
-                std::cout << "try" << " " << ::tpy::__getitem__(__case_0, 1) << "\n";
+                std::cout << "try" << " " << ::tpy::__getitem__(__case_0, 1) << "\n" << ::tpy::check_signals;
             } catch (...) {
-                std::cout << "finally" << " " << ::tpy::__getitem__(__case_0, -1) << "\n";
+                std::cout << "finally" << " " << ::tpy::__getitem__(__case_0, -1) << "\n" << ::tpy::check_signals;
                 throw;
             }
-            std::cout << "finally" << " " << ::tpy::__getitem__(__case_0, -1) << "\n";
+            std::cout << "finally" << " " << ::tpy::__getitem__(__case_0, -1) << "\n" << ::tpy::check_signals;
         }
         break;
     }
@@ -461,10 +461,10 @@ void conditional_reads(const ::tpy::Union<int32_t, std::string>& x, Counter& cou
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "and" << " " << ::tpy::print_bool((false && (::tpy::__getitem__(__case_0, 99) == 'x'))) << "\n";
-        std::cout << "or" << " " << ::tpy::print_bool((true || (::tpy::__getitem__(__case_0, 99) == 'x'))) << "\n";
-        std::cout << "ternary" << " " << (((counter.calls == 0)) ? (::tpy::__getitem__(__case_0, counter.index())) : (::tpy::__getitem__(__case_0, 99))) << "\n";
-        std::cout << "index-calls" << " " << counter.calls << "\n";
+        std::cout << "and" << " " << ::tpy::print_bool((false && (::tpy::__getitem__(__case_0, 99) == 'x'))) << "\n" << ::tpy::check_signals;
+        std::cout << "or" << " " << ::tpy::print_bool((true || (::tpy::__getitem__(__case_0, 99) == 'x'))) << "\n" << ::tpy::check_signals;
+        std::cout << "ternary" << " " << (((counter.calls == 0)) ? (::tpy::__getitem__(__case_0, counter.index())) : (::tpy::__getitem__(__case_0, 99))) << "\n" << ::tpy::check_signals;
+        std::cout << "index-calls" << " " << counter.calls << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
@@ -489,12 +489,12 @@ void list_read(::tpy::Union<const int32_t*, const std::vector<int32_t>*> x) {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
-        std::cout << "list" << " " << ::tpy::__getitem__(__case_0, 0) << " " << ::tpy::__getitem__(__case_0, -1) << "\n";
+        std::cout << "list" << " " << ::tpy::__getitem__(__case_0, 0) << " " << ::tpy::__getitem__(__case_0, -1) << "\n" << ::tpy::check_signals;
         {
             try {
-                std::cout << ::tpy::__getitem__(__case_0, 99) << "\n";
+                std::cout << ::tpy::__getitem__(__case_0, 99) << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::IndexError&) {
-                std::cout << "list-bounds" << "\n";
+                std::cout << "list-bounds" << "\n" << ::tpy::check_signals;
             }
         }
         break;
@@ -520,12 +520,12 @@ void dict_read(::tpy::Union<const ::tpy::ordered_map<int32_t, int32_t>*, const i
     switch (__match_subject_1.index()) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        std::cout << "dict" << " " << ::tpy::__getitem__(__case_0, 0) << "\n";
+        std::cout << "dict" << " " << ::tpy::__getitem__(__case_0, 0) << "\n" << ::tpy::check_signals;
         {
             try {
-                std::cout << ::tpy::__getitem__(__case_0, 99) << "\n";
+                std::cout << ::tpy::__getitem__(__case_0, 99) << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::KeyError&) {
-                std::cout << "dict-missing" << "\n";
+                std::cout << "dict-missing" << "\n" << ::tpy::check_signals;
             }
         }
         break;
@@ -547,7 +547,7 @@ void record_read(::tpy::Union<const Indexed*, const int32_t*> x) {
     switch (__match_subject_1.index()) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        std::cout << "record" << " " << __case_0[0] << "\n";
+        std::cout << "record" << " " << __case_0[0] << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
@@ -621,8 +621,8 @@ void main() {
     ::tpyapp::main::monomorphic_read(marker);
     ::tpyapp::main::tuple_reads(buffer.as_const());
     Reader reader = Reader(text);
-    std::cout << "constructor" << " " << reader.value << "\n";
-    std::cout << "method" << " " << reader.read(text) << "\n";
+    std::cout << "constructor" << " " << reader.value << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << reader.read(text) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::generate(buffer.as_const());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -630,19 +630,19 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << value << "\n";
+            std::cout << "generator" << " " << value << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_read(buffer.as_const()))) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_read(buffer.as_const()))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::comprehension(buffer.as_const());
     ::tpyapp::main::closure(true);
     ::tpyapp::main::cleanup_reads(text);
     {
-        std::cout << "error-return" << " " << ({ auto __er_2 = ::tpyapp::main::error_read(buffer.as_const()); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "error-return" << " " << ({ auto __er_2 = ::tpyapp::main::error_read(buffer.as_const()); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Err:
         __except_1:;
-        std::cout << "error-return-other" << "\n";
+        std::cout << "error-return-other" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     Counter counter = Counter();
@@ -681,7 +681,7 @@ void __tpy_init() {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "module" << " " << ::tpy::__getitem__(__case_0, 0) << " " << ::tpy::__getitem__(__case_0, -1) << "\n";
+        std::cout << "module" << " " << ::tpy::__getitem__(__case_0, 0) << " " << ::tpy::__getitem__(__case_0, -1) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {

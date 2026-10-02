@@ -13,9 +13,9 @@ namespace tpyapp::main {
 //     print(s.getsockopt_int(SOL_SOCKET, SO_REUSEADDR) != 0)
 void main() {
     ::tpystd::socket::socket s = ::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM);
-    std::cout << ::tpy::print_bool((s.getsockopt_int(::tpy_const_sol_socket, ::tpy_const_so_reuseaddr) != 0)) << "\n";
+    std::cout << ::tpy::print_bool((s.getsockopt_int(::tpy_const_sol_socket, ::tpy_const_so_reuseaddr) != 0)) << "\n" << ::tpy::check_signals;
     s.setsockopt_int(::tpy_const_sol_socket, ::tpy_const_so_reuseaddr, 1);
-    std::cout << ::tpy::print_bool((s.getsockopt_int(::tpy_const_sol_socket, ::tpy_const_so_reuseaddr) != 0)) << "\n";
+    std::cout << ::tpy::print_bool((s.getsockopt_int(::tpy_const_sol_socket, ::tpy_const_so_reuseaddr) != 0)) << "\n" << ::tpy::check_signals;
 }
 
 // # Regression guard for getsockopt_int: setting SO_REUSEADDR then reading it

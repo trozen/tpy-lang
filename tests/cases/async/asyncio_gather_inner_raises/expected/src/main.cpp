@@ -23,7 +23,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "good finished" << "\n";
+        std::cout << "good finished" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         int32_t __tpy_async_ret = 99;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -47,7 +47,7 @@ __coro_good good() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "bad raising" << "\n";
+        std::cout << "bad raising" << "\n" << ::tpy::check_signals;
         throw ::tpy::ValueError("bad");
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -86,12 +86,12 @@ __coro_bad bad() {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             results.emplace(std::move(__r0).value());
             __sub_0.reset();
-            std::cout << "got" << " " << ::tpy::__len__((*results)) << "\n";
+            std::cout << "got" << " " << ::tpy::__len__((*results)) << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ValueError& e) {
             __sub_0.reset();
-            std::cout << "caught ValueError:" << " " << e << "\n";
+            std::cout << "caught ValueError:" << " " << e << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -109,7 +109,7 @@ __coro_bad bad() {
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught ValueError:" << " " << e << "\n";
+            std::cout << "caught ValueError:" << " " << e << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

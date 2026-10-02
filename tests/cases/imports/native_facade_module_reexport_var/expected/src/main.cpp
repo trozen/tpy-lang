@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(LIMIT)
 //     print(int32(LIMIT) + int32(1))
 void main() {
-    std::cout << ::tpyapp::constants::VERSION << "\n";
-    std::cout << ::tpyapp::constants::LIMIT << "\n";
-    std::cout << (::tpy::add_check<int32_t>(::tpyapp::constants::LIMIT, 1)) << "\n";
+    std::cout << ::tpyapp::constants::VERSION << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::constants::LIMIT << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::add_check<int32_t>(::tpyapp::constants::LIMIT, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // # Re-exporting a Final[T] constant through a flat `# tpy: native_module`

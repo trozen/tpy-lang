@@ -29,8 +29,8 @@ void main() {
     pairs.push_back(::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(::tpyapp::main::make_pair(a, b)));
     ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>> d = ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>>();
     ::tpy::__setitem__(d, 0, ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(::tpyapp::main::make_pair(a, b)));
-    std::cout << ::tpy::__len__(pairs) << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(pairs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

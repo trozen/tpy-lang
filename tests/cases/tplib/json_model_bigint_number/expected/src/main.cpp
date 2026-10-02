@@ -24,14 +24,14 @@ namespace tpyapp::main {
 //     print(Repo.from_json(neg.to_json()).stars == neg.stars)
 void main() {
     Repo r = Repo::from_json("{\"name\": \"cpython\", \"stars\": 73404}");
-    std::cout << r.name << " " << r.stars << "\n";
-    std::cout << Repo("x", ::tpy::BigInt(42)).to_json() << "\n";
+    std::cout << r.name << " " << r.stars << "\n" << ::tpy::check_signals;
+    std::cout << Repo("x", ::tpy::BigInt(42)).to_json() << "\n" << ::tpy::check_signals;
     Repo big = Repo::from_json("{\"name\": \"big\", \"stars\": 123456789012345678901234567890}");
-    std::cout << big.stars << "\n";
-    std::cout << ::tpy::print_bool((Repo::from_json(big.to_json()).stars == big.stars)) << "\n";
+    std::cout << big.stars << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((Repo::from_json(big.to_json()).stars == big.stars)) << "\n" << ::tpy::check_signals;
     Repo neg = Repo::from_json("{\"name\": \"neg\", \"stars\": -987654321098765432109876543210}");
-    std::cout << neg.stars << "\n";
-    std::cout << ::tpy::print_bool((Repo::from_json(neg.to_json()).stars == neg.stars)) << "\n";
+    std::cout << neg.stars << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((Repo::from_json(neg.to_json()).stars == neg.stars)) << "\n" << ::tpy::check_signals;
 }
 
 

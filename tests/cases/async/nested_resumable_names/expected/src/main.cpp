@@ -150,7 +150,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         pending.reset();
-        std::cout << "bound:" << " " << __await_lift_0 << " " << (*inner).value << "\n";
+        std::cout << "bound:" << " " << __await_lift_0 << " " << (*inner).value << "\n" << ::tpy::check_signals;
         __sub_1.emplace((*inner), ::tpy::BigInt(1));
         __state = S_RESUME_1;
         continue;
@@ -160,7 +160,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "await:" << " " << __await_lift_1 << " " << (*inner).value << "\n";
+        std::cout << "await:" << " " << __await_lift_1 << " " << (*inner).value << "\n" << ::tpy::check_signals;
         __sub_2.emplace((*inner), 7);
         __state = S_RESUME_2;
         continue;
@@ -170,7 +170,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << "generic:" << " " << __await_lift_2 << "\n";
+        std::cout << "generic:" << " " << __await_lift_2 << "\n" << ::tpy::check_signals;
         box.emplace(Outer::Box<int32_t>(7));
         boxed.emplace((*box).get());
         (*box).value = 8;
@@ -182,7 +182,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();
         boxed.reset();
-        std::cout << "generic class:" << " " << __await_lift_3 << " " << (*box).value << "\n";
+        std::cout << "generic class:" << " " << __await_lift_3 << " " << (*box).value << "\n" << ::tpy::check_signals;
         remote.emplace(::nested_case::helpers::Library::Worker(10));
         imported.emplace((*remote).compute(1));
         (*remote).value = ::tpy::BigInt(20);
@@ -194,7 +194,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_4 = std::move(__r4).value();
         imported.reset();
-        std::cout << "imported bound:" << " " << __await_lift_4 << " " << (*remote).value << "\n";
+        std::cout << "imported bound:" << " " << __await_lift_4 << " " << (*remote).value << "\n" << ::tpy::check_signals;
         __sub_5.emplace((*remote), ::tpy::BigInt(1));
         __state = S_RESUME_5;
         continue;
@@ -204,7 +204,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_5 = std::move(__r5).value();
         __sub_5.reset();
-        std::cout << "imported await:" << " " << __await_lift_5 << " " << (*remote).value << "\n";
+        std::cout << "imported await:" << " " << __await_lift_5 << " " << (*remote).value << "\n" << ::tpy::check_signals;
         gate.emplace(Outer::Gate());
         __with_ctx_0 = &((*gate));
         __sub_6.emplace((*__with_ctx_0));
@@ -239,7 +239,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
             if (__r8.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             __await_lift_6 = std::move(__r8).value();
             __sub_8.reset();
-            std::cout << "try:" << " " << __await_lift_6 << "\n";
+            std::cout << "try:" << " " << __await_lift_6 << "\n" << ::tpy::check_signals;
             __fin_ran_1 = true;
             this->__finally_0();
             __state = S_JOIN_4;
@@ -265,7 +265,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         if (__r10.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_7 = std::move(__r10).value();
         __sub_10.reset();
-        std::cout << "deep:" << " " << __await_lift_7 << "\n";
+        std::cout << "deep:" << " " << __await_lift_7 << "\n" << ::tpy::check_signals;
         __sub_11.emplace((*joined));
         __state = S_RESUME_11;
         continue;
@@ -275,7 +275,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         if (__r11.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_8 = std::move(__r11).value();
         __sub_11.reset();
-        std::cout << "joined:" << " " << __await_lift_8 << "\n";
+        std::cout << "joined:" << " " << __await_lift_8 << "\n" << ::tpy::check_signals;
         __sub_12.emplace((*split));
         __state = S_RESUME_12;
         continue;
@@ -285,7 +285,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         if (__r12.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_9 = std::move(__r12).value();
         __sub_12.reset();
-        std::cout << "split:" << " " << __await_lift_9 << "\n";
+        std::cout << "split:" << " " << __await_lift_9 << "\n" << ::tpy::check_signals;
         __sub_13.emplace((*flat));
         __state = S_RESUME_13;
         continue;
@@ -295,7 +295,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         if (__r13.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_10 = std::move(__r13).value();
         __sub_13.reset();
-        std::cout << "flat:" << " " << __await_lift_10 << "\n";
+        std::cout << "flat:" << " " << __await_lift_10 << "\n" << ::tpy::check_signals;
         __sub_14.emplace();
         __state = S_RESUME_14;
         continue;
@@ -305,7 +305,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         if (__r14.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_11 = std::move(__r14).value();
         __sub_14.reset();
-        std::cout << "free:" << " " << __await_lift_11 << "\n";
+        std::cout << "free:" << " " << __await_lift_11 << "\n" << ::tpy::check_signals;
         free_pending.emplace(::tpyapp::main::nested_compute((*inner)));
         (*inner).value = ::tpy::BigInt(70);
         __state = S_RESUME_15;
@@ -316,7 +316,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         if (__r15.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_12 = std::move(__r15).value();
         free_pending.reset();
-        std::cout << "free bound:" << " " << __await_lift_12 << " " << (*inner).value << "\n";
+        std::cout << "free bound:" << " " << __await_lift_12 << " " << (*inner).value << "\n" << ::tpy::check_signals;
         __sub_16.emplace((*inner), ::tpy::BigInt(2));
         __state = S_RESUME_16;
         continue;
@@ -326,7 +326,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         if (__r16.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_13 = std::move(__r16).value();
         __sub_16.reset();
-        std::cout << "free await:" << " " << __await_lift_13 << " " << (*inner).value << "\n";
+        std::cout << "free await:" << " " << __await_lift_13 << " " << (*inner).value << "\n" << ::tpy::check_signals;
         generic_pending.emplace(::tpyapp::main::nested_echo<int32_t>((*inner), 7));
         (*inner).value = ::tpy::BigInt(80);
         __state = S_RESUME_17;
@@ -337,7 +337,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         if (__r17.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_14 = std::move(__r17).value();
         generic_pending.reset();
-        std::cout << "generic free bound:" << " " << __await_lift_14 << " " << (*inner).value << "\n";
+        std::cout << "generic free bound:" << " " << __await_lift_14 << " " << (*inner).value << "\n" << ::tpy::check_signals;
         __sub_18.emplace((*inner), 9, ::tpy::BigInt(2));
         __state = S_RESUME_18;
         continue;
@@ -347,14 +347,14 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         if (__r18.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_15 = std::move(__r18).value();
         __sub_18.reset();
-        std::cout << "generic free await:" << " " << __await_lift_15 << " " << (*inner).value << "\n";
+        std::cout << "generic free await:" << " " << __await_lift_15 << " " << (*inner).value << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
-            std::cout << "async iteration receiver:" << " " << (*inner).value << "\n";
+            std::cout << "async iteration receiver:" << " " << (*inner).value << "\n" << ::tpy::check_signals;
             deep.emplace(Outer::Layer::Deep());
             joined.emplace(Outer::Layer_Deep());
             split.emplace(Outer_Layer::Deep());
@@ -364,7 +364,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
             continue;
         }
         value = ::tpy::unwrap_ref(*(*__for_r_0));
-        std::cout << "async iteration:" << " " << value << "\n";
+        std::cout << "async iteration:" << " " << value << "\n" << ::tpy::check_signals;
         (*inner).value = ((*inner).value) + (::tpy::BigInt(10));
         __sub_9.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_9;
@@ -376,14 +376,14 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         continue;
     }
     case S_JOIN_2: {
-        std::cout << "context exit:" << " " << (*gate).value << "\n";
+        std::cout << "context exit:" << " " << (*gate).value << "\n" << ::tpy::check_signals;
         __state = S_JOIN_5;
         continue;
     }
     case S_JOIN_3: {
         try {
             (*gate).value = ((*gate).value) + (::tpy::BigInt(10));
-            std::cout << "context body:" << " " << entered << " " << (*gate).value << "\n";
+            std::cout << "context body:" << " " << entered << " " << (*gate).value << "\n" << ::tpy::check_signals;
             __state = S_JOIN_1;
             continue;
         } catch (...) {
@@ -417,7 +417,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
 }
 
 void __coro_async_sections::__finally_0() {
-    std::cout << "finally:" << " " << (*inner).value << "\n";
+    std::cout << "finally:" << " " << (*inner).value << "\n" << ::tpy::check_signals;
 }
 
 // async def async_sections() -> None:
@@ -455,13 +455,13 @@ void main() {
     __gen_2_5_Outer_5_Inner_6_values values = inner.values();
     inner.value = ::tpy::BigInt(50);
     {
-        std::cout << "generator first:" << " " << ({ auto __er_2 = ::tpy::next(values); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "generator first:" << " " << ({ auto __er_2 = ::tpy::next(values); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
         inner.value = ::tpy::BigInt(60);
-        std::cout << "generator second:" << " " << ({ auto __er_3 = ::tpy::next(values); if (!__er_3.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_3); }) << "\n";
+        std::cout << "generator second:" << " " << ({ auto __er_3 = ::tpy::next(values); if (!__er_3.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_3); }) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except StopIteration:
         __except_1:;
-        std::cout << "generator: unexpected stop" << "\n";
+        std::cout << "generator: unexpected stop" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     {
@@ -471,7 +471,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& value = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "simple:" << " " << value << "\n";
+            std::cout << "simple:" << " " << value << "\n" << ::tpy::check_signals;
             inner.value = (inner.value) + (::tpy::BigInt(1));
         }
     }
@@ -482,11 +482,11 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& value = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "delegated:" << " " << value << "\n";
+            std::cout << "delegated:" << " " << value << "\n" << ::tpy::check_signals;
             inner.value = (inner.value) + (::tpy::BigInt(10));
         }
     }
-    std::cout << "delegated receiver:" << " " << inner.value << "\n";
+    std::cout << "delegated receiver:" << " " << inner.value << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_sections()));
 }
 

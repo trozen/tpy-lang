@@ -18,9 +18,9 @@ namespace tpyapp::main {
 //     print(data[1:5:2])
 void main() {
     ::tpy::BytesView data = ::tpy::bytes_literal("abcdef", 6);
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_stepped_slice(data, ::tpy::Slice{std::nullopt, std::nullopt, 2})) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_stepped_slice(data, ::tpy::Slice{std::nullopt, std::nullopt, -1})) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_stepped_slice(data, ::tpy::Slice{1, 5, 2})) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_stepped_slice(data, ::tpy::Slice{std::nullopt, std::nullopt, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_stepped_slice(data, ::tpy::Slice{std::nullopt, std::nullopt, -1})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_stepped_slice(data, ::tpy::Slice{1, 5, 2})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

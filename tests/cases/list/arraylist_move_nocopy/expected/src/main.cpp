@@ -27,12 +27,12 @@ namespace tpyapp::main {
 //     print(moved[0].n, moved[1].n)   # 1 99
 void main() {
     ::tpystd::tplib::array_list::ArrayList<Handle, 4> xs = ::tpyapp::main::make();
-    std::cout << ::tpy::__len__(xs) << "\n";
-    std::cout << xs[0].n << " " << xs[1].n << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
+    std::cout << xs[0].n << " " << xs[1].n << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<Handle, 4> moved = std::move(xs);
-    std::cout << ::tpy::__len__(moved) << "\n";
+    std::cout << ::tpy::__len__(moved) << "\n" << ::tpy::check_signals;
     moved[1].n = 99;
-    std::cout << moved[0].n << " " << moved[1].n << "\n";
+    std::cout << moved[0].n << " " << moved[1].n << "\n" << ::tpy::check_signals;
 }
 
 // # Proves ArrayList[T, N] is MOVABLE, not copyable: Handle is @nocopy, so the

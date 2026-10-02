@@ -29,7 +29,7 @@ int32_t consume_optional(std::optional<Box> b) {
 void main() {
     Box b = Box();
     b.value = 42;
-    std::cout << ::tpyapp::main::consume_optional(Box(b)) << "\n";
+    std::cout << ::tpyapp::main::consume_optional(Box(b)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

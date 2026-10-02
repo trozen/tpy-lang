@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def greet_dog(d: Dog) -> None:
 //     print("Woof!", d.name)
 void greet_dog(const Dog& d) {
-    std::cout << "Woof!" << " " << d.name << "\n";
+    std::cout << "Woof!" << " " << d.name << "\n" << ::tpy::check_signals;
 }
 
 // def greet_cat(c: Cat) -> None:
 //     print("Meow!", c.name)
 void greet_cat(const Cat& c) {
-    std::cout << "Meow!" << " " << c.name << "\n";
+    std::cout << "Meow!" << " " << c.name << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

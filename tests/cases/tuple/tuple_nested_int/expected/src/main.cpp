@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print(t[1][1])
 void main() {
     std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>> t = std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-    std::cout << ::tpy::TuplePrinter(t) << "\n";
-    std::cout << ::tpy::TuplePrinter(std::get<0>(t)) << "\n";
-    std::cout << std::get<1>(std::get<1>(t)) << "\n";
+    std::cout << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(std::get<0>(t)) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(std::get<1>(t)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

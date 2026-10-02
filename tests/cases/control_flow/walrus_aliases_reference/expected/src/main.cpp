@@ -12,9 +12,9 @@ namespace tpyapp::main {
 void main() {
     Box b = Box(::tpy::BigInt(5));
     Box* q = nullptr;
-    std::cout << (q = &(b), *q).v << "\n";
+    std::cout << (q = &(b), *q).v << "\n" << ::tpy::check_signals;
     q->v = ::tpy::BigInt(99);
-    std::cout << b.v << "\n";
+    std::cout << b.v << "\n" << ::tpy::check_signals;
 }
 
 // main()

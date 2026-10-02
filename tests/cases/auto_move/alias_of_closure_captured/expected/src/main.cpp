@@ -79,10 +79,10 @@ int32_t still_moves() {
 //     print("method", Holder().run())
 //     print("still_moves", still_moves())
 void main() {
-    std::cout << "container" << " " << ::tpyapp::main::container() << "\n";
-    std::cout << "record" << " " << ::tpyapp::main::record() << "\n";
-    std::cout << "method" << " " << Holder().run() << "\n";
-    std::cout << "still_moves" << " " << ::tpyapp::main::still_moves() << "\n";
+    std::cout << "container" << " " << ::tpyapp::main::container() << "\n" << ::tpy::check_signals;
+    std::cout << "record" << " " << ::tpyapp::main::record() << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << Holder().run() << "\n" << ::tpy::check_signals;
+    std::cout << "still_moves" << " " << ::tpyapp::main::still_moves() << "\n" << ::tpy::check_signals;
 }
 
 // main()

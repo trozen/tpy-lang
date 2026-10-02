@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(b.n)
 void main() {
     Box b = Box(5);
-    std::cout << b.double_() << "\n";
+    std::cout << b.double_() << "\n" << ::tpy::check_signals;
     b.delete_();
-    std::cout << b.n << "\n";
+    std::cout << b.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

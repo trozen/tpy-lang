@@ -45,8 +45,8 @@ inline C::C() {
 //     print(self.LIMIT)
 //     print(self.NAME)
 inline void C::show() const {
-    std::cout << C::LIMIT << "\n";
-    std::cout << C::NAME << "\n";
+    std::cout << C::LIMIT << "\n" << ::tpy::check_signals;
+    std::cout << C::NAME << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -18,13 +18,13 @@ void describe(::tpy::Union<const Child*, const Other*> s) {
         auto a = __case_0.x;
         auto b = __case_0.y;
         auto c = __case_0.z;
-        std::cout << ::tpy::print_float(((((a) + (b))) + (c))) << "\n";
+        std::cout << ::tpy::print_float(((((a) + (b))) + (c))) << "\n" << ::tpy::check_signals;
         break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         auto v = __case_1.v;
-        std::cout << ::tpy::print_float(v) << "\n";
+        std::cout << ::tpy::print_float(v) << "\n" << ::tpy::check_signals;
         break;
     }
     }

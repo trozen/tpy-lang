@@ -14,7 +14,7 @@ namespace tpyapp::main {
 //     return 0
 int32_t main() {
     __tpy_builder_counter_1 res = ::tpyapp::main::__tpy_builder_build_counter_1();
-    std::cout << res.total() << "\n";
+    std::cout << res.total() << "\n" << ::tpy::check_signals;
     return 0;
 }
 

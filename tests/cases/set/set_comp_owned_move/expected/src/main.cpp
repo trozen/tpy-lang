@@ -26,7 +26,7 @@ void main(int32_t n) {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.box import Box

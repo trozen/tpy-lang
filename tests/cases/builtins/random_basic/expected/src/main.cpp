@@ -21,13 +21,13 @@ void main() {
     ::tpystd::random::seed(42);
     double a = ::tpystd::random::random();
     double b = ::tpystd::random::random();
-    std::cout << ::tpy::print_bool((a >= 0.0)) << "\n";
-    std::cout << ::tpy::print_bool((a < 1.0)) << "\n";
-    std::cout << ::tpy::print_bool((b >= 0.0)) << "\n";
-    std::cout << ::tpy::print_bool((b < 1.0)) << "\n";
+    std::cout << ::tpy::print_bool((a >= 0.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a < 1.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((b >= 0.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((b < 1.0)) << "\n" << ::tpy::check_signals;
     ::tpystd::random::seed(42);
     double c = ::tpystd::random::random();
-    std::cout << ::tpy::print_bool((a == c)) << "\n";
+    std::cout << ::tpy::print_bool((a == c)) << "\n" << ::tpy::check_signals;
 }
 
 // # random.random() and random.seed()

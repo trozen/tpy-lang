@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 //     self.x = x             # init section
 //     print("init")          # tpyc: warning(/y.*is not initialized before the constructor body/)
 inline Config::Config(int32_t x) : x(x) {
-    std::cout << "init" << "\n";
+    std::cout << "init" << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -52,14 +52,14 @@ void main() {
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
     ::tpystd::os::truncate(p, 5);
-    std::cout << "truncate" << " " << ::tpystd::os::stat(p).st_size << "\n";
+    std::cout << "truncate" << " " << ::tpystd::os::stat(p).st_size << "\n" << ::tpy::check_signals;
     int64_t fd = ::tpystd::os::open(p, ::tpy::stdlib::os::kc_o_wronly);
     ::tpystd::os::ftruncate(fd, 2);
     ::tpystd::os::fsync(fd);
     ::tpystd::os::close(fd);
-    std::cout << "ftruncate" << " " << ::tpystd::os::stat(p).st_size << "\n";
+    std::cout << "ftruncate" << " " << ::tpystd::os::stat(p).st_size << "\n" << ::tpy::check_signals;
     ::tpystd::os::link(p, ln);
-    std::cout << "link" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists(ln)) << " " << ::tpystd::os::stat(ln).st_size << "\n";
+    std::cout << "link" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists(ln)) << " " << ::tpystd::os::stat(ln).st_size << "\n" << ::tpy::check_signals;
     ::tpy::stdlib::os::remove(ln);
     ::tpy::stdlib::os::remove(p);
 }

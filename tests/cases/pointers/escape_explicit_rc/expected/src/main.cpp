@@ -23,7 +23,7 @@ void rc_is_shared() {
             p.get().x = 99;
         }
     }
-    std::cout << saved->get().x << "\n";
+    std::cout << saved->get().x << "\n" << ::tpy::check_signals;
 }
 
 // def rc_outlives_the_loop() -> None:
@@ -44,7 +44,7 @@ void rc_outlives_the_loop() {
         }
     }
     saved->get().x = 77;
-    std::cout << saved->get().x << "\n";
+    std::cout << saved->get().x << "\n" << ::tpy::check_signals;
 }
 
 // # `Rc` gives one object both names reach, which is what CPython's aliasing

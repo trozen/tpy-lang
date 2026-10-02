@@ -81,48 +81,48 @@ void free_bindings() {
     ::tpy::list_insert(callbacks, 0, [](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 3)); });
     callbacks.push_back(named);
     ::tpy::__setitem__(callbacks, 1, [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 5)); });
-    std::cout << "free" << " " << (::tpy::__getitem__(callbacks, 0))(2) << " " << (::tpy::__getitem__(callbacks, 1))(2) << " " << (::tpy::__getitem__(callbacks, 2))(2) << "\n";
-    std::cout << "own-param" << " " << ::tpyapp::main::consume([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 6)); }) << "\n";
+    std::cout << "free" << " " << (::tpy::__getitem__(callbacks, 0))(2) << " " << (::tpy::__getitem__(callbacks, 1))(2) << " " << (::tpy::__getitem__(callbacks, 2))(2) << "\n" << ::tpy::check_signals;
+    std::cout << "own-param" << " " << ::tpyapp::main::consume([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 6)); }) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::function<int32_t(int32_t)>> commands = ::tpy::ordered_map<std::string, std::function<int32_t(int32_t)>>();
     ::tpy::__setitem__(commands, "run", [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 7)); });
     ::tpy::dict_setdefault(commands, "default", [](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); });
     ::tpy::__setitem__(commands, "run", named);
-    std::cout << "dict" << " " << (::tpy::__getitem__(commands, "run"))(2) << " " << (::tpy::__getitem__(commands, "default"))(3) << "\n";
+    std::cout << "dict" << " " << (::tpy::__getitem__(commands, "run"))(2) << " " << (::tpy::__getitem__(commands, "default"))(3) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<std::function<int32_t(int32_t)>, int32_t>> pairs = std::vector<std::tuple<std::function<int32_t(int32_t)>, int32_t>>{};
     pairs.push_back(std::tuple<std::function<int32_t(int32_t)>, int32_t>{[](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 8)); }, 9});
     ::tpy::__setitem__(pairs, 0, std::tuple<std::function<int32_t(int32_t)>, int32_t>{[](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 10)); }, 11});
     auto __tup_1 = ::tpy::__getitem__(pairs, 0);
     std::function<int32_t(int32_t)> cb = std::get<0>(__tup_1);
     int32_t number = std::get<1>(__tup_1);
-    std::cout << "tuple" << " " << cb(number) << "\n";
-    std::cout << "tuple-index" << " " << (std::get<0>(::tpy::__getitem__(pairs, 0)))(std::get<1>(::tpy::__getitem__(pairs, 0))) << "\n";
+    std::cout << "tuple" << " " << cb(number) << "\n" << ::tpy::check_signals;
+    std::cout << "tuple-index" << " " << (std::get<0>(::tpy::__getitem__(pairs, 0)))(std::get<1>(::tpy::__getitem__(pairs, 0))) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<std::function<int32_t(int32_t)>>> optional = std::vector<std::optional<std::function<int32_t(int32_t)>>>{};
     optional.push_back([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 12)); });
     ::tpy::__setitem__(optional, 0, [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 13)); });
     std::optional<std::function<int32_t(int32_t)>> cb_opt = ::tpy::__getitem__(optional, 0);
     if ((cb_opt.has_value())) {
-        std::cout << "optional" << " " << cb_opt.value()(1) << "\n";
+        std::cout << "optional" << " " << cb_opt.value()(1) << "\n" << ::tpy::check_signals;
     }
     ::tpy::__setitem__(optional, 0, std::nullopt);
-    std::cout << "none" << " " << ::tpy::print_bool((!::tpy::__getitem__(optional, 0).has_value())) << "\n";
+    std::cout << "none" << " " << ::tpy::print_bool((!::tpy::__getitem__(optional, 0).has_value())) << "\n" << ::tpy::check_signals;
     cb_opt = ::tpy::__getitem__(optional, 0);
-    std::cout << "optional-reassign" << " " << ::tpy::print_bool((!cb_opt.has_value())) << "\n";
+    std::cout << "optional-reassign" << " " << ::tpy::print_bool((!cb_opt.has_value())) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::optional<std::function<int32_t(int32_t)>>> pending = ::tpy::ordered_map<std::string, std::optional<std::function<int32_t(int32_t)>>>();
     ::tpy::__setitem__(pending, "ready", [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 14)); });
     ::tpy::__setitem__(pending, "empty", std::nullopt);
     ::tpy::__setitem__(pending, "copy", ::tpy::__getitem__(pending, "ready"));
     std::optional<std::function<int32_t(int32_t)>> ready = ::tpy::__getitem__(pending, "copy");
     if ((ready.has_value())) {
-        std::cout << "optional-dict" << " " << ready.value()(1) << "\n";
+        std::cout << "optional-dict" << " " << ready.value()(1) << "\n" << ::tpy::check_signals;
     }
-    std::cout << "optional-views" << " " << ::tpy::__len__(::tpy::dict_values(pending)) << " " << ::tpy::__len__(::tpy::dict_items(pending)) << "\n";
+    std::cout << "optional-views" << " " << ::tpy::__len__(::tpy::dict_values(pending)) << " " << ::tpy::__len__(::tpy::dict_items(pending)) << "\n" << ::tpy::check_signals;
     std::array<std::function<int32_t(int32_t)>, 2> fixed = {named, named};
     ::tpy::__setitem__(fixed, 0, [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 15)); });
-    std::cout << "array" << " " << (::tpy::__getitem__(fixed, 0))(1) << " " << (::tpy::__getitem__(fixed, 1))(1) << "\n";
+    std::cout << "array" << " " << (::tpy::__getitem__(fixed, 0))(1) << " " << (::tpy::__getitem__(fixed, 1))(1) << "\n" << ::tpy::check_signals;
     std::vector<std::function<int32_t(std::vector<int32_t>&)>> mutators = std::vector<std::function<int32_t(std::vector<int32_t>&)>>{};
     mutators.push_back([](std::vector<int32_t>& xs) -> int32_t { return ::tpy::pop_back(xs); });
     std::vector<int32_t> values = {1, 2, 3};
-    std::cout << "reference" << " " << (::tpy::__getitem__(mutators, 0))(values) << " " << ::tpy::__len__(values) << "\n";
+    std::cout << "reference" << " " << (::tpy::__getitem__(mutators, 0))(values) << " " << ::tpy::__len__(values) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -180,7 +180,7 @@ void nested_bindings() {
         callbacks.push_back([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 50)); });
         return (::tpy::__getitem__(callbacks, 0))(1);
     };
-    std::cout << "closure" << " " << inner() << "\n";
+    std::cout << "closure" << " " << inner() << "\n" << ::tpy::check_signals;
 }
 
 // def branching_bindings(flag: int32):
@@ -231,13 +231,13 @@ void branching_bindings(int32_t flag) {
         break;
     }
     }
-    std::cout << "branch" << " " << (::tpy::__getitem__(callbacks, 0))(1) << "\n";
+    std::cout << "branch" << " " << (::tpy::__getitem__(callbacks, 0))(1) << "\n" << ::tpy::check_signals;
     auto __ctx_1 = ::tpy::builtin_open_mode("callbacks.txt", "w");
     auto& stream = __ctx_1.__enter__();
     try {
         callbacks.push_back([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 80)); });
         stream.write("ok");
-        std::cout << "context" << " " << (::tpy::__getitem__(callbacks, 1))(1) << "\n";
+        std::cout << "context" << " " << (::tpy::__getitem__(callbacks, 1))(1) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -257,7 +257,7 @@ void branching_bindings(int32_t flag) {
         }
         std::move(__result);
     });
-    std::cout << "comprehension" << " " << (::tpy::__getitem__(generated, 0))(1) << " " << (::tpy::__getitem__(generated, 1))(2) << "\n";
+    std::cout << "comprehension" << " " << (::tpy::__getitem__(generated, 0))(1) << " " << (::tpy::__getitem__(generated, 1))(2) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::function<int32_t(int32_t)>> generated_dict = ({
         ::tpy::ordered_map<std::string, std::function<int32_t(int32_t)>> __result;
         const int32_t __stop_1 = 1;
@@ -266,7 +266,7 @@ void branching_bindings(int32_t flag) {
         }
         std::move(__result);
     });
-    std::cout << "dict-comprehension" << " " << (::tpy::__getitem__(generated_dict, "run"))(1) << "\n";
+    std::cout << "dict-comprehension" << " " << (::tpy::__getitem__(generated_dict, "run"))(1) << "\n" << ::tpy::check_signals;
 }
 
 // @error_return(Failure)
@@ -299,9 +299,9 @@ std::expected<int32_t, Failure> error_return_binding() {
 void main() {
     ::tpyapp::main::free_bindings();
     Registry registry = Registry(10);
-    std::cout << "constructor" << " " << registry.invoke(1) << "\n";
+    std::cout << "constructor" << " " << registry.invoke(1) << "\n" << ::tpy::check_signals;
     registry.replace();
-    std::cout << "method" << " " << registry.invoke(1) << "\n";
+    std::cout << "method" << " " << registry.invoke(1) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -309,10 +309,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << value << "\n";
+            std::cout << "generator" << " " << value << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_bindings())) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_bindings())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::nested_bindings();
     ::tpyapp::main::branching_bindings(1);
     int32_t result;
@@ -322,11 +322,11 @@ void main() {
             if (!__try_tmp_2.has_value()) goto __except_1;
             result = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        std::cout << "error-return" << " " << result << "\n";
+        std::cout << "error-return" << " " << result << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Failure:
         __except_1:;
-        std::cout << "error-return" << " " << "unexpected" << "\n";
+        std::cout << "error-return" << " " << "unexpected" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }
@@ -349,7 +349,7 @@ void __tpy_init() {
     static std::vector<std::function<int32_t(int32_t)>> __global_slot_1 = std::vector<std::function<int32_t(int32_t)>>{};
     global_callbacks = &__global_slot_1;
     global_callbacks->push_back([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 70)); });
-    std::cout << "global" << " " << (::tpy::__getitem__((*global_callbacks), 0))(1) << "\n";
+    std::cout << "global" << " " << (::tpy::__getitem__((*global_callbacks), 0))(1) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }
 

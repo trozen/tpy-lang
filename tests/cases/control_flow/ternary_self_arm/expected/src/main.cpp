@@ -14,8 +14,8 @@ void test_then_arm_aliases_self() {
     Acc a = Acc(3);
     Acc b = Acc(1);
     a.bump_larger(b);
-    std::cout << a.n << "\n";
-    std::cout << b.n << "\n";
+    std::cout << a.n << "\n" << ::tpy::check_signals;
+    std::cout << b.n << "\n" << ::tpy::check_signals;
 }
 
 // def test_then_arm_aliases_other():
@@ -28,8 +28,8 @@ void test_then_arm_aliases_other() {
     Acc a = Acc(1);
     Acc b = Acc(5);
     a.bump_larger(b);
-    std::cout << a.n << "\n";
-    std::cout << b.n << "\n";
+    std::cout << a.n << "\n" << ::tpy::check_signals;
+    std::cout << b.n << "\n" << ::tpy::check_signals;
 }
 
 // def test_else_arm_aliases_self():
@@ -42,8 +42,8 @@ void test_else_arm_aliases_self() {
     Acc a = Acc(9);
     Acc b = Acc(2);
     a.bump_smaller(b);
-    std::cout << a.n << "\n";
-    std::cout << b.n << "\n";
+    std::cout << a.n << "\n" << ::tpy::check_signals;
+    std::cout << b.n << "\n" << ::tpy::check_signals;
 }
 
 // def test_readonly_arm():
@@ -54,8 +54,8 @@ void test_else_arm_aliases_self() {
 void test_readonly_arm() {
     Acc a = Acc(7);
     Acc b = Acc(4);
-    std::cout << a.larger_n(b) << "\n";
-    std::cout << b.larger_n(a) << "\n";
+    std::cout << a.larger_n(b) << "\n" << ::tpy::check_signals;
+    std::cout << b.larger_n(a) << "\n" << ::tpy::check_signals;
 }
 
 // def main():

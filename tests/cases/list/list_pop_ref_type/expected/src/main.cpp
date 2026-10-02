@@ -22,15 +22,15 @@ void main() {
     std::vector<Box> heap = {Box(::tpy::BigInt(3)), Box(::tpy::BigInt(1)), Box(::tpy::BigInt(2))};
     ::tpystd::heapq::heapify<Box>(heap);
     Box top = ::tpystd::heapq::heappop<Box>(heap);
-    std::cout << top.val << "\n";
+    std::cout << top.val << "\n" << ::tpy::check_signals;
     Box second = ::tpy::pop_back(heap);
-    std::cout << second.val << "\n";
+    std::cout << second.val << "\n" << ::tpy::check_signals;
     std::vector<Box> items = {Box(::tpy::BigInt(10)), Box(::tpy::BigInt(20)), Box(::tpy::BigInt(30)), Box(::tpy::BigInt(40))};
     Box middle = ::tpy::list_pop_at(items, 1);
-    std::cout << middle.val << "\n";
+    std::cout << middle.val << "\n" << ::tpy::check_signals;
     Box last = ::tpy::list_pop_at(items, -1);
-    std::cout << last.val << "\n";
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << last.val << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // # Regression: list[RefType].pop() in a generic context. Previously failed

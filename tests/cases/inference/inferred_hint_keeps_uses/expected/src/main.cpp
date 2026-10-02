@@ -186,12 +186,12 @@ void declared_slots(const std::vector<int32_t>& ints, int32_t a) {
         }
         std::move(__result);
     });
-    std::cout << "annotated" << " " << ::tpy::print_float((::tpy::truediv(::tpy::builtin_sum_float(ys), 2))) << "\n";
-    std::cout << "param" << " " << ::tpy::print_float((::tpy::truediv(::tpyapp::main::take_float(static_cast<double>(a)), 2))) << "\n";
-    std::cout << "return" << " " << ::tpy::print_float((::tpy::truediv(::tpyapp::main::ret_float(a, true), 2))) << "\n";
+    std::cout << "annotated" << " " << ::tpy::print_float((::tpy::truediv(::tpy::builtin_sum_float(ys), 2))) << "\n" << ::tpy::check_signals;
+    std::cout << "param" << " " << ::tpy::print_float((::tpy::truediv(::tpyapp::main::take_float(static_cast<double>(a)), 2))) << "\n" << ::tpy::check_signals;
+    std::cout << "return" << " " << ::tpy::print_float((::tpy::truediv(::tpyapp::main::ret_float(a, true), 2))) << "\n" << ::tpy::check_signals;
     double x = 0.5;
     x = static_cast<double>(a);
-    std::cout << "annotated_rebind" << " " << ::tpy::print_float((::tpy::truediv(x, 2))) << "\n";
+    std::cout << "annotated_rebind" << " " << ::tpy::print_float((::tpy::truediv(x, 2))) << "\n" << ::tpy::check_signals;
 }
 
 // def nonlocal_slot(a: int32) -> None:
@@ -210,7 +210,7 @@ void nonlocal_slot(int32_t a) {
         x = static_cast<double>(a);
     };
     set_it();
-    std::cout << "nonlocal" << " " << ::tpy::print_float((::tpy::truediv(x, 2))) << "\n";
+    std::cout << "nonlocal" << " " << ::tpy::print_float((::tpy::truediv(x, 2))) << "\n" << ::tpy::check_signals;
 }
 
 // def nested_declared(xs: list[float], a: int32) -> None:
@@ -222,7 +222,7 @@ void nested_declared(std::vector<double>& xs, int32_t a) {
     std::optional<std::vector<double>> __slot_1;
     std::vector<double>* ys = &(xs);
     ys = &*(__slot_1 = {::tpyapp::main::take_float(static_cast<double>(a))});
-    std::cout << "nested_declared" << " " << ::tpy::print_float((::tpy::truediv(::tpy::__getitem__((*ys), 0), 2))) << "\n";
+    std::cout << "nested_declared" << " " << ::tpy::print_float((::tpy::truediv(::tpy::__getitem__((*ys), 0), 2))) << "\n" << ::tpy::check_signals;
 }
 
 // def float32_width() -> None:
@@ -234,7 +234,7 @@ void float32_width() {
     ::tpy::ordered_map<std::string, float> __slot_1 = ::tpy::ordered_map<std::string, float>({{"a", 0.25f}});
     ::tpy::ordered_map<std::string, float>* e = &__slot_1;
     (*e) = ::tpy::ordered_map<std::string, float>({{"k", 0.5f}});
-    std::cout << "float32_width" << " " << ::tpy::print_float(static_cast<double>(::tpy::__getitem__((*e), "k"))) << "\n";
+    std::cout << "float32_width" << " " << ::tpy::print_float(static_cast<double>(::tpy::__getitem__((*e), "k"))) << "\n" << ::tpy::check_signals;
 }
 
 // def lambda_params(h: Callable[[float], float]) -> None:
@@ -245,7 +245,7 @@ void float32_width() {
 void lambda_params(const std::function<double(double)>& h) {
     std::function<double(double)> k = h;
     k = [](double x) -> double { return ((x) + (1.0)); };
-    std::cout << "lambda_params" << " " << ::tpy::print_float(k(1.0)) << "\n";
+    std::cout << "lambda_params" << " " << ::tpy::print_float(k(1.0)) << "\n" << ::tpy::check_signals;
 }
 
 // def generic_t(xs: list[float]) -> None:
@@ -259,7 +259,7 @@ void generic_t(std::vector<double>& xs) {
     std::vector<double>* ys = &(xs);
     ys = &*(__slot_1 = ::tpyapp::main::empty_list<double>(3));
     ys->push_back(2.5);
-    std::cout << "generic_t" << " " << ::tpy::ListPrinter((*ys)) << "\n";
+    std::cout << "generic_t" << " " << ::tpy::ListPrinter((*ys)) << "\n" << ::tpy::check_signals;
 }
 
 // def nested_empty(xss: list[list[float]]) -> None:
@@ -273,7 +273,7 @@ void nested_empty(std::vector<std::vector<double>>& xss) {
     std::vector<std::vector<double>>* zs = &(xss);
     zs = &*(__slot_1 = {{}, {2.5}});
     ::tpy::__getitem__((*zs), 0).push_back(1.5);
-    std::cout << "nested_empty" << " " << ::tpy::ListPrinter((*zs)) << "\n";
+    std::cout << "nested_empty" << " " << ::tpy::ListPrinter((*zs)) << "\n" << ::tpy::check_signals;
 }
 
 // def float_values(xs: list[float], fs: list[float]) -> None:
@@ -300,10 +300,10 @@ void float_values(std::vector<double>& xs, const std::vector<double>& fs) {
         }
         std::move(__result);
     }));
-    std::cout << "float_comp" << " " << ::tpy::ListPrinter((*ys)) << "\n";
+    std::cout << "float_comp" << " " << ::tpy::ListPrinter((*ys)) << "\n" << ::tpy::check_signals;
     double x = 0.5;
     x = ::tpy::round_float(2.7, 1);
-    std::cout << "round_ndigits" << " " << ::tpy::print_float(x) << "\n";
+    std::cout << "round_ndigits" << " " << ::tpy::print_float(x) << "\n" << ::tpy::check_signals;
 }
 
 // def int_hint_round(v: float) -> None:
@@ -314,7 +314,7 @@ void float_values(std::vector<double>& xs, const std::vector<double>& fs) {
 void int_hint_round(double v) {
     int64_t n = 0;
     n = ::tpy::round_to<int64_t>(v);
-    std::cout << "int_hint_round" << " " << n << "\n";
+    std::cout << "int_hint_round" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // def generic_method(xs: list[float]) -> None:
@@ -328,7 +328,7 @@ void generic_method(std::vector<double>& xs) {
     std::vector<double>* ys = &(xs);
     ys = &*(__slot_1 = Maker().make_list<double>(3));
     ys->push_back(2.5);
-    std::cout << "generic_method" << " " << ::tpy::ListPrinter((*ys)) << "\n";
+    std::cout << "generic_method" << " " << ::tpy::ListPrinter((*ys)) << "\n" << ::tpy::check_signals;
 }
 
 // def global_slot(a: int32) -> None:
@@ -338,7 +338,7 @@ void generic_method(std::vector<double>& xs) {
 //     print("global", G / 2)
 void global_slot(int32_t a) {
     G = static_cast<double>(a);
-    std::cout << "global" << " " << ::tpy::print_float((::tpy::truediv(G, 2))) << "\n";
+    std::cout << "global" << " " << ::tpy::print_float((::tpy::truediv(G, 2))) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -398,20 +398,20 @@ __coro_async_body async_body(const std::vector<double>& fs) {
 void structural(int32_t a, bool c, const std::function<std::vector<double>()>& h) {
     int32_t y = 0;
     y = ::tpyapp::main::tuple_t_float<int32_t>(std::tuple<int32_t, double>{1, ((c) ? (static_cast<double>(a)) : (2.5))});
-    std::cout << "tuple_t_float" << " " << y << "\n";
+    std::cout << "tuple_t_float" << " " << y << "\n" << ::tpy::check_signals;
     double z = 0.5;
     z = ::tpyapp::main::apply_t<double>([](double w) -> double { return static_cast<double>(1); }, 2.5);
-    std::cout << "callable_t_float" << " " << ::tpy::print_float(z) << "\n";
+    std::cout << "callable_t_float" << " " << ::tpy::print_float(z) << "\n" << ::tpy::check_signals;
     double x = 0.5;
     x = ::tpyapp::main::twice(static_cast<double>(a));
-    std::cout << "overload_param" << " " << ::tpy::print_float((::tpy::truediv(x, 2))) << "\n";
+    std::cout << "overload_param" << " " << ::tpy::print_float((::tpy::truediv(x, 2))) << "\n" << ::tpy::check_signals;
     double q = 0.5;
     std::vector<double> __tmp_1 = {2.5};
     q = ::tpyapp::main::pick2<double>(__tmp_1, static_cast<double>(a));
-    std::cout << "pick2" << " " << ::tpy::print_float(q) << "\n";
+    std::cout << "pick2" << " " << ::tpy::print_float(q) << "\n" << ::tpy::check_signals;
     std::function<std::vector<double>()> k = h;
     k = []() -> std::vector<double> { return {2.5}; };
-    std::cout << "fn_list" << " " << ::tpy::ListPrinter(k()) << "\n";
+    std::cout << "fn_list" << " " << ::tpy::ListPrinter(k()) << "\n" << ::tpy::check_signals;
 }
 
 // def int_width(c: bool, v: float, n: int32) -> None:
@@ -442,23 +442,23 @@ void structural(int32_t a, bool c, const std::function<std::vector<double>()>& h
 void int_width(bool c, double v, int32_t n) {
     std::optional<int64_t> m = ((c) ? (std::optional<int64_t>(0)) : (std::optional<int64_t>(std::nullopt)));
     m = ::tpy::round_to<std::optional<int64_t>>(v);
-    std::cout << "opt_int_round" << " " << ::tpy::print_optional_val(m) << "\n";
+    std::cout << "opt_int_round" << " " << ::tpy::print_optional_val(m) << "\n" << ::tpy::check_signals;
     int64_t p = 0;
     p = static_cast<int64_t>(::tpy::pow_check<int32_t>(n, 2));
-    std::cout << "pow" << " " << p << "\n";
+    std::cout << "pow" << " " << p << "\n" << ::tpy::check_signals;
     std::tuple<int64_t, int64_t> d = std::tuple<int64_t, int64_t>{0, 0};
     d = ::tpy::divmod_fixed<int32_t>(n, 3);
-    std::cout << "divmod" << " " << ::tpy::TuplePrinter(d) << "\n";
+    std::cout << "divmod" << " " << ::tpy::TuplePrinter(d) << "\n" << ::tpy::check_signals;
     int64_t s = 0;
     s = static_cast<int64_t>(::tpy::builtin_sum<int32_t>(std::array<int32_t, 2>{n, 2}));
-    std::cout << "sum" << " " << s << "\n";
+    std::cout << "sum" << " " << s << "\n" << ::tpy::check_signals;
     int64_t r = 0;
     auto __tmp_1 = std::array<int32_t, 2>{n, 2};
     r = static_cast<int64_t>(::tpystd::math::prod(__tmp_1, 1));
-    std::cout << "prod" << " " << r << "\n";
+    std::cout << "prod" << " " << r << "\n" << ::tpy::check_signals;
     int64_t t = 0;
     t = (::tpy::round_to<int64_t>(v));
-    std::cout << "nested_round" << " " << t << "\n";
+    std::cout << "nested_round" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 namespace {
@@ -625,16 +625,16 @@ void overload_args_pick(int32_t n) {
     double y = 0.5;
     std::vector<double> __tmp_1 = ::tpyapp::main::empty_list<double>(3);
     y = ::tpyapp::main::tot2(__tmp_1);
-    std::cout << "args_pick_nested" << " " << ::tpy::print_float(y) << "\n";
+    std::cout << "args_pick_nested" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     float x = 0.5f;
     x = ::tpyapp::main::width_h(0.25f);
-    std::cout << "args_pick_float32" << " " << ::tpy::print_float(static_cast<double>(x)) << "\n";
+    std::cout << "args_pick_float32" << " " << ::tpy::print_float(static_cast<double>(x)) << "\n" << ::tpy::check_signals;
     int64_t w = 0;
     w = ::tpyapp::main::width_g(static_cast<int64_t>(3000000000));
-    std::cout << "args_pick_int64" << " " << w << "\n";
+    std::cout << "args_pick_int64" << " " << w << "\n" << ::tpy::check_signals;
     double g = 0.5;
     g = ::tpyapp::main::twice(::tpy::builtin_sum_float(::tpyapp::main::__genexpr_overload_args_pick_2(std::in_place, [&]() { return std::array<int32_t, 2>{n, 2}; })));
-    std::cout << "args_pick_genexpr" << " " << ::tpy::print_float(g) << "\n";
+    std::cout << "args_pick_genexpr" << " " << ::tpy::print_float(g) << "\n" << ::tpy::check_signals;
 }
 
 // def overload_fills() -> None:
@@ -680,34 +680,34 @@ void overload_fills() {
     double y = 0.5;
     ::tpy::ordered_map<std::string, double> __tmp_1 = ::tpy::ordered_map<std::string, double>();
     y = ::tpyapp::main::tot3(__tmp_1);
-    std::cout << "fill_empty_dict" << " " << ::tpy::print_float(y) << "\n";
+    std::cout << "fill_empty_dict" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<double> __tmp_2 = ::tpy::ordered_set<double>();
     y = ::tpyapp::main::tots(__tmp_2);
-    std::cout << "fill_empty_set" << " " << ::tpy::print_float(y) << "\n";
+    std::cout << "fill_empty_set" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     y = ::tpyapp::main::keep(::tpyapp::main::call0<double>([]() -> double { return 2.5; }));
-    std::cout << "fill_lambda_generic" << " " << ::tpy::print_float(y) << "\n";
+    std::cout << "fill_lambda_generic" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     y = ::tpyapp::main::keep(static_cast<double>(::tpyapp::main::call0<int32_t>([]() -> int32_t { return 2; })));
-    std::cout << "fill_lambda_int_return" << " " << ::tpy::print_float((::tpy::truediv(y, 2))) << "\n";
+    std::cout << "fill_lambda_int_return" << " " << ::tpy::print_float((::tpy::truediv(y, 2))) << "\n" << ::tpy::check_signals;
     Bag<double> __tmp_3 = Bag<double>();
     y = ::tpyapp::main::usebag(__tmp_3);
-    std::cout << "fill_record_ctor" << " " << ::tpy::print_float(y) << "\n";
+    std::cout << "fill_record_ctor" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     Bag2<double> __tmp_4 = Bag2<double>();
     y = ::tpyapp::main::ub(__tmp_4);
-    std::cout << "fill_record_no_init" << " " << ::tpy::print_float(y) << "\n";
+    std::cout << "fill_record_no_init" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     Rec r = Rec(1);
     std::vector<double> __tmp_5 = ::tpyapp::main::peek<double>(r, ::tpyapp::main::empty_list<double>(3));
     y = ::tpyapp::main::tot2(__tmp_5);
-    std::cout << "fill_nested_generic" << " " << ::tpy::print_float(y) << " " << r.v << "\n";
+    std::cout << "fill_nested_generic" << " " << ::tpy::print_float(y) << " " << r.v << "\n" << ::tpy::check_signals;
     std::vector<double> __tmp_6 = Maker().make_list<double>(3);
     y = ::tpyapp::main::tot2(__tmp_6);
-    std::cout << "fill_generic_method" << " " << ::tpy::print_float(y) << "\n";
+    std::cout << "fill_generic_method" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, double> __tmp_7 = ::tpy::ordered_map<std::string, double>();
     y = ::tpyapp::main::keep(::tpyapp::main::tot3(__tmp_7));
-    std::cout << "fill_nested_overload" << " " << ::tpy::print_float(y) << "\n";
+    std::cout << "fill_nested_overload" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     float z = 0.5f;
     ::tpy::ordered_map<std::string, float> __tmp_8 = ::tpy::ordered_map<std::string, float>({{"k", 0.25f}});
     z = ::tpyapp::main::f32d(__tmp_8);
-    std::cout << "fill_float32_width" << " " << ::tpy::print_float(static_cast<double>(z)) << "\n";
+    std::cout << "fill_float32_width" << " " << ::tpy::print_float(static_cast<double>(z)) << "\n" << ::tpy::check_signals;
 }
 
 // def pack(*xs: int) -> Own[list[int]]:
@@ -781,11 +781,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             double v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << ::tpy::print_float(v) << "\n";
+            std::cout << "generator" << " " << ::tpy::print_float(v) << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<double> __tmp_10 = {1.5};
-    std::cout << "async" << " " << ::tpy::print_float(::tpystd::asyncio::run<double>(::tpy::make_adapter<::tpystd::coro::Cancellable<double>>(::tpyapp::main::async_body(__tmp_10)))) << "\n";
+    std::cout << "async" << " " << ::tpy::print_float(::tpystd::asyncio::run<double>(::tpy::make_adapter<::tpystd::coro::Cancellable<double>>(::tpyapp::main::async_body(__tmp_10)))) << "\n" << ::tpy::check_signals;
 }
 
 // # An inferred local's type still hints a rebind (literal width, lambda params, T,
@@ -812,7 +812,7 @@ void __tpy_init() {
     static ::tpy::ordered_map<std::string, float> __global_slot_1 = ::tpy::ordered_map<std::string, float>({{"a", 0.25f}});
     mod_e = &__global_slot_1;
     (*mod_e) = ::tpy::ordered_map<std::string, float>({{"k", 0.5f}});
-    std::cout << "module" << " " << ::tpy::print_float(static_cast<double>(::tpy::__getitem__((*mod_e), "k"))) << "\n";
+    std::cout << "module" << " " << ::tpy::print_float(static_cast<double>(::tpy::__getitem__((*mod_e), "k"))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

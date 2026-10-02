@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(c.key)
 void main() {
     Child c = Child(::tpy::ordered_map<std::string, std::string>({{"key", "value"}}));
-    std::cout << c.__getattr__("key") << "\n";
+    std::cout << c.__getattr__("key") << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -22,7 +22,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        std::cout << p.x << "\n";
+        std::cout << p.x << "\n" << ::tpy::check_signals;
     }
 }
 

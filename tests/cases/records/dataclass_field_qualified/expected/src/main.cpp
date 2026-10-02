@@ -14,11 +14,11 @@ namespace tpyapp::main {
 //     print(f2.x)
 void main() {
     Foo f = Foo(std::vector<int32_t>(), 1);
-    std::cout << ::tpy::ListPrinter(f.items) << "\n";
-    std::cout << f.x << "\n";
+    std::cout << ::tpy::ListPrinter(f.items) << "\n" << ::tpy::check_signals;
+    std::cout << f.x << "\n" << ::tpy::check_signals;
     Foo f2 = Foo({10, 20}, 5);
-    std::cout << ::tpy::ListPrinter(f2.items) << "\n";
-    std::cout << f2.x << "\n";
+    std::cout << ::tpy::ListPrinter(f2.items) << "\n" << ::tpy::check_signals;
+    std::cout << f2.x << "\n" << ::tpy::check_signals;
 }
 
 // # Test qualified dataclasses.field() form

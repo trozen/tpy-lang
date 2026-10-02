@@ -101,7 +101,7 @@ struct Cell {
     //     print("  cell", v)
     Cell() = default;
     explicit Cell(::tpy::readonly_form_t<T> v) {
-        std::cout << "  cell" << " " << ::tpy::ValuePrinter(v) << "\n";
+        std::cout << "  cell" << " " << ::tpy::ValuePrinter(v) << "\n" << ::tpy::check_signals;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
@@ -249,13 +249,13 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 //     self.n = n
 //     print("  tick", n)
 inline Tick::Tick(int32_t n) : n(n) {
-    std::cout << "  tick" << " " << n << "\n";
+    std::cout << "  tick" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, t: Tick) -> None:
 //     print("  wrap", t.n)
 inline Wrap::Wrap(const Tick& t) {
-    std::cout << "  wrap" << " " << t.n << "\n";
+    std::cout << "  wrap" << " " << t.n << "\n" << ::tpy::check_signals;
 }
 
 inline Point::Point(int32_t x) : x(x) {
@@ -265,7 +265,7 @@ inline Point::Point(int32_t x) : x(x) {
 // def __post_init__(self) -> None:
 //     print("  point", self.x)
 inline void Point::__post_init__() const {
-    std::cout << "  point" << " " << this->x << "\n";
+    std::cout << "  point" << " " << this->x << "\n" << ::tpy::check_signals;
 }
 
 inline bool Point::__eq__(const Point& other) const {
@@ -279,7 +279,7 @@ inline std::string Point::__repr__() const {
 // def __init__(self, n: int32 = 0) -> None:
 //     print("  inner", n)
 inline Outer::Inner::Inner(int32_t n) {
-    std::cout << "  inner" << " " << n << "\n";
+    std::cout << "  inner" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // def __enter__(self) -> None:

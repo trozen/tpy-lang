@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void ternary_record(bool c) {
     Counter a = Counter(1);
     Counter b = Counter(10);
-    std::cout << ((c) ? (a) : (b)).bump() << "\n";
-    std::cout << a.n << " " << b.n << "\n";
+    std::cout << ((c) ? (a) : (b)).bump() << "\n" << ::tpy::check_signals;
+    std::cout << a.n << " " << b.n << "\n" << ::tpy::check_signals;
 }
 
 // def walrus_record() -> None:
@@ -23,8 +23,8 @@ void ternary_record(bool c) {
 void walrus_record() {
     Counter a = Counter(5);
     Counter* q = nullptr;
-    std::cout << (q = &(a), *q).bump() << "\n";
-    std::cout << q->bump() << " " << a.n << "\n";
+    std::cout << (q = &(a), *q).bump() << "\n" << ::tpy::check_signals;
+    std::cout << q->bump() << " " << a.n << "\n" << ::tpy::check_signals;
 }
 
 // def ternary_str(c: bool) -> None:
@@ -34,14 +34,14 @@ void walrus_record() {
 void ternary_str(bool c) {
     std::string_view s = "ab";
     std::string_view t = "cd";
-    std::cout << ::tpy::str_upper(((c) ? (s) : (t))) << "\n";
+    std::cout << ::tpy::str_upper(((c) ? (s) : (t))) << "\n" << ::tpy::check_signals;
 }
 
 // def walrus_str() -> None:
 //     print((w := "xy").upper(), w)
 void walrus_str() {
     std::string w;
-    std::cout << ::tpy::str_upper((w = "xy")) << " " << w << "\n";
+    std::cout << ::tpy::str_upper((w = "xy")) << " " << w << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

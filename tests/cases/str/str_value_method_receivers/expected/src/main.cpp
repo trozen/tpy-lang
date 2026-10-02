@@ -12,14 +12,14 @@ namespace tpyapp::main {
 int32_t shout(std::string_view a, std::string_view b, bool c) {
     std::string n = ::tpy::str_upper((::tpy::str_concat(a, b)));
     std::string m = ::tpy::str_upper(((c) ? (a) : (b)));
-    std::cout << n << " " << m << "\n";
+    std::cout << n << " " << m << "\n" << ::tpy::check_signals;
     return (::tpy::add_check<int32_t>(::tpy::__len__(n), ::tpy::__len__(m)));
 }
 
 // def main() -> None:
 //     print(shout("ab", "cd", True))
 void main() {
-    std::cout << ::tpyapp::main::shout("ab", "cd", true) << "\n";
+    std::cout << ::tpyapp::main::shout("ab", "cd", true) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -16,7 +16,7 @@ void in_free_function() {
     Holder h = Holder(1);
     Bumper<Cell> b = Bumper<Cell>();
     b.bump_it(h.borrow());
-    std::cout << "free_function" << " " << h.c.n << "\n";
+    std::cout << "free_function" << " " << h.c.n << "\n" << ::tpy::check_signals;
 }
 
 // # loop body: the same bind once per iteration accumulates on the one cell.
@@ -31,7 +31,7 @@ void in_loop() {
     Bumper<Cell> b = Bumper<Cell>();
     for (int32_t i = 0; i < 3; ++i) {
         b.bump_it(h.borrow());
-        std::cout << "in_loop" << " " << i << " " << h.c.n << "\n";
+        std::cout << "in_loop" << " " << i << " " << h.c.n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -50,10 +50,10 @@ void in_try_finally() {
         try {
             b.bump_it(h.borrow());
         } catch (...) {
-            std::cout << "try_finally" << " " << h.c.n << "\n";
+            std::cout << "try_finally" << " " << h.c.n << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "try_finally" << " " << h.c.n << "\n";
+        std::cout << "try_finally" << " " << h.c.n << "\n" << ::tpy::check_signals;
     }
 }
 

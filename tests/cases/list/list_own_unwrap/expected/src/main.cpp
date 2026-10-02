@@ -30,11 +30,11 @@ void main() {
     std::vector<::tpy::Union<Cat, Dog>> items = {::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(a), ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(b)};
     ::tpyapp::main::show(a.as_const());
     ::tpyapp::main::show(b.as_const());
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
     if (true) {
         auto& __a = *std::get<Cat*>(a);
         std::vector<::tpy::Union<Cat, Dog>> more = {__a, ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(b)};
-        std::cout << ::tpy::__len__(more) << "\n";
+        std::cout << ::tpy::__len__(more) << "\n" << ::tpy::check_signals;
     }
 }
 

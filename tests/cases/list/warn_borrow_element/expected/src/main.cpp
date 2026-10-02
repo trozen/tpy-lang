@@ -14,7 +14,7 @@ void test_element_borrow_append() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     Point& v = ::tpy::__getitem__(items, 0);
     items.push_back(Point(5, 6));
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_element_borrow_subscript_assign() -> None:
@@ -27,7 +27,7 @@ void test_element_borrow_subscript_assign() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     Point& v = ::tpy::__getitem__(items, 0);
     ::tpy::__setitem__(items, 0, Point(9, 9));
-    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n" << ::tpy::check_signals;
 }
 
 // def test_alias_no_warn() -> None:
@@ -40,7 +40,7 @@ void test_alias_no_warn() {
     std::vector<Point> items = {Point(1, 2)};
     std::vector<Point>& alias = items;
     items.push_back(Point(3, 4));
-    std::cout << ::tpy::__len__(alias) << "\n";
+    std::cout << ::tpy::__len__(alias) << "\n" << ::tpy::check_signals;
 }
 
 // def test_value_type_no_borrow() -> None:
@@ -53,7 +53,7 @@ void test_value_type_no_borrow() {
     std::vector<int32_t> items = {1, 2, 3};
     int32_t v = ::tpy::__getitem__(items, 0);
     items.push_back(4);
-    std::cout << v << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
 }
 
 // def test_reassign_clears_borrows() -> None:
@@ -70,7 +70,7 @@ void test_reassign_clears_borrows() {
     Point& v = ::tpy::__getitem__((*items), 0);
     items = &*(__slot_2 = {Point(3, 4)});
     items->push_back(Point(5, 6));
-    std::cout << ::tpy::__len__((*items)) << "\n";
+    std::cout << ::tpy::__len__((*items)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_reassign_borrower_clears() -> None:
@@ -86,7 +86,7 @@ void test_reassign_borrower_clears() {
     Point* v = &(::tpy::__getitem__(items, 0));
     v = &*(__slot_1 = Point(9, 9));
     items.push_back(Point(5, 6));
-    std::cout << v->x << "\n";
+    std::cout << v->x << "\n" << ::tpy::check_signals;
 }
 
 // def test_element_borrow_del() -> None:
@@ -99,7 +99,7 @@ void test_element_borrow_del() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     Point& v = ::tpy::__getitem__(items, 0);
     ::tpy::__delitem__(items, 0);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_field_borrow_write() -> None:
@@ -112,7 +112,7 @@ void test_field_borrow_write() {
     Point p = Point(1, 2);
     Point& ref = p;
     p.x = 10;
-    std::cout << ref.x << "\n";
+    std::cout << ref.x << "\n" << ::tpy::check_signals;
 }
 
 // test_element_borrow_append()

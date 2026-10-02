@@ -95,18 +95,18 @@ std::string match_guard(int32_t x) {
 //     print(compound(int32(1), False))
 //     print(match_guard(int32(1)))
 void main() {
-    std::cout << ::tpy::print_bool(::tpyapp::main::match_int(1)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::mismatch(1)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::tuple_contains(1)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::tuple_miss(1)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::match_int(1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::mismatch(1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::tuple_contains(1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::tuple_miss(1)) << "\n" << ::tpy::check_signals;
     A __tmp_1 = A(::tpy::BigInt(7));
-    std::cout << ::tpyapp::main::record_self(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::record_self(__tmp_1) << "\n" << ::tpy::check_signals;
     A __tmp_2 = A(::tpy::BigInt(8));
-    std::cout << ::tpyapp::main::record_other(__tmp_2) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::negate(1)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::compound(1, true)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::compound(1, false)) << "\n";
-    std::cout << ::tpyapp::main::match_guard(1) << "\n";
+    std::cout << ::tpyapp::main::record_other(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::negate(1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::compound(1, true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::compound(1, false)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::match_guard(1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

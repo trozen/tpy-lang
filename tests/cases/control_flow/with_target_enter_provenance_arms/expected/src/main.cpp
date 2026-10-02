@@ -104,8 +104,8 @@ int32_t read_two_returns(bool flag) {
 //     print(read_nested(True))
 //     print(read_two_returns(True))
 void main() {
-    std::cout << ::tpyapp::main::read_nested(true) << "\n";
-    std::cout << ::tpyapp::main::read_two_returns(true) << "\n";
+    std::cout << ::tpyapp::main::read_nested(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_two_returns(true) << "\n" << ::tpy::check_signals;
 }
 
 // main()

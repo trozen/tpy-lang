@@ -79,10 +79,10 @@ std::string classify(Color c) {
 //     print(classify(Color.Blue))
 //     print(classify(Color.Cyan))
 void main() {
-    std::cout << ::tpyapp::main::classify(Color::Red) << "\n";
-    std::cout << ::tpyapp::main::classify(Color::Green) << "\n";
-    std::cout << ::tpyapp::main::classify(Color::Blue) << "\n";
-    std::cout << ::tpyapp::main::classify(Color::Cyan) << "\n";
+    std::cout << ::tpyapp::main::classify(Color::Red) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(Color::Green) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(Color::Blue) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(Color::Cyan) << "\n" << ::tpy::check_signals;
 }
 
 // # Parenthesized or-pattern groups on an enum subject (the enum switch

@@ -88,7 +88,7 @@ std::string join_iterable() {
 // def main():
 //     print(extend_iterable(), join_iterable(), update_dict(), update_set())
 void main() {
-    std::cout << ::tpyapp::main::extend_iterable() << " " << ::tpyapp::main::join_iterable() << " " << ::tpyapp::main::update_dict() << " " << ::tpyapp::main::update_set() << "\n";
+    std::cout << ::tpyapp::main::extend_iterable() << " " << ::tpyapp::main::join_iterable() << " " << ::tpyapp::main::update_dict() << " " << ::tpyapp::main::update_set() << "\n" << ::tpy::check_signals;
 }
 
 // main()

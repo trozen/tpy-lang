@@ -413,7 +413,7 @@ struct Cell {
     //     print("cell init", k)
     //     self.k = k
     explicit Cell(int32_t k = 5) {
-        std::cout << "cell init" << " " << k << "\n";
+        std::cout << "cell init" << " " << k << "\n" << ::tpy::check_signals;
         this->k = k;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
@@ -563,7 +563,7 @@ struct Measured {
     template<typename T_s = std::nullptr_t>
   requires (std::same_as<T_s, std::nullptr_t> || Sized<T_s>)
     explicit Measured(const T_s* s = nullptr, int32_t k = 1) {
-        std::cout << "measured init" << " " << k << "\n";
+        std::cout << "measured init" << " " << k << "\n" << ::tpy::check_signals;
         if constexpr (!std::same_as<T_s, std::nullptr_t>) {
             this->n = (::tpy::add_check<int32_t>(s->size(), k));
         } else {
@@ -1568,7 +1568,7 @@ inline Tagged::Tagged(const ::tpy::Union<int32_t, std::string>& value, int32_t n
 //     print("noisy init", n)
 //     self.n = n
 inline Noisy::Noisy(int32_t n) {
-    std::cout << "noisy init" << " " << n << "\n";
+    std::cout << "noisy init" << " " << n << "\n" << ::tpy::check_signals;
     this->n = n;
 }
 
@@ -1619,7 +1619,7 @@ inline NoArgs::NoArgs()
 //     self.a = a
 //     self.b = b
 inline KW::KW(int32_t a, int32_t b) {
-    std::cout << "kw init" << " " << a << " " << b << "\n";
+    std::cout << "kw init" << " " << a << " " << b << "\n" << ::tpy::check_signals;
     this->a = a;
     this->b = b;
 }
@@ -1640,7 +1640,7 @@ inline Settings::Settings(int32_t a, int32_t b)
 // def __post_init__(self) -> None:
 //     print("settings init", self.a, self.b)
 inline void Settings::__post_init__() const {
-    std::cout << "settings init" << " " << this->a << " " << this->b << "\n";
+    std::cout << "settings init" << " " << this->a << " " << this->b << "\n" << ::tpy::check_signals;
 }
 
 inline bool Settings::__eq__(Settings other) const {

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(len(a.items), a.items[2])
 void main() {
     Rows a = Rows();
-    std::cout << ::tpy::__len__(a.items) << " " << ::tpy::__getitem__(a.items, 2) << "\n";
+    std::cout << ::tpy::__len__(a.items) << " " << ::tpy::__getitem__(a.items, 2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

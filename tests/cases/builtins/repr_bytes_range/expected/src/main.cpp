@@ -24,13 +24,13 @@ std::string repr_param(::tpy::BytesView b) {
 //     print("bytes:", repr_param(b"p"))
 void section_bytes() {
     ::tpy::BytesView b = ::tpy::bytes_literal("a\x03", 2);
-    std::cout << "bytes:" << " " << ::tpy::repr_of(b) << "\n";
-    std::cout << "bytes:" << " " << ::tpy::repr_of(::tpy::bytes_literal_owned("it's", 4)) << "\n";
-    std::cout << "bytes:" << " " << ::tpy::repr_of(::tpy::bytes_literal_owned("say \"hi\"", 8)) << "\n";
-    std::cout << "bytes:" << " " << ::tpy::repr_of(::tpy::bytes_literal_owned("it's \"both\"", 11)) << "\n";
-    std::cout << "bytes:" << " " << ::tpy::repr_of(::tpy::bytes_literal_owned("\t\n\\\xff", 4)) << "\n";
-    std::cout << "bytes:" << " " << ::tpy::repr_of(::tpy::bytes_from_int_iterable(std::array<int32_t, 3>{0, 65, 127})) << "\n";
-    std::cout << "bytes:" << " " << ::tpyapp::main::repr_param(::tpy::bytes_literal("p", 1)) << "\n";
+    std::cout << "bytes:" << " " << ::tpy::repr_of(b) << "\n" << ::tpy::check_signals;
+    std::cout << "bytes:" << " " << ::tpy::repr_of(::tpy::bytes_literal_owned("it's", 4)) << "\n" << ::tpy::check_signals;
+    std::cout << "bytes:" << " " << ::tpy::repr_of(::tpy::bytes_literal_owned("say \"hi\"", 8)) << "\n" << ::tpy::check_signals;
+    std::cout << "bytes:" << " " << ::tpy::repr_of(::tpy::bytes_literal_owned("it's \"both\"", 11)) << "\n" << ::tpy::check_signals;
+    std::cout << "bytes:" << " " << ::tpy::repr_of(::tpy::bytes_literal_owned("\t\n\\\xff", 4)) << "\n" << ::tpy::check_signals;
+    std::cout << "bytes:" << " " << ::tpy::repr_of(::tpy::bytes_from_int_iterable(std::array<int32_t, 3>{0, 65, 127})) << "\n" << ::tpy::check_signals;
+    std::cout << "bytes:" << " " << ::tpyapp::main::repr_param(::tpy::bytes_literal("p", 1)) << "\n" << ::tpy::check_signals;
 }
 
 // def section_bytearray() -> None:
@@ -46,11 +46,11 @@ void section_bytes() {
 void section_bytearray() {
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("z", 1));
     ba.push_back(3);
-    std::cout << "bytearray:" << " " << ::tpy::repr_of(ba) << "\n";
-    std::cout << "bytearray:" << " " << ::tpy::repr_of(::tpy::ByteArray()) << "\n";
-    std::cout << "bytearray:" << " " << ::tpy::repr_of(::tpy::ByteArray(::tpy::bytes_literal("it's", 4))) << "\n";
-    std::cout << "bytearray:" << " " << ::tpy::repr_of(::tpy::ByteArray(::tpy::bytes_literal("say \"hi\"", 8))) << "\n";
-    std::cout << "bytearray:" << " " << ::tpy::repr_of(::tpy::ByteArray(::tpy::bytes_literal("it's \"both\"", 11))) << "\n";
+    std::cout << "bytearray:" << " " << ::tpy::repr_of(ba) << "\n" << ::tpy::check_signals;
+    std::cout << "bytearray:" << " " << ::tpy::repr_of(::tpy::ByteArray()) << "\n" << ::tpy::check_signals;
+    std::cout << "bytearray:" << " " << ::tpy::repr_of(::tpy::ByteArray(::tpy::bytes_literal("it's", 4))) << "\n" << ::tpy::check_signals;
+    std::cout << "bytearray:" << " " << ::tpy::repr_of(::tpy::ByteArray(::tpy::bytes_literal("say \"hi\"", 8))) << "\n" << ::tpy::check_signals;
+    std::cout << "bytearray:" << " " << ::tpy::repr_of(::tpy::ByteArray(::tpy::bytes_literal("it's \"both\"", 11))) << "\n" << ::tpy::check_signals;
 }
 
 // def section_bytesview() -> None:
@@ -62,8 +62,8 @@ void section_bytearray() {
 void section_bytesview() {
     ::tpy::BytesView b = ::tpy::bytes_literal("ab'cd", 5);
     ::tpy::BytesView v = ::tpy::bytes_slice(b, ::tpy::BasicSlice{1, 4});
-    std::cout << "bytesview:" << " " << ::tpy::repr_of(v) << "\n";
-    std::cout << "bytesview:" << " " << ::tpy::BytesPrinter(v) << " " << std::format("{}", ::tpy::repr_of(v)) << "\n";
+    std::cout << "bytesview:" << " " << ::tpy::repr_of(v) << "\n" << ::tpy::check_signals;
+    std::cout << "bytesview:" << " " << ::tpy::BytesPrinter(v) << " " << std::format("{}", ::tpy::repr_of(v)) << "\n" << ::tpy::check_signals;
 }
 
 // def section_fstring() -> None:
@@ -77,8 +77,8 @@ void section_fstring() {
     ::tpy::BytesView b = ::tpy::bytes_literal("q\000", 2);
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("w", 1));
     ::tpy::Range<int32_t> r = ::tpy::Range<int32_t>(1, 4);
-    std::cout << std::format("fstring: {} {} {}", ::tpy::repr_of(b), ::tpy::repr_of(ba), ::tpy::repr_of(r)) << "\n";
-    std::cout << std::format("fstring: {} {} {}", ::tpy::__str__(b), ::tpy::__str__(ba), ::tpy::__str__(r)) << "\n";
+    std::cout << std::format("fstring: {} {} {}", ::tpy::repr_of(b), ::tpy::repr_of(ba), ::tpy::repr_of(r)) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("fstring: {} {} {}", ::tpy::__str__(b), ::tpy::__str__(ba), ::tpy::__str__(r)) << "\n" << ::tpy::check_signals;
 }
 
 // def section_container() -> None:
@@ -89,8 +89,8 @@ void section_fstring() {
 //     print("container:", xs)
 void section_container() {
     std::vector<::tpy::Bytes> xs = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("\n", 1)};
-    std::cout << "container:" << " " << ::tpy::list_to_str(xs) << "\n";
-    std::cout << "container:" << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << "container:" << " " << ::tpy::list_to_str(xs) << "\n" << ::tpy::check_signals;
+    std::cout << "container:" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def section_range() -> None:
@@ -103,13 +103,13 @@ void section_container() {
 //     n: int = 10 ** 20
 //     print("range:", repr(range(n, n + 2)))  # tpyc: ok
 void section_range() {
-    std::cout << "range:" << " " << ::tpy::repr_of(::tpy::Range<int32_t>(3)) << "\n";
-    std::cout << "range:" << " " << ::tpy::repr_of(::tpy::Range<int32_t>(2, 5)) << "\n";
-    std::cout << "range:" << " " << ::tpy::repr_of(::tpy::Range<int32_t>(0, 10, 2)) << "\n";
-    std::cout << "range:" << " " << ::tpy::repr_of(::tpy::Range<int32_t>(10, 0, -3)) << "\n";
-    std::cout << "range:" << " " << ::tpy::repr_of(::tpy::Range<int64_t>(5, -1, -1)) << "\n";
+    std::cout << "range:" << " " << ::tpy::repr_of(::tpy::Range<int32_t>(3)) << "\n" << ::tpy::check_signals;
+    std::cout << "range:" << " " << ::tpy::repr_of(::tpy::Range<int32_t>(2, 5)) << "\n" << ::tpy::check_signals;
+    std::cout << "range:" << " " << ::tpy::repr_of(::tpy::Range<int32_t>(0, 10, 2)) << "\n" << ::tpy::check_signals;
+    std::cout << "range:" << " " << ::tpy::repr_of(::tpy::Range<int32_t>(10, 0, -3)) << "\n" << ::tpy::check_signals;
+    std::cout << "range:" << " " << ::tpy::repr_of(::tpy::Range<int64_t>(5, -1, -1)) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt n = ((::tpy::BigInt(10)).pow(::tpy::BigInt(20)));
-    std::cout << "range:" << " " << ::tpy::repr_of(::tpy::Range<::tpy::BigInt>(n, ((n) + (::tpy::BigInt(2))))) << "\n";
+    std::cout << "range:" << " " << ::tpy::repr_of(::tpy::Range<::tpy::BigInt>(n, ((n) + (::tpy::BigInt(2))))) << "\n" << ::tpy::check_signals;
 }
 
 // def section_str_range() -> None:
@@ -117,8 +117,8 @@ void section_range() {
 //     print("str_range:", str(range(3)))  # tpyc: ok
 //     print("str_range:", str(range(1, 9, 4)))  # tpyc: ok
 void section_str_range() {
-    std::cout << "str_range:" << " " << std::string(::tpy::__str__(::tpy::Range<int32_t>(3))) << "\n";
-    std::cout << "str_range:" << " " << std::string(::tpy::__str__(::tpy::Range<int32_t>(1, 9, 4))) << "\n";
+    std::cout << "str_range:" << " " << std::string(::tpy::__str__(::tpy::Range<int32_t>(3))) << "\n" << ::tpy::check_signals;
+    std::cout << "str_range:" << " " << std::string(::tpy::__str__(::tpy::Range<int32_t>(1, 9, 4))) << "\n" << ::tpy::check_signals;
 }
 
 // def section_small_range() -> None:
@@ -128,10 +128,10 @@ void section_str_range() {
 //     print("small_range:", repr(range(uint8(0), uint8(9), uint8(3))))  # tpyc: ok
 //     print("small_range:", str(range(uint8(200), uint8(250), uint8(25))))  # tpyc: ok
 void section_small_range() {
-    std::cout << "small_range:" << " " << ::tpy::repr_of(::tpy::Range<int8_t>(1, 3)) << "\n";
-    std::cout << "small_range:" << " " << std::string(::tpy::__str__(::tpy::Range<int8_t>(-2, 2))) << "\n";
-    std::cout << "small_range:" << " " << ::tpy::repr_of(::tpy::Range<uint8_t>(0, 9, 3)) << "\n";
-    std::cout << "small_range:" << " " << std::string(::tpy::__str__(::tpy::Range<uint8_t>(200, 250, 25))) << "\n";
+    std::cout << "small_range:" << " " << ::tpy::repr_of(::tpy::Range<int8_t>(1, 3)) << "\n" << ::tpy::check_signals;
+    std::cout << "small_range:" << " " << std::string(::tpy::__str__(::tpy::Range<int8_t>(-2, 2))) << "\n" << ::tpy::check_signals;
+    std::cout << "small_range:" << " " << ::tpy::repr_of(::tpy::Range<uint8_t>(0, 9, 3)) << "\n" << ::tpy::check_signals;
+    std::cout << "small_range:" << " " << std::string(::tpy::__str__(::tpy::Range<uint8_t>(200, 250, 25))) << "\n" << ::tpy::check_signals;
 }
 
 // def section_method() -> None:
@@ -139,7 +139,7 @@ void section_small_range() {
 //     print("method:", h.show(2))
 void section_method() {
     Holder h = Holder(::tpy::bytes_literal("m'", 2));
-    std::cout << "method:" << " " << h.show(2) << "\n";
+    std::cout << "method:" << " " << h.show(2) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -159,7 +159,7 @@ void section_generator() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator:" << " " << s << "\n";
+            std::cout << "generator:" << " " << s << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -173,10 +173,10 @@ void section_generator() {
 //     print("inverse:", range(4))
 void section_inverse() {
     ::tpy::BytesView b = ::tpy::bytes_literal("x'y", 3);
-    std::cout << "inverse:" << " " << ::tpy::BytesPrinter(b) << "\n";
-    std::cout << "inverse:" << " " << std::string(::tpy::__str__(b)) << "\n";
-    std::cout << "inverse:" << " " << std::string(::tpy::__str__(::tpy::ByteArray(::tpy::bytes_literal("k", 1)))) << "\n";
-    std::cout << "inverse:" << " " << ::tpy::Range<int32_t>(4) << "\n";
+    std::cout << "inverse:" << " " << ::tpy::BytesPrinter(b) << "\n" << ::tpy::check_signals;
+    std::cout << "inverse:" << " " << std::string(::tpy::__str__(b)) << "\n" << ::tpy::check_signals;
+    std::cout << "inverse:" << " " << std::string(::tpy::__str__(::tpy::ByteArray(::tpy::bytes_literal("k", 1)))) << "\n" << ::tpy::check_signals;
+    std::cout << "inverse:" << " " << ::tpy::Range<int32_t>(4) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

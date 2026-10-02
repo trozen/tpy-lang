@@ -21,7 +21,7 @@ void forward() {
     float e = (::tpy::floordiv_f32(13.0f, static_cast<float>(5)));
     float f = (::tpy::fmod_f32(13.0f, static_cast<float>(5)));
     float g = (std::pow(2.0f, static_cast<float>(3)));
-    std::cout << ::tpy::print_float(static_cast<double>(a)) << " " << ::tpy::print_float(static_cast<double>(b)) << " " << ::tpy::print_float(static_cast<double>(c)) << " " << ::tpy::print_float(static_cast<double>(d)) << " " << ::tpy::print_float(static_cast<double>(e)) << " " << ::tpy::print_float(static_cast<double>(f)) << " " << ::tpy::print_float(static_cast<double>(g)) << "\n";
+    std::cout << ::tpy::print_float(static_cast<double>(a)) << " " << ::tpy::print_float(static_cast<double>(b)) << " " << ::tpy::print_float(static_cast<double>(c)) << " " << ::tpy::print_float(static_cast<double>(d)) << " " << ::tpy::print_float(static_cast<double>(e)) << " " << ::tpy::print_float(static_cast<double>(f)) << " " << ::tpy::print_float(static_cast<double>(g)) << "\n" << ::tpy::check_signals;
 }
 
 // def reverse() -> None:
@@ -41,7 +41,7 @@ void reverse() {
     float e = (::tpy::floordiv_f32(static_cast<float>(13), 5.0f));
     float f = (::tpy::fmod_f32(static_cast<float>(13), 5.0f));
     float g = (std::pow(static_cast<float>(2), 3.0f));
-    std::cout << ::tpy::print_float(static_cast<double>(a)) << " " << ::tpy::print_float(static_cast<double>(b)) << " " << ::tpy::print_float(static_cast<double>(c)) << " " << ::tpy::print_float(static_cast<double>(d)) << " " << ::tpy::print_float(static_cast<double>(e)) << " " << ::tpy::print_float(static_cast<double>(f)) << " " << ::tpy::print_float(static_cast<double>(g)) << "\n";
+    std::cout << ::tpy::print_float(static_cast<double>(a)) << " " << ::tpy::print_float(static_cast<double>(b)) << " " << ::tpy::print_float(static_cast<double>(c)) << " " << ::tpy::print_float(static_cast<double>(d)) << " " << ::tpy::print_float(static_cast<double>(e)) << " " << ::tpy::print_float(static_cast<double>(f)) << " " << ::tpy::print_float(static_cast<double>(g)) << "\n" << ::tpy::check_signals;
 }
 
 // def augmented() -> None:
@@ -55,7 +55,7 @@ void augmented() {
     y = (y) + static_cast<float>(5);
     y = (y) - static_cast<float>(5);
     y = (y) * static_cast<float>(2);
-    std::cout << ::tpy::print_float(static_cast<double>(y)) << "\n";
+    std::cout << ::tpy::print_float(static_cast<double>(y)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

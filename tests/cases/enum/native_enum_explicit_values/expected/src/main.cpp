@@ -59,11 +59,11 @@ namespace tpyapp::main {
 //     print(Tag(100))
 //     print(Tag(200))
 void main() {
-    std::cout << static_cast<int32_t>(::ns::Tag::Alpha) << "\n";
-    std::cout << static_cast<int32_t>(::ns::Tag::Beta) << "\n";
-    std::cout << static_cast<int32_t>(::ns::Tag::Gamma) << "\n";
-    std::cout << ::tpy::__repr__(::tpy::EnumUtil<::ns::Tag>::from_value(100)) << "\n";
-    std::cout << ::tpy::__repr__(::tpy::EnumUtil<::ns::Tag>::from_value(200)) << "\n";
+    std::cout << static_cast<int32_t>(::ns::Tag::Alpha) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(::ns::Tag::Beta) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(::ns::Tag::Gamma) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__repr__(::tpy::EnumUtil<::ns::Tag>::from_value(100)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__repr__(::tpy::EnumUtil<::ns::Tag>::from_value(200)) << "\n" << ::tpy::check_signals;
 }
 
 // # @native enum where the user spells explicit integer values. These are

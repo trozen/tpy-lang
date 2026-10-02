@@ -28,10 +28,10 @@ void main() {
     Holder h = Holder(&(__tmp_1));
     Box param = Box(::tpy::BigInt(3));
     ::tpyapp::main::bump(&(param), h, true);
-    std::cout << param.val << "\n";
+    std::cout << param.val << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bump(&(param), h, false);
     if ((h.opt.has_value())) {
-        std::cout << (*h.opt).val << "\n";
+        std::cout << (*h.opt).val << "\n" << ::tpy::check_signals;
     }
 }
 

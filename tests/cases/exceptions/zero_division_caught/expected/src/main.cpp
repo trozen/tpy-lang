@@ -81,81 +81,81 @@ void main() {
         try {
             double a = 10.0;
             double b = 0.0;
-            std::cout << ::tpy::print_float((::tpy::truediv(a, b))) << "\n";
+            std::cout << ::tpy::print_float((::tpy::truediv(a, b))) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError&) {
-            std::cout << "caught: float /" << "\n";
+            std::cout << "caught: float /" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             double c = 10.0;
             double d = 0.0;
-            std::cout << ::tpy::print_float((::tpy::floordiv(c, d))) << "\n";
+            std::cout << ::tpy::print_float((::tpy::floordiv(c, d))) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError&) {
-            std::cout << "caught: float //" << "\n";
+            std::cout << "caught: float //" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             double e = 10.0;
             double f = 0.0;
-            std::cout << ::tpy::print_float((::tpy::fmod(e, f))) << "\n";
+            std::cout << ::tpy::print_float((::tpy::fmod(e, f))) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError&) {
-            std::cout << "caught: float %" << "\n";
+            std::cout << "caught: float %" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             int32_t g = 10;
             int32_t h = 0;
-            std::cout << (::tpy::div_check<int32_t>(g, h)) << "\n";
+            std::cout << (::tpy::div_check<int32_t>(g, h)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError&) {
-            std::cout << "caught: int //" << "\n";
+            std::cout << "caught: int //" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             int32_t i = 10;
             int32_t j = 0;
-            std::cout << (::tpy::mod_check<int32_t>(i, j)) << "\n";
+            std::cout << (::tpy::mod_check<int32_t>(i, j)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError&) {
-            std::cout << "caught: int %" << "\n";
+            std::cout << "caught: int %" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::BigInt k = ::tpy::BigInt(10);
             ::tpy::BigInt m = ::tpy::BigInt(0);
-            std::cout << ((k) / (m)) << "\n";
+            std::cout << ((k) / (m)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError&) {
-            std::cout << "caught: bigint //" << "\n";
+            std::cout << "caught: bigint //" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::BigInt n = ::tpy::BigInt(10);
             ::tpy::BigInt o = ::tpy::BigInt(0);
-            std::cout << ((n) % (o)) << "\n";
+            std::cout << ((n) % (o)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError&) {
-            std::cout << "caught: bigint %" << "\n";
+            std::cout << "caught: bigint %" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             int32_t p = 10;
             int32_t q = 0;
-            std::cout << ::tpy::TuplePrinter(::tpy::divmod_fixed<int32_t>(p, q)) << "\n";
+            std::cout << ::tpy::TuplePrinter(::tpy::divmod_fixed<int32_t>(p, q)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError&) {
-            std::cout << "caught: int divmod" << "\n";
+            std::cout << "caught: int divmod" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             double r = 10.0;
             double s = 0.0;
-            std::cout << ::tpy::TuplePrinter(::tpy::divmod_float(r, s)) << "\n";
+            std::cout << ::tpy::TuplePrinter(::tpy::divmod_float(r, s)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError&) {
-            std::cout << "caught: float divmod" << "\n";
+            std::cout << "caught: float divmod" << "\n" << ::tpy::check_signals;
         }
     }
 }

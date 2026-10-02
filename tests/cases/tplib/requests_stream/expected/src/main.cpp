@@ -41,8 +41,8 @@ void stream_content_length() {
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 16\r\n\r\n0123456789ABCDEF", 55));
     ::tpy::Union<bool, std::string> __tmp_2 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/big", nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, true);
-    std::cout << "status:" << " " << r.status_code << "\n";
-    std::cout << "not pooled:" << " " << ::tpy::print_bool((!(s._pool.contains(key)))) << "\n";
+    std::cout << "status:" << " " << r.status_code << "\n" << ::tpy::check_signals;
+    std::cout << "not pooled:" << " " << ::tpy::print_bool((!(s._pool.contains(key)))) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray got = ::tpy::ByteArray();
     {
         auto __src_0 = r.iter_content(5);
@@ -51,11 +51,11 @@ void stream_content_length() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "chunk:" << " " << ::tpy::bytes_decode(chunk) << "\n";
+            std::cout << "chunk:" << " " << ::tpy::bytes_decode(chunk) << "\n" << ::tpy::check_signals;
             got = ::tpy::bytearray_concat(got, chunk);
         }
     }
-    std::cout << "full:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";
+    std::cout << "full:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n" << ::tpy::check_signals;
     b.close();
 }
 
@@ -102,7 +102,7 @@ void stream_chunked() {
             got = ::tpy::bytearray_concat(got, chunk);
         }
     }
-    std::cout << "chunked:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";
+    std::cout << "chunked:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n" << ::tpy::check_signals;
     b.close();
 }
 
@@ -139,9 +139,9 @@ void stream_raw() {
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/raw", nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, true);
     ::tpystd::http::client::HTTPResponse* raw = ::tpy::optional_to_ptr(r.raw());
     if ((raw != nullptr)) {
-        std::cout << "raw.read:" << " " << ::tpy::bytes_decode(raw->read(-1)) << "\n";
+        std::cout << "raw.read:" << " " << ::tpy::bytes_decode(raw->read(-1)) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "raw missing" << "\n";
+        std::cout << "raw missing" << "\n" << ::tpy::check_signals;
     }
     b.close();
 }
@@ -198,7 +198,7 @@ void stream_context_manager() {
                 got = ::tpy::bytearray_concat(got, chunk);
             }
         }
-        std::cout << "ctx body:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";
+        std::cout << "ctx body:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -209,7 +209,7 @@ void stream_context_manager() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << "raw after close:" << " " << ::tpy::print_bool((!r.raw().has_value())) << "\n";
+    std::cout << "raw after close:" << " " << ::tpy::print_bool((!r.raw().has_value())) << "\n" << ::tpy::check_signals;
     b.close();
 }
 
@@ -256,7 +256,7 @@ void stream_empty_body() {
             chunks = ::tpy::add_check<int32_t>(chunks, 1);
         }
     }
-    std::cout << "empty chunks:" << " " << chunks << "\n";
+    std::cout << "empty chunks:" << " " << chunks << "\n" << ::tpy::check_signals;
     b.close();
 }
 
@@ -303,8 +303,8 @@ void non_streamed_iter_content() {
             got = ::tpy::bytearray_concat(got, chunk);
         }
     }
-    std::cout << "non-stream iter_content:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";
-    std::cout << "content intact:" << " " << ::tpy::bytes_decode(r.content) << "\n";
+    std::cout << "non-stream iter_content:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n" << ::tpy::check_signals;
+    std::cout << "content intact:" << " " << ::tpy::bytes_decode(r.content) << "\n" << ::tpy::check_signals;
     b.close();
 }
 

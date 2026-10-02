@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(use_g_str("hello"))
 //     print(relay(3))
 void main() {
-    std::cout << ::tpyapp::a::use_g_int(7) << "\n";
-    std::cout << ::tpyapp::a::use_g_str("hello") << "\n";
-    std::cout << ::tpyapp::b::relay(3) << "\n";
+    std::cout << ::tpyapp::a::use_g_int(7) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::a::use_g_str("hello") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::b::relay(3) << "\n" << ::tpy::check_signals;
 }
 
 // # Cyclic import where a peer imports an @overload-grouped function

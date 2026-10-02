@@ -15,7 +15,7 @@ void double_all(const std::array<int32_t, 4>& xs) {
             return (::tpy::mul_check<int32_t>(x, 2));
         });
     });
-    std::cout << ::tpy::__getitem__(ys, 0) << " " << ::tpy::__getitem__(ys, 3) << "\n";
+    std::cout << ::tpy::__getitem__(ys, 0) << " " << ::tpy::__getitem__(ys, 3) << "\n" << ::tpy::check_signals;
 }
 
 // def pass_through(xs: Array[int32, 4]) -> None:
@@ -29,7 +29,7 @@ void pass_through(const std::array<int32_t, 4>& xs) {
             return x;
         });
     });
-    std::cout << ::tpy::__getitem__(same, 1) << " " << ::tpy::__getitem__(same, 2) << "\n";
+    std::cout << ::tpy::__getitem__(same, 1) << " " << ::tpy::__getitem__(same, 2) << "\n" << ::tpy::check_signals;
 }
 
 // def sum_pairs(ps: Array[tuple[int32, int32], 3]) -> None:
@@ -45,7 +45,7 @@ void sum_pairs(const std::array<std::tuple<int32_t, int32_t>, 3>& ps) {
             return (::tpy::add_check<int32_t>(a, b));
         });
     });
-    std::cout << ::tpy::__getitem__(sums, 0) << " " << ::tpy::__getitem__(sums, 2) << "\n";
+    std::cout << ::tpy::__getitem__(sums, 0) << " " << ::tpy::__getitem__(sums, 2) << "\n" << ::tpy::check_signals;
 }
 
 // def main():
@@ -69,7 +69,7 @@ void main() {
         int32_t i = int32_t(__i_1);
         return i;
     });
-    std::cout << ::tpy::__len__(empty) << "\n";
+    std::cout << ::tpy::__len__(empty) << "\n" << ::tpy::check_signals;
 }
 
 // main()

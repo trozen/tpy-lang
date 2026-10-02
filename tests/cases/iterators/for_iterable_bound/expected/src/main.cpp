@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(sum_all(r))
 void main() {
     MyRange r = MyRange(1, 6);
-    std::cout << ::tpyapp::main::sum_all<MyRange>(r) << "\n";
+    std::cout << ::tpyapp::main::sum_all<MyRange>(r) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -15,13 +15,13 @@ namespace tpyapp::main {
 //     print(c.value)
 void main() {
     Clamped c = Clamped(50);
-    std::cout << c.value() << "\n";
+    std::cout << c.value() << "\n" << ::tpy::check_signals;
     c.set_value(200);
-    std::cout << c.value() << "\n";
+    std::cout << c.value() << "\n" << ::tpy::check_signals;
     c.set_value(-10);
-    std::cout << c.value() << "\n";
+    std::cout << c.value() << "\n" << ::tpy::check_signals;
     c.set_value(42);
-    std::cout << c.value() << "\n";
+    std::cout << c.value() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -50,17 +50,17 @@ void __tpy_init() {
     ml->push_back(30);
     ml->push_back(40);
     last = ::tpy::pop_back((*ml));
-    std::cout << last << "\n";
+    std::cout << last << "\n" << ::tpy::check_signals;
     first = ::tpy::list_pop_at((*ml), 0);
-    std::cout << first << "\n";
-    std::cout << (*ml)[0] << "\n";
-    std::cout << (*ml)[1] << "\n";
-    std::cout << ::tpy::__len__((*ml)) << "\n";
+    std::cout << first << "\n" << ::tpy::check_signals;
+    std::cout << (*ml)[0] << "\n" << ::tpy::check_signals;
+    std::cout << (*ml)[1] << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__((*ml)) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_2 = {1, 2, 3, 4, 5};
     items = &__global_slot_2;
-    std::cout << ::tpy::pop_back((*items)) << "\n";
-    std::cout << ::tpy::list_pop_at((*items), 0) << "\n";
-    std::cout << ::tpy::__len__((*items)) << "\n";
+    std::cout << ::tpy::pop_back((*items)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::list_pop_at((*items), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__((*items)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -25,7 +25,7 @@ void show(std::string_view tag, const std::vector<std::tuple<P, P>>& ys) {
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(__for_tup_0);
         auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        std::cout << tag << " " << ::tpy::__len__(a.xs) << " " << ::tpy::__len__(b.xs) << "\n";
+        std::cout << tag << " " << ::tpy::__len__(a.xs) << " " << ::tpy::__len__(b.xs) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -215,10 +215,10 @@ std::vector<std::tuple<P, P>> in_finally(P& p) {
             t = std::tuple<P*, P*>{&(p), &(p)};
             (*ys) = {::tpy::tuple_to_storage<std::tuple<P, P>>(t)};
         } catch (...) {
-            std::cout << "finally" << "\n";
+            std::cout << "finally" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally" << "\n";
+        std::cout << "finally" << "\n" << ::tpy::check_signals;
     }
     return std::move((*ys));
 }
@@ -365,7 +365,7 @@ void main() {
         goto __after_try_1;
         // except Bad:
         __except_1:;
-        std::cout << "bad" << "\n";
+        std::cout << "bad" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     a.xs.push_back(7);
@@ -380,12 +380,12 @@ void main() {
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, int32_t>>(__for_tup_2);
         auto&& b4 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
         int32_t n4 = std::get<1>(__tup_1);
-        std::cout << "scalar_mix" << " " << ::tpy::__len__(b4.xs) << " " << n4 << "\n";
+        std::cout << "scalar_mix" << " " << ::tpy::__len__(b4.xs) << " " << n4 << "\n" << ::tpy::check_signals;
     }
     auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(::tpy::__getitem__(y5, 1));
     auto&& b5 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
     auto&& c5 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
-    std::cout << "dict_value" << " " << ::tpy::__len__(b5.xs) << " " << ::tpy::__len__(c5.xs) << "\n";
+    std::cout << "dict_value" << " " << ::tpy::__len__(b5.xs) << " " << ::tpy::__len__(c5.xs) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("return_list", y6);
     ::tpyapp::main::show("comp_elem", y15);
     auto& __obj_1 = y7;
@@ -395,7 +395,7 @@ void main() {
         const auto& inner = *__beg_1;
         ::tpyapp::main::show("nested_list", inner);
     }
-    std::cout << "nested_tuple" << " " << ::tpy::__len__(y8) << "\n";
+    std::cout << "nested_tuple" << " " << ::tpy::__len__(y8) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("ctor", k.ys);
     ::tpyapp::main::show("method", y9);
     {
@@ -406,7 +406,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "gen" << " " << n << "\n";
+            std::cout << "gen" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     ::tpyapp::main::show("async", y11);

@@ -16,9 +16,9 @@ void main() {
     {
         try {
             ::tpy::BigInt n = ::tpy::any_cast_or_panic<::tpy::BigInt>(x);
-            std::cout << n << "\n";
+            std::cout << n << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::TypeError& e) {
-            std::cout << "caught TypeError" << "\n";
+            std::cout << "caught TypeError" << "\n" << ::tpy::check_signals;
         }
     }
 }

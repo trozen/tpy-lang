@@ -19,14 +19,14 @@ void main() {
         try {
             throw MyError("boom");
         } catch (const MyError& e) {
-            std::cout << e.msg << "\n";
+            std::cout << e.msg << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw MyError{};
         } catch (const MyError& e) {
-            std::cout << "empty:" << " " << e.msg << "\n";
+            std::cout << "empty:" << " " << e.msg << "\n" << ::tpy::check_signals;
         }
     }
 }

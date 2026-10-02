@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(h.shared.get().x)
 void main() {
     Holder h = Holder();
-    std::cout << h.shared.get().x << "\n";
+    std::cout << h.shared.get().x << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Rc

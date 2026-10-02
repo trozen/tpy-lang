@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(partial["age"])  # panics -- age is None
 void main() {
     Info partial = Info("Alice");
-    std::cout << ::tpy::typed_dict_field_check(partial.age) << "\n";
+    std::cout << ::tpy::typed_dict_field_check(partial.age) << "\n" << ::tpy::check_signals;
 }
 
 // main()

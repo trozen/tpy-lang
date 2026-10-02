@@ -141,20 +141,20 @@ void main() {
     conn._tls = std::move(cli);
     conn.request("GET", "/v1/resource");
     std::string req = ::tpy::bytes_decode(srv.recv(4096));
-    std::cout << "req-line:" << " " << ::tpy::__getitem__(::tpy::str_split(req, "\r\n"), 0) << "\n";
-    std::cout << "has-host:" << " " << ::tpy::print_bool((req.find("Host: localhost") != std::string::npos)) << "\n";
+    std::cout << "req-line:" << " " << ::tpy::__getitem__(::tpy::str_split(req, "\r\n"), 0) << "\n" << ::tpy::check_signals;
+    std::cout << "has-host:" << " " << ::tpy::print_bool((req.find("Host: localhost") != std::string::npos)) << "\n" << ::tpy::check_signals;
     srv.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 10\r\n\r\nabcdefghij", 81));
     ::tpystd::http::client::HTTPResponse resp = conn.getresponse();
-    std::cout << resp.status << " " << resp.reason << " " << resp.version << "\n";
-    std::cout << ::tpy::print_optional_val(resp.getheader("content-type")) << "\n";
-    std::cout << ::tpy::bytes_decode(resp.read()) << "\n";
+    std::cout << resp.status << " " << resp.reason << " " << resp.version << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(resp.getheader("content-type")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::bytes_decode(resp.read()) << "\n" << ::tpy::check_signals;
     conn.request("GET", "/v1/second");
     std::string req2 = ::tpy::bytes_decode(srv.recv(4096));
-    std::cout << "req2-line:" << " " << ::tpy::__getitem__(::tpy::str_split(req2, "\r\n"), 0) << "\n";
+    std::cout << "req2-line:" << " " << ::tpy::__getitem__(::tpy::str_split(req2, "\r\n"), 0) << "\n" << ::tpy::check_signals;
     srv.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\ntls2", 42));
     srv.close();
     ::tpystd::http::client::HTTPResponse resp2 = conn.getresponse();
-    std::cout << ::tpy::bytes_decode(resp2.read()) << " " << ::tpy::print_bool(resp2.will_close) << "\n";
+    std::cout << ::tpy::bytes_decode(resp2.read()) << " " << ::tpy::print_bool(resp2.will_close) << "\n" << ::tpy::check_signals;
     conn.close();
 }
 

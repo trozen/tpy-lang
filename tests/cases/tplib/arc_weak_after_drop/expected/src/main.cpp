@@ -27,16 +27,16 @@ namespace tpyapp::main {
 //         print("unexpected upgrade:", upgraded.get().val)
 //     print("--- done ---")
 void main() {
-    std::cout << "--- pre ---" << "\n";
+    std::cout << "--- pre ---" << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::arc::Weak<Cell> w = ::tpyapp::main::make_weak_after_arc_dies();
-    std::cout << "--- post ---" << "\n";
+    std::cout << "--- post ---" << "\n" << ::tpy::check_signals;
     std::optional<::tpystd::tplib::arc::Arc<Cell>> upgraded = w.upgrade();
     if ((!upgraded.has_value())) {
-        std::cout << "upgrade returned None" << "\n";
+        std::cout << "upgrade returned None" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "unexpected upgrade:" << " " << (*upgraded).get().val << "\n";
+        std::cout << "unexpected upgrade:" << " " << (*upgraded).get().val << "\n" << ::tpy::check_signals;
     }
-    std::cout << "--- done ---" << "\n";
+    std::cout << "--- done ---" << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.arc import Arc, Weak

@@ -27,10 +27,10 @@ void main() {
     uint64_t h5 = ::tpy::__hash__(true);
     char c = 'a';
     uint64_t h6 = ::tpy::__hash__(c);
-    std::cout << ::tpy::print_bool((::tpy::__hash__("hello") == ::tpy::__hash__("hello"))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::__hash__(10) == ::tpy::__hash__(10))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::__hash__(42) == ::tpy::__hash__(42))) << "\n";
-    std::cout << "ok" << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__("hello") == ::tpy::__hash__("hello"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::__hash__(10) == ::tpy::__hash__(10))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::__hash__(42) == ::tpy::__hash__(42))) << "\n" << ::tpy::check_signals;
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // main()

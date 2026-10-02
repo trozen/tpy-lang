@@ -18,13 +18,13 @@ void main() {
     Bag b = Bag();
     std::optional<std::string> found = ({ std::optional<std::optional<std::string>> __r; try { __r.emplace(b.__getattr__("host")); } catch (const ::tpy::AttributeError&) { __r.emplace(std::nullopt); } std::move(*__r); });
     if ((found.has_value())) {
-        std::cout << "host:" << " " << ::tpy::print_optional_val(found) << "\n";
+        std::cout << "host:" << " " << ::tpy::print_optional_val(found) << "\n" << ::tpy::check_signals;
     }
     std::optional<std::string> missing = ({ std::optional<std::optional<std::string>> __r; try { __r.emplace(b.__getattr__("missing")); } catch (const ::tpy::AttributeError&) { __r.emplace(std::nullopt); } std::move(*__r); });
     if ((!missing.has_value())) {
-        std::cout << "missing is None" << "\n";
+        std::cout << "missing is None" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "never" << "\n";
+        std::cout << "never" << "\n" << ::tpy::check_signals;
     }
 }
 

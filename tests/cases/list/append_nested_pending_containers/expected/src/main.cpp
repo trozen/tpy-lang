@@ -20,11 +20,11 @@ void main() {
     std::vector<::tpy::ordered_map<int32_t, int32_t>> ds = {::tpy::ordered_map<int32_t, int32_t>({{1, 2}})};
     ds.push_back(::tpy::ordered_map<int32_t, int32_t>({{3, 4}}));
     ::tpy::__setitem__(::tpy::__getitem__(ds, 0), 1, 9);
-    std::cout << ::tpy::ListPrinter(ds) << "\n";
+    std::cout << ::tpy::ListPrinter(ds) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::ordered_set<int32_t>> ss = {::tpy::ordered_set<int32_t>({1, 2})};
     ss.push_back(::tpy::ordered_set<int32_t>({3, 4}));
     ::tpy::__getitem__(ss, 0).insert(9);
-    std::cout << ::tpy::ListPrinter(ss) << "\n";
+    std::cout << ::tpy::ListPrinter(ss) << "\n" << ::tpy::check_signals;
 }
 
 // main()

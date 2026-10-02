@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(r.get().name())
 void make_rc() {
     ::tpystd::tplib::rc::Rc<Pet> r = Rc<Pet>::new_<Parrot>(Parrot("Polly"));
-    std::cout << r.get().name() << "\n";
+    std::cout << r.get().name() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -17,9 +17,9 @@ void make_rc() {
 //     make_rc()
 //     print("after make_rc")
 void main() {
-    std::cout << "before make_rc" << "\n";
+    std::cout << "before make_rc" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::make_rc();
-    std::cout << "after make_rc" << "\n";
+    std::cout << "after make_rc" << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Rc

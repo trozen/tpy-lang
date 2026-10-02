@@ -336,7 +336,7 @@ helper-API surface.
 | `ImportError`, `ModuleNotFoundError` | Not applicable | Import failures are compile-time today |
 | `UnicodeError` and subtypes | Missing | TPy has few encoding-panic sites today |
 | `GeneratorExit` | Done | Inherits `BaseException` directly (CPython hierarchy); raisable/catchable, and constructed by the frame destructor as `__exit__`'s exc_val when an abandoned generator/coroutine closes a suspended `with` region |
-| `KeyboardInterrupt` | Done | Inherits `BaseException` directly (CPython hierarchy); raisable/catchable; raised by Ctrl-C on the main thread at the next interruptible operation (sleep, input, blocking socket I/O, join, `sys.stdout` / file I/O) and by `asyncio.run` after a SIGINT-driven graceful shutdown; uncaught, it prints `KeyboardInterrupt` and dies by SIGINT (status 130) like CPython |
+| `KeyboardInterrupt` | Done | Inherits `BaseException` directly (CPython hierarchy); raisable/catchable; raised by Ctrl-C on the main thread at the next interruptible operation (`print`, sleep, input, blocking socket I/O, join, `sys.stdout` / file I/O) and by `asyncio.run` after a SIGINT-driven graceful shutdown; uncaught, it prints `KeyboardInterrupt` and dies by SIGINT (status 130) like CPython |
 | `SystemExit` | Missing | Control-flow exception; needs runtime support |
 | `SystemError` | Missing | Internal-interpreter notion not directly applicable |
 | `EOFError` | Done | Raised by `input()` on EOF; also available for user `raise` |

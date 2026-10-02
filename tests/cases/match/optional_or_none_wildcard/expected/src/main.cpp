@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void all_arm(std::optional<int32_t> v) {
     auto& __match_subject_1 = v;
     {
-        std::cout << "any" << "\n";
+        std::cout << "any" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -24,9 +24,9 @@ void all_arm(std::optional<int32_t> v) {
 void none_or_five(std::optional<int32_t> v) {
     auto& __match_subject_1 = v;
     if (!__match_subject_1.has_value() || (__match_subject_1.has_value() && (*__match_subject_1) == 5)) {
-        std::cout << "none-or-five" << "\n";
+        std::cout << "none-or-five" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "other" << "\n";
+        std::cout << "other" << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -48,11 +48,11 @@ void main() {
             v = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         goto __after_try_3;
         // except ParseError:
         __except_3:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_3:;
     }
     ::tpy::BigInt v2;
@@ -63,11 +63,11 @@ void main() {
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
         // else:
-        std::cout << v2 << "\n";
+        std::cout << v2 << "\n" << ::tpy::check_signals;
         goto __after_try_5;
         // except ParseError:
         __except_5:;
-        std::cout << "caught error" << "\n";
+        std::cout << "caught error" << "\n" << ::tpy::check_signals;
         __after_try_5:;
     }
 }

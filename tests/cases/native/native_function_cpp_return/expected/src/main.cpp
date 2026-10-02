@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(n)
 void main() {
     int32_t n = static_cast<int32_t>(::nx::wide_count());
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native

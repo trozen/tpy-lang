@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(AND_, OR_, EQ, NE)
 void main() {
-    std::cout << ::tpy::print_bool(AND_) << " " << ::tpy::print_bool(OR_) << " " << ::tpy::print_bool(EQ) << " " << ::tpy::print_bool(NE) << "\n";
+    std::cout << ::tpy::print_bool(AND_) << " " << ::tpy::print_bool(OR_) << " " << ::tpy::print_bool(EQ) << " " << ::tpy::print_bool(NE) << "\n" << ::tpy::check_signals;
 }
 
 // main()

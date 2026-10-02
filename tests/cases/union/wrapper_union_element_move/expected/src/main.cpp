@@ -32,9 +32,9 @@ int32_t store(::tpy::ordered_map<std::string, JV>& d, std::vector<JV>& src) {
 void main() {
     std::vector<JV> a = std::vector<JV>{};
     std::vector<JV> s = {1, 2};
-    std::cout << ::tpyapp::main::push(a, s) << " " << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpyapp::main::push(a, s) << " " << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, JV> __tmp_1 = ::tpy::ordered_map<std::string, JV>();
-    std::cout << ::tpyapp::main::store(__tmp_1, s) << " " << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpyapp::main::store(__tmp_1, s) << " " << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // main()

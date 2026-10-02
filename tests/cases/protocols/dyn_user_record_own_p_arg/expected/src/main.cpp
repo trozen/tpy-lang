@@ -13,7 +13,7 @@ void main() {
     Shelter s = Shelter();
     s.admit(std::make_unique<Parrot>(Parrot("Polly")));
     s.admit(std::make_unique<Parrot>(Parrot("Mimi")));
-    std::cout << s.count << "\n";
+    std::cout << s.count << "\n" << ::tpy::check_signals;
 }
 
 // main()

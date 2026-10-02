@@ -49,9 +49,9 @@ namespace tpyapp::main {
 //         print("ValueError-other-zone")
 void main() {
     ::tpy::ordered_set<std::string> zones = ::tpystd::zoneinfo::available_timezones();
-    std::cout << ::tpy::print_bool((::tpy::__len__(zones) > 100)) << "\n";
-    std::cout << ::tpy::print_bool((zones.contains("Europe/Warsaw"))) << " " << ::tpy::print_bool((zones.contains("America/New_York"))) << " " << ::tpy::print_bool((zones.contains("UTC"))) << "\n";
-    std::cout << ::tpy::print_bool((zones.contains("posixrules"))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__len__(zones) > 100)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((zones.contains("Europe/Warsaw"))) << " " << ::tpy::print_bool((zones.contains("America/New_York"))) << " " << ::tpy::print_bool((zones.contains("UTC"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((zones.contains("posixrules"))) << "\n" << ::tpy::check_signals;
     bool bad_prefix = false;
     auto& __obj_0 = zones;
     auto __beg_0 = __obj_0.begin();
@@ -62,7 +62,7 @@ void main() {
             bad_prefix = true;
         }
     }
-    std::cout << ::tpy::print_bool(bad_prefix) << "\n";
+    std::cout << ::tpy::print_bool(bad_prefix) << "\n" << ::tpy::check_signals;
     bool all_ok = true;
     auto& __obj_1 = zones;
     auto __beg_1 = __obj_1.begin();
@@ -74,33 +74,33 @@ void main() {
             all_ok = false;
         }
     }
-    std::cout << ::tpy::print_bool(all_ok) << "\n";
+    std::cout << ::tpy::print_bool(all_ok) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::ZoneInfo waw = ::tpystd::datetime::ZoneInfo("Europe/Warsaw");
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = waw;
     ::tpystd::datetime::datetime r0 = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1));
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = waw;
     ::tpystd::datetime::datetime r1 = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(1), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_2));
-    std::cout << r0 << " " << r0.fold() << "\n";
-    std::cout << r1 << " " << r1.fold() << "\n";
-    std::cout << ::tpy::print_float(((r1.timestamp()) - (r0.timestamp()))) << "\n";
+    std::cout << r0 << " " << r0.fold() << "\n" << ::tpy::check_signals;
+    std::cout << r1 << " " << r1.fold() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(((r1.timestamp()) - (r0.timestamp()))) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = waw;
     ::tpystd::datetime::datetime plain = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(10), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_3));
-    std::cout << plain << " " << plain.fold() << "\n";
+    std::cout << plain << " " << plain.fold() << "\n" << ::tpy::check_signals;
     {
         try {
             waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(0), ::tpy::BigInt(30)));
-            std::cout << "no-raise" << "\n";
+            std::cout << "no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "ValueError-naive" << "\n";
+            std::cout << "ValueError-naive" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ::tpystd::datetime::ZoneInfo("America/New_York");
             waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_4));
-            std::cout << "no-raise" << "\n";
+            std::cout << "no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "ValueError-other-zone" << "\n";
+            std::cout << "ValueError-other-zone" << "\n" << ::tpy::check_signals;
         }
     }
 }

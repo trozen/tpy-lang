@@ -14,11 +14,11 @@ namespace tpyapp::main {
 void test() {
     std::optional<Point> __slot_1;
     Point* p = nullptr;
-    std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((p == nullptr)) << "\n" << ::tpy::check_signals;
     p = &*(__slot_1 = Point(1, 2));
-    std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    std::cout << ::tpy::print_bool((p != nullptr)) << "\n";
-    std::cout << p->x << "\n";
+    std::cout << ::tpy::print_bool((p == nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((p != nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << p->x << "\n" << ::tpy::check_signals;
 }
 
 // test()

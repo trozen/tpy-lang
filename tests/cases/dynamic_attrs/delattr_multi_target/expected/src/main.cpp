@@ -26,13 +26,13 @@ void main() {
     b.__setattr__("y", ::tpy::make_any(::tpy::BigInt(3)));
     a.__delattr__("x");
     b.__delattr__("y");
-    std::cout << ::tpy::__len__(a._data) << " " << ::tpy::__len__(b._data) << " " << ::tpy::any_cast_or_panic<::tpy::BigInt>(a.__getattr__("keep")) << "\n";
+    std::cout << ::tpy::__len__(a._data) << " " << ::tpy::__len__(b._data) << " " << ::tpy::any_cast_or_panic<::tpy::BigInt>(a.__getattr__("keep")) << "\n" << ::tpy::check_signals;
     Bag c = Bag();
     c.__setattr__("p", ::tpy::make_any(::tpy::BigInt(1)));
     c.__setattr__("q", ::tpy::make_any(::tpy::BigInt(2)));
     c.__delattr__("p");
     c.__delattr__("q");
-    std::cout << ::tpy::__len__(c._data) << "\n";
+    std::cout << ::tpy::__len__(c._data) << "\n" << ::tpy::check_signals;
 }
 
 // main()

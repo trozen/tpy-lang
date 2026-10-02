@@ -22,8 +22,8 @@ void __tpy_init() {
     s = "hello";
     cp = s.data();
     p = const_cast<char*>(cp);
-    std::cout << p[0] << "\n";
-    std::cout << p[4] << "\n";
+    std::cout << p[0] << "\n" << ::tpy::check_signals;
+    std::cout << p[4] << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

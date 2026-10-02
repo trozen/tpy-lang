@@ -13,7 +13,7 @@ void main() {
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(42));
     ::tpy::Any b = ::tpy::make_any(std::string("hello"));
     ::tpy::Any c = ::tpy::make_any(bool(true));
-    std::cout << std::format("a={} b={} c={}", a, b, c) << "\n";
+    std::cout << std::format("a={} b={} c={}", a, b, c) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -17,7 +17,7 @@ int32_t apply_callable(const std::function<int32_t(int32_t)>& f, int32_t x) {
 //     print(f(99))
 void use_local() {
     std::function<int32_t(int32_t)> f = identity<int32_t>;
-    std::cout << f(99) << "\n";
+    std::cout << f(99) << "\n" << ::tpy::check_signals;
 }
 
 // # Return as Callable
@@ -48,13 +48,13 @@ std::function<int32_t(int32_t)> get_identity() {
 //     # Void hint with generic function (return discarded)
 //     run_void(identity, 0)                   # (no output)
 void main() {
-    std::cout << ::tpyapp::main::apply_fn(identity<int32_t>, 42) << "\n";
-    std::cout << ::tpyapp::main::apply_callable(identity<int32_t>, 42) << "\n";
-    std::cout << ::tpy::TuplePrinter(::tpyapp::main::make_pair(pair<int32_t, int32_t>, 3, 7)) << "\n";
-    std::cout << ::tpyapp::main::apply2(max_val<int32_t>, 10, 3) << "\n";
+    std::cout << ::tpyapp::main::apply_fn(identity<int32_t>, 42) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::apply_callable(identity<int32_t>, 42) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(::tpyapp::main::make_pair(pair<int32_t, int32_t>, 3, 7)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::apply2(max_val<int32_t>, 10, 3) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::use_local();
     std::function<int32_t(int32_t)> f = ::tpyapp::main::get_identity();
-    std::cout << f(7) << "\n";
+    std::cout << f(7) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::run_void(identity<int32_t>, 0);
 }
 

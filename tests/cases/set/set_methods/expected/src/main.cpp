@@ -36,22 +36,22 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({10, 20, 30});
     s.erase(20);
-    std::cout << ::tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
     s.erase(99);
-    std::cout << ::tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
     ::tpy::set_remove(s, 10);
-    std::cout << ::tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
     int32_t val = ::tpy::set_pop(s);
-    std::cout << val << "\n";
-    std::cout << ::tpy::SetPrinter(s) << "\n";
+    std::cout << val << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> a = ::tpy::ordered_set<int32_t>({1, 2, 3});
     ::tpy::ordered_set<int32_t> b = ::tpy::set_copy(a);
     b.insert(4);
-    std::cout << ::tpy::SetPrinter(a) << "\n";
-    std::cout << ::tpy::SetPrinter(b) << "\n";
+    std::cout << ::tpy::SetPrinter(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::SetPrinter(b) << "\n" << ::tpy::check_signals;
     a.clear();
-    std::cout << ::tpy::SetPrinter(a) << "\n";
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::SetPrinter(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }
 
 // main()

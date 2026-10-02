@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(sum_span(data))
 void test_list() {
     std::vector<int32_t> data = {10, 20, 30};
-    std::cout << ::tpyapp::main::sum_span(data) << "\n";
+    std::cout << ::tpyapp::main::sum_span(data) << "\n" << ::tpy::check_signals;
 }
 
 // def test_array() -> None:
@@ -17,7 +17,7 @@ void test_list() {
 //     print(sum_span(data))
 void test_array() {
     std::array<int32_t, 3> data = {1, 2, 3};
-    std::cout << ::tpyapp::main::sum_span(data) << "\n";
+    std::cout << ::tpyapp::main::sum_span(data) << "\n" << ::tpy::check_signals;
 }
 
 // def test_span() -> None:
@@ -27,7 +27,7 @@ void test_array() {
 void test_span() {
     std::vector<int32_t> data = {7, 8, 9};
     std::span<int32_t> s = ::tpy::as_mut_span(data);
-    std::cout << ::tpyapp::main::sum_span(s) << "\n";
+    std::cout << ::tpyapp::main::sum_span(s) << "\n" << ::tpy::check_signals;
 }
 
 // def test_ro_span() -> None:
@@ -37,7 +37,7 @@ void test_span() {
 void test_ro_span() {
     std::vector<int32_t> data = {4, 5, 6};
     std::span<const int32_t> s = ::tpy::as_span(data);
-    std::cout << ::tpyapp::main::sum_span(s) << "\n";
+    std::cout << ::tpyapp::main::sum_span(s) << "\n" << ::tpy::check_signals;
 }
 
 // def test_arraylist() -> None:
@@ -49,7 +49,7 @@ void test_arraylist() {
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     al.append(100);
     al.append(200);
-    std::cout << ::tpyapp::main::sum_span(al) << "\n";
+    std::cout << ::tpyapp::main::sum_span(al) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList
@@ -71,7 +71,7 @@ void __tpy_init() {
     ::tpyapp::main::test_span();
     ::tpyapp::main::test_ro_span();
     ::tpyapp::main::test_arraylist();
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

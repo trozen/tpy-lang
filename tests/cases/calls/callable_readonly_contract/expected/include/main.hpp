@@ -34,7 +34,7 @@ template<typename __F0>
 void use_fn(__F0&& f) {
     std::vector<int32_t> xs = {1, 2};
     int32_t p = ::tpy::__getitem__(xs, 0);
-    std::cout << p << "\n";
+    std::cout << p << "\n" << ::tpy::check_signals;
     f(xs);
 }
 

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(c.extra)
 void main() {
     Child c = Child(42, 7);
-    std::cout << c.extra << "\n";
+    std::cout << c.extra << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop

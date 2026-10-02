@@ -19,14 +19,14 @@ namespace tpyapp::main {
 //     a: int32 = ord("z")
 //     print(a)
 void main() {
-    std::cout << 65 << "\n";
-    std::cout << 48 << "\n";
-    std::cout << 10 << "\n";
-    std::cout << 32 << "\n";
+    std::cout << 65 << "\n" << ::tpy::check_signals;
+    std::cout << 48 << "\n" << ::tpy::check_signals;
+    std::cout << 10 << "\n" << ::tpy::check_signals;
+    std::cout << 32 << "\n" << ::tpy::check_signals;
     std::string_view s = "B";
-    std::cout << ::tpy::ord_str(s) << "\n";
+    std::cout << ::tpy::ord_str(s) << "\n" << ::tpy::check_signals;
     int32_t a = 122;
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
 }
 
 // main()

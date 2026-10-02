@@ -18,12 +18,12 @@ namespace tpyapp::main {
 //     print(len(span(arr)))
 void main() {
     Buffer buf = Buffer();
-    std::cout << ::tpyapp::main::span_len(buf) << "\n";
-    std::cout << ::tpyapp::main::span_sum(buf) << "\n";
+    std::cout << ::tpyapp::main::span_len(buf) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::span_sum(buf) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> items = {1, 2, 3, 4};
-    std::cout << ::tpy::__len__(::tpy::as_span(items)) << "\n";
+    std::cout << ::tpy::__len__(::tpy::as_span(items)) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> arr = {5, 6, 7};
-    std::cout << ::tpy::__len__(::tpy::as_span(arr)) << "\n";
+    std::cout << ::tpy::__len__(::tpy::as_span(arr)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

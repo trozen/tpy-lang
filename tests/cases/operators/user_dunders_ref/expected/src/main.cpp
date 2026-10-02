@@ -41,9 +41,9 @@ bool compare_params(const Vec& a, const Vec& b) {
 void test_field_ops() {
     Segment seg = Segment(Vec(1.0, 2.0), Vec(4.0, 6.0));
     Vec d = seg.diff();
-    std::cout << ::tpy::print_float(d.x) << " " << ::tpy::print_float(d.y) << "\n";
+    std::cout << ::tpy::print_float(d.x) << " " << ::tpy::print_float(d.y) << "\n" << ::tpy::check_signals;
     Vec m = seg.midpoint();
-    std::cout << ::tpy::print_float(m.x) << " " << ::tpy::print_float(m.y) << "\n";
+    std::cout << ::tpy::print_float(m.x) << " " << ::tpy::print_float(m.y) << "\n" << ::tpy::check_signals;
 }
 
 // def test_param_ops() -> None:
@@ -61,13 +61,13 @@ void test_param_ops() {
     Vec a = Vec(1.0, 2.0);
     Vec b = Vec(3.0, 4.0);
     Vec s = ::tpyapp::main::add_params(a, b);
-    std::cout << ::tpy::print_float(s.x) << " " << ::tpy::print_float(s.y) << "\n";
+    std::cout << ::tpy::print_float(s.x) << " " << ::tpy::print_float(s.y) << "\n" << ::tpy::check_signals;
     Vec sc = ::tpyapp::main::scale_param(a, 3.0);
-    std::cout << ::tpy::print_float(sc.x) << " " << ::tpy::print_float(sc.y) << "\n";
+    std::cout << ::tpy::print_float(sc.x) << " " << ::tpy::print_float(sc.y) << "\n" << ::tpy::check_signals;
     Vec n = ::tpyapp::main::negate_param(b);
-    std::cout << ::tpy::print_float(n.x) << " " << ::tpy::print_float(n.y) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::compare_params(a, a)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::compare_params(a, b)) << "\n";
+    std::cout << ::tpy::print_float(n.x) << " " << ::tpy::print_float(n.y) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::compare_params(a, a)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::compare_params(a, b)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_chained() -> None:
@@ -83,9 +83,9 @@ void test_chained() {
     Vec a = Vec(1.0, 0.0);
     Vec b = Vec(0.0, 1.0);
     Vec c = ((((a) * (2.0))) + (b));
-    std::cout << ::tpy::print_float(c.x) << " " << ::tpy::print_float(c.y) << "\n";
+    std::cout << ::tpy::print_float(c.x) << " " << ::tpy::print_float(c.y) << "\n" << ::tpy::check_signals;
     Vec d = ((a) + (((b) * (3.0))));
-    std::cout << ::tpy::print_float(d.x) << " " << ::tpy::print_float(d.y) << "\n";
+    std::cout << ::tpy::print_float(d.x) << " " << ::tpy::print_float(d.y) << "\n" << ::tpy::check_signals;
 }
 
 // def test_binop_assign() -> None:
@@ -99,7 +99,7 @@ void test_binop_assign() {
     Vec* v = &__slot_1;
     Vec inc = Vec(10.0, 20.0);
     (*v) = (((*v)) + (inc));
-    std::cout << ::tpy::print_float(v->x) << " " << ::tpy::print_float(v->y) << "\n";
+    std::cout << ::tpy::print_float(v->x) << " " << ::tpy::print_float(v->y) << "\n" << ::tpy::check_signals;
 }
 
 // def test_iadd_ref(delta: Vec) -> None:
@@ -110,7 +110,7 @@ void test_binop_assign() {
 void test_iadd_ref(const Vec& delta) {
     Vec v = Vec(0.0, 0.0);
     v.__iadd__(delta);
-    std::cout << ::tpy::print_float(v.x) << " " << ::tpy::print_float(v.y) << "\n";
+    std::cout << ::tpy::print_float(v.x) << " " << ::tpy::print_float(v.y) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

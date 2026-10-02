@@ -27,7 +27,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_sec_gen::__next__() {
         return 1;
     }
     case S_RESUME_0: {  // after: yield 1
-        std::cout << "gen" << " " << ::tpy::BytesPrinter(::tpy::__getitem__((*acc), 0)) << " " << ::tpy::__getitem__((*lit), 0) << " " << ::tpy::__getitem__((*d), "s2") << "\n";
+        std::cout << "gen" << " " << ::tpy::BytesPrinter(::tpy::__getitem__((*acc), 0)) << " " << ::tpy::__getitem__((*lit), 0) << " " << ::tpy::__getitem__((*d), "s2") << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

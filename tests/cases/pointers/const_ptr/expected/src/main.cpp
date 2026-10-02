@@ -42,13 +42,13 @@ void modify_via_ptr(Point* p, int32_t new_x) {
 void test_ptr_to_const_ptr() {
     Point pt = Point(10, 20);
     Point* mp = &pt;
-    std::cout << mp->x << "\n";
-    std::cout << mp->y << "\n";
+    std::cout << mp->x << "\n" << ::tpy::check_signals;
+    std::cout << mp->y << "\n" << ::tpy::check_signals;
     ::tpyapp::main::modify_via_ptr(mp, 100);
-    std::cout << pt.x << "\n";
+    std::cout << pt.x << "\n" << ::tpy::check_signals;
     const Point* cp = mp;
     int32_t total = ::tpyapp::main::read_point(cp);
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def test_const_ptr_preserves_value() -> None:
@@ -66,9 +66,9 @@ void test_const_ptr_preserves_value() {
     Point pt = Point(1, 2);
     Point* mp = &pt;
     const Point* cp = mp;
-    std::cout << cp->x << "\n";
+    std::cout << cp->x << "\n" << ::tpy::check_signals;
     mp->x = 999;
-    std::cout << cp->x << "\n";
+    std::cout << cp->x << "\n" << ::tpy::check_signals;
 }
 
 // # Run tests
@@ -81,9 +81,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << "=== ptr to const ===" << "\n";
+    std::cout << "=== ptr to const ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_ptr_to_const_ptr();
-    std::cout << "=== preserves value ===" << "\n";
+    std::cout << "=== preserves value ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_const_ptr_preserves_value();
 }
 

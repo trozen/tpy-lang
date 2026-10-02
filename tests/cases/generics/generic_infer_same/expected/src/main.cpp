@@ -18,8 +18,8 @@ void __tpy_init() {
 
     static Same<int32_t> __global_slot_1 = Same<int32_t>(1, 2);
     same = &__global_slot_1;
-    std::cout << same->a << "\n";
-    std::cout << same->b << "\n";
+    std::cout << same->a << "\n" << ::tpy::check_signals;
+    std::cout << same->b << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

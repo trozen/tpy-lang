@@ -33,10 +33,10 @@ void main() {
     a.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello", 43));
     a.close();
     ::tpystd::io::BufferedReader f = b.makefile("rb");
-    std::cout << ::tpy::BytesPrinter(f.readline()) << "\n";
-    std::cout << ::tpy::BytesPrinter(f.readline()) << "\n";
-    std::cout << ::tpy::BytesPrinter(f.readline()) << "\n";
-    std::cout << ::tpy::BytesPrinter(f.read()) << "\n";
+    std::cout << ::tpy::BytesPrinter(f.readline()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(f.readline()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(f.readline()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(f.read()) << "\n" << ::tpy::check_signals;
     f.close();
     b.close();
     auto __tup_2 = ::tpystd::socket::socketpair();
@@ -45,7 +45,7 @@ void main() {
     c.sendall(::tpy::bytes_literal("ping\n", 5));
     c.close();
     ::tpystd::io::BufferedReader g = d.makefile("b");
-    std::cout << ::tpy::BytesPrinter(g.readline()) << "\n";
+    std::cout << ::tpy::BytesPrinter(g.readline()) << "\n" << ::tpy::check_signals;
     g.close();
     d.close();
 }

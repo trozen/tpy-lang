@@ -21,10 +21,10 @@ namespace tpyapp::main {
 //     print(nums[-5])
 void test_list_negative_indexing() {
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
-    std::cout << ::tpy::__getitem__(nums, -1) << "\n";
-    std::cout << ::tpy::__getitem__(nums, -2) << "\n";
-    std::cout << ::tpy::__getitem__(nums, -3) << "\n";
-    std::cout << ::tpy::__getitem__(nums, -5) << "\n";
+    std::cout << ::tpy::__getitem__(nums, -1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(nums, -2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(nums, -3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(nums, -5) << "\n" << ::tpy::check_signals;
 }
 
 // def test_array_negative_indexing() -> None:
@@ -35,9 +35,9 @@ void test_list_negative_indexing() {
 //     print(arr[-4])
 void test_array_negative_indexing() {
     std::array<int32_t, 4> arr = {100, 200, 300, 400};
-    std::cout << ::tpy::__getitem__(arr, -1) << "\n";
-    std::cout << ::tpy::__getitem__(arr, -2) << "\n";
-    std::cout << ::tpy::__getitem__(arr, -4) << "\n";
+    std::cout << ::tpy::__getitem__(arr, -1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(arr, -2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(arr, -4) << "\n" << ::tpy::check_signals;
 }
 
 // def test_string_negative_indexing() -> None:
@@ -53,9 +53,9 @@ void test_array_negative_indexing() {
 //     print(text[-5])
 void test_string_negative_indexing() {
     std::string_view text = "hello";
-    std::cout << ::tpy::__getitem__(text, -1) << "\n";
-    std::cout << ::tpy::__getitem__(text, -2) << "\n";
-    std::cout << ::tpy::__getitem__(text, -5) << "\n";
+    std::cout << ::tpy::__getitem__(text, -1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(text, -2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(text, -5) << "\n" << ::tpy::check_signals;
 }
 
 // def test_negative_index_assignment() -> None:
@@ -75,11 +75,11 @@ void test_string_negative_indexing() {
 void test_negative_index_assignment() {
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     ::tpy::__setitem__(nums, -1, 50);
-    std::cout << ::tpy::__getitem__(nums, -1) << "\n";
+    std::cout << ::tpy::__getitem__(nums, -1) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(nums, -2, 40);
-    std::cout << ::tpy::__getitem__(nums, -2) << "\n";
-    std::cout << ::tpy::__getitem__(nums, 3) << "\n";
-    std::cout << ::tpy::__getitem__(nums, 4) << "\n";
+    std::cout << ::tpy::__getitem__(nums, -2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(nums, 3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(nums, 4) << "\n" << ::tpy::check_signals;
 }
 
 // def test_negative_index_in_expression() -> None:
@@ -97,11 +97,11 @@ void test_negative_index_assignment() {
 void test_negative_index_in_expression() {
     std::vector<int32_t> nums = {5, 10, 15, 20};
     int32_t total = (::tpy::add_check<int32_t>(::tpy::__getitem__(nums, -1), ::tpy::__getitem__(nums, -2)));
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
     if ((::tpy::__getitem__(nums, -1) > ::tpy::__getitem__(nums, -2))) {
-        std::cout << "last > second_last" << "\n";
+        std::cout << "last > second_last" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "last <= second_last" << "\n";
+        std::cout << "last <= second_last" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -120,9 +120,9 @@ void test_array_negative_assignment() {
     ::tpy::__setitem__(arr, -1, 30);
     ::tpy::__setitem__(arr, -2, 20);
     ::tpy::__setitem__(arr, -3, 10);
-    std::cout << ::tpy::__getitem__(arr, 0) << "\n";
-    std::cout << ::tpy::__getitem__(arr, 1) << "\n";
-    std::cout << ::tpy::__getitem__(arr, 2) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(arr, 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(arr, 2) << "\n" << ::tpy::check_signals;
 }
 
 // # Run all tests
@@ -143,17 +143,17 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << "=== list ===" << "\n";
+    std::cout << "=== list ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_list_negative_indexing();
-    std::cout << "=== array ===" << "\n";
+    std::cout << "=== array ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_array_negative_indexing();
-    std::cout << "=== string ===" << "\n";
+    std::cout << "=== string ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_string_negative_indexing();
-    std::cout << "=== assignment ===" << "\n";
+    std::cout << "=== assignment ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_negative_index_assignment();
-    std::cout << "=== expression ===" << "\n";
+    std::cout << "=== expression ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_negative_index_in_expression();
-    std::cout << "=== array assignment ===" << "\n";
+    std::cout << "=== array assignment ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_array_negative_assignment();
 }
 

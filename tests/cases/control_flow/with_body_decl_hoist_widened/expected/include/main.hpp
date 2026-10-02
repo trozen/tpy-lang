@@ -86,7 +86,7 @@ inline int32_t CM::__enter__() const {
 // def __exit__(self, et, ev, tb) -> None:
 //     print("exit", self.n)
 inline void CM::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    std::cout << "exit" << " " << this->n << "\n";
+    std::cout << "exit" << " " << this->n << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, n: int32) -> None:

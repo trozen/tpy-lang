@@ -41,11 +41,11 @@ std::function<int32_t(int32_t)> get_doubler() {
 //     f = get_doubler()
 //     print(f(10))  # 20
 void main() {
-    std::cout << ::tpyapp::main::apply_fn(double_, 21) << "\n";
-    std::cout << ::tpyapp::main::apply_callable(double_, 21) << "\n";
-    std::cout << ::tpyapp::main::transform(to_str, 99) << "\n";
+    std::cout << ::tpyapp::main::apply_fn(double_, 21) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::apply_callable(double_, 21) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::transform(to_str, 99) << "\n" << ::tpy::check_signals;
     std::function<int32_t(int32_t)> f = ::tpyapp::main::get_doubler();
-    std::cout << f(10) << "\n";
+    std::cout << f(10) << "\n" << ::tpy::check_signals;
 }
 
 // main()

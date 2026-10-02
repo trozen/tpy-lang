@@ -13,7 +13,7 @@ void main() {
     ::tpy::ordered_map<::tpy::Any, ::tpy::BigInt> d = ::tpy::ordered_map<::tpy::Any, ::tpy::BigInt>();
     ::tpy::Any k = ::tpy::make_any(std::string("name"));
     ::tpy::__setitem__(d, k, ::tpy::BigInt(42));
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

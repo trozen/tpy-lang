@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(Counter.DEFAULT_STEP)
 void main() {
     Counter c = Counter(0, "hits");
-    std::cout << c.count << "\n";
-    std::cout << c.label << "\n";
-    std::cout << Counter::DEFAULT_STEP << "\n";
+    std::cout << c.count << "\n" << ::tpy::check_signals;
+    std::cout << c.label << "\n" << ::tpy::check_signals;
+    std::cout << Counter::DEFAULT_STEP << "\n" << ::tpy::check_signals;
 }
 
 // # Class constants live separately from instance fields, so @dataclass-style

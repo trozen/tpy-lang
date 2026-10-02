@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(nums[-4])
 void main() {
     std::vector<int32_t> nums = {10, 20, 30};
-    std::cout << ::tpy::__getitem__(nums, -4) << "\n";
+    std::cout << ::tpy::__getitem__(nums, -4) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -27,18 +27,18 @@ namespace tpyapp::main {
 //     print(h == "~" or h.startswith("/"))
 void main() {
     ::tpy::__setitem__((*::tpystd::os::_environ::environ), "HOME", "/home/tpytest");
-    std::cout << ::tpystd::os::path::expanduser("~") << "\n";
-    std::cout << ::tpystd::os::path::expanduser("~/sub") << "\n";
-    std::cout << ::tpystd::os::path::expanduser("~/") << "\n";
-    std::cout << ::tpystd::os::path::expanduser("nochange/~") << "\n";
-    std::cout << ::tpystd::os::path::expanduser("plain/path") << "\n";
-    std::cout << ::tpystd::os::path::expanduser("~nosuchuser_zzz") << "\n";
-    std::cout << ::tpystd::os::path::expanduser("~nosuchuser_zzz/x") << "\n";
+    std::cout << ::tpystd::os::path::expanduser("~") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::path::expanduser("~/sub") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::path::expanduser("~/") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::path::expanduser("nochange/~") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::path::expanduser("plain/path") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::path::expanduser("~nosuchuser_zzz") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::path::expanduser("~nosuchuser_zzz/x") << "\n" << ::tpy::check_signals;
     std::string r = ::tpystd::os::path::expanduser("~root");
-    std::cout << ::tpy::print_bool(((r != "~root") && ::tpy::str_startswith(r, "/"))) << "\n";
+    std::cout << ::tpy::print_bool(((r != "~root") && ::tpy::str_startswith(r, "/"))) << "\n" << ::tpy::check_signals;
     ::tpy::__delitem__((*::tpystd::os::_environ::environ), "HOME");
     std::string h = ::tpystd::os::path::expanduser("~");
-    std::cout << ::tpy::print_bool(((h == "~") || ::tpy::str_startswith(h, "/"))) << "\n";
+    std::cout << ::tpy::print_bool(((h == "~") || ::tpy::str_startswith(h, "/"))) << "\n" << ::tpy::check_signals;
 }
 
 // # os.path.expanduser: ~ / ~user expansion. HOME-based cases use a fixed HOME so

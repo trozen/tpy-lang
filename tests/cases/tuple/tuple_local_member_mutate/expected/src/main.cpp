@@ -32,8 +32,8 @@ int32_t local_member() {
 void main() {
     Box b = Box(5);
     ::tpyapp::main::mutate_param_member(b);
-    std::cout << b.val << "\n";
-    std::cout << ::tpyapp::main::local_member() << "\n";
+    std::cout << b.val << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::local_member() << "\n" << ::tpy::check_signals;
 }
 
 // main()

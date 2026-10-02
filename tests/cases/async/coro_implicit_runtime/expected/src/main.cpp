@@ -157,7 +157,7 @@ __coro_chained chained(::tpy::BigInt n) {
 }
 
 void __coro_cleanup::__finally_0() {
-    std::cout << "try/finally: cleanup" << "\n";
+    std::cout << "try/finally: cleanup" << "\n" << ::tpy::check_signals;
 }
 
 // async def cleanup(n: int) -> int:
@@ -175,14 +175,14 @@ __coro_cleanup cleanup(::tpy::BigInt n) {
 //     print("try/finally: loaded")
 //     print("imported module:", loaded())
 void main() {
-    std::cout << "free: loaded" << "\n";
-    std::cout << "generic: loaded" << "\n";
-    std::cout << "method: loaded" << "\n";
-    std::cout << "nested record: loaded" << "\n";
-    std::cout << "context manager: loaded" << "\n";
-    std::cout << "chained await: loaded" << "\n";
-    std::cout << "try/finally: loaded" << "\n";
-    std::cout << "imported module:" << " " << ::tpyapp::helper::loaded() << "\n";
+    std::cout << "free: loaded" << "\n" << ::tpy::check_signals;
+    std::cout << "generic: loaded" << "\n" << ::tpy::check_signals;
+    std::cout << "method: loaded" << "\n" << ::tpy::check_signals;
+    std::cout << "nested record: loaded" << "\n" << ::tpy::check_signals;
+    std::cout << "context manager: loaded" << "\n" << ::tpy::check_signals;
+    std::cout << "chained await: loaded" << "\n" << ::tpy::check_signals;
+    std::cout << "try/finally: loaded" << "\n" << ::tpy::check_signals;
+    std::cout << "imported module:" << " " << ::tpyapp::helper::loaded() << "\n" << ::tpy::check_signals;
 }
 
 // async def compute(self, n: int) -> int:  # tpyc: ok

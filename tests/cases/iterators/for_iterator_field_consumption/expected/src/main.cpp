@@ -23,25 +23,25 @@ void __tpy_init() {
 
     static Box __global_slot_1 = Box();
     b = &__global_slot_1;
-    std::cout << "first:" << "\n";
+    std::cout << "first:" << "\n" << ::tpy::check_signals;
     auto& __src_0 = b->it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
-    std::cout << "second:" << "\n";
+    std::cout << "second:" << "\n" << ::tpy::check_signals;
     auto& __src_2 = b->it;
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_3);
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

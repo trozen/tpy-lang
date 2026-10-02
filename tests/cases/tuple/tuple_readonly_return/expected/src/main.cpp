@@ -22,10 +22,10 @@ std::tuple<const P*, const P*> pick(const std::vector<P>& items) {
 void main() {
     std::vector<P> items = {P(1), P(2), P(3)};
     auto pair = ::tpyapp::main::pick(items);
-    std::cout << std::get<0>(pair)->x << "\n";
-    std::cout << std::get<1>(pair)->x << "\n";
+    std::cout << std::get<0>(pair)->x << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(pair)->x << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(items, 0).x = 99;
-    std::cout << std::get<0>(pair)->x << "\n";
+    std::cout << std::get<0>(pair)->x << "\n" << ::tpy::check_signals;
 }
 
 // main()

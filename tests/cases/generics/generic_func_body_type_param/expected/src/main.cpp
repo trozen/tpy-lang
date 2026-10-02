@@ -14,14 +14,14 @@ namespace tpyapp::main {
 //     print(ys[0].value)
 void main() {
     std::vector<int32_t> xs = ::tpyapp::main::collect<int32_t>(10, 20);
-    std::cout << ::tpy::__len__(xs) << "\n";
-    std::cout << ::tpy::__getitem__(xs, 0) << "\n";
-    std::cout << ::tpy::__getitem__(xs, 1) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(xs, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(xs, 1) << "\n" << ::tpy::check_signals;
     Box __tmp_1 = Box(1);
     Box __tmp_2 = Box(2);
     std::vector<Box> ys = ::tpyapp::main::collect<Box>(__tmp_1, __tmp_2);
-    std::cout << ::tpy::__len__(ys) << "\n";
-    std::cout << ::tpy::__getitem__(ys, 0).value << "\n";
+    std::cout << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(ys, 0).value << "\n" << ::tpy::check_signals;
 }
 
 // main()

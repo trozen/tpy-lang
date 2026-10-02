@@ -12,9 +12,9 @@ namespace tpyapp::main {
 void sd(std::string_view s) {
     {
         try {
-            std::cout << ::tpy::repr_of(date::fromisoformat(s)) << "\n";
+            std::cout << ::tpy::repr_of(date::fromisoformat(s)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "ValueError" << "\n";
+            std::cout << "ValueError" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -27,9 +27,9 @@ void sd(std::string_view s) {
 void st(std::string_view s) {
     {
         try {
-            std::cout << ::tpy::repr_of(time::fromisoformat(s)) << "\n";
+            std::cout << ::tpy::repr_of(time::fromisoformat(s)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "ValueError" << "\n";
+            std::cout << "ValueError" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -42,9 +42,9 @@ void st(std::string_view s) {
 void sdt(std::string_view s) {
     {
         try {
-            std::cout << ::tpy::repr_of(datetime::fromisoformat(s)) << "\n";
+            std::cout << ::tpy::repr_of(datetime::fromisoformat(s)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "ValueError" << "\n";
+            std::cout << "ValueError" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -157,13 +157,13 @@ void main() {
     ::tpystd::datetime::timezone ist = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)), "IST");
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ist;
     ::tpystd::datetime::datetime a = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(123456), __tmp_1);
-    std::cout << ::tpy::print_bool(((datetime::fromisoformat(a.isoformat())) == (a))) << "\n";
+    std::cout << ::tpy::print_bool(((datetime::fromisoformat(a.isoformat())) == (a))) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime b = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30));
-    std::cout << ::tpy::print_bool(((datetime::fromisoformat(b.isoformat())) == (b))) << "\n";
+    std::cout << ::tpy::print_bool(((datetime::fromisoformat(b.isoformat())) == (b))) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::date c = ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(12), ::tpy::BigInt(31));
-    std::cout << ::tpy::print_bool(((date::fromisoformat(c.isoformat())) == (c))) << "\n";
+    std::cout << ::tpy::print_bool(((date::fromisoformat(c.isoformat())) == (c))) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::time t = ::tpystd::datetime::time(::tpy::BigInt(23), ::tpy::BigInt(59), ::tpy::BigInt(59), ::tpy::BigInt(999999));
-    std::cout << ::tpy::print_bool(((time::fromisoformat(t.isoformat())) == (t))) << "\n";
+    std::cout << ::tpy::print_bool(((time::fromisoformat(t.isoformat())) == (t))) << "\n" << ::tpy::check_signals;
 }
 
 // # datetime v3 fromisoformat (3.11+ grammar) on date/time/datetime: basic

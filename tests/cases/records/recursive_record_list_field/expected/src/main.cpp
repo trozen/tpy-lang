@@ -38,7 +38,7 @@ void main() {
         const auto& c = *__beg_0;
         total = (total) + (::tpy::BigInt(c.val));
     }
-    std::cout << root.val << " " << ::tpy::__getitem__(root.children, 0).val << " " << ::tpy::__len__(root.children) << " " << ::tpy::__len__(::tpy::__getitem__(root.children, 0).children) << " " << total << "\n";
+    std::cout << root.val << " " << ::tpy::__getitem__(root.children, 0).val << " " << ::tpy::__len__(root.children) << " " << ::tpy::__len__(::tpy::__getitem__(root.children, 0).children) << " " << total << "\n" << ::tpy::check_signals;
 }
 
 // main()

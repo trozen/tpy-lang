@@ -76,7 +76,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counted::__next__() {
 }
 
 void __gen_counted::__finally_0() {
-    std::cout << "done" << " " << x << "\n";
+    std::cout << "done" << " " << x << "\n" << ::tpy::check_signals;
 }
 
 // def counted(xs: list[int]) -> Iterator[int]:
@@ -96,7 +96,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -19,9 +19,9 @@ const ::tpy::BigInt NESTED = ((((((A) + (B))) * (::tpy::BigInt(10)))) - (::tpy::
 //     print(PROD)
 //     print(NESTED)
 void main() {
-    std::cout << SUM << "\n";
-    std::cout << PROD << "\n";
-    std::cout << NESTED << "\n";
+    std::cout << SUM << "\n" << ::tpy::check_signals;
+    std::cout << PROD << "\n" << ::tpy::check_signals;
+    std::cout << NESTED << "\n" << ::tpy::check_signals;
 }
 
 // main()

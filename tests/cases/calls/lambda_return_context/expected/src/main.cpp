@@ -83,23 +83,23 @@ void free() {
     std::function<std::vector<::tpy::BigInt>()> empty = []() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>{}; };
     std::vector<::tpy::BigInt> xs = empty();
     xs.push_back(1);
-    std::cout << "free" << " " << ::tpy::ListPrinter(xs) << " " << ::tpyapp::main::take([]() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>{}; }) << " " << ::tpyapp::main::take([]() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>(); }) << " " << ::tpyapp::main::take_fn([]() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>{}; }) << "\n";
+    std::cout << "free" << " " << ::tpy::ListPrinter(xs) << " " << ::tpyapp::main::take([]() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>{}; }) << " " << ::tpyapp::main::take([]() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>(); }) << " " << ::tpyapp::main::take_fn([]() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>{}; }) << "\n" << ::tpy::check_signals;
     std::function<int32_t()> zero = []() -> int32_t { return (::tpy::BigInt()).to_fixed_check<int32_t>(); };
-    std::cout << "free int32" << " " << zero() << "\n";
+    std::cout << "free int32" << " " << zero() << "\n" << ::tpy::check_signals;
     std::vector<std::vector<::tpy::BigInt>> ys = ::tpy::construct<std::vector<std::vector<::tpy::BigInt>>>(::tpy::builtin_map<std::vector<::tpy::BigInt>>([](int32_t x) -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>(); }, std::array<int32_t, 2>{1, 2}));
     ::tpy::__getitem__(ys, 0).push_back(5);
-    std::cout << "free map" << " " << ::tpy::ListPrinter(ys) << "\n";
-    std::cout << "free str" << " " << (::tpyapp::main::later("hello"))() << "\n";
+    std::cout << "free map" << " " << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
+    std::cout << "free str" << " " << (::tpyapp::main::later("hello"))() << "\n" << ::tpy::check_signals;
     std::function<std::string(std::string_view)> ident = [](std::string_view t) -> std::string { return std::string(t); };
     std::function<::tpy::Bytes(::tpy::BytesView)> ident_b = [](::tpy::BytesView b) -> ::tpy::Bytes { return ::tpy::Bytes(b); };
-    std::cout << "free view name" << " " << ident("ab") << " " << ::tpy::__len__(ident_b(::tpy::bytes_literal("xyz", 3))) << "\n";
+    std::cout << "free view name" << " " << ident("ab") << " " << ::tpy::__len__(ident_b(::tpy::bytes_literal("xyz", 3))) << "\n" << ::tpy::check_signals;
     std::function<std::optional<int32_t>()> opt = []() -> std::optional<int32_t> { return 3; };
     std::function<std::optional<Pt>()> opt_rec = []() -> std::optional<Pt> { return Pt(); };
     std::function<::tpy::Union<int32_t, std::string>()> uni = []() -> ::tpy::Union<int32_t, std::string> { return "u"; };
     ::tpy::Union<int32_t, std::string> u = uni();
-    std::cout << "free optional" << " " << ::tpy::print_optional_val(opt()) << " " << ::tpy::__str__(u) << "\n";
+    std::cout << "free optional" << " " << ::tpy::print_optional_val(opt()) << " " << ::tpy::__str__(u) << "\n" << ::tpy::check_signals;
     std::function<std::string(std::string_view, std::string_view)> pick = [](std::string_view s, std::string_view t) -> std::string { return std::string((((::tpy::__len__(s) > 1)) ? (s) : (t))); };
-    std::cout << "free ternary" << " " << pick("a", "bc") << " " << pick("ab", "c") << "\n";
+    std::cout << "free ternary" << " " << pick("a", "bc") << " " << pick("ab", "c") << "\n" << ::tpy::check_signals;
 }
 
 // def shadowing(s: str, o: Own[str], n: str | None, c: bool) -> None:
@@ -114,7 +114,7 @@ void shadowing(std::string_view s, std::string o, std::optional<std::string_view
     std::function<std::string(std::string_view, std::string_view)> pick = [c](std::string_view s, std::string_view t) -> std::string { return std::string(((c) ? (s) : (t))); };
     std::function<std::string(std::string_view, std::string_view)> first = [c](std::string_view o, std::string_view t) -> std::string { return std::string(((c) ? (o) : (t))); };
     std::function<std::string(std::string_view)> ident = [](std::string_view n) -> std::string { return std::string(n); };
-    std::cout << "shadow" << " " << s << " " << o << " " << ::tpy::print_optional_val(n) << " " << pick("x", "y") << " " << first("p", "q") << " " << ident("i") << "\n";
+    std::cout << "shadow" << " " << s << " " << o << " " << ::tpy::print_optional_val(n) << " " << pick("x", "y") << " " << first("p", "q") << " " << ident("i") << "\n" << ::tpy::check_signals;
 }
 
 // def method() -> None:
@@ -129,14 +129,14 @@ void method() {
     std::function<std::vector<::tpy::BigInt>()> mk = h.make;
     std::vector<::tpy::BigInt> xs = mk();
     xs.push_back(2);
-    std::cout << "method field" << " " << ::tpy::ListPrinter(xs) << "\n";
-    std::cout << "method arg" << " " << h.fill([]() -> ::tpy::ordered_map<std::string, ::tpy::BigInt> { return ::tpy::ordered_map<std::string, ::tpy::BigInt>(); }) << " " << h.fill([]() -> ::tpy::ordered_map<std::string, ::tpy::BigInt> { return ::tpy::ordered_map<std::string, ::tpy::BigInt>(); }) << "\n";
+    std::cout << "method field" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+    std::cout << "method arg" << " " << h.fill([]() -> ::tpy::ordered_map<std::string, ::tpy::BigInt> { return ::tpy::ordered_map<std::string, ::tpy::BigInt>(); }) << " " << h.fill([]() -> ::tpy::ordered_map<std::string, ::tpy::BigInt> { return ::tpy::ordered_map<std::string, ::tpy::BigInt>(); }) << "\n" << ::tpy::check_signals;
 }
 
 // def ctor() -> None:
 //     print("ctor", Seeded(lambda: []).count)  # tpyc: ok
 void ctor() {
-    std::cout << "ctor" << " " << Seeded([]() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>{}; }).count << "\n";
+    std::cout << "ctor" << " " << Seeded([]() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>{}; }).count << "\n" << ::tpy::check_signals;
 }
 
 // def module_level() -> None:
@@ -146,13 +146,13 @@ void ctor() {
 void module_level() {
     std::vector<std::string> m = MOD();
     m.push_back("z");
-    std::cout << "module" << " " << ::tpy::ListPrinter(m) << "\n";
+    std::cout << "module" << " " << ::tpy::ListPrinter(m) << "\n" << ::tpy::check_signals;
 }
 
 // def generator() -> None:
 //     print("generator", list(gen()))
 void generator() {
-    std::cout << "generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen())) << "\n";
+    std::cout << "generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen())) << "\n" << ::tpy::check_signals;
 }
 
 // def comprehension() -> None:
@@ -161,7 +161,7 @@ void comprehension() {
     std::cout << "comprehension" << " " << ::tpy::ListPrinter(::tpy::array_from_index<::tpy::BigInt, 2>([&](std::size_t __i_0) -> ::tpy::BigInt {
         int32_t _ = int32_t(__i_0);
         return ::tpyapp::main::take([]() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>{}; });
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
 }
 
 // def closure() -> None:
@@ -178,7 +178,7 @@ void closure() {
         xs.push_back("a");
         return ::tpy::BigInt(::tpy::__len__(xs));
     };
-    std::cout << "closure" << " " << inner() << "\n";
+    std::cout << "closure" << " " << inner() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -198,7 +198,7 @@ void main() {
     ::tpyapp::main::ctor();
     ::tpyapp::main::module_level();
     ::tpyapp::main::generator();
-    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::co())) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::co())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::comprehension();
     ::tpyapp::main::closure();
 }

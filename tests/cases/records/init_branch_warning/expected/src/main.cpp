@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(c.value)
 void main() {
     Config c = Config(true);
-    std::cout << c.value << "\n";
+    std::cout << c.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

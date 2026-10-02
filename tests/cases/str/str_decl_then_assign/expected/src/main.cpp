@@ -25,10 +25,10 @@ std::string make_str() {
 void main() {
     std::string x;
     x = ::tpyapp::main::make_str();
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     std::string_view y;
     y = "hello";
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // main()

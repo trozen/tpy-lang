@@ -14,9 +14,9 @@ namespace tpyapp::main {
 void getitem() {
     Grid g = Grid();
     Pt& a = g[0];
-    std::cout << "getitem:" << " " << a.x << "\n";
+    std::cout << "getitem:" << " " << a.x << "\n" << ::tpy::check_signals;
     Pt& b = g[40];
-    std::cout << "getitem:" << " " << b.x << " " << ::tpy::__len__(g.ps) << "\n";
+    std::cout << "getitem:" << " " << b.x << " " << ::tpy::__len__(g.ps) << "\n" << ::tpy::check_signals;
 }
 
 // def rebind() -> None:
@@ -31,9 +31,9 @@ void rebind() {
     Grid g = Grid();
     Pt* a = &(g[0]);
     a = &(g[1]);
-    std::cout << "rebind:" << " " << a->x << "\n";
+    std::cout << "rebind:" << " " << a->x << "\n" << ::tpy::check_signals;
     Pt& b = g[40];
-    std::cout << "rebind:" << " " << b.x << " " << ::tpy::__len__(g.ps) << "\n";
+    std::cout << "rebind:" << " " << b.x << " " << ::tpy::__len__(g.ps) << "\n" << ::tpy::check_signals;
 }
 
 // def setitem() -> None:
@@ -45,9 +45,9 @@ void rebind() {
 void setitem() {
     Grid g = Grid();
     Pt& a = g[0];
-    std::cout << "setitem:" << " " << a.x << "\n";
+    std::cout << "setitem:" << " " << a.x << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(g, 40, Pt(5));
-    std::cout << "setitem:" << " " << ::tpy::__len__(g.ps) << " " << ::tpy::__getitem__(g.ps, 40).x << "\n";
+    std::cout << "setitem:" << " " << ::tpy::__len__(g.ps) << " " << ::tpy::__getitem__(g.ps, 40).x << "\n" << ::tpy::check_signals;
 }
 
 // def membership() -> None:
@@ -58,8 +58,8 @@ void setitem() {
 void membership() {
     Grid g = Grid();
     Pt& a = g[0];
-    std::cout << "in:" << " " << a.x << "\n";
-    std::cout << "in:" << " " << ::tpy::print_bool((g.__contains__(40))) << " " << ::tpy::__len__(g.ps) << "\n";
+    std::cout << "in:" << " " << a.x << "\n" << ::tpy::check_signals;
+    std::cout << "in:" << " " << ::tpy::print_bool((g.__contains__(40))) << " " << ::tpy::__len__(g.ps) << "\n" << ::tpy::check_signals;
 }
 
 // def context_manager() -> None:
@@ -71,11 +71,11 @@ void membership() {
 void context_manager() {
     Grid g = Grid();
     Pt& a = g[0];
-    std::cout << "with:" << " " << a.x << "\n";
+    std::cout << "with:" << " " << a.x << "\n" << ::tpy::check_signals;
     auto& __ctx_1 = g;
     auto n = __ctx_1.__enter__();
     try {
-        std::cout << "with:" << " " << n << "\n";
+        std::cout << "with:" << " " << n << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -98,16 +98,16 @@ void context_manager() {
 void for_loop() {
     Grid g = Grid();
     Pt& a = g[0];
-    std::cout << "for:" << " " << a.x << "\n";
+    std::cout << "for:" << " " << a.x << "\n" << ::tpy::check_signals;
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "for: never" << " " << v << "\n";
+        std::cout << "for: never" << " " << v << "\n" << ::tpy::check_signals;
     }
-    std::cout << "for:" << " " << ::tpy::__len__(g.ps) << "\n";
+    std::cout << "for:" << " " << ::tpy::__len__(g.ps) << "\n" << ::tpy::check_signals;
 }
 
 // def exit_grows() -> None:
@@ -120,11 +120,11 @@ void for_loop() {
 void exit_grows() {
     Closer g = Closer();
     Pt& a = g.at(0);
-    std::cout << "exit:" << " " << a.x << "\n";
+    std::cout << "exit:" << " " << a.x << "\n" << ::tpy::check_signals;
     auto& __ctx_2 = g;
     auto n = __ctx_2.__enter__();
     try {
-        std::cout << "exit:" << " " << n << "\n";
+        std::cout << "exit:" << " " << n << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -135,7 +135,7 @@ void exit_grows() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    std::cout << "exit:" << " " << ::tpy::__len__(g.ps) << "\n";
+    std::cout << "exit:" << " " << ::tpy::__len__(g.ps) << "\n" << ::tpy::check_signals;
 }
 
 // def aug_setitem() -> None:
@@ -147,9 +147,9 @@ void exit_grows() {
 void aug_setitem() {
     Cells g = Cells();
     Pt& a = g.at(0);
-    std::cout << "aug:" << " " << a.x << "\n";
+    std::cout << "aug:" << " " << a.x << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(g, 40, ::tpy::add_check<int32_t>(g[40], 1));
-    std::cout << "aug:" << " " << ::tpy::__len__(g.ps) << " " << g[40] << "\n";
+    std::cout << "aug:" << " " << ::tpy::__len__(g.ps) << " " << g[40] << "\n" << ::tpy::check_signals;
 }
 
 // def in_by_iteration() -> None:
@@ -160,8 +160,8 @@ void aug_setitem() {
 void in_by_iteration() {
     Bag g = Bag();
     Pt& a = g.at(0);
-    std::cout << "in iter:" << " " << a.x << "\n";
-    std::cout << "in iter:" << " " << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(g); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 2) { __found = true; break; } } __found; })) << " " << ::tpy::__len__(g.ps) << "\n";
+    std::cout << "in iter:" << " " << a.x << "\n" << ::tpy::check_signals;
+    std::cout << "in iter:" << " " << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(g); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 2) { __found = true; break; } } __found; })) << " " << ::tpy::__len__(g.ps) << "\n" << ::tpy::check_signals;
 }
 
 // def close_it(g: Closer) -> None:
@@ -171,7 +171,7 @@ void close_it(Closer& g) {
     auto& __ctx_3 = g;
     auto n = __ctx_3.__enter__();
     try {
-        std::cout << "caller with:" << " " << n << "\n";
+        std::cout << "caller with:" << " " << n << "\n" << ::tpy::check_signals;
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
@@ -200,9 +200,9 @@ void put(Cells& g) {
 void caller_with() {
     Closer g = Closer();
     Pt& a = g.at(0);
-    std::cout << "caller with:" << " " << a.x << "\n";
+    std::cout << "caller with:" << " " << a.x << "\n" << ::tpy::check_signals;
     ::tpyapp::main::close_it(g);
-    std::cout << "caller with:" << " " << ::tpy::__len__(g.ps) << "\n";
+    std::cout << "caller with:" << " " << ::tpy::__len__(g.ps) << "\n" << ::tpy::check_signals;
 }
 
 // def caller_setitem() -> None:
@@ -215,9 +215,9 @@ void caller_with() {
 void caller_setitem() {
     Cells g = Cells();
     Pt& a = g.at(0);
-    std::cout << "caller setitem:" << " " << a.x << "\n";
+    std::cout << "caller setitem:" << " " << a.x << "\n" << ::tpy::check_signals;
     ::tpyapp::main::put(g);
-    std::cout << "caller setitem:" << " " << ::tpy::__len__(g.ps) << " " << g[40] << "\n";
+    std::cout << "caller setitem:" << " " << ::tpy::__len__(g.ps) << " " << g[40] << "\n" << ::tpy::check_signals;
 }
 
 // def inherited() -> None:
@@ -236,16 +236,16 @@ void caller_setitem() {
 void inherited() {
     SubGrid g = SubGrid();
     Pt& a = g[0];
-    std::cout << "inherited:" << " " << a.x << "\n";
+    std::cout << "inherited:" << " " << a.x << "\n" << ::tpy::check_signals;
     Pt& b = g[40];
-    std::cout << "inherited:" << " " << b.x << " " << ::tpy::__len__(g.ps) << "\n";
+    std::cout << "inherited:" << " " << b.x << " " << ::tpy::__len__(g.ps) << "\n" << ::tpy::check_signals;
     SubCloser h = SubCloser();
     Pt& c = h.at(0);
-    std::cout << "inherited:" << " " << c.x << "\n";
+    std::cout << "inherited:" << " " << c.x << "\n" << ::tpy::check_signals;
     auto& __ctx_4 = h;
     auto n = __ctx_4.__enter__();
     try {
-        std::cout << "inherited:" << " " << n << "\n";
+        std::cout << "inherited:" << " " << n << "\n" << ::tpy::check_signals;
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});
@@ -256,7 +256,7 @@ void inherited() {
     }
     __with_exit_4:
     __ctx_4.__exit__({}, nullptr, {});
-    std::cout << "inherited:" << " " << ::tpy::__len__(h.ps) << "\n";
+    std::cout << "inherited:" << " " << ::tpy::__len__(h.ps) << "\n" << ::tpy::check_signals;
 }
 
 // def comprehension() -> None:
@@ -268,12 +268,12 @@ void inherited() {
 void comprehension() {
     Grid g = Grid();
     Pt& a = g[0];
-    std::cout << "comprehension:" << " " << a.x << "\n";
+    std::cout << "comprehension:" << " " << a.x << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> xs = ::tpy::array_from_index<int32_t, 2>([&](std::size_t __i_0) -> int32_t {
         int32_t i = 40 + int32_t(__i_0);
         return g[i].x;
     });
-    std::cout << "comprehension:" << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::__len__(g.ps) << "\n";
+    std::cout << "comprehension:" << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::__len__(g.ps) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -319,7 +319,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator:" << " " << v << "\n";
+            std::cout << "generator:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
 }

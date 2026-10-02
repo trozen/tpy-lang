@@ -30,7 +30,7 @@ void main() {
             std::get<1>(pair)->val = 99;
         }
     }
-    std::cout << b.val << " " << c.val << "\n";
+    std::cout << b.val << " " << c.val << "\n" << ::tpy::check_signals;
 }
 
 // main()

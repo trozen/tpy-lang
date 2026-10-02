@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void test_tuple() {
     std::tuple<int32_t, std::string, bool> t = std::tuple<int32_t, std::string, bool>{10, "hello", true};
     std::string_view b = std::get<1>(t);
-    std::cout << b << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_view() -> None:
@@ -21,7 +21,7 @@ void test_tuple() {
 void test_list_view() {
     std::vector<std::string> items = {"alpha", "beta"};
     std::string_view s = ::tpy::__getitem__(items, 0);
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_nested_tuple() -> None:
@@ -33,7 +33,7 @@ void test_nested_tuple() {
     std::tuple<std::string, std::tuple<std::string, std::string>> t = std::tuple<std::string, std::tuple<std::string, std::string>>{"outer", std::tuple<std::string, std::string>{"inner_a", "inner_b"}};
     std::tuple<std::string, std::string> inner = std::get<1>(t);
     std::string_view a = std::get<0>(inner);
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
 }
 
 // test_tuple()

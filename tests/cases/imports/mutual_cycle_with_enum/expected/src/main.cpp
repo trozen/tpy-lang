@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(describe(lookup()))
 //     print(describe_default())
 void main() {
-    std::cout << ::tpyapp::b::describe(::tpyapp::a::lookup()) << "\n";
-    std::cout << ::tpyapp::b::describe_default() << "\n";
+    std::cout << ::tpyapp::b::describe(::tpyapp::a::lookup()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::b::describe_default() << "\n" << ::tpy::check_signals;
 }
 
 // # Cycle binding for an enum imported across the SCC. b defines

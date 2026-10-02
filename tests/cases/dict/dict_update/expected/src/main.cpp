@@ -26,9 +26,9 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d3 = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}});
     ::tpy::dict_update(d3, ::tpy::ordered_map<std::string, int32_t>({{"x", 99}, {"y", 20}}));
     auto& __obj_1 = d3;
@@ -36,7 +36,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        std::cout << k << " " << ::tpy::__getitem__(d3, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(d3, k) << "\n" << ::tpy::check_signals;
     }
 }
 

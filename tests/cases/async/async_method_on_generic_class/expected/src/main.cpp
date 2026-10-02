@@ -13,9 +13,9 @@ namespace tpyapp::main {
 //     print(asyncio.run(s.take()))
 void main() {
     Box<int32_t> b = Box<int32_t>(7);
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(b.take())) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(b.take())) << "\n" << ::tpy::check_signals;
     Box<std::string> s = Box<std::string>("hi");
-    std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(s.take())) << "\n";
+    std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(s.take())) << "\n" << ::tpy::check_signals;
 }
 
 // # Async method on a generic class. Two instantiations exercise template

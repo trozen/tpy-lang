@@ -127,7 +127,7 @@ inline Filler::Filler(std::vector<int32_t>& xs) {
 //     xs.append(6)
 template<typename T>
 void gen_take(::tpy::param_val_or_ref_t<T> x, std::vector<int32_t>& xs) {
-    std::cout << ::tpy::ValuePrinter(x) << "\n";
+    std::cout << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
     xs.push_back(6);
 }
 

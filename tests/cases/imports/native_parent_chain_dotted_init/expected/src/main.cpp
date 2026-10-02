@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(COUNTER)
 //     print(COUNTER + int32(1))
 void main() {
-    std::cout << ::dotted_init::pkg::inner::leaf::COUNTER << "\n";
-    std::cout << (::tpy::add_check<int32_t>(::dotted_init::pkg::inner::leaf::COUNTER, 1)) << "\n";
+    std::cout << ::dotted_init::pkg::inner::leaf::COUNTER << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::add_check<int32_t>(::dotted_init::pkg::inner::leaf::COUNTER, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // # Non-native leaf reached through a dotted chain whose parent packages

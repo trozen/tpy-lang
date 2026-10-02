@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     MyRange r = MyRange(1, 6);
     Summer<MyRange> s = Summer<MyRange>(r);
-    std::cout << s.total() << "\n";
+    std::cout << s.total() << "\n" << ::tpy::check_signals;
 }
 
 // main()

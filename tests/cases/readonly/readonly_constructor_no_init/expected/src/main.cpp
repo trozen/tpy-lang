@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpyapp::main::ok() << "\n";
+    std::cout << ::tpyapp::main::ok() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

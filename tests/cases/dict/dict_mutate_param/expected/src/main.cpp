@@ -17,7 +17,7 @@ void insert(::tpy::ordered_map<std::string, int32_t>& d, std::string_view key, i
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     ::tpyapp::main::insert(d, "b", 2);
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

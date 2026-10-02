@@ -25,7 +25,7 @@ void test_raise_in_finally() {
                 }
             }
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught replacement" << "\n";
+            std::cout << "caught replacement" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -44,14 +44,14 @@ void test_raise_in_finally_no_exception() {
         try {
             {
                 try {
-                    std::cout << "try body ok" << "\n";
+                    std::cout << "try body ok" << "\n" << ::tpy::check_signals;
                 } catch (...) {
                     throw ::tpy::ValueError("from finally");
                 }
                 throw ::tpy::ValueError("from finally");
             }
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught from finally" << "\n";
+            std::cout << "caught from finally" << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -311,7 +311,7 @@ inline void Cell::mutate() {
     Cell& me = (*this);
     me.n = ::tpy::add_check<int32_t>(me.n, 2);
     this->n = ::tpy::add_check<int32_t>(this->n, 3);
-    std::cout << "method" << " " << this->n << " " << me.n << "\n";
+    std::cout << "method" << " " << this->n << " " << me.n << "\n" << ::tpy::check_signals;
 }
 
 // @readonly
@@ -358,10 +358,10 @@ inline void Cell::nested() {
             guarded = &((*this));
             guarded->n = ::tpy::add_check<int32_t>(guarded->n, 5);
         } catch (...) {
-            std::cout << "closure_try" << " " << this->n << "\n";
+            std::cout << "closure_try" << " " << this->n << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "closure_try" << " " << this->n << "\n";
+        std::cout << "closure_try" << " " << this->n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -392,7 +392,7 @@ inline void Cell::reassign(Cell& other) {
     me->n = ::tpy::add_check<int32_t>(me->n, 2);
     me = &((*this));
     me->n = ::tpy::add_check<int32_t>(me->n, 3);
-    std::cout << "reassign" << " " << this->n << " " << other.n << "\n";
+    std::cout << "reassign" << " " << this->n << " " << other.n << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, n: int32) -> None:
@@ -408,7 +408,7 @@ inline Consumed::Consumed(int32_t n) : n(n) {}
 inline Consumed Consumed::finish() && {
     Consumed& me = (*this);
     me.n = ::tpy::add_check<int32_t>(me.n, 1);
-    std::cout << "consuming" << " " << this->n << " " << me.n << "\n";
+    std::cout << "consuming" << " " << this->n << " " << me.n << "\n" << ::tpy::check_signals;
     return std::move((*this));
 }
 
@@ -422,7 +422,7 @@ inline void Base::narrowed() {
     if (Derived* __self_ptr = dynamic_cast<Derived*>(this); (__self_ptr != nullptr)) {
         Derived& me = (*__self_ptr);
         me.n = ::tpy::add_check<int32_t>(me.n, 1);
-        std::cout << "narrowed" << " " << (*__self_ptr).n << " " << me.n << "\n";
+        std::cout << "narrowed" << " " << (*__self_ptr).n << " " << me.n << "\n" << ::tpy::check_signals;
     }
 }
 

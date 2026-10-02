@@ -36,13 +36,13 @@ void process(::tpy::Union<std::monostate, const Dog*, const int32_t*> v) {
     if ((!std::holds_alternative<std::monostate>(v))) {
         if (std::holds_alternative<const int32_t*>(v)) {
             auto& __v = *std::get<const int32_t*>(v);
-            std::cout << "got int" << "\n";
+            std::cout << "got int" << "\n" << ::tpy::check_signals;
         } else {
             auto& __v = *std::get<const Dog*>(v);
-            std::cout << "got dog" << "\n";
+            std::cout << "got dog" << "\n" << ::tpy::check_signals;
         }
     } else {
-        std::cout << "got none" << "\n";
+        std::cout << "got none" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -62,9 +62,9 @@ void main() {
     ::tpy::Union<std::monostate, Dog, int32_t> __slot_2 = Dog("Rex");
     ::tpy::Union<std::monostate, Dog*, int32_t*> b = ::tpy::to_ptr_variant(__slot_2);
     ::tpy::Union<std::monostate, Dog*, int32_t*> c = std::monostate{};
-    std::cout << ::tpyapp::main::describe(a.as_const()) << "\n";
-    std::cout << ::tpyapp::main::describe(b.as_const()) << "\n";
-    std::cout << ::tpyapp::main::describe(c.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(a.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(b.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(c.as_const()) << "\n" << ::tpy::check_signals;
     int32_t __tmp_1 = 1;
     ::tpyapp::main::process(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_1});
     Dog __tmp_2 = Dog("Buddy");

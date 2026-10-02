@@ -9,8 +9,8 @@ namespace tpyapp::main {
 //     print(c_value())
 //     return int32(0)
 int32_t main() {
-    std::cout << ::tpyapp::mod_b::b_value() << "\n";
-    std::cout << ::tpyapp::mod_c::c_value() << "\n";
+    std::cout << ::tpyapp::mod_b::b_value() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::mod_c::c_value() << "\n" << ::tpy::check_signals;
     return 0;
 }
 

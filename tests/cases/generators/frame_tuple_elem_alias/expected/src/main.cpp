@@ -284,7 +284,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "ro_param" << " " << v << "\n";
+            std::cout << "ro_param" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -294,11 +294,11 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "mut_param" << " " << v << "\n";
+            std::cout << "mut_param" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "mut_param after" << " " << r0.x << "\n";
-    std::cout << "co_param" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::co_param(std::tuple<A*, A*>{&(r0), &(r1)}))) << " " << r0.x << "\n";
+    std::cout << "mut_param after" << " " << r0.x << "\n" << ::tpy::check_signals;
+    std::cout << "co_param" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::co_param(std::tuple<A*, A*>{&(r0), &(r1)}))) << " " << r0.x << "\n" << ::tpy::check_signals;
     Walker w = Walker();
     {
         auto __src_4 = w.walk(std::tuple<A*, A*>{&(r0), &(r1)});
@@ -307,10 +307,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "method" << " " << v << "\n";
+            std::cout << "method" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "method after" << " " << r1.x << "\n";
+    std::cout << "method after" << " " << r1.x << "\n" << ::tpy::check_signals;
     {
         auto __src_6 = ::tpyapp::main::nested(std::tuple<A*, A*>{&(r0), &(r1)});
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -318,10 +318,10 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "nested" << " " << v << "\n";
+            std::cout << "nested" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "nested after" << " " << r0.x << "\n";
+    std::cout << "nested after" << " " << r0.x << "\n" << ::tpy::check_signals;
     {
         auto __src_8 = ::tpyapp::main::frame_local(r0, r1);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
@@ -329,10 +329,10 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "frame_local" << " " << v << "\n";
+            std::cout << "frame_local" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "frame_local after" << " " << r0.x << "\n";
+    std::cout << "frame_local after" << " " << r0.x << "\n" << ::tpy::check_signals;
     A b = A(5);
     {
         auto __src_10 = ::tpyapp::main::mixed_borrowed(b);
@@ -341,10 +341,10 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-            std::cout << "mixed_borrowed" << " " << v << "\n";
+            std::cout << "mixed_borrowed" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "mixed_borrowed after" << " " << b.x << "\n";
+    std::cout << "mixed_borrowed after" << " " << b.x << "\n" << ::tpy::check_signals;
     {
         auto __src_12 = ::tpyapp::main::owning_no_rebind();
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
@@ -352,7 +352,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-            std::cout << "owning_no_rebind" << " " << v << "\n";
+            std::cout << "owning_no_rebind" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -363,7 +363,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-            std::cout << "mixed_owned_no_rebind" << " " << v << "\n";
+            std::cout << "mixed_owned_no_rebind" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     A mb = A(5);
@@ -375,7 +375,7 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
-            std::cout << "mixed_borrowed_rebound" << " " << v << "\n";
+            std::cout << "mixed_borrowed_rebound" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -385,7 +385,7 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_19);
-            std::cout << "rebind_before_alias" << " " << v << "\n";
+            std::cout << "rebind_before_alias" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -395,7 +395,7 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_21);
-            std::cout << "alias_after_last_rebind" << " " << v << "\n";
+            std::cout << "alias_after_last_rebind" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -405,7 +405,7 @@ void main() {
             auto __r_23 = __itr_22.__next__();
             if (!__r_23.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_23);
-            std::cout << "orelse_alias" << " " << v << "\n";
+            std::cout << "orelse_alias" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -415,7 +415,7 @@ void main() {
             auto __r_25 = __itr_24.__next__();
             if (!__r_25.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_25);
-            std::cout << "copy_alias" << " " << v << "\n";
+            std::cout << "copy_alias" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -425,7 +425,7 @@ void main() {
             auto __r_27 = __itr_26.__next__();
             if (!__r_27.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_27);
-            std::cout << "copy_chained" << " " << v << "\n";
+            std::cout << "copy_chained" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -435,12 +435,12 @@ void main() {
             auto __r_29 = __itr_28.__next__();
             if (!__r_29.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_29);
-            std::cout << "list_of_tuples_after_rebind" << " " << v << "\n";
+            std::cout << "list_of_tuples_after_rebind" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "co_copy" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::co_copy(true))) << "\n";
+    std::cout << "co_copy" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::co_copy(true))) << "\n" << ::tpy::check_signals;
     A __tmp_3 = A(3);
-    std::cout << "co_alias_after_rebind" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::co_alias_after_rebind(__tmp_3, true))) << "\n";
+    std::cout << "co_alias_after_rebind" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::co_alias_after_rebind(__tmp_3, true))) << "\n" << ::tpy::check_signals;
 }
 
 

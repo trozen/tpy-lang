@@ -34,7 +34,7 @@ void main() {
     xs.push_back(Box(20));
     xs.push_back(Box(30));
     xs.push_back(Box(40));
-    std::cout << ::tpyapp::main::sum_middle(::tpy::varargs<const Box>(::tpy::as_span(xs))) << "\n";
+    std::cout << ::tpyapp::main::sum_middle(::tpy::varargs<const Box>(::tpy::as_span(xs))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

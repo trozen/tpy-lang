@@ -24,7 +24,7 @@ Payload take_copy(Holder& h) {
 //     print(take(h).n, take_copy(h).n, h.p.n)
 void main() {
     Holder h = Holder();
-    std::cout << ::tpyapp::main::take(h).n << " " << ::tpyapp::main::take_copy(h).n << " " << h.p.n << "\n";
+    std::cout << ::tpyapp::main::take(h).n << " " << ::tpyapp::main::take_copy(h).n << " " << h.p.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

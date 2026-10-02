@@ -42,29 +42,29 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_set<int32_t> a = ::tpy::ordered_set<int32_t>({1, 2, 3});
     ::tpy::ordered_set<int32_t> b = ::tpy::ordered_set<int32_t>({2, 3, 4});
-    std::cout << ::tpy::SetPrinter(::tpy::set_union(a, b)) << "\n";
-    std::cout << ::tpy::SetPrinter(::tpy::set_intersection(a, b)) << "\n";
-    std::cout << ::tpy::SetPrinter(::tpy::set_difference(a, b)) << "\n";
-    std::cout << ::tpy::SetPrinter(::tpy::set_symmetric_difference(a, b)) << "\n";
+    std::cout << ::tpy::SetPrinter(::tpy::set_union(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::SetPrinter(::tpy::set_intersection(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::SetPrinter(::tpy::set_difference(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::SetPrinter(::tpy::set_symmetric_difference(a, b)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> c = ::tpy::ordered_set<int32_t>({1, 2});
-    std::cout << ::tpy::print_bool(::tpy::set_issubset(c, a)) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::set_issubset(a, c)) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::set_issuperset(a, c)) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::set_isdisjoint(a, b)) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::set_issubset(c, a)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::set_issubset(a, c)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::set_issuperset(a, c)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::set_isdisjoint(a, b)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> d = ::tpy::ordered_set<int32_t>({10, 20});
-    std::cout << ::tpy::print_bool(::tpy::set_isdisjoint(a, d)) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::set_isdisjoint(a, d)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> e = ::tpy::ordered_set<int32_t>({1, 2});
     ::tpy::set_update(e, b);
-    std::cout << ::tpy::SetPrinter(e) << "\n";
+    std::cout << ::tpy::SetPrinter(e) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> f = ::tpy::ordered_set<int32_t>({1, 2, 3, 4});
     ::tpy::set_intersection_update(f, a);
-    std::cout << ::tpy::SetPrinter(f) << "\n";
+    std::cout << ::tpy::SetPrinter(f) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> g = ::tpy::ordered_set<int32_t>({1, 2, 3});
     ::tpy::set_difference_update(g, b);
-    std::cout << ::tpy::SetPrinter(g) << "\n";
+    std::cout << ::tpy::SetPrinter(g) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> h = ::tpy::ordered_set<int32_t>({1, 2, 3});
     ::tpy::set_symmetric_difference_update(h, b);
-    std::cout << ::tpy::SetPrinter(h) << "\n";
+    std::cout << ::tpy::SetPrinter(h) << "\n" << ::tpy::check_signals;
 }
 
 // main()

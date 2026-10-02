@@ -140,23 +140,23 @@ void main() {
     ::tpyapp::main::bump(a);
     Cat b = Cat(7);
     ::tpyapp::main::bump(b);
-    std::cout << "bump:" << " " << a.lives << " " << b.lives << "\n";
+    std::cout << "bump:" << " " << a.lives << " " << b.lives << "\n" << ::tpy::check_signals;
     Cat c = Cat(1);
     ::tpyapp::main::bump_guarded(c, true);
     Cat d = Cat(5);
     ::tpyapp::main::bump_guarded(d, true);
-    std::cout << "bump_guarded:" << " " << c.lives << " " << d.lives << "\n";
+    std::cout << "bump_guarded:" << " " << c.lives << " " << d.lives << "\n" << ::tpy::check_signals;
     Cat __tmp_1 = Cat(1);
     Cat __tmp_2 = Cat(4);
-    std::cout << "irrefutable_group:" << " " << ::tpyapp::main::irrefutable_group(__tmp_1) << " " << ::tpyapp::main::irrefutable_group(__tmp_2) << "\n";
-    std::cout << "scalar_inner:" << " " << ::tpyapp::main::scalar_inner(2) << " " << ::tpyapp::main::scalar_inner(std::nullopt) << " " << ::tpyapp::main::scalar_inner(9) << "\n";
+    std::cout << "irrefutable_group:" << " " << ::tpyapp::main::irrefutable_group(__tmp_1) << " " << ::tpyapp::main::irrefutable_group(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "scalar_inner:" << " " << ::tpyapp::main::scalar_inner(2) << " " << ::tpyapp::main::scalar_inner(std::nullopt) << " " << ::tpyapp::main::scalar_inner(9) << "\n" << ::tpy::check_signals;
     Cat e = Cat(2);
     ::tpyapp::main::opt_record(&(e));
     ::tpyapp::main::opt_record(nullptr);
-    std::cout << "opt_record:" << " " << e.lives << "\n";
+    std::cout << "opt_record:" << " " << e.lives << "\n" << ::tpy::check_signals;
     Shelter s = Shelter(Cat(1));
     s.feed();
-    std::cout << "method:" << " " << s.resident.lives << "\n";
+    std::cout << "method:" << " " << s.resident.lives << "\n" << ::tpy::check_signals;
 }
 
 // main()

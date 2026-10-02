@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(c.greet())
 void main() {
     Child c = Child();
-    std::cout << c.greet() << "\n";
+    std::cout << c.greet() << "\n" << ::tpy::check_signals;
 }
 
 // main()

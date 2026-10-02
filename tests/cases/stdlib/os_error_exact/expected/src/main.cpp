@@ -67,42 +67,42 @@ void main() {
         try {
             ::tpy::builtin_open("definitely_missing_tpy_xyz.txt");
         } catch (const ::tpy::FileNotFoundError& e) {
-            std::cout << e << "\n";
-            std::cout << ::tpy::print_bool((e.error_number == ::tpy_const_enoent)) << " " << e.strerror_text << " " << e.filename << "\n";
+            std::cout << e << "\n" << ::tpy::check_signals;
+            std::cout << ::tpy::print_bool((e.error_number == ::tpy_const_enoent)) << " " << e.strerror_text << " " << e.filename << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::os::stat("also_missing_tpy_xyz");
         } catch (const ::tpy::FileNotFoundError& e) {
-            std::cout << e << "\n";
+            std::cout << e << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::os::mkdir((::tpy::str_concat(base, "/d")));
         } catch (const ::tpy::FileExistsError& e) {
-            std::cout << e << "\n";
-            std::cout << ::tpy::print_bool((e.error_number == ::tpy_const_eexist)) << " " << e.filename << "\n";
+            std::cout << e << "\n" << ::tpy::check_signals;
+            std::cout << ::tpy::print_bool((e.error_number == ::tpy_const_eexist)) << " " << e.filename << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::stdlib::os::rename("missing_src_tpy_xyz", "missing_dst_tpy_xyz");
         } catch (const ::tpy::FileNotFoundError& e) {
-            std::cout << e << "\n";
-            std::cout << e.filename << " " << e.filename2 << "\n";
+            std::cout << e << "\n" << ::tpy::check_signals;
+            std::cout << e.filename << " " << e.filename2 << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::os::close(999999);
         } catch (const ::tpy::OSError& e) {
-            std::cout << e << "\n";
-            std::cout << ::tpy::print_bool((e.error_number == ::tpy_const_ebadf)) << " " << ::tpy::print_bool((!((!e.filename.empty())))) << "\n";
+            std::cout << e << "\n" << ::tpy::check_signals;
+            std::cout << ::tpy::print_bool((e.error_number == ::tpy_const_ebadf)) << " " << ::tpy::print_bool((!((!e.filename.empty())))) << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << ::tpy::print_bool((::tpy_const_eperm == 1)) << " " << ::tpy::print_bool((::tpy_const_eacces == 13)) << " " << ::tpy::print_bool((::tpy_const_eisdir == 21)) << " " << ::tpy::print_bool((::tpy_const_enotdir == 20)) << " " << ::tpy::print_bool((::tpy_const_etimedout > 0)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy_const_eperm == 1)) << " " << ::tpy::print_bool((::tpy_const_eacces == 13)) << " " << ::tpy::print_bool((::tpy_const_eisdir == 21)) << " " << ::tpy::print_bool((::tpy_const_enotdir == 20)) << " " << ::tpy::print_bool((::tpy_const_etimedout > 0)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::teardown(base);
 }
 

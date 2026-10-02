@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(p.x)  # tpyc: nullable(p)
 void main() {
     Point* p = static_cast<Point*>(nullptr);
-    std::cout << ::tpy::deref_check(p).x << "\n";
+    std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

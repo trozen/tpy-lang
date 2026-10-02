@@ -58,12 +58,12 @@ void __tpy_init() {
     b = g1;
     a->bump();
     b->bump();
-    std::cout << g0->n << "\n";
-    std::cout << g1->n << "\n";
+    std::cout << g0->n << "\n" << ::tpy::check_signals;
+    std::cout << g1->n << "\n" << ::tpy::check_signals;
     c = g0;
     d = g1;
     c->bump();
-    std::cout << g0->n << "\n";
+    std::cout << g0->n << "\n" << ::tpy::check_signals;
     static std::vector<Counter> __global_slot_3 = {Counter(10), Counter(20)};
     items = &__global_slot_3;
     Counter& __unpack_0_0 = ::tpy::__getitem__((*items), 0);
@@ -71,18 +71,18 @@ void __tpy_init() {
     p = &(__unpack_0_0);
     q = &(__unpack_0_1);
     q->bump();
-    std::cout << ::tpy::__getitem__((*items), 1).n << "\n";
+    std::cout << ::tpy::__getitem__((*items), 1).n << "\n" << ::tpy::check_signals;
     g1->bump();
     g1->bump();
-    std::cout << g0->n << "\n";
-    std::cout << g1->n << "\n";
+    std::cout << g0->n << "\n" << ::tpy::check_signals;
+    std::cout << g1->n << "\n" << ::tpy::check_signals;
     Counter& __unpack_1_0 = (*g1);
     Counter& __unpack_1_1 = (*g0);
     g0 = &(__unpack_1_0);
     g1 = &(__unpack_1_1);
     g0->bump();
-    std::cout << g0->n << "\n";
-    std::cout << g1->n << "\n";
+    std::cout << g0->n << "\n" << ::tpy::check_signals;
+    std::cout << g1->n << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

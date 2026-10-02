@@ -27,23 +27,23 @@ void __tpy_init() {
         auto& __match_subject_1 = i;
         switch (__match_subject_1) {
         case 1: {
-            std::cout << "one" << "\n";
+            std::cout << "one" << "\n" << ::tpy::check_signals;
             break;
         }
         case 2: {
-            std::cout << "two-or-three" << "\n";
+            std::cout << "two-or-three" << "\n" << ::tpy::check_signals;
             break;
         }
         case 3: {
-            std::cout << "two-or-three" << "\n";
+            std::cout << "two-or-three" << "\n" << ::tpy::check_signals;
             break;
         }
         case 4: {
-            std::cout << "four" << "\n";
+            std::cout << "four" << "\n" << ::tpy::check_signals;
             break;
         }
         default: {
-            std::cout << "other" << "\n";
+            std::cout << "other" << "\n" << ::tpy::check_signals;
             break;
         }
         }

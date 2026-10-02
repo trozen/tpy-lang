@@ -17,7 +17,7 @@ void main() {
     n.aim(&t);
     n.trigger(5);
     n.trigger(7);
-    std::cout << t.value() << "\n";
+    std::cout << t.value() << "\n" << ::tpy::check_signals;
 }
 
 // from pet import Counter

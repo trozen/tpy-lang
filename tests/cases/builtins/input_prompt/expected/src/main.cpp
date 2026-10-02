@@ -26,17 +26,17 @@ namespace tpyapp::main {
 //         print("s4: eof EOFError")
 void main() {
     ::tpy::String name = ::tpy::input_line("s1 name: ");
-    std::cout << "s1:" << " " << name << "\n";
+    std::cout << "s1:" << " " << name << "\n" << ::tpy::check_signals;
     ::tpy::String plain = ::tpy::input_line();
-    std::cout << "s2:" << " " << plain << "\n";
+    std::cout << "s2:" << " " << plain << "\n" << ::tpy::check_signals;
     ::tpy::String where = ::tpy::String("s3 where: ");
     ::tpy::String place = ::tpy::input_line(where);
-    std::cout << "s3:" << " " << place << "\n";
+    std::cout << "s3:" << " " << place << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpy::input_line("s4 more: ");
         } catch (const ::tpy::EOFError&) {
-            std::cout << "s4: eof EOFError" << "\n";
+            std::cout << "s4: eof EOFError" << "\n" << ::tpy::check_signals;
         }
     }
 }

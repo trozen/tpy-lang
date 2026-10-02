@@ -14,8 +14,8 @@ void main() {
     IntList xs = IntList();
     xs.add(7);
     xs.add(8);
-    std::cout << ::tpyapp::main::length_of(xs) << "\n";
-    std::cout << ::tpyapp::main::total(xs) << "\n";
+    std::cout << ::tpyapp::main::length_of(xs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::total(xs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

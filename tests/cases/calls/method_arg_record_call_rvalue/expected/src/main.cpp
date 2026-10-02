@@ -23,10 +23,10 @@ V3 mk(double s) {
 void main() {
     V3 a = V3(1.0);
     V3 b = V3(2.0);
-    std::cout << ::tpy::print_float(a.add(b.muls(3.0)).x) << "\n";
-    std::cout << ::tpy::print_float(a.add(b.muls(3.0)).add(b.muls(4.0)).x) << "\n";
-    std::cout << ::tpy::print_float(a.add(::tpyapp::main::mk(4.0)).x) << "\n";
-    std::cout << ::tpy::print_float(a.add(V3(5.0)).x) << "\n";
+    std::cout << ::tpy::print_float(a.add(b.muls(3.0)).x) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(a.add(b.muls(3.0)).add(b.muls(4.0)).x) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(a.add(::tpyapp::main::mk(4.0)).x) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(a.add(V3(5.0)).x) << "\n" << ::tpy::check_signals;
 }
 
 // main()

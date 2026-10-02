@@ -42,42 +42,42 @@ void main() {
         try {
             throw ::tpy::PermissionError("denied");
         } catch (const ::tpy::OSError& e) {
-            std::cout << "via OSError:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "via OSError:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw ::tpy::FloatingPointError("bad fp");
         } catch (const ::tpy::ArithmeticError& e) {
-            std::cout << "via ArithmeticError:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "via ArithmeticError:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw ::tpy::RecursionError("too deep");
         } catch (const ::tpy::RuntimeError& e) {
-            std::cout << "via RuntimeError:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "via RuntimeError:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw ::tpy::EOFError("no more input");
         } catch (const ::tpy::EOFError& e) {
-            std::cout << "exact EOFError:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "exact EOFError:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw ::tpy::EOFError("eof again");
         } catch (const ::tpy::Exception& e) {
-            std::cout << "eof via Exception:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "eof via Exception:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw ::tpy::PermissionError("perm again");
         } catch (const ::tpy::Exception& e) {
-            std::cout << "perm via Exception:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "perm via Exception:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

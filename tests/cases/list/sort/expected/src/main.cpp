@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void test_list_sort() {
     std::vector<int32_t> a = {5, 3, 1, 4, 2};
     ::tpy::sort_in_place(a);
-    std::cout << ::tpy::ListPrinter(a) << "\n";
+    std::cout << ::tpy::ListPrinter(a) << "\n" << ::tpy::check_signals;
 }
 
 // def test_arraylist_sort() -> None:
@@ -31,7 +31,7 @@ void test_arraylist_sort() {
     a.append(4);
     a.append(2);
     a.sort();
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
 }
 
 // def test_user_type_sort() -> None:
@@ -47,7 +47,7 @@ void test_user_type_sort() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        std::cout << p << "\n";
+        std::cout << p << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -70,7 +70,7 @@ void test_stable_sort() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        std::cout << p << "\n";
+        std::cout << p << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -84,7 +84,7 @@ void test_span_sort() {
     std::vector<int32_t> lst = {5, 3, 1, 4, 2};
     std::span<int32_t> s = std::span<int32_t>(lst);
     ::tpy::sort_in_place(s);
-    std::cout << ::tpy::ListPrinter(lst) << "\n";
+    std::cout << ::tpy::ListPrinter(lst) << "\n" << ::tpy::check_signals;
 }
 
 // def key() -> int32:
@@ -92,7 +92,7 @@ void test_span_sort() {
 //     print("k")
 //     return 0
 int32_t key() {
-    std::cout << "k" << "\n";
+    std::cout << "k" << "\n" << ::tpy::check_signals;
     return 0;
 }
 
@@ -103,7 +103,7 @@ int32_t key() {
 void test_sort_receiver_evaluated_once() {
     std::vector<std::vector<int32_t>> rows = {{3, 1, 2}};
     ::tpy::sort_in_place(::tpy::__getitem__(rows, ::tpyapp::main::key()));
-    std::cout << ::tpy::ListPrinter(rows) << "\n";
+    std::cout << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

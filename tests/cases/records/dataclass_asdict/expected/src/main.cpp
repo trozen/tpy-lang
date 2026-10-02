@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void main() {
     Point p = Point(1, 2);
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", p.x}, {"y", p.y}});
-    std::cout << ::tpy::DictPrinter(d) << "\n";
-    std::cout << ::tpy::__getitem__(d, "x") << "\n";
-    std::cout << ::tpy::__getitem__(d, "y") << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, "x") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, "y") << "\n" << ::tpy::check_signals;
 }
 
 // # Test asdict() on a flat dataclass

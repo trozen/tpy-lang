@@ -25,9 +25,9 @@ void main() {
     Box got = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     got.val = 99;
-    std::cout << b.val << "\n";
-    std::cout << got.val << "\n";
-    std::cout << n << "\n";
+    std::cout << b.val << "\n" << ::tpy::check_signals;
+    std::cout << got.val << "\n" << ::tpy::check_signals;
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // main()

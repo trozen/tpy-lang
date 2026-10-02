@@ -32,7 +32,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t v = *__beg_1;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
     std::vector<std::string> words = {"hello", "hi", "world", "hey", "wow"};
     ::tpy::ordered_set<std::string> long_words = ({
@@ -48,9 +48,9 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(long_words) << "\n";
-    std::cout << ::tpy::print_bool((long_words.contains("hello"))) << "\n";
-    std::cout << ::tpy::print_bool((long_words.contains("hi"))) << "\n";
+    std::cout << ::tpy::__len__(long_words) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((long_words.contains("hello"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((long_words.contains("hi"))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

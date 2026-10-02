@@ -49,11 +49,11 @@ void main() {
     if ((a != nullptr)) {
         a->x = 10;
     }
-    std::cout << t1.x << "\n";
+    std::cout << t1.x << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bump_first(std::tuple<T*, T*>{&(t1), &(t2)});
-    std::cout << t1.x << "\n";
+    std::cout << t1.x << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bump_first(::tpyapp::main::both(t1, t2));
-    std::cout << t1.x << "\n";
+    std::cout << t1.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

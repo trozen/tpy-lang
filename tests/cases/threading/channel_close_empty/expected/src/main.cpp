@@ -20,9 +20,9 @@ void main() {
     {
         try {
             rx.recv();
-            std::cout << "no raise" << "\n";
+            std::cout << "no raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::tplib::channel::ChannelClosed&) {
-            std::cout << "closed empty" << "\n";
+            std::cout << "closed empty" << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -37,33 +37,33 @@ void main() {
     {
         try {
             b.makefile();
-            std::cout << "bare no-raise" << "\n";
+            std::cout << "bare no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "bare ValueError" << "\n";
+            std::cout << "bare ValueError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             b.makefile("r");
-            std::cout << "text no-raise" << "\n";
+            std::cout << "text no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "text ValueError" << "\n";
+            std::cout << "text ValueError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             b.makefile("wb");
-            std::cout << "write no-raise" << "\n";
+            std::cout << "write no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "write ValueError" << "\n";
+            std::cout << "write ValueError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             b.makefile("rb", 0);
-            std::cout << "unbuffered no-raise" << "\n";
+            std::cout << "unbuffered no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "unbuffered ValueError" << "\n";
+            std::cout << "unbuffered ValueError" << "\n" << ::tpy::check_signals;
         }
     }
     a.close();

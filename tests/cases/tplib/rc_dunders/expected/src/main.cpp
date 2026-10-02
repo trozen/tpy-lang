@@ -31,17 +31,17 @@ void main() {
     ::tpystd::tplib::rc::Rc<int32_t> a = Rc<int32_t>::new_<int32_t>(10);
     ::tpystd::tplib::rc::Rc<int32_t> b = Rc<int32_t>::new_<int32_t>(10);
     ::tpystd::tplib::rc::Rc<int32_t> c = Rc<int32_t>::new_<int32_t>(20);
-    std::cout << ::tpy::print_bool(((a) == (b))) << "\n";
-    std::cout << ::tpy::print_bool(((a) == (c))) << "\n";
-    std::cout << ::tpy::print_bool((a != c)) << "\n";
-    std::cout << ::tpy::print_bool(((a) < (c))) << "\n";
-    std::cout << ::tpy::print_bool(((c) < (a))) << "\n";
-    std::cout << ::tpy::print_bool(((a) <= (b))) << "\n";
-    std::cout << ::tpy::print_bool(((a) >= (b))) << "\n";
-    std::cout << ::tpy::print_bool(((c) > (a))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::__hash__(a) == ::tpy::__hash__(b))) << "\n";
-    std::cout << std::string(::tpy::__str__(a)) << "\n";
-    std::cout << ::tpy::repr_of(c) << "\n";
+    std::cout << ::tpy::print_bool(((a) == (b))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) == (c))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a != c)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) < (c))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((c) < (a))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) <= (b))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) >= (b))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((c) > (a))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::__hash__(a) == ::tpy::__hash__(b))) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(a)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(c) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Rc

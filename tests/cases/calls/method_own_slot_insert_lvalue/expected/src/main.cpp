@@ -60,7 +60,7 @@ void main() {
     std::vector<Color> picks = std::vector<Color>{};
     Color c = Color::BLUE;
     picks.push_back(c);
-    std::cout << ::tpy::__len__(blobs) << " " << ::tpy::__len__(data) << " " << ::tpy::print_bool((::tpy::__getitem__(picks, 0) == c)) << "\n";
+    std::cout << ::tpy::__len__(blobs) << " " << ::tpy::__len__(data) << " " << ::tpy::print_bool((::tpy::__getitem__(picks, 0) == c)) << "\n" << ::tpy::check_signals;
 }
 
 // # The direction `_x_insert_own_slot` keeps open: an LVALUE at a builtin

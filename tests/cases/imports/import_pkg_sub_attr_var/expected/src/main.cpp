@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(pkg.state.LIMIT)
 //     print(pkg.state.banner)
 void main() {
-    std::cout << ::tpyapp::pkg::state::LIMIT << "\n";
-    std::cout << ::tpyapp::pkg::state::banner << "\n";
+    std::cout << ::tpyapp::pkg::state::LIMIT << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::pkg::state::banner << "\n" << ::tpy::check_signals;
 }
 
 // # `import pkg.sub` followed by attribute access on a variable in the

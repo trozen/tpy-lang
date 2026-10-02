@@ -59,20 +59,20 @@ void push(::tpy::ByteArray& b, const ::tpy::BigInt& v) {
 void main() {
     std::vector<::tpy::BigInt> __slot_1 = ::tpyapp::main::make(::tpy::BigInt(3));
     std::vector<::tpy::BigInt>* r = &__slot_1;
-    std::cout << ::tpy::__len__((*r)) << "\n";
+    std::cout << ::tpy::__len__((*r)) << "\n" << ::tpy::check_signals;
     (*r) = ::tpyapp::main::other(::tpy::BigInt(7));
     r->push_back(9);
-    std::cout << ::tpy::__len__((*r)) << " " << ::tpy::ListPrinter((*r)) << "\n";
+    std::cout << ::tpy::__len__((*r)) << " " << ::tpy::ListPrinter((*r)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> __slot_2 = ::tpyapp::main::counts();
     ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>* d = &__slot_2;
     (*d) = ::tpyapp::main::counts();
     ::tpy::__setitem__((*d), 2, ::tpy::BigInt(2));
-    std::cout << ::tpy::__len__((*d)) << "\n";
+    std::cout << ::tpy::__len__((*d)) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray __slot_3 = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     ::tpy::ByteArray* ba = &__slot_3;
     (*ba) = ::tpy::ByteArray(::tpy::bytes_literal("cd", 2));
     ::tpyapp::main::push((*ba), ::tpy::BigInt(99));
-    std::cout << ::tpy::__len__((*ba)) << " " << ::tpy::BytesPrinter(::tpy::Bytes((*ba))) << "\n";
+    std::cout << ::tpy::__len__((*ba)) << " " << ::tpy::BytesPrinter(::tpy::Bytes((*ba))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

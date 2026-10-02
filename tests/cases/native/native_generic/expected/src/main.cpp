@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print(load(p, uint32(2)))
 void main() {
     std::vector<int32_t> items = {10, 20, 30};
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
     int32_t* p = &::tpy::__getitem__(items, 0);
-    std::cout << p[2] << "\n";
+    std::cout << p[2] << "\n" << ::tpy::check_signals;
 }
 
 // # Generic @native: C++ template deduction (no explicit type args emitted)

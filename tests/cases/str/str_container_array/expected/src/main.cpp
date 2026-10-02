@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(str(s))
 //     print(f"span={s}")
 void show_span(std::span<int32_t> s) {
-    std::cout << ::tpy::list_to_str(s) << "\n";
-    std::cout << std::format("span={}", ::tpy::list_to_str(s)) << "\n";
+    std::cout << ::tpy::list_to_str(s) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("span={}", ::tpy::list_to_str(s)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -22,10 +22,10 @@ void show_span(std::span<int32_t> s) {
 //     show_span(a)
 void main() {
     std::array<int32_t, 3> a = {10, 20, 30};
-    std::cout << ::tpy::list_to_str(a) << "\n";
-    std::cout << ::tpy::list_to_str(a) << "\n";
-    std::cout << std::format("{}", ::tpy::list_to_str(a)) << "\n";
-    std::cout << std::format("array={}", ::tpy::list_to_str(a)) << "\n";
+    std::cout << ::tpy::list_to_str(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::list_to_str(a) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", ::tpy::list_to_str(a)) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("array={}", ::tpy::list_to_str(a)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show_span(::tpy::as_mut_span(a));
 }
 

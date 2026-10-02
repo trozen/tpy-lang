@@ -68,8 +68,8 @@ int32_t probe(bool flag) {
 //     print(probe(True))
 //     print(probe(False))
 void main() {
-    std::cout << ::tpyapp::main::probe(true) << "\n";
-    std::cout << ::tpyapp::main::probe(false) << "\n";
+    std::cout << ::tpyapp::main::probe(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::probe(false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

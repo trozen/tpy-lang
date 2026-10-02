@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     uint8_t a = 255;
     uint8_t b = (::tpy::add_check<uint8_t>(a, 1));
-    std::cout << static_cast<int>(b) << "\n";
+    std::cout << static_cast<int>(b) << "\n" << ::tpy::check_signals;
 }
 
 // main()

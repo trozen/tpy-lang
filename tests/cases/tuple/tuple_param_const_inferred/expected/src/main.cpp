@@ -11,7 +11,7 @@ void show(const std::tuple<const T*, const T*>& p) {
     auto& __tup_1 = p;
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-    std::cout << (::tpy::add_check<int32_t>(a.x, b.x)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(a.x, b.x)) << "\n" << ::tpy::check_signals;
 }
 
 // def bump(p: tuple[T, T]) -> None:  # tpyc: ok
@@ -36,7 +36,7 @@ void main() {
     T t2 = T(2);
     ::tpyapp::main::show(std::tuple<T*, T*>{&(t1), &(t2)});
     ::tpyapp::main::bump(std::tuple<T*, T*>{&(t1), &(t2)});
-    std::cout << t1.x << "\n";
+    std::cout << t1.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

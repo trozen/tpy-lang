@@ -21,13 +21,13 @@ Inner mk(const ::tpy::BigInt& n) {
 //     print(h.v.x)
 void main() {
     Holder h = Holder(Inner(::tpy::BigInt(10)));
-    std::cout << h.v.x << "\n";
+    std::cout << h.v.x << "\n" << ::tpy::check_signals;
     h.set_ctor(20);
     h.bump();
-    std::cout << h.v.x << "\n";
+    std::cout << h.v.x << "\n" << ::tpy::check_signals;
     h.set_call(30);
     h.bump();
-    std::cout << h.v.x << "\n";
+    std::cout << h.v.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

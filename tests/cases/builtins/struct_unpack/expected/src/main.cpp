@@ -52,30 +52,30 @@ void main() {
     auto __tup_1 = std::tuple<uint16_t, uint16_t>{*reinterpret_cast<const uint16_t*>(data.data() + 0), *reinterpret_cast<const uint16_t*>(data.data() + 2)};
     uint16_t a = std::get<0>(__tup_1);
     uint16_t b = std::get<1>(__tup_1);
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
     auto __tup_2 = std::tuple<int16_t, int16_t>{*reinterpret_cast<const int16_t*>(data.data() + 4), *reinterpret_cast<const int16_t*>(data.data() + (::tpy::add_check<int32_t>(4, 2)))};
     int16_t c = std::get<0>(__tup_2);
     int16_t d = std::get<1>(__tup_2);
-    std::cout << c << "\n";
-    std::cout << d << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
+    std::cout << d << "\n" << ::tpy::check_signals;
     auto __tup_3 = std::tuple<uint16_t, uint16_t>{*reinterpret_cast<const uint16_t*>(data.data() + 0), *reinterpret_cast<const uint16_t*>(data.data() + 2)};
     uint16_t e = std::get<0>(__tup_3);
     uint16_t f = std::get<1>(__tup_3);
-    std::cout << e << "\n";
-    std::cout << f << "\n";
-    std::cout << 4 << "\n";
-    std::cout << 16 << "\n";
-    std::cout << 3 << "\n";
-    std::cout << 10 << "\n";
+    std::cout << e << "\n" << ::tpy::check_signals;
+    std::cout << f << "\n" << ::tpy::check_signals;
+    std::cout << 4 << "\n" << ::tpy::check_signals;
+    std::cout << 16 << "\n" << ::tpy::check_signals;
+    std::cout << 3 << "\n" << ::tpy::check_signals;
+    std::cout << 10 << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray ba2 = ::tpy::bytearray_from_size(2);
     ::tpy::bytearray_setitem(ba2, 0, 1);
     ::tpy::bytearray_setitem(ba2, 1, 0);
     auto __tup_4 = std::tuple<bool, bool>{((::tpy::Bytes(ba2))[0] != 0), ((::tpy::Bytes(ba2))[1] != 0)};
     bool t = std::get<0>(__tup_4);
     bool f2 = std::get<1>(__tup_4);
-    std::cout << ::tpy::print_bool(t) << "\n";
-    std::cout << ::tpy::print_bool(f2) << "\n";
+    std::cout << ::tpy::print_bool(t) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(f2) << "\n" << ::tpy::check_signals;
 }
 
 // # struct.unpack_from, struct.unpack, struct.calcsize

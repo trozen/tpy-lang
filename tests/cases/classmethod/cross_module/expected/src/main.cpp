@@ -13,7 +13,7 @@ void main() {
     ::tpyapp::shapes::Point a = Point::origin();
     ::tpyapp::shapes::Point b = P::at(3);
     ::tpyapp::shapes::Point c = ::tpyapp::shapes::Point::at(7);
-    std::cout << a.x << " " << b.x << " " << c.x << "\n";
+    std::cout << a.x << " " << b.x << " " << c.x << "\n" << ::tpy::check_signals;
 }
 
 // # A classmethod called from another module, through every receiver spelling:

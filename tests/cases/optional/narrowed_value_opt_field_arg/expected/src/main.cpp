@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(Conn("h", None).whole(), Conn("h", 1.0).whole())
 //     print(Conn("h", None).narrowed(), Conn("h", 1.0).narrowed())
 void main() {
-    std::cout << Conn("h", std::nullopt).whole() << " " << Conn("h", 1.0).whole() << "\n";
-    std::cout << Conn("h", std::nullopt).narrowed() << " " << Conn("h", 1.0).narrowed() << "\n";
+    std::cout << Conn("h", std::nullopt).whole() << " " << Conn("h", 1.0).whole() << "\n" << ::tpy::check_signals;
+    std::cout << Conn("h", std::nullopt).narrowed() << " " << Conn("h", 1.0).narrowed() << "\n" << ::tpy::check_signals;
 }
 
 // # A value-repr Optional FIELD at an Optional parameter slot: passed whole it is

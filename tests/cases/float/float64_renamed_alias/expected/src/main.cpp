@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     double x = 1.5;
     double y = static_cast<double>(10);
-    std::cout << ::tpy::print_float(x) << "\n";
-    std::cout << ::tpy::print_float(y) << "\n";
+    std::cout << ::tpy::print_float(x) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
 }
 
 // main()

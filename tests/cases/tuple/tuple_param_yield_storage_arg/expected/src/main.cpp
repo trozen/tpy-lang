@@ -28,7 +28,7 @@ void main() {
             std::get<1>(pair)->val = 99;
         }
     }
-    std::cout << std::get<1>(h.pair).val << "\n";
+    std::cout << std::get<1>(h.pair).val << "\n" << ::tpy::check_signals;
 }
 
 // main()

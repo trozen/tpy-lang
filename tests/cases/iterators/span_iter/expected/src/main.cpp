@@ -34,7 +34,7 @@ void main() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::span<const int32_t> ro = ::tpy::as_span(a);
     auto it2 = ::tpy::__iter__(ro);
@@ -44,11 +44,11 @@ void main() {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_3);
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     auto __tmp_1 = ::tpy::__iter__(s);
     ::tpyapp::main::consume(__tmp_1);
-    std::cout << ::tpy::__iter__(s) << "\n";
+    std::cout << ::tpy::__iter__(s) << "\n" << ::tpy::check_signals;
 }
 
 // main()

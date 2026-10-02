@@ -10,9 +10,9 @@ int32_t call_count{};
 //     print(1 < 2 < 2)
 //     print(1 < 3 < 2)
 void test_basic() {
-    std::cout << ::tpy::print_bool(((1 < 2) && (2 < 3))) << "\n";
-    std::cout << ::tpy::print_bool(((1 < 2) && (2 < 2))) << "\n";
-    std::cout << ::tpy::print_bool(((1 < 3) && (3 < 2))) << "\n";
+    std::cout << ::tpy::print_bool(((1 < 2) && (2 < 3))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((1 < 2) && (2 < 2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((1 < 3) && (3 < 2))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_variables() -> None:
@@ -21,16 +21,16 @@ void test_basic() {
 //     print(int32(0) < x < int32(5))
 void test_variables() {
     int32_t x = 5;
-    std::cout << ::tpy::print_bool(((0 < x) && (x < 10))) << "\n";
-    std::cout << ::tpy::print_bool(((0 < x) && (x < 5))) << "\n";
+    std::cout << ::tpy::print_bool(((0 < x) && (x < 10))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((0 < x) && (x < 5))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_mixed_ops() -> None:
 //     print(1 <= 2 < 3)
 //     print(1 < 2 <= 2)
 void test_mixed_ops() {
-    std::cout << ::tpy::print_bool(((1 <= 2) && (2 < 3))) << "\n";
-    std::cout << ::tpy::print_bool(((1 < 2) && (2 <= 2))) << "\n";
+    std::cout << ::tpy::print_bool(((1 <= 2) && (2 < 3))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((1 < 2) && (2 <= 2))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_equality() -> None:
@@ -39,26 +39,26 @@ void test_mixed_ops() {
 //     print(1 != 2 != 1)
 //     print(1 != 2 != 2)
 void test_equality() {
-    std::cout << ::tpy::print_bool(((1 == 1) && (1 == 1))) << "\n";
-    std::cout << ::tpy::print_bool(((1 == 1) && (1 == 2))) << "\n";
-    std::cout << ::tpy::print_bool(((1 != 2) && (2 != 1))) << "\n";
-    std::cout << ::tpy::print_bool(((1 != 2) && (2 != 2))) << "\n";
+    std::cout << ::tpy::print_bool(((1 == 1) && (1 == 1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((1 == 1) && (1 == 2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((1 != 2) && (2 != 1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((1 != 2) && (2 != 2))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_triple() -> None:
 //     print(1 < 2 < 3 < 4)
 //     print(1 < 2 < 3 < 3)
 void test_triple() {
-    std::cout << ::tpy::print_bool((((1 < 2) && (2 < 3)) && (3 < 4))) << "\n";
-    std::cout << ::tpy::print_bool((((1 < 2) && (2 < 3)) && (3 < 3))) << "\n";
+    std::cout << ::tpy::print_bool((((1 < 2) && (2 < 3)) && (3 < 4))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((1 < 2) && (2 < 3)) && (3 < 3))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_descending() -> None:
 //     print(3 >= 2 >= 1)
 //     print(3 >= 2 >= 3)
 void test_descending() {
-    std::cout << ::tpy::print_bool(((3 >= 2) && (2 >= 1))) << "\n";
-    std::cout << ::tpy::print_bool(((3 >= 2) && (2 >= 3))) << "\n";
+    std::cout << ::tpy::print_bool(((3 >= 2) && (2 >= 1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((3 >= 2) && (2 >= 3))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_short_circuit() -> None:
@@ -70,15 +70,15 @@ void test_descending() {
 void test_short_circuit() {
     int32_t x = 10;
     int32_t y = 0;
-    std::cout << ::tpy::print_bool(((5 < 3) && (3 < 100))) << "\n";
+    std::cout << ::tpy::print_bool(((5 < 3) && (3 < 100))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_float() -> None:
 //     print(1.0 < 2.5 < 3.0)
 //     print(1.0 < 2.5 < 2.0)
 void test_float() {
-    std::cout << ::tpy::print_bool(((1.0 < 2.5) && (2.5 < 3.0))) << "\n";
-    std::cout << ::tpy::print_bool(((1.0 < 2.5) && (2.5 < 2.0))) << "\n";
+    std::cout << ::tpy::print_bool(((1.0 < 2.5) && (2.5 < 3.0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((1.0 < 2.5) && (2.5 < 2.0))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_in_condition() -> None:
@@ -90,9 +90,9 @@ void test_float() {
 void test_in_condition() {
     int32_t x = 5;
     if (((0 < x) && (x < 10))) {
-        std::cout << "in range" << "\n";
+        std::cout << "in range" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "out of range" << "\n";
+        std::cout << "out of range" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -103,9 +103,9 @@ void test_in_condition() {
 //     print(1 < 2 < 3 and 4 < 5 < 6)
 void test_as_expression() {
     bool result = ((1 < 2) && (2 < 3));
-    std::cout << ::tpy::print_bool(result) << "\n";
-    std::cout << ::tpy::print_bool((!(((1 < 2) && (2 < 3))))) << "\n";
-    std::cout << ::tpy::print_bool((((1 < 2) && (2 < 3)) && ((4 < 5) && (5 < 6)))) << "\n";
+    std::cout << ::tpy::print_bool(result) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!(((1 < 2) && (2 < 3))))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((1 < 2) && (2 < 3)) && ((4 < 5) && (5 < 6)))) << "\n" << ::tpy::check_signals;
 }
 
 // def get_mid() -> int32:
@@ -143,8 +143,8 @@ int32_t get_top() {
 //     print(call_count)
 void test_single_eval() {
     call_count = 0;
-    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && (_cmp1 < 10); })) << "\n";
-    std::cout << call_count << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && (_cmp1 < 10); })) << "\n" << ::tpy::check_signals;
+    std::cout << call_count << "\n" << ::tpy::check_signals;
 }
 
 // def test_short_circuit_operands() -> None:
@@ -162,11 +162,11 @@ void test_single_eval() {
 //     print(call_count)
 void test_short_circuit_operands() {
     call_count = 0;
-    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 99; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && (_cmp1 < ::tpyapp::main::get_high()); })) << "\n";
-    std::cout << call_count << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 99; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && (_cmp1 < ::tpyapp::main::get_high()); })) << "\n" << ::tpy::check_signals;
+    std::cout << call_count << "\n" << ::tpy::check_signals;
     call_count = 0;
-    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && (_cmp1 < ::tpyapp::main::get_high()); })) << "\n";
-    std::cout << call_count << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && (_cmp1 < ::tpyapp::main::get_high()); })) << "\n" << ::tpy::check_signals;
+    std::cout << call_count << "\n" << ::tpy::check_signals;
 }
 
 // def test_triple_short_circuit() -> None:
@@ -187,14 +187,14 @@ void test_short_circuit_operands() {
 //     print(call_count)
 void test_triple_short_circuit() {
     call_count = 0;
-    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = ::tpyapp::main::get_high(); (_cmp1 < _cmp2) && (_cmp2 < ::tpyapp::main::get_top()); }); })) << "\n";
-    std::cout << call_count << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = ::tpyapp::main::get_high(); (_cmp1 < _cmp2) && (_cmp2 < ::tpyapp::main::get_top()); }); })) << "\n" << ::tpy::check_signals;
+    std::cout << call_count << "\n" << ::tpy::check_signals;
     call_count = 0;
-    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = ::tpyapp::main::get_high(); (_cmp1 < _cmp2) && (_cmp2 < 3); }); })) << "\n";
-    std::cout << call_count << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = ::tpyapp::main::get_high(); (_cmp1 < _cmp2) && (_cmp2 < 3); }); })) << "\n" << ::tpy::check_signals;
+    std::cout << call_count << "\n" << ::tpy::check_signals;
     call_count = 0;
-    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 99; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = ::tpyapp::main::get_high(); (_cmp1 < _cmp2) && (_cmp2 < ::tpyapp::main::get_top()); }); })) << "\n";
-    std::cout << call_count << "\n";
+    std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 99; auto&& _cmp1 = ::tpyapp::main::get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = ::tpyapp::main::get_high(); (_cmp1 < _cmp2) && (_cmp2 < ::tpyapp::main::get_top()); }); })) << "\n" << ::tpy::check_signals;
+    std::cout << call_count << "\n" << ::tpy::check_signals;
 }
 
 // call_count: int32 = 0

@@ -33,25 +33,25 @@ void __tpy_init() {
     ::tpy::BigInt __start_0 = base;
     ::tpy::BigInt __stop_0 = ((base) + (::tpy::BigInt(5)));
     for (::tpy::BigInt i = __start_0; i < __stop_0; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     ::tpy::BigInt __start_1 = base;
     ::tpy::BigInt __stop_1 = ((base) + (::tpy::BigInt(10)));
     ::tpy::BigInt __step_1 = ::tpy::BigInt(3);
     for (::tpy::BigInt i = __start_1; i < __stop_1; i += __step_1) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     ::tpy::BigInt __start_2 = ((base) + (::tpy::BigInt(4)));
     ::tpy::BigInt __stop_2 = ((base) - (::tpy::BigInt(1)));
     for (::tpy::BigInt i = __start_2; i > __stop_2; --i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     ::tpy::BigInt __start_3 = ((base) + (::tpy::BigInt(5)));
     ::tpy::BigInt __stop_3 = base;
     for (::tpy::BigInt i = __start_3; i < __stop_3; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

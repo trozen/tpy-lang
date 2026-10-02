@@ -10,13 +10,13 @@ namespace tpyapp::main {
 void f() {
     ::tpy::Union<A, B> __slot_1 = A(1.0);
     ::tpy::Union<A*, B*> a = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << ::tpy::print_float((*std::get<A*>(a)).x) << "\n";
+    std::cout << ::tpy::print_float((*std::get<A*>(a)).x) << "\n" << ::tpy::check_signals;
 }
 
 // def g(a: C) -> None:
 //     print(a.x)
 void g(const C& a) {
-    std::cout << ::tpy::print_float(a.x) << "\n";
+    std::cout << ::tpy::print_float(a.x) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

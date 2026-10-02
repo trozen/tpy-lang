@@ -130,7 +130,7 @@ __coro_push_list push_list(std::vector<int32_t>& xs) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << __await_lift_0 << " " << ::tpy::__len__((*b)) << "\n";
+        std::cout << __await_lift_0 << " " << ::tpy::__len__((*b)) << "\n" << ::tpy::check_signals;
         a.emplace(std::array<int32_t, 2>());
         __sub_1.emplace((*a));
         __state = S_RESUME_1;
@@ -141,7 +141,7 @@ __coro_push_list push_list(std::vector<int32_t>& xs) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << __await_lift_1 << " " << ::tpy::__getitem__((*a), 0) << "\n";
+        std::cout << __await_lift_1 << " " << ::tpy::__getitem__((*a), 0) << "\n" << ::tpy::check_signals;
         xs.emplace(std::vector<int32_t>{1});
         __sub_2.emplace((*xs));
         __state = S_RESUME_2;
@@ -152,7 +152,7 @@ __coro_push_list push_list(std::vector<int32_t>& xs) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << __await_lift_2 << " " << ::tpy::__len__((*xs)) << "\n";
+        std::cout << __await_lift_2 << " " << ::tpy::__len__((*xs)) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

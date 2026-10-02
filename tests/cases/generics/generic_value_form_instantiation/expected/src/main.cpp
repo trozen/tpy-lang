@@ -53,8 +53,8 @@ namespace tpyapp::main {
 void free_function() {
     std::vector<float> fs = {0.5, 1.5};
     float k = 1.5f;
-    std::cout << "free_function:" << " " << ::tpy::print_bool(::tpyapp::main::has_item<float>(fs, k)) << " " << ::tpy::print_bool(::tpyapp::main::has_item<float>(fs, 2.25f)) << "\n";
-    std::cout << "free_function:" << " " << ::tpy::print_float(static_cast<double>(::tpyapp::main::echo<float>(k))) << "\n";
+    std::cout << "free_function:" << " " << ::tpy::print_bool(::tpyapp::main::has_item<float>(fs, k)) << " " << ::tpy::print_bool(::tpyapp::main::has_item<float>(fs, 2.25f)) << "\n" << ::tpy::check_signals;
+    std::cout << "free_function:" << " " << ::tpy::print_float(static_cast<double>(::tpyapp::main::echo<float>(k))) << "\n" << ::tpy::check_signals;
 }
 
 // def method() -> None:
@@ -69,7 +69,7 @@ void method() {
     Cell<float> c = Cell<float>(1.5f);
     float* hit = c.find(1.5f);
     float* miss = c.find(2.25f);
-    std::cout << "method:" << " " << ::tpy::print_float(static_cast<double>(c.get())) << " " << ::tpy::print_bool((hit != nullptr)) << " " << ::tpy::print_bool((miss == nullptr)) << "\n";
+    std::cout << "method:" << " " << ::tpy::print_float(static_cast<double>(c.get())) << " " << ::tpy::print_bool((hit != nullptr)) << " " << ::tpy::print_bool((miss == nullptr)) << "\n" << ::tpy::check_signals;
 }
 
 // def enum_instantiation() -> None:
@@ -78,7 +78,7 @@ void method() {
 //     print("enum_instantiation:", c.get() == Color.RED, c.get() == Color.GREEN)
 void enum_instantiation() {
     Cell<Color> c = Cell<Color>(Color::RED);
-    std::cout << "enum_instantiation:" << " " << ::tpy::print_bool((c.get() == Color::RED)) << " " << ::tpy::print_bool((c.get() == Color::GREEN)) << "\n";
+    std::cout << "enum_instantiation:" << " " << ::tpy::print_bool((c.get() == Color::RED)) << " " << ::tpy::print_bool((c.get() == Color::GREEN)) << "\n" << ::tpy::check_signals;
 }
 
 // def generator_frame() -> None:
@@ -111,11 +111,11 @@ void generator_frame() {
             if (!__try_tmp_3.has_value()) goto __except_1;
             second = ::tpy::unwrap_ref_move(*__try_tmp_3);
         }
-        std::cout << "generator_frame:" << " " << ::tpy::print_float(static_cast<double>(first)) << " " << ::tpy::print_float(static_cast<double>(second)) << " " << ::tpy::print_float(static_cast<double>(v)) << "\n";
+        std::cout << "generator_frame:" << " " << ::tpy::print_float(static_cast<double>(first)) << " " << ::tpy::print_float(static_cast<double>(second)) << " " << ::tpy::print_float(static_cast<double>(v)) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except StopIteration:
         __except_1:;
-        std::cout << "generator_frame: stop" << "\n";
+        std::cout << "generator_frame: stop" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }
@@ -141,7 +141,7 @@ void generator_frame() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         c.reset();
-        std::cout << "async_frame:" << " " << ::tpy::print_float(static_cast<double>(__await_lift_0)) << " " << ::tpy::print_float(static_cast<double>(v)) << "\n";
+        std::cout << "async_frame:" << " " << ::tpy::print_float(static_cast<double>(__await_lift_0)) << " " << ::tpy::print_float(static_cast<double>(v)) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

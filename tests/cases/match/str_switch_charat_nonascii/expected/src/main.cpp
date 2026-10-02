@@ -65,9 +65,9 @@ int32_t classify(std::string_view s) {
 //     print(classify("\u00e9"))
 //     print(classify("zz"))
 void main() {
-    std::cout << ::tpyapp::main::classify("aa") << "\n";
-    std::cout << ::tpyapp::main::classify("\xc3\xa9") << "\n";
-    std::cout << ::tpyapp::main::classify("zz") << "\n";
+    std::cout << ::tpyapp::main::classify("aa") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify("\xc3\xa9") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify("zz") << "\n" << ::tpy::check_signals;
 }
 
 // main()

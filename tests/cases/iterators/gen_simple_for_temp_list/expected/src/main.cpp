@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print("making")
 //     return [10, 20, 30]
 std::vector<int32_t> make() {
-    std::cout << "making" << "\n";
+    std::cout << "making" << "\n" << ::tpy::check_signals;
     return {10, 20, 30};
 }
 
@@ -26,14 +26,14 @@ __gen_g g() {
 //         print(v)
 void main() {
     __gen_g it = ::tpyapp::main::g();
-    std::cout << "created" << "\n";
+    std::cout << "created" << "\n" << ::tpy::check_signals;
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
 }
 

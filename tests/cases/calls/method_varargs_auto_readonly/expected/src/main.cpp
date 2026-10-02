@@ -16,7 +16,7 @@ void main() {
     Box b = Box(2);
     Box c = Box(3);
     std::array<const Box*, 3> __tmp_1{&a, &b, &c};
-    std::cout << p.total(::tpy::varargs<const Box>(__tmp_1)) << "\n";
+    std::cout << p.total(::tpy::varargs<const Box>(__tmp_1)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

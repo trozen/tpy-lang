@@ -73,24 +73,24 @@ Color make() {
 //     print("total:", calls)
 void main() {
     if ((static_cast<void>(::tpyapp::main::make()), true)) {
-        std::cout << "if:" << " " << calls << "\n";
+        std::cout << "if:" << " " << calls << "\n" << ::tpy::check_signals;
     }
     if ((!((static_cast<void>(::tpyapp::main::make()), true)))) {
-        std::cout << "unreachable" << "\n";
+        std::cout << "unreachable" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "not:" << " " << calls << "\n";
+    std::cout << "not:" << " " << calls << "\n" << ::tpy::check_signals;
     while ((static_cast<void>(::tpyapp::main::make()), true)) {
         break;
     }
-    std::cout << "while:" << " " << calls << "\n";
+    std::cout << "while:" << " " << calls << "\n" << ::tpy::check_signals;
     if ((static_cast<void>(Color::GREEN), true)) {
-        std::cout << "member operand ok" << "\n";
+        std::cout << "member operand ok" << "\n" << ::tpy::check_signals;
     }
     Color c = Color::RED;
     if ((static_cast<void>(c), true)) {
-        std::cout << "name operand ok" << "\n";
+        std::cout << "name operand ok" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "total:" << " " << calls << "\n";
+    std::cout << "total:" << " " << calls << "\n" << ::tpy::check_signals;
 }
 
 // # Every plain (non-Int) enum member is truthy, but the operand still has to be

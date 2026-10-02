@@ -40,7 +40,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_basic_object(
                 if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_3.error()));
                 v = ::tpy::unwrap_ref_move(*__try_tmp_3);
             }
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         } else if ((key == "age")) {
             int64_t v2;
             {
@@ -48,7 +48,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_basic_object(
                 if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_4.error()));
                 v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
             }
-            std::cout << v2 << "\n";
+            std::cout << v2 << "\n" << ::tpy::check_signals;
         } else if ((key == "active")) {
             bool v3;
             {
@@ -56,7 +56,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_basic_object(
                 if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_5.error()));
                 v3 = ::tpy::unwrap_ref_move(*__try_tmp_5);
             }
-            std::cout << ::tpy::print_bool(v3) << "\n";
+            std::cout << ::tpy::print_bool(v3) << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -119,7 +119,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_nested() {
                         if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_11.error()));
                         v = ::tpy::unwrap_ref_move(*__try_tmp_11);
                     }
-                    std::cout << v << "\n";
+                    std::cout << v << "\n" << ::tpy::check_signals;
                 }
             }
             {
@@ -138,7 +138,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_nested() {
                     if (!__try_tmp_14.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_14.error()));
                     v2 = ::tpy::unwrap_ref_move(*__try_tmp_14);
                 }
-                std::cout << v2 << "\n";
+                std::cout << v2 << "\n" << ::tpy::check_signals;
             }
             {
                 auto __try_tmp_15 = reader.read_array_end();
@@ -188,7 +188,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_null_and_esca
                     auto __try_tmp_19 = reader.read_null();
                     if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_19.error()));
                 }
-                std::cout << "null" << "\n";
+                std::cout << "null" << "\n" << ::tpy::check_signals;
             }
         } else if ((key == "msg")) {
             std::string v;
@@ -197,7 +197,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_null_and_esca
                 if (!__try_tmp_20.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_20.error()));
                 v = ::tpy::unwrap_ref_move(*__try_tmp_20);
             }
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -228,7 +228,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_float() {
             if (!__try_tmp_23.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_23.error()));
             v = ::tpy::unwrap_ref_move(*__try_tmp_23);
         }
-        std::cout << ::tpy::print_float(v) << "\n";
+        std::cout << ::tpy::print_float(v) << "\n" << ::tpy::check_signals;
     }
     {
         auto __try_tmp_24 = reader.read_array_end();
@@ -272,7 +272,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_skip() {
                 if (!__try_tmp_27.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_27.error()));
                 v = ::tpy::unwrap_ref_move(*__try_tmp_27);
             }
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         } else if ((key == "also")) {
             std::string v2;
             {
@@ -280,7 +280,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_skip() {
                 if (!__try_tmp_28.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_28.error()));
                 v2 = ::tpy::unwrap_ref_move(*__try_tmp_28);
             }
-            std::cout << v2 << "\n";
+            std::cout << v2 << "\n" << ::tpy::check_signals;
         } else {
             {
                 auto __try_tmp_29 = reader.skip_value();
@@ -332,7 +332,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_empty_contain
                 auto __try_tmp_34 = reader.read_object_end();
                 if (!__try_tmp_34.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_34.error()));
             }
-            std::cout << "empty_obj" << "\n";
+            std::cout << "empty_obj" << "\n" << ::tpy::check_signals;
         } else if ((key == "arr")) {
             {
                 auto __try_tmp_35 = reader.read_array_start();
@@ -342,7 +342,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_empty_contain
                 auto __try_tmp_36 = reader.read_array_end();
                 if (!__try_tmp_36.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_36.error()));
             }
-            std::cout << "empty_arr" << "\n";
+            std::cout << "empty_arr" << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -373,7 +373,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_negative_int(
             if (!__try_tmp_39.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_39.error()));
             v = ::tpy::unwrap_ref_move(*__try_tmp_39);
         }
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
     {
         auto __try_tmp_40 = reader.read_array_end();
@@ -405,14 +405,14 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_raw_methods()
             if (!__try_tmp_42.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_42.error()));
             key = ::tpy::unwrap_ref_move(*__try_tmp_42);
         }
-        std::cout << key << "\n";
+        std::cout << key << "\n" << ::tpy::check_signals;
         std::string_view v;
         {
             auto __try_tmp_43 = reader.read_str_raw();
             if (!__try_tmp_43.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_43.error()));
             v = ::tpy::unwrap_ref_move(*__try_tmp_43);
         }
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
     {
         auto __try_tmp_44 = reader.read_object_end();
@@ -490,7 +490,7 @@ void test_describe() {
         __except_45:;
         {
             auto& e = *__err_opt_45;
-            std::cout << e.describe(data) << "\n";
+            std::cout << e.describe(data) << "\n" << ::tpy::check_signals;
         }
         __after_try_45:;
     }
@@ -515,7 +515,7 @@ void test_describe() {
         __except_48:;
         {
             auto& e2 = *__err_opt_48;
-            std::cout << e2.describe(data2) << "\n";
+            std::cout << e2.describe(data2) << "\n" << ::tpy::check_signals;
         }
         __after_try_48:;
     }
@@ -542,7 +542,7 @@ void test_describe() {
         __except_52:;
         {
             auto& e3 = *__err_opt_52;
-            std::cout << e3.describe(data3) << "\n";
+            std::cout << e3.describe(data3) << "\n" << ::tpy::check_signals;
         }
         __after_try_52:;
     }
@@ -571,7 +571,7 @@ void test_describe() {
         __except_56:;
         {
             auto& e4 = *__err_opt_56;
-            std::cout << e4.describe(data4) << "\n";
+            std::cout << e4.describe(data4) << "\n" << ::tpy::check_signals;
         }
         __after_try_56:;
     }
@@ -596,15 +596,15 @@ void test_describe() {
             __except_61:;
             {
                 auto& e5 = *__err_opt_61;
-                std::cout << e5.describe(bad) << "\n";
+                std::cout << e5.describe(bad) << "\n" << ::tpy::check_signals;
             }
             __after_try_61:;
         }
     }
     ::tpystd::tplib::json::parser::JsonError err = ::tpystd::tplib::json::parser::JsonError();
-    std::cout << err.describe("any") << "\n";
+    std::cout << err.describe("any") << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::json::parser::JsonError err2 = ::tpystd::tplib::json::parser::JsonError("custom msg");
-    std::cout << err2.describe("any") << "\n";
+    std::cout << err2.describe("any") << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -650,7 +650,7 @@ void main() {
         goto __after_try_64;
         // except JsonError:
         __except_64:;
-        std::cout << "ERROR" << "\n";
+        std::cout << "ERROR" << "\n" << ::tpy::check_signals;
         __after_try_64:;
     }
     {
@@ -661,7 +661,7 @@ void main() {
         goto __after_try_66;
         // except JsonError:
         __except_66:;
-        std::cout << "ERROR" << "\n";
+        std::cout << "ERROR" << "\n" << ::tpy::check_signals;
         __after_try_66:;
     }
     {
@@ -672,7 +672,7 @@ void main() {
         goto __after_try_68;
         // except JsonError:
         __except_68:;
-        std::cout << "ERROR" << "\n";
+        std::cout << "ERROR" << "\n" << ::tpy::check_signals;
         __after_try_68:;
     }
     {
@@ -683,7 +683,7 @@ void main() {
         goto __after_try_70;
         // except JsonError:
         __except_70:;
-        std::cout << "ERROR" << "\n";
+        std::cout << "ERROR" << "\n" << ::tpy::check_signals;
         __after_try_70:;
     }
     {
@@ -694,7 +694,7 @@ void main() {
         goto __after_try_72;
         // except JsonError:
         __except_72:;
-        std::cout << "ERROR" << "\n";
+        std::cout << "ERROR" << "\n" << ::tpy::check_signals;
         __after_try_72:;
     }
     {
@@ -705,7 +705,7 @@ void main() {
         goto __after_try_74;
         // except JsonError:
         __except_74:;
-        std::cout << "ERROR" << "\n";
+        std::cout << "ERROR" << "\n" << ::tpy::check_signals;
         __after_try_74:;
     }
     {
@@ -716,7 +716,7 @@ void main() {
         goto __after_try_76;
         // except JsonError:
         __except_76:;
-        std::cout << "ERROR" << "\n";
+        std::cout << "ERROR" << "\n" << ::tpy::check_signals;
         __after_try_76:;
     }
     {
@@ -727,7 +727,7 @@ void main() {
         goto __after_try_78;
         // except JsonError:
         __except_78:;
-        std::cout << "ERROR" << "\n";
+        std::cout << "ERROR" << "\n" << ::tpy::check_signals;
         __after_try_78:;
     }
     ::tpyapp::main::test_describe();

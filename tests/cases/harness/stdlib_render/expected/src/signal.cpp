@@ -9,10 +9,10 @@ namespace tpystd::signal {
 //     On the main thread a SIGINT raises KeyboardInterrupt before this returns,
 //     as in CPython (inside `asyncio.run` it cancels the root task instead)."""
 //     posix_signal.raise_signal(sig)
-//     posix_signal.check_interrupt()
+//     posix_signal.check_signals()
 void raise_signal(int32_t sig) {
     ::tpy_signal_raise(sig);
-    ::tpy::check_interrupt();
+    ::tpy::check_signals();
 }
 
 // # tpy: cpp_namespace("tpystd::signal")

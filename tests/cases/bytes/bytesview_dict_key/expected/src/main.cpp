@@ -17,9 +17,9 @@ void test_set_with_literals() {
     s.insert(::tpy::bytes_literal("hello", 5));
     s.insert(::tpy::bytes_literal("world", 5));
     s.insert(::tpy::bytes_literal("hello", 5));
-    std::cout << ::tpy::__len__(s) << "\n";
-    std::cout << ::tpy::print_bool((s.contains(::tpy::bytes_literal("hello", 5)))) << "\n";
-    std::cout << ::tpy::print_bool((s.contains(::tpy::bytes_literal("missing", 7)))) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((s.contains(::tpy::bytes_literal("hello", 5)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((s.contains(::tpy::bytes_literal("missing", 7)))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict_with_literals() -> None:
@@ -37,11 +37,11 @@ void test_dict_with_literals() {
     ::tpy::__setitem__(d, ::tpy::bytes_literal("alice", 5), ::tpy::BigInt(1));
     ::tpy::__setitem__(d, ::tpy::bytes_literal("bob", 3), ::tpy::BigInt(2));
     ::tpy::__setitem__(d, ::tpy::bytes_literal("alice", 5), ::tpy::BigInt(10));
-    std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal("alice", 5)) << "\n";
-    std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal("bob", 3)) << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
-    std::cout << ::tpy::print_bool((d.contains(::tpy::bytes_literal("alice", 5)))) << "\n";
-    std::cout << ::tpy::print_bool((d.contains(::tpy::bytes_literal("missing", 7)))) << "\n";
+    std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal("alice", 5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal("bob", 3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((d.contains(::tpy::bytes_literal("alice", 5)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((d.contains(::tpy::bytes_literal("missing", 7)))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict_with_bytes_keys() -> None:
@@ -58,9 +58,9 @@ void test_dict_with_bytes_keys() {
     ::tpy::__setitem__(d, ::tpy::bytes_literal_owned("a", 1), ::tpy::BigInt(1));
     ::tpy::__setitem__(d, ::tpy::bytes_literal_owned("b", 1), ::tpy::BigInt(2));
     ::tpy::__setitem__(d, ::tpy::bytes_literal_owned("a", 1), ::tpy::BigInt(10));
-    std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal_owned("a", 1)) << "\n";
-    std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal_owned("b", 1)) << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal_owned("a", 1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal_owned("b", 1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // test_set_with_literals()

@@ -14,7 +14,7 @@ void test_borrow_warn() {
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
     Point& p = ::tpyapp::main::first<Point>(pts);
     pts.push_back(Point(5, 6));
-    std::cout << ::tpy::__len__(pts) << "\n";
+    std::cout << ::tpy::__len__(pts) << "\n" << ::tpy::check_signals;
 }
 
 // # (b) Return-through-local: non-generic caller -- p borrows from items via 8b contract.
@@ -36,8 +36,8 @@ void test_return_through_local() {
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
     Point& a = ::tpyapp::main::get_first_concrete(pts);
     Point& b = ::tpyapp::main::get_first_generic<Point>(pts);
-    std::cout << a.x << "\n";
-    std::cout << b.x << "\n";
+    std::cout << a.x << "\n" << ::tpy::check_signals;
+    std::cout << b.x << "\n" << ::tpy::check_signals;
 }
 
 // # (d1) val_or_ref_t<T> reference semantics: mutation through p affects box's data.
@@ -52,7 +52,7 @@ void test_method_ref_semantics() {
     Box<Point> box = Box<Point>(pts);
     Point& p = box.first();
     p.x = 99;
-    std::cout << ::tpy::__getitem__(box._items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(box._items, 0).x << "\n" << ::tpy::check_signals;
 }
 
 // def test_method_return_through_local() -> None:
@@ -64,7 +64,7 @@ void test_method_return_through_local() {
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
     Box<Point> box = Box<Point>(pts);
     Point& result = ::tpyapp::main::get_first_from_box<Point>(box);
-    std::cout << result.x << "\n";
+    std::cout << result.x << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

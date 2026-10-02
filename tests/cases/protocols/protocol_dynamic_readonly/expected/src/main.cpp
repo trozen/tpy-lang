@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def greet(pet: Pet) -> None:
 //     print(pet.name())
 void greet(const Pet& pet) {
-    std::cout << pet.name() << "\n";
+    std::cout << pet.name() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -21,10 +21,10 @@ void main() {
     std::optional<::tpy::Adapter<Pet, Cat>> __slot_2;
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    std::cout << pet->name() << "\n";
+    std::cout << pet->name() << "\n" << ::tpy::check_signals;
     __slot_2.emplace(Cat());
     pet = &*__slot_2;
-    std::cout << pet->name() << "\n";
+    std::cout << pet->name() << "\n" << ::tpy::check_signals;
     Dog __tmp_1{Dog()};
     ::tpyapp::main::greet(__tmp_1);
     ::tpy::Adapter<Pet, Cat> __tmp_2{Cat()};

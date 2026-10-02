@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print(repr(b))
 void main() {
     int32_t a = int32_t{};
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
     std::string b = std::string{};
-    std::cout << ::tpy::repr_of(b) << "\n";
+    std::cout << ::tpy::repr_of(b) << "\n" << ::tpy::check_signals;
 }
 
 // main()

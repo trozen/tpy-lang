@@ -39,21 +39,21 @@ void main() {
         try {
             ::tpy::stdlib::os::path_getsize("tpy_nope_missing_ospath");
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "getsize: FileNotFoundError" << "\n";
+            std::cout << "getsize: FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::os::listdir("tpy_nope_missing_dir_xyz");
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "listdir: FileNotFoundError" << "\n";
+            std::cout << "listdir: FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::stdlib::os::chdir("tpy_nope_missing_dir_xyz");
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "chdir: FileNotFoundError" << "\n";
+            std::cout << "chdir: FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
     auto __ctx_1 = ::tpy::builtin_open_mode("tpy_fs_errors_file.txt", "w");
@@ -74,14 +74,14 @@ void main() {
         try {
             ::tpystd::os::listdir("tpy_fs_errors_file.txt");
         } catch (const ::tpy::OSError&) {
-            std::cout << "listdir-on-file: OSError" << "\n";
+            std::cout << "listdir-on-file: OSError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::stdlib::os::path_getsize("tpy_nope_missing_ospath");
         } catch (const ::tpy::OSError&) {
-            std::cout << "getsize: OSError base" << "\n";
+            std::cout << "getsize: OSError base" << "\n" << ::tpy::check_signals;
         }
     }
 }

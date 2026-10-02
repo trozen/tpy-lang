@@ -66,7 +66,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_inner::__next__() {
 }
 
 void __gen_inner::__finally_0() {
-    std::cout << tag << " " << "inner finally" << " " << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0) << "\n";
+    std::cout << tag << " " << "inner finally" << " " << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def inner(tag: str, xs: list[int32]) -> Iterator[int32]:
@@ -134,7 +134,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_break_outer::__next__() {
         continue;
     }
     case S_JOIN_1: {
-        std::cout << "break after inner loop" << "\n";
+        std::cout << "break after inner loop" << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
     }
@@ -257,7 +257,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_return_outer::__next__() {
 }
 
 void __gen_return_outer::__finally_0() {
-    std::cout << "return outer finally" << "\n";
+    std::cout << "return outer finally" << "\n" << ::tpy::check_signals;
 }
 
 // def return_outer(xs: list[int32]) -> Iterator[int32]:
@@ -286,7 +286,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_exc_outer::__next__() {
                 throw;
             }
         } catch (const ::tpy::ValueError&) {
-            std::cout << "exc caught" << "\n";
+            std::cout << "exc caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -311,7 +311,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_exc_outer::__next__() {
             __state = S_JOIN_2;
             continue;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "exc caught" << "\n";
+            std::cout << "exc caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -335,7 +335,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_exc_outer::__next__() {
                 throw;
             }
         } catch (const ::tpy::ValueError&) {
-            std::cout << "exc caught" << "\n";
+            std::cout << "exc caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -429,7 +429,7 @@ __gen_exc_outer exc_outer(const std::vector<int32_t>& xs) {
         continue;
     }
     case S_JOIN_2: {
-        std::cout << "async after inner loop" << "\n";
+        std::cout << "async after inner loop" << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
     }
@@ -547,30 +547,30 @@ void abandon_method(Holder& h) {
 void main() {
     std::vector<std::vector<int32_t>> rows = {{1, 2}, {3, 4}};
     std::vector<int32_t> loopvar_vals = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::rows_outer(rows));
-    std::cout << "loopvar" << " " << ::tpy::ListPrinter(loopvar_vals) << "\n";
+    std::cout << "loopvar" << " " << ::tpy::ListPrinter(loopvar_vals) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::abandon_loopvar(rows);
     std::vector<int32_t> global_vals = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::global_outer());
-    std::cout << "global" << " " << ::tpy::ListPrinter(global_vals) << "\n";
+    std::cout << "global" << " " << ::tpy::ListPrinter(global_vals) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::abandon_global();
     std::vector<int32_t> rebound_vals = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::rebound_outer(true));
-    std::cout << "rebound" << " " << ::tpy::ListPrinter(rebound_vals) << "\n";
+    std::cout << "rebound" << " " << ::tpy::ListPrinter(rebound_vals) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::abandon_rebound();
     std::vector<int32_t> break_vals = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::break_outer(rows));
-    std::cout << "break" << " " << ::tpy::ListPrinter(break_vals) << "\n";
+    std::cout << "break" << " " << ::tpy::ListPrinter(break_vals) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::abandon_break(rows);
     std::vector<int32_t> xs = {5, 6};
     std::vector<int32_t> return_vals = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::return_outer(xs));
-    std::cout << "return" << " " << ::tpy::ListPrinter(return_vals) << "\n";
+    std::cout << "return" << " " << ::tpy::ListPrinter(return_vals) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::abandon_return(xs);
     std::vector<int32_t> exc_vals = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::exc_outer(xs));
-    std::cout << "exc" << " " << ::tpy::ListPrinter(exc_vals) << "\n";
+    std::cout << "exc" << " " << ::tpy::ListPrinter(exc_vals) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::abandon_exc(xs);
     Holder h = Holder();
     std::vector<int32_t> method_vals = ::tpy::construct<std::vector<int32_t>>(h.items());
-    std::cout << "method" << " " << ::tpy::ListPrinter(method_vals) << "\n";
+    std::cout << "method" << " " << ::tpy::ListPrinter(method_vals) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::abandon_method(h);
     int32_t total = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_rows(rows)));
-    std::cout << "async" << " " << total << "\n";
+    std::cout << "async" << " " << total << "\n" << ::tpy::check_signals;
 }
 
 

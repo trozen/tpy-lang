@@ -32,8 +32,8 @@ std::string describe(const Cat& animal) {
 void main() {
     Dog d = Dog("Rex");
     Cat c = Cat(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::describe(d) << "\n";
-    std::cout << ::tpyapp::main::describe(c) << "\n";
+    std::cout << ::tpyapp::main::describe(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(c) << "\n" << ::tpy::check_signals;
 }
 
 // main()

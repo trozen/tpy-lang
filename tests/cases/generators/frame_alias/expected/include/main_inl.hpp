@@ -132,7 +132,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_risky::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "risky start" << "\n";
+        std::cout << "risky start" << "\n" << ::tpy::check_signals;
         if (fail) {
             throw ::tpy::ValueError("boom");
         }

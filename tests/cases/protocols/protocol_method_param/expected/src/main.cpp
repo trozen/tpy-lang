@@ -15,11 +15,11 @@ namespace tpyapp::main {
 void main() {
     Words w = Words({"hello", "world", "!"});
     Container c = Container(w);
-    std::cout << c.count << "\n";
+    std::cout << c.count << "\n" << ::tpy::check_signals;
     Numbers n = Numbers({10, 20});
     c.update(n);
-    std::cout << c.count << "\n";
-    std::cout << c.combined_len(w) << "\n";
+    std::cout << c.count << "\n" << ::tpy::check_signals;
+    std::cout << c.combined_len(w) << "\n" << ::tpy::check_signals;
 }
 
 // main()

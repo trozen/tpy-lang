@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def use(r: Rc[State]) -> None:
 //     print("use sees", r.get().label)
 void use(const ::tpystd::tplib::rc::Rc<State>& r) {
-    std::cout << "use sees" << " " << r.get().label << "\n";
+    std::cout << "use sees" << " " << r.get().label << "\n" << ::tpy::check_signals;
 }
 
 // def single_owner() -> None:
@@ -37,11 +37,11 @@ void shared_via_clone() {
 //     shared_via_clone()
 //     print("--- done ---")
 void main() {
-    std::cout << "--- single owner ---" << "\n";
+    std::cout << "--- single owner ---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::single_owner();
-    std::cout << "--- shared via clone ---" << "\n";
+    std::cout << "--- shared via clone ---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::shared_via_clone();
-    std::cout << "--- done ---" << "\n";
+    std::cout << "--- done ---" << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Rc

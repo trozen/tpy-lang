@@ -54,7 +54,7 @@ inline Node::Node(int32_t val) : val(val) {}
 template<typename T>
 void test_list_ctor_generic_warns(const std::vector<T>& b) {
     std::vector<T> a = ::tpy::construct<std::vector<T>>(b);
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

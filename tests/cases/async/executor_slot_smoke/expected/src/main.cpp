@@ -21,14 +21,14 @@ namespace tpyapp::main {
 //     print("done after set?", s.is_done())
 void main() {
     ::tpystd::asyncio::_executor::Slot s = ::tpystd::asyncio::_executor::Slot();
-    std::cout << "done?" << " " << ::tpy::print_bool(s.is_done()) << "\n";
-    std::cout << "runnable?" << " " << ::tpy::print_bool(s.runnable) << "\n";
-    std::cout << "gen0:" << " " << s.generation << "\n";
+    std::cout << "done?" << " " << ::tpy::print_bool(s.is_done()) << "\n" << ::tpy::check_signals;
+    std::cout << "runnable?" << " " << ::tpy::print_bool(s.runnable) << "\n" << ::tpy::check_signals;
+    std::cout << "gen0:" << " " << s.generation << "\n" << ::tpy::check_signals;
     s.runnable = true;
     s.generation = 3;
-    std::cout << "runnable after set?" << " " << ::tpy::print_bool(s.runnable) << "\n";
-    std::cout << "gen after set:" << " " << s.generation << "\n";
-    std::cout << "done after set?" << " " << ::tpy::print_bool(s.is_done()) << "\n";
+    std::cout << "runnable after set?" << " " << ::tpy::print_bool(s.runnable) << "\n" << ::tpy::check_signals;
+    std::cout << "gen after set:" << " " << s.generation << "\n" << ::tpy::check_signals;
+    std::cout << "done after set?" << " " << ::tpy::print_bool(s.is_done()) << "\n" << ::tpy::check_signals;
 }
 
 // # Phase 2.1 leaf migration: Slot TPy class. Verifies the slot entry

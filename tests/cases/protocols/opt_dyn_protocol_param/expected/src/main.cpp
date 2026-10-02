@@ -42,15 +42,15 @@ std::string describe(Pet* p) {
 //     print(describe(None))
 void main() {
     Dog __tmp_1 = Dog("rex");
-    std::cout << ::tpyapp::main::greet(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::greet(&(__tmp_1)) << "\n" << ::tpy::check_signals;
     Fish __tmp_2 = Fish();
-    std::cout << ::tpyapp::main::greet(&(__tmp_2)) << "\n";
-    std::cout << ::tpyapp::main::greet(nullptr) << "\n";
+    std::cout << ::tpyapp::main::greet(&(__tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::greet(nullptr) << "\n" << ::tpy::check_signals;
     Dog __tmp_3 = Dog("fido");
-    std::cout << ::tpyapp::main::describe(&(__tmp_3)) << "\n";
+    std::cout << ::tpyapp::main::describe(&(__tmp_3)) << "\n" << ::tpy::check_signals;
     Fish __tmp_4 = Fish();
-    std::cout << ::tpyapp::main::describe(&(__tmp_4)) << "\n";
-    std::cout << ::tpyapp::main::describe(nullptr) << "\n";
+    std::cout << ::tpyapp::main::describe(&(__tmp_4)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(nullptr) << "\n" << ::tpy::check_signals;
 }
 
 // main()

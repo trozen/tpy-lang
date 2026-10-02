@@ -80,28 +80,28 @@ Prio make(Prio v) {
 //     print("total:", calls)
 void main() {
     if ((static_cast<int32_t>(::tpyapp::main::make(Prio::HIGH)) != 0)) {
-        std::cout << "high:" << " " << calls << "\n";
+        std::cout << "high:" << " " << calls << "\n" << ::tpy::check_signals;
     }
     if ((static_cast<int32_t>(::tpyapp::main::make(Prio::ZERO)) != 0)) {
-        std::cout << "unreachable" << "\n";
+        std::cout << "unreachable" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "zero:" << " " << calls << "\n";
+    std::cout << "zero:" << " " << calls << "\n" << ::tpy::check_signals;
     if ((!((static_cast<int32_t>(::tpyapp::main::make(Prio::ZERO)) != 0)))) {
-        std::cout << "not zero:" << " " << calls << "\n";
+        std::cout << "not zero:" << " " << calls << "\n" << ::tpy::check_signals;
     }
     while ((static_cast<int32_t>(::tpyapp::main::make(Prio::HIGH)) != 0)) {
         break;
     }
-    std::cout << "while:" << " " << calls << "\n";
+    std::cout << "while:" << " " << calls << "\n" << ::tpy::check_signals;
     if ((static_cast<int32_t>(Prio::HIGH) != 0)) {
-        std::cout << "member HIGH truthy" << "\n";
+        std::cout << "member HIGH truthy" << "\n" << ::tpy::check_signals;
     }
     if ((static_cast<int32_t>(Prio::ZERO) != 0)) {
-        std::cout << "unreachable" << "\n";
+        std::cout << "unreachable" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "member ZERO falsy" << "\n";
+        std::cout << "member ZERO falsy" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "total:" << " " << calls << "\n";
+    std::cout << "total:" << " " << calls << "\n" << ::tpy::check_signals;
 }
 
 // # The IntEnum contrast to enum_truthy_call: an IntEnum tests its UNDERLYING

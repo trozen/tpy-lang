@@ -64,11 +64,11 @@ void main() {
             a = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
         // else:
-        std::cout << a->v << "\n";
+        std::cout << a->v << "\n" << ::tpy::check_signals;
         goto __after_try_4;
         // except E:
         __except_4:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_4:;
     }
     std::optional<Payload> b;
@@ -79,18 +79,18 @@ void main() {
             b = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
         // else:
-        std::cout << b->v << "\n";
+        std::cout << b->v << "\n" << ::tpy::check_signals;
         goto __after_try_6;
         // except E:
         __except_6:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_6:;
     }
     Sink s = Sink();
     s.fill(9);
-    std::cout << s.p.v << "\n";
+    std::cout << s.p.v << "\n" << ::tpy::check_signals;
     s.fill(-1);
-    std::cout << s.p.v << "\n";
+    std::cout << s.p.v << "\n" << ::tpy::check_signals;
     std::optional<Payload> c;
     {
         {
@@ -101,7 +101,7 @@ void main() {
         goto __after_try_8;
         // except E:
         __except_8:;
-        std::cout << "caught" << "\n";
+        std::cout << "caught" << "\n" << ::tpy::check_signals;
         __after_try_8:;
     }
 }

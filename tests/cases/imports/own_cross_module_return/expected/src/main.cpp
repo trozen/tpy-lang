@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(c.radius)
 void main() {
     ::tpyapp::shapes::Circle c = ::tpyapp::shapes::make_circle(7);
-    std::cout << c.radius << "\n";
+    std::cout << c.radius << "\n" << ::tpy::check_signals;
 }
 
 // import shapes

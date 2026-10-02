@@ -35,22 +35,22 @@ void main() {
     b.append(20);
     b.append(30);
     a.extend(b);
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     auto& __src_0 = a;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> c = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     std::array<int32_t, 3> arr = {100, 200, 300};
     std::span<int32_t> s = ::tpy::as_mut_span(arr);
     c.extend(s);
-    std::cout << ::tpy::__len__(c) << "\n";
-    std::cout << c[0] << "\n";
-    std::cout << c[2] << "\n";
+    std::cout << ::tpy::__len__(c) << "\n" << ::tpy::check_signals;
+    std::cout << c[0] << "\n" << ::tpy::check_signals;
+    std::cout << c[2] << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

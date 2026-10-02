@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void main() {
     MyContainer c = MyContainer({1, 2, 3, 4, 5});
     int32_t result = ::tpyapp::main::get_length<MyContainer>(c);
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
 }
 
 // main()

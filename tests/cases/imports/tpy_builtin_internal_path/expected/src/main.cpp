@@ -90,15 +90,15 @@ int32_t consume() {
 //     print(miss is None)
 void main() {
     Holder<int32_t> h = Holder<int32_t>(7);
-    std::cout << h.dup() << "\n";
-    std::cout << h.dup_via_module() << "\n";
+    std::cout << h.dup() << "\n" << ::tpy::check_signals;
+    std::cout << h.dup_via_module() << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << ::tpyapp::main::sum_copied(__tmp_1) << "\n";
-    std::cout << ::tpyapp::main::consume() << "\n";
+    std::cout << ::tpyapp::main::sum_copied(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::consume() << "\n" << ::tpy::check_signals;
     std::optional<Color> c = ::tpy::EnumUtil<Color>::try_parse("RED");
-    std::cout << ::tpy::print_bool((c.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((c.has_value())) << "\n" << ::tpy::check_signals;
     std::optional<Color> miss = ::tpy::EnumUtil<Color>::try_parse("PURPLE");
-    std::cout << ::tpy::print_bool((!miss.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!miss.has_value())) << "\n" << ::tpy::check_signals;
 }
 
 // # Verifies tpy.copy / copy_iter / own_iter / try_parse compile identically

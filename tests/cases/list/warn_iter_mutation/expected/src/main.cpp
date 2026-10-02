@@ -478,7 +478,7 @@ void test_else_clause_ok() {
         items.push_back(3);
     }
     __after_else_0:;
-    std::cout << "else_clause:" << " " << total << " " << ::tpy::__len__(items) << "\n";
+    std::cout << "else_clause:" << " " << total << " " << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_slice_source_warns() -> None:
@@ -529,7 +529,7 @@ void test_merged_element_loan_unknown_index() {
         rows = &(::tpy::__getitem__(cube, 1));
         ::tpy::__getitem__(cube, 2).push_back({v});
     }
-    std::cout << "merged loan:" << " " << ::tpy::__len__(cube) << " " << ::tpy::__len__(::tpy::__getitem__(cube, 2)) << "\n";
+    std::cout << "merged loan:" << " " << ::tpy::__len__(cube) << " " << ::tpy::__len__(::tpy::__getitem__(cube, 2)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

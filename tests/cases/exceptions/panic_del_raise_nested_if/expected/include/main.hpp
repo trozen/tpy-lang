@@ -60,7 +60,7 @@ inline Maybe& Maybe::operator=(Maybe&& other) noexcept {
 inline Maybe::~Maybe() {
     if (!this->__tpy_owned_) return;
     try {
-        std::cout << "del" << " " << this->_n << "\n";
+        std::cout << "del" << " " << this->_n << "\n" << ::tpy::check_signals;
         if ((this->_n > 0)) {
             throw ::tpy::ValueError("positive on drop");
         }

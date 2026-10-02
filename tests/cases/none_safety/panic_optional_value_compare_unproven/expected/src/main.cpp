@@ -22,8 +22,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpyapp::main::cmp_score(1) << "\n";
-    std::cout << ::tpyapp::main::cmp_score(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::cmp_score(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::cmp_score(std::nullopt) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

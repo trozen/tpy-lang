@@ -110,17 +110,17 @@ int32_t for_loop_variant(std::optional<int32_t> x, const std::vector<int32_t>& i
 //     print(for_loop_variant(5, nums))
 //     print(for_loop_variant(None, nums))
 void main() {
-    std::cout << ::tpyapp::main::simple_while(10, 3) << "\n";
-    std::cout << ::tpyapp::main::simple_while(std::nullopt, 3) << "\n";
-    std::cout << ::tpyapp::main::multiple_optionals(2, 3, 4) << "\n";
-    std::cout << ::tpyapp::main::multiple_optionals(std::nullopt, 3, 4) << "\n";
-    std::cout << ::tpyapp::main::multiple_optionals(2, std::nullopt, 4) << "\n";
+    std::cout << ::tpyapp::main::simple_while(10, 3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::simple_while(std::nullopt, 3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::multiple_optionals(2, 3, 4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::multiple_optionals(std::nullopt, 3, 4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::multiple_optionals(2, std::nullopt, 4) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<int32_t>> items = {1, std::nullopt, 3};
-    std::cout << ::tpyapp::main::outer_if_inner_while_narrowing(10, items) << "\n";
-    std::cout << ::tpyapp::main::outer_if_inner_while_narrowing(std::nullopt, items) << "\n";
+    std::cout << ::tpyapp::main::outer_if_inner_while_narrowing(10, items) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::outer_if_inner_while_narrowing(std::nullopt, items) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> nums = {1, 2, 3};
-    std::cout << ::tpyapp::main::for_loop_variant(5, nums) << "\n";
-    std::cout << ::tpyapp::main::for_loop_variant(std::nullopt, nums) << "\n";
+    std::cout << ::tpyapp::main::for_loop_variant(5, nums) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::for_loop_variant(std::nullopt, nums) << "\n" << ::tpy::check_signals;
 }
 
 // main()

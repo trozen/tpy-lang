@@ -16,7 +16,7 @@ void main() {
     Inner& a = o.inner;
     Outer __tmp_1 = o;
     h.take(std::move(__tmp_1));
-    std::cout << ::tpy::__len__(a.vals) << "\n";
+    std::cout << ::tpy::__len__(a.vals) << "\n" << ::tpy::check_signals;
 }
 
 // main()

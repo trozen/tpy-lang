@@ -27,13 +27,13 @@ void main() {
     {
         try {
             s.connect(std::tuple<std::string, int32_t>{"127.0.0.1", 1});
-            std::cout << "NO ERROR" << "\n";
+            std::cout << "NO ERROR" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ConnectionRefusedError&) {
-            std::cout << "caught ConnectionRefusedError" << "\n";
+            std::cout << "caught ConnectionRefusedError" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ConnectionError&) {
-            std::cout << "caught generic ConnectionError" << "\n";
+            std::cout << "caught generic ConnectionError" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OSError&) {
-            std::cout << "caught generic OSError" << "\n";
+            std::cout << "caught generic OSError" << "\n" << ::tpy::check_signals;
         }
     }
     s.close();

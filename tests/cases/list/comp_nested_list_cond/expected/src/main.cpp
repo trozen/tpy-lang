@@ -31,9 +31,9 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(rows) << "\n";
+    std::cout << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(::tpy::__getitem__(rows, 0), 0, 99);
-    std::cout << ::tpy::ListPrinter(rows) << "\n";
+    std::cout << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
     std::optional<std::vector<std::array<int32_t, 2>>> cols;
     std::cout << ::tpy::ListPrinter((cols = ({
         std::vector<std::array<int32_t, 2>> __result;
@@ -45,9 +45,9 @@ void main() {
             }
         }
         std::move(__result);
-    }), *cols)) << "\n";
+    }), *cols)) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(::tpy::__getitem__((*cols), 1), 0, 77);
-    std::cout << ::tpy::ListPrinter((*cols)) << "\n";
+    std::cout << ::tpy::ListPrinter((*cols)) << "\n" << ::tpy::check_signals;
 }
 
 // def loop_mutate() -> None:
@@ -78,7 +78,7 @@ void loop_mutate() {
         auto&& r = *__beg_1;
         ::tpy::__setitem__(r, 0, (::tpy::add_check<int32_t>(::tpy::__getitem__(r, 0), 100)));
     }
-    std::cout << ::tpy::ListPrinter(rows) << "\n";
+    std::cout << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
 }
 
 // main()

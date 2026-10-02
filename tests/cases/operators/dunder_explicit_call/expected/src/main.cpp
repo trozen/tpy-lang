@@ -21,8 +21,8 @@ void main() {
     Tag t = Tag(3);
     std::string_view three = "abc";
     std::string_view two = "xy";
-    std::cout << ::tpy::print_bool((t) == (three)) << " " << ::tpy::print_bool((t) == (two)) << "\n";
-    std::cout << ::tpy::print_bool((t) != (three)) << " " << ::tpy::print_bool(::tpyapp::main::probe(t, two)) << "\n";
+    std::cout << ::tpy::print_bool((t) == (three)) << " " << ::tpy::print_bool((t) == (two)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((t) != (three)) << " " << ::tpy::print_bool(::tpyapp::main::probe(t, two)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

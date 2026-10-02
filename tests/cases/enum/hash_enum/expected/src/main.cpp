@@ -90,11 +90,11 @@ namespace tpyapp::main {
 //     print(hash(Priority.Low) != hash(Priority.High))
 //     print("ok")
 void main() {
-    std::cout << ::tpy::print_bool((::tpy::__hash__(Color::Red) == ::tpy::__hash__(Color::Red))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::__hash__(Priority::Low) == ::tpy::__hash__(Priority::Low))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::__hash__(Color::Red) != ::tpy::__hash__(Color::Green))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::__hash__(Priority::Low) != ::tpy::__hash__(Priority::High))) << "\n";
-    std::cout << "ok" << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__(Color::Red) == ::tpy::__hash__(Color::Red))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::__hash__(Priority::Low) == ::tpy::__hash__(Priority::Low))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::__hash__(Color::Red) != ::tpy::__hash__(Color::Green))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::__hash__(Priority::Low) != ::tpy::__hash__(Priority::High))) << "\n" << ::tpy::check_signals;
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // # hash() on Enum and IntEnum types

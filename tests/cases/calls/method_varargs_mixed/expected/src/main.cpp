@@ -11,11 +11,11 @@ namespace tpyapp::main {
 //     print(c.total(int32(1), int32(2), int32(3), multiplier=int32(10)))
 void main() {
     Counter c = Counter(10);
-    std::cout << c.total(1, ::tpy::varargs<const int32_t>(), 1) << "\n";
+    std::cout << c.total(1, ::tpy::varargs<const int32_t>(), 1) << "\n" << ::tpy::check_signals;
     std::array<const int32_t, 2> __tmp_1{2, 3};
-    std::cout << c.total(1, ::tpy::varargs<const int32_t>(__tmp_1), 1) << "\n";
+    std::cout << c.total(1, ::tpy::varargs<const int32_t>(__tmp_1), 1) << "\n" << ::tpy::check_signals;
     std::array<const int32_t, 2> __tmp_2{2, 3};
-    std::cout << c.total(1, ::tpy::varargs<const int32_t>(__tmp_2), 10) << "\n";
+    std::cout << c.total(1, ::tpy::varargs<const int32_t>(__tmp_2), 10) << "\n" << ::tpy::check_signals;
 }
 
 // main()

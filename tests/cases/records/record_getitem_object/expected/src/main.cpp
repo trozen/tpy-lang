@@ -22,9 +22,9 @@ void main() {
     Point p2 = Point(30, 40);
     std::vector<Point> pts = ::tpy::make_vector<Point>(std::move(p1), std::move(p2));
     PointList plist = PointList(pts);
-    std::cout << plist[0].x << "\n";
-    std::cout << plist[1].y << "\n";
-    std::cout << plist[-1].x << "\n";
+    std::cout << plist[0].x << "\n" << ::tpy::check_signals;
+    std::cout << plist[1].y << "\n" << ::tpy::check_signals;
+    std::cout << plist[-1].x << "\n" << ::tpy::check_signals;
 }
 
 // main()

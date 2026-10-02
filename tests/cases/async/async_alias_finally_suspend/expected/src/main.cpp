@@ -28,7 +28,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::vector<int32_t>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << ::tpy::__len__((*ys)) << "\n";
+        std::cout << ::tpy::__len__((*ys)) << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
     }
@@ -108,7 +108,7 @@ __coro_driver driver() {
 // def main() -> None:
 //     print(asyncio.run(driver()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::driver())) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::driver())) << "\n" << ::tpy::check_signals;
 }
 
 // # A movable local returned under a SUSPENDING finally that reads it through

@@ -14,7 +14,7 @@ void main() {
     ::tpy::Union<std::monostate, A*, B*> s = ::tpy::to_ptr_variant(h.slot);
     if (std::holds_alternative<A*>(s)) {
         auto& __s = *std::get<A*>(s);
-        std::cout << __s.a << "\n";
+        std::cout << __s.a << "\n" << ::tpy::check_signals;
     }
 }
 

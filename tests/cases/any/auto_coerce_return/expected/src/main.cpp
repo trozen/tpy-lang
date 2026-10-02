@@ -15,7 +15,7 @@ namespace tpyapp::main {
 //     print(extract(a))
 void main() {
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(99));
-    std::cout << ::tpyapp::main::extract(a) << "\n";
+    std::cout << ::tpyapp::main::extract(a) << "\n" << ::tpy::check_signals;
 }
 
 // main()

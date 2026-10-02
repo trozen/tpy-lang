@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     std::tuple<int32_t, int32_t> p1 = std::tuple<int32_t, int32_t>{1, 2};
     std::tuple<int32_t, int32_t> p2 = std::tuple<int32_t, int32_t>{3, 4};
-    std::cout << ::tpy::TuplePrinter(p1) << "\n";
-    std::cout << ::tpy::TuplePrinter(p2) << "\n";
+    std::cout << ::tpy::TuplePrinter(p1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(p2) << "\n" << ::tpy::check_signals;
 }
 
 // import lib

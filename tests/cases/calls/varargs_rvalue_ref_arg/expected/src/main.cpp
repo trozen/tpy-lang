@@ -27,7 +27,7 @@ void main() {
     const Box __tmp_1 = Box(3);
     const Box __tmp_2 = Box(4);
     std::array<const Box*, 2> __tmp_3{&__tmp_1, &__tmp_2};
-    std::cout << ::tpyapp::main::sum_all(::tpy::varargs<const Box>(__tmp_3)) << "\n";
+    std::cout << ::tpyapp::main::sum_all(::tpy::varargs<const Box>(__tmp_3)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

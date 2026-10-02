@@ -32,7 +32,7 @@ std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
 void main() {
     ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog("Rex");
     ::tpy::Union<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << ::tpyapp::main::describe(d.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(d.as_const()) << "\n" << ::tpy::check_signals;
 }
 
 // # warning: non-exhaustive match on union (missing member)

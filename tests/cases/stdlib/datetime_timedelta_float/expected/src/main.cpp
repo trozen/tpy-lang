@@ -42,38 +42,38 @@ namespace tpyapp::main {
 //     print(timedelta(days=1) // 2)
 //     print(timedelta(hours=1) / timedelta(minutes=30))
 void main() {
-    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))) / (::tpy::BigInt(3))) << "\n";
-    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(1))) / (::tpy::BigInt(3))) << "\n";
-    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))) / (2.5)) << "\n";
-    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(1))) / (::tpy::BigInt(-3))) << "\n";
-    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(1))) / (-(2.5))) << "\n";
-    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))) / (::tpy::BigInt(2))) << "\n";
-    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(3))) / (::tpy::BigInt(2))) << "\n";
-    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(5))) / (::tpy::BigInt(2))) << "\n";
-    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(10))) * (1.5)) << "\n";
-    std::cout << ((1.5) * (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(10)))) << "\n";
-    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(1))) * (-(0.5))) << "\n";
+    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))) / (::tpy::BigInt(3))) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(1))) / (::tpy::BigInt(3))) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))) / (2.5)) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(1))) / (::tpy::BigInt(-3))) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(1))) / (-(2.5))) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))) / (::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(3))) / (::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(5))) / (::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(10))) * (1.5)) << "\n" << ::tpy::check_signals;
+    std::cout << ((1.5) * (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(10)))) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(1))) * (-(0.5))) << "\n" << ::tpy::check_signals;
     {
         try {
             ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(1))) / (::tpy::BigInt(0)));
         } catch (const ::tpy::ZeroDivisionError&) {
-            std::cout << "zero-div int" << "\n";
+            std::cout << "zero-div int" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(1))) / (0.0));
         } catch (const ::tpy::ZeroDivisionError&) {
-            std::cout << "zero-div float" << "\n";
+            std::cout << "zero-div float" << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::datetime::timedelta big = ::tpystd::datetime::timedelta(::tpy::BigInt(100000000));
-    std::cout << ((((big) * (1.5))).__floordiv__(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1)))) << "\n";
-    std::cout << ((((big) / (3.0))).__floordiv__(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1)))) << "\n";
-    std::cout << ((((big) / (::tpy::BigInt(7)))).__floordiv__(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1)))) << "\n";
-    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))) * (::tpy::BigInt(3))) << "\n";
-    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(1))).__floordiv__(::tpy::BigInt(2))) << "\n";
-    std::cout << ::tpy::print_float(((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))) / (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30))))) << "\n";
+    std::cout << ((((big) * (1.5))).__floordiv__(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
+    std::cout << ((((big) / (3.0))).__floordiv__(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
+    std::cout << ((((big) / (::tpy::BigInt(7)))).__floordiv__(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))) * (::tpy::BigInt(3))) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::datetime::timedelta(::tpy::BigInt(1))).__floordiv__(::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))) / (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30))))) << "\n" << ::tpy::check_signals;
 }
 
 // # timedelta float operators: `td / number` and `td * float` / `td / float` with

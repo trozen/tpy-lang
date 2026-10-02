@@ -381,7 +381,7 @@ inline void Thrower::__exit__(std::monostate et, const ::tpy::BaseException* ev,
 template<::tpystd::typing::Iterator<::tpy::BigInt> T_g>
 void run(std::string_view tag, T_g& g) {
     _code = 0;
-    std::cout << std::format("-- {} --", tag) << "\n";
+    std::cout << std::format("-- {} --", tag) << "\n" << ::tpy::check_signals;
     {
         try {
             auto& __src_0 = g;
@@ -390,10 +390,10 @@ void run(std::string_view tag, T_g& g) {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-                std::cout << v << "\n";
+                std::cout << v << "\n" << ::tpy::check_signals;
             }
         } catch (const Err& e) {
-            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
+            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n" << ::tpy::check_signals;
         }
     }
 }

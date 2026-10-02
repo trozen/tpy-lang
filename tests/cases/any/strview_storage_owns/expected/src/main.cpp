@@ -19,7 +19,7 @@ namespace tpyapp::main {
 //     print("stored")
 void main() {
     ::tpy::Any a = ::tpyapp::main::take("ephemeral");
-    std::cout << "stored" << "\n";
+    std::cout << "stored" << "\n" << ::tpy::check_signals;
 }
 
 // main()

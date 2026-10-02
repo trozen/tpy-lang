@@ -58,7 +58,7 @@ __genexpr_from_global_1_frame __genexpr_from_global_1(std::string_view __src) {
 void from_global() {
     ::tpy::ordered_map<std::string, double> d = ::tpy::dict_construct<std::string, double>(::tpyapp::main::__genexpr_from_global_1(LETTERS));
     ::tpy::__setitem__(d, "a", (::tpy::__getitem__(d, "a")) + (1.0));
-    std::cout << ::tpy::__len__(d) << " " << ::tpy::print_float(::tpy::__getitem__(d, "a")) << " " << ::tpy::print_float(::tpy::__getitem__(d, "c")) << "\n";
+    std::cout << ::tpy::__len__(d) << " " << ::tpy::print_float(::tpy::__getitem__(d, "a")) << " " << ::tpy::print_float(::tpy::__getitem__(d, "c")) << "\n" << ::tpy::check_signals;
 }
 
 namespace {
@@ -123,7 +123,7 @@ void from_local() {
     std::string_view letters = "xy";
     double scale = 2.0;
     ::tpy::ordered_map<std::string, double> d = ::tpy::dict_construct<std::string, double>(::tpyapp::main::__genexpr_from_local_2(letters, scale));
-    std::cout << ::tpy::__len__(d) << " " << ::tpy::print_float(::tpy::__getitem__(d, "x")) << " " << ::tpy::print_float(::tpy::__getitem__(d, "y")) << "\n";
+    std::cout << ::tpy::__len__(d) << " " << ::tpy::print_float(::tpy::__getitem__(d, "x")) << " " << ::tpy::print_float(::tpy::__getitem__(d, "y")) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

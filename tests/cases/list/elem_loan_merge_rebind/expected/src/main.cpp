@@ -20,7 +20,7 @@ void f(std::vector<std::vector<std::vector<int32_t>>>& outer, int32_t j) {
         int32_t x = *__beg_0;
         mid = &(::tpy::__getitem__(outer, 1));
         ::tpy::__setitem__(outer, j, std::vector<std::vector<int32_t>>{});
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -20,7 +20,7 @@ void main() {
     Box* t = &__slot_1;
     if ((t != nullptr)) {
         t->val = (t->val) + (::tpy::BigInt(1));
-        std::cout << t->val << "\n";
+        std::cout << t->val << "\n" << ::tpy::check_signals;
     }
 }
 

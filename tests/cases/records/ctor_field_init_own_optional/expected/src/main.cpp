@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(Holder(Node(5)).found)
 //     print(Holder(None).found)
 void main() {
-    std::cout << Holder(Node(::tpy::BigInt(5))).found << "\n";
-    std::cout << Holder(std::nullopt).found << "\n";
+    std::cout << Holder(Node(::tpy::BigInt(5))).found << "\n" << ::tpy::check_signals;
+    std::cout << Holder(std::nullopt).found << "\n" << ::tpy::check_signals;
 }
 
 // main()

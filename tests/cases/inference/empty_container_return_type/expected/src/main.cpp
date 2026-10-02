@@ -51,11 +51,11 @@ std::vector<int32_t> empty_list() {
 //     print(len(empty_str_set()))
 //     print(len(empty_record_dict()))
 void main() {
-    std::cout << ::tpy::__len__(::tpyapp::main::empty_list()) << "\n";
-    std::cout << ::tpy::__len__(::tpyapp::main::empty_dict()) << "\n";
-    std::cout << ::tpy::__len__(::tpyapp::main::empty_set()) << "\n";
-    std::cout << ::tpy::__len__(::tpyapp::main::empty_str_set()) << "\n";
-    std::cout << ::tpy::__len__(::tpyapp::main::empty_record_dict()) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::empty_list()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(::tpyapp::main::empty_dict()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(::tpyapp::main::empty_set()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(::tpyapp::main::empty_str_set()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(::tpyapp::main::empty_record_dict()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

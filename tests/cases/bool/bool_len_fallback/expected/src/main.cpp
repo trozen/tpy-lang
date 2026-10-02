@@ -24,16 +24,16 @@ namespace tpyapp::main {
 void main() {
     Stack s1 = Stack(3);
     Stack s2 = Stack(0);
-    std::cout << ::tpy::print_bool((::tpy::__len__(s1) != 0)) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::__len__(s2) != 0)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__len__(s1) != 0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::__len__(s2) != 0)) << "\n" << ::tpy::check_signals;
     if ((::tpy::__len__(s1) != 0)) {
-        std::cout << "s1 truthy" << "\n";
+        std::cout << "s1 truthy" << "\n" << ::tpy::check_signals;
     }
     if ((::tpy::__len__(s2) != 0)) {
-        std::cout << "s2 truthy" << "\n";
+        std::cout << "s2 truthy" << "\n" << ::tpy::check_signals;
     }
     if ((!((::tpy::__len__(s2) != 0)))) {
-        std::cout << "s2 falsy" << "\n";
+        std::cout << "s2 falsy" << "\n" << ::tpy::check_signals;
     }
 }
 

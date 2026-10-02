@@ -10,9 +10,9 @@ namespace tpyapp::main {
 //         # Narrowing silences the warning and elides the runtime check.
 //         print(c.LIMIT)  # tpyc: ok
 void use(const C* c) {
-    std::cout << ({ ::tpy::deref_check(c); C::LIMIT; }) << "\n";
+    std::cout << ({ ::tpy::deref_check(c); C::LIMIT; }) << "\n" << ::tpy::check_signals;
     if ((c != nullptr)) {
-        std::cout << C::LIMIT << "\n";
+        std::cout << C::LIMIT << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -26,7 +26,7 @@ void use(const C* c) {
 void main() {
     C __slot_1 = C();
     C* c = &__slot_1;
-    std::cout << C::LIMIT << "\n";
+    std::cout << C::LIMIT << "\n" << ::tpy::check_signals;
     C __tmp_1 = C();
     ::tpyapp::main::use(&(__tmp_1));
 }

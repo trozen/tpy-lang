@@ -52,23 +52,23 @@ void main() {
     std::vector<::tpy::BigInt> xs = {10, 20, 30};
     {
         try {
-            std::cout << ::tpy::__getitem__(xs, 5) << "\n";
+            std::cout << ::tpy::__getitem__(xs, 5) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::IndexError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::__setitem__(xs, 5, ::tpy::BigInt(99));
         } catch (const ::tpy::IndexError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::__delitem__(xs, 5);
         } catch (const ::tpy::IndexError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<::tpy::BigInt> empty = std::vector<::tpy::BigInt>{};
@@ -76,7 +76,7 @@ void main() {
         try {
             ::tpy::pop_back(empty);
         } catch (const ::tpy::IndexError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::BytesView{});
@@ -84,7 +84,7 @@ void main() {
         try {
             ::tpy::bytearray_pop(ba);
         } catch (const ::tpy::IndexError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::ByteArray ba2 = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
@@ -92,14 +92,14 @@ void main() {
         try {
             ::tpy::bytearray_pop_at(ba2, 99);
         } catch (const ::tpy::IndexError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpy::__getitem__(xs, -99) << "\n";
+            std::cout << ::tpy::__getitem__(xs, -99) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::IndexError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

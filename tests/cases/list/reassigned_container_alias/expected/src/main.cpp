@@ -14,7 +14,7 @@ void params(std::vector<int32_t>& a, std::vector<int32_t>& b) {
     std::vector<int32_t>* x = &(a);
     x = &(b);
     x->push_back(9);
-    std::cout << "param" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << " " << ::tpy::__len__((*x)) << "\n";
+    std::cout << "param" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << " " << ::tpy::__len__((*x)) << "\n" << ::tpy::check_signals;
 }
 
 // # free function, local-name source
@@ -31,7 +31,7 @@ void locals_() {
     std::vector<int32_t>* x = &(a);
     x = &(b);
     x->push_back(9);
-    std::cout << "local" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << " " << ::tpy::__len__((*x)) << "\n";
+    std::cout << "local" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << " " << ::tpy::__len__((*x)) << "\n" << ::tpy::check_signals;
 }
 
 // # free function, element source (the rebound element borrow)
@@ -44,7 +44,7 @@ void elements(std::vector<std::vector<int32_t>>& rows) {
     std::vector<int32_t>* x = &(::tpy::__getitem__(rows, 0));
     x = &(::tpy::__getitem__(rows, 1));
     x->push_back(9);
-    std::cout << "elem" << " " << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(rows, 1)) << "\n";
+    std::cout << "elem" << " " << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(rows, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // # inside an if arm: the branch flavor of the same decl
@@ -59,7 +59,7 @@ void branch(std::vector<int32_t>& a, std::vector<int32_t>& b, bool go) {
         std::vector<int32_t>* x = &(a);
         x = &(b);
         x->push_back(9);
-        std::cout << "branch" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << "\n";
+        std::cout << "branch" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -73,7 +73,7 @@ void dicts(::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::
     ::tpy::ordered_map<std::string, int32_t>* x = &(a);
     x = &(b);
     ::tpy::__setitem__((*x), "z", 9);
-    std::cout << "dict" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << "\n";
+    std::cout << "dict" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // # a set pointee
@@ -86,7 +86,7 @@ void sets(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b) {
     ::tpy::ordered_set<int32_t>* x = &(a);
     x = &(b);
     x->insert(9);
-    std::cout << "set" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << "\n";
+    std::cout << "set" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // # a list-of-records pointee: the element is a reference type too
@@ -99,7 +99,7 @@ void records(std::vector<Node>& a, std::vector<Node>& b) {
     std::vector<Node>* x = &(a);
     x = &(b);
     x->push_back(Node(9));
-    std::cout << "records" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << " " << ::tpy::__getitem__(b, 1).n << "\n";
+    std::cout << "records" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << " " << ::tpy::__getitem__(b, 1).n << "\n" << ::tpy::check_signals;
 }
 
 // # a bytearray pointee: the same reseatable `::tpy::ByteArray*`, in the branch
@@ -116,7 +116,7 @@ void bytearrays(::tpy::ByteArray& a, ::tpy::ByteArray& b, bool go) {
         x = &(b);
     }
     x->push_back(122);
-    std::cout << "bytearray" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << " " << ::tpy::__len__((*x)) << "\n";
+    std::cout << "bytearray" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << " " << ::tpy::__len__((*x)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

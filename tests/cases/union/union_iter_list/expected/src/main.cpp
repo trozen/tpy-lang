@@ -20,11 +20,11 @@ void main() {
         const auto& p = *__beg_0;
         if (std::holds_alternative<Dog>(p)) {
             auto& __p = std::get<Dog>(p);
-            std::cout << __p.name << "\n";
+            std::cout << __p.name << "\n" << ::tpy::check_signals;
         }
         if (std::holds_alternative<Cat>(p)) {
             auto& __p = std::get<Cat>(p);
-            std::cout << __p.name << "\n";
+            std::cout << __p.name << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     A a = A(42);
     Holder h = Holder(a);
-    std::cout << ::tpy::deref_check(h._a).v << "\n";
+    std::cout << ::tpy::deref_check(h._a).v << "\n" << ::tpy::check_signals;
 }
 
 // main()

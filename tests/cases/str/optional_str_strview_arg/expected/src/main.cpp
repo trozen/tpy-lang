@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def takes_str(s: str) -> None:
 //     print(s)
 void takes_str(std::string_view s) {
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def takes_str_opt(s: str | None) -> None:
@@ -17,9 +17,9 @@ void takes_str(std::string_view s) {
 //         print(s)
 void takes_str_opt(std::optional<std::string_view> s) {
     if ((!s.has_value())) {
-        std::cout << "(none)" << "\n";
+        std::cout << "(none)" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << ::tpy::print_optional_val(s) << "\n";
+        std::cout << ::tpy::print_optional_val(s) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -30,9 +30,9 @@ void takes_str_opt(std::optional<std::string_view> s) {
 //         print(s)
 void takes_strview_opt(std::optional<std::string_view> s) {
     if ((!s.has_value())) {
-        std::cout << "(none)" << "\n";
+        std::cout << "(none)" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << ::tpy::print_optional_val(s) << "\n";
+        std::cout << ::tpy::print_optional_val(s) << "\n" << ::tpy::check_signals;
     }
 }
 

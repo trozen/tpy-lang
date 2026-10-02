@@ -48,10 +48,10 @@ void main() {
     std::optional<int32_t> a = ::tpy::__getitem__(xs, 0);
     std::optional<int32_t> b = ::tpy::__getitem__(xs, 1);
     if (((a.has_value()) && (b.has_value()))) {
-        std::cout << (::tpy::add_check<int32_t>((*a), (*b))) << "\n";
+        std::cout << (::tpy::add_check<int32_t>((*a), (*b))) << "\n" << ::tpy::check_signals;
     }
     ::tpy::__setitem__(xs, 1, std::nullopt);
-    std::cout << ::tpy::print_bool((!::tpy::__getitem__(xs, 1).has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!::tpy::__getitem__(xs, 1).has_value())) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<Node>> nodes = {Node(1), Node(2)};
     ::tpy::__setitem__(nodes, 1, std::nullopt);
     Node* kept = ::tpy::optional_to_ptr(::tpy::__getitem__(nodes, 0));
@@ -60,18 +60,18 @@ void main() {
     }
     Node* head = ::tpy::optional_to_ptr(::tpy::__getitem__(nodes, 0));
     if ((head != nullptr)) {
-        std::cout << head->n << " " << ::tpy::print_bool((!::tpy::__getitem__(nodes, 1).has_value())) << "\n";
+        std::cout << head->n << " " << ::tpy::print_bool((!::tpy::__getitem__(nodes, 1).has_value())) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d = ::tpy::ordered_map<std::string, std::optional<int32_t>>();
     ::tpy::__setitem__(d, "a", 5);
     ::tpy::__setitem__(d, "b", std::nullopt);
     std::optional<int32_t> got = ::tpy::__getitem__(d, "a");
     if ((got.has_value())) {
-        std::cout << (::tpy::add_check<int32_t>((*got), 1)) << " " << ::tpy::print_bool((!::tpy::__getitem__(d, "b").has_value())) << "\n";
+        std::cout << (::tpy::add_check<int32_t>((*got), 1)) << " " << ::tpy::print_bool((!::tpy::__getitem__(d, "b").has_value())) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, std::optional<Node>> recs = ::tpy::ordered_map<std::string, std::optional<Node>>();
     ::tpy::__setitem__(recs, "r", std::nullopt);
-    std::cout << ::tpy::print_bool((!::tpy::__getitem__(recs, "r").has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!::tpy::__getitem__(recs, "r").has_value())) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -61,31 +61,31 @@ void __tpy_init() {
 
     a = 10;
     b = 20;
-    std::cout << ::std::min<int32_t>(a, b) << "\n";
-    std::cout << ::std::max<int32_t>(a, b) << "\n";
-    std::cout << ::std::min<int32_t>(b, a) << "\n";
-    std::cout << ::std::max<int32_t>(b, a) << "\n";
+    std::cout << ::std::min<int32_t>(a, b) << "\n" << ::tpy::check_signals;
+    std::cout << ::std::max<int32_t>(a, b) << "\n" << ::tpy::check_signals;
+    std::cout << ::std::min<int32_t>(b, a) << "\n" << ::tpy::check_signals;
+    std::cout << ::std::max<int32_t>(b, a) << "\n" << ::tpy::check_signals;
     x = 100;
     y = -50;
-    std::cout << ::std::min<int32_t>(x, y) << "\n";
-    std::cout << ::std::max<int32_t>(x, y) << "\n";
+    std::cout << ::std::min<int32_t>(x, y) << "\n" << ::tpy::check_signals;
+    std::cout << ::std::max<int32_t>(x, y) << "\n" << ::tpy::check_signals;
     big1 = ::tpy::BigInt(-1000000);
     big2 = ::tpy::BigInt(1000000);
-    std::cout << ::std::min(big1, big2) << "\n";
-    std::cout << ::std::max(big1, big2) << "\n";
+    std::cout << ::std::min(big1, big2) << "\n" << ::tpy::check_signals;
+    std::cout << ::std::max(big1, big2) << "\n" << ::tpy::check_signals;
     f1 = 3.14;
     f2 = 2.71;
-    std::cout << ::tpy::print_float(::std::fmin(f1, f2)) << "\n";
-    std::cout << ::tpy::print_float(::std::fmax(f1, f2)) << "\n";
+    std::cout << ::tpy::print_float(::std::fmin(f1, f2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::std::fmax(f1, f2)) << "\n" << ::tpy::check_signals;
     c = 5;
-    std::cout << ::tpy::min3<int32_t>(a, b, c) << "\n";
-    std::cout << ::tpy::max3<int32_t>(a, b, c) << "\n";
+    std::cout << ::tpy::min3<int32_t>(a, b, c) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::max3<int32_t>(a, b, c) << "\n" << ::tpy::check_signals;
     z = 200;
-    std::cout << ::tpy::min3<int32_t>(x, y, z) << "\n";
-    std::cout << ::tpy::max3<int32_t>(x, y, z) << "\n";
+    std::cout << ::tpy::min3<int32_t>(x, y, z) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::max3<int32_t>(x, y, z) << "\n" << ::tpy::check_signals;
     f3 = 1.0;
-    std::cout << ::tpy::print_float(std::fmin(std::fmin(f1, f2), f3)) << "\n";
-    std::cout << ::tpy::print_float(std::fmax(std::fmax(f1, f2), f3)) << "\n";
+    std::cout << ::tpy::print_float(std::fmin(std::fmin(f1, f2), f3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(std::fmax(std::fmax(f1, f2), f3)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

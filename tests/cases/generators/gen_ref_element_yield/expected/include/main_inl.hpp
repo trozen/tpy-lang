@@ -136,7 +136,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
     case S_RESUME_1:  // after: yield s
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            std::cout << "framelocal-inner" << " " << ::tpy::__len__(::tpy::__getitem__((*own), 0)) << " " << ::tpy::__len__(::tpy::__getitem__((*own), 1)) << "\n";
+            std::cout << "framelocal-inner" << " " << ::tpy::__len__(::tpy::__getitem__((*own), 0)) << " " << ::tpy::__len__(::tpy::__getitem__((*own), 1)) << "\n" << ::tpy::check_signals;
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
@@ -198,7 +198,7 @@ inline std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_te
         return ((flag) ? ((*p)) : ((*q)));
     }
     case S_RESUME_1: {  // after: yield p if flag else q
-        std::cout << "ternary-inner" << " " << (*p).v << " " << (*q).v << "\n";
+        std::cout << "ternary-inner" << " " << (*p).v << " " << (*q).v << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

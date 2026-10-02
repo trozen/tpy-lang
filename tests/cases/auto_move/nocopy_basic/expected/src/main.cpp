@@ -17,7 +17,7 @@ int32_t close(Handle&& h) {
 void main() {
     Handle h = Handle();
     h.fd = 42;
-    std::cout << ::tpyapp::main::close(std::move(h)) << "\n";
+    std::cout << ::tpyapp::main::close(std::move(h)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

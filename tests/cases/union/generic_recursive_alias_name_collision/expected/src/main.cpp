@@ -16,8 +16,8 @@ namespace tpyapp::main {
 void main() {
     Tree<::tpy::BigInt> mine = std::vector<Tree<::tpy::BigInt>>{1, std::vector<Tree<::tpy::BigInt>>{2, 3}, 4, std::vector<Tree<::tpy::BigInt>>{5, std::vector<Tree<::tpy::BigInt>>{6, 7}}};
     ::tpyapp::treelib::Tree<::tpy::BigInt> theirs = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{10, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{20, 30}};
-    std::cout << ::tpyapp::main::local_count<::tpy::BigInt>(mine) << "\n";
-    std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(theirs) << "\n";
+    std::cout << ::tpyapp::main::local_count<::tpy::BigInt>(mine) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(theirs) << "\n" << ::tpy::check_signals;
 }
 
 // # Collision guard: this module defines its OWN `type Tree[T]` AND uses

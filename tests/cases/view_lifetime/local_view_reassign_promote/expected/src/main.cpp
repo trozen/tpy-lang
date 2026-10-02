@@ -30,9 +30,9 @@ void main() {
     std::string b = ::tpyapp::main::make();
     std::string v = a;
     a += " appended text that forces a's buffer to reallocate somewhere new";
-    std::cout << ::tpy::__len__(v) << "\n";
+    std::cout << ::tpy::__len__(v) << "\n" << ::tpy::check_signals;
     v = b;
-    std::cout << ::tpy::__len__(v) << "\n";
+    std::cout << ::tpy::__len__(v) << "\n" << ::tpy::check_signals;
 }
 
 // main()

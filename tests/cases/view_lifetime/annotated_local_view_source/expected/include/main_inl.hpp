@@ -14,7 +14,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_frame::__nex
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         label = sv;
-        std::cout << label << "\n";
+        std::cout << label << "\n" << ::tpy::check_signals;
         __state = S_RESUME_0;
         return ::tpy::BigInt(::tpy::__len__(label));
     }

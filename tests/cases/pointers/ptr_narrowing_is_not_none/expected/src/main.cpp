@@ -50,7 +50,7 @@ int32_t test_assert(Point* p) {
 //         break
 void test_while(Point* p) {
     while ((p != nullptr)) {
-        std::cout << p->x << "\n";
+        std::cout << p->x << "\n" << ::tpy::check_signals;
         break;
     }
 }
@@ -63,7 +63,7 @@ void test_while(Point* p) {
 //         break
 void test_while_reassign(Point* p) {
     while ((p != nullptr)) {
-        std::cout << p->x << "\n";
+        std::cout << p->x << "\n" << ::tpy::check_signals;
         p = ::tpyapp::main::get_ptr(p);
         break;
     }
@@ -107,13 +107,13 @@ void main() {
     Point pt = Point(10, 20);
     Point* p = &pt;
     const Point* cp = &pt;
-    std::cout << ::tpyapp::main::test_if_not_none(p) << "\n";
-    std::cout << ::tpyapp::main::test_is_none_early_return(p) << "\n";
-    std::cout << ::tpyapp::main::test_assert(p) << "\n";
+    std::cout << ::tpyapp::main::test_if_not_none(p) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_is_none_early_return(p) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_assert(p) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_while(p);
     ::tpyapp::main::test_while_reassign(p);
-    std::cout << ::tpyapp::main::test_readonly_ptr(cp) << "\n";
-    std::cout << ::tpyapp::main::test_merge_no_guarantee(p) << "\n";
+    std::cout << ::tpyapp::main::test_readonly_ptr(cp) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_merge_no_guarantee(p) << "\n" << ::tpy::check_signals;
 }
 
 // main()

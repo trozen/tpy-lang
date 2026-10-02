@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(p.__deref__())
 void main() {
     int32_t* p = static_cast<int32_t*>(nullptr);
-    std::cout << ::tpy::deref_check(p) << "\n";
+    std::cout << ::tpy::deref_check(p) << "\n" << ::tpy::check_signals;
 }
 
 // main()

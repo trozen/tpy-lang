@@ -94,14 +94,14 @@ std::optional<Box> move_owned_optional_out_return(bool c) {
 //     print(move_owned_optional_into_ctor_arg())
 //     print(alias_then_rebind())
 void main() {
-    std::cout << ::tpyapp::main::move_owned_optional_into_field() << "\n";
+    std::cout << ::tpyapp::main::move_owned_optional_into_field() << "\n" << ::tpy::check_signals;
     std::optional<Box> r = ::tpyapp::main::move_owned_optional_out_return(true);
     if ((r.has_value())) {
-        std::cout << (*r).v << "\n";
+        std::cout << (*r).v << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::print_bool((!::tpyapp::main::move_owned_optional_out_return(false).has_value())) << "\n";
-    std::cout << ::tpyapp::main::move_owned_optional_into_ctor_arg() << "\n";
-    std::cout << ::tpyapp::main::alias_then_rebind() << "\n";
+    std::cout << ::tpy::print_bool((!::tpyapp::main::move_owned_optional_out_return(false).has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::move_owned_optional_into_ctor_arg() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::alias_then_rebind() << "\n" << ::tpy::check_signals;
 }
 
 // main()

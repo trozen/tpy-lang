@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print(d.items())
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    std::cout << ::tpy::dict_keys(d) << "\n";
-    std::cout << ::tpy::dict_values(d) << "\n";
-    std::cout << ::tpy::dict_items(d) << "\n";
+    std::cout << ::tpy::dict_keys(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::dict_values(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::dict_items(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

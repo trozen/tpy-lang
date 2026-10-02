@@ -34,7 +34,7 @@ namespace tpyapp::main {
 void main() {
     Holder __tmp_1 = Holder(Inner(::tpy::BigInt(1)), ::tpy::BigInt(3));
     Holder __tmp_2 = Holder(Inner(::tpy::BigInt(2)), ::tpy::BigInt(7));
-    std::cout << ::tpyapp::main::keeps_alias(__tmp_1, __tmp_2) << "\n";
+    std::cout << ::tpyapp::main::keeps_alias(__tmp_1, __tmp_2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

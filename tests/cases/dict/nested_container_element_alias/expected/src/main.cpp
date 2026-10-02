@@ -26,8 +26,8 @@ void push(std::vector<int32_t>& xs, int32_t v) {
 //     g["a"].append(4)
 //     return len(g["a"]) + len(m[1])
 int32_t read_elements(::tpy::ordered_map<std::string, std::vector<int32_t>>& g, const std::vector<std::vector<int32_t>>& m) {
-    std::cout << ::tpy::__len__(::tpy::__getitem__(g, "a")) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(g, "a")) << "\n";
+    std::cout << ::tpy::__len__(::tpy::__getitem__(g, "a")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(g, "a")) << "\n" << ::tpy::check_signals;
     std::vector<int32_t>& row = ::tpy::__getitem__(g, "a");
     row.push_back(99);
     ::tpy::__getitem__(g, "a").push_back(4);
@@ -53,14 +53,14 @@ int32_t read_elements(::tpy::ordered_map<std::string, std::vector<int32_t>>& g, 
 //         total += v
 //     return total
 int32_t deep_sinks(std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i, int32_t j) {
-    std::cout << "deep len" << " " << ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(cube, i), j)) << "\n";
-    std::cout << "deep cmp" << " " << ::tpy::print_bool((::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(cube, i), j)) > 0)) << "\n";
+    std::cout << "deep len" << " " << ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(cube, i), j)) << "\n" << ::tpy::check_signals;
+    std::cout << "deep cmp" << " " << ::tpy::print_bool((::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(cube, i), j)) > 0)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::push(::tpy::__getitem__(::tpy::__getitem__(cube, i), j), 2);
     ::tpy::__getitem__(::tpy::__getitem__(cube, i), j).push_back(3);
     std::vector<int32_t>& row = ::tpy::__getitem__(::tpy::__getitem__(cube, i), j);
     row.push_back(4);
     ::tpy::__setitem__(::tpy::__getitem__(::tpy::__getitem__(cube, i), j), 0, 9);
-    std::cout << "deep sub" << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(cube, i), j), 0) << "\n";
+    std::cout << "deep sub" << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(cube, i), j), 0) << "\n" << ::tpy::check_signals;
     int32_t total = 0;
     auto& __obj_0 = row;
     auto __beg_0 = __obj_0.begin();
@@ -150,10 +150,10 @@ int32_t deep_control(std::vector<std::vector<std::vector<int32_t>>>& cube, int32
         try {
             ::tpy::__getitem__(::tpy::__getitem__(cube, i), i).push_back(1);
         } catch (...) {
-            std::cout << "deep finally" << " " << ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(cube, i), i)) << "\n";
+            std::cout << "deep finally" << " " << ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(cube, i), i)) << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "deep finally" << " " << ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(cube, i), i)) << "\n";
+        std::cout << "deep finally" << " " << ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(cube, i), i)) << "\n" << ::tpy::check_signals;
     }
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
@@ -281,7 +281,7 @@ __coro_deep_async deep_async(std::vector<std::vector<std::vector<int32_t>>>& cub
 //     n_async = asyncio.run(deep_async(ac, 0))
 //     print("deep async", n_async, ac[0][0])
 void main() {
-    std::cout << "module cube" << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__((*MODULE_CUBE), 0), 0)) << "\n";
+    std::cout << "module cube" << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__((*MODULE_CUBE), 0), 0)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> a = {1, 2};
     std::vector<int32_t> b = {3};
     ::tpy::ordered_map<std::string, std::vector<int32_t>> g = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
@@ -290,9 +290,9 @@ void main() {
     std::vector<int32_t> r0 = {1};
     std::vector<int32_t> r1 = {2, 3};
     std::vector<std::vector<int32_t>> m = ::tpy::make_vector<std::vector<int32_t>>(std::move(r0), std::move(r1));
-    std::cout << ::tpyapp::main::read_elements(g, m) << "\n";
+    std::cout << ::tpyapp::main::read_elements(g, m) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::push(::tpy::__getitem__(g, "b"), 7);
-    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(g, "b")) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(g, "b")) << "\n" << ::tpy::check_signals;
     int32_t total = 0;
     auto& __obj_0 = ::tpy::__getitem__(g, "a");
     auto __beg_0 = __obj_0.begin();
@@ -301,33 +301,33 @@ void main() {
         int32_t v = *__beg_0;
         total = ::tpy::add_check<int32_t>(total, v);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(m, 1).push_back(4);
-    std::cout << ::tpy::__len__(::tpy::__getitem__(m, 1)) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(m, 1)) << "\n";
+    std::cout << ::tpy::__len__(::tpy::__getitem__(m, 1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(m, 1)) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<std::vector<int32_t>>> cube = {{{1}}};
     int32_t n_free = ::tpyapp::main::deep_sinks(cube, 0, 0);
-    std::cout << "deep free" << " " << n_free << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(cube, 0), 0)) << "\n";
+    std::cout << "deep free" << " " << n_free << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(cube, 0), 0)) << "\n" << ::tpy::check_signals;
     Grid grid = Grid();
     int32_t n_method = grid.fill(0, 0);
-    std::cout << "deep method" << " " << n_method << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(grid.cells, 0), 0)) << "\n";
+    std::cout << "deep method" << " " << n_method << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(grid.cells, 0), 0)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::vector<std::vector<int32_t>>> dg = ::tpy::ordered_map<std::string, std::vector<std::vector<int32_t>>>();
     ::tpy::__setitem__(dg, "a", std::vector<std::vector<int32_t>>{{1}});
     int32_t n_outer = ::tpyapp::main::deep_dict_outer(dg, "a");
-    std::cout << "deep dict outer" << " " << n_outer << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(dg, "a"), 0)) << "\n";
+    std::cout << "deep dict outer" << " " << n_outer << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(dg, "a"), 0)) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::ordered_map<std::string, std::vector<int32_t>>> di = std::vector<::tpy::ordered_map<std::string, std::vector<int32_t>>>{};
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d0 = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     ::tpy::__setitem__(d0, "a", std::vector<int32_t>{1});
     di.push_back(std::move(d0));
     int32_t n_inner = ::tpyapp::main::deep_dict_inner(di, "a");
-    std::cout << "deep dict inner" << " " << n_inner << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(di, 0), "a")) << "\n";
-    std::cout << "deep readonly" << " " << ::tpyapp::main::deep_readonly(cube, 0) << "\n";
+    std::cout << "deep dict inner" << " " << n_inner << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(di, 0), "a")) << "\n" << ::tpy::check_signals;
+    std::cout << "deep readonly" << " " << ::tpyapp::main::deep_readonly(cube, 0) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<std::vector<std::vector<int32_t>>>> hyper = {{{{1}}}};
     int32_t n_loop = ::tpyapp::main::deep_loop_root(hyper);
-    std::cout << "deep loop root" << " " << n_loop << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(hyper, 0), 0), 0)) << "\n";
+    std::cout << "deep loop root" << " " << n_loop << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(hyper, 0), 0), 0)) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<std::vector<int32_t>>> ctl = {{{1}}};
     int32_t n_ctl = ::tpyapp::main::deep_control(ctl, 0, 0);
-    std::cout << "deep control" << " " << n_ctl << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(ctl, 0), 0)) << "\n";
+    std::cout << "deep control" << " " << n_ctl << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(ctl, 0), 0)) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<std::vector<int32_t>>> gc = {{{1}}};
     {
         auto __src_1 = ::tpyapp::main::deep_gen(gc, 0);
@@ -336,13 +336,13 @@ void main() {
             auto __r_2 = __itr_1.__next__();
             if (!__r_2.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_2);
-            std::cout << "deep gen" << " " << v << "\n";
+            std::cout << "deep gen" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "deep gen after" << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(gc, 0), 0)) << "\n";
+    std::cout << "deep gen after" << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(gc, 0), 0)) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<std::vector<int32_t>>> ac = {{{1}}};
     int32_t n_async = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::deep_async(ac, 0)));
-    std::cout << "deep async" << " " << n_async << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(ac, 0), 0)) << "\n";
+    std::cout << "deep async" << " " << n_async << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(ac, 0), 0)) << "\n" << ::tpy::check_signals;
 }
 
 // import asyncio

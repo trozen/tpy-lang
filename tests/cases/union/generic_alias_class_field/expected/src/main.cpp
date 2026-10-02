@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(h.pair)
 void main() {
     Holder h = Holder();
-    std::cout << h.label << "\n";
-    std::cout << ::tpy::TuplePrinter(h.pair) << "\n";
+    std::cout << h.label << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(h.pair) << "\n" << ::tpy::check_signals;
 }
 
 // main()

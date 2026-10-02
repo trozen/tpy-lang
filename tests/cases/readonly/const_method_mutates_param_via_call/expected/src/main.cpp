@@ -31,16 +31,16 @@ void main() {
     Renderer r = Renderer();
     Sink s1 = Sink();
     r.via_call(s1);
-    std::cout << s1.buf << "\n";
+    std::cout << s1.buf << "\n" << ::tpy::check_signals;
     Sink s2 = Sink();
     r.via_method(s2);
-    std::cout << s2.buf << "\n";
+    std::cout << s2.buf << "\n" << ::tpy::check_signals;
     Sink src = Sink();
     src.push("src=");
     Sink dst = Sink();
     r.only_second(src, dst);
-    std::cout << dst.buf << "\n";
-    std::cout << src.buf << "\n";
+    std::cout << dst.buf << "\n" << ::tpy::check_signals;
+    std::cout << src.buf << "\n" << ::tpy::check_signals;
 }
 
 // main()

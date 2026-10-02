@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(s[int32(1)])
 void read_vec(const Vec<int32_t>& v) {
     std::span<const int32_t> s = v.data();
-    std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    std::cout << ::tpy::__getitem__(s, 1) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(s, 1) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -26,7 +26,7 @@ void main() {
     v.push(10);
     v.push(20);
     std::span<int32_t> s = v.data();
-    std::cout << ::tpy::__getitem__(s, 0) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_vec(v);
 }
 

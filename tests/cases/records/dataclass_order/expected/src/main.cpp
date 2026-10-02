@@ -25,15 +25,15 @@ void main() {
     Point a = Point(1, 2);
     Point b = Point(3, 4);
     Point c = Point(1, 3);
-    std::cout << ::tpy::print_bool(((a) < (b))) << "\n";
-    std::cout << ::tpy::print_bool(((b) < (a))) << "\n";
-    std::cout << ::tpy::print_bool(((a) < (c))) << "\n";
-    std::cout << ::tpy::print_bool(((a) <= (Point(1, 2)))) << "\n";
-    std::cout << ::tpy::print_bool(((a) >= (a))) << "\n";
-    std::cout << ::tpy::print_bool(((b) > (a))) << "\n";
-    std::cout << ::tpy::print_bool(((a) > (c))) << "\n";
-    std::cout << ::tpy::print_bool(((a) == (Point(1, 2)))) << "\n";
-    std::cout << ::tpy::print_bool((a != b)) << "\n";
+    std::cout << ::tpy::print_bool(((a) < (b))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((b) < (a))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) < (c))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) <= (Point(1, 2)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) >= (a))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((b) > (a))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) > (c))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) == (Point(1, 2)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a != b)) << "\n" << ::tpy::check_signals;
 }
 
 // # @dataclass(order=True) generates comparison operators via operator<=>

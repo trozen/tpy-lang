@@ -19,10 +19,10 @@ namespace tpyapp::main {
 //     print(asdict(g))
 void main() {
     Person p = Person("Alice", 30);
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>({{"name", p.name}, {"age", p.age}}))) << "\n";
-    std::cout << ::tpy::TuplePrinter(std::tuple<std::string, int32_t>{p.name, p.age}) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>({{"name", p.name}, {"age", p.age}}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(std::tuple<std::string, int32_t>{p.name, p.age}) << "\n" << ::tpy::check_signals;
     NamedPoint np = NamedPoint("origin", Point(0, 0));
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", np.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", np.pos.x}, {"y", np.pos.y}})}}))) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", np.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", np.pos.x}, {"y", np.pos.y}})}}))) << "\n" << ::tpy::check_signals;
     Group g = Group("pts", {Point(1, 2), Point(3, 4)});
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>({{"label", g.label}, {"members", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
@@ -35,7 +35,7 @@ void main() {
             __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_1.x}, {"y", __macro_1.y}}));
         }
         std::move(__result);
-    })}}))) << "\n";
+    })}}))) << "\n" << ::tpy::check_signals;
 }
 
 // # Test asdict()/astuple() with mixed types, nested dataclass, and list recursion

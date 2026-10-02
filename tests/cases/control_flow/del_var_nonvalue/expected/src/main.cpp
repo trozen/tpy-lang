@@ -21,14 +21,14 @@ void main() {
     std::optional<std::vector<::tpy::BigInt>> __slot_2;
     std::vector<::tpy::BigInt> __slot_1 = {1, 2, 3};
     std::vector<::tpy::BigInt>* items = &__slot_1;
-    std::cout << ::tpy::__len__((*items)) << "\n";
+    std::cout << ::tpy::__len__((*items)) << "\n" << ::tpy::check_signals;
     { auto __del_sink = std::move(*items); }
     items = &*(__slot_2 = {4, 5});
-    std::cout << ::tpy::__len__((*items)) << "\n";
+    std::cout << ::tpy::__len__((*items)) << "\n" << ::tpy::check_signals;
     std::string_view s = "hello";
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
     s = "world";
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -15,9 +15,9 @@ void test_binary() {
     Acc a = Acc(3);
     Acc b = Acc(1);
     const Acc& c = ((a) + (b));
-    std::cout << c.n << "\n";
+    std::cout << c.n << "\n" << ::tpy::check_signals;
     a.n = 21;
-    std::cout << c.n << "\n";
+    std::cout << c.n << "\n" << ::tpy::check_signals;
 }
 
 // def test_unary():
@@ -29,7 +29,7 @@ void test_unary() {
     Acc a = Acc(2);
     const Acc& c = -(a);
     a.n = 5;
-    std::cout << c.n << "\n";
+    std::cout << c.n << "\n" << ::tpy::check_signals;
 }
 
 // def main():

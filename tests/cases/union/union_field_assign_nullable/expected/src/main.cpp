@@ -54,7 +54,7 @@ void main() {
     if ((!std::holds_alternative<std::monostate>(p))) {
         if (std::holds_alternative<Cat*>(p)) {
             auto& __p = *std::get<Cat*>(p);
-            std::cout << __p.name << "\n";
+            std::cout << __p.name << "\n" << ::tpy::check_signals;
         }
     }
     s.pet = ::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(::tpyapp::main::identity(new_pet));
@@ -62,13 +62,13 @@ void main() {
     if ((!std::holds_alternative<std::monostate>(p2))) {
         if (std::holds_alternative<Cat*>(p2)) {
             auto& __p2 = *std::get<Cat*>(p2);
-            std::cout << __p2.name << "\n";
+            std::cout << __p2.name << "\n" << ::tpy::check_signals;
         }
     }
     s.pet = std::monostate{};
     ::tpy::Union<std::monostate, Cat*, Dog*> p3 = ::tpy::to_ptr_variant(s.pet);
     if ((std::holds_alternative<std::monostate>(p3))) {
-        std::cout << "cleared" << "\n";
+        std::cout << "cleared" << "\n" << ::tpy::check_signals;
     }
     ::tpy::Union<std::monostate, Cat, Dog> __slot_2 = Dog("Buddy");
     ::tpy::Union<std::monostate, Cat*, Dog*> another = ::tpy::to_ptr_variant(__slot_2);
@@ -77,7 +77,7 @@ void main() {
     if ((!std::holds_alternative<std::monostate>(p4))) {
         if (std::holds_alternative<Dog*>(p4)) {
             auto& __p4 = *std::get<Dog*>(p4);
-            std::cout << __p4.name << "\n";
+            std::cout << __p4.name << "\n" << ::tpy::check_signals;
         }
     }
 }

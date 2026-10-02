@@ -141,33 +141,33 @@ Flag* observe(Counter& cnt, Flag& f) {
 void main() {
     Flag __tmp_1 = Flag(false);
     Flag __tmp_2 = Flag(true);
-    std::cout << ::tpyapp::main::if_test(nullptr) << " " << ::tpyapp::main::if_test(&(__tmp_1)) << " " << ::tpyapp::main::if_test(&(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::if_test(nullptr) << " " << ::tpyapp::main::if_test(&(__tmp_1)) << " " << ::tpyapp::main::if_test(&(__tmp_2)) << "\n" << ::tpy::check_signals;
     Flag __tmp_3 = Flag(false);
     Flag __tmp_4 = Flag(true);
-    std::cout << ::tpyapp::main::not_test(nullptr) << " " << ::tpyapp::main::not_test(&(__tmp_3)) << " " << ::tpyapp::main::not_test(&(__tmp_4)) << "\n";
+    std::cout << ::tpyapp::main::not_test(nullptr) << " " << ::tpyapp::main::not_test(&(__tmp_3)) << " " << ::tpyapp::main::not_test(&(__tmp_4)) << "\n" << ::tpy::check_signals;
     Flag __tmp_5 = Flag(false);
     Flag __tmp_6 = Flag(true);
     Flag __tmp_7 = Flag(true);
     Flag __tmp_8 = Flag(true);
     Flag __tmp_9 = Flag(true);
-    std::cout << ::tpyapp::main::and_test(&(__tmp_5), &(__tmp_6)) << " " << ::tpyapp::main::and_test(&(__tmp_7), &(__tmp_8)) << " " << ::tpyapp::main::and_test(nullptr, &(__tmp_9)) << "\n";
+    std::cout << ::tpyapp::main::and_test(&(__tmp_5), &(__tmp_6)) << " " << ::tpyapp::main::and_test(&(__tmp_7), &(__tmp_8)) << " " << ::tpyapp::main::and_test(nullptr, &(__tmp_9)) << "\n" << ::tpy::check_signals;
     Flag __tmp_10 = Flag(false);
     Flag __tmp_11 = Flag(true);
-    std::cout << ::tpyapp::main::while_test(nullptr) << " " << ::tpyapp::main::while_test(&(__tmp_10)) << " " << ::tpyapp::main::while_test(&(__tmp_11)) << "\n";
+    std::cout << ::tpyapp::main::while_test(nullptr) << " " << ::tpyapp::main::while_test(&(__tmp_10)) << " " << ::tpyapp::main::while_test(&(__tmp_11)) << "\n" << ::tpy::check_signals;
     Bag __tmp_12 = Bag(::tpy::BigInt(0));
     Bag __tmp_13 = Bag(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::len_test(nullptr) << " " << ::tpyapp::main::len_test(&(__tmp_12)) << " " << ::tpyapp::main::len_test(&(__tmp_13)) << "\n";
+    std::cout << ::tpyapp::main::len_test(nullptr) << " " << ::tpyapp::main::len_test(&(__tmp_12)) << " " << ::tpyapp::main::len_test(&(__tmp_13)) << "\n" << ::tpy::check_signals;
     Flag __tmp_14 = Flag(false);
     Flag __tmp_15 = Flag(true);
-    std::cout << ::tpyapp::main::call_test(__tmp_14) << " " << ::tpyapp::main::call_test(__tmp_15) << "\n";
-    std::cout << ::tpyapp::main::str_test(std::nullopt) << " " << ::tpyapp::main::str_test("") << " " << ::tpyapp::main::str_test("x") << "\n";
+    std::cout << ::tpyapp::main::call_test(__tmp_14) << " " << ::tpyapp::main::call_test(__tmp_15) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::str_test(std::nullopt) << " " << ::tpyapp::main::str_test("") << " " << ::tpyapp::main::str_test("x") << "\n" << ::tpy::check_signals;
     Holder __tmp_16 = Holder(nullptr);
     Flag __tmp_17 = Flag(true);
     Holder __tmp_18 = Holder(&(__tmp_17));
-    std::cout << ::tpyapp::main::field_test(__tmp_16) << " " << ::tpyapp::main::field_test(__tmp_18) << "\n";
+    std::cout << ::tpyapp::main::field_test(__tmp_16) << " " << ::tpyapp::main::field_test(__tmp_18) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<Flag>> __tmp_19 = {std::nullopt};
     std::vector<std::optional<Flag>> __tmp_20 = {Flag(true)};
-    std::cout << ::tpyapp::main::elem_test(__tmp_19) << " " << ::tpyapp::main::elem_test(__tmp_20) << "\n";
+    std::cout << ::tpyapp::main::elem_test(__tmp_19) << " " << ::tpyapp::main::elem_test(__tmp_20) << "\n" << ::tpy::check_signals;
 }
 
 // main()

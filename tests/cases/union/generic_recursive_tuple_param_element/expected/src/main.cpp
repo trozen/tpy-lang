@@ -50,7 +50,7 @@ void main() {
     auto __tup_1 = ::tpyapp::main::pair(seed);
     Tree<int32_t>& a = ::tpy::unwrap_ref(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    std::cout << (::tpy::add_check<int32_t>(::tpyapp::main::count(a), n)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(::tpyapp::main::count(a), n)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

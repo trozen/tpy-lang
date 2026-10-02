@@ -128,18 +128,18 @@ void alias_after_owning_call(Holder& h) {
 //
 //     print(reowned(5))  # 5 + 50 = 55 -- re-owned, no spurious copy warning
 void main() {
-    std::cout << ::tpyapp::main::alias_storage() << "\n";
+    std::cout << ::tpyapp::main::alias_storage() << "\n" << ::tpy::check_signals;
     Holder h3 = Holder(Box(::tpy::BigInt(3)));
     ::tpyapp::main::alias_after_owning_call(h3);
-    std::cout << std::get<1>(h3.pair).val << "\n";
+    std::cout << std::get<1>(h3.pair).val << "\n" << ::tpy::check_signals;
     Holder h4 = Holder(Box(::tpy::BigInt(1)));
-    std::cout << ::tpyapp::main::conditional(h4, true) << "\n";
-    std::cout << std::get<1>(h4.pair).val << "\n";
-    std::cout << ::tpyapp::main::conditional(h4, false) << "\n";
+    std::cout << ::tpyapp::main::conditional(h4, true) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(h4.pair).val << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::conditional(h4, false) << "\n" << ::tpy::check_signals;
     Holder h5 = Holder(Box(::tpy::BigInt(2)));
-    std::cout << ::tpyapp::main::branch_declared(h5, true) << "\n";
-    std::cout << ::tpyapp::main::branch_declared(h5, false) << "\n";
-    std::cout << ::tpyapp::main::reowned(::tpy::BigInt(5)) << "\n";
+    std::cout << ::tpyapp::main::branch_declared(h5, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::branch_declared(h5, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::reowned(::tpy::BigInt(5)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

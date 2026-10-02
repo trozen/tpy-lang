@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(Y)
 //     print(Z)
 void main() {
-    std::cout << ::tpy::print_float(static_cast<double>(X)) << "\n";
-    std::cout << Y << "\n";
-    std::cout << Z << "\n";
+    std::cout << ::tpy::print_float(static_cast<double>(X)) << "\n" << ::tpy::check_signals;
+    std::cout << Y << "\n" << ::tpy::check_signals;
+    std::cout << Z << "\n" << ::tpy::check_signals;
 }
 
 // main()

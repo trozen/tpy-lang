@@ -69,13 +69,13 @@ int64_t literal_seed(uint32_t limit) {
 //     print(same_sign_unsigned(uint32(1), uint32(2)))
 //     print(literal_seed(3))
 void main() {
-    std::cout << ::tpy::print_bool(::tpyapp::main::same_rank(-1, 1)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::diff_rank_signed_smaller(0, 1)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::diff_rank_unsigned_smaller(0, 1)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::equality_too(0, 0)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::same_sign_signed(1, 2)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::same_sign_unsigned(1, 2)) << "\n";
-    std::cout << ::tpyapp::main::literal_seed(3) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::same_rank(-1, 1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::diff_rank_signed_smaller(0, 1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::diff_rank_unsigned_smaller(0, 1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::equality_too(0, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::same_sign_signed(1, 2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::same_sign_unsigned(1, 2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::literal_seed(3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

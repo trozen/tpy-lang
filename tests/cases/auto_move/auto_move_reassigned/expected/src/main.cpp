@@ -28,7 +28,7 @@ int32_t test() {
 // def main():
 //     print(test())
 void main() {
-    std::cout << ::tpyapp::main::test() << "\n";
+    std::cout << ::tpyapp::main::test() << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init() {

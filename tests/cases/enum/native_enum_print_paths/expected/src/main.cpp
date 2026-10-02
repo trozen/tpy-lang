@@ -79,13 +79,13 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         ::ns::Color c = *__beg_0;
-        std::cout << ::tpy::__repr__(c) << "\n";
+        std::cout << ::tpy::__repr__(c) << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::__repr__(::ns::Color::Red) << "\n";
-    std::cout << ::tpy::print_optional_val(::tpyapp::main::maybe(true)) << "\n";
-    std::cout << ::tpy::print_optional_val(::tpyapp::main::maybe(false)) << "\n";
+    std::cout << ::tpy::__repr__(::ns::Color::Red) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::maybe(true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::maybe(false)) << "\n" << ::tpy::check_signals;
     std::vector<::ns::Color> colors = {::ns::Color::Red, ::ns::Color::Green, ::ns::Color::Blue};
-    std::cout << ::tpy::ListPrinter(colors) << "\n";
+    std::cout << ::tpy::ListPrinter(colors) << "\n" << ::tpy::check_signals;
 }
 
 // # Regression test: @native enums print correctly through three runtime paths

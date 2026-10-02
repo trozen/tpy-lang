@@ -93,17 +93,17 @@ std::string_view loop_iter(const std::vector<std::string>& items, std::string_vi
 //     print(loop_iter(["a", "b", "c"], "d"))
 //     print(loop_iter([], "empty"))
 void main() {
-    std::cout << ::tpyapp::main::indirect_annot("hello") << "\n";
-    std::cout << ::tpyapp::main::indirect_inferred("world") << "\n";
-    std::cout << ::tpyapp::main::reassigned("foo", "bar") << "\n";
-    std::cout << ::tpyapp::main::from_ctor("baz") << "\n";
-    std::cout << ::tpyapp::main::conditional_rebind("aa", "bb", true) << "\n";
-    std::cout << ::tpyapp::main::conditional_rebind("cc", "dd", false) << "\n";
-    std::cout << ::tpyapp::main::ternary_params("yes", "no", true) << "\n";
+    std::cout << ::tpyapp::main::indirect_annot("hello") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::indirect_inferred("world") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::reassigned("foo", "bar") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::from_ctor("baz") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::conditional_rebind("aa", "bb", true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::conditional_rebind("cc", "dd", false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::ternary_params("yes", "no", true) << "\n" << ::tpy::check_signals;
     std::vector<std::string> __tmp_1 = {"a", "b", "c"};
-    std::cout << ::tpyapp::main::loop_iter(__tmp_1, "d") << "\n";
+    std::cout << ::tpyapp::main::loop_iter(__tmp_1, "d") << "\n" << ::tpy::check_signals;
     std::vector<std::string> __tmp_2 = std::vector<std::string>{};
-    std::cout << ::tpyapp::main::loop_iter(__tmp_2, "empty") << "\n";
+    std::cout << ::tpyapp::main::loop_iter(__tmp_2, "empty") << "\n" << ::tpy::check_signals;
 }
 
 // main()

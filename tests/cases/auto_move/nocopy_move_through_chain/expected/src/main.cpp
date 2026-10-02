@@ -21,7 +21,7 @@ Handle chain() {
 //     print(r.fd)
 void main() {
     Handle r = ::tpyapp::main::chain();
-    std::cout << r.fd << "\n";
+    std::cout << r.fd << "\n" << ::tpy::check_signals;
 }
 
 // main()

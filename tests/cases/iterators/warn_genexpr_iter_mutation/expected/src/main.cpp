@@ -1471,50 +1471,50 @@ int32_t range_source(std::vector<int32_t>& xs) {
 //     print("consumer_arg:", consumer_arg([1, 2]))
 //     print("range_source:", range_source([5, 6]))
 void main() {
-    std::cout << "method:" << " " << Bag().run(false) << "\n";
+    std::cout << "method:" << " " << Bag().run(false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << "free_fn:" << " " << ::tpyapp::main::free_fn(__tmp_1, false) << "\n";
+    std::cout << "free_fn:" << " " << ::tpyapp::main::free_fn(__tmp_1, false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_2 = {1, 2, 3};
-    std::cout << "through_callee:" << " " << ::tpyapp::main::through_callee(__tmp_2, false) << "\n";
+    std::cout << "through_callee:" << " " << ::tpyapp::main::through_callee(__tmp_2, false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_3 = {1, 2};
     std::vector<int32_t> __tmp_4 = {3, 4};
-    std::cout << "in_zip:" << " " << ::tpyapp::main::in_zip(__tmp_3, __tmp_4, false) << "\n";
+    std::cout << "in_zip:" << " " << ::tpyapp::main::in_zip(__tmp_3, __tmp_4, false) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<int32_t, int32_t>> __tmp_5 = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-    std::cout << "unpack:" << " " << ::tpyapp::main::unpack(__tmp_5, false) << "\n";
+    std::cout << "unpack:" << " " << ::tpyapp::main::unpack(__tmp_5, false) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, int32_t> __tmp_6 = ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});
-    std::cout << "dict_view:" << " " << ::tpyapp::main::dict_view(__tmp_6, false) << "\n";
+    std::cout << "dict_view:" << " " << ::tpyapp::main::dict_view(__tmp_6, false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_7 = {1, 2};
-    std::cout << "gen_body:" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::gen_body(__tmp_7, false)) << "\n";
+    std::cout << "gen_body:" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::gen_body(__tmp_7, false)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_8 = {1, 2};
-    std::cout << "async_body:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_body(__tmp_8, false))) << "\n";
+    std::cout << "async_body:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_body(__tmp_8, false))) << "\n" << ::tpy::check_signals;
     std::vector<std::string> __tmp_9 = {"abc", "def"};
     std::vector<int32_t> __tmp_10 = {1, 0};
-    std::cout << "view_yield:" << " " << ::tpyapp::main::view_yield(__tmp_9, __tmp_10, false) << "\n";
+    std::cout << "view_yield:" << " " << ::tpyapp::main::view_yield(__tmp_9, __tmp_10, false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_11 = {1, 2};
-    std::cout << "source_is_capture:" << " " << ::tpyapp::main::source_is_capture(__tmp_11, false) << "\n";
+    std::cout << "source_is_capture:" << " " << ::tpyapp::main::source_is_capture(__tmp_11, false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_12 = {1, 2};
-    std::cout << "nested_def:" << " " << ::tpyapp::main::nested_def(__tmp_12, false) << "\n";
+    std::cout << "nested_def:" << " " << ::tpyapp::main::nested_def(__tmp_12, false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_13 = {1, 2};
-    std::cout << "capture_moved:" << " " << ::tpyapp::main::capture_moved(__tmp_13) << "\n";
-    std::cout << "range_capture:" << " " << ::tpyapp::main::range_capture(5) << "\n";
+    std::cout << "capture_moved:" << " " << ::tpyapp::main::capture_moved(__tmp_13) << "\n" << ::tpy::check_signals;
+    std::cout << "range_capture:" << " " << ::tpyapp::main::range_capture(5) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_14 = {1, 2, 3};
     ::tpy::ordered_set<int32_t> __tmp_15 = ::tpy::ordered_set<int32_t>({2});
-    std::cout << "arg_capture:" << " " << ::tpyapp::main::arg_capture(__tmp_14, __tmp_15) << "\n";
+    std::cout << "arg_capture:" << " " << ::tpyapp::main::arg_capture(__tmp_14, __tmp_15) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_16 = {1, 2, 1, 3, 2};
-    std::cout << "capture_grows:" << " " << ::tpyapp::main::capture_grows(__tmp_16) << "\n";
+    std::cout << "capture_grows:" << " " << ::tpyapp::main::capture_grows(__tmp_16) << "\n" << ::tpy::check_signals;
     std::vector<std::string> __tmp_17 = {"a", "b", "a", "c"};
-    std::cout << "str_capture_grows:" << " " << ::tpyapp::main::str_capture_grows(__tmp_17) << "\n";
+    std::cout << "str_capture_grows:" << " " << ::tpyapp::main::str_capture_grows(__tmp_17) << "\n" << ::tpy::check_signals;
     std::vector<std::string> __tmp_18 = {"ab", "cd"};
     std::vector<int32_t> __tmp_19 = {1, 0};
-    std::cout << "owned_str_yield:" << " " << ::tpyapp::main::owned_str_yield(__tmp_18, __tmp_19) << "\n";
+    std::cout << "owned_str_yield:" << " " << ::tpyapp::main::owned_str_yield(__tmp_18, __tmp_19) << "\n" << ::tpy::check_signals;
     std::vector<Rec> __tmp_20 = {Rec(1), Rec(2)};
-    std::cout << "record_from_source:" << " " << ::tpyapp::main::record_from_source(__tmp_20) << "\n";
+    std::cout << "record_from_source:" << " " << ::tpyapp::main::record_from_source(__tmp_20) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_21 = {1, 2};
-    std::cout << "after_loop:" << " " << ::tpyapp::main::after_loop(__tmp_21) << "\n";
+    std::cout << "after_loop:" << " " << ::tpyapp::main::after_loop(__tmp_21) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_22 = {1, 2};
-    std::cout << "consumer_arg:" << " " << ::tpyapp::main::consumer_arg(__tmp_22) << "\n";
+    std::cout << "consumer_arg:" << " " << ::tpyapp::main::consumer_arg(__tmp_22) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_23 = {5, 6};
-    std::cout << "range_source:" << " " << ::tpyapp::main::range_source(__tmp_23) << "\n";
+    std::cout << "range_source:" << " " << ::tpyapp::main::range_source(__tmp_23) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -1618,7 +1618,7 @@ void __tpy_init() {
             gt = ::tpy::add_check<int32_t>(gt, gv);
         }
     }
-    std::cout << "module:" << " " << gt << "\n";
+    std::cout << "module:" << " " << gt << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }
 

@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Child c = Child(42, 7);
     int32_t val = std::move(c).take();
-    std::cout << "got" << " " << val << "\n";
+    std::cout << "got" << " " << val << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out

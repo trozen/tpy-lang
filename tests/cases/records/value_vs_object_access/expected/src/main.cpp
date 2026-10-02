@@ -25,12 +25,12 @@ void test_value_types() {
     nums.append(10);
     nums.append(20);
     int32_t val = nums[0];
-    std::cout << val << "\n";
+    std::cout << val << "\n" << ::tpy::check_signals;
     val = 99;
-    std::cout << nums[0] << "\n";
+    std::cout << nums[0] << "\n" << ::tpy::check_signals;
     std::vector<int32_t> int_list = {5, 6, 7};
     int32_t v = ::tpy::__getitem__(int_list, 1);
-    std::cout << v << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
 }
 
 // def test_object_types():
@@ -54,12 +54,12 @@ void test_object_types() {
     ::tpystd::tplib::array_list::ArrayList<Point, 4> points = ::tpystd::tplib::array_list::ArrayList<Point, 4>();
     points.append(Point(1, 2));
     points.append(Point(3, 4));
-    std::cout << points[0].x << "\n";
+    std::cout << points[0].x << "\n" << ::tpy::check_signals;
     points[0].x = 100;
-    std::cout << points[0].x << "\n";
+    std::cout << points[0].x << "\n" << ::tpy::check_signals;
     std::vector<Point> obj_list = {Point(10, 20)};
     ::tpy::__getitem__(obj_list, 0).y = 200;
-    std::cout << ::tpy::__getitem__(obj_list, 0).y << "\n";
+    std::cout << ::tpy::__getitem__(obj_list, 0).y << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

@@ -1052,7 +1052,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_trial_then_loc
         return (*head);
     }
     case S_RESUME_0: {  // after: yield head  # tpyc: ok
-        std::cout << "trial-local-r" << " " << r << "\n";
+        std::cout << "trial-local-r" << " " << r << "\n" << ::tpy::check_signals;
         __state = S_RESUME_1;
         return (*head);
     }
@@ -1117,7 +1117,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_with_nested<T>
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         // def bump: frame member
-        std::cout << "nested-helper" << " " << bump(1) << "\n";
+        std::cout << "nested-helper" << " " << bump(1) << "\n" << ::tpy::check_signals;
         auto& __for_obj_0 = items;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

@@ -15,13 +15,13 @@ namespace tpyapp::main {
 void main() {
     Point p = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
     ::tpy::Any a = ::tpy::make_any(p);
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
     if (::tpy::to_bool(a)) {
-        std::cout << "truthy" << "\n";
+        std::cout << "truthy" << "\n" << ::tpy::check_signals;
     }
     if ((a.value.has_value() && a.value.type() == typeid(Point))) {
         const Point& __a = std::any_cast<const Point&>(a.value);
-        std::cout << ((__a.x) + (__a.y)) << "\n";
+        std::cout << ((__a.x) + (__a.y)) << "\n" << ::tpy::check_signals;
     }
 }
 

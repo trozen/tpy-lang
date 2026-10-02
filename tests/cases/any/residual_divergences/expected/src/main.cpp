@@ -27,18 +27,18 @@ namespace tpyapp::main {
 void main() {
     ::tpy::Any c = ::tpy::make_any(char(::tpy::char_from_str("a")));
     ::tpy::Any s = ::tpy::make_any(std::string("a"));
-    std::cout << "char-vs-str" << " " << ::tpy::print_bool((c == s)) << " " << ::tpy::print_bool((s == c)) << "\n";
+    std::cout << "char-vs-str" << " " << ::tpy::print_bool((c == s)) << " " << ::tpy::print_bool((s == c)) << "\n" << ::tpy::check_signals;
     Rec r = Rec(1);
     ::tpy::Any a = ::tpy::make_any(r);
     ::tpy::Any b = ::tpy::make_any(r);
-    std::cout << "same-object" << " " << ::tpy::print_bool((a == b)) << "\n";
-    std::cout << "still-owned" << " " << r.n << "\n";
+    std::cout << "same-object" << " " << ::tpy::print_bool((a == b)) << "\n" << ::tpy::check_signals;
+    std::cout << "still-owned" << " " << r.n << "\n" << ::tpy::check_signals;
     ::tpy::Any c2 = ::tpy::make_any(char(::tpy::char_from_str("a")));
     ::tpy::Any d = ::tpy::make_any(char(::tpy::char_from_str("b")));
-    std::cout << "char" << " " << ::tpy::print_bool((c == c2)) << " " << ::tpy::print_bool((c == d)) << " " << ::tpy::print_bool((::tpy::any_cast_or_panic<char>(c) == ::tpy::char_from_str("a"))) << "\n";
+    std::cout << "char" << " " << ::tpy::print_bool((c == c2)) << " " << ::tpy::print_bool((c == d)) << " " << ::tpy::print_bool((::tpy::any_cast_or_panic<char>(c) == ::tpy::char_from_str("a"))) << "\n" << ::tpy::check_signals;
     if ((c.value.has_value() && c.value.type() == typeid(char))) {
         const char& __c = std::any_cast<const char&>(c.value);
-        std::cout << "narrowed" << " " << __c << "\n";
+        std::cout << "narrowed" << " " << __c << "\n" << ::tpy::check_signals;
     }
 }
 

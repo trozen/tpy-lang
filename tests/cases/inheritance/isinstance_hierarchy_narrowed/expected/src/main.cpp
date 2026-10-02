@@ -37,9 +37,9 @@ bool downcast_in_branch(::tpy::Union<const Cat*, const Dog*> x) {
 //     print(downcast_in_branch(Dog("Rex", "lab")))
 void main() {
     Dog __tmp_1 = Dog("Rex", "lab");
-    std::cout << ::tpy::print_bool(::tpyapp::main::upcast_in_branch(::tpy::Union<const Cat*, const Dog*>{&__tmp_1})) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::upcast_in_branch(::tpy::Union<const Cat*, const Dog*>{&__tmp_1})) << "\n" << ::tpy::check_signals;
     Dog __tmp_2 = Dog("Rex", "lab");
-    std::cout << ::tpy::print_bool(::tpyapp::main::downcast_in_branch(::tpy::Union<const Cat*, const Dog*>{&__tmp_2})) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::downcast_in_branch(::tpy::Union<const Cat*, const Dog*>{&__tmp_2})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

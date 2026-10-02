@@ -102,11 +102,11 @@ inline Ticket Ticket::logged() && {
         try {
             auto* __tpy_retp_0 = &((*this));
             __fin_ran_2 = true;
-            std::cout << "logged" << "\n";
+            std::cout << "logged" << "\n" << ::tpy::check_signals;
             return std::move(*__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_2) {
-                std::cout << "logged" << "\n";
+                std::cout << "logged" << "\n" << ::tpy::check_signals;
             }
             throw;
         }

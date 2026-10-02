@@ -110,15 +110,15 @@ int32_t live_alias_position(bool c, Reg& r) {
 //     print("after bump:", if_position(True, r))
 void main() {
     Reg r = Reg(1);
-    std::cout << "if:" << " " << ::tpyapp::main::if_position(true, r) << " " << ::tpyapp::main::if_position(false, r) << "\n";
-    std::cout << "try:" << " " << ::tpyapp::main::try_position(r, 1) << " " << ::tpyapp::main::try_position(r, -1) << "\n";
-    std::cout << "loop:" << " " << ::tpyapp::main::loop_position(r, 2) << "\n";
-    std::cout << "method:" << " " << Reader(5).read(true) << "\n";
+    std::cout << "if:" << " " << ::tpyapp::main::if_position(true, r) << " " << ::tpyapp::main::if_position(false, r) << "\n" << ::tpy::check_signals;
+    std::cout << "try:" << " " << ::tpyapp::main::try_position(r, 1) << " " << ::tpyapp::main::try_position(r, -1) << "\n" << ::tpy::check_signals;
+    std::cout << "loop:" << " " << ::tpyapp::main::loop_position(r, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << Reader(5).read(true) << "\n" << ::tpy::check_signals;
     Reg m1 = Reg(1);
     Reg m2 = Reg(2);
-    std::cout << "live alias:" << " " << ::tpyapp::main::live_alias_position(true, m1) << " " << ::tpyapp::main::live_alias_position(false, m2) << "\n";
+    std::cout << "live alias:" << " " << ::tpyapp::main::live_alias_position(true, m1) << " " << ::tpyapp::main::live_alias_position(false, m2) << "\n" << ::tpy::check_signals;
     r.bump();
-    std::cout << "after bump:" << " " << ::tpyapp::main::if_position(true, r) << "\n";
+    std::cout << "after bump:" << " " << ::tpyapp::main::if_position(true, r) << "\n" << ::tpy::check_signals;
 }
 
 // main()

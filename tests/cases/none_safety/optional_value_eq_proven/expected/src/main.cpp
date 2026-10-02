@@ -19,8 +19,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::print_bool(::tpyapp::main::eq_proven(5, 5)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::eq_proven(3, 5)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_proven(5, 5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_proven(3, 5)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

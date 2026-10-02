@@ -51,35 +51,35 @@ namespace tpyapp::main {
 //     print(s3.name)
 void main() {
     ::tpystd::hashlib::SHA256 h0 = ::tpystd::hashlib::sha256(::tpy::BytesView{});
-    std::cout << h0.hexdigest() << "\n";
+    std::cout << h0.hexdigest() << "\n" << ::tpy::check_signals;
     ::tpystd::hashlib::SHA256 h1 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("abc", 3));
-    std::cout << h1.hexdigest() << "\n";
+    std::cout << h1.hexdigest() << "\n" << ::tpy::check_signals;
     ::tpystd::hashlib::SHA256 h2 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("The quick brown fox jumps over the lazy dog", 43));
-    std::cout << h2.hexdigest() << "\n";
+    std::cout << h2.hexdigest() << "\n" << ::tpy::check_signals;
     ::tpystd::hashlib::SHA256 h3 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", 56));
-    std::cout << h3.hexdigest() << "\n";
+    std::cout << h3.hexdigest() << "\n" << ::tpy::check_signals;
     ::tpystd::hashlib::SHA256 h4 = ::tpystd::hashlib::sha256((::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 1000)));
-    std::cout << h4.hexdigest() << "\n";
+    std::cout << h4.hexdigest() << "\n" << ::tpy::check_signals;
     ::tpystd::hashlib::SHA256 s = ::tpystd::hashlib::sha256();
     s.update(::tpy::bytes_literal("abc", 3));
-    std::cout << s.hexdigest() << "\n";
+    std::cout << s.hexdigest() << "\n" << ::tpy::check_signals;
     ::tpystd::hashlib::SHA256 s2 = ::tpystd::hashlib::sha256();
     s2.update(::tpy::bytes_literal("The quick brown fox ", 20));
     s2.update(::tpy::bytes_literal("jumps over the lazy dog", 23));
-    std::cout << s2.hexdigest() << "\n";
+    std::cout << s2.hexdigest() << "\n" << ::tpy::check_signals;
     ::tpystd::hashlib::SHA256 s3 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("abc", 3));
-    std::cout << s3.hexdigest() << "\n";
-    std::cout << s3.hexdigest() << "\n";
+    std::cout << s3.hexdigest() << "\n" << ::tpy::check_signals;
+    std::cout << s3.hexdigest() << "\n" << ::tpy::check_signals;
     ::tpystd::hashlib::SHA256 base = ::tpystd::hashlib::sha256(::tpy::bytes_literal("hello", 5));
     ::tpystd::hashlib::SHA256 branch = base.copy();
     base.update(::tpy::bytes_literal(" world", 6));
     branch.update(::tpy::bytes_literal(" there", 6));
-    std::cout << base.hexdigest() << "\n";
-    std::cout << branch.hexdigest() << "\n";
-    std::cout << ::tpy::__len__(::tpystd::hashlib::sha256(::tpy::bytes_literal("abc", 3)).digest()) << "\n";
-    std::cout << s3.digest_size << "\n";
-    std::cout << s3.block_size << "\n";
-    std::cout << s3.name << "\n";
+    std::cout << base.hexdigest() << "\n" << ::tpy::check_signals;
+    std::cout << branch.hexdigest() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(::tpystd::hashlib::sha256(::tpy::bytes_literal("abc", 3)).digest()) << "\n" << ::tpy::check_signals;
+    std::cout << s3.digest_size << "\n" << ::tpy::check_signals;
+    std::cout << s3.block_size << "\n" << ::tpy::check_signals;
+    std::cout << s3.name << "\n" << ::tpy::check_signals;
 }
 
 // # hashlib SHA-256: known FIPS 180-4 test vectors + streaming + copy.

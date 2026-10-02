@@ -44,7 +44,7 @@ void __tpy_init() {
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     points = &__global_slot_1;
     points->push_back(Point(3, 4));
-    std::cout << ::tpyapp::main::use_without_check(::tpyapp::main::find((*points), 3)) << "\n";
+    std::cout << ::tpyapp::main::use_without_check(::tpyapp::main::find((*points), 3)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

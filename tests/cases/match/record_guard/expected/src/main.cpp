@@ -58,17 +58,17 @@ std::string or_pattern(const Point& p) {
 //     print(or_pattern(Point(int32(2), int32(3))))
 void main() {
     Point __tmp_1 = Point(0, 0);
-    std::cout << ::tpyapp::main::guarded(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::guarded(__tmp_1) << "\n" << ::tpy::check_signals;
     Point __tmp_2 = Point(5, 3);
-    std::cout << ::tpyapp::main::guarded(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::guarded(__tmp_2) << "\n" << ::tpy::check_signals;
     Point __tmp_3 = Point(-1, 0);
-    std::cout << ::tpyapp::main::guarded(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::guarded(__tmp_3) << "\n" << ::tpy::check_signals;
     Point __tmp_4 = Point(0, 0);
-    std::cout << ::tpyapp::main::or_pattern(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::or_pattern(__tmp_4) << "\n" << ::tpy::check_signals;
     Point __tmp_5 = Point(1, 1);
-    std::cout << ::tpyapp::main::or_pattern(__tmp_5) << "\n";
+    std::cout << ::tpyapp::main::or_pattern(__tmp_5) << "\n" << ::tpy::check_signals;
     Point __tmp_6 = Point(2, 3);
-    std::cout << ::tpyapp::main::or_pattern(__tmp_6) << "\n";
+    std::cout << ::tpyapp::main::or_pattern(__tmp_6) << "\n" << ::tpy::check_signals;
 }
 
 // # match/case on concrete record with guards and or-patterns

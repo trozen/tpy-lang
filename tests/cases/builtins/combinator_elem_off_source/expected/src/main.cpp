@@ -57,7 +57,7 @@ void show(std::string_view tag, const std::vector<Cell>& cells) {
             __result.push_back(c.v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
 }
 
 // # free function: a read-only list parameter is const, and enumerate / zip /
@@ -351,9 +351,9 @@ int32_t ro_map(const std::vector<Cell>& cells) {
 void collect_copies() {
     std::array<Bag2, 2> bags = {Bag2(1), Bag2(2)};
     std::vector<std::tuple<int32_t, Bag2>> pairs = ::tpy::construct<std::vector<std::tuple<int32_t, Bag2>>>(::tpy::builtin_enumerate(bags));
-    std::cout << "collect_copies" << " " << ::tpy::__len__(::tpy::__getitem__(bags, 0).items) << " " << ::tpy::__len__(::tpy::__getitem__(bags, 1).items) << " " << ::tpy::__len__(pairs) << "\n";
+    std::cout << "collect_copies" << " " << ::tpy::__len__(::tpy::__getitem__(bags, 0).items) << " " << ::tpy::__len__(::tpy::__getitem__(bags, 1).items) << " " << ::tpy::__len__(pairs) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<Bag2, int32_t>> zs = ::tpy::construct<std::vector<std::tuple<Bag2, int32_t>>>(::tpy::builtin_zip(bags, std::array<int32_t, 2>{7, 8}));
-    std::cout << "collect_copies" << " " << ::tpy::__len__(::tpy::__getitem__(bags, 0).items) << " " << ::tpy::__len__(::tpy::__getitem__(bags, 1).items) << " " << ::tpy::__len__(zs) << "\n";
+    std::cout << "collect_copies" << " " << ::tpy::__len__(::tpy::__getitem__(bags, 0).items) << " " << ::tpy::__len__(::tpy::__getitem__(bags, 1).items) << " " << ::tpy::__len__(zs) << "\n" << ::tpy::check_signals;
 }
 
 // # closure: a nested def mutating through a combinator over a captured list
@@ -607,7 +607,7 @@ void comp_shapes() {
             __result.push_back(n.bump(x));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("comp_zip_literal", ns);
     std::cout << "comp_filter_gen" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -619,7 +619,7 @@ void comp_shapes() {
             __result.push_back(n.bump(1));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("comp_filter_gen", ns);
     std::array<int32_t, 2> xs = {10, 20};
     std::cout << "comp_zip_gen" << " " << ::tpy::ListPrinter(({
@@ -634,7 +634,7 @@ void comp_shapes() {
             __result.push_back(n.bump(x));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("comp_zip_gen", ns);
     std::cout << "comp_map_filter" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -646,7 +646,7 @@ void comp_shapes() {
             __result.push_back(n.bump(10));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("comp_map_filter", ns);
     std::cout << "comp_reversed" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -658,7 +658,7 @@ void comp_shapes() {
             __result.push_back(n.bump(1));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("comp_reversed", ns);
     std::cout << "comp_filter_filter" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -670,7 +670,7 @@ void comp_shapes() {
             __result.push_back(n.bump(10));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("comp_filter_filter", ns);
     std::cout << "comp_zip_reversed" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -684,7 +684,7 @@ void comp_shapes() {
             __result.push_back(n.bump(x));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("comp_zip_reversed", ns);
     std::cout << "comp_zip_owned" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -698,7 +698,7 @@ void comp_shapes() {
             __result.push_back(n.bump(x.v));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("comp_zip_owned", ns);
     std::cout << "comp_enumerate_filter" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -712,7 +712,7 @@ void comp_shapes() {
             __result.push_back(n.bump(i));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("comp_enumerate_filter", ns);
     std::cout << "comp_zip_filter" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -726,7 +726,7 @@ void comp_shapes() {
             __result.push_back(n.bump(x));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("comp_zip_filter", ns);
 }
 
@@ -839,7 +839,7 @@ void values(const std::vector<std::string>& names, const std::vector<int32_t>& n
             const auto& __tup_1 = __for_tup_15;
             int32_t i = std::get<0>(__tup_1);
             std::string_view s = std::get<1>(__tup_1);
-            std::cout << "values" << " " << i << " " << s << "\n";
+            std::cout << "values" << " " << i << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -853,10 +853,10 @@ void values(const std::vector<std::string>& names, const std::vector<int32_t>& n
             int32_t n = std::get<0>(__tup_2);
             std::string_view s = std::get<1>(__tup_2);
             n = ::tpy::add_check<int32_t>(n, 1);
-            std::cout << "values" << " " << n << " " << s << "\n";
+            std::cout << "values" << " " << n << " " << s << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "values" << " " << ::tpy::ListPrinter(ns) << "\n";
+    std::cout << "values" << " " << ::tpy::ListPrinter(ns) << "\n" << ::tpy::check_signals;
 }
 
 // # @error_return body and match arm: the same loop head
@@ -1034,12 +1034,12 @@ void main() {
     std::optional<std::vector<Cell>> __slot_2;
     std::vector<Cell> __slot_1 = {Cell(1), Cell(2)};
     std::vector<Cell>* cells = &__slot_1;
-    std::cout << "ro_enumerate" << " " << ::tpyapp::main::ro_enumerate((*cells)) << "\n";
+    std::cout << "ro_enumerate" << " " << ::tpyapp::main::ro_enumerate((*cells)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = {3, 4};
-    std::cout << "ro_zip" << " " << ::tpyapp::main::ro_zip((*cells), __tmp_1) << "\n";
-    std::cout << "ro_filter" << " " << ::tpyapp::main::ro_filter((*cells)) << "\n";
-    std::cout << "ro_reversed" << " " << ::tpyapp::main::ro_reversed((*cells)) << "\n";
-    std::cout << "mut_enumerate" << " " << ::tpyapp::main::mut_enumerate((*cells)) << "\n";
+    std::cout << "ro_zip" << " " << ::tpyapp::main::ro_zip((*cells), __tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "ro_filter" << " " << ::tpyapp::main::ro_filter((*cells)) << "\n" << ::tpy::check_signals;
+    std::cout << "ro_reversed" << " " << ::tpyapp::main::ro_reversed((*cells)) << "\n" << ::tpy::check_signals;
+    std::cout << "mut_enumerate" << " " << ::tpyapp::main::mut_enumerate((*cells)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("mut_enumerate", (*cells));
     std::vector<int32_t> __tmp_2 = {10, 20};
     ::tpyapp::main::mut_zip((*cells), __tmp_2);
@@ -1050,7 +1050,7 @@ void main() {
     ::tpyapp::main::show("mut_reversed", (*cells));
     ::tpyapp::main::mut_map((*cells));
     ::tpyapp::main::show("mut_map", (*cells));
-    std::cout << "ro_map" << " " << ::tpyapp::main::ro_map((*cells)) << "\n";
+    std::cout << "ro_map" << " " << ::tpyapp::main::ro_map((*cells)) << "\n" << ::tpy::check_signals;
     (*cells) = {Cell(1), Cell(2)};
     ::tpyapp::main::nested_enumerate_filter((*cells));
     std::vector<int32_t> __tmp_3 = {10, 20};
@@ -1062,40 +1062,40 @@ void main() {
     ::tpyapp::main::collect_copies();
     ::tpyapp::main::closure_mut();
     (*cells) = {Cell(1), Cell(2)};
-    std::cout << "gen_ro" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_ro((*cells)))) << "\n";
-    std::cout << "gen_mut" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_mut((*cells)))) << "\n";
+    std::cout << "gen_ro" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_ro((*cells)))) << "\n" << ::tpy::check_signals;
+    std::cout << "gen_mut" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_mut((*cells)))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("gen_mut", (*cells));
     std::vector<int32_t> __tmp_5 = {1, 2};
-    std::cout << "gen_zip_mut" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_zip_mut((*cells), __tmp_5))) << "\n";
+    std::cout << "gen_zip_mut" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_zip_mut((*cells), __tmp_5))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("gen_zip_mut", (*cells));
-    std::cout << "genexpr_ro" << " " << ::tpyapp::main::genexpr_ro((*cells)) << "\n";
-    std::cout << "genexpr_mut" << " " << ::tpyapp::main::genexpr_mut((*cells)) << "\n";
+    std::cout << "genexpr_ro" << " " << ::tpyapp::main::genexpr_ro((*cells)) << "\n" << ::tpy::check_signals;
+    std::cout << "genexpr_mut" << " " << ::tpyapp::main::genexpr_mut((*cells)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("genexpr_mut", (*cells));
     ::tpyapp::main::comp_shapes();
     Bag bag = Bag();
-    std::cout << "method_total" << " " << bag.total() << "\n";
+    std::cout << "method_total" << " " << bag.total() << "\n" << ::tpy::check_signals;
     bag.bump_all();
     ::tpyapp::main::show("method_bump", bag.cells);
-    std::cout << "comp_total" << " " << bag.comp_total({1, 2}) << "\n";
+    std::cout << "comp_total" << " " << bag.comp_total({1, 2}) << "\n" << ::tpy::check_signals;
     (*cells) = {Cell(1), Cell(2)};
-    std::cout << "async_mut" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_mut((*cells)))) << "\n";
+    std::cout << "async_mut" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_mut((*cells)))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("async_mut", (*cells));
     std::vector<int32_t> __tmp_6 = {10, 20};
-    std::cout << "explicit_ro" << " " << ::tpyapp::main::explicit_ro(::tpy::as_span((*cells)), __tmp_6) << "\n";
+    std::cout << "explicit_ro" << " " << ::tpyapp::main::explicit_ro(::tpy::as_span((*cells)), __tmp_6) << "\n" << ::tpy::check_signals;
     std::vector<std::string> __tmp_7 = {"a", "bb"};
     std::vector<int32_t> __tmp_8 = {1, 2};
     ::tpyapp::main::values(__tmp_7, __tmp_8);
     cells = &*(__slot_2 = {Cell(1), Cell(2)});
     {
-        std::cout << "er_body" << " " << ({ auto __er_2 = ::tpyapp::main::er_body((*cells)); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "er_body" << " " << ({ auto __er_2 = ::tpyapp::main::er_body((*cells)); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Failed:
         __except_1:;
-        std::cout << "er_body failed" << "\n";
+        std::cout << "er_body failed" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     ::tpyapp::main::show("er_body", (*cells));
-    std::cout << "match_arm" << " " << ::tpyapp::main::match_arm((*cells), 3) << " " << ::tpyapp::main::match_arm((*cells), 0) << "\n";
+    std::cout << "match_arm" << " " << ::tpyapp::main::match_arm((*cells), 3) << " " << ::tpyapp::main::match_arm((*cells), 0) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("match_arm", (*cells));
 }
 

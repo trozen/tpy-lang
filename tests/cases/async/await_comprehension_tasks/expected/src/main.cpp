@@ -60,7 +60,7 @@ __coro_work work(int32_t n) {
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            std::cout << total << "\n";
+            std::cout << total << "\n" << ::tpy::check_signals;
             __state = S_DONE;
             return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }

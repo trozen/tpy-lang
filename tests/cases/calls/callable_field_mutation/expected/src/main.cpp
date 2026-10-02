@@ -20,8 +20,8 @@ void main() {
     Holder h = Holder(add_one);
     h.poke();
     h.poke();
-    std::cout << ::tpy::__len__(h.data) << "\n";
-    std::cout << ::tpy::__getitem__(h.data, 1) << " " << ::tpy::__getitem__(h.data, 2) << "\n";
+    std::cout << ::tpy::__len__(h.data) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(h.data, 1) << " " << ::tpy::__getitem__(h.data, 2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

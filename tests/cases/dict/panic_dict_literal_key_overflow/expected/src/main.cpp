@@ -15,7 +15,7 @@ namespace tpyapp::main {
 //     print(len(d))
 void main() {
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::ordered_map<int32_t, std::string>({{(::tpyapp::main::too_big()).to_fixed_check<int32_t>(), "boom"}});
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

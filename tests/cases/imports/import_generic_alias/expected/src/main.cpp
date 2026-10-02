@@ -16,9 +16,9 @@ void __tpy_init() {
 
     static std::array<int32_t, 3> __global_slot_1 = {1, 2, 3};
     x = &__global_slot_1;
-    std::cout << ::tpy::__len__((*x)) << "\n";
-    std::cout << ::tpy::__getitem__((*x), 0) << "\n";
-    std::cout << ::tpy::__getitem__((*x), 1) << "\n";
+    std::cout << ::tpy::__len__((*x)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*x), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*x), 1) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

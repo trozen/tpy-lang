@@ -24,7 +24,7 @@ void add_joined(std::vector<std::string>& xs, std::string_view a, std::string_vi
 void main() {
     std::vector<std::string> xs = {"seed"};
     ::tpyapp::main::add_joined(xs, "ab", "cd");
-    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << "\n";
+    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -21,7 +21,7 @@ std::vector<int32_t> take_copy(Holder& h) {
 //     print(len(take(h)), len(take_copy(h)), len(h.items))
 void main() {
     Holder h = Holder();
-    std::cout << ::tpy::__len__(::tpyapp::main::take(h)) << " " << ::tpy::__len__(::tpyapp::main::take_copy(h)) << " " << ::tpy::__len__(h.items) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::take(h)) << " " << ::tpy::__len__(::tpyapp::main::take_copy(h)) << " " << ::tpy::__len__(h.items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

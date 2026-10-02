@@ -23,13 +23,13 @@ void __tpy_init() {
     ::pascal_rt::runtime::__tpy_init();
     ::pascal_rt::runtime::builtins::__tpy_init();
     i = 5;
-    std::cout << ::pascal_rt::runtime::builtins::succ_int(i) << "\n";
-    std::cout << ::pascal_rt::runtime::builtins::pred_int(i) << "\n";
+    std::cout << ::pascal_rt::runtime::builtins::succ_int(i) << "\n" << ::tpy::check_signals;
+    std::cout << ::pascal_rt::runtime::builtins::pred_int(i) << "\n" << ::tpy::check_signals;
     r = ::pascal_rt::runtime::builtins::random_int(100);
     if (((r >= 0) && (r < 100))) {
-        std::cout << "in range" << "\n";
+        std::cout << "in range" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "out of range" << "\n";
+        std::cout << "out of range" << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -40,18 +40,18 @@ void main() {
     ::tpystd::tplib::rc::Rc<Node> a_alias = a.clone();
     ::tpy::ordered_map<std::string, ::tpystd::tplib::rc::Rc<Node>> items = ::tpy::make_ordered_map<std::string, ::tpystd::tplib::rc::Rc<Node>>("a", a.clone(), "b", b.clone());
     a_alias.get().value = 99;
-    std::cout << ::tpy::__getitem__(items, "a").get().value << "\n";
+    std::cout << ::tpy::__getitem__(items, "a").get().value << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(items, "b").get().value = 42;
-    std::cout << b.get().value << "\n";
+    std::cout << b.get().value << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ::tpystd::tplib::rc::Rc<Node>> single = ::tpy::make_ordered_map<std::string, ::tpystd::tplib::rc::Rc<Node>>("only", a.clone());
-    std::cout << ::tpy::__getitem__(single, "only").get().value << "\n";
+    std::cout << ::tpy::__getitem__(single, "only").get().value << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ::tpystd::tplib::rc::Rc<Node>> grown = ::tpy::ordered_map<std::string, ::tpystd::tplib::rc::Rc<Node>>();
     ::tpy::__setitem__(grown, "x", a.clone());
     ::tpy::__setitem__(grown, "y", b.clone());
-    std::cout << ::tpy::__getitem__(grown, "x").get().value << "\n";
-    std::cout << ::tpy::__getitem__(grown, "y").get().value << "\n";
+    std::cout << ::tpy::__getitem__(grown, "x").get().value << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(grown, "y").get().value << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(grown, "x", b.clone());
-    std::cout << ::tpy::__getitem__(grown, "x").get().value << "\n";
+    std::cout << ::tpy::__getitem__(grown, "x").get().value << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Rc

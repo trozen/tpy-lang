@@ -20,7 +20,7 @@ void __tpy_init() {
     static ::pascal_rt::runtime::strings::PStr<255> __global_slot_1 = ::pascal_rt::runtime::strings::PStr<255>();
     s = &__global_slot_1;
     s->assign("Hello, World!");
-    std::cout << std::string(::tpy::__str__((*s))) << "\n";
+    std::cout << std::string(::tpy::__str__((*s))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

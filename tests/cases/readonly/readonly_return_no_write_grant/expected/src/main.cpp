@@ -66,23 +66,23 @@ std::tuple<const Point*, const Point*> first_two(const std::vector<Point>& items
 void main() {
     Reg r = Reg(1);
     const Point& v = r.view();
-    std::cout << "method:" << " " << v.x << "\n";
+    std::cout << "method:" << " " << v.x << "\n" << ::tpy::check_signals;
     r.bump();
-    std::cout << "method after bump:" << " " << v.x << "\n";
+    std::cout << "method after bump:" << " " << v.x << "\n" << ::tpy::check_signals;
     Reader rd = Reader(5);
-    std::cout << "caller:" << " " << rd.read() << "\n";
+    std::cout << "caller:" << " " << rd.read() << "\n" << ::tpy::check_signals;
     rd.reg.bump();
-    std::cout << "caller after bump:" << " " << rd.read() << "\n";
+    std::cout << "caller after bump:" << " " << rd.read() << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = {1, 2, 3};
     const std::vector<int32_t>& vs = ::tpyapp::main::view_items(xs);
-    std::cout << "free:" << " " << ::tpy::__getitem__(vs, 0) << " " << ::tpyapp::main::sum_items(xs) << "\n";
+    std::cout << "free:" << " " << ::tpy::__getitem__(vs, 0) << " " << ::tpyapp::main::sum_items(xs) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(xs, 0, 40);
-    std::cout << "free after write:" << " " << ::tpy::__getitem__(vs, 0) << " " << ::tpyapp::main::sum_items(xs) << "\n";
+    std::cout << "free after write:" << " " << ::tpy::__getitem__(vs, 0) << " " << ::tpyapp::main::sum_items(xs) << "\n" << ::tpy::check_signals;
     std::vector<Point> ps = {Point(7), Point(8)};
     auto pair = ::tpyapp::main::first_two(ps);
-    std::cout << "tuple:" << " " << std::get<0>(pair)->x << " " << std::get<1>(pair)->x << "\n";
+    std::cout << "tuple:" << " " << std::get<0>(pair)->x << " " << std::get<1>(pair)->x << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(ps, 0).x = 70;
-    std::cout << "tuple after write:" << " " << std::get<0>(pair)->x << "\n";
+    std::cout << "tuple after write:" << " " << std::get<0>(pair)->x << "\n" << ::tpy::check_signals;
 }
 
 // main()

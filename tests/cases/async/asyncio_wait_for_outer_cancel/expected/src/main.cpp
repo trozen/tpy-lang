@@ -26,7 +26,7 @@ namespace tpyapp::main {
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         } catch (const ::tpy::CancelledError&) {
             __sub_0.reset();
-            std::cout << "inner-cancelled" << "\n";
+            std::cout << "inner-cancelled" << "\n" << ::tpy::check_signals;
             throw;
         } catch (...) {
             __sub_0.reset();
@@ -42,7 +42,7 @@ namespace tpyapp::main {
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::CancelledError&) {
-            std::cout << "inner-cancelled" << "\n";
+            std::cout << "inner-cancelled" << "\n" << ::tpy::check_signals;
             throw;
         } catch (...) {
             throw;
@@ -95,7 +95,7 @@ __coro_slow slow() {
             continue;
         } catch (const ::tpy::CancelledError&) {
             __sub_1 = nullptr;
-            std::cout << "outer-cancelled" << "\n";
+            std::cout << "outer-cancelled" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

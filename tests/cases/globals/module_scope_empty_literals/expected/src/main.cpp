@@ -26,17 +26,17 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::builtin_sum<int32_t>(std::vector<int32_t>{}) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(std::vector<int32_t>{}) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_1 = std::vector<int32_t>{};
     xs = &__global_slot_1;
     xs->push_back(1);
     xs->push_back(2);
-    std::cout << ::tpy::ListPrinter((*xs)) << "\n";
+    std::cout << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
     static ::tpy::ordered_map<int32_t, std::string> __global_slot_2 = ::tpy::ordered_map<int32_t, std::string>();
     d = &__global_slot_2;
     ::tpy::__setitem__((*d), 1, "one");
     ::tpy::__setitem__((*d), 2, "two");
-    std::cout << ::tpy::DictPrinter((*d)) << "\n";
+    std::cout << ::tpy::DictPrinter((*d)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

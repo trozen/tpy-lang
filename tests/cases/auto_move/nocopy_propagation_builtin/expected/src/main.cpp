@@ -15,7 +15,7 @@ int32_t consume(Storage&& s) {
 //     print(consume(s))  # tpyc: ok
 void main() {
     Storage s = Storage();
-    std::cout << ::tpyapp::main::consume(std::move(s)) << "\n";
+    std::cout << ::tpyapp::main::consume(std::move(s)) << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.mem import UninitHeapStorage

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(tag, len(xs))
 //     return True
 bool sized(std::string_view tag, const std::vector<int32_t>& xs) {
-    std::cout << tag << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << tag << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
     return true;
 }
 
@@ -17,7 +17,7 @@ bool sized(std::string_view tag, const std::vector<int32_t>& xs) {
 //     print(tag, b.get().area())
 //     return True
 bool shaped(std::string_view tag, ::tpystd::tplib::box::Box<Shape>& b) {
-    std::cout << tag << " " << ::tpy::print_float(b.get().area()) << "\n";
+    std::cout << tag << " " << ::tpy::print_float(b.get().area()) << "\n" << ::tpy::check_signals;
     return true;
 }
 
@@ -53,12 +53,12 @@ int32_t show(std::string_view tag, const Value& t) {
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1.value);
         auto& g = __case_1;
-        std::cout << tag << " " << "neg" << "\n";
+        std::cout << tag << " " << "neg" << "\n" << ::tpy::check_signals;
         return ::tpy::neg_check<int32_t>(g.v);
     }
     case 1: {
         auto& __case_2 = std::get<1>(__match_subject_1.value);
-        std::cout << tag << " " << "int" << "\n";
+        std::cout << tag << " " << "int" << "\n" << ::tpy::check_signals;
         return 1;
     }
     }
@@ -91,7 +91,7 @@ int32_t leaf_count(std::string_view tag, const Tree<int32_t>& t) {
         return total;
     }
     default: {
-        std::cout << tag << " " << "leaf" << "\n";
+        std::cout << tag << " " << "leaf" << "\n" << ::tpy::check_signals;
         return 1;
     }
     }
@@ -102,7 +102,7 @@ int32_t leaf_count(std::string_view tag, const Tree<int32_t>& t) {
 //     print("rucall build")
 //     return int32(7)
 Tree<int32_t> make_leaf() {
-    std::cout << "rucall build" << "\n";
+    std::cout << "rucall build" << "\n" << ::tpy::check_signals;
     return 7;
 }
 
@@ -110,7 +110,7 @@ Tree<int32_t> make_leaf() {
 //     print(tag, o.m)
 //     return True
 bool held(std::string_view tag, const Outer& o) {
-    std::cout << tag << " " << o.m << "\n";
+    std::cout << tag << " " << o.m << "\n" << ::tpy::check_signals;
     return true;
 }
 
@@ -235,7 +235,7 @@ bool gen_recv_temp(bool flag) {
 //     print(tag, p.x)
 //     return True
 bool shown(std::string_view tag, const Point& p) {
-    std::cout << tag << " " << p.x << "\n";
+    std::cout << tag << " " << p.x << "\n" << ::tpy::check_signals;
     return true;
 }
 
@@ -331,62 +331,62 @@ bool deref_ternary(const Ref& r, bool flag) {
 void main() {
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
     bool a1 = ::tpyapp::main::comprehension(__tmp_1, true);
-    std::cout << "comp skipped" << " " << ::tpy::print_bool(a1) << "\n";
+    std::cout << "comp skipped" << " " << ::tpy::print_bool(a1) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_2 = {1, 2, 3};
     bool a2 = ::tpyapp::main::comprehension(__tmp_2, false);
-    std::cout << "comp taken" << " " << ::tpy::print_bool(a2) << "\n";
+    std::cout << "comp taken" << " " << ::tpy::print_bool(a2) << "\n" << ::tpy::check_signals;
     bool b1 = ::tpyapp::main::covariant(true);
-    std::cout << "cov skipped" << " " << ::tpy::print_bool(b1) << "\n";
+    std::cout << "cov skipped" << " " << ::tpy::print_bool(b1) << "\n" << ::tpy::check_signals;
     bool b2 = ::tpyapp::main::covariant(false);
-    std::cout << "cov taken" << " " << ::tpy::print_bool(b2) << "\n";
+    std::cout << "cov taken" << " " << ::tpy::print_bool(b2) << "\n" << ::tpy::check_signals;
     bool c1 = ::tpyapp::main::generic_ref_slot(true);
-    std::cout << "genref skipped" << " " << ::tpy::print_bool(c1) << "\n";
+    std::cout << "genref skipped" << " " << ::tpy::print_bool(c1) << "\n" << ::tpy::check_signals;
     bool c2 = ::tpyapp::main::generic_ref_slot(false);
-    std::cout << "genref taken" << " " << ::tpy::print_bool(c2) << "\n";
+    std::cout << "genref taken" << " " << ::tpy::print_bool(c2) << "\n" << ::tpy::check_signals;
     bool d1 = ::tpyapp::main::generic_container_literal(true);
-    std::cout << "gencont skipped" << " " << ::tpy::print_bool(d1) << "\n";
+    std::cout << "gencont skipped" << " " << ::tpy::print_bool(d1) << "\n" << ::tpy::check_signals;
     bool d2 = ::tpyapp::main::generic_container_literal(false);
-    std::cout << "gencont taken" << " " << ::tpy::print_bool(d2) << "\n";
+    std::cout << "gencont taken" << " " << ::tpy::print_bool(d2) << "\n" << ::tpy::check_signals;
     Sink s = Sink();
     bool e1 = ::tpyapp::main::optptr_container_literal(s, true);
-    std::cout << "optptr skipped" << " " << ::tpy::print_bool(e1) << "\n";
+    std::cout << "optptr skipped" << " " << ::tpy::print_bool(e1) << "\n" << ::tpy::check_signals;
     bool e2 = ::tpyapp::main::optptr_container_literal(s, false);
-    std::cout << "optptr taken" << " " << ::tpy::print_bool(e2) << "\n";
-    std::cout << "optptr seen" << " " << s.seen << "\n";
+    std::cout << "optptr taken" << " " << ::tpy::print_bool(e2) << "\n" << ::tpy::check_signals;
+    std::cout << "optptr seen" << " " << s.seen << "\n" << ::tpy::check_signals;
     int32_t f1 = ::tpyapp::main::recursive_union_literal(true);
-    std::cout << "rulit skipped" << " " << f1 << "\n";
+    std::cout << "rulit skipped" << " " << f1 << "\n" << ::tpy::check_signals;
     int32_t f2 = ::tpyapp::main::recursive_union_literal(false);
-    std::cout << "rulit taken" << " " << f2 << "\n";
+    std::cout << "rulit taken" << " " << f2 << "\n" << ::tpy::check_signals;
     int32_t g1 = ::tpyapp::main::ru_wrapper_literal(true);
-    std::cout << "ruscalar skipped" << " " << g1 << "\n";
+    std::cout << "ruscalar skipped" << " " << g1 << "\n" << ::tpy::check_signals;
     int32_t g2 = ::tpyapp::main::ru_wrapper_literal(false);
-    std::cout << "ruscalar taken" << " " << g2 << "\n";
+    std::cout << "ruscalar taken" << " " << g2 << "\n" << ::tpy::check_signals;
     int32_t h1 = ::tpyapp::main::ru_wrapper_ctor(true);
-    std::cout << "ructor skipped" << " " << h1 << "\n";
+    std::cout << "ructor skipped" << " " << h1 << "\n" << ::tpy::check_signals;
     int32_t h2 = ::tpyapp::main::ru_wrapper_ctor(false);
-    std::cout << "ructor taken" << " " << h2 << "\n";
+    std::cout << "ructor taken" << " " << h2 << "\n" << ::tpy::check_signals;
     int32_t i1 = ::tpyapp::main::ru_wrapper_call(true);
-    std::cout << "rucall skipped" << " " << i1 << "\n";
+    std::cout << "rucall skipped" << " " << i1 << "\n" << ::tpy::check_signals;
     int32_t i2 = ::tpyapp::main::ru_wrapper_call(false);
-    std::cout << "rucall taken" << " " << i2 << "\n";
+    std::cout << "rucall taken" << " " << i2 << "\n" << ::tpy::check_signals;
     bool j1 = ::tpyapp::main::ctor_mut_rvalue(true);
-    std::cout << "ctormut skipped" << " " << ::tpy::print_bool(j1) << "\n";
+    std::cout << "ctormut skipped" << " " << ::tpy::print_bool(j1) << "\n" << ::tpy::check_signals;
     bool j2 = ::tpyapp::main::ctor_mut_rvalue(false);
-    std::cout << "ctormut taken" << " " << ::tpy::print_bool(j2) << "\n";
+    std::cout << "ctormut taken" << " " << ::tpy::print_bool(j2) << "\n" << ::tpy::check_signals;
     bool k1 = ::tpyapp::main::gen_recv_temp(true);
-    std::cout << "genrecv skipped" << " " << ::tpy::print_bool(k1) << "\n";
+    std::cout << "genrecv skipped" << " " << ::tpy::print_bool(k1) << "\n" << ::tpy::check_signals;
     bool k2 = ::tpyapp::main::gen_recv_temp(false);
-    std::cout << "genrecv taken" << " " << ::tpy::print_bool(k2) << "\n";
+    std::cout << "genrecv taken" << " " << ::tpy::print_bool(k2) << "\n" << ::tpy::check_signals;
     Ref m = Ref(Point(7));
     bool m1 = ::tpyapp::main::deref_or_rhs(m, true);
-    std::cout << "deref skipped" << " " << ::tpy::print_bool(m1) << "\n";
+    std::cout << "deref skipped" << " " << ::tpy::print_bool(m1) << "\n" << ::tpy::check_signals;
     bool m2 = ::tpyapp::main::deref_or_rhs(m, false);
-    std::cout << "deref taken" << " " << ::tpy::print_bool(m2) << "\n";
+    std::cout << "deref taken" << " " << ::tpy::print_bool(m2) << "\n" << ::tpy::check_signals;
     Ref n = Ref(Point(20));
     bool n1 = ::tpyapp::main::deref_ternary(n, true);
-    std::cout << "dereftern skipped" << " " << ::tpy::print_bool(n1) << "\n";
+    std::cout << "dereftern skipped" << " " << ::tpy::print_bool(n1) << "\n" << ::tpy::check_signals;
     bool n2 = ::tpyapp::main::deref_ternary(n, false);
-    std::cout << "dereftern taken" << " " << ::tpy::print_bool(n2) << "\n";
+    std::cout << "dereftern taken" << " " << ::tpy::print_bool(n2) << "\n" << ::tpy::check_signals;
 }
 
 

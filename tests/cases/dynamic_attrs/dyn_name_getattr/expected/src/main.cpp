@@ -20,13 +20,13 @@ std::string lookup(const Headers& h, std::string_view name) {
 //         print("caught:", str(e))
 void main() {
     Headers h = Headers();
-    std::cout << ::tpyapp::main::lookup(h, "host") << "\n";
-    std::cout << ::tpyapp::main::lookup(h, "port") << "\n";
+    std::cout << ::tpyapp::main::lookup(h, "host") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::lookup(h, "port") << "\n" << ::tpy::check_signals;
     {
         try {
-            std::cout << ::tpyapp::main::lookup(h, "missing") << "\n";
+            std::cout << ::tpyapp::main::lookup(h, "missing") << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::AttributeError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

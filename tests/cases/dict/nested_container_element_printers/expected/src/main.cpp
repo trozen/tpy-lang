@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(a["s"])
 //     print(b["d"])
 void show(const ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>>& a, const ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>& b) {
-    std::cout << ::tpy::SetPrinter(::tpy::__getitem__(a, "s")) << "\n";
-    std::cout << ::tpy::DictPrinter(::tpy::__getitem__(b, "d")) << "\n";
+    std::cout << ::tpy::SetPrinter(::tpy::__getitem__(a, "s")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::DictPrinter(::tpy::__getitem__(b, "d")) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

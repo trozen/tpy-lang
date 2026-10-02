@@ -26,11 +26,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::g_scores[0] << "\n";
-    std::cout << ::g_scores[2] << "\n";
-    std::cout << ::g_ids[1] << "\n";
+    std::cout << ::g_scores[0] << "\n" << ::tpy::check_signals;
+    std::cout << ::g_scores[2] << "\n" << ::tpy::check_signals;
+    std::cout << ::g_ids[1] << "\n" << ::tpy::check_signals;
     ::g_scores[0] = 99;
-    std::cout << ::g_scores[0] << "\n";
+    std::cout << ::g_scores[0] << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

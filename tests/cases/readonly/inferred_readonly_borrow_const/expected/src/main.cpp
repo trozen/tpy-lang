@@ -42,12 +42,12 @@ int32_t read_call(const Outer& o) {
 //     print(read_call(d))
 void main() {
     Outer d = Outer();
-    std::cout << d.read_sub() << "\n";
-    std::cout << d.read_named() << "\n";
+    std::cout << d.read_sub() << "\n" << ::tpy::check_signals;
+    std::cout << d.read_named() << "\n" << ::tpy::check_signals;
     d.bump();
-    std::cout << d.read_sub() << "\n";
-    std::cout << ::tpyapp::main::read_param(d.store) << "\n";
-    std::cout << ::tpyapp::main::read_call(d) << "\n";
+    std::cout << d.read_sub() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_param(d.store) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_call(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

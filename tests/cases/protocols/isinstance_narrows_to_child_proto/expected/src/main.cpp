@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(maybe_sum(nums))
 void main() {
     std::vector<int32_t> nums = {10, 20, 30};
-    std::cout << ::tpyapp::main::maybe_sum(nums) << "\n";
+    std::cout << ::tpyapp::main::maybe_sum(nums) << "\n" << ::tpy::check_signals;
 }
 
 // main()

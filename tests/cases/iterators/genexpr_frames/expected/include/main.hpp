@@ -837,7 +837,7 @@ inline Noisy::Noisy(int32_t n) : n(n) {}
 //     print("  Noisy.__iter__", self.n)
 //     return Cur(self.n)
 inline Cur Noisy::__iter__() const {
-    std::cout << "  Noisy.__iter__" << " " << this->n << "\n";
+    std::cout << "  Noisy.__iter__" << " " << this->n << "\n" << ::tpy::check_signals;
     return Cur(this->n);
 }
 

@@ -19,8 +19,8 @@ void main() {
     Point p2 = Point(3, 4);
     ::tpyapp::main::add_points(p1, p2);
     Point p3 = ((p1) + (p2));
-    std::cout << p3.x << "\n";
-    std::cout << p3.y << "\n";
+    std::cout << p3.x << "\n" << ::tpy::check_signals;
+    std::cout << p3.y << "\n" << ::tpy::check_signals;
 }
 
 // main()

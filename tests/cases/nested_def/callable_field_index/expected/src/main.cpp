@@ -25,7 +25,7 @@ int32_t touch(std::vector<int32_t>& values) {
 // def notify(x: int32):
 //     print("notify", x)
 void notify(int32_t x) {
-    std::cout << "notify" << " " << x << "\n";
+    std::cout << "notify" << " " << x << "\n" << ::tpy::check_signals;
 }
 
 // def make_values() -> Own[list[int32]]:
@@ -100,23 +100,23 @@ __coro_async_read async_read(const App& app) {
 void mutate_then_read(App& app, std::vector<int32_t>& values) {
     int32_t __stop_0 = ::tpy::__len__(values);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        std::cout << "bounds-before" << " " << values[static_cast<std::size_t>(i)] << "\n";
+        std::cout << "bounds-before" << " " << values[static_cast<std::size_t>(i)] << "\n" << ::tpy::check_signals;
         (::tpy::__getitem__(app.writers, "touch"))(values);
-        std::cout << "bounds" << " " << ::tpy::__getitem__(values, i) << "\n";
+        std::cout << "bounds" << " " << ::tpy::__getitem__(values, i) << "\n" << ::tpy::check_signals;
         break;
     }
     int32_t __stop_1 = ::tpy::__len__(values);
     for (int32_t i = 0; i < __stop_1; ++i) {
-        std::cout << "direct-before" << " " << values[static_cast<std::size_t>(i)] << "\n";
+        std::cout << "direct-before" << " " << values[static_cast<std::size_t>(i)] << "\n" << ::tpy::check_signals;
         app.direct_writer(values);
-        std::cout << "direct-after" << " " << ::tpy::__getitem__(values, i) << "\n";
+        std::cout << "direct-after" << " " << ::tpy::__getitem__(values, i) << "\n" << ::tpy::check_signals;
         break;
     }
     int32_t __stop_2 = ::tpy::__len__(values);
     for (int32_t i = 0; i < __stop_2; ++i) {
-        std::cout << "method-before" << " " << values[static_cast<std::size_t>(i)] << "\n";
+        std::cout << "method-before" << " " << values[static_cast<std::size_t>(i)] << "\n" << ::tpy::check_signals;
         app.write(values);
-        std::cout << "method-after" << " " << ::tpy::__getitem__(values, i) << "\n";
+        std::cout << "method-after" << " " << ::tpy::__getitem__(values, i) << "\n" << ::tpy::check_signals;
         break;
     }
 }
@@ -207,31 +207,31 @@ void main() {
     App app = App();
     Holder holder = Holder();
     ::tpy::ordered_map<std::string, std::function<int32_t(int32_t)>>& commands = app.commands;
-    std::cout << "fields" << " " << (::tpy::__getitem__(app.commands, "inc"))(1) << " " << (::tpy::__getitem__(app.callbacks, 0))(2) << " " << (::tpy::__getitem__(commands, "inc"))(3) << "\n";
+    std::cout << "fields" << " " << (::tpy::__getitem__(app.commands, "inc"))(1) << " " << (::tpy::__getitem__(app.callbacks, 0))(2) << " " << (::tpy::__getitem__(commands, "inc"))(3) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(commands, "inc", [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 2)); });
-    std::cout << "alias" << " " << (::tpy::__getitem__(app.commands, "inc"))(3) << "\n";
+    std::cout << "alias" << " " << (::tpy::__getitem__(app.commands, "inc"))(3) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(commands, "inc", inc);
     (::tpy::__getitem__(app.notifications, "run"))(3);
-    std::cout << "chained" << " " << (::tpy::__getitem__(holder.app.commands, "inc"))(4) << " " << app.read() << "\n";
-    std::cout << "nested" << " " << (::tpy::__getitem__(::tpy::__getitem__(app.groups, 0), 0))(5) << "\n";
+    std::cout << "chained" << " " << (::tpy::__getitem__(holder.app.commands, "inc"))(4) << " " << app.read() << "\n" << ::tpy::check_signals;
+    std::cout << "nested" << " " << (::tpy::__getitem__(::tpy::__getitem__(app.groups, 0), 0))(5) << "\n" << ::tpy::check_signals;
     std::vector<std::function<int32_t(int32_t)>>& selected = app.selected();
-    std::cout << "property-alias-bound" << "\n";
+    std::cout << "property-alias-bound" << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(selected, 0, [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 3)); });
     int32_t property_result = (::tpy::__getitem__(app.selected(), 0))(12);
-    std::cout << "property" << " " << property_result << " " << (::tpy::__getitem__(app.callbacks, 0))(12) << "\n";
+    std::cout << "property" << " " << property_result << " " << (::tpy::__getitem__(app.callbacks, 0))(12) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(app.callbacks, 0, inc);
     Generic<int32_t> generic = Generic<int32_t>(inc);
-    std::cout << "generic" << " " << generic.invoke(6) << "\n";
+    std::cout << "generic" << " " << generic.invoke(6) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> events = std::vector<int32_t>{};
-    std::cout << "order" << " " << (::tpy::__getitem__(app.commands, ::tpyapp::main::key(events)))(::tpyapp::main::arg(events)) << " " << ::tpy::ListPrinter(events) << "\n";
-    std::cout << "guard" << " " << ::tpy::print_bool((false && ((::tpy::__getitem__(app.commands, ::tpyapp::main::key(events)))(::tpyapp::main::arg(events)) > 0))) << " " << ::tpy::ListPrinter(events) << "\n";
+    std::cout << "order" << " " << (::tpy::__getitem__(app.commands, ::tpyapp::main::key(events)))(::tpyapp::main::arg(events)) << " " << ::tpy::ListPrinter(events) << "\n" << ::tpy::check_signals;
+    std::cout << "guard" << " " << ::tpy::print_bool((false && ((::tpy::__getitem__(app.commands, ::tpyapp::main::key(events)))(::tpyapp::main::arg(events)) > 0))) << " " << ::tpy::ListPrinter(events) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> values = std::vector<int32_t>{};
-    std::cout << "mutation" << " " << (::tpy::__getitem__(app.writers, "touch"))(values) << " " << ::tpy::ListPrinter(values) << "\n";
+    std::cout << "mutation" << " " << (::tpy::__getitem__(app.writers, "touch"))(values) << " " << ::tpy::ListPrinter(values) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::mutate_then_read(app, values);
     std::vector<int32_t> __tmp_1 = {1};
-    std::cout << "literal-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(__tmp_1) << "\n";
+    std::cout << "literal-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(__tmp_1) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_2 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(2, {1}));
-    std::cout << "repeat-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(__tmp_2) << "\n";
+    std::cout << "repeat-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(__tmp_2) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_3 = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = 2;
@@ -241,22 +241,22 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << "comp-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(__tmp_3) << "\n";
+    std::cout << "comp-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(__tmp_3) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_4 = ::tpyapp::main::make_values();
-    std::cout << "return-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(__tmp_4) << "\n";
+    std::cout << "return-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(__tmp_4) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_5 = {1};
-    std::cout << "local-arg" << " " << (::tpy::__getitem__(commands, "inc"))(1) << " " << app.direct_writer(__tmp_5) << "\n";
+    std::cout << "local-arg" << " " << (::tpy::__getitem__(commands, "inc"))(1) << " " << app.direct_writer(__tmp_5) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::function<int32_t(std::vector<int32_t>&)>>& writers = app.writers;
     std::vector<int32_t> __tmp_6 = {1};
-    std::cout << "computed-local-arg" << " " << (::tpy::__getitem__(writers, "touch"))(__tmp_6) << "\n";
+    std::cout << "computed-local-arg" << " " << (::tpy::__getitem__(writers, "touch"))(__tmp_6) << "\n" << ::tpy::check_signals;
     std::optional<std::vector<int32_t>> __tmp_7;
-    std::cout << "temp-skipped" << " " << ::tpy::print_bool((false && (__tmp_7.emplace(std::vector<int32_t>{::tpyapp::main::arg(events)}), ((::tpy::__getitem__(app.writers, "touch"))((*__tmp_7)) > 0)))) << " " << ::tpy::ListPrinter(events) << "\n";
+    std::cout << "temp-skipped" << " " << ::tpy::print_bool((false && (__tmp_7.emplace(std::vector<int32_t>{::tpyapp::main::arg(events)}), ((::tpy::__getitem__(app.writers, "touch"))((*__tmp_7)) > 0)))) << " " << ::tpy::ListPrinter(events) << "\n" << ::tpy::check_signals;
     std::optional<std::vector<int32_t>> __tmp_8;
-    std::cout << "temp-taken" << " " << ::tpy::print_bool((true && (__tmp_8.emplace(std::vector<int32_t>{::tpyapp::main::arg(events)}), ((::tpy::__getitem__(app.writers, "touch"))((*__tmp_8)) > 0)))) << " " << ::tpy::ListPrinter(events) << "\n";
+    std::cout << "temp-taken" << " " << ::tpy::print_bool((true && (__tmp_8.emplace(std::vector<int32_t>{::tpyapp::main::arg(events)}), ((::tpy::__getitem__(app.writers, "touch"))((*__tmp_8)) > 0)))) << " " << ::tpy::ListPrinter(events) << "\n" << ::tpy::check_signals;
     std::cout << "comprehension" << " " << ::tpy::ListPrinter(::tpy::array_from_index<int32_t, 3>([&](std::size_t __i_1) -> int32_t {
         int32_t x = int32_t(__i_1);
         return (::tpy::__getitem__(app.callbacks, 0))(x);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     {
         auto __src_2 = ::tpyapp::main::generate(app);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -264,28 +264,28 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "generator" << " " << value << "\n";
+            std::cout << "generator" << " " << value << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_read(app))) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_read(app))) << "\n" << ::tpy::check_signals;
     auto nested = [&app]() -> int32_t {
         return (::tpy::__getitem__(app.commands, "inc"))(6);
     };
-    std::cout << "closure" << " " << nested() << "\n";
+    std::cout << "closure" << " " << nested() << "\n" << ::tpy::check_signals;
     {
         try {
-            std::cout << "try" << " " << (::tpy::__getitem__(app.callbacks, 0))(7) << "\n";
+            std::cout << "try" << " " << (::tpy::__getitem__(app.callbacks, 0))(7) << "\n" << ::tpy::check_signals;
         } catch (...) {
-            std::cout << "finally" << " " << (::tpy::__getitem__(app.commands, "inc"))(8) << "\n";
+            std::cout << "finally" << " " << (::tpy::__getitem__(app.commands, "inc"))(8) << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally" << " " << (::tpy::__getitem__(app.commands, "inc"))(8) << "\n";
+        std::cout << "finally" << " " << (::tpy::__getitem__(app.commands, "inc"))(8) << "\n" << ::tpy::check_signals;
     }
     int32_t tag = (::tpy::__getitem__(app.commands, "inc"))(0);
     auto& __match_subject_1 = tag;
     switch (__match_subject_1) {
     case 1: {
-        std::cout << "match" << " " << (::tpy::__getitem__(app.commands, "inc"))(9) << "\n";
+        std::cout << "match" << " " << (::tpy::__getitem__(app.commands, "inc"))(9) << "\n" << ::tpy::check_signals;
         break;
     }
     default: break;
@@ -294,7 +294,7 @@ void main() {
     auto& stream = __ctx_1.__enter__();
     try {
         stream.write("ok");
-        std::cout << "context" << " " << (::tpy::__getitem__(app.commands, "inc"))(10) << "\n";
+        std::cout << "context" << " " << (::tpy::__getitem__(app.commands, "inc"))(10) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -312,11 +312,11 @@ void main() {
             if (!__try_tmp_2.has_value()) goto __except_1;
             result = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        std::cout << "error-return" << " " << result << "\n";
+        std::cout << "error-return" << " " << result << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Failure:
         __except_1:;
-        std::cout << "error-return" << " " << "unexpected" << "\n";
+        std::cout << "error-return" << " " << "unexpected" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }
@@ -346,7 +346,7 @@ void __tpy_init() {
     ::tpystd::asyncio::__tpy_init();
     static App __global_slot_1 = App();
     global_app = &__global_slot_1;
-    std::cout << "global" << " " << (::tpy::__getitem__(global_app->commands, "inc"))(11) << "\n";
+    std::cout << "global" << " " << (::tpy::__getitem__(global_app->commands, "inc"))(11) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }
 

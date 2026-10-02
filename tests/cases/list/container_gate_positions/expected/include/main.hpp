@@ -148,7 +148,7 @@ inline void Holder::narrowed(std::vector<int32_t>* o) const {
         std::vector<int32_t>& x = (*o);
         x.push_back(9);
     }
-    std::cout << "meth_narrowed_alias" << " " << (((o != nullptr)) ? (::tpy::__len__((*o))) : (-1)) << "\n";
+    std::cout << "meth_narrowed_alias" << " " << (((o != nullptr)) ? (::tpy::__len__((*o))) : (-1)) << "\n" << ::tpy::check_signals;
 }
 
 // # constructor: a container field written into a container field
@@ -160,7 +160,7 @@ inline void Holder::narrowed(std::vector<int32_t>* o) const {
 inline CtorWriter::CtorWriter(const Src& src) : f(std::vector<int32_t>{}) {
     this->f = src.items;
     this->f.push_back(9);
-    std::cout << "ctor_field_write" << " " << ::tpy::__len__(this->f) << "\n";
+    std::cout << "ctor_field_write" << " " << ::tpy::__len__(this->f) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

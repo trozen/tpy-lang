@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void from_list() {
     std::vector<int32_t> data = {1, 2, 3};
     std::span<const int32_t> s = ::tpy::as_span(data);
-    std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << " " << ::tpy::__getitem__(s, 2) << "\n";
+    std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << " " << ::tpy::__getitem__(s, 2) << "\n" << ::tpy::check_signals;
 }
 
 // def from_array() -> None:
@@ -21,7 +21,7 @@ void from_list() {
 void from_array() {
     std::array<int32_t, 3> a = {10, 20, 30};
     std::span<const int32_t> s = ::tpy::as_span(a);
-    std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << " " << ::tpy::__getitem__(s, 2) << "\n";
+    std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << " " << ::tpy::__getitem__(s, 2) << "\n" << ::tpy::check_signals;
 }
 
 // def from_span() -> None:
@@ -33,7 +33,7 @@ void from_span() {
     std::array<int32_t, 3> a = {4, 5, 6};
     std::span<int32_t> sp = ::tpy::as_mut_span(a);
     std::span<const int32_t> s = ::tpy::as_span(sp);
-    std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << " " << ::tpy::__getitem__(s, 2) << "\n";
+    std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << " " << ::tpy::__getitem__(s, 2) << "\n" << ::tpy::check_signals;
 }
 
 // def from_readonly_span() -> None:
@@ -45,7 +45,7 @@ void from_readonly_span() {
     std::array<int32_t, 3> a = {7, 8, 9};
     std::span<const int32_t> ro = ::tpy::as_span(a);
     std::span<const int32_t> s = ::tpy::as_span(ro);
-    std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << " " << ::tpy::__getitem__(s, 2) << "\n";
+    std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << " " << ::tpy::__getitem__(s, 2) << "\n" << ::tpy::check_signals;
 }
 
 // def from_arraylist() -> None:
@@ -59,7 +59,7 @@ void from_arraylist() {
     al.append(100);
     al.append(200);
     std::span<int32_t> s = al.__span__();
-    std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << "\n";
+    std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

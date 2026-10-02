@@ -42,17 +42,17 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_exists(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(tmp, "/tpy_ospath_fs_missing")))) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_isfile(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isfile(tmp)) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_isdir(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isdir(tmp)) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_islink(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_islink(tmp)) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_lexists(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_lexists((::tpy::str_concat(tmp, "/tpy_ospath_fs_missing")))) << "\n";
-    std::cout << ::tpy::stdlib::os::path_getsize(f) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::stdlib::os::path_getsize(tmp) >= 0)) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_exists(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(tmp, "/tpy_ospath_fs_missing")))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_isfile(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isfile(tmp)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_isdir(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isdir(tmp)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_islink(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_islink(tmp)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_lexists(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_lexists((::tpy::str_concat(tmp, "/tpy_ospath_fs_missing")))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::stdlib::os::path_getsize(f) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::stdlib::os::path_getsize(tmp) >= 0)) << "\n" << ::tpy::check_signals;
     ::tpy::stdlib::os::chdir(tmp);
-    std::cout << ::tpy::print_bool((::tpystd::os::path::abspath("sub/x") == (::tpy::str_concat(tmp, "/sub/x")))) << "\n";
-    std::cout << ::tpystd::os::path::abspath("/a/b/../c") << "\n";
-    std::cout << ::tpy::print_bool((::tpystd::os::path::abspath(".") == tmp)) << "\n";
+    std::cout << ::tpy::print_bool((::tpystd::os::path::abspath("sub/x") == (::tpy::str_concat(tmp, "/sub/x")))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::path::abspath("/a/b/../c") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpystd::os::path::abspath(".") == tmp)) << "\n" << ::tpy::check_signals;
 }
 
 // # os.path filesystem predicates + abspath, over fixtures in the run's scratch

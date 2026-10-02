@@ -402,7 +402,7 @@ inline void Ctx::__exit__(std::monostate exc_type, const ::tpy::BaseException* e
 inline void Box::run() const {
     int64_t i = 1;
     for (int32_t _ = 0; _ < 2; ++_) {
-        std::cout << "method" << " " << (::tpy::add_check<int64_t>(i, i)) << "\n";
+        std::cout << "method" << " " << (::tpy::add_check<int64_t>(i, i)) << "\n" << ::tpy::check_signals;
         i = ::tpyapp::main::w64(static_cast<int64_t>(3000000000));
     }
 }
@@ -417,7 +417,7 @@ inline void Box::first_method() const {
     int32_t x = 100;
     int32_t y = (::tpy::mul_check<int32_t>(x, 3));
     x = static_cast<int32_t>(3);
-    std::cout << "first_method" << " " << y << " " << x << "\n";
+    std::cout << "first_method" << " " << y << " " << x << "\n" << ::tpy::check_signals;
 }
 
 // def arm_method(self, c: bool, v: int64) -> None:
@@ -433,7 +433,7 @@ inline void ArmBox::arm_method(bool c, int64_t v) const {
     } else {
         x = v;
     }
-    std::cout << "arm_method" << " " << (::tpy::mul_check<int64_t>(x, 1000000000)) << "\n";
+    std::cout << "arm_method" << " " << (::tpy::mul_check<int64_t>(x, 1000000000)) << "\n" << ::tpy::check_signals;
 }
 // # Two candidates of one arity whose lambda parameter types differ; the
 // # lambda's result type `U` is decided by a trial of its body. Both return the

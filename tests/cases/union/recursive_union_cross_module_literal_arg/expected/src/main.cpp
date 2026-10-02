@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     print(int_leaves([1, "a", [2, 3], 4]))
 void main() {
     ::tpyapp::shapes::Shape __tmp_1 = std::vector<::tpyapp::shapes::Shape>{1, "a", std::vector<::tpyapp::shapes::Shape>{2, 3}, 4};
-    std::cout << ::tpyapp::shapes::int_leaves(__tmp_1) << "\n";
+    std::cout << ::tpyapp::shapes::int_leaves(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // # A non-generic recursive union (Shape) defined in another module, consumed via

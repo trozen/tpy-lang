@@ -60,7 +60,7 @@ inline Node::Node(int32_t val) : val(val) {}
 template<typename V>
 void test_warn_update_generic(::tpy::ordered_map<std::string, V>& a, ::tpy::ordered_map<std::string, V>& b) {
     ::tpy::dict_update(a, b);
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

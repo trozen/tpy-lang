@@ -17,7 +17,7 @@ std::optional<double> z;
 //     print(r)
 void print_range() {
     ::tpy::Range<int32_t> r = ::tpy::Range<int32_t>(3);
-    std::cout << r << "\n";
+    std::cout << r << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList
@@ -80,41 +80,41 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::tplib::__tpy_init();
-    std::cout << "None" << "\n";
-    std::cout << 42 << "\n";
-    std::cout << 7 << "\n";
-    std::cout << ::tpy::print_float(3.14) << "\n";
-    std::cout << ::tpy::print_bool(true) << "\n";
-    std::cout << ::tpy::print_bool(false) << "\n";
-    std::cout << "hello" << "\n";
+    std::cout << "None" << "\n" << ::tpy::check_signals;
+    std::cout << 42 << "\n" << ::tpy::check_signals;
+    std::cout << 7 << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(3.14) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(false) << "\n" << ::tpy::check_signals;
+    std::cout << "hello" << "\n" << ::tpy::check_signals;
     s = "world";
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
     c = 'A';
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
     static std::vector<::tpy::BigInt> __global_slot_1 = {1, 2, 3};
     items = &__global_slot_1;
-    std::cout << ::tpy::ListPrinter((*items)) << "\n";
+    std::cout << ::tpy::ListPrinter((*items)) << "\n" << ::tpy::check_signals;
     static std::array<int32_t, 3> __global_slot_2 = {10, 20, 30};
     arr = &__global_slot_2;
-    std::cout << ::tpy::ListPrinter((*arr)) << "\n";
+    std::cout << ::tpy::ListPrinter((*arr)) << "\n" << ::tpy::check_signals;
     static ::tpystd::tplib::array_list::ArrayList<int32_t, 4> __global_slot_3 = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     al = &__global_slot_3;
     al->append(5);
     al->append(6);
-    std::cout << (*al) << "\n";
-    std::cout << ::tpy::Range<int32_t>(5) << "\n";
-    std::cout << ::tpy::Range<int32_t>(2, 7) << "\n";
-    std::cout << ::tpy::Range<int32_t>(0, 10, 3) << "\n";
+    std::cout << (*al) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::Range<int32_t>(5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::Range<int32_t>(2, 7) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::Range<int32_t>(0, 10, 3) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::print_range();
-    std::cout << "x:" << " " << 42 << " " << ::tpy::print_bool(true) << " " << ::tpy::print_float(3.14) << "\n";
+    std::cout << "x:" << " " << 42 << " " << ::tpy::print_bool(true) << " " << ::tpy::print_float(3.14) << "\n" << ::tpy::check_signals;
     x = 10;
-    std::cout << ::tpy::print_optional_val(x) << "\n";
+    std::cout << ::tpy::print_optional_val(x) << "\n" << ::tpy::check_signals;
     x = std::nullopt;
-    std::cout << ::tpy::print_optional_val(x) << "\n";
+    std::cout << ::tpy::print_optional_val(x) << "\n" << ::tpy::check_signals;
     y = true;
-    std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(y) << "\n";
+    std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(y) << "\n" << ::tpy::check_signals;
     z = 2.5;
-    std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(z) << "\n";
+    std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(z) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -23,7 +23,7 @@ void test_basic() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << "after with" << "\n";
+    std::cout << "after with" << "\n" << ::tpy::check_signals;
 }
 
 // def test_no_as() -> None:
@@ -34,7 +34,7 @@ void test_no_as() {
     auto __ctx_2 = Logger("B");
     __ctx_2.__enter__();
     try {
-        std::cout << "inside B" << "\n";
+        std::cout << "inside B" << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -45,7 +45,7 @@ void test_no_as() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    std::cout << "after B" << "\n";
+    std::cout << "after B" << "\n" << ::tpy::check_signals;
 }
 
 // def test_enter_returns_different_type() -> None:
@@ -56,7 +56,7 @@ void test_enter_returns_different_type() {
     auto __ctx_3 = Connection();
     auto session = __ctx_3.__enter__();
     try {
-        std::cout << session << "\n";
+        std::cout << session << "\n" << ::tpy::check_signals;
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
@@ -67,7 +67,7 @@ void test_enter_returns_different_type() {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    std::cout << "after connection" << "\n";
+    std::cout << "after connection" << "\n" << ::tpy::check_signals;
 }
 
 // def test_multiple_ctx_managers() -> None:
@@ -104,7 +104,7 @@ void test_multiple_ctx_managers() {
     }
     __with_exit_4:
     __ctx_4.__exit__({}, nullptr, {});
-    std::cout << "after both" << "\n";
+    std::cout << "after both" << "\n" << ::tpy::check_signals;
 }
 
 // def test_variable_visible_after() -> None:
@@ -160,7 +160,7 @@ std::string early_return_helper() {
 //     print(val)
 void test_early_return() {
     std::string val = ::tpyapp::main::early_return_helper();
-    std::cout << val << "\n";
+    std::cout << val << "\n" << ::tpy::check_signals;
 }
 
 // def nested_with_all_return(flag: bool) -> str:
@@ -227,8 +227,8 @@ std::string nested_with_all_return(bool flag) {
 //     print(nested_with_all_return(True))
 //     print(nested_with_all_return(False))
 void test_nested_with_all_return() {
-    std::cout << ::tpyapp::main::nested_with_all_return(true) << "\n";
-    std::cout << ::tpyapp::main::nested_with_all_return(false) << "\n";
+    std::cout << ::tpyapp::main::nested_with_all_return(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::nested_with_all_return(false) << "\n" << ::tpy::check_signals;
 }
 
 // def test_body_var_survives_scope() -> None:
@@ -256,8 +256,8 @@ void test_body_var_survives_scope() {
     }
     __with_exit_10:
     __ctx_10.__exit__({}, nullptr, {});
-    std::cout << x << "\n";
-    std::cout << y << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_body_record_var_survives_scope() -> None:
@@ -350,7 +350,7 @@ void test_exception_in_body() {
                 throw;
             }
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught" << "\n";
+            std::cout << "caught" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -389,7 +389,7 @@ void test_exception_multi() {
                 throw;
             }
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught multi" << "\n";
+            std::cout << "caught multi" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -407,7 +407,7 @@ void test_with_in_try_finally() {
             auto __ctx_17 = Logger("N");
             __ctx_17.__enter__();
             try {
-                std::cout << "inside with" << "\n";
+                std::cout << "inside with" << "\n" << ::tpy::check_signals;
                 goto __with_exit_17;
             } catch (::tpy::BaseException& __exc_17) {
                 __ctx_17.__exit__({}, &__exc_17, {});
@@ -419,10 +419,10 @@ void test_with_in_try_finally() {
             __with_exit_17:
             __ctx_17.__exit__({}, nullptr, {});
         } catch (...) {
-            std::cout << "outer finally" << "\n";
+            std::cout << "outer finally" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "outer finally" << "\n";
+        std::cout << "outer finally" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -445,7 +445,7 @@ void test_break_in_with() {
                 __ctx_18.__exit__({}, nullptr, {});
                 break;
             }
-            std::cout << i << "\n";
+            std::cout << i << "\n" << ::tpy::check_signals;
             goto __with_exit_18;
         } catch (::tpy::BaseException& __exc_18) {
             if (__fin_ran_19) throw;
@@ -459,7 +459,7 @@ void test_break_in_with() {
         __with_exit_18:
         __ctx_18.__exit__({}, nullptr, {});
     }
-    std::cout << "after break loop" << "\n";
+    std::cout << "after break loop" << "\n" << ::tpy::check_signals;
 }
 
 // def test_continue_in_with() -> None:
@@ -481,7 +481,7 @@ void test_continue_in_with() {
                 __ctx_19.__exit__({}, nullptr, {});
                 continue;
             }
-            std::cout << i << "\n";
+            std::cout << i << "\n" << ::tpy::check_signals;
             goto __with_exit_19;
         } catch (::tpy::BaseException& __exc_19) {
             if (__fin_ran_20) throw;
@@ -495,7 +495,7 @@ void test_continue_in_with() {
         __with_exit_19:
         __ctx_19.__exit__({}, nullptr, {});
     }
-    std::cout << "after continue loop" << "\n";
+    std::cout << "after continue loop" << "\n" << ::tpy::check_signals;
 }
 
 // test_basic()
@@ -533,33 +533,33 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::main::test_basic();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_no_as();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_enter_returns_different_type();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_multiple_ctx_managers();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_variable_visible_after();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_early_return();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_nested_with_all_return();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_body_var_survives_scope();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_body_record_var_survives_scope();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_reuse_with_var_name();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_exception_in_body();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_exception_multi();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_with_in_try_finally();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_break_in_with();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_continue_in_with();
 }
 

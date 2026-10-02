@@ -163,7 +163,7 @@ __coro_f_alias f_alias() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r.emplace(std::move(__r0).value());
         __sub_0.reset();
-        std::cout << (*r).n << "\n";
+        std::cout << (*r).n << "\n" << ::tpy::check_signals;
         __sub_1.emplace(true);
         __state = S_RESUME_1;
         continue;
@@ -174,7 +174,7 @@ __coro_f_alias f_alias() {
         o = std::move(__r1).value();
         __sub_1.reset();
         if ((o.has_value())) {
-            std::cout << (*o).n << "\n";
+            std::cout << (*o).n << "\n" << ::tpy::check_signals;
         }
         __sub_2.emplace(false);
         __state = S_RESUME_2;
@@ -185,7 +185,7 @@ __coro_f_alias f_alias() {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << ::tpy::print_bool((!__await_lift_0.has_value())) << "\n";
+        std::cout << ::tpy::print_bool((!__await_lift_0.has_value())) << "\n" << ::tpy::check_signals;
         __sub_3.emplace();
         __state = S_RESUME_3;
         continue;
@@ -195,7 +195,7 @@ __coro_f_alias f_alias() {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1.emplace(std::move(__r3).value());
         __sub_3.reset();
-        std::cout << (*__await_lift_1).n << "\n";
+        std::cout << (*__await_lift_1).n << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

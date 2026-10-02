@@ -17,7 +17,7 @@ int32_t consume(Holder<Handle>&& h) {
 void main() {
     Holder<Handle> h = Holder<Handle>(Handle(42));
     int32_t result = ::tpyapp::main::consume(std::move(h));
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
 }
 
 // main()

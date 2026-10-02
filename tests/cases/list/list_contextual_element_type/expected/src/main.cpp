@@ -57,30 +57,30 @@ std::vector<std::optional<int32_t>> make_optional_list() {
 //     print(len(shapes2))
 void main() {
     std::vector<std::optional<int32_t>> a = {1, 2};
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<int32_t>> b = {std::nullopt};
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<int32_t>> c = {1, std::nullopt, 3};
-    std::cout << ::tpy::__len__(c) << "\n";
+    std::cout << ::tpy::__len__(c) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<int32_t>> d = std::vector<std::optional<int32_t>>{};
     d.push_back(42);
     d.push_back(std::nullopt);
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<int32_t>> e = ::tpyapp::main::make_optional_list();
-    std::cout << ::tpy::__len__(e) << "\n";
+    std::cout << ::tpy::__len__(e) << "\n" << ::tpy::check_signals;
     a.push_back(std::nullopt);
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<int32_t>> f = {1, std::nullopt, 3};
-    std::cout << ::tpy::__len__(f) << "\n";
+    std::cout << ::tpy::__len__(f) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> g = {1, 2, 3};
-    std::cout << ::tpy::__len__(g) << "\n";
+    std::cout << ::tpy::__len__(g) << "\n" << ::tpy::check_signals;
     Rect r = Rect();
     r.w = 10;
     r.h = 20;
     std::vector<::tpy::Union<Circle, Rect>> shapes = ::tpy::make_vector<::tpy::Union<Circle, Rect>>(std::move(r), Circle());
-    std::cout << ::tpy::__len__(shapes) << "\n";
+    std::cout << ::tpy::__len__(shapes) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Union<Circle, Rect>> shapes2 = {Rect(), Circle()};
-    std::cout << ::tpy::__len__(shapes2) << "\n";
+    std::cout << ::tpy::__len__(shapes2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tracker& obj) {
 //     print("enter")
 //     return 7
 inline ::tpy::BigInt Tracker::__enter__() const {
-    std::cout << "enter" << "\n";
+    std::cout << "enter" << "\n" << ::tpy::check_signals;
     return ::tpy::BigInt(7);
 }
 
@@ -57,9 +57,9 @@ inline ::tpy::BigInt Tracker::__enter__() const {
 //         print(f"exception exit: {str(exc_val)}")
 inline void Tracker::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
     if ((exc_val == nullptr)) {
-        std::cout << "clean exit" << "\n";
+        std::cout << "clean exit" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << std::format("exception exit: {}", std::string(::tpy::__str__((*exc_val)))) << "\n";
+        std::cout << std::format("exception exit: {}", std::string(::tpy::__str__((*exc_val)))) << "\n" << ::tpy::check_signals;
     }
 }
 void __tpy_init();

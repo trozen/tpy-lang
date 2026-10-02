@@ -48,11 +48,11 @@ void main() {
     h1.sock = std::move(c);
     s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h1)));
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/v1/tables");
-    std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << " " << r.text() << "\n";
-    std::cout << r.url << "\n";
-    std::cout << ::tpy::__len__(r.history) << " " << ::tpy::__getitem__(r.history, 0).status_code << " " << ::tpy::__getitem__(r.history, 0).url << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::__getitem__(::tpy::bytes_split(b.recv(65536), ::tpy::bytes_literal("\r\n", 2)), 0)) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::__getitem__(::tpy::bytes_split(d.recv(65536), ::tpy::bytes_literal("\r\n", 2)), 0)) << "\n";
+    std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << " " << r.text() << "\n" << ::tpy::check_signals;
+    std::cout << r.url << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(r.history) << " " << ::tpy::__getitem__(r.history, 0).status_code << " " << ::tpy::__getitem__(r.history, 0).url << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::__getitem__(::tpy::bytes_split(b.recv(65536), ::tpy::bytes_literal("\r\n", 2)), 0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::__getitem__(::tpy::bytes_split(d.recv(65536), ::tpy::bytes_literal("\r\n", 2)), 0)) << "\n" << ::tpy::check_signals;
     b.close();
     d.close();
 }

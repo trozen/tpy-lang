@@ -179,20 +179,20 @@ A return_unpacked(std::tuple<A, A>&& p, std::vector<A>& into) {
 //     print("return", return_through_local(A(20)).n,
 //           return_unpacked((A(21), A(22)), kept2).n, [x.n for x in kept2])
 void main() {
-    std::cout << ::tpyapp::main::read_owned(std::tuple<A, A>{A(1), A(2)}) << "\n";
+    std::cout << ::tpyapp::main::read_owned(std::tuple<A, A>{A(1), A(2)}) << "\n" << ::tpy::check_signals;
     A a = A(3);
     A b = A(4);
-    std::cout << ::tpyapp::main::read_borrow(std::tuple<A*, A*>{&(a), &(b)}) << "\n";
-    std::cout << ::tpyapp::main::read_nocopy(std::tuple<B, B>{B(5), B(6)}) << "\n";
+    std::cout << ::tpyapp::main::read_borrow(std::tuple<A*, A*>{&(a), &(b)}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_nocopy(std::tuple<B, B>{B(5), B(6)}) << "\n" << ::tpy::check_signals;
     std::vector<A> kept = std::vector<A>{};
-    std::cout << "drop_one" << " " << ::tpyapp::main::drop_one(std::tuple<A, A>{A(1), A(2)}, kept) << "\n";
-    std::cout << "drop_first" << " " << H().drop_first(std::tuple<A, A>{A(3), A(4)}, kept) << "\n";
+    std::cout << "drop_one" << " " << ::tpyapp::main::drop_one(std::tuple<A, A>{A(1), A(2)}, kept) << "\n" << ::tpy::check_signals;
+    std::cout << "drop_first" << " " << H().drop_first(std::tuple<A, A>{A(3), A(4)}, kept) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::drop_on_branch(std::tuple<A, A>{A(5), A(6)}, false, kept);
-    std::cout << "mixed" << " " << ::tpyapp::main::mixed(std::tuple<A, A*>{A(7), &(a)}) << "\n";
+    std::cout << "mixed" << " " << ::tpyapp::main::mixed(std::tuple<A, A*>{A(7), &(a)}) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::through_local(A(8), kept);
     ::tpyapp::main::consume_all(std::tuple<A, A>{A(9), A(10)}, kept);
-    std::cout << "drop_nocopy" << " " << ::tpyapp::main::drop_nocopy(std::tuple<A, B>{A(11), B(12)}, kept) << "\n";
-    std::cout << "drop_value" << " " << ::tpyapp::main::drop_value(std::tuple<A, int32_t>{A(13), 14}, kept) << "\n";
+    std::cout << "drop_nocopy" << " " << ::tpyapp::main::drop_nocopy(std::tuple<A, B>{A(11), B(12)}, kept) << "\n" << ::tpy::check_signals;
+    std::cout << "drop_value" << " " << ::tpyapp::main::drop_value(std::tuple<A, int32_t>{A(13), 14}, kept) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::forward(std::tuple<A, A>{A(15), A(16)}, kept);
     std::cout << "kept" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -205,11 +205,11 @@ void main() {
             __result.push_back(x.n);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     Holder h = Holder();
     h.store_through_local(A(17));
     h.store_unpacked(std::tuple<A, A>{A(18), A(19)});
-    std::cout << "store" << " " << h.slot.n << " " << h.other.n << "\n";
+    std::cout << "store" << " " << h.slot.n << " " << h.other.n << "\n" << ::tpy::check_signals;
     std::vector<A> kept2 = std::vector<A>{};
     std::cout << "return" << " " << ::tpyapp::main::return_through_local(A(20)).n << " " << ::tpyapp::main::return_unpacked(std::tuple<A, A>{A(21), A(22)}, kept2).n << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -222,7 +222,7 @@ void main() {
             __result.push_back(x.n);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
 }
 
 // main()

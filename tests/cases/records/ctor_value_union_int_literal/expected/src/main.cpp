@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(h.u)
 void main() {
     Holder h = Holder();
-    std::cout << ::tpy::__str__(h.u) << "\n";
+    std::cout << ::tpy::__str__(h.u) << "\n" << ::tpy::check_signals;
 }
 
 // main()

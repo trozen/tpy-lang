@@ -142,7 +142,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen_try::__next__() {
 }
 
 void __gen_gen_try::__finally_0() {
-    std::cout << "try done" << "\n";
+    std::cout << "try done" << "\n" << ::tpy::check_signals;
 }
 
 // def gen_try(x: int32) -> Iterator[str]:
@@ -194,7 +194,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen:" << " " << s << "\n";
+            std::cout << "gen:" << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -204,10 +204,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "gen empty:" << " " << s << "\n";
+            std::cout << "gen empty:" << " " << s << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "coro:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro(3))) << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro(0))) << "\n";
+    std::cout << "coro:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro(3))) << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro(0))) << "\n" << ::tpy::check_signals;
     {
         auto __src_4 = ::tpyapp::main::gen_rebind(0);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -215,7 +215,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "rebind:" << " " << s << "\n";
+            std::cout << "rebind:" << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -225,7 +225,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "rebind live:" << " " << s << "\n";
+            std::cout << "rebind live:" << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -235,7 +235,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "named:" << " " << s << "\n";
+            std::cout << "named:" << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -245,7 +245,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_11);
-            std::cout << "named empty:" << " " << s << "\n";
+            std::cout << "named empty:" << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -255,7 +255,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_13);
-            std::cout << "try:" << " " << s << "\n";
+            std::cout << "try:" << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -265,7 +265,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_15);
-            std::cout << "branch:" << " " << s << "\n";
+            std::cout << "branch:" << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -275,7 +275,7 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_17);
-            std::cout << "loop:" << " " << s << "\n";
+            std::cout << "loop:" << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -286,7 +286,7 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_19);
-            std::cout << "method:" << " " << s << "\n";
+            std::cout << "method:" << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -297,7 +297,7 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_21);
-            std::cout << "method empty:" << " " << s << "\n";
+            std::cout << "method empty:" << " " << s << "\n" << ::tpy::check_signals;
         }
     }
 }

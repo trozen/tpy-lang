@@ -56,26 +56,26 @@ void main() {
     } else {
         p = &a;
     }
-    std::cout << p->x << "\n";
+    std::cout << p->x << "\n" << ::tpy::check_signals;
     Point* q = &a;
     if ((a.x > 0)) {
         q = ::tpyapp::main::get_ptr(q);
     }
-    std::cout << ::tpy::deref_check(q).x << "\n";
+    std::cout << ::tpy::deref_check(q).x << "\n" << ::tpy::check_signals;
     Point* r = &a;
     int32_t i = 0;
     while ((i < 3)) {
-        std::cout << r->x << "\n";
+        std::cout << r->x << "\n" << ::tpy::check_signals;
         i = (::tpy::add_check<int32_t>(i, 1));
     }
     Point* s = &a;
     int32_t j = 0;
     while ((j < 3)) {
-        std::cout << ::tpy::deref_check(s).x << "\n";
+        std::cout << ::tpy::deref_check(s).x << "\n" << ::tpy::check_signals;
         s = ::tpyapp::main::get_ptr(s);
         j = (::tpy::add_check<int32_t>(j, 1));
     }
-    std::cout << ::tpy::deref_check(s).x << "\n";
+    std::cout << ::tpy::deref_check(s).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

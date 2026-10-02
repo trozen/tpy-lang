@@ -35,8 +35,8 @@ void main() {
     items.push_back(Box(5));
     items.push_back(Box(6));
     ::tpyapp::main::via_unpack(items);
-    std::cout << ::tpy::__getitem__(items, 0).val << "\n";
-    std::cout << ::tpy::__getitem__(items, 1).val << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).val << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(items, 1).val << "\n" << ::tpy::check_signals;
 }
 
 // main()

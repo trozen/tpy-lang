@@ -14,8 +14,8 @@ void test_extend_warns() {
     ::tpystd::tplib::array_list::ArrayList<Node, 16> a = ::tpystd::tplib::array_list::ArrayList<Node, 16>();
     std::vector<Node> b = {Node(1)};
     a.extend(b);
-    std::cout << a[0].val << "\n";
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << a[0].val << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def test_extend_value_type_no_warn() -> None:
@@ -27,7 +27,7 @@ void test_extend_value_type_no_warn() {
     ::tpystd::tplib::array_list::ArrayList<int32_t, 16> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 16>();
     std::vector<int32_t> b = {1, 2};
     a.extend(b);
-    std::cout << a[0] << "\n";
+    std::cout << a[0] << "\n" << ::tpy::check_signals;
 }
 
 // def test_ctor_warns() -> None:
@@ -38,8 +38,8 @@ void test_extend_value_type_no_warn() {
 void test_ctor_warns() {
     std::vector<Node> b = {Node(1)};
     ::tpystd::tplib::array_list::ArrayList<Node, 16> a = ::tpystd::tplib::array_list::ArrayList<Node, 16>(&(b));
-    std::cout << a[0].val << "\n";
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << a[0].val << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def test_ctor_last_use_no_warn() -> None:
@@ -49,7 +49,7 @@ void test_ctor_warns() {
 void test_ctor_last_use_no_warn() {
     std::vector<Node> b = {Node(1)};
     ::tpystd::tplib::array_list::ArrayList<Node, 16> a = ::tpystd::tplib::array_list::ArrayList<Node, 16>(&(b));
-    std::cout << a[0].val << "\n";
+    std::cout << a[0].val << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

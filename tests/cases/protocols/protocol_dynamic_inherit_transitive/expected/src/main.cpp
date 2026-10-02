@@ -22,9 +22,9 @@ void main() {
     ValErr v = ValErr("v-msg");
     OsErr o = OsErr("o-msg");
     BaseExc b = BaseExc("b-msg");
-    std::cout << ::tpyapp::main::report(v) << "\n";
-    std::cout << ::tpyapp::main::report(o) << "\n";
-    std::cout << ::tpyapp::main::report(b) << "\n";
+    std::cout << ::tpyapp::main::report(v) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::report(o) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::report(b) << "\n" << ::tpy::check_signals;
 }
 
 // main()

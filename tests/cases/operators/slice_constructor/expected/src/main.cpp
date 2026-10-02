@@ -40,22 +40,22 @@ namespace tpyapp::main {
 void main() {
     std::vector<int32_t> items = {10, 20, 30, 40, 50};
     ::tpy::BasicSlice s = ::tpy::BasicSlice{1, 4};
-    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, s)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, s)) << "\n" << ::tpy::check_signals;
     ::tpy::Slice s2 = ::tpy::Slice{0, 5, 2};
-    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, s2)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, s2)) << "\n" << ::tpy::check_signals;
     std::string_view text = "hello world";
     ::tpy::BasicSlice s3 = ::tpy::BasicSlice{0, 5};
-    std::cout << ::tpy::str_slice(text, s3) << "\n";
-    std::cout << s2 << "\n";
-    std::cout << ::tpy::print_optional_val(s.start) << "\n";
-    std::cout << ::tpy::print_optional_val(s.stop) << "\n";
-    std::cout << ::tpy::print_optional_val(s2.step) << "\n";
+    std::cout << ::tpy::str_slice(text, s3) << "\n" << ::tpy::check_signals;
+    std::cout << s2 << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(s.start) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(s.stop) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(s2.step) << "\n" << ::tpy::check_signals;
     ::tpy::BasicSlice s4 = ::tpy::BasicSlice{std::nullopt, 3};
-    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, s4)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, s4)) << "\n" << ::tpy::check_signals;
     ::tpy::BasicSlice s5 = ::tpy::BasicSlice{2, std::nullopt};
-    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, s5)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, s5)) << "\n" << ::tpy::check_signals;
     ::tpy::Slice s6 = ::tpy::Slice{std::nullopt, std::nullopt, 2};
-    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, s6)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, s6)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

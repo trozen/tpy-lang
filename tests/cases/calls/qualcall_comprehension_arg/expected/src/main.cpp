@@ -25,7 +25,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << "static_list" << " " << Holder::take_list(__tmp_1) << "\n";
+    std::cout << "static_list" << " " << Holder::take_list(__tmp_1) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> __tmp_2 = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
         const int32_t __stop_1 = 2;
@@ -34,7 +34,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << "static_dict" << " " << Holder::take_dict(__tmp_2) << "\n";
+    std::cout << "static_dict" << " " << Holder::take_dict(__tmp_2) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> __tmp_3 = ({
         ::tpy::ordered_set<int32_t> __result;
         const int32_t __stop_2 = 2;
@@ -43,7 +43,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << "static_set" << " " << Holder::take_set(__tmp_3) << "\n";
+    std::cout << "static_set" << " " << Holder::take_set(__tmp_3) << "\n" << ::tpy::check_signals;
     std::vector<Rec> __tmp_4 = ({
         std::vector<Rec> __result;
         const int32_t __stop_3 = 2;
@@ -53,7 +53,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << "static_recs" << " " << Holder::take_recs(__tmp_4) << "\n";
+    std::cout << "static_recs" << " " << Holder::take_recs(__tmp_4) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_5 = ({
         std::vector<int32_t> __result;
         const int32_t __stop_4 = 3;
@@ -63,7 +63,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << "generic_static" << " " << GHolder<int32_t>::take_list(__tmp_5) << "\n";
+    std::cout << "generic_static" << " " << GHolder<int32_t>::take_list(__tmp_5) << "\n" << ::tpy::check_signals;
 }
 
 // main()

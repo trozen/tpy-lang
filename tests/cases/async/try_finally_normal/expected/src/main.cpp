@@ -13,7 +13,7 @@ namespace tpyapp::main {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "sub" << "\n";
+        std::cout << "sub" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -44,7 +44,7 @@ __coro_sub sub() {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            std::cout << "after-await" << "\n";
+            std::cout << "after-await" << "\n" << ::tpy::check_signals;
             __fin_ran_1 = true;
             this->__finally_0();
             __state = S_JOIN_0;
@@ -79,7 +79,7 @@ __coro_sub sub() {
 }
 
 void __coro_main_coro::__finally_0() {
-    std::cout << "finally" << "\n";
+    std::cout << "finally" << "\n" << ::tpy::check_signals;
 }
 
 // async def main_coro() -> None:

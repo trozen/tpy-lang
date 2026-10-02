@@ -40,7 +40,7 @@ void main() {
     std::optional<__coro_add_one> d = ::tpyapp::main::add_one(::tpy::BigInt(7));
     c.emplace(std::move(*d));
     d.reset();
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(std::move(*(c)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(std::move(*(c)))) << "\n" << ::tpy::check_signals;
 }
 
 // # An async-factory call bound to a local holds the CONCRETE frame in an optional

@@ -15,7 +15,7 @@ void __tpy_init() {
 
     x = ::tpy::BigInt(static_cast<int64_t>(2147483648LL));
     x = ::tpy::BigInt(1);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

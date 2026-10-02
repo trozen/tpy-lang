@@ -68,7 +68,7 @@ inline Reader::Reader(std::string_view tag) : tag(tag) {}
 //     print("method", self.tag, v[1])
 inline void Reader::show() const {
     std::tuple<int32_t, int32_t, int32_t> v = Version::SEMVER;
-    std::cout << "method" << " " << this->tag << " " << std::get<1>(v) << "\n";
+    std::cout << "method" << " " << this->tag << " " << std::get<1>(v) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

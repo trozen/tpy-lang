@@ -106,7 +106,7 @@ void test_iter_on_protocol(T_items& items) {
         int32_t x = ::tpy::unwrap_ref(*__r_1);
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 // def sum_bigints(items: Iterable[int]) -> int:
 //     # Iterable[int] (BigInt) -- expensive value type, const ref when unmutated

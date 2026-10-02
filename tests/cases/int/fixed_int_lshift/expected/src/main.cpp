@@ -26,15 +26,15 @@ namespace tpyapp::main {
 //     # int64 shifts
 //     print(int64(1) << int64(62))  # 4611686018427387904
 void main() {
-    std::cout << static_cast<int>((::tpy::lshift_check<int8_t>(1, 0))) << "\n";
-    std::cout << static_cast<int>((::tpy::lshift_check<int8_t>(1, 6))) << "\n";
-    std::cout << static_cast<int>((::tpy::lshift_check<int8_t>(-1, 0))) << "\n";
-    std::cout << static_cast<int>((::tpy::lshift_check<uint8_t>(1, 7))) << "\n";
-    std::cout << static_cast<int>((::tpy::lshift_check<uint8_t>(3, 4))) << "\n";
-    std::cout << (::tpy::lshift_check<int16_t>(1, 14)) << "\n";
-    std::cout << (::tpy::lshift_check<uint16_t>(1, 15)) << "\n";
-    std::cout << (::tpy::lshift_check<int32_t>(1, 30)) << "\n";
-    std::cout << (::tpy::lshift_check<int64_t>(1, 62)) << "\n";
+    std::cout << static_cast<int>((::tpy::lshift_check<int8_t>(1, 0))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>((::tpy::lshift_check<int8_t>(1, 6))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>((::tpy::lshift_check<int8_t>(-1, 0))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>((::tpy::lshift_check<uint8_t>(1, 7))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>((::tpy::lshift_check<uint8_t>(3, 4))) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::lshift_check<int16_t>(1, 14)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::lshift_check<uint16_t>(1, 15)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::lshift_check<int32_t>(1, 30)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::lshift_check<int64_t>(1, 62)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

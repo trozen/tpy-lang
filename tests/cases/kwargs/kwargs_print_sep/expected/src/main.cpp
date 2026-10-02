@@ -10,9 +10,9 @@ namespace tpyapp::main {
 //     print("x", "y", sep="")
 //     print("hello", "world", sep=" -- ")
 void main() {
-    std::cout << "a" << "," << "b" << "," << "c" << "\n";
-    std::cout << "x" << "y" << "\n";
-    std::cout << "hello" << " -- " << "world" << "\n";
+    std::cout << "a" << "," << "b" << "," << "c" << "\n" << ::tpy::check_signals;
+    std::cout << "x" << "y" << "\n" << ::tpy::check_signals;
+    std::cout << "hello" << " -- " << "world" << "\n" << ::tpy::check_signals;
 }
 
 // main()

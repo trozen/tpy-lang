@@ -17,17 +17,17 @@ namespace tpyapp::main {
 //         print(v)
 void main() {
     int32_t x = ::tpyapp::main::create_default<int32_t>();
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     std::string s = ::tpyapp::main::create_default<std::string>();
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> nums = ::tpyapp::main::fill<int32_t>(3);
-    std::cout << ::tpy::__len__(nums) << "\n";
+    std::cout << ::tpy::__len__(nums) << "\n" << ::tpy::check_signals;
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
 }
 

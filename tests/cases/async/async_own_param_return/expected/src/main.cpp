@@ -73,7 +73,7 @@ __coro_driver driver() {
 // def main() -> None:
 //     print(asyncio.run(driver()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::driver())) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::driver())) << "\n" << ::tpy::check_signals;
 }
 
 // # An async def relaying an Own[T] param: the return moves the param out of

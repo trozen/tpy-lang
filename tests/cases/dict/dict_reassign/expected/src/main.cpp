@@ -19,16 +19,16 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_map<std::string, ::tpy::BigInt> __slot_1 = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}});
     ::tpy::ordered_map<std::string, ::tpy::BigInt>* d = &__slot_1;
-    std::cout << ::tpy::__getitem__((*d), "a") << "\n";
+    std::cout << ::tpy::__getitem__((*d), "a") << "\n" << ::tpy::check_signals;
     (*d) = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"b", ::tpy::BigInt(2)}, {"c", ::tpy::BigInt(3)}});
-    std::cout << ::tpy::__getitem__((*d), "b") << " " << ::tpy::__getitem__((*d), "c") << "\n";
+    std::cout << ::tpy::__getitem__((*d), "b") << " " << ::tpy::__getitem__((*d), "c") << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> __slot_2 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"x", 1}, {"y", "hello"}});
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>* d2 = &__slot_2;
     (*d2) = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"z", "world"}});
     ::tpy::Union<int32_t, std::string> v = ::tpy::__getitem__((*d2), "z");
     if (std::holds_alternative<std::string>(v)) {
         auto& __v = std::get<std::string>(v);
-        std::cout << ::tpy::__str__(__v) << "\n";
+        std::cout << ::tpy::__str__(__v) << "\n" << ::tpy::check_signals;
     }
 }
 

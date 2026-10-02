@@ -12,7 +12,7 @@ namespace tpyapp::main {
 int32_t main() {
     ::tpyapp::helpers::Pair p = ::tpyapp::helpers::Pair(10, 20);
     int32_t result = ::tpyapp::helpers::public_add(p.a, p.b);
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
     return 0;
 }
 

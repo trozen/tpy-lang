@@ -42,7 +42,7 @@ void test_augassign_in_while() {
         }
         ip = (ip) + (::tpy::BigInt(1));
     }
-    std::cout << ip << "\n";
+    std::cout << ip << "\n" << ::tpy::check_signals;
 }
 
 // def test_binop_in_while() -> None:
@@ -62,7 +62,7 @@ void test_binop_in_while() {
         ::tpy::BigInt y = ((x) + (::tpy::BigInt(1)));
         x = y;
     }
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // test_augassign_in_while()

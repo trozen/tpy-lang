@@ -30,8 +30,8 @@ void main() {
     ::tpy::__getitem__(c.items, 0).x = 10;
     std::vector<Point> taken = ::tpyapp::main::take_items(c);
     ::tpy::__getitem__(taken, 0).x = 99;
-    std::cout << ::tpy::__getitem__(c.items, 0).x << "\n";
-    std::cout << ::tpy::__getitem__(taken, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(c.items, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(taken, 0).x << "\n" << ::tpy::check_signals;
 }
 
 // """Tests that copy() has deep copy semantics for containers.

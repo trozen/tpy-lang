@@ -24,7 +24,7 @@ void main() {
     bool flag = true;
     Box __tmp_1 = ((flag) ? (a) : (other));
     Box r = ::tpyapp::main::take(std::move(__tmp_1));
-    std::cout << r.val << "\n";
+    std::cout << r.val << "\n" << ::tpy::check_signals;
 }
 
 // main()

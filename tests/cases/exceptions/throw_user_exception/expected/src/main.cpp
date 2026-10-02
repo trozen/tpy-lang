@@ -41,24 +41,24 @@ void main() {
         try {
             ::tpyapp::main::validate(-5);
         } catch (const AppError& e) {
-            std::cout << e.code << "\n";
-            std::cout << e.detail << "\n";
+            std::cout << e.code << "\n" << ::tpy::check_signals;
+            std::cout << e.detail << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::validate(200);
         } catch (const AppError& e) {
-            std::cout << e.code << "\n";
-            std::cout << e.detail << "\n";
+            std::cout << e.code << "\n" << ::tpy::check_signals;
+            std::cout << e.detail << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::validate(50);
-            std::cout << "ok" << "\n";
+            std::cout << "ok" << "\n" << ::tpy::check_signals;
         } catch (const AppError& e) {
-            std::cout << e.detail << "\n";
+            std::cout << e.detail << "\n" << ::tpy::check_signals;
         }
     }
 }

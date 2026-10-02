@@ -93,7 +93,7 @@ int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
 void free_fn() {
     int64_t i = 1;
     for (int32_t _ = 0; _ < 2; ++_) {
-        std::cout << "free" << " " << (::tpy::add_check<int64_t>(i, i)) << "\n";
+        std::cout << "free" << " " << (::tpy::add_check<int64_t>(i, i)) << "\n" << ::tpy::check_signals;
         i = ::tpyapp::main::w64(static_cast<int64_t>(3000000000));
     }
 }
@@ -296,7 +296,7 @@ int64_t closure() {
         return i;
     };
     i = ::tpyapp::main::w64(static_cast<int64_t>(5000000000));
-    std::cout << "closure" << " " << j << " " << t << " " << u << " " << shadow(i) << " " << i << "\n";
+    std::cout << "closure" << " " << j << " " << t << " " << u << " " << shadow(i) << " " << i << "\n" << ::tpy::check_signals;
     return inner();
 }
 
@@ -314,7 +314,7 @@ void cm_body() {
     try {
         i = 1;
         for (int32_t _ = 0; _ < 2; ++_) {
-            std::cout << "cm" << " " << (::tpy::add_check<int64_t>(i, i)) << "\n";
+            std::cout << "cm" << " " << (::tpy::add_check<int64_t>(i, i)) << "\n" << ::tpy::check_signals;
             i = ::tpyapp::main::w64(static_cast<int64_t>(3000000000));
         }
         goto __with_exit_1;
@@ -343,14 +343,14 @@ void try_finally() {
     {
         try {
             for (int32_t _ = 0; _ < 2; ++_) {
-                std::cout << "try" << " " << (::tpy::add_check<int64_t>(i, i)) << "\n";
+                std::cout << "try" << " " << (::tpy::add_check<int64_t>(i, i)) << "\n" << ::tpy::check_signals;
                 i = ::tpyapp::main::w64(static_cast<int64_t>(3000000000));
             }
         } catch (...) {
-            std::cout << "finally" << " " << i << "\n";
+            std::cout << "finally" << " " << i << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally" << " " << i << "\n";
+        std::cout << "finally" << " " << i << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -370,7 +370,7 @@ std::expected<int64_t, Failed> er_body(bool fail) {
         if (fail) {
             return ::tpy::make_unexpected(Failed{});
         }
-        std::cout << "er" << " " << (::tpy::add_check<int64_t>(i, i)) << "\n";
+        std::cout << "er" << " " << (::tpy::add_check<int64_t>(i, i)) << "\n" << ::tpy::check_signals;
         i = ::tpyapp::main::w64(static_cast<int64_t>(3000000000));
     }
     return i;
@@ -392,13 +392,13 @@ void match_arm(int32_t k) {
     case 0: {
         int64_t i = 1;
         for (int32_t _ = 0; _ < 2; ++_) {
-            std::cout << "match" << " " << (::tpy::add_check<int64_t>(i, i)) << "\n";
+            std::cout << "match" << " " << (::tpy::add_check<int64_t>(i, i)) << "\n" << ::tpy::check_signals;
             i = ::tpyapp::main::w64(static_cast<int64_t>(3000000000));
         }
         break;
     }
     default: {
-        std::cout << "match other" << "\n";
+        std::cout << "match other" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -411,7 +411,7 @@ void match_arm(int32_t k) {
 void mixed_widths(int64_t a, int32_t b) {
     int64_t x = a;
     x = static_cast<int64_t>(b);
-    std::cout << "mixed" << " " << ::tpy::print_float((::tpy::truediv(a, static_cast<int64_t>(b)))) << " " << (::tpy::add_check<int64_t>(static_cast<int64_t>(static_cast<int32_t>(Level::LOW)), a)) << " " << x << "\n";
+    std::cout << "mixed" << " " << ::tpy::print_float((::tpy::truediv(a, static_cast<int64_t>(b)))) << " " << (::tpy::add_check<int64_t>(static_cast<int64_t>(static_cast<int32_t>(Level::LOW)), a)) << " " << x << "\n" << ::tpy::check_signals;
 }
 
 // # a slice-assign bound over a local an operation made an int: `+= 10 ** 20`
@@ -425,7 +425,7 @@ void slice_bound(std::vector<int32_t>& xs) {
     ::tpy::BigInt n = ::tpy::BigInt(1);
     n = (n) + (((::tpy::BigInt(10)).pow(::tpy::BigInt(20))));
     ::tpy::list_set_slice(xs, ::tpy::BasicSlice{((n) - (((::tpy::BigInt(10)).pow(::tpy::BigInt(20))))).to_fixed_check<int32_t>(), std::nullopt}, std::vector<int32_t>{0});
-    std::cout << "slice" << " " << ::tpy::ListPrinter(xs) << " " << n << "\n";
+    std::cout << "slice" << " " << ::tpy::ListPrinter(xs) << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // # accumulator over int values: `s` is an int, as in CPython
@@ -456,7 +456,7 @@ void derived() {
     int64_t steps = 0;
     int64_t j = (::tpy::add_check<int64_t>(steps, 1));
     steps = ::tpyapp::main::w64(static_cast<int64_t>(3000000000));
-    std::cout << "derived" << " " << steps << " " << j << "\n";
+    std::cout << "derived" << " " << steps << " " << j << "\n" << ::tpy::check_signals;
 }
 
 // # a uint8 value joins the default int. Only `n` is printed: the CPython
@@ -469,7 +469,7 @@ void derived() {
 void unsigned_store(uint8_t b) {
     int32_t n = 0;
     n = static_cast<int32_t>(b);
-    std::cout << "uint8" << " " << n << "\n";
+    std::cout << "uint8" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // # a negative literal seed
@@ -480,9 +480,9 @@ void unsigned_store(uint8_t b) {
 //     print("negative", lo)
 void negative_seed() {
     int64_t lo = -1;
-    std::cout << "negative" << " " << (::tpy::mul_check<int64_t>(lo, 2)) << "\n";
+    std::cout << "negative" << " " << (::tpy::mul_check<int64_t>(lo, 2)) << "\n" << ::tpy::check_signals;
     lo = ::tpyapp::main::w64(static_cast<int64_t>(-5000000000));
-    std::cout << "negative" << " " << lo << "\n";
+    std::cout << "negative" << " " << lo << "\n" << ::tpy::check_signals;
 }
 
 // # a literal beyond int32 makes the local an int
@@ -493,9 +493,9 @@ void negative_seed() {
 //     print("wide", w * 4)
 void wide_literal() {
     ::tpy::BigInt w = ::tpy::BigInt(0);
-    std::cout << "wide" << " " << ((w) + (::tpy::BigInt(1))) << "\n";
+    std::cout << "wide" << " " << ((w) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
     w = ::tpy::BigInt(static_cast<int64_t>(3000000000LL));
-    std::cout << "wide" << " " << ((w) * (::tpy::BigInt(4))) << "\n";
+    std::cout << "wide" << " " << ((w) * (::tpy::BigInt(4))) << "\n" << ::tpy::check_signals;
 }
 
 // # a literal no int32 holds is an `int` operand whatever the other side
@@ -515,7 +515,7 @@ void wide_literal_operand() {
         ::tpy::BigInt q = ((::tpy::BigInt(static_cast<int64_t>(3000000000LL))) + (::tpy::BigInt(p)));
         ::tpy::BigInt s = ((::tpy::BigInt(p)) - (::tpy::BigInt(static_cast<int64_t>(3000000000LL))));
         ::tpy::BigInt t = ((::tpy::BigInt(static_cast<int64_t>(3000000000LL))) >> (::tpy::BigInt(p)));
-        std::cout << "wide_operand" << " " << q << " " << s << " " << t << "\n";
+        std::cout << "wide_operand" << " " << q << " " << s << " " << t << "\n" << ::tpy::check_signals;
         p = ::tpyapp::main::w64(2);
     }
 }
@@ -536,9 +536,9 @@ void overload_trial() {
     int32_t t = 7;
     t = p;
     ::tpy::BigInt q = ((::tpy::BigInt(p)) + (::tpy::BigInt(static_cast<int64_t>(3000000000LL))));
-    std::cout << "overload_trial" << " " << ::tpyapp::main::apply_one<int32_t, int32_t>([&p](int32_t a) -> int32_t { return (::tpy::add_check<int32_t>(a, p)); }, 0) << " " << t << " " << q << "\n";
+    std::cout << "overload_trial" << " " << ::tpyapp::main::apply_one<int32_t, int32_t>([&p](int32_t a) -> int32_t { return (::tpy::add_check<int32_t>(a, p)); }, 0) << " " << t << " " << q << "\n" << ::tpy::check_signals;
     p = ::tpyapp::main::w32(2);
-    std::cout << "overload_trial" << " " << p << "\n";
+    std::cout << "overload_trial" << " " << p << "\n" << ::tpy::check_signals;
 }
 
 // # the deferred uses: a declared parameter, an index, an f-string, print,
@@ -558,16 +558,16 @@ void overload_trial() {
 //     return p
 ::tpy::BigInt uses(const std::vector<int32_t>& xs, int32_t a) {
     int64_t k = 0;
-    std::cout << "param" << " " << ::tpyapp::main::take64(k) << "\n";
-    std::cout << std::format("fstring {}", k) << "\n";
+    std::cout << "param" << " " << ::tpyapp::main::take64(k) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("fstring {}", k) << "\n" << ::tpy::check_signals;
     k = ::tpyapp::main::w64(1);
     ::tpy::BigInt j = ::tpy::BigInt(0);
-    std::cout << "index" << " " << ::tpy::__getitem__(xs, j.to_fixed_check<int32_t>()) << "\n";
+    std::cout << "index" << " " << ::tpy::__getitem__(xs, j.to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
     j = ::tpyapp::main::big();
     ::tpy::BigInt p = ::tpy::BigInt(0);
     ::tpy::BigInt r = ((p) + (::tpy::BigInt(a)));
     p = ::tpyapp::main::big();
-    std::cout << "sum" << " " << r << " " << ((p) + (::tpy::BigInt(a))) << "\n";
+    std::cout << "sum" << " " << r << " " << ((p) + (::tpy::BigInt(a))) << "\n" << ::tpy::check_signals;
     return p;
 }
 
@@ -584,9 +584,9 @@ void declared_aug() {
     ::tpy::BigInt p = ::tpy::BigInt(0);
     int32_t q = 7;
     q = ::tpy::add_check<int32_t>(q, (((p) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>());
-    std::cout << "declared_aug" << " " << q << "\n";
+    std::cout << "declared_aug" << " " << q << "\n" << ::tpy::check_signals;
     p = ::tpyapp::main::big();
-    std::cout << "declared_aug" << " " << p << "\n";
+    std::cout << "declared_aug" << " " << p << "\n" << ::tpy::check_signals;
 }
 
 // # a value as first binding gives the local its type, int and float alike: a
@@ -624,7 +624,7 @@ void float_literal(int16_t a16, int32_t a32, float f32) {
     h = static_cast<int32_t>(a16);
     int16_t k = a16;
     k = ::tpy::add_check<int16_t>(10, 5);
-    std::cout << "literal_family" << " " << (::tpy::mul_check<int16_t>(b, 50)) << " " << c << " " << ::tpy::print_float(static_cast<double>(((f) * (3)))) << " " << ::tpy::print_float(static_cast<double>(g)) << " " << (::tpy::mul_check<int32_t>(h, 5000)) << " " << (::tpy::mul_check<int16_t>(k, 50)) << "\n";
+    std::cout << "literal_family" << " " << (::tpy::mul_check<int16_t>(b, 50)) << " " << c << " " << ::tpy::print_float(static_cast<double>(((f) * (3)))) << " " << ::tpy::print_float(static_cast<double>(g)) << " " << (::tpy::mul_check<int32_t>(h, 5000)) << " " << (::tpy::mul_check<int16_t>(k, 50)) << "\n" << ::tpy::check_signals;
 }
 
 // def w16(v: int16) -> int16:
@@ -652,7 +652,7 @@ void first_declares() {
     y = static_cast<int32_t>(3);
     float f = 1.5f;
     f = 0.5f;
-    std::cout << "first_declares" << " " << static_cast<int>(x) << " " << y << " " << ::tpy::print_float(static_cast<double>(f)) << "\n";
+    std::cout << "first_declares" << " " << static_cast<int>(x) << " " << y << " " << ::tpy::print_float(static_cast<double>(f)) << "\n" << ::tpy::check_signals;
 }
 
 // # a use before a later constructor store computes at the type the first
@@ -664,9 +664,9 @@ void first_declares() {
 //     print("first_use_before", x)
 void first_use_before() {
     int32_t x = 100;
-    std::cout << "first_use_before" << " " << (::tpy::mul_check<int32_t>(x, 3)) << "\n";
+    std::cout << "first_use_before" << " " << (::tpy::mul_check<int32_t>(x, 3)) << "\n" << ::tpy::check_signals;
     x = static_cast<int32_t>(3);
-    std::cout << "first_use_before" << " " << x << "\n";
+    std::cout << "first_use_before" << " " << x << "\n" << ::tpy::check_signals;
 }
 
 // # a typed value first, then a constructor: the narrower int8 converts into the
@@ -678,7 +678,7 @@ void first_use_before() {
 void first_value(int16_t y) {
     int16_t x = ::tpyapp::main::w16(y);
     x = static_cast<int16_t>(3);
-    std::cout << "first_value" << " " << x << "\n";
+    std::cout << "first_value" << " " << x << "\n" << ::tpy::check_signals;
 }
 
 // # the sibling arms of one `if` bind a local together, whichever is read
@@ -769,7 +769,7 @@ void arm_join(bool c, int64_t v, double wide) {
     } else {
         r = 2;
     }
-    std::cout << "arm_join" << " " << (::tpy::mul_check<int64_t>(a, 1000000000)) << " " << (::tpy::mul_check<int64_t>(b, 1000000000)) << " " << n << " " << m << " " << p << " " << q << " " << ::tpy::print_float(f) << " " << r << "\n";
+    std::cout << "arm_join" << " " << (::tpy::mul_check<int64_t>(a, 1000000000)) << " " << (::tpy::mul_check<int64_t>(b, 1000000000)) << " " << n << " " << m << " " << p << " " << q << " " << ::tpy::print_float(f) << " " << r << "\n" << ::tpy::check_signals;
 }
 
 
@@ -806,7 +806,7 @@ void arm_match(int32_t k, int64_t v) {
         break;
     }
     }
-    std::cout << "arm_match" << " " << (((k == 0)) ? (x) : ((::tpy::mul_check<int64_t>(x, 1000000000)))) << "\n";
+    std::cout << "arm_match" << " " << (((k == 0)) ? (x) : ((::tpy::mul_check<int64_t>(x, 1000000000)))) << "\n" << ::tpy::check_signals;
 }
 
 // def risky(fail: bool) -> None:
@@ -837,7 +837,7 @@ void arm_try(bool fail) {
             x = static_cast<int16_t>(3);
         }
     }
-    std::cout << "arm_try" << " " << x << "\n";
+    std::cout << "arm_try" << " " << x << "\n" << ::tpy::check_signals;
 }
 
 // # an accumulator first bound int16 takes the int8 values added to it
@@ -855,7 +855,7 @@ void first_accum(const std::vector<int8_t>& data) {
         int8_t b = *__beg_0;
         count = ::tpy::add_check<int16_t>(count, static_cast<int16_t>(b));
     }
-    std::cout << "first_accum" << " " << count << "\n";
+    std::cout << "first_accum" << " " << count << "\n" << ::tpy::check_signals;
 }
 
 // # an annotation declares too, and a constructor stored later is a value that
@@ -867,7 +867,7 @@ void first_accum(const std::vector<int8_t>& data) {
 void first_annotation() {
     int16_t x = 0;
     x = static_cast<int16_t>(3);
-    std::cout << "first_annotation" << " " << x << "\n";
+    std::cout << "first_annotation" << " " << x << "\n" << ::tpy::check_signals;
 }
 
 // # the literal and value rules without constructors
@@ -893,7 +893,7 @@ void first_unchanged(const std::vector<uint8_t>& data) {
     total = ::tpy::add_check<int64_t>(total, ::tpyapp::main::w64(7));
     int8_t v = ::tpyapp::main::f8();
     v = ::tpyapp::main::g8();
-    std::cout << "first_unchanged" << " " << count << " " << total << " " << static_cast<int>(v) << "\n";
+    std::cout << "first_unchanged" << " " << count << " " << total << " " << static_cast<int>(v) << "\n" << ::tpy::check_signals;
 }
 
 // # a wider float value narrows into a float32 local only when the store writes
@@ -906,7 +906,7 @@ void first_unchanged(const std::vector<uint8_t>& data) {
 void first_float_explicit(double wide) {
     float x = 1.5f;
     x = static_cast<float>(wide);
-    std::cout << "first_float_explicit" << " " << ::tpy::print_float(static_cast<double>(x)) << "\n";
+    std::cout << "first_float_explicit" << " " << ::tpy::print_float(static_cast<double>(x)) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -939,7 +939,7 @@ __gen_first_gen first_gen() {
         __sub_0.reset();
         y = (::tpy::mul_check<int32_t>(x, 3));
         x = static_cast<int32_t>(3);
-        std::cout << "first_async" << " " << x << "\n";
+        std::cout << "first_async" << " " << x << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         int32_t __tpy_async_ret = y;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -974,9 +974,9 @@ void first_comp(const std::vector<int8_t>& xs) {
             __result.push_back((::tpy::mul_check<int32_t>(x, static_cast<int32_t>(v))));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     x = static_cast<int32_t>(3);
-    std::cout << "first_comp" << " " << x << "\n";
+    std::cout << "first_comp" << " " << x << "\n" << ::tpy::check_signals;
 }
 
 // # closure: a nested def defined before the int8 store reads the local
@@ -993,9 +993,9 @@ void first_closure() {
     auto times3 = [&x]() -> int32_t {
         return (::tpy::mul_check<int32_t>(x, 3));
     };
-    std::cout << "first_closure" << " " << times3() << "\n";
+    std::cout << "first_closure" << " " << times3() << "\n" << ::tpy::check_signals;
     x = static_cast<int32_t>(3);
-    std::cout << "first_closure" << " " << times3() << "\n";
+    std::cout << "first_closure" << " " << times3() << "\n" << ::tpy::check_signals;
 }
 
 // # context-manager body
@@ -1014,7 +1014,7 @@ void first_with() {
         x = 100;
         y = (::tpy::mul_check<int32_t>(x, 3));
         x = static_cast<int32_t>(3);
-        std::cout << "first_with" << " " << y << " " << x << "\n";
+        std::cout << "first_with" << " " << y << " " << x << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -1039,14 +1039,14 @@ void first_try() {
     int32_t x = 100;
     {
         try {
-            std::cout << "first_try" << " " << (::tpy::mul_check<int32_t>(x, 3)) << "\n";
+            std::cout << "first_try" << " " << (::tpy::mul_check<int32_t>(x, 3)) << "\n" << ::tpy::check_signals;
         } catch (...) {
             x = static_cast<int32_t>(3);
-            std::cout << "first_finally" << " " << x << "\n";
+            std::cout << "first_finally" << " " << x << "\n" << ::tpy::check_signals;
             throw;
         }
         x = static_cast<int32_t>(3);
-        std::cout << "first_finally" << " " << x << "\n";
+        std::cout << "first_finally" << " " << x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -1067,7 +1067,7 @@ std::expected<int32_t, Failed> first_er(bool fail) {
     }
     int32_t y = (::tpy::mul_check<int32_t>(x, 3));
     x = static_cast<int32_t>(3);
-    std::cout << "first_er" << " " << x << "\n";
+    std::cout << "first_er" << " " << x << "\n" << ::tpy::check_signals;
     return y;
 }
 
@@ -1088,11 +1088,11 @@ void first_match(int32_t k) {
         int32_t x = 100;
         int32_t y = (::tpy::mul_check<int32_t>(x, 3));
         x = static_cast<int32_t>(3);
-        std::cout << "first_match" << " " << y << " " << x << "\n";
+        std::cout << "first_match" << " " << y << " " << x << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
-        std::cout << "first_match other" << "\n";
+        std::cout << "first_match other" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -1114,7 +1114,7 @@ void literal_only() {
     int32_t c = 0;
     c = 5;
     c = ::tpy::add_check<int32_t>(c, 1);
-    std::cout << "literal" << " " << c << "\n";
+    std::cout << "literal" << " " << c << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -1189,12 +1189,12 @@ void main() {
     Box b = Box();
     b.run();
     b.first_method();
-    std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int64_t>>(::tpyapp::main::gen())) << "\n";
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int64_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int64_t>>(::tpyapp::main::async_fn())) << "\n";
+    std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int64_t>>(::tpyapp::main::gen())) << "\n" << ::tpy::check_signals;
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int64_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int64_t>>(::tpyapp::main::async_fn())) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = {1, 2};
-    std::cout << "comp" << " " << ::tpy::ListPrinter(::tpyapp::main::comp(__tmp_1)) << "\n";
+    std::cout << "comp" << " " << ::tpy::ListPrinter(::tpyapp::main::comp(__tmp_1)) << "\n" << ::tpy::check_signals;
     int64_t c = ::tpyapp::main::closure();
-    std::cout << "closure" << " " << c << "\n";
+    std::cout << "closure" << " " << c << "\n" << ::tpy::check_signals;
     ::tpyapp::main::cm_body();
     ::tpyapp::main::try_finally();
     int64_t v;
@@ -1204,16 +1204,16 @@ void main() {
             if (!__try_tmp_2.has_value()) goto __except_1;
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        std::cout << "er" << " " << v << "\n";
+        std::cout << "er" << " " << v << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Failed:
         __except_1:;
-        std::cout << "er failed" << "\n";
+        std::cout << "er failed" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     ::tpyapp::main::match_arm(0);
     std::vector<::tpy::BigInt> __tmp_2 = {1, 2, ((::tpy::BigInt(10)).pow(::tpy::BigInt(20)))};
-    std::cout << "acc" << " " << ::tpyapp::main::accumulate(__tmp_2) << "\n";
+    std::cout << "acc" << " " << ::tpyapp::main::accumulate(__tmp_2) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::derived();
     ::tpyapp::main::unsigned_store(250);
     ::tpyapp::main::negative_seed();
@@ -1222,7 +1222,7 @@ void main() {
     ::tpyapp::main::overload_trial();
     std::vector<int32_t> __tmp_3 = {10, 20};
     ::tpy::BigInt u = ::tpyapp::main::uses(__tmp_3, 5);
-    std::cout << "uses" << " " << u << "\n";
+    std::cout << "uses" << " " << u << "\n" << ::tpy::check_signals;
     ::tpyapp::main::declared_aug();
     ::tpyapp::main::float_literal(15, 7, 1.5f);
     ::tpyapp::main::first_declares();
@@ -1232,7 +1232,7 @@ void main() {
     ::tpyapp::main::arm_join(false, 7, 1.5);
     ArmBox().arm_method(true, 7);
     ArmBox().arm_method(false, 7);
-    std::cout << "arm_gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int64_t>>(::tpyapp::main::arm_gen(true, 7))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int64_t>>(::tpyapp::main::arm_gen(false, 7))) << "\n";
+    std::cout << "arm_gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int64_t>>(::tpyapp::main::arm_gen(true, 7))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int64_t>>(::tpyapp::main::arm_gen(false, 7))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::arm_match(0, 7);
     ::tpyapp::main::arm_match(1, 7);
     ::tpyapp::main::arm_match(2, 7);
@@ -1244,9 +1244,9 @@ void main() {
     std::vector<uint8_t> __tmp_5 = {200, 100};
     ::tpyapp::main::first_unchanged(__tmp_5);
     ::tpyapp::main::first_float_explicit(2.5);
-    std::cout << "first_gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::first_gen())) << "\n";
+    std::cout << "first_gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::first_gen())) << "\n" << ::tpy::check_signals;
     int32_t va = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::first_async()));
-    std::cout << "first_async" << " " << va << "\n";
+    std::cout << "first_async" << " " << va << "\n" << ::tpy::check_signals;
     std::vector<int8_t> __tmp_6 = {1, 2};
     ::tpyapp::main::first_comp(__tmp_6);
     ::tpyapp::main::first_closure();
@@ -1259,15 +1259,15 @@ void main() {
             if (!__try_tmp_4.has_value()) goto __except_3;
             v8 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
-        std::cout << "first_er" << " " << v8 << "\n";
+        std::cout << "first_er" << " " << v8 << "\n" << ::tpy::check_signals;
         goto __after_try_3;
         // except Failed:
         __except_3:;
-        std::cout << "first_er failed" << "\n";
+        std::cout << "first_er failed" << "\n" << ::tpy::check_signals;
         __after_try_3:;
     }
     ::tpyapp::main::first_match(0);
-    std::cout << "gen_yield" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int64_t>>(::tpyapp::main::gen_yield())) << "\n";
+    std::cout << "gen_yield" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int64_t>>(::tpyapp::main::gen_yield())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::literal_only();
     ::tpyapp::main::mixed_widths(static_cast<int64_t>(3000000000), 2);
     std::vector<int32_t> __tmp_7 = {1, 2, 3};
@@ -1293,13 +1293,13 @@ Box::Box() : total(0) {
     int64_t i = 1;
     for (int32_t _ = 0; _ < 2; ++_) {
         this->total = (::tpy::add_check<int64_t>(i, i));
-        std::cout << "ctor" << " " << this->total << "\n";
+        std::cout << "ctor" << " " << this->total << "\n" << ::tpy::check_signals;
         i = ::tpyapp::main::w64(static_cast<int64_t>(3000000000));
     }
     int32_t w = 100;
     int32_t y = (::tpy::mul_check<int32_t>(w, 3));
     w = static_cast<int32_t>(3);
-    std::cout << "first_ctor" << " " << y << " " << w << "\n";
+    std::cout << "first_ctor" << " " << y << " " << w << "\n" << ::tpy::check_signals;
 }
 // from enum import IntEnum
 //

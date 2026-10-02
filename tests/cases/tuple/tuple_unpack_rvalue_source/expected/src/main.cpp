@@ -34,9 +34,9 @@ int32_t from_field(const Holder& h) {
 //     print(from_call(10))
 //     print(from_field(Holder()))
 void main() {
-    std::cout << ::tpyapp::main::from_call(10) << "\n";
+    std::cout << ::tpyapp::main::from_call(10) << "\n" << ::tpy::check_signals;
     Holder __tmp_1 = Holder();
-    std::cout << ::tpyapp::main::from_field(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::from_field(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

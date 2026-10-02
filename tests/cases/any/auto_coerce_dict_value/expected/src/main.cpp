@@ -17,8 +17,8 @@ void main() {
     ::tpy::ordered_map<std::string, ::tpy::Any> cfg = ::tpy::ordered_map<std::string, ::tpy::Any>({{"host", ::tpy::make_any(std::string("localhost"))}, {"port", ::tpy::make_any(::tpy::BigInt(8080))}});
     std::string host = ::tpy::any_cast_or_panic<std::string>(::tpy::__getitem__(cfg, "host"));
     ::tpy::BigInt port = ::tpy::any_cast_or_panic<::tpy::BigInt>(::tpy::__getitem__(cfg, "port"));
-    std::cout << host << "\n";
-    std::cout << port << "\n";
+    std::cout << host << "\n" << ::tpy::check_signals;
+    std::cout << port << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -17,9 +17,9 @@ std::optional<int32_t> z;
 //     print(inferred is None)
 void use_global() {
     std::optional<int32_t> local = y;
-    std::cout << ::tpy::print_optional_val(local) << "\n";
+    std::cout << ::tpy::print_optional_val(local) << "\n" << ::tpy::check_signals;
     std::optional<int32_t> inferred = y;
-    std::cout << ::tpy::print_bool((!inferred.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!inferred.has_value())) << "\n" << ::tpy::check_signals;
 }
 
 // x: int32 | None = None
@@ -54,24 +54,24 @@ void __tpy_init() {
     initialized = true;
 
     x = std::nullopt;
-    std::cout << ::tpy::print_bool((!x.has_value())) << "\n";
-    std::cout << ::tpy::print_optional_val(x) << "\n";
+    std::cout << ::tpy::print_bool((!x.has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(x) << "\n" << ::tpy::check_signals;
     x = 42;
-    std::cout << ::tpy::print_bool((!x.has_value())) << "\n";
-    std::cout << ::tpy::print_optional_val(x) << "\n";
+    std::cout << ::tpy::print_bool((!x.has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(x) << "\n" << ::tpy::check_signals;
     y = 10;
-    std::cout << ::tpy::print_optional_val(y) << "\n";
+    std::cout << ::tpy::print_optional_val(y) << "\n" << ::tpy::check_signals;
     b = std::nullopt;
-    std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(b) << "\n";
+    std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(b) << "\n" << ::tpy::check_signals;
     b = true;
-    std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(b) << "\n";
+    std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(b) << "\n" << ::tpy::check_signals;
     f = std::nullopt;
-    std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(f) << "\n";
+    std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(f) << "\n" << ::tpy::check_signals;
     f = 3.14;
-    std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(f) << "\n";
+    std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(f) << "\n" << ::tpy::check_signals;
     z = 0;
-    std::cout << ::tpy::print_bool((!z.has_value())) << "\n";
-    std::cout << ::tpy::print_optional_val(z) << "\n";
+    std::cout << ::tpy::print_bool((!z.has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(z) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::use_global();
 }
 

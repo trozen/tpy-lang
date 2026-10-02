@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(w.tag)
 void main() {
     W<int32_t> w = W<int32_t>(42);
-    std::cout << w.tag << "\n";
+    std::cout << w.tag << "\n" << ::tpy::check_signals;
 }
 
 // main()

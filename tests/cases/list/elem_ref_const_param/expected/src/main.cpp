@@ -126,20 +126,20 @@ void write_nested(std::vector<std::vector<int32_t>>& matrix, int32_t val) {
 //     print(matrix[int32(0)][int32(0)])
 void main() {
     std::vector<Point> pts = {Point(10, 20), Point(30, 40)};
-    std::cout << ::tpyapp::main::read_elem_ref(pts) << "\n";
-    std::cout << ::tpyapp::main::read_via_alias(pts) << "\n";
-    std::cout << ::tpyapp::main::read_via_deep_alias(pts) << "\n";
-    std::cout << ::tpyapp::main::read_via_read_only_call(pts) << "\n";
+    std::cout << ::tpyapp::main::read_elem_ref(pts) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_via_alias(pts) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_via_deep_alias(pts) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_via_read_only_call(pts) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::write_elem_ref(pts, 99);
-    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n" << ::tpy::check_signals;
     ::tpyapp::main::write_via_mutating_call(pts, 77);
-    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n" << ::tpy::check_signals;
     ::tpyapp::main::write_via_alias(pts, 55);
-    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> matrix = {{1, 2}, {3, 4}};
-    std::cout << ::tpyapp::main::read_nested(matrix) << "\n";
+    std::cout << ::tpyapp::main::read_nested(matrix) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::write_nested(matrix, 9);
-    std::cout << ::tpy::__getitem__(::tpy::__getitem__(matrix, 0), 0) << "\n";
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(matrix, 0), 0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -45,20 +45,20 @@ void test_bool() {
     bool inferred_true = true;
     bool inferred_false = false;
     if (a) {
-        std::cout << 1 << "\n";
+        std::cout << 1 << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << 0 << "\n";
+        std::cout << 0 << "\n" << ::tpy::check_signals;
     }
     if (b) {
-        std::cout << 1 << "\n";
+        std::cout << 1 << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << 0 << "\n";
+        std::cout << 0 << "\n" << ::tpy::check_signals;
     }
     if (inferred_true) {
-        std::cout << 1 << "\n";
+        std::cout << 1 << "\n" << ::tpy::check_signals;
     }
     if (inferred_false) {
-        std::cout << 0 << "\n";
+        std::cout << 0 << "\n" << ::tpy::check_signals;
     }
     bool flag = true;
     int32_t count = 0;
@@ -68,7 +68,7 @@ void test_bool() {
             flag = false;
         }
     }
-    std::cout << count << "\n";
+    std::cout << count << "\n" << ::tpy::check_signals;
 }
 
 // test_bool()

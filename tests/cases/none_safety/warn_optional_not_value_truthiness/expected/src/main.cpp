@@ -23,9 +23,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::print_bool(::tpyapp::main::invert(true)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::invert(false)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::invert(std::nullopt)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::invert(true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::invert(false)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::invert(std::nullopt)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

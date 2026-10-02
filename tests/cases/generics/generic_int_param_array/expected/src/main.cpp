@@ -21,9 +21,9 @@ void main() {
     b.set(0, 10);
     b.set(1, 20);
     b.set(2, 30);
-    std::cout << b.get(0) << "\n";
-    std::cout << b.get(1) << "\n";
-    std::cout << b.get(2) << "\n";
+    std::cout << b.get(0) << "\n" << ::tpy::check_signals;
+    std::cout << b.get(1) << "\n" << ::tpy::check_signals;
+    std::cout << b.get(2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

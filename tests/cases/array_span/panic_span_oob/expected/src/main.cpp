@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     std::array<int32_t, 2> arr = {10, 20};
     std::span<int32_t> s = ::tpy::as_mut_span(arr);
-    std::cout << ::tpy::__getitem__(s, 5) << "\n";
+    std::cout << ::tpy::__getitem__(s, 5) << "\n" << ::tpy::check_signals;
 }
 
 // main()

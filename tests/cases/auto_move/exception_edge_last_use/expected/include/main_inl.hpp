@@ -38,10 +38,10 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_handler_raise_fina
                     p.emplace(P(5));
                 }
             } catch (...) {
-                std::cout << "gen_handler_raise_finally" << " " << ::tpy::__len__((*p).xs) << "\n";
+                std::cout << "gen_handler_raise_finally" << " " << ::tpy::__len__((*p).xs) << "\n" << ::tpy::check_signals;
                 throw;
             }
-            std::cout << "gen_handler_raise_finally" << " " << ::tpy::__len__((*p).xs) << "\n";
+            std::cout << "gen_handler_raise_finally" << " " << ::tpy::__len__((*p).xs) << "\n" << ::tpy::check_signals;
         }
         __state = S_RESUME_1;
         return 1;

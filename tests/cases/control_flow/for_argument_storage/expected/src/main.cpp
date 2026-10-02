@@ -115,14 +115,14 @@ int32_t nested(int32_t n, bool skip) {
 //     print("constructor", runner.result)
 //     print("method", runner.method([3, 4]))
 void main() {
-    std::cout << "range" << " " << ::tpyapp::main::ranges(0, false) << " " << ::tpyapp::main::ranges(1, false) << " " << ::tpyapp::main::ranges(4, false) << " " << ::tpyapp::main::ranges(4, true) << "\n";
+    std::cout << "range" << " " << ::tpyapp::main::ranges(0, false) << " " << ::tpyapp::main::ranges(1, false) << " " << ::tpyapp::main::ranges(4, false) << " " << ::tpyapp::main::ranges(4, true) << "\n" << ::tpy::check_signals;
     std::vector<Cell> values = ::tpy::make_vector<Cell>(Cell(1), Cell(2));
     ::tpyapp::main::update(values, 8);
-    std::cout << "native" << " " << ::tpy::__getitem__(values, 0).value << " " << ::tpy::__getitem__(values, 1).value << "\n";
-    std::cout << "nested" << " " << ::tpyapp::main::nested(0, false) << " " << ::tpyapp::main::nested(3, false) << " " << ::tpyapp::main::nested(3, true) << "\n";
+    std::cout << "native" << " " << ::tpy::__getitem__(values, 0).value << " " << ::tpy::__getitem__(values, 1).value << "\n" << ::tpy::check_signals;
+    std::cout << "nested" << " " << ::tpyapp::main::nested(0, false) << " " << ::tpyapp::main::nested(3, false) << " " << ::tpyapp::main::nested(3, true) << "\n" << ::tpy::check_signals;
     Runner runner = Runner(3);
-    std::cout << "constructor" << " " << runner.result << "\n";
-    std::cout << "method" << " " << runner.method({3, 4}) << "\n";
+    std::cout << "constructor" << " " << runner.result << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << runner.method({3, 4}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

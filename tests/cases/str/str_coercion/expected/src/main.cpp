@@ -7,19 +7,19 @@ namespace tpyapp::main {
 // def take_str(s: str) -> None:
 //     print(s)
 void take_str(std::string_view s) {
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def take_string(s: String) -> None:
 //     print(s)
 void take_string(const ::tpy::String& s) {
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def take_strview(s: StrView) -> None:
 //     print(s)
 void take_strview(std::string_view s) {
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

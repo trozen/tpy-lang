@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(g.cells)
 void main() {
     Grid g = Grid(4);
-    std::cout << g.cells << "\n";
+    std::cout << g.cells << "\n" << ::tpy::check_signals;
 }
 
 // main()

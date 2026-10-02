@@ -30,16 +30,16 @@ namespace tpyapp::main {
 void main() {
     std::tuple<int32_t, int32_t, int32_t> t = std::tuple<int32_t, int32_t, int32_t>{1, 2, 3};
     uint64_t h = ::tpy::__hash__(t);
-    std::cout << ::tpy::print_bool(((h > 0) || (h <= 0))) << "\n";
+    std::cout << ::tpy::print_bool(((h > 0) || (h <= 0))) << "\n" << ::tpy::check_signals;
     std::tuple<int32_t, std::string> a = std::tuple<int32_t, std::string>{10, "hello"};
     std::tuple<int32_t, std::string> b = std::tuple<int32_t, std::string>{10, "hello"};
-    std::cout << ::tpy::print_bool((::tpy::__hash__(a) == ::tpy::__hash__(b))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__(a) == ::tpy::__hash__(b))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::tuple<int32_t, int32_t>, std::string> d = ::tpy::ordered_map<std::tuple<int32_t, int32_t>, std::string>();
     ::tpy::__setitem__(d, std::tuple<int32_t, int32_t>{1, 2}, "one-two");
     ::tpy::__setitem__(d, std::tuple<int32_t, int32_t>{3, 4}, "three-four");
-    std::cout << ::tpy::__getitem__(d, std::tuple<int32_t, int32_t>{1, 2}) << "\n";
-    std::cout << ::tpy::__getitem__(d, std::tuple<int32_t, int32_t>{3, 4}) << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__getitem__(d, std::tuple<int32_t, int32_t>{1, 2}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, std::tuple<int32_t, int32_t>{3, 4}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_nocopy_hash();
     ::tpyapp::main::test_hash_delegation();
 }
@@ -51,7 +51,7 @@ void main() {
 void test_nocopy_hash() {
     auto t = std::tuple<Key, Key>{Key(10), Key(20)};
     auto u = std::tuple<Key, Key>{Key(10), Key(20)};
-    std::cout << ::tpy::print_bool((::tpy::__hash__(t) == ::tpy::__hash__(u))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__(t) == ::tpy::__hash__(u))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_hash_delegation() -> None:
@@ -67,10 +67,10 @@ void test_nocopy_hash() {
 void test_hash_delegation() {
     Point p1 = Point(1, 2);
     Point p2 = Point(1, 2);
-    std::cout << ::tpy::print_bool((::tpy::__hash__(p1) == ::tpy::__hash__(p2))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__(p1) == ::tpy::__hash__(p2))) << "\n" << ::tpy::check_signals;
     Edge e1 = Edge(3, 4);
     Edge e2 = Edge(3, 4);
-    std::cout << ::tpy::print_bool((::tpy::__hash__(e1) == ::tpy::__hash__(e2))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__(e1) == ::tpy::__hash__(e2))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

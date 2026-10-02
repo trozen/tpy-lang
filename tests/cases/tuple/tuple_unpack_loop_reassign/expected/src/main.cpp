@@ -20,8 +20,8 @@ void main() {
         x = __unpack_0_0;
         y = __unpack_0_1;
     }
-    std::cout << ::tpy::print_float(x) << "\n";
-    std::cout << ::tpy::print_float(y) << "\n";
+    std::cout << ::tpy::print_float(x) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
 }
 
 // main()

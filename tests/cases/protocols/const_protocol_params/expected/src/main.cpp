@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def print_area(s: Shape) -> None:
 //     print(s.area())
 void print_area(const Shape& s) {
-    std::cout << s.area() << "\n";
+    std::cout << s.area() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -21,12 +21,12 @@ void print_area(const Shape& s) {
 //     print_area(Rect(3, 4))
 void main() {
     Box b = Box(10);
-    std::cout << ::tpyapp::main::get_measure(b) << "\n";
-    std::cout << ::tpyapp::main::double_resize(b) << "\n";
-    std::cout << ::tpyapp::main::get_measure(b) << "\n";
+    std::cout << ::tpyapp::main::get_measure(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::double_resize(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::get_measure(b) << "\n" << ::tpy::check_signals;
     auto __tmp_1 = Box(5);
     ::tpyapp::main::copy_measure(__tmp_1, b);
-    std::cout << b.measure() << "\n";
+    std::cout << b.measure() << "\n" << ::tpy::check_signals;
     ::tpy::Adapter<Shape, Rect> __tmp_2{Rect(3, 4)};
     ::tpyapp::main::print_area(__tmp_2);
 }

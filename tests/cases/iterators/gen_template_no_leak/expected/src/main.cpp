@@ -44,10 +44,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "--" << "\n";
+    std::cout << "--" << "\n" << ::tpy::check_signals;
     std::vector<int32_t> gnums = {1, 2, 7, 3};
     {
         auto __src_2 = ::tpyapp::main::gtakewhile<int32_t>(is_small, gnums);
@@ -56,10 +56,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "--" << "\n";
+    std::cout << "--" << "\n" << ::tpy::check_signals;
     {
         std::vector<int32_t> __tmp_2 = {4, 5};
         auto __src_4 = ::tpyapp::main::tag(__tmp_2);
@@ -68,10 +68,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "--" << "\n";
+    std::cout << "--" << "\n" << ::tpy::check_signals;
     Doubler d = Doubler();
     std::vector<int32_t> mnums = {7, 8};
     {
@@ -81,10 +81,10 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "--" << "\n";
+    std::cout << "--" << "\n" << ::tpy::check_signals;
     {
         auto __tmp_3 = std::array<int32_t, 4>{9, 8, 7, 6};
         auto __src_8 = ::tpyapp::main::first_n<int32_t>(__tmp_3, 2);
@@ -93,7 +93,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
 }

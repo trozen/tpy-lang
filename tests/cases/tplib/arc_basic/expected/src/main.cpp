@@ -21,16 +21,16 @@ namespace tpyapp::main {
 //         print(u.get().x)     # 7 -- still live (a and b hold strong refs)
 void main() {
     ::tpystd::tplib::arc::Arc<State> a = Arc<State>::new_<State>(State(42));
-    std::cout << a.get().x << "\n";
-    std::cout << a.get().doubled() << "\n";
+    std::cout << a.get().x << "\n" << ::tpy::check_signals;
+    std::cout << a.get().doubled() << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::arc::Arc<State> b = a.clone();
     a.get().x = 7;
-    std::cout << b.get().x << "\n";
-    std::cout << b.get().doubled() << "\n";
+    std::cout << b.get().x << "\n" << ::tpy::check_signals;
+    std::cout << b.get().doubled() << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::arc::Weak<State> w = a.downgrade();
     std::optional<::tpystd::tplib::arc::Arc<State>> u = w.upgrade();
     if ((u.has_value())) {
-        std::cout << (*u).get().x << "\n";
+        std::cout << (*u).get().x << "\n" << ::tpy::check_signals;
     }
 }
 

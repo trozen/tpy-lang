@@ -56,12 +56,12 @@ namespace tpyapp::main {
 //     print(d[i])
 void main() {
     std::array<Color, 3> xs = {Color::Red, Color::Green, Color::Blue};
-    std::cout << ::tpy::__getitem__(xs, 0) << "\n";
+    std::cout << ::tpy::__getitem__(xs, 0) << "\n" << ::tpy::check_signals;
     int32_t i = 2;
-    std::cout << ::tpy::__getitem__(xs, i) << "\n";
+    std::cout << ::tpy::__getitem__(xs, i) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, Color> d = ::tpy::ordered_map<int32_t, Color>({{1, Color::Blue}, {2, Color::Green}});
-    std::cout << ::tpy::__getitem__(d, 1) << "\n";
-    std::cout << ::tpy::__getitem__(d, i) << "\n";
+    std::cout << ::tpy::__getitem__(d, 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, i) << "\n" << ::tpy::check_signals;
 }
 
 // from enum import Enum

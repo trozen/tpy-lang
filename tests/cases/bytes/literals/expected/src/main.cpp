@@ -22,12 +22,12 @@ void main() {
     ::tpy::BytesView hello = ::tpy::bytes_literal("hello", 5);
     ::tpy::BytesView binary = ::tpy::bytes_literal("\000\x01\xff", 3);
     ::tpy::BytesView escape = ::tpy::bytes_literal("\t\n\r\\", 4);
-    std::cout << ::tpy::BytesPrinter(empty) << "\n";
-    std::cout << ::tpy::BytesPrinter(hello) << "\n";
-    std::cout << ::tpy::BytesPrinter(binary) << "\n";
-    std::cout << ::tpy::BytesPrinter(escape) << "\n";
-    std::cout << ::tpy::__len__(hello) << "\n";
-    std::cout << ::tpy::__len__(binary) << "\n";
+    std::cout << ::tpy::BytesPrinter(empty) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(hello) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(binary) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(escape) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(hello) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(binary) << "\n" << ::tpy::check_signals;
 }
 
 // main()

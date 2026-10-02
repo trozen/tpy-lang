@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void main() {
     Bag b = Bag();
     b.__setattr__("x", ::tpy::make_any(std::string("hello")));
-    std::cout << ::tpy::any_cast_or_panic<std::string>(b.__getattr__("x")) << "\n";
+    std::cout << ::tpy::any_cast_or_panic<std::string>(b.__getattr__("x")) << "\n" << ::tpy::check_signals;
     b.__delattr__("x");
-    std::cout << ::tpy::__len__(b._data) << "\n";
+    std::cout << ::tpy::__len__(b._data) << "\n" << ::tpy::check_signals;
 }
 
 // main()

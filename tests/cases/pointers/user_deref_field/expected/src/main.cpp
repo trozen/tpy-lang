@@ -13,8 +13,8 @@ namespace tpyapp::main {
 void main() {
     Point pt = Point(10, 20);
     Ref r = Ref(pt);
-    std::cout << r.__deref__().x << "\n";
-    std::cout << r.__deref__().y << "\n";
+    std::cout << r.__deref__().x << "\n" << ::tpy::check_signals;
+    std::cout << r.__deref__().y << "\n" << ::tpy::check_signals;
 }
 
 // main()

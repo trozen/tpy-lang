@@ -13,7 +13,7 @@ void or_truthy_skips_ctor(Box& a, std::vector<::tpy::BigInt>& log) {
     std::optional<Box> __select_slot_1;
     Box& c = (true ? a : __select_slot_1.emplace(Box(::tpy::BigInt(9), log)));
     c.n = ::tpy::BigInt(99);
-    std::cout << c.n << " " << a.n << " " << ::tpy::__len__(log) << "\n";
+    std::cout << c.n << " " << a.n << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def and_truthy_returns_ctor(a: Box, log: list[int]) -> int:
@@ -39,7 +39,7 @@ void main() {
     ::tpyapp::main::or_truthy_skips_ctor(__tmp_1, log1);
     std::vector<::tpy::BigInt> log2 = std::vector<::tpy::BigInt>{};
     Box __tmp_2 = Box(::tpy::BigInt(3), seed);
-    std::cout << ::tpyapp::main::and_truthy_returns_ctor(__tmp_2, log2) << " " << ::tpy::__len__(log2) << "\n";
+    std::cout << ::tpyapp::main::and_truthy_returns_ctor(__tmp_2, log2) << " " << ::tpy::__len__(log2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

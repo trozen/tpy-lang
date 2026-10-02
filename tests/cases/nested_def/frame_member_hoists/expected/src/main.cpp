@@ -34,7 +34,7 @@ int32_t __gen_gen_escape_hoist::inner() {
         B* b = &*(__slot_2 = B(q));
         holder = &(b->m);
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
-        std::cout << "escape in-loop:" << " " << b->m.x << "\n";
+        std::cout << "escape in-loop:" << " " << b->m.x << "\n" << ::tpy::check_signals;
     }
     return holder->x;
 }
@@ -133,7 +133,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "own_slot:" << " " << v << "\n";
+            std::cout << "own_slot:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -143,7 +143,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "escape:" << " " << v << "\n";
+            std::cout << "escape:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     Holder h = Holder();
@@ -154,10 +154,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "with:" << " " << v << "\n";
+            std::cout << "with:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "dyn:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro_dyn())) << "\n";
+    std::cout << "dyn:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro_dyn())) << "\n" << ::tpy::check_signals;
     {
         auto __src_6 = ::tpyapp::main::gen_per_resume();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -165,7 +165,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "per_resume:" << " " << v << "\n";
+            std::cout << "per_resume:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
 }

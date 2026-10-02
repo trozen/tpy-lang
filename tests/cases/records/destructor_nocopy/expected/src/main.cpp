@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def consume(h: Own[Handle]) -> None:
 //     print("use", h.id)
 void consume(Handle&& h) {
-    std::cout << "use" << " " << h.id << "\n";
+    std::cout << "use" << " " << h.id << "\n" << ::tpy::check_signals;
 }
 
 // def main():
@@ -20,9 +20,9 @@ void consume(Handle&& h) {
 void main() {
     Handle h = Handle(1);
     ::tpyapp::main::consume(std::move(h));
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::consume(Handle(2));
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // main()

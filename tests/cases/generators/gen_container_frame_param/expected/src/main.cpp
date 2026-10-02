@@ -52,7 +52,7 @@ void main() {
             got.push_back(66);
         }
     }
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> a = std::array<int32_t, 2>();
     {
         auto __src_2 = ::tpyapp::main::twice_arr(a);
@@ -64,7 +64,7 @@ void main() {
             ::tpy::__setitem__(ga, 0, (::tpy::add_check<int32_t>(::tpy::__getitem__(ga, 0), 1)));
         }
     }
-    std::cout << ::tpy::__getitem__(a, 0) << "\n";
+    std::cout << ::tpy::__getitem__(a, 0) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = {1};
     {
         auto __src_4 = ::tpyapp::main::twice_list(xs);
@@ -76,7 +76,7 @@ void main() {
             gx.push_back(2);
         }
     }
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

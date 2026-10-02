@@ -27,8 +27,8 @@ double log(double x, double base) {
 //     print(log(16.0))
 //     print(log(16.0, 2.0))
 void main() {
-    std::cout << ::tpy::print_float(::tpyapp::main::log(16.0)) << "\n";
-    std::cout << ::tpy::print_float(::tpyapp::main::log(16.0, 2.0)) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::log(16.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpyapp::main::log(16.0, 2.0)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

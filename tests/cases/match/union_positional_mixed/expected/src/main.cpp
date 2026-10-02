@@ -18,13 +18,13 @@ void describe(::tpy::Union<const Label*, const Point*> s) {
         auto px = __case_0.x;
         auto py = __case_0.y;
         auto pz = __case_0.z;
-        std::cout << ::tpy::print_float(((((px) + (py))) + (pz))) << "\n";
+        std::cout << ::tpy::print_float(((((px) + (py))) + (pz))) << "\n" << ::tpy::check_signals;
         break;
     }
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto& t = __case_1.text;
-        std::cout << t << "\n";
+        std::cout << t << "\n" << ::tpy::check_signals;
         break;
     }
     }

@@ -35,17 +35,17 @@ void __tpy_init() {
 
     static Counter __global_slot_1 = Counter(100);
     c = &__global_slot_1;
-    std::cout << c->get() << "\n";
+    std::cout << c->get() << "\n" << ::tpy::check_signals;
     c->increment();
-    std::cout << c->get() << "\n";
+    std::cout << c->get() << "\n" << ::tpy::check_signals;
     c->add(5);
-    std::cout << c->get() << "\n";
+    std::cout << c->get() << "\n" << ::tpy::check_signals;
     c->reset();
-    std::cout << c->get() << "\n";
+    std::cout << c->get() << "\n" << ::tpy::check_signals;
     a = 42;
     b = 99;
-    std::cout << a << " " << b << "\n";
-    std::cout << "done" << "\n";
+    std::cout << a << " " << b << "\n" << ::tpy::check_signals;
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

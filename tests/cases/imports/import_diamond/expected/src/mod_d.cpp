@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << "D init" << "\n";
+    std::cout << "D init" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::mod_d

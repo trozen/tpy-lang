@@ -26,16 +26,16 @@ void main() {
     int32_t a = 10;
     int32_t b = 3;
     double r1 = (::tpy::truediv(static_cast<int64_t>(a), static_cast<int64_t>(b)));
-    std::cout << ::tpy::print_float(r1) << "\n";
+    std::cout << ::tpy::print_float(r1) << "\n" << ::tpy::check_signals;
     int64_t c = 100;
     int64_t d = 7;
-    std::cout << ::tpy::print_float((::tpy::truediv(c, d))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(c, d))) << "\n" << ::tpy::check_signals;
     uint32_t e = 15;
     uint32_t f = 4;
-    std::cout << ::tpy::print_float((::tpy::truediv(static_cast<int64_t>(e), static_cast<int64_t>(f)))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(static_cast<int64_t>(e), static_cast<int64_t>(f)))) << "\n" << ::tpy::check_signals;
     int32_t g = 10;
     int32_t h = 5;
-    std::cout << ::tpy::print_float((::tpy::truediv(static_cast<int64_t>(g), static_cast<int64_t>(h)))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(static_cast<int64_t>(g), static_cast<int64_t>(h)))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

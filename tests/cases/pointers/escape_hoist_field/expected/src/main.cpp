@@ -20,7 +20,7 @@ void field_access_escape() {
         Outer* o = &*(__slot_2 = Outer(Inner(i)));
         saved = &(o->inner);
     }
-    std::cout << saved->value << "\n";
+    std::cout << saved->value << "\n" << ::tpy::check_signals;
 }
 
 // field_access_escape()

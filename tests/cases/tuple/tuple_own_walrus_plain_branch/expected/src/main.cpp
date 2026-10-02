@@ -41,10 +41,10 @@ int32_t use(Holder& h, bool c) {
 //     print(h.pair[1].val)                # 77 (aliased, not copied)
 void main() {
     Holder __tmp_1 = Holder(Box(5));
-    std::cout << ::tpyapp::main::use(__tmp_1, true) << "\n";
+    std::cout << ::tpyapp::main::use(__tmp_1, true) << "\n" << ::tpy::check_signals;
     Holder h = Holder(Box(5));
-    std::cout << ::tpyapp::main::use(h, false) << "\n";
-    std::cout << std::get<1>(h.pair).val << "\n";
+    std::cout << ::tpyapp::main::use(h, false) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(h.pair).val << "\n" << ::tpy::check_signals;
 }
 
 // main()

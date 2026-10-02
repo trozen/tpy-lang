@@ -22,8 +22,8 @@ std::string describe(bool b) {
 //     print(describe(True))
 //     print(describe(False))
 void main() {
-    std::cout << ::tpyapp::main::describe(true) << "\n";
-    std::cout << ::tpyapp::main::describe(false) << "\n";
+    std::cout << ::tpyapp::main::describe(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

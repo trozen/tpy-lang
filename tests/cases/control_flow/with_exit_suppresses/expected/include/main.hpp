@@ -49,7 +49,7 @@ inline Suppressor::Suppressor(std::string_view name) : name(name) {}
 //     print(f"enter {self.name}")
 //     return self.name
 inline std::string Suppressor::__enter__() const {
-    std::cout << std::format("enter {}", this->name) << "\n";
+    std::cout << std::format("enter {}", this->name) << "\n" << ::tpy::check_signals;
     return this->name;
 }
 
@@ -61,10 +61,10 @@ inline std::string Suppressor::__enter__() const {
 //     return False
 inline bool Suppressor::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
     if ((exc_val != nullptr)) {
-        std::cout << std::format("{} suppressing: {}", this->name, std::string(::tpy::__str__((*exc_val)))) << "\n";
+        std::cout << std::format("{} suppressing: {}", this->name, std::string(::tpy::__str__((*exc_val)))) << "\n" << ::tpy::check_signals;
         return true;
     }
-    std::cout << std::format("{} normal exit", this->name) << "\n";
+    std::cout << std::format("{} normal exit", this->name) << "\n" << ::tpy::check_signals;
     return false;
 }
 void __tpy_init();

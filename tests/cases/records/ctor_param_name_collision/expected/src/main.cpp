@@ -28,15 +28,15 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             bool b = ::tpy::unwrap_ref(*__r_1);
-            std::cout << ::tpy::print_bool(b) << "\n";
+            std::cout << ::tpy::print_bool(b) << "\n" << ::tpy::check_signals;
         }
     }
     H h = H(B(7));
-    std::cout << h.n << "\n";
+    std::cout << h.n << "\n" << ::tpy::check_signals;
     ::tpy::Union<A*, B*> u = ::tpy::to_ptr_variant(h.u);
     if (std::holds_alternative<B*>(u)) {
         auto& __u = *std::get<B*>(u);
-        std::cout << __u.y << "\n";
+        std::cout << __u.y << "\n" << ::tpy::check_signals;
     }
 }
 

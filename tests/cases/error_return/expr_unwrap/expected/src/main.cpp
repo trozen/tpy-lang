@@ -157,11 +157,11 @@ void main() {
             v = ::tpy::unwrap_ref_move(*__try_tmp_10);
         }
         // else:
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         goto __after_try_9;
         // except E:
         __except_9:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_9:;
     }
     ::tpy::BigInt v2;
@@ -174,7 +174,7 @@ void main() {
         goto __after_try_11;
         // except E:
         __except_11:;
-        std::cout << "caught" << "\n";
+        std::cout << "caught" << "\n" << ::tpy::check_signals;
         __after_try_11:;
     }
     ::tpy::BigInt v3;
@@ -185,11 +185,11 @@ void main() {
             v3 = ::tpy::unwrap_ref_move(*__try_tmp_14);
         }
         // else:
-        std::cout << v3 << "\n";
+        std::cout << v3 << "\n" << ::tpy::check_signals;
         goto __after_try_13;
         // except E:
         __except_13:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_13:;
     }
     ::tpy::BigInt v4;
@@ -200,11 +200,11 @@ void main() {
             v4 = ::tpy::unwrap_ref_move(*__try_tmp_16);
         }
         // else:
-        std::cout << v4 << "\n";
+        std::cout << v4 << "\n" << ::tpy::check_signals;
         goto __after_try_15;
         // except E:
         __except_15:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_15:;
     }
     std::string v5;
@@ -215,11 +215,11 @@ void main() {
             v5 = ::tpy::unwrap_ref_move(*__try_tmp_18);
         }
         // else:
-        std::cout << v5 << "\n";
+        std::cout << v5 << "\n" << ::tpy::check_signals;
         goto __after_try_17;
         // except E:
         __except_17:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_17:;
     }
     std::string v6;
@@ -232,7 +232,7 @@ void main() {
         goto __after_try_19;
         // except E:
         __except_19:;
-        std::cout << "caught str" << "\n";
+        std::cout << "caught str" << "\n" << ::tpy::check_signals;
         __after_try_19:;
     }
     std::optional<Point> v7;
@@ -243,12 +243,12 @@ void main() {
             v7 = ::tpy::unwrap_ref_move(*__try_tmp_22);
         }
         // else:
-        std::cout << v7->x << "\n";
-        std::cout << v7->y << "\n";
+        std::cout << v7->x << "\n" << ::tpy::check_signals;
+        std::cout << v7->y << "\n" << ::tpy::check_signals;
         goto __after_try_21;
         // except E:
         __except_21:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_21:;
     }
     std::optional<Point> v8;
@@ -261,23 +261,23 @@ void main() {
         goto __after_try_23;
         // except E:
         __except_23:;
-        std::cout << "caught neg" << "\n";
+        std::cout << "caught neg" << "\n" << ::tpy::check_signals;
         __after_try_23:;
     }
     {
-        std::cout << ({ auto __er_26 = ::tpyapp::main::parse("99"); if (!__er_26.has_value()) goto __except_25; ::tpy::unwrap_ref_move(*__er_26); }) << "\n";
+        std::cout << ({ auto __er_26 = ::tpyapp::main::parse("99"); if (!__er_26.has_value()) goto __except_25; ::tpy::unwrap_ref_move(*__er_26); }) << "\n" << ::tpy::check_signals;
         goto __after_try_25;
         // except E:
         __except_25:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_25:;
     }
     {
-        std::cout << ({ auto __er_28 = ::tpyapp::main::add("3", ""); if (!__er_28.has_value()) goto __except_27; ::tpy::unwrap_ref_move(*__er_28); }) << "\n";
+        std::cout << ({ auto __er_28 = ::tpyapp::main::add("3", ""); if (!__er_28.has_value()) goto __except_27; ::tpy::unwrap_ref_move(*__er_28); }) << "\n" << ::tpy::check_signals;
         goto __after_try_27;
         // except E:
         __except_27:;
-        std::cout << "caught direct" << "\n";
+        std::cout << "caught direct" << "\n" << ::tpy::check_signals;
         __after_try_27:;
     }
     ::tpyapp::main::test_as_binding();
@@ -334,13 +334,13 @@ void test_as_binding() {
             v = ::tpy::unwrap_ref_move(*__try_tmp_32);
         }
         // else:
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         goto __after_try_31;
         // except ParseErr:
         __except_31:;
         {
             auto& e = *__err_opt_31;
-            std::cout << e.code << "\n";
+            std::cout << e.code << "\n" << ::tpy::check_signals;
         }
         __after_try_31:;
     }
@@ -357,7 +357,7 @@ void test_as_binding() {
         __except_33:;
         {
             auto& e = *__err_opt_33;
-            std::cout << e.code << "\n";
+            std::cout << e.code << "\n" << ::tpy::check_signals;
         }
         __after_try_33:;
     }
@@ -374,7 +374,7 @@ void test_as_binding() {
         __except_35:;
         {
             auto& e = *__err_opt_35;
-            std::cout << e.code << "\n";
+            std::cout << e.code << "\n" << ::tpy::check_signals;
         }
         __after_try_35:;
     }

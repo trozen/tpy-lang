@@ -27,16 +27,16 @@ namespace tpyapp::main {
 //     print("done")
 void main() {
     Holder h = Holder(::tpyapp::main::wrap<int32_t>(42));
-    std::cout << h.box.val << "\n";
+    std::cout << h.box.val << "\n" << ::tpy::check_signals;
     Holder h2 = Holder(::tpyapp::main::wrap<int32_t>(99));
-    std::cout << h2.box.val << "\n";
+    std::cout << h2.box.val << "\n" << ::tpy::check_signals;
     Box<Box<int32_t>> outer = Box<Box<int32_t>>(::tpyapp::main::wrap<int32_t>(10));
-    std::cout << outer.val.val << "\n";
+    std::cout << outer.val.val << "\n" << ::tpy::check_signals;
     Box<Box<int32_t>> outer2 = Box<Box<int32_t>>(::tpyapp::main::wrap<int32_t>(20));
-    std::cout << outer2.val.val << "\n";
+    std::cout << outer2.val.val << "\n" << ::tpy::check_signals;
     Box<Box<int32_t>> outer3 = Box<Box<int32_t>>(::tpyapp::main::wrap<int32_t>(30));
-    std::cout << outer3.val.val << "\n";
-    std::cout << "done" << "\n";
+    std::cout << outer3.val.val << "\n" << ::tpy::check_signals;
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -40,8 +40,8 @@ int32_t size_of(const Grid& g) {
 //     print(first_after_bump(g))
 void main() {
     Grid g = Grid();
-    std::cout << ::tpyapp::main::size_of(g) << "\n";
-    std::cout << ::tpyapp::main::first_after_bump(g) << "\n";
+    std::cout << ::tpyapp::main::size_of(g) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first_after_bump(g) << "\n" << ::tpy::check_signals;
 }
 
 // main()

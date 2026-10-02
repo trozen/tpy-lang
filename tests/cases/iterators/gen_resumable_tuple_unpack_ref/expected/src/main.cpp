@@ -26,10 +26,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << std::get<1>(::tpy::__getitem__(rows, 0)).n << " " << std::get<1>(::tpy::__getitem__(rows, 1)).n << "\n";
+    std::cout << std::get<1>(::tpy::__getitem__(rows, 0)).n << " " << std::get<1>(::tpy::__getitem__(rows, 1)).n << "\n" << ::tpy::check_signals;
 }
 
 // main()

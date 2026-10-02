@@ -22,14 +22,14 @@ namespace tpyapp::main {
 void main() {
     ::tpystd::tplib::rc::Rc<State> r1 = Rc<State>::new_<State>(State(1));
     ::tpystd::tplib::rc::Rc<State> r2 = r1.clone();
-    std::cout << r1.get().x << " " << r2.get().x << "\n";
+    std::cout << r1.get().x << " " << r2.get().x << "\n" << ::tpy::check_signals;
     r1.get().x = 10;
-    std::cout << r1.get().x << " " << r2.get().x << "\n";
+    std::cout << r1.get().x << " " << r2.get().x << "\n" << ::tpy::check_signals;
     r2.get().x = 20;
-    std::cout << r1.get().x << " " << r2.get().x << "\n";
+    std::cout << r1.get().x << " " << r2.get().x << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::rc::Rc<State> r3 = r2.clone();
     r3.get().x = 30;
-    std::cout << r1.get().x << " " << r2.get().x << " " << r3.get().x << "\n";
+    std::cout << r1.get().x << " " << r2.get().x << " " << r3.get().x << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Rc

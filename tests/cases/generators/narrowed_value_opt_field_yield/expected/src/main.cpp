@@ -40,7 +40,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -50,7 +50,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_3);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -60,7 +60,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_5);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -70,7 +70,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "try_body" << " " << x << "\n";
+            std::cout << "try_body" << " " << x << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -80,18 +80,18 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "bind_loop" << " " << x << "\n";
+            std::cout << "bind_loop" << " " << x << "\n" << ::tpy::check_signals;
         }
     }
     __gen_Box_gen_reguard it = b.gen_reguard();
     {
-        std::cout << ({ auto __er_2 = ::tpy::next(it); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << ({ auto __er_2 = ::tpy::next(it); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
         b.f = std::nullopt;
-        std::cout << ({ auto __er_3 = ::tpy::next(it); if (!__er_3.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_3); }) << "\n";
+        std::cout << ({ auto __er_3 = ::tpy::next(it); if (!__er_3.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_3); }) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except StopIteration:
         __except_1:;
-        std::cout << "stop" << "\n";
+        std::cout << "stop" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     Box n = Box(std::nullopt);
@@ -102,7 +102,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_11);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -112,7 +112,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_13);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
 }

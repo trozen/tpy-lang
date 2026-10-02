@@ -14,7 +14,7 @@ namespace tpyapp::main {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "background ran" << "\n";
+        std::cout << "background ran" << "\n" << ::tpy::check_signals;
         done.set_result(0);
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -53,7 +53,7 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         _ = std::move(__r0).value();
         __sub_0 = nullptr;
-        std::cout << "main done" << "\n";
+        std::cout << "main done" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

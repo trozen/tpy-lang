@@ -16,11 +16,11 @@ namespace tpyapp::main {
 //     print(c3.value)
 void main() {
     Container<std::string, 10> c1 = Container<std::string, 10>("hello");
-    std::cout << c1.value << "\n";
+    std::cout << c1.value << "\n" << ::tpy::check_signals;
     Container<int32_t, 5> c2 = Container<int32_t, 5>(42);
-    std::cout << c2.value << "\n";
+    std::cout << c2.value << "\n" << ::tpy::check_signals;
     Container<std::string, 100> c3 = Container<std::string, 100>("world");
-    std::cout << c3.value << "\n";
+    std::cout << c3.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

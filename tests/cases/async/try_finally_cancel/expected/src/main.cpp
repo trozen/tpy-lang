@@ -58,7 +58,7 @@ namespace tpyapp::main {
 }
 
 void __coro_coro::__finally_0() {
-    std::cout << "cleanup ran" << "\n";
+    std::cout << "cleanup ran" << "\n" << ::tpy::check_signals;
 }
 
 // async def coro() -> int32:
@@ -76,11 +76,11 @@ __coro_coro coro() {
 void main() {
     ::tpystd::asyncio::_executor::Task<int32_t> t = ::tpystd::asyncio::_executor::task_from_coro<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro()));
     if (::tpystd::coro::poll_once<int32_t>(t).is_pending()) {
-        std::cout << "first-poll-pending" << "\n";
+        std::cout << "first-poll-pending" << "\n" << ::tpy::check_signals;
     }
     t.cancel();
     if (::tpystd::coro::task_poll_cancelled<int32_t>(t)) {
-        std::cout << "got-cancelled" << "\n";
+        std::cout << "got-cancelled" << "\n" << ::tpy::check_signals;
     }
 }
 

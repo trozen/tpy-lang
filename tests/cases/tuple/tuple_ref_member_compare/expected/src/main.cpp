@@ -23,17 +23,17 @@ void main() {
     Box a = Box(5);
     Box b = Box(5);
     Box c = Box(7);
-    std::cout << ::tpy::print_bool(::tpy::tuple_eq(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{1, &(b)})) << "\n";
-    std::cout << ::tpy::print_bool((!::tpy::tuple_eq(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{1, &(b)}))) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::tuple_eq(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{2, &(a)})) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::tuple_lt(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{1, &(c)})) << "\n";
-    std::cout << ::tpy::print_bool((!::tpy::tuple_lt(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{1, &(c)}))) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::tuple_lt(std::tuple<int32_t, Box*>{1, &(c)}, std::tuple<int32_t, Box*>{2, &(a)})) << "\n";
-    std::cout << ::tpy::print_bool((!::tpy::tuple_lt(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{1, &(b)}))) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::tuple_eq(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{1, &(b)})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!::tpy::tuple_eq(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{1, &(b)}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::tuple_eq(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{2, &(a)})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::tuple_lt(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{1, &(c)})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!::tpy::tuple_lt(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{1, &(c)}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::tuple_lt(std::tuple<int32_t, Box*>{1, &(c)}, std::tuple<int32_t, Box*>{2, &(a)})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!::tpy::tuple_lt(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{1, &(b)}))) << "\n" << ::tpy::check_signals;
     std::array<std::tuple<int32_t, Box>, 2> ts = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, const Box*>{1, &(a)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, const Box*>{2, &(c)})};
-    std::cout << ::tpy::print_bool(::tpy::seq_contains(ts, ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box*>{1, &(b)}))) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::seq_contains(ts, ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box*>{2, &(b)}))) << "\n";
-    std::cout << ::tpy::print_bool(!::tpy::seq_contains(ts, ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box*>{2, &(c)}))) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::seq_contains(ts, ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box*>{1, &(b)}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::seq_contains(ts, ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box*>{2, &(b)}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(!::tpy::seq_contains(ts, ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box*>{2, &(c)}))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

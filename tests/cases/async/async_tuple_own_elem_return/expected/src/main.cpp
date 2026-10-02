@@ -53,7 +53,7 @@ __coro_make_pair make_pair() {
         c.emplace(std::move(std::get<0>(__tup_1)));
         tag = std::get<1>(__tup_1);
         (*c).bump();
-        std::cout << (*c).n << " " << tag << "\n";
+        std::cout << (*c).n << " " << tag << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

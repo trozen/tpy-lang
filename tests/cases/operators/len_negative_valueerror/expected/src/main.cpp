@@ -39,45 +39,45 @@ namespace tpyapp::main {
 void main() {
     {
         try {
-            std::cout << ::tpy::__len__(NegBig()) << "\n";
+            std::cout << ::tpy::__len__(NegBig()) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "len big:" << " " << e << "\n";
+            std::cout << "len big:" << " " << e << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpy::__len__(NegI32()) << "\n";
+            std::cout << ::tpy::__len__(NegI32()) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "len i32:" << " " << e << "\n";
+            std::cout << "len i32:" << " " << e << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             if ((::tpy::__len__(NegBig()) != 0)) {
-                std::cout << "neg truthy" << "\n";
+                std::cout << "neg truthy" << "\n" << ::tpy::check_signals;
             }
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "truthy big:" << " " << e << "\n";
+            std::cout << "truthy big:" << " " << e << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             if ((::tpy::__len__(NegI32()) != 0)) {
-                std::cout << "neg truthy" << "\n";
+                std::cout << "neg truthy" << "\n" << ::tpy::check_signals;
             }
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "truthy i32:" << " " << e << "\n";
+            std::cout << "truthy i32:" << " " << e << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << ::tpy::__len__(Empty()) << "\n";
+    std::cout << ::tpy::__len__(Empty()) << "\n" << ::tpy::check_signals;
     if ((::tpy::__len__(Empty()) != 0)) {
-        std::cout << "empty truthy" << "\n";
+        std::cout << "empty truthy" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "empty falsy" << "\n";
+        std::cout << "empty falsy" << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::__len__(Full()) << "\n";
+    std::cout << ::tpy::__len__(Full()) << "\n" << ::tpy::check_signals;
     if ((::tpy::__len__(Full()) != 0)) {
-        std::cout << "full truthy" << "\n";
+        std::cout << "full truthy" << "\n" << ::tpy::check_signals;
     }
 }
 

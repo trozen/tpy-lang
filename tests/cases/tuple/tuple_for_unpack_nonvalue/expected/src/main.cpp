@@ -29,7 +29,7 @@ void main() {
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<std::string_view, Point*>>(__for_tup_0);
         std::string_view name = std::get<0>(__tup_1);
         auto&& pt = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        std::cout << name << " " << pt << "\n";
+        std::cout << name << " " << pt << "\n" << ::tpy::check_signals;
     }
     std::vector<std::tuple<::tpy::BigInt, Point>> pairs = {::tpy::tuple_to_storage<std::tuple<::tpy::BigInt, Point>>(std::tuple<::tpy::BigInt, Point>{::tpy::BigInt(1), Point(10, 20)}), ::tpy::tuple_to_storage<std::tuple<::tpy::BigInt, Point>>(std::tuple<::tpy::BigInt, Point>{::tpy::BigInt(2), Point(30, 40)})};
     auto& __obj_1 = pairs;
@@ -40,7 +40,7 @@ void main() {
         auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Point*>>(__for_tup_1);
         const ::tpy::BigInt& n = std::get<0>(__tup_2);
         auto&& pt = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
-        std::cout << n << " " << pt << "\n";
+        std::cout << n << " " << pt << "\n" << ::tpy::check_signals;
     }
     std::vector<std::tuple<Point, Point>> segments = {::tpy::tuple_to_storage<std::tuple<Point, Point>>(std::tuple<Point, Point>{Point(0, 0), Point(1, 1)}), ::tpy::tuple_to_storage<std::tuple<Point, Point>>(std::tuple<Point, Point>{Point(2, 2), Point(3, 3)})};
     auto& __obj_2 = segments;
@@ -51,7 +51,7 @@ void main() {
         auto __tup_3 = ::tpy::tuple_to_pointer<std::tuple<Point*, Point*>>(__for_tup_2);
         auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
-        std::cout << a << " " << b << "\n";
+        std::cout << a << " " << b << "\n" << ::tpy::check_signals;
     }
 }
 

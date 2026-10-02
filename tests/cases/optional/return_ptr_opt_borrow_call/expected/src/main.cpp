@@ -52,7 +52,7 @@ __gen_in_generator in_generator(B& b) {
         __state = S_DONE;  // until a yield sets where to resume
         r = ::tpyapp::main::via_method(b);
         if ((r != nullptr)) {
-            std::cout << "async" << " " << r->x << "\n";
+            std::cout << "async" << " " << r->x << "\n" << ::tpy::check_signals;
         }
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -126,35 +126,35 @@ void main() {
     if ((r != nullptr)) {
         r->x = ::tpy::add_check<int32_t>(r->x, 1);
     }
-    std::cout << "method" << " " << ::tpyapp::main::read_x(b) << "\n";
+    std::cout << "method" << " " << ::tpyapp::main::read_x(b) << "\n" << ::tpy::check_signals;
     R* f = ::tpyapp::main::via_free(b);
     if ((f != nullptr)) {
         f->x = ::tpy::add_check<int32_t>(f->x, 10);
     }
-    std::cout << "free" << " " << ::tpyapp::main::read_x(b) << "\n";
+    std::cout << "free" << " " << ::tpyapp::main::read_x(b) << "\n" << ::tpy::check_signals;
     std::vector<int32_t>* xs = ::tpyapp::main::via_container(b);
     if ((xs != nullptr)) {
         xs->push_back(9);
     }
     std::vector<int32_t>* src = ::tpy::optional_to_ptr(b._xs);
-    std::cout << "container" << " " << (((src != nullptr)) ? (::tpy::__len__((*src))) : (-1)) << "\n";
+    std::cout << "container" << " " << (((src != nullptr)) ? (::tpy::__len__((*src))) : (-1)) << "\n" << ::tpy::check_signals;
     R* s = b.ret_self();
     if ((s != nullptr)) {
         s->x = ::tpy::add_check<int32_t>(s->x, 100);
     }
-    std::cout << "self" << " " << ::tpyapp::main::read_x(b) << "\n";
+    std::cout << "self" << " " << ::tpyapp::main::read_x(b) << "\n" << ::tpy::check_signals;
     Host h = Host();
     R* hm = h.via_method(b);
     if ((hm != nullptr)) {
         hm->x = ::tpy::add_check<int32_t>(hm->x, 1000);
     }
-    std::cout << "host_method" << " " << ::tpyapp::main::read_x(b) << "\n";
+    std::cout << "host_method" << " " << ::tpyapp::main::read_x(b) << "\n" << ::tpy::check_signals;
     std::vector<int32_t>* hx = h.via_container(b);
     if ((hx != nullptr)) {
         hx->push_back(7);
     }
     std::vector<int32_t>* hsrc = ::tpy::optional_to_ptr(b._xs);
-    std::cout << "host_container" << " " << (((hsrc != nullptr)) ? (::tpy::__len__((*hsrc))) : (-1)) << "\n";
+    std::cout << "host_container" << " " << (((hsrc != nullptr)) ? (::tpy::__len__((*hsrc))) : (-1)) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::in_generator(b);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -162,7 +162,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << v << "\n";
+            std::cout << "generator" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::in_async(b)));
@@ -171,7 +171,7 @@ void main() {
     if ((osrc != nullptr)) {
         osrc->x = ::tpy::add_check<int32_t>(osrc->x, 7);
     }
-    std::cout << "readonly_opt" << " " << (((ro != nullptr)) ? (ro->x) : (-1)) << "\n";
+    std::cout << "readonly_opt" << " " << (((ro != nullptr)) ? (ro->x) : (-1)) << "\n" << ::tpy::check_signals;
 }
 
 // import asyncio

@@ -22,7 +22,7 @@ void __tpy_init() {
     x = nullptr;
     static Product __global_slot_1 = ::tpyapp::main::get_factory().create();
     x = &__global_slot_1;
-    std::cout << x->value << "\n";
+    std::cout << x->value << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

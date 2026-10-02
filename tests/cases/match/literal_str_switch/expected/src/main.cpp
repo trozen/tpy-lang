@@ -285,24 +285,24 @@ std::string by_length(std::string_view s) {
 //     print(by_length("eeeee"))
 //     print(by_length("zzz"))
 void main() {
-    std::cout << ::tpyapp::main::classify("red") << "\n";
-    std::cout << ::tpyapp::main::classify("green") << "\n";
-    std::cout << ::tpyapp::main::classify("dog") << "\n";
-    std::cout << ::tpyapp::main::classify("xyz") << "\n";
-    std::cout << ::tpyapp::main::classify("") << "\n";
-    std::cout << ::tpyapp::main::with_guard("help", true) << "\n";
-    std::cout << ::tpyapp::main::with_guard("help", false) << "\n";
-    std::cout << ::tpyapp::main::with_guard("quit", false) << "\n";
-    std::cout << ::tpyapp::main::with_guard("xyz", false) << "\n";
-    std::cout << ::tpyapp::main::with_or("blue") << "\n";
-    std::cout << ::tpyapp::main::with_or("one") << "\n";
-    std::cout << ::tpyapp::main::with_or("bird") << "\n";
-    std::cout << ::tpyapp::main::with_or("two") << "\n";
-    std::cout << ::tpyapp::main::with_or("xyz") << "\n";
-    std::cout << ::tpyapp::main::by_length("a") << "\n";
-    std::cout << ::tpyapp::main::by_length("bb") << "\n";
-    std::cout << ::tpyapp::main::by_length("eeeee") << "\n";
-    std::cout << ::tpyapp::main::by_length("zzz") << "\n";
+    std::cout << ::tpyapp::main::classify("red") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify("green") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify("dog") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify("xyz") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify("") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_guard("help", true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_guard("help", false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_guard("quit", false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_guard("xyz", false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_or("blue") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_or("one") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_or("bird") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_or("two") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_or("xyz") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::by_length("a") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::by_length("bb") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::by_length("eeeee") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::by_length("zzz") << "\n" << ::tpy::check_signals;
 }
 
 // main()

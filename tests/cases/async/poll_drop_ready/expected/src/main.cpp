@@ -16,8 +16,8 @@ namespace tpyapp::main {
 //     print("dropping ready poll without consume")
 void drop_path() {
     ::tpystd::tpy::Poll<Probe> p = ::tpyapp::main::make_ready(::tpy::BigInt(1));
-    std::cout << "constructed, is_ready:" << " " << ::tpy::print_bool(p.is_ready()) << "\n";
-    std::cout << "dropping ready poll without consume" << "\n";
+    std::cout << "constructed, is_ready:" << " " << ::tpy::print_bool(p.is_ready()) << "\n" << ::tpy::check_signals;
+    std::cout << "dropping ready poll without consume" << "\n" << ::tpy::check_signals;
 }
 
 // def consume_path() -> None:
@@ -29,7 +29,7 @@ void drop_path() {
 void consume_path() {
     ::tpystd::tpy::Poll<Probe> q = ::tpyapp::main::make_ready(::tpy::BigInt(2));
     Probe v = std::move(q).value();
-    std::cout << "consumed value tag:" << " " << v.tag << "\n";
+    std::cout << "consumed value tag:" << " " << v.tag << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -38,7 +38,7 @@ void consume_path() {
 //     consume_path()
 void main() {
     ::tpyapp::main::drop_path();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::consume_path();
 }
 

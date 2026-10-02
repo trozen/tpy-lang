@@ -88,10 +88,10 @@ void main() {
     mark(seen);
     ::tpy::ByteArray buf = ::tpy::ByteArray();
     stamp(buf);
-    std::cout << ::tpy::__len__(data) << " " << ::tpy::__getitem__(data, 2) << " " << total(data) << "\n";
-    std::cout << ::tpy::__getitem__(counts, "n") << " " << ::tpy::__len__(seen) << " " << ::tpy::__len__(buf) << "\n";
+    std::cout << ::tpy::__len__(data) << " " << ::tpy::__getitem__(data, 2) << " " << total(data) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(counts, "n") << " " << ::tpy::__len__(seen) << " " << ::tpy::__len__(buf) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> src = {1, 2};
-    std::cout << "lambda_ref" << " " << ::tpyapp::main::sync_ref_capture(src) << " " << ::tpy::ListPrinter(src) << "\n";
+    std::cout << "lambda_ref" << " " << ::tpyapp::main::sync_ref_capture(src) << " " << ::tpy::ListPrinter(src) << "\n" << ::tpy::check_signals;
 }
 
 // main()

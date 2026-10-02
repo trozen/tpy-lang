@@ -22,7 +22,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << (::tpy::str_concat("handled ", ::tpy::fixed_to_str<int32_t>(c.id))) << "\n";
+        std::cout << (::tpy::str_concat("handled ", ::tpy::fixed_to_str<int32_t>(c.id))) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

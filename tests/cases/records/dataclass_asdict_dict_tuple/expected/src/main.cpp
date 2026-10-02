@@ -38,11 +38,11 @@ void main() {
             __result.insert_or_assign(__macro_1, ::tpy::ordered_map<std::string, int32_t>({{"x", __macro_2.x}, {"y", __macro_2.y}}));
         }
         std::move(__result);
-    })}})) << "\n";
+    })}})) << "\n" << ::tpy::check_signals;
     TupleOfDC t = TupleOfDC(::tpy::tuple_value_to_borrow<std::tuple<Point*, int32_t>>(std::tuple<Point, int32_t>{Point(1, 2), 42}));
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>>({{"pair", ::tpy::tuple_to_storage<std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>>(std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(t.pair).x}, {"y", std::get<0>(t.pair).y}}), std::get<1>(t.pair)})}})) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>>({{"pair", ::tpy::tuple_to_storage<std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>>(std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(t.pair).x}, {"y", std::get<0>(t.pair).y}}), std::get<1>(t.pair)})}})) << "\n" << ::tpy::check_signals;
     TupleAllDC t2 = TupleAllDC(::tpy::tuple_value_to_borrow<std::tuple<Point*, Point*>>(std::tuple<Point, Point>{Point(1, 2), Point(3, 4)}));
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>>({{"pair", ::tpy::tuple_to_storage<std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>>(std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(t2.pair).x}, {"y", std::get<0>(t2.pair).y}}), ::tpy::ordered_map<std::string, int32_t>({{"x", std::get<1>(t2.pair).x}, {"y", std::get<1>(t2.pair).y}})})}})) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>>({{"pair", ::tpy::tuple_to_storage<std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>>(std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(t2.pair).x}, {"y", std::get<0>(t2.pair).y}}), ::tpy::ordered_map<std::string, int32_t>({{"x", std::get<1>(t2.pair).x}, {"y", std::get<1>(t2.pair).y}})})}})) << "\n" << ::tpy::check_signals;
     DictOfDC d2 = DictOfDC(::tpy::ordered_map<std::string, Point>({{"origin", Point(0, 0)}}));
     std::cout << ::tpy::TuplePrinter(std::tuple<::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>>>(({
         ::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>> __result;
@@ -56,9 +56,9 @@ void main() {
             __result.insert_or_assign(__macro_1, std::tuple<int32_t, int32_t>{__macro_2.x, __macro_2.y});
         }
         std::move(__result);
-    }))) << "\n";
+    }))) << "\n" << ::tpy::check_signals;
     TupleOfDC t3 = TupleOfDC(::tpy::tuple_value_to_borrow<std::tuple<Point*, int32_t>>(std::tuple<Point, int32_t>{Point(1, 2), 42}));
-    std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<std::tuple<int32_t, int32_t>, int32_t>>(std::tuple<std::tuple<int32_t, int32_t>, int32_t>{std::tuple<int32_t, int32_t>{std::get<0>(t3.pair).x, std::get<0>(t3.pair).y}, std::get<1>(t3.pair)})) << "\n";
+    std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<std::tuple<int32_t, int32_t>, int32_t>>(std::tuple<std::tuple<int32_t, int32_t>, int32_t>{std::tuple<int32_t, int32_t>{std::get<0>(t3.pair).x, std::get<0>(t3.pair).y}, std::get<1>(t3.pair)})) << "\n" << ::tpy::check_signals;
 }
 
 // # Test asdict()/astuple() recursion into dict values and tuple elements

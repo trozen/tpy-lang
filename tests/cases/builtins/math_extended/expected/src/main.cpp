@@ -54,38 +54,38 @@ namespace tpyapp::main {
 //     print(math.exp2(0.0) == 1.0)
 //     print(math.exp2(-1.0) == 0.5)
 void main() {
-    std::cout << ::tpy::print_bool((::tpystd::math::pi > 3.14)) << "\n";
-    std::cout << ::tpy::print_bool((::tpystd::math::pi < 3.15)) << "\n";
-    std::cout << ::tpy::print_bool((::tpystd::math::tau > 6.28)) << "\n";
-    std::cout << ::tpy::print_bool((::tpystd::math::tau < 6.29)) << "\n";
-    std::cout << ::tpy::print_bool((::tpystd::math::e > 2.71)) << "\n";
-    std::cout << ::tpy::print_bool((::tpystd::math::e < 2.72)) << "\n";
-    std::cout << ::tpy::print_bool((::tpystd::math::inf > 1e+308)) << "\n";
+    std::cout << ::tpy::print_bool((::tpystd::math::pi > 3.14)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpystd::math::pi < 3.15)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpystd::math::tau > 6.28)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpystd::math::tau < 6.29)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpystd::math::e > 2.71)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpystd::math::e < 2.72)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpystd::math::inf > 1e+308)) << "\n" << ::tpy::check_signals;
     std::array<const double, 2> __tmp_1{3.0, 4.0};
     double h = ::tpystd::math::hypot(::tpy::varargs<const double>(__tmp_1));
-    std::cout << ::tpy::print_bool((h > 4.99)) << "\n";
-    std::cout << ::tpy::print_bool((h < 5.01)) << "\n";
+    std::cout << ::tpy::print_bool((h > 4.99)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((h < 5.01)) << "\n" << ::tpy::check_signals;
     double r = ::tpystd::math::radians(180.0);
-    std::cout << ::tpy::print_bool((r > 3.14)) << "\n";
-    std::cout << ::tpy::print_bool((r < 3.15)) << "\n";
+    std::cout << ::tpy::print_bool((r > 3.14)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((r < 3.15)) << "\n" << ::tpy::check_signals;
     double d = ::tpystd::math::degrees(r);
-    std::cout << ::tpy::print_bool((d > 179.99)) << "\n";
-    std::cout << ::tpy::print_bool((d < 180.01)) << "\n";
-    std::cout << ::tpy::from_float_check<int32_t>(3.7) << "\n";
-    std::cout << ::tpy::from_float_check<int32_t>(-(2.3)) << "\n";
+    std::cout << ::tpy::print_bool((d > 179.99)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((d < 180.01)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<int32_t>(3.7) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<int32_t>(-(2.3)) << "\n" << ::tpy::check_signals;
     double a1 = ::std::atan(1.0);
-    std::cout << ::tpy::print_bool((a1 > 0.78)) << "\n";
-    std::cout << ::tpy::print_bool((a1 < 0.79)) << "\n";
-    std::cout << ::tpy::print_bool((::std::atan(0.0) == 0.0)) << "\n";
+    std::cout << ::tpy::print_bool((a1 > 0.78)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a1 < 0.79)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::std::atan(0.0) == 0.0)) << "\n" << ::tpy::check_signals;
     double a = ::std::atan2(1.0, 1.0);
-    std::cout << ::tpy::print_bool((a > 0.78)) << "\n";
-    std::cout << ::tpy::print_bool((a < 0.79)) << "\n";
-    std::cout << ::tpy::print_bool((::std::cbrt(8.0) == 2.0)) << "\n";
-    std::cout << ::tpy::print_bool((::std::cbrt(-(8.0)) == -(2.0))) << "\n";
-    std::cout << ::tpy::print_bool((::std::cbrt(0.0) == 0.0)) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_exp2(10.0) == 1024.0)) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_exp2(0.0) == 1.0)) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_exp2(-(1.0)) == 0.5)) << "\n";
+    std::cout << ::tpy::print_bool((a > 0.78)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a < 0.79)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::std::cbrt(8.0) == 2.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::std::cbrt(-(8.0)) == -(2.0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::std::cbrt(0.0) == 0.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_exp2(10.0) == 1024.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_exp2(0.0) == 1.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_exp2(-(1.0)) == 0.5)) << "\n" << ::tpy::check_signals;
 }
 
 // # math module: pi, tau, e, inf, hypot, radians, degrees, trunc, atan, atan2,

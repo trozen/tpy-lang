@@ -15,9 +15,9 @@ void main() {
     Grandparent::counter = 1;
     Parent::counter = 2;
     Child::counter = 3;
-    std::cout << Grandparent::counter << "\n";
-    std::cout << Parent::counter << "\n";
-    std::cout << Child::counter << "\n";
+    std::cout << Grandparent::counter << "\n" << ::tpy::check_signals;
+    std::cout << Parent::counter << "\n" << ::tpy::check_signals;
+    std::cout << Child::counter << "\n" << ::tpy::check_signals;
 }
 
 // main()

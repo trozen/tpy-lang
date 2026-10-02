@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void main() {
     Bumper b = Bumper();
     Node n = Node(1);
-    std::cout << b.__call__(n) << "\n";
-    std::cout << n.v << "\n";
-    std::cout << b.__call__(n) << " " << n.v << "\n";
+    std::cout << b.__call__(n) << "\n" << ::tpy::check_signals;
+    std::cout << n.v << "\n" << ::tpy::check_signals;
+    std::cout << b.__call__(n) << " " << n.v << "\n" << ::tpy::check_signals;
 }
 
 // main()

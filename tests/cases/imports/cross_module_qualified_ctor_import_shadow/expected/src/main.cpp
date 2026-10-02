@@ -14,10 +14,10 @@ namespace tpyapp::main {
 void main() {
     ::tpyapp::pa::Box a = ::tpyapp::pa::Box(::tpy::BigInt(10));
     a.n = (a.n) + (::tpy::BigInt(5));
-    std::cout << a.n << "\n";
-    std::cout << ::tpyapp::pa::Box(::tpy::BigInt(1)).n << "\n";
-    std::cout << ::tpyapp::pb::Box("q").msg << "\n";
-    std::cout << ::tpyapp::pb::Box("hi").msg << "\n";
+    std::cout << a.n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::pa::Box(::tpy::BigInt(1)).n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::pb::Box("q").msg << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::pb::Box("hi").msg << "\n" << ::tpy::check_signals;
 }
 
 // # A qualified construction `pa.Box(...)` must resolve to pa.Box even when the

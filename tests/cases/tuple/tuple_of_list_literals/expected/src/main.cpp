@@ -25,16 +25,16 @@ namespace tpyapp::main {
 //     print(xs)
 void main() {
     auto t = std::tuple<std::array<int32_t, 2>, std::array<int32_t, 2>>{{1, 2}, {3, 4}};
-    std::cout << ::tpy::TuplePrinter(t) << "\n";
+    std::cout << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(std::get<0>(t), 0, 9);
-    std::cout << ::tpy::TuplePrinter(t) << "\n";
+    std::cout << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;
     std::array<std::tuple<std::array<int32_t, 2>, std::array<int32_t, 2>>, 1> xs = {::tpy::tuple_to_storage<std::tuple<std::array<int32_t, 2>, std::array<int32_t, 2>>>(std::tuple<std::array<int32_t, 2>, std::array<int32_t, 2>>{{1, 2}, {3, 4}})};
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(std::get<1>(::tpy::__getitem__(xs, 0)), 0, 8);
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     std::array<std::tuple<std::array<int32_t, 2>, std::array<int32_t, 2>>, 1>& ys = xs;
     ::tpy::__setitem__(std::get<0>(::tpy::__getitem__(ys, 0)), 0, 7);
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

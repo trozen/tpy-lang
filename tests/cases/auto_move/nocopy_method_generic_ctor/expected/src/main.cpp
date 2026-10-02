@@ -30,15 +30,15 @@ void main() {
     Handle h1 = Handle();
     h1.fd = 10;
     holder.take(std::move(h1));
-    std::cout << holder.h.fd << "\n";
+    std::cout << holder.h.fd << "\n" << ::tpy::check_signals;
     Handle h2 = Handle();
     h2.fd = 20;
     GenericHolder<Handle> gh = GenericHolder<Handle>(std::move(h2));
-    std::cout << gh.item.fd << "\n";
+    std::cout << gh.item.fd << "\n" << ::tpy::check_signals;
     Handle h3 = Handle();
     h3.fd = 30;
     gh.replace(std::move(h3));
-    std::cout << gh.item.fd << "\n";
+    std::cout << gh.item.fd << "\n" << ::tpy::check_signals;
 }
 
 // main()

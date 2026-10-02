@@ -40,15 +40,15 @@ void main() {
     std::vector<int32_t> items = {10, 20, 30};
     std::optional<int32_t> r1 = ::tpyapp::main::find(items, 20);
     if ((r1.has_value())) {
-        std::cout << ::tpy::print_optional_val(r1) << "\n";
+        std::cout << ::tpy::print_optional_val(r1) << "\n" << ::tpy::check_signals;
     }
     std::optional<int32_t> r2 = ::tpyapp::main::find(items, 99);
     if ((!r2.has_value())) {
-        std::cout << "not found" << "\n";
+        std::cout << "not found" << "\n" << ::tpy::check_signals;
     }
     std::optional<int32_t> r3 = ::tpyapp::main::find(items, 99, -1);
     if ((r3.has_value())) {
-        std::cout << ::tpy::print_optional_val(r3) << "\n";
+        std::cout << ::tpy::print_optional_val(r3) << "\n" << ::tpy::check_signals;
     }
 }
 

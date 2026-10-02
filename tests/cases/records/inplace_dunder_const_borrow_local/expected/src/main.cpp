@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Acc a = Acc(1);
     a.__iadd__(Counter(4));
-    std::cout << a.total << "\n";
+    std::cout << a.total << "\n" << ::tpy::check_signals;
 }
 
 // main()

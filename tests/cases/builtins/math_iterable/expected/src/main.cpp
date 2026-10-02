@@ -46,31 +46,31 @@ namespace tpyapp::main {
 //     print(math.dist([], []))          # 0.0
 void main() {
     auto __tmp_1 = std::array<double, 3>{2.0, 3.0, 4.0};
-    std::cout << ::tpy::print_float(::tpystd::math::prod(__tmp_1, 1.0)) << "\n";
+    std::cout << ::tpy::print_float(::tpystd::math::prod(__tmp_1, 1.0)) << "\n" << ::tpy::check_signals;
     auto __tmp_2 = std::array<double, 5>{0.1, 0.1, 0.1, 0.1, 0.1};
-    std::cout << ::tpy::print_float(::tpystd::math::fsum(__tmp_2)) << "\n";
+    std::cout << ::tpy::print_float(::tpystd::math::fsum(__tmp_2)) << "\n" << ::tpy::check_signals;
     auto __tmp_3 = ::tpy::Range<int32_t>(1, 11);
     double t = ::tpystd::math::fsum(__tmp_3);
-    std::cout << ::tpy::print_float(t) << "\n";
+    std::cout << ::tpy::print_float(t) << "\n" << ::tpy::check_signals;
     std::vector<double> xs = {1.0, 2.0, 3.0, 4.0};
-    std::cout << ::tpy::print_float(::tpystd::math::prod(xs, 1.0)) << "\n";
-    std::cout << ::tpy::print_float(::tpystd::math::fsum(xs)) << "\n";
+    std::cout << ::tpy::print_float(::tpystd::math::prod(xs, 1.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpystd::math::fsum(xs)) << "\n" << ::tpy::check_signals;
     auto __tmp_4 = std::array<double, 3>{1.0, 2.0, 3.0};
     auto __tmp_5 = std::array<double, 3>{4.0, 5.0, 6.0};
-    std::cout << ::tpy::print_float(::tpystd::math::sumprod(__tmp_4, __tmp_5)) << "\n";
+    std::cout << ::tpy::print_float(::tpystd::math::sumprod(__tmp_4, __tmp_5)) << "\n" << ::tpy::check_signals;
     auto __tmp_6 = std::array<double, 4>{1.0, 2.0, 3.0, 4.0};
     auto __tmp_7 = ::tpy::Range<int32_t>(1, 5);
-    std::cout << ::tpy::print_float(::tpystd::math::sumprod(__tmp_6, __tmp_7)) << "\n";
+    std::cout << ::tpy::print_float(::tpystd::math::sumprod(__tmp_6, __tmp_7)) << "\n" << ::tpy::check_signals;
     auto __tmp_8 = std::array<double, 2>{0.0, 0.0};
     auto __tmp_9 = std::array<double, 2>{3.0, 4.0};
-    std::cout << ::tpy::print_float(::tpystd::math::dist(__tmp_8, __tmp_9)) << "\n";
+    std::cout << ::tpy::print_float(::tpystd::math::dist(__tmp_8, __tmp_9)) << "\n" << ::tpy::check_signals;
     auto __tmp_10 = std::vector<double>{};
-    std::cout << ::tpy::print_float(::tpystd::math::prod(__tmp_10, 1.0)) << "\n";
+    std::cout << ::tpy::print_float(::tpystd::math::prod(__tmp_10, 1.0)) << "\n" << ::tpy::check_signals;
     auto __tmp_11 = std::vector<double>{};
-    std::cout << ::tpy::print_float(::tpystd::math::fsum(__tmp_11)) << "\n";
+    std::cout << ::tpy::print_float(::tpystd::math::fsum(__tmp_11)) << "\n" << ::tpy::check_signals;
     auto __tmp_12 = std::vector<double>{};
     auto __tmp_13 = std::vector<double>{};
-    std::cout << ::tpy::print_float(::tpystd::math::dist(__tmp_12, __tmp_13)) << "\n";
+    std::cout << ::tpy::print_float(::tpystd::math::dist(__tmp_12, __tmp_13)) << "\n" << ::tpy::check_signals;
 }
 
 // # math.prod / fsum / sumprod / dist accept Iterable[float] (not just list[float]).

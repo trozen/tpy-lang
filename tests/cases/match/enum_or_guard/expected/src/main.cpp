@@ -241,27 +241,27 @@ std::string or_overlap(Color c, bool flag) {
 //     print(or_overlap(Color.Blue, False))
 //     print(or_overlap(Color.Green, False))
 void main() {
-    std::cout << ::tpyapp::main::classify(Color::Red) << "\n";
-    std::cout << ::tpyapp::main::classify(Color::Blue) << "\n";
-    std::cout << ::tpyapp::main::classify(Color::Green) << "\n";
-    std::cout << ::tpyapp::main::check(Color::Red, true) << "\n";
-    std::cout << ::tpyapp::main::check(Color::Red, false) << "\n";
-    std::cout << ::tpyapp::main::check(Color::Green, true) << "\n";
-    std::cout << ::tpyapp::main::mixed(Color::Red, true) << "\n";
-    std::cout << ::tpyapp::main::mixed(Color::Green, true) << "\n";
-    std::cout << ::tpyapp::main::mixed(Color::Green, false) << "\n";
-    std::cout << ::tpyapp::main::or_guard(Color::Red, true) << "\n";
-    std::cout << ::tpyapp::main::or_guard(Color::Red, false) << "\n";
-    std::cout << ::tpyapp::main::or_guard(Color::Green, true) << "\n";
-    std::cout << ::tpyapp::main::multi_guard(Color::Green, true, true) << "\n";
-    std::cout << ::tpyapp::main::multi_guard(Color::Green, false, true) << "\n";
-    std::cout << ::tpyapp::main::multi_guard(Color::Green, false, false) << "\n";
-    std::cout << ::tpyapp::main::multi_guard(Color::Red, true, true) << "\n";
-    std::cout << ::tpyapp::main::or_overlap(Color::Red, true) << "\n";
-    std::cout << ::tpyapp::main::or_overlap(Color::Red, false) << "\n";
-    std::cout << ::tpyapp::main::or_overlap(Color::Blue, true) << "\n";
-    std::cout << ::tpyapp::main::or_overlap(Color::Blue, false) << "\n";
-    std::cout << ::tpyapp::main::or_overlap(Color::Green, false) << "\n";
+    std::cout << ::tpyapp::main::classify(Color::Red) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(Color::Blue) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(Color::Green) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check(Color::Red, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check(Color::Red, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check(Color::Green, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::mixed(Color::Red, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::mixed(Color::Green, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::mixed(Color::Green, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::or_guard(Color::Red, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::or_guard(Color::Red, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::or_guard(Color::Green, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::multi_guard(Color::Green, true, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::multi_guard(Color::Green, false, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::multi_guard(Color::Green, false, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::multi_guard(Color::Red, true, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::or_overlap(Color::Red, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::or_overlap(Color::Red, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::or_overlap(Color::Blue, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::or_overlap(Color::Blue, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::or_overlap(Color::Green, false) << "\n" << ::tpy::check_signals;
 }
 
 // # match/case or-patterns and guards on enum subjects

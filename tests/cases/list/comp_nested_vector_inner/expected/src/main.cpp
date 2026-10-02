@@ -28,9 +28,9 @@ void jagged() {
         std::move(__result);
     });
     });
-    std::cout << ::tpy::ListPrinter(rows) << "\n";
+    std::cout << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(rows, 2).push_back(99);
-    std::cout << ::tpy::ListPrinter(rows) << "\n";
+    std::cout << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
 }
 
 // def annotated_growable() -> None:
@@ -48,7 +48,7 @@ void annotated_growable() {
         std::move(__result);
     });
     ::tpy::__getitem__(rows, 0).push_back(99);
-    std::cout << ::tpy::ListPrinter(rows) << "\n";
+    std::cout << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
 }
 
 // jagged()

@@ -16,7 +16,7 @@ namespace tpyapp::main {
 void from_param(std::string_view a) {
     std::string x = std::string(a);
     x += "!";
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def from_param_return(a: str) -> str:
@@ -38,7 +38,7 @@ std::string from_param_return(std::string_view a) {
 void from_or_params(std::string_view a, std::string_view b) {
     std::string x = std::string(((!a.empty()) ? a : b));
     x += "!";
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def from_ternary_params(a: str, b: str, cond: bool) -> None:
@@ -49,7 +49,7 @@ void from_or_params(std::string_view a, std::string_view b) {
 void from_ternary_params(std::string_view a, std::string_view b, bool cond) {
     std::string x = std::string(((cond) ? (a) : (b)));
     x += "!";
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def return_or_params(a: str, b: str) -> str:
@@ -82,15 +82,15 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::main::from_param("hello");
-    std::cout << ::tpyapp::main::from_param_return("hi") << "\n";
+    std::cout << ::tpyapp::main::from_param_return("hi") << "\n" << ::tpy::check_signals;
     ::tpyapp::main::from_or_params("", "world");
     ::tpyapp::main::from_or_params("hello", "world");
     ::tpyapp::main::from_ternary_params("hello", "world", true);
     ::tpyapp::main::from_ternary_params("hello", "world", false);
-    std::cout << ::tpyapp::main::return_or_params("", "fallback") << "\n";
-    std::cout << ::tpyapp::main::return_or_params("first", "second") << "\n";
-    std::cout << ::tpyapp::main::return_ternary_params("yes", "no", true) << "\n";
-    std::cout << ::tpyapp::main::return_ternary_params("yes", "no", false) << "\n";
+    std::cout << ::tpyapp::main::return_or_params("", "fallback") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::return_or_params("first", "second") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::return_ternary_params("yes", "no", true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::return_ternary_params("yes", "no", false) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

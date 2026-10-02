@@ -76,11 +76,11 @@ int32_t use_float() {
 //     print(use_two(3, 1.5))
 //     print(use_float())
 void main() {
-    std::cout << ::tpyapp::main::use_decl(5) << "\n";
-    std::cout << ::tpyapp::main::use_reassign(5) << "\n";
-    std::cout << ::tpyapp::main::use_stmt(6) << "\n";
-    std::cout << ::tpyapp::main::use_two(3, 1.5) << "\n";
-    std::cout << ::tpyapp::main::use_float() << "\n";
+    std::cout << ::tpyapp::main::use_decl(5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use_reassign(5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use_stmt(6) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use_two(3, 1.5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use_float() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -36,11 +36,11 @@ void cyclic() {
 //     cyclic()
 //     print("--- done ---")
 void main() {
-    std::cout << "--- acyclic ---" << "\n";
+    std::cout << "--- acyclic ---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::acyclic();
-    std::cout << "--- cyclic (will leak) ---" << "\n";
+    std::cout << "--- cyclic (will leak) ---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::cyclic();
-    std::cout << "--- done ---" << "\n";
+    std::cout << "--- done ---" << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Rc

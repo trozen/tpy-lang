@@ -25,7 +25,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-            std::cout << s << "\n";
+            std::cout << s << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::Union<Cat, Dog> __slot_2 = Cat();
@@ -37,10 +37,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-            std::cout << s << "\n";
+            std::cout << s << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << z.seen << "\n";
+    std::cout << z.seen << "\n" << ::tpy::check_signals;
 }
 
 

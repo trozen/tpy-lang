@@ -67,7 +67,7 @@ __coro_fetch fetch(int32_t n) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t r = *__beg_0;
-            std::cout << r << "\n";
+            std::cout << r << "\n" << ::tpy::check_signals;
         }
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});

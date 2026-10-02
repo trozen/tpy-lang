@@ -13,7 +13,7 @@ void main() {
     Point p = Point(3, 7);
     Writer w = Writer();
     p.encode(w);
-    std::cout << w.result() << "\n";
+    std::cout << w.result() << "\n" << ::tpy::check_signals;
 }
 
 // main()

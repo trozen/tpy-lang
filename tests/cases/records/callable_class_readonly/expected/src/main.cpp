@@ -14,11 +14,11 @@ namespace tpyapp::main {
 //     print(s(-5))
 void main() {
     Negate n = Negate();
-    std::cout << n.__call__(42) << "\n";
-    std::cout << n.__call__(-7) << "\n";
+    std::cout << n.__call__(42) << "\n" << ::tpy::check_signals;
+    std::cout << n.__call__(-7) << "\n" << ::tpy::check_signals;
     ScaleBy s = ScaleBy(3);
-    std::cout << s.__call__(10) << "\n";
-    std::cout << s.__call__(-5) << "\n";
+    std::cout << s.__call__(10) << "\n" << ::tpy::check_signals;
+    std::cout << s.__call__(-5) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -35,17 +35,17 @@ int32_t negate(int32_t x) {
 void main() {
     int32_t a = 3;
     int32_t b = -5;
-    std::cout << ::tpy::min_key(a, b, [](int32_t x) -> int32_t { return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x))); }) << "\n";
-    std::cout << ::tpy::max_key(a, b, [](int32_t x) -> int32_t { return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x))); }) << "\n";
-    std::cout << ::tpy::min_key(a, b, negate) << "\n";
-    std::cout << ::tpy::max_key(a, b, negate) << "\n";
+    std::cout << ::tpy::min_key(a, b, [](int32_t x) -> int32_t { return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x))); }) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::max_key(a, b, [](int32_t x) -> int32_t { return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x))); }) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::min_key(a, b, negate) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::max_key(a, b, negate) << "\n" << ::tpy::check_signals;
     int32_t c = -1;
-    std::cout << ::tpy::min3_key(a, b, c, [](int32_t x) -> int32_t { return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x))); }) << "\n";
-    std::cout << ::tpy::max3_key(a, b, c, [](int32_t x) -> int32_t { return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x))); }) << "\n";
+    std::cout << ::tpy::min3_key(a, b, c, [](int32_t x) -> int32_t { return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x))); }) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::max3_key(a, b, c, [](int32_t x) -> int32_t { return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x))); }) << "\n" << ::tpy::check_signals;
     std::string_view s1 = "hello";
     std::string_view s2 = "hi";
-    std::cout << ::tpy::min_key(s1, s2, [](std::string_view s) -> int32_t { return ::tpy::__len__(s); }) << "\n";
-    std::cout << ::tpy::max_key(s1, s2, [](std::string_view s) -> int32_t { return ::tpy::__len__(s); }) << "\n";
+    std::cout << ::tpy::min_key(s1, s2, [](std::string_view s) -> int32_t { return ::tpy::__len__(s); }) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::max_key(s1, s2, [](std::string_view s) -> int32_t { return ::tpy::__len__(s); }) << "\n" << ::tpy::check_signals;
 }
 
 // main()

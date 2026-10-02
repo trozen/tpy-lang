@@ -35,9 +35,9 @@ int32_t sized() {
 //     print(sized())
 void main() {
     Config c = ::tpyapp::main::make();
-    std::cout << c.label << "\n";
-    std::cout << c.size << "\n";
-    std::cout << ::tpyapp::main::sized() << "\n";
+    std::cout << c.label << "\n" << ::tpy::check_signals;
+    std::cout << c.size << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sized() << "\n" << ::tpy::check_signals;
 }
 
 // main()

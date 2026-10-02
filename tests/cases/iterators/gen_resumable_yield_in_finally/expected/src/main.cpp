@@ -79,10 +79,10 @@ __gen_gen_exception_then_finally_yield gen_exception_then_finally_yield(::tpy::B
 //     print(list(gen_exception_then_finally_yield(5)))
 //     print(list(gen_exception_then_finally_yield(-1)))
 void main() {
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_return_then_finally_yield())) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_exception_then_finally_yield(::tpy::BigInt(5)))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_return_then_finally_yield())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_exception_then_finally_yield(::tpy::BigInt(5)))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt __tmp_1 = ::tpy::BigInt(-1);
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_exception_then_finally_yield(__tmp_1))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_exception_then_finally_yield(__tmp_1))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

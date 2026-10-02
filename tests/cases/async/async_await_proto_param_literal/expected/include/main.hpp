@@ -73,7 +73,7 @@ template <::tpystd::typing::Iterable<::tpy::BigInt> T_it>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
     }

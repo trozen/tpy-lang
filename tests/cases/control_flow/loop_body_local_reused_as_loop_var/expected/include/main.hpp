@@ -280,9 +280,9 @@ inline void K::method(const std::vector<int32_t>& xs) const {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         n = *__beg_1;
-        std::cout << "method in" << " " << n << "\n";
+        std::cout << "method in" << " " << n << "\n" << ::tpy::check_signals;
     }
-    std::cout << "method after" << " " << n << "\n";
+    std::cout << "method after" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, v: int32) -> None:

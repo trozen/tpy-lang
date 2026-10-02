@@ -33,21 +33,21 @@ void main() {
     ::tpy::ordered_map<std::string, std::vector<int32_t>> groups = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     ::tpy::__setitem__(groups, "odds", std::vector<int32_t>{1, 3, 5, 7});
     ::tpy::__getitem__(groups, "odds").push_back(9);
-    std::cout << ::tpy::__len__(::tpy::__getitem__(groups, "odds")) << " " << ::tpy::__getitem__(::tpy::__getitem__(groups, "odds"), 4) << "\n";
+    std::cout << ::tpy::__len__(::tpy::__getitem__(groups, "odds")) << " " << ::tpy::__getitem__(::tpy::__getitem__(groups, "odds"), 4) << "\n" << ::tpy::check_signals;
     int32_t a = 10;
     int32_t b = 20;
     ::tpy::__setitem__(groups, "calc", std::vector<int32_t>{a, (::tpy::add_check<int32_t>(b, 1)), (::tpy::mul_check<int32_t>(a, 2))});
-    std::cout << ::tpy::__getitem__(::tpy::__getitem__(groups, "calc"), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(groups, "calc"), 1) << " " << ::tpy::__getitem__(::tpy::__getitem__(groups, "calc"), 2) << "\n";
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(groups, "calc"), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(groups, "calc"), 1) << " " << ::tpy::__getitem__(::tpy::__getitem__(groups, "calc"), 2) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> matrix = {{0}};
     ::tpy::__setitem__(matrix, 0, std::vector<int32_t>{1, 2, 3});
     ::tpy::__getitem__(matrix, 0).push_back(4);
-    std::cout << ::tpy::__len__(::tpy::__getitem__(matrix, 0)) << " " << ::tpy::__getitem__(::tpy::__getitem__(matrix, 0), 3) << "\n";
+    std::cout << ::tpy::__len__(::tpy::__getitem__(matrix, 0)) << " " << ::tpy::__getitem__(::tpy::__getitem__(matrix, 0), 3) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> rows = {{0}, {0}, {0}};
     int32_t __stop_0 = ::tpy::__len__(rows);
     for (int32_t i = 0; i < __stop_0; ++i) {
         rows[static_cast<std::size_t>(i)] = {i, (::tpy::add_check<int32_t>(i, 1))};
     }
-    std::cout << ::tpy::__len__(rows) << " " << ::tpy::__getitem__(::tpy::__getitem__(rows, 2), 1) << "\n";
+    std::cout << ::tpy::__len__(rows) << " " << ::tpy::__getitem__(::tpy::__getitem__(rows, 2), 1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

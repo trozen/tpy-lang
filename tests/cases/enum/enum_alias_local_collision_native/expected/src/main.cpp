@@ -60,11 +60,11 @@ std::string native_label(::lib::Color c) {
 //     local: Color = Color.CYAN
 //     print(local.name, local.value)
 void main() {
-    std::cout << ::tpyapp::main::native_label(::lib::Color::RED) << "\n";
-    std::cout << ::tpyapp::main::native_label(::lib::Color::GREEN) << "\n";
-    std::cout << static_cast<int32_t>(::lib::Color::RED) << "\n";
+    std::cout << ::tpyapp::main::native_label(::lib::Color::RED) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::native_label(::lib::Color::GREEN) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(::lib::Color::RED) << "\n" << ::tpy::check_signals;
     Color local = Color::CYAN;
-    std::cout << ::tpy::EnumUtil<Color>::name(local) << " " << static_cast<int32_t>(local) << "\n";
+    std::cout << ::tpy::EnumUtil<Color>::name(local) << " " << static_cast<int32_t>(local) << "\n" << ::tpy::check_signals;
 }
 
 // # Regression: a @native-bound imported enum aliased to dodge a clash with a

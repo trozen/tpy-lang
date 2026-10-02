@@ -19,16 +19,16 @@ void classify(std::string_view s) {
     if (__match_subject_1 == "a") {
         auto& v = __match_subject_1;
         if ((::tpy::__len__(v) > 5)) {
-            std::cout << "never" << " " << v << "\n";
+            std::cout << "never" << " " << v << "\n" << ::tpy::check_signals;
             goto __match_end_2;
         }
     }
     if (__match_subject_1 == "a") {
-        std::cout << "plain a" << "\n";
+        std::cout << "plain a" << "\n" << ::tpy::check_signals;
         goto __match_end_2;
     }
     {
-        std::cout << "other" << "\n";
+        std::cout << "other" << "\n" << ::tpy::check_signals;
         goto __match_end_2;
     }
     __match_end_2:;

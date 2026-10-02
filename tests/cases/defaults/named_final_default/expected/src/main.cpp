@@ -18,12 +18,12 @@ int32_t fn(uint32_t flags, int32_t limit) {
 //     print(e.run())
 //     print(e.run(uint32(2), int32(1)))
 void main() {
-    std::cout << ::tpyapp::main::fn() << "\n";
-    std::cout << ::tpyapp::main::fn(7) << "\n";
-    std::cout << ::tpyapp::main::fn(0, 3) << "\n";
+    std::cout << ::tpyapp::main::fn() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::fn(7) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::fn(0, 3) << "\n" << ::tpy::check_signals;
     Engine e = Engine();
-    std::cout << e.run() << "\n";
-    std::cout << e.run(2, 1) << "\n";
+    std::cout << e.run() << "\n" << ::tpy::check_signals;
+    std::cout << e.run(2, 1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

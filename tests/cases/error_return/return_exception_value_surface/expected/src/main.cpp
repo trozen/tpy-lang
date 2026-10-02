@@ -167,7 +167,7 @@ std::expected<int32_t, ParseError> parse_logged(std::string_view s) {
         __except_11:;
         {
             auto& e = *__err_opt_11;
-            std::cout << "reraise: saw line" << " " << e.line << "\n";
+            std::cout << "reraise: saw line" << " " << e.line << "\n" << ::tpy::check_signals;
             return ::tpy::make_unexpected(std::move(*__err_opt_11));
         }
         __after_try_11:;
@@ -302,13 +302,13 @@ void main() {
             if (!__try_tmp_14.has_value()) { __err_opt_13 = std::move(__try_tmp_14.error()); goto __except_13; }
             v_builtin = ::tpy::unwrap_ref_move(*__try_tmp_14);
         }
-        std::cout << "builtin:" << " " << v_builtin << "\n";
+        std::cout << "builtin:" << " " << v_builtin << "\n" << ::tpy::check_signals;
         goto __after_try_13;
         // except StopIteration:
         __except_13:;
         {
             auto& e = *__err_opt_13;
-            std::cout << "builtin: str empty" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)) == "")) << "\n";
+            std::cout << "builtin: str empty" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)) == "")) << "\n" << ::tpy::check_signals;
         }
         __after_try_13:;
     }
@@ -320,13 +320,13 @@ void main() {
             if (!__try_tmp_16.has_value()) { __err_opt_15 = std::move(__try_tmp_16.error()); goto __except_15; }
             v_empty = ::tpy::unwrap_ref_move(*__try_tmp_16);
         }
-        std::cout << "empty:" << " " << v_empty << "\n";
+        std::cout << "empty:" << " " << v_empty << "\n" << ::tpy::check_signals;
         goto __after_try_15;
         // except Empty:
         __except_15:;
         {
             auto& e = *__err_opt_15;
-            std::cout << "empty: str empty" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)) == "")) << "\n";
+            std::cout << "empty: str empty" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)) == "")) << "\n" << ::tpy::check_signals;
         }
         __after_try_15:;
     }
@@ -338,13 +338,13 @@ void main() {
             if (!__try_tmp_18.has_value()) { __err_opt_17 = std::move(__try_tmp_18.error()); goto __except_17; }
             v_message = ::tpy::unwrap_ref_move(*__try_tmp_18);
         }
-        std::cout << "message:" << " " << v_message << "\n";
+        std::cout << "message:" << " " << v_message << "\n" << ::tpy::check_signals;
         goto __after_try_17;
         // except Missing:
         __except_17:;
         {
             auto& e = *__err_opt_17;
-            std::cout << "message:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "message:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
         __after_try_17:;
     }
@@ -356,13 +356,13 @@ void main() {
             if (!__try_tmp_20.has_value()) { __err_opt_19 = std::move(__try_tmp_20.error()); goto __except_19; }
             v_fields = ::tpy::unwrap_ref_move(*__try_tmp_20);
         }
-        std::cout << "fields:" << " " << v_fields << "\n";
+        std::cout << "fields:" << " " << v_fields << "\n" << ::tpy::check_signals;
         goto __after_try_19;
         // except ParseError:
         __except_19:;
         {
             auto& e = *__err_opt_19;
-            std::cout << "fields:" << " " << e.line << " " << e.detail << "\n";
+            std::cout << "fields:" << " " << e.line << " " << e.detail << "\n" << ::tpy::check_signals;
         }
         __after_try_19:;
     }
@@ -374,13 +374,13 @@ void main() {
             if (!__try_tmp_22.has_value()) { __err_opt_21 = std::move(__try_tmp_22.error()); goto __except_21; }
             v_propagate = ::tpy::unwrap_ref_move(*__try_tmp_22);
         }
-        std::cout << "propagate:" << " " << v_propagate << "\n";
+        std::cout << "propagate:" << " " << v_propagate << "\n" << ::tpy::check_signals;
         goto __after_try_21;
         // except ParseError:
         __except_21:;
         {
             auto& e = *__err_opt_21;
-            std::cout << "propagate:" << " " << e.line << " " << e.detail << "\n";
+            std::cout << "propagate:" << " " << e.line << " " << e.detail << "\n" << ::tpy::check_signals;
         }
         __after_try_21:;
     }
@@ -392,13 +392,13 @@ void main() {
             if (!__try_tmp_24.has_value()) { __err_opt_23 = std::move(__try_tmp_24.error()); goto __except_23; }
             v_reraise = ::tpy::unwrap_ref_move(*__try_tmp_24);
         }
-        std::cout << "reraise:" << " " << v_reraise << "\n";
+        std::cout << "reraise:" << " " << v_reraise << "\n" << ::tpy::check_signals;
         goto __after_try_23;
         // except ParseError:
         __except_23:;
         {
             auto& e = *__err_opt_23;
-            std::cout << "reraise:" << " " << e.detail << "\n";
+            std::cout << "reraise:" << " " << e.detail << "\n" << ::tpy::check_signals;
         }
         __after_try_23:;
     }
@@ -410,13 +410,13 @@ void main() {
             if (!__try_tmp_26.has_value()) { __err_opt_25 = std::move(__try_tmp_26.error()); goto __except_25; }
             v_dtor = ::tpy::unwrap_ref_move(*__try_tmp_26);
         }
-        std::cout << "dtor:" << " " << v_dtor << "\n";
+        std::cout << "dtor:" << " " << v_dtor << "\n" << ::tpy::check_signals;
         goto __after_try_25;
         // except Tracked:
         __except_25:;
         {
             auto& e = *__err_opt_25;
-            std::cout << "dtor:" << " " << e.code << "\n";
+            std::cout << "dtor:" << " " << e.code << "\n" << ::tpy::check_signals;
         }
         __after_try_25:;
     }
@@ -428,13 +428,13 @@ void main() {
             if (!__try_tmp_28.has_value()) { __err_opt_27 = std::move(__try_tmp_28.error()); goto __except_27; }
             v_dtor2 = ::tpy::unwrap_ref_move(*__try_tmp_28);
         }
-        std::cout << "dtor propagated:" << " " << v_dtor2 << "\n";
+        std::cout << "dtor propagated:" << " " << v_dtor2 << "\n" << ::tpy::check_signals;
         goto __after_try_27;
         // except Tracked:
         __except_27:;
         {
             auto& e = *__err_opt_27;
-            std::cout << "dtor propagated:" << " " << e.code << "\n";
+            std::cout << "dtor propagated:" << " " << e.code << "\n" << ::tpy::check_signals;
         }
         __after_try_27:;
     }
@@ -446,13 +446,13 @@ void main() {
             if (!__try_tmp_30.has_value()) { __err_opt_29 = std::move(__try_tmp_30.error()); goto __except_29; }
             v_label = ::tpy::unwrap_ref_move(*__try_tmp_30);
         }
-        std::cout << "own str:" << " " << v_label << "\n";
+        std::cout << "own str:" << " " << v_label << "\n" << ::tpy::check_signals;
         goto __after_try_29;
         // except Labelled:
         __except_29:;
         {
             auto& e = *__err_opt_29;
-            std::cout << "own str:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "own str:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
         __after_try_29:;
     }
@@ -464,13 +464,13 @@ void main() {
             if (!__try_tmp_32.has_value()) { __err_opt_31 = std::move(__try_tmp_32.error()); goto __except_31; }
             v_mut = ::tpy::unwrap_ref_move(*__try_tmp_32);
         }
-        std::cout << "mutate:" << " " << v_mut << "\n";
+        std::cout << "mutate:" << " " << v_mut << "\n" << ::tpy::check_signals;
         goto __after_try_31;
         // except ParseError:
         __except_31:;
         {
             auto& e = *__err_opt_31;
-            std::cout << "mutate:" << " " << e.line << " " << e.detail << "\n";
+            std::cout << "mutate:" << " " << e.line << " " << e.detail << "\n" << ::tpy::check_signals;
         }
         __after_try_31:;
     }
@@ -482,13 +482,13 @@ void main() {
             if (!__try_tmp_34.has_value()) { __err_opt_33 = std::move(__try_tmp_34.error()); goto __except_33; }
             v_cross = ::tpy::unwrap_ref_move(*__try_tmp_34);
         }
-        std::cout << "cross:" << " " << v_cross << "\n";
+        std::cout << "cross:" << " " << v_cross << "\n" << ::tpy::check_signals;
         goto __after_try_33;
         // except Denied:
         __except_33:;
         {
             auto& e = *__err_opt_33;
-            std::cout << "cross:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "cross:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
         __after_try_33:;
     }
@@ -500,13 +500,13 @@ void main() {
             if (!__try_tmp_36.has_value()) { __err_opt_35 = std::move(__try_tmp_36.error()); goto __except_35; }
             v_super = ::tpy::unwrap_ref_move(*__try_tmp_36);
         }
-        std::cout << "parent init:" << " " << v_super << "\n";
+        std::cout << "parent init:" << " " << v_super << "\n" << ::tpy::check_signals;
         goto __after_try_35;
         // except Coded:
         __except_35:;
         {
             auto& e = *__err_opt_35;
-            std::cout << "parent init:" << " " << e.code << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "parent init:" << " " << e.code << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
         __after_try_35:;
     }
@@ -518,18 +518,18 @@ void main() {
             if (!__try_tmp_38.has_value()) { __err_opt_37 = std::move(__try_tmp_38.error()); goto __except_37; }
             v_unbound = ::tpy::unwrap_ref_move(*__try_tmp_38);
         }
-        std::cout << "parent init unbound:" << " " << v_unbound << "\n";
+        std::cout << "parent init unbound:" << " " << v_unbound << "\n" << ::tpy::check_signals;
         goto __after_try_37;
         // except Named:
         __except_37:;
         {
             auto& e = *__err_opt_37;
-            std::cout << "parent init unbound:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "parent init unbound:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
         __after_try_37:;
     }
     Reader r = Reader();
-    std::cout << "method:" << " " << r.read("ok") << " " << r.read("q") << " " << r.seen << "\n";
+    std::cout << "method:" << " " << r.read("ok") << " " << r.read("q") << " " << r.seen << "\n" << ::tpy::check_signals;
     {
         auto __tmp_2 = ::tpyapp::main::count(2);
         auto __src_0 = ::tpyapp::main::pairs(__tmp_2);
@@ -538,7 +538,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator:" << " " << v << "\n";
+            std::cout << "generator:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
 }

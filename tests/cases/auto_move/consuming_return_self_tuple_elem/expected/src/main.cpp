@@ -16,12 +16,12 @@ void main() {
     Widget w = std::move(std::get<0>(__tup_1));
     int32_t k = std::get<1>(__tup_1);
     w.n = 9;
-    std::cout << w.n << " " << k << "\n";
+    std::cout << w.n << " " << k << "\n" << ::tpy::check_signals;
     auto __tup_2 = Plain(6).split();
     Plain p = std::move(std::get<0>(__tup_2));
     int32_t j = std::get<1>(__tup_2);
     p.n = 8;
-    std::cout << p.n << " " << j << "\n";
+    std::cout << p.n << " " << j << "\n" << ::tpy::check_signals;
 }
 
 // main()

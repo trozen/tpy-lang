@@ -23,8 +23,8 @@ const Pet& get_global_readonly() {
 //     print(get_global_readonly().name())
 void main() {
     Dog dog = Dog();
-    std::cout << ::tpyapp::main::echo_readonly(dog).name() << "\n";
-    std::cout << ::tpyapp::main::get_global_readonly().name() << "\n";
+    std::cout << ::tpyapp::main::echo_readonly(dog).name() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::get_global_readonly().name() << "\n" << ::tpy::check_signals;
 }
 
 // global_pet: Pet = Cat()

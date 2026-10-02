@@ -9,8 +9,8 @@ namespace tpyapp::main {
 //     print(B(3).x)
 void main() {
     Node __tmp_1 = Node(::tpy::BigInt(8));
-    std::cout << A(&(__tmp_1)).got << "\n";
-    std::cout << B(::tpy::BigInt(3)).x << "\n";
+    std::cout << A(&(__tmp_1)).got << "\n" << ::tpy::check_signals;
+    std::cout << B(::tpy::BigInt(3)).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -24,9 +24,9 @@ void __tpy_init() {
     static ::pascal_rt::runtime::strings::PStr<255> __global_slot_1 = ::pascal_rt::runtime::strings::PStr<255>();
     s = &__global_slot_1;
     n = 160;
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
     s->assign("line1\r\nline2");
-    std::cout << std::string(::tpy::__str__((*s))) << "\n";
+    std::cout << std::string(::tpy::__str__((*s))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

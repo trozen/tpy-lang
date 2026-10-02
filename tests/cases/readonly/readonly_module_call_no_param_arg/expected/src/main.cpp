@@ -22,7 +22,7 @@ void __tpy_init() {
 
     ::tpyapp::helpers::__tpy_init();
     ::tpyapp::main::ok();
-    std::cout << 0 << "\n";
+    std::cout << 0 << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

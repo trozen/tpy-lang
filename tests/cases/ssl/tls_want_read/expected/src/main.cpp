@@ -154,34 +154,34 @@ void main() {
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
     if ((!(::tpyapp::main::drive(cli, srv)))) {
-        std::cout << "FAIL: handshake did not converge" << "\n";
+        std::cout << "FAIL: handshake did not converge" << "\n" << ::tpy::check_signals;
         return;
     }
-    std::cout << "handshake:" << " " << ::tpyapp::main::tls_ver(cli.version()) << "\n";
+    std::cout << "handshake:" << " " << ::tpyapp::main::tls_ver(cli.version()) << "\n" << ::tpy::check_signals;
     {
         try {
             cli.recv(32);
-            std::cout << "FAIL: expected SSLWantReadError" << "\n";
+            std::cout << "FAIL: expected SSLWantReadError" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::ssl::SSLWantReadError&) {
-            std::cout << "want-read raised" << "\n";
+            std::cout << "want-read raised" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             cli.recv(32);
-            std::cout << "FAIL: expected SSLError" << "\n";
+            std::cout << "FAIL: expected SSLError" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::ssl::SSLError&) {
-            std::cout << "want-read caught as SSLError" << "\n";
+            std::cout << "want-read caught as SSLError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             srv.recv(32);
-            std::cout << "FAIL: expected SSLError" << "\n";
+            std::cout << "FAIL: expected SSLError" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::ssl::SSLZeroReturnError&) {
-            std::cout << "FAIL: unexpected zero-return" << "\n";
+            std::cout << "FAIL: unexpected zero-return" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::ssl::SSLError&) {
-            std::cout << "srv want-read" << "\n";
+            std::cout << "srv want-read" << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::Bytes chunk = (::tpy::bytes_repeat(::tpy::bytes_literal_owned("x", 1), 16384));
@@ -192,14 +192,14 @@ void main() {
             try {
                 cli.send(chunk);
             } catch (const ::tpystd::ssl::SSLWantWriteError&) {
-                std::cout << "want-write raised" << "\n";
+                std::cout << "want-write raised" << "\n" << ::tpy::check_signals;
                 filled = true;
             }
         }
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     if ((!(filled))) {
-        std::cout << "FAIL: socket buffer never filled" << "\n";
+        std::cout << "FAIL: socket buffer never filled" << "\n" << ::tpy::check_signals;
     }
     cli.close();
     srv.close();

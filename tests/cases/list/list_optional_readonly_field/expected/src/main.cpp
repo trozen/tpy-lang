@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(h.first_nonnull())
 void main() {
     Holder h = Holder();
-    std::cout << h.first_nonnull() << "\n";
+    std::cout << h.first_nonnull() << "\n" << ::tpy::check_signals;
 }
 
 // main()

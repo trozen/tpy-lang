@@ -29,12 +29,12 @@ namespace tpyapp::main {
             try {
                 ::tpy::BigInt __tpy_async_ret_1 = total;
                 __fin_ran_1 = true;
-                std::cout << "done" << "\n";
+                std::cout << "done" << "\n" << ::tpy::check_signals;
                 __state = S_DONE;
                 return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret_1));
             } catch (...) {
                 if (!__fin_ran_1) {
-                    std::cout << "done" << "\n";
+                    std::cout << "done" << "\n" << ::tpy::check_signals;
                 }
                 throw;
             }
@@ -55,7 +55,7 @@ __coro_total_up total_up(int32_t k) {
 // def main() -> None:
 //     print(asyncio.run(total_up(3)))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::total_up(3))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::total_up(3))) << "\n" << ::tpy::check_signals;
 }
 
 // # A movable (BigInt) local returned under a NON-suspending finally: the

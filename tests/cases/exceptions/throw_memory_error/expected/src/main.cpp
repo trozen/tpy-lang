@@ -24,7 +24,7 @@ void main() {
         try {
             ::tpyapp::main::fail();
         } catch (const ::tpy::MemoryError& e) {
-            std::cout << "caught MemoryError:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught MemoryError:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

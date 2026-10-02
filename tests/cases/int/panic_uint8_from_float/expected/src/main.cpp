@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(x)
 void main() {
     uint8_t x = ::tpy::from_float_check<uint8_t>(256.0);
-    std::cout << static_cast<int>(x) << "\n";
+    std::cout << static_cast<int>(x) << "\n" << ::tpy::check_signals;
 }
 
 // main()

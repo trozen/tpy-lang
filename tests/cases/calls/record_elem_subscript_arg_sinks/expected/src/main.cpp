@@ -21,11 +21,11 @@ void ctor_slots() {
     std::array<Thing, 2> things = {Thing(4), Thing(5)};
     Player p = Player(::tpy::__getitem__(things, 0));
     p.x = (p.x) + (1.0);
-    std::cout << "ctor_local_decl" << " " << ::tpy::print_float(p.x) << " " << ::tpy::print_float(::tpy::__getitem__(things, 0).x) << "\n";
+    std::cout << "ctor_local_decl" << " " << ::tpy::print_float(p.x) << " " << ::tpy::print_float(::tpy::__getitem__(things, 0).x) << "\n" << ::tpy::check_signals;
     Wrap w = Wrap(Bump(::tpy::__getitem__(things, 1)));
-    std::cout << "ctor_nested" << " " << ::tpy::print_float(w.b.x) << " " << ::tpy::print_float(::tpy::__getitem__(things, 1).x) << "\n";
+    std::cout << "ctor_nested" << " " << ::tpy::print_float(w.b.x) << " " << ::tpy::print_float(::tpy::__getitem__(things, 1).x) << "\n" << ::tpy::check_signals;
     Bump b = Bump(::tpy::__getitem__(things, 0));
-    std::cout << "ctor_mutated_slot" << " " << ::tpy::print_float(b.x) << " " << ::tpy::print_float(::tpy::__getitem__(things, 0).x) << "\n";
+    std::cout << "ctor_mutated_slot" << " " << ::tpy::print_float(b.x) << " " << ::tpy::print_float(::tpy::__getitem__(things, 0).x) << "\n" << ::tpy::check_signals;
 }
 
 // # User method and static method slots.
@@ -40,9 +40,9 @@ void method_slots() {
     std::array<Thing, 2> things = {Thing(4), Thing(5)};
     Bag bag = Bag();
     bag.take(::tpy::__getitem__(things, 0));
-    std::cout << "method" << " " << ::tpy::print_float(bag.total) << " " << ::tpy::print_float(::tpy::__getitem__(things, 0).x) << "\n";
+    std::cout << "method" << " " << ::tpy::print_float(bag.total) << " " << ::tpy::print_float(::tpy::__getitem__(things, 0).x) << "\n" << ::tpy::check_signals;
     double v = Bag::peek(::tpy::__getitem__(things, 1));
-    std::cout << "static_method" << " " << ::tpy::print_float(v) << " " << ::tpy::print_float(::tpy::__getitem__(things, 1).x) << "\n";
+    std::cout << "static_method" << " " << ::tpy::print_float(v) << " " << ::tpy::print_float(::tpy::__getitem__(things, 1).x) << "\n" << ::tpy::check_signals;
 }
 
 // # Builtin stub slots.
@@ -54,8 +54,8 @@ void method_slots() {
 void stub_slots() {
     std::vector<Thing> things = {Thing(4), Thing(5)};
     things.push_back(Thing(4));
-    std::cout << "stub_count" << " " << ::tpy::list_count(things, ::tpy::__getitem__(things, 0)) << "\n";
-    std::cout << "stub_index" << " " << ::tpy::list_index(things, ::tpy::__getitem__(things, 1)) << "\n";
+    std::cout << "stub_count" << " " << ::tpy::list_count(things, ::tpy::__getitem__(things, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "stub_index" << " " << ::tpy::list_index(things, ::tpy::__getitem__(things, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // # A dict element.
@@ -66,7 +66,7 @@ void stub_slots() {
 void dict_elem() {
     ::tpy::ordered_map<std::string, Thing> d = ::tpy::ordered_map<std::string, Thing>({{"a", Thing(7)}});
     Bump b = Bump(::tpy::__getitem__(d, "a"));
-    std::cout << "dict_elem" << " " << ::tpy::print_float(b.x) << " " << ::tpy::print_float(::tpy::__getitem__(d, "a").x) << "\n";
+    std::cout << "dict_elem" << " " << ::tpy::print_float(b.x) << " " << ::tpy::print_float(::tpy::__getitem__(d, "a").x) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -90,9 +90,9 @@ __gen_gen gen(std::vector<Thing>& things) {
 //     print("generator", things[0].x, things[1].x)
 void main() {
     Map m = Map(2);
-    std::cout << "ctor_field_write" << " " << ::tpy::print_float(m.player.x) << " " << ::tpy::print_float(m.bumped.x) << " " << ::tpy::print_float(::tpy::__getitem__(m.things, 0).x) << "\n";
+    std::cout << "ctor_field_write" << " " << ::tpy::print_float(m.player.x) << " " << ::tpy::print_float(m.bumped.x) << " " << ::tpy::print_float(::tpy::__getitem__(m.things, 0).x) << "\n" << ::tpy::check_signals;
     m.reseat();
-    std::cout << "method_field_write" << " " << ::tpy::print_float(m.bumped.x) << " " << ::tpy::print_float(::tpy::__getitem__(m.things, 1).x) << "\n";
+    std::cout << "method_field_write" << " " << ::tpy::print_float(m.bumped.x) << " " << ::tpy::print_float(::tpy::__getitem__(m.things, 1).x) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::ctor_slots();
     ::tpyapp::main::method_slots();
     ::tpyapp::main::stub_slots();
@@ -105,10 +105,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             double v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << ::tpy::print_float(v) << "\n";
+            std::cout << "generator" << " " << ::tpy::print_float(v) << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "generator" << " " << ::tpy::print_float(::tpy::__getitem__(things, 0).x) << " " << ::tpy::print_float(::tpy::__getitem__(things, 1).x) << "\n";
+    std::cout << "generator" << " " << ::tpy::print_float(::tpy::__getitem__(things, 0).x) << " " << ::tpy::print_float(::tpy::__getitem__(things, 1).x) << "\n" << ::tpy::check_signals;
 }
 
 // main()
@@ -127,7 +127,7 @@ void __tpy_init() {
     top = &__global_slot_1;
     static Bump __global_slot_2 = Bump(::tpy::__getitem__((*top), 0));
     tb = &__global_slot_2;
-    std::cout << "module_level" << " " << ::tpy::print_float(tb->x) << " " << ::tpy::print_float(::tpy::__getitem__((*top), 0).x) << "\n";
+    std::cout << "module_level" << " " << ::tpy::print_float(tb->x) << " " << ::tpy::print_float(::tpy::__getitem__((*top), 0).x) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

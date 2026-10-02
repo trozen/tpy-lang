@@ -23,7 +23,7 @@ void main() {
     Sink s = Sink();
     Row __tmp_1 = Row("a");
     ::tpyapp::main::drain(s, __tmp_1);
-    std::cout << ::tpy::__len__(s.kept) << " " << ::tpy::__getitem__(s.kept, 0) << "\n";
+    std::cout << ::tpy::__len__(s.kept) << " " << ::tpy::__getitem__(s.kept, 0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(leaf_count(leaf))
 void main() {
     ::tpyapp::treelib::Tree<::tpy::BigInt> t = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{2, 3}, 4};
-    std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(t) << "\n";
+    std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(t) << "\n" << ::tpy::check_signals;
     ::tpyapp::treelib::Tree<::tpy::BigInt> leaf = 7;
-    std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(leaf) << "\n";
+    std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(leaf) << "\n" << ::tpy::check_signals;
 }
 
 // # A generic recursive alias (and a traversal over it) defined in treelib,

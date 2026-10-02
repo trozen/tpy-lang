@@ -16,8 +16,8 @@ void test_store_and_load() {
     int32_t* p = &x;
     p[0] = 99;
     int32_t val = p[0];
-    std::cout << val << "\n";
-    std::cout << x << "\n";
+    std::cout << val << "\n" << ::tpy::check_signals;
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_constptr_load() -> None:
@@ -29,7 +29,7 @@ void test_constptr_load() {
     int32_t x = 42;
     const int32_t* cp = &x;
     int32_t val = cp[0];
-    std::cout << val << "\n";
+    std::cout << val << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_load, unsafe_store

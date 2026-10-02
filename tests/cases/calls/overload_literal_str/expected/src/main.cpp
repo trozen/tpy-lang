@@ -36,7 +36,7 @@ void main() {
     f1.write("hello");
     f1.close();
     ::tpy::TextFile f2 = ::tpy::builtin_open_mode("tpy_literal_test.txt", "r");
-    std::cout << f2.read() << "\n";
+    std::cout << f2.read() << "\n" << ::tpy::check_signals;
     f2.close();
     ::tpy::BinaryFile f3 = ::tpy::builtin_open_binary("tpy_literal_test.bin", "wb");
     f3.close();
@@ -45,7 +45,7 @@ void main() {
     std::string_view mode = "r";
     ::tpy::TextFile f5 = ::tpy::builtin_open_mode("tpy_literal_test.txt", mode);
     f5.close();
-    std::cout << "ok" << "\n";
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // main()

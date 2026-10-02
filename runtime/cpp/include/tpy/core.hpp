@@ -184,7 +184,7 @@ struct GeneratorExit : BaseException {
 };
 // Inherits BaseException (not Exception) like CPython, so `except Exception:`
 // does not swallow a Ctrl-C. Raised on the interrupt target thread at the next
-// interruptible operation after a SIGINT (check_interrupt() below), and by
+// interruptible operation after a SIGINT (check_signals() below), and by
 // asyncio.run after a SIGINT graceful shutdown.
 struct KeyboardInterrupt : BaseException {
     using BaseException::BaseException;
@@ -204,13 +204,25 @@ inline bool interrupt_armed() noexcept {
     }
 }
 
-// Raise KeyboardInterrupt if a Ctrl-C is pending for this thread. Called after
-// operations that cannot wait on the wake fd themselves (stdout / file I/O,
-// raise_signal); one relaxed load when nothing is pending.
-inline void check_interrupt() {
+// The point where pending signals are acted on (CPython's PyErr_CheckSignals):
+// today that is SIGINT's default handler, raising KeyboardInterrupt when a
+// Ctrl-C is pending for this thread; user `signal.signal` handlers would run
+// here too. Called after operations that cannot wait on the wake fd themselves
+// (stdout / file I/O, raise_signal); one relaxed load when nothing is pending.
+inline void check_signals() {
     if (interrupt_detail::pending.load(std::memory_order_relaxed) != 0) [[unlikely]] {
         deliver_interrupt();
     }
+}
+
+// The same check as a stream manipulator, the last token of every generated
+// print chain (`std::cout << x << "\n" << ::tpy::check_signals;`): a Ctrl-C
+// that arrived while the line was written is raised once it is out, like the
+// sys.stdout.write check point. The standard inserter calls a manipulator
+// directly, so the throw is not caught into badbit.
+inline std::ostream& check_signals(std::ostream& os) {
+    check_signals();
+    return os;
 }
 
 // Embedding API for --no-main builds, whose host owns signal dispositions.
@@ -383,7 +395,7 @@ TPY_DEFINE_RAISE_HELPER(raise_eof_error,             EOFError)
     // SA_RESTART semantics for it; when that was a Ctrl-C, CPython surfaces
     // KeyboardInterrupt rather than the OSError.
     if (err == EINTR) {
-        check_interrupt();
+        check_signals();
     }
     throw_os_error_as(os_error_subclass_for(err), err, strerror_arg,
                       filename_arg, filename2_arg);
@@ -550,8 +562,9 @@ inline std::string demangle_type_name(const char* mangled) {
 // process (fail-fast). A C++ destructor is noexcept, so the exception cannot
 // propagate; rather than swallow it (which hides an incomplete-cleanup bug)
 // TPy treats a throwing destructor as fatal -- matching C++'s own
-// noexcept-destructor rule and Rust's abort-on-panic-in-Drop, not CPython's
-// print-and-continue. stdout is flushed first so buffered program output
+// noexcept-destructor rule (Rust aborts only on a panic inside Drop while a
+// panic is already unwinding), not CPython's print-and-continue. stdout is
+// flushed first so buffered program output
 // orders before the report (mirrors tpy_terminate_handler).
 [[noreturn]] inline void report_del_exception(const std::exception& e) noexcept {
     std::string type_name = demangle_type_name(typeid(e).name());

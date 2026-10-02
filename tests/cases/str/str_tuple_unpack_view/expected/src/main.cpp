@@ -25,8 +25,8 @@ void main() {
     auto __tup_1 = ::tpyapp::main::get_pair();
     std::string_view a = std::get<0>(__tup_1);
     std::string_view b = std::get<1>(__tup_1);
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>({{"key1", "val1"}, {"key2", "val2"}});
     auto __obj_0 = ::tpy::dict_items(d);
     auto __beg_0 = __obj_0.begin();
@@ -36,7 +36,7 @@ void main() {
         const auto& __tup_2 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_2);
         std::string_view v = std::get<1>(__tup_2);
-        std::cout << k << " " << v << "\n";
+        std::cout << k << " " << v << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -41,24 +41,24 @@ void main() {
     std::vector<int32_t> nums = {1, 2};
     std::vector<int32_t> more = {3, 4, 5};
     ::tpyapp::main::extend_from(nums, more);
-    std::cout << ::tpy::ListPrinter(nums) << "\n";
+    std::cout << ::tpy::ListPrinter(nums) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> nums2 = {10};
     auto __tmp_1 = std::array<int32_t, 2>{20, 30};
     ::tpyapp::main::extend_from(nums2, __tmp_1);
-    std::cout << ::tpy::ListPrinter(nums2) << "\n";
+    std::cout << ::tpy::ListPrinter(nums2) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> target = {100};
     std::vector<int32_t> vals = {200, 300};
     ::tpyapp::main::extend_from(target, vals);
-    std::cout << ::tpy::ListPrinter(target) << "\n";
+    std::cout << ::tpy::ListPrinter(target) << "\n" << ::tpy::check_signals;
     std::vector<std::string> words = {"a", "b", "c"};
-    std::cout << ::tpyapp::main::join_from("-", words) << "\n";
+    std::cout << ::tpyapp::main::join_from("-", words) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> src = {7, 8, 9};
     std::vector<int32_t> result = ::tpyapp::main::list_from(src);
-    std::cout << ::tpy::ListPrinter(result) << "\n";
+    std::cout << ::tpy::ListPrinter(result) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> direct = {1};
     ::tpy::list_extend(direct, std::array<int32_t, 2>{2, 3});
-    std::cout << ::tpy::ListPrinter(direct) << "\n";
-    std::cout << ::tpy::str_join(",", std::array<std::string, 2>{"x", "y"}) << "\n";
+    std::cout << ::tpy::ListPrinter(direct) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_join(",", std::array<std::string, 2>{"x", "y"}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

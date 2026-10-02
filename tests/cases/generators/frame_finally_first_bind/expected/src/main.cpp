@@ -21,7 +21,7 @@ Box* pick(std::vector<Box>& items, int32_t i) {
 void __gen_gen_fn::__finally_0() {
     t = 0;
     t = ::tpy::add_check<int32_t>(t, 1);
-    std::cout << "gen_fn fin" << " " << t << "\n";
+    std::cout << "gen_fn fin" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // def gen_fn() -> Iterator[int32]:
@@ -90,7 +90,7 @@ __gen_gen_fn gen_fn() {
 void __coro_async_fn::__finally_0() {
     t = 5;
     t = ::tpy::add_check<int32_t>(t, 1);
-    std::cout << "async_fn fin" << " " << t << "\n";
+    std::cout << "async_fn fin" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // async def async_fn() -> int32:
@@ -101,7 +101,7 @@ __coro_async_fn async_fn() {
 void __gen_for_in_finally::__finally_0() {
     for (int32_t i = 0; i < 2; ++i) {
         t = (::tpy::mul_check<int32_t>(i, 2));
-        std::cout << "for_in_finally fin" << " " << t << "\n";
+        std::cout << "for_in_finally fin" << " " << t << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -113,7 +113,7 @@ __gen_for_in_finally for_in_finally() {
 void __gen_if_in_finally::__finally_0() {
     if (flag) {
         t = 4;
-        std::cout << "if_in_finally fin" << " " << t << "\n";
+        std::cout << "if_in_finally fin" << " " << t << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -184,7 +184,7 @@ void __coro_while_in_finally::__finally_0() {
     i = 0;
     while ((i < 2)) {
         j = (::tpy::mul_check<int32_t>(i, 3));
-        std::cout << "while_in_finally fin" << " " << j << "\n";
+        std::cout << "while_in_finally fin" << " " << j << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
@@ -264,11 +264,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_nested_try_finally::__next__(
 
 void __gen_nested_try_finally::__finally_0() {
     u = 2;
-    std::cout << "nested_try_finally outer" << " " << u << "\n";
+    std::cout << "nested_try_finally outer" << " " << u << "\n" << ::tpy::check_signals;
 }
 void __gen_nested_try_finally::__finally_1() {
     t = 1;
-    std::cout << "nested_try_finally inner" << " " << t << "\n";
+    std::cout << "nested_try_finally inner" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // def nested_try_finally() -> Iterator[int32]:
@@ -302,7 +302,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_read_after_try::__next__() {
         }
     }
     case S_RESUME_1: {  // after: yield t
-        std::cout << "read_after_try after" << " " << t << "\n";
+        std::cout << "read_after_try after" << " " << t << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -338,7 +338,7 @@ __gen_read_after_try read_after_try() {
 void __gen_unpack_literal::__finally_0() {
     a = 1;
     b = 2;
-    std::cout << "unpack_literal fin" << " " << a << " " << b << "\n";
+    std::cout << "unpack_literal fin" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }
 
 // def unpack_literal() -> Iterator[int32]:
@@ -349,7 +349,7 @@ __gen_unpack_literal unpack_literal() {
 void __gen_annotated::__finally_0() {
     t = 0;
     t = ::tpy::add_check<int32_t>(t, 2);
-    std::cout << "annotated fin" << " " << t << "\n";
+    std::cout << "annotated fin" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // def annotated() -> Iterator[int32]:
@@ -424,7 +424,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_return_path::__next__() {
 
 void __gen_return_path::__finally_0() {
     t = 3;
-    std::cout << "return_path fin" << " " << t << "\n";
+    std::cout << "return_path fin" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // def return_path(stop: bool) -> Iterator[int32]:
@@ -485,7 +485,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_break_path::__next__() {
         continue;
     }
     case S_JOIN_1: {
-        std::cout << "break_path done" << "\n";
+        std::cout << "break_path done" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -504,7 +504,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_break_path::__next__() {
 
 void __gen_break_path::__finally_0() {
     t = (::tpy::mul_check<int32_t>(i, 10));
-    std::cout << "break_path fin" << " " << t << "\n";
+    std::cout << "break_path fin" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // def break_path() -> Iterator[int32]:
@@ -568,7 +568,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_closed_early::__next__() {
 
 void __gen_closed_early::__finally_0() {
     t = 7;
-    std::cout << "closed_early fin" << " " << t << "\n";
+    std::cout << "closed_early fin" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // def closed_early() -> Iterator[int32]:
@@ -578,7 +578,7 @@ __gen_closed_early closed_early() {
 
 void __gen_exception_path::__finally_0() {
     t = 3;
-    std::cout << "exception_path fin" << " " << t << "\n";
+    std::cout << "exception_path fin" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // def exception_path() -> Iterator[int32]:
@@ -588,7 +588,7 @@ __gen_exception_path exception_path() {
 
 void __gen_str_local::__finally_0() {
     s = "fin";
-    std::cout << (::tpy::str_concat("str_local ", s)) << "\n";
+    std::cout << (::tpy::str_concat("str_local ", s)) << "\n" << ::tpy::check_signals;
 }
 
 // def str_local() -> Iterator[str]:
@@ -599,7 +599,7 @@ __gen_str_local str_local() {
 void __gen_list_local::__finally_0() {
     xs.emplace(std::vector<int32_t>{1, 2});
     (*xs).push_back(3);
-    std::cout << "list_local fin" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+    std::cout << "list_local fin" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
 // def list_local() -> Iterator[int32]:
@@ -610,7 +610,7 @@ __gen_list_local list_local() {
 void __gen_alias::__finally_0() {
     b = &(::tpy::__getitem__(items, 0));
     b->n = ::tpy::add_check<int32_t>(b->n, 1);
-    std::cout << "alias fin" << " " << b->n << "\n";
+    std::cout << "alias fin" << " " << b->n << "\n" << ::tpy::check_signals;
 }
 
 // def alias(items: list[Box]) -> Iterator[int32]:
@@ -622,7 +622,7 @@ void __gen_optional_ref::__finally_0() {
     o = ::tpyapp::main::pick(items, 0);
     if ((o != nullptr)) {
         o->n = ::tpy::add_check<int32_t>(o->n, 1);
-        std::cout << "optional_ref fin" << " " << o->n << "\n";
+        std::cout << "optional_ref fin" << " " << o->n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -635,7 +635,7 @@ void __gen_with_in_finally::__finally_0() {
     auto __ctx_1 = Guard(8);
     x = __ctx_1.__enter__();
     try {
-        std::cout << "with_in_finally fin" << " " << x << "\n";
+        std::cout << "with_in_finally fin" << " " << x << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -655,7 +655,7 @@ __gen_with_in_finally with_in_finally() {
 
 void __gen_tuple_local::__finally_0() {
     p = std::tuple<int32_t, std::string>{1, "a"};
-    std::cout << "tuple_local fin" << " " << std::get<0>(p) << " " << std::get<1>(p) << "\n";
+    std::cout << "tuple_local fin" << " " << std::get<0>(p) << " " << std::get<1>(p) << "\n" << ::tpy::check_signals;
 }
 
 // def tuple_local() -> Iterator[int32]:
@@ -728,7 +728,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen_fn y" << " " << v << "\n";
+            std::cout << "gen_fn y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     Counter c = Counter();
@@ -739,14 +739,14 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "gen_method y" << " " << v << "\n";
+            std::cout << "gen_method y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "gen_method n" << " " << c.n << "\n";
+    std::cout << "gen_method n" << " " << c.n << "\n" << ::tpy::check_signals;
     int32_t r = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_fn()));
-    std::cout << "async_fn ret" << " " << r << "\n";
+    std::cout << "async_fn ret" << " " << r << "\n" << ::tpy::check_signals;
     int32_t m = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(c.async_method()));
-    std::cout << "async_method ret" << " " << m << "\n";
+    std::cout << "async_method ret" << " " << m << "\n" << ::tpy::check_signals;
     {
         auto __src_4 = ::tpyapp::main::for_in_finally();
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -754,7 +754,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "for_in_finally y" << " " << v << "\n";
+            std::cout << "for_in_finally y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -764,7 +764,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "if_in_finally y" << " " << v << "\n";
+            std::cout << "if_in_finally y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -774,7 +774,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "if_in_finally y" << " " << v << "\n";
+            std::cout << "if_in_finally y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::while_in_finally()));
@@ -785,7 +785,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-            std::cout << "nested_try_finally y" << " " << v << "\n";
+            std::cout << "nested_try_finally y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -795,7 +795,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-            std::cout << "read_after_try y" << " " << v << "\n";
+            std::cout << "read_after_try y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -805,7 +805,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-            std::cout << "unpack_literal y" << " " << v << "\n";
+            std::cout << "unpack_literal y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -815,7 +815,7 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
-            std::cout << "annotated y" << " " << v << "\n";
+            std::cout << "annotated y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -825,7 +825,7 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_19);
-            std::cout << "return_path y" << " " << v << "\n";
+            std::cout << "return_path y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -835,7 +835,7 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_21);
-            std::cout << "return_path y" << " " << v << "\n";
+            std::cout << "return_path y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -845,7 +845,7 @@ void main() {
             auto __r_23 = __itr_22.__next__();
             if (!__r_23.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_23);
-            std::cout << "break_path y" << " " << v << "\n";
+            std::cout << "break_path y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -855,11 +855,11 @@ void main() {
             auto __r_25 = __itr_24.__next__();
             if (!__r_25.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_25);
-            std::cout << "closed_early y" << " " << v << "\n";
+            std::cout << "closed_early y" << " " << v << "\n" << ::tpy::check_signals;
             break;
         }
     }
-    std::cout << "closed_early after" << "\n";
+    std::cout << "closed_early after" << "\n" << ::tpy::check_signals;
     {
         try {
             {
@@ -869,11 +869,11 @@ void main() {
                     auto __r_27 = __itr_26.__next__();
                     if (!__r_27.has_value()) break;
                     int32_t v = ::tpy::unwrap_ref(*__r_27);
-                    std::cout << "exception_path y" << " " << v << "\n";
+                    std::cout << "exception_path y" << " " << v << "\n" << ::tpy::check_signals;
                 }
             }
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "exception_path caught" << " " << e << "\n";
+            std::cout << "exception_path caught" << " " << e << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -883,7 +883,7 @@ void main() {
             auto __r_29 = __itr_28.__next__();
             if (!__r_29.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_29);
-            std::cout << (::tpy::str_concat("str_local y ", s)) << "\n";
+            std::cout << (::tpy::str_concat("str_local y ", s)) << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -893,7 +893,7 @@ void main() {
             auto __r_31 = __itr_30.__next__();
             if (!__r_31.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_31);
-            std::cout << "list_local y" << " " << v << "\n";
+            std::cout << "list_local y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<Box> items = {Box(1)};
@@ -904,10 +904,10 @@ void main() {
             auto __r_33 = __itr_32.__next__();
             if (!__r_33.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_33);
-            std::cout << "alias y" << " " << v << "\n";
+            std::cout << "alias y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "alias after" << " " << ::tpy::__getitem__(items, 0).n << "\n";
+    std::cout << "alias after" << " " << ::tpy::__getitem__(items, 0).n << "\n" << ::tpy::check_signals;
     std::vector<Box> boxes = {Box(5)};
     {
         auto __src_34 = ::tpyapp::main::optional_ref(boxes);
@@ -916,10 +916,10 @@ void main() {
             auto __r_35 = __itr_34.__next__();
             if (!__r_35.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_35);
-            std::cout << "optional_ref y" << " " << v << "\n";
+            std::cout << "optional_ref y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "optional_ref after" << " " << ::tpy::__getitem__(boxes, 0).n << "\n";
+    std::cout << "optional_ref after" << " " << ::tpy::__getitem__(boxes, 0).n << "\n" << ::tpy::check_signals;
     {
         auto __src_36 = ::tpyapp::main::with_in_finally();
         auto&& __itr_36 = ::tpy::__iter__(__src_36);
@@ -927,7 +927,7 @@ void main() {
             auto __r_37 = __itr_36.__next__();
             if (!__r_37.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_37);
-            std::cout << "with_in_finally y" << " " << v << "\n";
+            std::cout << "with_in_finally y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -937,7 +937,7 @@ void main() {
             auto __r_39 = __itr_38.__next__();
             if (!__r_39.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_39);
-            std::cout << "tuple_local y" << " " << v << "\n";
+            std::cout << "tuple_local y" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -995,7 +995,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_gen_method::__next__(
 void __gen_Counter_gen_method::__finally_0() {
     t = (::tpy::add_check<int32_t>(__self.n, 1));
     __self.n = t;
-    std::cout << "gen_method fin" << " " << t << "\n";
+    std::cout << "gen_method fin" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // # async_method: async method reading and writing self
@@ -1059,7 +1059,7 @@ void __gen_Counter_gen_method::__finally_0() {
 void __coro_Counter_async_method::__finally_0() {
     t = (::tpy::add_check<int32_t>(__self.n, 10));
     __self.n = t;
-    std::cout << "async_method fin" << " " << t << "\n";
+    std::cout << "async_method fin" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // # A local first bound in the non-suspending `finally` of a suspending `try`

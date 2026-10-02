@@ -26,10 +26,10 @@ std::string pick(std::string_view text, ::tpy::Slice st) {
 void run(std::string_view text) {
     std::string a = ::tpyapp::main::cut(text, ::tpy::BasicSlice{1, 3});
     std::string b = ::tpyapp::main::cut(text, ::tpy::BasicSlice{2, std::nullopt});
-    std::cout << a << " " << b << "\n";
+    std::cout << a << " " << b << "\n" << ::tpy::check_signals;
     std::string c = ::tpyapp::main::pick(text, ::tpy::Slice{0, 7, 2});
     std::string d = ::tpyapp::main::pick(text, ::tpy::Slice{std::nullopt, std::nullopt, -1});
-    std::cout << c << " " << d << "\n";
+    std::cout << c << " " << d << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

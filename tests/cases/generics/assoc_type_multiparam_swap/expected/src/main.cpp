@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(get_v(p) + 1)        # V = int (protocol's first param)
 void main() {
     IntStr p = IntStr(::tpy::BigInt(42), "swapped");
-    std::cout << ::tpyapp::main::get_k<std::string, ::tpy::BigInt, IntStr>(p) << "\n";
-    std::cout << ((::tpyapp::main::get_v<std::string, ::tpy::BigInt, IntStr>(p)) + (::tpy::BigInt(1))) << "\n";
+    std::cout << ::tpyapp::main::get_k<std::string, ::tpy::BigInt, IntStr>(p) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpyapp::main::get_v<std::string, ::tpy::BigInt, IntStr>(p)) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

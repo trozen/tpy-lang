@@ -14,8 +14,8 @@ void __tpy_init() {
     initialized = true;
 
     G = nullptr;
-    std::cout << "before" << "\n";
-    std::cout << ::tpy::__getitem__(::tpy::deref_check(G), 0).x << "\n";
+    std::cout << "before" << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(::tpy::deref_check(G), 0).x << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

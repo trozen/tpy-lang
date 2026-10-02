@@ -42,27 +42,27 @@ namespace tpyapp::main {
 //     print(uint64(0.0))
 //     print(uint64(1000000000000.0))
 void main() {
-    std::cout << static_cast<int>(::tpy::from_float_check<int8_t>(-(128.0))) << "\n";
-    std::cout << static_cast<int>(::tpy::from_float_check<int8_t>(127.0)) << "\n";
-    std::cout << static_cast<int>(::tpy::from_float_check<int8_t>(0.0)) << "\n";
-    std::cout << static_cast<int>(::tpy::from_float_check<int8_t>(-(1.9))) << "\n";
-    std::cout << static_cast<int>(::tpy::from_float_check<int8_t>(1.9)) << "\n";
-    std::cout << static_cast<int>(::tpy::from_float_check<uint8_t>(0.0)) << "\n";
-    std::cout << static_cast<int>(::tpy::from_float_check<uint8_t>(255.0)) << "\n";
-    std::cout << static_cast<int>(::tpy::from_float_check<uint8_t>(1.7)) << "\n";
-    std::cout << ::tpy::from_float_check<int16_t>(-(32768.0)) << "\n";
-    std::cout << ::tpy::from_float_check<int16_t>(32767.0) << "\n";
-    std::cout << ::tpy::from_float_check<uint16_t>(0.0) << "\n";
-    std::cout << ::tpy::from_float_check<uint16_t>(65535.0) << "\n";
-    std::cout << ::tpy::from_float_check<int32_t>(-(2147483648.0)) << "\n";
-    std::cout << ::tpy::from_float_check<int32_t>(2147483647.0) << "\n";
-    std::cout << ::tpy::from_float_check<uint32_t>(0.0) << "\n";
-    std::cout << ::tpy::from_float_check<uint32_t>(4294967295.0) << "\n";
-    std::cout << ::tpy::from_float_check<int64_t>(0.0) << "\n";
-    std::cout << ::tpy::from_float_check<int64_t>(-(1000000000000.0)) << "\n";
-    std::cout << ::tpy::from_float_check<int64_t>(1000000000000.0) << "\n";
-    std::cout << ::tpy::from_float_check<uint64_t>(0.0) << "\n";
-    std::cout << ::tpy::from_float_check<uint64_t>(1000000000000.0) << "\n";
+    std::cout << static_cast<int>(::tpy::from_float_check<int8_t>(-(128.0))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpy::from_float_check<int8_t>(127.0)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpy::from_float_check<int8_t>(0.0)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpy::from_float_check<int8_t>(-(1.9))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpy::from_float_check<int8_t>(1.9)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpy::from_float_check<uint8_t>(0.0)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpy::from_float_check<uint8_t>(255.0)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpy::from_float_check<uint8_t>(1.7)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<int16_t>(-(32768.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<int16_t>(32767.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<uint16_t>(0.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<uint16_t>(65535.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<int32_t>(-(2147483648.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<int32_t>(2147483647.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<uint32_t>(0.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<uint32_t>(4294967295.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<int64_t>(0.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<int64_t>(-(1000000000000.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<int64_t>(1000000000000.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<uint64_t>(0.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<uint64_t>(1000000000000.0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -21,7 +21,7 @@ void main() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
         count = ::tpy::add_check<int32_t>(count, 1);
         if ((count >= 3)) {
             break;

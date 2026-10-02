@@ -80,7 +80,7 @@ void main() {
             const auto& __tup_1 = __for_tup_0;
             int32_t i = std::get<0>(__tup_1);
             std::string_view s = std::get<1>(__tup_1);
-            std::cout << i << " " << s << "\n";
+            std::cout << i << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -93,7 +93,7 @@ void main() {
             const auto& __tup_2 = __for_tup_1;
             int32_t i = std::get<0>(__tup_2);
             std::string_view s = std::get<1>(__tup_2);
-            std::cout << i << " " << s << "\n";
+            std::cout << i << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     std::array<int32_t, 3> nums = {1, 2, 3};
@@ -107,7 +107,7 @@ void main() {
             const auto& __tup_3 = __for_tup_2;
             int32_t i = std::get<0>(__tup_3);
             std::string_view s = std::get<1>(__tup_3);
-            std::cout << i << " " << s << "\n";
+            std::cout << i << " " << s << "\n" << ::tpy::check_signals;
         }
     }
 }

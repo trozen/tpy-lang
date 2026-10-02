@@ -127,10 +127,10 @@ __coro_co co() {
 //     xs.append(2)
 //     print("params list", xs)
 void params() {
-    std::cout << "params" << " " << ::tpyapp::main::apply([](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }, "4") << " " << ::tpyapp::main::make_all([](int32_t __tpy_fa0) -> Q { return Q(__tpy_fa0); }, 3) << " " << ::tpyapp::main::maybe([]() -> ::tpy::BigInt { return ::tpy::BigInt(); }) << " " << ::tpyapp::main::maybe(std::nullopt) << " " << ::tpyapp::main::sendy([]() -> ::tpy::BigInt { return ::tpy::BigInt(); }) << "\n";
+    std::cout << "params" << " " << ::tpyapp::main::apply([](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }, "4") << " " << ::tpyapp::main::make_all([](int32_t __tpy_fa0) -> Q { return Q(__tpy_fa0); }, 3) << " " << ::tpyapp::main::maybe([]() -> ::tpy::BigInt { return ::tpy::BigInt(); }) << " " << ::tpyapp::main::maybe(std::nullopt) << " " << ::tpyapp::main::sendy([]() -> ::tpy::BigInt { return ::tpy::BigInt(); }) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> xs = ::tpyapp::main::fresh([]() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>(); });
     xs.push_back(2);
-    std::cout << "params list" << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << "params list" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def locals_() -> None:
@@ -161,21 +161,21 @@ void locals_() {
     Pt a = p();
     Pt b = p();
     a.x = 5;
-    std::cout << "local record" << " " << a.x << " " << b.x << "\n";
+    std::cout << "local record" << " " << a.x << " " << b.x << "\n" << ::tpy::check_signals;
     std::function<std::string()> s = []() -> std::string { return std::string(); };
     std::function<int32_t()> n = []() -> int32_t { return (::tpy::BigInt()).to_fixed_check<int32_t>(); };
     std::function<double(std::string_view)> fl = [](std::string_view __tpy_fa0) -> double { return ::tpy::float_from_str(__tpy_fa0); };
-    std::cout << "local value" << " " << ::tpy::__len__(s()) << " " << n() << " " << ::tpy::print_float(fl("2.5")) << "\n";
+    std::cout << "local value" << " " << ::tpy::__len__(s()) << " " << n() << " " << ::tpy::print_float(fl("2.5")) << "\n" << ::tpy::check_signals;
     std::function<Q(int32_t)> q = [](int32_t __tpy_fa0) -> Q { return Q(__tpy_fa0); };
-    std::cout << "local ctor arg" << " " << q(6).v << "\n";
+    std::cout << "local ctor arg" << " " << q(6).v << "\n" << ::tpy::check_signals;
     std::function<Color(const ::tpy::BigInt&)> c = [](const ::tpy::BigInt& __tpy_fa0) -> Color { return ::tpy::EnumUtil<Color>::from_value((__tpy_fa0).to_fixed_check<int32_t>()); };
-    std::cout << "local enum" << " " << ::tpy::EnumUtil<Color>::name(c(::tpy::BigInt(2))) << "\n";
+    std::cout << "local enum" << " " << ::tpy::EnumUtil<Color>::name(c(::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
     std::function<Box<int32_t>(int32_t)> bx = [](int32_t __tpy_fa0) -> Box<int32_t> { return Box<int32_t>(__tpy_fa0); };
-    std::cout << "local generic" << " " << bx(4).v << "\n";
+    std::cout << "local generic" << " " << bx(4).v << "\n" << ::tpy::check_signals;
     std::function<std::optional<Pt>()> fo = []() -> std::optional<Pt> { return Pt(); };
     std::function<::tpy::Union<int32_t, std::string>(std::string_view)> fu = [](std::string_view __tpy_fa0) -> ::tpy::Union<int32_t, std::string> { return std::string(__tpy_fa0); };
     ::tpy::Union<int32_t, std::string> u = fu("u");
-    std::cout << "local optional" << " " << ::tpy::__str__(u) << "\n";
+    std::cout << "local optional" << " " << ::tpy::__str__(u) << "\n" << ::tpy::check_signals;
 }
 
 // def ref_arg() -> None:
@@ -188,7 +188,7 @@ void locals_() {
 void ref_arg() {
     std::function<Appender(std::vector<::tpy::BigInt>&)> f = [](std::vector<::tpy::BigInt>& __tpy_fa0) -> Appender { return Appender(__tpy_fa0); };
     std::vector<::tpy::BigInt> xs = {1};
-    std::cout << "ref arg" << " " << f(xs).n << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << "ref arg" << " " << f(xs).n << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<::tpy::BigInt>> lol = {{1}, {2}};
     std::cout << "ref arg map" << " " << ::tpy::ListPrinter(({
         std::vector<::tpy::BigInt> __result;
@@ -200,7 +200,7 @@ void ref_arg() {
             __result.push_back(a.n);
         }
         std::move(__result);
-    })) << " " << ::tpy::ListPrinter(lol) << "\n";
+    })) << " " << ::tpy::ListPrinter(lol) << "\n" << ::tpy::check_signals;
 }
 
 // def builtins_() -> None:
@@ -213,8 +213,8 @@ void ref_arg() {
 //     print("max key", max(a, b, key=int))  # tpyc: ok
 //     print("overload", conv(int, "41") + 1, conv(str, 41) + "!")  # tpyc: ok
 void builtins_() {
-    std::cout << "map" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpy::builtin_map<::tpy::BigInt>([](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }, std::array<std::string, 3>{"3", "1", "2"}))) << "\n";
-    std::cout << "sorted" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted_key<int32_t>(std::array<int32_t, 3>{3, 1, 20}, [](int32_t __tpy_fa0) -> std::string { return ::tpy::fixed_to_str<int32_t>(__tpy_fa0); })) << "\n";
+    std::cout << "map" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpy::builtin_map<::tpy::BigInt>([](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }, std::array<std::string, 3>{"3", "1", "2"}))) << "\n" << ::tpy::check_signals;
+    std::cout << "sorted" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted_key<int32_t>(std::array<int32_t, 3>{3, 1, 20}, [](int32_t __tpy_fa0) -> std::string { return ::tpy::fixed_to_str<int32_t>(__tpy_fa0); })) << "\n" << ::tpy::check_signals;
     std::cout << "map list" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_0 = ::tpy::builtin_map<std::vector<char>>([](std::string_view __tpy_fa0) -> std::vector<char> { return ::tpy::construct<std::vector<char>>(__tpy_fa0); }, std::array<std::string, 2>{"ab", "c"});
@@ -225,7 +225,7 @@ void builtins_() {
             __result.push_back(::tpy::__len__(x));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << "map generic" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_1 = ::tpy::builtin_map<Box<int32_t>>([](int32_t __tpy_fa0) -> Box<int32_t> { return Box<int32_t>(__tpy_fa0); }, std::array<int32_t, 2>{5, 6});
@@ -236,11 +236,11 @@ void builtins_() {
             __result.push_back(b.v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::string_view a = "3";
     std::string_view b = "12";
-    std::cout << "max key" << " " << ::tpy::max_key(a, b, [](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }) << "\n";
-    std::cout << "overload" << " " << ((::tpyapp::main::conv([](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }, std::string_view("41"))) + (::tpy::BigInt(1))) << " " << (::tpy::str_concat(::tpyapp::main::conv([](const ::tpy::BigInt& __tpy_fa0) -> std::string { return (__tpy_fa0).to_string(); }, ::tpy::BigInt(41)), "!")) << "\n";
+    std::cout << "max key" << " " << ::tpy::max_key(a, b, [](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }) << "\n" << ::tpy::check_signals;
+    std::cout << "overload" << " " << ((::tpyapp::main::conv([](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }, std::string_view("41"))) + (::tpy::BigInt(1))) << " " << (::tpy::str_concat(::tpyapp::main::conv([](const ::tpy::BigInt& __tpy_fa0) -> std::string { return (__tpy_fa0).to_string(); }, ::tpy::BigInt(41)), "!")) << "\n" << ::tpy::check_signals;
 }
 
 // def method_field_ctor() -> None:
@@ -258,9 +258,9 @@ void method_field_ctor() {
     ::tpy::ordered_map<std::string, std::vector<::tpy::BigInt>> d = mk();
     ::tpy::__setitem__(d, "k", std::vector<::tpy::BigInt>{1});
     ::tpy::__getitem__(d, "k").push_back(2);
-    std::cout << "field" << " " << ::tpy::DictPrinter(d) << " " << ::tpy::__len__(mk()) << "\n";
-    std::cout << "method" << " " << r.run([]() -> ::tpy::ordered_set<std::string> { return ::tpy::ordered_set<std::string>(); }) << "\n";
-    std::cout << "ctor" << " " << Counter([]() -> ::tpy::BigInt { return ::tpy::BigInt(); }).n << "\n";
+    std::cout << "field" << " " << ::tpy::DictPrinter(d) << " " << ::tpy::__len__(mk()) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << r.run([]() -> ::tpy::ordered_set<std::string> { return ::tpy::ordered_set<std::string>(); }) << "\n" << ::tpy::check_signals;
+    std::cout << "ctor" << " " << Counter([]() -> ::tpy::BigInt { return ::tpy::BigInt(); }).n << "\n" << ::tpy::check_signals;
 }
 
 // def imported() -> None:
@@ -270,7 +270,7 @@ void method_field_ctor() {
 void imported() {
     std::function<::tpyapp::shapes::Cell(int32_t)> mk = [](int32_t __tpy_fa0) -> ::tpyapp::shapes::Cell { return ::tpyapp::shapes::Cell(__tpy_fa0); };
     std::function<::tpyapp::shapes::Cell(int32_t)> al = [](int32_t __tpy_fa0) -> ::tpyapp::shapes::Cell { return ::tpyapp::shapes::Cell(__tpy_fa0); };
-    std::cout << "imported" << " " << mk(1).n << " " << al(2).n << "\n";
+    std::cout << "imported" << " " << mk(1).n << " " << al(2).n << "\n" << ::tpy::check_signals;
 }
 
 // def container() -> None:
@@ -283,7 +283,7 @@ void container() {
     std::vector<std::function<std::vector<::tpy::BigInt>()>> fs = {[]() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>(); }, []() -> std::vector<::tpy::BigInt> { return std::vector<::tpy::BigInt>(); }};
     std::vector<::tpy::BigInt> a = (::tpy::__getitem__(fs, 0))();
     a.push_back(1);
-    std::cout << "container" << " " << ::tpy::ListPrinter(a) << " " << ::tpy::ListPrinter((::tpy::__getitem__(fs, 1))()) << "\n";
+    std::cout << "container" << " " << ::tpy::ListPrinter(a) << " " << ::tpy::ListPrinter((::tpy::__getitem__(fs, 1))()) << "\n" << ::tpy::check_signals;
 }
 
 // def returned() -> None:
@@ -295,7 +295,7 @@ void returned() {
     std::function<Pt()> f = ::tpyapp::main::ret_factory();
     Pt p = f();
     p.x = 3;
-    std::cout << "return" << " " << p.x << " " << f().x << "\n";
+    std::cout << "return" << " " << p.x << " " << f().x << "\n" << ::tpy::check_signals;
 }
 
 // def module_level() -> None:
@@ -305,13 +305,13 @@ void returned() {
 void module_level() {
     std::vector<std::string> m = MOD();
     m.push_back("z");
-    std::cout << "module" << " " << ::tpy::ListPrinter(m) << " " << ::tpy::ListPrinter(MOD()) << "\n";
+    std::cout << "module" << " " << ::tpy::ListPrinter(m) << " " << ::tpy::ListPrinter(MOD()) << "\n" << ::tpy::check_signals;
 }
 
 // def generator() -> None:
 //     print("generator", list(gen()))
 void generator() {
-    std::cout << "generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen())) << "\n";
+    std::cout << "generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen())) << "\n" << ::tpy::check_signals;
 }
 
 // def comprehension() -> None:
@@ -328,7 +328,7 @@ void comprehension() {
             __result.push_back(::tpyapp::main::apply([](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }, s));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
 }
 
 // def closure() -> None:
@@ -341,7 +341,7 @@ void closure() {
         std::function<::tpy::BigInt(std::string_view)> g = [](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); };
         return g("8");
     };
-    std::cout << "closure" << " " << inner() << "\n";
+    std::cout << "closure" << " " << inner() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -369,7 +369,7 @@ void main() {
     ::tpyapp::main::returned();
     ::tpyapp::main::module_level();
     ::tpyapp::main::generator();
-    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::co())) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::co())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::comprehension();
     ::tpyapp::main::closure();
 }

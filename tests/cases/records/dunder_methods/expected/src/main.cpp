@@ -67,24 +67,24 @@ void __tpy_init() {
     items->push_back(10);
     items->push_back(20);
     items->push_back(30);
-    std::cout << ::tpy::__len__((*items)) << "\n";
-    std::cout << ::tpy::__getitem__((*items), 0) << "\n";
-    std::cout << ::tpy::__getitem__((*items), 1) << "\n";
+    std::cout << ::tpy::__len__((*items)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*items), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*items), 1) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__((*items), 1, 99);
-    std::cout << ::tpy::__getitem__((*items), 1) << "\n";
+    std::cout << ::tpy::__getitem__((*items), 1) << "\n" << ::tpy::check_signals;
     static ::tpystd::tplib::array_list::ArrayList<int32_t, 10> __global_slot_2 = ::tpystd::tplib::array_list::ArrayList<int32_t, 10>();
     al = &__global_slot_2;
     al->append(100);
     al->append(200);
-    std::cout << al->__len__() << "\n";
-    std::cout << al->__getitem__(0) << "\n";
+    std::cout << al->__len__() << "\n" << ::tpy::check_signals;
+    std::cout << al->__getitem__(0) << "\n" << ::tpy::check_signals;
     al->__setitem__(0, 111);
-    std::cout << al->__getitem__(0) << "\n";
+    std::cout << al->__getitem__(0) << "\n" << ::tpy::check_signals;
     static std::array<int32_t, 3> __global_slot_3 = {1, 2, 3};
     arr = &__global_slot_3;
-    std::cout << ::tpy::__len__((*arr)) << "\n";
-    std::cout << ::tpy::__getitem__((*arr), 0) << "\n";
-    std::cout << ::tpy::__getitem__((*arr), 2) << "\n";
+    std::cout << ::tpy::__len__((*arr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*arr), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*arr), 2) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

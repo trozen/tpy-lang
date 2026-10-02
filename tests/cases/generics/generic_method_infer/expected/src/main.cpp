@@ -15,11 +15,11 @@ namespace tpyapp::main {
 void main() {
     Box<int32_t> b = Box<int32_t>(10);
     int32_t r1 = b.transform<int32_t>(42);
-    std::cout << r1 << "\n";
+    std::cout << r1 << "\n" << ::tpy::check_signals;
     std::string r2 = b.transform<std::string>("hello");
-    std::cout << r2 << "\n";
+    std::cout << r2 << "\n" << ::tpy::check_signals;
     bool r3 = b.transform<bool>(true);
-    std::cout << ::tpy::print_bool(r3) << "\n";
+    std::cout << ::tpy::print_bool(r3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

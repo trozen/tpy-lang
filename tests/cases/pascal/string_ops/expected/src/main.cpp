@@ -37,12 +37,12 @@ void __tpy_init() {
     greeting->assign("Hello");
     name->assign("World");
     result->assign(std::string((::tpy::str_concat(std::string((::tpy::str_concat(std::string((::tpy::str_concat(std::string(::tpy::__str__((*greeting))), ", "))), std::string(::tpy::__str__((*name)))))), "!"))));
-    std::cout << std::string(::tpy::__str__((*result))) << "\n";
-    std::cout << ::tpy::__len__((*result)) << "\n";
+    std::cout << std::string(::tpy::__str__((*result))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__((*result)) << "\n" << ::tpy::check_signals;
     if ((std::string(::tpy::__str__((*result))) == "Hello, World!")) {
-        std::cout << "match" << "\n";
+        std::cout << "match" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "no match" << "\n";
+        std::cout << "no match" << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -75,7 +75,7 @@ inline Base& Base::operator=(Base&& other) noexcept {
 //     print("drop", self.name)
 inline Base::~Base() {
     if (!this->__tpy_owned_) return;
-    std::cout << "drop" << " " << this->name << "\n";
+    std::cout << "drop" << " " << this->name << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, name: str, tag: str):

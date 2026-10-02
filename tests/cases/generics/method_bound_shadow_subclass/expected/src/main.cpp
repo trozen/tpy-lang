@@ -27,19 +27,19 @@ void main() {
     IntBag b = IntBag();
     b.add(3);
     b.add(7);
-    std::cout << ::tpy::print_bool(b.contains(7)) << "\n";
-    std::cout << ::tpy::print_bool(b.contains(9)) << "\n";
-    std::cout << b.biggest() << "\n";
+    std::cout << ::tpy::print_bool(b.contains(7)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(b.contains(9)) << "\n" << ::tpy::check_signals;
+    std::cout << b.biggest() << "\n" << ::tpy::check_signals;
     DeepBag d = DeepBag();
     d.add(5);
     d.add(2);
-    std::cout << ::tpy::print_bool(d.contains(2)) << "\n";
-    std::cout << d.biggest() << "\n";
+    std::cout << ::tpy::print_bool(d.contains(2)) << "\n" << ::tpy::check_signals;
+    std::cout << d.biggest() << "\n" << ::tpy::check_signals;
     WideBag<int32_t> w = WideBag<int32_t>();
     w.add(11);
     w.add(4);
-    std::cout << ::tpy::print_bool(w.contains(11)) << "\n";
-    std::cout << w.biggest() << "\n";
+    std::cout << ::tpy::print_bool(w.contains(11)) << "\n" << ::tpy::check_signals;
+    std::cout << w.biggest() << "\n" << ::tpy::check_signals;
 }
 
 // main()

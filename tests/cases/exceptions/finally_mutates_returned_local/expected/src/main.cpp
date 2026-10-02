@@ -263,20 +263,20 @@ Box ret_finally_override() {
 //     print(ret_from_handler().n)
 //     print(ret_finally_override().n)
 void main() {
-    std::cout << ::tpyapp::main::ret_record().n << "\n";
-    std::cout << ::tpy::ListPrinter(::tpyapp::main::ret_list()) << "\n";
+    std::cout << ::tpyapp::main::ret_record().n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::ret_list()) << "\n" << ::tpy::check_signals;
     std::optional<Box> r = ::tpyapp::main::ret_optional(true);
     if ((r.has_value())) {
-        std::cout << (*r).n << "\n";
+        std::cout << (*r).n << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::print_bool((!::tpyapp::main::ret_optional(false).has_value())) << "\n";
-    std::cout << ::tpyapp::main::ret_value_int() << "\n";
-    std::cout << ::tpyapp::main::ret_rebound().n << "\n";
+    std::cout << ::tpy::print_bool((!::tpyapp::main::ret_optional(false).has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::ret_value_int() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::ret_rebound().n << "\n" << ::tpy::check_signals;
     Box shared = Box();
-    std::cout << ::tpyapp::main::ret_param_ref(shared).n << " " << shared.n << "\n";
-    std::cout << ::tpyapp::main::ret_own_param(Box()).n << "\n";
-    std::cout << ::tpyapp::main::ret_from_handler().n << "\n";
-    std::cout << ::tpyapp::main::ret_finally_override().n << "\n";
+    std::cout << ::tpyapp::main::ret_param_ref(shared).n << " " << shared.n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::ret_own_param(Box()).n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::ret_from_handler().n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::ret_finally_override().n << "\n" << ::tpy::check_signals;
 }
 
 // main()

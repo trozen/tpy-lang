@@ -27,12 +27,12 @@ void __tpy_init() {
     x = 10;
     static Same<int32_t> __global_slot_1 = Same<int32_t>(1, x);
     same1 = &__global_slot_1;
-    std::cout << same1->a << "\n";
-    std::cout << same1->b << "\n";
+    std::cout << same1->a << "\n" << ::tpy::check_signals;
+    std::cout << same1->b << "\n" << ::tpy::check_signals;
     static Same<int32_t> __global_slot_2 = Same<int32_t>(x, 2);
     same2 = &__global_slot_2;
-    std::cout << same2->a << "\n";
-    std::cout << same2->b << "\n";
+    std::cout << same2->a << "\n" << ::tpy::check_signals;
+    std::cout << same2->b << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

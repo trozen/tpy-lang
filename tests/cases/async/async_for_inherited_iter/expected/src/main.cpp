@@ -48,7 +48,7 @@ namespace tpyapp::main {
         continue;
     }
     case S_JOIN_2: {
-        std::cout << total << "\n";
+        std::cout << total << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

@@ -39,10 +39,10 @@ std::optional<::tpy::BigInt> first_positive(const std::vector<::tpy::BigInt>& nu
 //     print(unwrap_or(None, 42))
 void main() {
     std::vector<::tpy::BigInt> __tmp_1 = {1, 2, 3};
-    std::cout << ::tpyapp::main::unwrap_or(::tpyapp::main::first_positive(__tmp_1), ::tpy::BigInt(0)) << "\n";
+    std::cout << ::tpyapp::main::unwrap_or(::tpyapp::main::first_positive(__tmp_1), ::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> __tmp_2 = {-1, -2};
-    std::cout << ::tpyapp::main::unwrap_or(::tpyapp::main::first_positive(__tmp_2), ::tpy::BigInt(0)) << "\n";
-    std::cout << ::tpyapp::main::unwrap_or(std::nullopt, ::tpy::BigInt(42)) << "\n";
+    std::cout << ::tpyapp::main::unwrap_or(::tpyapp::main::first_positive(__tmp_2), ::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::unwrap_or(std::nullopt, ::tpy::BigInt(42)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

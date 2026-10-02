@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(t.name_len)   # expected: 3 (post-mutation), not 0 (default-init)
 void main() {
     Tagged t = Tagged("Rex");
-    std::cout << t.name << "\n";
-    std::cout << t.name_len << "\n";
+    std::cout << t.name << "\n" << ::tpy::check_signals;
+    std::cout << t.name_len << "\n" << ::tpy::check_signals;
 }
 
 // main()

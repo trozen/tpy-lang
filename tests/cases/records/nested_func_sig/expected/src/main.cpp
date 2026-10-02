@@ -66,8 +66,8 @@ Container::Kind get_kind() {
 //     print(get_kind())
 void main() {
     Container::Inner i = ::tpyapp::main::make_inner(42);
-    std::cout << ::tpyapp::main::take_inner(i) << "\n";
-    std::cout << ::tpyapp::main::get_kind() << "\n";
+    std::cout << ::tpyapp::main::take_inner(i) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::get_kind() << "\n" << ::tpy::check_signals;
 }
 
 // from enum import Enum, auto

@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void main() {
     ::tpy::BigInt a = ((::tpy::BigInt(10)).pow(::tpy::BigInt(400)));
     ::tpy::BigInt b = ::tpy::BigInt(3);
-    std::cout << ::tpy::print_float((::tpy::truediv(a, b))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(a, b))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

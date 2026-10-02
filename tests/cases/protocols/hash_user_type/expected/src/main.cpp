@@ -22,10 +22,10 @@ void main() {
     Point p1 = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
     Point p2 = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
     Point p3 = Point(::tpy::BigInt(3), ::tpy::BigInt(4));
-    std::cout << ::tpy::print_bool((::tpy::__hash__(p1) == ::tpy::__hash__(p2))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::__hash__(p1) != ::tpy::__hash__(p3))) << "\n";
-    std::cout << ::tpy::print_bool((::tpyapp::main::get_hash(p1) == ::tpyapp::main::get_hash(p2))) << "\n";
-    std::cout << "ok" << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__(p1) == ::tpy::__hash__(p2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::__hash__(p1) != ::tpy::__hash__(p3))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpyapp::main::get_hash(p1) == ::tpyapp::main::get_hash(p2))) << "\n" << ::tpy::check_signals;
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -25,7 +25,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& r = *__beg_0;
-        std::cout << r.name << "\n";
+        std::cout << r.name << "\n" << ::tpy::check_signals;
     }
     std::array<Item, 3> items2 = {Item("x", Score(1)), Item("y", Score(1)), Item("z", Score(1))};
     std::vector<Item> result2 = ::tpy::builtin_sorted_key<Item>(items2, [](const Item& it) -> const Score& { return it.score; });
@@ -34,7 +34,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& r = *__beg_1;
-        std::cout << r.name << "\n";
+        std::cout << r.name << "\n" << ::tpy::check_signals;
     }
 }
 

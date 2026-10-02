@@ -17,7 +17,7 @@ Handle test(bool cond) {
     if (cond) {
         return h;
     }
-    std::cout << h.fd << "\n";
+    std::cout << h.fd << "\n" << ::tpy::check_signals;
     return h;
 }
 
@@ -28,9 +28,9 @@ Handle test(bool cond) {
 //     print(h2.fd)
 void main() {
     Handle h1 = ::tpyapp::main::test(true);
-    std::cout << h1.fd << "\n";
+    std::cout << h1.fd << "\n" << ::tpy::check_signals;
     Handle h2 = ::tpyapp::main::test(false);
-    std::cout << h2.fd << "\n";
+    std::cout << h2.fd << "\n" << ::tpy::check_signals;
 }
 
 // main()

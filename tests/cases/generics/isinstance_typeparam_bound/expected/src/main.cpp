@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(classify(Puppy(1)))  # Animal + Dog + Puppy = 7
 void main() {
     Dog __tmp_1 = Dog(1);
-    std::cout << ::tpyapp::main::classify<Dog>(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::classify<Dog>(__tmp_1) << "\n" << ::tpy::check_signals;
     Puppy __tmp_2 = Puppy(1);
-    std::cout << ::tpyapp::main::classify<Puppy>(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::classify<Puppy>(__tmp_2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

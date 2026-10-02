@@ -131,23 +131,23 @@ int32_t no_reference_member() {
 //     print("values:", no_reference_member())
 void main() {
     P a = P(0);
-    std::cout << "list:" << " " << ::tpyapp::main::via_list_literal(a) << " " << a.n << "\n";
+    std::cout << "list:" << " " << ::tpyapp::main::via_list_literal(a) << " " << a.n << "\n" << ::tpy::check_signals;
     P b = P(0);
-    std::cout << "inner_lvalue:" << " " << ::tpyapp::main::via_inner_lvalue(b) << " " << b.n << "\n";
+    std::cout << "inner_lvalue:" << " " << ::tpyapp::main::via_inner_lvalue(b) << " " << b.n << "\n" << ::tpy::check_signals;
     P d = P(0);
-    std::cout << "append:" << " " << ::tpyapp::main::via_append(d) << " " << d.n << "\n";
+    std::cout << "append:" << " " << ::tpyapp::main::via_append(d) << " " << d.n << "\n" << ::tpy::check_signals;
     P e = P(0);
     Holder h = Holder(e);
     P f = P(0);
-    std::cout << "field:" << " " << ::tpyapp::main::via_field(h, f) << " " << f.n << "\n";
+    std::cout << "field:" << " " << ::tpyapp::main::via_field(h, f) << " " << f.n << "\n" << ::tpy::check_signals;
     P j = P(0);
-    std::cout << "setitem:" << " " << ::tpyapp::main::via_setitem(j) << " " << j.n << "\n";
+    std::cout << "setitem:" << " " << ::tpyapp::main::via_setitem(j) << " " << j.n << "\n" << ::tpy::check_signals;
     P g = P(0);
-    std::cout << "three:" << " " << ::tpyapp::main::three_levels(g) << " " << g.n << "\n";
+    std::cout << "three:" << " " << ::tpyapp::main::three_levels(g) << " " << g.n << "\n" << ::tpy::check_signals;
     P i = P(0);
-    std::cout << "acknowledged:" << " " << ::tpyapp::main::acknowledged(i) << " " << i.n << "\n";
-    std::cout << "fresh:" << " " << ::tpyapp::main::fresh_member() << "\n";
-    std::cout << "values:" << " " << ::tpyapp::main::no_reference_member() << "\n";
+    std::cout << "acknowledged:" << " " << ::tpyapp::main::acknowledged(i) << " " << i.n << "\n" << ::tpy::check_signals;
+    std::cout << "fresh:" << " " << ::tpyapp::main::fresh_member() << "\n" << ::tpy::check_signals;
+    std::cout << "values:" << " " << ::tpyapp::main::no_reference_member() << "\n" << ::tpy::check_signals;
 }
 
 // main()

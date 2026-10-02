@@ -13,11 +13,11 @@ namespace tpyapp::main {
 //     print(w2.pair.second)
 void main() {
     Wrapper w = Wrapper("test");
-    std::cout << w.pair.first << "\n";
-    std::cout << w.pair.second << "\n";
+    std::cout << w.pair.first << "\n" << ::tpy::check_signals;
+    std::cout << w.pair.second << "\n" << ::tpy::check_signals;
     Wrapper w2 = Wrapper("test2", Pair<int32_t>(10, 20));
-    std::cout << w2.pair.first << "\n";
-    std::cout << w2.pair.second << "\n";
+    std::cout << w2.pair.first << "\n" << ::tpy::check_signals;
+    std::cout << w2.pair.second << "\n" << ::tpy::check_signals;
 }
 
 // # field(default_factory=...) with generic user type

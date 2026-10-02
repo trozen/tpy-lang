@@ -31,13 +31,13 @@ void main() {
     ::tpy::Union<Cat*, Dog*> result = ::tpyapp::main::wrap_dog(d);
     if (std::holds_alternative<Dog*>(result)) {
         auto& __result = *std::get<Dog*>(result);
-        std::cout << __result.name << " " << __result.age << "\n";
+        std::cout << __result.name << " " << __result.age << "\n" << ::tpy::check_signals;
     }
     Cat c = Cat("Whiskers", 9);
     ::tpy::Union<Cat*, Dog*> result2 = ::tpyapp::main::wrap_cat(c);
     if (std::holds_alternative<Cat*>(result2)) {
         auto& __result2 = *std::get<Cat*>(result2);
-        std::cout << __result2.name << " " << __result2.lives << "\n";
+        std::cout << __result2.name << " " << __result2.lives << "\n" << ::tpy::check_signals;
     }
 }
 

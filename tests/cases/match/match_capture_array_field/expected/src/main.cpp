@@ -38,7 +38,7 @@ void fill(H& h) {
 void main() {
     H h = H();
     ::tpyapp::main::fill(h);
-    std::cout << ::tpy::__getitem__(h.arr, 0) << " " << ::tpy::__len__(h.xs) << " " << ::tpy::__len__(h.d) << "\n";
+    std::cout << ::tpy::__getitem__(h.arr, 0) << " " << ::tpy::__len__(h.xs) << " " << ::tpy::__len__(h.d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def greet(p: Send[Pet]) -> None:
 //     print("speak:", p.speak())
 void greet(Pet& p) {
-    std::cout << "speak:" << " " << p.speak() << "\n";
+    std::cout << "speak:" << " " << p.speak() << "\n" << ::tpy::check_signals;
 }
 
 // def greet_bare(p: Pet) -> None:
 //     print("bare:", p.speak())
 void greet_bare(Pet& p) {
-    std::cout << "bare:" << " " << p.speak() << "\n";
+    std::cout << "bare:" << " " << p.speak() << "\n" << ::tpy::check_signals;
 }
 
 // def consume(p: Send[Own[Pet]]) -> None:  # tpyc: warning(/never consumed/)
@@ -21,7 +21,7 @@ void greet_bare(Pet& p) {
 //     # that is only read (never stored/forwarded/returned) warns identically.
 //     print("own:", p.speak())
 void consume(std::unique_ptr<Pet> p) {
-    std::cout << "own:" << " " << p->speak() << "\n";
+    std::cout << "own:" << " " << p->speak() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -43,7 +43,7 @@ void main() {
     ::tpyapp::main::consume(::tpy::make_adapter<Pet>(Dog(5)));
     ::tpy::Adapter<Pet, Dog> __slot_1{d};
     Pet* q = &__slot_1;
-    std::cout << "local:" << " " << q->speak() << "\n";
+    std::cout << "local:" << " " << q->speak() << "\n" << ::tpy::check_signals;
 }
 
 // main()

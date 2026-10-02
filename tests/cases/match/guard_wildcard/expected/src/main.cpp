@@ -60,11 +60,11 @@ std::string describe(int32_t x) {
 //     print(describe(int32(0)))
 //     print(describe(int32(42)))
 void main() {
-    std::cout << ::tpyapp::main::classify(20) << "\n";
-    std::cout << ::tpyapp::main::classify(7) << "\n";
-    std::cout << ::tpyapp::main::classify(3) << "\n";
-    std::cout << ::tpyapp::main::describe(0) << "\n";
-    std::cout << ::tpyapp::main::describe(42) << "\n";
+    std::cout << ::tpyapp::main::classify(20) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(7) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(42) << "\n" << ::tpy::check_signals;
 }
 
 // main()

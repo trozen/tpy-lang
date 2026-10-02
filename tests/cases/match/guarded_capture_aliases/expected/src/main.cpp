@@ -43,7 +43,7 @@ void main() {
         goto __match_end_2;
     }
     __match_end_2:;
-    std::cout << a.v << "\n";
+    std::cout << a.v << "\n" << ::tpy::check_signals;
     Box c = Box(::tpy::BigInt(3));
     auto& __match_subject_3 = c;
     {
@@ -59,7 +59,7 @@ void main() {
         goto __match_end_4;
     }
     __match_end_4:;
-    std::cout << c.v << "\n";
+    std::cout << c.v << "\n" << ::tpy::check_signals;
     int32_t n = 7;
     auto& __match_subject_5 = n;
     switch (__match_subject_5) {
@@ -67,9 +67,9 @@ void main() {
         auto m = __match_subject_5;
         auto other = __match_subject_5;
         if ((m > 5)) {
-            std::cout << m << "\n";
+            std::cout << m << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << other << "\n";
+            std::cout << other << "\n" << ::tpy::check_signals;
         }
         break;
     }

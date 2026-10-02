@@ -49,16 +49,16 @@ Point make_point(int32_t x) {
 void main() {
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
     Point& f = ::tpyapp::main::get_first(pts);
-    std::cout << f.x << "\n";
+    std::cout << f.x << "\n" << ::tpy::check_signals;
     Point p = Point(10, 20);
     Point& q = ::tpyapp::main::identity(p);
-    std::cout << q.x << "\n";
+    std::cout << q.x << "\n" << ::tpy::check_signals;
     Point r = ::tpyapp::main::make_point(5);
-    std::cout << r.x << "\n";
+    std::cout << r.x << "\n" << ::tpy::check_signals;
     Container c = Container();
     c.add(Point(7, 8));
     Point& first = c.first();
-    std::cout << first.x << "\n";
+    std::cout << first.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

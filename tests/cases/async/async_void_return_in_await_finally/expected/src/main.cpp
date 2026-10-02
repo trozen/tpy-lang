@@ -49,7 +49,7 @@ __coro_cleanup cleanup() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "did it" << "\n";
+        std::cout << "did it" << "\n" << ::tpy::check_signals;
         this->__finally_pending_0 = true;
         __state = S_JOIN_2;
         continue;
@@ -64,7 +64,7 @@ __coro_cleanup cleanup() {
         [[fallthrough]];
     case S_JOIN_1: {
         try {
-            std::cout << "try body" << "\n";
+            std::cout << "try body" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

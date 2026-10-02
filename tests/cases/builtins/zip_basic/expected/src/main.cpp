@@ -53,7 +53,7 @@ void main() {
             const auto& __tup_1 = __for_tup_0;
             std::string_view name = std::get<0>(__tup_1);
             int32_t age = std::get<1>(__tup_1);
-            std::cout << name << " " << age << "\n";
+            std::cout << name << " " << age << "\n" << ::tpy::check_signals;
         }
     }
     std::array<int32_t, 5> long_ = {1, 2, 3, 4, 5};
@@ -68,7 +68,7 @@ void main() {
             const auto& __tup_2 = __for_tup_1;
             int32_t n = std::get<0>(__tup_2);
             std::string_view s = std::get<1>(__tup_2);
-            std::cout << n << " " << s << "\n";
+            std::cout << n << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<std::string> empty = std::vector<std::string>{};
@@ -83,7 +83,7 @@ void main() {
             const auto& __tup_3 = __for_tup_2;
             std::string_view s = std::get<0>(__tup_3);
             int32_t n = std::get<1>(__tup_3);
-            std::cout << s << " " << n << "\n";
+            std::cout << s << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     std::array<int32_t, 3> xs = {1, 2, 3};
@@ -100,7 +100,7 @@ void main() {
             int32_t x = std::get<0>(__tup_4);
             std::string_view y = std::get<1>(__tup_4);
             bool z = std::get<2>(__tup_4);
-            std::cout << x << " " << y << " " << ::tpy::print_bool(z) << "\n";
+            std::cout << x << " " << y << " " << ::tpy::print_bool(z) << "\n" << ::tpy::check_signals;
         }
     }
     std::array<double, 2> ws = {0.5, 1.5};
@@ -116,7 +116,7 @@ void main() {
             std::string_view y = std::get<1>(__tup_5);
             bool z = std::get<2>(__tup_5);
             double w = std::get<3>(__tup_5);
-            std::cout << x << " " << y << " " << ::tpy::print_bool(z) << " " << ::tpy::print_float(w) << "\n";
+            std::cout << x << " " << y << " " << ::tpy::print_bool(z) << " " << ::tpy::print_float(w) << "\n" << ::tpy::check_signals;
         }
     }
     std::array<std::string, 2> vs = {"p", "q"};
@@ -133,7 +133,7 @@ void main() {
             bool z = std::get<2>(__tup_6);
             double w = std::get<3>(__tup_6);
             std::string_view v = std::get<4>(__tup_6);
-            std::cout << x << " " << y << " " << ::tpy::print_bool(z) << " " << ::tpy::print_float(w) << " " << v << "\n";
+            std::cout << x << " " << y << " " << ::tpy::print_bool(z) << " " << ::tpy::print_float(w) << " " << v << "\n" << ::tpy::check_signals;
         }
     }
 }

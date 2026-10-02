@@ -102,20 +102,20 @@ inline Logger::Logger(std::string_view name) : name(name) {}
 //     print(f"enter {self.name}")
 //     return self
 inline Logger& Logger::__enter__() {
-    std::cout << std::format("enter {}", this->name) << "\n";
+    std::cout << std::format("enter {}", this->name) << "\n" << ::tpy::check_signals;
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 //     print(f"exit {self.name}")
 inline void Logger::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    std::cout << std::format("exit {}", this->name) << "\n";
+    std::cout << std::format("exit {}", this->name) << "\n" << ::tpy::check_signals;
 }
 
 // def log(self, msg: str) -> None:
 //     print(f"[{self.name}] {msg}")
 inline void Logger::log(std::string_view msg) const {
-    std::cout << std::format("[{}] {}", this->name, msg) << "\n";
+    std::cout << std::format("[{}] {}", this->name, msg) << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self) -> None:
@@ -126,7 +126,7 @@ inline Connection::Connection() : active(true) {}
 //     print("connecting")
 //     return "session-42"
 inline std::string Connection::__enter__() const {
-    std::cout << "connecting" << "\n";
+    std::cout << "connecting" << "\n" << ::tpy::check_signals;
     return "session-42";
 }
 
@@ -135,7 +135,7 @@ inline std::string Connection::__enter__() const {
 //     print("disconnected")
 inline void Connection::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
     this->active = false;
-    std::cout << "disconnected" << "\n";
+    std::cout << "disconnected" << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

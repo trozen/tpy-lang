@@ -11,8 +11,8 @@ namespace tpyapp::main {
 //     print(s.consume())
 void main() {
     Stack s = Stack();
-    std::cout << s.consume() << "\n";
-    std::cout << s.consume() << "\n";
+    std::cout << s.consume() << "\n" << ::tpy::check_signals;
+    std::cout << s.consume() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(item.id())
 void main() {
     Item item = Item("Widget", 42);
-    std::cout << item.describe() << "\n";
-    std::cout << item.id() << "\n";
+    std::cout << item.describe() << "\n" << ::tpy::check_signals;
+    std::cout << item.id() << "\n" << ::tpy::check_signals;
 }
 
 // main()

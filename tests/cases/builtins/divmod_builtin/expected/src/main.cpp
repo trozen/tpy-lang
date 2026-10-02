@@ -32,28 +32,28 @@ void main() {
     auto __tup_1 = ::tpy::divmod_fixed<int32_t>(17, 5);
     int32_t q1 = std::get<0>(__tup_1);
     int32_t r1 = std::get<1>(__tup_1);
-    std::cout << q1 << "\n";
-    std::cout << r1 << "\n";
+    std::cout << q1 << "\n" << ::tpy::check_signals;
+    std::cout << r1 << "\n" << ::tpy::check_signals;
     auto __tup_2 = ::tpy::divmod_fixed<int32_t>(-17, 5);
     int32_t q2 = std::get<0>(__tup_2);
     int32_t r2 = std::get<1>(__tup_2);
-    std::cout << q2 << "\n";
-    std::cout << r2 << "\n";
+    std::cout << q2 << "\n" << ::tpy::check_signals;
+    std::cout << r2 << "\n" << ::tpy::check_signals;
     auto __tup_3 = ::tpy::divmod_bigint(::tpy::BigInt(100), ::tpy::BigInt(7));
     const ::tpy::BigInt& q3 = std::get<0>(__tup_3);
     const ::tpy::BigInt& r3 = std::get<1>(__tup_3);
-    std::cout << q3 << "\n";
-    std::cout << r3 << "\n";
+    std::cout << q3 << "\n" << ::tpy::check_signals;
+    std::cout << r3 << "\n" << ::tpy::check_signals;
     auto __tup_4 = ::tpy::divmod_float(7.5, 2.5);
     double q4 = std::get<0>(__tup_4);
     double r4 = std::get<1>(__tup_4);
-    std::cout << ::tpy::print_float(q4) << "\n";
-    std::cout << ::tpy::print_float(r4) << "\n";
+    std::cout << ::tpy::print_float(q4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(r4) << "\n" << ::tpy::check_signals;
     auto __tup_5 = ::tpy::divmod_float(10.0, 3.0);
     double q5 = std::get<0>(__tup_5);
     double r5 = std::get<1>(__tup_5);
-    std::cout << ::tpy::print_float(q5) << "\n";
-    std::cout << ::tpy::print_float(r5) << "\n";
+    std::cout << ::tpy::print_float(q5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(r5) << "\n" << ::tpy::check_signals;
 }
 
 // main()

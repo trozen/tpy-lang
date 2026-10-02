@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //     print(r.get().x)
 void main() {
     ::tpystd::tplib::rc::Rc<State> r = Rc<State>::new_<State>(State(42));
-    std::cout << r.get().x << "\n";
-    std::cout << r.get().doubled() << "\n";
+    std::cout << r.get().x << "\n" << ::tpy::check_signals;
+    std::cout << r.get().doubled() << "\n" << ::tpy::check_signals;
     r.get().x = 7;
-    std::cout << r.get().x << "\n";
+    std::cout << r.get().x << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Rc

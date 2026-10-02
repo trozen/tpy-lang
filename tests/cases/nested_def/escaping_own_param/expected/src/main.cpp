@@ -39,8 +39,8 @@ int32_t own_value(Pt p) {
 void main() {
     Config c = Config(42);
     std::function<int32_t()> getter = ::tpyapp::main::make_getter(std::move(c));
-    std::cout << getter() << "\n";
-    std::cout << "own_value" << " " << ::tpyapp::main::own_value(Pt(10)) << "\n";
+    std::cout << getter() << "\n" << ::tpy::check_signals;
+    std::cout << "own_value" << " " << ::tpyapp::main::own_value(Pt(10)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

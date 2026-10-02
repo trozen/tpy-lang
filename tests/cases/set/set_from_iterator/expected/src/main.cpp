@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(len(s))
 void main() {
     ::tpy::ordered_set<int32_t> s = ::tpy::set_construct<int32_t>(Counter(5));
-    std::cout << ::tpy::SetPrinter(s) << "\n";
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // main()

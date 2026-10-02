@@ -17,9 +17,9 @@ void main() {
     std::vector<Payload> xs = std::vector<Payload>{};
     xs.push_back(Holder().borrow());
     xs.push_back(Payload(Holder().borrow()));
-    std::cout << ::tpy::__getitem__(xs, 0).v << " " << ::tpy::__getitem__(xs, 1).v << "\n";
+    std::cout << ::tpy::__getitem__(xs, 0).v << " " << ::tpy::__getitem__(xs, 1).v << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(xs, 0).v = 99;
-    std::cout << ::tpy::__getitem__(xs, 0).v << " " << ::tpy::__getitem__(xs, 1).v << "\n";
+    std::cout << ::tpy::__getitem__(xs, 0).v << " " << ::tpy::__getitem__(xs, 1).v << "\n" << ::tpy::check_signals;
 }
 
 // main()

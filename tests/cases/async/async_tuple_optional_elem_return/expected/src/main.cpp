@@ -57,7 +57,7 @@ __coro_pick pick(int32_t n) {
         __sub_0.reset();
         v = std::get<1>(a);
         if ((v.has_value())) {
-            std::cout << std::get<0>(a) << " " << ::tpy::print_optional_val(v) << "\n";
+            std::cout << std::get<0>(a) << " " << ::tpy::print_optional_val(v) << "\n" << ::tpy::check_signals;
         }
         __sub_1.emplace(-1);
         __state = S_RESUME_1;
@@ -68,7 +68,7 @@ __coro_pick pick(int32_t n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         b = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << std::get<0>(b) << " " << ::tpy::print_bool((!std::get<1>(b).has_value())) << "\n";
+        std::cout << std::get<0>(b) << " " << ::tpy::print_bool((!std::get<1>(b).has_value())) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

@@ -15,9 +15,9 @@ void main() {
     A::X = 10;
     B::X = 20;
     C::X = 30;
-    std::cout << A::X << "\n";
-    std::cout << B::X << "\n";
-    std::cout << C::X << "\n";
+    std::cout << A::X << "\n" << ::tpy::check_signals;
+    std::cout << B::X << "\n" << ::tpy::check_signals;
+    std::cout << C::X << "\n" << ::tpy::check_signals;
 }
 
 // main()

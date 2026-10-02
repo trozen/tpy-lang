@@ -64,7 +64,7 @@ struct Container {
     // def print_value(self) -> None:
     //     print(self.value.to_str())
     void print_value() {
-        std::cout << this->value.to_str() << "\n";
+        std::cout << this->value.to_str() << "\n" << ::tpy::check_signals;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };

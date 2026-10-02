@@ -15,11 +15,11 @@ namespace tpyapp::main {
 void main() {
     Jar j = Jar();
     j.add("a", 3);
-    std::cout << j.peek("a") << "\n";
-    std::cout << j.peek_get("a") << "\n";
-    std::cout << j.peek_get("z") << "\n";
+    std::cout << j.peek("a") << "\n" << ::tpy::check_signals;
+    std::cout << j.peek_get("a") << "\n" << ::tpy::check_signals;
+    std::cout << j.peek_get("z") << "\n" << ::tpy::check_signals;
     j.rename("a");
-    std::cout << j.peek("a") << "\n";
+    std::cout << j.peek("a") << "\n" << ::tpy::check_signals;
 }
 
 // main()

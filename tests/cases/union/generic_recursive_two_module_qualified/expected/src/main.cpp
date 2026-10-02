@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     ::tpyapp::treea::Tree<::tpy::BigInt> a = std::vector<::tpyapp::treea::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treea::Tree<::tpy::BigInt>>{2, 3}};
     ::tpyapp::treeb::Tree<::tpy::BigInt> b = std::vector<::tpyapp::treeb::Tree<::tpy::BigInt>>{4, std::vector<::tpyapp::treeb::Tree<::tpy::BigInt>>{5, std::vector<::tpyapp::treeb::Tree<::tpy::BigInt>>{6, 7}}};
-    std::cout << ::tpyapp::treea::leaf_count<::tpy::BigInt>(a) << "\n";
-    std::cout << ::tpyapp::treeb::leaf_count<::tpy::BigInt>(b) << "\n";
+    std::cout << ::tpyapp::treea::leaf_count<::tpy::BigInt>(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::treeb::leaf_count<::tpy::BigInt>(b) << "\n" << ::tpy::check_signals;
 }
 
 // # Two different modules each export a generic recursive `Tree[T]`, both used

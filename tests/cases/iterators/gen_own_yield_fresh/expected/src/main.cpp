@@ -75,7 +75,7 @@ void main() {
             total = ((total) + (b.val));
         }
     }
-    std::cout << "boxes" << " " << total << "\n";
+    std::cout << "boxes" << " " << total << "\n" << ::tpy::check_signals;
     std::vector<Node> src = {Node(::tpy::BigInt(3))};
     std::vector<::tpy::BigInt> kept = std::vector<::tpy::BigInt>{};
     {
@@ -89,7 +89,7 @@ void main() {
         }
     }
     ::tpy::__getitem__(src, 0).val = ::tpy::BigInt(100);
-    std::cout << "free" << " " << ::tpy::ListPrinter(kept) << " " << ::tpy::__getitem__(src, 0).val << "\n";
+    std::cout << "free" << " " << ::tpy::ListPrinter(kept) << " " << ::tpy::__getitem__(src, 0).val << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> rows = {{1, 2}};
     std::vector<int32_t> kept_rows = std::vector<int32_t>{};
     {
@@ -103,7 +103,7 @@ void main() {
         }
     }
     ::tpy::__getitem__(rows, 0).push_back(9);
-    std::cout << "container" << " " << ::tpy::ListPrinter(kept_rows) << " " << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << "\n";
+    std::cout << "container" << " " << ::tpy::ListPrinter(kept_rows) << " " << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << "\n" << ::tpy::check_signals;
     Bag bag = Bag();
     std::vector<::tpy::BigInt> kept_m = std::vector<::tpy::BigInt>{};
     {
@@ -117,7 +117,7 @@ void main() {
         }
     }
     ::tpy::__getitem__(bag.items, 0).val = ::tpy::BigInt(55);
-    std::cout << "method" << " " << ::tpy::ListPrinter(kept_m) << " " << ::tpy::__getitem__(bag.items, 0).val << "\n";
+    std::cout << "method" << " " << ::tpy::ListPrinter(kept_m) << " " << ::tpy::__getitem__(bag.items, 0).val << "\n" << ::tpy::check_signals;
 }
 
 

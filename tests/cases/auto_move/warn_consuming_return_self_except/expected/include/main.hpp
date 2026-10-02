@@ -57,7 +57,7 @@ inline Widget Widget::consume() && {
             }
             return Widget((*this));
         } catch (const ::tpy::ValueError&) {
-            std::cout << "handler sees" << " " << this->n << "\n";
+            std::cout << "handler sees" << " " << this->n << "\n" << ::tpy::check_signals;
             return std::move((*this));
         }
     }

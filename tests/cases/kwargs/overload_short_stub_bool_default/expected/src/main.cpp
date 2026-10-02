@@ -35,11 +35,11 @@ std::string greet(const Cat& a, bool loud) {
 //     print(greet(Cat(3), False))
 void main() {
     Dog __tmp_1 = Dog("rex");
-    std::cout << ::tpyapp::main::greet(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::greet(__tmp_1) << "\n" << ::tpy::check_signals;
     Cat __tmp_2 = Cat(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::greet(__tmp_2, true) << "\n";
+    std::cout << ::tpyapp::main::greet(__tmp_2, true) << "\n" << ::tpy::check_signals;
     Cat __tmp_3 = Cat(::tpy::BigInt(3));
-    std::cout << ::tpyapp::main::greet(__tmp_3, false) << "\n";
+    std::cout << ::tpyapp::main::greet(__tmp_3, false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -15,9 +15,9 @@ void main() {
     IntBag b = IntBag();
     b.add(5);
     b.resize(3);
-    std::cout << b.get(0) << " " << b.get(1) << " " << b.get(2) << "\n";
+    std::cout << b.get(0) << " " << b.get(1) << " " << b.get(2) << "\n" << ::tpy::check_signals;
     b.resize(1);
-    std::cout << ::tpy::__len__(b.items) << "\n";
+    std::cout << ::tpy::__len__(b.items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

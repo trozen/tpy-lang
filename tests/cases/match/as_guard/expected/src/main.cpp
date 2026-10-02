@@ -61,10 +61,10 @@ std::string wildcard_as_guard(int32_t x) {
 //     print(wildcard_as_guard(int32(20)))
 //     print(wildcard_as_guard(int32(5)))
 void main() {
-    std::cout << ::tpyapp::main::literal_as_guard(1) << "\n";
-    std::cout << ::tpyapp::main::literal_as_guard(2) << "\n";
-    std::cout << ::tpyapp::main::wildcard_as_guard(20) << "\n";
-    std::cout << ::tpyapp::main::wildcard_as_guard(5) << "\n";
+    std::cout << ::tpyapp::main::literal_as_guard(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::literal_as_guard(2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::wildcard_as_guard(20) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::wildcard_as_guard(5) << "\n" << ::tpy::check_signals;
 }
 
 // main()

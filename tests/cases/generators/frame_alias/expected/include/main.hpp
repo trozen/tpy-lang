@@ -1119,7 +1119,7 @@ inline Holder::Holder() {
 inline void Holder::run() const {
     __gen_counter g = ::tpyapp::main::counter(100);
     __gen_counter& h = g;
-    std::cout << "method" << " " << ::tpyapp::main::first(g) << " " << ::tpyapp::main::first(h) << " " << ::tpyapp::main::first(g) << "\n";
+    std::cout << "method" << " " << ::tpyapp::main::first(g) << " " << ::tpyapp::main::first(h) << " " << ::tpyapp::main::first(g) << "\n" << ::tpy::check_signals;
 }
 
 // def last_use(self) -> int32:

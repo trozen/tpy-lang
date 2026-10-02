@@ -24,15 +24,15 @@ namespace tpyapp::main {
 //     collect_pairs(d.items())
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
-    std::cout << "keys via dict:" << "\n";
+    std::cout << "keys via dict:" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::collect_items(d);
-    std::cout << "keys via keys():" << "\n";
+    std::cout << "keys via keys():" << "\n" << ::tpy::check_signals;
     auto __tmp_1 = ::tpy::dict_keys(d);
     ::tpyapp::main::collect_items(__tmp_1);
-    std::cout << "values via values():" << "\n";
+    std::cout << "values via values():" << "\n" << ::tpy::check_signals;
     auto __tmp_2 = ::tpy::dict_values(d);
     ::tpyapp::main::collect_ints(__tmp_2);
-    std::cout << "items via items():" << "\n";
+    std::cout << "items via items():" << "\n" << ::tpy::check_signals;
     auto __tmp_3 = ::tpy::dict_items(d);
     ::tpyapp::main::collect_pairs(__tmp_3);
 }

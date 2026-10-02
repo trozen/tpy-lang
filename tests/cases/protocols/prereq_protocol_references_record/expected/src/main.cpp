@@ -15,7 +15,7 @@ void main() {
     Container<DefaultWrapperMaker> container = Container<DefaultWrapperMaker>(factory);
     Wrapper<Message> wrapper = container.create_wrapper("test");
     Result result = wrapper.get_result();
-    std::cout << result.value << "\n";
+    std::cout << result.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

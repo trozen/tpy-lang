@@ -13,7 +13,7 @@ namespace tpyapp::main {
 void use(const Snap& s) {
     std::vector<int32_t> snap = s.snapshot();
     snap.push_back(2);
-    std::cout << "free_fn:" << " " << ::tpy::__len__(snap) << " " << ::tpy::__len__(s._items) << "\n";
+    std::cout << "free_fn:" << " " << ::tpy::__len__(snap) << " " << ::tpy::__len__(s._items) << "\n" << ::tpy::check_signals;
 }
 
 // # free function: the annotated decl takes the same owning family
@@ -24,7 +24,7 @@ void use(const Snap& s) {
 void use_annotated(const Snap& s) {
     std::vector<int32_t> snap = s.snapshot();
     snap.push_back(3);
-    std::cout << "annotated:" << " " << ::tpy::__len__(snap) << " " << ::tpy::__len__(s._items) << "\n";
+    std::cout << "annotated:" << " " << ::tpy::__len__(snap) << " " << ::tpy::__len__(s._items) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -52,9 +52,9 @@ void use_view(Holder& h) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         char c = *__beg_0;
         n = ::tpy::add_check<int32_t>(n, 1);
-        std::cout << "view_char:" << " " << c << "\n";
+        std::cout << "view_char:" << " " << c << "\n" << ::tpy::check_signals;
     }
-    std::cout << "view:" << " " << n << "\n";
+    std::cout << "view:" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -72,7 +72,7 @@ void main() {
     ::tpyapp::main::use_view(__tmp_1);
     ::tpyapp::main::use(s);
     ::tpyapp::main::use_annotated(s);
-    std::cout << "method:" << " " << s.widen() << " " << ::tpy::__len__(s._items) << "\n";
+    std::cout << "method:" << " " << s.widen() << " " << ::tpy::__len__(s._items) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::drain(s);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -80,10 +80,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "frame:" << " " << v << "\n";
+            std::cout << "frame:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "owner:" << " " << ::tpy::__len__(s._items) << "\n";
+    std::cout << "owner:" << " " << ::tpy::__len__(s._items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -21,13 +21,13 @@ std::tuple<int32_t, int32_t> get_pair() {
 void main() {
     int32_t a = 0;
     int32_t b = 0;
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpyapp::main::get_pair();
     a = std::get<0>(__tup_1);
     b = std::get<1>(__tup_1);
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // main()

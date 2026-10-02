@@ -52,24 +52,24 @@ void __tpy_init() {
     initialized = true;
 
     for (int32_t i = 0; i < 5; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     for (int32_t i = 2; i < 6; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     ::tpy::range_check_overflow<int32_t>(0, 10, 2);
     for (int32_t i = 0; i < 10; i += 2) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     ::tpy::range_check_overflow<int32_t>(10, 0, -2);
     for (int32_t i = 10; i > 0; i += -2) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpyapp::main::sum_range_step(0, 10, 3) << "\n";
+    std::cout << ::tpyapp::main::sum_range_step(0, 10, 3) << "\n" << ::tpy::check_signals;
     n = 5;
     int32_t __stop_4 = n;
     for (int32_t i = 0; i < __stop_4; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
 }
 

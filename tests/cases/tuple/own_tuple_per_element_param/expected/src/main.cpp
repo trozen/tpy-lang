@@ -41,13 +41,13 @@ int32_t take_opt(const std::tuple<std::optional<P>, std::optional<P>>& t) {
 void test_record_elements_last_use() {
     P a = P(1);
     P b = P(2);
-    std::cout << ::tpyapp::main::take(std::tuple<P, P>{std::move(a), std::move(b)}) << "\n";
+    std::cout << ::tpyapp::main::take(std::tuple<P, P>{std::move(a), std::move(b)}) << "\n" << ::tpy::check_signals;
 }
 
 // def test_record_elements_fresh_rvalues() -> None:
 //     print(take((P(3), P(4))))
 void test_record_elements_fresh_rvalues() {
-    std::cout << ::tpyapp::main::take(std::tuple<P, P>{P(3), P(4)}) << "\n";
+    std::cout << ::tpyapp::main::take(std::tuple<P, P>{P(3), P(4)}) << "\n" << ::tpy::check_signals;
 }
 
 // def test_record_elements_explicit_copy() -> None:
@@ -56,8 +56,8 @@ void test_record_elements_fresh_rvalues() {
 //     print(keep.x)
 void test_record_elements_explicit_copy() {
     P keep = P(5);
-    std::cout << ::tpyapp::main::take(std::tuple<P, P>{P(keep), P(6)}) << "\n";
-    std::cout << keep.x << "\n";
+    std::cout << ::tpyapp::main::take(std::tuple<P, P>{P(keep), P(6)}) << "\n" << ::tpy::check_signals;
+    std::cout << keep.x << "\n" << ::tpy::check_signals;
 }
 
 // def test_optional_elements_last_use() -> None:
@@ -67,7 +67,7 @@ void test_record_elements_explicit_copy() {
 void test_optional_elements_last_use() {
     P a = P(7);
     P b = P(8);
-    std::cout << ::tpyapp::main::take_opt(std::tuple<std::optional<P>, std::optional<P>>{a, b}) << "\n";
+    std::cout << ::tpyapp::main::take_opt(std::tuple<std::optional<P>, std::optional<P>>{a, b}) << "\n" << ::tpy::check_signals;
 }
 
 // def test_optional_elements_with_none() -> None:
@@ -76,8 +76,8 @@ void test_optional_elements_last_use() {
 //     print(take_opt((None, None)))
 void test_optional_elements_with_none() {
     P a = P(9);
-    std::cout << ::tpyapp::main::take_opt(std::tuple<std::optional<P>, std::optional<P>>{a, std::nullopt}) << "\n";
-    std::cout << ::tpyapp::main::take_opt(std::tuple<std::optional<P>, std::optional<P>>{std::nullopt, std::nullopt}) << "\n";
+    std::cout << ::tpyapp::main::take_opt(std::tuple<std::optional<P>, std::optional<P>>{a, std::nullopt}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take_opt(std::tuple<std::optional<P>, std::optional<P>>{std::nullopt, std::nullopt}) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

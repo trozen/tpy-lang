@@ -27,7 +27,7 @@ void free_self() {
         }
         std::move(__result);
     });
-    std::cout << "free_self:" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+    std::cout << "free_self:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
 // def other_source() -> None:
@@ -52,7 +52,7 @@ void other_source() {
         }
         std::move(__result);
     });
-    std::cout << "other_source:" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+    std::cout << "other_source:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
 // def filtered() -> None:
@@ -77,7 +77,7 @@ void filtered() {
         }
         std::move(__result);
     });
-    std::cout << "filtered:" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+    std::cout << "filtered:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
 // def loop() -> None:
@@ -103,7 +103,7 @@ void loop() {
             std::move(__result);
         });
     }
-    std::cout << "loop:" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+    std::cout << "loop:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
 // def if_body_after_empty() -> None:
@@ -131,7 +131,7 @@ void if_body_after_empty() {
             std::move(__result);
         });
     }
-    std::cout << "if_body_after_empty:" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+    std::cout << "if_body_after_empty:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
 // def both_arms(k: int32) -> int32:
@@ -202,7 +202,7 @@ void comp_first() {
         }
         std::move(__result);
     });
-    std::cout << "comp_first:" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+    std::cout << "comp_first:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
 // def dict_comp() -> None:
@@ -225,7 +225,7 @@ void dict_comp() {
         }
         std::move(__result);
     });
-    std::cout << "dict_comp:" << " " << ::tpy::DictPrinter((*d)) << "\n";
+    std::cout << "dict_comp:" << " " << ::tpy::DictPrinter((*d)) << "\n" << ::tpy::check_signals;
 }
 
 // def set_comp() -> None:
@@ -246,7 +246,7 @@ void set_comp() {
         }
         std::move(__result);
     });
-    std::cout << "set_comp:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>((*s))) << "\n";
+    std::cout << "set_comp:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>((*s))) << "\n" << ::tpy::check_signals;
 }
 
 // def str_elems() -> None:
@@ -268,7 +268,7 @@ void str_elems() {
         }
         std::move(__result);
     });
-    std::cout << "str_elems:" << " " << ::tpy::ListPrinter((*words)) << "\n";
+    std::cout << "str_elems:" << " " << ::tpy::ListPrinter((*words)) << "\n" << ::tpy::check_signals;
 }
 
 // def tuple_elems() -> None:
@@ -292,7 +292,7 @@ void tuple_elems() {
         }
         std::move(__result);
     });
-    std::cout << "tuple_elems:" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+    std::cout << "tuple_elems:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
 // def record_elems() -> None:
@@ -320,7 +320,7 @@ void record_elems() {
         std::move(__result);
     }));
     p.v = 9;
-    std::cout << "record_elems:" << " " << p.v << " " << ::tpy::__getitem__((*xs), 0).v << " " << ::tpy::__getitem__((*xs), 1).v << "\n";
+    std::cout << "record_elems:" << " " << p.v << " " << ::tpy::__getitem__((*xs), 0).v << " " << ::tpy::__getitem__((*xs), 1).v << "\n" << ::tpy::check_signals;
 }
 
 // def closure() -> None:
@@ -350,7 +350,7 @@ void closure() {
         }
         std::move(__result);
     });
-    std::cout << "closure:" << " " << inner() << "\n";
+    std::cout << "closure:" << " " << inner() << "\n" << ::tpy::check_signals;
 }
 
 // def with_body() -> None:
@@ -386,7 +386,7 @@ void with_body() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << "with_body:" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+    std::cout << "with_body:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
 // def try_finally() -> None:
@@ -413,10 +413,10 @@ void try_finally() {
                 std::move(__result);
             });
         } catch (...) {
-            std::cout << "try_finally:" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+            std::cout << "try_finally:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "try_finally:" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+        std::cout << "try_finally:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -454,7 +454,7 @@ void match_arm() {
         break;
     }
     }
-    std::cout << "match_arm:" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+    std::cout << "match_arm:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
 // @error_return(Fail)
@@ -576,9 +576,9 @@ void call_rebinds() {
     std::vector<int32_t> __slot_1 = {3, 1, 2};
     std::vector<int32_t>* xs = &__slot_1;
     (*xs) = ::tpy::builtin_sorted<int32_t>((*xs));
-    std::cout << "call_rebinds sorted:" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+    std::cout << "call_rebinds sorted:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
     (*xs) = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_call_rebinds_1((*xs)));
-    std::cout << "call_rebinds list:" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+    std::cout << "call_rebinds list:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -616,18 +616,18 @@ void main() {
     ::tpyapp::main::filtered();
     ::tpyapp::main::loop();
     ::tpyapp::main::if_body_after_empty();
-    std::cout << "both_arms:" << " " << ::tpyapp::main::both_arms(1) << " " << ::tpyapp::main::both_arms(0) << "\n";
+    std::cout << "both_arms:" << " " << ::tpyapp::main::both_arms(1) << " " << ::tpyapp::main::both_arms(0) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::comp_first();
     ::tpyapp::main::dict_comp();
     ::tpyapp::main::set_comp();
     ::tpyapp::main::str_elems();
     ::tpyapp::main::tuple_elems();
     ::tpyapp::main::record_elems();
-    std::cout << "method_local:" << " " << C().bump({10}) << "\n";
-    std::cout << "ctor_local:" << " " << C().n << "\n";
+    std::cout << "method_local:" << " " << C().bump({10}) << "\n" << ::tpy::check_signals;
+    std::cout << "ctor_local:" << " " << C().n << "\n" << ::tpy::check_signals;
     C c = C();
     c.bump_field();
-    std::cout << "field:" << " " << ::tpy::ListPrinter(c.xs) << "\n";
+    std::cout << "field:" << " " << ::tpy::ListPrinter(c.xs) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::closure();
     ::tpyapp::main::with_body();
     ::tpyapp::main::try_finally();
@@ -639,13 +639,13 @@ void main() {
             if (!__try_tmp_2.has_value()) goto __except_1;
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        std::cout << "error_return:" << " " << v << "\n";
+        std::cout << "error_return:" << " " << v << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Fail:
         __except_1:;
         __after_try_1:;
     }
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro())) << "\n";
+    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::call_rebinds();
 }
 
@@ -680,7 +680,7 @@ void __tpy_init() {
         }
         std::move(__result);
     });
-    std::cout << "module_level:" << " " << ::tpy::ListPrinter((*gxs)) << "\n";
+    std::cout << "module_level:" << " " << ::tpy::ListPrinter((*gxs)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

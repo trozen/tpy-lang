@@ -384,7 +384,7 @@ inline void Box::hoist() const {
         H h = H((::tpy::str_concat("method-holder-long-enough-to-defeat-sso-", ::tpy::fixed_to_str<int32_t>(i))));
         f = h.name;
     }
-    std::cout << "method" << " " << f << "\n";
+    std::cout << "method" << " " << f << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, n: str) -> None:

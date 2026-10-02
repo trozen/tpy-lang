@@ -48,13 +48,13 @@ namespace tpyapp::main {
         continue;
     }
     case S_JOIN_1: {
-        std::cout << "after:" << " " << (*m).n << "\n";
+        std::cout << "after:" << " " << (*m).n << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_2: {
         try {
-            std::cout << "inside:" << " " << (*m).n << "\n";
+            std::cout << "inside:" << " " << (*m).n << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

@@ -53,9 +53,9 @@ namespace tpyapp::main {
 //     print(p.color)
 void main() {
     Pixel p = Pixel(::tpy::BigInt(0), ::tpy::BigInt(0), Color::Red);
-    std::cout << p.color << "\n";
+    std::cout << p.color << "\n" << ::tpy::check_signals;
     p.color = Color::Blue;
-    std::cout << p.color << "\n";
+    std::cout << p.color << "\n" << ::tpy::check_signals;
 }
 
 // # Enum as record field type

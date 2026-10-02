@@ -754,7 +754,7 @@ inline Inner::Inner(std::optional<std::string_view> tag) : tag(tag ? std::make_o
 //     print(label, self.tag, self.raw, self.either, self.pair, self.xs,
 //           self.p.v, self.op is None, self.n64)
 inline void Box::show(std::string_view label) const {
-    std::cout << label << " " << ::tpy::print_optional_val(this->tag) << " " << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::Bytes>(this->raw) << " " << ::tpy::__str__(this->either) << " " << ::tpy::TuplePrinter(this->pair) << " " << ::tpy::ListPrinter(this->xs) << " " << this->p.v << " " << ::tpy::print_bool((!this->op.has_value())) << " " << ::tpy::print_optional_val(this->n64) << "\n";
+    std::cout << label << " " << ::tpy::print_optional_val(this->tag) << " " << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::Bytes>(this->raw) << " " << ::tpy::__str__(this->either) << " " << ::tpy::TuplePrinter(this->pair) << " " << ::tpy::ListPrinter(this->xs) << " " << this->p.v << " " << ::tpy::print_bool((!this->op.has_value())) << " " << ::tpy::print_optional_val(this->n64) << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, data: list[bytes]) -> None:
@@ -787,7 +787,7 @@ inline void Keep::load(::tpy::BytesView src) {
         std::move(__result);
     });
     this->flat = Flat(__tmp_1);
-    std::cout << "method.adjacent" << " " << ::tpy::print_optional_val<::tpy::ByteArrayPrinter, ::tpy::ByteArray>(this->ba) << " " << this->flat.n << "\n";
+    std::cout << "method.adjacent" << " " << ::tpy::print_optional_val<::tpy::ByteArrayPrinter, ::tpy::ByteArray>(this->ba) << " " << this->flat.n << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self) -> None:
@@ -810,7 +810,7 @@ inline void Vals::keep(const std::tuple<::tpy::BigInt, int32_t>& t, std::optiona
     this->t = t;
     this->o = o;
     this->s = s;
-    std::cout << "method.not_last_use" << " " << ::tpy::TuplePrinter(t) << " " << ::tpy::print_optional_val(o) << " " << s << " " << ::tpy::TuplePrinter(this->t) << " " << ::tpy::print_optional_val(this->o) << " " << this->s << "\n";
+    std::cout << "method.not_last_use" << " " << ::tpy::TuplePrinter(t) << " " << ::tpy::print_optional_val(o) << " " << s << " " << ::tpy::TuplePrinter(this->t) << " " << ::tpy::print_optional_val(this->o) << " " << this->s << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, w: int32) -> None:
@@ -862,7 +862,7 @@ inline void Built::show() {
     (*this).cb(this->n);
     (*this).action();
     this->xs.push_back(99);
-    std::cout << "ctor.fields" << " " << ::tpy::__len__(this->buf) << " " << ::tpy::ListPrinter(this->xs) << " " << this->cp.v << " " << this->name << " " << this->lab << " " << std::get<0>(this->pair) << " " << std::get<1>(this->pair).v << " " << this->other.v << " " << this->lim << " " << this->lim2 << " " << this->res.val << " " << this->flat.n << " " << this->late << "\n";
+    std::cout << "ctor.fields" << " " << ::tpy::__len__(this->buf) << " " << ::tpy::ListPrinter(this->xs) << " " << this->cp.v << " " << this->name << " " << this->lab << " " << std::get<0>(this->pair) << " " << std::get<1>(this->pair).v << " " << this->other.v << " " << this->lim << " " << this->lim2 << " " << this->res.val << " " << this->flat.n << " " << this->late << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, v: int32) -> None:
@@ -881,14 +881,14 @@ inline UB::UB(int32_t v) : v(v) {}
 inline void Placed::fill() {
     std::vector<int32_t> __tmp_1 = {1, 2};
     this->xs = {::tpyapp::main::count(__tmp_1), 3};
-    std::cout << "method.literal_arg_temp" << " " << ::tpy::ListPrinter(this->xs) << "\n";
+    std::cout << "method.literal_arg_temp" << " " << ::tpy::ListPrinter(this->xs) << "\n" << ::tpy::check_signals;
 }
 
 // def show(self) -> None:
 //     print("ctor.placed", self.ks, self.ys, self.n, self.n2, self.t,
 //           self.zs, self.u)
 inline void Placed::show() const {
-    std::cout << "ctor.placed" << " " << ::tpy::ListPrinter(this->ks) << " " << ::tpy::ListPrinter(this->ys) << " " << this->n << " " << this->n2 << " " << ::tpy::TuplePrinter(this->t) << " " << ::tpy::ListPrinter(this->zs) << " " << this->u << "\n";
+    std::cout << "ctor.placed" << " " << ::tpy::ListPrinter(this->ks) << " " << ::tpy::ListPrinter(this->ys) << " " << this->n << " " << this->n2 << " " << ::tpy::TuplePrinter(this->t) << " " << ::tpy::ListPrinter(this->zs) << " " << this->u << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, x: int32) -> None:
@@ -910,10 +910,10 @@ inline std::string Pt::__str__() const {
 inline void Closed::show() const {
     std::optional<Pt> pt = this->pt;
     if ((pt.has_value())) {
-        std::cout << "ctor.closed_pt" << " " << (*pt).x << "\n";
+        std::cout << "ctor.closed_pt" << " " << (*pt).x << "\n" << ::tpy::check_signals;
     }
-    std::cout << "ctor.closed_union" << " " << ::tpy::__str__(this->u) << "\n";
-    std::cout << "ctor.closed" << " " << ::tpy::print_optional_val<::tpy::TuplePrinter<double, int32_t>, std::tuple<double, int32_t>>(this->r) << " " << this->v << " " << ::tpy::print_optional_val(this->s) << " " << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::Bytes>(this->bs) << " " << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::Bytes>(this->b2) << " " << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::Bytes>(this->b3) << "\n";
+    std::cout << "ctor.closed_union" << " " << ::tpy::__str__(this->u) << "\n" << ::tpy::check_signals;
+    std::cout << "ctor.closed" << " " << ::tpy::print_optional_val<::tpy::TuplePrinter<double, int32_t>, std::tuple<double, int32_t>>(this->r) << " " << this->v << " " << ::tpy::print_optional_val(this->s) << " " << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::Bytes>(this->bs) << " " << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::Bytes>(this->b2) << " " << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::Bytes>(this->b3) << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self) -> None:
@@ -924,7 +924,7 @@ inline Base::Base() : z(0) {}
 //     print("ctor.based_q0_init")
 //     self.v = 1
 inline Q0::Q0() {
-    std::cout << "ctor.based_q0_init" << "\n";
+    std::cout << "ctor.based_q0_init" << "\n" << ::tpy::check_signals;
     this->v = 1;
 }
 

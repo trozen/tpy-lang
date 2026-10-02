@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(VAL_A)
 //     print(VAL_B)
 void main() {
-    std::cout << ::sibling_submod::pkg::leaf_a::VAL_A << "\n";
-    std::cout << ::sibling_submod::pkg::leaf_b::VAL_B << "\n";
+    std::cout << ::sibling_submod::pkg::leaf_a::VAL_A << "\n" << ::tpy::check_signals;
+    std::cout << ::sibling_submod::pkg::leaf_b::VAL_B << "\n" << ::tpy::check_signals;
 }
 
 // # Two sibling non-native leaves under the same native parent package.

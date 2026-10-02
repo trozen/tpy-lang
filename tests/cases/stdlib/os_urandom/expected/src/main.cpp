@@ -11,10 +11,10 @@ namespace tpyapp::main {
 //     print("len300", len(os.urandom(300)))       # 300 (crosses the 256 chunk)
 //     print("differ", os.urandom(16) != os.urandom(16))   # True
 void main() {
-    std::cout << "len" << " " << ::tpy::__len__(::tpystd::os::urandom(16)) << "\n";
-    std::cout << "len0" << " " << ::tpy::__len__(::tpystd::os::urandom(0)) << "\n";
-    std::cout << "len300" << " " << ::tpy::__len__(::tpystd::os::urandom(300)) << "\n";
-    std::cout << "differ" << " " << ::tpy::print_bool((::tpystd::os::urandom(16) != ::tpystd::os::urandom(16))) << "\n";
+    std::cout << "len" << " " << ::tpy::__len__(::tpystd::os::urandom(16)) << "\n" << ::tpy::check_signals;
+    std::cout << "len0" << " " << ::tpy::__len__(::tpystd::os::urandom(0)) << "\n" << ::tpy::check_signals;
+    std::cout << "len300" << " " << ::tpy::__len__(::tpystd::os::urandom(300)) << "\n" << ::tpy::check_signals;
+    std::cout << "differ" << " " << ::tpy::print_bool((::tpystd::os::urandom(16) != ::tpystd::os::urandom(16))) << "\n" << ::tpy::check_signals;
 }
 
 // # os.urandom returns n random bytes. The bytes themselves are non-deterministic

@@ -30,7 +30,7 @@ void main() {
         __except_1:;
         {
             auto& e = *__err_opt_1;
-            std::cout << e.code << "\n";
+            std::cout << e.code << "\n" << ::tpy::check_signals;
         }
         __after_try_1:;
     }

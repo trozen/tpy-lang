@@ -25,16 +25,16 @@ void __tpy_init() {
     hot->r = 255;
     hot->g = 64;
     hot->b = 32;
-    std::cout << "origin=";
-    std::cout << origin->x;
-    std::cout << ",";
-    std::cout << origin->y << "\n";
-    std::cout << "hot=";
-    std::cout << hot->r;
-    std::cout << ",";
-    std::cout << hot->g;
-    std::cout << ",";
-    std::cout << hot->b << "\n";
+    std::cout << "origin=" << ::tpy::check_signals;
+    std::cout << origin->x << ::tpy::check_signals;
+    std::cout << "," << ::tpy::check_signals;
+    std::cout << origin->y << "\n" << ::tpy::check_signals;
+    std::cout << "hot=" << ::tpy::check_signals;
+    std::cout << hot->r << ::tpy::check_signals;
+    std::cout << "," << ::tpy::check_signals;
+    std::cout << hot->g << ::tpy::check_signals;
+    std::cout << "," << ::tpy::check_signals;
+    std::cout << hot->b << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

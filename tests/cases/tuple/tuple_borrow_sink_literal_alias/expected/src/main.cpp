@@ -32,11 +32,11 @@ int32_t read_pair(const std::tuple<const Item*, int32_t>& p) {
 void main() {
     Item it = Item(5);
     ::tpyapp::main::bump_first(std::tuple<Item*, int32_t>{&(it), 2});
-    std::cout << it.n << "\n";
+    std::cout << it.n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bump_first(std::tuple<Item*, int32_t>{&(it), 10});
-    std::cout << it.n << "\n";
-    std::cout << ::tpyapp::main::read_pair(::tpy::tuple_value_to_borrow<std::tuple<Item*, int32_t>>(std::tuple<Item, int32_t>{Item(4), 3})) << "\n";
-    std::cout << ::tpyapp::main::relay<Item>(std::tuple<Item*, int32_t>{&(it), 3}) << "\n";
+    std::cout << it.n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_pair(::tpy::tuple_value_to_borrow<std::tuple<Item*, int32_t>>(std::tuple<Item, int32_t>{Item(4), 3})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::relay<Item>(std::tuple<Item*, int32_t>{&(it), 3}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

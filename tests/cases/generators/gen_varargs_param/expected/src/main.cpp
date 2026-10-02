@@ -122,7 +122,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_in_finally::__next__() {
 }
 
 void __gen_in_finally::__finally_0() {
-    std::cout << "tryfinally: cleanup" << "\n";
+    std::cout << "tryfinally: cleanup" << "\n" << ::tpy::check_signals;
 }
 
 // def in_finally(*xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
@@ -366,7 +366,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "scalar:" << " " << v << "\n";
+            std::cout << "scalar:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -377,7 +377,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "str:" << " " << v << "\n";
+            std::cout << "str:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<int32_t> la = {1, 2};
@@ -390,7 +390,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "container:" << " " << v << "\n";
+            std::cout << "container:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     Point a = Point(1);
@@ -403,10 +403,10 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "record-mut:" << " " << v << "\n";
+            std::cout << "record-mut:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "record-mut: after" << " " << a.x << " " << b.x << "\n";
+    std::cout << "record-mut: after" << " " << a.x << " " << b.x << "\n" << ::tpy::check_signals;
     Point c = Point(1);
     Point d = Point(2);
     {
@@ -417,7 +417,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "record-ro:" << " " << v << "\n";
+            std::cout << "record-ro:" << " " << v << "\n" << ::tpy::check_signals;
             d.x = 20;
         }
     }
@@ -432,7 +432,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-            std::cout << "method:" << " " << v << "\n";
+            std::cout << "method:" << " " << v << "\n" << ::tpy::check_signals;
             mb.push_back(0);
         }
     }
@@ -444,7 +444,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-            std::cout << "forward:" << " " << v << "\n";
+            std::cout << "forward:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -455,7 +455,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-            std::cout << "subscript:" << " " << v << "\n";
+            std::cout << "subscript:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<int32_t> fa = {1};
@@ -468,7 +468,7 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
-            std::cout << "tryfinally:" << " " << v << "\n";
+            std::cout << "tryfinally:" << " " << v << "\n" << ::tpy::check_signals;
             fb.push_back(0);
         }
     }
@@ -482,7 +482,7 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_19);
-            std::cout << "with:" << " " << v << "\n";
+            std::cout << "with:" << " " << v << "\n" << ::tpy::check_signals;
             wb.push_back(0);
         }
     }
@@ -494,7 +494,7 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_21);
-            std::cout << "readonly-param:" << " " << v << "\n";
+            std::cout << "readonly-param:" << " " << v << "\n" << ::tpy::check_signals;
             ::tpy::__getitem__(pts, 1).x = 60;
         }
     }
@@ -508,10 +508,10 @@ void main() {
             auto __r_23 = __itr_22.__next__();
             if (!__r_23.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_23);
-            std::cout << "generic:" << " " << v << "\n";
+            std::cout << "generic:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "generic: after" << " " << e.x << " " << f.x << "\n";
+    std::cout << "generic: after" << " " << e.x << " " << f.x << "\n" << ::tpy::check_signals;
     Album alb = Album();
     {
         auto __src_24 = alb.each();
@@ -520,7 +520,7 @@ void main() {
             auto __r_25 = __itr_24.__next__();
             if (!__r_25.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_25);
-            std::cout << "self-field:" << " " << v << "\n";
+            std::cout << "self-field:" << " " << v << "\n" << ::tpy::check_signals;
             ::tpy::__getitem__(alb.items, 1).x = 60;
         }
     }
@@ -534,7 +534,7 @@ void main() {
             auto __r_27 = __itr_26.__next__();
             if (!__r_27.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_27);
-            std::cout << "readonly-next:" << " " << v << "\n";
+            std::cout << "readonly-next:" << " " << v << "\n" << ::tpy::check_signals;
             pulls = ::tpy::add_check<int32_t>(pulls, 1);
             if ((pulls == 1)) {
                 ::tpy::__getitem__(rp, 0).x = 70;
@@ -545,19 +545,19 @@ void main() {
     std::vector<std::vector<int32_t>> gb = {{2}};
     std::vector<int32_t>& ea = ::tpy::__getitem__(ga, 0);
     std::vector<int32_t>& eb = ::tpy::__getitem__(gb, 0);
-    std::cout << "multi-root:" << " " << ::tpy::__len__(ea) << " " << ::tpy::__len__(eb) << "\n";
+    std::cout << "multi-root:" << " " << ::tpy::__len__(ea) << " " << ::tpy::__len__(eb) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::grow_both(ga, gb);
-    std::cout << "multi-root:" << " " << ::tpy::__len__(ga) << " " << ::tpy::__len__(gb) << "\n";
+    std::cout << "multi-root:" << " " << ::tpy::__len__(ga) << " " << ::tpy::__len__(gb) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::grow_both(gb, ga);
-    std::cout << "multi-root swapped:" << " " << ::tpy::__len__(ga) << " " << ::tpy::__len__(gb) << "\n";
+    std::cout << "multi-root swapped:" << " " << ::tpy::__len__(ga) << " " << ::tpy::__len__(gb) << "\n" << ::tpy::check_signals;
     Grower gr = Grower(7);
     std::vector<std::vector<int32_t>> ha = {{1}};
     std::vector<std::vector<int32_t>> hb = {{2}};
     std::vector<int32_t>& ha_e = ::tpy::__getitem__(ha, 0);
     std::vector<int32_t>& hb_e = ::tpy::__getitem__(hb, 0);
-    std::cout << "method-multi-root:" << " " << ::tpy::__len__(ha_e) << " " << ::tpy::__len__(hb_e) << "\n";
+    std::cout << "method-multi-root:" << " " << ::tpy::__len__(ha_e) << " " << ::tpy::__len__(hb_e) << "\n" << ::tpy::check_signals;
     gr.grow_both(ha, hb);
-    std::cout << "method-multi-root:" << " " << ::tpy::__len__(ha) << " " << ::tpy::__len__(hb) << "\n";
+    std::cout << "method-multi-root:" << " " << ::tpy::__len__(ha) << " " << ::tpy::__len__(hb) << "\n" << ::tpy::check_signals;
 }
 
 

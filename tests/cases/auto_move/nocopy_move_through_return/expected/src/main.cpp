@@ -19,7 +19,7 @@ Handle transfer() {
 //     print(r.fd)
 void main() {
     Handle r = ::tpyapp::main::transfer();
-    std::cout << r.fd << "\n";
+    std::cout << r.fd << "\n" << ::tpy::check_signals;
 }
 
 // main()

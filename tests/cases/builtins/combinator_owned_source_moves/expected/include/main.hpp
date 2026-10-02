@@ -366,7 +366,7 @@ inline Cur::Cur(int32_t n)
 //     print("  Cur.__iter__", self.n)
 //     return self
 inline Cur& Cur::__iter__() {
-    std::cout << "  Cur.__iter__" << " " << this->n << "\n";
+    std::cout << "  Cur.__iter__" << " " << this->n << "\n" << ::tpy::check_signals;
     return (*this);
 }
 
@@ -394,7 +394,7 @@ inline Rng::Rng(int32_t n)
 //     print("  Rng.__iter__", self.n)
 //     return Rng(self.n)
 inline Rng Rng::__iter__() const {
-    std::cout << "  Rng.__iter__" << " " << this->n << "\n";
+    std::cout << "  Rng.__iter__" << " " << this->n << "\n" << ::tpy::check_signals;
     return Rng(this->n);
 }
 
@@ -419,7 +419,7 @@ inline Noisy::Noisy(int32_t n) : n(n) {}
 //     print("  Noisy.__iter__", self.n)
 //     return Cur(self.n)
 inline Cur Noisy::__iter__() const {
-    std::cout << "  Noisy.__iter__" << " " << this->n << "\n";
+    std::cout << "  Noisy.__iter__" << " " << this->n << "\n" << ::tpy::check_signals;
     return Cur(this->n);
 }
 
@@ -437,7 +437,7 @@ inline Cur Quiet::__iter__() const {
 //     print("  Loud.__init__", n)
 //     self.n = n
 inline Loud::Loud(int32_t n) {
-    std::cout << "  Loud.__init__" << " " << n << "\n";
+    std::cout << "  Loud.__init__" << " " << n << "\n" << ::tpy::check_signals;
     this->n = n;
 }
 

@@ -14,7 +14,7 @@ namespace tpyapp::main {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "eval" << " " << tag << "\n";
+        std::cout << "eval" << " " << tag << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -114,14 +114,14 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
     }
     case S_JOIN_0: {
         r = __sc_0;
-        std::cout << "r" << " " << ::tpy::print_bool(r) << "\n";
+        std::cout << "r" << " " << ::tpy::print_bool(r) << "\n" << ::tpy::check_signals;
         __sub_3.emplace("a2", ::tpy::BigInt(9));
         __state = S_RESUME_3;
         continue;
     }
     case S_JOIN_1: {
         r2 = __sc_4;
-        std::cout << "r2" << " " << ::tpy::print_bool(r2) << "\n";
+        std::cout << "r2" << " " << ::tpy::print_bool(r2) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

@@ -179,24 +179,24 @@ __genexpr_main_3_frame __genexpr_main_3(const std::vector<uint8_t>& __src) {
 //     print(bytes(ba))
 void main() {
     std::vector<int32_t> xs = {10, 20, 30};
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(xs)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(xs)) << "\n" << ::tpy::check_signals;
     std::vector<uint8_t> ys = {1, 2, 3};
-    std::cout << ::tpy::BytesPrinter(::tpy::construct<::tpy::Bytes>(ys)) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(::tpyapp::main::__genexpr_main_1(xs))) << "\n";
-    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_from_int_iterable(xs)) << "\n";
-    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_from_int_iterable(::tpyapp::main::__genexpr_main_2(xs))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::construct<::tpy::Bytes>(ys)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(::tpyapp::main::__genexpr_main_1(xs))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_from_int_iterable(xs)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_from_int_iterable(::tpyapp::main::__genexpr_main_2(xs))) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray ba = ::tpy::ByteArray();
     ::tpy::bytes_extend_int_iterable(ba, xs);
-    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
     ::tpy::extend(ba, ys);
-    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray other = ::tpy::bytearray_from_int_iterable(std::array<int32_t, 2>{50, 60});
     ::tpy::extend(ba, other);
-    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
     ::tpy::extend(ba, ::tpyapp::main::__genexpr_main_3(ys));
-    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(std::array<int32_t, 2>{0, 255})) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::Bytes(ba)) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(std::array<int32_t, 2>{0, 255})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::Bytes(ba)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

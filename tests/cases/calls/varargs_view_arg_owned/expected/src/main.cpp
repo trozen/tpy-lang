@@ -101,7 +101,7 @@ void loop_var_into_join(const std::vector<std::string>& names) {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view s = *__beg_1;
-        std::cout << s << "\n";
+        std::cout << s << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -128,15 +128,15 @@ std::string method_view_vararg(std::string_view sv) {
 //     ns.append("b")
 //     loop_var_into_join(ns)
 void main() {
-    std::cout << ::tpyapp::main::from_str_view("hi") << "\n";
-    std::cout << ::tpyapp::main::reassign_view_param("p") << "\n";
-    std::cout << ::tpyapp::main::method_view_vararg("v") << "\n";
-    std::cout << ::tpyapp::main::from_bytes_view(::tpy::bytes_literal("hello", 5)) << "\n";
+    std::cout << ::tpyapp::main::from_str_view("hi") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::reassign_view_param("p") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::method_view_vararg("v") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::from_bytes_view(::tpy::bytes_literal("hello", 5)) << "\n" << ::tpy::check_signals;
     ::tpy::String owned = (::tpy::str_concat("a", "b"));
     std::array<const std::string, 2> __tmp_1{owned, "q"};
-    std::cout << ::tpyapp::main::joins("p", ::tpy::varargs<const std::string>(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::joins("p", ::tpy::varargs<const std::string>(__tmp_1)) << "\n" << ::tpy::check_signals;
     std::array<const int32_t, 3> __tmp_2{1, 2, 3};
-    std::cout << ::tpyapp::main::addall(::tpy::varargs<const int32_t>(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::addall(::tpy::varargs<const int32_t>(__tmp_2)) << "\n" << ::tpy::check_signals;
     std::vector<std::string> ns = std::vector<std::string>{};
     ns.push_back("a");
     ns.push_back("b");

@@ -28,7 +28,7 @@ void main() {
         std::string_view k = ::tpy::unwrap_ref(*__r_1);
         n = (::tpy::add_check<int32_t>(n, ::tpy::__len__(k)));
     }
-    std::cout << (*::tpyapp::store::env)["a"] << " " << (*::tpyapp::store::env)["b"] << " " << n << "\n";
+    std::cout << (*::tpyapp::store::env)["a"] << " " << (*::tpyapp::store::env)["b"] << " " << n << "\n" << ::tpy::check_signals;
     ::tpy::__delitem__((*::tpyapp::store::env), "a");
     int32_t left = 0;
     auto& __src_2 = (*::tpyapp::store::env);
@@ -39,7 +39,7 @@ void main() {
         std::string_view k = ::tpy::unwrap_ref(*__r_3);
         left = (::tpy::add_check<int32_t>(left, 1));
     }
-    std::cout << left << "\n";
+    std::cout << left << "\n" << ::tpy::check_signals;
 }
 
 // # A @nocopy record module-global of ANOTHER module driven through its mapping

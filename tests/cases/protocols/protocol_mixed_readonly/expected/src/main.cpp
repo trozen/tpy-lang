@@ -15,8 +15,8 @@ void __tpy_init() {
 
     static Impl __global_slot_1 = Impl(42);
     obj = &__global_slot_1;
-    std::cout << ::tpyapp::main::safe_read((*obj)) << "\n";
-    std::cout << ::tpyapp::main::use_both((*obj)) << "\n";
+    std::cout << ::tpyapp::main::safe_read((*obj)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use_both((*obj)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

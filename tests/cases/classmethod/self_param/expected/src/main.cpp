@@ -13,7 +13,7 @@ void main() {
     Point p = Point(2);
     Point q = Point(5);
     Point r = Point::sum_of(p, q);
-    std::cout << r.x << "\n";
+    std::cout << r.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

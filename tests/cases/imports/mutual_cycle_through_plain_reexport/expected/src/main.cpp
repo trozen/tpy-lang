@@ -24,8 +24,8 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::a::__tpy_init();
-    std::cout << ::tpyapp::a::aye() << "\n";
-    std::cout << ::tpyapp::c::cee() << "\n";
+    std::cout << ::tpyapp::a::aye() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::c::cee() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

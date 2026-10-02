@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(c.n_plus(3))
 void main() {
     Combined c = Combined(7, "n");
-    std::cout << c.combined() << "\n";
-    std::cout << c.n_plus(3) << "\n";
+    std::cout << c.combined() << "\n" << ::tpy::check_signals;
+    std::cout << c.n_plus(3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

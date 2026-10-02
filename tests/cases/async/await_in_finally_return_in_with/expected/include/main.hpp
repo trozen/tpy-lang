@@ -157,7 +157,7 @@ inline void Tracer::__enter__() const {
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 //     print(f"exit-{self.label}")
 inline void Tracer::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    std::cout << std::format("exit-{}", this->label) << "\n";
+    std::cout << std::format("exit-{}", this->label) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(x)
 void main() {
     int32_t x = 42;
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // # Star import of a type alias from a user module. Resolves at parse

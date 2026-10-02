@@ -15,11 +15,11 @@ namespace tpyapp::main {
 //     print(d.val)
 void main() {
     Outer o = Outer(1);
-    std::cout << o.x << "\n";
+    std::cout << o.x << "\n" << ::tpy::check_signals;
     Outer::Mid m = Outer::Mid("hello");
-    std::cout << m.name << "\n";
+    std::cout << m.name << "\n" << ::tpy::check_signals;
     Outer::Mid::Deep d = Outer::Mid::Deep(99);
-    std::cout << d.val << "\n";
+    std::cout << d.val << "\n" << ::tpy::check_signals;
 }
 
 // main()

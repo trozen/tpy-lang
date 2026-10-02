@@ -22,13 +22,13 @@ namespace tpyapp::main {
 void main() {
     std::vector<::tpy::BigInt> a = {1, 2, 3};
     ::tpy::list_extend(a, std::vector<::tpy::BigInt>{4, 5});
-    std::cout << ::tpy::ListPrinter(a) << "\n";
+    std::cout << ::tpy::ListPrinter(a) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> b = {10, 20};
     ::tpy::list_extend(b, std::vector<int32_t>{30, 40});
-    std::cout << ::tpy::ListPrinter(b) << "\n";
+    std::cout << ::tpy::ListPrinter(b) << "\n" << ::tpy::check_signals;
     std::vector<std::string> c = {"a", "b"};
     ::tpy::list_extend(c, std::vector<std::string>{"c", "d"});
-    std::cout << ::tpy::ListPrinter(c) << "\n";
+    std::cout << ::tpy::ListPrinter(c) << "\n" << ::tpy::check_signals;
 }
 
 // main()

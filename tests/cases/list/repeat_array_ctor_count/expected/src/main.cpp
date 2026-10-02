@@ -15,12 +15,12 @@ void main() {
         P __rep_0 = P();
         ::tpy::array_from_index<P, 3>([&](std::size_t) -> P { return __rep_0; });
     });
-    std::cout << ::tpy::__len__(ps) << " " << ::tpy::__len__((*log)) << "\n";
+    std::cout << ::tpy::__len__(ps) << " " << ::tpy::__len__((*log)) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 6> pair = ({
         std::array<int32_t, 2> __rep_1{10, 20};
         ::tpy::array_from_index<int32_t, 6>([&](std::size_t __i_1) -> int32_t { return __rep_1[__i_1 % 2]; });
     });
-    std::cout << ::tpy::__len__(pair) << " " << ::tpy::__getitem__(pair, 0) << " " << ::tpy::__getitem__(pair, 1) << " " << ::tpy::__getitem__(pair, 3) << " " << ::tpy::__getitem__(pair, 5) << "\n";
+    std::cout << ::tpy::__len__(pair) << " " << ::tpy::__getitem__(pair, 0) << " " << ::tpy::__getitem__(pair, 1) << " " << ::tpy::__getitem__(pair, 3) << " " << ::tpy::__getitem__(pair, 5) << "\n" << ::tpy::check_signals;
 }
 
 // # A fixed-count repeat into a stack Array evaluates the element once and

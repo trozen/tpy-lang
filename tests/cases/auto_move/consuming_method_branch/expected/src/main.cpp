@@ -15,9 +15,9 @@ void test_branch(bool flag) {
     Wrapper w = Wrapper(::tpy::BigInt(42));
     if (flag) {
         ::tpy::BigInt result = std::move(w).take();
-        std::cout << result << "\n";
+        std::cout << result << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << w.get() << "\n";
+        std::cout << w.get() << "\n" << ::tpy::check_signals;
     }
 }
 

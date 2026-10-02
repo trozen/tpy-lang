@@ -23,7 +23,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "cleanup" << " " << label << "\n";
+        std::cout << "cleanup" << " " << label << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         int32_t __tpy_async_ret = 0;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -60,12 +60,12 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            std::cout << "finally-done" << "\n";
+            std::cout << "finally-done" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_2;
             continue;
         } catch (const ::tpy::RuntimeError& e) {
             __sub_0.reset();
-            std::cout << "caught:" << " " << e << "\n";
+            std::cout << "caught:" << " " << e << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -87,7 +87,7 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::RuntimeError& e) {
-            std::cout << "caught:" << " " << e << "\n";
+            std::cout << "caught:" << " " << e << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -101,7 +101,7 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
     case S_JOIN_3: {
         try {
             try {
-                std::cout << "inner-try" << "\n";
+                std::cout << "inner-try" << "\n" << ::tpy::check_signals;
                 throw ::tpy::RuntimeError("inner-fail");
             } catch (...) {
                 this->__finally_exc_0 = std::current_exception();
@@ -109,7 +109,7 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
                 continue;
             }
         } catch (const ::tpy::RuntimeError& e) {
-            std::cout << "caught:" << " " << e << "\n";
+            std::cout << "caught:" << " " << e << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -125,7 +125,7 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::RuntimeError& e) {
-            std::cout << "caught:" << " " << e << "\n";
+            std::cout << "caught:" << " " << e << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

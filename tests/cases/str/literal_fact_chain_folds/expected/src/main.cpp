@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void f(std::string_view mode) {
     if ((mode == "rb")) {
         bool b = true;
-        std::cout << ::tpy::print_bool(b) << "\n";
+        std::cout << ::tpy::print_bool(b) << "\n" << ::tpy::check_signals;
     }
 }
 

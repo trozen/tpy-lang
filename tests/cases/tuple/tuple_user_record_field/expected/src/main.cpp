@@ -17,9 +17,9 @@ void main() {
     Point a = Point(1, 2);
     Point b = Point(3, 4);
     PairHolder h = PairHolder(std::tuple<Point*, Point*>{&(a), &(b)});
-    std::cout << std::get<0>(h.pair).x << "\n";
-    std::cout << std::get<1>(h.pair).y << "\n";
-    std::cout << ::tpy::print_bool(((h) == (PairHolder(::tpy::tuple_value_to_borrow<std::tuple<Point*, Point*>>(std::tuple<Point, Point>{Point(1, 2), Point(3, 4)}))))) << "\n";
+    std::cout << std::get<0>(h.pair).x << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(h.pair).y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((h) == (PairHolder(::tpy::tuple_value_to_borrow<std::tuple<Point*, Point*>>(std::tuple<Point, Point>{Point(1, 2), Point(3, 4)}))))) << "\n" << ::tpy::check_signals;
 }
 
 // # User record inside tuple[T, U] as a dataclass field: exercises the

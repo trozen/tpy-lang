@@ -127,7 +127,7 @@ inline std::string Resource::__enter__() const {
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 //     print(f"exit {self.name}")
 inline void Resource::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    std::cout << std::format("exit {}", this->name) << "\n";
+    std::cout << std::format("exit {}", this->name) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

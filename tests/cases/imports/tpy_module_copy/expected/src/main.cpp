@@ -16,7 +16,7 @@ void __tpy_init() {
 
     s = "hello";
     u = std::string(s);
-    std::cout << u << "\n";
+    std::cout << u << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

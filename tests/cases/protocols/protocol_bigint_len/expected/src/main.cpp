@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(count(c))
 void main() {
     MyCollection c = MyCollection(::tpy::BigInt(42));
-    std::cout << ::tpyapp::main::count(c) << "\n";
+    std::cout << ::tpyapp::main::count(c) << "\n" << ::tpy::check_signals;
 }
 
 // main()

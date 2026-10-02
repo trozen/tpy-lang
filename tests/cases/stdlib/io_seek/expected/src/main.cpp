@@ -18,16 +18,16 @@ namespace tpyapp::main {
 //     s.seek(0, io.SEEK_CUR)                          # text streams allow 0-offset CUR
 //     print(s.read())                                 # " world"
 void main() {
-    std::cout << ::tpy::stdlib::os::kc_seek_set32 << " " << ::tpy::stdlib::os::kc_seek_cur32 << " " << ::tpy::stdlib::os::kc_seek_end32 << "\n";
+    std::cout << ::tpy::stdlib::os::kc_seek_set32 << " " << ::tpy::stdlib::os::kc_seek_cur32 << " " << ::tpy::stdlib::os::kc_seek_end32 << "\n" << ::tpy::check_signals;
     ::tpystd::io::StringIO s = ::tpystd::io::StringIO("hello world");
     s.seek(6, ::tpy::stdlib::os::kc_seek_set32);
-    std::cout << s.read() << "\n";
+    std::cout << s.read() << "\n" << ::tpy::check_signals;
     s.seek(0, ::tpy::stdlib::os::kc_seek_end32);
-    std::cout << s.tell() << "\n";
+    std::cout << s.tell() << "\n" << ::tpy::check_signals;
     s.seek(0, ::tpy::stdlib::os::kc_seek_set32);
-    std::cout << s.read(5) << "\n";
+    std::cout << s.read(5) << "\n" << ::tpy::check_signals;
     s.seek(0, ::tpy::stdlib::os::kc_seek_cur32);
-    std::cout << s.read() << "\n";
+    std::cout << s.read() << "\n" << ::tpy::check_signals;
 }
 
 // # io.SEEK_SET/CUR/END constants + use with StringIO.seek. Text streams only

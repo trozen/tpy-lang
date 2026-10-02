@@ -377,7 +377,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "nested" << " " << v << "\n";
+            std::cout << "nested" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -388,7 +388,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "fieldhop" << " " << v << "\n";
+            std::cout << "fieldhop" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -399,7 +399,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "items" << " " << v << "\n";
+            std::cout << "items" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::ordered_map<int32_t, Box> mb = ::tpy::ordered_map<int32_t, Box>({{1, Box(10)}, {2, Box(20)}});
@@ -410,7 +410,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "values_ref" << " " << v << "\n";
+            std::cout << "values_ref" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -420,10 +420,10 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "items_ref" << " " << v << "\n";
+            std::cout << "items_ref" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "avalues" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::avalues(mb))) << "\n";
+    std::cout << "avalues" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::avalues(mb))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> ml = ::tpy::ordered_map<int32_t, std::vector<int32_t>>();
     ::tpy::__setitem__(ml, 1, std::vector<int32_t>{11, 12});
     ::tpy::__setitem__(ml, 2, std::vector<int32_t>{21});
@@ -434,7 +434,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-            std::cout << "values_list" << " " << v << "\n";
+            std::cout << "values_list" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<::tpy::ordered_map<int32_t, std::vector<int32_t>>> mls = ::tpy::make_vector<::tpy::ordered_map<int32_t, std::vector<int32_t>>>(std::move(ml));
@@ -445,7 +445,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-            std::cout << "deep_items" << " " << v << "\n";
+            std::cout << "deep_items" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::ordered_map<int32_t, Box> mm = ::tpy::ordered_map<int32_t, Box>({{1, Box(3)}});
@@ -456,10 +456,10 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-            std::cout << "values_mutated" << " " << v << "\n";
+            std::cout << "values_mutated" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "values_mutated after" << " " << ::tpy::__getitem__(mm, 1).n << " " << ::tpy::__getitem__(mm, 9).n << "\n";
+    std::cout << "values_mutated after" << " " << ::tpy::__getitem__(mm, 1).n << " " << ::tpy::__getitem__(mm, 9).n << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     al.append(1);
     al.append(2);
@@ -470,7 +470,7 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
-            std::cout << "arraylist" << " " << v << "\n";
+            std::cout << "arraylist" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<std::tuple<int32_t, Box>> pairs = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(2)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{3, Box(4)})};
@@ -481,7 +481,7 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_19);
-            std::cout << "unpack_loop" << " " << v << "\n";
+            std::cout << "unpack_loop" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -491,7 +491,7 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_21);
-            std::cout << "unpack_subscript" << " " << v << "\n";
+            std::cout << "unpack_subscript" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -502,7 +502,7 @@ void main() {
             auto __r_23 = __itr_22.__next__();
             if (!__r_23.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_23);
-            std::cout << "unpack_field" << " " << v << "\n";
+            std::cout << "unpack_field" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -512,7 +512,7 @@ void main() {
             auto __r_25 = __itr_24.__next__();
             if (!__r_25.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_25);
-            std::cout << "unpack_readonly" << " " << v << "\n";
+            std::cout << "unpack_readonly" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -523,7 +523,7 @@ void main() {
             auto __r_27 = __itr_26.__next__();
             if (!__r_27.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_27);
-            std::cout << "alias_in_loop" << " " << v << "\n";
+            std::cout << "alias_in_loop" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -534,11 +534,11 @@ void main() {
             auto __r_29 = __itr_28.__next__();
             if (!__r_29.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_29);
-            std::cout << "method" << " " << v << "\n";
+            std::cout << "method" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<std::vector<int32_t>> __tmp_7 = {{1, 2}, {3}};
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::anested(__tmp_7))) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::anested(__tmp_7))) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<Box>> boxes = {{Box(1)}, {Box(2)}};
     {
         auto __src_30 = ::tpyapp::main::mutated(boxes);
@@ -547,10 +547,10 @@ void main() {
             auto __r_31 = __itr_30.__next__();
             if (!__r_31.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_31);
-            std::cout << "mutated" << " " << v << "\n";
+            std::cout << "mutated" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "mutated after" << " " << ::tpy::__getitem__(::tpy::__getitem__(boxes, 0), 0).n << " " << ::tpy::__getitem__(::tpy::__getitem__(boxes, 1), 0).n << " " << ::tpy::__getitem__(::tpy::__getitem__(boxes, 2), 0).n << "\n";
+    std::cout << "mutated after" << " " << ::tpy::__getitem__(::tpy::__getitem__(boxes, 0), 0).n << " " << ::tpy::__getitem__(::tpy::__getitem__(boxes, 1), 0).n << " " << ::tpy::__getitem__(::tpy::__getitem__(boxes, 2), 0).n << "\n" << ::tpy::check_signals;
 }
 
 

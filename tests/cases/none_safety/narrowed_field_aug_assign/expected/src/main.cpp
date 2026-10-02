@@ -17,7 +17,7 @@ void main() {
     c.show();
     Counter none_counter = Counter(std::nullopt, std::nullopt);
     none_counter.step();
-    std::cout << ::tpy::print_bool((!none_counter.big.has_value())) << " " << ::tpy::print_bool((!none_counter.small.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!none_counter.big.has_value())) << " " << ::tpy::print_bool((!none_counter.small.has_value())) << "\n" << ::tpy::check_signals;
 }
 
 

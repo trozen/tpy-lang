@@ -7,7 +7,7 @@ namespace tpyapp::mypackage::utils {
 // def helper() -> None:
 //     print("helper called")
 void helper() {
-    std::cout << "helper called" << "\n";
+    std::cout << "helper called" << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init() {

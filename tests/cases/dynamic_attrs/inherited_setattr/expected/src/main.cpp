@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Child c = Child();
     c.__setattr__("color", ::tpy::make_any(std::string("blue")));
-    std::cout << ::tpy::any_cast_or_panic<std::string>(c.__getattr__("color")) << "\n";
+    std::cout << ::tpy::any_cast_or_panic<std::string>(c.__getattr__("color")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

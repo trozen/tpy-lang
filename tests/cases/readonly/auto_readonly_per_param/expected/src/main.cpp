@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void read_buf(const Buffer& b) {
     std::vector<int32_t> out = std::vector<int32_t>{};
     std::span<const int32_t> s = b.copy_into(out);
-    std::cout << ::tpy::__len__(out) << "\n";
-    std::cout << ::tpy::__getitem__(s, 0) << "\n";
+    std::cout << ::tpy::__len__(out) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(s, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -27,8 +27,8 @@ void main() {
     Buffer b = Buffer();
     std::vector<int32_t> out = std::vector<int32_t>{};
     std::span<int32_t> s = b.copy_into(out);
-    std::cout << ::tpy::__len__(out) << "\n";
-    std::cout << ::tpy::__getitem__(s, 0) << "\n";
+    std::cout << ::tpy::__len__(out) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(s, 0) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_buf(b);
 }
 

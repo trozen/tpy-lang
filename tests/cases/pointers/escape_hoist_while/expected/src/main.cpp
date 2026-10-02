@@ -22,7 +22,7 @@ void while_escape() {
         saved = p;
         i = (::tpy::add_check<int32_t>(i, 1));
     }
-    std::cout << saved->x << " " << saved->y << "\n";
+    std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
 
 // while_escape()

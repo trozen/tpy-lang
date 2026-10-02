@@ -26,10 +26,10 @@ void add_num(int32_t n) {
 //     print(len(NUMS))
 void main() {
     ::tpyapp::main::add(67);
-    std::cout << ::tpy::__len__((*BUF)) << " " << static_cast<int>(::tpy::bytes_getitem((*BUF), 2)) << "\n";
-    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_upper((*BUF))) << "\n";
+    std::cout << ::tpy::__len__((*BUF)) << " " << static_cast<int>(::tpy::bytes_getitem((*BUF), 2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_upper((*BUF))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::add_num(3);
-    std::cout << ::tpy::__len__((*NUMS)) << "\n";
+    std::cout << ::tpy::__len__((*NUMS)) << "\n" << ::tpy::check_signals;
 }
 
 // BUF: bytearray = bytearray(b"ab")

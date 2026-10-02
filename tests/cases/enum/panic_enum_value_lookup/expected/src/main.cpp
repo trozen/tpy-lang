@@ -51,7 +51,7 @@ namespace tpyapp::main {
 //     print(c)
 void main() {
     Color c = ::tpy::EnumUtil<Color>::from_value(99);
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
 }
 
 // # Test enum value lookup panic on invalid value

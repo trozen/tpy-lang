@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(L.Inner.MAX)
 //     print(L.Inner.TAG)
 void main() {
-    std::cout << ::tpyapp::limits::Limits::Inner::MAX << "\n";
-    std::cout << ::tpyapp::limits::Limits::Inner::TAG << "\n";
+    std::cout << ::tpyapp::limits::Limits::Inner::MAX << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::limits::Limits::Inner::TAG << "\n" << ::tpy::check_signals;
 }
 
 // # Aliased cross-module nested-class const access. `L.Inner.MAX` resolves

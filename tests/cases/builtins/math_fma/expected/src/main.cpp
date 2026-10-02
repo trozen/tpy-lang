@@ -54,53 +54,53 @@ namespace tpyapp::main {
 //     except OverflowError:
 //         print("negative overflow OverflowError")
 void main() {
-    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_fma(2.0, 3.0, 4.0)) << "\n";
-    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_fma(-(2.0), 0.5, 1.0)) << "\n";
-    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_fma(0.1, 0.1, 0.0)) << "\n";
+    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_fma(2.0, 3.0, 4.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_fma(-(2.0), 0.5, 1.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_fma(0.1, 0.1, 0.0)) << "\n" << ::tpy::check_signals;
     double maximum = 1.7976931348623157e+308;
-    std::cout << "fusion" << " " << ::tpy::print_bool((::tpy::stdlib::math::checked_fma(maximum, 2.0, -(maximum)) == maximum)) << "\n";
-    std::cout << "low bits" << " " << ::tpy::print_bool((::tpy::stdlib::math::checked_fma(1.0000000074505806, 0.9999999925494194, -(1.0)) == -(5.551115123125783e-17))) << "\n";
-    std::cout << "nan third" << " " << ::tpy::print_bool(::std::isnan(::tpy::stdlib::math::checked_fma(0.0, ::tpystd::math::inf, ::tpystd::math::nan))) << "\n";
-    std::cout << "nan third swapped" << " " << ::tpy::print_bool(::std::isnan(::tpy::stdlib::math::checked_fma(::tpystd::math::inf, 0.0, ::tpystd::math::nan))) << "\n";
-    std::cout << "nan first" << " " << ::tpy::print_bool(::std::isnan(::tpy::stdlib::math::checked_fma(::tpystd::math::nan, ::tpystd::math::inf, -(::tpystd::math::inf)))) << "\n";
-    std::cout << "nan second" << " " << ::tpy::print_bool(::std::isnan(::tpy::stdlib::math::checked_fma(::tpystd::math::inf, ::tpystd::math::nan, -(::tpystd::math::inf)))) << "\n";
-    std::cout << "infinity" << " " << ::tpy::print_bool((::tpy::stdlib::math::checked_fma(::tpystd::math::inf, 2.0, ::tpystd::math::inf) == ::tpystd::math::inf)) << "\n";
-    std::cout << "negative infinity" << " " << ::tpy::print_bool((::tpy::stdlib::math::checked_fma(-(::tpystd::math::inf), 2.0, -(::tpystd::math::inf)) == -(::tpystd::math::inf))) << "\n";
+    std::cout << "fusion" << " " << ::tpy::print_bool((::tpy::stdlib::math::checked_fma(maximum, 2.0, -(maximum)) == maximum)) << "\n" << ::tpy::check_signals;
+    std::cout << "low bits" << " " << ::tpy::print_bool((::tpy::stdlib::math::checked_fma(1.0000000074505806, 0.9999999925494194, -(1.0)) == -(5.551115123125783e-17))) << "\n" << ::tpy::check_signals;
+    std::cout << "nan third" << " " << ::tpy::print_bool(::std::isnan(::tpy::stdlib::math::checked_fma(0.0, ::tpystd::math::inf, ::tpystd::math::nan))) << "\n" << ::tpy::check_signals;
+    std::cout << "nan third swapped" << " " << ::tpy::print_bool(::std::isnan(::tpy::stdlib::math::checked_fma(::tpystd::math::inf, 0.0, ::tpystd::math::nan))) << "\n" << ::tpy::check_signals;
+    std::cout << "nan first" << " " << ::tpy::print_bool(::std::isnan(::tpy::stdlib::math::checked_fma(::tpystd::math::nan, ::tpystd::math::inf, -(::tpystd::math::inf)))) << "\n" << ::tpy::check_signals;
+    std::cout << "nan second" << " " << ::tpy::print_bool(::std::isnan(::tpy::stdlib::math::checked_fma(::tpystd::math::inf, ::tpystd::math::nan, -(::tpystd::math::inf)))) << "\n" << ::tpy::check_signals;
+    std::cout << "infinity" << " " << ::tpy::print_bool((::tpy::stdlib::math::checked_fma(::tpystd::math::inf, 2.0, ::tpystd::math::inf) == ::tpystd::math::inf)) << "\n" << ::tpy::check_signals;
+    std::cout << "negative infinity" << " " << ::tpy::print_bool((::tpy::stdlib::math::checked_fma(-(::tpystd::math::inf), 2.0, -(::tpystd::math::inf)) == -(::tpystd::math::inf))) << "\n" << ::tpy::check_signals;
     double underflow = ::tpy::stdlib::math::checked_fma(-(5e-324), 0.5, -(0.0));
-    std::cout << "underflow" << " " << ::tpy::print_bool((underflow == 0.0)) << " " << ::tpy::print_bool((::std::copysign(1.0, underflow) == -(1.0))) << "\n";
+    std::cout << "underflow" << " " << ::tpy::print_bool((underflow == 0.0)) << " " << ::tpy::print_bool((::std::copysign(1.0, underflow) == -(1.0))) << "\n" << ::tpy::check_signals;
     double negative_zero = ::tpy::stdlib::math::checked_fma(-(0.0), 2.0, -(0.0));
     double positive_zero = ::tpy::stdlib::math::checked_fma(-(0.0), 2.0, 0.0);
-    std::cout << "zero signs" << " " << ::tpy::print_float(::std::copysign(1.0, negative_zero)) << " " << ::tpy::print_float(::std::copysign(1.0, positive_zero)) << "\n";
+    std::cout << "zero signs" << " " << ::tpy::print_float(::std::copysign(1.0, negative_zero)) << " " << ::tpy::print_float(::std::copysign(1.0, positive_zero)) << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpy::stdlib::math::checked_fma(0.0, ::tpystd::math::inf, 1.0);
-            std::cout << "invalid missed" << "\n";
+            std::cout << "invalid missed" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "invalid ValueError" << "\n";
+            std::cout << "invalid ValueError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::stdlib::math::checked_fma(::tpystd::math::inf, 1.0, -(::tpystd::math::inf));
-            std::cout << "opposed missed" << "\n";
+            std::cout << "opposed missed" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "opposed ValueError" << "\n";
+            std::cout << "opposed ValueError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::stdlib::math::checked_fma(maximum, 2.0, 0.0);
-            std::cout << "overflow missed" << "\n";
+            std::cout << "overflow missed" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OverflowError&) {
-            std::cout << "overflow OverflowError" << "\n";
+            std::cout << "overflow OverflowError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::stdlib::math::checked_fma(-(maximum), 2.0, 0.0);
-            std::cout << "negative overflow missed" << "\n";
+            std::cout << "negative overflow missed" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OverflowError&) {
-            std::cout << "negative overflow OverflowError" << "\n";
+            std::cout << "negative overflow OverflowError" << "\n" << ::tpy::check_signals;
         }
     }
 }

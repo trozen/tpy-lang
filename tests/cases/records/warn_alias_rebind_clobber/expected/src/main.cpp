@@ -26,11 +26,11 @@ void loop_carried_section() {
     int32_t i = 0;
     while ((i < 2)) {
         p = &*(__slot_2 = Point(i));
-        std::cout << "loop_carried_iter:" << " " << ::tpy::deref_check(q).x << "\n";
+        std::cout << "loop_carried_iter:" << " " << ::tpy::deref_check(q).x << "\n" << ::tpy::check_signals;
         q = &(*p);
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "loop_carried:" << " " << q->x << " " << p->x << "\n";
+    std::cout << "loop_carried:" << " " << q->x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # the `for` spelling
@@ -49,10 +49,10 @@ void for_carried_section() {
     Point* q = &(*p);
     for (int32_t i = 0; i < 2; ++i) {
         p = &*(__slot_2 = Point(i));
-        std::cout << "for_carried_iter:" << " " << ::tpy::deref_check(q).x << "\n";
+        std::cout << "for_carried_iter:" << " " << ::tpy::deref_check(q).x << "\n" << ::tpy::check_signals;
         q = &(*p);
     }
-    std::cout << "for_carried:" << " " << q->x << " " << p->x << "\n";
+    std::cout << "for_carried:" << " " << q->x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # The rebind site is reached with storage it does not own on the first
@@ -72,10 +72,10 @@ void foreign_origin_section(std::vector<Point>& xs) {
     Point* q = &(*p);
     for (int32_t i = 0; i < 2; ++i) {
         p = &*(__slot_1 = Point(i));
-        std::cout << "foreign_origin_iter:" << " " << ::tpy::deref_check(q).x << "\n";
+        std::cout << "foreign_origin_iter:" << " " << ::tpy::deref_check(q).x << "\n" << ::tpy::check_signals;
         q = &(*p);
     }
-    std::cout << "foreign_origin:" << " " << q->x << " " << p->x << "\n";
+    std::cout << "foreign_origin:" << " " << q->x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # The loop body's FIRST bind of `p` (hoisted before the loop for the read
@@ -94,10 +94,10 @@ void hoisted_body_bind_section() {
     std::optional<Point> p;
     for (int32_t i = 0; i < 2; ++i) {
         p = Point(i);
-        std::cout << "hoisted_body_bind_iter:" << " " << ::tpy::deref_check(q).x << "\n";
+        std::cout << "hoisted_body_bind_iter:" << " " << ::tpy::deref_check(q).x << "\n" << ::tpy::check_signals;
         q = &(*p);
     }
-    std::cout << "hoisted_body_bind:" << " " << q->x << " " << p->x << "\n";
+    std::cout << "hoisted_body_bind:" << " " << q->x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # Two holders of the body-bound `p`: the scope-escape check warns at each
@@ -129,7 +129,7 @@ void two_alias_section() {
         }
     }
     other->x = ::tpy::add_check<int32_t>(other->x, 100);
-    std::cout << "two_alias:" << " " << saved->x << " " << other->x << "\n";
+    std::cout << "two_alias:" << " " << saved->x << " " << other->x << "\n" << ::tpy::check_signals;
 }
 
 // # The holder is a plain ALIAS of `p` (not a loan pointing INTO it), and it is
@@ -151,11 +151,11 @@ void alias_kind_section() {
     Point* held;
     for (int32_t i = 0; i < 3; ++i) {
         held = p;
-        std::cout << "alias_kind_iter:" << " " << held->x << "\n";
+        std::cout << "alias_kind_iter:" << " " << held->x << "\n" << ::tpy::check_signals;
         p = &*(__slot_2 = Point(i));
     }
     held->x = ::tpy::add_check<int32_t>(held->x, 100);
-    std::cout << "alias_kind:" << " " << held->x << " " << p->x << "\n";
+    std::cout << "alias_kind:" << " " << held->x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

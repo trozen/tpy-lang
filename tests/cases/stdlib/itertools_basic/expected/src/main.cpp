@@ -54,7 +54,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     auto __tmp_2 = ::tpystd::itertools::count(::tpy::BigInt(10), ::tpy::BigInt(5));
     std::cout << ::tpy::ListPrinter(({
         std::vector<::tpy::BigInt> __result;
@@ -66,7 +66,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_2 = ::tpystd::itertools::repeat<int32_t>(7, 3);
@@ -77,7 +77,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_3 = ::tpystd::itertools::repeat<int32_t>(7, 0);
@@ -88,7 +88,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_4 = ::tpystd::itertools::repeat<int32_t>(7, -3);
@@ -99,7 +99,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     auto __tmp_3 = ::tpystd::itertools::repeat<int32_t>(9);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -111,7 +111,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_6 = ::tpystd::itertools::repeat<int32_t>(8, 2);
@@ -122,7 +122,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     auto __tmp_4 = std::array<int32_t, 3>{1, 2, 3};
     auto __tmp_5 = ::tpystd::itertools::cycle<int32_t>(__tmp_4);
     std::cout << ::tpy::ListPrinter(({
@@ -135,7 +135,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> empty = std::vector<int32_t>{};
     auto __tmp_6 = ::tpystd::itertools::cycle<int32_t>(empty);
     std::cout << ::tpy::ListPrinter(({
@@ -148,7 +148,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     auto __tmp_7 = std::array<int32_t, 5>{10, 20, 30, 40, 50};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -160,7 +160,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     auto __tmp_8 = std::array<int32_t, 2>{10, 20};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -172,7 +172,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     auto __tmp_9 = std::array<int32_t, 3>{10, 20, 30};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -184,7 +184,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> nums = {1, 2, 3, 4, 1, 2};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -196,7 +196,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_13 = ::tpystd::itertools::dropwhile<int32_t>([](int32_t n) -> bool { return (n < 3); }, nums);
@@ -207,7 +207,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_14 = ::tpystd::itertools::filterfalse<int32_t>([](int32_t n) -> bool { return ((::tpy::mod_floor<int32_t>(n, 2)) == 0); }, nums);
@@ -218,7 +218,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_15 = ::tpystd::itertools::takewhile<int32_t>([](int32_t n) -> bool { return (n < 100); }, nums);
@@ -229,7 +229,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_16 = ::tpystd::itertools::dropwhile<int32_t>([](int32_t n) -> bool { return (n < 100); }, nums);
@@ -240,7 +240,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     auto __tmp_10 = ::tpystd::itertools::count();
     std::cout << ::tpy::ListPrinter(({
         std::vector<::tpy::BigInt> __result;
@@ -252,7 +252,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     auto __tmp_11 = ::tpystd::itertools::count();
     auto __tmp_12 = ::tpystd::itertools::islice<::tpy::BigInt>(__tmp_11, 8);
     std::cout << ::tpy::ListPrinter(({
@@ -265,7 +265,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
 }
 
 // # itertools: count, repeat, cycle, islice, takewhile, dropwhile, filterfalse

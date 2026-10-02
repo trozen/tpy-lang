@@ -16,7 +16,7 @@ std::vector<int32_t>* G{};
 void global_alias() {
     std::vector<int32_t>& x = (*G);
     x.push_back(9);
-    std::cout << "fn_global_alias" << " " << ::tpy::__len__((*G)) << "\n";
+    std::cout << "fn_global_alias" << " " << ::tpy::__len__((*G)) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -72,7 +72,7 @@ void nested_narrowed(std::vector<int32_t>* o) {
         }
         return -1;
     };
-    std::cout << "nested_narrowed_alias" << " " << inner() << "\n";
+    std::cout << "nested_narrowed_alias" << " " << inner() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -98,11 +98,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen_field_write" << " " << v << "\n";
+            std::cout << "gen_field_write" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     Src __tmp_4 = Src();
-    std::cout << "async_field_write" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_field_write(__tmp_4))) << "\n";
+    std::cout << "async_field_write" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_field_write(__tmp_4))) << "\n" << ::tpy::check_signals;
 }
 
 // import asyncio

@@ -40,7 +40,7 @@ int32_t use(const std::vector<std::tuple<std::optional<::tpy::Bytes>, std::optio
 //     print(use(rows))
 void main() {
     std::vector<std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>> rows = std::vector<std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>>{};
-    std::cout << ::tpyapp::main::use(rows) << "\n";
+    std::cout << ::tpyapp::main::use(rows) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -22,14 +22,14 @@ std::array<::tpy::BigInt, 5>* r7{};
 //     print(r6)
 //     print(r7)
 void main() {
-    std::cout << ::tpy::ListPrinter((*x)) << "\n";
-    std::cout << ::tpy::ListPrinter((*r1)) << "\n";
-    std::cout << ::tpy::SetPrinter((*r2)) << "\n";
-    std::cout << ::tpy::DictPrinter((*r3)) << "\n";
-    std::cout << ::tpy::ListPrinter((*r4)) << "\n";
-    std::cout << ::tpy::ListPrinter((*r5)) << "\n";
-    std::cout << ::tpy::ListPrinter((*r6)) << "\n";
-    std::cout << ::tpy::ListPrinter((*r7)) << "\n";
+    std::cout << ::tpy::ListPrinter((*x)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter((*r1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::SetPrinter((*r2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::DictPrinter((*r3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter((*r4)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter((*r5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter((*r6)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter((*r7)) << "\n" << ::tpy::check_signals;
 }
 
 namespace {

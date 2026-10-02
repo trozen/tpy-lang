@@ -14,7 +14,7 @@ void test_straight() {
     Resource* r = &__slot_1;
     (*r) = Resource("b");
     (*r) = Resource("c");
-    std::cout << "alive:" << " " << r->name << "\n";
+    std::cout << "alive:" << " " << r->name << "\n" << ::tpy::check_signals;
 }
 
 // def test_loop():
@@ -28,7 +28,7 @@ void test_loop() {
     for (int32_t i = 0; i < 3; ++i) {
         (*r) = Resource("loop");
     }
-    std::cout << "alive:" << " " << r->name << "\n";
+    std::cout << "alive:" << " " << r->name << "\n" << ::tpy::check_signals;
 }
 
 // def test_conditional(flag: int32):
@@ -42,7 +42,7 @@ void test_conditional(int32_t flag) {
     if ((flag > 0)) {
         (*r) = Resource("branch");
     }
-    std::cout << "alive:" << " " << r->name << "\n";
+    std::cout << "alive:" << " " << r->name << "\n" << ::tpy::check_signals;
 }
 
 // def test_inherit():
@@ -55,7 +55,7 @@ void test_inherit() {
     Child* c = &__slot_1;
     (*c) = Child("y");
     (*c) = Child("z");
-    std::cout << "alive:" << " " << c->tag << "\n";
+    std::cout << "alive:" << " " << c->tag << "\n" << ::tpy::check_signals;
 }
 
 // test_straight()
@@ -73,13 +73,13 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::main::test_straight();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_loop();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_conditional(1);
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_conditional(0);
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_inherit();
 }
 

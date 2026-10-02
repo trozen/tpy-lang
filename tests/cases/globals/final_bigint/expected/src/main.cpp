@@ -9,7 +9,7 @@ const ::tpy::BigInt BIG_VALUE = ::tpy::BigInt(1000000);
 // def main() -> None:
 //     print(BIG_VALUE)
 void main() {
-    std::cout << BIG_VALUE << "\n";
+    std::cout << BIG_VALUE << "\n" << ::tpy::check_signals;
 }
 
 // main()

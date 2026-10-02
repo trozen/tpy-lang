@@ -31,17 +31,17 @@ void __tpy_init() {
     target = 7;
     attempt = 0;
     while ((attempt != target)) {
-        std::cout << "Enter a guess:" << "\n";
+        std::cout << "Enter a guess:" << "\n" << ::tpy::check_signals;
         attempt = ::pascal_rt::runtime::io::readln_int();
         if ((attempt < target)) {
-            std::cout << "too low" << "\n";
+            std::cout << "too low" << "\n" << ::tpy::check_signals;
         } else {
             if ((attempt > target)) {
-                std::cout << "too high" << "\n";
+                std::cout << "too high" << "\n" << ::tpy::check_signals;
             }
         }
     }
-    std::cout << "Correct!" << "\n";
+    std::cout << "Correct!" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

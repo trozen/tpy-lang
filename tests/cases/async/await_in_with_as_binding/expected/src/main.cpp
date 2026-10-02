@@ -49,7 +49,7 @@ __coro_value value(::tpy::BigInt n) {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             x = std::move(__r0).value();
             __sub_0.reset();
-            std::cout << std::format("{}={}", label, (x).to_string()) << "\n";
+            std::cout << std::format("{}={}", label, (x).to_string()) << "\n" << ::tpy::check_signals;
             __fin_ran_1 = true;
             (*__with_ctx_0).__exit__({}, nullptr, {});
             __state = S_JOIN_0;

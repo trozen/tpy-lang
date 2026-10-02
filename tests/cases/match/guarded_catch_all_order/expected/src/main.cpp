@@ -314,13 +314,13 @@ __gen_steps steps(Color c, bool k) {
 //     for v in steps(Color.GREEN, False):
 //         print("gen_false:", v)
 void main() {
-    std::cout << "enum_first:" << " " << ::tpyapp::main::enum_first(Color::RED, true) << " " << ::tpyapp::main::enum_first(Color::GREEN, true) << " " << ::tpyapp::main::enum_first(Color::GREEN, false) << " " << ::tpyapp::main::enum_first(Color::BLUE, false) << "\n";
-    std::cout << "enum_middle:" << " " << ::tpyapp::main::enum_middle(Color::RED, true) << " " << ::tpyapp::main::enum_middle(Color::GREEN, true) << " " << ::tpyapp::main::enum_middle(Color::BLUE, true) << " " << ::tpyapp::main::enum_middle(Color::BLUE, false) << "\n";
-    std::cout << "int_or_group:" << " " << ::tpyapp::main::int_or_group(2, true) << " " << ::tpyapp::main::int_or_group(2, false) << " " << ::tpyapp::main::int_or_group(7, true) << " " << ::tpyapp::main::int_or_group(7, false) << "\n";
-    std::cout << "int_or_group_last:" << " " << ::tpyapp::main::int_or_group_last(2, true) << " " << ::tpyapp::main::int_or_group_last(7, true) << " " << ::tpyapp::main::int_or_group_last(7, false) << "\n";
-    std::cout << "str_table:" << " " << ::tpyapp::main::str_table("a", true) << " " << ::tpyapp::main::str_table("a", false) << " " << ::tpyapp::main::str_table("ee", false) << " " << ::tpyapp::main::str_table("zz", false) << "\n";
-    std::cout << "opt_enum:" << " " << ::tpyapp::main::opt_enum(std::nullopt, true) << " " << ::tpyapp::main::opt_enum(Color::GREEN, true) << " " << ::tpyapp::main::opt_enum(Color::GREEN, false) << " " << ::tpyapp::main::opt_enum(Color::BLUE, false) << "\n";
-    std::cout << "method:" << " " << Light(Color::GREEN).rank(true) << " " << Light(Color::GREEN).rank(false) << " " << Light(Color::BLUE).rank(false) << "\n";
+    std::cout << "enum_first:" << " " << ::tpyapp::main::enum_first(Color::RED, true) << " " << ::tpyapp::main::enum_first(Color::GREEN, true) << " " << ::tpyapp::main::enum_first(Color::GREEN, false) << " " << ::tpyapp::main::enum_first(Color::BLUE, false) << "\n" << ::tpy::check_signals;
+    std::cout << "enum_middle:" << " " << ::tpyapp::main::enum_middle(Color::RED, true) << " " << ::tpyapp::main::enum_middle(Color::GREEN, true) << " " << ::tpyapp::main::enum_middle(Color::BLUE, true) << " " << ::tpyapp::main::enum_middle(Color::BLUE, false) << "\n" << ::tpy::check_signals;
+    std::cout << "int_or_group:" << " " << ::tpyapp::main::int_or_group(2, true) << " " << ::tpyapp::main::int_or_group(2, false) << " " << ::tpyapp::main::int_or_group(7, true) << " " << ::tpyapp::main::int_or_group(7, false) << "\n" << ::tpy::check_signals;
+    std::cout << "int_or_group_last:" << " " << ::tpyapp::main::int_or_group_last(2, true) << " " << ::tpyapp::main::int_or_group_last(7, true) << " " << ::tpyapp::main::int_or_group_last(7, false) << "\n" << ::tpy::check_signals;
+    std::cout << "str_table:" << " " << ::tpyapp::main::str_table("a", true) << " " << ::tpyapp::main::str_table("a", false) << " " << ::tpyapp::main::str_table("ee", false) << " " << ::tpyapp::main::str_table("zz", false) << "\n" << ::tpy::check_signals;
+    std::cout << "opt_enum:" << " " << ::tpyapp::main::opt_enum(std::nullopt, true) << " " << ::tpyapp::main::opt_enum(Color::GREEN, true) << " " << ::tpyapp::main::opt_enum(Color::GREEN, false) << " " << ::tpyapp::main::opt_enum(Color::BLUE, false) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << Light(Color::GREEN).rank(true) << " " << Light(Color::GREEN).rank(false) << " " << Light(Color::BLUE).rank(false) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::steps(Color::GREEN, true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -328,7 +328,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen_true:" << " " << v << "\n";
+            std::cout << "gen_true:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -338,7 +338,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "gen_false:" << " " << v << "\n";
+            std::cout << "gen_false:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
 }

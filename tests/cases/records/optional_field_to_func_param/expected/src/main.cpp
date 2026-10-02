@@ -13,10 +13,10 @@ Holder* h{};
 //         print("empty")
 void describe(const Point* p) {
     if ((p != nullptr)) {
-        std::cout << p->x << "\n";
-        std::cout << p->y << "\n";
+        std::cout << p->x << "\n" << ::tpy::check_signals;
+        std::cout << p->y << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "empty" << "\n";
+        std::cout << "empty" << "\n" << ::tpy::check_signals;
     }
 }
 

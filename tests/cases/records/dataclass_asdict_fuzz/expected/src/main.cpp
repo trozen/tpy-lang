@@ -64,16 +64,16 @@ namespace tpyapp::main {
 //     print(astuple(ta))
 void main() {
     Point p = Point(1, 2);
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, int32_t>({{"x", p.x}, {"y", p.y}})) << "\n";
-    std::cout << ::tpy::TuplePrinter(std::tuple<int32_t, int32_t>{p.x, p.y}) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, int32_t>({{"x", p.x}, {"y", p.y}})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(std::tuple<int32_t, int32_t>{p.x, p.y}) << "\n" << ::tpy::check_signals;
     Person person = Person("Alice", 30);
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>({{"name", person.name}, {"age", person.age}}))) << "\n";
-    std::cout << ::tpy::TuplePrinter(std::tuple<std::string, int32_t>{person.name, person.age}) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>({{"name", person.name}, {"age", person.age}}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(std::tuple<std::string, int32_t>{person.name, person.age}) << "\n" << ::tpy::check_signals;
     Line line = Line(Point(0, 0), Point(1, 1));
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"start", ::tpy::ordered_map<std::string, int32_t>({{"x", line.start.x}, {"y", line.start.y}})}, {"end", ::tpy::ordered_map<std::string, int32_t>({{"x", line.end.x}, {"y", line.end.y}})}})) << "\n";
-    std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{line.start.x, line.start.y}, std::tuple<int32_t, int32_t>{line.end.x, line.end.y}}) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"start", ::tpy::ordered_map<std::string, int32_t>({{"x", line.start.x}, {"y", line.start.y}})}, {"end", ::tpy::ordered_map<std::string, int32_t>({{"x", line.end.x}, {"y", line.end.y}})}})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{line.start.x, line.start.y}, std::tuple<int32_t, int32_t>{line.end.x, line.end.y}}) << "\n" << ::tpy::check_signals;
     NamedPoint np = NamedPoint("origin", Point(0, 0));
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", np.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", np.pos.x}, {"y", np.pos.y}})}}))) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", np.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", np.pos.x}, {"y", np.pos.y}})}}))) << "\n" << ::tpy::check_signals;
     Polygon poly = Polygon({Point(0, 0), Point(1, 0), Point(0, 1)});
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>({{"vertices", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
@@ -86,7 +86,7 @@ void main() {
             __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_1.x}, {"y", __macro_1.y}}));
         }
         std::move(__result);
-    })}})) << "\n";
+    })}})) << "\n" << ::tpy::check_signals;
     Drawing d = Drawing("sketch", {Point(1, 2)});
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>({{"title", d.title}, {"shapes", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
@@ -99,11 +99,11 @@ void main() {
             __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_1.x}, {"y", __macro_1.y}}));
         }
         std::move(__result);
-    })}}))) << "\n";
+    })}}))) << "\n" << ::tpy::check_signals;
     Wrapper w = Wrapper(NamedPoint("deep", Point(9, 8)));
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>>({{"inner", ::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", w.inner.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", w.inner.pos.x}, {"y", w.inner.pos.y}})}}))}})) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>>({{"inner", ::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", w.inner.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", w.inner.pos.x}, {"y", w.inner.pos.y}})}}))}})) << "\n" << ::tpy::check_signals;
     MaybeNamed m = MaybeNamed("test");
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>({{"name", m.name}, {"value", m.value}}))) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>({{"name", m.name}, {"value", m.value}}))) << "\n" << ::tpy::check_signals;
     Container c = Container(std::vector<Point>{});
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>({{"items", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
@@ -116,7 +116,7 @@ void main() {
             __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_1.x}, {"y", __macro_1.y}}));
         }
         std::move(__result);
-    })}})) << "\n";
+    })}})) << "\n" << ::tpy::check_signals;
     MultiList ml = MultiList({Point(1, 2)}, {"a", "b"});
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::ordered_map<std::string, int32_t>>, std::vector<std::string>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::ordered_map<std::string, int32_t>>, std::vector<std::string>>>({{"points", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
@@ -129,7 +129,7 @@ void main() {
             __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_1.x}, {"y", __macro_1.y}}));
         }
         std::move(__result);
-    })}, {"labels", ml.labels}}))) << "\n";
+    })}, {"labels", ml.labels}}))) << "\n" << ::tpy::check_signals;
     DictOfDC dd = DictOfDC(::tpy::ordered_map<std::string, Point>({{"origin", Point(0, 0)}, {"end", Point(1, 2)}}));
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"items", ({
         ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> __result;
@@ -143,7 +143,7 @@ void main() {
             __result.insert_or_assign(__macro_1, ::tpy::ordered_map<std::string, int32_t>({{"x", __macro_2.x}, {"y", __macro_2.y}}));
         }
         std::move(__result);
-    })}})) << "\n";
+    })}})) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::TuplePrinter(std::tuple<::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>>>(({
         ::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>> __result;
         auto __obj_5 = ::tpy::dict_items(dd.items);
@@ -156,13 +156,13 @@ void main() {
             __result.insert_or_assign(__macro_1, std::tuple<int32_t, int32_t>{__macro_2.x, __macro_2.y});
         }
         std::move(__result);
-    }))) << "\n";
+    }))) << "\n" << ::tpy::check_signals;
     TupleMixed tm = TupleMixed(::tpy::tuple_value_to_borrow<std::tuple<Point*, int32_t>>(std::tuple<Point, int32_t>{Point(1, 2), 42}));
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>>({{"pair", ::tpy::tuple_to_storage<std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>>(std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(tm.pair).x}, {"y", std::get<0>(tm.pair).y}}), std::get<1>(tm.pair)})}})) << "\n";
-    std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<std::tuple<int32_t, int32_t>, int32_t>>(std::tuple<std::tuple<int32_t, int32_t>, int32_t>{std::tuple<int32_t, int32_t>{std::get<0>(tm.pair).x, std::get<0>(tm.pair).y}, std::get<1>(tm.pair)})) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>>({{"pair", ::tpy::tuple_to_storage<std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>>(std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(tm.pair).x}, {"y", std::get<0>(tm.pair).y}}), std::get<1>(tm.pair)})}})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<std::tuple<int32_t, int32_t>, int32_t>>(std::tuple<std::tuple<int32_t, int32_t>, int32_t>{std::tuple<int32_t, int32_t>{std::get<0>(tm.pair).x, std::get<0>(tm.pair).y}, std::get<1>(tm.pair)})) << "\n" << ::tpy::check_signals;
     TupleAllDC ta = TupleAllDC(::tpy::tuple_value_to_borrow<std::tuple<Point*, Point*>>(std::tuple<Point, Point>{Point(1, 2), Point(3, 4)}));
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>>({{"pair", ::tpy::tuple_to_storage<std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>>(std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(ta.pair).x}, {"y", std::get<0>(ta.pair).y}}), ::tpy::ordered_map<std::string, int32_t>({{"x", std::get<1>(ta.pair).x}, {"y", std::get<1>(ta.pair).y}})})}})) << "\n";
-    std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>(std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{std::get<0>(ta.pair).x, std::get<0>(ta.pair).y}, std::tuple<int32_t, int32_t>{std::get<1>(ta.pair).x, std::get<1>(ta.pair).y}})) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>>({{"pair", ::tpy::tuple_to_storage<std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>>(std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(ta.pair).x}, {"y", std::get<0>(ta.pair).y}}), ::tpy::ordered_map<std::string, int32_t>({{"x", std::get<1>(ta.pair).x}, {"y", std::get<1>(ta.pair).y}})})}})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>(std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{std::get<0>(ta.pair).x, std::get<0>(ta.pair).y}, std::tuple<int32_t, int32_t>{std::get<1>(ta.pair).x, std::get<1>(ta.pair).y}})) << "\n" << ::tpy::check_signals;
 }
 
 // # Fuzz-style coverage of asdict()/astuple() across nested, list, dict, and tuple field types

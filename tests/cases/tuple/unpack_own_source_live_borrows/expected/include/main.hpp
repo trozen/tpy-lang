@@ -135,7 +135,7 @@ inline void H::live_in_method() const {
     auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t k = std::get<1>(__tup_1);
     x.n = 9;
-    std::cout << "live_in_method" << " " << std::get<0>(t).n << " " << k << "\n";
+    std::cout << "live_in_method" << " " << std::get<0>(t).n << " " << k << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

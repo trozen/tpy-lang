@@ -169,22 +169,22 @@ bool left_operand(bool flag) {
 //     print("comp_taken", comp_taken)
 //     print("left", left_operand(True), left_operand(False))
 void main() {
-    std::cout << "and" << " " << ::tpy::print_bool(::tpyapp::main::and_rhs(false)) << " " << ::tpy::print_bool(::tpyapp::main::and_rhs(true)) << "\n";
-    std::cout << "and_hatch" << " " << ::tpy::print_bool(::tpyapp::main::and_rhs_hatch(false)) << " " << ::tpy::print_bool(::tpyapp::main::and_rhs_hatch(true)) << "\n";
-    std::cout << "or" << " " << ::tpy::print_bool(::tpyapp::main::or_rhs(true)) << " " << ::tpy::print_bool(::tpyapp::main::or_rhs(false)) << "\n";
-    std::cout << "or_hatch" << " " << ::tpy::print_bool(::tpyapp::main::or_rhs_hatch(true)) << " " << ::tpy::print_bool(::tpyapp::main::or_rhs_hatch(false)) << "\n";
-    std::cout << "ternary" << " " << ::tpyapp::main::ternary_arm(false) << " " << ::tpyapp::main::ternary_arm(true) << "\n";
-    std::cout << "ternary_hatch" << " " << ::tpyapp::main::ternary_arm_hatch(false) << " " << ::tpyapp::main::ternary_arm_hatch(true) << "\n";
-    std::cout << "chained" << " " << ::tpy::print_bool(::tpyapp::main::chained(5, 1)) << " " << ::tpy::print_bool(::tpyapp::main::chained(0, 5)) << "\n";
-    std::cout << "chained_hatch" << " " << ::tpy::print_bool(::tpyapp::main::chained_hatch(5, 1)) << " " << ::tpy::print_bool(::tpyapp::main::chained_hatch(0, 5)) << "\n";
-    std::cout << "refparam" << " " << ::tpy::print_bool(::tpyapp::main::ref_param(true)) << " " << ::tpy::print_bool(::tpyapp::main::ref_param(false)) << "\n";
-    std::cout << "refparam_hatch" << " " << ::tpy::print_bool(::tpyapp::main::ref_param_hatch(true)) << " " << ::tpy::print_bool(::tpyapp::main::ref_param_hatch(false)) << "\n";
-    std::cout << "own" << " " << ::tpy::print_bool(::tpyapp::main::own_param(true)) << " " << ::tpy::print_bool(::tpyapp::main::own_param(false)) << "\n";
+    std::cout << "and" << " " << ::tpy::print_bool(::tpyapp::main::and_rhs(false)) << " " << ::tpy::print_bool(::tpyapp::main::and_rhs(true)) << "\n" << ::tpy::check_signals;
+    std::cout << "and_hatch" << " " << ::tpy::print_bool(::tpyapp::main::and_rhs_hatch(false)) << " " << ::tpy::print_bool(::tpyapp::main::and_rhs_hatch(true)) << "\n" << ::tpy::check_signals;
+    std::cout << "or" << " " << ::tpy::print_bool(::tpyapp::main::or_rhs(true)) << " " << ::tpy::print_bool(::tpyapp::main::or_rhs(false)) << "\n" << ::tpy::check_signals;
+    std::cout << "or_hatch" << " " << ::tpy::print_bool(::tpyapp::main::or_rhs_hatch(true)) << " " << ::tpy::print_bool(::tpyapp::main::or_rhs_hatch(false)) << "\n" << ::tpy::check_signals;
+    std::cout << "ternary" << " " << ::tpyapp::main::ternary_arm(false) << " " << ::tpyapp::main::ternary_arm(true) << "\n" << ::tpy::check_signals;
+    std::cout << "ternary_hatch" << " " << ::tpyapp::main::ternary_arm_hatch(false) << " " << ::tpyapp::main::ternary_arm_hatch(true) << "\n" << ::tpy::check_signals;
+    std::cout << "chained" << " " << ::tpy::print_bool(::tpyapp::main::chained(5, 1)) << " " << ::tpy::print_bool(::tpyapp::main::chained(0, 5)) << "\n" << ::tpy::check_signals;
+    std::cout << "chained_hatch" << " " << ::tpy::print_bool(::tpyapp::main::chained_hatch(5, 1)) << " " << ::tpy::print_bool(::tpyapp::main::chained_hatch(0, 5)) << "\n" << ::tpy::check_signals;
+    std::cout << "refparam" << " " << ::tpy::print_bool(::tpyapp::main::ref_param(true)) << " " << ::tpy::print_bool(::tpyapp::main::ref_param(false)) << "\n" << ::tpy::check_signals;
+    std::cout << "refparam_hatch" << " " << ::tpy::print_bool(::tpyapp::main::ref_param_hatch(true)) << " " << ::tpy::print_bool(::tpyapp::main::ref_param_hatch(false)) << "\n" << ::tpy::check_signals;
+    std::cout << "own" << " " << ::tpy::print_bool(::tpyapp::main::own_param(true)) << " " << ::tpy::print_bool(::tpyapp::main::own_param(false)) << "\n" << ::tpy::check_signals;
     bool comp_skipped = ::tpyapp::main::comp_rhs(true);
-    std::cout << "comp_skipped" << " " << ::tpy::print_bool(comp_skipped) << "\n";
+    std::cout << "comp_skipped" << " " << ::tpy::print_bool(comp_skipped) << "\n" << ::tpy::check_signals;
     bool comp_taken = ::tpyapp::main::comp_rhs(false);
-    std::cout << "comp_taken" << " " << ::tpy::print_bool(comp_taken) << "\n";
-    std::cout << "left" << " " << ::tpy::print_bool(::tpyapp::main::left_operand(true)) << " " << ::tpy::print_bool(::tpyapp::main::left_operand(false)) << "\n";
+    std::cout << "comp_taken" << " " << ::tpy::print_bool(comp_taken) << "\n" << ::tpy::check_signals;
+    std::cout << "left" << " " << ::tpy::print_bool(::tpyapp::main::left_operand(true)) << " " << ::tpy::print_bool(::tpyapp::main::left_operand(false)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

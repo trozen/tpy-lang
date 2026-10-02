@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(apply(lambda x: x * 2, 5))
 //     print(apply(lambda x: x, 0))
 void main() {
-    std::cout << ::tpyapp::main::apply([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, 10) << "\n";
-    std::cout << ::tpyapp::main::apply([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); }, 5) << "\n";
-    std::cout << ::tpyapp::main::apply([](int32_t x) -> int32_t { return x; }, 0) << "\n";
+    std::cout << ::tpyapp::main::apply([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, 10) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::apply([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); }, 5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::apply([](int32_t x) -> int32_t { return x; }, 0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

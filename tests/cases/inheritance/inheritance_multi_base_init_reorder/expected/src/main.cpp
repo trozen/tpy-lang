@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(c.b)
 void main() {
     Child c = Child(1, 2);
-    std::cout << c.a << "\n";
-    std::cout << c.b << "\n";
+    std::cout << c.a << "\n" << ::tpy::check_signals;
+    std::cout << c.b << "\n" << ::tpy::check_signals;
 }
 
 // main()

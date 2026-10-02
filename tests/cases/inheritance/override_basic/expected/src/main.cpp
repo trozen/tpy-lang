@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(s.describe())
 void main() {
     Square s = Square(4);
-    std::cout << s.area() << "\n";
-    std::cout << s.describe() << "\n";
+    std::cout << s.area() << "\n" << ::tpy::check_signals;
+    std::cout << s.describe() << "\n" << ::tpy::check_signals;
 }
 
 // main()

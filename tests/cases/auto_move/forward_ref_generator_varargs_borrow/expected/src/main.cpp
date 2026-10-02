@@ -73,38 +73,38 @@ void main() {
     std::array<const std::vector<int32_t>*, 2> __tmp_1{&a, &b};
     __gen_gen g = ::tpyapp::main::gen(::tpy::varargs<const std::vector<int32_t>>(__tmp_1));
     std::vector<int32_t> __tmp_2 = a;
-    std::cout << "gen:" << " " << ::tpyapp::main::drop(std::move(__tmp_2)) << "\n";
+    std::cout << "gen:" << " " << ::tpyapp::main::drop(std::move(__tmp_2)) << "\n" << ::tpy::check_signals;
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen:" << " " << v << "\n";
+        std::cout << "gen:" << " " << v << "\n" << ::tpy::check_signals;
     }
     std::vector<int32_t> c = {5, 6};
     std::vector<int32_t> d = {7};
     std::array<std::vector<int32_t>*, 2> __tmp_3{&c, &d};
     std::vector<int32_t>& r = ::tpyapp::main::first(::tpy::varargs<std::vector<int32_t>>(__tmp_3));
     std::vector<int32_t> __tmp_4 = c;
-    std::cout << "plain:" << " " << ::tpyapp::main::drop(std::move(__tmp_4)) << "\n";
+    std::cout << "plain:" << " " << ::tpyapp::main::drop(std::move(__tmp_4)) << "\n" << ::tpy::check_signals;
     r.push_back(99);
-    std::cout << "plain:" << " " << ::tpy::__len__(c) << " " << ::tpy::__len__(r) << "\n";
-    std::cout << "method:" << " " << Caller().run() << "\n";
+    std::cout << "plain:" << " " << ::tpy::__len__(c) << " " << ::tpy::__len__(r) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << Caller().run() << "\n" << ::tpy::check_signals;
     std::vector<int32_t> e = {1, 2};
     std::vector<int32_t> f = {3};
     std::vector<int32_t> h = {4, 5, 6, 7};
     std::array<const std::vector<int32_t>*, 2> __tmp_5{&e, &f};
     __gen_kwgen gk = ::tpyapp::main::kwgen(::tpy::varargs<const std::vector<int32_t>>(__tmp_5), h);
     std::vector<int32_t> __tmp_6 = h;
-    std::cout << "kwonly:" << " " << ::tpyapp::main::drop(std::move(__tmp_6)) << "\n";
+    std::cout << "kwonly:" << " " << ::tpyapp::main::drop(std::move(__tmp_6)) << "\n" << ::tpy::check_signals;
     auto& __src_2 = gk;
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "kwonly:" << " " << v << "\n";
+        std::cout << "kwonly:" << " " << v << "\n" << ::tpy::check_signals;
     }
     std::vector<int32_t> p = {1, 2};
     std::vector<int32_t> q = {3};
@@ -112,31 +112,31 @@ void main() {
     std::array<const std::vector<int32_t>*, 2> __tmp_7{&p, &q};
     __gen_kwgen gp = ::tpyapp::main::kwgen(::tpy::varargs<const std::vector<int32_t>>(__tmp_7), s);
     std::vector<int32_t> __tmp_8 = p;
-    std::cout << "kwpack:" << " " << ::tpyapp::main::drop(std::move(__tmp_8)) << "\n";
+    std::cout << "kwpack:" << " " << ::tpyapp::main::drop(std::move(__tmp_8)) << "\n" << ::tpy::check_signals;
     auto& __src_4 = gp;
     auto&& __itr_4 = ::tpy::__iter__(__src_4);
     for (;;) {
         auto __r_5 = __itr_4.__next__();
         if (!__r_5.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_5);
-        std::cout << "kwpack:" << " " << v << "\n";
+        std::cout << "kwpack:" << " " << v << "\n" << ::tpy::check_signals;
     }
     std::vector<int32_t> t = {8, 9, 10};
     std::vector<int32_t> u = {11};
     std::array<std::vector<int32_t>*, 2> __tmp_9{&t, &u};
     std::vector<int32_t>& fr = ::tpyapp::main::forward(::tpy::varargs<std::vector<int32_t>>(__tmp_9));
     std::vector<int32_t> __tmp_10 = t;
-    std::cout << "fwd:" << " " << ::tpyapp::main::drop(std::move(__tmp_10)) << "\n";
+    std::cout << "fwd:" << " " << ::tpyapp::main::drop(std::move(__tmp_10)) << "\n" << ::tpy::check_signals;
     fr.push_back(99);
-    std::cout << "fwd:" << " " << ::tpy::__len__(t) << " " << ::tpy::__len__(fr) << "\n";
+    std::cout << "fwd:" << " " << ::tpy::__len__(t) << " " << ::tpy::__len__(fr) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> w = {1, 2};
     std::vector<int32_t> y = {3};
     std::array<std::vector<int32_t>*, 2> __tmp_11{&w, &y};
     std::vector<int32_t>& f2 = ::tpyapp::main::forward2(::tpy::varargs<std::vector<int32_t>>(__tmp_11));
     std::vector<int32_t> __tmp_12 = w;
-    std::cout << "fwd2:" << " " << ::tpyapp::main::drop(std::move(__tmp_12)) << "\n";
+    std::cout << "fwd2:" << " " << ::tpyapp::main::drop(std::move(__tmp_12)) << "\n" << ::tpy::check_signals;
     f2.push_back(99);
-    std::cout << "fwd2:" << " " << ::tpy::__len__(w) << " " << ::tpy::__len__(f2) << "\n";
+    std::cout << "fwd2:" << " " << ::tpy::__len__(w) << " " << ::tpy::__len__(f2) << "\n" << ::tpy::check_signals;
 }
 
 

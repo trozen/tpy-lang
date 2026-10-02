@@ -21,10 +21,10 @@ void test_char_literals() {
     char b = 'B';
     char space = ' ';
     char newline = '\n';
-    std::cout << a << "\n";
-    std::cout << b << "\n";
-    std::cout << space;
-    std::cout << "x" << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
+    std::cout << space << ::tpy::check_signals;
+    std::cout << "x" << "\n" << ::tpy::check_signals;
 }
 
 // def test_char_from_string_index() -> None:
@@ -43,9 +43,9 @@ void test_char_from_string_index() {
     char c0 = ::tpy::__getitem__(text, 0);
     char c1 = ::tpy::__getitem__(text, 1);
     char c4 = ::tpy::__getitem__(text, 4);
-    std::cout << c0 << "\n";
-    std::cout << c1 << "\n";
-    std::cout << c4 << "\n";
+    std::cout << c0 << "\n" << ::tpy::check_signals;
+    std::cout << c1 << "\n" << ::tpy::check_signals;
+    std::cout << c4 << "\n" << ::tpy::check_signals;
 }
 
 // def test_char_comparison() -> None:
@@ -84,27 +84,27 @@ void test_char_comparison() {
     char b = 'b';
     char a2 = 'a';
     if ((a == a2)) {
-        std::cout << "a == a: yes" << "\n";
+        std::cout << "a == a: yes" << "\n" << ::tpy::check_signals;
     }
     if ((a == b)) {
-        std::cout << "a == b: yes" << "\n";
+        std::cout << "a == b: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "a == b: no" << "\n";
+        std::cout << "a == b: no" << "\n" << ::tpy::check_signals;
     }
     if ((a != b)) {
-        std::cout << "a != b: yes" << "\n";
+        std::cout << "a != b: yes" << "\n" << ::tpy::check_signals;
     }
     if ((a < b)) {
-        std::cout << "a < b: yes" << "\n";
+        std::cout << "a < b: yes" << "\n" << ::tpy::check_signals;
     }
     if ((b > a)) {
-        std::cout << "b > a: yes" << "\n";
+        std::cout << "b > a: yes" << "\n" << ::tpy::check_signals;
     }
     if ((a <= a2)) {
-        std::cout << "a <= a: yes" << "\n";
+        std::cout << "a <= a: yes" << "\n" << ::tpy::check_signals;
     }
     if ((b >= a)) {
-        std::cout << "b >= a: yes" << "\n";
+        std::cout << "b >= a: yes" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -126,12 +126,12 @@ void test_char_in_string() {
     char target = 'o';
     char missing = 'z';
     if ((text.find(target) != std::string::npos)) {
-        std::cout << "o in text: yes" << "\n";
+        std::cout << "o in text: yes" << "\n" << ::tpy::check_signals;
     }
     if ((text.find(missing) != std::string::npos)) {
-        std::cout << "z in text: yes" << "\n";
+        std::cout << "z in text: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "z in text: no" << "\n";
+        std::cout << "z in text: no" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -204,20 +204,20 @@ int32_t count_vowels(std::string_view text) {
 //         print("x is not vowel")
 void test_char_function_param() {
     if (::tpyapp::main::is_vowel('a')) {
-        std::cout << "a is vowel" << "\n";
+        std::cout << "a is vowel" << "\n" << ::tpy::check_signals;
     }
     if (::tpyapp::main::is_vowel('b')) {
-        std::cout << "b is vowel" << "\n";
+        std::cout << "b is vowel" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "b is not vowel" << "\n";
+        std::cout << "b is not vowel" << "\n" << ::tpy::check_signals;
     }
     if (::tpyapp::main::is_vowel('e')) {
-        std::cout << "e is vowel" << "\n";
+        std::cout << "e is vowel" << "\n" << ::tpy::check_signals;
     }
     if (::tpyapp::main::is_vowel('x')) {
-        std::cout << "x is vowel" << "\n";
+        std::cout << "x is vowel" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "x is not vowel" << "\n";
+        std::cout << "x is not vowel" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -233,7 +233,7 @@ void test_char_iteration() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char c = *__beg_0;
-        std::cout << c << "\n";
+        std::cout << c << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -244,10 +244,10 @@ void test_char_iteration() {
 //     print(count_vowels("aeiou"))
 //     print(count_vowels("xyz"))
 void test_vowel_counting() {
-    std::cout << ::tpyapp::main::count_vowels("hello") << "\n";
-    std::cout << ::tpyapp::main::count_vowels("world") << "\n";
-    std::cout << ::tpyapp::main::count_vowels("aeiou") << "\n";
-    std::cout << ::tpyapp::main::count_vowels("xyz") << "\n";
+    std::cout << ::tpyapp::main::count_vowels("hello") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::count_vowels("world") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::count_vowels("aeiou") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::count_vowels("xyz") << "\n" << ::tpy::check_signals;
 }
 
 // def test_chr_function() -> None:
@@ -267,13 +267,13 @@ void test_vowel_counting() {
 void test_chr_function() {
     char c65 = static_cast<char>(65);
     char c97 = static_cast<char>(97);
-    std::cout << c65 << "\n";
-    std::cout << c97 << "\n";
+    std::cout << c65 << "\n" << ::tpy::check_signals;
+    std::cout << c97 << "\n" << ::tpy::check_signals;
     if ((c65 == 'A')) {
-        std::cout << "chr(65) == A: yes" << "\n";
+        std::cout << "chr(65) == A: yes" << "\n" << ::tpy::check_signals;
     }
     if ((c97 == 'a')) {
-        std::cout << "chr(97) == a: yes" << "\n";
+        std::cout << "chr(97) == a: yes" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -281,7 +281,7 @@ void test_chr_function() {
 //     """Function that takes str parameter."""
 //     print(s)
 void accepts_str(std::string_view s) {
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_char_to_str_coercion() -> None:
@@ -300,12 +300,12 @@ void accepts_str(std::string_view s) {
 //         print("a < b")
 void test_char_to_str_coercion() {
     std::string_view s1 = "x";
-    std::cout << s1 << "\n";
+    std::cout << s1 << "\n" << ::tpy::check_signals;
     ::tpyapp::main::accepts_str("w");
     std::string_view a = "a";
     std::string_view b = "b";
     if ((a < b)) {
-        std::cout << "a < b" << "\n";
+        std::cout << "a < b" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -334,23 +334,23 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << "=== literals ===" << "\n";
+    std::cout << "=== literals ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_char_literals();
-    std::cout << "=== from index ===" << "\n";
+    std::cout << "=== from index ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_char_from_string_index();
-    std::cout << "=== comparison ===" << "\n";
+    std::cout << "=== comparison ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_char_comparison();
-    std::cout << "=== in string ===" << "\n";
+    std::cout << "=== in string ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_char_in_string();
-    std::cout << "=== function param ===" << "\n";
+    std::cout << "=== function param ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_char_function_param();
-    std::cout << "=== iteration ===" << "\n";
+    std::cout << "=== iteration ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_char_iteration();
-    std::cout << "=== vowel counting ===" << "\n";
+    std::cout << "=== vowel counting ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_vowel_counting();
-    std::cout << "=== chr function ===" << "\n";
+    std::cout << "=== chr function ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_chr_function();
-    std::cout << "=== char to str ===" << "\n";
+    std::cout << "=== char to str ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_char_to_str_coercion();
 }
 

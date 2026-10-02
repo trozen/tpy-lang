@@ -40,11 +40,11 @@ bool run() {
 //     s = "ok"
 //     print(amb(s))
 void main() {
-    std::cout << ((::tpyapp::main::run()) ? (1) : (0)) << "\n";
-    std::cout << ((::tpyapp::helpermod::paint(::tpyapp::helpermod::Color::RED)) ? (1) : (0)) << "\n";
-    std::cout << ((::tpyapp::main::amb(true)) ? (1) : (0)) << "\n";
+    std::cout << ((::tpyapp::main::run()) ? (1) : (0)) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpyapp::helpermod::paint(::tpyapp::helpermod::Color::RED)) ? (1) : (0)) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpyapp::main::amb(true)) ? (1) : (0)) << "\n" << ::tpy::check_signals;
     std::string_view s = "ok";
-    std::cout << ::tpyapp::main::amb(s) << "\n";
+    std::cout << ::tpyapp::main::amb(s) << "\n" << ::tpy::check_signals;
 }
 
 // from helpermod import paint, Color, paint as painter

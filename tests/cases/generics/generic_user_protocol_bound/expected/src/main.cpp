@@ -17,11 +17,11 @@ namespace tpyapp::main {
 //     print(extract_str(sbox))
 void main() {
     IntBox box = IntBox(42);
-    std::cout << ::tpyapp::main::extract<IntBox>(box) << "\n";
+    std::cout << ::tpyapp::main::extract<IntBox>(box) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::update<IntBox>(box, 100);
-    std::cout << ::tpyapp::main::extract<IntBox>(box) << "\n";
+    std::cout << ::tpyapp::main::extract<IntBox>(box) << "\n" << ::tpy::check_signals;
     StrBox sbox = StrBox("hello");
-    std::cout << ::tpyapp::main::extract_str<StrBox>(sbox) << "\n";
+    std::cout << ::tpyapp::main::extract_str<StrBox>(sbox) << "\n" << ::tpy::check_signals;
 }
 
 // """Test generic user-defined protocol as type parameter bound.

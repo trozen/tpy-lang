@@ -24,7 +24,7 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            std::cout << "not reached" << "\n";
+            std::cout << "not reached" << "\n" << ::tpy::check_signals;
             __fin_ran_1 = true;
             this->__finally_0();
             __state = S_JOIN_0;
@@ -46,7 +46,7 @@ namespace tpyapp::main {
         [[fallthrough]];
     case S_JOIN_1: {
         try {
-            std::cout << "serving" << "\n";
+            std::cout << "serving" << "\n" << ::tpy::check_signals;
             ::tpystd::signal::raise_signal(::tpy_const_sigint);
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(10.0)));
             __state = S_RESUME_0;
@@ -66,7 +66,7 @@ namespace tpyapp::main {
 }
 
 void __coro_serve::__finally_0() {
-    std::cout << "shutdown cleanup" << "\n";
+    std::cout << "shutdown cleanup" << "\n" << ::tpy::check_signals;
 }
 
 // async def serve() -> None:
@@ -84,9 +84,9 @@ void main() {
     {
         try {
             ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::serve()));
-            std::cout << "run returned normally" << "\n";
+            std::cout << "run returned normally" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::KeyboardInterrupt&) {
-            std::cout << "caught KeyboardInterrupt" << "\n";
+            std::cout << "caught KeyboardInterrupt" << "\n" << ::tpy::check_signals;
         }
     }
 }

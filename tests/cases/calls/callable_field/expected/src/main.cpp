@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     h.trigger(10)
 //     h.trigger(20)
 void main() {
-    Handler h = Handler([](int32_t x) { std::cout << "event:" << " " << x << "\n"; });
+    Handler h = Handler([](int32_t x) { std::cout << "event:" << " " << x << "\n" << ::tpy::check_signals; });
     h.trigger(10);
     h.trigger(20);
 }

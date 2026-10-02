@@ -14,11 +14,11 @@ namespace tpyapp::main {
 //     print(s[:])
 void test_basic() {
     std::string_view s = "hello world";
-    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{0, 5}) << "\n";
-    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{6, 11}) << "\n";
-    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{6, std::nullopt}) << "\n";
-    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{std::nullopt, 5}) << "\n";
-    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{std::nullopt, std::nullopt}) << "\n";
+    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{0, 5}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{6, 11}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{6, std::nullopt}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{std::nullopt, 5}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{std::nullopt, std::nullopt}) << "\n" << ::tpy::check_signals;
 }
 
 // def test_negative() -> None:
@@ -29,10 +29,10 @@ void test_basic() {
 //     print(s[-6:])
 void test_negative() {
     std::string_view s = "abcdef";
-    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-3, std::nullopt}) << "\n";
-    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{std::nullopt, -2}) << "\n";
-    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-4, -1}) << "\n";
-    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-6, std::nullopt}) << "\n";
+    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-3, std::nullopt}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{std::nullopt, -2}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-4, -1}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-6, std::nullopt}) << "\n" << ::tpy::check_signals;
 }
 
 // def test_clamping() -> None:
@@ -43,10 +43,10 @@ void test_negative() {
 //     print(s[10:20])
 void test_clamping() {
     std::string_view s = "hello";
-    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{0, 100}) << "\n";
-    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-100, 3}) << "\n";
-    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-100, 100}) << "\n";
-    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{10, 20}) << "\n";
+    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{0, 100}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-100, 3}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-100, 100}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{10, 20}) << "\n" << ::tpy::check_signals;
 }
 
 // def test_empty() -> None:
@@ -56,9 +56,9 @@ void test_clamping() {
 //     print(len(s[2:2]))
 void test_empty() {
     std::string_view s = "hello";
-    std::cout << ::tpy::__len__(::tpy::str_slice(s, ::tpy::BasicSlice{3, 1})) << "\n";
-    std::cout << ::tpy::__len__(::tpy::str_slice(s, ::tpy::BasicSlice{5, 5})) << "\n";
-    std::cout << ::tpy::__len__(::tpy::str_slice(s, ::tpy::BasicSlice{2, 2})) << "\n";
+    std::cout << ::tpy::__len__(::tpy::str_slice(s, ::tpy::BasicSlice{3, 1})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(::tpy::str_slice(s, ::tpy::BasicSlice{5, 5})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(::tpy::str_slice(s, ::tpy::BasicSlice{2, 2})) << "\n" << ::tpy::check_signals;
 }
 
 // def test_param(s: str) -> None:
@@ -66,7 +66,7 @@ void test_empty() {
 //     print(r)
 void test_param(std::string_view s) {
     std::string_view r = ::tpy::str_slice(s, ::tpy::BasicSlice{1, 4});
-    std::cout << r << "\n";
+    std::cout << r << "\n" << ::tpy::check_signals;
 }
 
 // def test_local_type() -> None:
@@ -76,7 +76,7 @@ void test_param(std::string_view s) {
 void test_local_type() {
     std::string_view s = "abcdef";
     std::string_view r = ::tpy::str_slice(s, ::tpy::BasicSlice{1, 3});
-    std::cout << r << "\n";
+    std::cout << r << "\n" << ::tpy::check_signals;
 }
 
 // def test_single_char() -> None:
@@ -85,8 +85,8 @@ void test_local_type() {
 //     print(s[-1:])
 void test_single_char() {
     std::string_view s = "hello";
-    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{0, 1}) << "\n";
-    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-1, std::nullopt}) << "\n";
+    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{0, 1}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-1, std::nullopt}) << "\n" << ::tpy::check_signals;
 }
 
 // test_basic()
@@ -108,17 +108,17 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::main::test_basic();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_negative();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_clamping();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_empty();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_param("abcdef");
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_local_type();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_single_char();
 }
 

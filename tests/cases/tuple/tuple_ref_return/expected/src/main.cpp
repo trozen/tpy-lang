@@ -21,10 +21,10 @@ std::tuple<Point*, bool> find(Point& p) {
 void main() {
     Point p = Point(1, 2);
     auto result = ::tpyapp::main::find(p);
-    std::cout << (*std::get<0>(result)) << "\n";
-    std::cout << ::tpy::print_bool(std::get<1>(result)) << "\n";
+    std::cout << (*std::get<0>(result)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(std::get<1>(result)) << "\n" << ::tpy::check_signals;
     p.x = 42;
-    std::cout << (*std::get<0>(result)) << "\n";
+    std::cout << (*std::get<0>(result)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

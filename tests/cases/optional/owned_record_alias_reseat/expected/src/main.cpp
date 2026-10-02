@@ -34,7 +34,7 @@ void free_reseat(bool flag) {
         current->value = 7;
     }
     if ((saved != nullptr)) {
-        std::cout << "free shared:" << " " << saved->value << "\n";
+        std::cout << "free shared:" << " " << saved->value << "\n" << ::tpy::check_signals;
     }
     if (flag) {
         current = &*(__slot_2 = Cell(2));
@@ -45,11 +45,11 @@ void free_reseat(bool flag) {
         saved->value = 9;
     }
     if ((current != nullptr)) {
-        std::cout << "free replacement:" << " " << current->value << "\n";
+        std::cout << "free replacement:" << " " << current->value << "\n" << ::tpy::check_signals;
     }
     current = nullptr;
     if ((saved != nullptr)) {
-        std::cout << "free cleared:" << " " << saved->value << " " << ::tpy::print_bool((current == nullptr)) << "\n";
+        std::cout << "free cleared:" << " " << saved->value << " " << ::tpy::print_bool((current == nullptr)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -63,8 +63,8 @@ void main() {
     ::tpyapp::main::free_reseat(false);
     ::tpyapp::main::free_reseat(true);
     Host host = Host();
-    std::cout << "constructor:" << " " << host.value << "\n";
-    std::cout << "method:" << " " << host.retained() << "\n";
+    std::cout << "constructor:" << " " << host.value << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << host.retained() << "\n" << ::tpy::check_signals;
 }
 
 

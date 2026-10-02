@@ -65,7 +65,7 @@ __coro_quick quick() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "cleanup:" << " " << v << "\n";
+        std::cout << "cleanup:" << " " << v << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
     }
@@ -144,7 +144,7 @@ __coro_go go() {
             continue;
         } catch (const ::tpy::CancelledError&) {
             __sub_1 = nullptr;
-            std::cout << "got-cancelled" << "\n";
+            std::cout << "got-cancelled" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

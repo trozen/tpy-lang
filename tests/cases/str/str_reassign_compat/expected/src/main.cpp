@@ -24,11 +24,11 @@ std::string make_str() {
 void main() {
     std::string s = "asd";
     s = "qwe";
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
     s += "x";
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
     s = ::tpyapp::main::make_str();
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // main()

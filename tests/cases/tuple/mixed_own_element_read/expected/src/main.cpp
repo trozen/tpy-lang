@@ -231,35 +231,35 @@ int32_t rebound_in_branch(Box& b, Box& c, bool flag) {
 //     print(rebound_in_branch(Box(2), Box(3), False))
 void main() {
     Box __tmp_1 = Box(7);
-    std::cout << ::tpyapp::main::read_borrow_elem(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::read_borrow_elem(__tmp_1) << "\n" << ::tpy::check_signals;
     Box __tmp_2 = Box(7);
-    std::cout << ::tpyapp::main::read_own_elem(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::read_own_elem(__tmp_2) << "\n" << ::tpy::check_signals;
     Box __tmp_3 = Box(7);
-    std::cout << ::tpyapp::main::write_borrow_elem(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::write_borrow_elem(__tmp_3) << "\n" << ::tpy::check_signals;
     Box __tmp_4 = Box(7);
-    std::cout << ::tpyapp::main::read_direct(__tmp_4) << "\n";
-    std::cout << ::tpyapp::main::read_param(::tpy::tuple_value_to_borrow<std::tuple<Box, Box*>>(std::tuple<Box, Box>{Box(5), Box(6)})) << "\n";
+    std::cout << ::tpyapp::main::read_direct(__tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_param(::tpy::tuple_value_to_borrow<std::tuple<Box, Box*>>(std::tuple<Box, Box>{Box(5), Box(6)})) << "\n" << ::tpy::check_signals;
     Box __tmp_5 = Box(7);
-    std::cout << ::tpyapp::main::unpack_mixed(__tmp_5) << "\n";
+    std::cout << ::tpyapp::main::unpack_mixed(__tmp_5) << "\n" << ::tpy::check_signals;
     Box __tmp_6 = Box(7);
-    std::cout << ::tpyapp::main::method_on_borrow_elem(__tmp_6) << "\n";
+    std::cout << ::tpyapp::main::method_on_borrow_elem(__tmp_6) << "\n" << ::tpy::check_signals;
     Box __tmp_7 = Box(7);
-    std::cout << ::tpyapp::main::pass_whole(__tmp_7) << "\n";
-    std::cout << ::tpyapp::main::wholly_owned_still_dots() << "\n";
+    std::cout << ::tpyapp::main::pass_whole(__tmp_7) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::wholly_owned_still_dots() << "\n" << ::tpy::check_signals;
     Box __tmp_8 = Box(2);
     Box __tmp_9 = Box(2);
-    std::cout << ::tpyapp::main::in_list(__tmp_8) << " " << ::tpyapp::main::in_dict(__tmp_9) << "\n";
+    std::cout << ::tpyapp::main::in_list(__tmp_8) << " " << ::tpyapp::main::in_dict(__tmp_9) << "\n" << ::tpy::check_signals;
     Box __tmp_10 = Box(2);
     Box __tmp_11 = Box(2);
-    std::cout << ::tpyapp::main::in_nested_tuple(__tmp_10) << " " << ::tpyapp::main::as_loop_var(__tmp_11) << "\n";
+    std::cout << ::tpyapp::main::in_nested_tuple(__tmp_10) << " " << ::tpyapp::main::as_loop_var(__tmp_11) << "\n" << ::tpy::check_signals;
     Box __tmp_12 = Box(2);
-    std::cout << ::tpyapp::main::in_list_copy_ack(__tmp_12) << "\n";
+    std::cout << ::tpyapp::main::in_list_copy_ack(__tmp_12) << "\n" << ::tpy::check_signals;
     Box __tmp_13 = Box(2);
     Box __tmp_14 = Box(3);
-    std::cout << ::tpyapp::main::via_ternary(__tmp_13, __tmp_14, true) << "\n";
+    std::cout << ::tpyapp::main::via_ternary(__tmp_13, __tmp_14, true) << "\n" << ::tpy::check_signals;
     Box __tmp_15 = Box(2);
     Box __tmp_16 = Box(3);
-    std::cout << ::tpyapp::main::rebound_in_branch(__tmp_15, __tmp_16, false) << "\n";
+    std::cout << ::tpyapp::main::rebound_in_branch(__tmp_15, __tmp_16, false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -160,7 +160,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();
         __sub_3.reset();
-        std::cout << "async_value" << " " << ::tpy::print_bool(__await_lift_0) << " " << ::tpy::print_bool(__await_lift_1) << " " << ::tpy::print_bool(__await_lift_2) << " " << ::tpy::print_bool(__await_lift_3) << "\n";
+        std::cout << "async_value" << " " << ::tpy::print_bool(__await_lift_0) << " " << ::tpy::print_bool(__await_lift_1) << " " << ::tpy::print_bool(__await_lift_2) << " " << ::tpy::print_bool(__await_lift_3) << "\n" << ::tpy::check_signals;
         pin.emplace(Pinned(1));
         co.emplace(::tpyapp::main::probe_async<Pinned>(&((*pin))));
         co_twin.emplace(::tpyapp::main::probe_pinned_twin(&((*pin))));
@@ -199,7 +199,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
         if (__r7.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_7 = std::move(__r7).value();
         co_twin.reset();
-        std::cout << "async_ref" << " " << ::tpy::print_bool(__await_lift_4) << " " << ::tpy::print_bool(__await_lift_5) << " " << ::tpy::print_bool(__await_lift_6) << " " << ::tpy::print_bool(__await_lift_7) << " " << (*pin).n << "\n";
+        std::cout << "async_ref" << " " << ::tpy::print_bool(__await_lift_4) << " " << ::tpy::print_bool(__await_lift_5) << " " << ::tpy::print_bool(__await_lift_6) << " " << ::tpy::print_bool(__await_lift_7) << " " << (*pin).n << "\n" << ::tpy::check_signals;
         __sub_8.emplace(std::nullopt);
         __state = S_RESUME_8;
         continue;
@@ -219,7 +219,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
         if (__r9.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_9 = std::move(__r9).value();
         __sub_9.reset();
-        std::cout << "async_unit" << " " << ::tpy::print_bool(__await_lift_8) << " " << ::tpy::print_bool(__await_lift_9) << "\n";
+        std::cout << "async_unit" << " " << ::tpy::print_bool(__await_lift_8) << " " << ::tpy::print_bool(__await_lift_9) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -302,7 +302,7 @@ __coro_amain amain(int32_t n) {
 //     asyncio.run(amain(n))
 void main() {
     int32_t n = 3;
-    std::cout << "free_value" << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1)))) << " " << ::tpy::print_bool(::tpyapp::main::probe_twin((::tpy::add_check<int32_t>(n, 1)))) << "\n";
+    std::cout << "free_value" << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1)))) << " " << ::tpy::print_bool(::tpyapp::main::probe_twin((::tpy::add_check<int32_t>(n, 1)))) << "\n" << ::tpy::check_signals;
     Cell c = Cell(1);
     Cell d = Cell(9);
     Cell& got = ::tpyapp::main::first_or<Cell>(&(c), d);
@@ -310,15 +310,15 @@ void main() {
     Cell& got_twin = ::tpyapp::main::first_or_twin(&(d), c);
     got_twin.n = 8;
     Cell* none_cell = nullptr;
-    std::cout << "free_ref" << " " << c.n << " " << d.n << " " << ::tpyapp::main::first_or<Cell>(none_cell, d).n << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<Cell>(none_cell)) << "\n";
-    std::cout << "free_ref_twin" << " " << ::tpyapp::main::first_or_twin(none_cell, d).n << "\n";
+    std::cout << "free_ref" << " " << c.n << " " << d.n << " " << ::tpyapp::main::first_or<Cell>(none_cell, d).n << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<Cell>(none_cell)) << "\n" << ::tpy::check_signals;
+    std::cout << "free_ref_twin" << " " << ::tpyapp::main::first_or_twin(none_cell, d).n << "\n" << ::tpy::check_signals;
     Container<int32_t> box = Container<int32_t>(std::nullopt);
     Container<int32_t> held = Container<int32_t>((::tpy::add_check<int32_t>(n, 1)));
     ContainerTwin twin = ContainerTwin((::tpy::add_check<int32_t>(n, 1)));
-    std::cout << "method" << " " << ::tpy::print_bool(box.probe((::tpy::add_check<int32_t>(n, 1)))) << " " << ::tpy::print_bool(twin.probe((::tpy::add_check<int32_t>(n, 1)))) << "\n";
-    std::cout << "method_none" << " " << ::tpy::print_bool(box.probe(std::nullopt)) << " " << ::tpy::print_bool(twin.probe(std::nullopt)) << "\n";
-    std::cout << "ctor" << " " << ::tpy::print_bool(box.held()) << " " << ::tpy::print_bool(held.held()) << " " << ::tpy::print_bool(twin.held()) << "\n";
-    std::cout << "field_ref" << " " << ::tpy::print_bool(Container<Cell>(&(c)).held()) << " " << ::tpy::print_bool(CellBox(&(c)).held()) << "\n";
+    std::cout << "method" << " " << ::tpy::print_bool(box.probe((::tpy::add_check<int32_t>(n, 1)))) << " " << ::tpy::print_bool(twin.probe((::tpy::add_check<int32_t>(n, 1)))) << "\n" << ::tpy::check_signals;
+    std::cout << "method_none" << " " << ::tpy::print_bool(box.probe(std::nullopt)) << " " << ::tpy::print_bool(twin.probe(std::nullopt)) << "\n" << ::tpy::check_signals;
+    std::cout << "ctor" << " " << ::tpy::print_bool(box.held()) << " " << ::tpy::print_bool(held.held()) << " " << ::tpy::print_bool(twin.held()) << "\n" << ::tpy::check_signals;
+    std::cout << "field_ref" << " " << ::tpy::print_bool(Container<Cell>(&(c)).held()) << " " << ::tpy::print_bool(CellBox(&(c)).held()) << "\n" << ::tpy::check_signals;
     std::array<bool, 2> flags = ::tpy::array_from_index<bool, 2>([&](std::size_t __i_0) -> bool {
         int32_t i = int32_t(__i_0);
         return ::tpyapp::main::probe_gen<int32_t>((::tpy::sub_check<int32_t>(i, 1)));
@@ -327,9 +327,9 @@ void main() {
         int32_t i = int32_t(__i_1);
         return ::tpyapp::main::probe_twin((::tpy::sub_check<int32_t>(i, 1)));
     });
-    std::cout << "comprehension" << " " << ::tpy::print_bool(::tpy::__getitem__(flags, 0)) << " " << ::tpy::print_bool(::tpy::__getitem__(flags_twin, 0)) << "\n";
+    std::cout << "comprehension" << " " << ::tpy::print_bool(::tpy::__getitem__(flags, 0)) << " " << ::tpy::print_bool(::tpy::__getitem__(flags_twin, 0)) << "\n" << ::tpy::check_signals;
     bool ready = false;
-    std::cout << "cond_operand" << " " << ::tpy::print_bool((ready || ::tpyapp::main::probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1))))) << " " << ::tpy::print_bool((ready || ::tpyapp::main::probe_twin((::tpy::add_check<int32_t>(n, 1))))) << "\n";
+    std::cout << "cond_operand" << " " << ::tpy::print_bool((ready || ::tpyapp::main::probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1))))) << " " << ::tpy::print_bool((ready || ::tpyapp::main::probe_twin((::tpy::add_check<int32_t>(n, 1))))) << "\n" << ::tpy::check_signals;
     std::vector<bool> gen_flags = ({
         std::vector<bool> __result;
         auto __obj_2 = ::tpyapp::main::gen_body(n);
@@ -341,18 +341,18 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << "generator" << " " << ::tpy::print_bool(::tpy::__getitem__(gen_flags, 0)) << " " << ::tpy::print_bool(::tpy::__getitem__(gen_flags, 1)) << "\n";
+    std::cout << "generator" << " " << ::tpy::print_bool(::tpy::__getitem__(gen_flags, 0)) << " " << ::tpy::print_bool(::tpy::__getitem__(gen_flags, 1)) << "\n" << ::tpy::check_signals;
     auto closure = [&n]() -> bool {
         return ::tpyapp::main::probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1)));
     };
     auto closure_twin = [&n]() -> bool {
         return ::tpyapp::main::probe_twin((::tpy::add_check<int32_t>(n, 1)));
     };
-    std::cout << "closure" << " " << ::tpy::print_bool(closure()) << " " << ::tpy::print_bool(closure_twin()) << "\n";
+    std::cout << "closure" << " " << ::tpy::print_bool(closure()) << " " << ::tpy::print_bool(closure_twin()) << "\n" << ::tpy::check_signals;
     auto __ctx_1 = Guard();
     __ctx_1.__enter__();
     try {
-        std::cout << "with" << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1)))) << " " << ::tpy::print_bool(::tpyapp::main::probe_twin((::tpy::add_check<int32_t>(n, 1)))) << "\n";
+        std::cout << "with" << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1)))) << " " << ::tpy::print_bool(::tpyapp::main::probe_twin((::tpy::add_check<int32_t>(n, 1)))) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -365,19 +365,19 @@ void main() {
     __ctx_1.__exit__({}, nullptr, {});
     {
         try {
-            std::cout << "try" << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1)))) << " " << ::tpy::print_bool(::tpyapp::main::probe_twin((::tpy::add_check<int32_t>(n, 1)))) << "\n";
+            std::cout << "try" << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1)))) << " " << ::tpy::print_bool(::tpyapp::main::probe_twin((::tpy::add_check<int32_t>(n, 1)))) << "\n" << ::tpy::check_signals;
         } catch (...) {
-            std::cout << "finally" << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1)))) << " " << ::tpy::print_bool(::tpyapp::main::probe_twin((::tpy::add_check<int32_t>(n, 1)))) << "\n";
+            std::cout << "finally" << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1)))) << " " << ::tpy::print_bool(::tpyapp::main::probe_twin((::tpy::add_check<int32_t>(n, 1)))) << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally" << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1)))) << " " << ::tpy::print_bool(::tpyapp::main::probe_twin((::tpy::add_check<int32_t>(n, 1)))) << "\n";
+        std::cout << "finally" << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1)))) << " " << ::tpy::print_bool(::tpyapp::main::probe_twin((::tpy::add_check<int32_t>(n, 1)))) << "\n" << ::tpy::check_signals;
     }
     {
-        std::cout << "error_return" << " " << ::tpy::print_bool(({ auto __er_2 = ::tpyapp::main::er_gen(n); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); })) << " " << ::tpy::print_bool(({ auto __er_3 = ::tpyapp::main::er_twin(n); if (!__er_3.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_3); })) << "\n";
+        std::cout << "error_return" << " " << ::tpy::print_bool(({ auto __er_2 = ::tpyapp::main::er_gen(n); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); })) << " " << ::tpy::print_bool(({ auto __er_3 = ::tpyapp::main::er_twin(n); if (!__er_3.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_3); })) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Stop:
         __except_1:;
-        std::cout << "error_return raised" << "\n";
+        std::cout << "error_return raised" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain(n)));
@@ -403,7 +403,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpyapp::main::main();
-    std::cout << "module" << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<int32_t>(2)) << " " << ::tpy::print_bool(::tpyapp::main::probe_twin(2)) << "\n";
+    std::cout << "module" << " " << ::tpy::print_bool(::tpyapp::main::probe_gen<int32_t>(2)) << " " << ::tpy::print_bool(::tpyapp::main::probe_twin(2)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

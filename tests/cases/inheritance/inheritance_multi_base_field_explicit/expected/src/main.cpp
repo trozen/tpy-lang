@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(c.summary())
 void main() {
     Combined c = Combined(42, "answer");
-    std::cout << c.summary() << "\n";
+    std::cout << c.summary() << "\n" << ::tpy::check_signals;
 }
 
 // main()

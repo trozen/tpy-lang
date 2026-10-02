@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(xs[0][1].x)
 void param_member(const P& c) {
     std::vector<std::tuple<int32_t, P>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{1, &(c)})};
-    std::cout << std::get<1>(::tpy::__getitem__(xs, 0)).x << "\n";
+    std::cout << std::get<1>(::tpy::__getitem__(xs, 0)).x << "\n" << ::tpy::check_signals;
 }
 
 // def comp_member(cells: list[P]) -> None:
@@ -28,7 +28,7 @@ void comp_member(const std::vector<P>& cells) {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(xs) << " " << std::get<1>(::tpy::__getitem__(xs, 0)).x << "\n";
+    std::cout << ::tpy::__len__(xs) << " " << std::get<1>(::tpy::__getitem__(xs, 0)).x << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

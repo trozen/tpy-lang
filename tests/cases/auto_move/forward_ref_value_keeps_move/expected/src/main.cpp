@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     std::vector<int32_t> xs = {1, 2, 3};
     int32_t n = ::tpyapp::main::count(xs);
-    std::cout << ::tpyapp::main::drop(std::move(xs)) << "\n";
-    std::cout << n << "\n";
+    std::cout << ::tpyapp::main::drop(std::move(xs)) << "\n" << ::tpy::check_signals;
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // def count(xs: list[int32]) -> int32:

@@ -15,13 +15,13 @@ namespace tpyapp::main {
 //     print(len(s))
 void main() {
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2, 3});
-    std::cout << ::tpy::SetPrinter(s) << "\n";
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     s.insert(4);
-    std::cout << ::tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
     s.insert(2);
-    std::cout << ::tpy::SetPrinter(s) << "\n";
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // main()

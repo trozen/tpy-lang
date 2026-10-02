@@ -17,7 +17,7 @@ int32_t add(int32_t a, int32_t b) {
 void main() {
     int32_t x = 10;
     int32_t y = 20;
-    std::cout << ::tpyapp::main::add(x, y) << "\n";
+    std::cout << ::tpyapp::main::add(x, y) << "\n" << ::tpy::check_signals;
 }
 
 // main()

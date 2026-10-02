@@ -22,21 +22,21 @@ namespace tpyapp::main {
 //     print("stored", s["l"], s["s"], s["h"], len(s))
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    std::cout << ::tpy::dict_setdefault(d, "a", 99) << "\n";
-    std::cout << ::tpy::dict_setdefault(d, "c", 42) << "\n";
-    std::cout << ::tpy::__getitem__(d, "c") << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::dict_setdefault(d, "a", 99) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::dict_setdefault(d, "c", 42) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, "c") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::string> s = ::tpy::ordered_map<std::string, std::string>({{"a", "alpha"}});
     ::tpy::String lv = ::tpy::String("lvalue");
-    std::cout << "lit hit" << " " << ::tpy::dict_setdefault(s, "a", "lit") << "\n";
-    std::cout << "lit miss" << " " << ::tpy::dict_setdefault(s, "l", "lit") << "\n";
+    std::cout << "lit hit" << " " << ::tpy::dict_setdefault(s, "a", "lit") << "\n" << ::tpy::check_signals;
+    std::cout << "lit miss" << " " << ::tpy::dict_setdefault(s, "l", "lit") << "\n" << ::tpy::check_signals;
     std::string __tmp_1{lv};
-    std::cout << "String hit" << " " << ::tpy::dict_setdefault(s, "a", std::move(__tmp_1)) << "\n";
+    std::cout << "String hit" << " " << ::tpy::dict_setdefault(s, "a", std::move(__tmp_1)) << "\n" << ::tpy::check_signals;
     std::string __tmp_2{lv};
-    std::cout << "String miss" << " " << ::tpy::dict_setdefault(s, "s", std::move(__tmp_2)) << "\n";
-    std::cout << "char hit" << " " << ::tpy::dict_setdefault(s, "a", std::string(::tpy::char_to_str(::tpy::char_from_str("c")))) << "\n";
-    std::cout << "char miss" << " " << ::tpy::dict_setdefault(s, "h", std::string(::tpy::char_to_str(::tpy::char_from_str("c")))) << "\n";
-    std::cout << "stored" << " " << ::tpy::__getitem__(s, "l") << " " << ::tpy::__getitem__(s, "s") << " " << ::tpy::__getitem__(s, "h") << " " << ::tpy::__len__(s) << "\n";
+    std::cout << "String miss" << " " << ::tpy::dict_setdefault(s, "s", std::move(__tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << "char hit" << " " << ::tpy::dict_setdefault(s, "a", std::string(::tpy::char_to_str(::tpy::char_from_str("c")))) << "\n" << ::tpy::check_signals;
+    std::cout << "char miss" << " " << ::tpy::dict_setdefault(s, "h", std::string(::tpy::char_to_str(::tpy::char_from_str("c")))) << "\n" << ::tpy::check_signals;
+    std::cout << "stored" << " " << ::tpy::__getitem__(s, "l") << " " << ::tpy::__getitem__(s, "s") << " " << ::tpy::__getitem__(s, "h") << " " << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // main()

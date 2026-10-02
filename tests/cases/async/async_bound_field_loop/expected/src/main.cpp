@@ -50,7 +50,7 @@ void main() {
     Summer<std::vector<int32_t>> s = Summer<std::vector<int32_t>>(std::move(xs));
     std::optional<__coro_total> c = ::tpyapp::main::total(s);
     s.items.push_back(5);
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(std::move(*(c)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(std::move(*(c)))) << "\n" << ::tpy::check_signals;
 }
 
 // # A coroutine iterating a container FIELD off a monomorphized PARAM receiver

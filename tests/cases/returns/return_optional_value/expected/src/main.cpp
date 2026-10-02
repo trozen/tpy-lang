@@ -36,14 +36,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::print_optional_val(::tpyapp::main::maybe_int(true)) << "\n";
-    std::cout << ::tpy::print_optional_val(::tpyapp::main::maybe_int(false)) << "\n";
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::maybe_int(true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::maybe_int(false)) << "\n" << ::tpy::check_signals;
     result = ::tpyapp::main::maybe_int(true);
     if ((result.has_value())) {
-        std::cout << ::tpy::print_optional_val(result) << "\n";
+        std::cout << ::tpy::print_optional_val(result) << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::print_optional_val(::tpyapp::main::pass_through(99)) << "\n";
-    std::cout << ::tpy::print_optional_val(::tpyapp::main::pass_through(std::nullopt)) << "\n";
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::pass_through(99)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::pass_through(std::nullopt)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

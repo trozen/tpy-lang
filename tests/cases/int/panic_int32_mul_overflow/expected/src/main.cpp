@@ -18,7 +18,7 @@ void __tpy_init() {
 
     x = 2147483647;
     y = (::tpy::mul_check<int32_t>(x, 2));
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

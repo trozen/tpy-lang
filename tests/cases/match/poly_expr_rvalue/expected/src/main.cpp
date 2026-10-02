@@ -42,8 +42,8 @@ std::string describe(const ::tpy::BigInt& kind) {
 //     print(describe(0))
 //     print(describe(1))
 void main() {
-    std::cout << ::tpyapp::main::describe(::tpy::BigInt(0)) << "\n";
-    std::cout << ::tpyapp::main::describe(::tpy::BigInt(1)) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpy::BigInt(1)) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

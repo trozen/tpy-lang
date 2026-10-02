@@ -81,11 +81,11 @@ void main() {
             v = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
         // else:
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         goto __after_try_4;
         // except ParseError:
         __except_4:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_4:;
     }
     int32_t v2;
@@ -96,11 +96,11 @@ void main() {
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
         // else:
-        std::cout << v2 << "\n";
+        std::cout << v2 << "\n" << ::tpy::check_signals;
         goto __after_try_6;
         // except ParseError:
         __except_6:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_6:;
     }
 }

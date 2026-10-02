@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(r.height)
 void main() {
     Rect r = Rect(5, 10);
-    std::cout << r.width << "\n";
-    std::cout << r.height << "\n";
+    std::cout << r.width << "\n" << ::tpy::check_signals;
+    std::cout << r.height << "\n" << ::tpy::check_signals;
 }
 
 // main()

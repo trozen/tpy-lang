@@ -63,25 +63,25 @@ std::string show(::tpy::Union<std::monostate, const ::tpy::Bytes*, const ::tpy::
 //     print(d["k"])
 void main() {
     ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> body = std::monostate{};
-    std::cout << ::tpyapp::main::show(body.as_const()) << "\n";
+    std::cout << ::tpyapp::main::show(body.as_const()) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpy::Bytes, ::tpy::ordered_map<std::string, std::string>> __slot_1 = ::tpy::bytes_from_str("ab");
     body = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << ::tpyapp::main::show(body.as_const()) << "\n";
+    std::cout << ::tpyapp::main::show(body.as_const()) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpy::Bytes, ::tpy::ordered_map<std::string, std::string>> __slot_2 = ::tpyapp::main::make_bytes("cde");
     body = ::tpy::to_ptr_variant(__slot_2);
-    std::cout << ::tpyapp::main::show(body.as_const()) << "\n";
+    std::cout << ::tpyapp::main::show(body.as_const()) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpy::ordered_map<std::string, std::string>*, std::string*> text = std::monostate{};
     ::tpy::Union<std::monostate, ::tpy::ordered_map<std::string, std::string>, std::string> __slot_3 = ::tpyapp::main::make_str("x");
     text = ::tpy::to_ptr_variant(__slot_3);
     if (std::holds_alternative<std::string*>(text)) {
         auto& __text = *std::get<std::string*>(text);
-        std::cout << ::tpy::__str__(__text) << "\n";
+        std::cout << ::tpy::__str__(__text) << "\n" << ::tpy::check_signals;
     }
     ::tpy::Union<std::monostate, ::tpy::ordered_map<std::string, std::string>, std::string> __slot_4 = ::tpy::str_upper("hi");
     text = ::tpy::to_ptr_variant(__slot_4);
     if (std::holds_alternative<std::string*>(text)) {
         auto& __text = *std::get<std::string*>(text);
-        std::cout << ::tpy::__str__(__text) << "\n";
+        std::cout << ::tpy::__str__(__text) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>({{"k", "v"}});
     ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> holder{&(d)};
@@ -89,7 +89,7 @@ void main() {
         auto& __holder = *std::get<::tpy::ordered_map<std::string, std::string>*>(holder);
         ::tpy::__setitem__(__holder, "k", "w");
     }
-    std::cout << ::tpy::__getitem__(d, "k") << "\n";
+    std::cout << ::tpy::__getitem__(d, "k") << "\n" << ::tpy::check_signals;
 }
 
 // main()

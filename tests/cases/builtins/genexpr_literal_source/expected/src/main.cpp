@@ -211,9 +211,9 @@ __genexpr_main_3_frame<std::invoke_result_t<F_make>> __genexpr_main_3(std::in_pl
 //     print(all(x > 0 for x in [1, 2, 3]))
 //     print(any(x > 5 for x in [1, 2, 3]))
 void main() {
-    std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_1(std::in_place, [&]() { return std::array<int32_t, 4>{1, 2, 3, 4}; })) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::builtin_all(::tpyapp::main::__genexpr_main_2(std::in_place, [&]() { return std::array<int32_t, 3>{1, 2, 3}; }))) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::builtin_any(::tpyapp::main::__genexpr_main_3(std::in_place, [&]() { return std::array<int32_t, 3>{1, 2, 3}; }))) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_1(std::in_place, [&]() { return std::array<int32_t, 4>{1, 2, 3, 4}; })) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::builtin_all(::tpyapp::main::__genexpr_main_2(std::in_place, [&]() { return std::array<int32_t, 3>{1, 2, 3}; }))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::builtin_any(::tpyapp::main::__genexpr_main_3(std::in_place, [&]() { return std::array<int32_t, 3>{1, 2, 3}; }))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

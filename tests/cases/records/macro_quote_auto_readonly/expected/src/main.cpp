@@ -16,8 +16,8 @@ int32_t touch_readonly(const Holder& h) {
 //     print(touch_readonly(h))
 void main() {
     Holder h = Holder(42);
-    std::cout << h.first() << "\n";
-    std::cout << ::tpyapp::main::touch_readonly(h) << "\n";
+    std::cout << h.first() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::touch_readonly(h) << "\n" << ::tpy::check_signals;
 }
 
 // from ro_getter import ro_getter

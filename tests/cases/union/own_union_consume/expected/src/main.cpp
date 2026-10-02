@@ -35,13 +35,13 @@ void main() {
     if (std::holds_alternative<::tpy::ordered_map<std::string, Json>>(obj.value)) {
         auto& __obj = std::get<::tpy::ordered_map<std::string, Json>>(obj.value);
         ::tpy::__setitem__(__obj, "c", 3);
-        std::cout << ::tpy::__len__(__obj) << "\n";
+        std::cout << ::tpy::__len__(__obj) << "\n" << ::tpy::check_signals;
     }
     Json arr = ::tpyapp::main::build_arr();
     if (std::holds_alternative<std::vector<Json>>(arr.value)) {
         auto& __arr = std::get<std::vector<Json>>(arr.value);
         __arr.push_back(4);
-        std::cout << ::tpy::__len__(__arr) << "\n";
+        std::cout << ::tpy::__len__(__arr) << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -23,7 +23,7 @@ int32_t f(Box&& ob) {
 // def main() -> None:
 //     print(f(Box(5)))
 void main() {
-    std::cout << ::tpyapp::main::f(Box(5)) << "\n";
+    std::cout << ::tpyapp::main::f(Box(5)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

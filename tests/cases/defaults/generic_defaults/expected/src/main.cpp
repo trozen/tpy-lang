@@ -26,14 +26,14 @@ namespace tpyapp::main {
 void main() {
     std::vector<int32_t> nums = {10, 20};
     std::vector<int32_t> empty = std::vector<int32_t>{};
-    std::cout << ::tpyapp::main::first_or<int32_t>(nums) << "\n";
-    std::cout << ::tpyapp::main::first_or<int32_t>(empty) << "\n";
-    std::cout << ::tpyapp::main::first_or<int32_t>(nums, 99) << "\n";
-    std::cout << ::tpyapp::main::first_or<int32_t>(empty, 99) << "\n";
-    std::cout << ::tpyapp::main::fallback_or<int32_t>(nums) << "\n";
-    std::cout << ::tpyapp::main::fallback_or<int32_t>(empty) << "\n";
-    std::cout << ::tpyapp::main::pick<int32_t>(1, 2) << "\n";
-    std::cout << ::tpyapp::main::pick<int32_t>(1, 2, false) << "\n";
+    std::cout << ::tpyapp::main::first_or<int32_t>(nums) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first_or<int32_t>(empty) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first_or<int32_t>(nums, 99) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first_or<int32_t>(empty, 99) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::fallback_or<int32_t>(nums) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::fallback_or<int32_t>(empty) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick<int32_t>(1, 2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick<int32_t>(1, 2, false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

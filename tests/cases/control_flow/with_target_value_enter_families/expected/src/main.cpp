@@ -34,8 +34,8 @@ void main() {
     auto __ctx_1 = Pair(3, 4);
     auto t = __ctx_1.__enter__();
     try {
-        std::cout << std::get<0>(t) << " " << std::get<1>(t) << "\n";
-        std::cout << ::tpyapp::main::sum_pair(t) << "\n";
+        std::cout << std::get<0>(t) << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
+        std::cout << ::tpyapp::main::sum_pair(t) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -49,8 +49,8 @@ void main() {
     auto __ctx_2 = Blob();
     auto b = __ctx_2.__enter__();
     try {
-        std::cout << ::tpy::__len__(b) << "\n";
-        std::cout << ::tpyapp::main::first_byte(b) << "\n";
+        std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
+        std::cout << ::tpyapp::main::first_byte(b) << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -64,7 +64,7 @@ void main() {
     auto __ctx_3 = Either(5);
     auto u = __ctx_3.__enter__();
     try {
-        std::cout << ::tpy::__str__(u) << "\n";
+        std::cout << ::tpy::__str__(u) << "\n" << ::tpy::check_signals;
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
@@ -78,7 +78,7 @@ void main() {
     auto __ctx_4 = Either(0);
     auto u2 = __ctx_4.__enter__();
     try {
-        std::cout << ::tpy::__str__(u2) << "\n";
+        std::cout << ::tpy::__str__(u2) << "\n" << ::tpy::check_signals;
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});

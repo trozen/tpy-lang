@@ -21,9 +21,9 @@ void __tpy_init() {
     p = &__global_slot_1;
     p->x = 10;
     p->y = 20;
-    std::cout << p->x << "\n";
-    std::cout << p->y << "\n";
-    std::cout << (::tpy::add_check<int32_t>(p->x, p->y)) << "\n";
+    std::cout << p->x << "\n" << ::tpy::check_signals;
+    std::cout << p->y << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::add_check<int32_t>(p->x, p->y)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

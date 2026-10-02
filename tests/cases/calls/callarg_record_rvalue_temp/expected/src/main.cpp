@@ -15,7 +15,7 @@ int32_t take_rec(const A& r) {
 //     print(r.x)
 void mutate_rec(A& r) {
     r.x = ::tpy::add_check<int32_t>(r.x, 1);
-    std::cout << r.x << "\n";
+    std::cout << r.x << "\n" << ::tpy::check_signals;
 }
 
 // def use_ret() -> int32:
@@ -46,8 +46,8 @@ void use_stmt() {
 //     print(use_decl())
 //     use_stmt()
 void main() {
-    std::cout << ::tpyapp::main::use_ret() << "\n";
-    std::cout << ::tpyapp::main::use_decl() << "\n";
+    std::cout << ::tpyapp::main::use_ret() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use_decl() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::use_stmt();
 }
 

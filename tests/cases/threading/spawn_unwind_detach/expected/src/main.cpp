@@ -73,28 +73,28 @@ void main() {
         try {
             ::tpyapp::main::leaves_handle();
         } catch (const ::tpy::ValueError& e) {
-            std::cout << (::tpy::str_concat("free: caught ", std::string(::tpy::__str__(e)))) << "\n";
+            std::cout << (::tpy::str_concat("free: caught ", std::string(::tpy::__str__(e)))) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             Owner().fail();
         } catch (const ::tpy::ValueError& e) {
-            std::cout << (::tpy::str_concat("method: caught ", std::string(::tpy::__str__(e)))) << "\n";
+            std::cout << (::tpy::str_concat("method: caught ", std::string(::tpy::__str__(e)))) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::fails_with_cleanup();
         } catch (const ::tpy::ValueError& e) {
-            std::cout << (::tpy::str_concat("del: caught ", std::string(::tpy::__str__(e)))) << "\n";
+            std::cout << (::tpy::str_concat("del: caught ", std::string(::tpy::__str__(e)))) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::consume_and_raise();
         } catch (const ::tpy::ValueError& e) {
-            std::cout << (::tpy::str_concat("generator: caught ", std::string(::tpy::__str__(e)))) << "\n";
+            std::cout << (::tpy::str_concat("generator: caught ", std::string(::tpy::__str__(e)))) << "\n" << ::tpy::check_signals;
         }
     }
 }

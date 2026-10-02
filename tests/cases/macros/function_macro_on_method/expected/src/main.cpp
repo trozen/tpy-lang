@@ -20,9 +20,9 @@ int32_t free(int32_t x) {
 void main() {
     Counter c = Counter();
     c.n = Counter::seed();
-    std::cout << c.bump() << "\n";
-    std::cout << c.n << "\n";
-    std::cout << ::tpyapp::main::free(10) << "\n";
+    std::cout << c.bump() << "\n" << ::tpy::check_signals;
+    std::cout << c.n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::free(10) << "\n" << ::tpy::check_signals;
 }
 
 // # A @function_macro on record methods: pass 5.5 runs it before the method

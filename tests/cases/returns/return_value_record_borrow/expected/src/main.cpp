@@ -52,20 +52,20 @@ D again(const std::vector<D>& xs) {
 void main() {
     F a = F(1);
     F b = F(2);
-    std::cout << ((a) + (b)).k << "\n";
+    std::cout << ((a) + (b)).k << "\n" << ::tpy::check_signals;
     D lo = D(3);
     D hi = D(5);
-    std::cout << ::tpyapp::main::pick(hi, lo).n << "\n";
+    std::cout << ::tpyapp::main::pick(hi, lo).n << "\n" << ::tpy::check_signals;
     std::vector<D> xs = {D(7), D(8)};
-    std::cout << ::tpyapp::main::first(xs).n << "\n";
-    std::cout << ::tpyapp::main::again(xs).n << "\n";
+    std::cout << ::tpyapp::main::first(xs).n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::again(xs).n << "\n" << ::tpy::check_signals;
     D got = ::tpyapp::main::first(xs);
     ::tpy::__setitem__(xs, 0, D(99));
-    std::cout << got.n << " " << ::tpyapp::main::first(xs).n << "\n";
+    std::cout << got.n << " " << ::tpyapp::main::first(xs).n << "\n" << ::tpy::check_signals;
     ::tpy::Union<D, E> w = ::tpyapp::main::widen(lo, hi);
     if (std::holds_alternative<D>(w)) {
         auto& __w = std::get<D>(w);
-        std::cout << __w.n << "\n";
+        std::cout << __w.n << "\n" << ::tpy::check_signals;
     }
 }
 

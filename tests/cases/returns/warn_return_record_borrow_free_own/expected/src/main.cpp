@@ -29,7 +29,7 @@ Payload take_copy(std::vector<Payload>& rows) {
 //     print(take(rows).n, take_copy(rows).n, rows[0].n)
 void main() {
     std::vector<Payload> rows = {Payload(1)};
-    std::cout << ::tpyapp::main::take(rows).n << " " << ::tpyapp::main::take_copy(rows).n << " " << ::tpy::__getitem__(rows, 0).n << "\n";
+    std::cout << ::tpyapp::main::take(rows).n << " " << ::tpyapp::main::take_copy(rows).n << " " << ::tpy::__getitem__(rows, 0).n << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -56,11 +56,11 @@ void main() {
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // else:
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except NotFound:
         __except_1:;
-        std::cout << "not found" << "\n";
+        std::cout << "not found" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     int32_t v2;
@@ -71,11 +71,11 @@ void main() {
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
-        std::cout << v2 << "\n";
+        std::cout << v2 << "\n" << ::tpy::check_signals;
         goto __after_try_3;
         // except NotFound:
         __except_3:;
-        std::cout << "not found" << "\n";
+        std::cout << "not found" << "\n" << ::tpy::check_signals;
         __after_try_3:;
     }
     {
@@ -90,11 +90,11 @@ void main() {
                 goto __after_try_5;
                 // except NotFound:
                 __except_5:;
-                std::cout << "not found" << "\n";
+                std::cout << "not found" << "\n" << ::tpy::check_signals;
                 __after_try_5:;
             }
         } catch (const BadKey& e) {
-            std::cout << (::tpy::str_concat("bad key: ", e.key)) << "\n";
+            std::cout << (::tpy::str_concat("bad key: ", e.key)) << "\n" << ::tpy::check_signals;
         }
     }
 }

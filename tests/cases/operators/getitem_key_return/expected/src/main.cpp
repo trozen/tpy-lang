@@ -17,9 +17,9 @@ void main() {
     Node k = Node(1);
     Node& r = e[k];
     k.v = 5;
-    std::cout << r.v << "\n";
+    std::cout << r.v << "\n" << ::tpy::check_signals;
     r.v = 9;
-    std::cout << k.v << "\n";
+    std::cout << k.v << "\n" << ::tpy::check_signals;
 }
 
 // main()

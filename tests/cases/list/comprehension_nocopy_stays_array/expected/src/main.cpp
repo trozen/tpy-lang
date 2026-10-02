@@ -28,7 +28,7 @@ void doubled(const std::array<Handle, 4>& hs) {
             return Handle((::tpy::mul_check<int32_t>(h.v, 2)));
         });
     });
-    std::cout << ::tpy::__getitem__(ys, 0).v << " " << ::tpy::__getitem__(ys, 3).v << "\n";
+    std::cout << ::tpy::__getitem__(ys, 0).v << " " << ::tpy::__getitem__(ys, 3).v << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -53,9 +53,9 @@ void main() {
         const auto& h = *__beg_1;
         total = ::tpy::add_check<int32_t>(total, h.v);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bump_all(xs);
-    std::cout << ::tpy::__getitem__(xs, 0).v << " " << ::tpy::__getitem__(xs, 3).v << "\n";
+    std::cout << ::tpy::__getitem__(xs, 0).v << " " << ::tpy::__getitem__(xs, 3).v << "\n" << ::tpy::check_signals;
     ::tpyapp::main::doubled(xs);
 }
 

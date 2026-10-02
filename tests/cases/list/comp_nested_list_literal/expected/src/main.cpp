@@ -20,10 +20,10 @@ void main() {
         int32_t i = int32_t(__i_0);
         return {i, (::tpy::add_check<int32_t>(i, 1))};
     });
-    std::cout << ::tpy::ListPrinter(rows) << "\n";
+    std::cout << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(::tpy::__getitem__(rows, 0), 0, 99);
-    std::cout << ::tpy::ListPrinter(rows) << "\n";
-    std::cout << ::tpy::__getitem__(::tpy::__getitem__(rows, 1), 1) << "\n";
+    std::cout << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(rows, 1), 1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

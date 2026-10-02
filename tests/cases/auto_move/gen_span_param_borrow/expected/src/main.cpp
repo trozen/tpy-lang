@@ -31,14 +31,14 @@ void main() {
     std::vector<int32_t> xs = {1, 2, 3};
     __gen_gen g = ::tpyapp::main::gen(::tpy::as_mut_span(xs));
     std::vector<int32_t> __tmp_1 = xs;
-    std::cout << ::tpyapp::main::drop(std::move(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::drop(std::move(__tmp_1)) << "\n" << ::tpy::check_signals;
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
 }
 

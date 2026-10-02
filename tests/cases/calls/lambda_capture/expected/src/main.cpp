@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print(apply(lambda x: x * factor, 7))
 void main() {
     int32_t offset = 100;
-    std::cout << ::tpyapp::main::apply([&offset](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, offset)); }, 5) << "\n";
+    std::cout << ::tpyapp::main::apply([&offset](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, offset)); }, 5) << "\n" << ::tpy::check_signals;
     int32_t factor = 3;
-    std::cout << ::tpyapp::main::apply([&factor](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, factor)); }, 7) << "\n";
+    std::cout << ::tpyapp::main::apply([&factor](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, factor)); }, 7) << "\n" << ::tpy::check_signals;
 }
 
 // main()

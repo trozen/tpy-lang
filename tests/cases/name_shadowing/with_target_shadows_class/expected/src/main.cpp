@@ -32,8 +32,8 @@ int32_t run() {
 //     print(run())
 //     print(Registry.code)
 void main() {
-    std::cout << ::tpyapp::main::run() << "\n";
-    std::cout << Registry::code << "\n";
+    std::cout << ::tpyapp::main::run() << "\n" << ::tpy::check_signals;
+    std::cout << Registry::code << "\n" << ::tpy::check_signals;
 }
 
 // main()

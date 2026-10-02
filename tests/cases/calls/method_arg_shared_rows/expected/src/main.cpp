@@ -62,12 +62,12 @@ void main() {
     Sink k = Sink();
     std::string_view name = "abc";
     k.store_name(std::string(name));
-    std::cout << k.n << " " << name << "\n";
+    std::cout << k.n << " " << name << "\n" << ::tpy::check_signals;
     k.store_blob(::tpy::bytes_literal_owned("xyz", 3));
-    std::cout << k.n << "\n";
+    std::cout << k.n << "\n" << ::tpy::check_signals;
     ::tpy::BytesView blob = ::tpy::bytes_literal("pqrs", 4);
     k.store_blob(::tpy::Bytes(blob));
-    std::cout << k.n << " " << ::tpy::__len__(blob) << "\n";
+    std::cout << k.n << " " << ::tpy::__len__(blob) << "\n" << ::tpy::check_signals;
     k.soak(({
         std::vector<double> __result;
         const int32_t __stop_0 = 4;
@@ -77,20 +77,20 @@ void main() {
         }
         std::move(__result);
     }));
-    std::cout << k.n << "\n";
+    std::cout << k.n << "\n" << ::tpy::check_signals;
     k.store_name(std::format("v{}", (k.n).to_string()));
-    std::cout << k.n << "\n";
+    std::cout << k.n << "\n" << ::tpy::check_signals;
     ::tpy::BigInt wide = ::tpy::BigInt(7);
     k.store_width((wide).to_fixed_check<int32_t>());
-    std::cout << k.n << "\n";
+    std::cout << k.n << "\n" << ::tpy::check_signals;
     std::vector<Tag> tags = std::vector<Tag>{};
     tags.push_back(Tag(1));
     tags.push_back(Tag(2));
     Tag probe = Tag(2);
-    std::cout << ::tpy::list_index(tags, probe) << " " << probe.ident << "\n";
+    std::cout << ::tpy::list_index(tags, probe) << " " << probe.ident << "\n" << ::tpy::check_signals;
     Tag __tmp_1 = Tag(1);
     ::tpy::list_remove(tags, __tmp_1);
-    std::cout << ::tpy::__len__(tags) << " " << ::tpy::__getitem__(tags, 0).ident << "\n";
+    std::cout << ::tpy::__len__(tags) << " " << ::tpy::__getitem__(tags, 0).ident << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<Tag, int32_t>> pairs = std::vector<std::tuple<Tag, int32_t>>{};
     Tag moved = Tag(5);
     pairs.push_back(::tpy::tuple_to_storage_move<std::tuple<Tag, int32_t>>(std::tuple<Tag*, int32_t>{std::move(&(moved)), 3}));
@@ -102,7 +102,7 @@ void main() {
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Tag*, int32_t>>(__for_tup_0);
         auto&& held = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
         int32_t width = std::get<1>(__tup_1);
-        std::cout << ::tpy::__len__(pairs) << " " << held.ident << " " << width << "\n";
+        std::cout << ::tpy::__len__(pairs) << " " << held.ident << " " << width << "\n" << ::tpy::check_signals;
     }
 }
 

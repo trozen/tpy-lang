@@ -66,8 +66,8 @@ void main() {
     }
     std::string cwd = ::tpy::stdlib::os::getcwd();
     ::tpy::stdlib::os::chdir(base);
-    std::cout << ::tpy::str_join(",", ::tpy::builtin_sorted<std::string>(::tpystd::os::listdir())) << "\n";
-    std::cout << ::tpy::str_join(",", ::tpy::builtin_sorted<std::string>(::tpystd::os::listdir("."))) << "\n";
+    std::cout << ::tpy::str_join(",", ::tpy::builtin_sorted<std::string>(::tpystd::os::listdir())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_join(",", ::tpy::builtin_sorted<std::string>(::tpystd::os::listdir("."))) << "\n" << ::tpy::check_signals;
     ::tpy::stdlib::os::chdir(cwd);
     ::tpyapp::main::teardown(base);
 }

@@ -15,10 +15,10 @@ namespace tpyapp::main {
 void test_star_import() {
     double x = 3.14;
     double y = 2.0;
-    std::cout << ::tpy::print_float(((x) + (y))) << "\n";
-    std::cout << ::tpy::print_float(static_cast<double>(42)) << "\n";
-    std::cout << ::tpy::print_float(static_cast<double>(100)) << "\n";
-    std::cout << ::tpy::print_float(static_cast<double>(7)) << "\n";
+    std::cout << ::tpy::print_float(((x) + (y))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(static_cast<double>(42)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(static_cast<double>(100)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(static_cast<double>(7)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -30,21 +30,21 @@ namespace tpyapp::main {
 //     print(b.setdefault("c", b"other"))    # tpyc: ok
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    std::cout << ::tpy::dict_get_default(d, "a", 99) << "\n";
-    std::cout << ::tpy::dict_get_default(d, "z", 99) << "\n";
-    std::cout << ::tpy::dict_get_default(d, "b", 0) << "\n";
+    std::cout << ::tpy::dict_get_default(d, "a", 99) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::dict_get_default(d, "z", 99) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::dict_get_default(d, "b", 0) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::string> s = ::tpy::ordered_map<std::string, std::string>({{"a", "alpha"}});
     ::tpy::String lv = ::tpy::String("lvalue");
-    std::cout << ::tpy::dict_get_default(s, "a", lv) << "\n";
-    std::cout << ::tpy::dict_get_default(s, "z", lv) << "\n";
-    std::cout << ::tpy::dict_pop_default(s, "z", ::tpy::char_to_str(::tpy::char_from_str("q"))) << "\n";
+    std::cout << ::tpy::dict_get_default(s, "a", lv) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::dict_get_default(s, "z", lv) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::dict_pop_default(s, "z", ::tpy::char_to_str(::tpy::char_from_str("q"))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ::tpy::Bytes> b = ::tpy::ordered_map<std::string, ::tpy::Bytes>({{"a", ::tpy::bytes_literal_owned("hi", 2)}});
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("zz", 2));
-    std::cout << ::tpy::BytesPrinter(::tpy::dict_get_default(b, "a", ::tpy::Bytes(ba))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::dict_get_default(b, "z", ::tpy::Bytes(ba))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::dict_pop_default(b, "z", ::tpy::Bytes(ba))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::dict_setdefault(b, "c", ::tpy::Bytes(ba))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::dict_setdefault(b, "c", ::tpy::bytes_literal_owned("other", 5))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::dict_get_default(b, "a", ::tpy::Bytes(ba))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::dict_get_default(b, "z", ::tpy::Bytes(ba))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::dict_pop_default(b, "z", ::tpy::Bytes(ba))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::dict_setdefault(b, "c", ::tpy::Bytes(ba))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::dict_setdefault(b, "c", ::tpy::bytes_literal_owned("other", 5))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

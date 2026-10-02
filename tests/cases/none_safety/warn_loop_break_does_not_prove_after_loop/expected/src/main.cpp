@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpyapp::main::after_break(2, false) << "\n";
+    std::cout << ::tpyapp::main::after_break(2, false) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -100,10 +100,10 @@ void drop_bytes_param(std::vector<::tpy::Bytes>& bs, ::tpy::BytesView k) {
 //     bs.remove(bk)
 //     print(xs, len(bs))
 void empty_keys(std::vector<std::string>& xs, std::vector<::tpy::Bytes>& bs, std::string_view k, ::tpy::BytesView bk) {
-    std::cout << ::tpy::list_count(xs, k) << " " << ::tpy::list_index(xs, k) << " " << ::tpy::list_count(bs, bk) << " " << ::tpy::list_index(bs, bk) << "\n";
+    std::cout << ::tpy::list_count(xs, k) << " " << ::tpy::list_index(xs, k) << " " << ::tpy::list_count(bs, bk) << " " << ::tpy::list_index(bs, bk) << "\n" << ::tpy::check_signals;
     ::tpy::list_remove(xs, k);
     ::tpy::list_remove(bs, bk);
-    std::cout << ::tpy::ListPrinter(xs) << " " << ::tpy::__len__(bs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << " " << ::tpy::__len__(bs) << "\n" << ::tpy::check_signals;
 }
 
 // def key_len(k: str) -> int:
@@ -150,32 +150,32 @@ void empty_keys(std::vector<std::string>& xs, std::vector<::tpy::Bytes>& bs, std
 void main() {
     std::vector<std::string> xs = {"a", "b", "c", "b"};
     ::tpyapp::main::remove_literal(xs);
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::remove_param(xs, "c");
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     std::vector<std::string> ys = {"a", "b", "c"};
     ::tpyapp::main::remove_view_local(ys, "?b");
-    std::cout << ::tpy::ListPrinter(ys) << "\n";
+    std::cout << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::remove_slice(ys, "?c");
-    std::cout << ::tpy::ListPrinter(ys) << "\n";
+    std::cout << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::remove_stripped(ys, " a ");
-    std::cout << ::tpy::ListPrinter(ys) << "\n";
+    std::cout << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
     std::vector<std::string> zs = {"ab", "c"};
     ::tpyapp::main::remove_owned_local(zs);
-    std::cout << ::tpy::ListPrinter(zs) << "\n";
+    std::cout << ::tpy::ListPrinter(zs) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::remove_element_read(zs);
-    std::cout << ::tpy::ListPrinter(zs) << "\n";
+    std::cout << ::tpy::ListPrinter(zs) << "\n" << ::tpy::check_signals;
     std::vector<std::string> ws = {"a", "b", "a"};
-    std::cout << ::tpyapp::main::find(ws, "b") << " " << ::tpyapp::main::tally(ws, "a") << "\n";
+    std::cout << ::tpyapp::main::find(ws, "b") << " " << ::tpyapp::main::tally(ws, "a") << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Bytes> bs = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1), ::tpy::bytes_literal_owned("c", 1)};
     ::tpyapp::main::drop_bytes_literal(bs);
-    std::cout << ::tpy::__len__(bs) << "\n";
+    std::cout << ::tpy::__len__(bs) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::drop_bytes_param(bs, ::tpy::bytes_literal("a", 1));
-    std::cout << ::tpy::__len__(bs) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(bs, 0)) << "\n";
+    std::cout << ::tpy::__len__(bs) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(bs, 0)) << "\n" << ::tpy::check_signals;
     std::vector<std::string> __tmp_1 = {"", "a"};
     std::vector<::tpy::Bytes> __tmp_2 = {::tpy::Bytes{}, ::tpy::bytes_literal_owned("a", 1)};
     ::tpyapp::main::empty_keys(__tmp_1, __tmp_2, "", ::tpy::BytesView{});
-    std::cout << ::tpyapp::main::key_len("abcd") << "\n";
+    std::cout << ::tpyapp::main::key_len("abcd") << "\n" << ::tpy::check_signals;
 }
 
 // main()

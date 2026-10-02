@@ -104,7 +104,7 @@ inline Wrapper& Wrapper::operator=(Wrapper&& other) noexcept {
 //     print("wrapper dropped")
 inline Wrapper::~Wrapper() {
     if (!this->__tpy_owned_) return;
-    std::cout << "wrapper dropped" << "\n";
+    std::cout << "wrapper dropped" << "\n" << ::tpy::check_signals;
 }
 
 // def __enter__(self) -> Sentinel:

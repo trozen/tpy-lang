@@ -23,7 +23,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& t = ::tpy::unwrap_ref(*__r_1);
-            std::cout << t.v << "\n";
+            std::cout << t.v << "\n" << ::tpy::check_signals;
         }
     }
 }

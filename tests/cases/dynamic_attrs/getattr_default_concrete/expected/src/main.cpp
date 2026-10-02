@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(getattr(h, "absent", "fallback"))    # dunder raises -> "fallback"
 void main() {
     Headers h = Headers();
-    std::cout << ({ std::optional<std::string> __r; try { __r.emplace(h.__getattr__("host")); } catch (const ::tpy::AttributeError&) { __r.emplace("fallback"); } std::move(*__r); }) << "\n";
-    std::cout << ({ std::optional<std::string> __r; try { __r.emplace(h.__getattr__("absent")); } catch (const ::tpy::AttributeError&) { __r.emplace("fallback"); } std::move(*__r); }) << "\n";
+    std::cout << ({ std::optional<std::string> __r; try { __r.emplace(h.__getattr__("host")); } catch (const ::tpy::AttributeError&) { __r.emplace("fallback"); } std::move(*__r); }) << "\n" << ::tpy::check_signals;
+    std::cout << ({ std::optional<std::string> __r; try { __r.emplace(h.__getattr__("absent")); } catch (const ::tpy::AttributeError&) { __r.emplace("fallback"); } std::move(*__r); }) << "\n" << ::tpy::check_signals;
 }
 
 // main()

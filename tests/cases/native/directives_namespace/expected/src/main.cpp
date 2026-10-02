@@ -15,7 +15,7 @@ std::string greet(std::string_view name) {
 // def main() -> None:
 //     print(greet("world"))
 void main() {
-    std::cout << ::myproject::core::greet("world") << "\n";
+    std::cout << ::myproject::core::greet("world") << "\n" << ::tpy::check_signals;
 }
 
 // main()

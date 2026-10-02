@@ -46,8 +46,8 @@ namespace tpyapp::main {
 //     print(depth(t))
 void main() {
     ::tpyapp::treelib::Tree<::tpy::BigInt> t = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{2, 3}, 4};
-    std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(t) << "\n";
-    std::cout << ::tpyapp::main::depth(t) << "\n";
+    std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(t) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::depth(t) << "\n" << ::tpy::check_signals;
 }
 
 // # Qualified cross-module use of a generic recursive alias: `import treelib`

@@ -19,7 +19,7 @@ void main() {
     Animal* pa2 = ::tpyapp::main::as_animal<Animal>(&a);
     const Dog* cdp = &d;
     const Animal* pa_ro = ::tpyapp::main::as_animal_ro<Dog>(cdp);
-    std::cout << ::tpy::deref_check(pa).base_code() << " " << ::tpy::deref_check(pa2).base_code() << " " << ::tpy::deref_check(pa_ro).code << "\n";
+    std::cout << ::tpy::deref_check(pa).base_code() << " " << ::tpy::deref_check(pa2).base_code() << " " << ::tpy::deref_check(pa_ro).code << "\n" << ::tpy::check_signals;
 }
 
 // main()

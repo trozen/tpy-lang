@@ -19,10 +19,10 @@ void main() {
             ::tpystd::tplib::box::Box<int32_t> a = ::tpystd::tplib::box::Box<int32_t>(7);
             boxes.push_back(std::move(a));
         } catch (const ::tpy::Exception&) {
-            std::cout << "e" << "\n";
+            std::cout << "e" << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << ::tpy::__len__(boxes) << "\n";
+    std::cout << ::tpy::__len__(boxes) << "\n" << ::tpy::check_signals;
 }
 
 // # A @nocopy local at its genuine last use inside a `try` body is moved -- not

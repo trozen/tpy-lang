@@ -20,7 +20,7 @@ int32_t double_(int32_t x) {
 //     print("invoke: user body")
 //     return f(v) + 100
 int32_t invoke(const std::function<int32_t(int32_t)>& f, int32_t v) {
-    std::cout << "invoke: user body" << "\n";
+    std::cout << "invoke: user body" << "\n" << ::tpy::check_signals;
     return (::tpy::add_check<int32_t>(f(v), 100));
 }
 
@@ -273,15 +273,15 @@ __coro_async_main async_main() {
 void main() {
     std::function<int32_t(int32_t)> fn = double_;
     int32_t got = ::tpyapp::main::invoke(fn, 1);
-    std::cout << "invoke:" << " " << got << "\n";
-    std::cout << "apply:" << " " << ::tpyapp::main::apply(fn, 2) << "\n";
-    std::cout << "callable_value:" << " " << fn(4) << "\n";
+    std::cout << "invoke:" << " " << got << "\n" << ::tpy::check_signals;
+    std::cout << "apply:" << " " << ::tpyapp::main::apply(fn, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "callable_value:" << " " << fn(4) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = {4, 5, 4};
-    std::cout << "find:" << " " << ::tpyapp::main::find(xs, 5) << "\n";
-    std::cout << "count:" << " " << ::tpyapp::main::count(xs, 4) << "\n";
-    std::cout << "as_span:" << " " << ::tpyapp::main::as_span(xs) << "\n";
+    std::cout << "find:" << " " << ::tpyapp::main::find(xs, 5) << "\n" << ::tpy::check_signals;
+    std::cout << "count:" << " " << ::tpyapp::main::count(xs, 4) << "\n" << ::tpy::check_signals;
+    std::cout << "as_span:" << " " << ::tpyapp::main::as_span(xs) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::push(xs, 9);
-    std::cout << "push:" << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << "push:" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     int32_t total = 0;
     {
         auto __src_0 = ::tpyapp::main::gen(3);
@@ -293,13 +293,13 @@ void main() {
             total = ::tpy::add_check<int32_t>(total, y);
         }
     }
-    std::cout << "generator:" << " " << total << "\n";
-    std::cout << "comprehension:" << " " << ::tpyapp::main::comp(4) << "\n";
-    std::cout << "nested_def:" << " " << ::tpyapp::main::closure(2) << "\n";
-    std::cout << "recursion:" << " " << ::tpyapp::main::recurse(4) << "\n";
-    std::cout << "generic:" << " " << ::tpyapp::main::pick<int32_t>(7, 8) << "\n";
-    std::cout << "method:" << " " << Scaler(3).scaled(5) << "\n";
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_main())) << "\n";
+    std::cout << "generator:" << " " << total << "\n" << ::tpy::check_signals;
+    std::cout << "comprehension:" << " " << ::tpyapp::main::comp(4) << "\n" << ::tpy::check_signals;
+    std::cout << "nested_def:" << " " << ::tpyapp::main::closure(2) << "\n" << ::tpy::check_signals;
+    std::cout << "recursion:" << " " << ::tpyapp::main::recurse(4) << "\n" << ::tpy::check_signals;
+    std::cout << "generic:" << " " << ::tpyapp::main::pick<int32_t>(7, 8) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << Scaler(3).scaled(5) << "\n" << ::tpy::check_signals;
+    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_main())) << "\n" << ::tpy::check_signals;
 }
 
 // # Same-module free calls must emit the namespace-qualified callee, so ADL cannot

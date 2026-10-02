@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def show_source(s: Source[int32]) -> None:
 //     print(s.get())
 void show_source(Source<int32_t>& s) {
-    std::cout << s.get() << "\n";
+    std::cout << s.get() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -25,11 +25,11 @@ void main() {
     c->bump();
     c->bump();
     c->bump();
-    std::cout << c->get() << "\n";
+    std::cout << c->get() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show_source((*c));
     ::tpy::Adapter<Source<int32_t>, IntCounter> __slot_2{IntCounter()};
     Source<int32_t>* s = &__slot_2;
-    std::cout << s->get() << "\n";
+    std::cout << s->get() << "\n" << ::tpy::check_signals;
 }
 
 // main()

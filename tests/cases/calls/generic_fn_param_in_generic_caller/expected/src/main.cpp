@@ -18,7 +18,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view s = *__beg_0;
-        std::cout << s << "\n";
+        std::cout << s << "\n" << ::tpy::check_signals;
     }
     std::vector<std::tuple<std::string, int32_t>> qs = {std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 7}, std::tuple<std::string, int32_t>{"c", 1}};
     auto __obj_1 = ::tpyapp::main::keep<std::string>(qs);
@@ -29,7 +29,7 @@ void main() {
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);
         int32_t n = std::get<1>(__tup_1);
-        std::cout << k << " " << n << "\n";
+        std::cout << k << " " << n << "\n" << ::tpy::check_signals;
     }
 }
 

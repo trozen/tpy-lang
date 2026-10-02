@@ -561,7 +561,7 @@ inline void Opt::elem(std::vector<P>& ps) {
     ::tpy::__getitem__(ps, 0).v = 70;
     P* op = ::tpy::optional_to_ptr(this->op);
     if ((op != nullptr)) {
-        std::cout << "method.opt_elem" << " " << op->v << " " << ::tpy::__getitem__(ps, 0).v << "\n";
+        std::cout << "method.opt_elem" << " " << op->v << " " << ::tpy::__getitem__(ps, 0).v << "\n" << ::tpy::check_signals;
     }
 }
 

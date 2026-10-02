@@ -18,7 +18,7 @@ void test_for_range_len_array() {
     for (int32_t i = 0; i < __stop_0; ++i) {
         total = ::tpy::add_check<int32_t>(total, arr[static_cast<std::size_t>(i)]);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def test_for_range_len_list() -> None:
@@ -35,7 +35,7 @@ void test_for_range_len_list() {
     for (int32_t i = 0; i < __stop_0; ++i) {
         total = ::tpy::add_check<int32_t>(total, lst[static_cast<std::size_t>(i)]);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def test_no_elision_unknown_index() -> None:
@@ -46,7 +46,7 @@ void test_for_range_len_list() {
 void test_no_elision_unknown_index() {
     std::array<int32_t, 3> arr = {1, 2, 3};
     int32_t i = 0;
-    std::cout << ::tpy::__getitem__(arr, i) << "\n";
+    std::cout << ::tpy::__getitem__(arr, i) << "\n" << ::tpy::check_signals;
 }
 
 // def test_no_elision_different_container() -> None:
@@ -60,7 +60,7 @@ void test_no_elision_different_container() {
     std::array<int32_t, 3> b = {4, 5, 6};
     int32_t __stop_0 = ::tpy::__len__(a);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        std::cout << ::tpy::__getitem__(b, i) << "\n";
+        std::cout << ::tpy::__getitem__(b, i) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -74,7 +74,7 @@ void test_assert_non_negative_only() {
     std::array<int32_t, 3> arr = {1, 2, 3};
     int32_t i = 1;
     int32_t x = ::tpy::__getitem__(arr, i);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_for_range_literal() -> None:
@@ -90,7 +90,7 @@ void test_for_range_literal() {
     for (int32_t i = 0; i < 3; ++i) {
         total = ::tpy::add_check<int32_t>(total, ::tpy::__getitem__(arr, i));
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def test_write_subscript_elision() -> None:
@@ -108,7 +108,7 @@ void test_write_subscript_elision() {
     }
     int32_t __stop_1 = ::tpy::__len__(arr);
     for (int32_t i = 0; i < __stop_1; ++i) {
-        std::cout << arr[static_cast<std::size_t>(i)] << "\n";
+        std::cout << arr[static_cast<std::size_t>(i)] << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -131,8 +131,8 @@ void test_no_elision_after_method_call() {
     }
     ::tpy::pop_back(lst);
     int32_t i2 = 0;
-    std::cout << ::tpy::__getitem__(lst, i2) << "\n";
-    std::cout << total << "\n";
+    std::cout << ::tpy::__getitem__(lst, i2) << "\n" << ::tpy::check_signals;
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // test_for_range_len_array()

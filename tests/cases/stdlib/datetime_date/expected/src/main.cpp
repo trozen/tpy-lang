@@ -52,63 +52,63 @@ namespace tpyapp::main {
 //         print("caught OverflowError")
 void main() {
     ::tpystd::datetime::date d = ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5));
-    std::cout << d.isoformat() << "\n";
-    std::cout << std::string(::tpy::__str__(d)) << "\n";
-    std::cout << ::tpy::repr_of(d) << "\n";
-    std::cout << d.year() << " " << d.month() << " " << d.day() << "\n";
-    std::cout << d.weekday() << "\n";
-    std::cout << d.isoweekday() << "\n";
-    std::cout << d.toordinal() << "\n";
-    std::cout << date::fromordinal(::tpy::BigInt(737854)).isoformat() << "\n";
-    std::cout << ::tpystd::datetime::date(::tpy::BigInt(2020), ::tpy::BigInt(2), ::tpy::BigInt(29)).isoformat() << "\n";
-    std::cout << ::tpy::print_bool(((d) < (::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(8))))) << "\n";
-    std::cout << ::tpy::print_bool(((d) == (::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5))))) << "\n";
+    std::cout << d.isoformat() << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(d)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(d) << "\n" << ::tpy::check_signals;
+    std::cout << d.year() << " " << d.month() << " " << d.day() << "\n" << ::tpy::check_signals;
+    std::cout << d.weekday() << "\n" << ::tpy::check_signals;
+    std::cout << d.isoweekday() << "\n" << ::tpy::check_signals;
+    std::cout << d.toordinal() << "\n" << ::tpy::check_signals;
+    std::cout << date::fromordinal(::tpy::BigInt(737854)).isoformat() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::date(::tpy::BigInt(2020), ::tpy::BigInt(2), ::tpy::BigInt(29)).isoformat() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((d) < (::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(8))))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((d) == (::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5))))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<::tpystd::datetime::date, std::string> seen = ::tpy::ordered_map<::tpystd::datetime::date, std::string>({{::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5)), "a"}});
-    std::cout << ::tpy::__getitem__(seen, ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::ordered_set<::tpystd::datetime::date>({::tpystd::datetime::date(::tpy::BigInt(2020), ::tpy::BigInt(1), ::tpy::BigInt(1)), ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5))}).contains(d))) << "\n";
-    std::cout << ((::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(8))) - (d)) << "\n";
-    std::cout << ((d) + (::tpystd::datetime::timedelta(::tpy::BigInt(10)))).isoformat() << "\n";
-    std::cout << ((d) - (::tpystd::datetime::timedelta(::tpy::BigInt(10)))).isoformat() << "\n";
-    std::cout << ((::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(12), ::tpy::BigInt(31))) + (::tpystd::datetime::timedelta(::tpy::BigInt(1)))).isoformat() << "\n";
-    std::cout << ::tpystd::datetime::date(::tpy::BigInt(2000), ::tpy::BigInt(2), ::tpy::BigInt(29)).isoformat() << "\n";
+    std::cout << ::tpy::__getitem__(seen, ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::ordered_set<::tpystd::datetime::date>({::tpystd::datetime::date(::tpy::BigInt(2020), ::tpy::BigInt(1), ::tpy::BigInt(1)), ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5))}).contains(d))) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(8))) - (d)) << "\n" << ::tpy::check_signals;
+    std::cout << ((d) + (::tpystd::datetime::timedelta(::tpy::BigInt(10)))).isoformat() << "\n" << ::tpy::check_signals;
+    std::cout << ((d) - (::tpystd::datetime::timedelta(::tpy::BigInt(10)))).isoformat() << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(12), ::tpy::BigInt(31))) + (::tpystd::datetime::timedelta(::tpy::BigInt(1)))).isoformat() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::date(::tpy::BigInt(2000), ::tpy::BigInt(2), ::tpy::BigInt(29)).isoformat() << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpystd::datetime::date bad = ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(2), ::tpy::BigInt(30));
-            std::cout << "no error" << "\n";
+            std::cout << "no error" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught day" << "\n";
+            std::cout << "caught day" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::datetime::date bad2 = ::tpystd::datetime::date(::tpy::BigInt(10000), ::tpy::BigInt(1), ::tpy::BigInt(1));
-            std::cout << "no error" << "\n";
+            std::cout << "no error" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught year" << "\n";
+            std::cout << "caught year" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::datetime::date bad3 = ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(13), ::tpy::BigInt(1));
-            std::cout << "no error" << "\n";
+            std::cout << "no error" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught month" << "\n";
+            std::cout << "caught month" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::datetime::date bad4 = ::tpystd::datetime::date(::tpy::BigInt(1900), ::tpy::BigInt(2), ::tpy::BigInt(29));
-            std::cout << "no error" << "\n";
+            std::cout << "no error" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught non-leap-century" << "\n";
+            std::cout << "caught non-leap-century" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::datetime::date bad5 = ((::tpystd::datetime::date(::tpy::BigInt(9999), ::tpy::BigInt(12), ::tpy::BigInt(31))) + (::tpystd::datetime::timedelta(::tpy::BigInt(1))));
-            std::cout << "no error" << "\n";
+            std::cout << "no error" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OverflowError&) {
-            std::cout << "caught OverflowError" << "\n";
+            std::cout << "caught OverflowError" << "\n" << ::tpy::check_signals;
         }
     }
 }

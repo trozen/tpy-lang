@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(x)
 void test_or(std::string_view a, std::string_view b) {
     std::string_view x = ((!a.empty()) ? a : b);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_and(a: str, b: str) -> None:
@@ -17,7 +17,7 @@ void test_or(std::string_view a, std::string_view b) {
 //     print(x)
 void test_and(std::string_view a, std::string_view b) {
     std::string_view x = ((!a.empty()) ? b : a);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_ternary(a: str, b: str, cond: bool) -> None:
@@ -25,7 +25,7 @@ void test_and(std::string_view a, std::string_view b) {
 //     print(x)
 void test_ternary(std::string_view a, std::string_view b, bool cond) {
     std::string_view x = ((cond) ? (a) : (b));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_literal_or() -> None:
@@ -34,7 +34,7 @@ void test_ternary(std::string_view a, std::string_view b, bool cond) {
 void test_literal_or() {
     std::string_view __tmp_1 = "hello";
     std::string_view x = ((!__tmp_1.empty()) ? __tmp_1 : std::string_view("world"));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_or_right_promotes() -> None:
@@ -50,7 +50,7 @@ void test_or_right_promotes() {
     std::string b = "world";
     std::string x = std::string(((!a.empty()) ? a : std::string_view(b)));
     b += "!";
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_ternary_right_promotes() -> None:
@@ -64,7 +64,7 @@ void test_ternary_right_promotes() {
     std::string b = "world";
     std::string x = std::string(((true) ? (a) : (b)));
     b += "!";
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_or_chain(a: str, b: str, c: str) -> None:
@@ -74,7 +74,7 @@ void test_ternary_right_promotes() {
 void test_or_chain(std::string_view a, std::string_view b, std::string_view c) {
     auto&& __tmp_1 = ((!a.empty()) ? a : b);
     std::string_view x = ((!__tmp_1.empty()) ? __tmp_1 : c);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_literal_or_chain() -> None:
@@ -84,7 +84,7 @@ void test_literal_or_chain() {
     std::string_view __tmp_1 = "foo";
     auto&& __tmp_2 = ((!__tmp_1.empty()) ? __tmp_1 : std::string_view("bar"));
     std::string_view x = ((!__tmp_2.empty()) ? __tmp_2 : std::string_view("baz"));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_or_chain_third_promotes() -> None:
@@ -102,7 +102,7 @@ void test_or_chain_third_promotes() {
     auto&& __tmp_1 = ((!a.empty()) ? a : b);
     std::string x = std::string(((!__tmp_1.empty()) ? __tmp_1 : std::string_view(c)));
     c += "?";
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // test_or("hello", "world")

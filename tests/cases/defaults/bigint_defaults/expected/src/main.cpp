@@ -24,10 +24,10 @@ namespace tpyapp::main {
 //     print(scale(10))
 //     print(scale(10, 4))
 void main() {
-    std::cout << ::tpyapp::main::add(::tpy::BigInt(5)) << "\n";
-    std::cout << ::tpyapp::main::add(::tpy::BigInt(5), ::tpy::BigInt(3)) << "\n";
-    std::cout << ::tpyapp::main::scale(::tpy::BigInt(10)) << "\n";
-    std::cout << ::tpyapp::main::scale(::tpy::BigInt(10), ::tpy::BigInt(4)) << "\n";
+    std::cout << ::tpyapp::main::add(::tpy::BigInt(5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::add(::tpy::BigInt(5), ::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::scale(::tpy::BigInt(10)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::scale(::tpy::BigInt(10), ::tpy::BigInt(4)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

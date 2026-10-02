@@ -21,7 +21,7 @@ void __tpy_init() {
     x = 2000000000;
     y = 2000000000;
     z = (::tpy::add_check<int32_t>(x, y));
-    std::cout << z << "\n";
+    std::cout << z << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

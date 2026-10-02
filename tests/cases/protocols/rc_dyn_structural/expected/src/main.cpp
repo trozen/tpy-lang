@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(r.get().name())
 void main() {
     ::tpystd::tplib::rc::Rc<Pet> r = Rc<Pet>::new_<::tpy::Adapter<Pet, Cat>>(Cat("Whiskers"));
-    std::cout << r.get().name() << "\n";
+    std::cout << r.get().name() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Rc

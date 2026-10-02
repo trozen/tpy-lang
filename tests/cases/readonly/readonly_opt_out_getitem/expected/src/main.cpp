@@ -15,8 +15,8 @@ void __tpy_init() {
 
     static CachedList __global_slot_1 = CachedList();
     c = &__global_slot_1;
-    std::cout << (*c)[0] << "\n";
-    std::cout << (*c)[1] << "\n";
+    std::cout << (*c)[0] << "\n" << ::tpy::check_signals;
+    std::cout << (*c)[1] << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

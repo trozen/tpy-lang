@@ -45,9 +45,9 @@ int32_t consume(const std::tuple<const T*, const T*>& p) {
 void main() {
     T a = T(3);
     T b = T(4);
-    std::cout << ::tpyapp::main::consume(::tpyapp::main::make_pair(a, b)) << "\n";
+    std::cout << ::tpyapp::main::consume(::tpyapp::main::make_pair(a, b)) << "\n" << ::tpy::check_signals;
     auto pair = ::tpyapp::main::make_pair(a, b);
-    std::cout << ::tpyapp::main::consume(pair) << "\n";
+    std::cout << ::tpyapp::main::consume(pair) << "\n" << ::tpy::check_signals;
 }
 
 // main()

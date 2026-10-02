@@ -29,7 +29,7 @@ void test_after_while() {
         x = (x) + (::tpy::BigInt(1));
     }
     ::tpy::BigInt y = ((x) + (::tpy::BigInt(1)));
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_after_for() -> None:
@@ -47,7 +47,7 @@ void test_after_for() {
         }
     }
     ::tpy::BigInt y = ((x) + (::tpy::BigInt(1)));
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // test_after_while()

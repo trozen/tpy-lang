@@ -31,8 +31,8 @@ void main() {
         a = std::get<0>(__tup_2);
         b = std::get<1>(__tup_2);
     }
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // main()

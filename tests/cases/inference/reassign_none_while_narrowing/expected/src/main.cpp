@@ -27,7 +27,7 @@ void test_while() {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     if ((result != nullptr)) {
-        std::cout << result->v << "\n";
+        std::cout << result->v << "\n" << ::tpy::check_signals;
     }
 }
 

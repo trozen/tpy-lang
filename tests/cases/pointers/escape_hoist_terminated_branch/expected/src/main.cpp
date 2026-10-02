@@ -29,7 +29,7 @@ void terminated_branch() {
         }
         saved = p;
     }
-    std::cout << saved->x << " " << saved->y << "\n";
+    std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
 
 // terminated_branch()

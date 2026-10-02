@@ -57,12 +57,12 @@ namespace tpyapp::main {
 //     print(k.value)
 void main() {
     Message m = Message(Message::Kind::TEXT, 42);
-    std::cout << m.kind << "\n";
-    std::cout << m.data << "\n";
+    std::cout << m.kind << "\n" << ::tpy::check_signals;
+    std::cout << m.data << "\n" << ::tpy::check_signals;
     Message::Kind k = Message::Kind::IMAGE;
-    std::cout << k << "\n";
-    std::cout << ::tpy::EnumUtil<Message::Kind>::name(k) << "\n";
-    std::cout << static_cast<int32_t>(k) << "\n";
+    std::cout << k << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<Message::Kind>::name(k) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(k) << "\n" << ::tpy::check_signals;
 }
 
 // from enum import Enum, auto

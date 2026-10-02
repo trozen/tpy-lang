@@ -17,11 +17,11 @@ namespace tpyapp::main {
 //     print(text[2])             # l
 void main() {
     std::string_view text = "hello";
-    std::cout << ::tpyapp::main::first_char(text) << "\n";
-    std::cout << ::tpyapp::main::count_chars(text) << "\n";
-    std::cout << ::tpy::__getitem__(text, 0) << "\n";
-    std::cout << ::tpy::__getitem__(text, -1) << "\n";
-    std::cout << ::tpy::__getitem__(text, 2) << "\n";
+    std::cout << ::tpyapp::main::first_char(text) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::count_chars(text) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(text, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(text, -1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(text, 2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -11,7 +11,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << "init executed" << "\n";
+    std::cout << "init executed" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::mypackage

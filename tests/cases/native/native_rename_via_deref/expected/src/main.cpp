@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void main() {
     ::x::Widget w = ::x::Widget(42);
     WRef r = WRef(w);
-    std::cout << r.__deref__().getId() << "\n";
+    std::cout << r.__deref__().getId() << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native

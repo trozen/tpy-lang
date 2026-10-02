@@ -9,8 +9,8 @@ namespace tpyapp::main {
 //     print(mypackage.utils.add(int32(5), int32(6)))
 //     return int32(0)
 int32_t main() {
-    std::cout << ::tpyapp::mypackage::utils::add(3, 4) << "\n";
-    std::cout << ::tpyapp::mypackage::utils::add(5, 6) << "\n";
+    std::cout << ::tpyapp::mypackage::utils::add(3, 4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::mypackage::utils::add(5, 6) << "\n" << ::tpy::check_signals;
     return 0;
 }
 

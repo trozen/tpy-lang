@@ -11,11 +11,11 @@ namespace tpyapp::main {
 //     print(TypedI(42).val)
 //     print(TypedM[int32](7).val)
 void main() {
-    std::cout << Sub(5)._v << "\n";
-    std::cout << Sub()._v << "\n";
-    std::cout << SubSub(9)._v << "\n";
-    std::cout << TypedI(42).val << "\n";
-    std::cout << TypedM<int32_t>(7).val << "\n";
+    std::cout << Sub(5)._v << "\n" << ::tpy::check_signals;
+    std::cout << Sub()._v << "\n" << ::tpy::check_signals;
+    std::cout << SubSub(9)._v << "\n" << ::tpy::check_signals;
+    std::cout << TypedI(42).val << "\n" << ::tpy::check_signals;
+    std::cout << TypedM<int32_t>(7).val << "\n" << ::tpy::check_signals;
 }
 
 // main()

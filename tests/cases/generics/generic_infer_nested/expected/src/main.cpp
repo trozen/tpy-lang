@@ -26,10 +26,10 @@ void __tpy_init() {
     inner = &__global_slot_1;
     static Outer<Inner<::tpy::BigInt>> __global_slot_2 = Outer<Inner<::tpy::BigInt>>((*inner));
     outer = &__global_slot_2;
-    std::cout << outer->inner.value << "\n";
+    std::cout << outer->inner.value << "\n" << ::tpy::check_signals;
     static Outer<Inner<int32_t>> __global_slot_3 = Outer<Inner<int32_t>>(Inner<int32_t>(42));
     outer2 = &__global_slot_3;
-    std::cout << outer2->inner.value << "\n";
+    std::cout << outer2->inner.value << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

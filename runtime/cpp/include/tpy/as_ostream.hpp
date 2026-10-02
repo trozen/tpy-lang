@@ -5,7 +5,7 @@
  * the existing operator<< chain. Three concrete overloads bypass any
  * adapter (cout/cerr via std::ostream&, sys.stdout/stderr via StdStream,
  * open()-files via TextFile); a fallback template wraps any user type
- * satisfying the Writable concept in a streambuf adapter.
+ * satisfying the Writable concept in an unbuffered streambuf adapter.
  */
 
 #pragma once
@@ -29,27 +29,19 @@ concept WritableSink = requires(W& w, std::string_view sv) {
 
 namespace detail {
 
-// Buffered streambuf forwarding to a Writable's write() / flush().
-// sync() drains the buffer AND calls W::flush() (semantics for `<< std::flush`);
-// the destructor only drains, matching std::ostream's no-flush-on-destroy.
+// Unbuffered streambuf forwarding to a Writable's write() / flush(): every
+// insertion reaches write() before the chain's trailing check_signals
+// manipulator runs, so nothing is deferred to a destructor. The user's
+// write() sees one call per streamed token, not per argument as in CPython
+// (BUGS.md#print-sink-write-call-pattern). sync() calls W::flush()
+// (semantics for `<< std::flush`).
 template <typename W>
 class WritableStreambuf final : public std::streambuf {
     W* w_;
-    static constexpr std::size_t kBufSize = 256;
-    char buf_[kBufSize];
-
-    void drain() {
-        const auto n = pptr() - pbase();
-        if (n > 0) {
-            w_->write(std::string_view(pbase(), static_cast<std::size_t>(n)));
-            setp(buf_, buf_ + kBufSize);
-        }
-    }
 
 protected:
     std::streamsize xsputn(const char* s, std::streamsize n) override {
         if (n <= 0) return 0;
-        if (pptr() != pbase()) drain();
         // Mirrors Python's io.IOBase.write: short-write / error returns from
         // the user's write() are not propagated as a streambuf failure.
         w_->write(std::string_view(s, static_cast<std::size_t>(n)));
@@ -57,26 +49,20 @@ protected:
     }
 
     int_type overflow(int_type ch) override {
-        drain();
         if (!traits_type::eq_int_type(ch, traits_type::eof())) {
-            *pptr() = traits_type::to_char_type(ch);
-            pbump(1);
+            const char c = traits_type::to_char_type(ch);
+            w_->write(std::string_view(&c, 1));
         }
         return traits_type::not_eof(ch);
     }
 
     int sync() override {
-        drain();
         w_->flush();
         return 0;
     }
 
 public:
-    explicit WritableStreambuf(W& w) : w_(&w) {
-        setp(buf_, buf_ + kBufSize);
-    }
-
-    ~WritableStreambuf() override { drain(); }
+    explicit WritableStreambuf(W& w) : w_(&w) {}
 
     WritableStreambuf(const WritableStreambuf&) = delete;
     WritableStreambuf(WritableStreambuf&&) = delete;
@@ -91,6 +77,11 @@ class WritableOstream final : public std::ostream {
 public:
     explicit WritableOstream(W& w) : std::ostream(nullptr), sb_(w) {
         rdbuf(&sb_);
+        // An exception out of the user's write() (its own raise, or the
+        // KeyboardInterrupt of a print inside it) propagates out of the
+        // print, as in CPython; without badbit in the mask the standard
+        // inserters would swallow it into the stream state.
+        exceptions(std::ios_base::badbit);
     }
 
     WritableOstream(const WritableOstream&) = delete;

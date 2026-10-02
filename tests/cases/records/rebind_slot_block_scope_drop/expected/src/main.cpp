@@ -12,14 +12,14 @@ namespace tpyapp::main {
 //         print("inside:", r.name)
 //     print("after block")
 void in_if(bool flag) {
-    std::cout << "enter in_if" << "\n";
+    std::cout << "enter in_if" << "\n" << ::tpy::check_signals;
     if (flag) {
         Noisy __slot_1 = Noisy("if-first");
         Noisy* r = &__slot_1;
         (*r) = Noisy("if-second");
-        std::cout << "inside:" << " " << r->name << "\n";
+        std::cout << "inside:" << " " << r->name << "\n" << ::tpy::check_signals;
     }
-    std::cout << "after block" << "\n";
+    std::cout << "after block" << "\n" << ::tpy::check_signals;
 }
 
 // def in_loop() -> None:
@@ -32,16 +32,16 @@ void in_if(bool flag) {
 //         i += 1
 //     print("after loop")
 void in_loop() {
-    std::cout << "enter in_loop" << "\n";
+    std::cout << "enter in_loop" << "\n" << ::tpy::check_signals;
     int32_t i = 0;
     while ((i < 2)) {
         Noisy __slot_1 = Noisy("loop-first");
         Noisy* r = &__slot_1;
         (*r) = Noisy("loop-second");
-        std::cout << "inside:" << " " << r->name << "\n";
+        std::cout << "inside:" << " " << r->name << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "after loop" << "\n";
+    std::cout << "after loop" << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -52,10 +52,10 @@ void in_loop() {
 //     print("done")
 void main() {
     ::tpyapp::main::in_if(true);
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::in_loop();
-    std::cout << "---" << "\n";
-    std::cout << "done" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // main()

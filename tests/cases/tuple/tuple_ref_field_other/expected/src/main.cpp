@@ -24,12 +24,12 @@ void update(Holder& h, const Point& p) {
 void main() {
     Point p = Point(1, 2);
     Holder h = Holder(p, 42);
-    std::cout << std::get<0>(h.data).x << " " << std::get<1>(h.data) << "\n";
+    std::cout << std::get<0>(h.data).x << " " << std::get<1>(h.data) << "\n" << ::tpy::check_signals;
     Point p2 = Point(10, 20);
     ::tpyapp::main::update(h, p2);
-    std::cout << std::get<0>(h.data).x << " " << std::get<1>(h.data) << "\n";
+    std::cout << std::get<0>(h.data).x << " " << std::get<1>(h.data) << "\n" << ::tpy::check_signals;
     p2.x = 55;
-    std::cout << std::get<0>(h.data).x << "\n";
+    std::cout << std::get<0>(h.data).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(b.describe())
 void main() {
     Both b = Both();
-    std::cout << b.describe() << "\n";
+    std::cout << b.describe() << "\n" << ::tpy::check_signals;
 }
 
 // main()

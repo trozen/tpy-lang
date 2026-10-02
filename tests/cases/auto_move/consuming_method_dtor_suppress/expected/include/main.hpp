@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const HeapVal& obj) {
 //     self._ptr = unsafe_alloc()
 //     unsafe_init(self._ptr, value)
 inline HeapVal::HeapVal(int32_t value) {
-    std::cout << "init" << " " << value << "\n";
+    std::cout << "init" << " " << value << "\n" << ::tpy::check_signals;
     this->_ptr = static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))));
     ::new(static_cast<void*>(this->_ptr)) int32_t(value);
 }
@@ -68,7 +68,7 @@ inline HeapVal& HeapVal::operator=(HeapVal&& other) noexcept {
 //     unsafe_free(self._ptr)
 inline HeapVal::~HeapVal() {
     if (!this->__tpy_owned_) return;
-    std::cout << "del" << "\n";
+    std::cout << "del" << "\n" << ::tpy::check_signals;
     ::tpy::destroy_at(this->_ptr);
     ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
 }
@@ -80,7 +80,7 @@ inline HeapVal::~HeapVal() {
 //     return val
 inline int32_t HeapVal::take() && {
     this->__tpy_owned_ = false;
-    std::cout << "take" << "\n";
+    std::cout << "take" << "\n" << ::tpy::check_signals;
     int32_t val = std::move(*this->_ptr);
     ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
     return val;

@@ -19,14 +19,14 @@ namespace tpyapp::main {
 //     print(g.name)
 void main() {
     Base<std::string, 10> b = Base<std::string, 10>("base");
-    std::cout << b.value << "\n";
+    std::cout << b.value << "\n" << ::tpy::check_signals;
     Child<std::string, 20> c = Child<std::string, 20>("child", 42);
-    std::cout << c.value << "\n";
-    std::cout << c.extra << "\n";
+    std::cout << c.value << "\n" << ::tpy::check_signals;
+    std::cout << c.extra << "\n" << ::tpy::check_signals;
     GrandChild<std::string, 30> g = GrandChild<std::string, 30>("grand", 100, "test");
-    std::cout << g.value << "\n";
-    std::cout << g.extra << "\n";
-    std::cout << g.name << "\n";
+    std::cout << g.value << "\n" << ::tpy::check_signals;
+    std::cout << g.extra << "\n" << ::tpy::check_signals;
+    std::cout << g.name << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -23,7 +23,7 @@ void alias_survives_rebind() {
     Counter& alias = (*c);
     c = &*(__slot_2 = Counter(10));
     alias.bump();
-    std::cout << "alias:" << " " << alias.n << " " << "c:" << " " << c->n << "\n";
+    std::cout << "alias:" << " " << alias.n << " " << "c:" << " " << c->n << "\n" << ::tpy::check_signals;
 }
 
 // def rebind_in_loop() -> None:
@@ -46,7 +46,7 @@ void rebind_in_loop() {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     first.bump();
-    std::cout << "first:" << " " << first.n << " " << "c:" << " " << c->n << "\n";
+    std::cout << "first:" << " " << first.n << " " << "c:" << " " << c->n << "\n" << ::tpy::check_signals;
 }
 
 // def borrow_call_rebind(seed: Counter) -> None:
@@ -65,7 +65,7 @@ void borrow_call_rebind(Counter& seed) {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     result->bump();
-    std::cout << "seed:" << " " << seed.n << " " << "result:" << " " << result->n << "\n";
+    std::cout << "seed:" << " " << seed.n << " " << "result:" << " " << result->n << "\n" << ::tpy::check_signals;
 }
 
 // def none_reassign(flag: bool) -> None:
@@ -79,7 +79,7 @@ void none_reassign(bool flag) {
     if (flag) {
         c = nullptr;
     }
-    std::cout << (((c == nullptr)) ? ("none:") : ("some:")) << " " << (((c == nullptr)) ? (0) : (c->n)) << "\n";
+    std::cout << (((c == nullptr)) ? ("none:") : ("some:")) << " " << (((c == nullptr)) ? (0) : (c->n)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

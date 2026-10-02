@@ -318,7 +318,7 @@ inline void Holder::rebind(std::vector<double>& xs, const std::vector<double>& f
         }
         std::move(__result);
     }));
-    std::cout << "method" << " " << ::tpy::ListPrinter((*ys)) << "\n";
+    std::cout << "method" << " " << ::tpy::ListPrinter((*ys)) << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self) -> None:
@@ -334,7 +334,7 @@ inline void PackUser::run() const {
     int32_t kn = ::tpy::__len__(this->xs);
     std::array<const ::tpy::BigInt, 3> __tmp_1{1, 2, 3};
     kn = ::tpy::__len__(::tpyapp::main::pack(::tpy::varargs<const ::tpy::BigInt>(__tmp_1)));
-    std::cout << "pack_arg" << " " << kn << "\n";
+    std::cout << "pack_arg" << " " << kn << "\n" << ::tpy::check_signals;
 }
 // def empty_list[T](n: int32) -> Own[list[T]]:
 //     out: list[T] = []
@@ -363,7 +363,7 @@ std::vector<T> peek(Rec& r, std::vector<T>&& xs) {
 //     return p[0]
 template<typename T>
 ::tpy::val_or_ref_t<T> tuple_t_float(const std::tuple<::tpy::val_or_ptr_t<T>, double>& p) {
-    std::cout << "tuple_t_float_param" << " " << ::tpy::print_float((::tpy::truediv(std::get<1>(p), 2))) << "\n";
+    std::cout << "tuple_t_float_param" << " " << ::tpy::print_float((::tpy::truediv(std::get<1>(p), 2))) << "\n" << ::tpy::check_signals;
     return ::tpy::tuple_elem_ref(std::get<0>(p));
 }
 // def apply_t[T](fn: Callable[[T], float], x: T) -> T:
@@ -371,7 +371,7 @@ template<typename T>
 //     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> apply_t(const std::function<double(::tpy::param_val_or_ref_t<T>)>& fn, ::tpy::param_val_or_ref_t<T> x) {
-    std::cout << "callable_t_float_param" << " " << ::tpy::print_float((::tpy::truediv(fn(x), 2))) << "\n";
+    std::cout << "callable_t_float_param" << " " << ::tpy::print_float((::tpy::truediv(fn(x), 2))) << "\n" << ::tpy::check_signals;
     return ::tpy::param_to_return<T>(x);
 }
 // def pick2[T](v: list[T], f: float) -> T:
@@ -379,7 +379,7 @@ template<typename T>
 //     return v[0]
 template<typename T>
 ::tpy::val_or_ref_t<T> pick2(std::vector<T>& v, double f) {
-    std::cout << "pick2_param" << " " << ::tpy::print_float((::tpy::truediv(f, 2))) << "\n";
+    std::cout << "pick2_param" << " " << ::tpy::print_float((::tpy::truediv(f, 2))) << "\n" << ::tpy::check_signals;
     return ::tpy::__getitem__(v, 0);
 }
 

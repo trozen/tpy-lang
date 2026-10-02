@@ -30,7 +30,7 @@ void main() {
             __result.push_back(((2.0) * (::tpy::__getitem__(a, i))));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << s.count(({
         ::tpy::ordered_set<::tpy::BigInt> __result;
         const int32_t __stop_1 = 4;
@@ -38,7 +38,7 @@ void main() {
             __result.insert(::tpy::BigInt((::tpy::mul_check<int32_t>(i, 2))));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << s.index(({
         ::tpy::ordered_map<::tpy::BigInt, double> __result;
         const int32_t __stop_2 = 3;
@@ -46,7 +46,7 @@ void main() {
             __result.insert_or_assign(::tpy::BigInt(i), ::tpy::__getitem__(a, i));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::vector<double> __tmp_1 = ({
         std::vector<double> __result;
         const int32_t __stop_3 = 3;
@@ -56,7 +56,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpyapp::main::take(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::take(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

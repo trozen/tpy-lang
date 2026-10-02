@@ -30,7 +30,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         result = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << result << "\n";
+        std::cout << result << "\n" << ::tpy::check_signals;
         __sub_1.emplace("hi");
         __state = S_RESUME_1;
         continue;
@@ -40,7 +40,7 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         s = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << s << "\n";
+        std::cout << s << "\n" << ::tpy::check_signals;
         b.emplace(Bin(5));
         __sub_2.emplace((*b), (*b));
         __state = S_RESUME_2;
@@ -51,9 +51,9 @@ namespace tpyapp::main {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << "readonly" << " " << __await_lift_0 << "\n";
+        std::cout << "readonly" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
         (*b).total = ::tpy::add_check<int32_t>((*b).total, 1);
-        std::cout << "readonly after" << " " << (*b).total << "\n";
+        std::cout << "readonly after" << " " << (*b).total << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

@@ -72,13 +72,13 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen:" << " " << v << "\n";
+            std::cout << "gen:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "after gen:" << " " << b.val << "\n";
+    std::cout << "after gen:" << " " << b.val << "\n" << ::tpy::check_signals;
     Box c = Box(7);
-    std::cout << "coro:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(c))) << "\n";
-    std::cout << "after coro:" << " " << c.val << "\n";
+    std::cout << "coro:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(c))) << "\n" << ::tpy::check_signals;
+    std::cout << "after coro:" << " " << c.val << "\n" << ::tpy::check_signals;
 }
 
 // # A mixed owned+borrow tuple local that lives in a RESUMABLE FRAME -- a

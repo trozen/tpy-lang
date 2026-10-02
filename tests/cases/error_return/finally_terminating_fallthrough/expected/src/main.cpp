@@ -36,17 +36,17 @@ std::expected<int32_t, E> falls_through() {
                 if (!__try_tmp_2.has_value()) goto __except_1;
                 v = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
-            std::cout << "try body ran, v =" << " " << v << "\n";
+            std::cout << "try body ran, v =" << " " << v << "\n" << ::tpy::check_signals;
             goto __after_try_1;
             // except E:
             __except_1:;
-            std::cout << "unreachable handler" << "\n";
+            std::cout << "unreachable handler" << "\n" << ::tpy::check_signals;
             __after_try_1:;
         } catch (...) {
-            std::cout << "finally ran" << "\n";
+            std::cout << "finally ran" << "\n" << ::tpy::check_signals;
             throw ::tpy::RuntimeError("from finally");
         }
-        std::cout << "finally ran" << "\n";
+        std::cout << "finally ran" << "\n" << ::tpy::check_signals;
         throw ::tpy::RuntimeError("from finally");
     }
     return 0;
@@ -76,17 +76,17 @@ std::expected<int32_t, E> returns_from_finally() {
                 if (!__try_tmp_4.has_value()) goto __except_3;
                 v = ::tpy::unwrap_ref_move(*__try_tmp_4);
             }
-            std::cout << "try body ran, v =" << " " << v << "\n";
+            std::cout << "try body ran, v =" << " " << v << "\n" << ::tpy::check_signals;
             goto __after_try_3;
             // except E:
             __except_3:;
-            std::cout << "unreachable handler" << "\n";
+            std::cout << "unreachable handler" << "\n" << ::tpy::check_signals;
             __after_try_3:;
         } catch (...) {
-            std::cout << "finally ran" << "\n";
+            std::cout << "finally ran" << "\n" << ::tpy::check_signals;
             return 7;
         }
-        std::cout << "finally ran" << "\n";
+        std::cout << "finally ran" << "\n" << ::tpy::check_signals;
         return 7;
     }
 }
@@ -104,19 +104,19 @@ std::expected<int32_t, E> returns_from_finally() {
 //         print("caught E")
 void call_it() {
     {
-        std::cout << ({ auto __er_6 = ::tpyapp::main::returns_from_finally(); if (!__er_6.has_value()) goto __except_5; ::tpy::unwrap_ref_move(*__er_6); }) << "\n";
+        std::cout << ({ auto __er_6 = ::tpyapp::main::returns_from_finally(); if (!__er_6.has_value()) goto __except_5; ::tpy::unwrap_ref_move(*__er_6); }) << "\n" << ::tpy::check_signals;
         goto __after_try_5;
         // except E:
         __except_5:;
-        std::cout << "caught E" << "\n";
+        std::cout << "caught E" << "\n" << ::tpy::check_signals;
         __after_try_5:;
     }
     {
-        std::cout << ({ auto __er_8 = ::tpyapp::main::falls_through(); if (!__er_8.has_value()) goto __except_7; ::tpy::unwrap_ref_move(*__er_8); }) << "\n";
+        std::cout << ({ auto __er_8 = ::tpyapp::main::falls_through(); if (!__er_8.has_value()) goto __except_7; ::tpy::unwrap_ref_move(*__er_8); }) << "\n" << ::tpy::check_signals;
         goto __after_try_7;
         // except E:
         __except_7:;
-        std::cout << "caught E" << "\n";
+        std::cout << "caught E" << "\n" << ::tpy::check_signals;
         __after_try_7:;
     }
 }
@@ -131,7 +131,7 @@ void main() {
         try {
             ::tpyapp::main::call_it();
         } catch (const ::tpy::RuntimeError&) {
-            std::cout << "caught from finally" << "\n";
+            std::cout << "caught from finally" << "\n" << ::tpy::check_signals;
         }
     }
 }

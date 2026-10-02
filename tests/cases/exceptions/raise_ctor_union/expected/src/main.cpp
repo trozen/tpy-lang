@@ -23,12 +23,12 @@ void main() {
             switch (__match_subject_1.index()) {
             case 0: {
                 auto& av = std::get<0>(__match_subject_1);
-                std::cout << av.x << "\n";
+                std::cout << av.x << "\n" << ::tpy::check_signals;
                 break;
             }
             case 1: {
                 auto& bv = std::get<1>(__match_subject_1);
-                std::cout << bv.y << "\n";
+                std::cout << bv.y << "\n" << ::tpy::check_signals;
                 break;
             }
             }

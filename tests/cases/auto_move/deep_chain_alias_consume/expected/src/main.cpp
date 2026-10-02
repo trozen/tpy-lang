@@ -23,8 +23,8 @@ void main() {
     Outer o = Outer();
     Inner& a = ::tpy::__getitem__(o.items, 0);
     Outer __tmp_1 = o;
-    std::cout << ::tpyapp::main::take(std::move(__tmp_1)) << "\n";
-    std::cout << ::tpy::__len__(a.vals) << "\n";
+    std::cout << ::tpyapp::main::take(std::move(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(a.vals) << "\n" << ::tpy::check_signals;
 }
 
 // main()

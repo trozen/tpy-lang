@@ -20,12 +20,12 @@ namespace tpyapp::main {
 //     print(sum_elif(1, nums))             # 99 (kind==1 branch, skipped NativeIterable)
 void main() {
     std::vector<int32_t> nums = {1, 2, 3, 4};
-    std::cout << ::tpyapp::main::sum_fast(nums) << "\n";
-    std::cout << ::tpyapp::main::sum_nested(nums, true) << "\n";
-    std::cout << ::tpyapp::main::sum_nested(nums, false) << "\n";
-    std::cout << ::tpyapp::main::sum_elif(0, nums) << "\n";
-    std::cout << ::tpyapp::main::sum_elif(2, nums) << "\n";
-    std::cout << ::tpyapp::main::sum_elif(1, nums) << "\n";
+    std::cout << ::tpyapp::main::sum_fast(nums) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_nested(nums, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_nested(nums, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_elif(0, nums) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_elif(2, nums) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_elif(1, nums) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -23,12 +23,12 @@ void main() {
         q = &(__match_subject_1);
         q->v = ::tpy::BigInt(99);
     }
-    std::cout << b.v << "\n";
+    std::cout << b.v << "\n" << ::tpy::check_signals;
     auto __ctx_1 = Box(::tpy::BigInt(5));
     q = &(__ctx_1.__enter__());
     try {
         q->v = ::tpy::BigInt(7);
-        std::cout << q->v << "\n";
+        std::cout << q->v << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -39,7 +39,7 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << b.v << "\n";
+    std::cout << b.v << "\n" << ::tpy::check_signals;
 }
 
 // main()

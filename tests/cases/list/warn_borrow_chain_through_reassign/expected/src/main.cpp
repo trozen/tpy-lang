@@ -23,9 +23,9 @@ void chain_alias_then_reassign() {
     Point& view = (*s);
     s = &(::tpy::__getitem__(items, 1));
     s->x = 99;
-    std::cout << ::tpy::__getitem__(items, 1).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 1).x << "\n" << ::tpy::check_signals;
     items.push_back(Point(5, 6));
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def reassigned_element_borrower_warns() -> None:
@@ -42,9 +42,9 @@ void reassigned_element_borrower_warns() {
     Point* s = &(::tpy::__getitem__(items, 0));
     s = &(::tpy::__getitem__(items, 1));
     s->x = 88;
-    std::cout << ::tpy::__getitem__(items, 1).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 1).x << "\n" << ::tpy::check_signals;
     items.push_back(Point(5, 6));
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def chain_promotes_alias_to_element() -> None:
@@ -66,9 +66,9 @@ void chain_promotes_alias_to_element() {
     Point& view = (*s);
     s = &(::tpy::__getitem__(items, 1));
     view.y = 77;
-    std::cout << ::tpy::__getitem__(items, 0).y << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).y << "\n" << ::tpy::check_signals;
     items.push_back(Point(7, 8));
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // chain_alias_then_reassign()

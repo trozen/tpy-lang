@@ -37,18 +37,18 @@ void main() {
         try {
             ::tpyapp::main::throw_value_error();
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught ValueError" << "\n";
+            std::cout << "caught ValueError" << "\n" << ::tpy::check_signals;
         } catch (const MyError&) {
-            std::cout << "caught MyError" << "\n";
+            std::cout << "caught MyError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::throw_my_error();
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught ValueError" << "\n";
+            std::cout << "caught ValueError" << "\n" << ::tpy::check_signals;
         } catch (const MyError&) {
-            std::cout << "caught MyError" << "\n";
+            std::cout << "caught MyError" << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -16,7 +16,7 @@ void main() {
     Dog d = Dog("Rex");
     Cat c = Cat("Whiskers");
     Recorder r = Recorder(d);
-    std::cout << r.message << "\n";
+    std::cout << r.message << "\n" << ::tpy::check_signals;
     Announcer ann = Announcer(">> ");
     ann.announce(d);
     ann.announce(c);

@@ -23,18 +23,18 @@ namespace tpyapp::main {
 //     print(p.sub("B", "abba bb b", 2))
 //     print(p.sub("B", "abba bb b"))
 void main() {
-    std::cout << ::tpystd::re::sub("\\d+", "N", "a1 b22 c333", 1) << "\n";
-    std::cout << ::tpystd::re::sub("\\d+", "N", "a1 b22 c333", 2) << "\n";
-    std::cout << ::tpystd::re::sub("\\d+", "N", "a1 b22 c333", 99) << "\n";
-    std::cout << ::tpystd::re::sub("\\d+", "N", "a1 b22 c333", 0) << "\n";
-    std::cout << ::tpystd::re::sub("\\d+", "N", "a1 b22 c333", -1) << "\n";
-    std::cout << ::tpystd::re::sub("a", "xyz", "aaa", 2) << "\n";
-    std::cout << ::tpystd::re::sub("x*", "-", "abc", 2) << "\n";
-    std::cout << ::tpystd::re::sub("x*", "-", "xxabc", 2) << "\n";
-    std::cout << ::tpystd::re::sub("|a", "-", "ab", 3) << "\n";
+    std::cout << ::tpystd::re::sub("\\d+", "N", "a1 b22 c333", 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::re::sub("\\d+", "N", "a1 b22 c333", 2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::re::sub("\\d+", "N", "a1 b22 c333", 99) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::re::sub("\\d+", "N", "a1 b22 c333", 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::re::sub("\\d+", "N", "a1 b22 c333", -1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::re::sub("a", "xyz", "aaa", 2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::re::sub("x*", "-", "abc", 2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::re::sub("x*", "-", "xxabc", 2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::re::sub("|a", "-", "ab", 3) << "\n" << ::tpy::check_signals;
     ::tpystd::re::Pattern p = ::tpystd::re::compile("b+");
-    std::cout << p.sub("B", "abba bb b", 2) << "\n";
-    std::cout << p.sub("B", "abba bb b") << "\n";
+    std::cout << p.sub("B", "abba bb b", 2) << "\n" << ::tpy::check_signals;
+    std::cout << p.sub("B", "abba bb b") << "\n" << ::tpy::check_signals;
 }
 
 // # `count` parameter on re.sub / Pattern.sub: limits replacements; 0 means

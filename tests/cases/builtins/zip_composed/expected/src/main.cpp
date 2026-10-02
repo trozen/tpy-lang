@@ -51,7 +51,7 @@ void main() {
             auto& __tup_1 = __for_tup_0;
             auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
             auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-            std::cout << a << " " << b << "\n";
+            std::cout << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -64,7 +64,7 @@ void main() {
             auto& __tup_2 = __for_tup_1;
             auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
             int32_t v = std::get<1>(__tup_2);
-            std::cout << p << " " << v << "\n";
+            std::cout << p << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -86,14 +86,14 @@ void main() {
     auto __end_6 = __obj_6.end();
     for (; __beg_6 != __end_6; ++__beg_6) {
         const auto& pt = *__beg_6;
-        std::cout << pt << "\n";
+        std::cout << pt << "\n" << ::tpy::check_signals;
     }
     auto& __obj_7 = pts2;
     auto __beg_7 = __obj_7.begin();
     auto __end_7 = __obj_7.end();
     for (; __beg_7 != __end_7; ++__beg_7) {
         const auto& pt = *__beg_7;
-        std::cout << pt << "\n";
+        std::cout << pt << "\n" << ::tpy::check_signals;
     }
 }
 

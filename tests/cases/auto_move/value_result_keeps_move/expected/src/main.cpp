@@ -22,8 +22,8 @@ int32_t drop(std::vector<int32_t>&& xs) {
 void main() {
     std::vector<int32_t> xs = {1, 2, 3};
     int32_t n = ::tpy::__len__(xs);
-    std::cout << ::tpyapp::main::drop(std::move(xs)) << "\n";
-    std::cout << n << "\n";
+    std::cout << ::tpyapp::main::drop(std::move(xs)) << "\n" << ::tpy::check_signals;
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // main()

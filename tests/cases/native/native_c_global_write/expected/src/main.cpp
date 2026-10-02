@@ -25,9 +25,9 @@ void set_renamed(int32_t val) {
 //     print(counter)
 void main() {
     ::tpyapp::main::set_same_name(10);
-    std::cout << ::opentop << "\n";
+    std::cout << ::opentop << "\n" << ::tpy::check_signals;
     ::tpyapp::main::set_renamed(20);
-    std::cout << ::g_counter << "\n";
+    std::cout << ::g_counter << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native_global

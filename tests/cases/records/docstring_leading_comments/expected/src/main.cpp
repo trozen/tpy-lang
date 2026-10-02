@@ -26,7 +26,7 @@ void skipped() {
 void main() {
     Counter c = Counter();
     ::tpyapp::main::skipped();
-    std::cout << (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(::tpyapp::main::free_fn(), c.bump())), c.bump())) << "\n";
+    std::cout << (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(::tpyapp::main::free_fn(), c.bump())), c.bump())) << "\n" << ::tpy::check_signals;
 }
 
 // # A docstring emits no code, but the `#` comments preceding it still reach the

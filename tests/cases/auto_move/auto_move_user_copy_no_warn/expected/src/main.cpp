@@ -23,7 +23,7 @@ int32_t consume(Box&& b) {
 void main() {
     Box b = Box();
     b.value = 42;
-    std::cout << ::tpyapp::main::consume(::tpyapp::main::copy(std::move(b))) << "\n";
+    std::cout << ::tpyapp::main::consume(::tpyapp::main::copy(std::move(b))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

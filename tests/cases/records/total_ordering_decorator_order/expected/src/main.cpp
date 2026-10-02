@@ -32,12 +32,12 @@ void __tpy_init() {
     Outer __unpack_0_1 = Outer(2);
     a = &(__unpack_0_0);
     b = &(__unpack_0_1);
-    std::cout << ::tpy::print_bool((((*a)) < ((*b)))) << " " << ::tpy::print_bool((((*a)) <= ((*b)))) << " " << ::tpy::print_bool((((*a)) > ((*b)))) << " " << ::tpy::print_bool((((*a)) >= ((*b)))) << " " << ::tpy::print_bool((((*a)) == (Outer(1)))) << "\n";
+    std::cout << ::tpy::print_bool((((*a)) < ((*b)))) << " " << ::tpy::print_bool((((*a)) <= ((*b)))) << " " << ::tpy::print_bool((((*a)) > ((*b)))) << " " << ::tpy::print_bool((((*a)) >= ((*b)))) << " " << ::tpy::print_bool((((*a)) == (Outer(1)))) << "\n" << ::tpy::check_signals;
     Inner __unpack_1_0 = Inner(1);
     Inner __unpack_1_1 = Inner(2);
     c = &(__unpack_1_0);
     d = &(__unpack_1_1);
-    std::cout << ::tpy::print_bool((((*c)) < ((*d)))) << " " << ::tpy::print_bool((((*c)) <= ((*d)))) << " " << ::tpy::print_bool((((*c)) > ((*d)))) << " " << ::tpy::print_bool((((*c)) >= ((*d)))) << " " << ::tpy::print_bool((((*c)) == (Inner(1)))) << "\n";
+    std::cout << ::tpy::print_bool((((*c)) < ((*d)))) << " " << ::tpy::print_bool((((*c)) <= ((*d)))) << " " << ::tpy::print_bool((((*c)) > ((*d)))) << " " << ::tpy::print_bool((((*c)) >= ((*d)))) << " " << ::tpy::print_bool((((*c)) == (Inner(1)))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -27,15 +27,15 @@ void __tpy_init() {
 
     static Holder __global_slot_1 = Holder();
     h = &__global_slot_1;
-    std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n";
-    std::cout << ::tpy::print_bool((h->value.has_value())) << "\n";
-    std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n";
-    std::cout << ::tpy::print_bool((h->value.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((h->value.has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((h->value.has_value())) << "\n" << ::tpy::check_signals;
     h->value = Point(1, 2);
-    std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n";
-    std::cout << ::tpy::print_bool((h->value.has_value())) << "\n";
-    std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n";
-    std::cout << ::tpy::print_bool((h->value.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((h->value.has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((h->value.has_value())) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

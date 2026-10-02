@@ -31,7 +31,7 @@ int32_t peek_local(const std::vector<std::string>& xs) {
 void sec_imported_write(std::vector<std::string>& xs) {
     std::string v = ::tpy::__getitem__(xs, 0);
     ::tpyapp::viewmod::bump(xs);
-    std::cout << "imported write" << " " << v << " " << ::tpy::__getitem__(xs, 0) << "\n";
+    std::cout << "imported write" << " " << v << " " << ::tpy::__getitem__(xs, 0) << "\n" << ::tpy::check_signals;
 }
 
 // # the imported callee never writes; the mutable parameter alone demotes
@@ -40,7 +40,7 @@ void sec_imported_write(std::vector<std::string>& xs) {
 //     print("imported nowrite", v, touch(xs))
 void sec_imported_nowrite(const std::vector<std::string>& xs) {
     std::string v = ::tpy::__getitem__(xs, 0);
-    std::cout << "imported nowrite" << " " << v << " " << ::tpyapp::viewmod::touch(xs) << "\n";
+    std::cout << "imported nowrite" << " " << v << " " << ::tpyapp::viewmod::touch(xs) << "\n" << ::tpy::check_signals;
 }
 
 // # a `readonly` parameter closes the callee's OWN write path, imported like
@@ -52,7 +52,7 @@ void sec_imported_nowrite(const std::vector<std::string>& xs) {
 //     print("imported readonly", v, peek(xs))
 void sec_imported_readonly(const std::vector<std::string>& xs) {
     std::string_view v = ::tpy::__getitem__(xs, 0);
-    std::cout << "imported readonly" << " " << v << " " << ::tpyapp::viewmod::peek(xs) << "\n";
+    std::cout << "imported readonly" << " " << v << " " << ::tpyapp::viewmod::peek(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def sec_local_write(xs: list[str]) -> None:
@@ -62,7 +62,7 @@ void sec_imported_readonly(const std::vector<std::string>& xs) {
 void sec_local_write(std::vector<std::string>& xs) {
     std::string v = ::tpy::__getitem__(xs, 0);
     ::tpyapp::main::bump_local(xs);
-    std::cout << "local write" << " " << v << " " << ::tpy::__getitem__(xs, 0) << "\n";
+    std::cout << "local write" << " " << v << " " << ::tpy::__getitem__(xs, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def sec_local_nowrite(xs: list[str]) -> None:
@@ -70,7 +70,7 @@ void sec_local_write(std::vector<std::string>& xs) {
 //     print("local nowrite", v, touch_local(xs))
 void sec_local_nowrite(const std::vector<std::string>& xs) {
     std::string v = ::tpy::__getitem__(xs, 0);
-    std::cout << "local nowrite" << " " << v << " " << ::tpyapp::main::touch_local(xs) << "\n";
+    std::cout << "local nowrite" << " " << v << " " << ::tpyapp::main::touch_local(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def sec_local_readonly(xs: list[str]) -> None:
@@ -78,7 +78,7 @@ void sec_local_nowrite(const std::vector<std::string>& xs) {
 //     print("local readonly", v, peek_local(xs))
 void sec_local_readonly(const std::vector<std::string>& xs) {
     std::string_view v = ::tpy::__getitem__(xs, 0);
-    std::cout << "local readonly" << " " << v << " " << ::tpyapp::main::peek_local(xs) << "\n";
+    std::cout << "local readonly" << " " << v << " " << ::tpyapp::main::peek_local(xs) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -96,7 +96,7 @@ __gen_sec_gen sec_gen(std::vector<std::string>& xs) {
 void sec_alias_bind(const std::vector<std::string>& xs) {
     std::string v = ::tpy::__getitem__(xs, 0);
     const std::vector<std::string>& ys = xs;
-    std::cout << "alias bind" << " " << v << " " << ::tpy::__len__(ys) << "\n";
+    std::cout << "alias bind" << " " << v << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
 }
 
 // # the contrast: a one-hop field read keeps its view beside a `readonly`
@@ -106,7 +106,7 @@ void sec_alias_bind(const std::vector<std::string>& xs) {
 //     print("field", v, peek_rec(o))
 void sec_field(const ::tpyapp::viewmod::Outer& o) {
     std::string_view v = o.name;
-    std::cout << "field" << " " << v << " " << ::tpyapp::viewmod::peek_rec(o) << "\n";
+    std::cout << "field" << " " << v << " " << ::tpyapp::viewmod::peek_rec(o) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -155,7 +155,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen yield" << " " << n << "\n";
+            std::cout << "gen yield" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<std::string> i = {"a1", "x"};

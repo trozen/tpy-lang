@@ -59,17 +59,17 @@ std::string classify_direct(BaseExc* e) {
 //     print(classify_direct(None))
 void main() {
     ValErr __tmp_1 = ValErr("v1");
-    std::cout << ::tpyapp::main::classify(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::classify(&(__tmp_1)) << "\n" << ::tpy::check_signals;
     OsErr __tmp_2 = OsErr("o1");
-    std::cout << ::tpyapp::main::classify(&(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::classify(&(__tmp_2)) << "\n" << ::tpy::check_signals;
     BaseExc __tmp_3 = BaseExc("b1");
-    std::cout << ::tpyapp::main::classify(&(__tmp_3)) << "\n";
-    std::cout << ::tpyapp::main::classify(nullptr) << "\n";
+    std::cout << ::tpyapp::main::classify(&(__tmp_3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(nullptr) << "\n" << ::tpy::check_signals;
     ValErr __tmp_4 = ValErr("d1");
-    std::cout << ::tpyapp::main::classify_direct(&(__tmp_4)) << "\n";
+    std::cout << ::tpyapp::main::classify_direct(&(__tmp_4)) << "\n" << ::tpy::check_signals;
     BaseExc __tmp_5 = BaseExc("d2");
-    std::cout << ::tpyapp::main::classify_direct(&(__tmp_5)) << "\n";
-    std::cout << ::tpyapp::main::classify_direct(nullptr) << "\n";
+    std::cout << ::tpyapp::main::classify_direct(&(__tmp_5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify_direct(nullptr) << "\n" << ::tpy::check_signals;
 }
 
 // main()

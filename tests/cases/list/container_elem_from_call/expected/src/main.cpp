@@ -132,7 +132,7 @@ void main() {
         std::move(__result);
     });
     ::tpy::__getitem__(rs, 0).push_back("m");
-    std::cout << "comp" << " " << ::tpy::__len__(rs) << " " << ::tpy::__len__(::tpy::__getitem__(rs, 0)) << "\n";
+    std::cout << "comp" << " " << ::tpy::__len__(rs) << " " << ::tpy::__len__(::tpy::__getitem__(rs, 0)) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> ls = ({
         std::vector<std::vector<int32_t>> __result;
         const int32_t __stop_1 = 2;
@@ -143,16 +143,16 @@ void main() {
         std::move(__result);
     });
     ::tpy::__getitem__(ls, 0).push_back(9);
-    std::cout << "annotated" << " " << ::tpy::__len__(ls) << " " << ::tpy::__len__(::tpy::__getitem__(ls, 0)) << "\n";
+    std::cout << "annotated" << " " << ::tpy::__len__(ls) << " " << ::tpy::__len__(::tpy::__getitem__(ls, 0)) << "\n" << ::tpy::check_signals;
     std::array<std::vector<std::string>, 2> lit = {{::tpyapp::main::make_rows(1), ::tpyapp::main::make_rows(2)}};
     ::tpy::__getitem__(lit, 0).push_back("m");
-    std::cout << "literal" << " " << ::tpy::__len__(lit) << " " << ::tpy::__len__(::tpy::__getitem__(lit, 0)) << "\n";
+    std::cout << "literal" << " " << ::tpy::__len__(lit) << " " << ::tpy::__len__(::tpy::__getitem__(lit, 0)) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<std::string>> lv = ::tpy::make_vector<std::vector<std::string>>(::tpyapp::main::make_rows(1), ::tpyapp::main::make_rows(2));
     ::tpy::__getitem__(lv, 0).push_back("m");
-    std::cout << "litvec" << " " << ::tpy::__len__(lv) << " " << ::tpy::__len__(::tpy::__getitem__(lv, 0)) << "\n";
+    std::cout << "litvec" << " " << ::tpy::__len__(lv) << " " << ::tpy::__len__(::tpy::__getitem__(lv, 0)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::vector<std::string>> dl = ::tpy::make_ordered_map<int32_t, std::vector<std::string>>(1, ::tpyapp::main::make_rows(1), 2, ::tpyapp::main::make_rows(2));
     ::tpy::__getitem__(dl, 1).push_back("m");
-    std::cout << "dictlit" << " " << ::tpy::__len__(dl) << " " << ::tpy::__len__(::tpy::__getitem__(dl, 1)) << "\n";
+    std::cout << "dictlit" << " " << ::tpy::__len__(dl) << " " << ::tpy::__len__(::tpy::__getitem__(dl, 1)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::vector<std::string>> dv = ({
         ::tpy::ordered_map<int32_t, std::vector<std::string>> __result;
         auto __obj_2 = {1, 2};
@@ -165,21 +165,21 @@ void main() {
         std::move(__result);
     });
     ::tpy::__getitem__(dv, 1).push_back("m");
-    std::cout << "dictcomp" << " " << ::tpy::__len__(dv) << " " << ::tpy::__len__(::tpy::__getitem__(dv, 1)) << "\n";
+    std::cout << "dictcomp" << " " << ::tpy::__len__(dv) << " " << ::tpy::__len__(::tpy::__getitem__(dv, 1)) << "\n" << ::tpy::check_signals;
     std::array<::tpy::ordered_map<std::string, int32_t>, 2> ms = {::tpyapp::main::make_map(1), ::tpyapp::main::make_map(2)};
     ::tpy::__setitem__(::tpy::__getitem__(ms, 0), "extra", 9);
-    std::cout << "dictelem" << " " << ::tpy::__len__(ms) << " " << ::tpy::__len__(::tpy::__getitem__(ms, 0)) << "\n";
+    std::cout << "dictelem" << " " << ::tpy::__len__(ms) << " " << ::tpy::__len__(::tpy::__getitem__(ms, 0)) << "\n" << ::tpy::check_signals;
     std::array<::tpy::ordered_set<int32_t>, 2> ss = {::tpyapp::main::make_set(1), ::tpyapp::main::make_set(2)};
     ::tpy::__getitem__(ss, 0).insert(7);
-    std::cout << "setelem" << " " << ::tpy::__len__(ss) << " " << ::tpy::__len__(::tpy::__getitem__(ss, 0)) << "\n";
+    std::cout << "setelem" << " " << ::tpy::__len__(ss) << " " << ::tpy::__len__(::tpy::__getitem__(ss, 0)) << "\n" << ::tpy::check_signals;
     std::array<std::vector<std::string>, 2> arr = {{::tpyapp::main::make_rows(1), ::tpyapp::main::make_rows(2)}};
     ::tpy::__getitem__(arr, 0).push_back("m");
-    std::cout << "array" << " " << ::tpy::__len__(arr) << " " << ::tpy::__len__(::tpy::__getitem__(arr, 0)) << "\n";
+    std::cout << "array" << " " << ::tpy::__len__(arr) << " " << ::tpy::__len__(::tpy::__getitem__(arr, 0)) << "\n" << ::tpy::check_signals;
     Maker m = Maker("t", 2);
     ::tpy::__getitem__(m.rows, 0).push_back("m");
     ::tpy::__getitem__(m.grid, 0).push_back(9);
-    std::cout << "ctor" << " " << ::tpy::__len__(m.rows) << " " << ::tpy::__len__(::tpy::__getitem__(m.rows, 0)) << " " << ::tpy::__len__(m.grid) << " " << ::tpy::__len__(::tpy::__getitem__(m.grid, 0)) << "\n";
-    std::cout << "method" << " " << m.built() << "\n";
+    std::cout << "ctor" << " " << ::tpy::__len__(m.rows) << " " << ::tpy::__len__(::tpy::__getitem__(m.rows, 0)) << " " << ::tpy::__len__(m.grid) << " " << ::tpy::__len__(::tpy::__getitem__(m.grid, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << m.built() << "\n" << ::tpy::check_signals;
     {
         auto __src_3 = ::tpyapp::main::gen_lens();
         auto&& __itr_3 = ::tpy::__iter__(__src_3);
@@ -187,11 +187,11 @@ void main() {
             auto __r_4 = __itr_3.__next__();
             if (!__r_4.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_4);
-            std::cout << "gen" << " " << v << "\n";
+            std::cout << "gen" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::__getitem__((*TOP), 0).push_back("m");
-    std::cout << "module" << " " << ::tpy::__len__((*TOP)) << " " << ::tpy::__len__(::tpy::__getitem__((*TOP), 0)) << "\n";
+    std::cout << "module" << " " << ::tpy::__len__((*TOP)) << " " << ::tpy::__len__(::tpy::__getitem__((*TOP), 0)) << "\n" << ::tpy::check_signals;
 }
 
 // # module level: the same element at a global's initializer.

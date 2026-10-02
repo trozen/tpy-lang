@@ -91,7 +91,7 @@ inline void Owner::work() {
     auto& bound = __ctx_1.__enter__();
     try {
         bound.n = (bound.n) + (::tpy::BigInt(1000));
-        std::cout << "inside:" << " " << this->mgr.n << "\n";
+        std::cout << "inside:" << " " << this->mgr.n << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (...) {
         __ctx_1.__exit__({}, {}, {});
@@ -99,7 +99,7 @@ inline void Owner::work() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, {}, {});
-    std::cout << "after:" << " " << this->mgr.n << "\n";
+    std::cout << "after:" << " " << this->mgr.n << "\n" << ::tpy::check_signals;
 }
 
 // def work_raises(self) -> None:
@@ -120,7 +120,7 @@ inline void Owner::work_raises() {
                 throw;
             }
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught, n:" << " " << this->mgr.n << "\n";
+            std::cout << "caught, n:" << " " << this->mgr.n << "\n" << ::tpy::check_signals;
         }
     }
 }

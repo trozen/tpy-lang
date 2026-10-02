@@ -343,7 +343,7 @@ inline std::string Guard::__enter__() const {
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 //     print("with_body_exit")
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    std::cout << "with_body_exit" << "\n";
+    std::cout << "with_body_exit" << "\n" << ::tpy::check_signals;
 }
 // def anyslot[T](name: str, v: T) -> bool:
 //     return name != ""

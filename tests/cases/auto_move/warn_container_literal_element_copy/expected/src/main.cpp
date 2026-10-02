@@ -24,7 +24,7 @@ void main() {
     std::array<P, 1> f = {P(p)};
     K k = K(::tpy::BigInt(7));
     ::tpy::ordered_set<K> s = ::tpy::ordered_set<K>({k});
-    std::cout << ((((::tpy::BigInt((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(::tpy::__len__(a), ::tpy::__len__(b))), ::tpy::__len__(d))), ::tpy::__len__(e))), ::tpy::__len__(f))), ::tpy::__len__(s))))) + (p.v))) + (k.v)) << "\n";
+    std::cout << ((((::tpy::BigInt((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(::tpy::__len__(a), ::tpy::__len__(b))), ::tpy::__len__(d))), ::tpy::__len__(e))), ::tpy::__len__(f))), ::tpy::__len__(s))))) + (p.v))) + (k.v)) << "\n" << ::tpy::check_signals;
 }
 
 // # A reference-type lvalue stored as a list/set/dict literal element copies into

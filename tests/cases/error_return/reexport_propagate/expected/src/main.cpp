@@ -19,12 +19,12 @@ std::expected<int32_t, ::tpyapp::errdef::AppError> run(int32_t n) {
 //         print("caught")
 void main() {
     {
-        std::cout << ({ auto __er_2 = ::tpyapp::main::run(5); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
-        std::cout << ({ auto __er_3 = ::tpyapp::main::run(-1); if (!__er_3.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_3); }) << "\n";
+        std::cout << ({ auto __er_2 = ::tpyapp::main::run(5); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
+        std::cout << ({ auto __er_3 = ::tpyapp::main::run(-1); if (!__er_3.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_3); }) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except AppError:
         __except_1:;
-        std::cout << "caught" << "\n";
+        std::cout << "caught" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }

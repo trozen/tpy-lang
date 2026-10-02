@@ -17,11 +17,11 @@ void main() {
     Seg s = Seg(::tpy::BigInt(3), ::tpy::BigInt(4));
     Picture p = Picture(::tpy::BigInt(7));
     Triangle t = Triangle(::tpy::BigInt(3), ::tpy::BigInt(4), ::tpy::BigInt(5), ::tpy::BigInt(12), "tri");
-    std::cout << ::tpy::print_float(s.length) << "\n";
-    std::cout << p.width << "\n";
-    std::cout << ::tpy::print_float(t.a) << "\n";
-    std::cout << ::tpy::print_float(t.b) << "\n";
-    std::cout << t.label << "\n";
+    std::cout << ::tpy::print_float(s.length) << "\n" << ::tpy::check_signals;
+    std::cout << p.width << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(t.a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(t.b) << "\n" << ::tpy::check_signals;
+    std::cout << t.label << "\n" << ::tpy::check_signals;
 }
 
 // # Field init RHS that registers a codegen temp (e.g. varargs call) must be

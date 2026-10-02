@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bouncer& obj) {
 //     print("enter")
 //     return 1
 inline ::tpy::BigInt Bouncer::__enter__() const {
-    std::cout << "enter" << "\n";
+    std::cout << "enter" << "\n" << ::tpy::check_signals;
     return ::tpy::BigInt(1);
 }
 
@@ -48,9 +48,9 @@ inline ::tpy::BigInt Bouncer::__enter__() const {
 //     return False
 inline bool Bouncer::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
     if ((exc_val != nullptr)) {
-        std::cout << std::format("exit saw: {}", std::string(::tpy::__str__((*exc_val)))) << "\n";
+        std::cout << std::format("exit saw: {}", std::string(::tpy::__str__((*exc_val)))) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "exit clean" << "\n";
+        std::cout << "exit clean" << "\n" << ::tpy::check_signals;
     }
     return false;
 }

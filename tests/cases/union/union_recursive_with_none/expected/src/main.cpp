@@ -257,20 +257,20 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& x = *__beg_0;
-        std::cout << ::tpyapp::main::kind(x) << "\n";
+        std::cout << ::tpyapp::main::kind(x) << "\n" << ::tpy::check_signals;
     }
     V d = ::tpyapp::main::make_dict();
-    std::cout << ::tpyapp::main::kind(d) << "\n";
+    std::cout << ::tpyapp::main::kind(d) << "\n" << ::tpy::check_signals;
     V a = std::monostate{};
     V b = 7;
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_null(a)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_null(b)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_null(a)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_null(b)) << "\n" << ::tpy::check_signals;
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& y = *__beg_1;
-        std::cout << ::tpyapp::main::kind_after_null_guard(y) << "\n";
+        std::cout << ::tpyapp::main::kind_after_null_guard(y) << "\n" << ::tpy::check_signals;
     }
     std::vector<V> guarded_items = {std::monostate{}, true, false, 5, -3, "hi", std::vector<V>{1, 2}, ::tpy::ordered_map<std::string, V>({{"k", 1}})};
     auto& __obj_2 = guarded_items;
@@ -278,7 +278,7 @@ void main() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         const auto& z = *__beg_2;
-        std::cout << ::tpyapp::main::kind_guarded(z) << "\n";
+        std::cout << ::tpyapp::main::kind_guarded(z) << "\n" << ::tpy::check_signals;
     }
     std::vector<W> flat_items = {std::monostate{}, 7, "hi"};
     auto& __obj_3 = flat_items;
@@ -286,7 +286,7 @@ void main() {
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         auto&& w = *__beg_3;
-        std::cout << ::tpyapp::main::flat_kind(w) << "\n";
+        std::cout << ::tpyapp::main::flat_kind(w) << "\n" << ::tpy::check_signals;
     }
 }
 

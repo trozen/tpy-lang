@@ -7,31 +7,31 @@ namespace tpyapp::main {
 // def show_list_param(lst: list[int] | None) -> None:
 //     print(lst)
 void show_list_param(const std::vector<::tpy::BigInt>* lst) {
-    std::cout << ::tpy::print_optional<::tpy::ListPrinter<std::vector<::tpy::BigInt>>, std::vector<::tpy::BigInt>>(lst) << "\n";
+    std::cout << ::tpy::print_optional<::tpy::ListPrinter<std::vector<::tpy::BigInt>>, std::vector<::tpy::BigInt>>(lst) << "\n" << ::tpy::check_signals;
 }
 
 // def show_dict_param(d: dict[str, int32] | None) -> None:
 //     print(d)
 void show_dict_param(const ::tpy::ordered_map<std::string, int32_t>* d) {
-    std::cout << ::tpy::print_optional<::tpy::DictPrinter<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>(d) << "\n";
+    std::cout << ::tpy::print_optional<::tpy::DictPrinter<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>(d) << "\n" << ::tpy::check_signals;
 }
 
 // def show_set_param(s: set[int32] | None) -> None:
 //     print(s)
 void show_set_param(const ::tpy::ordered_set<int32_t>* s) {
-    std::cout << ::tpy::print_optional<::tpy::SetPrinter<int32_t>, ::tpy::ordered_set<int32_t>>(s) << "\n";
+    std::cout << ::tpy::print_optional<::tpy::SetPrinter<int32_t>, ::tpy::ordered_set<int32_t>>(s) << "\n" << ::tpy::check_signals;
 }
 
 // def show_bytes_param(b: bytes | None) -> None:
 //     print(b)
 void show_bytes_param(std::optional<::tpy::BytesView> b) {
-    std::cout << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::BytesView>(b) << "\n";
+    std::cout << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::BytesView>(b) << "\n" << ::tpy::check_signals;
 }
 
 // def show_bytearray_param(b: bytearray | None) -> None:
 //     print(b)
 void show_bytearray_param(const ::tpy::ByteArray* b) {
-    std::cout << ::tpy::print_optional<::tpy::ByteArrayPrinter, ::tpy::ByteArray>(b) << "\n";
+    std::cout << ::tpy::print_optional<::tpy::ByteArrayPrinter, ::tpy::ByteArray>(b) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

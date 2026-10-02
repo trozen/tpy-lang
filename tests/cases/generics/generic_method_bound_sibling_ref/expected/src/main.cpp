@@ -10,7 +10,7 @@ namespace tpyapp::main {
 void main() {
     Runner r = Runner();
     IntBox __tmp_1 = IntBox(42);
-    std::cout << r.pick<int32_t, IntBox>(__tmp_1) << "\n";
+    std::cout << r.pick<int32_t, IntBox>(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

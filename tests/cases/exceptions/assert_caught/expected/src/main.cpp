@@ -26,12 +26,12 @@ namespace tpyapp::main {
 //     except AssertionError as e:
 //         print("caught:", str(e))
 void main() {
-    std::cout << ::tpyapp::main::positive(::tpy::BigInt(5)) << "\n";
+    std::cout << ::tpyapp::main::positive(::tpy::BigInt(5)) << "\n" << ::tpy::check_signals;
     {
         try {
-            std::cout << ::tpyapp::main::positive(::tpy::BigInt(-3)) << "\n";
+            std::cout << ::tpyapp::main::positive(::tpy::BigInt(-3)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::AssertionError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -39,7 +39,7 @@ void main() {
             int32_t x = 0;
             if (!(x)) ::tpy::raise_assertion_error("x is falsy");
         } catch (const ::tpy::AssertionError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -21,9 +21,9 @@ void main() {
     Point src = Point(1, 2);
     Holder h = Holder(src);
     src.x = 99;
-    std::cout << h.p.x << "\n";
+    std::cout << h.p.x << "\n" << ::tpy::check_signals;
     ::tpyapp::main::use(h);
-    std::cout << h.p.x << " " << h.p.y << "\n";
+    std::cout << h.p.x << " " << h.p.y << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -55,12 +55,12 @@ __coro_boom boom(::tpy::BigInt n) {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             __await_lift_0 = std::move(__r0).value();
             c.reset();
-            std::cout << __await_lift_0 << "\n";
+            std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ValueError&) {
             c.reset();
-            std::cout << "caught" << "\n";
+            std::cout << "caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

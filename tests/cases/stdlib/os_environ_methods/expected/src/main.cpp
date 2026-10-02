@@ -28,19 +28,19 @@ namespace tpyapp::main {
 //     print(len(os.environ), "TPY_M_B" in os.environ)  # 0 False
 void main() {
     (*::tpystd::os::_environ::environ).update(::tpy::ordered_map<std::string, std::string>({{"TPY_M_A", "1"}, {"TPY_M_B", "2"}}));
-    std::cout << ::tpy::print_optional_val((*::tpystd::os::_environ::environ).get("TPY_M_A")) << " " << ::tpy::print_optional_val((*::tpystd::os::_environ::environ).get("TPY_M_B")) << "\n";
-    std::cout << (*::tpystd::os::_environ::environ).setdefault("TPY_M_A", "x") << "\n";
-    std::cout << (*::tpystd::os::_environ::environ).setdefault("TPY_M_C", "3") << "\n";
-    std::cout << ::tpy::print_optional_val(::tpystd::os::getenv(std::string_view("TPY_M_C"))) << "\n";
-    std::cout << (*::tpystd::os::_environ::environ).pop("TPY_M_A", "d") << "\n";
-    std::cout << (*::tpystd::os::_environ::environ).pop("TPY_M_GONE", "d") << "\n";
-    std::cout << ::tpy::print_bool(((*::tpystd::os::_environ::environ).__contains__("TPY_M_A"))) << "\n";
+    std::cout << ::tpy::print_optional_val((*::tpystd::os::_environ::environ).get("TPY_M_A")) << " " << ::tpy::print_optional_val((*::tpystd::os::_environ::environ).get("TPY_M_B")) << "\n" << ::tpy::check_signals;
+    std::cout << (*::tpystd::os::_environ::environ).setdefault("TPY_M_A", "x") << "\n" << ::tpy::check_signals;
+    std::cout << (*::tpystd::os::_environ::environ).setdefault("TPY_M_C", "3") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(::tpystd::os::getenv(std::string_view("TPY_M_C"))) << "\n" << ::tpy::check_signals;
+    std::cout << (*::tpystd::os::_environ::environ).pop("TPY_M_A", "d") << "\n" << ::tpy::check_signals;
+    std::cout << (*::tpystd::os::_environ::environ).pop("TPY_M_GONE", "d") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((*::tpystd::os::_environ::environ).__contains__("TPY_M_A"))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::string> d = (*::tpystd::os::_environ::environ).copy();
-    std::cout << ::tpy::print_bool((d.contains("TPY_M_B"))) << " " << ::tpy::print_bool((d.contains("TPY_M_C"))) << "\n";
+    std::cout << ::tpy::print_bool((d.contains("TPY_M_B"))) << " " << ::tpy::print_bool((d.contains("TPY_M_C"))) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(d, "TPY_M_NEW", "z");
-    std::cout << ::tpy::print_bool((!((*::tpystd::os::_environ::environ).__contains__("TPY_M_NEW")))) << "\n";
+    std::cout << ::tpy::print_bool((!((*::tpystd::os::_environ::environ).__contains__("TPY_M_NEW")))) << "\n" << ::tpy::check_signals;
     (*::tpystd::os::_environ::environ).clear();
-    std::cout << ::tpy::__len__((*::tpystd::os::_environ::environ)) << " " << ::tpy::print_bool(((*::tpystd::os::_environ::environ).__contains__("TPY_M_B"))) << "\n";
+    std::cout << ::tpy::__len__((*::tpystd::os::_environ::environ)) << " " << ::tpy::print_bool(((*::tpystd::os::_environ::environ).__contains__("TPY_M_B"))) << "\n" << ::tpy::check_signals;
 }
 
 // # os.environ mapping methods: update/setdefault/pop/clear/copy. Uses vars this

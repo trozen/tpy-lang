@@ -17,9 +17,9 @@ void full(std::optional<int32_t> v) {
     {
         x = __match_subject_1;
         if ((!x.has_value())) {
-            std::cout << "got none" << "\n";
+            std::cout << "got none" << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << (::tpy::add_check<int32_t>((*x), 1)) << "\n";
+            std::cout << (::tpy::add_check<int32_t>((*x), 1)) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -33,13 +33,13 @@ void full(std::optional<int32_t> v) {
 void narrowed(std::optional<int32_t> v) {
     auto& __match_subject_1 = v;
     if (!__match_subject_1.has_value()) {
-        std::cout << "none arm" << "\n";
+        std::cout << "none arm" << "\n" << ::tpy::check_signals;
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
         switch (__match_inner_1) {
         default: {
             auto x = __match_inner_1;
-            std::cout << (::tpy::mul_check<int32_t>(x, 2)) << "\n";
+            std::cout << (::tpy::mul_check<int32_t>(x, 2)) << "\n" << ::tpy::check_signals;
             break;
         }
         }

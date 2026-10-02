@@ -13,7 +13,7 @@ void test_warn_non_last_use() {
     std::vector<Node> a = {Node(1), Node(2), Node(3)};
     std::vector<Node> b = {Node(10), Node(20)};
     ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 3}, b);
-    std::cout << ::tpy::__getitem__(b, 0).val << "\n";
+    std::cout << ::tpy::__getitem__(b, 0).val << "\n" << ::tpy::check_signals;
 }
 
 // def test_no_warn_last_use() -> None:
@@ -43,7 +43,7 @@ void test_no_warn_explicit_copy() {
     std::vector<Node> a = {Node(1), Node(2), Node(3)};
     std::vector<Node> b = {Node(10), Node(20)};
     ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 3}, ::tpy::list_copy(b));
-    std::cout << ::tpy::__getitem__(b, 0).val << "\n";
+    std::cout << ::tpy::__getitem__(b, 0).val << "\n" << ::tpy::check_signals;
 }
 
 // test_warn_non_last_use()

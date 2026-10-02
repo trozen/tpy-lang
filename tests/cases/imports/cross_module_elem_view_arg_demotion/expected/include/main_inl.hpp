@@ -21,7 +21,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_sec_gen::__next__() {
     }
     case S_RESUME_0: {  // after: yield len(v)
         ::tpyapp::viewmod::bump(xs);
-        std::cout << "gen" << " " << v << " " << ::tpy::__getitem__(xs, 0) << "\n";
+        std::cout << "gen" << " " << v << " " << ::tpy::__getitem__(xs, 0) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -48,27 +48,27 @@ void main() {
     ::tpystd::datetime::datetime hi = ::tpystd::datetime::datetime(::tpy::BigInt(2100), ::tpy::BigInt(1), ::tpy::BigInt(1));
     ::tpystd::datetime::datetime now = datetime::now();
     ::tpystd::datetime::datetime utc = datetime::utcnow();
-    std::cout << ::tpy::print_bool(((lo) < (now))) << " " << ::tpy::print_bool(((now) < (hi))) << "\n";
-    std::cout << ::tpy::print_bool(((lo) < (utc))) << " " << ::tpy::print_bool(((utc) < (hi))) << "\n";
-    std::cout << ::tpy::print_bool((0 <= now.hour())) << " " << ::tpy::print_bool((now.hour() <= 23)) << "\n";
-    std::cout << ::tpy::print_bool((0 <= now.microsecond())) << " " << ::tpy::print_bool((now.microsecond() <= 999999)) << "\n";
+    std::cout << ::tpy::print_bool(((lo) < (now))) << " " << ::tpy::print_bool(((now) < (hi))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((lo) < (utc))) << " " << ::tpy::print_bool(((utc) < (hi))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((0 <= now.hour())) << " " << ::tpy::print_bool((now.hour() <= 23)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((0 <= now.microsecond())) << " " << ::tpy::print_bool((now.microsecond() <= 999999)) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::timedelta off = ((now) - (utc));
-    std::cout << ::tpy::print_bool(((-(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(13)))) < (off))) << " " << ::tpy::print_bool(((off) < (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(15))))) << "\n";
+    std::cout << ::tpy::print_bool(((-(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(13)))) < (off))) << " " << ::tpy::print_bool(((off) < (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(15))))) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::date d1 = date::today();
     ::tpystd::datetime::datetime dt = datetime::today();
     ::tpystd::datetime::date d2 = date::today();
-    std::cout << ::tpy::print_bool(((d1) <= (d2))) << " " << ::tpy::print_bool((d1.year() >= 2026)) << "\n";
-    std::cout << ::tpy::print_bool(((d1) <= (::tpystd::datetime::date(::tpy::BigInt(dt.year()), ::tpy::BigInt(dt.month()), ::tpy::BigInt(dt.day()))))) << "\n";
-    std::cout << ::tpy::print_bool(((::tpystd::datetime::date(::tpy::BigInt(dt.year()), ::tpy::BigInt(dt.month()), ::tpy::BigInt(dt.day()))) <= (d2))) << "\n";
+    std::cout << ::tpy::print_bool(((d1) <= (d2))) << " " << ::tpy::print_bool((d1.year() >= 2026)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((d1) <= (::tpystd::datetime::date(::tpy::BigInt(dt.year()), ::tpy::BigInt(dt.month()), ::tpy::BigInt(dt.day()))))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((::tpystd::datetime::date(::tpy::BigInt(dt.year()), ::tpy::BigInt(dt.month()), ::tpy::BigInt(dt.day()))) <= (d2))) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime n2 = datetime::now();
-    std::cout << ::tpy::print_bool(((((n2) - (now))) < (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(5))))) << "\n";
+    std::cout << ::tpy::print_bool(((((n2) - (now))) < (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(5))))) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime local = datetime::fromtimestamp(1751551805.5);
     ::tpystd::datetime::datetime utcv = datetime::utcfromtimestamp(1751551805.5);
     ::tpystd::datetime::timedelta delta = ((local) - (utcv));
-    std::cout << ::tpy::print_bool((local.microsecond() == utcv.microsecond())) << "\n";
-    std::cout << ::tpy::print_bool(((-(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(13)))) < (delta))) << " " << ::tpy::print_bool(((delta) < (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(15))))) << "\n";
+    std::cout << ::tpy::print_bool((local.microsecond() == utcv.microsecond())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((-(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(13)))) < (delta))) << " " << ::tpy::print_bool(((delta) < (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(15))))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt mins = ((delta).__floordiv__(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))));
-    std::cout << ::tpy::print_bool(((delta) == (((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))) * (mins))))) << "\n";
+    std::cout << ::tpy::print_bool(((delta) == (((::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))) * (mins))))) << "\n" << ::tpy::check_signals;
 }
 
 // # datetime v2 wall-clock surface: now/utcnow/today/fromtimestamp and

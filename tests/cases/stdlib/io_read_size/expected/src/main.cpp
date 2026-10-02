@@ -19,15 +19,15 @@ namespace tpyapp::main {
 //     print("after-zero:", s.read())           # still whole string
 void stringio_read_size() {
     ::tpystd::io::StringIO s = ::tpystd::io::StringIO("hello world");
-    std::cout << "n5:" << " " << s.read(5) << "\n";
-    std::cout << "n3:" << " " << s.read(3) << "\n";
-    std::cout << "rest:" << " " << s.read() << "\n";
-    std::cout << "eof:" << " " << (::tpy::str_concat((::tpy::str_concat("[", s.read(5))), "]")) << "\n";
+    std::cout << "n5:" << " " << s.read(5) << "\n" << ::tpy::check_signals;
+    std::cout << "n3:" << " " << s.read(3) << "\n" << ::tpy::check_signals;
+    std::cout << "rest:" << " " << s.read() << "\n" << ::tpy::check_signals;
+    std::cout << "eof:" << " " << (::tpy::str_concat((::tpy::str_concat("[", s.read(5))), "]")) << "\n" << ::tpy::check_signals;
     s.seek(0);
-    std::cout << "past-end:" << " " << s.read(100) << "\n";
+    std::cout << "past-end:" << " " << s.read(100) << "\n" << ::tpy::check_signals;
     s.seek(0);
-    std::cout << "zero:" << " " << (::tpy::str_concat((::tpy::str_concat("[", s.read(0))), "]")) << "\n";
-    std::cout << "after-zero:" << " " << s.read() << "\n";
+    std::cout << "zero:" << " " << (::tpy::str_concat((::tpy::str_concat("[", s.read(0))), "]")) << "\n" << ::tpy::check_signals;
+    std::cout << "after-zero:" << " " << s.read() << "\n" << ::tpy::check_signals;
 }
 
 // def bytesio_read_size() -> None:
@@ -40,12 +40,12 @@ void stringio_read_size() {
 //     print("neg:", b.read(-1))                # whole (negative = all)
 void bytesio_read_size() {
     ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("abcdef", 6));
-    std::cout << "n3:" << " " << ::tpy::BytesPrinter(b.read(3)) << "\n";
-    std::cout << "rest:" << " " << ::tpy::BytesPrinter(b.read()) << "\n";
-    std::cout << "eof:" << " " << ::tpy::BytesPrinter(b.read(2)) << "\n";
+    std::cout << "n3:" << " " << ::tpy::BytesPrinter(b.read(3)) << "\n" << ::tpy::check_signals;
+    std::cout << "rest:" << " " << ::tpy::BytesPrinter(b.read()) << "\n" << ::tpy::check_signals;
+    std::cout << "eof:" << " " << ::tpy::BytesPrinter(b.read(2)) << "\n" << ::tpy::check_signals;
     b.seek(0);
-    std::cout << "zero:" << " " << ::tpy::BytesPrinter(b.read(0)) << "\n";
-    std::cout << "neg:" << " " << ::tpy::BytesPrinter(b.read(-1)) << "\n";
+    std::cout << "zero:" << " " << ::tpy::BytesPrinter(b.read(0)) << "\n" << ::tpy::check_signals;
+    std::cout << "neg:" << " " << ::tpy::BytesPrinter(b.read(-1)) << "\n" << ::tpy::check_signals;
 }
 
 // def protocol_params() -> None:
@@ -53,9 +53,9 @@ void bytesio_read_size() {
 //     print("proto-bytes:", via_binary_protocol(io.BytesIO(b"xyz")))  # b'xy'
 void protocol_params() {
     auto __tmp_1 = ::tpystd::io::StringIO("abcdefgh");
-    std::cout << "proto-text:" << " " << ::tpyapp::main::via_protocol(__tmp_1) << "\n";
+    std::cout << "proto-text:" << " " << ::tpyapp::main::via_protocol(__tmp_1) << "\n" << ::tpy::check_signals;
     auto __tmp_2 = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("xyz", 3));
-    std::cout << "proto-bytes:" << " " << ::tpy::BytesPrinter(::tpyapp::main::via_binary_protocol(__tmp_2)) << "\n";
+    std::cout << "proto-bytes:" << " " << ::tpy::BytesPrinter(::tpyapp::main::via_binary_protocol(__tmp_2)) << "\n" << ::tpy::check_signals;
 }
 
 // def file_read_size() -> None:
@@ -95,11 +95,11 @@ void file_read_size() {
     auto __ctx_2 = ::tpy::builtin_open(tpath);
     auto& r = __ctx_2.__enter__();
     try {
-        std::cout << "file-zero:" << " " << (::tpy::str_concat((::tpy::str_concat("[", r.read(0))), "]")) << "\n";
-        std::cout << "file-n4:" << " " << r.read(4) << "\n";
-        std::cout << "file-eq-remaining:" << " " << r.read(6) << "\n";
-        std::cout << "file-rest:" << " " << r.read() << "\n";
-        std::cout << "file-eof:" << " " << (::tpy::str_concat((::tpy::str_concat("[", r.read(5))), "]")) << "\n";
+        std::cout << "file-zero:" << " " << (::tpy::str_concat((::tpy::str_concat("[", r.read(0))), "]")) << "\n" << ::tpy::check_signals;
+        std::cout << "file-n4:" << " " << r.read(4) << "\n" << ::tpy::check_signals;
+        std::cout << "file-eq-remaining:" << " " << r.read(6) << "\n" << ::tpy::check_signals;
+        std::cout << "file-rest:" << " " << r.read() << "\n" << ::tpy::check_signals;
+        std::cout << "file-eof:" << " " << (::tpy::str_concat((::tpy::str_concat("[", r.read(5))), "]")) << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -128,9 +128,9 @@ void file_read_size() {
     auto __ctx_4 = ::tpy::builtin_open_binary(bpath, "rb");
     auto& br = __ctx_4.__enter__();
     try {
-        std::cout << "bfile-n4:" << " " << ::tpy::BytesPrinter(br.read(4)) << "\n";
-        std::cout << "bfile-rest:" << " " << ::tpy::BytesPrinter(br.read()) << "\n";
-        std::cout << "bfile-eof:" << " " << ::tpy::BytesPrinter(br.read(3)) << "\n";
+        std::cout << "bfile-n4:" << " " << ::tpy::BytesPrinter(br.read(4)) << "\n" << ::tpy::check_signals;
+        std::cout << "bfile-rest:" << " " << ::tpy::BytesPrinter(br.read()) << "\n" << ::tpy::check_signals;
+        std::cout << "bfile-eof:" << " " << ::tpy::BytesPrinter(br.read(3)) << "\n" << ::tpy::check_signals;
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});
@@ -153,11 +153,11 @@ void file_read_size() {
 //     file_read_size()
 void main() {
     ::tpyapp::main::stringio_read_size();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bytesio_read_size();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::protocol_params();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::file_read_size();
 }
 

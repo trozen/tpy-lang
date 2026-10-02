@@ -30,17 +30,17 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 10}, {"b", 20}, {"c", 30}});
     int32_t* v = ::tpy::dict_get(d, "a");
-    std::cout << ::tpy::print_optional(v) << "\n";
+    std::cout << ::tpy::print_optional(v) << "\n" << ::tpy::check_signals;
     int32_t* v2 = ::tpy::dict_get(d, "missing");
-    std::cout << ::tpy::print_optional(v2) << "\n";
+    std::cout << ::tpy::print_optional(v2) << "\n" << ::tpy::check_signals;
     int32_t p = ::tpy::dict_pop(d, "c");
-    std::cout << p << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << p << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
     int32_t p2 = ::tpy::dict_pop_default(d, "missing", 99);
-    std::cout << p2 << "\n";
+    std::cout << p2 << "\n" << ::tpy::check_signals;
     d.clear();
-    std::cout << ::tpy::__len__(d) << "\n";
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

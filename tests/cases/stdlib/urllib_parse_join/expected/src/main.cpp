@@ -23,23 +23,23 @@ namespace tpyapp::main {
 //     print(urljoin("http://h/a//b/c", "g"))              # collapses // in middle
 //     print(urljoin("file:///etc/", "hosts"))             # non-http scheme resolves
 void main() {
-    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "d") << "\n";
-    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/", "d") << "\n";
-    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "../d") << "\n";
-    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "../../d") << "\n";
-    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "../../../../d") << "\n";
-    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", ".") << "\n";
-    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "./d") << "\n";
-    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "/abs/path") << "\n";
-    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "?just=query") << "\n";
-    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "#frag") << "\n";
-    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "") << "\n";
-    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "//other/x") << "\n";
-    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "https://full/url") << "\n";
-    std::cout << ::tpystd::urllib::parse::urljoin("", "rel") << "\n";
-    std::cout << ::tpystd::urllib::parse::urljoin("http://base/x", "") << "\n";
-    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a//b/c", "g") << "\n";
-    std::cout << ::tpystd::urllib::parse::urljoin("file:///etc/", "hosts") << "\n";
+    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "d") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/", "d") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "../d") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "../../d") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "../../../../d") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", ".") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "./d") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "/abs/path") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "?just=query") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "#frag") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "//other/x") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "https://full/url") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urljoin("", "rel") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urljoin("http://base/x", "") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urljoin("http://h/a//b/c", "g") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::urllib::parse::urljoin("file:///etc/", "hosts") << "\n" << ::tpy::check_signals;
 }
 
 // # urllib.parse.urljoin: RFC 3986 relative-reference resolution -- relative/abs

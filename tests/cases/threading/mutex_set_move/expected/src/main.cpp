@@ -38,7 +38,7 @@ void main() {
     auto __ctx_2 = m.lock();
     auto& g2 = __ctx_2.__enter__();
     try {
-        std::cout << ::tpy::ListPrinter(g2.get()) << "\n";
+        std::cout << ::tpy::ListPrinter(g2.get()) << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -68,7 +68,7 @@ void main() {
     auto __ctx_4 = rw.read();
     auto& r = __ctx_4.__enter__();
     try {
-        std::cout << ::tpy::ListPrinter(r.get()) << "\n";
+        std::cout << ::tpy::ListPrinter(r.get()) << "\n" << ::tpy::check_signals;
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});

@@ -20,9 +20,9 @@ std::string describe(Pet& p) {
 //     print(describe(Fish("nemo")))
 void main() {
     Dog __tmp_1{Dog("rex")};
-    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n" << ::tpy::check_signals;
     Fish __tmp_2{Fish("nemo")};
-    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

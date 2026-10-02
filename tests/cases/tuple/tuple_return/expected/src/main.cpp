@@ -29,14 +29,14 @@ std::tuple<bool, int32_t, std::string> get_triple() {
 //     print(triple[2])
 void main() {
     std::tuple<int32_t, std::string> pair = ::tpyapp::main::get_pair();
-    std::cout << ::tpy::TuplePrinter(pair) << "\n";
-    std::cout << std::get<0>(pair) << "\n";
-    std::cout << std::get<1>(pair) << "\n";
+    std::cout << ::tpy::TuplePrinter(pair) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<0>(pair) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(pair) << "\n" << ::tpy::check_signals;
     std::tuple<bool, int32_t, std::string> triple = ::tpyapp::main::get_triple();
-    std::cout << ::tpy::TuplePrinter(triple) << "\n";
-    std::cout << ::tpy::print_bool(std::get<0>(triple)) << "\n";
-    std::cout << std::get<1>(triple) << "\n";
-    std::cout << std::get<2>(triple) << "\n";
+    std::cout << ::tpy::TuplePrinter(triple) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(std::get<0>(triple)) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(triple) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<2>(triple) << "\n" << ::tpy::check_signals;
 }
 
 // main()

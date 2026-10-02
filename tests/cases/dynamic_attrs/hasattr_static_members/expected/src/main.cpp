@@ -13,11 +13,11 @@ namespace tpyapp::main {
 //     print(hasattr(b, "zzz"))      # not declared, dunder raises -> False at runtime
 void main() {
     Box b = Box(::tpy::BigInt(5));
-    std::cout << ::tpy::print_bool(true) << "\n";
-    std::cout << ::tpy::print_bool(true) << "\n";
-    std::cout << ::tpy::print_bool(true) << "\n";
-    std::cout << ::tpy::print_bool(true) << "\n";
-    std::cout << ::tpy::print_bool(({ bool __ok = true; try { (void)(b.__getattr__("zzz")); } catch (const ::tpy::AttributeError&) { __ok = false; } __ok; })) << "\n";
+    std::cout << ::tpy::print_bool(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(({ bool __ok = true; try { (void)(b.__getattr__("zzz")); } catch (const ::tpy::AttributeError&) { __ok = false; } __ok; })) << "\n" << ::tpy::check_signals;
 }
 
 // main()

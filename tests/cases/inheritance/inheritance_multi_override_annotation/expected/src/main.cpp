@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(b.bar())
 void main() {
     Both b = Both();
-    std::cout << b.foo() << "\n";
-    std::cout << b.bar() << "\n";
+    std::cout << b.foo() << "\n" << ::tpy::check_signals;
+    std::cout << b.bar() << "\n" << ::tpy::check_signals;
 }
 
 // main()

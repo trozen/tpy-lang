@@ -35,9 +35,9 @@ int32_t test(int32_t x) {
 //     print(test(0))
 //     print(test(5))
 void main() {
-    std::cout << ::tpyapp::main::test(-5) << "\n";
-    std::cout << ::tpyapp::main::test(0) << "\n";
-    std::cout << ::tpyapp::main::test(5) << "\n";
+    std::cout << ::tpyapp::main::test(-5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test(5) << "\n" << ::tpy::check_signals;
 }
 
 // main()

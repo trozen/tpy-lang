@@ -32,12 +32,12 @@ std::expected<int32_t, E> get_value(int32_t v) {
 //         print("raised")
 void main() {
     {
-        std::cout << ({ auto __er_3 = ::tpyapp::main::get_value(4); if (!__er_3.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_3); }) << "\n";
-        std::cout << ({ auto __er_4 = ::tpyapp::main::get_value(-1); if (!__er_4.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_4); }) << "\n";
+        std::cout << ({ auto __er_3 = ::tpyapp::main::get_value(4); if (!__er_3.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_3); }) << "\n" << ::tpy::check_signals;
+        std::cout << ({ auto __er_4 = ::tpyapp::main::get_value(-1); if (!__er_4.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_4); }) << "\n" << ::tpy::check_signals;
         goto __after_try_2;
         // except E:
         __except_2:;
-        std::cout << "raised" << "\n";
+        std::cout << "raised" << "\n" << ::tpy::check_signals;
         __after_try_2:;
     }
 }

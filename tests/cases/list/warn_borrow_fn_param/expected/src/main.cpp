@@ -40,7 +40,7 @@ void test_pass_borrowed_to_mutating_func() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
     ::tpyapp::main::mutate_list(items);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_pass_borrowed_to_readonly_func() -> None:
@@ -53,7 +53,7 @@ void test_pass_borrowed_to_readonly_func() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
     ::tpyapp::main::read_list(items);
-    std::cout << v.x << "\n";
+    std::cout << v.x << "\n" << ::tpy::check_signals;
 }
 
 // def test_pass_borrowed_to_pure_func() -> None:
@@ -66,7 +66,7 @@ void test_pass_borrowed_to_pure_func() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
     ::tpyapp::main::count_list(items);
-    std::cout << v.x << "\n";
+    std::cout << v.x << "\n" << ::tpy::check_signals;
 }
 
 // def test_pass_borrowed_to_readonly_param() -> None:
@@ -79,7 +79,7 @@ void test_pass_borrowed_to_readonly_param() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
     ::tpyapp::main::safe_read(items);
-    std::cout << v.x << "\n";
+    std::cout << v.x << "\n" << ::tpy::check_signals;
 }
 
 // def test_no_borrow_no_warn() -> None:
@@ -90,7 +90,7 @@ void test_pass_borrowed_to_readonly_param() {
 void test_no_borrow_no_warn() {
     std::vector<Point> items = {Point(1, 2)};
     ::tpyapp::main::mutate_list(items);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_builtin_pure_no_warn() -> None:
@@ -102,8 +102,8 @@ void test_no_borrow_no_warn() {
 void test_builtin_pure_no_warn() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
-    std::cout << ::tpy::__len__(items) << "\n";
-    std::cout << v.x << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
+    std::cout << v.x << "\n" << ::tpy::check_signals;
 }
 
 // test_pass_borrowed_to_mutating_func()

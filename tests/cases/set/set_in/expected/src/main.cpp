@@ -18,14 +18,14 @@ namespace tpyapp::main {
 //     print("foo" not in words)
 void main() {
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2, 3});
-    std::cout << ::tpy::print_bool((s.contains(1))) << "\n";
-    std::cout << ::tpy::print_bool((s.contains(4))) << "\n";
-    std::cout << ::tpy::print_bool((!(s.contains(1)))) << "\n";
-    std::cout << ::tpy::print_bool((!(s.contains(4)))) << "\n";
+    std::cout << ::tpy::print_bool((s.contains(1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((s.contains(4))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!(s.contains(1)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!(s.contains(4)))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<std::string> words = ::tpy::ordered_set<std::string>({"hello", "world"});
-    std::cout << ::tpy::print_bool((words.contains("hello"))) << "\n";
-    std::cout << ::tpy::print_bool((words.contains("foo"))) << "\n";
-    std::cout << ::tpy::print_bool((!(words.contains("foo")))) << "\n";
+    std::cout << ::tpy::print_bool((words.contains("hello"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((words.contains("foo"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!(words.contains("foo")))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

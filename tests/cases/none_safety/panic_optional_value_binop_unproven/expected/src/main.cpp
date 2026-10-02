@@ -13,7 +13,7 @@ void __tpy_init() {
     initialized = true;
 
     x = std::nullopt;
-    std::cout << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(x), 1)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(x), 1)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

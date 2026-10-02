@@ -63,11 +63,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::DictPrinter(::tpyapp::main::in_dict_value()) << "\n";
-    std::cout << ::tpy::DictPrinter(::tpyapp::main::in_dict_key()) << "\n";
-    std::cout << ::tpy::DictPrinter(::tpyapp::main::in_dict_var()) << "\n";
-    std::cout << ::tpy::DictPrinter(::tpyapp::main::in_dict_literal()) << "\n";
-    std::cout << ::tpy::DictPrinter(::tpyapp::main::in_dict_comp()) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpyapp::main::in_dict_value()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::DictPrinter(::tpyapp::main::in_dict_key()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::DictPrinter(::tpyapp::main::in_dict_var()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::DictPrinter(::tpyapp::main::in_dict_literal()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::DictPrinter(::tpyapp::main::in_dict_comp()) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

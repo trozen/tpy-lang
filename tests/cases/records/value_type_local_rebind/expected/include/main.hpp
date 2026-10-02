@@ -140,7 +140,7 @@ inline void Walker::walk() const {
     Coord a = Coord(0, 0);
     Coord b = Coord(1, 1);
     a = b;
-    std::cout << "method" << " " << a.column << " " << b.column << " " << this->start.column << "\n";
+    std::cout << "method" << " " << a.column << " " << b.column << " " << this->start.column << "\n" << ::tpy::check_signals;
 }
 
 // # constructor body: the reseated local is stored in a field
@@ -153,7 +153,7 @@ inline Holder::Holder(const std::vector<Coord>& xs) {
     Coord a = Coord(0, 0);
     a = ::tpy::__getitem__(xs, 0);
     this->pos = a;
-    std::cout << "ctor" << " " << a.column << " " << ::tpy::__getitem__(xs, 0).column << "\n";
+    std::cout << "ctor" << " " << a.column << " " << ::tpy::__getitem__(xs, 0).column << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -31,12 +31,12 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            std::cout << "not reached" << "\n";
+            std::cout << "not reached" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::TimeoutError&) {
             __sub_0.reset();
-            std::cout << "accept timed out" << "\n";
+            std::cout << "accept timed out" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -54,7 +54,7 @@ namespace tpyapp::main {
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::TimeoutError&) {
-            std::cout << "accept timed out" << "\n";
+            std::cout << "accept timed out" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

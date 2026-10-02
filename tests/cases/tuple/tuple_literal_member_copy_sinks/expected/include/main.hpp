@@ -270,7 +270,7 @@ inline void H::repack() {
     std::tuple<int32_t, C> t = ::tpyapp::main::mk(2);
     this->q = ::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{std::get<0>(t), std::get<1>(t)});
     std::get<1>(t).v = 99;
-    std::cout << "method_repack" << " " << std::get<1>(this->q).v << "\n";
+    std::cout << "method_repack" << " " << std::get<1>(this->q).v << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self) -> None:

@@ -20,7 +20,7 @@ void multi() {
     __ctx_2.__enter__();
     try {
         try {
-            std::cout << "body" << "\n";
+            std::cout << "body" << "\n" << ::tpy::check_signals;
             goto __with_exit_2;
         } catch (...) {
             __ctx_2.__exit__({}, {}, {});
@@ -46,7 +46,7 @@ void suppress() {
     auto __ctx_3 = Sup();
     __ctx_3.__enter__();
     try {
-        std::cout << "before" << "\n";
+        std::cout << "before" << "\n" << ::tpy::check_signals;
         ::tpyapp::main::boom();
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -59,7 +59,7 @@ void suppress() {
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
     __with_after_3:;
-    std::cout << "after suppressed" << "\n";
+    std::cout << "after suppressed" << "\n" << ::tpy::check_signals;
 }
 
 // def ref_target() -> None:
@@ -74,7 +74,7 @@ void ref_target() {
     auto& g = __ctx_4.__enter__();
     try {
         g.depth = (g.depth) + (::tpy::BigInt(10));
-        std::cout << "inside:" << " " << g.depth << "\n";
+        std::cout << "inside:" << " " << g.depth << "\n" << ::tpy::check_signals;
         goto __with_exit_4;
     } catch (...) {
         __ctx_4.__exit__({}, {}, {});
@@ -82,7 +82,7 @@ void ref_target() {
     }
     __with_exit_4:
     __ctx_4.__exit__({}, {}, {});
-    std::cout << "after:" << " " << g.depth << "\n";
+    std::cout << "after:" << " " << g.depth << "\n" << ::tpy::check_signals;
 }
 
 // def deref_manager(h: Holder, h2: Holder) -> None:
@@ -101,7 +101,7 @@ void deref_manager(Holder& h, Holder& h2) {
     auto& __ctx_5 = *(m);
     __ctx_5.__enter__();
     try {
-        std::cout << "in:" << " " << m->depth << "\n";
+        std::cout << "in:" << " " << m->depth << "\n" << ::tpy::check_signals;
         goto __with_exit_5;
     } catch (...) {
         __ctx_5.__exit__({}, {}, {});
@@ -109,12 +109,12 @@ void deref_manager(Holder& h, Holder& h2) {
     }
     __with_exit_5:
     __ctx_5.__exit__({}, {}, {});
-    std::cout << "mid:" << " " << m->depth << "\n";
+    std::cout << "mid:" << " " << m->depth << "\n" << ::tpy::check_signals;
     m = &(h2.g);
     auto& __ctx_6 = *(m);
     __ctx_6.__enter__();
     try {
-        std::cout << "in2:" << " " << m->depth << "\n";
+        std::cout << "in2:" << " " << m->depth << "\n" << ::tpy::check_signals;
         goto __with_exit_6;
     } catch (...) {
         __ctx_6.__exit__({}, {}, {});
@@ -122,7 +122,7 @@ void deref_manager(Holder& h, Holder& h2) {
     }
     __with_exit_6:
     __ctx_6.__exit__({}, {}, {});
-    std::cout << "post:" << " " << m->depth << "\n";
+    std::cout << "post:" << " " << m->depth << "\n" << ::tpy::check_signals;
 }
 
 // def loop_exits(cm: Gate) -> None:
@@ -150,7 +150,7 @@ void loop_exits(Gate& cm) {
                 __ctx_7.__exit__({}, {}, {});
                 break;
             }
-            std::cout << "i =" << " " << i << "\n";
+            std::cout << "i =" << " " << i << "\n" << ::tpy::check_signals;
             goto __with_exit_7;
         } catch (...) {
             if (__fin_ran_7) throw;
@@ -160,7 +160,7 @@ void loop_exits(Gate& cm) {
         __with_exit_7:
         __ctx_7.__exit__({}, {}, {});
     }
-    std::cout << "loop done" << "\n";
+    std::cout << "loop done" << "\n" << ::tpy::check_signals;
 }
 
 // def ret_through(cm: Gate) -> int:
@@ -196,20 +196,20 @@ void loop_exits(Gate& cm) {
 //     print(ret_through(Gate(9)))
 void main() {
     ::tpyapp::main::multi();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::suppress();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::ref_target();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     Holder __tmp_1 = Holder();
     Holder __tmp_2 = Holder();
     ::tpyapp::main::deref_manager(__tmp_1, __tmp_2);
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     Gate __tmp_3 = Gate(::tpy::BigInt(7));
     ::tpyapp::main::loop_exits(__tmp_3);
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     Gate __tmp_4 = Gate(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::ret_through(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::ret_through(__tmp_4) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -73,8 +73,8 @@ __coro_spawn_via spawn_via(std::function<std::unique_ptr<::tpystd::coro::Cancell
 //     print(asyncio.run(spawn_via(make, 20)))
 void main() {
     std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt>> c = ::tpyapp::main::make(::tpy::BigInt(41));
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::move(c)) << "\n";
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::spawn_via(make, ::tpy::BigInt(20)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::move(c)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::spawn_via(make, ::tpy::BigInt(20)))) << "\n" << ::tpy::check_signals;
 }
 
 // import asyncio

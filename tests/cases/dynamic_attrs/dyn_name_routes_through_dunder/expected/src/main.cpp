@@ -15,9 +15,9 @@ namespace tpyapp::main {
 //     print(getattr(h, name, "fallback"))
 void main() {
     Hybrid h = Hybrid("field-value");
-    std::cout << h.declared << "\n";
+    std::cout << h.declared << "\n" << ::tpy::check_signals;
     std::string_view name = "declared";
-    std::cout << ({ std::optional<std::string> __r; try { __r.emplace(h.__getattr__(name)); } catch (const ::tpy::AttributeError&) { __r.emplace("fallback"); } std::move(*__r); }) << "\n";
+    std::cout << ({ std::optional<std::string> __r; try { __r.emplace(h.__getattr__(name)); } catch (const ::tpy::AttributeError&) { __r.emplace("fallback"); } std::move(*__r); }) << "\n" << ::tpy::check_signals;
 }
 
 // main()

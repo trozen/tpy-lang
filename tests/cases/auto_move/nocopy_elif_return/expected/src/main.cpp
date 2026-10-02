@@ -20,10 +20,10 @@ Handle test(int32_t n) {
     if ((n == 1)) {
         return h;
     } else if ((n == 2)) {
-        std::cout << h.fd << "\n";
+        std::cout << h.fd << "\n" << ::tpy::check_signals;
         return h;
     }
-    std::cout << h.fd << "\n";
+    std::cout << h.fd << "\n" << ::tpy::check_signals;
     return h;
 }
 
@@ -36,11 +36,11 @@ Handle test(int32_t n) {
 //     print(h3.fd)
 void main() {
     Handle h1 = ::tpyapp::main::test(1);
-    std::cout << h1.fd << "\n";
+    std::cout << h1.fd << "\n" << ::tpy::check_signals;
     Handle h2 = ::tpyapp::main::test(2);
-    std::cout << h2.fd << "\n";
+    std::cout << h2.fd << "\n" << ::tpy::check_signals;
     Handle h3 = ::tpyapp::main::test(3);
-    std::cout << h3.fd << "\n";
+    std::cout << h3.fd << "\n" << ::tpy::check_signals;
 }
 
 // main()

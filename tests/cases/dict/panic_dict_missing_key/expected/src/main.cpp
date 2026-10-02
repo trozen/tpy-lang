@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(d["missing"])
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 1}});
-    std::cout << ::tpy::__getitem__(d, "missing") << "\n";
+    std::cout << ::tpy::__getitem__(d, "missing") << "\n" << ::tpy::check_signals;
 }
 
 // main()

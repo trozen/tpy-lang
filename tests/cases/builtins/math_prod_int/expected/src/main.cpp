@@ -49,27 +49,27 @@ void main() {
     ints.push_back(3);
     ints.push_back(4);
     int32_t n = ::tpystd::math::prod(ints, 1);
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
     int32_t n_with_start = ::tpystd::math::prod(ints, 10);
-    std::cout << n_with_start << "\n";
+    std::cout << n_with_start << "\n" << ::tpy::check_signals;
     std::vector<double> floats = std::vector<double>{};
     floats.push_back(1.5);
     floats.push_back(2.0);
     double f = ::tpystd::math::prod(floats, 1.0);
-    std::cout << ::tpy::print_float(f) << "\n";
+    std::cout << ::tpy::print_float(f) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> empty_int = std::vector<int32_t>{};
     double f_empty = ::tpystd::math::prod(empty_int, 2.5);
-    std::cout << ::tpy::print_float(f_empty) << "\n";
+    std::cout << ::tpy::print_float(f_empty) << "\n" << ::tpy::check_signals;
     int32_t n_empty = ::tpystd::math::prod(empty_int, 7);
-    std::cout << n_empty << "\n";
+    std::cout << n_empty << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> bigs = std::vector<::tpy::BigInt>{};
     bigs.push_back(1000000);
     bigs.push_back(1000000);
     bigs.push_back(1000000);
     ::tpy::BigInt big_prod = ::tpystd::math::prod(bigs, ::tpy::BigInt(1));
-    std::cout << big_prod << "\n";
+    std::cout << big_prod << "\n" << ::tpy::check_signals;
     ::tpy::BigInt big_empty = ::tpystd::math::prod(empty_int, ::tpy::BigInt(42));
-    std::cout << big_empty << "\n";
+    std::cout << big_empty << "\n" << ::tpy::check_signals;
 }
 
 // # math.prod has overloads for Iterable[int32], Iterable[int] (BigInt),

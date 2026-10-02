@@ -64,7 +64,7 @@ namespace tpyapp::main {
 //     print("noisy init", n)
 //     self.n = n
 inline Noisy::Noisy(int32_t n) {
-    std::cout << "noisy init" << " " << n << "\n";
+    std::cout << "noisy init" << " " << n << "\n" << ::tpy::check_signals;
     this->n = n;
 }
 // def make_default[T](x: T = T()) -> T:

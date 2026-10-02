@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(apply(c, 10))
 void main() {
     Child c = Child();
-    std::cout << c.__call__(5) << "\n";
-    std::cout << ::tpyapp::main::apply(c, 10) << "\n";
+    std::cout << c.__call__(5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::apply(c, 10) << "\n" << ::tpy::check_signals;
 }
 
 // main()

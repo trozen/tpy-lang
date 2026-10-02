@@ -15,12 +15,12 @@ namespace tpyapp::main {
 //     print(c)
 void main() {
     Point p = Point(1, 2);
-    std::cout << p << "\n";
-    std::cout << p.x << " " << p.y << "\n";
-    std::cout << ::tpy::print_bool(((p) == (Point(1, 2)))) << "\n";
-    std::cout << ::tpy::print_bool(((p) == (Point(3, 4)))) << "\n";
+    std::cout << p << "\n" << ::tpy::check_signals;
+    std::cout << p.x << " " << p.y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((p) == (Point(1, 2)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((p) == (Point(3, 4)))) << "\n" << ::tpy::check_signals;
     Config c = Config("test", 42);
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
 }
 
 // # @dataclass(frozen=True): immutable instances with auto __init__ and __eq__

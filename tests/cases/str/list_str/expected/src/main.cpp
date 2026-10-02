@@ -19,18 +19,18 @@ namespace tpyapp::main {
 //         print(w)
 void main() {
     std::vector<std::string> words = {"hello", "world", "foo"};
-    std::cout << ::tpy::__len__(words) << "\n";
-    std::cout << ::tpy::__getitem__(words, 0) << "\n";
-    std::cout << ::tpy::__getitem__(words, 1) << "\n";
+    std::cout << ::tpy::__len__(words) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(words, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(words, 1) << "\n" << ::tpy::check_signals;
     words.push_back("bar");
-    std::cout << ::tpy::__len__(words) << "\n";
-    std::cout << ::tpy::__getitem__(words, 3) << "\n";
+    std::cout << ::tpy::__len__(words) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(words, 3) << "\n" << ::tpy::check_signals;
     auto& __obj_0 = words;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view w = *__beg_0;
-        std::cout << w << "\n";
+        std::cout << w << "\n" << ::tpy::check_signals;
     }
 }
 

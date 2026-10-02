@@ -26,15 +26,15 @@ namespace tpyapp::main {
 //     print("c5:", c5)
 void main() {
     Container<int32_t> c1 = Container<int32_t>::create(42);
-    std::cout << "c1:" << " " << c1 << "\n";
+    std::cout << "c1:" << " " << c1 << "\n" << ::tpy::check_signals;
     Container<int32_t> c2 = Container<int32_t>::create(10);
-    std::cout << "c2:" << " " << c2 << "\n";
+    std::cout << "c2:" << " " << c2 << "\n" << ::tpy::check_signals;
     std::optional<Container<int32_t>> c3 = Container<int32_t>::wrap_optional(99);
-    std::cout << "c3:" << " " << ::tpy::print_optional_val(c3) << "\n";
+    std::cout << "c3:" << " " << ::tpy::print_optional_val(c3) << "\n" << ::tpy::check_signals;
     std::optional<Container<int32_t>> c4 = Container<int32_t>::wrap_optional(std::nullopt);
-    std::cout << "c4:" << " " << ::tpy::print_optional_val(c4) << "\n";
+    std::cout << "c4:" << " " << ::tpy::print_optional_val(c4) << "\n" << ::tpy::check_signals;
     std::optional<Container<int32_t>> c5 = Container<int32_t>::wrap_optional(77);
-    std::cout << "c5:" << " " << ::tpy::print_optional_val(c5) << "\n";
+    std::cout << "c5:" << " " << ::tpy::print_optional_val(c5) << "\n" << ::tpy::check_signals;
 }
 
 // main()

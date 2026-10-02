@@ -29,14 +29,14 @@ void main() {
     double r1 = ::tpystd::random::random();
     ::tpystd::random::seed();
     double r2 = ::tpystd::random::random();
-    std::cout << "auto_seed_distinct:" << " " << ::tpy::print_bool((r1 != r2)) << "\n";
-    std::cout << "in_unit:" << " " << ::tpy::print_bool((((0.0 <= r1) && (r1 < 1.0)) && ((0.0 <= r2) && (r2 < 1.0)))) << "\n";
+    std::cout << "auto_seed_distinct:" << " " << ::tpy::print_bool((r1 != r2)) << "\n" << ::tpy::check_signals;
+    std::cout << "in_unit:" << " " << ::tpy::print_bool((((0.0 <= r1) && (r1 < 1.0)) && ((0.0 <= r2) && (r2 < 1.0)))) << "\n" << ::tpy::check_signals;
     ::tpystd::random::Random a = ::tpystd::random::Random(std::nullopt);
     ::tpystd::random::Random b = ::tpystd::random::Random(std::nullopt);
-    std::cout << "instance_distinct:" << " " << ::tpy::print_bool((a.random() != b.random())) << "\n";
+    std::cout << "instance_distinct:" << " " << ::tpy::print_bool((a.random() != b.random())) << "\n" << ::tpy::check_signals;
     ::tpystd::random::Random c = ::tpystd::random::Random();
     double v = c.random();
-    std::cout << "default_in_unit:" << " " << ::tpy::print_bool(((0.0 <= v) && (v < 1.0))) << "\n";
+    std::cout << "default_in_unit:" << " " << ::tpy::print_bool(((0.0 <= v) && (v < 1.0))) << "\n" << ::tpy::check_signals;
 }
 
 // # random.seed() / Random(None) auto-seed from OS entropy. Entropy is

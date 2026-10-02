@@ -75,7 +75,7 @@ void main() {
             got.push_back(::tpy::__len__(got));
         }
     }
-    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 1) << " " << ::tpy::__getitem__(xs, 2) << "\n";
+    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 1) << " " << ::tpy::__getitem__(xs, 2) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     {
         auto __src_2 = ::tpyapp::main::repeat_dict(d, 1);
@@ -87,7 +87,7 @@ void main() {
             ::tpy::__setitem__(gd, "b", 2);
         }
     }
-    std::cout << ::tpy::__len__(d) << " " << ::tpy::__getitem__(d, "b") << "\n";
+    std::cout << ::tpy::__len__(d) << " " << ::tpy::__getitem__(d, "b") << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1});
     {
         auto __src_4 = ::tpyapp::main::repeat_set(s, 1);
@@ -99,7 +99,7 @@ void main() {
             gs.insert(9);
         }
     }
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray b = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
     {
         auto __src_6 = ::tpyapp::main::repeat_buf(b, 1);
@@ -111,7 +111,7 @@ void main() {
             gb.push_back(66);
         }
     }
-    std::cout << ::tpy::__len__(b) << " " << static_cast<int>(::tpy::bytes_getitem(b, 1)) << "\n";
+    std::cout << ::tpy::__len__(b) << " " << static_cast<int>(::tpy::bytes_getitem(b, 1)) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> a = std::array<int32_t, 2>();
     {
         auto __src_8 = ::tpyapp::main::repeat_arr(a, 1);
@@ -123,7 +123,7 @@ void main() {
             ::tpy::__setitem__(ga, 0, 7);
         }
     }
-    std::cout << ::tpy::__getitem__(a, 0) << "\n";
+    std::cout << ::tpy::__getitem__(a, 0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

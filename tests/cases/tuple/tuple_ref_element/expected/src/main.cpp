@@ -15,10 +15,10 @@ namespace tpyapp::main {
 void main() {
     Point p = Point(1, 2);
     auto t = std::tuple<int32_t, Point*>{0, &(p)};
-    std::cout << std::get<0>(t) << "\n";
-    std::cout << (*std::get<1>(t)) << "\n";
+    std::cout << std::get<0>(t) << "\n" << ::tpy::check_signals;
+    std::cout << (*std::get<1>(t)) << "\n" << ::tpy::check_signals;
     p.x = 99;
-    std::cout << (*std::get<1>(t)) << "\n";
+    std::cout << (*std::get<1>(t)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -16,10 +16,10 @@ void main() {
     Holder h = Holder(&(__tmp_1));
     std::optional<std::string> v1 = h.value();
     if ((v1.has_value())) {
-        std::cout << ::tpy::print_optional_val(v1) << "\n";
+        std::cout << ::tpy::print_optional_val(v1) << "\n" << ::tpy::check_signals;
     }
     Holder h2 = Holder(nullptr);
-    std::cout << ::tpy::print_bool((!h2.value().has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!h2.value().has_value())) << "\n" << ::tpy::check_signals;
 }
 
 // main()

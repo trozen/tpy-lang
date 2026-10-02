@@ -24,8 +24,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpyapp::main::is_large(20) << "\n";
-    std::cout << ::tpyapp::main::is_large(5) << "\n";
+    std::cout << ::tpyapp::main::is_large(20) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::is_large(5) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

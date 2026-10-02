@@ -110,40 +110,40 @@ void __tpy_init() {
     int32_t __start_0 = start;
     int32_t __stop_0 = end;
     for (int32_t i = __start_0; i < __stop_0; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
     items = &__global_slot_1;
     idx = 1;
-    std::cout << ::tpy::__getitem__((*items), idx) << "\n";
+    std::cout << ::tpy::__getitem__((*items), idx) << "\n" << ::tpy::check_signals;
     count = 3;
     static std::vector<int32_t> __global_slot_2 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(count, {0}));
     repeated = &__global_slot_2;
-    std::cout << ::tpy::__len__((*repeated)) << "\n";
+    std::cout << ::tpy::__len__((*repeated)) << "\n" << ::tpy::check_signals;
     z = 0;
-    std::cout << z << "\n";
+    std::cout << z << "\n" << ::tpy::check_signals;
     z = 5;
-    std::cout << z << "\n";
+    std::cout << z << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
     global_list = &__global_slot_3;
     if (::tpy::seq_contains((*global_list), 2)) {
-        std::cout << 1 << "\n";
+        std::cout << 1 << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << 0 << "\n";
+        std::cout << 0 << "\n" << ::tpy::check_signals;
     }
     if (::tpy::seq_contains((*global_list), 5)) {
-        std::cout << 1 << "\n";
+        std::cout << 1 << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << 0 << "\n";
+        std::cout << 0 << "\n" << ::tpy::check_signals;
     }
     i = 100;
-    std::cout << i << "\n";
+    std::cout << i << "\n" << ::tpy::check_signals;
     for (int32_t __range_1 = 0; __range_1 < 2; ++__range_1) {
         i = __range_1;
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     x = 999;
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_4 = {7, 8};
     nums = &__global_slot_4;
     auto& __obj_2 = (*nums);
@@ -151,33 +151,33 @@ void __tpy_init() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         x = *__beg_2;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     static Point __global_slot_5 = Point(42, 99);
     local_pt = &__global_slot_5;
     global_ptr = &(*local_pt);
-    std::cout << global_ptr->a << "\n";
-    std::cout << global_ptr->b << "\n";
+    std::cout << global_ptr->a << "\n" << ::tpy::check_signals;
+    std::cout << global_ptr->b << "\n" << ::tpy::check_signals;
     counter = 10;
     increment = 5;
     counter = ::tpy::add_check<int32_t>(counter, increment);
-    std::cout << counter << "\n";
+    std::cout << counter << "\n" << ::tpy::check_signals;
     a = 10;
     b = 3;
-    std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n";
-    std::cout << (::tpy::sub_check<int32_t>(a, b)) << "\n";
-    std::cout << (::tpy::mul_check<int32_t>(a, b)) << "\n";
-    std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::sub_check<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::mul_check<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
     val = 999;
     static Counter __global_slot_6 = Counter(50);
     c = &__global_slot_6;
-    std::cout << c->val << "\n";
-    std::cout << c->add(7) << "\n";
+    std::cout << c->val << "\n" << ::tpy::check_signals;
+    std::cout << c->add(7) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_7 = {100, 200, 300};
     arr = &__global_slot_7;
     delta = 5;
     ::tpy::__setitem__((*arr), 0, ::tpy::add_check<int32_t>(::tpy::__getitem__((*arr), 0), delta));
-    std::cout << ::tpy::__getitem__((*arr), 0) << "\n";
+    std::cout << ::tpy::__getitem__((*arr), 0) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

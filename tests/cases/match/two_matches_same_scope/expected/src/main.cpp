@@ -102,29 +102,29 @@ void main() {
         auto& __match_subject_2 = s;
         switch (__match_subject_2) {
         case Size::Big: {
-            std::cout << "red big" << "\n";
+            std::cout << "red big" << "\n" << ::tpy::check_signals;
             break;
         }
         case Size::Small: {
-            std::cout << "red small" << "\n";
+            std::cout << "red small" << "\n" << ::tpy::check_signals;
             break;
         }
         }
         break;
     }
     case Color::Green: {
-        std::cout << "green" << "\n";
+        std::cout << "green" << "\n" << ::tpy::check_signals;
         break;
     }
     }
     auto& __match_subject_3 = s;
     switch (__match_subject_3) {
     case Size::Big: {
-        std::cout << "big" << "\n";
+        std::cout << "big" << "\n" << ::tpy::check_signals;
         break;
     }
     case Size::Small: {
-        std::cout << "small" << "\n";
+        std::cout << "small" << "\n" << ::tpy::check_signals;
         break;
     }
     }

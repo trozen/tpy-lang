@@ -27,7 +27,7 @@ void rvalue_restored() {
         p = &*(__slot_3 = Point(i, (::tpy::add_check<int32_t>(i, 10))));
         saved = p;
     }
-    std::cout << saved->x << " " << saved->y << "\n";
+    std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
 
 // rvalue_restored()

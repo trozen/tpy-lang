@@ -43,11 +43,11 @@ void main() {
     Dog d = Dog("Rex", 5);
     ::tpy::Union<Cat*, Dog*> pet{&(d)};
     ::tpy::Union<Cat*, Dog*> result = ::tpyapp::main::identity(pet);
-    std::cout << ::tpyapp::main::get_name(result.as_const()) << "\n";
+    std::cout << ::tpyapp::main::get_name(result.as_const()) << "\n" << ::tpy::check_signals;
     Cat c = Cat("Whiskers", 9);
     ::tpy::Union<Cat*, Dog*> pet2{&(c)};
     ::tpy::Union<Cat*, Dog*> result2 = ::tpyapp::main::identity(pet2);
-    std::cout << ::tpyapp::main::get_name(result2.as_const()) << "\n";
+    std::cout << ::tpyapp::main::get_name(result2.as_const()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

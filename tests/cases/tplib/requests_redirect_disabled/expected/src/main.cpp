@@ -31,10 +31,10 @@ void main() {
     conn.sock = std::move(a);
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/start", nullptr, nullptr, std::nullopt, false);
-    std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << "\n";
-    std::cout << r.url << "\n";
-    std::cout << ::tpy::__len__(r.history) << "\n";
-    std::cout << r.headers["Location"] << "\n";
+    std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << "\n" << ::tpy::check_signals;
+    std::cout << r.url << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(r.history) << "\n" << ::tpy::check_signals;
+    std::cout << r.headers["Location"] << "\n" << ::tpy::check_signals;
     b.close();
 }
 

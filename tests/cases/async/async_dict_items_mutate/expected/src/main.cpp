@@ -65,8 +65,8 @@ __coro_bump bump(::tpy::ordered_map<int32_t, C>& d) {
 //     print(d[1].v, d[2].v)
 void main() {
     ::tpy::ordered_map<int32_t, C> d = ::tpy::ordered_map<int32_t, C>({{1, C(10)}, {2, C(20)}});
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::bump(d))) << "\n";
-    std::cout << ::tpy::__getitem__(d, 1).v << " " << ::tpy::__getitem__(d, 2).v << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::bump(d))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, 1).v << " " << ::tpy::__getitem__(d, 2).v << "\n" << ::tpy::check_signals;
 }
 
 // import asyncio

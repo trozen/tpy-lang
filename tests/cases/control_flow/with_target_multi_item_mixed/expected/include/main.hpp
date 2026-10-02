@@ -145,7 +145,7 @@ inline Delegator& Delegator::operator=(Delegator&& other) noexcept {
 //     print("delegator dropped")
 inline Delegator::~Delegator() {
     if (!this->__tpy_owned_) return;
-    std::cout << "delegator dropped" << "\n";
+    std::cout << "delegator dropped" << "\n" << ::tpy::check_signals;
 }
 
 // def __enter__(self) -> Item:

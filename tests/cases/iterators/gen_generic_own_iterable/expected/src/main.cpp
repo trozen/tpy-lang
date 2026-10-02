@@ -24,7 +24,7 @@ void main() {
             const auto& __tup_1 = __for_tup_0;
             int32_t i = std::get<0>(__tup_1);
             int32_t n = std::get<1>(__tup_1);
-            std::cout << i << " " << n << "\n";
+            std::cout << i << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<std::string> words = {"hello", "world"};
@@ -38,7 +38,7 @@ void main() {
             const auto& __tup_2 = __for_tup_1;
             int32_t i = std::get<0>(__tup_2);
             std::string_view w = std::get<1>(__tup_2);
-            std::cout << i << " " << w << "\n";
+            std::cout << i << " " << w << "\n" << ::tpy::check_signals;
         }
     }
 }

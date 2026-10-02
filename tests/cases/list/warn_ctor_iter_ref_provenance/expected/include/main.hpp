@@ -285,7 +285,7 @@ inline Bag::Bag() : cs(std::vector<C>{C(::tpy::BigInt(7)), C(::tpy::BigInt(8))})
 //     print("field", a[0].v)
 inline void Bag::field_source() const {
     std::vector<C> a = ::tpy::construct<std::vector<C>>(::tpy::builtin_reversed(this->cs));
-    std::cout << "field" << " " << ::tpy::__getitem__(a, 0).v << "\n";
+    std::cout << "field" << " " << ::tpy::__getitem__(a, 0).v << "\n" << ::tpy::check_signals;
 }
 // def generic_reversed[T](xs: list[T]) -> Own[list[T]]:
 //     # a generic payload hedges, as list(xs) does in a generic body

@@ -108,12 +108,12 @@ void main() {
         Color c = *__beg_1;
         lcount = ::tpy::add_check<int32_t>(lcount, 1);
     }
-    std::cout << "foreign count" << " " << fcount << "\n";
-    std::cout << "local count" << " " << lcount << "\n";
+    std::cout << "foreign count" << " " << fcount << "\n" << ::tpy::check_signals;
+    std::cout << "local count" << " " << lcount << "\n" << ::tpy::check_signals;
     std::vector<::tpyapp::colors::Color> __tmp_1 = {::tpyapp::colors::Color::RED, ::tpyapp::colors::Color::GREEN};
-    std::cout << "foreign sum" << " " << ::tpyapp::main::sum_foreign(__tmp_1) << "\n";
+    std::cout << "foreign sum" << " " << ::tpyapp::main::sum_foreign(__tmp_1) << "\n" << ::tpy::check_signals;
     std::vector<Color> __tmp_2 = {Color::BLUE, Color::CYAN, Color::MAGENTA};
-    std::cout << "local sum" << " " << ::tpyapp::main::sum_local(__tmp_2) << "\n";
+    std::cout << "local sum" << " " << ::tpyapp::main::sum_local(__tmp_2) << "\n" << ::tpy::check_signals;
 }
 
 // # Regression: an aliased-imported enum and its LOCAL same-named twin stay

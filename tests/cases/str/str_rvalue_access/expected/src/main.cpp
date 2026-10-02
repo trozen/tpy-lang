@@ -24,9 +24,9 @@ Pair get_pair() {
 //     print(a)
 void main() {
     std::string b = std::get<1>(::tpyapp::main::get_tuple());
-    std::cout << b << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
     std::string a = ::tpyapp::main::get_pair().first;
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
 }
 
 // main()

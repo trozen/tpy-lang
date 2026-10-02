@@ -18,7 +18,7 @@ int32_t hold(const std::function<int32_t()>& f) {
 void fn_record_position(::tpy::Union<A*, B*> x) {
     if (std::holds_alternative<A*>(x)) {
         auto& __x = *std::get<A*>(x);
-        std::cout << "fn_record:" << " " << ::tpyapp::main::mutate_then_call(__x, [&__x]() -> int32_t { return __x.a; }) << "\n";
+        std::cout << "fn_record:" << " " << ::tpyapp::main::mutate_then_call(__x, [&__x]() -> int32_t { return __x.a; }) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -32,7 +32,7 @@ void fn_record_position(::tpy::Union<A*, B*> x) {
 void escaping_value_position(const ::tpy::Union<double, std::string>& v) {
     if (std::holds_alternative<double>(v)) {
         const auto& __v = std::get<double>(v);
-        std::cout << "escaping_value:" << " " << ::tpyapp::main::hold([__v]() -> int32_t { return (::tpy::add_check<int32_t>(::tpy::from_float_check<int32_t>(__v), 1)); }) << "\n";
+        std::cout << "escaping_value:" << " " << ::tpyapp::main::hold([__v]() -> int32_t { return (::tpy::add_check<int32_t>(::tpy::from_float_check<int32_t>(__v), 1)); }) << "\n" << ::tpy::check_signals;
     }
 }
 

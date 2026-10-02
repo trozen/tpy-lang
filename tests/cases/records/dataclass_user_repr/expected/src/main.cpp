@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(repr(p))
 void main() {
     Point p = Point(1, 2);
-    std::cout << p << "\n";
-    std::cout << ::tpy::repr_of(p) << "\n";
+    std::cout << p << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(p) << "\n" << ::tpy::check_signals;
 }
 
 // # @dataclass with user-defined __repr__ suppresses auto-generation

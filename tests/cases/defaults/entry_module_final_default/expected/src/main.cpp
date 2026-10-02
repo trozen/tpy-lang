@@ -15,9 +15,9 @@ int64_t spaced(int64_t a, int64_t b, int64_t c) {
 //     print(spaced(1, 7, c=3))
 //     print(Holder(tag=1).n)
 void main() {
-    std::cout << ::tpyapp::main::spaced(1, STEP, 3) << "\n";
-    std::cout << ::tpyapp::main::spaced(1, 7, 3) << "\n";
-    std::cout << Holder(STEP, 1).n << "\n";
+    std::cout << ::tpyapp::main::spaced(1, STEP, 3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::spaced(1, 7, 3) << "\n" << ::tpy::check_signals;
+    std::cout << Holder(STEP, 1).n << "\n" << ::tpy::check_signals;
 }
 
 // main()

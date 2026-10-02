@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     print(tag, len(o))
 //     return True
 bool seen(std::string_view tag, std::vector<int32_t>&& o) {
-    std::cout << tag << " " << ::tpy::__len__(o) << "\n";
+    std::cout << tag << " " << ::tpy::__len__(o) << "\n" << ::tpy::check_signals;
     return true;
 }
 
@@ -16,7 +16,7 @@ bool seen(std::string_view tag, std::vector<int32_t>&& o) {
 //     print(tag, len(o))
 //     return len(o)
 int32_t seen_n(std::string_view tag, std::vector<int32_t>&& o) {
-    std::cout << tag << " " << ::tpy::__len__(o) << "\n";
+    std::cout << tag << " " << ::tpy::__len__(o) << "\n" << ::tpy::check_signals;
     return ::tpy::__len__(o);
 }
 
@@ -24,7 +24,7 @@ int32_t seen_n(std::string_view tag, std::vector<int32_t>&& o) {
 //     print(tag, len(b.vals))
 //     return True
 bool seen_rec(std::string_view tag, Bag&& b) {
-    std::cout << tag << " " << ::tpy::__len__(b.vals) << "\n";
+    std::cout << tag << " " << ::tpy::__len__(b.vals) << "\n" << ::tpy::check_signals;
     return true;
 }
 
@@ -32,7 +32,7 @@ bool seen_rec(std::string_view tag, Bag&& b) {
 //     print(tag, s)
 //     return True
 bool seen_str(std::string_view tag, std::string s) {
-    std::cout << tag << " " << s << "\n";
+    std::cout << tag << " " << s << "\n" << ::tpy::check_signals;
     return true;
 }
 
@@ -40,7 +40,7 @@ bool seen_str(std::string_view tag, std::string s) {
 //     print(tag, len(b.vals))
 //     return True
 bool seen_bag(std::string_view tag, const Bag& b) {
-    std::cout << tag << " " << ::tpy::__len__(b.vals) << "\n";
+    std::cout << tag << " " << ::tpy::__len__(b.vals) << "\n" << ::tpy::check_signals;
     return true;
 }
 
@@ -169,35 +169,35 @@ bool left_operand(std::vector<int32_t>& xs) {
 void main() {
     std::vector<int32_t> __tmp_1 = {1, 2, 0};
     bool a = ::tpyapp::main::or_rhs(__tmp_1);
-    std::cout << "or" << " " << ::tpy::print_bool(a) << "\n";
+    std::cout << "or" << " " << ::tpy::print_bool(a) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_2 = {1, 2, 3};
     bool b = ::tpyapp::main::and_rhs(__tmp_2);
-    std::cout << "and" << " " << ::tpy::print_bool(b) << "\n";
+    std::cout << "and" << " " << ::tpy::print_bool(b) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_3 = {1, 2, 3};
     bool c = ::tpyapp::main::nested(__tmp_3, false);
-    std::cout << "nested" << " " << ::tpy::print_bool(c) << "\n";
+    std::cout << "nested" << " " << ::tpy::print_bool(c) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_4 = {1, 2, 3};
     bool d = ::tpyapp::main::ternary(__tmp_4);
-    std::cout << "ternary" << " " << ::tpy::print_bool(d) << "\n";
+    std::cout << "ternary" << " " << ::tpy::print_bool(d) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_5 = {1, 2, 3};
     bool e = ::tpyapp::main::chained(__tmp_5);
-    std::cout << "chained" << " " << ::tpy::print_bool(e) << "\n";
+    std::cout << "chained" << " " << ::tpy::print_bool(e) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_6 = {1, 2, 0};
     int32_t f = ::tpyapp::main::value_select(__tmp_6);
-    std::cout << "valuesel" << " " << f << "\n";
+    std::cout << "valuesel" << " " << f << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_7 = {1, 2, 0};
     bool g = ::tpyapp::main::record_payload(__tmp_7);
-    std::cout << "record" << " " << ::tpy::print_bool(g) << "\n";
+    std::cout << "record" << " " << ::tpy::print_bool(g) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_8 = {1, 2, 0};
     bool h = ::tpyapp::main::own_str_name(__tmp_8, "kept");
-    std::cout << "ownstr" << " " << ::tpy::print_bool(h) << "\n";
+    std::cout << "ownstr" << " " << ::tpy::print_bool(h) << "\n" << ::tpy::check_signals;
     bool j = ::tpyapp::main::ref_param_rvalue(true);
-    std::cout << "refparam_skipped" << " " << ::tpy::print_bool(j) << "\n";
+    std::cout << "refparam_skipped" << " " << ::tpy::print_bool(j) << "\n" << ::tpy::check_signals;
     bool k = ::tpyapp::main::ref_param_rvalue(false);
-    std::cout << "refparam_taken" << " " << ::tpy::print_bool(k) << "\n";
+    std::cout << "refparam_taken" << " " << ::tpy::print_bool(k) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_9 = {1, 2, 3};
     bool i = ::tpyapp::main::left_operand(__tmp_9);
-    std::cout << "left" << " " << ::tpy::print_bool(i) << "\n";
+    std::cout << "left" << " " << ::tpy::print_bool(i) << "\n" << ::tpy::check_signals;
 }
 
 // main()

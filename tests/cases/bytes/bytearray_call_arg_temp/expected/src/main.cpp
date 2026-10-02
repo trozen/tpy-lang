@@ -10,7 +10,7 @@ namespace tpyapp::main {
 // def show(b: bytearray) -> None:
 //     print(len(b))
 void show(const ::tpy::ByteArray& b) {
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def grow(b: bytearray) -> None:
@@ -29,7 +29,7 @@ void main() {
     ::tpyapp::main::show(__tmp_1);
     ::tpy::ByteArray named = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     ::tpyapp::main::grow(named);
-    std::cout << ::tpy::__len__(named) << " " << static_cast<int>(::tpy::bytes_getitem(named, 2)) << "\n";
+    std::cout << ::tpy::__len__(named) << " " << static_cast<int>(::tpy::bytes_getitem(named, 2)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

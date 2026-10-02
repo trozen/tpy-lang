@@ -44,9 +44,9 @@ int32_t generic(DefaultDict<std::string, std::vector<int32_t>>& g, std::string_v
 void generic_alias(DefaultDict<std::string, std::vector<int32_t>>& g) {
     std::vector<int32_t>& row = g["a"];
     row.push_back(1);
-    std::cout << "generic alias:" << " " << ::tpy::__len__(g["b"]) << " " << ::tpy::ListPrinter(g["a"]) << "\n";
+    std::cout << "generic alias:" << " " << ::tpy::__len__(g["b"]) << " " << ::tpy::ListPrinter(g["a"]) << "\n" << ::tpy::check_signals;
     row.push_back(2);
-    std::cout << "generic alias after:" << " " << ::tpy::ListPrinter(g["a"]) << "\n";
+    std::cout << "generic alias after:" << " " << ::tpy::ListPrinter(g["a"]) << "\n" << ::tpy::check_signals;
 }
 
 // def comprehension(r: PtRows, idx: list[int32]) -> Own[list[int32]]:
@@ -236,11 +236,11 @@ int32_t guarded(Counts& c, std::string_view k) {
         try {
             int32_t __tpy_ret_0 = c[k];
             __fin_ran_1 = true;
-            std::cout << "finally: ran" << "\n";
+            std::cout << "finally: ran" << "\n" << ::tpy::check_signals;
             return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_1) {
-                std::cout << "finally: ran" << "\n";
+                std::cout << "finally: ran" << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -292,15 +292,15 @@ int32_t plain_reader(const Plain& p) {
 //     print("method:", h.look("m"), h.look_alias("n"), len(h.c.d))
 void main() {
     Counts c = Counts();
-    std::cout << "free:" << " " << ::tpyapp::main::free_function(c, "a") << " " << ::tpy::__len__(c.d) << "\n";
-    std::cout << "in:" << " " << ::tpy::print_bool(::tpyapp::main::membership(c, "a")) << " " << ::tpy::print_bool(::tpyapp::main::membership(c, "z")) << " " << ::tpy::__len__(c.d) << "\n";
-    std::cout << "self:" << " " << c.peek_self("s") << " " << ::tpy::__len__(c.d) << "\n";
+    std::cout << "free:" << " " << ::tpyapp::main::free_function(c, "a") << " " << ::tpy::__len__(c.d) << "\n" << ::tpy::check_signals;
+    std::cout << "in:" << " " << ::tpy::print_bool(::tpyapp::main::membership(c, "a")) << " " << ::tpy::print_bool(::tpyapp::main::membership(c, "z")) << " " << ::tpy::__len__(c.d) << "\n" << ::tpy::check_signals;
+    std::cout << "self:" << " " << c.peek_self("s") << " " << ::tpy::__len__(c.d) << "\n" << ::tpy::check_signals;
     DefaultDict<std::string, std::vector<int32_t>> g = DefaultDict<std::string, std::vector<int32_t>>(new_list);
-    std::cout << "generic:" << " " << ::tpyapp::main::generic(g, "x") << " " << ::tpy::__len__(g.data) << "\n";
+    std::cout << "generic:" << " " << ::tpyapp::main::generic(g, "x") << " " << ::tpy::__len__(g.data) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::generic_alias(g);
     PtRows r = PtRows();
     std::vector<int32_t> __tmp_1 = {1, 3};
-    std::cout << "comprehension:" << " " << ::tpy::ListPrinter(::tpyapp::main::comprehension(r, __tmp_1)) << " " << ::tpy::__len__(r.ps) << "\n";
+    std::cout << "comprehension:" << " " << ::tpy::ListPrinter(::tpyapp::main::comprehension(r, __tmp_1)) << " " << ::tpy::__len__(r.ps) << "\n" << ::tpy::check_signals;
     {
         std::vector<std::string> __tmp_2 = {"w1", "w2"};
         auto __src_0 = ::tpyapp::main::walk(c, __tmp_2);
@@ -309,34 +309,34 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator:" << " " << v << "\n";
+            std::cout << "generator:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "closure:" << " " << ::tpyapp::main::closure(c, "cl") << " " << ::tpy::print_bool((c.d.contains("cl"))) << "\n";
+    std::cout << "closure:" << " " << ::tpyapp::main::closure(c, "cl") << " " << ::tpy::print_bool((c.d.contains("cl"))) << "\n" << ::tpy::check_signals;
     std::vector<Counts> cs = {Counts(), Counts()};
-    std::cout << "loop:" << " " << ::tpyapp::main::loop_receiver(cs, "l") << " " << ::tpy::__len__(::tpy::__getitem__(cs, 0).d) << " " << ::tpy::__len__(::tpy::__getitem__(cs, 1).d) << "\n";
-    std::cout << "element:" << " " << ::tpyapp::main::element_alias(cs, "e") << " " << ::tpy::__len__(::tpy::__getitem__(cs, 0).d) << "\n";
+    std::cout << "loop:" << " " << ::tpyapp::main::loop_receiver(cs, "l") << " " << ::tpy::__len__(::tpy::__getitem__(cs, 0).d) << " " << ::tpy::__len__(::tpy::__getitem__(cs, 1).d) << "\n" << ::tpy::check_signals;
+    std::cout << "element:" << " " << ::tpyapp::main::element_alias(cs, "e") << " " << ::tpy::__len__(::tpy::__getitem__(cs, 0).d) << "\n" << ::tpy::check_signals;
     Slots s = Slots();
-    std::cout << "optional:" << " " << ::tpyapp::main::optional_result(s) << " " << ::tpy::__len__(s.ps) << "\n";
+    std::cout << "optional:" << " " << ::tpyapp::main::optional_result(s) << " " << ::tpy::__len__(s.ps) << "\n" << ::tpy::check_signals;
     Tally t = Tally();
-    std::cout << "protocol:" << " " << ::tpyapp::main::protocol_param(t, 3) << " " << ::tpy::__len__(t.xs) << "\n";
+    std::cout << "protocol:" << " " << ::tpyapp::main::protocol_param(t, 3) << " " << ::tpy::__len__(t.xs) << "\n" << ::tpy::check_signals;
     Plain __tmp_3 = Plain();
-    std::cout << "plain:" << " " << ::tpyapp::main::plain_reader(__tmp_3) << "\n";
+    std::cout << "plain:" << " " << ::tpyapp::main::plain_reader(__tmp_3) << "\n" << ::tpy::check_signals;
     Two two = Two();
-    std::cout << "overload:" << " " << ::tpyapp::main::int_key(two) << " " << ::tpy::__len__(two.d) << "\n";
+    std::cout << "overload:" << " " << ::tpyapp::main::int_key(two) << " " << ::tpy::__len__(two.d) << "\n" << ::tpy::check_signals;
     int64_t k64 = 0;
     KeyMono km = KeyMono();
     KeyGen<int64_t> kg = KeyGen<int64_t>();
-    std::cout << "inherited overload:" << " " << ::tpyapp::main::mono_key(km, k64) << " " << ::tpyapp::main::generic_key(kg, k64) << " " << ::tpy::__len__(km.xs) << " " << ::tpy::__len__(kg.xs) << "\n";
-    std::cout << "readonly iteration:" << " " << ::tpyapp::main::readonly_iteration(Pair()) << "\n";
+    std::cout << "inherited overload:" << " " << ::tpyapp::main::mono_key(km, k64) << " " << ::tpyapp::main::generic_key(kg, k64) << " " << ::tpy::__len__(km.xs) << " " << ::tpy::__len__(kg.xs) << "\n" << ::tpy::check_signals;
+    std::cout << "readonly iteration:" << " " << ::tpyapp::main::readonly_iteration(Pair()) << "\n" << ::tpy::check_signals;
     Bag bag = Bag();
-    std::cout << "in iter:" << " " << ::tpy::print_bool(::tpyapp::main::in_by_iteration(bag, 2)) << " " << bag.resets << "\n";
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_read(c, "as"))) << " " << ::tpy::print_bool((c.d.contains("as"))) << "\n";
-    std::cout << "match:" << " " << ::tpyapp::main::match_arm(c, "m1") << " " << ::tpyapp::main::match_arm(c, "m2") << " " << ::tpy::print_bool((c.d.contains("m1"))) << "\n";
+    std::cout << "in iter:" << " " << ::tpy::print_bool(::tpyapp::main::in_by_iteration(bag, 2)) << " " << bag.resets << "\n" << ::tpy::check_signals;
+    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_read(c, "as"))) << " " << ::tpy::print_bool((c.d.contains("as"))) << "\n" << ::tpy::check_signals;
+    std::cout << "match:" << " " << ::tpyapp::main::match_arm(c, "m1") << " " << ::tpyapp::main::match_arm(c, "m2") << " " << ::tpy::print_bool((c.d.contains("m1"))) << "\n" << ::tpy::check_signals;
     int32_t v = ::tpyapp::main::guarded(c, "t");
-    std::cout << "try:" << " " << v << " " << ::tpy::print_bool((c.d.contains("t"))) << "\n";
+    std::cout << "try:" << " " << v << " " << ::tpy::print_bool((c.d.contains("t"))) << "\n" << ::tpy::check_signals;
     Holder h = Holder();
-    std::cout << "method:" << " " << h.look("m") << " " << h.look_alias("n") << " " << ::tpy::__len__(h.c.d) << "\n";
+    std::cout << "method:" << " " << h.look("m") << " " << h.look_alias("n") << " " << ::tpy::__len__(h.c.d) << "\n" << ::tpy::check_signals;
 }
 
 // # A read through a MUTATING `__getitem__` (insert-on-miss) is a method call on

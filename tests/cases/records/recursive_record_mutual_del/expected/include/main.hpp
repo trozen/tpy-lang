@@ -90,7 +90,7 @@ inline A& A::operator=(A&& other) noexcept {
 //     print("del A", self.val)
 inline A::~A() {
     if (!this->__tpy_owned_) return;
-    std::cout << "del A" << " " << this->val << "\n";
+    std::cout << "del A" << " " << this->val << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, val: int32) -> None:
@@ -117,7 +117,7 @@ inline B& B::operator=(B&& other) noexcept {
 //     print("del B", self.val)
 inline B::~B() {
     if (!this->__tpy_owned_) return;
-    std::cout << "del B" << " " << this->val << "\n";
+    std::cout << "del B" << " " << this->val << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

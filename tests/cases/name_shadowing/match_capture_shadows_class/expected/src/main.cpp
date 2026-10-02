@@ -36,9 +36,9 @@ int32_t pick(::tpy::Union<Item*, Other*> v) {
 //     print(Registry.code)
 void main() {
     Item it = Item(6);
-    std::cout << ::tpyapp::main::pick(::tpy::Union<Item*, Other*>{&(it)}) << "\n";
-    std::cout << it.code << "\n";
-    std::cout << Registry::code << "\n";
+    std::cout << ::tpyapp::main::pick(::tpy::Union<Item*, Other*>{&(it)}) << "\n" << ::tpy::check_signals;
+    std::cout << it.code << "\n" << ::tpy::check_signals;
+    std::cout << Registry::code << "\n" << ::tpy::check_signals;
 }
 
 // main()

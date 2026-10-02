@@ -94,7 +94,7 @@ __coro_afind afind(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << ::tpy::print_optional_val(__await_lift_0) << "\n";
+        std::cout << ::tpy::print_optional_val(__await_lift_0) << "\n" << ::tpy::check_signals;
         __sub_1.emplace(0);
         __state = S_RESUME_1;
         continue;
@@ -104,7 +104,7 @@ __coro_afind afind(int32_t n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << ::tpy::print_optional_val(__await_lift_1) << "\n";
+        std::cout << ::tpy::print_optional_val(__await_lift_1) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -130,15 +130,15 @@ __coro_main_coro main_coro() {
 //     print(c is None)
 //     asyncio.run(main_coro())
 void main() {
-    std::cout << ::tpy::print_optional_val(::tpyapp::main::find(3)) << "\n";
-    std::cout << ::tpy::print_optional_val(::tpyapp::main::find(0)) << "\n";
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::find(3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::find(0)) << "\n" << ::tpy::check_signals;
     std::optional<Point> __slot_1 = ::tpyapp::main::pick(0);
     Point* p = ::tpy::optional_to_ptr(__slot_1);
-    std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((p == nullptr)) << "\n" << ::tpy::check_signals;
     Point pt = Point(1);
     Tag tg = Tag(2);
     ::tpy::Union<std::monostate, Point*, Tag*> c = ::tpyapp::main::choose(pt, tg, 0);
-    std::cout << ::tpy::print_bool((std::holds_alternative<std::monostate>(c))) << "\n";
+    std::cout << ::tpy::print_bool((std::holds_alternative<std::monostate>(c))) << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
 }
 

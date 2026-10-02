@@ -165,11 +165,11 @@ __gen_gen gen(std::optional<std::string_view> x, bool flag) {
 //     for v in gen("a", False):
 //         print(v)
 void main() {
-    std::cout << ::tpyapp::main::folded("a", true) << " " << ::tpyapp::main::folded("a", false) << " " << ::tpyapp::main::folded(std::nullopt, true) << " " << ::tpyapp::main::folded("z", true) << "\n";
-    std::cout << ::tpyapp::main::folded_or("b", true) << " " << ::tpyapp::main::folded_or("b", false) << " " << ::tpyapp::main::folded_or(std::nullopt, false) << "\n";
-    std::cout << ::tpyapp::main::folded_later("b", true) << " " << ::tpyapp::main::folded_later("b", false) << " " << ::tpyapp::main::folded_later("a", true) << "\n";
-    std::cout << ::tpyapp::main::wildcard_guard("z", true) << " " << ::tpyapp::main::wildcard_guard("z", false) << "\n";
-    std::cout << ::tpyapp::main::binding_guard("a", true) << " " << ::tpyapp::main::binding_guard("a", false) << "\n";
+    std::cout << ::tpyapp::main::folded("a", true) << " " << ::tpyapp::main::folded("a", false) << " " << ::tpyapp::main::folded(std::nullopt, true) << " " << ::tpyapp::main::folded("z", true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::folded_or("b", true) << " " << ::tpyapp::main::folded_or("b", false) << " " << ::tpyapp::main::folded_or(std::nullopt, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::folded_later("b", true) << " " << ::tpyapp::main::folded_later("b", false) << " " << ::tpyapp::main::folded_later("a", true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::wildcard_guard("z", true) << " " << ::tpyapp::main::wildcard_guard("z", false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::binding_guard("a", true) << " " << ::tpyapp::main::binding_guard("a", false) << "\n" << ::tpy::check_signals;
     {
         std::string __tmp_1 = "a";
         auto __src_0 = ::tpyapp::main::gen(__tmp_1, true);
@@ -178,7 +178,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -189,7 +189,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
 }

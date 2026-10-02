@@ -57,7 +57,7 @@ void main() {
         break;
     }
     }
-    std::cout << ::tpyapp::main::count(h.get()) << "\n";
+    std::cout << ::tpyapp::main::count(h.get()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

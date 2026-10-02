@@ -14,7 +14,7 @@ void ptr_to_field() {
     Holder h = Holder(Point(1, 2));
     Point* ptr = &h.point;
     h.point = Point(9, 9);
-    std::cout << h.point.x << "\n";
+    std::cout << h.point.x << "\n" << ::tpy::check_signals;
 }
 
 // def ptr_to_field_no_conflict() -> None:
@@ -27,7 +27,7 @@ void ptr_to_field() {
 void ptr_to_field_no_conflict() {
     Holder h = Holder(Point(1, 2));
     Point* ptr = &h.point;
-    std::cout << ptr->x << "\n";
+    std::cout << ptr->x << "\n" << ::tpy::check_signals;
 }
 
 // def external_field_path() -> None:
@@ -40,7 +40,7 @@ void external_field_path() {
     Container c = Container();
     Point* ptr = &::tpy::__getitem__(c.items, 0);
     c.items.push_back(Point(7, 8));
-    std::cout << ::tpy::__len__(c.items) << "\n";
+    std::cout << ::tpy::__len__(c.items) << "\n" << ::tpy::check_signals;
 }
 
 // def reassign_clears_borrow() -> None:
@@ -57,7 +57,7 @@ void reassign_clears_borrow() {
     Point* ptr = &::tpy::__getitem__(c->items, 0);
     c = &*(__slot_2 = Container());
     c->items.push_back(Point(7, 8));
-    std::cout << ::tpy::__len__(c->items) << "\n";
+    std::cout << ::tpy::__len__(c->items) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

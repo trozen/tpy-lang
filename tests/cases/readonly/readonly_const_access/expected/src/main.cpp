@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(items[0])
 void read_items(const Container& c) {
     const std::vector<int32_t>& items = c.items();
-    std::cout << ::tpy::__len__(items) << "\n";
-    std::cout << ::tpy::__getitem__(items, 0) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(items, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -21,7 +21,7 @@ void read_items(const Container& c) {
 void main() {
     Container c = Container();
     ::tpyapp::main::read_items(c);
-    std::cout << c.count() << "\n";
+    std::cout << c.count() << "\n" << ::tpy::check_signals;
 }
 
 // main()

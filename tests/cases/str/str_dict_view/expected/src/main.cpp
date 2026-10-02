@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void test_dict_value_view() {
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>({{"hello", "world"}});
     std::string_view v = ::tpy::__getitem__(d, "hello");
-    std::cout << v << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict_mutation_fallback() -> None:
@@ -25,7 +25,7 @@ void test_dict_mutation_fallback() {
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>({{"hello", "world"}});
     std::string v = ::tpy::__getitem__(d, "hello");
     ::tpy::__setitem__(d, "new", "entry");
-    std::cout << v << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict_value_update_fallback() -> None:
@@ -38,7 +38,7 @@ void test_dict_value_update_fallback() {
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>({{"hello", "world"}});
     std::string v = ::tpy::__getitem__(d, "hello");
     ::tpy::__setitem__(d, "hello", "updated");
-    std::cout << v << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict_int_key_view() -> None:
@@ -49,7 +49,7 @@ void test_dict_value_update_fallback() {
 void test_dict_int_key_view() {
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::ordered_map<int32_t, std::string>({{1, "one"}, {2, "two"}});
     std::string_view v = ::tpy::__getitem__(d, 1);
-    std::cout << v << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
 }
 
 // test_dict_value_view()

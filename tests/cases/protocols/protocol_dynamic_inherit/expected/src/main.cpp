@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def greet(pet: Pet) -> None:
 //     print(pet.make_noise())
 void greet(Pet& pet) {
-    std::cout << pet.make_noise() << "\n";
+    std::cout << pet.make_noise() << "\n" << ::tpy::check_signals;
 }
 
 // def use_dog(d: Dog) -> None:
@@ -31,7 +31,7 @@ void main() {
     ::tpyapp::main::use_dog(d);
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    std::cout << pet->make_noise() << "\n";
+    std::cout << pet->make_noise() << "\n" << ::tpy::check_signals;
 }
 
 // main()

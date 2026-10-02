@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(kwargs["host"])
 //     print(kwargs["port"])
 void connect(const Options& kwargs) {
-    std::cout << kwargs.host << "\n";
-    std::cout << kwargs.port << "\n";
+    std::cout << kwargs.host << "\n" << ::tpy::check_signals;
+    std::cout << kwargs.port << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

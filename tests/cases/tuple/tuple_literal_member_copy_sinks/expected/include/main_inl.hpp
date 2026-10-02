@@ -38,7 +38,7 @@ inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_l
         return std::tuple<int32_t, C>{1, (*c)};
     }
     case S_RESUME_0: {  // after: yield (1, c)  # tpyc: warning(/copies C into owned storage \(tuple element 1\)/)
-        std::cout << "yield_live_local gen" << " " << (*c).v << "\n";
+        std::cout << "yield_live_local gen" << " " << (*c).v << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -61,7 +61,7 @@ inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_r
         return std::tuple<int32_t, C>{std::get<0>((*t)), std::get<1>((*t))};
     }
     case S_RESUME_0: {  // after: yield (t[0], t[1])  # tpyc: warning(/copies C into owned storage \(tuple element 1\)/)
-        std::cout << "yield_repack gen" << " " << std::get<1>((*t)).v << "\n";
+        std::cout << "yield_repack gen" << " " << std::get<1>((*t)).v << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

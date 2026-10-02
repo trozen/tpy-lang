@@ -18,7 +18,7 @@ std::string make() {
 void inferred_view() {
     std::string a = ::tpyapp::main::make();
     std::string_view v = ::tpy::str_strip(a);
-    std::cout << v << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
     a += " appended text that forces the std::string buffer to reallocate";
 }
 
@@ -30,7 +30,7 @@ void inferred_view() {
 void pinned_view() {
     std::string a = ::tpyapp::main::make();
     std::string_view c = a;
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
     a += " appended text that forces the std::string buffer to reallocate";
 }
 
@@ -42,7 +42,7 @@ void pinned_view() {
 void slice_view() {
     std::string a = ::tpyapp::main::make();
     std::string v = std::string(::tpy::str_slice(a, ::tpy::BasicSlice{3, 9}));
-    std::cout << v << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
     a += " appended text that forces the std::string buffer to reallocate";
 }
 
@@ -54,7 +54,7 @@ void slice_view() {
 void bytearray_slice_view() {
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("   padded long bytes that dodge the small buffer here   ", 56));
     ::tpy::Bytes v = ::tpy::Bytes(::tpy::bytes_slice(ba, ::tpy::BasicSlice{3, 9}));
-    std::cout << ::tpy::__len__(v) << "\n";
+    std::cout << ::tpy::__len__(v) << "\n" << ::tpy::check_signals;
     ba.push_back(33);
 }
 

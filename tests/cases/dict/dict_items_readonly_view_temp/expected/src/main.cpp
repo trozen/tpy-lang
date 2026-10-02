@@ -30,8 +30,8 @@ int32_t count_values(const ::tpy::ordered_map<std::string, Node>& d) {
 //     print("values", count_values(d))
 void main() {
     ::tpy::ordered_map<std::string, Node> d = ::tpy::ordered_map<std::string, Node>({{"a", Node(1)}, {"b", Node(2)}});
-    std::cout << "items" << " " << ::tpyapp::main::count(d) << "\n";
-    std::cout << "values" << " " << ::tpyapp::main::count_values(d) << "\n";
+    std::cout << "items" << " " << ::tpyapp::main::count(d) << "\n" << ::tpy::check_signals;
+    std::cout << "values" << " " << ::tpyapp::main::count_values(d) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

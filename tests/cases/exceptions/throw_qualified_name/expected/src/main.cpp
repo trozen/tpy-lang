@@ -37,28 +37,28 @@ void main() {
         try {
             ::tpyapp::main::trigger_re();
         } catch (const ::tpystd::re::error&) {
-            std::cout << "re.error caught" << "\n";
+            std::cout << "re.error caught" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::trigger_re();
         } catch (const ::tpystd::re::error& e) {
-            std::cout << "bound" << "\n";
+            std::cout << "bound" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw MyError{};
         } catch (const MyError&) {
-            std::cout << "MyError caught" << "\n";
+            std::cout << "MyError caught" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw ::tpy::ValueError{};
         } catch (const ::tpy::ValueError&) {
-            std::cout << "builtins.ValueError caught" << "\n";
+            std::cout << "builtins.ValueError caught" << "\n" << ::tpy::check_signals;
         }
     }
 }

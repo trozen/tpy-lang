@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void read_store(const Store<int32_t>& s) {
     int32_t first = s[0];
     std::span<const int32_t> win = s.__getitem__(::tpy::BasicSlice{1, 3});
-    std::cout << "const:" << " " << first << " " << ::tpy::__getitem__(win, 0) << " " << ::tpy::__getitem__(win, 1) << "\n";
+    std::cout << "const:" << " " << first << " " << ::tpy::__getitem__(win, 0) << " " << ::tpy::__getitem__(win, 1) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -41,7 +41,7 @@ void main() {
     s[0].v = 10;
     std::span<Cell> win = s.__getitem__(::tpy::BasicSlice{1, 3});
     ::tpy::__getitem__(win, 0).v = 20;
-    std::cout << "mutable:" << " " << s[0].v << " " << s[1].v << " " << s[2].v << "\n";
+    std::cout << "mutable:" << " " << s[0].v << " " << s[1].v << " " << s[2].v << "\n" << ::tpy::check_signals;
     Store<int32_t> n = Store<int32_t>();
     n.add(7);
     n.add(8);
@@ -49,7 +49,7 @@ void main() {
     ::tpyapp::main::read_store(n);
     Digits d = Digits();
     std::span<const int32_t> tail = d.__getitem__(::tpy::BasicSlice{1, 3});
-    std::cout << "scalar:" << " " << d[2] << " " << ::tpy::__getitem__(tail, 0) << " " << ::tpy::__len__(tail) << "\n";
+    std::cout << "scalar:" << " " << d[2] << " " << ::tpy::__getitem__(tail, 0) << " " << ::tpy::__len__(tail) << "\n" << ::tpy::check_signals;
 }
 
 // main()

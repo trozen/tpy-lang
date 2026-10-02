@@ -12,9 +12,9 @@ namespace tpyapp::main {
 void show(std::string_view s, std::string_view f) {
     {
         try {
-            std::cout << ::tpy::repr_of(datetime::strptime(s, f)) << "\n";
+            std::cout << ::tpy::repr_of(datetime::strptime(s, f)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "ValueError" << "\n";
+            std::cout << "ValueError" << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -10,7 +10,7 @@ namespace tpyapp::main {
 // # free function: every argument-less kwarg form
 // def free_position() -> None:
 //     print("free:", end="")
-//     print(end="")  # tpyc: ok -- emits nothing
+//     print(end="")  # tpyc: ok -- emits only the Ctrl-C check point
 //     print(end="a")  # tpyc: ok
 //     print(sep=",")  # tpyc: ok -- sep has nothing to separate, so just "\n"
 //     print(sep=",", end="b\n")  # tpyc: ok
@@ -20,15 +20,16 @@ namespace tpyapp::main {
 //     print(end="", flush=True)  # tpyc: ok -- flush alone, nothing written
 //     print(end="e\n", flush=True)  # tpyc: ok
 void free_position() {
-    std::cout << "free:";
-    std::cout << "a";
-    std::cout << "\n";
-    std::cout << "b\n";
+    std::cout << "free:" << ::tpy::check_signals;
+    std::cout << ::tpy::check_signals;
+    std::cout << "a" << ::tpy::check_signals;
+    std::cout << "\n" << ::tpy::check_signals;
+    std::cout << "b\n" << ::tpy::check_signals;
     std::string_view suffix = "c\n";
-    std::cout << suffix;
-    ::tpy::as_ostream((*::tpystd::sys::stdout)) << "d\n";
-    std::cout << std::flush;
-    std::cout << "e\n" << std::flush;
+    std::cout << suffix << ::tpy::check_signals;
+    ::tpy::as_ostream((*::tpystd::sys::stdout)) << "d\n" << ::tpy::check_signals;
+    std::cout << std::flush << ::tpy::check_signals;
+    std::cout << "e\n" << std::flush << ::tpy::check_signals;
 }
 
 
@@ -48,7 +49,8 @@ __gen_gen gen() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "async:";
+        std::cout << "async:" << ::tpy::check_signals;
+        std::cout << ::tpy::check_signals;
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -58,7 +60,7 @@ __gen_gen gen() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "h\n";
+        std::cout << "h\n" << ::tpy::check_signals;
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 2;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -81,14 +83,15 @@ __coro_coro coro() {
 //     finally:
 //         print(end="i\n")  # tpyc: ok
 void try_position() {
-    std::cout << "try:";
+    std::cout << "try:" << ::tpy::check_signals;
     {
         try {
+            std::cout << ::tpy::check_signals;
         } catch (...) {
-            std::cout << "i\n";
+            std::cout << "i\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "i\n";
+        std::cout << "i\n" << ::tpy::check_signals;
     }
 }
 
@@ -112,11 +115,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "yield" << " " << v << "\n";
+            std::cout << "yield" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::BigInt got = ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::coro()));
-    std::cout << "ran" << " " << got << "\n";
+    std::cout << "ran" << " " << got << "\n" << ::tpy::check_signals;
     ::tpyapp::main::try_position();
 }
 

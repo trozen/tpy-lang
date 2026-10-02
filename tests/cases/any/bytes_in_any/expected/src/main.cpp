@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(a)
 void main() {
     ::tpy::Any a = ::tpy::make_any(::tpy::Bytes(::tpy::bytes_literal_owned("hi", 2)));
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
 }
 
 // main()

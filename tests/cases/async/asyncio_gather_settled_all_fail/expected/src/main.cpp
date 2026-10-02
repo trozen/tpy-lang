@@ -67,7 +67,7 @@ __coro_fail fail(int32_t tag) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         results.emplace(std::move(__r0).value());
         __sub_0.reset();
-        std::cout << "count" << " " << ::tpy::__len__((*results)) << "\n";
+        std::cout << "count" << " " << ::tpy::__len__((*results)) << "\n" << ::tpy::check_signals;
         auto& __obj_0 = (*results);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -78,11 +78,11 @@ __coro_fail fail(int32_t tag) {
                     try {
                         (*r.exception).__deref__().__raise__();
                     } catch (const ::tpy::BaseException& e) {
-                        std::cout << "exc:" << " " << e.message << "\n";
+                        std::cout << "exc:" << " " << e.message << "\n" << ::tpy::check_signals;
                     }
                 }
             } else if ((r.value.has_value())) {
-                std::cout << "unexpected ok:" << " " << (*r.value).get() << "\n";
+                std::cout << "unexpected ok:" << " " << (*r.value).get() << "\n" << ::tpy::check_signals;
             }
         }
         __state = S_DONE;

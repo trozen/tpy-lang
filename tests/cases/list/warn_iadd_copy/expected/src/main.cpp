@@ -20,7 +20,7 @@ void test_iadd_ref_type_warns() {
     std::vector<Node> a = std::vector<Node>{};
     std::vector<Node> b = {Node(1)};
     ::tpy::list_extend(a, b);
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def test_iadd_value_type_no_warn() -> None:
@@ -33,7 +33,7 @@ void test_iadd_value_type_no_warn() {
     std::vector<int32_t> a = std::vector<int32_t>{};
     std::vector<int32_t> b = {1, 2};
     ::tpy::list_extend(a, b);
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }
 
 // def test_iadd_copy_no_warn() -> None:
@@ -46,7 +46,7 @@ void test_iadd_copy_no_warn() {
     std::vector<Node> a = std::vector<Node>{};
     std::vector<Node> b = {Node(1)};
     ::tpy::list_extend(a, std::vector<Node>(b));
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def test_iadd_last_use_no_warn() -> None:
@@ -59,7 +59,7 @@ void test_iadd_last_use_no_warn() {
     std::vector<Node> a = std::vector<Node>{};
     std::vector<Node> b = {Node(1)};
     ::tpy::list_extend(a, b);
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }
 
 // def test_iadd_rvalue_no_warn() -> None:
@@ -72,7 +72,7 @@ void test_iadd_rvalue_no_warn() {
     std::vector<Node> a = std::vector<Node>{};
     ::tpy::list_extend(a, ::tpyapp::main::make_nodes());
     ::tpy::list_extend(a, std::vector<Node>{Node(2)});
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }
 
 // def test_iadd_range_no_warn() -> None:
@@ -83,7 +83,7 @@ void test_iadd_rvalue_no_warn() {
 void test_iadd_range_no_warn() {
     std::vector<int32_t> a = std::vector<int32_t>{};
     ::tpy::list_extend(a, ::tpy::Range<int32_t>(5));
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }
 
 // def test_iadd_span_warns() -> None:
@@ -98,7 +98,7 @@ void test_iadd_span_warns() {
     std::vector<Node> b = {Node(1), Node(2)};
     std::span<Node> s = ::tpy::as_mut_span(b);
     ::tpy::list_extend(a, s);
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // test_iadd_ref_type_warns()

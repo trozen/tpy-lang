@@ -18,12 +18,12 @@ void __tpy_init() {
     initialized = true;
 
     g = nullptr;
-    std::cout << ::tpy::print_bool((g == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((g == nullptr)) << "\n" << ::tpy::check_signals;
     static Point __global_slot_1 = Point(3, 4);
     g = &__global_slot_1;
-    std::cout << ::tpy::print_bool((g == nullptr)) << "\n";
-    std::cout << g->x << "\n";
-    std::cout << g->mag() << "\n";
+    std::cout << ::tpy::print_bool((g == nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << g->x << "\n" << ::tpy::check_signals;
+    std::cout << g->mag() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -23,8 +23,8 @@ int32_t reading(Awaker* p) {
 void main() {
     Loud loud = Loud(3);
     Quiet quiet = Quiet(7);
-    std::cout << ::tpyapp::main::reading(&loud) << "\n";
-    std::cout << ::tpyapp::main::reading(&quiet) << "\n";
+    std::cout << ::tpyapp::main::reading(&loud) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::reading(&quiet) << "\n" << ::tpy::check_signals;
 }
 
 // main()

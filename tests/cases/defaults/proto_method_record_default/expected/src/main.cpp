@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     Holder h = Holder(100);
     Circle c = Circle(5);
-    std::cout << h.method(c) << "\n";
-    std::cout << h.method(c, Vec(7)) << "\n";
+    std::cout << h.method(c) << "\n" << ::tpy::check_signals;
+    std::cout << h.method(c, Vec(7)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

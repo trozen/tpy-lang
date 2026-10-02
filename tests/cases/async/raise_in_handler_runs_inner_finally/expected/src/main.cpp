@@ -64,7 +64,7 @@ __coro_fail_value fail_value() {
                 __sub_0.reset();
                 if (__fin_ran_2) throw;
                 try {
-                    std::cout << "inner-handler" << "\n";
+                    std::cout << "inner-handler" << "\n" << ::tpy::check_signals;
                     throw ::tpy::RuntimeError("handler-raised");
                 } catch (...) {
                     this->__finally_1();
@@ -82,7 +82,7 @@ __coro_fail_value fail_value() {
             if (__fin_ran_1) throw;
             bool __fin_ran_4 = false;
             try {
-                std::cout << "outer-handler" << "\n";
+                std::cout << "outer-handler" << "\n" << ::tpy::check_signals;
                 int32_t __tpy_async_ret_1 = 42;
                 __fin_ran_4 = true;
                 this->__finally_0();
@@ -124,10 +124,10 @@ __coro_fail_value fail_value() {
 }
 
 void __coro_go::__finally_0() {
-    std::cout << "outer-finally" << "\n";
+    std::cout << "outer-finally" << "\n" << ::tpy::check_signals;
 }
 void __coro_go::__finally_1() {
-    std::cout << "inner-finally" << "\n";
+    std::cout << "inner-finally" << "\n" << ::tpy::check_signals;
 }
 
 // async def go() -> int32:
@@ -138,7 +138,7 @@ __coro_go go() {
 // def main() -> None:
 //     print(asyncio.run(go()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::go())) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::go())) << "\n" << ::tpy::check_signals;
 }
 
 // # Pins the inner-finally-on-throw path: when an except handler body

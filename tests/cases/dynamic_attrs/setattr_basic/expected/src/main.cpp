@@ -14,8 +14,8 @@ void main() {
     Bag b = Bag();
     b.__setattr__("color", ::tpy::make_any(std::string("red")));
     b.__setattr__("size", ::tpy::make_any(::tpy::BigInt(42)));
-    std::cout << ::tpy::any_cast_or_panic<std::string>(b.__getattr__("color")) << "\n";
-    std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(b.__getattr__("size")) << "\n";
+    std::cout << ::tpy::any_cast_or_panic<std::string>(b.__getattr__("color")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(b.__getattr__("size")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

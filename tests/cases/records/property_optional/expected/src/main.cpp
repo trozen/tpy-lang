@@ -24,20 +24,20 @@ namespace tpyapp::main {
 //         print("truthy:", label, "is-not-none")
 void truthy(const Holder& h, std::string_view label) {
     if (::tpy::is_truthy(h.num())) {
-        std::cout << "truthy:" << " " << label << " " << "if" << "\n";
+        std::cout << "truthy:" << " " << label << " " << "if" << "\n" << ::tpy::check_signals;
     }
     int32_t n = 0;
     while (::tpy::is_truthy(h.num())) {
         n = ::tpy::add_check<int32_t>(n, 1);
         break;
     }
-    std::cout << "truthy:" << " " << label << " " << "while" << " " << n << "\n";
+    std::cout << "truthy:" << " " << label << " " << "while" << " " << n << "\n" << ::tpy::check_signals;
     if (::tpy::is_truthy(h.num())) {
         if (!(::tpy::is_truthy(h.num()))) ::tpy::raise_assertion_error("engaged");
-        std::cout << "truthy:" << " " << label << " " << "assert" << "\n";
+        std::cout << "truthy:" << " " << label << " " << "assert" << "\n" << ::tpy::check_signals;
     }
     if ((h.num().has_value())) {
-        std::cout << "truthy:" << " " << label << " " << "is-not-none" << "\n";
+        std::cout << "truthy:" << " " << label << " " << "is-not-none" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -61,14 +61,14 @@ void main() {
     Holder __tmp_3 = Holder(std::nullopt);
     ::tpyapp::main::truthy(__tmp_3, "none");
     Wrapper w = Wrapper();
-    std::cout << ::tpy::print_bool((!w.node().has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!w.node().has_value())) << "\n" << ::tpy::check_signals;
     w.set_node(Node(42));
     Node* n = ::tpy::optional_to_ptr(w.node());
     if ((n != nullptr)) {
-        std::cout << n->val << "\n";
+        std::cout << n->val << "\n" << ::tpy::check_signals;
     }
     w.set_node(std::nullopt);
-    std::cout << ::tpy::print_bool((!w.node().has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!w.node().has_value())) << "\n" << ::tpy::check_signals;
 }
 
 // main()

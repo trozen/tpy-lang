@@ -13,7 +13,7 @@ void main() {
     Counter c = Counter();
     c.step();
     c.step();
-    std::cout << c.n << "\n";
+    std::cout << c.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

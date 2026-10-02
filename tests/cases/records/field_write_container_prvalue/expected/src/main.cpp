@@ -24,17 +24,17 @@ void main() {
     Canvas c = Canvas();
     c.fill(4, 7);
     ::tpy::__setitem__(c.pixels, 0, 9);
-    std::cout << ::tpy::__len__(c.pixels) << " " << ::tpy::__getitem__(c.pixels, 0) << " " << ::tpy::__getitem__(c.pixels, 3) << "\n";
+    std::cout << ::tpy::__len__(c.pixels) << " " << ::tpy::__getitem__(c.pixels, 0) << " " << ::tpy::__getitem__(c.pixels, 3) << "\n" << ::tpy::check_signals;
     c.slurp("alpha\nbeta\ngamma");
     c.lines.push_back("delta");
-    std::cout << ::tpy::__len__(c.lines) << " " << ::tpy::__getitem__(c.lines, 1) << " " << ::tpy::__getitem__(c.lines, 3) << "\n";
+    std::cout << ::tpy::__len__(c.lines) << " " << ::tpy::__getitem__(c.lines, 1) << " " << ::tpy::__getitem__(c.lines, 3) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> x = ::tpy::ordered_set<int32_t>({1, 2});
     ::tpy::ordered_set<int32_t> y = ::tpy::ordered_set<int32_t>({2, 3});
     c.merge(x, y);
     c.tags.insert(9);
-    std::cout << ::tpy::__len__(c.tags) << " " << ::tpy::__len__(x) << " " << ::tpy::print_bool((c.tags.contains(9))) << "\n";
+    std::cout << ::tpy::__len__(c.tags) << " " << ::tpy::__len__(x) << " " << ::tpy::print_bool((c.tags.contains(9))) << "\n" << ::tpy::check_signals;
     c.fill(2, 1);
-    std::cout << ::tpy::__len__(c.pixels) << " " << ::tpy::__getitem__(c.pixels, 1) << "\n";
+    std::cout << ::tpy::__len__(c.pixels) << " " << ::tpy::__getitem__(c.pixels, 1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

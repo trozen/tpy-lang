@@ -74,12 +74,12 @@ void main() {
             idx = ::tpy::unwrap_ref_move(*__try_tmp_3);
         }
         // else:
-        std::cout << v << "\n";
-        std::cout << idx << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
+        std::cout << idx << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except ReturnException:
         __except_1:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     int32_t v2;
@@ -89,11 +89,11 @@ void main() {
             if (!__try_tmp_5.has_value()) goto __except_4;
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
-        std::cout << "unreachable" << "\n";
+        std::cout << "unreachable" << "\n" << ::tpy::check_signals;
         goto __after_try_4;
         // except ReturnException:
         __except_4:;
-        std::cout << "caught parse error" << "\n";
+        std::cout << "caught parse error" << "\n" << ::tpy::check_signals;
         __after_try_4:;
     }
     int32_t idx2;
@@ -103,11 +103,11 @@ void main() {
             if (!__try_tmp_7.has_value()) goto __except_6;
             idx2 = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
-        std::cout << "unreachable" << "\n";
+        std::cout << "unreachable" << "\n" << ::tpy::check_signals;
         goto __after_try_6;
         // except ReturnException:
         __except_6:;
-        std::cout << "caught not found" << "\n";
+        std::cout << "caught not found" << "\n" << ::tpy::check_signals;
         __after_try_6:;
     }
 }

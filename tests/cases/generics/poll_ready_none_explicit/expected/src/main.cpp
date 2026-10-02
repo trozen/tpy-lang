@@ -15,7 +15,7 @@ namespace tpyapp::main {
 //     print("ok")
 void main() {
     ::tpystd::tpy::Poll<std::monostate> p = ::tpyapp::main::make_ready();
-    std::cout << "ok" << "\n";
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // # poll_ready[None](None) -- explicit-type-arg form of the parametrized

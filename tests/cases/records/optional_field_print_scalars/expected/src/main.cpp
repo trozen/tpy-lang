@@ -19,15 +19,15 @@ namespace tpyapp::main {
 //     print(s)
 void main() {
     Settings s = Settings();
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
     s.count = 42;
     s.flag = true;
     s.ratio = 3.14;
     s.label = "hello";
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
     s.flag = false;
     s.ratio = 0.0;
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // from dataclasses import dataclass

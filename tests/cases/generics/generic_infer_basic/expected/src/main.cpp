@@ -24,11 +24,11 @@ void __tpy_init() {
 
     static Box<int32_t> __global_slot_1 = Box<int32_t>(42);
     box = &__global_slot_1;
-    std::cout << box->value << "\n";
+    std::cout << box->value << "\n" << ::tpy::check_signals;
     x = 10;
     static Box<int32_t> __global_slot_2 = Box<int32_t>(x);
     box32 = &__global_slot_2;
-    std::cout << box32->value << "\n";
+    std::cout << box32->value << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

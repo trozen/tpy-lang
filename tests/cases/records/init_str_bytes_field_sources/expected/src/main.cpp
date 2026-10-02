@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //     print(b.data[0], b.lit[1])
 void main() {
     Meta m = Meta("hello", "world");
-    std::cout << m.title << " " << m.tag << " " << m.view << " " << m.label << "\n";
+    std::cout << m.title << " " << m.tag << " " << m.view << " " << m.label << "\n" << ::tpy::check_signals;
     Buf b = Buf(::tpy::bytes_literal("xyz", 3));
-    std::cout << ::tpy::__len__(b.data) << " " << ::tpy::__len__(b.lit) << " " << ::tpy::__len__(b.empty) << "\n";
-    std::cout << static_cast<int>(::tpy::bytes_getitem(b.data, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(b.lit, 1)) << "\n";
+    std::cout << ::tpy::__len__(b.data) << " " << ::tpy::__len__(b.lit) << " " << ::tpy::__len__(b.empty) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpy::bytes_getitem(b.data, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(b.lit, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -36,7 +36,7 @@ void main() {
     std::vector<Box> items = std::vector<Box>{};
     items.push_back(Box(1));
     items.push_back(Box(2));
-    std::cout << ::tpyapp::main::use(::tpy::as_mut_span(items)) << "\n";
+    std::cout << ::tpyapp::main::use(::tpy::as_mut_span(items)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

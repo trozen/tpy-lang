@@ -22,7 +22,7 @@ void main();
 //     print("sync sink")
 template<typename T>
 void sink(::tpy::own_param_t<T> x) {
-    std::cout << "sync sink" << "\n";
+    std::cout << "sync sink" << "\n" << ::tpy::check_signals;
 }
 // def forward[T: Sync](x: Own[T]) -> None:
 //     sink(x)

@@ -16,11 +16,11 @@ void main() {
     std::string_view s = "world";
     std::string_view __tmp_1{s};
     ::tpystd::tplib::box::Box<std::string_view> b = ::tpystd::tplib::box::Box<std::string_view>(std::move(__tmp_1));
-    std::cout << b.get() << "\n";
+    std::cout << b.get() << "\n" << ::tpy::check_signals;
     std::string_view t = "hello";
     std::string_view __tmp_2{t};
     ::tpystd::tplib::box::Box<std::string_view> b2 = ::tpystd::tplib::box::Box<std::string_view>(std::move(__tmp_2));
-    std::cout << b2.get() << "\n";
+    std::cout << b2.get() << "\n" << ::tpy::check_signals;
 }
 
 // # Regression: Box(s) on a str lvalue used to crash codegen with

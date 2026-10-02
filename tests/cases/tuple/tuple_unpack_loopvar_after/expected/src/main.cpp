@@ -26,10 +26,10 @@ void main() {
         const auto& __tup_1 = __for_tup_0;
         k = std::get<0>(__tup_1);
         v = std::get<1>(__tup_1);
-        std::cout << k << " " << v << "\n";
+        std::cout << k << " " << v << "\n" << ::tpy::check_signals;
     }
-    std::cout << k << "\n";
-    std::cout << v << "\n";
+    std::cout << k << "\n" << ::tpy::check_signals;
+    std::cout << v << "\n" << ::tpy::check_signals;
 }
 
 // main()

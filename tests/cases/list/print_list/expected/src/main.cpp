@@ -18,11 +18,11 @@ void __tpy_init() {
 
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     nums = &__global_slot_1;
-    std::cout << ::tpy::ListPrinter((*nums)) << "\n";
-    std::cout << ::tpy::ListPrinter(std::vector<int32_t>{10, 20, 30}) << "\n";
+    std::cout << ::tpy::ListPrinter((*nums)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(std::vector<int32_t>{10, 20, 30}) << "\n" << ::tpy::check_signals;
     static std::vector<std::vector<int32_t>> __global_slot_2 = {{1, 2}, {3, 4}};
     nested = &__global_slot_2;
-    std::cout << ::tpy::ListPrinter((*nested)) << "\n";
+    std::cout << ::tpy::ListPrinter((*nested)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

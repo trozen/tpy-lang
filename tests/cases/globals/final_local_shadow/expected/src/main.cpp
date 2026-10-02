@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(X)
 void main() {
     int32_t X = 99;
-    std::cout << X << "\n";
+    std::cout << X << "\n" << ::tpy::check_signals;
 }
 
 // main()

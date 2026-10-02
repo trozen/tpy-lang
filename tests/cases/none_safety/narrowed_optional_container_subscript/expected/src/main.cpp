@@ -14,9 +14,9 @@ void read_list(const std::vector<int32_t>* lst) {
     if ((lst == nullptr)) {
         return;
     }
-    std::cout << ::tpy::__getitem__((*lst), -1) << "\n";
+    std::cout << ::tpy::__getitem__((*lst), -1) << "\n" << ::tpy::check_signals;
     int32_t i = -2;
-    std::cout << ::tpy::__getitem__((*lst), i) << "\n";
+    std::cout << ::tpy::__getitem__((*lst), i) << "\n" << ::tpy::check_signals;
 }
 
 // def aug_assign(lst: list[int32] | None) -> None:
@@ -29,7 +29,7 @@ void aug_assign(std::vector<int32_t>* lst) {
         return;
     }
     ::tpy::__setitem__((*lst), -1, ::tpy::add_check<int32_t>(::tpy::__getitem__((*lst), -1), 5));
-    std::cout << ::tpy::__getitem__((*lst), 0) << " " << ::tpy::__getitem__((*lst), 1) << " " << ::tpy::__getitem__((*lst), 2) << "\n";
+    std::cout << ::tpy::__getitem__((*lst), 0) << " " << ::tpy::__getitem__((*lst), 1) << " " << ::tpy::__getitem__((*lst), 2) << "\n" << ::tpy::check_signals;
 }
 
 // def read_dict(d: dict[int32, int32] | None) -> None:
@@ -46,12 +46,12 @@ void read_dict(const ::tpy::ordered_map<int32_t, int32_t>* d) {
     }
     {
         try {
-            std::cout << ::tpy::__getitem__((*d), 99) << "\n";
+            std::cout << ::tpy::__getitem__((*d), 99) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::KeyError&) {
-            std::cout << "KeyError" << "\n";
+            std::cout << "KeyError" << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << ::tpy::__len__((*d)) << "\n";
+    std::cout << ::tpy::__len__((*d)) << "\n" << ::tpy::check_signals;
 }
 
 // def read_dict_readonly(d: readonly[dict[int32, int32]] | None) -> None:
@@ -63,7 +63,7 @@ void read_dict_readonly(const ::tpy::ordered_map<int32_t, int32_t>* d) {
     if ((d == nullptr)) {
         return;
     }
-    std::cout << ::tpy::__getitem__((*d), 1) << "\n";
+    std::cout << ::tpy::__getitem__((*d), 1) << "\n" << ::tpy::check_signals;
 }
 
 // def read_bytearray(b: bytearray | None) -> None:
@@ -74,7 +74,7 @@ void read_bytearray(const ::tpy::ByteArray* b) {
     if ((b == nullptr)) {
         return;
     }
-    std::cout << static_cast<int>(::tpy::bytes_getitem((*b), -1)) << "\n";
+    std::cout << static_cast<int>(::tpy::bytes_getitem((*b), -1)) << "\n" << ::tpy::check_signals;
 }
 
 // def read_nested(rows: list[list[int32]] | None) -> None:
@@ -85,7 +85,7 @@ void read_nested(const std::vector<std::vector<int32_t>>* rows) {
     if ((rows == nullptr)) {
         return;
     }
-    std::cout << ::tpy::__getitem__(::tpy::__getitem__((*rows), -1), -1) << "\n";
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__((*rows), -1), -1) << "\n" << ::tpy::check_signals;
 }
 
 // def read_user_record(g: Doubler | None) -> None:
@@ -102,7 +102,7 @@ void read_user_record(const Doubler* g) {
     }
     int32_t __stop_0 = ::tpy::__len__((*g));
     for (int32_t i = 0; i < __stop_0; ++i) {
-        std::cout << (*g)[i] << "\n";
+        std::cout << (*g)[i] << "\n" << ::tpy::check_signals;
     }
 }
 

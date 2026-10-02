@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //     print(c.area())
 void main() {
     Circle c = Circle(5.0);
-    std::cout << c.name() << "\n";
-    std::cout << ::tpy::print_float(c.area()) << "\n";
+    std::cout << c.name() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(c.area()) << "\n" << ::tpy::check_signals;
     c.scale(2.0);
-    std::cout << ::tpy::print_float(c.area()) << "\n";
+    std::cout << ::tpy::print_float(c.area()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -14,11 +14,11 @@ namespace tpyapp::main {
 //     print(g.hello())
 void main() {
     Child c = Child(7);
-    std::cout << c.x << "\n";
-    std::cout << c.hello() << "\n";
+    std::cout << c.x << "\n" << ::tpy::check_signals;
+    std::cout << c.hello() << "\n" << ::tpy::check_signals;
     GrandChild g = GrandChild(13);
-    std::cout << g.x << "\n";
-    std::cout << g.hello() << "\n";
+    std::cout << g.x << "\n" << ::tpy::check_signals;
+    std::cout << g.hello() << "\n" << ::tpy::check_signals;
 }
 
 // main()

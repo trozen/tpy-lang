@@ -24,7 +24,7 @@ void method_face() {
     ::tpy::ordered_map<std::string, std::vector<int32_t>>* d = &__slot_1;
     if ((d != nullptr)) {
         ::tpy::__getitem__((*d), "o").push_back(3);
-        std::cout << "method_face" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n";
+        std::cout << "method_face" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -40,7 +40,7 @@ void bind_face() {
     if ((d != nullptr)) {
         std::vector<int32_t>& vals = ::tpy::__getitem__((*d), "o");
         vals.push_back(3);
-        std::cout << "bind_face" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << " " << ::tpy::__len__(vals) << "\n";
+        std::cout << "bind_face" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << " " << ::tpy::__len__(vals) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -56,7 +56,7 @@ void list_receiver() {
     if ((m != nullptr)) {
         ::tpy::__getitem__((*m), 0).push_back(3);
         ::tpy::__setitem__(::tpy::__getitem__((*m), 0), 0, 9);
-        std::cout << "list_receiver" << " " << ::tpy::__getitem__(::tpy::__getitem__((*m), 0), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__((*m), 0), 2) << "\n";
+        std::cout << "list_receiver" << " " << ::tpy::__getitem__(::tpy::__getitem__((*m), 0), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__((*m), 0), 2) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -70,7 +70,7 @@ void dict_nested_write() {
     ::tpy::ordered_map<std::string, std::vector<int32_t>>* d = &__slot_1;
     if ((d != nullptr)) {
         ::tpy::__setitem__(::tpy::__getitem__((*d), "o"), 0, 7);
-        std::cout << "dict_nested_write" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 0) << "\n";
+        std::cout << "dict_nested_write" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 0) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -84,7 +84,7 @@ void call_arg() {
     ::tpy::ordered_map<std::string, std::vector<int32_t>>* d = &__slot_1;
     if ((d != nullptr)) {
         ::tpyapp::main::take(::tpy::__getitem__((*d), "o"));
-        std::cout << "call_arg" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n";
+        std::cout << "call_arg" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -109,7 +109,7 @@ void for_over_elem() {
             int32_t v = *__beg_0;
             total = ::tpy::add_check<int32_t>(total, v);
         }
-        std::cout << "for_over_elem" << " " << total << "\n";
+        std::cout << "for_over_elem" << " " << total << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -129,7 +129,7 @@ void record_elem() {
         Counter& c = ::tpy::__getitem__((*d), "o");
         c.bump();
         ::tpy::__getitem__((*d), "o").n = (::tpy::add_check<int32_t>(::tpy::__getitem__((*d), "o").n, 1));
-        std::cout << "record_elem" << " " << ::tpy::__getitem__((*d), "o").n << "\n";
+        std::cout << "record_elem" << " " << ::tpy::__getitem__((*d), "o").n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -143,7 +143,7 @@ void print_and_len() {
     ::tpy::ordered_map<std::string, std::vector<int32_t>>* d = &__slot_1;
     if ((d != nullptr)) {
         ::tpy::__getitem__((*d), "o").push_back(3);
-        std::cout << "print_and_len" << " " << ::tpy::ListPrinter(::tpy::__getitem__((*d), "o")) << " " << ::tpy::__len__(::tpy::__getitem__((*d), "o")) << "\n";
+        std::cout << "print_and_len" << " " << ::tpy::ListPrinter(::tpy::__getitem__((*d), "o")) << " " << ::tpy::__len__(::tpy::__getitem__((*d), "o")) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -155,7 +155,7 @@ void str_elem() {
     ::tpy::ordered_map<std::string, std::string> __slot_1 = ::tpy::ordered_map<std::string, std::string>({{"o", "ab"}});
     ::tpy::ordered_map<std::string, std::string>* d = &__slot_1;
     if ((d != nullptr)) {
-        std::cout << "str_elem" << " " << ::tpy::str_upper(::tpy::__getitem__((*d), "o")) << "\n";
+        std::cout << "str_elem" << " " << ::tpy::str_upper(::tpy::__getitem__((*d), "o")) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -171,7 +171,7 @@ void set_elem() {
     if ((d != nullptr)) {
         ::tpy::__getitem__((*d), "o").insert(3);
         ::tpy::ordered_set<int32_t>& s = ::tpy::__getitem__((*d), "o");
-        std::cout << "set_elem" << " " << ::tpy::__len__(s) << "\n";
+        std::cout << "set_elem" << " " << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -187,7 +187,7 @@ void dict_elem() {
     if ((d != nullptr)) {
         ::tpy::ordered_map<std::string, int32_t>& inner = ::tpy::__getitem__((*d), "o");
         ::tpy::__setitem__(inner, "b", 2);
-        std::cout << "dict_elem" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), "b") << "\n";
+        std::cout << "dict_elem" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), "b") << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -202,10 +202,10 @@ void elif_form() {
     ::tpy::ordered_map<std::string, std::vector<int32_t>> __slot_1 = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"o", {1, 2}}});
     ::tpy::ordered_map<std::string, std::vector<int32_t>>* d = &__slot_1;
     if ((d == nullptr)) {
-        std::cout << "elif_form none" << "\n";
+        std::cout << "elif_form none" << "\n" << ::tpy::check_signals;
     } else if ((::tpy::__len__((*d)) > 0)) {
         ::tpy::__getitem__((*d), "o").push_back(3);
-        std::cout << "elif_form" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n";
+        std::cout << "elif_form" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -220,10 +220,10 @@ void else_form() {
     ::tpy::ordered_map<std::string, std::vector<int32_t>> __slot_1 = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"o", {1, 2}}});
     ::tpy::ordered_map<std::string, std::vector<int32_t>>* d = &__slot_1;
     if ((d == nullptr)) {
-        std::cout << "else_form none" << "\n";
+        std::cout << "else_form none" << "\n" << ::tpy::check_signals;
     } else {
         ::tpy::__getitem__((*d), "o").push_back(3);
-        std::cout << "else_form" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n";
+        std::cout << "else_form" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -242,7 +242,7 @@ void while_form() {
         ::tpy::__getitem__((*d), "o").push_back(3);
         n = ::tpy::add_check<int32_t>(n, 1);
     }
-    std::cout << "while_form" << " " << n << "\n";
+    std::cout << "while_form" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // def early_return(d: dict[str, list[int32]] | None) -> None:
@@ -253,11 +253,11 @@ void while_form() {
 //     print("early_return", d["o"][2])
 void early_return(::tpy::ordered_map<std::string, std::vector<int32_t>>* d) {
     if ((d == nullptr)) {
-        std::cout << "early_return none" << "\n";
+        std::cout << "early_return none" << "\n" << ::tpy::check_signals;
         return;
     }
     ::tpy::__getitem__((*d), "o").push_back(3);
-    std::cout << "early_return" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n";
+    std::cout << "early_return" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n" << ::tpy::check_signals;
 }
 
 // def assert_form() -> None:
@@ -270,7 +270,7 @@ void assert_form() {
     ::tpy::ordered_map<std::string, std::vector<int32_t>>* d = &__slot_1;
     if (!((d != nullptr))) ::tpy::raise_assertion_error();
     ::tpy::__getitem__((*d), "o").push_back(3);
-    std::cout << "assert_form" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n";
+    std::cout << "assert_form" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n" << ::tpy::check_signals;
 }
 
 // def and_form() -> None:
@@ -283,7 +283,7 @@ void and_form() {
     ::tpy::ordered_map<std::string, std::vector<int32_t>>* d = &__slot_1;
     if (((d != nullptr) && (::tpy::__len__((*d)) > 0))) {
         ::tpy::__getitem__((*d), "o").push_back(3);
-        std::cout << "and_form" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n";
+        std::cout << "and_form" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -306,12 +306,12 @@ void match_arm() {
     case 1: {
         if ((d != nullptr)) {
             ::tpy::__getitem__((*d), "o").push_back(3);
-            std::cout << "match_arm" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n";
+            std::cout << "match_arm" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n" << ::tpy::check_signals;
         }
         break;
     }
     default: {
-        std::cout << "match_arm other" << "\n";
+        std::cout << "match_arm other" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -332,10 +332,10 @@ void try_finally() {
             try {
                 ::tpy::__getitem__((*d), "o").push_back(3);
             } catch (...) {
-                std::cout << "try_finally" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n";
+                std::cout << "try_finally" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n" << ::tpy::check_signals;
                 throw;
             }
-            std::cout << "try_finally" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n";
+            std::cout << "try_finally" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -350,7 +350,7 @@ void elem_field_method() {
     ::tpy::ordered_map<std::string, Node>* d = &__slot_1;
     if ((d != nullptr)) {
         ::tpy::__getitem__((*d), "o").rows.push_back(3);
-        std::cout << "elem_field_method" << " " << ::tpy::ListPrinter(::tpy::__getitem__((*d), "o").rows) << "\n";
+        std::cout << "elem_field_method" << " " << ::tpy::ListPrinter(::tpy::__getitem__((*d), "o").rows) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -364,7 +364,7 @@ void elem_field_aug() {
     ::tpy::ordered_map<std::string, Node>* d = &__slot_1;
     if ((d != nullptr)) {
         ::tpy::__getitem__((*d), "o").n = ::tpy::add_check<int32_t>(::tpy::__getitem__((*d), "o").n, 1);
-        std::cout << "elem_field_aug" << " " << ::tpy::__getitem__((*d), "o").n << "\n";
+        std::cout << "elem_field_aug" << " " << ::tpy::__getitem__((*d), "o").n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -379,7 +379,7 @@ void elem_field_print_len() {
     ::tpy::ordered_map<std::string, Node>* d = &__slot_1;
     if ((d != nullptr)) {
         ::tpy::__getitem__((*d), "o").rows.push_back(3);
-        std::cout << "elem_field_print_len" << " " << ::tpy::ListPrinter(::tpy::__getitem__((*d), "o").rows) << " " << ::tpy::__len__(::tpy::__getitem__((*d), "o").rows) << "\n";
+        std::cout << "elem_field_print_len" << " " << ::tpy::ListPrinter(::tpy::__getitem__((*d), "o").rows) << " " << ::tpy::__len__(::tpy::__getitem__((*d), "o").rows) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -393,7 +393,7 @@ void elem_field_setitem() {
     ::tpy::ordered_map<std::string, Node>* d = &__slot_1;
     if ((d != nullptr)) {
         ::tpy::__setitem__(::tpy::__getitem__((*d), "o").kids, "a", 3);
-        std::cout << "elem_field_setitem" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o").kids, "a") << "\n";
+        std::cout << "elem_field_setitem" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o").kids, "a") << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -409,7 +409,7 @@ void elem_field_nested() {
     ::tpy::ordered_map<std::string, Node>* d = &__slot_1;
     if ((d != nullptr)) {
         ::tpy::__setitem__(::tpy::__getitem__((*d), "o").rows, 0, 9);
-        std::cout << "elem_field_nested" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o").rows, 0) << "\n";
+        std::cout << "elem_field_nested" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o").rows, 0) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -429,7 +429,7 @@ void elem_opt_field_write() {
     if ((d != nullptr)) {
         ::tpy::__getitem__((*d), "o").sub = std::nullopt;
         Node& cleared = ::tpy::__getitem__((*d), "o");
-        std::cout << "elem_opt_field_write" << " " << ::tpy::print_bool((!cleared.sub.has_value())) << "\n";
+        std::cout << "elem_opt_field_write" << " " << ::tpy::print_bool((!cleared.sub.has_value())) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -463,7 +463,7 @@ void with_body() {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        std::cout << "with_body" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n";
+        std::cout << "with_body" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -480,7 +480,7 @@ void with_body() {
         d = &*(__ptr_slot_f0 = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"o", {1, 2}}}));
         if ((d != nullptr)) {
             ::tpy::__getitem__((*d), "o").push_back(3);
-            std::cout << "coro" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n";
+            std::cout << "coro" << " " << ::tpy::__getitem__(::tpy::__getitem__((*d), "o"), 2) << "\n" << ::tpy::check_signals;
         }
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -573,7 +573,7 @@ void main() {
             total = ::tpy::add_check<int32_t>(total, v);
         }
     }
-    std::cout << "gen" << " " << total << "\n";
+    std::cout << "gen" << " " << total << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::coro()));
 }
 
@@ -605,7 +605,7 @@ void __tpy_init() {
     MODULE_D = &__global_slot_1;
     if ((MODULE_D != nullptr)) {
         ::tpy::__getitem__((*MODULE_D), "o").push_back(3);
-        std::cout << "module_level" << " " << ::tpy::__getitem__(::tpy::__getitem__((*MODULE_D), "o"), 2) << "\n";
+        std::cout << "module_level" << " " << ::tpy::__getitem__(::tpy::__getitem__((*MODULE_D), "o"), 2) << "\n" << ::tpy::check_signals;
     }
     ::tpyapp::main::main();
 }

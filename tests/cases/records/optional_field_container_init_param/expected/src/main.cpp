@@ -13,8 +13,8 @@ void main() {
     std::vector<int32_t> __tmp_1 = std::vector<int32_t>{10, 20};
     Holder h1 = Holder(&(__tmp_1));
     Holder h2 = Holder(nullptr);
-    std::cout << ::tpy::__len__(h1.items) << "\n";
-    std::cout << ::tpy::__len__(h2.items) << "\n";
+    std::cout << ::tpy::__len__(h1.items) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(h2.items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -27,7 +27,7 @@ void main() {
     ::tpyapp::main::relay(g, &(a));
     g.stash(Node(9));
     g.link(::tpy::optional_to_ptr(g.slot));
-    std::cout << g.total << "\n";
+    std::cout << g.total << "\n" << ::tpy::check_signals;
 }
 
 // main()

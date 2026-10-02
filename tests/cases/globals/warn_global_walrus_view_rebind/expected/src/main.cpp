@@ -36,9 +36,9 @@ std::string label;
 //     print("walrus:", via_walrus())
 //     print("label:", label)
 void main() {
-    std::cout << "plain:" << " " << ::tpyapp::main::plain() << "\n";
-    std::cout << "walrus:" << " " << ::tpyapp::main::via_walrus() << "\n";
-    std::cout << "label:" << " " << label << "\n";
+    std::cout << "plain:" << " " << ::tpyapp::main::plain() << "\n" << ::tpy::check_signals;
+    std::cout << "walrus:" << " " << ::tpyapp::main::via_walrus() << "\n" << ::tpy::check_signals;
+    std::cout << "label:" << " " << label << "\n" << ::tpy::check_signals;
 }
 
 // label = "hello world"

@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(W(B("hello")).get_label())
 void main() {
     A __tmp_1 = A("hi");
-    std::cout << W(::tpy::Union<const A*, const B*>{&__tmp_1}).get_label() << "\n";
+    std::cout << W(::tpy::Union<const A*, const B*>{&__tmp_1}).get_label() << "\n" << ::tpy::check_signals;
     B __tmp_2 = B("hello");
-    std::cout << W(::tpy::Union<const A*, const B*>{&__tmp_2}).get_label() << "\n";
+    std::cout << W(::tpy::Union<const A*, const B*>{&__tmp_2}).get_label() << "\n" << ::tpy::check_signals;
 }
 
 // main()

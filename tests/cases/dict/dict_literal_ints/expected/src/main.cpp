@@ -14,11 +14,11 @@ namespace tpyapp::main {
 //     print(d3[int32(10)])
 void main() {
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::ordered_map<int32_t, std::string>({{1, "a"}, {2, "b"}});
-    std::cout << ::tpy::__getitem__(d, 1) << "\n";
+    std::cout << ::tpy::__getitem__(d, 1) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::ordered_map<std::string, int32_t>({{"x", 1}, {"y", 2}});
-    std::cout << ::tpy::__getitem__(d2, "x") << "\n";
+    std::cout << ::tpy::__getitem__(d2, "x") << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, int32_t> d3 = ::tpy::ordered_map<int32_t, int32_t>({{10, 100}, {20, 200}});
-    std::cout << ::tpy::__getitem__(d3, 10) << "\n";
+    std::cout << ::tpy::__getitem__(d3, 10) << "\n" << ::tpy::check_signals;
 }
 
 // main()

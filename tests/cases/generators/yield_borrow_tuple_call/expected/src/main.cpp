@@ -42,10 +42,10 @@ void main() {
             int32_t i = std::get<0>(__tup_1);
             auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
             p.x = ::tpy::add_check<int32_t>(p.x, 1);
-            std::cout << "g" << " " << i << " " << p.x << "\n";
+            std::cout << "g" << " " << i << " " << p.x << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "g after" << " " << ::tpy::__getitem__(xs, 0).x << " " << ::tpy::__getitem__(xs, 1).x << "\n";
+    std::cout << "g after" << " " << ::tpy::__getitem__(xs, 0).x << " " << ::tpy::__getitem__(xs, 1).x << "\n" << ::tpy::check_signals;
     Box b = Box();
     {
         auto __src_2 = b.walk();
@@ -58,10 +58,10 @@ void main() {
             int32_t i = std::get<0>(__tup_2);
             auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
             p.x = ::tpy::add_check<int32_t>(p.x, 2);
-            std::cout << "walk" << " " << i << " " << p.x << "\n";
+            std::cout << "walk" << " " << i << " " << p.x << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "walk after" << " " << ::tpy::__getitem__(b.xs, 0).x << " " << ::tpy::__getitem__(b.xs, 1).x << "\n";
+    std::cout << "walk after" << " " << ::tpy::__getitem__(b.xs, 0).x << " " << ::tpy::__getitem__(b.xs, 1).x << "\n" << ::tpy::check_signals;
 }
 
 

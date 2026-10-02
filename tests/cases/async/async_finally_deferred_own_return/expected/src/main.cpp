@@ -104,7 +104,7 @@ __coro_ret_after_await ret_after_await() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0.emplace(std::move(__r0).value());
         __sub_0.reset();
-        std::cout << (*__await_lift_0).n << "\n";
+        std::cout << (*__await_lift_0).n << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

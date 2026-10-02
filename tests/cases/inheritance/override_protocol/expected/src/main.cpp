@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(b.measure())
 void main() {
     Box b = Box(42);
-    std::cout << b.measure() << "\n";
+    std::cout << b.measure() << "\n" << ::tpy::check_signals;
 }
 
 // main()

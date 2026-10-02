@@ -11,11 +11,11 @@ namespace tpyapp::main {
 //     n = 5
 //     print(n < sys.maxsize)
 void main() {
-    std::cout << ::tpystd::sys::maxsize << "\n";
-    std::cout << ::tpy::print_bool((::tpystd::sys::maxsize == ::tpy::BigInt(static_cast<int64_t>(9223372036854775807LL)))) << "\n";
-    std::cout << ((::tpystd::sys::maxsize) + (::tpy::BigInt(1))) << "\n";
+    std::cout << ::tpystd::sys::maxsize << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpystd::sys::maxsize == ::tpy::BigInt(static_cast<int64_t>(9223372036854775807LL)))) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::sys::maxsize) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
     int32_t n = 5;
-    std::cout << ::tpy::print_bool((::tpy::BigInt(n) < ::tpystd::sys::maxsize)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::BigInt(n) < ::tpystd::sys::maxsize)) << "\n" << ::tpy::check_signals;
 }
 
 // # sys.maxsize is CPython's 64-bit value (2**63 - 1) and usable as a

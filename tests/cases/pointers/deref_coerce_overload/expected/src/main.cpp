@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def describe(x: int32) -> None:
 //     print("int:", x)
 void describe(int32_t x) {
-    std::cout << "int:" << " " << x << "\n";
+    std::cout << "int:" << " " << x << "\n" << ::tpy::check_signals;
 }
 
 // def describe(p: Point) -> None:
 //     print("point:", p.x, p.y)
 void describe(const Point& p) {
-    std::cout << "point:" << " " << p.x << " " << p.y << "\n";
+    std::cout << "point:" << " " << p.x << " " << p.y << "\n" << ::tpy::check_signals;
 }
 
 // def test() -> None:

@@ -13,7 +13,7 @@ void consume(const std::tuple<const T*, const T*>& p) {
     const T* a = std::get<0>(__tup_1);
     const T* b = std::get<1>(__tup_1);
     if ((a != nullptr)) {
-        std::cout << a->x << "\n";
+        std::cout << a->x << "\n" << ::tpy::check_signals;
     }
 }
 

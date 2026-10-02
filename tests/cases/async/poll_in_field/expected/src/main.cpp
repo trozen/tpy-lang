@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     Holder h = Holder(::tpystd::tpy::Poll<int32_t>::ready(42));
     ::tpystd::tpy::Poll<int32_t> p = std::move(h).take();
-    std::cout << "ready:" << " " << ::tpy::print_bool(p.is_ready()) << "\n";
-    std::cout << "value:" << " " << std::move(p).value() << "\n";
+    std::cout << "ready:" << " " << ::tpy::print_bool(p.is_ready()) << "\n" << ::tpy::check_signals;
+    std::cout << "value:" << " " << std::move(p).value() << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.coro import Poll

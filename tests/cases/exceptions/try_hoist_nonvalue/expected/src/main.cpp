@@ -19,7 +19,7 @@ void test_list_try_hoist() {
             return;
         }
     }
-    std::cout << ::tpy::ListPrinter((*items)) << "\n";
+    std::cout << ::tpy::ListPrinter((*items)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_record_try_hoist() -> None:
@@ -37,7 +37,7 @@ void test_record_try_hoist() {
             return;
         }
     }
-    std::cout << p->x << " " << p->y << "\n";
+    std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
 }
 
 // def test_value_type_try_hoist() -> None:
@@ -55,7 +55,7 @@ void test_value_type_try_hoist() {
             return;
         }
     }
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

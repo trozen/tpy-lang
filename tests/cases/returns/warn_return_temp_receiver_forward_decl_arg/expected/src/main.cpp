@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(Holder().take(rows).v, Holder().take_copy(rows).v, rows[0].v)
 void main() {
     std::vector<Row> rows = {Row(1)};
-    std::cout << Holder().take(rows).v << " " << Holder().take_copy(rows).v << " " << ::tpy::__getitem__(rows, 0).v << "\n";
+    std::cout << Holder().take(rows).v << " " << Holder().take_copy(rows).v << " " << ::tpy::__getitem__(rows, 0).v << "\n" << ::tpy::check_signals;
 }
 
 // main()

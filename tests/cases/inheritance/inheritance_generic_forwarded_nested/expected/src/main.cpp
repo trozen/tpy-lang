@@ -23,9 +23,9 @@ void __tpy_init() {
     static Child<std::string> __global_slot_2 = Child<std::string>((*items), 42);
     c = &__global_slot_2;
     val = &(c->get_value());
-    std::cout << ::tpy::__getitem__((*val), 0) << "\n";
-    std::cout << ::tpy::__getitem__((*val), 1) << "\n";
-    std::cout << c->get_extra() << "\n";
+    std::cout << ::tpy::__getitem__((*val), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*val), 1) << "\n" << ::tpy::check_signals;
+    std::cout << c->get_extra() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

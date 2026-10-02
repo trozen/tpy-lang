@@ -473,26 +473,26 @@ std::string closure_call(double v) {
 //     print("closure", closure_call(1.0), closure_call(2.0))
 //     print("module-level", GRES)
 void main() {
-    std::cout << "free-int-at-float" << " " << ::tpyapp::main::int_lit_at_float(1.0) << " " << ::tpyapp::main::int_lit_at_float(2.0) << "\n";
-    std::cout << "free-float-at-int" << " " << ::tpyapp::main::float_lit_at_int(2) << " " << ::tpyapp::main::float_lit_at_int(1) << "\n";
-    std::cout << "free-int-at-bool" << " " << ::tpyapp::main::lits_at_bool(true) << " " << ::tpyapp::main::lits_at_bool(false) << "\n";
-    std::cout << "free-float-at-bool" << " " << ::tpyapp::main::float_lit_at_bool(true) << " " << ::tpyapp::main::float_lit_at_bool(false) << "\n";
-    std::cout << "free-float-at-bigint" << " " << ::tpyapp::main::float_lit_at_bigint(::tpy::BigInt(2)) << " " << ::tpyapp::main::float_lit_at_bigint(::tpy::BigInt(1)) << "\n";
-    std::cout << "free-int-at-f32" << " " << ::tpyapp::main::int_lit_at_f32(1.0f) << " " << ::tpyapp::main::int_lit_at_f32(2.0f) << "\n";
-    std::cout << "or-alt" << " " << ::tpyapp::main::or_alt(1) << " " << ::tpyapp::main::or_alt(2) << " " << ::tpyapp::main::or_alt(3) << "\n";
-    std::cout << "as-alt" << " " << ::tpyapp::main::as_alt(2) << " " << ::tpyapp::main::as_alt(1) << "\n";
-    std::cout << "guarded" << " " << ::tpyapp::main::guarded_label(2, true) << " " << ::tpyapp::main::guarded_label(2, false) << " " << ::tpyapp::main::guarded_label(1, true) << "\n";
-    std::cout << "guard-default" << " " << ::tpyapp::main::guard_default(2, true) << " " << ::tpyapp::main::guard_default(2, false) << " " << ::tpyapp::main::guard_default(1, true) << "\n";
-    std::cout << "or-overlap-int" << " " << ::tpyapp::main::or_overlap_int(1, true) << " " << ::tpyapp::main::or_overlap_int(1, false) << " " << ::tpyapp::main::or_overlap_int(2, true) << " " << ::tpyapp::main::or_overlap_int(2, false) << " " << ::tpyapp::main::or_overlap_int(3, false) << "\n";
-    std::cout << "or-overlap-folded" << " " << ::tpyapp::main::or_overlap_folded(1, true) << " " << ::tpyapp::main::or_overlap_folded(1, false) << " " << ::tpyapp::main::or_overlap_folded(2, true) << " " << ::tpyapp::main::or_overlap_folded(2, false) << " " << ::tpyapp::main::or_overlap_folded(3, false) << "\n";
+    std::cout << "free-int-at-float" << " " << ::tpyapp::main::int_lit_at_float(1.0) << " " << ::tpyapp::main::int_lit_at_float(2.0) << "\n" << ::tpy::check_signals;
+    std::cout << "free-float-at-int" << " " << ::tpyapp::main::float_lit_at_int(2) << " " << ::tpyapp::main::float_lit_at_int(1) << "\n" << ::tpy::check_signals;
+    std::cout << "free-int-at-bool" << " " << ::tpyapp::main::lits_at_bool(true) << " " << ::tpyapp::main::lits_at_bool(false) << "\n" << ::tpy::check_signals;
+    std::cout << "free-float-at-bool" << " " << ::tpyapp::main::float_lit_at_bool(true) << " " << ::tpyapp::main::float_lit_at_bool(false) << "\n" << ::tpy::check_signals;
+    std::cout << "free-float-at-bigint" << " " << ::tpyapp::main::float_lit_at_bigint(::tpy::BigInt(2)) << " " << ::tpyapp::main::float_lit_at_bigint(::tpy::BigInt(1)) << "\n" << ::tpy::check_signals;
+    std::cout << "free-int-at-f32" << " " << ::tpyapp::main::int_lit_at_f32(1.0f) << " " << ::tpyapp::main::int_lit_at_f32(2.0f) << "\n" << ::tpy::check_signals;
+    std::cout << "or-alt" << " " << ::tpyapp::main::or_alt(1) << " " << ::tpyapp::main::or_alt(2) << " " << ::tpyapp::main::or_alt(3) << "\n" << ::tpy::check_signals;
+    std::cout << "as-alt" << " " << ::tpyapp::main::as_alt(2) << " " << ::tpyapp::main::as_alt(1) << "\n" << ::tpy::check_signals;
+    std::cout << "guarded" << " " << ::tpyapp::main::guarded_label(2, true) << " " << ::tpyapp::main::guarded_label(2, false) << " " << ::tpyapp::main::guarded_label(1, true) << "\n" << ::tpy::check_signals;
+    std::cout << "guard-default" << " " << ::tpyapp::main::guard_default(2, true) << " " << ::tpyapp::main::guard_default(2, false) << " " << ::tpyapp::main::guard_default(1, true) << "\n" << ::tpy::check_signals;
+    std::cout << "or-overlap-int" << " " << ::tpyapp::main::or_overlap_int(1, true) << " " << ::tpyapp::main::or_overlap_int(1, false) << " " << ::tpyapp::main::or_overlap_int(2, true) << " " << ::tpyapp::main::or_overlap_int(2, false) << " " << ::tpyapp::main::or_overlap_int(3, false) << "\n" << ::tpy::check_signals;
+    std::cout << "or-overlap-folded" << " " << ::tpyapp::main::or_overlap_folded(1, true) << " " << ::tpyapp::main::or_overlap_folded(1, false) << " " << ::tpyapp::main::or_overlap_folded(2, true) << " " << ::tpyapp::main::or_overlap_folded(2, false) << " " << ::tpyapp::main::or_overlap_folded(3, false) << "\n" << ::tpy::check_signals;
     Probe pr = Probe("m");
     P p = P(1.0, 0, false);
-    std::cout << "method-field" << " " << pr.describe(p) << " " << pr.describe(P(0.0, 1, false)) << " " << pr.describe(P(0.0, 0, true)) << " " << pr.describe(P(0.0, 0, false)) << "\n";
+    std::cout << "method-field" << " " << pr.describe(p) << " " << pr.describe(P(0.0, 1, false)) << " " << pr.describe(P(0.0, 0, true)) << " " << pr.describe(P(0.0, 0, false)) << "\n" << ::tpy::check_signals;
     p.f = 9.0;
-    std::cout << "method-mutate" << " " << pr.describe(p) << "\n";
+    std::cout << "method-mutate" << " " << pr.describe(p) << "\n" << ::tpy::check_signals;
     std::vector<double> __tmp_1 = {1.0, 2.0};
-    std::cout << "generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpyapp::main::gen(__tmp_1))) << "\n";
-    std::cout << "with-finally" << " " << ::tpyapp::main::in_with(1) << " " << ::tpyapp::main::in_with(2) << "\n";
+    std::cout << "generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpyapp::main::gen(__tmp_1))) << "\n" << ::tpy::check_signals;
+    std::cout << "with-finally" << " " << ::tpyapp::main::in_with(1) << " " << ::tpyapp::main::in_with(2) << "\n" << ::tpy::check_signals;
     int32_t er1;
     {
         {
@@ -519,11 +519,11 @@ void main() {
         er2 = -1;
         __after_try_3:;
     }
-    std::cout << "error-return" << " " << er1 << " " << er2 << "\n";
-    std::cout << "match-arm" << " " << ::tpyapp::main::nested(1, 2.0) << " " << ::tpyapp::main::nested(1, 3.0) << " " << ::tpyapp::main::nested(2, 2.0) << "\n";
-    std::cout << "optional" << " " << ::tpyapp::main::opt_lit(std::nullopt) << " " << ::tpyapp::main::opt_lit(1) << " " << ::tpyapp::main::opt_lit(2) << "\n";
-    std::cout << "closure" << " " << ::tpyapp::main::closure_call(1.0) << " " << ::tpyapp::main::closure_call(2.0) << "\n";
-    std::cout << "module-level" << " " << GRES << "\n";
+    std::cout << "error-return" << " " << er1 << " " << er2 << "\n" << ::tpy::check_signals;
+    std::cout << "match-arm" << " " << ::tpyapp::main::nested(1, 2.0) << " " << ::tpyapp::main::nested(1, 3.0) << " " << ::tpyapp::main::nested(2, 2.0) << "\n" << ::tpy::check_signals;
+    std::cout << "optional" << " " << ::tpyapp::main::opt_lit(std::nullopt) << " " << ::tpyapp::main::opt_lit(1) << " " << ::tpyapp::main::opt_lit(2) << "\n" << ::tpy::check_signals;
+    std::cout << "closure" << " " << ::tpyapp::main::closure_call(1.0) << " " << ::tpyapp::main::closure_call(2.0) << "\n" << ::tpy::check_signals;
+    std::cout << "module-level" << " " << GRES << "\n" << ::tpy::check_signals;
 }
 
 // # module-level statement -- top-level codegen uses global slots

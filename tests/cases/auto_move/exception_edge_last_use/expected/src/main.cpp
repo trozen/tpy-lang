@@ -62,10 +62,10 @@ void handler_raise_finally() {
                 (*p) = P(5);
             }
         } catch (...) {
-            std::cout << "handler_raise_finally" << " " << ::tpy::__len__(p->xs) << "\n";
+            std::cout << "handler_raise_finally" << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "handler_raise_finally" << " " << ::tpy::__len__(p->xs) << "\n";
+        std::cout << "handler_raise_finally" << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -97,7 +97,7 @@ void outer_handler_reads() {
                 }
             }
         } catch (const ::tpy::ValueError&) {
-            std::cout << "outer_handler_reads" << " " << ::tpy::__len__(p->xs) << "\n";
+            std::cout << "outer_handler_reads" << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -123,7 +123,7 @@ void swallowed_raise() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    std::cout << "swallowed_raise" << " " << ::tpy::__len__(p.xs) << "\n";
+    std::cout << "swallowed_raise" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
 }
 
 // def swallowed_call() -> None:
@@ -155,7 +155,7 @@ void swallowed_call() {
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
     __with_after_2:;
-    std::cout << "swallowed_call" << " " << ::tpy::__len__(p->xs) << "\n";
+    std::cout << "swallowed_call" << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -267,7 +267,7 @@ __gen_gen_handler_raise_finally gen_handler_raise_finally() {
 }
 
 void __coro_async_handler_raise_finally::__finally_0() {
-    std::cout << "async_handler_raise_finally" << " " << ::tpy::__len__((*p).xs) << "\n";
+    std::cout << "async_handler_raise_finally" << " " << ::tpy::__len__((*p).xs) << "\n" << ::tpy::check_signals;
 }
 
 // async def async_handler_raise_finally() -> int32:
@@ -299,18 +299,18 @@ std::expected<int32_t, Fail> error_return_finally() {
                 if (!__try_tmp_1.has_value()) {
                     std::expected<int32_t, Fail> __tpy_ret_0 = ::tpy::make_unexpected(std::move(__try_tmp_1.error()));
                     __fin_ran_9 = true;
-                    std::cout << "error_return_finally" << " " << ::tpy::__len__(p->xs) << "\n";
+                    std::cout << "error_return_finally" << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
                     return __tpy_ret_0;
                 }
             }
             (*p) = P(5);
         } catch (...) {
             if (!__fin_ran_9) {
-                std::cout << "error_return_finally" << " " << ::tpy::__len__(p->xs) << "\n";
+                std::cout << "error_return_finally" << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
             }
             throw;
         }
-        std::cout << "error_return_finally" << " " << ::tpy::__len__(p->xs) << "\n";
+        std::cout << "error_return_finally" << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
     }
     return 0;
 }
@@ -339,10 +339,10 @@ void loop_handler_finally() {
                     ::tpyapp::main::boom((i == 1));
                 }
             } catch (...) {
-                std::cout << "loop_handler_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n";
+                std::cout << "loop_handler_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
                 throw;
             }
-            std::cout << "loop_handler_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n";
+            std::cout << "loop_handler_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -371,7 +371,7 @@ void if_with_swallow(bool c) {
             throw;
         }
     }
-    std::cout << "if_with_swallow" << " " << ::tpy::__len__(p.xs) << "\n";
+    std::cout << "if_with_swallow" << " " << ::tpy::__len__(p.xs) << "\n" << ::tpy::check_signals;
 }
 
 // def plain_with() -> None:
@@ -400,7 +400,7 @@ void plain_with() {
     }
     __with_exit_4:
     __ctx_4.__exit__({}, nullptr, {});
-    std::cout << "plain_with" << " " << ::tpy::__len__(p->xs) << "\n";
+    std::cout << "plain_with" << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
 }
 
 // def handler_return_finally() -> Own[P]:
@@ -473,7 +473,7 @@ void with_target_handler() {
             __ctx_5.__exit__({}, nullptr, {});
             return;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "with_target_handler" << " " << ::tpy::__getitem__(t->n, 0) << "\n";
+            std::cout << "with_target_handler" << " " << ::tpy::__getitem__(t->n, 0) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -529,7 +529,7 @@ void match_arm_last_use(int32_t i) {
         break;
     }
     }
-    std::cout << "match_arm_last_use" << " " << n << "\n";
+    std::cout << "match_arm_last_use" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // def return_or_consume_finally(early: bool) -> Own[P]:
@@ -550,17 +550,17 @@ P return_or_consume_finally(bool early) {
             if (early) {
                 auto* __tpy_retp_0 = &(p);
                 __fin_ran_16 = true;
-                std::cout << "return_or_consume_finally fin" << "\n";
+                std::cout << "return_or_consume_finally fin" << "\n" << ::tpy::check_signals;
                 return std::move(*__tpy_retp_0);
             }
             ::tpyapp::main::take(std::move(p));
         } catch (...) {
             if (!__fin_ran_16) {
-                std::cout << "return_or_consume_finally fin" << "\n";
+                std::cout << "return_or_consume_finally fin" << "\n" << ::tpy::check_signals;
             }
             throw;
         }
-        std::cout << "return_or_consume_finally fin" << "\n";
+        std::cout << "return_or_consume_finally fin" << "\n" << ::tpy::check_signals;
     }
     return P(0);
 }
@@ -582,7 +582,7 @@ void handler_last_use() {
             ::tpyapp::main::take(std::move(p));
         }
     }
-    std::cout << "handler_last_use" << " " << ::tpy::__len__(::tpy::__getitem__(SINK->ps, -1).xs) << "\n";
+    std::cout << "handler_last_use" << " " << ::tpy::__len__(::tpy::__getitem__(SINK->ps, -1).xs) << "\n" << ::tpy::check_signals;
 }
 
 // def try_body_last_use() -> None:
@@ -600,7 +600,7 @@ void try_body_last_use() {
             ::tpyapp::main::take(std::move(p));
             ::tpyapp::main::boom(true);
         } catch (const ::tpy::ValueError&) {
-            std::cout << "try_body_last_use caught" << "\n";
+            std::cout << "try_body_last_use caught" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -654,7 +654,7 @@ void main() {
             handler_raise_finally_caught = true;
         }
     }
-    std::cout << "handler_raise_finally caught" << " " << ::tpy::print_bool(handler_raise_finally_caught) << "\n";
+    std::cout << "handler_raise_finally caught" << " " << ::tpy::print_bool(handler_raise_finally_caught) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::outer_handler_reads();
     ::tpyapp::main::swallowed_raise();
     ::tpyapp::main::swallowed_call();
@@ -667,18 +667,18 @@ void main() {
                     auto __r_1 = __itr_0.__next__();
                     if (!__r_1.has_value()) break;
                     int32_t v = ::tpy::unwrap_ref(*__r_1);
-                    std::cout << "gen_handler_raise_finally yield" << " " << v << "\n";
+                    std::cout << "gen_handler_raise_finally yield" << " " << v << "\n" << ::tpy::check_signals;
                 }
             }
         } catch (const ::tpy::ValueError&) {
-            std::cout << "gen_handler_raise_finally caught" << "\n";
+            std::cout << "gen_handler_raise_finally caught" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_handler_raise_finally()));
         } catch (const ::tpy::ValueError&) {
-            std::cout << "async_handler_raise_finally caught" << "\n";
+            std::cout << "async_handler_raise_finally caught" << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -689,26 +689,26 @@ void main() {
         goto __after_try_2;
         // except Fail:
         __except_2:;
-        std::cout << "error_return_finally caught" << "\n";
+        std::cout << "error_return_finally caught" << "\n" << ::tpy::check_signals;
         __after_try_2:;
     }
     {
         try {
             ::tpyapp::main::loop_handler_finally();
         } catch (const ::tpy::ValueError&) {
-            std::cout << "loop_handler_finally caught" << "\n";
+            std::cout << "loop_handler_finally caught" << "\n" << ::tpy::check_signals;
         }
     }
     ::tpyapp::main::if_with_swallow(true);
     ::tpyapp::main::plain_with();
     P h = ::tpyapp::main::handler_return_finally();
-    std::cout << "handler_return_finally" << " " << ::tpy::__len__(h.xs) << "\n";
+    std::cout << "handler_return_finally" << " " << ::tpy::__len__(h.xs) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::with_target_handler();
     P r = ::tpyapp::main::finally_consumes_return();
-    std::cout << "finally_consumes_return" << " " << ::tpy::__len__(r.xs) << "\n";
+    std::cout << "finally_consumes_return" << " " << ::tpy::__len__(r.xs) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::match_arm_last_use(1);
     P rc = ::tpyapp::main::return_or_consume_finally(true);
-    std::cout << "return_or_consume_finally" << " " << ::tpy::__len__(rc.xs) << "\n";
+    std::cout << "return_or_consume_finally" << " " << ::tpy::__len__(rc.xs) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::return_or_consume_finally(false);
     ::tpyapp::main::handler_last_use();
     ::tpyapp::main::try_body_last_use();

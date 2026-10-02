@@ -24,7 +24,7 @@ int32_t literal_with_typed(bool flag, int32_t x) {
 //     print(x)
 void both_literals(bool flag) {
     int32_t x = ((flag) ? (10) : (20));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -37,10 +37,10 @@ void both_literals(bool flag) {
 //     both_literals(True)
 //     both_literals(False)
 void main() {
-    std::cout << ::tpyapp::main::wider(true, 42, 100) << "\n";
-    std::cout << ::tpyapp::main::wider(false, 42, 100) << "\n";
-    std::cout << ::tpyapp::main::literal_with_typed(true, 5) << "\n";
-    std::cout << ::tpyapp::main::literal_with_typed(false, 5) << "\n";
+    std::cout << ::tpyapp::main::wider(true, 42, 100) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::wider(false, 42, 100) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::literal_with_typed(true, 5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::literal_with_typed(false, 5) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::both_literals(true);
     ::tpyapp::main::both_literals(false);
 }

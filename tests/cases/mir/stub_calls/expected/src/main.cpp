@@ -104,19 +104,19 @@ int32_t record_len(const Rec& r) {
 //     print("both:", both("hi", 12, 40))
 //     print("record_len:", record_len(Rec(4)))
 void main() {
-    std::cout << "label_len:" << " " << Rec(0).label_len("four") << "\n";
-    std::cout << "lent_len:" << " " << ::tpyapp::main::lent_len("abc") << "\n";
-    std::cout << "global_len:" << " " << ::tpyapp::main::global_len() << "\n";
-    std::cout << "clock:" << " " << ::tpy::print_bool((::tpyapp::main::clock() > 0)) << "\n";
-    std::cout << "construct:" << " " << ::tpyapp::main::construct(3.7) << "\n";
-    std::cout << "smaller:" << " " << ::tpyapp::main::smaller(::tpy::BigInt(7), ::tpy::BigInt(5)) << "\n";
-    std::cout << "smaller_is:" << " " << ::tpy::print_bool(::tpyapp::main::smaller_is(::tpy::BigInt(3), ::tpy::BigInt(5))) << "\n";
-    std::cout << "smaller_sum:" << " " << ::tpyapp::main::smaller_sum(::tpy::BigInt(3), ::tpy::BigInt(5)) << "\n";
-    std::cout << "overloads:" << " " << ::tpy::print_bool(::tpyapp::main::overloads(::tpy::BigInt(3), ::tpy::BigInt(5), 1, 2)) << "\n";
-    std::cout << "twice:" << " " << std::format("{:.6f}", ::tpyapp::main::twice(100.0)) << "\n";
-    std::cout << "both:" << " " << ::tpyapp::main::both("hi", ::tpy::BigInt(12), ::tpy::BigInt(40)) << "\n";
+    std::cout << "label_len:" << " " << Rec(0).label_len("four") << "\n" << ::tpy::check_signals;
+    std::cout << "lent_len:" << " " << ::tpyapp::main::lent_len("abc") << "\n" << ::tpy::check_signals;
+    std::cout << "global_len:" << " " << ::tpyapp::main::global_len() << "\n" << ::tpy::check_signals;
+    std::cout << "clock:" << " " << ::tpy::print_bool((::tpyapp::main::clock() > 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "construct:" << " " << ::tpyapp::main::construct(3.7) << "\n" << ::tpy::check_signals;
+    std::cout << "smaller:" << " " << ::tpyapp::main::smaller(::tpy::BigInt(7), ::tpy::BigInt(5)) << "\n" << ::tpy::check_signals;
+    std::cout << "smaller_is:" << " " << ::tpy::print_bool(::tpyapp::main::smaller_is(::tpy::BigInt(3), ::tpy::BigInt(5))) << "\n" << ::tpy::check_signals;
+    std::cout << "smaller_sum:" << " " << ::tpyapp::main::smaller_sum(::tpy::BigInt(3), ::tpy::BigInt(5)) << "\n" << ::tpy::check_signals;
+    std::cout << "overloads:" << " " << ::tpy::print_bool(::tpyapp::main::overloads(::tpy::BigInt(3), ::tpy::BigInt(5), 1, 2)) << "\n" << ::tpy::check_signals;
+    std::cout << "twice:" << " " << std::format("{:.6f}", ::tpyapp::main::twice(100.0)) << "\n" << ::tpy::check_signals;
+    std::cout << "both:" << " " << ::tpyapp::main::both("hi", ::tpy::BigInt(12), ::tpy::BigInt(40)) << "\n" << ::tpy::check_signals;
     Rec __tmp_1 = Rec(4);
-    std::cout << "record_len:" << " " << ::tpyapp::main::record_len(__tmp_1) << "\n";
+    std::cout << "record_len:" << " " << ::tpyapp::main::record_len(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // # MIR verdicts for calls to stdlib stubs: a declared contract (@pure / transient=True)

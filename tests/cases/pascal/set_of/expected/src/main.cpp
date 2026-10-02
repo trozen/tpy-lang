@@ -51,31 +51,31 @@ void __tpy_init() {
     int32_t __stop_0 = ::tpy::add_check<int32_t>(6, 1);
     for (int32_t x = 1; x < __stop_0; ++x) {
         if (((*c).contains(x))) {
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     c = &*(__global_slot_7 = (::tpy::set_intersection((*a), (*b))));
     int32_t __stop_1 = ::tpy::add_check<int32_t>(6, 1);
     for (int32_t x = 1; x < __stop_1; ++x) {
         if (((*c).contains(x))) {
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     c = &*(__global_slot_8 = (::tpy::set_difference((*a), (*b))));
     int32_t __stop_2 = ::tpy::add_check<int32_t>(6, 1);
     for (int32_t x = 1; x < __stop_2; ++x) {
         if (((*c).contains(x))) {
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     c = &*(__global_slot_9 = (::tpy::set_union(::tpy::set_construct<int32_t>(::tpy::Range<int32_t>(1, ::tpy::add_check<int32_t>(3, 1))), ::tpy::ordered_set<int32_t>({7}))));
     int32_t __stop_3 = ::tpy::add_check<int32_t>(8, 1);
     for (int32_t x = 1; x < __stop_3; ++x) {
         if (((*c).contains(x))) {
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -36,7 +36,7 @@ void str_param_sinks(std::string_view s) {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(lit) << " " << ::tpy::ListPrinter(app) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(st)) << " " << ::tpy::__len__(d) << " " << ::tpy::ListPrinter(comp) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(set_comp)) << " " << ::tpy::__len__(dict_comp) << "\n";
+    std::cout << ::tpy::ListPrinter(lit) << " " << ::tpy::ListPrinter(app) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(st)) << " " << ::tpy::__len__(d) << " " << ::tpy::ListPrinter(comp) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(set_comp)) << " " << ::tpy::__len__(dict_comp) << "\n" << ::tpy::check_signals;
 }
 
 // def str_optional_deref(a: str | None) -> None:
@@ -53,7 +53,7 @@ void str_optional_deref(std::optional<std::string_view> a) {
         std::vector<std::string> out2 = ::tpy::make_vector<std::string>(std::move(std::string((*a))));
         ::tpy::list_extend(out, ::tpy::own_iter(std::move(out2)));
     }
-    std::cout << ::tpy::ListPrinter(out) << "\n";
+    std::cout << ::tpy::ListPrinter(out) << "\n" << ::tpy::check_signals;
 }
 
 // def str_slice(s: str) -> None:
@@ -63,7 +63,7 @@ void str_optional_deref(std::optional<std::string_view> a) {
 void str_slice(std::string_view s) {
     std::vector<std::string> out = std::vector<std::string>{};
     out.push_back(std::string(::tpy::str_slice(s, ::tpy::BasicSlice{1, 4})));
-    std::cout << ::tpy::ListPrinter(out) << "\n";
+    std::cout << ::tpy::ListPrinter(out) << "\n" << ::tpy::check_signals;
 }
 
 // def bytes_sinks(b: bytes) -> None:
@@ -79,7 +79,7 @@ void bytes_sinks(::tpy::BytesView b) {
     std::vector<::tpy::Bytes> app = std::vector<::tpy::Bytes>{};
     app.push_back(::tpy::Bytes(b));
     app.push_back(::tpy::Bytes(::tpy::bytes_slice(b, ::tpy::BasicSlice{1, 3})));
-    std::cout << ::tpy::__len__(lit) << " " << ::tpy::__len__(app) << " " << ::tpy::__len__(::tpy::__getitem__(lit, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(app, 0), 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(app, 1), 0)) << " " << ::tpy::__len__(::tpy::__getitem__(app, 1)) << "\n";
+    std::cout << ::tpy::__len__(lit) << " " << ::tpy::__len__(app) << " " << ::tpy::__len__(::tpy::__getitem__(lit, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(app, 0), 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(app, 1), 0)) << " " << ::tpy::__len__(::tpy::__getitem__(app, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // def bytes_optional_deref(b: bytes | None) -> None:
@@ -92,7 +92,7 @@ void bytes_optional_deref(std::optional<::tpy::BytesView> b) {
     if ((b.has_value())) {
         out.push_back(::tpy::Bytes((*b)));
     }
-    std::cout << ::tpy::__len__(out) << " " << (((::tpy::__len__(out) != 0)) ? (::tpy::__len__(::tpy::__getitem__(out, 0))) : (0)) << "\n";
+    std::cout << ::tpy::__len__(out) << " " << (((::tpy::__len__(out) != 0)) ? (::tpy::__len__(::tpy::__getitem__(out, 0))) : (0)) << "\n" << ::tpy::check_signals;
 }
 
 // def owned_source_inverse() -> None:
@@ -104,7 +104,7 @@ void bytes_optional_deref(std::optional<::tpy::BytesView> b) {
 void owned_source_inverse() {
     std::vector<std::string> parts = std::vector<std::string>{};
     parts.push_back((::tpy::str_concat("a", "b")));
-    std::cout << ::tpy::ListPrinter(parts) << "\n";
+    std::cout << ::tpy::ListPrinter(parts) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

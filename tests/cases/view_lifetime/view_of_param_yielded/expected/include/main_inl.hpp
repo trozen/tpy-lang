@@ -67,7 +67,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_slice_of_ref_param::__
         return 0;
     }
     case S_RESUME_0: {  // after: yield 0
-        std::cout << "slice_of_ref_param:" << " " << ::tpy::BytesPrinter(::tpy::Bytes(c)) << "\n";
+        std::cout << "slice_of_ref_param:" << " " << ::tpy::BytesPrinter(::tpy::Bytes(c)) << "\n" << ::tpy::check_signals;
         __state = S_RESUME_1;
         return 1;
     }

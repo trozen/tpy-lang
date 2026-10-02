@@ -23,8 +23,8 @@ void swap() {
     int32_t __unpack_0_1 = a;
     a = __unpack_0_0;
     b = __unpack_0_1;
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // def fib() -> None:
@@ -43,8 +43,8 @@ void fib() {
         x = __unpack_1_0;
         y = __unpack_1_1;
     }
-    std::cout << x << "\n";
-    std::cout << y << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def eval_order() -> None:
@@ -69,8 +69,8 @@ void eval_order() {
         } catch (const ::tpy::ValueError&) {
         }
     }
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

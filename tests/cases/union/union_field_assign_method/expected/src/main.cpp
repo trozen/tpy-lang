@@ -34,7 +34,7 @@ void main() {
     ::tpy::Union<Cat*, Dog*> r = ::tpy::to_ptr_variant(p.pet);
     if (std::holds_alternative<Cat*>(r)) {
         auto& __r = *std::get<Cat*>(r);
-        std::cout << __r.name << "\n";
+        std::cout << __r.name << "\n" << ::tpy::check_signals;
     }
     Dog d2 = Dog("Buddy");
     ::tpy::Union<Cat*, Dog*> buddy{&(d2)};
@@ -42,7 +42,7 @@ void main() {
     ::tpy::Union<Cat*, Dog*> r2 = ::tpy::to_ptr_variant(p.pet);
     if (std::holds_alternative<Dog*>(r2)) {
         auto& __r2 = *std::get<Dog*>(r2);
-        std::cout << __r2.name << "\n";
+        std::cout << __r2.name << "\n" << ::tpy::check_signals;
     }
 }
 

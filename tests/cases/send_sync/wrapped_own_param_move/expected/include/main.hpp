@@ -72,7 +72,7 @@ template<Counted T>
 //     return read_and_keep[T](item)             # tpyc: ok -- last use, moves
 template<Counted T>
 ::tpy::own_return_t<T> dispatch(::tpy::own_param_t<T> item) {
-    std::cout << "dispatching:" << " " << item.value() << "\n";
+    std::cout << "dispatching:" << " " << item.value() << "\n" << ::tpy::check_signals;
     return ::tpyapp::main::read_and_keep<T>(std::move(item));
 }
 

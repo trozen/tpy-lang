@@ -48,26 +48,26 @@ namespace tpyapp::main {
 //     print(is_less(5, 3))  # False
 void main() {
     std::vector<int32_t> items = {1, 2, 3, 4, 5};
-    std::cout << ::tpyapp::main::get_length<std::vector<int32_t>>(items) << "\n";
+    std::cout << ::tpyapp::main::get_length<std::vector<int32_t>>(items) << "\n" << ::tpy::check_signals;
     std::string_view msg = "hello";
-    std::cout << ::tpyapp::main::get_length<std::string_view>(msg) << "\n";
+    std::cout << ::tpyapp::main::get_length<std::string_view>(msg) << "\n" << ::tpy::check_signals;
     MyValue v = MyValue(42);
-    std::cout << ::tpyapp::main::stringify<MyValue>(v) << "\n";
-    std::cout << ::tpyapp::main::get_length<MyValue>(v) << "\n";
+    std::cout << ::tpyapp::main::stringify<MyValue>(v) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::get_length<MyValue>(v) << "\n" << ::tpy::check_signals;
     Printer<MyValue> printer = Printer<MyValue>();
-    std::cout << printer.get_str(v) << "\n";
+    std::cout << printer.get_str(v) << "\n" << ::tpy::check_signals;
     Printer<Point> point_printer = Printer<Point>();
     Point __tmp_1 = Point(10, 20);
-    std::cout << point_printer.get_str(__tmp_1) << "\n";
-    std::cout << ::tpyapp::main::process_both<std::vector<int32_t>, MyValue>(items, v) << "\n";
+    std::cout << point_printer.get_str(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::process_both<std::vector<int32_t>, MyValue>(items, v) << "\n" << ::tpy::check_signals;
     Widget w = Widget("test", 99);
     ::tpyapp::main::use_multi<Widget>(w);
-    std::cout << ::tpyapp::main::outer_len<std::vector<int32_t>>(items) << "\n";
+    std::cout << ::tpyapp::main::outer_len<std::vector<int32_t>>(items) << "\n" << ::tpy::check_signals;
     Box box = Box(123);
     Box cloned = ::tpyapp::main::clone_it<Box>(box);
-    std::cout << cloned.value << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_less<int32_t>(1, 2)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_less<int32_t>(5, 3)) << "\n";
+    std::cout << cloned.value << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_less<int32_t>(1, 2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_less<int32_t>(5, 3)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

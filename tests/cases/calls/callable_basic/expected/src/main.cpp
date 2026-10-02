@@ -35,11 +35,11 @@ int32_t apply_zero(const std::function<int32_t()>& f) {
 //     print(apply_multi(lambda a, b: a + b, 3, 4))
 //     print(apply_zero(lambda: 42))
 void main() {
-    std::cout << ::tpyapp::main::apply([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, 10) << "\n";
-    std::cout << ::tpyapp::main::apply([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 3)); }, 7) << "\n";
-    ::tpyapp::main::apply_void([](int32_t x) { std::cout << x << "\n"; }, 99);
-    std::cout << ::tpyapp::main::apply_multi([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, 3, 4) << "\n";
-    std::cout << ::tpyapp::main::apply_zero([]() -> int32_t { return 42; }) << "\n";
+    std::cout << ::tpyapp::main::apply([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, 10) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::apply([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 3)); }, 7) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::apply_void([](int32_t x) { std::cout << x << "\n" << ::tpy::check_signals; }, 99);
+    std::cout << ::tpyapp::main::apply_multi([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, 3, 4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::apply_zero([]() -> int32_t { return 42; }) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -91,7 +91,7 @@ void read_once() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "once:" << " " << ::tpy::ListPrinter(v) << "\n";
+            std::cout << "once:" << " " << ::tpy::ListPrinter(v) << "\n" << ::tpy::check_signals;
         }
     }
 }

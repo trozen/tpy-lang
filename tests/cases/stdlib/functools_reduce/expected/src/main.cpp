@@ -50,26 +50,26 @@ int32_t add(int32_t a, int32_t b) {
 //     print(reduce(lambda a, b: a + b, parts, ""))   # foobarbaz
 void main() {
     std::vector<int32_t> xs = {1, 2, 3, 4, 5};
-    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, xs, 0) << "\n";
-    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, xs, 100) << "\n";
-    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::mul_check<int32_t>(a, b)); }, xs, 1) << "\n";
-    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>([](int32_t a, int32_t b) -> int32_t { return ::std::max<int32_t>(a, b); }, xs, 0) << "\n";
+    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, xs, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, xs, 100) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::mul_check<int32_t>(a, b)); }, xs, 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>([](int32_t a, int32_t b) -> int32_t { return ::std::max<int32_t>(a, b); }, xs, 0) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> empty = std::vector<int32_t>{};
-    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, empty, 42) << "\n";
+    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, empty, 42) << "\n" << ::tpy::check_signals;
     std::vector<std::string> words = {"hi", "hello", "world"};
     int32_t total_len = ::tpystd::functools::reduce<std::string, int32_t>([](int32_t acc, std::string_view w) -> int32_t { return (::tpy::add_check<int32_t>(acc, ::tpy::__len__(w))); }, words, 0);
-    std::cout << total_len << "\n";
+    std::cout << total_len << "\n" << ::tpy::check_signals;
     std::vector<int32_t> init = {100};
     std::vector<int32_t> nums = {1, 2, 3};
     std::vector<int32_t> built = ::tpystd::functools::reduce<int32_t, std::vector<int32_t>>([](std::vector<int32_t>& acc, int32_t x) -> std::vector<int32_t> { return (::tpy::list_concat(acc, std::vector<int32_t>{x})); }, nums, init);
-    std::cout << ::tpy::ListPrinter(built) << "\n";
-    std::cout << ::tpy::ListPrinter(init) << "\n";
+    std::cout << ::tpy::ListPrinter(built) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(init) << "\n" << ::tpy::check_signals;
     auto __tmp_1 = std::array<int32_t, 3>{1, 2, 3};
-    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, __tmp_1, 0) << "\n";
+    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, __tmp_1, 0) << "\n" << ::tpy::check_signals;
     auto __tmp_2 = ::tpy::Range<int32_t>(1, 5);
-    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, __tmp_2, 0) << "\n";
+    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, __tmp_2, 0) << "\n" << ::tpy::check_signals;
     std::vector<std::string> parts = {"foo", "bar", "baz"};
-    std::cout << ::tpystd::functools::reduce<std::string, std::string>([](std::string_view a, std::string_view b) -> std::string { return (::tpy::str_concat(a, b)); }, parts, "") << "\n";
+    std::cout << ::tpystd::functools::reduce<std::string, std::string>([](std::string_view a, std::string_view b) -> std::string { return (::tpy::str_concat(a, b)); }, parts, "") << "\n" << ::tpy::check_signals;
 }
 
 // # functools.reduce -- 3-arg form. Covers lambda and named-function callables,

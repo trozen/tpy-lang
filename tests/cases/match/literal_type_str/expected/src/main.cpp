@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void classify(std::string_view mode) {
     auto& __match_subject_1 = mode;
     if ((__match_subject_1 == "r" || __match_subject_1 == "w")) {
-        std::cout << (::tpy::str_concat("text:", mode)) << "\n";
+        std::cout << (::tpy::str_concat("text:", mode)) << "\n" << ::tpy::check_signals;
     } else if ((__match_subject_1 == "rb" || __match_subject_1 == "wb")) {
-        std::cout << (::tpy::str_concat("binary:", mode)) << "\n";
+        std::cout << (::tpy::str_concat("binary:", mode)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -28,9 +28,9 @@ void classify(std::string_view mode) {
 void with_wildcard(std::string_view mode) {
     auto& __match_subject_1 = mode;
     if (__match_subject_1 == "a") {
-        std::cout << "first" << "\n";
+        std::cout << "first" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "other" << "\n";
+        std::cout << "other" << "\n" << ::tpy::check_signals;
     }
 }
 

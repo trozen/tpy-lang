@@ -25,7 +25,7 @@ void comprehension(Bag& b) {
         std::move(__result);
     });
     b.items().push_back(9);
-    std::cout << "comprehension:" << " " << ::tpy::__len__(doubled) << " " << ::tpy::__len__(b._items) << "\n";
+    std::cout << "comprehension:" << " " << ::tpy::__len__(doubled) << " " << ::tpy::__len__(b._items) << "\n" << ::tpy::check_signals;
 }
 
 // def closure(b: Bag) -> None:
@@ -39,7 +39,7 @@ void closure(Bag& b) {
         b.items().push_back(1);
     };
     add_one();
-    std::cout << "closure:" << " " << ::tpy::__len__(b._items) << "\n";
+    std::cout << "closure:" << " " << ::tpy::__len__(b._items) << "\n" << ::tpy::check_signals;
 }
 
 // def context_manager(b: Bag) -> None:
@@ -61,7 +61,7 @@ void context_manager(Bag& b) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << "context_manager:" << " " << ::tpy::__len__(b._items) << " " << ::tpy::__getitem__(b._items, 2) << "\n";
+    std::cout << "context_manager:" << " " << ::tpy::__len__(b._items) << " " << ::tpy::__getitem__(b._items, 2) << "\n" << ::tpy::check_signals;
 }
 
 // # the getter READ as the with-manager itself: it hands back a reference into
@@ -75,7 +75,7 @@ void manager_is_getter(Bag& b) {
     auto& __ctx_2 = b.guard();
     auto g = __ctx_2.__enter__();
     try {
-        std::cout << "manager_is_getter:" << " " << g << "\n";
+        std::cout << "manager_is_getter:" << " " << g << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -86,7 +86,7 @@ void manager_is_getter(Bag& b) {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    std::cout << "manager_is_getter owner:" << " " << b._guard.n << "\n";
+    std::cout << "manager_is_getter owner:" << " " << b._guard.n << "\n" << ::tpy::check_signals;
 }
 
 // # the same manager inside a FRAME, whose `with` region spans a suspension:
@@ -174,7 +174,7 @@ void try_finally(Bag& b) {
         }
         b.items().push_back(8);
     }
-    std::cout << "try_finally:" << " " << ::tpy::__len__(b._items) << "\n";
+    std::cout << "try_finally:" << " " << ::tpy::__len__(b._items) << "\n" << ::tpy::check_signals;
 }
 
 // @error_return(BagErr)
@@ -199,7 +199,7 @@ void sink(Rec& r) {
 //     print("free_fn_arg:", b._rec.x)
 void free_fn_arg(Bag& b) {
     ::tpyapp::main::sink(b.rec());
-    std::cout << "free_fn_arg:" << " " << b._rec.x << "\n";
+    std::cout << "free_fn_arg:" << " " << b._rec.x << "\n" << ::tpy::check_signals;
 }
 
 // def method_arg(b: Bag) -> None:
@@ -207,7 +207,7 @@ void free_fn_arg(Bag& b) {
 //     print("method_arg:", b._rec.x)
 void method_arg(Bag& b) {
     Sinker().take(b.rec());
-    std::cout << "method_arg:" << " " << b._rec.x << "\n";
+    std::cout << "method_arg:" << " " << b._rec.x << "\n" << ::tpy::check_signals;
 }
 
 // # return: the getter's borrow is handed on, and the caller mutates through it
@@ -222,7 +222,7 @@ Rec& borrow_out(Bag& b) {
 //     print("return_pos:", b._rec.x)
 void return_pos(Bag& b) {
     ::tpyapp::main::borrow_out(b).x = ::tpy::add_check<int32_t>(::tpyapp::main::borrow_out(b).x, 1);
-    std::cout << "return_pos:" << " " << b._rec.x << "\n";
+    std::cout << "return_pos:" << " " << b._rec.x << "\n" << ::tpy::check_signals;
 }
 
 // # container insert: the getter RESULT itself at an element slot -- a WARNED copy
@@ -241,9 +241,9 @@ void container_insert(Bag& b) {
     acc.push_back(b.rec());
     std::vector<int32_t> scalars = std::vector<int32_t>{};
     scalars.push_back(b.rec().x);
-    std::cout << "container_insert:" << " " << ::tpy::__getitem__(acc, 0).x << " " << ::tpy::__getitem__(scalars, 0) << "\n";
+    std::cout << "container_insert:" << " " << ::tpy::__getitem__(acc, 0).x << " " << ::tpy::__getitem__(scalars, 0) << "\n" << ::tpy::check_signals;
     b.rec().x = 99;
-    std::cout << "container_insert owner:" << " " << b._rec.x << "\n";
+    std::cout << "container_insert owner:" << " " << b._rec.x << "\n" << ::tpy::check_signals;
 }
 
 // # tuple literal: the same copy boundary, in a value tuple
@@ -254,7 +254,7 @@ void container_insert(Bag& b) {
 void tuple_literal(Bag& b) {
     std::tuple<int32_t, int32_t> t = std::tuple<int32_t, int32_t>{b.rec().x, ::tpy::__len__(b.items())};
     b.rec().x = 77;
-    std::cout << "tuple_literal:" << " " << std::get<0>(t) << " " << std::get<1>(t) << " " << b._rec.x << "\n";
+    std::cout << "tuple_literal:" << " " << std::get<0>(t) << " " << std::get<1>(t) << " " << b._rec.x << "\n" << ::tpy::check_signals;
 }
 
 // def match_subject(b: Bag) -> None:
@@ -270,9 +270,9 @@ void match_subject(Bag& b) {
     auto __match_subject_1 = b.kind();
     if (__match_subject_1 == "a") {
         b.items().push_back(6);
-        std::cout << "match_subject: a" << " " << ::tpy::__len__(b._items) << " " << ::tpy::__getitem__(b._items, 2) << "\n";
+        std::cout << "match_subject: a" << " " << ::tpy::__len__(b._items) << " " << ::tpy::__getitem__(b._items, 2) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "match_subject: other" << "\n";
+        std::cout << "match_subject: other" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -301,9 +301,9 @@ void match_subject(Bag& b) {
 //     container_insert(Bag())
 //     tuple_literal(Bag())
 void main() {
-    std::cout << "module_level:" << " " << global_len << " " << ::tpy::__len__(global_bag->_items) << "\n";
+    std::cout << "module_level:" << " " << global_len << " " << ::tpy::__len__(global_bag->_items) << "\n" << ::tpy::check_signals;
     Bag cb = Bag();
-    std::cout << "constructor:" << " " << Holder(cb).n << " " << Holder(cb).first << " " << ::tpy::__len__(cb._items) << "\n";
+    std::cout << "constructor:" << " " << Holder(cb).n << " " << Holder(cb).first << " " << ::tpy::__len__(cb._items) << "\n" << ::tpy::check_signals;
     Bag __tmp_1 = Bag();
     ::tpyapp::main::comprehension(__tmp_1);
     Bag __tmp_2 = Bag();
@@ -320,19 +320,19 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "frame_manager:" << " " << v << "\n";
+            std::cout << "frame_manager:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "frame_manager owner:" << " " << fb._guard.n << "\n";
+    std::cout << "frame_manager owner:" << " " << fb._guard.n << "\n" << ::tpy::check_signals;
     Bag __tmp_5 = Bag();
     ::tpyapp::main::try_finally(__tmp_5);
     Bag eb = Bag();
     {
-        std::cout << "error_return:" << " " << ({ auto __er_2 = ::tpyapp::main::error_return_body(eb); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << " " << ::tpy::__len__(eb._items) << "\n";
+        std::cout << "error_return:" << " " << ({ auto __er_2 = ::tpyapp::main::error_return_body(eb); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << " " << ::tpy::__len__(eb._items) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except BagErr:
         __except_1:;
-        std::cout << "error_return: raised" << "\n";
+        std::cout << "error_return: raised" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     Bag __tmp_6 = Bag();

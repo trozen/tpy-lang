@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(b_func())
 //     print(b_func_via_a())
 void main() {
-    std::cout << ::tpyapp::a::a_func() << "\n";
-    std::cout << ::tpyapp::b::b_func() << "\n";
-    std::cout << ::tpyapp::b::b_func_via_a() << "\n";
+    std::cout << ::tpyapp::a::a_func() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::b::b_func() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::b::b_func_via_a() << "\n" << ::tpy::check_signals;
 }
 
 // # SCC of two cycle modules (a, b) plus a non-cyclic dep (util)

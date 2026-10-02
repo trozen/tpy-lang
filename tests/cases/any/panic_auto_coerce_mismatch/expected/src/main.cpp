@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     ::tpy::Any a = ::tpy::make_any(std::string("not an int"));
     ::tpy::BigInt n = ::tpy::any_cast_or_panic<::tpy::BigInt>(a);
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // main()

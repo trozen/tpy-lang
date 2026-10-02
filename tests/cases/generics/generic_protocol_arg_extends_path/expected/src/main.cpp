@@ -15,7 +15,7 @@ void main() {
     xs.add(3);
     xs.add(4);
     xs.add(5);
-    std::cout << ::tpyapp::main::total_of<int32_t>(xs) << "\n";
+    std::cout << ::tpyapp::main::total_of<int32_t>(xs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

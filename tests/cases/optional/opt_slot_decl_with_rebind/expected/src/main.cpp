@@ -20,7 +20,7 @@ int32_t literal_position(F& f) {
     std::vector<int32_t>* a = &__slot_1;
     if ((a != nullptr)) {
         a->push_back(3);
-        std::cout << "literal: after decl" << " " << ::tpy::__len__((*a)) << "\n";
+        std::cout << "literal: after decl" << " " << ::tpy::__len__((*a)) << "\n" << ::tpy::check_signals;
     }
     (*a) = f.make();
     if ((a == nullptr)) {
@@ -65,9 +65,9 @@ int32_t none_arm_position(F& f, bool c) {
 void main() {
     F f = F(7);
     int32_t got = ::tpyapp::main::literal_position(f);
-    std::cout << "literal:" << " " << got << "\n";
-    std::cout << "method:" << " " << Builder(7).build() << "\n";
-    std::cout << "none arm:" << " " << ::tpyapp::main::none_arm_position(f, true) << " " << ::tpyapp::main::none_arm_position(f, false) << "\n";
+    std::cout << "literal:" << " " << got << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << Builder(7).build() << "\n" << ::tpy::check_signals;
+    std::cout << "none arm:" << " " << ::tpyapp::main::none_arm_position(f, true) << " " << ::tpyapp::main::none_arm_position(f, false) << "\n" << ::tpy::check_signals;
 }
 
 

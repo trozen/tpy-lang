@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def show(t: Tagged[Animal, str]) -> None:
 //     print(t.tag(), t.get().name())
 void show(Tagged<Animal, std::string>& t) {
-    std::cout << t.tag() << " " << t.get().name() << "\n";
+    std::cout << t.tag() << " " << t.get().name() << "\n" << ::tpy::check_signals;
 }
 
 // def make_tagged() -> Own[Tagged[Animal, str]]:
@@ -41,9 +41,9 @@ void main() {
     ::tpyapp::main::show(__tmp_2);
     Tagged<Dog, std::string> td2 = Tagged<Dog, std::string>(Dog("Max"), "brave");
     Tagged<Animal, std::string> animal_tagged = std::move(td2);
-    std::cout << animal_tagged.tag() << " " << animal_tagged.get().name() << "\n";
+    std::cout << animal_tagged.tag() << " " << animal_tagged.get().name() << "\n" << ::tpy::check_signals;
     Tagged<Animal, std::string> t3 = ::tpyapp::main::make_tagged();
-    std::cout << t3.tag() << " " << t3.get().name() << "\n";
+    std::cout << t3.tag() << " " << t3.get().name() << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_alloc, unsafe_init, unsafe_drop, unsafe_free

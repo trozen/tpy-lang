@@ -9,8 +9,8 @@ namespace tpyapp::main {
 //     print(sqrt(4.0))
 //     print(sqrt(9.0))
 void main() {
-    std::cout << ::tpy::print_float(sqrt(4.0)) << "\n";
-    std::cout << ::tpy::print_float(sqrt(9.0)) << "\n";
+    std::cout << ::tpy::print_float(sqrt(4.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(sqrt(9.0)) << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native

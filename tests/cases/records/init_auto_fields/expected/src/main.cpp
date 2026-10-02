@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(p.y)
 void main() {
     Point p = Point(10, 20);
-    std::cout << p.x << "\n";
-    std::cout << p.y << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
+    std::cout << p.y << "\n" << ::tpy::check_signals;
 }
 
 // main()

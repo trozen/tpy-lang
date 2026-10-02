@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(c.rate, c.depth)
 void main() {
     Config c = Config(1, 2);
-    std::cout << c.rate << " " << c.depth << "\n";
+    std::cout << c.rate << " " << c.depth << "\n" << ::tpy::check_signals;
 }
 
 // main()

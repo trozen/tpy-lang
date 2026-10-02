@@ -15,7 +15,7 @@ void test_nested_field_move(Outer& o, Inner&& inner) {
 //     print(inner.value)
 void test_nested_field_copy(Outer& o, Inner&& inner) {
     o.inner = inner;
-    std::cout << inner.value << "\n";
+    std::cout << inner.value << "\n" << ::tpy::check_signals;
 }
 
 // def test_subscript_move(xs: list[Inner], inner: Own[Inner]) -> None:
@@ -29,7 +29,7 @@ void test_subscript_move(std::vector<Inner>& xs, Inner&& inner) {
 //     print(inner.value)
 void test_subscript_copy(std::vector<Inner>& xs, Inner&& inner) {
     ::tpy::__setitem__(xs, 0, inner);
-    std::cout << inner.value << "\n";
+    std::cout << inner.value << "\n" << ::tpy::check_signals;
 }
 
 // def main():
@@ -67,25 +67,25 @@ void test_subscript_copy(std::vector<Inner>& xs, Inner&& inner) {
 //     print(gnl.item.value)
 void main() {
     Holder h = Holder(Inner());
-    std::cout << h.inner.value << "\n";
+    std::cout << h.inner.value << "\n" << ::tpy::check_signals;
     Inner i = Inner();
     i.value = 10;
     h.set_inner(std::move(i));
-    std::cout << h.inner.value << "\n";
+    std::cout << h.inner.value << "\n" << ::tpy::check_signals;
     Inner i2 = Inner();
     i2.value = 20;
     GenericHolder<Inner> gh = GenericHolder<Inner>(std::move(i2));
-    std::cout << gh.item.value << "\n";
+    std::cout << gh.item.value << "\n" << ::tpy::check_signals;
     Inner i3 = Inner();
     i3.value = 30;
     gh.set_item(std::move(i3));
-    std::cout << gh.item.value << "\n";
+    std::cout << gh.item.value << "\n" << ::tpy::check_signals;
     gh.set_item(Inner());
-    std::cout << gh.item.value << "\n";
+    std::cout << gh.item.value << "\n" << ::tpy::check_signals;
     Inner i4 = Inner();
     i4.value = 40;
     GenericNotLastUse<Inner> gnl = GenericNotLastUse<Inner>(std::move(i4));
-    std::cout << gnl.item.value << "\n";
+    std::cout << gnl.item.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

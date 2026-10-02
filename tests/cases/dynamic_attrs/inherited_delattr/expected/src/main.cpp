@@ -13,7 +13,7 @@ void main() {
     Child c = Child();
     c.__setattr__("x", ::tpy::make_any(std::string("value")));
     c.__delattr__("x");
-    std::cout << ::tpy::__len__(c._data) << "\n";
+    std::cout << ::tpy::__len__(c._data) << "\n" << ::tpy::check_signals;
 }
 
 // main()

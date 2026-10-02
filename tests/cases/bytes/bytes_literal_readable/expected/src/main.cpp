@@ -38,18 +38,18 @@ namespace tpyapp::main {
 //     lst: list[bytes] = [b"world", b"\x00\x80\xff", b""]
 //     print(len(lst), len(lst[0]), len(lst[1]), len(lst[2]))
 void main() {
-    std::cout << ::tpyapp::main::take(::tpy::bytes_literal("hello", 5)) << "\n";
-    std::cout << ::tpyapp::main::take(::tpy::BytesView{}) << "\n";
+    std::cout << ::tpyapp::main::take(::tpy::bytes_literal("hello", 5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take(::tpy::BytesView{}) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes g = ::tpyapp::main::make_greeting();
-    std::cout << ::tpy::__len__(g) << " " << static_cast<int>(::tpy::bytes_getitem(g, 0)) << "\n";
+    std::cout << ::tpy::__len__(g) << " " << static_cast<int>(::tpy::bytes_getitem(g, 0)) << "\n" << ::tpy::check_signals;
     ::tpy::BytesView quoted = ::tpy::bytes_literal("a\"b\\c", 5);
-    std::cout << ::tpy::__len__(quoted) << " " << static_cast<int>(::tpy::bytes_getitem(quoted, 1)) << "\n";
+    std::cout << ::tpy::__len__(quoted) << " " << static_cast<int>(::tpy::bytes_getitem(quoted, 1)) << "\n" << ::tpy::check_signals;
     ::tpy::BytesView binary = ::tpy::bytes_literal("\000\x80\xff", 3);
-    std::cout << ::tpy::__len__(binary) << " " << static_cast<int>(::tpy::bytes_getitem(binary, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(binary, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(binary, 2)) << "\n";
+    std::cout << ::tpy::__len__(binary) << " " << static_cast<int>(::tpy::bytes_getitem(binary, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(binary, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(binary, 2)) << "\n" << ::tpy::check_signals;
     ::tpy::BytesView greedy = ::tpy::bytes_literal("\x1f" "ab", 3);
-    std::cout << ::tpy::__len__(greedy) << " " << static_cast<int>(::tpy::bytes_getitem(greedy, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(greedy, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(greedy, 2)) << "\n";
+    std::cout << ::tpy::__len__(greedy) << " " << static_cast<int>(::tpy::bytes_getitem(greedy, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(greedy, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(greedy, 2)) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Bytes> lst = {::tpy::bytes_literal_owned("world", 5), ::tpy::bytes_literal_owned("\000\x80\xff", 3), ::tpy::Bytes{}};
-    std::cout << ::tpy::__len__(lst) << " " << ::tpy::__len__(::tpy::__getitem__(lst, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(lst, 1)) << " " << ::tpy::__len__(::tpy::__getitem__(lst, 2)) << "\n";
+    std::cout << ::tpy::__len__(lst) << " " << ::tpy::__len__(::tpy::__getitem__(lst, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(lst, 1)) << " " << ::tpy::__len__(::tpy::__getitem__(lst, 2)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

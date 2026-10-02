@@ -29,17 +29,17 @@ TD make() {
 //     print("total:", calls)
 void main() {
     if ((static_cast<void>(::tpyapp::main::make()), true)) {
-        std::cout << "in:" << " " << calls << "\n";
+        std::cout << "in:" << " " << calls << "\n" << ::tpy::check_signals;
     }
     if ((static_cast<void>(::tpyapp::main::make()), false)) {
-        std::cout << "unreachable" << "\n";
+        std::cout << "unreachable" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "not in:" << " " << calls << "\n";
+    std::cout << "not in:" << " " << calls << "\n" << ::tpy::check_signals;
     TD td = TD(::tpy::BigInt(3));
     if ((static_cast<void>(td), true)) {
-        std::cout << "name operand ok" << "\n";
+        std::cout << "name operand ok" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "total:" << " " << calls << "\n";
+    std::cout << "total:" << " " << calls << "\n" << ::tpy::check_signals;
 }
 
 // calls = 0

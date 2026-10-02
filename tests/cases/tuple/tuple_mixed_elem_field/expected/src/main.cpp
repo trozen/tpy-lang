@@ -28,12 +28,12 @@ void main() {
     h.set(std::tuple<Box*, Box*>{&(x), &(y)});
     Box* first = ::tpy::optional_to_ptr(std::get<0>(h.t));
     if ((first != nullptr)) {
-        std::cout << first->val << "\n";
+        std::cout << first->val << "\n" << ::tpy::check_signals;
     }
-    std::cout << std::get<1>(h.t).val << "\n";
+    std::cout << std::get<1>(h.t).val << "\n" << ::tpy::check_signals;
     Box* n = nullptr;
     h.set(std::tuple<Box*, Box*>{n, &(y)});
-    std::cout << ::tpy::print_bool((::tpy::optional_to_ptr(std::get<0>(h.t)) == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::optional_to_ptr(std::get<0>(h.t)) == nullptr)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

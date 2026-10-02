@@ -25,13 +25,13 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            std::cout << "slow finished" << "\n";
+            std::cout << "slow finished" << "\n" << ::tpy::check_signals;
             __state = S_DONE;
             int32_t __tpy_async_ret = 0;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         } catch (const ::tpy::CancelledError&) {
             __sub_0.reset();
-            std::cout << "slow cancelled" << "\n";
+            std::cout << "slow cancelled" << "\n" << ::tpy::check_signals;
             throw;
         } catch (...) {
             __sub_0.reset();
@@ -47,7 +47,7 @@ namespace tpyapp::main {
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::CancelledError&) {
-            std::cout << "slow cancelled" << "\n";
+            std::cout << "slow cancelled" << "\n" << ::tpy::check_signals;
             throw;
         } catch (...) {
             throw;
@@ -132,12 +132,12 @@ __coro_gather_helper gather_helper() {
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             results.emplace(std::move(__r1).value());
             __sub_1 = nullptr;
-            std::cout << "got" << " " << ::tpy::__len__((*results)) << "\n";
+            std::cout << "got" << " " << ::tpy::__len__((*results)) << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::CancelledError&) {
             __sub_1 = nullptr;
-            std::cout << "gather cancelled" << "\n";
+            std::cout << "gather cancelled" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

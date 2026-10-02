@@ -17,7 +17,7 @@ void main() {
     auto quadruple = [&double_](int32_t x) -> int32_t {
         return double_(double_(x));
     };
-    std::cout << quadruple(3) << "\n";
+    std::cout << quadruple(3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -29,21 +29,21 @@ void main() {
     ::tpy::Any d = ::tpy::make_any(std::string("x"));
     ::tpy::Any e = ::tpy::make_any(std::monostate{});
     if (::tpy::to_bool(a)) {
-        std::cout << "a-true" << "\n";
+        std::cout << "a-true" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "a-false" << "\n";
+        std::cout << "a-false" << "\n" << ::tpy::check_signals;
     }
     if (::tpy::to_bool(b)) {
-        std::cout << "b-true" << "\n";
+        std::cout << "b-true" << "\n" << ::tpy::check_signals;
     }
     if ((!(::tpy::to_bool(c)))) {
-        std::cout << "c-false" << "\n";
+        std::cout << "c-false" << "\n" << ::tpy::check_signals;
     }
     if (::tpy::to_bool(d)) {
-        std::cout << "d-true" << "\n";
+        std::cout << "d-true" << "\n" << ::tpy::check_signals;
     }
     if ((!(::tpy::to_bool(e)))) {
-        std::cout << "e-false" << "\n";
+        std::cout << "e-false" << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -34,15 +34,15 @@ void main() {
     conn.connect();
     ::tpystd::socket::socket* s = ::tpy::optional_to_ptr(conn.sock);
     if ((s != nullptr)) {
-        std::cout << "timeout threaded:" << " " << ::tpy::print_bool((s->gettimeout() == 0.05)) << "\n";
-        std::cout << "blocking in timeout mode:" << " " << ::tpy::print_bool(s->getblocking()) << "\n";
+        std::cout << "timeout threaded:" << " " << ::tpy::print_bool((s->gettimeout() == 0.05)) << "\n" << ::tpy::check_signals;
+        std::cout << "blocking in timeout mode:" << " " << ::tpy::print_bool(s->getblocking()) << "\n" << ::tpy::check_signals;
     }
     conn.close();
     ::tpystd::http::client::HTTPConnection conn2 = ::tpystd::http::client::HTTPConnection("127.0.0.1", port);
     conn2.connect();
     ::tpystd::socket::socket* s2 = ::tpy::optional_to_ptr(conn2.sock);
     if ((s2 != nullptr)) {
-        std::cout << "default timeout None:" << " " << ::tpy::print_bool((!s2->gettimeout().has_value())) << "\n";
+        std::cout << "default timeout None:" << " " << ::tpy::print_bool((!s2->gettimeout().has_value())) << "\n" << ::tpy::check_signals;
     }
     conn2.close();
     srv.close();

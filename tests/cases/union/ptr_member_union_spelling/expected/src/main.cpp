@@ -21,7 +21,7 @@ int32_t takes(const PtrPet& u) {
 void main() {
     Dog d = Dog(7);
     Dog* p = &d;
-    std::cout << p->n << "\n";
+    std::cout << p->n << "\n" << ::tpy::check_signals;
 }
 
 // main()

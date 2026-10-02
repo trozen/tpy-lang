@@ -32,9 +32,9 @@ int32_t double_sum(::tpy::varargs<const int32_t> args) {
 //     print(double_sum(10))
 void main() {
     std::array<const int32_t, 3> __tmp_1{1, 2, 3};
-    std::cout << ::tpyapp::main::double_sum(::tpy::varargs<const int32_t>(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::double_sum(::tpy::varargs<const int32_t>(__tmp_1)) << "\n" << ::tpy::check_signals;
     std::array<const int32_t, 1> __tmp_2{10};
-    std::cout << ::tpyapp::main::double_sum(::tpy::varargs<const int32_t>(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::double_sum(::tpy::varargs<const int32_t>(__tmp_2)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

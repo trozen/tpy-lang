@@ -16,7 +16,7 @@ namespace tpyapp::main {
 //         print(v.x)
 void test(Holder& h) {
     Point* p = ::tpy::optional_to_ptr(h.value);
-    std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((p == nullptr)) << "\n" << ::tpy::check_signals;
     h.value = Point(1);
     p = ::tpy::optional_to_ptr(h.value);
     if ((p != nullptr)) {
@@ -24,7 +24,7 @@ void test(Holder& h) {
     }
     Point* v = ::tpy::optional_to_ptr(h.value);
     if ((v != nullptr)) {
-        std::cout << v->x << "\n";
+        std::cout << v->x << "\n" << ::tpy::check_signals;
     }
 }
 

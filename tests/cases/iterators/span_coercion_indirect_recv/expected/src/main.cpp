@@ -43,7 +43,7 @@ int32_t plain_total(const Buf& b) {
 //     print(b.own_total(), opt_total(b), plain_total(b), opt_total(None))
 void main() {
     Buf b = Buf();
-    std::cout << b.own_total() << " " << ::tpyapp::main::opt_total(&(b)) << " " << ::tpyapp::main::plain_total(b) << " " << ::tpyapp::main::opt_total(nullptr) << "\n";
+    std::cout << b.own_total() << " " << ::tpyapp::main::opt_total(&(b)) << " " << ::tpyapp::main::plain_total(b) << " " << ::tpyapp::main::opt_total(nullptr) << "\n" << ::tpy::check_signals;
 }
 
 // main()

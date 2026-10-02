@@ -15,9 +15,9 @@ namespace tpyapp::main {
 //     print(xs)
 void main() {
     std::array<std::tuple<int32_t, std::vector<int32_t>>, 2> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{1, {2, 3}}), ::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{4, {5, 6, 7}})};
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     std::get<1>(::tpy::__getitem__(xs, 1)).push_back(9);
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

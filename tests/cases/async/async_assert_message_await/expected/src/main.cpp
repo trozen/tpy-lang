@@ -14,7 +14,7 @@ namespace tpyapp::main {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "building" << " " << tag << "\n";
+        std::cout << "building" << " " << tag << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         std::string __tpy_async_ret = (::tpy::str_concat(tag, "!"));
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -56,7 +56,7 @@ __coro_msg msg(std::string_view tag) {
         continue;
     }
     case S_JOIN_0: {
-        std::cout << "passed" << " " << x << "\n";
+        std::cout << "passed" << " " << x << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -103,7 +103,7 @@ __coro_go go(int32_t x) {
             continue;
         } catch (const ::tpy::AssertionError& e) {
             __sub_1.reset();
-            std::cout << "caught" << " " << e << "\n";
+            std::cout << "caught" << " " << e << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

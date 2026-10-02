@@ -11,11 +11,11 @@ namespace tpyapp::main {
 //     g = Grandchild()
 //     print(g.LIMIT)
 void main() {
-    std::cout << Grand::LIMIT << "\n";
-    std::cout << Grand::LIMIT << "\n";
-    std::cout << Grand::LIMIT << "\n";
+    std::cout << Grand::LIMIT << "\n" << ::tpy::check_signals;
+    std::cout << Grand::LIMIT << "\n" << ::tpy::check_signals;
+    std::cout << Grand::LIMIT << "\n" << ::tpy::check_signals;
     Grandchild g = Grandchild();
-    std::cout << Grand::LIMIT << "\n";
+    std::cout << Grand::LIMIT << "\n" << ::tpy::check_signals;
 }
 
 // main()

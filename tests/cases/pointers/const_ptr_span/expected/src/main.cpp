@@ -13,7 +13,7 @@ void read_span(std::span<const int32_t> s) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -50,9 +50,9 @@ void main() {
     int32_t b = 20;
     int32_t* mp = &a;
     const int32_t* cp = &b;
-    std::cout << "mutable ptr span:" << "\n";
+    std::cout << "mutable ptr span:" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::from_mutable_ptr(mp, 1);
-    std::cout << "const ptr span:" << "\n";
+    std::cout << "const ptr span:" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::from_readonly_ptr(cp, 1);
 }
 

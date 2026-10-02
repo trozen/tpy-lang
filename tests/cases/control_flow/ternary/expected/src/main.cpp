@@ -68,22 +68,22 @@ std::string describe(int32_t x) {
 //     val: int32 = 100 if flag else 200
 //     print(val)
 void main() {
-    std::cout << ::tpyapp::main::abs_val(5) << "\n";
-    std::cout << ::tpyapp::main::abs_val(-3) << "\n";
-    std::cout << ::tpyapp::main::max_val(10, 20) << "\n";
-    std::cout << ::tpyapp::main::max_val(30, 15) << "\n";
-    std::cout << ::tpyapp::main::clamp(-5, 0, 10) << "\n";
-    std::cout << ::tpyapp::main::clamp(5, 0, 10) << "\n";
-    std::cout << ::tpyapp::main::clamp(15, 0, 10) << "\n";
-    std::cout << ::tpyapp::main::greet(true) << "\n";
-    std::cout << ::tpyapp::main::greet(false) << "\n";
-    std::cout << ::tpyapp::main::describe(1) << "\n";
-    std::cout << ::tpyapp::main::describe(-1) << "\n";
+    std::cout << ::tpyapp::main::abs_val(5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::abs_val(-3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::max_val(10, 20) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::max_val(30, 15) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::clamp(-5, 0, 10) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::clamp(5, 0, 10) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::clamp(15, 0, 10) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::greet(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::greet(false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(-1) << "\n" << ::tpy::check_signals;
     int32_t x = 7;
-    std::cout << (((x > 5)) ? (x) : (0)) << "\n";
+    std::cout << (((x > 5)) ? (x) : (0)) << "\n" << ::tpy::check_signals;
     bool flag = true;
     int32_t val = ((flag) ? (100) : (200));
-    std::cout << val << "\n";
+    std::cout << val << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -50,7 +50,7 @@ void main() {
             P* a = std::get<0>(__tup_1);
             P* b = std::get<1>(__tup_1);
             if ((a != nullptr)) {
-                std::cout << a->x << "\n";
+                std::cout << a->x << "\n" << ::tpy::check_signals;
             }
         }
     }
@@ -65,7 +65,7 @@ void main() {
             P* a = std::get<0>(__tup_2);
             P* b = std::get<1>(__tup_2);
             if ((a != nullptr)) {
-                std::cout << a->x << "\n";
+                std::cout << a->x << "\n" << ::tpy::check_signals;
             }
         }
     }
@@ -80,7 +80,7 @@ void main() {
             P* a = std::get<0>(__tup_3);
             P* b = std::get<1>(__tup_3);
             if ((a != nullptr)) {
-                std::cout << a->x << "\n";
+                std::cout << a->x << "\n" << ::tpy::check_signals;
             }
         }
     }

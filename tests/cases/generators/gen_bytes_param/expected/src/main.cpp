@@ -28,7 +28,7 @@ void main() {
             total = (total) + (v);
         }
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -67,13 +67,13 @@ int32_t total(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d) {
 void main() {
     ::tpy::ordered_map<std::string, Point> pts = ::tpy::ordered_map<std::string, Point>({{"a", Point(1)}, {"b", Point(2)}});
     ::tpyapp::main::bump_items(pts);
-    std::cout << ::tpy::__getitem__(pts, "a").x << " " << ::tpy::__getitem__(pts, "b").x << "\n";
+    std::cout << ::tpy::__getitem__(pts, "a").x << " " << ::tpy::__getitem__(pts, "b").x << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::vector<int32_t>> lists = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     ::tpy::__setitem__(lists, "a", std::vector<int32_t>{1});
     ::tpy::__setitem__(lists, "b", std::vector<int32_t>{2, 3});
     ::tpyapp::main::bump_values(lists);
-    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(lists, "a")) << " " << ::tpy::ListPrinter(::tpy::__getitem__(lists, "b")) << "\n";
-    std::cout << ::tpyapp::main::total(lists) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(lists, "a")) << " " << ::tpy::ListPrinter(::tpy::__getitem__(lists, "b")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::total(lists) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -37,14 +37,14 @@ void main() {
         try {
             ::tpyapp::main::fail_nested();
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "nested:" << " " << e << "\n";
+            std::cout << "nested:" << " " << e << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::fail_direct();
         } catch (const TagError& e) {
-            std::cout << "direct:" << " " << e.n << "\n";
+            std::cout << "direct:" << " " << e.n << "\n" << ::tpy::check_signals;
         }
     }
 }

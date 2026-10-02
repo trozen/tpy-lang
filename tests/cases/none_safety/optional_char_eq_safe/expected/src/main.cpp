@@ -55,13 +55,13 @@ void __tpy_init() {
     b = 'b';
     none_char = std::nullopt;
     some_a = a;
-    std::cout << ::tpy::print_bool(::tpyapp::main::eq_left(some_a, a)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::eq_left(some_a, b)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::eq_left(none_char, a)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::eq_right(a, some_a)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::eq_right(a, none_char)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::ne_left(none_char, a)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::ne_right(a, none_char)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_left(some_a, a)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_left(some_a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_left(none_char, a)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_right(a, some_a)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_right(a, none_char)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::ne_left(none_char, a)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::ne_right(a, none_char)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

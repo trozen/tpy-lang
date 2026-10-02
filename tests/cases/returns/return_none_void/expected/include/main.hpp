@@ -236,7 +236,7 @@ struct __gen_gen_bare : public ::tpy::next_iter_mixin<__gen_gen_bare, int32_t> {
 //     print("init", n)
 //     return None  # tpyc: ok
 inline Rec::Rec(int32_t n) : n(n) {
-    std::cout << "init" << " " << n << "\n";
+    std::cout << "init" << " " << n << "\n" << ::tpy::check_signals;
     return;
 }
 
@@ -255,7 +255,7 @@ inline void Rec::bump() {
 //     print("static body")
 //     return None  # tpyc: ok
 inline void Rec::announce() {
-    std::cout << "static body" << "\n";
+    std::cout << "static body" << "\n" << ::tpy::check_signals;
     return;
 }
 
@@ -270,7 +270,7 @@ inline CM& CM::__enter__() {
 //     print("exit body")
 //     return None  # tpyc: ok
 inline void CM::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_value, std::monostate tb) const {
-    std::cout << "exit body" << "\n";
+    std::cout << "exit body" << "\n" << ::tpy::check_signals;
     return;
 }
 void __tpy_init();

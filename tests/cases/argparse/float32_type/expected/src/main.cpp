@@ -18,14 +18,14 @@ void main() {
     std::vector<std::string> __tmp_1 = {"2.5", "--gain", "1.25"};
     __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
     if (!((args.gain.has_value()))) ::tpy::raise_assertion_error();
-    std::cout << ::tpy::print_float(static_cast<double>(args.scale)) << "\n";
-    std::cout << ::tpy::print_float(static_cast<double>(args.bias)) << "\n";
-    std::cout << ::tpy::print_optional_val<::tpy::print_float, float>(args.gain) << "\n";
+    std::cout << ::tpy::print_float(static_cast<double>(args.scale)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(static_cast<double>(args.bias)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val<::tpy::print_float, float>(args.gain) << "\n" << ::tpy::check_signals;
 }
 
 // args = parser.parse_args(["2.5", "--gain", "1.25"])
 void __tpy_builder_argparse_help_1() {
-    std::cout << "usage: prog [-h] [--bias BIAS] [--gain GAIN] scale\n\npositional arguments:\n  scale\n\noptions:\n  -h, --help   show this help message and exit\n  --bias BIAS\n  --gain GAIN" << "\n";
+    std::cout << "usage: prog [-h] [--bias BIAS] [--gain GAIN] scale\n\npositional arguments:\n  scale\n\noptions:\n  -h, --help   show this help message and exit\n  --bias BIAS\n  --gain GAIN" << "\n" << ::tpy::check_signals;
     ::tpy::sys_exit(0);
 }
 
@@ -48,14 +48,14 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         std::string_view __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "--bias")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
                 ::tpy::sys_exit(2);
             }
             bias = ::tpy::float32_from_str(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1))));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
         } else if ((__tpy_argparse_tok == "--gain")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
                 ::tpy::sys_exit(2);
             }
             gain = ::tpy::float32_from_str(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1))));
@@ -65,12 +65,12 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
             __tpy_argparse_pi = (::tpy::add_check<int32_t>(__tpy_argparse_pi, 1));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
         } else {
-            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unexpected positional argument: ")), __tpy_argparse_tok)) << "\n";
+            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unexpected positional argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
             ::tpy::sys_exit(2);
         }
     }
     if ((__tpy_argparse_pi < 1)) {
-        ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat("prog: error: ", "missing required positional argument(s)")) << "\n";
+        ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat("prog: error: ", "missing required positional argument(s)")) << "\n" << ::tpy::check_signals;
         ::tpy::sys_exit(2);
     }
     return __tpy_builder_argparse_args_1(scale, bias, gain);

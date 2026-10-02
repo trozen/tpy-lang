@@ -704,10 +704,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen:" << " " << v << "\n";
+            std::cout << "gen:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "gen: after" << " " << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << "\n";
+    std::cout << "gen: after" << " " << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << "\n" << ::tpy::check_signals;
     std::array<P, 1> ps = {P(1)};
     {
         auto __src_2 = ::tpyapp::main::bump_records(::tpy::as_mut_span(ps));
@@ -716,10 +716,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "gen-record:" << " " << v << "\n";
+            std::cout << "gen-record:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "gen-record: after" << " " << ::tpy::__getitem__(ps, 0).n << "\n";
+    std::cout << "gen-record: after" << " " << ::tpy::__getitem__(ps, 0).n << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> ms = {3, 4};
     {
         Scaler __tmp_1 = Scaler(2);
@@ -729,10 +729,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "method:" << " " << v << "\n";
+            std::cout << "method:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "method: after" << " " << ::tpy::__getitem__(ms, 0) << " " << ::tpy::__getitem__(ms, 1) << "\n";
+    std::cout << "method: after" << " " << ::tpy::__getitem__(ms, 0) << " " << ::tpy::__getitem__(ms, 1) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> ro = {5, 6};
     int32_t pulls = 0;
     {
@@ -742,7 +742,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "ro-elem:" << " " << v << "\n";
+            std::cout << "ro-elem:" << " " << v << "\n" << ::tpy::check_signals;
             pulls = ::tpy::add_check<int32_t>(pulls, 1);
             if ((pulls == 1)) {
                 ::tpy::__setitem__(ro, 0, 50);
@@ -757,7 +757,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "ro-span:" << " " << v << "\n";
+            std::cout << "ro-span:" << " " << v << "\n" << ::tpy::check_signals;
             pulls = ::tpy::add_check<int32_t>(pulls, 1);
             if ((pulls == 1)) {
                 ::tpy::__setitem__(ro, 1, 60);
@@ -771,15 +771,15 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-            std::cout << "views:" << " " << v << "\n";
+            std::cout << "views:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     std::array<int32_t, 2> aa = {7, 8};
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::bump_async(::tpy::as_mut_span(aa)))) << "\n";
-    std::cout << "async: after" << " " << ::tpy::__getitem__(aa, 0) << " " << ::tpy::__getitem__(aa, 1) << "\n";
+    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::bump_async(::tpy::as_mut_span(aa)))) << "\n" << ::tpy::check_signals;
+    std::cout << "async: after" << " " << ::tpy::__getitem__(aa, 0) << " " << ::tpy::__getitem__(aa, 1) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> ab = {7, 8};
-    std::cout << "async-method:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(Adder(5).add(::tpy::as_mut_span(ab)))) << "\n";
-    std::cout << "async-method: after" << " " << ::tpy::__getitem__(ab, 0) << " " << ::tpy::__getitem__(ab, 1) << "\n";
+    std::cout << "async-method:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(Adder(5).add(::tpy::as_mut_span(ab)))) << "\n" << ::tpy::check_signals;
+    std::cout << "async-method: after" << " " << ::tpy::__getitem__(ab, 0) << " " << ::tpy::__getitem__(ab, 1) << "\n" << ::tpy::check_signals;
     {
         std::array<int32_t, 2> __tmp_2 = std::array<int32_t, 2>{1, 2};
         auto __src_12 = ::tpyapp::main::bump_scalars(::tpy::as_mut_span(__tmp_2));
@@ -788,7 +788,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-            std::cout << "lit-gen:" << " " << v << "\n";
+            std::cout << "lit-gen:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -799,7 +799,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-            std::cout << "lit-record:" << " " << v << "\n";
+            std::cout << "lit-record:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -811,7 +811,7 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
-            std::cout << "lit-method:" << " " << v << "\n";
+            std::cout << "lit-method:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -822,14 +822,14 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_19);
-            std::cout << "lit-ro:" << " " << v << "\n";
+            std::cout << "lit-ro:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     std::array<int32_t, 2> __tmp_7 = std::array<int32_t, 2>{7, 8};
-    std::cout << "lit-async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::bump_async(::tpy::as_mut_span(__tmp_7)))) << "\n";
+    std::cout << "lit-async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::bump_async(::tpy::as_mut_span(__tmp_7)))) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> __tmp_8 = std::array<int32_t, 2>{7, 8};
-    std::cout << "lit-async-method:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(Adder(5).add(::tpy::as_mut_span(__tmp_8)))) << "\n";
-    std::cout << "lit-await:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::run_bump())) << "\n";
+    std::cout << "lit-async-method:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(Adder(5).add(::tpy::as_mut_span(__tmp_8)))) << "\n" << ::tpy::check_signals;
+    std::cout << "lit-await:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::run_bump())) << "\n" << ::tpy::check_signals;
     {
         auto __src_20 = ::tpyapp::main::view_lens("abcd", ::tpy::bytes_literal("def", 3));
         auto&& __itr_20 = ::tpy::__iter__(__src_20);
@@ -837,7 +837,7 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_21);
-            std::cout << "lit-views:" << " " << v << "\n";
+            std::cout << "lit-views:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -848,7 +848,7 @@ void main() {
             auto __r_23 = __itr_22.__next__();
             if (!__r_23.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_23);
-            std::cout << "rv-call:" << " " << v << "\n";
+            std::cout << "rv-call:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -859,7 +859,7 @@ void main() {
             auto __r_25 = __itr_24.__next__();
             if (!__r_25.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_25);
-            std::cout << "rv-binop:" << " " << v << "\n";
+            std::cout << "rv-binop:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     std::string_view src = "abcdefghij";
@@ -871,7 +871,7 @@ void main() {
             auto __r_27 = __itr_26.__next__();
             if (!__r_27.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_27);
-            std::cout << "rv-method:" << " " << v << "\n";
+            std::cout << "rv-method:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     int32_t n = 7;
@@ -883,7 +883,7 @@ void main() {
             auto __r_29 = __itr_28.__next__();
             if (!__r_29.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_29);
-            std::cout << "rv-fstring:" << " " << v << "\n";
+            std::cout << "rv-fstring:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -894,7 +894,7 @@ void main() {
             auto __r_31 = __itr_30.__next__();
             if (!__r_31.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_31);
-            std::cout << "rv-bytes:" << " " << v << "\n";
+            std::cout << "rv-bytes:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -904,7 +904,7 @@ void main() {
             auto __r_33 = __itr_32.__next__();
             if (!__r_33.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_33);
-            std::cout << "lit-bytes:" << " " << v << "\n";
+            std::cout << "lit-bytes:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -916,7 +916,7 @@ void main() {
             auto __r_35 = __itr_34.__next__();
             if (!__r_35.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_35);
-            std::cout << "rv-method-recv:" << " " << v << "\n";
+            std::cout << "rv-method-recv:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     std::string named = ::tpyapp::main::make_str(2);
@@ -927,18 +927,18 @@ void main() {
             auto __r_37 = __itr_36.__next__();
             if (!__r_37.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_37);
-            std::cout << "name-str:" << " " << v << "\n";
+            std::cout << "name-str:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     std::string __tmp_16 = ::tpyapp::main::make_str(2);
-    std::cout << "rv-async:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::async_head(__tmp_16))) << "\n";
-    std::cout << "rv-await:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::run_head())) << "\n";
+    std::cout << "rv-async:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::async_head(__tmp_16))) << "\n" << ::tpy::check_signals;
+    std::cout << "rv-await:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::run_head())) << "\n" << ::tpy::check_signals;
     std::string __tmp_17 = ::tpyapp::main::make_str(2);
     auto __tmp_18 = ::tpyapp::main::head_tail(__tmp_17);
-    std::cout << "rv-nested:" << " " << ::tpyapp::main::count_view(__tmp_18) << "\n";
+    std::cout << "rv-nested:" << " " << ::tpyapp::main::count_view(__tmp_18) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> __tmp_19 = std::array<int32_t, 2>{5, 6};
     auto __tmp_20 = ::tpyapp::main::read_pair(::tpy::as_span(__tmp_19));
-    std::cout << "lit-nested:" << " " << ::tpyapp::main::total(__tmp_20) << "\n";
+    std::cout << "lit-nested:" << " " << ::tpyapp::main::total(__tmp_20) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> __tmp_21 = std::array<int32_t, 2>{5, 6};
     std::vector<int32_t> comp = ({
         std::vector<int32_t> __result;
@@ -951,7 +951,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << "lit-comp:" << " " << ::tpy::__getitem__(comp, 0) << " " << ::tpy::__getitem__(comp, 1) << "\n";
+    std::cout << "lit-comp:" << " " << ::tpy::__getitem__(comp, 0) << " " << ::tpy::__getitem__(comp, 1) << "\n" << ::tpy::check_signals;
     int32_t spins = 0;
     while (true) {
         std::array<int32_t, 2> __tmp_22 = std::array<int32_t, 2>{5, 6};
@@ -959,7 +959,7 @@ void main() {
         if (!((::tpyapp::main::total(__tmp_23) > spins))) break;
         spins = ::tpy::add_check<int32_t>(spins, 1);
     }
-    std::cout << "lit-while:" << " " << spins << "\n";
+    std::cout << "lit-while:" << " " << spins << "\n" << ::tpy::check_signals;
     std::vector<int32_t> nums = {1, 2, 3};
     {
         std::vector<int32_t> __tmp_24 = ({
@@ -980,7 +980,7 @@ void main() {
             auto __r_41 = __itr_40.__next__();
             if (!__r_41.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_41);
-            std::cout << "comp-free:" << " " << v << "\n";
+            std::cout << "comp-free:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -1003,7 +1003,7 @@ void main() {
             auto __r_44 = __itr_43.__next__();
             if (!__r_44.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_44);
-            std::cout << "comp-method:" << " " << v << "\n";
+            std::cout << "comp-method:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -1013,7 +1013,7 @@ void main() {
             auto __r_46 = __itr_45.__next__();
             if (!__r_46.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_46);
-            std::cout << "res-for:" << " " << v << "\n";
+            std::cout << "res-for:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -1023,7 +1023,7 @@ void main() {
             auto __r_48 = __itr_47.__next__();
             if (!__r_48.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_48);
-            std::cout << "res-span:" << " " << v << "\n";
+            std::cout << "res-span:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -1033,7 +1033,7 @@ void main() {
             auto __r_50 = __itr_49.__next__();
             if (!__r_50.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_50);
-            std::cout << "res-comp-free:" << " " << v << "\n";
+            std::cout << "res-comp-free:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -1043,7 +1043,7 @@ void main() {
             auto __r_52 = __itr_51.__next__();
             if (!__r_52.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_52);
-            std::cout << "res-comp-method:" << " " << v << "\n";
+            std::cout << "res-comp-method:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -1053,7 +1053,7 @@ void main() {
             auto __r_54 = __itr_53.__next__();
             if (!__r_54.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_54);
-            std::cout << "res-fstring:" << " " << v << "\n";
+            std::cout << "res-fstring:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -1064,11 +1064,11 @@ void main() {
             auto __r_56 = __itr_55.__next__();
             if (!__r_56.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_56);
-            std::cout << "res-method:" << " " << v << "\n";
+            std::cout << "res-method:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "res-bind:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::outer_bind())) << "\n";
-    std::cout << "res-task:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::outer_task())) << "\n";
+    std::cout << "res-bind:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::outer_bind())) << "\n" << ::tpy::check_signals;
+    std::cout << "res-task:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::outer_task())) << "\n" << ::tpy::check_signals;
     {
         auto __src_57 = ::tpyapp::main::outer_loop_for(3);
         auto&& __itr_57 = ::tpy::__iter__(__src_57);
@@ -1076,10 +1076,10 @@ void main() {
             auto __r_58 = __itr_57.__next__();
             if (!__r_58.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_58);
-            std::cout << "res-loop-for:" << " " << v << "\n";
+            std::cout << "res-loop-for:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "res-loop-bind:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::outer_loop_bind(3))) << "\n";
+    std::cout << "res-loop-bind:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::outer_loop_bind(3))) << "\n" << ::tpy::check_signals;
     {
         Outer __tmp_28 = Outer("o");
         auto __src_59 = __tmp_28.run_recv(nums);
@@ -1088,11 +1088,11 @@ void main() {
             auto __r_60 = __itr_59.__next__();
             if (!__r_60.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_60);
-            std::cout << "res-recv-method:" << " " << v << "\n";
+            std::cout << "res-recv-method:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "res-recv-async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::outer_async_recv(nums))) << "\n";
-    std::cout << "res-recv-task:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::outer_task_recv())) << "\n";
+    std::cout << "res-recv-async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::outer_async_recv(nums))) << "\n" << ::tpy::check_signals;
+    std::cout << "res-recv-task:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::outer_task_recv())) << "\n" << ::tpy::check_signals;
 }
 
 

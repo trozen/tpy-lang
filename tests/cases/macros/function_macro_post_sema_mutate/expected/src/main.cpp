@@ -23,8 +23,8 @@ int32_t poke(Counter& c) {
 //     print(poke(c))
 void main() {
     Counter c = Counter();
-    std::cout << ::tpyapp::main::poke(c) << "\n";
-    std::cout << ::tpyapp::main::poke(c) << "\n";
+    std::cout << ::tpyapp::main::poke(c) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::poke(c) << "\n" << ::tpy::check_signals;
 }
 
 // # A post-sema deferred macro rewrites sentinel(c) -> c.bump() (a MUTATING call

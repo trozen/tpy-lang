@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     std::vector<Cell> cells = ::tpyapp::main::wrap<Cell>(Cell(::tpy::BigInt(1)));
     ::tpy::__getitem__(cells, 0).n = (::tpy::__getitem__(cells, 0).n) + (::tpy::BigInt(10));
-    std::cout << ::tpy::__getitem__(cells, 0).n << " " << ::tpy::__len__(cells) << "\n";
-    std::cout << ::tpy::__len__(::tpyapp::main::twice<int32_t>(3)) << "\n";
+    std::cout << ::tpy::__getitem__(cells, 0).n << " " << ::tpy::__len__(cells) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(::tpyapp::main::twice<int32_t>(3)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

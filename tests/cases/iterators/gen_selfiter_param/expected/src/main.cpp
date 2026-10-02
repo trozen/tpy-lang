@@ -43,7 +43,7 @@ void main() {
             out.push_back(v);
         }
     }
-    std::cout << ::tpy::ListPrinter(out) << "\n";
+    std::cout << ::tpy::ListPrinter(out) << "\n" << ::tpy::check_signals;
     auto __tmp_2 = ::tpyapp::main::repeat_n<int32_t>(8, 5);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -55,7 +55,7 @@ void main() {
             __result.push_back(v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_3 = ::tpyapp::main::wrap(3);
@@ -66,7 +66,7 @@ void main() {
             __result.push_back(v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     auto __tmp_3 = ::tpyapp::main::repeat_n<int32_t>(9, 4);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -78,7 +78,7 @@ void main() {
             __result.push_back(v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_4 = {1, 2, 3};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -90,7 +90,7 @@ void main() {
             __result.push_back(v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
 }
 
 // main()

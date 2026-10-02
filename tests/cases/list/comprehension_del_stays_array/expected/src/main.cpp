@@ -25,12 +25,12 @@ void main() {
         const auto& r = *__beg_1;
         total = ::tpy::add_check<int32_t>(total, r.v);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
     std::array<Wrap, 3> ws = ::tpy::array_from_index<Wrap, 3>([&](std::size_t __i_2) -> Wrap {
         int32_t i = int32_t(__i_2);
         return Wrap(i);
     });
-    std::cout << ::tpy::__getitem__(ws, 0).tag << " " << ::tpy::__getitem__(ws, 2).res.v << "\n";
+    std::cout << ::tpy::__getitem__(ws, 0).tag << " " << ::tpy::__getitem__(ws, 2).res.v << "\n" << ::tpy::check_signals;
 }
 
 // main()

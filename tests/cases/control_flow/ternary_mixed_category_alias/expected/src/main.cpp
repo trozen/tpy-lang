@@ -60,7 +60,7 @@ void ctor_init(bool c) {
     Keep k = Keep(C(1), c, log);
     KeepNames kn = KeepNames(C(1), C(2), c);
     KeepElem ke = KeepElem({C(3)}, c);
-    std::cout << "ctor_init" << " " << ::tpy::print_bool(c) << " " << k.f.n << " " << kn.f.n << " " << ke.f.n << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "ctor_init" << " " << ::tpy::print_bool(c) << " " << k.f.n << " " << kn.f.n << " " << ke.f.n << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def local_decl(c: bool) -> None:
@@ -76,7 +76,7 @@ void local_decl(bool c) {
     std::optional<C> __select_slot_1;
     C& x = ((c) ? (a) : (__select_slot_1.emplace(::tpyapp::main::make(log))));
     x.bump();
-    std::cout << "decl" << " " << ::tpy::print_bool(c) << " " << a.n << " " << x.n << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "decl" << " " << ::tpy::print_bool(c) << " " << a.n << " " << x.n << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def ctor_arm(c: bool) -> None:
@@ -90,7 +90,7 @@ void ctor_arm(bool c) {
     std::optional<C> __select_slot_1;
     C& x = (((!(c))) ? (__select_slot_1.emplace(C(10))) : (a));
     x.bump();
-    std::cout << "ctor" << " " << ::tpy::print_bool(c) << " " << a.n << " " << x.n << "\n";
+    std::cout << "ctor" << " " << ::tpy::print_bool(c) << " " << a.n << " " << x.n << "\n" << ::tpy::check_signals;
 }
 
 // def elem_arm(c: bool) -> None:
@@ -104,7 +104,7 @@ void elem_arm(bool c) {
     std::optional<C> __select_slot_1;
     C& r = ((c) ? (::tpy::__getitem__(rs, 0)) : (__select_slot_1.emplace(C(9))));
     r.n = ::tpy::add_check<int32_t>(r.n, 1);
-    std::cout << "elem" << " " << ::tpy::print_bool(c) << " " << ::tpy::__getitem__(rs, 0).n << " " << r.n << "\n";
+    std::cout << "elem" << " " << ::tpy::print_bool(c) << " " << ::tpy::__getitem__(rs, 0).n << " " << r.n << "\n" << ::tpy::check_signals;
 }
 
 // def list_ctor_arm(c: bool) -> None:
@@ -118,7 +118,7 @@ void list_ctor_arm(bool c) {
     std::optional<std::vector<int32_t>> __select_slot_1;
     std::vector<int32_t>& x = ((c) ? (::tpy::__getitem__(rs, 0)) : (__select_slot_1.emplace(::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(3)))));
     x.push_back(7);
-    std::cout << "list_ctor" << " " << ::tpy::print_bool(c) << " " << ::tpy::__len__(::tpy::__getitem__(rs, 0)) << " " << ::tpy::__len__(x) << "\n";
+    std::cout << "list_ctor" << " " << ::tpy::print_bool(c) << " " << ::tpy::__len__(::tpy::__getitem__(rs, 0)) << " " << ::tpy::__len__(x) << "\n" << ::tpy::check_signals;
 }
 
 // def list_literal_arm(c: bool) -> None:
@@ -132,7 +132,7 @@ void list_literal_arm(bool c) {
     std::optional<std::vector<int32_t>> __select_slot_1;
     std::vector<int32_t>& ys = ((c) ? (a) : (__select_slot_1.emplace(std::vector<int32_t>{9})));
     ys.push_back(7);
-    std::cout << "list" << " " << ::tpy::print_bool(c) << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(ys) << "\n";
+    std::cout << "list" << " " << ::tpy::print_bool(c) << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
 }
 
 // def receiver(c: bool) -> None:
@@ -146,7 +146,7 @@ void receiver(bool c) {
     C a = C(1);
     std::optional<C> __select_slot_1;
     ((c) ? (a) : (__select_slot_1.emplace(::tpyapp::main::make(log)))).bump();
-    std::cout << "recv" << " " << ::tpy::print_bool(c) << " " << a.n << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "recv" << " " << ::tpy::print_bool(c) << " " << a.n << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def container_receiver(c: bool) -> None:
@@ -160,7 +160,7 @@ void container_receiver(bool c) {
     ::tpy::ByteArray a = ::tpy::ByteArray(::tpy::bytes_literal("q", 1));
     std::optional<::tpy::ByteArray> __select_slot_1;
     ((c) ? (a) : (__select_slot_1.emplace(::tpyapp::main::make_ba(log)))).push_back(1);
-    std::cout << "recv_ba" << " " << ::tpy::print_bool(c) << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "recv_ba" << " " << ::tpy::print_bool(c) << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def own_arg(c: bool) -> None:
@@ -174,8 +174,8 @@ void own_arg(bool c) {
     std::vector<std::string> log = std::vector<std::string>{};
     C a = C(1);
     C __tmp_1 = ((c) ? (a) : (::tpyapp::main::make(log)));
-    std::cout << "own_arg" << " " << ::tpy::print_bool(c) << " " << ::tpyapp::main::take(std::move(__tmp_1)).n << " " << ::tpy::__len__(log) << "\n";
-    std::cout << "own_arg_copy" << " " << ::tpy::print_bool(c) << " " << ::tpyapp::main::take(((c) ? (C(a)) : (::tpyapp::main::make(log)))).n << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "own_arg" << " " << ::tpy::print_bool(c) << " " << ::tpyapp::main::take(std::move(__tmp_1)).n << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
+    std::cout << "own_arg_copy" << " " << ::tpy::print_bool(c) << " " << ::tpyapp::main::take(((c) ? (C(a)) : (::tpyapp::main::make(log)))).n << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def append_arg(c: bool) -> None:
@@ -195,10 +195,10 @@ void append_arg(bool c) {
     C a = C(1);
     std::vector<C> xs = {C(0)};
     xs.push_back(((c) ? (a) : (::tpyapp::main::make(log))));
-    std::cout << "append" << " " << ::tpy::print_bool(c) << " " << ::tpy::__getitem__(xs, 1).n << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "append" << " " << ::tpy::print_bool(c) << " " << ::tpy::__getitem__(xs, 1).n << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
     xs.push_back(((c) ? (C(a)) : (::tpyapp::main::make(log))));
     ::tpy::__getitem__(xs, 2).bump();
-    std::cout << "append_copy" << " " << ::tpy::print_bool(c) << " " << ::tpy::__getitem__(xs, 2).n << " " << a.n << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "append_copy" << " " << ::tpy::print_bool(c) << " " << ::tpy::__getitem__(xs, 2).n << " " << a.n << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def own_return(c: bool) -> None:
@@ -210,7 +210,7 @@ void own_return(bool c) {
     std::vector<std::string> log = std::vector<std::string>{};
     C a = C(1);
     C r = ::tpyapp::main::give(a, c, log);
-    std::cout << "return" << " " << ::tpy::print_bool(c) << " " << r.n << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "return" << " " << ::tpy::print_bool(c) << " " << r.n << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def fresh_container_arms(c: bool) -> None:
@@ -252,7 +252,7 @@ void fresh_container_arms(bool c) {
         std::move(__result);
     }))));
     zs.push_back(9);
-    std::cout << "fresh" << " " << ::tpy::print_bool(c) << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(ys) << " " << ::tpy::__len__(d) << " " << ::tpy::__len__(e) << " " << ::tpy::__len__(s) << " " << ::tpy::__len__(t) << " " << ::tpy::__len__(zs) << "\n";
+    std::cout << "fresh" << " " << ::tpy::print_bool(c) << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(ys) << " " << ::tpy::__len__(d) << " " << ::tpy::__len__(e) << " " << ::tpy::__len__(s) << " " << ::tpy::__len__(t) << " " << ::tpy::__len__(zs) << "\n" << ::tpy::check_signals;
 }
 
 // def nested_select_arm(c: bool, e: list[int32]) -> None:
@@ -275,7 +275,7 @@ void nested_select_arm(bool c, std::vector<int32_t>& e) {
     std::optional<std::vector<int32_t>> __select_slot_2;
     std::vector<int32_t>& ws = ((c) ? (((::tpy::__len__(e) != 0) ? e : __select_slot_2.emplace(std::vector<int32_t>{5}))) : (b));
     ws.push_back(4);
-    std::cout << "nested" << " " << ::tpy::print_bool(c) << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(zs) << " " << ::tpy::__len__(b) << " " << ::tpy::__len__(e) << " " << ::tpy::__len__(ws) << "\n";
+    std::cout << "nested" << " " << ::tpy::print_bool(c) << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(zs) << " " << ::tpy::__len__(b) << " " << ::tpy::__len__(e) << " " << ::tpy::__len__(ws) << "\n" << ::tpy::check_signals;
 }
 
 // def branch_positions(a: C, k: int32) -> None:
@@ -301,7 +301,7 @@ void branch_positions(C& a, int32_t k) {
     }
     std::optional<C> __select_slot_2;
     ::tpy::__setitem__(xs, 1, ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, 1), (::tpy::__bool__(a) ? a : __select_slot_2.emplace(C(3))).inc()));
-    std::cout << "branch" << " " << k << " " << a.n << " " << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "branch" << " " << k << " " << a.n << " " << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def or_positions(a: C) -> None:
@@ -321,7 +321,7 @@ void or_positions(const C& a) {
     while (((::tpy::add_check<int32_t>((::tpy::__bool__(a) ? a : __select_slot_1.emplace(C(0))).n, k)) < 4)) {
         k = ::tpy::add_check<int32_t>(k, 1);
     }
-    std::cout << "or_pos" << " " << a.n << " " << x.n << " " << k << "\n";
+    std::cout << "or_pos" << " " << a.n << " " << x.n << " " << k << "\n" << ::tpy::check_signals;
 }
 
 // async def async_own_sel(a: C, c: bool) -> Own[C]:
@@ -360,7 +360,7 @@ void copy_ternary(bool c) {
     C a = C(1);
     C x = C(((c) ? (a) : (::tpyapp::main::make(log))));
     x.bump();
-    std::cout << "copy" << " " << ::tpy::print_bool(c) << " " << a.n << " " << x.n << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "copy" << " " << ::tpy::print_bool(c) << " " << a.n << " " << x.n << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def own_list_arg(c: bool) -> None:
@@ -370,7 +370,7 @@ void copy_ternary(bool c) {
 void own_list_arg(bool c) {
     std::vector<int32_t> a = {1};
     std::vector<int32_t> __tmp_1 = ((c) ? (a) : (std::vector<int32_t>{9, 9}));
-    std::cout << "own_list" << " " << ::tpy::print_bool(c) << " " << ::tpy::__len__(::tpyapp::main::take_list(std::move(__tmp_1))) << "\n";
+    std::cout << "own_list" << " " << ::tpy::print_bool(c) << " " << ::tpy::__len__(::tpyapp::main::take_list(std::move(__tmp_1))) << "\n" << ::tpy::check_signals;
 }
 
 // def match_arm(k: int32, c: bool) -> None:
@@ -393,7 +393,7 @@ void match_arm(int32_t k, bool c) {
         std::optional<C> __select_slot_1;
         C& x = ((c) ? (a) : (__select_slot_1.emplace(::tpyapp::main::make(log))));
         x.bump();
-        std::cout << "match" << " " << k << " " << ::tpy::print_bool(c) << " " << a.n << " " << x.n << " " << ::tpy::__len__(log) << "\n";
+        std::cout << "match" << " " << k << " " << ::tpy::print_bool(c) << " " << a.n << " " << x.n << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
@@ -442,10 +442,10 @@ void run_param_arms(bool c) {
     C a = C(1);
     std::vector<C> rs = {C(10)};
     std::vector<int32_t> xs = {1};
-    std::cout << "params" << " " << ::tpy::print_bool(c) << " " << a.n << " " << ::tpy::__getitem__(rs, 0).n << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << "params" << " " << ::tpy::print_bool(c) << " " << a.n << " " << ::tpy::__getitem__(rs, 0).n << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = {2};
     ::tpyapp::main::param_arms(a, rs, xs, __tmp_1, c);
-    std::cout << "params" << " " << ::tpy::print_bool(c) << " " << a.n << " " << ::tpy::__getitem__(rs, 0).n << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << "params" << " " << ::tpy::print_bool(c) << " " << a.n << " " << ::tpy::__getitem__(rs, 0).n << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def dict_elem_arm(c: bool) -> None:
@@ -459,7 +459,7 @@ void dict_elem_arm(bool c) {
     std::optional<std::vector<int32_t>> __select_slot_1;
     std::vector<int32_t>& ys = ((c) ? (::tpy::__getitem__(d, "k")) : (__select_slot_1.emplace(std::vector<int32_t>{9})));
     ys.push_back(2);
-    std::cout << "dict_elem" << " " << ::tpy::print_bool(c) << " " << ::tpy::__len__(::tpy::__getitem__(d, "k")) << " " << ::tpy::__len__(ys) << "\n";
+    std::cout << "dict_elem" << " " << ::tpy::print_bool(c) << " " << ::tpy::__len__(::tpy::__getitem__(d, "k")) << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -505,7 +505,7 @@ __coro_async_receiver async_receiver(C& a, bool c) {
 //     # a receiver.
 //     print("str_recv", (s or "dflt").upper(), (s if c else "zz").startswith("z"))  # tpyc: ok
 void str_receivers(std::string_view s, bool c) {
-    std::cout << "str_recv" << " " << ::tpy::str_upper(((!s.empty()) ? s : std::string_view("dflt"))) << " " << ::tpy::print_bool(::tpy::str_startswith(((c) ? (s) : ("zz")), "z")) << "\n";
+    std::cout << "str_recv" << " " << ::tpy::str_upper(((!s.empty()) ? s : std::string_view("dflt"))) << " " << ::tpy::print_bool(::tpy::str_startswith(((c) ? (s) : ("zz")), "z")) << "\n" << ::tpy::check_signals;
 }
 
 // def first_list(xs: list[list[int32]]) -> list[int32]:
@@ -570,9 +570,9 @@ void loop_body() {
         std::optional<C> __select_slot_1;
         C& x = (((i < 2)) ? (a) : (__select_slot_1.emplace(::tpyapp::main::make(log))));
         x.bump();
-        std::cout << "loop" << " " << i << " " << x.n << "\n";
+        std::cout << "loop" << " " << i << " " << x.n << "\n" << ::tpy::check_signals;
     }
-    std::cout << "loop_a" << " " << a.n << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "loop_a" << " " << a.n << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def comprehension() -> None:
@@ -590,7 +590,7 @@ void comprehension() {
         int32_t i = int32_t(__i_0);
         return (((i == 0)) ? (a) : (__select_slot_1.emplace(::tpyapp::main::make(log)))).inc();
     });
-    std::cout << "comp" << " " << ::tpy::ListPrinter(ys) << " " << a.n << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "comp" << " " << ::tpy::ListPrinter(ys) << " " << a.n << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def closure() -> None:
@@ -612,7 +612,7 @@ void closure() {
         x.bump();
         return x.n;
     };
-    std::cout << "closure" << " " << inner(true) << " " << inner(false) << " " << a.n << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "closure" << " " << inner(true) << " " << inner(false) << " " << a.n << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -717,15 +717,15 @@ void main() {
     h2.alias_bump(true);
     h2.alias_bump(false);
     Holder o9 = Holder();
-    std::cout << "alias_bump" << " " << h2.a.n << " " << h2.peek(o9, true) << " " << h2.peek(o9, false) << "\n";
+    std::cout << "alias_bump" << " " << h2.a.n << " " << h2.peek(o9, true) << " " << h2.peek(o9, false) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::str_receivers("", true);
     ::tpyapp::main::str_receivers("ab", false);
     std::vector<int32_t> ea = {1};
     std::vector<std::vector<int32_t>> exs = {{1, 2}};
-    std::cout << "closure_aliases" << " " << (::tpyapp::main::escaping_aliases(ea, exs))() << " " << ::tpy::__len__(ea) << " " << ::tpy::__len__(::tpy::__getitem__(exs, 0)) << "\n";
+    std::cout << "closure_aliases" << " " << (::tpyapp::main::escaping_aliases(ea, exs))() << " " << ::tpy::__len__(ea) << " " << ::tpy::__len__(::tpy::__getitem__(exs, 0)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> ca = {1, 2, 3};
-    std::cout << "closure_escape" << " " << (::tpyapp::main::escaping_closure(ca, true))() << " " << ::tpy::__len__(ca) << "\n";
-    std::cout << "closure_escape" << " " << (::tpyapp::main::escaping_closure(ca, false))() << " " << ::tpy::__len__(ca) << "\n";
+    std::cout << "closure_escape" << " " << (::tpyapp::main::escaping_closure(ca, true))() << " " << ::tpy::__len__(ca) << "\n" << ::tpy::check_signals;
+    std::cout << "closure_escape" << " " << (::tpyapp::main::escaping_closure(ca, false))() << " " << ::tpy::__len__(ca) << "\n" << ::tpy::check_signals;
     auto __obj_1 = {1, 0};
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
@@ -734,7 +734,7 @@ void main() {
         C ra = C(gv);
         C r = ::tpyapp::main::give_or(ra);
         r.bump();
-        std::cout << "give_or" << " " << gv << " " << r.n << "\n";
+        std::cout << "give_or" << " " << gv << " " << r.n << "\n" << ::tpy::check_signals;
     }
     auto __obj_2 = {1, 0};
     auto __beg_2 = __obj_2.begin();
@@ -745,11 +745,11 @@ void main() {
         ::tpyapp::main::or_positions(oa);
         C ao = ::tpystd::asyncio::run<C>(::tpy::make_adapter<::tpystd::coro::Cancellable<C>>(::tpyapp::main::async_own_sel(oa, (ov != 0))));
         ao.bump();
-        std::cout << "async_own_sel" << " " << ov << " " << ao.n << "\n";
+        std::cout << "async_own_sel" << " " << ov << " " << ao.n << "\n" << ::tpy::check_signals;
     }
     C aa = C(1);
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_receiver(aa, true))) << " " << aa.n << "\n";
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_receiver(aa, false))) << " " << aa.n << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_receiver(aa, true))) << " " << aa.n << "\n" << ::tpy::check_signals;
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_receiver(aa, false))) << " " << aa.n << "\n" << ::tpy::check_signals;
     auto __obj_3 = {1, 2};
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
@@ -761,7 +761,7 @@ void main() {
         ::tpyapp::main::branch_positions(__tmp_4, bk);
     }
     C za = C(0);
-    std::cout << "async_zero" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_receiver(za, false))) << " " << za.n << "\n";
+    std::cout << "async_zero" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_receiver(za, false))) << " " << za.n << "\n" << ::tpy::check_signals;
     C zg = C(0);
     std::cout << "gen_zero" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -773,7 +773,7 @@ void main() {
             __result.push_back(v);
         }
         std::move(__result);
-    })) << " " << zg.n << "\n";
+    })) << " " << zg.n << "\n" << ::tpy::check_signals;
     C ga = C(1);
     std::cout << "gen" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -785,7 +785,7 @@ void main() {
             __result.push_back(v);
         }
         std::move(__result);
-    })) << " " << ga.n << "\n";
+    })) << " " << ga.n << "\n" << ::tpy::check_signals;
     std::cout << "gen" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_6 = ::tpyapp::main::gen_receiver(ga, false);
@@ -796,13 +796,13 @@ void main() {
             __result.push_back(v);
         }
         std::move(__result);
-    })) << " " << ga.n << "\n";
+    })) << " " << ga.n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::loop_body();
     ::tpyapp::main::comprehension();
     ::tpyapp::main::closure();
     Holder h = Holder();
     std::vector<std::string> log = std::vector<std::string>{};
-    std::cout << "meth" << " " << h.meth(true, log) << " " << h.meth(false, log) << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "meth" << " " << h.meth(true, log) << " " << h.meth(false, log) << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // # A record / container ternary whose arms mix an existing object and a fresh

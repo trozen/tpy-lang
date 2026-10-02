@@ -19,7 +19,7 @@ void __tpy_init() {
 
     ::tpyapp::utils::__tpy_init();
     MAX = 42;
-    std::cout << MAX << "\n";
+    std::cout << MAX << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

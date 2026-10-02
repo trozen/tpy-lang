@@ -32,7 +32,7 @@ void main() {
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
     a.sendall(::tpy::bytes_literal("hi", 2));
-    std::cout << "live send:" << " " << ::tpy::BytesPrinter(b.recv(2)) << "\n";
+    std::cout << "live send:" << " " << ::tpy::BytesPrinter(b.recv(2)) << "\n" << ::tpy::check_signals;
     a.close();
     b.close();
     auto __tup_2 = ::tpystd::socket::socketpair();
@@ -42,14 +42,14 @@ void main() {
     {
         try {
             c.sendall(::tpy::bytes_literal("x", 1));
-            std::cout << "NO ERROR" << "\n";
+            std::cout << "NO ERROR" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::BrokenPipeError&) {
-            std::cout << "caught BrokenPipeError" << "\n";
+            std::cout << "caught BrokenPipeError" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OSError&) {
-            std::cout << "caught generic OSError" << "\n";
+            std::cout << "caught generic OSError" << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "survived" << "\n";
+    std::cout << "survived" << "\n" << ::tpy::check_signals;
     c.close();
 }
 

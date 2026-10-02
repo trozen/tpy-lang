@@ -15,7 +15,7 @@ void main() {
     b.get_span();
     b.get_list();
     b.get_via_var();
-    std::cout << "ok" << "\n";
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // main()

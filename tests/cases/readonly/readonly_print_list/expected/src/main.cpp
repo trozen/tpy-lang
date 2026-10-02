@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def show(l: readonly[list[int32]]) -> None:
 //     print(l)
 void show(const std::vector<int32_t>& l) {
-    std::cout << ::tpy::ListPrinter(l) << "\n";
+    std::cout << ::tpy::ListPrinter(l) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

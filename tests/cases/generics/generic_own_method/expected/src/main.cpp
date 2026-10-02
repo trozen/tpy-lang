@@ -22,7 +22,7 @@ namespace tpyapp::main {
 void main() {
     Box<std::vector<int32_t>> b1 = Box<std::vector<int32_t>>({1, 2, 3});
     b1.take().push_back(4);
-    std::cout << "chained call ok" << "\n";
+    std::cout << "chained call ok" << "\n" << ::tpy::check_signals;
     Box<std::vector<int32_t>> b2 = Box<std::vector<int32_t>>({10, 20, 30});
     std::vector<int32_t> c = b2.take();
     c.push_back(40);
@@ -31,7 +31,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 

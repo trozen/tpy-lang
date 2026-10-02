@@ -14,7 +14,7 @@ namespace tpyapp::main {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "eval" << " " << tag << "\n";
+        std::cout << "eval" << " " << tag << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 1;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -38,7 +38,7 @@ __coro_one one(std::string_view tag) {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "eval" << " " << tag << "\n";
+        std::cout << "eval" << " " << tag << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 2;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -62,7 +62,7 @@ __coro_two two(std::string_view tag) {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "eval" << " " << tag << "\n";
+        std::cout << "eval" << " " << tag << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         bool __tpy_async_ret = b;
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -176,13 +176,13 @@ __coro_pick pick(std::string_view tag, bool b) {
         __await_lift_1 = std::move(__r7).value();
         __sub_7.reset();
         w = ((__await_lift_1) ? (10) : (20));
-        std::cout << "w" << " " << w << "\n";
+        std::cout << "w" << " " << w << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_0: {
         x = __await_ternary_0;
-        std::cout << "x" << " " << x << "\n";
+        std::cout << "x" << " " << x << "\n" << ::tpy::check_signals;
         cond2 = false;
         if (cond2) {
             __sub_2.emplace("then-skipped");
@@ -196,14 +196,14 @@ __coro_pick pick(std::string_view tag, bool b) {
     }
     case S_JOIN_1: {
         y = __await_ternary_1;
-        std::cout << "y" << " " << y << "\n";
+        std::cout << "y" << " " << y << "\n" << ::tpy::check_signals;
         __sub_4.emplace("z-cond", false);
         __state = S_RESUME_4;
         continue;
     }
     case S_JOIN_2: {
         z = __await_ternary_2;
-        std::cout << "z" << " " << z << "\n";
+        std::cout << "z" << " " << z << "\n" << ::tpy::check_signals;
         __sub_7.emplace("w-cond", true);
         __state = S_RESUME_7;
         continue;

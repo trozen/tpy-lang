@@ -29,7 +29,7 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    std::cout << "after FNFE" << "\n";
+    std::cout << "after FNFE" << "\n" << ::tpy::check_signals;
     auto __ctx_2 = Suppress();
     __ctx_2.__enter__();
     try {
@@ -40,7 +40,7 @@ void main() {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
-    std::cout << "after OS" << "\n";
+    std::cout << "after OS" << "\n" << ::tpy::check_signals;
     {
         try {
             auto __ctx_3 = Suppress();
@@ -54,7 +54,7 @@ void main() {
                 throw;
             }
         } catch (const ::tpy::RuntimeError& e) {
-            std::cout << (::tpy::str_concat("propagated RE: ", std::string(::tpy::__str__(e)))) << "\n";
+            std::cout << (::tpy::str_concat("propagated RE: ", std::string(::tpy::__str__(e)))) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -82,15 +82,15 @@ bool Suppress::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc
         return false;
     }
     if (const ::tpy::FileNotFoundError* __exc_val_ptr = dynamic_cast<const ::tpy::FileNotFoundError*>(exc_val); (__exc_val_ptr != nullptr)) {
-        std::cout << (::tpy::str_concat("FNFE: ", std::string(::tpy::__str__((*__exc_val_ptr))))) << "\n";
+        std::cout << (::tpy::str_concat("FNFE: ", std::string(::tpy::__str__((*__exc_val_ptr))))) << "\n" << ::tpy::check_signals;
         return true;
     }
     if (const ::tpy::OSError* __exc_val_ptr = dynamic_cast<const ::tpy::OSError*>(exc_val); (__exc_val_ptr != nullptr)) {
-        std::cout << (::tpy::str_concat("OS: ", std::string(::tpy::__str__((*__exc_val_ptr))))) << "\n";
+        std::cout << (::tpy::str_concat("OS: ", std::string(::tpy::__str__((*__exc_val_ptr))))) << "\n" << ::tpy::check_signals;
         return true;
     }
     if ((dynamic_cast<const ::tpy::BaseException*>(exc_val) != nullptr)) {
-        std::cout << (::tpy::str_concat("BASE: ", std::string(::tpy::__str__((*exc_val))))) << "\n";
+        std::cout << (::tpy::str_concat("BASE: ", std::string(::tpy::__str__((*exc_val))))) << "\n" << ::tpy::check_signals;
         return false;
     }
     return false;

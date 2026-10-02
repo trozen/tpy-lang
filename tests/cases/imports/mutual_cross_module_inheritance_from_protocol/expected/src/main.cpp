@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     print(use_proto(Counter()))
 void main() {
     auto __tmp_1 = ::tpyapp::a::Counter();
-    std::cout << ::tpyapp::main::use_proto(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::use_proto(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // # Cycle member explicitly inherits from a peer's protocol

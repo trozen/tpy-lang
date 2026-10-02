@@ -40,7 +40,7 @@ namespace tpyapp::other {
 //     print("far init", n)
 //     self.n = n
 inline Far::Far(int32_t n) {
-    std::cout << "far init" << " " << n << "\n";
+    std::cout << "far init" << " " << n << "\n" << ::tpy::check_signals;
     this->n = n;
 }
 void __tpy_init();

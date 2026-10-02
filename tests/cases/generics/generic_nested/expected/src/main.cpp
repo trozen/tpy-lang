@@ -18,11 +18,11 @@ namespace tpyapp::main {
 //     print(c2.get_value())
 void main() {
     Container<int32_t> c = Container<int32_t>(42);
-    std::cout << c.get_value() << "\n";
+    std::cout << c.get_value() << "\n" << ::tpy::check_signals;
     Box<int32_t>& box = c.get_inner();
-    std::cout << box.get() << "\n";
+    std::cout << box.get() << "\n" << ::tpy::check_signals;
     Container<std::string> c2 = Container<std::string>("hello");
-    std::cout << c2.get_value() << "\n";
+    std::cout << c2.get_value() << "\n" << ::tpy::check_signals;
 }
 
 // main()

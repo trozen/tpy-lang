@@ -71,13 +71,13 @@ int32_t repeated(bool again) {
 //     print("constructor", runner.result, skipped.result)
 //     print("method", runner.method(True), runner.method(False))
 void main() {
-    std::cout << "free" << " " << ::tpyapp::main::free() << "\n";
-    std::cout << "branch" << " " << ::tpyapp::main::branch(true, 2) << " " << ::tpyapp::main::branch(false, 2) << "\n";
-    std::cout << "loop" << " " << ::tpyapp::main::repeated(true) << " " << ::tpyapp::main::repeated(false) << "\n";
+    std::cout << "free" << " " << ::tpyapp::main::free() << "\n" << ::tpy::check_signals;
+    std::cout << "branch" << " " << ::tpyapp::main::branch(true, 2) << " " << ::tpyapp::main::branch(false, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "loop" << " " << ::tpyapp::main::repeated(true) << " " << ::tpyapp::main::repeated(false) << "\n" << ::tpy::check_signals;
     Runner runner = Runner(true);
     Runner skipped = Runner(false);
-    std::cout << "constructor" << " " << runner.result << " " << skipped.result << "\n";
-    std::cout << "method" << " " << runner.method(true) << " " << runner.method(false) << "\n";
+    std::cout << "constructor" << " " << runner.result << " " << skipped.result << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << runner.method(true) << " " << runner.method(false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

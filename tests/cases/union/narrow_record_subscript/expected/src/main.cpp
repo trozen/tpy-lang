@@ -26,9 +26,9 @@ void main() {
     ::tpy::Union<Bag*, ::tpy::BigInt*> v = ::tpy::to_ptr_variant(__slot_1);
     if (std::holds_alternative<Bag*>(v)) {
         auto& __v = *std::get<Bag*>(v);
-        std::cout << __v[1] << "\n";
+        std::cout << __v[1] << "\n" << ::tpy::check_signals;
         ::tpy::__setitem__(__v.xs, 1, ::tpy::BigInt(99));
-        std::cout << __v[1] << "\n";
+        std::cout << __v[1] << "\n" << ::tpy::check_signals;
     }
 }
 

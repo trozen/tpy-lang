@@ -25,17 +25,17 @@ namespace tpyapp::main {
 void test_builder() {
     Builder b = Builder("start", 0);
     b.set_name("hello").set_value(42);
-    std::cout << b.name << "\n";
-    std::cout << b.value << "\n";
+    std::cout << b.name << "\n" << ::tpy::check_signals;
+    std::cout << b.value << "\n" << ::tpy::check_signals;
     Builder b2 = Builder("other", 10);
-    std::cout << b.with_offset(b2) << "\n";
+    std::cout << b.with_offset(b2) << "\n" << ::tpy::check_signals;
     Builder* result = b.find_match(42);
     if ((result != nullptr)) {
-        std::cout << result->name << "\n";
+        std::cout << result->name << "\n" << ::tpy::check_signals;
     }
     Builder* result2 = b.find_match(99);
     if ((result2 == nullptr)) {
-        std::cout << "not found" << "\n";
+        std::cout << "not found" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -48,8 +48,8 @@ void test_builder() {
 void test_generic() {
     Stack<int32_t> s = Stack<int32_t>("my_stack");
     s.push(10).push(20).push(30);
-    std::cout << ::tpy::__len__(s.items) << "\n";
-    std::cout << s.describe() << "\n";
+    std::cout << ::tpy::__len__(s.items) << "\n" << ::tpy::check_signals;
+    std::cout << s.describe() << "\n" << ::tpy::check_signals;
 }
 
 // test_builder()

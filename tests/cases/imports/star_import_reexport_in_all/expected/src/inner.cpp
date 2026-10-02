@@ -7,7 +7,7 @@ namespace tpyapp::inner {
 // def shared_helper() -> None:
 //     print("hi from inner")
 void shared_helper() {
-    std::cout << "hi from inner" << "\n";
+    std::cout << "hi from inner" << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init() {

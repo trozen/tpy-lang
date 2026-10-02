@@ -48,25 +48,25 @@ void main() {
     T* p1 = std::get<0>(__tup_1);
     T* p2 = std::get<1>(__tup_1);
     if ((p1 != nullptr)) {
-        std::cout << p1->x << "\n";
+        std::cout << p1->x << "\n" << ::tpy::check_signals;
     }
     if ((p2 != nullptr)) {
-        std::cout << p2->x << "\n";
+        std::cout << p2->x << "\n" << ::tpy::check_signals;
     }
     auto __tup_2 = ::tpyapp::main::first_only(a);
     T* p3 = std::get<0>(__tup_2);
     T* p4 = std::get<1>(__tup_2);
     if ((p3 != nullptr)) {
-        std::cout << p3->x << "\n";
+        std::cout << p3->x << "\n" << ::tpy::check_signals;
     }
     if ((p4 == nullptr)) {
-        std::cout << "p4 is None" << "\n";
+        std::cout << "p4 is None" << "\n" << ::tpy::check_signals;
     }
     auto __tup_3 = ::tpyapp::main::neither();
     T* p5 = std::get<0>(__tup_3);
     T* p6 = std::get<1>(__tup_3);
     if (((p5 == nullptr) && (p6 == nullptr))) {
-        std::cout << "both None" << "\n";
+        std::cout << "both None" << "\n" << ::tpy::check_signals;
     }
 }
 

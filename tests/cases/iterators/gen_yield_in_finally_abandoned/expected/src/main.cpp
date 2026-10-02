@@ -26,7 +26,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         }
     }
     case S_RESUME_2: {  // after: yield 99  # tpyc: warning(/'yield' inside 'finally'/)
-        std::cout << "post" << "\n";
+        std::cout << "post" << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
     }
@@ -41,7 +41,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_RESUME_1:  // after: yield 2
     case S_JOIN_1: {
-        std::cout << "pre" << "\n";
+        std::cout << "pre" << "\n" << ::tpy::check_signals;
         __state = S_RESUME_2;
         return ::tpy::BigInt(99);
     }
@@ -76,11 +76,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
             break;
         }
     }
-    std::cout << "after" << "\n";
+    std::cout << "after" << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -16,10 +16,10 @@ void connect(const Config& kwargs) {
     std::string host = kwargs.host.value_or(std::string("localhost"));
     int32_t port = kwargs.port.value_or(3000);
     if (kwargs.verbose.has_value()) {
-        std::cout << "verbose mode" << "\n";
+        std::cout << "verbose mode" << "\n" << ::tpy::check_signals;
     }
-    std::cout << host << "\n";
-    std::cout << port << "\n";
+    std::cout << host << "\n" << ::tpy::check_signals;
+    std::cout << port << "\n" << ::tpy::check_signals;
 }
 
 // def show_config(**kwargs: Unpack[Config]) -> None:
@@ -35,12 +35,12 @@ void connect(const Config& kwargs) {
 void show_config(const Config& kwargs) {
     std::optional<std::string> h = kwargs.host;
     if ((h.has_value())) {
-        std::cout << ::tpy::print_optional_val(h) << "\n";
+        std::cout << ::tpy::print_optional_val(h) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "no host" << "\n";
+        std::cout << "no host" << "\n" << ::tpy::check_signals;
     }
     if ((!kwargs.port.has_value())) {
-        std::cout << "no port" << "\n";
+        std::cout << "no port" << "\n" << ::tpy::check_signals;
     }
 }
 

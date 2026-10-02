@@ -49,7 +49,7 @@ namespace tpyapp::main {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         reply = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << (::tpy::str_concat("client got: ", ::tpy::bytes_decode(reply))) << "\n";
+        std::cout << (::tpy::str_concat("client got: ", ::tpy::bytes_decode(reply))) << "\n" << ::tpy::check_signals;
         (*s).close();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -136,7 +136,7 @@ __coro_echo_client echo_client(int32_t port) {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r3).value();
         __sub_3 = nullptr;
-        std::cout << "server done" << "\n";
+        std::cout << "server done" << "\n" << ::tpy::check_signals;
         (*listener).close();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});

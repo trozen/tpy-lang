@@ -40,7 +40,7 @@ void match_arms(int32_t k, int64_t big) {
         break;
     }
     }
-    std::cout << "match_arms" << " " << y << "\n";
+    std::cout << "match_arms" << " " << y << "\n" << ::tpy::check_signals;
 }
 
 // # try body + two handlers (C++ try/catch tier)
@@ -65,7 +65,7 @@ void try_handlers(std::string_view s, int64_t big) {
             n = 0;
         }
     }
-    std::cout << "try_handlers" << " " << n << "\n";
+    std::cout << "try_handlers" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // # try body + handler over an @error_return call (return tier)
@@ -90,7 +90,7 @@ void try_error_return(std::string_view s, int64_t big) {
         d = 3;
         __after_try_1:;
     }
-    std::cout << "try_error_return" << " " << d << "\n";
+    std::cout << "try_error_return" << " " << d << "\n" << ::tpy::check_signals;
 }
 
 // # None-seeded local bound in both if arms joins to one Optional slot
@@ -110,7 +110,7 @@ void none_if(bool c) {
         x = 4;
     }
     if ((x.has_value())) {
-        std::cout << "none_if" << " " << (::tpy::add_check<int32_t>((*x), 1)) << "\n";
+        std::cout << "none_if" << " " << (::tpy::add_check<int32_t>((*x), 1)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -129,7 +129,7 @@ void widen_existing(bool c, int64_t big) {
     } else {
         y = 4;
     }
-    std::cout << "widen_existing" << " " << y << "\n";
+    std::cout << "widen_existing" << " " << y << "\n" << ::tpy::check_signals;
 }
 
 // # pattern captures bound at different types per arm keep per-arm storage
@@ -145,13 +145,13 @@ void capture_types(::tpy::Union<const Cat*, const Dog*> a) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         auto v = __case_0.lives;
-        std::cout << "capture_types" << " " << (::tpy::add_check<int32_t>(v, 1)) << "\n";
+        std::cout << "capture_types" << " " << (::tpy::add_check<int32_t>(v, 1)) << "\n" << ::tpy::check_signals;
         break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         auto& v = __case_1.nick;
-        std::cout << "capture_types" << " " << (::tpy::str_concat(v, "!")) << "\n";
+        std::cout << "capture_types" << " " << (::tpy::str_concat(v, "!")) << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -172,7 +172,7 @@ void capture_or_stmt(::tpy::Union<const Cat*, const Dog*> a) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         v = __case_0.lives;
-        std::cout << "capture_or_stmt cat" << " " << v << "\n";
+        std::cout << "capture_or_stmt cat" << " " << v << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
@@ -180,7 +180,7 @@ void capture_or_stmt(::tpy::Union<const Cat*, const Dog*> a) {
         break;
     }
     }
-    std::cout << "capture_or_stmt" << " " << v << "\n";
+    std::cout << "capture_or_stmt" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 
@@ -273,9 +273,9 @@ void match_hoist_opt(int32_t k, int32_t n) {
     }
     }
     if ((!v.has_value())) {
-        std::cout << "match_hoist_opt none" << "\n";
+        std::cout << "match_hoist_opt none" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "match_hoist_opt" << " " << (::tpy::add_check<int32_t>((*v), 1)) << "\n";
+        std::cout << "match_hoist_opt" << " " << (::tpy::add_check<int32_t>((*v), 1)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -304,9 +304,9 @@ void match_hoist_none_first(int32_t k, int32_t n) {
     }
     }
     if ((v.has_value())) {
-        std::cout << "match_hoist_none_first" << " " << (::tpy::add_check<int32_t>((*v), 1)) << "\n";
+        std::cout << "match_hoist_none_first" << " " << (::tpy::add_check<int32_t>((*v), 1)) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "match_hoist_none_first none" << "\n";
+        std::cout << "match_hoist_none_first none" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -332,9 +332,9 @@ void try_hoist_opt(std::string_view s, int32_t n) {
         }
     }
     if ((!v.has_value())) {
-        std::cout << "try_hoist_opt none" << "\n";
+        std::cout << "try_hoist_opt none" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "try_hoist_opt" << " " << ::tpy::print_optional_val(v) << "\n";
+        std::cout << "try_hoist_opt" << " " << ::tpy::print_optional_val(v) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -376,7 +376,7 @@ void match_nested(int32_t k) {
     switch (__match_subject_1) {
     case 2: {
         std::string_view r = "two";
-        std::cout << "match_nested" << " " << r << "\n";
+        std::cout << "match_nested" << " " << r << "\n" << ::tpy::check_signals;
         return;
     }
     default: {
@@ -386,7 +386,7 @@ void match_nested(int32_t k) {
         } else {
             r = "other";
         }
-        std::cout << "match_nested" << " " << r << "\n";
+        std::cout << "match_nested" << " " << r << "\n" << ::tpy::check_signals;
         return;
     }
     }
@@ -409,7 +409,7 @@ void match_nested(int32_t k) {
 void if_nested(int32_t k) {
     if ((k == 2)) {
         std::string_view r = "two";
-        std::cout << "if_nested" << " " << r << "\n";
+        std::cout << "if_nested" << " " << r << "\n" << ::tpy::check_signals;
         return;
     } else {
         std::string_view r;
@@ -418,7 +418,7 @@ void if_nested(int32_t k) {
         } else {
             r = "other";
         }
-        std::cout << "if_nested" << " " << r << "\n";
+        std::cout << "if_nested" << " " << r << "\n" << ::tpy::check_signals;
         return;
     }
 }
@@ -445,10 +445,10 @@ void try_nested(std::string_view s, int32_t k) {
         try {
             ::tpy::BigInt n = ::tpy::BigInt::from_str(s);
             n = (n) + (::tpy::BigInt(::tpy::__getitem__(table, s)));
-            std::cout << "try_nested" << " " << n << "\n";
+            std::cout << "try_nested" << " " << n << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::KeyError&) {
             std::string_view r = "key";
-            std::cout << "try_nested" << " " << r << "\n";
+            std::cout << "try_nested" << " " << r << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
             std::string_view r;
             if ((k == 3)) {
@@ -456,7 +456,7 @@ void try_nested(std::string_view s, int32_t k) {
             } else {
                 r = "other";
             }
-            std::cout << "try_nested" << " " << r << "\n";
+            std::cout << "try_nested" << " " << r << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -520,7 +520,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int64_t g = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen_arms" << " " << g << "\n";
+            std::cout << "gen_arms" << " " << g << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -530,18 +530,18 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int64_t g = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "gen_arms" << " " << g << "\n";
+            std::cout << "gen_arms" << " " << g << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "async_arms" << " " << ::tpystd::asyncio::run<int64_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int64_t>>(::tpyapp::main::async_arms(1, static_cast<int64_t>(10000000000)))) << "\n";
-    std::cout << "async_arms" << " " << ::tpystd::asyncio::run<int64_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int64_t>>(::tpyapp::main::async_arms(2, static_cast<int64_t>(10000000000)))) << "\n";
+    std::cout << "async_arms" << " " << ::tpystd::asyncio::run<int64_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int64_t>>(::tpyapp::main::async_arms(1, static_cast<int64_t>(10000000000)))) << "\n" << ::tpy::check_signals;
+    std::cout << "async_arms" << " " << ::tpystd::asyncio::run<int64_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int64_t>>(::tpyapp::main::async_arms(2, static_cast<int64_t>(10000000000)))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::match_hoist_opt(1, 5);
     ::tpyapp::main::match_hoist_opt(2, 5);
     ::tpyapp::main::match_hoist_none_first(1, 5);
     ::tpyapp::main::match_hoist_none_first(2, 5);
     ::tpyapp::main::try_hoist_opt("4", 5);
     ::tpyapp::main::try_hoist_opt("x", 5);
-    std::cout << "match_bigint" << " " << ::tpyapp::main::match_bigint(::tpy::BigInt(1)) << " " << ::tpyapp::main::match_bigint(((::tpy::BigInt(10)).pow(::tpy::BigInt(20)))) << "\n";
+    std::cout << "match_bigint" << " " << ::tpyapp::main::match_bigint(::tpy::BigInt(1)) << " " << ::tpyapp::main::match_bigint(((::tpy::BigInt(10)).pow(::tpy::BigInt(20)))) << "\n" << ::tpy::check_signals;
     for (int32_t k = 2; k < 5; ++k) {
         ::tpyapp::main::match_nested(k);
         ::tpyapp::main::if_nested(k);
@@ -589,7 +589,7 @@ void __tpy_init() {
     } else {
         mod_if = 3;
     }
-    std::cout << "module_if" << " " << mod_if << "\n";
+    std::cout << "module_if" << " " << mod_if << "\n" << ::tpy::check_signals;
     int64_t mod_try;
     {
         try {
@@ -599,7 +599,7 @@ void __tpy_init() {
             mod_try = 3;
         }
     }
-    std::cout << "module_try" << " " << mod_try << "\n";
+    std::cout << "module_try" << " " << mod_try << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(y)
 void test_literal_infers_str() {
     std::string x = ::tpyapp::main::identity<std::string>("hello");
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     std::string y = ::tpyapp::main::first<std::string>("hello", "world");
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_explicit_str() -> None:
@@ -21,7 +21,7 @@ void test_literal_infers_str() {
 //     print(x)
 void test_explicit_str() {
     std::string x = ::tpyapp::main::identity<std::string>("hello");
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_explicit_strview() -> None:
@@ -29,7 +29,7 @@ void test_explicit_str() {
 //     print(x)
 void test_explicit_strview() {
     std::string_view x = ::tpyapp::main::identity<std::string_view>("hello");
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def make_str() -> str:
@@ -43,7 +43,7 @@ std::string make_str() {
 //     print(x)
 void test_non_literal_str() {
     std::string x = ::tpyapp::main::first<std::string>(::tpyapp::main::make_str(), ::tpyapp::main::make_str());
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // test_literal_infers_str()

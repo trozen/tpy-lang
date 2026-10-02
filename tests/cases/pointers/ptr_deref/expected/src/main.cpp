@@ -16,11 +16,11 @@ namespace tpyapp::main {
 void main() {
     int32_t x = 42;
     int32_t* p = &x;
-    std::cout << ::tpy::deref_check(p) << "\n";
+    std::cout << ::tpy::deref_check(p) << "\n" << ::tpy::check_signals;
     Point pt = Point(10, 20);
     Point* pp = &pt;
-    std::cout << ::tpy::deref_check(pp).x << "\n";
-    std::cout << ::tpy::deref_check(pp).y << "\n";
+    std::cout << ::tpy::deref_check(pp).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::deref_check(pp).y << "\n" << ::tpy::check_signals;
 }
 
 // main()

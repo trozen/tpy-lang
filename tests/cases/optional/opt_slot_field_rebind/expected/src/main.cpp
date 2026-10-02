@@ -51,10 +51,10 @@ std::string branch_rebound(int32_t x) {
 //     print("none arm:", Driver(0).run(), Driver(3).run())
 //     print("branch:", branch_rebound(0), branch_rebound(1), branch_rebound(3))
 void main() {
-    std::cout << "empty:" << " " << ::tpyapp::main::rebound(0) << "\n";
-    std::cout << "non-empty:" << " " << ::tpyapp::main::rebound(3) << "\n";
-    std::cout << "none arm:" << " " << Driver(0).run() << " " << Driver(3).run() << "\n";
-    std::cout << "branch:" << " " << ::tpyapp::main::branch_rebound(0) << " " << ::tpyapp::main::branch_rebound(1) << " " << ::tpyapp::main::branch_rebound(3) << "\n";
+    std::cout << "empty:" << " " << ::tpyapp::main::rebound(0) << "\n" << ::tpy::check_signals;
+    std::cout << "non-empty:" << " " << ::tpyapp::main::rebound(3) << "\n" << ::tpy::check_signals;
+    std::cout << "none arm:" << " " << Driver(0).run() << " " << Driver(3).run() << "\n" << ::tpy::check_signals;
+    std::cout << "branch:" << " " << ::tpyapp::main::branch_rebound(0) << " " << ::tpyapp::main::branch_rebound(1) << " " << ::tpyapp::main::branch_rebound(3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

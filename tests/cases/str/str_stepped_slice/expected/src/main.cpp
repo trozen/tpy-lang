@@ -24,11 +24,11 @@ namespace tpyapp::main {
 //     print(repr(s[-100::-1]))
 void main() {
     std::string_view s = "hello world";
-    std::cout << ::tpy::str_stepped_slice(s, ::tpy::Slice{std::nullopt, std::nullopt, 2}) << "\n";
-    std::cout << ::tpy::str_stepped_slice(s, ::tpy::Slice{std::nullopt, std::nullopt, -1}) << "\n";
-    std::cout << ::tpy::str_stepped_slice(s, ::tpy::Slice{4, 0, -1}) << "\n";
-    std::cout << ::tpy::str_stepped_slice(s, ::tpy::Slice{1, std::nullopt, 3}) << "\n";
-    std::cout << ::tpy::repr_of(::tpy::str_stepped_slice(s, ::tpy::Slice{-100, std::nullopt, -1})) << "\n";
+    std::cout << ::tpy::str_stepped_slice(s, ::tpy::Slice{std::nullopt, std::nullopt, 2}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_stepped_slice(s, ::tpy::Slice{std::nullopt, std::nullopt, -1}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_stepped_slice(s, ::tpy::Slice{4, 0, -1}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_stepped_slice(s, ::tpy::Slice{1, std::nullopt, 3}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(::tpy::str_stepped_slice(s, ::tpy::Slice{-100, std::nullopt, -1})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

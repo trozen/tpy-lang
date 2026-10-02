@@ -24,19 +24,19 @@ namespace tpyapp::main {
 //     print(realpath(".") == realpath(os.getcwd()))   # True
 //     print(realpath("rel_zzz").endswith("/rel_zzz"))  # True (absolutized)
 void main() {
-    std::cout << ::tpystd::os::path::relpath("/a/b/c", "/a/b") << "\n";
-    std::cout << ::tpystd::os::path::relpath("/a/b/c", "/a/x/y") << "\n";
-    std::cout << ::tpystd::os::path::relpath("/a/b", "/a/b") << "\n";
-    std::cout << ::tpystd::os::path::relpath("a/b", "a") << "\n";
-    std::cout << ::tpystd::os::path::relpath("/x", "/") << "\n";
-    std::cout << ::tpystd::os::path::relpath("/a/b/c/d", "/a") << "\n";
-    std::cout << ::tpy::stdlib::os::path_realpath("/nope_xyz/a/../b") << "\n";
-    std::cout << ::tpy::stdlib::os::path_realpath("/x_zzz/./y/../z") << "\n";
-    std::cout << ::tpy::stdlib::os::path_realpath("/") << "\n";
-    std::cout << ::tpy::stdlib::os::path_realpath("//") << "\n";
-    std::cout << ::tpy::print_bool((::tpy::stdlib::os::path_realpath("") == ::tpy::stdlib::os::path_realpath(::tpy::stdlib::os::getcwd()))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::stdlib::os::path_realpath(".") == ::tpy::stdlib::os::path_realpath(::tpy::stdlib::os::getcwd()))) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::str_endswith(::tpy::stdlib::os::path_realpath("rel_zzz"), "/rel_zzz")) << "\n";
+    std::cout << ::tpystd::os::path::relpath("/a/b/c", "/a/b") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::path::relpath("/a/b/c", "/a/x/y") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::path::relpath("/a/b", "/a/b") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::path::relpath("a/b", "a") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::path::relpath("/x", "/") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::path::relpath("/a/b/c/d", "/a") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::stdlib::os::path_realpath("/nope_xyz/a/../b") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::stdlib::os::path_realpath("/x_zzz/./y/../z") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::stdlib::os::path_realpath("/") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::stdlib::os::path_realpath("//") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::stdlib::os::path_realpath("") == ::tpy::stdlib::os::path_realpath(::tpy::stdlib::os::getcwd()))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::stdlib::os::path_realpath(".") == ::tpy::stdlib::os::path_realpath(::tpy::stdlib::os::getcwd()))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::str_endswith(::tpy::stdlib::os::path_realpath("rel_zzz"), "/rel_zzz")) << "\n" << ::tpy::check_signals;
 }
 
 // # os.path.relpath + realpath. relpath output is machine-independent (both sides

@@ -435,7 +435,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << std::format("method: {}", v) << "\n";
+            std::cout << std::format("method: {}", v) << "\n" << ::tpy::check_signals;
         }
     }
     auto __tmp_12 = ::tpyapp::main::gen_walrus();
@@ -449,25 +449,25 @@ void main() {
     Cell c = Cell(::tpy::BigInt(1));
     auto __tmp_16 = ::tpyapp::main::gen_record(c);
     ::tpyapp::main::show("record", __tmp_16);
-    std::cout << std::format("record: caller sees {}", (c.v).to_string()) << "\n";
+    std::cout << std::format("record: caller sees {}", (c.v).to_string()) << "\n" << ::tpy::check_signals;
     auto __tmp_17 = ::tpyapp::main::gen_own_list();
     ::tpyapp::main::show("own_list", __tmp_17);
     Cell cw = Cell(::tpy::BigInt(1));
     auto __tmp_18 = ::tpyapp::main::gen_record_with(cw);
     ::tpyapp::main::show("record_with", __tmp_18);
-    std::cout << std::format("record_with: caller sees {}", (cw.v).to_string()) << "\n";
+    std::cout << std::format("record_with: caller sees {}", (cw.v).to_string()) << "\n" << ::tpy::check_signals;
     Cell ct = Cell(::tpy::BigInt(1));
     auto __tmp_19 = ::tpyapp::main::gen_record_try(ct);
     ::tpyapp::main::show("record_try", __tmp_19);
-    std::cout << std::format("record_try: caller sees {}", (ct.v).to_string()) << "\n";
+    std::cout << std::format("record_try: caller sees {}", (ct.v).to_string()) << "\n" << ::tpy::check_signals;
     Cell ci = Cell(::tpy::BigInt(1));
     auto __tmp_20 = ::tpyapp::main::gen_record_if(ci);
     ::tpyapp::main::show("record_if", __tmp_20);
-    std::cout << std::format("record_if: caller sees {}", (ci.v).to_string()) << "\n";
+    std::cout << std::format("record_if: caller sees {}", (ci.v).to_string()) << "\n" << ::tpy::check_signals;
     Cell cm = Cell(::tpy::BigInt(1));
     auto __tmp_21 = ::tpyapp::main::gen_record_match(cm, 1);
     ::tpyapp::main::show("record_match", __tmp_21);
-    std::cout << std::format("record_match: caller sees {}", (cm.v).to_string()) << "\n";
+    std::cout << std::format("record_match: caller sees {}", (cm.v).to_string()) << "\n" << ::tpy::check_signals;
     auto __tmp_22 = ::tpyapp::main::gen_own_record_try();
     ::tpyapp::main::show("own_record_try", __tmp_22);
     auto __tmp_23 = ::tpyapp::main::gen_own_record_if();

@@ -25,7 +25,7 @@ void __tpy_init() {
     x = ::tpy::BigInt(0);
     ::tpyapp::main::increment();
     ::tpyapp::main::increment();
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

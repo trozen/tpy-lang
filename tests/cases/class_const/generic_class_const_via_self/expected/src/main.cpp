@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(b.at_limit(8))
 void main() {
     Bounded<int32_t> b = Bounded<int32_t>();
-    std::cout << ::tpy::print_bool(b.at_limit(5)) << "\n";
-    std::cout << ::tpy::print_bool(b.at_limit(7)) << "\n";
-    std::cout << ::tpy::print_bool(b.at_limit(8)) << "\n";
+    std::cout << ::tpy::print_bool(b.at_limit(5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(b.at_limit(7)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(b.at_limit(8)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

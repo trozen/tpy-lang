@@ -13,8 +13,8 @@ void test_basic() {
         int16_t __rep_0 = 0;
         ::tpy::array_from_index<int16_t, 5>([&](std::size_t) -> int16_t { return __rep_0; });
     });
-    std::cout << ::tpy::__len__(buf) << "\n";
-    std::cout << ::tpy::__getitem__(buf, 0) << " " << ::tpy::__getitem__(buf, 4) << "\n";
+    std::cout << ::tpy::__len__(buf) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(buf, 0) << " " << ::tpy::__getitem__(buf, 4) << "\n" << ::tpy::check_signals;
 }
 
 // def test_nonzero() -> None:
@@ -25,7 +25,7 @@ void test_nonzero() {
         int32_t __rep_0 = 42;
         ::tpy::array_from_index<int32_t, 4>([&](std::size_t) -> int32_t { return __rep_0; });
     });
-    std::cout << ::tpy::__getitem__(arr, 0) << " " << ::tpy::__getitem__(arr, 1) << " " << ::tpy::__getitem__(arr, 2) << " " << ::tpy::__getitem__(arr, 3) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 0) << " " << ::tpy::__getitem__(arr, 1) << " " << ::tpy::__getitem__(arr, 2) << " " << ::tpy::__getitem__(arr, 3) << "\n" << ::tpy::check_signals;
 }
 
 // def test_multi_element() -> None:
@@ -36,7 +36,7 @@ void test_multi_element() {
         std::array<int32_t, 3> __rep_0{1, 2, 3};
         ::tpy::array_from_index<int32_t, 6>([&](std::size_t __i_0) -> int32_t { return __rep_0[__i_0 % 3]; });
     });
-    std::cout << ::tpy::__getitem__(arr, 0) << " " << ::tpy::__getitem__(arr, 1) << " " << ::tpy::__getitem__(arr, 2) << " " << ::tpy::__getitem__(arr, 3) << " " << ::tpy::__getitem__(arr, 4) << " " << ::tpy::__getitem__(arr, 5) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 0) << " " << ::tpy::__getitem__(arr, 1) << " " << ::tpy::__getitem__(arr, 2) << " " << ::tpy::__getitem__(arr, 3) << " " << ::tpy::__getitem__(arr, 4) << " " << ::tpy::__getitem__(arr, 5) << "\n" << ::tpy::check_signals;
 }
 
 // test_basic()

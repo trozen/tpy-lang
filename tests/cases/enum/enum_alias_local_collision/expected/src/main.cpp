@@ -60,10 +60,10 @@ Color local_roundtrip(Color c) {
 void main() {
     Color local = Color::BLUE;
     ::tpyapp::colors::Color foreign = ::tpyapp::colors::Color::RED;
-    std::cout << ::tpy::EnumUtil<Color>::name(local) << " " << static_cast<int32_t>(local) << "\n";
-    std::cout << ::tpy::EnumUtil<::tpyapp::colors::Color>::name(foreign) << " " << static_cast<int32_t>(foreign) << "\n";
-    std::cout << ::tpy::EnumUtil<Color>::name(::tpyapp::main::local_roundtrip(Color::BLUE)) << " " << static_cast<int32_t>(::tpyapp::main::local_roundtrip(Color::BLUE)) << "\n";
-    std::cout << ::tpy::EnumUtil<::tpyapp::colors::Color>::name(::tpyapp::main::foreign_roundtrip(::tpyapp::colors::Color::GREEN)) << " " << static_cast<int32_t>(::tpyapp::main::foreign_roundtrip(::tpyapp::colors::Color::GREEN)) << "\n";
+    std::cout << ::tpy::EnumUtil<Color>::name(local) << " " << static_cast<int32_t>(local) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<::tpyapp::colors::Color>::name(foreign) << " " << static_cast<int32_t>(foreign) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<Color>::name(::tpyapp::main::local_roundtrip(Color::BLUE)) << " " << static_cast<int32_t>(::tpyapp::main::local_roundtrip(Color::BLUE)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<::tpyapp::colors::Color>::name(::tpyapp::main::foreign_roundtrip(::tpyapp::colors::Color::GREEN)) << " " << static_cast<int32_t>(::tpyapp::main::foreign_roundtrip(::tpyapp::colors::Color::GREEN)) << "\n" << ::tpy::check_signals;
 }
 
 // # An aliased-imported enum must not be confused with an unrelated LOCAL

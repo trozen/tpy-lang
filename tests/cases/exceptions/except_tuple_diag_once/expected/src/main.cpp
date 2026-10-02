@@ -29,14 +29,14 @@ void caught(const ::tpy::BigInt& which, const Plain& p) {
             ::tpyapp::main::boom(which);
         } catch (const AErr&) {
             if (false) {
-                std::cout << "unreachable" << "\n";
+                std::cout << "unreachable" << "\n" << ::tpy::check_signals;
             }
-            std::cout << "caught" << " " << which << "\n";
+            std::cout << "caught" << " " << which << "\n" << ::tpy::check_signals;
         } catch (const BErr&) {
             if (false) {
-                std::cout << "unreachable" << "\n";
+                std::cout << "unreachable" << "\n" << ::tpy::check_signals;
             }
-            std::cout << "caught" << " " << which << "\n";
+            std::cout << "caught" << " " << which << "\n" << ::tpy::check_signals;
         }
     }
 }

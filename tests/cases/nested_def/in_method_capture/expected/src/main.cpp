@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     Acc a = Acc();
     a.collect(5);
-    std::cout << a.total << "\n";
-    std::cout << a.count << "\n";
+    std::cout << a.total << "\n" << ::tpy::check_signals;
+    std::cout << a.count << "\n" << ::tpy::check_signals;
 }
 
 // main()

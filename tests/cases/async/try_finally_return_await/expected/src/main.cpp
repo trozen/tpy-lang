@@ -73,7 +73,7 @@ __coro_sub sub() {
 }
 
 void __coro_main_coro::__finally_0() {
-    std::cout << "finally-ran" << "\n";
+    std::cout << "finally-ran" << "\n" << ::tpy::check_signals;
 }
 
 // async def main_coro() -> int32:

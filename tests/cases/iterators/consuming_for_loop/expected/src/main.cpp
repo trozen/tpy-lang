@@ -22,7 +22,7 @@ void test_own_iter_explicit() {
         auto&& x = *__beg_0;
         total = ::tpy::add_check<int32_t>(total, x.val);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def test_own_iter_value_type() -> None:
@@ -41,7 +41,7 @@ void test_own_iter_value_type() {
         auto&& x = *__beg_0;
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def test_borrowing_default() -> None:
@@ -61,8 +61,8 @@ void test_borrowing_default() {
         const auto& x = *__beg_0;
         total = ::tpy::add_check<int32_t>(total, x.val);
     }
-    std::cout << total << "\n";
-    std::cout << ::tpy::__len__(src) << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(src) << "\n" << ::tpy::check_signals;
 }
 
 // def test_value_type_borrowing() -> None:
@@ -81,7 +81,7 @@ void test_value_type_borrowing() {
         int32_t x = *__beg_0;
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // test_own_iter_explicit()

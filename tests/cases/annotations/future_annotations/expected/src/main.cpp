@@ -18,10 +18,10 @@ int32_t first(const std::vector<int32_t>& items) {
 void take(::tpy::Union<const Apple*, const Banana*> f) {
     if (std::holds_alternative<const Apple*>(f)) {
         auto& __f = *std::get<const Apple*>(f);
-        std::cout << "apple" << "\n";
+        std::cout << "apple" << "\n" << ::tpy::check_signals;
     } else {
         auto& __f = *std::get<const Banana*>(f);
-        std::cout << "banana" << "\n";
+        std::cout << "banana" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -31,7 +31,7 @@ void take(::tpy::Union<const Apple*, const Banana*> f) {
 //     take(Banana())
 void main() {
     std::vector<int32_t> __tmp_1 = {11, 12, 13};
-    std::cout << ::tpyapp::main::first(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::first(__tmp_1) << "\n" << ::tpy::check_signals;
     Apple __tmp_2 = Apple();
     ::tpyapp::main::take(::tpy::Union<const Apple*, const Banana*>{&__tmp_2});
     Banana __tmp_3 = Banana();

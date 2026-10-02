@@ -4,7 +4,44 @@
 namespace tpyapp::main {
 
 
+// # An exception raised by the sink's write() or flush() propagates out of the
+// # print, as in CPython (the adapter does not fold it into the stream state).
+// def raising_sink() -> None:
+//     c = Closed()
+//     try:
+//         print("x", file=c)  # tpyc: ok
+//         print("raise: not reached")
+//     except ValueError as e:
+//         print("raise: write " + str(e))
+//     n = NoFlush()
+//     try:
+//         print("y", file=n, flush=True)  # tpyc: ok -- the flush() raises
+//         print("raise: not reached")
+//     except ValueError as e:
+//         print("raise: flush " + str(e))
+void raising_sink() {
+    Closed c = Closed();
+    {
+        try {
+            ::tpy::as_ostream(c) << "x" << "\n" << ::tpy::check_signals;
+            std::cout << "raise: not reached" << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << (::tpy::str_concat("raise: write ", std::string(::tpy::__str__(e)))) << "\n" << ::tpy::check_signals;
+        }
+    }
+    NoFlush n = NoFlush();
+    {
+        try {
+            ::tpy::as_ostream(n) << "y" << "\n" << std::flush << ::tpy::check_signals;
+            std::cout << "raise: not reached" << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << (::tpy::str_concat("raise: flush ", std::string(::tpy::__str__(e)))) << "\n" << ::tpy::check_signals;
+        }
+    }
+}
+
 // def main() -> None:
+//     raising_sink()
 //     s = Sink()
 //     print("hello", "world", 1, file=s)
 //     print("sep test", "x", file=s, sep="::", end="$\n")
@@ -21,20 +58,21 @@ namespace tpyapp::main {
 //     for p in s.parts:
 //         print("  len=", len(p), sep="")
 void main() {
+    ::tpyapp::main::raising_sink();
     Sink s = Sink();
-    ::tpy::as_ostream(s) << "hello" << " " << "world" << " " << 1 << "\n";
-    ::tpy::as_ostream(s) << "sep test" << "::" << "x" << "$\n";
+    ::tpy::as_ostream(s) << "hello" << " " << "world" << " " << 1 << "\n" << ::tpy::check_signals;
+    ::tpy::as_ostream(s) << "sep test" << "::" << "x" << "$\n" << ::tpy::check_signals;
     std::string_view sep = "|";
     std::string_view end = "?\n";
-    ::tpy::as_ostream(s) << "a" << sep << "b" << sep << "c" << end;
-    ::tpy::as_ostream(s) << "\n";
-    std::cout << "captured" << " " << ::tpy::__len__(s.parts) << " " << "pieces:" << "\n";
+    ::tpy::as_ostream(s) << "a" << sep << "b" << sep << "c" << end << ::tpy::check_signals;
+    ::tpy::as_ostream(s) << "\n" << ::tpy::check_signals;
+    std::cout << "captured" << " " << ::tpy::__len__(s.parts) << " " << "pieces:" << "\n" << ::tpy::check_signals;
     auto& __obj_0 = s.parts;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view p = *__beg_0;
-        std::cout << "  len=" << ::tpy::__len__(p) << "\n";
+        std::cout << "  len=" << ::tpy::__len__(p) << "\n" << ::tpy::check_signals;
     }
 }
 

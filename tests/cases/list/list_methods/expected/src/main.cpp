@@ -14,10 +14,10 @@ namespace tpyapp::main {
 void print_list(const std::vector<int32_t>& nums) {
     int32_t i = 0;
     while ((i < ::tpy::__len__(nums))) {
-        std::cout << nums[static_cast<std::size_t>(i)] << "\n";
+        std::cout << nums[static_cast<std::size_t>(i)] << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
 }
 
 // def test_pop() -> None:
@@ -37,11 +37,11 @@ void print_list(const std::vector<int32_t>& nums) {
 void test_pop() {
     std::vector<int32_t> nums = {10, 20, 30, 40};
     int32_t last = ::tpy::pop_back(nums);
-    std::cout << last << "\n";
-    std::cout << ::tpy::__len__(nums) << "\n";
+    std::cout << last << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(nums) << "\n" << ::tpy::check_signals;
     int32_t second_last = ::tpy::pop_back(nums);
-    std::cout << second_last << "\n";
-    std::cout << ::tpy::__len__(nums) << "\n";
+    std::cout << second_last << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(nums) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::print_list(nums);
 }
 
@@ -106,12 +106,12 @@ void test_remove() {
 //     print(nums[0])
 void test_clear() {
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
-    std::cout << ::tpy::__len__(nums) << "\n";
+    std::cout << ::tpy::__len__(nums) << "\n" << ::tpy::check_signals;
     nums.clear();
-    std::cout << ::tpy::__len__(nums) << "\n";
+    std::cout << ::tpy::__len__(nums) << "\n" << ::tpy::check_signals;
     nums.push_back(100);
-    std::cout << ::tpy::__len__(nums) << "\n";
-    std::cout << ::tpy::__getitem__(nums, 0) << "\n";
+    std::cout << ::tpy::__len__(nums) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(nums, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def test_extend() -> None:
@@ -176,10 +176,10 @@ void test_combined_operations() {
     ::tpy::list_remove(nums, 10);
     ::tpyapp::main::print_list(nums);
     int32_t popped = ::tpy::pop_back(nums);
-    std::cout << popped << "\n";
+    std::cout << popped << "\n" << ::tpy::check_signals;
     ::tpyapp::main::print_list(nums);
     nums.clear();
-    std::cout << ::tpy::__len__(nums) << "\n";
+    std::cout << ::tpy::__len__(nums) << "\n" << ::tpy::check_signals;
 }
 
 // # Run all tests
@@ -200,17 +200,17 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << "=== pop ===" << "\n";
+    std::cout << "=== pop ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_pop();
-    std::cout << "=== insert ===" << "\n";
+    std::cout << "=== insert ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_insert();
-    std::cout << "=== remove ===" << "\n";
+    std::cout << "=== remove ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_remove();
-    std::cout << "=== clear ===" << "\n";
+    std::cout << "=== clear ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_clear();
-    std::cout << "=== extend ===" << "\n";
+    std::cout << "=== extend ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_extend();
-    std::cout << "=== combined ===" << "\n";
+    std::cout << "=== combined ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_combined_operations();
 }
 

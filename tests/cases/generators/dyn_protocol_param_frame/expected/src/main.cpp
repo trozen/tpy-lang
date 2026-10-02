@@ -96,10 +96,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "free" << " " << n << "\n";
+            std::cout << "free" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "free after" << " " << free_src.get() << "\n";
+    std::cout << "free after" << " " << free_src.get() << "\n" << ::tpy::check_signals;
     Impl meth_src = Impl(20);
     Holder holder = Holder(1);
     {
@@ -110,10 +110,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "method" << " " << n << "\n";
+            std::cout << "method" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "method after" << " " << meth_src.get() << "\n";
+    std::cout << "method after" << " " << meth_src.get() << "\n" << ::tpy::check_signals;
     Impl ro_src = Impl(5);
     {
         ::tpy::RefAdapter<RoSrc, Impl> __tmp_3{ro_src};
@@ -123,7 +123,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "readonly" << " " << n << "\n";
+            std::cout << "readonly" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     Impl gen_src = Impl(30);
@@ -135,10 +135,10 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "generic" << " " << n << "\n";
+            std::cout << "generic" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "generic after" << " " << gen_src.get() << "\n";
+    std::cout << "generic after" << " " << gen_src.get() << "\n" << ::tpy::check_signals;
     Inh inh_src = Inh(40);
     {
         auto __src_8 = ::tpyapp::main::free_gen(inh_src);
@@ -147,10 +147,10 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "inherit" << " " << n << "\n";
+            std::cout << "inherit" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "inherit after" << " " << inh_src.get() << "\n";
+    std::cout << "inherit after" << " " << inh_src.get() << "\n" << ::tpy::check_signals;
     Impl struct_src = Impl(50);
     {
         ::tpy::RefAdapter<Src, Impl> __tmp_5{struct_src};
@@ -160,10 +160,10 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_11);
-            std::cout << "inherit struct" << " " << n << "\n";
+            std::cout << "inherit struct" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "inherit struct after" << " " << struct_src.get() << "\n";
+    std::cout << "inherit struct after" << " " << struct_src.get() << "\n" << ::tpy::check_signals;
     {
         auto __src_12 = ::tpyapp::main::own_gen(::tpy::make_adapter<Src>(Impl(60)));
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
@@ -171,7 +171,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_13);
-            std::cout << "own" << " " << n << "\n";
+            std::cout << "own" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -182,7 +182,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_15);
-            std::cout << "rvalue" << " " << n << "\n";
+            std::cout << "rvalue" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     Impl fwd_src = Impl(90);
@@ -194,10 +194,10 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_17);
-            std::cout << "forward" << " " << n << "\n";
+            std::cout << "forward" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "forward after" << " " << fwd_src.get() << "\n";
+    std::cout << "forward after" << " " << fwd_src.get() << "\n" << ::tpy::check_signals;
     {
         ::tpy::RefAdapter<Src, Impl> __tmp_8{(*GLOBAL_SRC)};
         auto __src_18 = ::tpyapp::main::free_gen(__tmp_8);
@@ -206,10 +206,10 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_19);
-            std::cout << "global" << " " << n << "\n";
+            std::cout << "global" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "global after" << " " << GLOBAL_SRC->get() << "\n";
+    std::cout << "global after" << " " << GLOBAL_SRC->get() << "\n" << ::tpy::check_signals;
 }
 
 

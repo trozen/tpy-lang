@@ -64,7 +64,7 @@ inline std::ostream& operator<<(std::ostream& os, const CopyableResource& obj) {
 //     self.id = id
 //     print("alloc", id)
 inline Resource::Resource(int32_t id) : id(id) {
-    std::cout << "alloc" << " " << id << "\n";
+    std::cout << "alloc" << " " << id << "\n" << ::tpy::check_signals;
 }
 
 inline Resource::Resource(Resource&& other) noexcept : id(std::move(other.id)) {
@@ -82,7 +82,7 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 //     print("free", self.id)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
-    std::cout << "free" << " " << this->id << "\n";
+    std::cout << "free" << " " << this->id << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, id: int32):

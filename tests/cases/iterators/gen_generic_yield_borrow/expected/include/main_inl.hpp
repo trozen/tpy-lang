@@ -25,7 +25,7 @@ inline std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_local
         return (*tmp);
     }
     case S_RESUME_0: {  // after: yield tmp  # tpyc: ok
-        std::cout << "frame-local-src" << " " << (*tmp).x << "\n";
+        std::cout << "frame-local-src" << " " << (*tmp).x << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

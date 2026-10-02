@@ -13,10 +13,10 @@ namespace tpyapp::main {
 //     print(d2["x"]["k"])
 void main() {
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> d = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"inner", ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}})}});
-    std::cout << ::tpy::__getitem__(::tpy::__getitem__(d, "inner"), "a") << "\n";
-    std::cout << ::tpy::__getitem__(::tpy::__getitem__(d, "inner"), "b") << "\n";
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(d, "inner"), "a") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(d, "inner"), "b") << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, std::string>> d2 = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, std::string>>({{"x", ::tpy::ordered_map<std::string, std::string>({{"k", "v"}})}});
-    std::cout << ::tpy::__getitem__(::tpy::__getitem__(d2, "x"), "k") << "\n";
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(d2, "x"), "k") << "\n" << ::tpy::check_signals;
 }
 
 // main()

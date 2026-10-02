@@ -15,15 +15,15 @@ namespace tpyapp::main {
 //     print("replace:", s.replace("l", "r"))
 //     print("isalpha:", s.isalpha())
 void test_methods(std::string_view s) {
-    std::cout << "strip:" << " " << ::tpy::str_strip(s) << "\n";
-    std::cout << "upper:" << " " << ::tpy::str_upper(s) << "\n";
-    std::cout << "lower:" << " " << ::tpy::str_lower(s) << "\n";
-    std::cout << "find:" << " " << ::tpy::str_find(s, "ll") << "\n";
-    std::cout << "startswith:" << " " << ::tpy::print_bool(::tpy::str_startswith(s, "he")) << "\n";
-    std::cout << "endswith:" << " " << ::tpy::print_bool(::tpy::str_endswith(s, "lo")) << "\n";
-    std::cout << "count:" << " " << ::tpy::str_count(s, "l") << "\n";
-    std::cout << "replace:" << " " << ::tpy::str_replace(s, "l", "r") << "\n";
-    std::cout << "isalpha:" << " " << ::tpy::print_bool(::tpy::str_isalpha(s)) << "\n";
+    std::cout << "strip:" << " " << ::tpy::str_strip(s) << "\n" << ::tpy::check_signals;
+    std::cout << "upper:" << " " << ::tpy::str_upper(s) << "\n" << ::tpy::check_signals;
+    std::cout << "lower:" << " " << ::tpy::str_lower(s) << "\n" << ::tpy::check_signals;
+    std::cout << "find:" << " " << ::tpy::str_find(s, "ll") << "\n" << ::tpy::check_signals;
+    std::cout << "startswith:" << " " << ::tpy::print_bool(::tpy::str_startswith(s, "he")) << "\n" << ::tpy::check_signals;
+    std::cout << "endswith:" << " " << ::tpy::print_bool(::tpy::str_endswith(s, "lo")) << "\n" << ::tpy::check_signals;
+    std::cout << "count:" << " " << ::tpy::str_count(s, "l") << "\n" << ::tpy::check_signals;
+    std::cout << "replace:" << " " << ::tpy::str_replace(s, "l", "r") << "\n" << ::tpy::check_signals;
+    std::cout << "isalpha:" << " " << ::tpy::print_bool(::tpy::str_isalpha(s)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -39,7 +39,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "cell" << " " << v << "\n";
+            std::cout << "cell" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<int32_t> src = {1, 2};
@@ -50,10 +50,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v2 = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "copied" << " " << v2 << "\n";
+            std::cout << "copied" << " " << v2 << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "copied after" << " " << ::tpy::ListPrinter(src) << "\n";
+    std::cout << "copied after" << " " << ::tpy::ListPrinter(src) << "\n" << ::tpy::check_signals;
 }
 
 // main()

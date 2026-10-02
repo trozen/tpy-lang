@@ -24,7 +24,7 @@ void show_request(std::string_view method, std::string_view url, std::optional<:
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 8002);
     conn.sock = std::move(a);
     conn.request(method, url, body, &(headers));
-    std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n";
+    std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n" << ::tpy::check_signals;
     conn.close();
     b.close();
 }
@@ -77,21 +77,21 @@ void main() {
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nX-Multi: a\r\nContent-Length: 10\r\nX-Multi: b\r\n\r\nabcdefghij", 105));
     b.close();
     ::tpystd::http::client::HTTPResponse resp = conn.getresponse();
-    std::cout << resp.status << " " << resp.reason << " " << resp.version << "\n";
-    std::cout << ::tpy::print_optional_val(resp.getheader("content-type")) << "\n";
-    std::cout << ::tpy::print_optional_val(resp.getheader("x-multi")) << "\n";
-    std::cout << ::tpy::print_optional_val(resp.getheader("missing", "DEF")) << "\n";
-    std::cout << ::tpy::print_optional_val(resp.getheader("absent")) << "\n";
-    std::cout << ::tpy::BytesPrinter(resp.read(3)) << "\n";
-    std::cout << ::tpy::BytesPrinter(resp.read(0)) << "\n";
-    std::cout << ::tpy::BytesPrinter(resp.read()) << "\n";
-    std::cout << ::tpy::BytesPrinter(resp.read()) << "\n";
+    std::cout << resp.status << " " << resp.reason << " " << resp.version << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(resp.getheader("content-type")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(resp.getheader("x-multi")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(resp.getheader("missing", "DEF")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(resp.getheader("absent")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(resp.read(3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(resp.read(0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(resp.read()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(resp.read()) << "\n" << ::tpy::check_signals;
     auto __obj_0 = resp.getheaders();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& kv = *__beg_0;
-        std::cout << std::get<0>(kv) << " " << "=" << " " << std::get<1>(kv) << "\n";
+        std::cout << std::get<0>(kv) << " " << "=" << " " << std::get<1>(kv) << "\n" << ::tpy::check_signals;
     }
     conn.close();
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"Content-Type", "application/json"}});

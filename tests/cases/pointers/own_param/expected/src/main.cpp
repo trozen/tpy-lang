@@ -29,7 +29,7 @@ int32_t take_point(Point&& p) {
 //     print(result)
 void main() {
     int32_t result = ::tpyapp::main::take_point(::tpyapp::main::make_point(10, 20));
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
 }
 
 // main()

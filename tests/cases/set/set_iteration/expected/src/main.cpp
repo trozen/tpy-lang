@@ -22,14 +22,14 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_set<int32_t> empty = ::tpy::ordered_set<int32_t>();
     if ((::tpy::__len__(s) != 0)) {
-        std::cout << "non-empty" << "\n";
+        std::cout << "non-empty" << "\n" << ::tpy::check_signals;
     }
     if ((!((::tpy::__len__(empty) != 0)))) {
-        std::cout << "empty is falsy" << "\n";
+        std::cout << "empty is falsy" << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void main() {
     Counter c = Counter(42);
     const Counter* cp = &c;
-    std::cout << cp->__len__() << "\n";
+    std::cout << cp->__len__() << "\n" << ::tpy::check_signals;
 }
 
 // main()

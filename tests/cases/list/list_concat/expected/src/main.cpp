@@ -15,7 +15,7 @@ void test_add() {
     std::vector<::tpy::BigInt> a = {1, 2};
     std::vector<::tpy::BigInt> b = {3, 4};
     std::vector<::tpy::BigInt> c = (::tpy::list_concat(a, b));
-    std::cout << ::tpy::ListPrinter(c) << "\n";
+    std::cout << ::tpy::ListPrinter(c) << "\n" << ::tpy::check_signals;
 }
 
 // def test_iadd() -> None:
@@ -27,7 +27,7 @@ void test_iadd() {
     std::vector<::tpy::BigInt> a = {10, 20};
     std::vector<::tpy::BigInt> b = {30, 40};
     ::tpy::list_extend(a, b);
-    std::cout << ::tpy::ListPrinter(a) << "\n";
+    std::cout << ::tpy::ListPrinter(a) << "\n" << ::tpy::check_signals;
 }
 
 // def test_empty() -> None:
@@ -38,8 +38,8 @@ void test_iadd() {
 void test_empty() {
     std::vector<::tpy::BigInt> a = std::vector<::tpy::BigInt>{};
     std::vector<::tpy::BigInt> b = {1, 2, 3};
-    std::cout << ::tpy::ListPrinter((::tpy::list_concat(a, b))) << "\n";
-    std::cout << ::tpy::ListPrinter((::tpy::list_concat(b, a))) << "\n";
+    std::cout << ::tpy::ListPrinter((::tpy::list_concat(a, b))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter((::tpy::list_concat(b, a))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_inferred() -> None:
@@ -49,13 +49,13 @@ void test_empty() {
 void test_inferred() {
     std::vector<int32_t> a = {1, 2, 3};
     std::vector<int32_t> b = {4, 5};
-    std::cout << ::tpy::ListPrinter((::tpy::list_concat(a, b))) << "\n";
+    std::cout << ::tpy::ListPrinter((::tpy::list_concat(a, b))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_literal() -> None:
 //     print([10, 20] + [30])
 void test_literal() {
-    std::cout << ::tpy::ListPrinter((::tpy::list_concat(std::vector<int32_t>{10, 20}, std::vector<int32_t>{30}))) << "\n";
+    std::cout << ::tpy::ListPrinter((::tpy::list_concat(std::vector<int32_t>{10, 20}, std::vector<int32_t>{30}))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_mixed_annotated_literal() -> None:
@@ -63,7 +63,7 @@ void test_literal() {
 //     print(a + [3, 4])
 void test_mixed_annotated_literal() {
     std::vector<::tpy::BigInt> a = {1, 2};
-    std::cout << ::tpy::ListPrinter((::tpy::list_concat(a, std::vector<::tpy::BigInt>{3, 4}))) << "\n";
+    std::cout << ::tpy::ListPrinter((::tpy::list_concat(a, std::vector<::tpy::BigInt>{3, 4}))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_strings() -> None:
@@ -73,7 +73,7 @@ void test_mixed_annotated_literal() {
 void test_strings() {
     std::vector<std::string> s1 = {"a", "b"};
     std::vector<std::string> s2 = {"c"};
-    std::cout << ::tpy::ListPrinter((::tpy::list_concat(s1, s2))) << "\n";
+    std::cout << ::tpy::ListPrinter((::tpy::list_concat(s1, s2))) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

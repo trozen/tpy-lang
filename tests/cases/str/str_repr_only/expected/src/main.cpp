@@ -14,12 +14,12 @@ namespace tpyapp::main {
 //     print(f"{t!s}")
 void main() {
     Tag t = Tag("hello");
-    std::cout << ::tpy::repr_of(t) << "\n";
-    std::cout << std::format("{}", ::tpy::repr_of(t)) << "\n";
-    std::cout << t << "\n";
-    std::cout << std::string(::tpy::__str__(t)) << "\n";
-    std::cout << std::format("{}", ::tpy::__str__(t)) << "\n";
-    std::cout << std::format("{}", ::tpy::__str__(t)) << "\n";
+    std::cout << ::tpy::repr_of(t) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", ::tpy::repr_of(t)) << "\n" << ::tpy::check_signals;
+    std::cout << t << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(t)) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", ::tpy::__str__(t)) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", ::tpy::__str__(t)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

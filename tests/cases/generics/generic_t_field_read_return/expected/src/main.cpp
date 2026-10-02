@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(c.get())
 void main() {
     Cell<int32_t> c = Cell<int32_t>(1, 2);
-    std::cout << c.get() << " " << c.pick() << " " << c.echo(7) << "\n";
+    std::cout << c.get() << " " << c.pick() << " " << c.echo(7) << "\n" << ::tpy::check_signals;
     c.store(9);
-    std::cout << c.get() << "\n";
+    std::cout << c.get() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -19,7 +19,7 @@ Holder<Handle> transfer() {
 //     print(r.item.fd)
 void main() {
     Holder<Handle> r = ::tpyapp::main::transfer();
-    std::cout << r.item.fd << "\n";
+    std::cout << r.item.fd << "\n" << ::tpy::check_signals;
 }
 
 // main()

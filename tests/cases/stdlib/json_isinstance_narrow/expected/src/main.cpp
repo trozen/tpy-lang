@@ -14,7 +14,7 @@ void main() {
     if (std::holds_alternative<::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>>(d.value)) {
         auto& __d = std::get<::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>>(d.value);
         ::tpy::__setitem__(__d, "c", 3);
-        std::cout << ::tpystd::json::dumps(__d, 0, true) << "\n";
+        std::cout << ::tpystd::json::dumps(__d, 0, true) << "\n" << ::tpy::check_signals;
     }
 }
 

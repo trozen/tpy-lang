@@ -23,16 +23,16 @@ void main() {
         try {
             double x = 10.0;
             double y = 0.0;
-            std::cout << ::tpy::print_float((::tpy::truediv(x, y))) << "\n";
+            std::cout << ::tpy::print_float((::tpy::truediv(x, y))) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ArithmeticError&) {
-            std::cout << "caught arithmetic: zero division" << "\n";
+            std::cout << "caught arithmetic: zero division" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpy::BigInt::from_float(::tpystd::math::inf) << "\n";
+            std::cout << ::tpy::BigInt::from_float(::tpystd::math::inf) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ArithmeticError&) {
-            std::cout << "caught arithmetic: overflow" << "\n";
+            std::cout << "caught arithmetic: overflow" << "\n" << ::tpy::check_signals;
         }
     }
 }

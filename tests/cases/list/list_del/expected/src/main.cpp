@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //     print(len(items))
 void test_basic() {
     std::vector<int32_t> items = {10, 20, 30, 40, 50};
-    std::cout << ::tpy::ListPrinter(items) << "\n";
+    std::cout << ::tpy::ListPrinter(items) << "\n" << ::tpy::check_signals;
     ::tpy::__delitem__(items, 1);
-    std::cout << ::tpy::ListPrinter(items) << "\n";
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::ListPrinter(items) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_negative_index() -> None:
@@ -25,7 +25,7 @@ void test_basic() {
 void test_negative_index() {
     std::vector<int32_t> items = {1, 2, 3, 4};
     ::tpy::__delitem__(items, -1);
-    std::cout << ::tpy::ListPrinter(items) << "\n";
+    std::cout << ::tpy::ListPrinter(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_first_element() -> None:
@@ -35,7 +35,7 @@ void test_negative_index() {
 void test_first_element() {
     std::vector<int32_t> items = {10, 20, 30};
     ::tpy::__delitem__(items, 0);
-    std::cout << ::tpy::ListPrinter(items) << "\n";
+    std::cout << ::tpy::ListPrinter(items) << "\n" << ::tpy::check_signals;
 }
 
 // test_basic()

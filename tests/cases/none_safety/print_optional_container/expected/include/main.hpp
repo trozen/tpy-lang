@@ -86,11 +86,11 @@ inline Bag::Bag(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_ma
 //     print(self.data)
 //     print(self.buf)
 inline void Bag::show_fields() const {
-    std::cout << ::tpy::print_optional_val<::tpy::ListPrinter<std::vector<::tpy::BigInt>>, std::vector<::tpy::BigInt>>(this->items) << "\n";
-    std::cout << ::tpy::print_optional_val<::tpy::DictPrinter<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>(this->by_key) << "\n";
-    std::cout << ::tpy::print_optional_val<::tpy::SetPrinter<int32_t>, ::tpy::ordered_set<int32_t>>(this->elems) << "\n";
-    std::cout << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::Bytes>(this->data) << "\n";
-    std::cout << ::tpy::print_optional_val<::tpy::ByteArrayPrinter, ::tpy::ByteArray>(this->buf) << "\n";
+    std::cout << ::tpy::print_optional_val<::tpy::ListPrinter<std::vector<::tpy::BigInt>>, std::vector<::tpy::BigInt>>(this->items) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val<::tpy::DictPrinter<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>(this->by_key) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val<::tpy::SetPrinter<int32_t>, ::tpy::ordered_set<int32_t>>(this->elems) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::Bytes>(this->data) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val<::tpy::ByteArrayPrinter, ::tpy::ByteArray>(this->buf) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

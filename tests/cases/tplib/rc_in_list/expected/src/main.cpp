@@ -27,9 +27,9 @@ void main() {
     ::tpystd::tplib::rc::Rc<Node> a_alias = a.clone();
     std::vector<::tpystd::tplib::rc::Rc<Node>> items = ::tpy::make_vector<::tpystd::tplib::rc::Rc<Node>>(a.clone(), b.clone(), c.clone());
     a_alias.get().value = 99;
-    std::cout << ::tpy::__getitem__(items, 0).get().value << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).get().value << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(items, 1).get().value = 42;
-    std::cout << b.get().value << "\n";
+    std::cout << b.get().value << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Rc

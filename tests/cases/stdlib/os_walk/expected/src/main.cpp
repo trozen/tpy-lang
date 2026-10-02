@@ -169,7 +169,7 @@ void walk_sorted(std::string_view root) {
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         std::string_view r = *__beg_3;
-        std::cout << r << "\n";
+        std::cout << r << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -321,8 +321,8 @@ void main() {
     }
     ::tpyapp::main::build(root);
     ::tpyapp::main::walk_sorted(root);
-    std::cout << "nofollow dirs:" << " " << ::tpyapp::main::count_dirs(root, false) << "\n";
-    std::cout << "follow dirs:" << " " << ::tpyapp::main::count_dirs(root, true) << "\n";
+    std::cout << "nofollow dirs:" << " " << ::tpyapp::main::count_dirs(root, false) << "\n" << ::tpy::check_signals;
+    std::cout << "follow dirs:" << " " << ::tpyapp::main::count_dirs(root, true) << "\n" << ::tpy::check_signals;
     int32_t n = 0;
     {
         ::tpy::String __tmp_1 = (::tpy::str_concat(tmp, "/tpy_oswalk_missing"));
@@ -339,8 +339,8 @@ void main() {
             n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
-    std::cout << "missing yields:" << " " << n << "\n";
-    std::cout << "prune-all yields:" << " " << ::tpyapp::main::prune_all(root) << "\n";
+    std::cout << "missing yields:" << " " << n << "\n" << ::tpy::check_signals;
+    std::cout << "prune-all yields:" << " " << ::tpyapp::main::prune_all(root) << "\n" << ::tpy::check_signals;
     int32_t nf = 0;
     {
         ::tpy::String __tmp_2 = (::tpy::str_concat(root, "/top.txt"));
@@ -357,8 +357,8 @@ void main() {
             nf = ::tpy::add_check<int32_t>(nf, 1);
         }
     }
-    std::cout << "file-as-top yields:" << " " << nf << "\n";
-    std::cout << "order ok:" << " " << ::tpy::print_bool(::tpyapp::main::order_ok(root)) << "\n";
+    std::cout << "file-as-top yields:" << " " << nf << "\n" << ::tpy::check_signals;
+    std::cout << "order ok:" << " " << ::tpy::print_bool(::tpyapp::main::order_ok(root)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::teardown(root);
 }
 

@@ -18,7 +18,7 @@ std::string describe(Animal& a) {
 //     print(describe(d))
 void main() {
     Dog d = Dog("Rex", "Lab");
-    std::cout << ::tpyapp::main::describe(d) << "\n";
+    std::cout << ::tpyapp::main::describe(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

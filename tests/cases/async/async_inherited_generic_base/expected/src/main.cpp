@@ -41,7 +41,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "fetch:" << " " << __await_lift_0 << "\n";
+        std::cout << "fetch:" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
         (*b).put(99);
         __sub_1.emplace((*b));
         __state = S_RESUME_1;
@@ -52,7 +52,7 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "refetch:" << " " << __await_lift_1 << "\n";
+        std::cout << "refetch:" << " " << __await_lift_1 << "\n" << ::tpy::check_signals;
         g.emplace(IntGuard(42));
         __with_ctx_0 = &((*g));
         __sub_2.emplace((*__with_ctx_0));
@@ -108,7 +108,7 @@ namespace tpyapp::main {
         continue;
     }
     case S_JOIN_2: {
-        std::cout << "count:" << " " << (*g).entered << "\n";
+        std::cout << "count:" << " " << (*g).entered << "\n" << ::tpy::check_signals;
         total = 0;
         __for_itr_0.emplace((IntCounter(3, 10)).__aiter__());
         __state = S_JOIN_0;
@@ -116,7 +116,7 @@ namespace tpyapp::main {
     }
     case S_JOIN_3: {
         try {
-            std::cout << "entered:" << " " << v << "\n";
+            std::cout << "entered:" << " " << v << "\n" << ::tpy::check_signals;
             __state = S_JOIN_1;
             continue;
         } catch (...) {
@@ -131,7 +131,7 @@ namespace tpyapp::main {
         continue;
     }
     case S_JOIN_5: {
-        std::cout << "total:" << " " << total << "\n";
+        std::cout << "total:" << " " << total << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

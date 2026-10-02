@@ -67,15 +67,15 @@ inline Fussy::~Fussy() {
         {
             try {
                 try {
-                    std::cout << "del try" << " " << this->_id << "\n";
+                    std::cout << "del try" << " " << this->_id << "\n" << ::tpy::check_signals;
                 } catch (const ::tpy::ValueError&) {
-                    std::cout << "del handler" << "\n";
+                    std::cout << "del handler" << "\n" << ::tpy::check_signals;
                 }
             } catch (...) {
-                std::cout << "del finally" << " " << this->_id << "\n";
+                std::cout << "del finally" << " " << this->_id << "\n" << ::tpy::check_signals;
                 throw ::tpy::ValueError("cleanup failed");
             }
-            std::cout << "del finally" << " " << this->_id << "\n";
+            std::cout << "del finally" << " " << this->_id << "\n" << ::tpy::check_signals;
             throw ::tpy::ValueError("cleanup failed");
         }
     } catch (const std::exception& __del_exc) {

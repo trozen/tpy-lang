@@ -257,18 +257,18 @@ __gen_gen gen(Color c) {
 //         print("loop:", m.label(), m.kind())
 void main() {
     Color c = Color::Red;
-    std::cout << "instance:" << " " << __enum_Color{c}.label() << " " << __enum_Color{c}.other() << " " << __enum_Color{c}.chain() << " " << __enum_Color{c}.kind() << "\n";
-    std::cout << "defaults:" << " " << __enum_Color{c}.repeat(2, "-") << " " << __enum_Color{c}.repeat(3, "+") << " " << __enum_Color{c}.repeat(1) << " " << __enum_Color{c}.repeat(2, ".") << "\n";
-    std::cout << "posonly:" << " " << __enum_Color{c}.scaled(3) << " " << __enum_Color{Color::Blue}.scaled(2) << "\n";
+    std::cout << "instance:" << " " << __enum_Color{c}.label() << " " << __enum_Color{c}.other() << " " << __enum_Color{c}.chain() << " " << __enum_Color{c}.kind() << "\n" << ::tpy::check_signals;
+    std::cout << "defaults:" << " " << __enum_Color{c}.repeat(2, "-") << " " << __enum_Color{c}.repeat(3, "+") << " " << __enum_Color{c}.repeat(1) << " " << __enum_Color{c}.repeat(2, ".") << "\n" << ::tpy::check_signals;
+    std::cout << "posonly:" << " " << __enum_Color{c}.scaled(3) << " " << __enum_Color{Color::Blue}.scaled(2) << "\n" << ::tpy::check_signals;
     auto __tup_1 = __enum_Color{c}.pair();
     std::string_view s = std::get<0>(__tup_1);
     int32_t v = std::get<1>(__tup_1);
-    std::cout << "tuple:" << " " << s << " " << v << "\n";
-    std::cout << "truthy:" << " " << ::tpy::print_bool(__enum_Color{Color::Red}.truthy()) << " " << ::tpy::print_bool(__enum_Level{Level::Low}.truthy()) << " " << ::tpy::print_bool(__enum_Level{Level::High}.truthy()) << "\n";
-    std::cout << "intenum:" << " " << __enum_Level{Level::High}.bump() << " " << __enum_Level{Level::Low}.bump() << " " << ::tpy::EnumUtil<Level>::name(__enum_Level::top()) << " " << ::tpy::EnumUtil<Level>::name(__enum_Level{Level::High}.floor()) << " " << ::tpy::EnumUtil<Level>::name(__enum_Level{Level::Low}.top()) << "\n";
-    std::cout << "type:" << " " << ::tpy::print_optional_val(__enum_Color::parse("Blue")) << " " << ::tpy::print_optional_val(__enum_Color::parse("Nope")) << " " << __enum_Color::first() << " " << __enum_Color::by_value(2) << " " << __enum_Color::by_name("Red") << " " << __enum_Color::via_static() << " " << __enum_Color::default_() << "\n";
-    std::cout << "member:" << " " << __enum_Color{c}.default_() << " " << ::tpy::print_optional_val(__enum_Color{c}.parse("Blue")) << " " << __enum_Color{Color::Red}.default_() << "\n";
-    std::cout << "effect:" << " " << __enum_Color{::tpyapp::main::pick()}.default_() << " " << __enum_Color{::tpyapp::main::pick()}.label() << " " << calls << "\n";
+    std::cout << "tuple:" << " " << s << " " << v << "\n" << ::tpy::check_signals;
+    std::cout << "truthy:" << " " << ::tpy::print_bool(__enum_Color{Color::Red}.truthy()) << " " << ::tpy::print_bool(__enum_Level{Level::Low}.truthy()) << " " << ::tpy::print_bool(__enum_Level{Level::High}.truthy()) << "\n" << ::tpy::check_signals;
+    std::cout << "intenum:" << " " << __enum_Level{Level::High}.bump() << " " << __enum_Level{Level::Low}.bump() << " " << ::tpy::EnumUtil<Level>::name(__enum_Level::top()) << " " << ::tpy::EnumUtil<Level>::name(__enum_Level{Level::High}.floor()) << " " << ::tpy::EnumUtil<Level>::name(__enum_Level{Level::Low}.top()) << "\n" << ::tpy::check_signals;
+    std::cout << "type:" << " " << ::tpy::print_optional_val(__enum_Color::parse("Blue")) << " " << ::tpy::print_optional_val(__enum_Color::parse("Nope")) << " " << __enum_Color::first() << " " << __enum_Color::by_value(2) << " " << __enum_Color::by_name("Red") << " " << __enum_Color::via_static() << " " << __enum_Color::default_() << "\n" << ::tpy::check_signals;
+    std::cout << "member:" << " " << __enum_Color{c}.default_() << " " << ::tpy::print_optional_val(__enum_Color{c}.parse("Blue")) << " " << __enum_Color{Color::Red}.default_() << "\n" << ::tpy::check_signals;
+    std::cout << "effect:" << " " << __enum_Color{::tpyapp::main::pick()}.default_() << " " << __enum_Color{::tpyapp::main::pick()}.label() << " " << calls << "\n" << ::tpy::check_signals;
     int32_t bad;
     int32_t ok;
     {
@@ -277,40 +277,40 @@ void main() {
             if (!__try_tmp_2.has_value()) goto __except_1;
             ok = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        std::cout << "checked:" << " " << ok << "\n";
+        std::cout << "checked:" << " " << ok << "\n" << ::tpy::check_signals;
         {
             auto __try_tmp_3 = __enum_Color{Color::Blue}.checked(-1);
             if (!__try_tmp_3.has_value()) goto __except_1;
             bad = ::tpy::unwrap_ref_move(*__try_tmp_3);
         }
-        std::cout << "checked:" << " " << bad << "\n";
+        std::cout << "checked:" << " " << bad << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Bad:
         __except_1:;
-        std::cout << "checked: bad" << "\n";
+        std::cout << "checked: bad" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     log->clear();
-    std::cout << "order:" << " " << __enum_Color{::tpyapp::main::pick()}.scaled(::tpyapp::main::arg()) << " " << ::tpy::ListPrinter((*log)) << "\n";
+    std::cout << "order:" << " " << __enum_Color{::tpyapp::main::pick()}.scaled(::tpyapp::main::arg()) << " " << ::tpy::ListPrinter((*log)) << "\n" << ::tpy::check_signals;
     bool flag = true;
     std::tuple<Color, int32_t> t = std::tuple<Color, int32_t>{Color::Blue, 1};
-    std::cout << "shapes:" << " " << __enum_Color{((flag) ? (c) : (Color::Blue))}.label() << " " << __enum_Color{std::get<0>(t)}.label() << "\n";
-    std::cout << "property call:" << " " << (::tpy::__getitem__(__enum_Color{c}.fns(), 0))() << "\n";
+    std::cout << "shapes:" << " " << __enum_Color{((flag) ? (c) : (Color::Blue))}.label() << " " << __enum_Color{std::get<0>(t)}.label() << "\n" << ::tpy::check_signals;
+    std::cout << "property call:" << " " << (::tpy::__getitem__(__enum_Color{c}.fns(), 0))() << "\n" << ::tpy::check_signals;
     std::vector<int32_t> ys = {9};
     std::vector<int32_t>& zs = __enum_Color{c}.pass_on(ys);
     zs.push_back(10);
-    std::cout << "generic alias:" << " " << ::tpy::ListPrinter(ys) << " " << ::tpy::ListPrinter(zs) << "\n";
-    std::cout << "capture:" << " " << __enum_Color{c}.shout() << " " << (__enum_Color{Color::Blue}.later())() << " " << (__enum_Color{Color::Blue}.later_def())() << " " << __enum_Color{c}.spread() << "\n";
-    std::cout << "property:" << " " << ::tpy::print_bool(__enum_Color{c}.warm()) << " " << ::tpy::print_bool(__enum_Color{Color::Blue}.warm()) << " " << ::tpy::print_bool(__enum_Color{::tpyapp::main::pick()}.warm()) << "\n";
-    std::cout << "name:" << " " << ::tpy::str_lower(::tpy::EnumUtil<Color>::name(c)) << " " << ::tpy::str_upper(::tpy::EnumUtil<Color>::name(Color::Blue)) << " " << __enum_Color{c}.lower_name() << "\n";
+    std::cout << "generic alias:" << " " << ::tpy::ListPrinter(ys) << " " << ::tpy::ListPrinter(zs) << "\n" << ::tpy::check_signals;
+    std::cout << "capture:" << " " << __enum_Color{c}.shout() << " " << (__enum_Color{Color::Blue}.later())() << " " << (__enum_Color{Color::Blue}.later_def())() << " " << __enum_Color{c}.spread() << "\n" << ::tpy::check_signals;
+    std::cout << "property:" << " " << ::tpy::print_bool(__enum_Color{c}.warm()) << " " << ::tpy::print_bool(__enum_Color{Color::Blue}.warm()) << " " << ::tpy::print_bool(__enum_Color{::tpyapp::main::pick()}.warm()) << "\n" << ::tpy::check_signals;
+    std::cout << "name:" << " " << ::tpy::str_lower(::tpy::EnumUtil<Color>::name(c)) << " " << ::tpy::str_upper(::tpy::EnumUtil<Color>::name(Color::Blue)) << " " << __enum_Color{c}.lower_name() << "\n" << ::tpy::check_signals;
     std::optional<Color> p = __enum_Color::parse("Blue");
     if ((p.has_value())) {
-        std::cout << "narrowed:" << " " << __enum_Color{(*p)}.label() << "\n";
+        std::cout << "narrowed:" << " " << __enum_Color{(*p)}.label() << "\n" << ::tpy::check_signals;
     }
     std::array<Color, 2> xs = {Color::Red, Color::Blue};
     ::tpy::ordered_map<std::string, Color> d = ::tpy::ordered_map<std::string, Color>({{"k", Color::Blue}});
-    std::cout << "container:" << " " << __enum_Color{::tpy::__getitem__(xs, 1)}.label() << " " << __enum_Color{::tpy::__getitem__(d, "k")}.kind() << "\n";
-    std::cout << "record:" << " " << Holder(Color::Blue).describe() << "\n";
+    std::cout << "container:" << " " << __enum_Color{::tpy::__getitem__(xs, 1)}.label() << " " << __enum_Color{::tpy::__getitem__(d, "k")}.kind() << "\n" << ::tpy::check_signals;
+    std::cout << "record:" << " " << Holder(Color::Blue).describe() << "\n" << ::tpy::check_signals;
     std::cout << "comprehension:" << " " << ::tpy::ListPrinter(({
         std::vector<std::string> __result;
         auto __obj_0 = {Color::Red, Color::Blue};
@@ -322,26 +322,26 @@ void main() {
             __result.push_back(__enum_Color{x}.label());
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     auto inner = [&c]() -> std::string {
         return __enum_Color{c}.chain();
     };
-    std::cout << "closure:" << " " << inner() << "\n";
+    std::cout << "closure:" << " " << inner() << "\n" << ::tpy::check_signals;
     auto& __match_subject_1 = v;
     switch (__match_subject_1) {
     case 0: {
-        std::cout << "match:" << " " << __enum_Color{c}.label() << "\n";
+        std::cout << "match:" << " " << __enum_Color{c}.label() << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
-        std::cout << "match: other" << "\n";
+        std::cout << "match: other" << "\n" << ::tpy::check_signals;
         break;
     }
     }
     auto __ctx_1 = Guard();
     __ctx_1.__enter__();
     try {
-        std::cout << "with:" << " " << __enum_Color{__enum_Color{c}.other()}.label() << "\n";
+        std::cout << "with:" << " " << __enum_Color{__enum_Color{c}.other()}.label() << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -354,21 +354,21 @@ void main() {
     __ctx_1.__exit__({}, nullptr, {});
     {
         try {
-            std::cout << "try:" << " " << __enum_Color{Color::Blue}.label() << "\n";
+            std::cout << "try:" << " " << __enum_Color{Color::Blue}.label() << "\n" << ::tpy::check_signals;
         } catch (...) {
-            std::cout << "finally:" << " " << __enum_Color{__enum_Color{Color::Blue}.other()}.label() << "\n";
+            std::cout << "finally:" << " " << __enum_Color{__enum_Color{Color::Blue}.other()}.label() << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally:" << " " << __enum_Color{__enum_Color{Color::Blue}.other()}.label() << "\n";
+        std::cout << "finally:" << " " << __enum_Color{__enum_Color{Color::Blue}.other()}.label() << "\n" << ::tpy::check_signals;
     }
-    std::cout << "generator:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpyapp::main::gen(c))) << "\n";
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::arun(c))) << "\n";
+    std::cout << "generator:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpyapp::main::gen(c))) << "\n" << ::tpy::check_signals;
+    std::cout << "async:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::arun(c))) << "\n" << ::tpy::check_signals;
     auto& __obj_1 = ::tpy::EnumUtil<Color>::members;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         Color m = *__beg_1;
-        std::cout << "loop:" << " " << __enum_Color{m}.label() << " " << __enum_Color{m}.kind() << "\n";
+        std::cout << "loop:" << " " << __enum_Color{m}.label() << " " << __enum_Color{m}.kind() << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -397,7 +397,7 @@ void __tpy_init() {
     static std::vector<std::function<int32_t()>> __global_slot_2 = {one};
     FNS = &__global_slot_2;
     ::tpyapp::main::main();
-    std::cout << "module:" << " " << __enum_Color{__enum_Color::default_()}.label() << " " << __enum_Color{__enum_Color{Color::Blue}.other()}.label() << "\n";
+    std::cout << "module:" << " " << __enum_Color{__enum_Color::default_()}.label() << " " << __enum_Color{__enum_Color{Color::Blue}.other()}.label() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

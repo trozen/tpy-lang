@@ -107,11 +107,11 @@ __coro_bad bad(int32_t tag) {
                     try {
                         (*r.exception).__deref__().__raise__();
                     } catch (const ::tpy::BaseException& e) {
-                        std::cout << "exc:" << " " << e.message << "\n";
+                        std::cout << "exc:" << " " << e.message << "\n" << ::tpy::check_signals;
                     }
                 }
             } else if ((r.value.has_value())) {
-                std::cout << "ok:" << " " << (*r.value).get() << "\n";
+                std::cout << "ok:" << " " << (*r.value).get() << "\n" << ::tpy::check_signals;
             }
         }
         __state = S_DONE;

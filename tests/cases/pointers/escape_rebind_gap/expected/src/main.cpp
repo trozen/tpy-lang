@@ -27,7 +27,7 @@ void rebind_gap() {
         p = &*(__slot_3 = Point(i, i));
         saved = p;
     }
-    std::cout << saved->x << " " << saved->y << "\n";
+    std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
 
 // rebind_gap()

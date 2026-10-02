@@ -13,7 +13,7 @@ void main() {
     ::tpyapp::counters::Counters::total = 1;
     ::tpyapp::counters::bump_from_other_module();
     ::tpyapp::counters::Counters::total = ::tpy::add_check<int32_t>(::tpyapp::counters::Counters::total, 5);
-    std::cout << ::tpyapp::counters::Counters::total << "\n";
+    std::cout << ::tpyapp::counters::Counters::total << "\n" << ::tpy::check_signals;
 }
 
 // # Mutable ClassVar across translation units: writes from one module hit the

@@ -14,9 +14,9 @@ namespace tpyapp::main {
 void main() {
     Point p = Point(1, 2);
     Container c = Container(p, 42);
-    std::cout << std::get<0>(c.data).x << " " << std::get<0>(c.data).y << " " << std::get<1>(c.data) << "\n";
+    std::cout << std::get<0>(c.data).x << " " << std::get<0>(c.data).y << " " << std::get<1>(c.data) << "\n" << ::tpy::check_signals;
     p.x = 99;
-    std::cout << std::get<0>(c.data).x << "\n";
+    std::cout << std::get<0>(c.data).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

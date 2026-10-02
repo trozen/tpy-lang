@@ -92,31 +92,31 @@ void free_function() {
     int32_t b = 100000;
     int64_t p = ::tpyapp::main::pick<int64_t>(a, static_cast<int64_t>(b));
     int64_t q = ::tpyapp::main::pick<int64_t>(static_cast<int64_t>(b), a);
-    std::cout << "free pick" << " " << p << " " << q << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, p)), p)) << "\n";
+    std::cout << "free pick" << " " << p << " " << q << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, p)), p)) << "\n" << ::tpy::check_signals;
     int16_t r = ::tpyapp::main::last3<int16_t>(static_cast<int16_t>(-1), static_cast<int16_t>(200), 300);
     int16_t s = ::tpyapp::main::last3<int16_t>(300, static_cast<int16_t>(-1), static_cast<int16_t>(200));
-    std::cout << "free last3" << " " << r << " " << s << "\n";
-    std::cout << "free which" << " " << ::tpyapp::main::which(static_cast<int64_t>(1), 2) << "\n";
-    std::cout << "free which_g" << " " << ::tpyapp::main::which_g(static_cast<int64_t>(1), 2) << "\n";
+    std::cout << "free last3" << " " << r << " " << s << "\n" << ::tpy::check_signals;
+    std::cout << "free which" << " " << ::tpyapp::main::which(static_cast<int64_t>(1), 2) << "\n" << ::tpy::check_signals;
+    std::cout << "free which_g" << " " << ::tpyapp::main::which_g(static_cast<int64_t>(1), 2) << "\n" << ::tpy::check_signals;
     int64_t m = ::std::max<int64_t>(static_cast<int64_t>(5), 100000);
     int64_t k = ::std::max<int64_t>(static_cast<int64_t>(b), a);
     int64_t n = ::tpy::min3<int64_t>(a, static_cast<int64_t>(b), static_cast<int64_t>(3));
-    std::cout << "free max/min" << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(m, m)), m)) << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, k)), k)) << " " << n << "\n";
+    std::cout << "free max/min" << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(m, m)), m)) << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, k)), k)) << " " << n << "\n" << ::tpy::check_signals;
     int64_t m3 = ::tpy::max3<int64_t>(static_cast<int64_t>(3), static_cast<int64_t>(b), a);
-    std::cout << "free max3" << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, m3)), m3)) << "\n";
+    std::cout << "free max3" << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, m3)), m3)) << "\n" << ::tpy::check_signals;
     uint8_t su = ::std::max<uint8_t>(200, 100);
     int8_t si = ::std::max<int8_t>(100, 90);
     int64_t sl = ::std::max<int64_t>(a, 7);
-    std::cout << "free same-width" << " " << ::tpyapp::main::width(su) << " " << static_cast<int>(static_cast<uint8_t>(~(su))) << " " << ::tpyapp::main::width(si) << " " << static_cast<int>((::tpy::add_check<int8_t>(si, 20))) << " " << ::tpyapp::main::width(sl) << "\n";
+    std::cout << "free same-width" << " " << ::tpyapp::main::width(su) << " " << static_cast<int>(static_cast<uint8_t>(~(su))) << " " << ::tpyapp::main::width(si) << " " << static_cast<int>((::tpy::add_check<int8_t>(si, 20))) << " " << ::tpyapp::main::width(sl) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt w = ::std::max(::tpy::BigInt(1), ::tpy::BigInt(2));
-    std::cout << "free no-common" << " " << w << "\n";
+    std::cout << "free no-common" << " " << w << "\n" << ::tpy::check_signals;
     int64_t total = 0;
     int64_t __start_0 = static_cast<int64_t>(b);
     int64_t __stop_0 = (::tpy::add_check<int64_t>(a, 100003));
     for (int64_t i = __start_0; i < __stop_0; ++i) {
         total = ::tpy::add_check<int64_t>(total, (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(i, i)), i)));
     }
-    std::cout << "free range" << " " << total << "\n";
+    std::cout << "free range" << " " << total << "\n" << ::tpy::check_signals;
 }
 
 // def literals() -> None:
@@ -145,7 +145,7 @@ void literals() {
     ::tpy::ordered_set<int64_t> s64 = ::tpy::ordered_set<int64_t>({a, b});
     ::tpy::ordered_map<std::string, int64_t> d64 = ::tpy::ordered_map<std::string, int64_t>({{"a", a}, {"b", b}});
     ::tpy::__setitem__(xs, 1, (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, ::tpy::__getitem__(xs, 1))), static_cast<int64_t>(b))));
-    std::cout << "literals" << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(ss)) << " " << ::tpy::__getitem__(ks, b) << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, ::tpy::__getitem__(vs, 2))), static_cast<int64_t>(b))) << " " << ::tpy::ListPrinter(ys) << "\n";
+    std::cout << "literals" << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(ss)) << " " << ::tpy::__getitem__(ks, b) << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, ::tpy::__getitem__(vs, 2))), static_cast<int64_t>(b))) << " " << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
     std::cout << "annotated" << " " << ::tpy::ListPrinter(({
         std::vector<int64_t> __result;
         auto __obj_0 = ::tpy::builtin_sorted<int64_t>(s64);
@@ -157,7 +157,7 @@ void literals() {
             __result.push_back((::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, e)), e)));
         }
         std::move(__result);
-    })) << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, ::tpy::__getitem__(d64, "b"))), static_cast<int64_t>(b))) << "\n";
+    })) << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, ::tpy::__getitem__(d64, "b"))), static_cast<int64_t>(b))) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -213,11 +213,11 @@ __coro_coro coro(int64_t a, int32_t b) {
 void positions() {
     int64_t a = 5;
     int32_t b = 100000;
-    std::cout << "method" << " " << Meter(a).top(b) << "\n";
+    std::cout << "method" << " " << Meter(a).top(b) << "\n" << ::tpy::check_signals;
     int64_t e = Meter(a).either<int64_t>(a, static_cast<int64_t>(b));
-    std::cout << "generic method" << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, e)), e)) << "\n";
-    std::cout << "generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int64_t>>(::tpyapp::main::gen(a, b))) << "\n";
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int64_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int64_t>>(::tpyapp::main::coro(a, b))) << "\n";
+    std::cout << "generic method" << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, e)), e)) << "\n" << ::tpy::check_signals;
+    std::cout << "generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int64_t>>(::tpyapp::main::gen(a, b))) << "\n" << ::tpy::check_signals;
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int64_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int64_t>>(::tpyapp::main::coro(a, b))) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> small = {1, 2, 300000};
     std::cout << "comprehension" << " " << ::tpy::ListPrinter(({
         std::vector<int64_t> __result;
@@ -230,7 +230,7 @@ void positions() {
             __result.push_back((::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, ::std::max<int64_t>(x, a))), x)));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
 }
 
 // def pending() -> None:
@@ -241,7 +241,7 @@ void positions() {
 void pending() {
     int64_t a = 5;
     int32_t p = 0;
-    std::cout << "pending" << " " << ::std::max<int32_t>(p, 5) << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(::std::max<int64_t>(static_cast<int64_t>(p), a), static_cast<int64_t>(100000))), static_cast<int64_t>(100000))) << "\n";
+    std::cout << "pending" << " " << ::std::max<int32_t>(p, 5) << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(::std::max<int64_t>(static_cast<int64_t>(p), a), static_cast<int64_t>(100000))), static_cast<int64_t>(100000))) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

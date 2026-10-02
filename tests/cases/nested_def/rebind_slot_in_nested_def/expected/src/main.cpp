@@ -52,8 +52,8 @@ int32_t outer(int32_t flag) {
 //     print(outer(1))
 //     print(outer(0))
 void main() {
-    std::cout << ::tpyapp::main::outer(1) << "\n";
-    std::cout << ::tpyapp::main::outer(0) << "\n";
+    std::cout << ::tpyapp::main::outer(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::outer(0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

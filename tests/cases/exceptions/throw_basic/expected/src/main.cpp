@@ -32,21 +32,21 @@ void main() {
         try {
             ::tpyapp::main::fail();
         } catch (const MyError&) {
-            std::cout << "caught MyError" << "\n";
+            std::cout << "caught MyError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::fail();
         } catch (const MyError& e) {
-            std::cout << e.code << "\n";
+            std::cout << e.code << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw ::tpy::ValueError{};
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught bare ValueError" << "\n";
+            std::cout << "caught bare ValueError" << "\n" << ::tpy::check_signals;
         }
     }
 }

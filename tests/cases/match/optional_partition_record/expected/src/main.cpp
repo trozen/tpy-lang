@@ -13,11 +13,11 @@ namespace tpyapp::main {
 void show(const Leaf* x) {
     auto& __match_subject_1 = x;
     if (__match_subject_1 == nullptr) {
-        std::cout << "none" << "\n";
+        std::cout << "none" << "\n" << ::tpy::check_signals;
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
         {
-            std::cout << x->n << "\n";
+            std::cout << x->n << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -32,13 +32,13 @@ void show(const Leaf* x) {
 void bump_and_peek(Leaf* x) {
     auto& __match_subject_1 = x;
     if (__match_subject_1 == nullptr) {
-        std::cout << "none" << "\n";
+        std::cout << "none" << "\n" << ::tpy::check_signals;
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
         {
             auto& v = __match_inner_1;
             x->n = ::tpy::add_check<int32_t>(x->n, 10);
-            std::cout << v.n << "\n";
+            std::cout << v.n << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -72,7 +72,7 @@ void peek(const Leaf* x) {
     if (__match_subject_1 != nullptr) {
         auto& __match_inner_1 = (*__match_subject_1);
         {
-            std::cout << x->n << "\n";
+            std::cout << x->n << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -88,11 +88,11 @@ void from_field(const Holder& h) {
     const Leaf* q = ::tpy::optional_to_ptr(h.opt);
     auto& __match_subject_1 = q;
     if (__match_subject_1 == nullptr) {
-        std::cout << "empty" << "\n";
+        std::cout << "empty" << "\n" << ::tpy::check_signals;
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
         {
-            std::cout << q->n << "\n";
+            std::cout << q->n << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -115,9 +115,9 @@ void main() {
     ::tpyapp::main::show(&(leaf));
     ::tpyapp::main::show(nullptr);
     ::tpyapp::main::bump_and_peek(&(leaf));
-    std::cout << leaf.n << "\n";
-    std::cout << ::tpyapp::main::label(&(leaf)) << "\n";
-    std::cout << ::tpyapp::main::label(nullptr) << "\n";
+    std::cout << leaf.n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::label(&(leaf)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::label(nullptr) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::peek(&(leaf));
     Holder h = Holder();
     ::tpyapp::main::from_field(h);

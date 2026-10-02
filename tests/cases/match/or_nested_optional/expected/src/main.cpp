@@ -32,11 +32,11 @@ std::string classify(std::optional<int32_t> v) {
 //     print(classify(4))
 //     print(classify(9))
 void main() {
-    std::cout << ::tpyapp::main::classify(std::nullopt) << "\n";
-    std::cout << ::tpyapp::main::classify(1) << "\n";
-    std::cout << ::tpyapp::main::classify(2) << "\n";
-    std::cout << ::tpyapp::main::classify(4) << "\n";
-    std::cout << ::tpyapp::main::classify(9) << "\n";
+    std::cout << ::tpyapp::main::classify(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(9) << "\n" << ::tpy::check_signals;
 }
 
 // main()

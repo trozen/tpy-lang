@@ -31,14 +31,14 @@ void main() {
         auto& __v = *std::get<::tpy::ordered_map<std::string, Cell>*>(v);
         {
             try {
-                std::cout << ::tpy::__getitem__(__v, "missing").n << "\n";
+                std::cout << ::tpy::__getitem__(__v, "missing").n << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::KeyError&) {
-                std::cout << "KeyError caught" << "\n";
+                std::cout << "KeyError caught" << "\n" << ::tpy::check_signals;
             }
         }
         Cell& inner = ::tpy::__getitem__(__v, "a");
         inner.n = ::tpy::BigInt(99);
-        std::cout << ::tpy::__getitem__(__v, "a").n << "\n";
+        std::cout << ::tpy::__getitem__(__v, "a").n << "\n" << ::tpy::check_signals;
     }
 }
 

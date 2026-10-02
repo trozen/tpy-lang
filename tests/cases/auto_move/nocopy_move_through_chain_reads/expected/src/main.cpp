@@ -13,7 +13,7 @@ namespace tpyapp::main {
 Handle chain_reads() {
     Handle h = Handle(33);
     Handle a = std::move(h);
-    std::cout << a.fd << "\n";
+    std::cout << a.fd << "\n" << ::tpy::check_signals;
     Handle b = std::move(a);
     return b;
 }
@@ -23,7 +23,7 @@ Handle chain_reads() {
 //     print(r.fd)
 void main() {
     Handle r = ::tpyapp::main::chain_reads();
-    std::cout << r.fd << "\n";
+    std::cout << r.fd << "\n" << ::tpy::check_signals;
 }
 
 // main()

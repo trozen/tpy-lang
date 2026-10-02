@@ -13,7 +13,7 @@ void main() {
     Inner inner = Inner();
     inner.value = 42;
     Box<Inner> box = Box<Inner>(std::move(inner));
-    std::cout << box.item.value << "\n";
+    std::cout << box.item.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

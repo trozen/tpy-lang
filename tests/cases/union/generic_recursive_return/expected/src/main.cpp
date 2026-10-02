@@ -52,9 +52,9 @@ int32_t leaf_count(const Tree<int32_t>& t) {
 //     print(leaf_count(make_branch()))
 void main() {
     Tree<int32_t> __tmp_1 = ::tpyapp::main::make_leaf();
-    std::cout << ::tpyapp::main::leaf_count(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::leaf_count(__tmp_1) << "\n" << ::tpy::check_signals;
     Tree<int32_t> __tmp_2 = ::tpyapp::main::make_branch();
-    std::cout << ::tpyapp::main::leaf_count(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::leaf_count(__tmp_2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

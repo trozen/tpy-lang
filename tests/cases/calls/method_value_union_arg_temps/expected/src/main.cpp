@@ -39,11 +39,11 @@ int32_t use_lit(A& a) {
 //     print(a.outer())
 void main() {
     A a = A(10);
-    std::cout << ::tpyapp::main::use(a, 2, 0.5) << "\n";
+    std::cout << ::tpyapp::main::use(a, 2, 0.5) << "\n" << ::tpy::check_signals;
     Child __tmp_1 = Child(3);
-    std::cout << ::tpyapp::main::use_inherited(__tmp_1, 4) << "\n";
-    std::cout << ::tpyapp::main::use_lit(a) << "\n";
-    std::cout << a.outer() << "\n";
+    std::cout << ::tpyapp::main::use_inherited(__tmp_1, 4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use_lit(a) << "\n" << ::tpy::check_signals;
+    std::cout << a.outer() << "\n" << ::tpy::check_signals;
 }
 
 // main()

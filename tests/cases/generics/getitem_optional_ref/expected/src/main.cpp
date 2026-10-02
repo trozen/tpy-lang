@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void peek(const Box& b) {
     const Rec* p = b[1];
     if ((p != nullptr)) {
-        std::cout << p->x << "\n";
+        std::cout << p->x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -42,23 +42,23 @@ void main() {
     if ((p != nullptr)) {
         p->x = 8;
     }
-    std::cout << b._v.x << "\n";
+    std::cout << b._v.x << "\n" << ::tpy::check_signals;
     Rec* m = b[0];
     if ((m == nullptr)) {
-        std::cout << "miss" << "\n";
+        std::cout << "miss" << "\n" << ::tpy::check_signals;
     }
     ::tpyapp::main::peek(b);
     GenBox<int32_t, Rec> g = GenBox<int32_t, Rec>(1, Rec(20));
     Rec* q = g[1];
     if ((q != nullptr)) {
-        std::cout << q->x << "\n";
+        std::cout << q->x << "\n" << ::tpy::check_signals;
     }
     SubBox s = SubBox(2, Rec(30));
     Rec* r = s[1];
     if ((r != nullptr)) {
         r->x = 31;
     }
-    std::cout << s._v.x << "\n";
+    std::cout << s._v.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -19,12 +19,12 @@ void main() {
     std::array<int32_t, 3> nums = {10, 20, 30};
     int32_t* np = nums.data();
     ::tpyapp::main::store_at<int32_t>(np, 1, 99);
-    std::cout << np[1] << "\n";
+    std::cout << np[1] << "\n" << ::tpy::check_signals;
     std::array<Point, 2> pts = {Point(1, 2), Point(3, 4)};
     Point* pp = pts.data();
     ::tpyapp::main::store_at<Point>(pp, 0, Point(10, 20));
-    std::cout << pp[0].x << "\n";
-    std::cout << pp[0].y << "\n";
+    std::cout << pp[0].x << "\n" << ::tpy::check_signals;
+    std::cout << pp[0].y << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store

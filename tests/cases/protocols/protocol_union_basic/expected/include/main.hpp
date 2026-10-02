@@ -29,9 +29,9 @@ template<typename T_items>
   requires (::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
 void describe(const T_items& items) {
     if constexpr (::tpystd::typing::Sequence<T_items, ::tpy::BigInt>) {
-        std::cout << ::tpy::__getitem__(items, 0) << "\n";
+        std::cout << ::tpy::__getitem__(items, 0) << "\n" << ::tpy::check_signals;
     } else if constexpr (::tpystd::typing::Sized<T_items>) {
-        std::cout << ::tpy::__len__(items) << "\n";
+        std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
     }
 }
 // def get_value(items: Sized | Sequence[int]) -> int:

@@ -44,7 +44,7 @@ void brk_out() {
                 __ctx_2.__exit__({}, nullptr, {});
                 break;
             }
-            std::cout << std::format("iter {}", i) << "\n";
+            std::cout << std::format("iter {}", i) << "\n" << ::tpy::check_signals;
             goto __with_exit_2;
         } catch (::tpy::BaseException& __exc_2) {
             if (__fin_ran_2) throw;
@@ -77,7 +77,7 @@ void cont_out() {
                 __ctx_3.__exit__({}, nullptr, {});
                 continue;
             }
-            std::cout << std::format("iter {}", i) << "\n";
+            std::cout << std::format("iter {}", i) << "\n" << ::tpy::check_signals;
             goto __with_exit_3;
         } catch (::tpy::BaseException& __exc_3) {
             if (__fin_ran_3) throw;
@@ -143,32 +143,32 @@ void cont_out() {
 //     print("-- ret_out_suppressing --")
 //     print(ret_out_suppressing())
 void main() {
-    std::cout << "-- ret_out --" << "\n";
+    std::cout << "-- ret_out --" << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::ret_out();
         } catch (const ::tpy::RuntimeError& e) {
-            std::cout << std::format("caught: {}", std::string(::tpy::__str__(e))) << "\n";
+            std::cout << std::format("caught: {}", std::string(::tpy::__str__(e))) << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "-- brk_out --" << "\n";
+    std::cout << "-- brk_out --" << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::brk_out();
         } catch (const ::tpy::RuntimeError& e) {
-            std::cout << std::format("caught: {}", std::string(::tpy::__str__(e))) << "\n";
+            std::cout << std::format("caught: {}", std::string(::tpy::__str__(e))) << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "-- cont_out --" << "\n";
+    std::cout << "-- cont_out --" << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::cont_out();
         } catch (const ::tpy::RuntimeError& e) {
-            std::cout << std::format("caught: {}", std::string(::tpy::__str__(e))) << "\n";
+            std::cout << std::format("caught: {}", std::string(::tpy::__str__(e))) << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "-- ret_out_suppressing --" << "\n";
-    std::cout << ::tpyapp::main::ret_out_suppressing() << "\n";
+    std::cout << "-- ret_out_suppressing --" << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::ret_out_suppressing() << "\n" << ::tpy::check_signals;
 }
 
 // main()

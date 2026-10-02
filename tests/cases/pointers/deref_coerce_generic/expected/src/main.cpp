@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def print_point(p: Point) -> None:
 //     print(p.x, p.y)
 void print_point(const Point& p) {
-    std::cout << p.x << " " << p.y << "\n";
+    std::cout << p.x << " " << p.y << "\n" << ::tpy::check_signals;
 }
 
 // def test() -> None:
@@ -19,8 +19,8 @@ void print_point(const Point& p) {
 //     print_point(b)
 void test() {
     Box<Point> b = Box<Point>(Point(5, 15));
-    std::cout << b.__deref__().x << "\n";
-    std::cout << b.__deref__().y << "\n";
+    std::cout << b.__deref__().x << "\n" << ::tpy::check_signals;
+    std::cout << b.__deref__().y << "\n" << ::tpy::check_signals;
     Point __tmp_1 = b.__deref__();
     ::tpyapp::main::print_point(__tmp_1);
 }

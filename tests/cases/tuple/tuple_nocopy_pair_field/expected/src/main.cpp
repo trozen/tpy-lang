@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(c.pair[1].fd)
 void main() {
     Container c = Container();
-    std::cout << std::get<0>(c.pair).fd << "\n";
-    std::cout << std::get<1>(c.pair).fd << "\n";
+    std::cout << std::get<0>(c.pair).fd << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(c.pair).fd << "\n" << ::tpy::check_signals;
 }
 
 // main()

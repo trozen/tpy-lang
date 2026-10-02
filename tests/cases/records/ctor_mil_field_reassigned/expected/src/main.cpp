@@ -10,7 +10,7 @@ int32_t SCALE{};
 //     print(a.total, a.label)
 void main() {
     Acc a = Acc(3);
-    std::cout << a.total << " " << a.label << "\n";
+    std::cout << a.total << " " << a.label << "\n" << ::tpy::check_signals;
 }
 
 // SCALE: int32 = 4

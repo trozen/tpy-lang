@@ -23,7 +23,7 @@ void test_last_use() {
         const auto& x = ::tpy::unwrap_ref(*__r_1);
         total = ::tpy::add_check<int32_t>(total, x.val);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def test_borrowing_not_last_use() -> None:
@@ -46,8 +46,8 @@ void test_borrowing_not_last_use() {
         const auto& x = ::tpy::unwrap_ref(*__r_1);
         total = ::tpy::add_check<int32_t>(total, x.val);
     }
-    std::cout << total << "\n";
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // test_last_use()

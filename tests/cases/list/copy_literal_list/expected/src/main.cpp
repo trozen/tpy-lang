@@ -13,7 +13,7 @@ void literal_list() {
     std::vector<int32_t> xs = {1, 2};
     std::vector<int32_t> ys = std::vector<int32_t>(xs);
     ys.push_back(3);
-    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(ys) << "\n";
+    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
 }
 
 // def literal_dict() -> None:
@@ -25,7 +25,7 @@ void literal_dict() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     ::tpy::ordered_map<std::string, int32_t> e = ::tpy::ordered_map<std::string, int32_t>(d);
     ::tpy::__setitem__(e, "b", 2);
-    std::cout << ::tpy::__len__(d) << " " << ::tpy::__len__(e) << "\n";
+    std::cout << ::tpy::__len__(d) << " " << ::tpy::__len__(e) << "\n" << ::tpy::check_signals;
 }
 
 // def literal_set() -> None:
@@ -37,7 +37,7 @@ void literal_set() {
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
     ::tpy::ordered_set<int32_t> t = ::tpy::ordered_set<int32_t>(s);
     t.insert(3);
-    std::cout << ::tpy::__len__(s) << " " << ::tpy::__len__(t) << "\n";
+    std::cout << ::tpy::__len__(s) << " " << ::tpy::__len__(t) << "\n" << ::tpy::check_signals;
 }
 
 // def annotated_list() -> None:
@@ -49,7 +49,7 @@ void annotated_list() {
     std::vector<int32_t> xs = {1, 2};
     std::vector<int32_t> ys = std::vector<int32_t>(xs);
     ys.push_back(3);
-    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(ys) << "\n";
+    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -29,9 +29,9 @@ int32_t pick(int32_t x, int32_t tag) {
 //     print(b)                                # 15
 void main() {
     std::string a = ::tpyapp::main::pick(10, std::string_view("label"));
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
     int32_t b = ::tpyapp::main::pick(10, 5);
-    std::cout << b << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // main()

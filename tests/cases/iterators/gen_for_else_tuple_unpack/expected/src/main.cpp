@@ -21,7 +21,7 @@ __gen_gen gen(const std::vector<std::tuple<int32_t, int32_t>>& pairs, int32_t li
 //     for v in gen([(1, 2), (3, 4)], 5):
 //         print(v)
 void main() {
-    std::cout << "no break:" << "\n";
+    std::cout << "no break:" << "\n" << ::tpy::check_signals;
     {
         std::vector<std::tuple<int32_t, int32_t>> __tmp_1 = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
         auto __src_0 = ::tpyapp::main::gen(__tmp_1, 100);
@@ -30,10 +30,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "break:" << "\n";
+    std::cout << "break:" << "\n" << ::tpy::check_signals;
     {
         std::vector<std::tuple<int32_t, int32_t>> __tmp_2 = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
         auto __src_2 = ::tpyapp::main::gen(__tmp_2, 5);
@@ -42,7 +42,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -35,7 +35,7 @@ void main() {
         auto __tup_1 = ::tpy::float_as_integer_ratio(v);
         const ::tpy::BigInt& num = std::get<0>(__tup_1);
         const ::tpy::BigInt& den = std::get<1>(__tup_1);
-        std::cout << num << " " << den << "\n";
+        std::cout << num << " " << den << "\n" << ::tpy::check_signals;
     }
     std::vector<::tpy::BigInt> ns = {0, 10, -7, static_cast<int64_t>(1234567890123456789)};
     auto& __obj_1 = ns;
@@ -43,14 +43,14 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const ::tpy::BigInt& n = *__beg_1;
-        std::cout << ::tpy::TuplePrinter(::tpy::bigint_as_integer_ratio(n)) << "\n";
+        std::cout << ::tpy::TuplePrinter(::tpy::bigint_as_integer_ratio(n)) << "\n" << ::tpy::check_signals;
     }
     double inf = ::tpystd::math::inf;
     {
         try {
             ::tpy::float_as_integer_ratio(inf);
         } catch (const ::tpy::OverflowError& e) {
-            std::cout << "overflow:" << " " << e << "\n";
+            std::cout << "overflow:" << " " << e << "\n" << ::tpy::check_signals;
         }
     }
     double nan = ::tpystd::math::nan;
@@ -58,7 +58,7 @@ void main() {
         try {
             ::tpy::float_as_integer_ratio(nan);
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "value:" << " " << e << "\n";
+            std::cout << "value:" << " " << e << "\n" << ::tpy::check_signals;
         }
     }
 }

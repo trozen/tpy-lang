@@ -69,12 +69,12 @@ int32_t repeated(bool again) {
 //     print("constructor", runner.result)
 //     print("method", runner.method())
 void main() {
-    std::cout << "free" << " " << ::tpyapp::main::free(true) << " " << ::tpyapp::main::free(false) << "\n";
-    std::cout << "scalars" << " " << ::tpyapp::main::scalar_members() << "\n";
-    std::cout << "loop" << " " << ::tpyapp::main::repeated(true) << " " << ::tpyapp::main::repeated(false) << "\n";
+    std::cout << "free" << " " << ::tpyapp::main::free(true) << " " << ::tpyapp::main::free(false) << "\n" << ::tpy::check_signals;
+    std::cout << "scalars" << " " << ::tpyapp::main::scalar_members() << "\n" << ::tpy::check_signals;
+    std::cout << "loop" << " " << ::tpyapp::main::repeated(true) << " " << ::tpyapp::main::repeated(false) << "\n" << ::tpy::check_signals;
     Runner runner = Runner();
-    std::cout << "constructor" << " " << runner.result << "\n";
-    std::cout << "method" << " " << runner.method() << "\n";
+    std::cout << "constructor" << " " << runner.result << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << runner.method() << "\n" << ::tpy::check_signals;
 }
 
 // main()

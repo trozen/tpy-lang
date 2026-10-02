@@ -67,37 +67,37 @@ int32_t takes_str(std::string_view s) {
 //     G.append(3)
 //     print("live:", len(mk().data), mk().data[2])
 void main() {
-    std::cout << "print:" << " " << ::tpy::ListPrinter(::tpyapp::main::mk().data()) << "\n";
-    std::cout << "len:" << " " << ::tpy::__len__(::tpyapp::main::mk().data()) << "\n";
-    std::cout << "len_view:" << " " << ::tpy::__len__(::tpyapp::main::mk().head()) << "\n";
-    std::cout << "subscript:" << " " << ::tpy::__getitem__(::tpyapp::main::mk().data(), 0) << "\n";
-    std::cout << "fstring:" << " " << std::format("{}", ::tpyapp::main::mk().head()) << "\n";
-    std::cout << "compare:" << " " << ::tpy::print_bool((::tpyapp::main::mk().head() == "abc")) << "\n";
-    std::cout << "concat:" << " " << (::tpy::str_concat(::tpyapp::main::mk().head(), "z")) << "\n";
-    std::cout << "method:" << " " << ::tpy::list_count(::tpyapp::main::mk().data(), 1) << "\n";
-    std::cout << "user_param:" << " " << ::tpyapp::main::takes_str(::tpyapp::main::mk().head()) << "\n";
-    std::cout << "str_call:" << " " << std::string(::tpyapp::main::mk().head()) << "\n";
+    std::cout << "print:" << " " << ::tpy::ListPrinter(::tpyapp::main::mk().data()) << "\n" << ::tpy::check_signals;
+    std::cout << "len:" << " " << ::tpy::__len__(::tpyapp::main::mk().data()) << "\n" << ::tpy::check_signals;
+    std::cout << "len_view:" << " " << ::tpy::__len__(::tpyapp::main::mk().head()) << "\n" << ::tpy::check_signals;
+    std::cout << "subscript:" << " " << ::tpy::__getitem__(::tpyapp::main::mk().data(), 0) << "\n" << ::tpy::check_signals;
+    std::cout << "fstring:" << " " << std::format("{}", ::tpyapp::main::mk().head()) << "\n" << ::tpy::check_signals;
+    std::cout << "compare:" << " " << ::tpy::print_bool((::tpyapp::main::mk().head() == "abc")) << "\n" << ::tpy::check_signals;
+    std::cout << "concat:" << " " << (::tpy::str_concat(::tpyapp::main::mk().head(), "z")) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << ::tpy::list_count(::tpyapp::main::mk().data(), 1) << "\n" << ::tpy::check_signals;
+    std::cout << "user_param:" << " " << ::tpyapp::main::takes_str(::tpyapp::main::mk().head()) << "\n" << ::tpy::check_signals;
+    std::cout << "str_call:" << " " << std::string(::tpyapp::main::mk().head()) << "\n" << ::tpy::check_signals;
     if ((!::tpyapp::main::mk().head().empty())) {
-        std::cout << "truthy: yes" << "\n";
+        std::cout << "truthy: yes" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "field_thru:" << " " << ::tpyapp::main::mk().rec().x << "\n";
+    std::cout << "field_thru:" << " " << ::tpyapp::main::mk().rec().x << "\n" << ::tpy::check_signals;
     std::vector<int32_t> acc = {0};
     ::tpy::list_extend(acc, ::tpyapp::main::mk().data());
-    std::cout << "augassign:" << " " << ::tpy::__len__(acc) << "\n";
+    std::cout << "augassign:" << " " << ::tpy::__len__(acc) << "\n" << ::tpy::check_signals;
     std::string text = "z";
     text += ::tpyapp::main::mk().head();
-    std::cout << "augassign_str:" << " " << text << "\n";
+    std::cout << "augassign_str:" << " " << text << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"abc", 1}});
-    std::cout << "dict_read:" << " " << ::tpy::__getitem__(d, ::tpyapp::main::mk().head()) << "\n";
+    std::cout << "dict_read:" << " " << ::tpy::__getitem__(d, ::tpyapp::main::mk().head()) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(d, ::tpyapp::main::mk().head(), 2);
-    std::cout << "dict_write:" << " " << ::tpy::__getitem__(d, "abc") << "\n";
-    std::cout << "membership:" << " " << ::tpy::print_bool((d.contains(::tpyapp::main::mk().head()))) << "\n";
+    std::cout << "dict_write:" << " " << ::tpy::__getitem__(d, "abc") << "\n" << ::tpy::check_signals;
+    std::cout << "membership:" << " " << ::tpy::print_bool((d.contains(::tpyapp::main::mk().head()))) << "\n" << ::tpy::check_signals;
     Sink sink = Sink();
-    std::cout << "method_arg:" << " " << sink.count_chars(::tpyapp::main::mk().head()) << "\n";
+    std::cout << "method_arg:" << " " << sink.count_chars(::tpyapp::main::mk().head()) << "\n" << ::tpy::check_signals;
     Holder holder = Holder(::tpyapp::main::mk().head());
-    std::cout << "ctor_arg:" << " " << holder.v << "\n";
+    std::cout << "ctor_arg:" << " " << holder.v << "\n" << ::tpy::check_signals;
     G->push_back(3);
-    std::cout << "live:" << " " << ::tpy::__len__(::tpyapp::main::mk().data()) << " " << ::tpy::__getitem__(::tpyapp::main::mk().data(), 2) << "\n";
+    std::cout << "live:" << " " << ::tpy::__len__(::tpyapp::main::mk().data()) << " " << ::tpy::__getitem__(::tpyapp::main::mk().data(), 2) << "\n" << ::tpy::check_signals;
 }
 
 // G: list[int32] = [1, 2]

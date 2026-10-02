@@ -18,13 +18,13 @@ namespace tpyapp::main {
 //     print(n)
 void main() {
     std::tuple<int32_t, int32_t> t = std::tuple<int32_t, int32_t>{10, 20};
-    std::cout << ::tpy::TuplePrinter(t) << "\n";
+    std::cout << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;
     std::tuple<int32_t> s = std::tuple<int32_t>(42);
-    std::cout << ::tpy::TuplePrinter(s) << "\n";
+    std::cout << ::tpy::TuplePrinter(s) << "\n" << ::tpy::check_signals;
     Pair p = Pair(1, "hello");
-    std::cout << p << "\n";
+    std::cout << p << "\n" << ::tpy::check_signals;
     std::tuple<std::tuple<int32_t, int32_t>, std::string> n = std::tuple<std::tuple<int32_t, int32_t>, std::string>{std::tuple<int32_t, int32_t>{3, 4}, "xy"};
-    std::cout << ::tpy::TuplePrinter(n) << "\n";
+    std::cout << ::tpy::TuplePrinter(n) << "\n" << ::tpy::check_signals;
 }
 
 // main()

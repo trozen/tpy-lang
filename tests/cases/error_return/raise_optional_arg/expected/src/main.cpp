@@ -27,22 +27,22 @@ std::expected<int32_t, Failed> run(bool ok) {
 //         print("code none" if e.code is None else "code set")
 void main() {
     {
-        std::cout << ({ auto __er_2 = ::tpyapp::main::run(true); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << ({ auto __er_2 = ::tpyapp::main::run(true); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Failed:
         __except_1:;
-        std::cout << "failed" << "\n";
+        std::cout << "failed" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     {
         std::optional<Failed> __err_opt_3;
-        std::cout << ({ auto __er_4 = ::tpyapp::main::run(false); if (!__er_4.has_value()) { __err_opt_3 = std::move(__er_4.error()); goto __except_3; } ::tpy::unwrap_ref_move(*__er_4); }) << "\n";
+        std::cout << ({ auto __er_4 = ::tpyapp::main::run(false); if (!__er_4.has_value()) { __err_opt_3 = std::move(__er_4.error()); goto __except_3; } ::tpy::unwrap_ref_move(*__er_4); }) << "\n" << ::tpy::check_signals;
         goto __after_try_3;
         // except Failed:
         __except_3:;
         {
             auto& e = *__err_opt_3;
-            std::cout << (((!e.code.has_value())) ? ("code none") : ("code set")) << "\n";
+            std::cout << (((!e.code.has_value())) ? ("code none") : ("code set")) << "\n" << ::tpy::check_signals;
         }
         __after_try_3:;
     }

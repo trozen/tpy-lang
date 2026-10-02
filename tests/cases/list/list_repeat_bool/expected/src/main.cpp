@@ -39,32 +39,32 @@ namespace tpyapp::main {
 //         print(x)
 void main() {
     std::vector<bool> falses = ::tpy::from_range<std::vector<bool>>(::tpy::repeat_range<bool>(5, {false}));
-    std::cout << ::tpy::__len__(falses) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::__getitem__(falses, 0)) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::__getitem__(falses, 4)) << "\n";
+    std::cout << ::tpy::__len__(falses) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::__getitem__(falses, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::__getitem__(falses, 4)) << "\n" << ::tpy::check_signals;
     std::vector<bool> trues = ::tpy::from_range<std::vector<bool>>(::tpy::repeat_range<bool>(3, {true}));
-    std::cout << ::tpy::__len__(trues) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::__getitem__(trues, 0)) << "\n";
+    std::cout << ::tpy::__len__(trues) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::__getitem__(trues, 0)) << "\n" << ::tpy::check_signals;
     std::vector<bool> mixed = ::tpy::from_range<std::vector<bool>>(::tpy::repeat_range<bool>(2, {true, false}));
-    std::cout << ::tpy::__len__(mixed) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::__getitem__(mixed, 0)) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::__getitem__(mixed, 1)) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::__getitem__(mixed, 2)) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::__getitem__(mixed, 3)) << "\n";
+    std::cout << ::tpy::__len__(mixed) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::__getitem__(mixed, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::__getitem__(mixed, 1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::__getitem__(mixed, 2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::__getitem__(mixed, 3)) << "\n" << ::tpy::check_signals;
     std::vector<bool> empty = ::tpy::from_range<std::vector<bool>>(::tpy::repeat_range<bool>(0, {true}));
-    std::cout << ::tpy::__len__(empty) << "\n";
+    std::cout << ::tpy::__len__(empty) << "\n" << ::tpy::check_signals;
     std::vector<bool> neg = ::tpy::from_range<std::vector<bool>>(::tpy::repeat_range<bool>(-2, {true}));
-    std::cout << ::tpy::__len__(neg) << "\n";
+    std::cout << ::tpy::__len__(neg) << "\n" << ::tpy::check_signals;
     int32_t n = 4;
     std::vector<bool> dynamic = ::tpy::from_range<std::vector<bool>>(::tpy::repeat_range<bool>(n, {false}));
-    std::cout << ::tpy::__len__(dynamic) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::__getitem__(dynamic, 3)) << "\n";
+    std::cout << ::tpy::__len__(dynamic) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::__getitem__(dynamic, 3)) << "\n" << ::tpy::check_signals;
     auto& __obj_0 = mixed;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         bool x = *__beg_0;
-        std::cout << ::tpy::print_bool(x) << "\n";
+        std::cout << ::tpy::print_bool(x) << "\n" << ::tpy::check_signals;
     }
 }
 

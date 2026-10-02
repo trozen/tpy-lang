@@ -39,23 +39,23 @@ void main() {
     uint8_t a = 0;
     uint8_t b = 255;
     uint8_t c = 42;
-    std::cout << static_cast<int>(a) << "\n";
-    std::cout << static_cast<int>(b) << "\n";
-    std::cout << static_cast<int>(c) << "\n";
+    std::cout << static_cast<int>(a) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(b) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(c) << "\n" << ::tpy::check_signals;
     uint8_t x = 100;
     uint8_t y = 50;
-    std::cout << static_cast<int>((::tpy::add_check<uint8_t>(x, y))) << "\n";
-    std::cout << static_cast<int>((::tpy::sub_check<uint8_t>(x, y))) << "\n";
-    std::cout << static_cast<int>((::tpy::mul_check<uint8_t>(x, 2))) << "\n";
-    std::cout << static_cast<int>((::tpy::div_check<uint8_t>(x, 3))) << "\n";
-    std::cout << static_cast<int>((::tpy::mod_check<uint8_t>(x, 7))) << "\n";
-    std::cout << static_cast<int>((static_cast<uint8_t>(255 & 15))) << "\n";
-    std::cout << static_cast<int>((static_cast<uint8_t>(240 | 15))) << "\n";
-    std::cout << static_cast<int>((static_cast<uint8_t>(255 ^ 15))) << "\n";
-    std::cout << static_cast<int>(static_cast<uint8_t>(~(0))) << "\n";
+    std::cout << static_cast<int>((::tpy::add_check<uint8_t>(x, y))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>((::tpy::sub_check<uint8_t>(x, y))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>((::tpy::mul_check<uint8_t>(x, 2))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>((::tpy::div_check<uint8_t>(x, 3))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>((::tpy::mod_check<uint8_t>(x, 7))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>((static_cast<uint8_t>(255 & 15))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>((static_cast<uint8_t>(240 | 15))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>((static_cast<uint8_t>(255 ^ 15))) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<uint8_t>(~(0))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt n = ::tpy::BigInt(static_cast<uint64_t>(c));
-    std::cout << n << "\n";
-    std::cout << ::tpy::fixed_to_str<uint8_t>(c) << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::fixed_to_str<uint8_t>(c) << "\n" << ::tpy::check_signals;
 }
 
 // main()

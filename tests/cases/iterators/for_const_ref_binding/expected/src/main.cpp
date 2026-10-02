@@ -37,7 +37,7 @@ void test_read_only_loop() {
         const auto& p = *__beg_0;
         total = (::tpy::add_check<int32_t>(total, p.value()));
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def test_non_readonly_method_loop() -> None:
@@ -55,7 +55,7 @@ void test_non_readonly_method_loop() {
         auto&& lst = *__beg_0;
         lst.push_back(99);
     }
-    std::cout << ::tpy::__len__(::tpy::__getitem__(items, 0)) << "\n";
+    std::cout << ::tpy::__len__(::tpy::__getitem__(items, 0)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_field_mutate_loop() -> None:
@@ -73,7 +73,7 @@ void test_field_mutate_loop() {
         auto&& p = *__beg_0;
         p.x = 99;
     }
-    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n" << ::tpy::check_signals;
 }
 
 // def test_nested_field_mutate_loop() -> None:
@@ -91,7 +91,7 @@ void test_nested_field_mutate_loop() {
         auto&& c = *__beg_0;
         c.items.push_back(99);
     }
-    std::cout << ::tpy::__len__(::tpy::__getitem__(items, 0).items) << "\n";
+    std::cout << ::tpy::__len__(::tpy::__getitem__(items, 0).items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_nested_loop_mutate() -> None:
@@ -120,7 +120,7 @@ void test_nested_loop_mutate() {
             p.x = ::tpy::add_check<int32_t>(p.x, 5);
         }
     }
-    std::cout << "nested mutate" << " " << ::tpy::__getitem__(::tpy::__getitem__(grid, 0), 0).x << " " << ::tpy::__getitem__(::tpy::__getitem__(grid, 1), 0).x << "\n";
+    std::cout << "nested mutate" << " " << ::tpy::__getitem__(::tpy::__getitem__(grid, 0), 0).x << " " << ::tpy::__getitem__(::tpy::__getitem__(grid, 1), 0).x << "\n" << ::tpy::check_signals;
 }
 
 // def test_nested_loop_read() -> None:
@@ -147,7 +147,7 @@ void test_nested_loop_read() {
             total = (::tpy::add_check<int32_t>(total, p.value()));
         }
     }
-    std::cout << "nested read" << " " << total << "\n";
+    std::cout << "nested read" << " " << total << "\n" << ::tpy::check_signals;
 }
 
 // def bump_field_nested(g: Grid) -> None:
@@ -315,25 +315,25 @@ void test_subscript_source_loops() {
     Grid g = Grid();
     ::tpyapp::main::bump_field_nested(g);
     g.bump_own();
-    std::cout << "sub nested" << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(g.rows, 0), 0), 0).x << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(g.rows, 1), 0), 0).x << "\n";
+    std::cout << "sub nested" << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(g.rows, 0), 0), 0).x << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(g.rows, 1), 0), 0).x << "\n" << ::tpy::check_signals;
     std::vector<std::vector<Point>> rows = {{Point(1, 2), Point(3, 4)}};
     ::tpyapp::main::bump_param_subscript(rows, 0);
-    std::cout << "sub param" << " " << ::tpy::__getitem__(::tpy::__getitem__(rows, 0), 0).x << " " << ::tpyapp::main::read_param_subscript(rows, 0) << "\n";
+    std::cout << "sub param" << " " << ::tpy::__getitem__(::tpy::__getitem__(rows, 0), 0).x << " " << ::tpyapp::main::read_param_subscript(rows, 0) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<std::vector<std::vector<Point>>>> cube = {{{{Point(1, 2)}}}};
     ::tpyapp::main::bump_three_levels(cube);
-    std::cout << "sub three" << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(cube, 0), 0), 0), 0).x << "\n";
+    std::cout << "sub three" << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(cube, 0), 0), 0), 0).x << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::vector<Point>> table = ::tpy::ordered_map<int32_t, std::vector<Point>>();
     ::tpy::__setitem__(table, 7, std::vector<Point>{Point(1, 2)});
     ::tpyapp::main::bump_dict_subscript(table, 7);
-    std::cout << "sub dict" << " " << ::tpy::__getitem__(::tpy::__getitem__(table, 7), 0).x << "\n";
+    std::cout << "sub dict" << " " << ::tpy::__getitem__(::tpy::__getitem__(table, 7), 0).x << "\n" << ::tpy::check_signals;
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     ::tpyapp::main::bump_slice_subscript(items);
-    std::cout << "sub slice" << " " << ::tpy::__getitem__(items, 0).x << " " << ::tpy::__getitem__(items, 1).x << "\n";
+    std::cout << "sub slice" << " " << ::tpy::__getitem__(items, 0).x << " " << ::tpy::__getitem__(items, 1).x << "\n" << ::tpy::check_signals;
     Point* found = ::tpyapp::main::first_of_row(rows);
     if ((found != nullptr)) {
         found->x = ::tpy::add_check<int32_t>(found->x, 100);
     }
-    std::cout << "sub return" << " " << ::tpy::__getitem__(::tpy::__getitem__(rows, 0), 0).x << "\n";
+    std::cout << "sub return" << " " << ::tpy::__getitem__(::tpy::__getitem__(rows, 0), 0).x << "\n" << ::tpy::check_signals;
 }
 
 // def bump_param_field_sub(s: Shelf, i: int32) -> None:
@@ -623,31 +623,31 @@ void test_chain_source_loops() {
     Shelf s = Shelf();
     s.bump_row(0);
     ::tpyapp::main::bump_param_field_sub(s, 1);
-    std::cout << "chain method" << " " << ::tpy::__getitem__(::tpy::__getitem__(s.rows, 0), 0).x << " " << "param" << " " << ::tpy::__getitem__(::tpy::__getitem__(s.rows, 1), 0).x << "\n";
+    std::cout << "chain method" << " " << ::tpy::__getitem__(::tpy::__getitem__(s.rows, 0), 0).x << " " << "param" << " " << ::tpy::__getitem__(::tpy::__getitem__(s.rows, 1), 0).x << "\n" << ::tpy::check_signals;
     Depot d = Depot();
     d.bump_deep(0);
     d.bump_flat();
-    std::cout << "chain deep" << " " << ::tpy::__getitem__(::tpy::__getitem__(d.shelf.rows, 0), 0).x << " " << "flat" << " " << ::tpy::__getitem__(d.shelf.flat, 0).x << "\n";
-    std::cout << "chain ctor" << " " << Tally(d).total << " " << "readonly" << " " << ::tpyapp::main::read_ro_chain(d.shelf) << "\n";
+    std::cout << "chain deep" << " " << ::tpy::__getitem__(::tpy::__getitem__(d.shelf.rows, 0), 0).x << " " << "flat" << " " << ::tpy::__getitem__(d.shelf.flat, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << "chain ctor" << " " << Tally(d).total << " " << "readonly" << " " << ::tpyapp::main::read_ro_chain(d.shelf) << "\n" << ::tpy::check_signals;
     std::vector<Shelf> shelves = {Shelf(), Shelf()};
     ::tpyapp::main::bump_elem_field(shelves);
     ::tpyapp::main::bump_loop_var_root(shelves);
-    std::cout << "chain elem field" << " " << ::tpy::__getitem__(::tpy::__getitem__(shelves, 0).flat, 0).x << " " << "loop var" << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(shelves, 0).rows, 0), 0).x << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(shelves, 1).rows, 0), 0).x << "\n";
+    std::cout << "chain elem field" << " " << ::tpy::__getitem__(::tpy::__getitem__(shelves, 0).flat, 0).x << " " << "loop var" << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(shelves, 0).rows, 0), 0).x << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(shelves, 1).rows, 0), 0).x << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, Shelf> table = ::tpy::ordered_map<int32_t, Shelf>();
     ::tpy::__setitem__(table, 7, Shelf());
     ::tpyapp::main::bump_dict_elem_field(table, 7);
-    std::cout << "chain dict elem field" << " " << ::tpy::__getitem__(::tpy::__getitem__(table, 7).flat, 0).x << "\n";
+    std::cout << "chain dict elem field" << " " << ::tpy::__getitem__(::tpy::__getitem__(table, 7).flat, 0).x << "\n" << ::tpy::check_signals;
     std::vector<Depot> ds = {Depot()};
     ::tpyapp::main::alias_write(ds);
-    std::cout << "chain alias" << " " << ::tpyapp::main::alias_read(ds) << " " << ::tpy::__getitem__(::tpy::__getitem__(ds, 0).shelf.flat, 0).x << "\n";
+    std::cout << "chain alias" << " " << ::tpyapp::main::alias_read(ds) << " " << ::tpy::__getitem__(::tpy::__getitem__(ds, 0).shelf.flat, 0).x << "\n" << ::tpy::check_signals;
     Shelf s3 = Shelf();
     ::tpyapp::main::bump_ptr_root(&s3);
-    std::cout << "chain ptr root" << " " << ::tpy::__getitem__(::tpy::__getitem__(s3.rows, 0), 0).x << " " << ::tpyapp::main::read_ptr_root(&s3) << "\n";
+    std::cout << "chain ptr root" << " " << ::tpy::__getitem__(::tpy::__getitem__(s3.rows, 0), 0).x << " " << ::tpyapp::main::read_ptr_root(&s3) << "\n" << ::tpy::check_signals;
     Shelf s2 = Shelf();
-    std::cout << "chain try" << " " << ::tpyapp::main::bump_in_try(s2) << " " << ::tpy::__getitem__(::tpy::__getitem__(s2.rows, 0), 0).x << "\n";
+    std::cout << "chain try" << " " << ::tpyapp::main::bump_in_try(s2) << " " << ::tpy::__getitem__(::tpy::__getitem__(s2.rows, 0), 0).x << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bump_in_match(s2, 0);
     ::tpyapp::main::bump_in_closure(s2);
-    std::cout << "chain match+closure" << " " << ::tpy::__getitem__(::tpy::__getitem__(s2.rows, 0), 0).x << "\n";
+    std::cout << "chain match+closure" << " " << ::tpy::__getitem__(::tpy::__getitem__(s2.rows, 0), 0).x << "\n" << ::tpy::check_signals;
 }
 
 // def test_assign_to_local_loop() -> None:
@@ -668,7 +668,7 @@ void test_assign_to_local_loop() {
         auto&& p = *__beg_0;
         saved = &(p);
     }
-    std::cout << saved->x << " " << saved->y << "\n";
+    std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
 
 // def find_point(items: list[Point], target: int32) -> Point | None:
@@ -705,7 +705,7 @@ void test_pass_to_mutating_func() {
         auto&& p = *__beg_0;
         ::tpyapp::main::mutate_point(p);
     }
-    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n" << ::tpy::check_signals;
 }
 
 // def test_pass_to_readonly_func() -> None:
@@ -725,7 +725,7 @@ void test_pass_to_readonly_func() {
         const auto& p = *__beg_0;
         total = (::tpy::add_check<int32_t>(total, ::tpyapp::main::read_point(p)));
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def test_ptr_from_loop_var() -> None:
@@ -745,7 +745,7 @@ void test_ptr_from_loop_var() {
         Point* ptr = &p;
         ptr->x = 42;
     }
-    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n" << ::tpy::check_signals;
 }
 
 // def test_value_type_loop() -> None:
@@ -765,7 +765,7 @@ void test_value_type_loop() {
         int32_t n = *__beg_0;
         total = (::tpy::add_check<int32_t>(total, n));
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def test_sequential_loops_same_var() -> None:
@@ -794,7 +794,7 @@ void test_sequential_loops_same_var() {
         const auto& p = *__beg_1;
         total = (::tpy::add_check<int32_t>(total, p.value()));
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def test_bigint_const_ref() -> None:
@@ -814,7 +814,7 @@ void test_bigint_const_ref() {
         const ::tpy::BigInt& x = *__beg_0;
         total = ((total) + (x));
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def test_bigint_mutated() -> None:
@@ -836,7 +836,7 @@ void test_bigint_mutated() {
         x = ((x) + (::tpy::BigInt(1)));
         total = ((total) + (x));
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // test_bigint_const_ref()
@@ -885,7 +885,7 @@ void __tpy_init() {
     items_for_find = &__global_slot_1;
     result = ::tpyapp::main::find_point((*items_for_find), 5);
     if ((result != nullptr)) {
-        std::cout << result->x << "\n";
+        std::cout << result->x << "\n" << ::tpy::check_signals;
     }
     ::tpyapp::main::test_pass_to_mutating_func();
     ::tpyapp::main::test_pass_to_readonly_func();
@@ -902,7 +902,7 @@ void __tpy_init() {
         auto&& gp = *__beg_0;
         gp.x = ::tpy::add_check<int32_t>(gp.x, 5);
     }
-    std::cout << "chain module level" << " " << ::tpy::__getitem__(::tpy::__getitem__(depot_global->shelf.rows, 0), 0).x << "\n";
+    std::cout << "chain module level" << " " << ::tpy::__getitem__(::tpy::__getitem__(depot_global->shelf.rows, 0), 0).x << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -88,12 +88,12 @@ void __tpy_init() {
     global_list = &__global_slot_1;
     static std::vector<int32_t> __global_slot_2 = {10, 20, 30};
     global_inferred = &__global_slot_2;
-    std::cout << ::tpy::__getitem__((*global_list), 0) << "\n";
-    std::cout << ::tpy::__getitem__((*global_inferred), 1) << "\n";
-    std::cout << ::tpyapp::main::test_no_mutation() << "\n";
-    std::cout << ::tpyapp::main::test_mutation() << "\n";
+    std::cout << ::tpy::__getitem__((*global_list), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*global_inferred), 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_no_mutation() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_mutation() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_list_param();
-    std::cout << ::tpyapp::main::test_span_param() << "\n";
+    std::cout << ::tpyapp::main::test_span_param() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

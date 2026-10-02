@@ -34,7 +34,7 @@ int32_t narrow(int32_t n) {
 void other_types() {
     double r = (ratio = 1.5);
     bool f = (flag = true);
-    std::cout << "bound:" << " " << ::tpy::print_float(r) << " " << ::tpy::print_bool(f) << "\n";
+    std::cout << "bound:" << " " << ::tpy::print_float(r) << " " << ::tpy::print_bool(f) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -43,10 +43,10 @@ void other_types() {
 //     other_types()
 //     print("globals:", ratio, flag)
 void main() {
-    std::cout << "narrow:" << " " << ::tpyapp::main::narrow(4) << " " << ::tpyapp::main::narrow(-1) << " " << ::tpy::print_optional_val(slot) << "\n";
-    std::cout << "method:" << " " << Widget().retitle("renamed") << " " << title << "\n";
+    std::cout << "narrow:" << " " << ::tpyapp::main::narrow(4) << " " << ::tpyapp::main::narrow(-1) << " " << ::tpy::print_optional_val(slot) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << Widget().retitle("renamed") << " " << title << "\n" << ::tpy::check_signals;
     ::tpyapp::main::other_types();
-    std::cout << "globals:" << " " << ::tpy::print_float(ratio) << " " << ::tpy::print_bool(flag) << "\n";
+    std::cout << "globals:" << " " << ::tpy::print_float(ratio) << " " << ::tpy::print_bool(flag) << "\n" << ::tpy::check_signals;
 }
 
 // ratio = 0.0

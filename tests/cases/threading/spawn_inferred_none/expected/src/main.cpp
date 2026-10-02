@@ -15,7 +15,7 @@ void main() {
     h.join();
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h2 = ::tpystd::tpy::thread::spawn<std::monostate, Beacon>(Beacon(2));
     h2.join();
-    std::cout << "joined both" << "\n";
+    std::cout << "joined both" << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.thread import spawn

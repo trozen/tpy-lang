@@ -74,10 +74,10 @@ int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
 void fresh_local_other_type() {
     auto inner = []() {
         double label = 1.5;
-        std::cout << "fresh_local:" << " " << ::tpy::print_float(label) << "\n";
+        std::cout << "fresh_local:" << " " << ::tpy::print_float(label) << "\n" << ::tpy::check_signals;
     };
     inner();
-    std::cout << "fresh_local global:" << " " << label << "\n";
+    std::cout << "fresh_local global:" << " " << label << "\n" << ::tpy::check_signals;
 }
 
 // def same_type_local() -> None:
@@ -91,10 +91,10 @@ void fresh_local_other_type() {
 void same_type_local() {
     auto inner = []() {
         int32_t cnt = 7;
-        std::cout << "same_type:" << " " << cnt << "\n";
+        std::cout << "same_type:" << " " << cnt << "\n" << ::tpy::check_signals;
     };
     inner();
-    std::cout << "same_type global:" << " " << cnt << "\n";
+    std::cout << "same_type global:" << " " << cnt << "\n" << ::tpy::check_signals;
 }
 
 // def aug_local() -> None:
@@ -110,10 +110,10 @@ void aug_local() {
     auto inner = []() {
         int32_t total = 1;
         total = ::tpy::add_check<int32_t>(total, 5);
-        std::cout << "aug:" << " " << total << "\n";
+        std::cout << "aug:" << " " << total << "\n" << ::tpy::check_signals;
     };
     inner();
-    std::cout << "aug global:" << " " << total << "\n";
+    std::cout << "aug global:" << " " << total << "\n" << ::tpy::check_signals;
 }
 
 // def unpack_local() -> None:
@@ -129,10 +129,10 @@ void unpack_local() {
         const auto& __tup_1 = pair;
         int32_t first = std::get<0>(__tup_1);
         int32_t cnt = std::get<1>(__tup_1);
-        std::cout << "unpack:" << " " << first << " " << cnt << "\n";
+        std::cout << "unpack:" << " " << first << " " << cnt << "\n" << ::tpy::check_signals;
     };
     inner();
-    std::cout << "unpack global:" << " " << first << " " << cnt << "\n";
+    std::cout << "unpack global:" << " " << first << " " << cnt << "\n" << ::tpy::check_signals;
 }
 
 // def param_vs_slot_global() -> None:
@@ -156,7 +156,7 @@ void param_vs_slot_global() {
     };
     Holder mine = Holder(1);
     bump(mine);
-    std::cout << "param_slot:" << " " << ident(3) << " " << mine.v << " " << hh->v << "\n";
+    std::cout << "param_slot:" << " " << ident(3) << " " << mine.v << " " << hh->v << "\n" << ::tpy::check_signals;
 }
 
 // def param_vs_box_global() -> None:
@@ -168,11 +168,11 @@ void param_vs_slot_global() {
 //     print("param_box global:", bx)
 void param_vs_box_global() {
     auto show = [](::tpystd::tplib::box::Box<int32_t>& bx) {
-        std::cout << "param_box:" << " " << bx << "\n";
+        std::cout << "param_box:" << " " << bx << "\n" << ::tpy::check_signals;
     };
     ::tpystd::tplib::box::Box<int32_t> __tmp_1 = ::tpystd::tplib::box::Box<int32_t>(3);
     show(__tmp_1);
-    std::cout << "param_box global:" << " " << (*bx) << "\n";
+    std::cout << "param_box global:" << " " << (*bx) << "\n" << ::tpy::check_signals;
 }
 
 // def param_vs_imported_global() -> None:
@@ -185,7 +185,7 @@ void param_vs_imported_global() {
     auto plus = [](int32_t VAL) -> int32_t {
         return (::tpy::add_check<int32_t>(VAL, 1));
     };
-    std::cout << "param_imported:" << " " << plus(3) << " " << ::tpyapp::helper::VAL << "\n";
+    std::cout << "param_imported:" << " " << plus(3) << " " << ::tpyapp::helper::VAL << "\n" << ::tpy::check_signals;
 }
 
 // def native_global_branch_local(c: bool) -> int32:
@@ -215,7 +215,7 @@ int32_t native_global_branch_local(bool c) {
 //     # a lambda param named like a class-instance global
 //     print("lambda_param:", apply(lambda hh: hh + 1, 3))  # tpyc: ok
 void lambda_param_vs_slot_global() {
-    std::cout << "lambda_param:" << " " << ::tpyapp::main::apply([](int32_t hh) -> int32_t { return (::tpy::add_check<int32_t>(hh, 1)); }, 3) << "\n";
+    std::cout << "lambda_param:" << " " << ::tpyapp::main::apply([](int32_t hh) -> int32_t { return (::tpy::add_check<int32_t>(hh, 1)); }, 3) << "\n" << ::tpy::check_signals;
 }
 
 // def lambda_param_vs_opt_param(p: Holder | None) -> int32:
@@ -260,14 +260,14 @@ int32_t lambda_param_vs_opt_param(Holder* p) {
 void block_binders() {
     auto loop = []() {
         for (int32_t i = 0; i < 2; ++i) {
-            std::cout << "for:" << " " << i << "\n";
+            std::cout << "for:" << " " << i << "\n" << ::tpy::check_signals;
         }
     };
     auto ctx = []() {
         auto __ctx_1 = Ctx();
         auto cm = __ctx_1.__enter__();
         try {
-            std::cout << "with:" << " " << cm << "\n";
+            std::cout << "with:" << " " << cm << "\n" << ::tpy::check_signals;
             goto __with_exit_1;
         } catch (...) {
             __ctx_1.__exit__({}, {}, {});
@@ -281,14 +281,14 @@ void block_binders() {
             try {
                 throw ::tpy::ValueError("boom");
             } catch (const ::tpy::ValueError& err) {
-                std::cout << "except:" << " " << err << "\n";
+                std::cout << "except:" << " " << err << "\n" << ::tpy::check_signals;
             }
         }
     };
     loop();
     ctx();
     handler();
-    std::cout << "binders global:" << " " << i << " " << cm << " " << err << "\n";
+    std::cout << "binders global:" << " " << i << " " << cm << " " << err << "\n" << ::tpy::check_signals;
 }
 
 // def walrus_local() -> None:
@@ -302,12 +302,12 @@ void walrus_local() {
         int32_t w;
         return (w = 3);
     };
-    std::cout << "walrus:" << " " << inner() << " " << w << "\n";
+    std::cout << "walrus:" << " " << inner() << " " << w << "\n" << ::tpy::check_signals;
 }
 
 void __gen_gen::inner() {
     double label = 3.5;
-    std::cout << "gen local:" << " " << ::tpy::print_float(label) << "\n";
+    std::cout << "gen local:" << " " << ::tpy::print_float(label) << "\n" << ::tpy::check_signals;
 }
 int32_t __gen_gen::ident(int32_t hh) {
     return (::tpy::add_check<int32_t>(hh, 1));
@@ -333,12 +333,12 @@ __gen_gen gen(const std::vector<Holder>& rs) {
 //     print("reads after:", hh.v, len(items))
 void reads_only() {
     auto inner = []() {
-        std::cout << "reads:" << " " << label << " " << hh->v << " " << cnt << " " << ::tpy::__len__((*items)) << "\n";
+        std::cout << "reads:" << " " << label << " " << hh->v << " " << cnt << " " << ::tpy::__len__((*items)) << "\n" << ::tpy::check_signals;
         hh->v = ::tpy::add_check<int32_t>(hh->v, 1);
         items->push_back(4);
     };
     inner();
-    std::cout << "reads after:" << " " << hh->v << " " << ::tpy::__len__((*items)) << "\n";
+    std::cout << "reads after:" << " " << hh->v << " " << ::tpy::__len__((*items)) << "\n" << ::tpy::check_signals;
 }
 
 // def narrowed(o: Holder | None) -> None:
@@ -359,9 +359,9 @@ void narrowed(const Holder* o) {
         auto own = [](int32_t o) -> int32_t {
             return (::tpy::add_check<int32_t>(o, 1));
         };
-        std::cout << "narrowed:" << " " << get() << " " << own(1) << "\n";
+        std::cout << "narrowed:" << " " << get() << " " << own(1) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "narrowed: none" << "\n";
+        std::cout << "narrowed: none" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -370,7 +370,7 @@ void __gen_gen_frame_field::helper() {
     for (int32_t j = 0; j < 2; ++j) {
         wf = j;
     }
-    std::cout << "frame_field helper:" << " " << wf << "\n";
+    std::cout << "frame_field helper:" << " " << wf << "\n" << ::tpy::check_signals;
 }
 
 // def gen_frame_field() -> Iterator[int32]:
@@ -392,11 +392,11 @@ void loop_var_vs_enclosing_local() {
     int32_t v = 5;
     auto inner = []() {
         for (int32_t v = 0; v < 2; ++v) {
-            std::cout << "loop_var:" << " " << v << "\n";
+            std::cout << "loop_var:" << " " << v << "\n" << ::tpy::check_signals;
         }
     };
     inner();
-    std::cout << "loop_var outer:" << " " << v << "\n";
+    std::cout << "loop_var outer:" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 
@@ -453,13 +453,13 @@ void match_capture() {
         switch (__match_subject_1) {
         default: {
             cnt = __match_subject_1;
-            std::cout << "match:" << " " << cnt << "\n";
+            std::cout << "match:" << " " << cnt << "\n" << ::tpy::check_signals;
             break;
         }
         }
     };
     inner(9);
-    std::cout << "match global:" << " " << cnt << "\n";
+    std::cout << "match global:" << " " << cnt << "\n" << ::tpy::check_signals;
 }
 
 // def del_local() -> None:
@@ -474,10 +474,10 @@ void match_capture() {
 void del_local() {
     auto inner = []() {
         std::string_view label = "inner label";
-        std::cout << "del:" << " " << label << "\n";
+        std::cout << "del:" << " " << label << "\n" << ::tpy::check_signals;
     };
     inner();
-    std::cout << "del global:" << " " << label << "\n";
+    std::cout << "del global:" << " " << label << "\n" << ::tpy::check_signals;
 }
 
 // async def async_host() -> int32:
@@ -523,7 +523,7 @@ void del_local() {
 
 void __coro_async_host::inner() {
     double label = 4.5;
-    std::cout << "async local:" << " " << ::tpy::print_float(label) << "\n";
+    std::cout << "async local:" << " " << ::tpy::print_float(label) << "\n" << ::tpy::check_signals;
 }
 int32_t __coro_async_host::double_(int32_t step) {
     return (::tpy::mul_check<int32_t>(step, 2));
@@ -576,14 +576,14 @@ void main() {
     ::tpyapp::main::param_vs_slot_global();
     ::tpyapp::main::param_vs_box_global();
     ::tpyapp::main::param_vs_imported_global();
-    std::cout << "native_local:" << " " << ::tpyapp::main::native_global_branch_local(true) << " " << ::tpyapp::main::native_global_branch_local(false) << "\n";
+    std::cout << "native_local:" << " " << ::tpyapp::main::native_global_branch_local(true) << " " << ::tpyapp::main::native_global_branch_local(false) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::lambda_param_vs_slot_global();
     Holder __tmp_1 = Holder(10);
-    std::cout << "lambda_opt_param:" << " " << ::tpyapp::main::lambda_param_vs_opt_param(&(__tmp_1)) << " " << ::tpyapp::main::lambda_param_vs_opt_param(nullptr) << "\n";
+    std::cout << "lambda_opt_param:" << " " << ::tpyapp::main::lambda_param_vs_opt_param(&(__tmp_1)) << " " << ::tpyapp::main::lambda_param_vs_opt_param(nullptr) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::block_binders();
     ::tpyapp::main::walrus_local();
     K().m();
-    std::cout << "enum_method:" << " " << __enum_Tone{Tone::LOW}.bump() << " " << __enum_Tone{Tone::HIGH}.bump() << "\n";
+    std::cout << "enum_method:" << " " << __enum_Tone{Tone::LOW}.bump() << " " << __enum_Tone{Tone::HIGH}.bump() << "\n" << ::tpy::check_signals;
     {
         std::vector<Holder> __tmp_2 = {Holder(1), Holder(3)};
         auto __src_0 = ::tpyapp::main::gen(__tmp_2);
@@ -592,7 +592,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen:" << " " << v << "\n";
+            std::cout << "gen:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpyapp::main::reads_only();
@@ -601,7 +601,7 @@ void main() {
     ::tpyapp::main::narrowed(nullptr);
     Holder h1 = Holder(1);
     Holder h2 = Holder(2);
-    std::cout << "lambda_self:" << " " << h1.other_v(h2) << "\n";
+    std::cout << "lambda_self:" << " " << h1.other_v(h2) << "\n" << ::tpy::check_signals;
     {
         auto __src_2 = ::tpyapp::main::gen_frame_field();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -609,16 +609,16 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "frame_field:" << " " << v << "\n";
+            std::cout << "frame_field:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpyapp::main::loop_var_vs_enclosing_local();
-    std::cout << "overload:" << " " << ::tpyapp::main::classify__lit_1(1) << "\n";
-    std::cout << "overload:" << " " << ::tpyapp::main::classify__lit_2(2) << "\n";
+    std::cout << "overload:" << " " << ::tpyapp::main::classify__lit_1(1) << "\n" << ::tpy::check_signals;
+    std::cout << "overload:" << " " << ::tpyapp::main::classify__lit_2(2) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::match_capture();
     ::tpyapp::main::del_local();
     int32_t r = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_host()));
-    std::cout << "async:" << " " << r << "\n";
+    std::cout << "async:" << " " << r << "\n" << ::tpy::check_signals;
 }
 
 // # A nested def's or lambda's own binding named like a global, an enclosing

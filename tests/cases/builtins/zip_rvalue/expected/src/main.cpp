@@ -30,7 +30,7 @@ void main() {
             const auto& __tup_1 = __for_tup_0;
             std::string_view name = std::get<0>(__tup_1);
             int32_t score = std::get<1>(__tup_1);
-            std::cout << name << " " << score << "\n";
+            std::cout << name << " " << score << "\n" << ::tpy::check_signals;
         }
     }
 }

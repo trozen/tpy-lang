@@ -15,9 +15,9 @@ void main() {
     Bag<std::string> b = Bag<std::string>();
     std::array<std::string, 6> xs = {"a", "b", "a", "c", "a", "b"};
     b.add_all(xs);
-    std::cout << b["a"] << " " << b["b"] << " " << b["z"] << "\n";
-    std::cout << ::tpy::print_bool((b.__contains__("a"))) << " " << ::tpy::print_bool((b.__contains__("z"))) << "\n";
-    std::cout << b.total() << "\n";
+    std::cout << b["a"] << " " << b["b"] << " " << b["z"] << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((b.__contains__("a"))) << " " << ::tpy::print_bool((b.__contains__("z"))) << "\n" << ::tpy::check_signals;
+    std::cout << b.total() << "\n" << ::tpy::check_signals;
 }
 
 // main()

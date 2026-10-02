@@ -58,7 +58,7 @@ inline std::string Person::greet() const {
 //     print(g.greet())
 template<Greetable T_g>
 void hello(T_g& g) {
-    std::cout << g.greet() << "\n";
+    std::cout << g.greet() << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

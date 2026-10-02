@@ -26,7 +26,7 @@ void main() {
         std::string_view k = *__beg_0;
         ::tpyapp::main::set_it(h, k, (::tpy::str_concat("v-", k)));
     }
-    std::cout << h._last_name << " " << h._last_value << "\n";
+    std::cout << h._last_name << " " << h._last_value << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -33,7 +33,7 @@ namespace tpyapp::main {
 //     print(f(10, 1, 2, 3))
 void main() {
     std::array<const ::tpy::BigInt, 4> __tmp_1{10, 1, 2, 3};
-    std::cout << ::tpyapp::main::f(::tpy::varargs<const ::tpy::BigInt>(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::f(::tpy::varargs<const ::tpy::BigInt>(__tmp_1)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

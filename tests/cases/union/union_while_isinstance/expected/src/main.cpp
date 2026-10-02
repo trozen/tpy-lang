@@ -15,7 +15,7 @@ void drain_circles(::tpy::Union<const Circle*, const Rect*> s) {
     int32_t count = 0;
     while (std::holds_alternative<const Circle*>(s)) {
         auto& __s = *std::get<const Circle*>(s);
-        std::cout << ::tpy::print_float(__s.radius) << "\n";
+        std::cout << ::tpy::print_float(__s.radius) << "\n" << ::tpy::check_signals;
         count = ::tpy::add_check<int32_t>(count, 1);
         if ((count >= 3)) {
             break;

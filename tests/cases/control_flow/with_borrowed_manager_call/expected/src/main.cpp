@@ -17,7 +17,7 @@ void func(B& b) {
     auto& __ctx_3 = b.guard_m();
     auto q = __ctx_3.__enter__();
     try {
-        std::cout << "func" << " " << q << "\n";
+        std::cout << "func" << " " << q << "\n" << ::tpy::check_signals;
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
@@ -28,7 +28,7 @@ void func(B& b) {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    std::cout << "func after" << " " << b._guard.n << "\n";
+    std::cout << "func after" << " " << b._guard.n << "\n" << ::tpy::check_signals;
 }
 
 // # no `as` target
@@ -40,7 +40,7 @@ void no_target(B& b) {
     auto& __ctx_4 = b.guard_m();
     __ctx_4.__enter__();
     try {
-        std::cout << "no_target" << " " << b._guard.n << "\n";
+        std::cout << "no_target" << " " << b._guard.n << "\n" << ::tpy::check_signals;
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});
@@ -51,7 +51,7 @@ void no_target(B& b) {
     }
     __with_exit_4:
     __ctx_4.__exit__({}, nullptr, {});
-    std::cout << "no_target after" << " " << b._guard.n << "\n";
+    std::cout << "no_target after" << " " << b._guard.n << "\n" << ::tpy::check_signals;
 }
 
 // # a @nocopy manager: a by-value ctx slot would not even compile
@@ -63,7 +63,7 @@ void nocopy_m(B& b) {
     auto& __ctx_5 = b.nc_m();
     auto q = __ctx_5.__enter__();
     try {
-        std::cout << "nocopy" << " " << q << "\n";
+        std::cout << "nocopy" << " " << q << "\n" << ::tpy::check_signals;
         goto __with_exit_5;
     } catch (::tpy::BaseException& __exc_5) {
         __ctx_5.__exit__({}, &__exc_5, {});
@@ -74,7 +74,7 @@ void nocopy_m(B& b) {
     }
     __with_exit_5:
     __ctx_5.__exit__({}, nullptr, {});
-    std::cout << "nocopy after" << " " << b._nc.n << "\n";
+    std::cout << "nocopy after" << " " << b._nc.n << "\n" << ::tpy::check_signals;
 }
 
 // # nested def
@@ -89,7 +89,7 @@ void closure(B& b) {
         auto& __ctx_6 = b.guard_m();
         auto q = __ctx_6.__enter__();
         try {
-            std::cout << "closure" << " " << q << "\n";
+            std::cout << "closure" << " " << q << "\n" << ::tpy::check_signals;
             goto __with_exit_6;
         } catch (::tpy::BaseException& __exc_6) {
             __ctx_6.__exit__({}, &__exc_6, {});
@@ -102,7 +102,7 @@ void closure(B& b) {
         __ctx_6.__exit__({}, nullptr, {});
     };
     inner();
-    std::cout << "closure after" << " " << b._guard.n << "\n";
+    std::cout << "closure after" << " " << b._guard.n << "\n" << ::tpy::check_signals;
 }
 
 
@@ -124,7 +124,7 @@ __gen_gen gen(B& b) {
         auto& __ctx_8 = b.guard_m();
         q = __ctx_8.__enter__();
         try {
-            std::cout << "async" << " " << q << "\n";
+            std::cout << "async" << " " << q << "\n" << ::tpy::check_signals;
             goto __with_exit_8;
         } catch (::tpy::BaseException& __exc_8) {
             __ctx_8.__exit__({}, &__exc_8, {});
@@ -135,7 +135,7 @@ __gen_gen gen(B& b) {
         }
         __with_exit_8:
         __ctx_8.__exit__({}, nullptr, {});
-        std::cout << "async after" << " " << b._guard.n << "\n";
+        std::cout << "async after" << " " << b._guard.n << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -169,7 +169,7 @@ void main() {
     ::tpyapp::main::nocopy_m(b);
     ::tpyapp::main::closure(b);
     Host h = Host(b);
-    std::cout << "ctor after" << " " << h.k << "\n";
+    std::cout << "ctor after" << " " << h.k << "\n" << ::tpy::check_signals;
     h.run(b);
     {
         auto __src_0 = ::tpyapp::main::gen(b);
@@ -178,7 +178,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen after" << " " << v << "\n";
+            std::cout << "gen after" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::coro(b)));
@@ -205,7 +205,7 @@ void __tpy_init() {
     auto& __ctx_9 = top->guard_m();
     auto t = __ctx_9.__enter__();
     try {
-        std::cout << "module" << " " << t << "\n";
+        std::cout << "module" << " " << t << "\n" << ::tpy::check_signals;
         goto __with_exit_9;
     } catch (::tpy::BaseException& __exc_9) {
         __ctx_9.__exit__({}, &__exc_9, {});
@@ -216,7 +216,7 @@ void __tpy_init() {
     }
     __with_exit_9:
     __ctx_9.__exit__({}, nullptr, {});
-    std::cout << "module after" << " " << top->_guard.n << "\n";
+    std::cout << "module after" << " " << top->_guard.n << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

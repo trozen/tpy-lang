@@ -12,10 +12,10 @@ std::tuple<int32_t, bool> t2;
 //     print(t1[0])
 //     print(t2[1])
 void main() {
-    std::cout << ::tpy::TuplePrinter(t1) << "\n";
-    std::cout << ::tpy::TuplePrinter(t2) << "\n";
-    std::cout << std::get<0>(t1) << "\n";
-    std::cout << ::tpy::print_bool(std::get<1>(t2)) << "\n";
+    std::cout << ::tpy::TuplePrinter(t1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(t2) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<0>(t1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(std::get<1>(t2)) << "\n" << ::tpy::check_signals;
 }
 
 // t1 = (int32(1), "hello")

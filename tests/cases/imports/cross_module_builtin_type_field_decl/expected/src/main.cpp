@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(h.last.is_pending())
 void main() {
     Holder h = Holder();
-    std::cout << ::tpy::print_bool(h.last.is_pending()) << "\n";
+    std::cout << ::tpy::print_bool(h.last.is_pending()) << "\n" << ::tpy::check_signals;
 }
 
 // # Smoke test: cross-module field-decl + constructor for a generic

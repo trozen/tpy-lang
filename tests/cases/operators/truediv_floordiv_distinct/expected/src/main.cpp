@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void main() {
     Meters a = Meters(12);
     Meters b = Meters(4);
-    std::cout << ::tpy::print_float(((a) / (b))) << "\n";
-    std::cout << ((a).__floordiv__(b)).v << "\n";
-    std::cout << ((b).__rfloordiv__(13)).v << "\n";
+    std::cout << ::tpy::print_float(((a) / (b))) << "\n" << ::tpy::check_signals;
+    std::cout << ((a).__floordiv__(b)).v << "\n" << ::tpy::check_signals;
+    std::cout << ((b).__rfloordiv__(13)).v << "\n" << ::tpy::check_signals;
 }
 
 // main()

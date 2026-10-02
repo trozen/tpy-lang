@@ -18,8 +18,8 @@ void __tpy_init() {
 
     static Box<std::vector<int32_t>> __global_slot_1 = Box<std::vector<int32_t>>({1, 2, 3});
     box = &__global_slot_1;
-    std::cout << ::tpy::__getitem__(box->value, 0) << "\n";
-    std::cout << ::tpy::__len__(box->value) << "\n";
+    std::cout << ::tpy::__getitem__(box->value, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(box->value) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

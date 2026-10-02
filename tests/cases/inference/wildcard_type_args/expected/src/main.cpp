@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def take_box(b: Box[int32]) -> None:
 //     print(b.get())
 void take_box(Box<int32_t>& b) {
-    std::cout << b.get() << "\n";
+    std::cout << b.get() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -53,28 +53,28 @@ void take_box(Box<int32_t>& b) {
 //     print(s)
 void main() {
     int32_t r1 = ::tpyapp::main::identity<int32_t>(10);
-    std::cout << r1 << "\n";
+    std::cout << r1 << "\n" << ::tpy::check_signals;
     int32_t r2 = ::tpyapp::main::pair_func<int32_t, int64_t>(5, 20);
-    std::cout << r2 << "\n";
+    std::cout << r2 << "\n" << ::tpy::check_signals;
     int32_t r3 = ::tpyapp::main::pair_func<int32_t, int64_t>(5, 20);
-    std::cout << r3 << "\n";
+    std::cout << r3 << "\n" << ::tpy::check_signals;
     int64_t r4 = ::tpyapp::main::triple<int32_t, int64_t, int64_t>(1, 2, 3);
-    std::cout << r4 << "\n";
+    std::cout << r4 << "\n" << ::tpy::check_signals;
     Box<int32_t> b1 = Box<int32_t>(42);
-    std::cout << b1.get() << "\n";
+    std::cout << b1.get() << "\n" << ::tpy::check_signals;
     Pair<int32_t, int64_t> p1 = Pair<int32_t, int64_t>(10, 20);
-    std::cout << p1.a << "\n";
-    std::cout << p1.b << "\n";
+    std::cout << p1.a << "\n" << ::tpy::check_signals;
+    std::cout << p1.b << "\n" << ::tpy::check_signals;
     Container<int32_t> c = Container<int32_t>();
     c.set(99);
-    std::cout << c.get() << "\n";
+    std::cout << c.get() << "\n" << ::tpy::check_signals;
     Box<int32_t> __tmp_1 = Box<int32_t>(7);
     ::tpyapp::main::take_box(__tmp_1);
     Mapper<int32_t> m = Mapper<int32_t>(5);
     int64_t r5 = m.transform<int32_t, int64_t>(1, 100);
-    std::cout << r5 << "\n";
+    std::cout << r5 << "\n" << ::tpy::check_signals;
     std::string s = ::tpyapp::main::identity<std::string>("hello");
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // main()

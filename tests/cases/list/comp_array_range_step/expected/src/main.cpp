@@ -18,17 +18,17 @@ void main() {
         int32_t i = 10 + int32_t(__i_0) * (-2);
         return i;
     });
-    std::cout << ::tpy::__getitem__(down, 0) << " " << ::tpy::__getitem__(down, 4) << " " << ::tpy::__len__(down) << "\n";
+    std::cout << ::tpy::__getitem__(down, 0) << " " << ::tpy::__getitem__(down, 4) << " " << ::tpy::__len__(down) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> up = ::tpy::array_from_index<int32_t, 3>([&](std::size_t __i_1) -> int32_t {
         int32_t i = 2 + int32_t(__i_1) * (3);
         return (::tpy::mul_check<int32_t>(i, i));
     });
-    std::cout << ::tpy::__getitem__(up, 0) << " " << ::tpy::__getitem__(up, 2) << " " << ::tpy::__len__(up) << "\n";
+    std::cout << ::tpy::__getitem__(up, 0) << " " << ::tpy::__getitem__(up, 2) << " " << ::tpy::__len__(up) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 4> off = ::tpy::array_from_index<int32_t, 4>([&](std::size_t __i_2) -> int32_t {
         int32_t i = 3 + int32_t(__i_2);
         return i;
     });
-    std::cout << ::tpy::__getitem__(off, 0) << " " << ::tpy::__getitem__(off, 3) << "\n";
+    std::cout << ::tpy::__getitem__(off, 0) << " " << ::tpy::__getitem__(off, 3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

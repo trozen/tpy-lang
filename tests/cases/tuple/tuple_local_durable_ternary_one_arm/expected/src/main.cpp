@@ -30,7 +30,7 @@ void main() {
             std::get<1>(pair)->val = 99;
         }
     }
-    std::cout << shared.val << "\n";
+    std::cout << shared.val << "\n" << ::tpy::check_signals;
 }
 
 // main()

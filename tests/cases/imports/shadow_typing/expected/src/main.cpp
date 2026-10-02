@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(s.val)
 void main() {
     Sized s = Sized(42);
-    std::cout << s.val << "\n";
+    std::cout << s.val << "\n" << ::tpy::check_signals;
 }
 
 // main()

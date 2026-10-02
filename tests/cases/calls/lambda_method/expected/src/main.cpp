@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(p.apply_binary(3, lambda x, y: x + y))
 void main() {
     Processor p = Processor(10);
-    std::cout << p.apply([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); }) << "\n";
-    std::cout << p.apply([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 5)); }) << "\n";
-    std::cout << p.apply_binary(3, [](int32_t x, int32_t y) -> int32_t { return (::tpy::add_check<int32_t>(x, y)); }) << "\n";
+    std::cout << p.apply([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); }) << "\n" << ::tpy::check_signals;
+    std::cout << p.apply([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 5)); }) << "\n" << ::tpy::check_signals;
+    std::cout << p.apply_binary(3, [](int32_t x, int32_t y) -> int32_t { return (::tpy::add_check<int32_t>(x, y)); }) << "\n" << ::tpy::check_signals;
 }
 
 // main()

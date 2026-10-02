@@ -27,11 +27,11 @@ void __tpy_init() {
     x = &__global_slot_1;
     static Bid __global_slot_2 = Bid(20);
     y = &__global_slot_2;
-    std::cout << ::tpy::print_bool((((*x)) < ((*y)))) << "\n";
-    std::cout << ::tpy::print_bool((((*x)) <= ((*y)))) << "\n";
-    std::cout << ::tpy::print_bool((((*x)) > ((*y)))) << "\n";
-    std::cout << ::tpy::print_bool((((*x)) >= ((*y)))) << "\n";
-    std::cout << ::tpy::print_bool((((*y)) > ((*x)))) << "\n";
+    std::cout << ::tpy::print_bool((((*x)) < ((*y)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*x)) <= ((*y)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*x)) > ((*y)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*x)) >= ((*y)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*y)) > ((*x)))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

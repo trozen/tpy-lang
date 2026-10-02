@@ -12,8 +12,8 @@ namespace tpyapp::main {
 //     print("str:", Numbered(42).s, Fixed().s)
 void main() {
     Child c = Child(::tpy::ByteArray(::tpy::bytes_literal("xy", 2)), {1, 2, 3});
-    std::cout << ::tpy::__len__(c.buf) << " " << ::tpy::__len__(c.xs) << " " << c.n << "\n";
-    std::cout << "str:" << " " << Numbered(42).s << " " << Fixed().s << "\n";
+    std::cout << ::tpy::__len__(c.buf) << " " << ::tpy::__len__(c.xs) << " " << c.n << "\n" << ::tpy::check_signals;
+    std::cout << "str:" << " " << Numbered(42).s << " " << Fixed().s << "\n" << ::tpy::check_signals;
 }
 
 // main()

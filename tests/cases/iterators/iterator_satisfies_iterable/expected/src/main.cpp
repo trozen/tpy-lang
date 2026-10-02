@@ -17,11 +17,11 @@ namespace tpyapp::main {
 //     print(s)
 void main() {
     auto __tmp_1 = Counter(5);
-    std::cout << ::tpyapp::main::sum_iterable(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::sum_iterable(__tmp_1) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> a = ::tpy::construct<std::vector<int32_t>>(Counter(4));
-    std::cout << ::tpy::ListPrinter(a) << "\n";
+    std::cout << ::tpy::ListPrinter(a) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> s = ::tpy::set_construct<int32_t>(Counter(4));
-    std::cout << ::tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
 }
 
 // main()

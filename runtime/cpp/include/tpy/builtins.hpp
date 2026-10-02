@@ -58,7 +58,7 @@ inline std::string input_line() {
 // A Ctrl-C already pending is taken first: CPython raises it before input()
 // runs, so no prompt appears.
 inline std::string input_line(std::string_view prompt) {
-    check_interrupt();
+    check_signals();
     std::cout << prompt << std::flush;
     return input_line();
 }

@@ -52,7 +52,7 @@ int32_t branch_count(const Tree<std::monostate>& t) {
 //     print(branch_count(forest))
 void main() {
     Tree<std::monostate> forest = std::vector<Tree<std::monostate>>{std::vector<Tree<std::monostate>>{}, std::vector<Tree<std::monostate>>{}};
-    std::cout << ::tpyapp::main::branch_count(forest) << "\n";
+    std::cout << ::tpyapp::main::branch_count(forest) << "\n" << ::tpy::check_signals;
     auto& __match_subject_1 = forest;
     switch (__match_subject_1.value.index()) {
     case 1: {
@@ -65,11 +65,11 @@ void main() {
             auto& __match_subject_2 = child;
             switch (__match_subject_2.value.index()) {
             case 0: {
-                std::cout << "hole" << "\n";
+                std::cout << "hole" << "\n" << ::tpy::check_signals;
                 break;
             }
             case 1: {
-                std::cout << "branch" << "\n";
+                std::cout << "branch" << "\n" << ::tpy::check_signals;
                 break;
             }
             }
@@ -78,11 +78,11 @@ void main() {
         break;
     }
     case 0: {
-        std::cout << "no branch" << "\n";
+        std::cout << "no branch" << "\n" << ::tpy::check_signals;
         break;
     }
     }
-    std::cout << ::tpyapp::main::branch_count(forest) << "\n";
+    std::cout << ::tpyapp::main::branch_count(forest) << "\n" << ::tpy::check_signals;
 }
 
 // main()

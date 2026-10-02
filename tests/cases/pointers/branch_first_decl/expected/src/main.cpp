@@ -77,7 +77,7 @@ void rvalue_branch(bool cond) {
     } else {
         p = &*(__slot_2 = Point(3, 4));
     }
-    std::cout << p->x << " " << p->y << "\n";
+    std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
 }
 
 // # Branch-declared variable reassigned after the if
@@ -96,7 +96,7 @@ void reassign_after(bool cond) {
         x = 20;
     }
     x = (::tpy::add_check<int32_t>(x, 1));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // # Nested if — inner if has branch declarations
@@ -140,7 +140,7 @@ void param_branch(std::vector<Point>& points, bool cond) {
     } else {
         p = &(::tpy::__getitem__(points, 1));
     }
-    std::cout << p->x << " " << p->y << "\n";
+    std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
 }
 
 // # Branch-declared non-value type with rvalue in one branch, lvalue in other
@@ -158,7 +158,7 @@ void mixed_init(std::vector<Point>& points, bool cond) {
     } else {
         p = &*(__slot_1 = Point(70, 80));
     }
-    std::cout << p->x << " " << p->y << "\n";
+    std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
 }
 
 // print(value_type_branches(True))
@@ -184,19 +184,19 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpyapp::main::value_type_branches(true) << "\n";
-    std::cout << ::tpyapp::main::value_type_branches(false) << "\n";
-    std::cout << ::tpyapp::main::else_returns(true) << "\n";
-    std::cout << ::tpyapp::main::else_returns(false) << "\n";
-    std::cout << ::tpyapp::main::multi_var(true) << "\n";
-    std::cout << ::tpyapp::main::multi_var(false) << "\n";
+    std::cout << ::tpyapp::main::value_type_branches(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::value_type_branches(false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::else_returns(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::else_returns(false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::multi_var(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::multi_var(false) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::rvalue_branch(true);
     ::tpyapp::main::rvalue_branch(false);
     ::tpyapp::main::reassign_after(true);
     ::tpyapp::main::reassign_after(false);
-    std::cout << ::tpyapp::main::nested_if(true, true) << "\n";
-    std::cout << ::tpyapp::main::nested_if(true, false) << "\n";
-    std::cout << ::tpyapp::main::nested_if(false, true) << "\n";
+    std::cout << ::tpyapp::main::nested_if(true, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::nested_if(true, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::nested_if(false, true) << "\n" << ::tpy::check_signals;
     static std::vector<Point> __global_slot_1 = {Point(5, 6), Point(7, 8)};
     pts = &__global_slot_1;
     ::tpyapp::main::param_branch((*pts), true);

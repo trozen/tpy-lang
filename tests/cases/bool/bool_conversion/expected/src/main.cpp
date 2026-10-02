@@ -44,23 +44,23 @@ void __tpy_init() {
     initialized = true;
 
     b0 = false;
-    std::cout << ::tpy::print_bool(b0) << "\n";
+    std::cout << ::tpy::print_bool(b0) << "\n" << ::tpy::check_signals;
     b1 = true;
-    std::cout << ::tpy::print_bool(b1) << "\n";
+    std::cout << ::tpy::print_bool(b1) << "\n" << ::tpy::check_signals;
     b2 = false;
-    std::cout << ::tpy::print_bool(b2) << "\n";
+    std::cout << ::tpy::print_bool(b2) << "\n" << ::tpy::check_signals;
     b3 = (0 != 0);
-    std::cout << ::tpy::print_bool(b3) << "\n";
+    std::cout << ::tpy::print_bool(b3) << "\n" << ::tpy::check_signals;
     b4 = (1 != 0);
-    std::cout << ::tpy::print_bool(b4) << "\n";
+    std::cout << ::tpy::print_bool(b4) << "\n" << ::tpy::check_signals;
     b5 = (-5 != 0);
-    std::cout << ::tpy::print_bool(b5) << "\n";
+    std::cout << ::tpy::print_bool(b5) << "\n" << ::tpy::check_signals;
     b6 = (0 != 0);
-    std::cout << ::tpy::print_bool(b6) << "\n";
+    std::cout << ::tpy::print_bool(b6) << "\n" << ::tpy::check_signals;
     b7 = (42 != 0);
-    std::cout << ::tpy::print_bool(b7) << "\n";
+    std::cout << ::tpy::print_bool(b7) << "\n" << ::tpy::check_signals;
     b8 = (-100 != 0);
-    std::cout << ::tpy::print_bool(b8) << "\n";
+    std::cout << ::tpy::print_bool(b8) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

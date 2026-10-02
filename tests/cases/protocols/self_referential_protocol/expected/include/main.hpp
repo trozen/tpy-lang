@@ -226,19 +226,19 @@ inline Ping Pong::to_a() const {
 template<Addable T_a, Addable T_b>
 void combine(const T_a& a, const T_b& b) {
     auto c = (a + b);
-    std::cout << c.value() << "\n";
+    std::cout << c.value() << "\n" << ::tpy::check_signals;
 }
 // def chain(c: Chainable) -> None:
 //     print(c.half().value())
 template<Chainable T_c>
 void chain(T_c& c) {
-    std::cout << c.half().value() << "\n";
+    std::cout << c.half().value() << "\n" << ::tpy::check_signals;
 }
 // def bounce(a: AProto) -> None:
 //     print(a.to_b().tag())
 template<AProto T_a>
 void bounce(T_a& a) {
-    std::cout << a.to_b().tag() << "\n";
+    std::cout << a.to_b().tag() << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

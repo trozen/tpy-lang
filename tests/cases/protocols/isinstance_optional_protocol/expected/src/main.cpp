@@ -24,12 +24,12 @@ void main() {
     std::array<int32_t, 3> arr = {10, 20, 30};
     std::span<int32_t> s = ::tpy::as_mut_span(arr);
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
-    std::cout << ::tpyapp::main::count_if_sized(&(nums)) << "\n";
-    std::cout << ::tpyapp::main::count_if_sized() << "\n";
-    std::cout << ::tpyapp::main::sum_span(&(s)) << "\n";
-    std::cout << ::tpyapp::main::sum_span() << "\n";
-    std::cout << ::tpyapp::main::check_not(&(nums)) << "\n";
-    std::cout << ::tpyapp::main::check_not() << "\n";
+    std::cout << ::tpyapp::main::count_if_sized(&(nums)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::count_if_sized() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_span(&(s)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_span() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check_not(&(nums)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check_not() << "\n" << ::tpy::check_signals;
 }
 
 // main()

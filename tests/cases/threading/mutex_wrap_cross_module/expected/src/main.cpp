@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(p.capacity())
 void main() {
     ::tpyapp::achan::Producer<int32_t> p = ::tpyapp::achan::make_producer<int32_t>();
-    std::cout << p.capacity() << "\n";
+    std::cout << p.capacity() << "\n" << ::tpy::check_signals;
 }
 
 // from achan import make_producer

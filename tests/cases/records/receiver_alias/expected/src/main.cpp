@@ -23,7 +23,7 @@ void ordinary_aliases(Cell& a, Cell& b) {
     pointer = &(b);
     Cell& indirect = (*pointer);
     indirect.n = ::tpy::add_check<int32_t>(indirect.n, 2);
-    std::cout << "ordinary" << " " << a.n << " " << b.n << " " << pointer->n << "\n";
+    std::cout << "ordinary" << " " << a.n << " " << b.n << " " << pointer->n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -60,13 +60,13 @@ void ordinary_aliases(Cell& a, Cell& b) {
 //     print("narrowed_caller", derived.n)
 void main() {
     Cell cell = Cell(10);
-    std::cout << "constructor" << " " << cell.n << "\n";
+    std::cout << "constructor" << " " << cell.n << "\n" << ::tpy::check_signals;
     cell.mutate();
-    std::cout << "readonly" << " " << cell.read() << " " << cell.inferred_read() << "\n";
+    std::cout << "readonly" << " " << cell.read() << " " << cell.inferred_read() << "\n" << ::tpy::check_signals;
     cell.n = ::tpy::add_check<int32_t>(cell.n, 1);
-    std::cout << "readonly_changed" << " " << cell.read() << " " << cell.inferred_read() << "\n";
+    std::cout << "readonly_changed" << " " << cell.read() << " " << cell.inferred_read() << "\n" << ::tpy::check_signals;
     cell.nested();
-    std::cout << "generic" << " " << cell.generic<int32_t>(7) << " " << cell.concrete(7) << " " << cell.n << "\n";
+    std::cout << "generic" << " " << cell.generic<int32_t>(7) << " " << cell.concrete(7) << " " << cell.n << "\n" << ::tpy::check_signals;
     Cell other = Cell(20);
     cell.reassign(other);
     ::tpyapp::main::ordinary_aliases(cell, other);
@@ -77,11 +77,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << value << " " << cell.n << "\n";
+            std::cout << "generator" << " " << value << " " << cell.n << "\n" << ::tpy::check_signals;
             cell.n = ::tpy::add_check<int32_t>(cell.n, 10);
         }
     }
-    std::cout << "generator_done" << " " << cell.n << "\n";
+    std::cout << "generator_done" << " " << cell.n << "\n" << ::tpy::check_signals;
     {
         auto __src_2 = cell.rebound_steps();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -89,7 +89,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "generator_rebind" << " " << value << " " << cell.n << "\n";
+            std::cout << "generator_rebind" << " " << value << " " << cell.n << "\n" << ::tpy::check_signals;
             cell.n = ::tpy::add_check<int32_t>(cell.n, 10);
         }
     }
@@ -100,17 +100,17 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "readonly_generator" << " " << value << " " << cell.n << "\n";
+            std::cout << "readonly_generator" << " " << value << " " << cell.n << "\n" << ::tpy::check_signals;
             cell.n = ::tpy::add_check<int32_t>(cell.n, 10);
         }
     }
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(cell.update())) << " " << cell.n << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(cell.update())) << " " << cell.n << "\n" << ::tpy::check_signals;
     Consumed consumed = Consumed(40);
     Consumed returned = std::move(consumed).finish();
-    std::cout << "returned" << " " << returned.n << "\n";
+    std::cout << "returned" << " " << returned.n << "\n" << ::tpy::check_signals;
     Derived derived = Derived(50);
     derived.narrowed();
-    std::cout << "narrowed_caller" << " " << derived.n << "\n";
+    std::cout << "narrowed_caller" << " " << derived.n << "\n" << ::tpy::check_signals;
 }
 
 

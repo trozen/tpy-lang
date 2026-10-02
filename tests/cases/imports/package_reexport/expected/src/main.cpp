@@ -10,9 +10,9 @@ namespace tpyapp::main {
 //     print(result)
 //     return int32(0)
 int32_t main() {
-    std::cout << ::tpyapp::mypackage::VERSION << "\n";
+    std::cout << ::tpyapp::mypackage::VERSION << "\n" << ::tpy::check_signals;
     int32_t result = ::tpyapp::mypackage::utils::add(5, 7);
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
     return 0;
 }
 

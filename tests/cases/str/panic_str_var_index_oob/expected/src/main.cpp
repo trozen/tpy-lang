@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     std::string_view s = "hi";
     int32_t i = -10;
-    std::cout << ::tpy::__getitem__(s, i) << "\n";
+    std::cout << ::tpy::__getitem__(s, i) << "\n" << ::tpy::check_signals;
 }
 
 // main()

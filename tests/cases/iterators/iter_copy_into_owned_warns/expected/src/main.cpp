@@ -13,7 +13,7 @@ void main() {
     std::vector<Item> a = std::vector<Item>{};
     std::vector<Item> b = {Item(1), Item(2)};
     ::tpy::list_extend(a, b);
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // main()

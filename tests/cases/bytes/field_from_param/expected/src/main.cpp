@@ -13,10 +13,10 @@ namespace tpyapp::main {
 //     print(m.payload)
 void main() {
     Packet p = Packet(::tpy::bytes_literal("hello", 5));
-    std::cout << ::tpy::BytesPrinter(p.data) << "\n";
+    std::cout << ::tpy::BytesPrinter(p.data) << "\n" << ::tpy::check_signals;
     MultiField m = MultiField("test", ::tpy::bytes_literal("\x01\x02\x03", 3));
-    std::cout << m.name << "\n";
-    std::cout << ::tpy::BytesPrinter(m.payload) << "\n";
+    std::cout << m.name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(m.payload) << "\n" << ::tpy::check_signals;
 }
 
 // main()

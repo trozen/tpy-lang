@@ -18,15 +18,15 @@ namespace tpyapp::main {
 //     print(b == B(10, 20))
 void main() {
     C c = C(1, 2, 3);
-    std::cout << c << "\n";
-    std::cout << c.x << "\n";
-    std::cout << c.y << "\n";
-    std::cout << c.z << "\n";
-    std::cout << ::tpy::print_bool(((c) == (C(1, 2, 3)))) << "\n";
-    std::cout << ::tpy::print_bool(((c) == (C(1, 2, 4)))) << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
+    std::cout << c.x << "\n" << ::tpy::check_signals;
+    std::cout << c.y << "\n" << ::tpy::check_signals;
+    std::cout << c.z << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((c) == (C(1, 2, 3)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((c) == (C(1, 2, 4)))) << "\n" << ::tpy::check_signals;
     B b = B(10, 20);
-    std::cout << b << "\n";
-    std::cout << ::tpy::print_bool(((b) == (B(10, 20)))) << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((b) == (B(10, 20)))) << "\n" << ::tpy::check_signals;
 }
 
 // # 3-level @dataclass inheritance chain: grandparent -> parent -> child

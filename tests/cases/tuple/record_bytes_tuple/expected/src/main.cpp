@@ -26,14 +26,14 @@ std::tuple<Rec*, Rec, ::tpy::Bytes> mix(Rec& p) {
 //     print("param", t[0].n, t[1])
 void show(const std::tuple<Rec*, ::tpy::Bytes>& t) {
     std::get<0>(t)->n = ::tpy::add_check<int32_t>(std::get<0>(t)->n, 100);
-    std::cout << "param" << " " << std::get<0>(t)->n << " " << ::tpy::BytesPrinter(std::get<1>(t)) << "\n";
+    std::cout << "param" << " " << std::get<0>(t)->n << " " << ::tpy::BytesPrinter(std::get<1>(t)) << "\n" << ::tpy::check_signals;
 }
 
 // # a mixed tuple param that only reads its Own element never consumes it
 // def mixp(t: tuple[Rec, Own[Rec], bytes]) -> None:  # tpyc: warning(/never consumed/)
 //     print("mixparam", t[0].n, t[1].n, t[2])
 void mixp(std::tuple<const Rec*, Rec, ::tpy::Bytes>&& t) {
-    std::cout << "mixparam" << " " << std::get<0>(t)->n << " " << std::get<1>(t).n << " " << ::tpy::BytesPrinter(std::get<2>(t)) << "\n";
+    std::cout << "mixparam" << " " << std::get<0>(t)->n << " " << std::get<1>(t).n << " " << ::tpy::BytesPrinter(std::get<2>(t)) << "\n" << ::tpy::check_signals;
 }
 
 // # String is the other owned member of the view family
@@ -49,7 +49,7 @@ std::tuple<Rec*, ::tpy::String> spair(Rec& p) {
 //     print("string param", t[0].n, t[1])
 void sshow(const std::tuple<Rec*, ::tpy::String>& t) {
     std::get<0>(t)->n = ::tpy::add_check<int32_t>(std::get<0>(t)->n, 100);
-    std::cout << "string param" << " " << std::get<0>(t)->n << " " << std::get<1>(t) << "\n";
+    std::cout << "string param" << " " << std::get<0>(t)->n << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -79,7 +79,7 @@ __gen_gen gen(Rec& p) {
         __sub_0.reset();
         t = ::tpyapp::main::pair(r);
         std::get<0>(t)->n = 11;
-        std::cout << "async" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(t)) << "\n";
+        std::cout << "async" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(t)) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -177,30 +177,30 @@ void main() {
     Rec r = Rec(1);
     auto t = ::tpyapp::main::pair(r);
     std::get<0>(t)->n = 2;
-    std::cout << "local" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(t)) << "\n";
+    std::cout << "local" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(t)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show(t);
-    std::cout << "param_after" << " " << r.n << "\n";
+    std::cout << "param_after" << " " << r.n << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpyapp::main::pair(r);
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     ::tpy::BytesView s = std::get<1>(__tup_1);
     a.n = 3;
-    std::cout << "unpack" << " " << r.n << " " << ::tpy::BytesPrinter(s) << "\n";
+    std::cout << "unpack" << " " << r.n << " " << ::tpy::BytesPrinter(s) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes y = std::get<1>(t);
-    std::cout << "subscript" << " " << ::tpy::BytesPrinter(y) << "\n";
+    std::cout << "subscript" << " " << ::tpy::BytesPrinter(y) << "\n" << ::tpy::check_signals;
     auto lt = std::tuple<Rec*, ::tpy::Bytes>{&(r), ::tpy::bytes_literal_owned("l", 1)};
     std::get<0>(lt)->n = 5;
-    std::cout << "literal" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(lt)) << "\n";
+    std::cout << "literal" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(lt)) << "\n" << ::tpy::check_signals;
     auto __tup_2 = ::tpyapp::main::mix(r);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
     Rec o = std::move(std::get<1>(__tup_2));
     ::tpy::BytesView s3 = std::get<2>(__tup_2);
     b.n = 6;
     o.n = 7;
-    std::cout << "mix" << " " << r.n << " " << o.n << " " << ::tpy::BytesPrinter(s3) << "\n";
+    std::cout << "mix" << " " << r.n << " " << o.n << " " << ::tpy::BytesPrinter(s3) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::mixp(::tpyapp::main::mix(r));
     auto m = Holder().get(r);
     std::get<0>(m)->n = 9;
-    std::cout << "method" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(m)) << "\n";
+    std::cout << "method" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(m)) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen(r);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -209,14 +209,14 @@ void main() {
             if (!__r_1.has_value()) break;
             auto&& g = ::tpy::unwrap_ref(*__r_1);
             std::get<0>(g)->n = 10;
-            std::cout << "gen" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(g)) << "\n";
+            std::cout << "gen" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(g)) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain(r)));
     auto inner = [&r]() {
         auto c = ::tpyapp::main::pair(r);
         std::get<0>(c)->n = 12;
-        std::cout << "closure" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(c)) << "\n";
+        std::cout << "closure" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(c)) << "\n" << ::tpy::check_signals;
     };
     inner();
     std::vector<std::tuple<Rec, ::tpy::Bytes>> xs = std::vector<std::tuple<Rec, ::tpy::Bytes>>{};
@@ -229,7 +229,7 @@ void main() {
         auto __tup_3 = ::tpy::tuple_to_pointer<std::tuple<Rec*, ::tpy::BytesView>>(__for_tup_0);
         auto&& e0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
         ::tpy::BytesView e1 = std::get<1>(__tup_3);
-        std::cout << "container" << " " << e0.n << " " << ::tpy::BytesPrinter(e1) << "\n";
+        std::cout << "container" << " " << e0.n << " " << ::tpy::BytesPrinter(e1) << "\n" << ::tpy::check_signals;
     }
     std::vector<std::tuple<Rec, Rec, ::tpy::Bytes>> ys = std::vector<std::tuple<Rec, Rec, ::tpy::Bytes>>{};
     ys.push_back(::tpy::tuple_to_storage<std::tuple<Rec, Rec, ::tpy::Bytes>>(::tpyapp::main::mix(r)));
@@ -238,24 +238,24 @@ void main() {
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         const auto& w = *__beg_3;
-        std::cout << "mixstore" << " " << std::get<1>(w).n << " " << ::tpy::BytesPrinter(std::get<2>(w)) << "\n";
+        std::cout << "mixstore" << " " << std::get<1>(w).n << " " << ::tpy::BytesPrinter(std::get<2>(w)) << "\n" << ::tpy::check_signals;
     }
     auto u = ::tpyapp::main::pair(r);
     {
         try {
             std::get<0>(u)->n = 21;
         } catch (...) {
-            std::cout << "finally" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(u)) << "\n";
+            std::cout << "finally" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(u)) << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(u)) << "\n";
+        std::cout << "finally" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(u)) << "\n" << ::tpy::check_signals;
     }
     int32_t k = 1;
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
     case 1: {
         std::get<0>(u)->n = 22;
-        std::cout << "match" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(u)) << "\n";
+        std::cout << "match" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(u)) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
@@ -264,14 +264,14 @@ void main() {
     }
     auto st = ::tpyapp::main::spair(r);
     std::get<0>(st)->n = 23;
-    std::cout << "string" << " " << r.n << " " << std::get<1>(st) << "\n";
+    std::cout << "string" << " " << r.n << " " << std::get<1>(st) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::sshow(st);
-    std::cout << "string param_after" << " " << r.n << "\n";
+    std::cout << "string param_after" << " " << r.n << "\n" << ::tpy::check_signals;
     auto __tup_4 = ::tpyapp::main::spair(r);
     auto&& sa = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_4)));
     const ::tpy::String& ss = std::get<1>(__tup_4);
     sa.n = 24;
-    std::cout << "string unpack" << " " << r.n << " " << ss << "\n";
+    std::cout << "string unpack" << " " << r.n << " " << ss << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<Rec, ::tpy::String>> zs = std::vector<std::tuple<Rec, ::tpy::String>>{};
     zs.push_back(::tpy::tuple_to_storage<std::tuple<Rec, ::tpy::String>>(::tpyapp::main::spair(r)));
     auto& __obj_4 = zs;
@@ -282,7 +282,7 @@ void main() {
         auto __tup_5 = ::tpy::tuple_to_pointer<std::tuple<Rec*, ::tpy::String>>(__for_tup_1);
         auto&& z0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_5)));
         const ::tpy::String& z1 = std::get<1>(__tup_5);
-        std::cout << "string container" << " " << z0.n << " " << z1 << "\n";
+        std::cout << "string container" << " " << z0.n << " " << z1 << "\n" << ::tpy::check_signals;
     }
 }
 

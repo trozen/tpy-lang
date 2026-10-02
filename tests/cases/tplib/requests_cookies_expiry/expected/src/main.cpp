@@ -51,11 +51,11 @@ void _cookie_line(::tpy::BytesView sent) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         ::tpy::BytesView line = *__beg_0;
         if (::tpy::bytes_startswith(line, ::tpy::bytes_literal("Cookie:", 7))) {
-            std::cout << ::tpy::BytesPrinter(line) << "\n";
+            std::cout << ::tpy::BytesPrinter(line) << "\n" << ::tpy::check_signals;
             return;
         }
     }
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_literal_owned("<no Cookie header>", 18)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_literal_owned("<no Cookie header>", 18)) << "\n" << ::tpy::check_signals;
 }
 
 // def live_cookie_resent() -> None:
@@ -143,21 +143,21 @@ void live_cookie_resent() {
 //
 //     live_cookie_resent()
 void main() {
-    std::cout << "past expires kept:" << " " << ::tpy::print_bool((::tpyapp::main::one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: a=1; Expires=", 25), PAST)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies.__contains__("a"))) << "\n";
+    std::cout << "past expires kept:" << " " << ::tpy::print_bool((::tpyapp::main::one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: a=1; Expires=", 25), PAST)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies.__contains__("a"))) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::requests::CookieJar fut = ::tpyapp::main::one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: b=2; Expires=", 25), FUTURE)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies;
-    std::cout << "future kept:" << " " << ::tpy::print_bool((fut.__contains__("b"))) << "\n";
-    std::cout << "future now:" << " " << (::tpy::str_concat((::tpy::str_concat("'", fut.header_for("api.test", "/", false, 0.0))), "'")) << "\n";
-    std::cout << "future after:" << " " << (::tpy::str_concat((::tpy::str_concat("'", fut.header_for("api.test", "/", false, AFTER_2099))), "'")) << "\n";
+    std::cout << "future kept:" << " " << ::tpy::print_bool((fut.__contains__("b"))) << "\n" << ::tpy::check_signals;
+    std::cout << "future now:" << " " << (::tpy::str_concat((::tpy::str_concat("'", fut.header_for("api.test", "/", false, 0.0))), "'")) << "\n" << ::tpy::check_signals;
+    std::cout << "future after:" << " " << (::tpy::str_concat((::tpy::str_concat("'", fut.header_for("api.test", "/", false, AFTER_2099))), "'")) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::requests::CookieJar ma = ::tpyapp::main::one(::tpy::bytes_literal("Set-Cookie: c=3; Max-Age=3600\r\n", 31)).cookies;
-    std::cout << "maxage now:" << " " << (::tpy::str_concat((::tpy::str_concat("'", ma.header_for("api.test", "/", false, 0.0))), "'")) << "\n";
-    std::cout << "maxage later:" << " " << (::tpy::str_concat((::tpy::str_concat("'", ma.header_for("api.test", "/", false, 1e+18))), "'")) << "\n";
-    std::cout << "maxage0 over expires:" << " " << ::tpy::print_bool((::tpyapp::main::one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: d=4; Max-Age=0; Expires=", 36), FUTURE)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies.__contains__("d"))) << "\n";
-    std::cout << "maxage over past expires:" << " " << ::tpy::print_bool((::tpyapp::main::one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: e=5; Max-Age=3600; Expires=", 39), PAST)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies.__contains__("e"))) << "\n";
-    std::cout << "bad maxage kept:" << " " << ::tpy::print_bool((::tpyapp::main::one(::tpy::bytes_literal("Set-Cookie: f=6; Max-Age=abc\r\n", 30)).cookies.__contains__("f"))) << "\n";
-    std::cout << "rfc850 past kept:" << " " << ::tpy::print_bool((::tpyapp::main::one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: g=7; Expires=", 25), RFC850_PAST)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies.__contains__("g"))) << "\n";
+    std::cout << "maxage now:" << " " << (::tpy::str_concat((::tpy::str_concat("'", ma.header_for("api.test", "/", false, 0.0))), "'")) << "\n" << ::tpy::check_signals;
+    std::cout << "maxage later:" << " " << (::tpy::str_concat((::tpy::str_concat("'", ma.header_for("api.test", "/", false, 1e+18))), "'")) << "\n" << ::tpy::check_signals;
+    std::cout << "maxage0 over expires:" << " " << ::tpy::print_bool((::tpyapp::main::one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: d=4; Max-Age=0; Expires=", 36), FUTURE)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies.__contains__("d"))) << "\n" << ::tpy::check_signals;
+    std::cout << "maxage over past expires:" << " " << ::tpy::print_bool((::tpyapp::main::one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: e=5; Max-Age=3600; Expires=", 39), PAST)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies.__contains__("e"))) << "\n" << ::tpy::check_signals;
+    std::cout << "bad maxage kept:" << " " << ::tpy::print_bool((::tpyapp::main::one(::tpy::bytes_literal("Set-Cookie: f=6; Max-Age=abc\r\n", 30)).cookies.__contains__("f"))) << "\n" << ::tpy::check_signals;
+    std::cout << "rfc850 past kept:" << " " << ::tpy::print_bool((::tpyapp::main::one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: g=7; Expires=", 25), RFC850_PAST)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies.__contains__("g"))) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::requests::CookieJar asc = ::tpyapp::main::one((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Set-Cookie: h=8; Expires=", 25), ASCTIME)), ::tpy::bytes_literal_owned("\r\n", 2)))).cookies;
-    std::cout << "asctime kept:" << " " << ::tpy::print_bool((asc.__contains__("h"))) << "\n";
-    std::cout << "asctime now:" << " " << (::tpy::str_concat((::tpy::str_concat("'", asc.header_for("api.test", "/", false, 0.0))), "'")) << "\n";
+    std::cout << "asctime kept:" << " " << ::tpy::print_bool((asc.__contains__("h"))) << "\n" << ::tpy::check_signals;
+    std::cout << "asctime now:" << " " << (::tpy::str_concat((::tpy::str_concat("'", asc.header_for("api.test", "/", false, 0.0))), "'")) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::live_cookie_resent();
 }
 

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def show(pair: tuple[Point, int32]) -> None:
 //     print(pair[0].x, pair[0].y, pair[1])
 void show(const std::tuple<const Point*, int32_t>& pair) {
-    std::cout << std::get<0>(pair)->x << " " << std::get<0>(pair)->y << " " << std::get<1>(pair) << "\n";
+    std::cout << std::get<0>(pair)->x << " " << std::get<0>(pair)->y << " " << std::get<1>(pair) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

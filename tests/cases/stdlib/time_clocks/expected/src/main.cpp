@@ -35,24 +35,24 @@ namespace tpyapp::main {
 void main() {
     double p1 = ::tpy::stdlib::time::perf_counter();
     double p2 = ::tpy::stdlib::time::perf_counter();
-    std::cout << "perf_monotonic:" << " " << ::tpy::print_bool((p2 >= p1)) << "\n";
+    std::cout << "perf_monotonic:" << " " << ::tpy::print_bool((p2 >= p1)) << "\n" << ::tpy::check_signals;
     double m1 = ::tpy::stdlib::time::monotonic();
     double m2 = ::tpy::stdlib::time::monotonic();
-    std::cout << "monotonic_monotonic:" << " " << ::tpy::print_bool((m2 >= m1)) << "\n";
+    std::cout << "monotonic_monotonic:" << " " << ::tpy::print_bool((m2 >= m1)) << "\n" << ::tpy::check_signals;
     int64_t pn1 = ::tpy::stdlib::time::perf_counter_ns();
     int64_t pn2 = ::tpy::stdlib::time::perf_counter_ns();
-    std::cout << "perf_ns_monotonic:" << " " << ::tpy::print_bool((pn2 >= pn1)) << "\n";
+    std::cout << "perf_ns_monotonic:" << " " << ::tpy::print_bool((pn2 >= pn1)) << "\n" << ::tpy::check_signals;
     int64_t mn1 = ::tpy::stdlib::time::monotonic_ns();
     int64_t mn2 = ::tpy::stdlib::time::monotonic_ns();
-    std::cout << "monotonic_ns_monotonic:" << " " << ::tpy::print_bool((mn2 >= mn1)) << "\n";
+    std::cout << "monotonic_ns_monotonic:" << " " << ::tpy::print_bool((mn2 >= mn1)) << "\n" << ::tpy::check_signals;
     int64_t tn = ::tpy::stdlib::time::time_ns();
-    std::cout << "time_ns_after_2024:" << " " << ::tpy::print_bool((tn > static_cast<int64_t>(1704067200000000000))) << "\n";
+    std::cout << "time_ns_after_2024:" << " " << ::tpy::print_bool((tn > static_cast<int64_t>(1704067200000000000))) << "\n" << ::tpy::check_signals;
     double t = ::tpy::time_time();
-    std::cout << "time_after_2024:" << " " << ::tpy::print_bool((t > 1704067200.0)) << "\n";
+    std::cout << "time_after_2024:" << " " << ::tpy::print_bool((t > 1704067200.0)) << "\n" << ::tpy::check_signals;
     double cpu = ::tpy::stdlib::time::process_time();
-    std::cout << "process_time_nonneg:" << " " << ::tpy::print_bool((cpu >= 0.0)) << "\n";
+    std::cout << "process_time_nonneg:" << " " << ::tpy::print_bool((cpu >= 0.0)) << "\n" << ::tpy::check_signals;
     double cpu2 = ::tpy::stdlib::time::process_time();
-    std::cout << "process_time_monotonic:" << " " << ::tpy::print_bool((cpu2 >= cpu)) << "\n";
+    std::cout << "process_time_monotonic:" << " " << ::tpy::print_bool((cpu2 >= cpu)) << "\n" << ::tpy::check_signals;
 }
 
 // # time module: perf_counter / monotonic / time_ns / process_time.

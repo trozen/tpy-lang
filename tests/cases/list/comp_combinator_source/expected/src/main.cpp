@@ -87,7 +87,7 @@ void main() {
             __result.push_back((::tpy::add_check<int32_t>(a, b)));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_1 = ::tpy::builtin_enumerate(xs);
@@ -100,7 +100,7 @@ void main() {
             __result.push_back((::tpy::mul_check<int32_t>(i, v)));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_2 = ::tpy::builtin_map<int32_t>(dbl, xs);
@@ -111,7 +111,7 @@ void main() {
             __result.push_back(v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_3 = ::tpy::builtin_filter(odd, xs);
@@ -122,7 +122,7 @@ void main() {
             __result.push_back(v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_4 = ::tpy::builtin_reversed(xs);
@@ -133,7 +133,7 @@ void main() {
             __result.push_back(v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_5 = ::tpy::__iter__(xs);
@@ -144,7 +144,7 @@ void main() {
             __result.push_back(v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<std::string> __result;
         auto __obj_6 = ::tpy::builtin_reversed(ws);
@@ -155,7 +155,7 @@ void main() {
             __result.push_back(w);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(({
         ::tpy::ordered_set<int32_t> __result;
         auto __obj_7 = ::tpy::builtin_zip(xs, ys);
@@ -168,7 +168,7 @@ void main() {
             __result.insert((::tpy::mul_check<int32_t>(a, b)));
         }
         std::move(__result);
-    }))) << "\n";
+    }))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::DictPrinter(({
         ::tpy::ordered_map<int32_t, int32_t> __result;
         auto __obj_8 = ::tpy::builtin_zip(xs, ys);
@@ -181,7 +181,7 @@ void main() {
             __result.insert_or_assign(k, v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_9 = ::tpy::builtin_map<int32_t>(dbl, xs);
@@ -194,7 +194,7 @@ void main() {
             }
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::array<Node, 2> ps = {Node(1), Node(2)};
     std::array<Node, 2> qs = {Node(10), Node(20)};
     std::cout << ::tpy::ListPrinter(({
@@ -209,7 +209,7 @@ void main() {
             __result.push_back(p.bump(q.v));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_11 = ps;
@@ -232,7 +232,7 @@ void main() {
             __result.push_back(q.v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::array<Node, 2> rs = {Node(5), Node(6)};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -246,7 +246,7 @@ void main() {
             __result.push_back(r.bump(i));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_14 = rs;
@@ -258,7 +258,7 @@ void main() {
             __result.push_back(r.v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::array<Node, 2> ts = {Node(7), Node(8)};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -270,7 +270,7 @@ void main() {
             __result.push_back(t.bump(2));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_16 = ts;
@@ -282,7 +282,7 @@ void main() {
             __result.push_back(t.v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_17 = ::tpy::builtin_enumerate(::tpyapp::main::make_nodes());
@@ -295,7 +295,7 @@ void main() {
             __result.push_back(n.bump(i));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::array<Node, 2> us = {Node(11), Node(12)};
     std::span<Node> sp = ::tpy::as_mut_span(us);
     std::cout << ::tpy::ListPrinter(({
@@ -310,7 +310,7 @@ void main() {
             __result.push_back(u.bump(y));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_19 = us;
@@ -322,7 +322,7 @@ void main() {
             __result.push_back(u.v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
 }
 
 // main()

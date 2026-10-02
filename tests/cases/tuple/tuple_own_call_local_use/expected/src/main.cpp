@@ -21,7 +21,7 @@ int32_t use() {
 // def main() -> None:
 //     print(use())
 void main() {
-    std::cout << ::tpyapp::main::use() << "\n";
+    std::cout << ::tpyapp::main::use() << "\n" << ::tpy::check_signals;
 }
 
 // main()

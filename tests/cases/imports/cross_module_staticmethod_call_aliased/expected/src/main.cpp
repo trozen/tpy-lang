@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(a.value)
 void main() {
     ::tpyapp::factory::Counter a = Ctr::make(99);
-    std::cout << a.value << "\n";
+    std::cout << a.value << "\n" << ::tpy::check_signals;
 }
 
 // # Regression: ClassName.staticmethod() works cross-module when ClassName is

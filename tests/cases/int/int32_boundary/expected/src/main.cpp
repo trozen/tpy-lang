@@ -25,13 +25,13 @@ void __tpy_init() {
     initialized = true;
 
     x = 2147483647;
-    std::cout << x << "\n";
-    std::cout << (::tpy::sub_check<int32_t>(x, 1)) << "\n";
-    std::cout << (::tpy::div_floor<int32_t>(x, 2)) << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::sub_check<int32_t>(x, 1)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::div_floor<int32_t>(x, 2)) << "\n" << ::tpy::check_signals;
     y = -2147483648;
-    std::cout << y << "\n";
-    std::cout << (::tpy::add_check<int32_t>(y, 1)) << "\n";
-    std::cout << (::tpy::div_floor<int32_t>(y, 2)) << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::add_check<int32_t>(y, 1)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::div_floor<int32_t>(y, 2)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

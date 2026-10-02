@@ -76,19 +76,19 @@ std::expected<int32_t, MyErr> bad() {
 //         print("caught")
 void main() {
     {
-        std::cout << ({ auto __er_4 = ::tpyapp::main::halves(); if (!__er_4.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_4); }) << "\n";
+        std::cout << ({ auto __er_4 = ::tpyapp::main::halves(); if (!__er_4.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_4); }) << "\n" << ::tpy::check_signals;
         goto __after_try_3;
         // except MyErr:
         __except_3:;
-        std::cout << "unexpected" << "\n";
+        std::cout << "unexpected" << "\n" << ::tpy::check_signals;
         __after_try_3:;
     }
     {
-        std::cout << ({ auto __er_6 = ::tpyapp::main::bad(); if (!__er_6.has_value()) goto __except_5; ::tpy::unwrap_ref_move(*__er_6); }) << "\n";
+        std::cout << ({ auto __er_6 = ::tpyapp::main::bad(); if (!__er_6.has_value()) goto __except_5; ::tpy::unwrap_ref_move(*__er_6); }) << "\n" << ::tpy::check_signals;
         goto __after_try_5;
         // except MyErr:
         __except_5:;
-        std::cout << "propagated" << "\n";
+        std::cout << "propagated" << "\n" << ::tpy::check_signals;
         __after_try_5:;
     }
     Gauge g = Gauge(5);
@@ -113,11 +113,11 @@ void main() {
             }
             std::move(__result);
         });
-        std::cout << ::tpy::__getitem__((*props), 0) << " " << ::tpy::__len__((*props)) << " " << ::tpy::__getitem__((*meths), 2) << "\n";
+        std::cout << ::tpy::__getitem__((*props), 0) << " " << ::tpy::__len__((*props)) << " " << ::tpy::__getitem__((*meths), 2) << "\n" << ::tpy::check_signals;
         goto __after_try_7;
         // except MyErr:
         __except_7:;
-        std::cout << "unexpected" << "\n";
+        std::cout << "unexpected" << "\n" << ::tpy::check_signals;
         __after_try_7:;
     }
     Gauge bad_g = Gauge(-1);
@@ -132,11 +132,11 @@ void main() {
             }
             std::move(__result);
         });
-        std::cout << ::tpy::__getitem__((*broken), 0) << "\n";
+        std::cout << ::tpy::__getitem__((*broken), 0) << "\n" << ::tpy::check_signals;
         goto __after_try_10;
         // except MyErr:
         __except_10:;
-        std::cout << "caught" << "\n";
+        std::cout << "caught" << "\n" << ::tpy::check_signals;
         __after_try_10:;
     }
 }

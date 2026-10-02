@@ -26,7 +26,7 @@ int32_t test_consume() {
 // def main():
 //     print(test_consume())
 void main() {
-    std::cout << ::tpyapp::main::test_consume() << "\n";
+    std::cout << ::tpyapp::main::test_consume() << "\n" << ::tpy::check_signals;
 }
 
 // main()

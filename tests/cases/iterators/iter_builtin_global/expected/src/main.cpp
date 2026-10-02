@@ -19,7 +19,7 @@ void use_global_iter() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         std::string_view k = ::tpy::unwrap_ref(*__r_1);
-        std::cout << k << "\n";
+        std::cout << k << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -58,7 +58,7 @@ void __tpy_init() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
     static ::tpy::ordered_map<std::string, int32_t> __global_slot_5 = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}});
     d2 = &__global_slot_5;
@@ -69,7 +69,7 @@ void __tpy_init() {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         const std::string& k = ::tpy::unwrap_ref(*__r_3);
-        std::cout << k << "\n";
+        std::cout << k << "\n" << ::tpy::check_signals;
     }
 }
 

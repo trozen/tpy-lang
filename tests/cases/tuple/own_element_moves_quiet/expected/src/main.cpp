@@ -180,14 +180,14 @@ std::vector<std::tuple<int32_t, int32_t>> values_into_list(int32_t n) {
 void main() {
     P c = P(7);
     P d = P(8);
-    std::cout << "fresh_copy" << " " << ::tpyapp::main::take(::tpy::tuple_to_storage_move<std::tuple<P, P>>(std::tuple<P, P>{P(7), P(c)})) << " " << ::tpy::__len__(c.xs) << "\n";
-    std::cout << "last_use" << " " << ::tpyapp::main::take(::tpy::tuple_to_storage_move<std::tuple<P, P>>(std::tuple<P*, P*>{std::move(&(c)), std::move(&(d))})) << "\n";
-    std::cout << "give" << " " << Holder().give() << "\n";
+    std::cout << "fresh_copy" << " " << ::tpyapp::main::take(::tpy::tuple_to_storage_move<std::tuple<P, P>>(std::tuple<P, P>{P(7), P(c)})) << " " << ::tpy::__len__(c.xs) << "\n" << ::tpy::check_signals;
+    std::cout << "last_use" << " " << ::tpyapp::main::take(::tpy::tuple_to_storage_move<std::tuple<P, P>>(std::tuple<P*, P*>{std::move(&(c)), std::move(&(d))})) << "\n" << ::tpy::check_signals;
+    std::cout << "give" << " " << Holder().give() << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpyapp::main::ret_moves();
     P m = std::move(std::get<0>(__tup_1));
     int32_t k = std::get<1>(__tup_1);
     m.xs.push_back(6);
-    std::cout << "ret_moves" << " " << ::tpy::__len__(m.xs) << " " << k << "\n";
+    std::cout << "ret_moves" << " " << ::tpy::__len__(m.xs) << " " << k << "\n" << ::tpy::check_signals;
     auto __obj_0 = ::tpyapp::main::fresh_into_list();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -197,13 +197,13 @@ void main() {
         auto&& f0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
         auto&& f1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
         f0.xs.push_back(1);
-        std::cout << "fresh_into_list" << " " << ::tpy::__len__(f0.xs) << " " << ::tpy::__len__(f1.xs) << "\n";
+        std::cout << "fresh_into_list" << " " << ::tpy::__len__(f0.xs) << " " << ::tpy::__len__(f1.xs) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<int32_t, std::tuple<P, P>> fd = ::tpyapp::main::fresh_into_dict();
     auto __tup_3 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(::tpy::__getitem__(fd, 1));
     auto&& fa = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
     auto&& fb = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
-    std::cout << "fresh_into_dict" << " " << ::tpy::__len__(fa.xs) << " " << ::tpy::__len__(fb.xs) << "\n";
+    std::cout << "fresh_into_dict" << " " << ::tpy::__len__(fa.xs) << " " << ::tpy::__len__(fb.xs) << "\n" << ::tpy::check_signals;
     P q = P(1);
     std::vector<std::tuple<P, P>> cl = ::tpyapp::main::copy_into_list(q);
     std::vector<std::tuple<P, P>> cm = ::tpyapp::main::copy_module_into_list(q);
@@ -223,7 +223,7 @@ void main() {
         auto __tup_4 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(__for_tup_1);
         auto&& c0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_4)));
         auto&& c1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_4)));
-        std::cout << "copy_into_list" << " " << ::tpy::__len__(c0.xs) << " " << ::tpy::__len__(c1.xs) << "\n";
+        std::cout << "copy_into_list" << " " << ::tpy::__len__(c0.xs) << " " << ::tpy::__len__(c1.xs) << "\n" << ::tpy::check_signals;
     }
     auto& __obj_2 = cm;
     auto __beg_2 = __obj_2.begin();
@@ -233,7 +233,7 @@ void main() {
         auto __tup_5 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(__for_tup_2);
         auto&& c0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_5)));
         auto&& c1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_5)));
-        std::cout << "copy_module_into_list" << " " << ::tpy::__len__(c0.xs) << " " << ::tpy::__len__(c1.xs) << "\n";
+        std::cout << "copy_module_into_list" << " " << ::tpy::__len__(c0.xs) << " " << ::tpy::__len__(c1.xs) << "\n" << ::tpy::check_signals;
     }
     auto& __obj_3 = cc;
     auto __beg_3 = __obj_3.begin();
@@ -243,12 +243,12 @@ void main() {
         auto __tup_6 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(__for_tup_3);
         auto&& c0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_6)));
         auto&& c1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_6)));
-        std::cout << "copy_into_comp" << " " << ::tpy::__len__(c0.xs) << " " << ::tpy::__len__(c1.xs) << "\n";
+        std::cout << "copy_into_comp" << " " << ::tpy::__len__(c0.xs) << " " << ::tpy::__len__(c1.xs) << "\n" << ::tpy::check_signals;
     }
     auto __tup_7 = ::tpy::tuple_to_pointer<std::tuple<P*, int32_t>>(::tpy::__getitem__(cd, 1));
     auto&& cp = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_7)));
     int32_t cn = std::get<1>(__tup_7);
-    std::cout << "copy_into_dict" << " " << ::tpy::__len__(cp.xs) << " " << cn << "\n";
+    std::cout << "copy_into_dict" << " " << ::tpy::__len__(cp.xs) << " " << cn << "\n" << ::tpy::check_signals;
     auto& __obj_4 = ca;
     auto __beg_4 = __obj_4.begin();
     auto __end_4 = __obj_4.end();
@@ -257,13 +257,13 @@ void main() {
         auto __tup_8 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(__for_tup_4);
         auto&& c0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_8)));
         auto&& c1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_8)));
-        std::cout << "copy_into_append" << " " << ::tpy::__len__(c0.xs) << " " << ::tpy::__len__(c1.xs) << "\n";
+        std::cout << "copy_into_append" << " " << ::tpy::__len__(c0.xs) << " " << ::tpy::__len__(c1.xs) << "\n" << ::tpy::check_signals;
     }
     auto __tup_9 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(cr);
     auto&& r0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_9)));
     auto&& r1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_9)));
-    std::cout << "copy_return" << " " << ::tpy::__len__(r0.xs) << " " << ::tpy::__len__(r1.xs) << "\n";
-    std::cout << "copy_nested_member" << " " << ::tpy::__len__(cn2) << "\n";
+    std::cout << "copy_return" << " " << ::tpy::__len__(r0.xs) << " " << ::tpy::__len__(r1.xs) << "\n" << ::tpy::check_signals;
+    std::cout << "copy_nested_member" << " " << ::tpy::__len__(cn2) << "\n" << ::tpy::check_signals;
     auto& __obj_5 = cpar;
     auto __beg_5 = __obj_5.begin();
     auto __end_5 = __obj_5.end();
@@ -272,9 +272,9 @@ void main() {
         auto __tup_10 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(__for_tup_5);
         auto&& c0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_10)));
         auto&& c1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_10)));
-        std::cout << "copy_param" << " " << ::tpy::__len__(c0.xs) << " " << ::tpy::__len__(c1.xs) << "\n";
+        std::cout << "copy_param" << " " << ::tpy::__len__(c0.xs) << " " << ::tpy::__len__(c1.xs) << "\n" << ::tpy::check_signals;
     }
-    std::cout << "values_into_list" << " " << ::tpy::ListPrinter(::tpyapp::main::values_into_list(1)) << "\n";
+    std::cout << "values_into_list" << " " << ::tpy::ListPrinter(::tpyapp::main::values_into_list(1)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

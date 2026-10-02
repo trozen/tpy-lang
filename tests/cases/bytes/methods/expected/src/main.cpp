@@ -36,36 +36,36 @@ namespace tpyapp::main {
 //         print(vp)
 void main() {
     ::tpy::BytesView data = ::tpy::bytes_literal("hello world", 11);
-    std::cout << ::tpy::bytes_hex(data) << "\n";
-    std::cout << ::tpy::bytes_find(data, ::tpy::bytes_literal("world", 5)) << "\n";
-    std::cout << ::tpy::bytes_find(data, ::tpy::bytes_literal("xyz", 3)) << "\n";
-    std::cout << ::tpy::bytes_rfind(data, ::tpy::bytes_literal("l", 1)) << "\n";
-    std::cout << ::tpy::bytes_count(data, ::tpy::bytes_literal("l", 1)) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::bytes_startswith(data, ::tpy::bytes_literal("hello", 5))) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::bytes_endswith(data, ::tpy::bytes_literal("world", 5))) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::bytes_startswith(data, ::tpy::bytes_literal("world", 5))) << "\n";
+    std::cout << ::tpy::bytes_hex(data) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::bytes_find(data, ::tpy::bytes_literal("world", 5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::bytes_find(data, ::tpy::bytes_literal("xyz", 3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::bytes_rfind(data, ::tpy::bytes_literal("l", 1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::bytes_count(data, ::tpy::bytes_literal("l", 1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::bytes_startswith(data, ::tpy::bytes_literal("hello", 5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::bytes_endswith(data, ::tpy::bytes_literal("world", 5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::bytes_startswith(data, ::tpy::bytes_literal("world", 5))) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes replaced = ::tpy::bytes_replace(data, ::tpy::bytes_literal("world", 5), ::tpy::bytes_literal("bytes", 5));
-    std::cout << ::tpy::BytesPrinter(replaced) << "\n";
+    std::cout << ::tpy::BytesPrinter(replaced) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Bytes> parts = ::tpy::bytes_split(::tpy::bytes_literal_owned("a,b,c", 5), ::tpy::bytes_literal(",", 1));
     auto& __obj_0 = parts;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         ::tpy::BytesView p = *__beg_0;
-        std::cout << ::tpy::BytesPrinter(p) << "\n";
+        std::cout << ::tpy::BytesPrinter(p) << "\n" << ::tpy::check_signals;
     }
     ::tpy::Bytes joined = ::tpy::bytes_join(::tpy::bytes_literal_owned(", ", 2), parts);
-    std::cout << ::tpy::BytesPrinter(joined) << "\n";
+    std::cout << ::tpy::BytesPrinter(joined) << "\n" << ::tpy::check_signals;
     ::tpy::BytesView v = ::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 11});
-    std::cout << ::tpy::bytes_find(v, ::tpy::bytes_literal("world", 5)) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_replace(v, ::tpy::bytes_literal("world", 5), ::tpy::bytes_literal("there", 5))) << "\n";
+    std::cout << ::tpy::bytes_find(v, ::tpy::bytes_literal("world", 5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_replace(v, ::tpy::bytes_literal("world", 5), ::tpy::bytes_literal("there", 5))) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Bytes> vparts = ::tpy::bytes_split(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 11}), ::tpy::bytes_literal(" ", 1));
     auto& __obj_1 = vparts;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         ::tpy::BytesView vp = *__beg_1;
-        std::cout << ::tpy::BytesPrinter(vp) << "\n";
+        std::cout << ::tpy::BytesPrinter(vp) << "\n" << ::tpy::check_signals;
     }
 }
 

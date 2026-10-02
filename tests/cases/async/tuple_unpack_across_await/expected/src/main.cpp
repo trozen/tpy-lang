@@ -50,7 +50,7 @@ __coro_f f() {
 // def main() -> None:
 //     print(asyncio.run(f()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::f())) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::f())) << "\n" << ::tpy::check_signals;
 }
 
 // # Value-type tuple-unpack targets must survive an await: the unpacked locals

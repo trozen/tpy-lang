@@ -31,7 +31,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::dict_construct<std::string, int32_t>(::tpy::builtin_map<std::tuple<std::string, int32_t>>([](int32_t v) -> std::tuple<std::string, int32_t> { return ::tpyapp::main::label<int32_t>(::tpy::fixed_to_str<int32_t>(v), v); }, vals));
     auto& __obj_1 = d2;
@@ -39,7 +39,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        std::cout << k << " " << ::tpy::__getitem__(d2, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(d2, k) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, Point> d3 = ::tpy::dict_construct<std::string, Point>(::tpy::copy_iter<std::tuple<std::string, Point>>(::tpy::builtin_map<std::tuple<std::string, ::tpy::val_or_ref<Point>>>([](Point& p) -> std::tuple<std::string, Point*> { return ::tpyapp::main::label<Point>(::tpy::fixed_to_str<int32_t>(p.x), p); }, pts)));
     auto& __obj_2 = d3;
@@ -47,7 +47,7 @@ void main() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         std::string_view k = *__beg_2;
-        std::cout << k << " " << ::tpy::__getitem__(d3, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(d3, k) << "\n" << ::tpy::check_signals;
     }
 }
 

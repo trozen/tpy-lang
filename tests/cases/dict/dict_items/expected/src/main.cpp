@@ -22,9 +22,9 @@ void main() {
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);
         int32_t v = std::get<1>(__tup_1);
-        std::cout << k << " " << v << "\n";
+        std::cout << k << " " << v << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::__len__(::tpy::dict_items(d)) << "\n";
+    std::cout << ::tpy::__len__(::tpy::dict_items(d)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

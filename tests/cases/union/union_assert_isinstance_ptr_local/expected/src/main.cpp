@@ -23,7 +23,7 @@ int32_t process(bool flag) {
 // def main() -> None:
 //     print(process(True))
 void main() {
-    std::cout << ::tpyapp::main::process(true) << "\n";
+    std::cout << ::tpyapp::main::process(true) << "\n" << ::tpy::check_signals;
 }
 
 // main()

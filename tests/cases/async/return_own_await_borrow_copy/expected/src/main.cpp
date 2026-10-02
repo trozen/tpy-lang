@@ -97,7 +97,7 @@ __coro_take_two_step take_two_step(Holder& h) {
         b.emplace(std::move(__r1).value());
         __sub_1.reset();
         (*h).p.v = 9;
-        std::cout << (*h).p.v << " " << (*a).v << " " << (*b).v << "\n";
+        std::cout << (*h).p.v << " " << (*a).v << " " << (*b).v << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

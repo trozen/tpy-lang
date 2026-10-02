@@ -13,7 +13,7 @@ void test_range_var() {
     for (int32_t __range_0 = 0; __range_0 < 5; ++__range_0) {
         i = __range_0;
     }
-    std::cout << i << "\n";
+    std::cout << i << "\n" << ::tpy::check_signals;
 }
 
 // def test_body_var() -> None:
@@ -25,7 +25,7 @@ void test_body_var() {
     for (int32_t i = 0; i < 3; ++i) {
         x = (::tpy::mul_check<int32_t>(i, 10));
     }
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_iteration() -> None:
@@ -43,7 +43,7 @@ void test_list_iteration() {
         int32_t v = *__beg_0;
         last = v;
     }
-    std::cout << last << "\n";
+    std::cout << last << "\n" << ::tpy::check_signals;
 }
 
 // def test_break() -> None:
@@ -59,7 +59,7 @@ void test_break() {
             break;
         }
     }
-    std::cout << i << "\n";
+    std::cout << i << "\n" << ::tpy::check_signals;
 }
 
 // def test_nested() -> None:
@@ -77,8 +77,8 @@ void test_nested() {
             j = __range_1;
         }
     }
-    std::cout << i << "\n";
-    std::cout << j << "\n";
+    std::cout << i << "\n" << ::tpy::check_signals;
+    std::cout << j << "\n" << ::tpy::check_signals;
 }
 
 // def test_record_in_body() -> None:
@@ -96,7 +96,7 @@ void test_record_in_body() {
         std::string_view s = *__beg_0;
         msg = (::tpy::str_concat(s, "!"));
     }
-    std::cout << msg << "\n";
+    std::cout << msg << "\n" << ::tpy::check_signals;
 }
 
 // def test_sequential_same_var() -> None:
@@ -112,7 +112,7 @@ void test_sequential_same_var() {
     for (int32_t __range_1 = 0; __range_1 < 5; ++__range_1) {
         i = __range_1;
     }
-    std::cout << i << "\n";
+    std::cout << i << "\n" << ::tpy::check_signals;
 }
 
 // def test_str_loop_var() -> None:
@@ -129,7 +129,7 @@ void test_str_loop_var() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         s = *__beg_0;
     }
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_tuple_unpack() -> None:
@@ -151,8 +151,8 @@ void test_tuple_unpack() {
         i = std::get<0>(__tup_1);
         s = std::get<1>(__tup_1);
     }
-    std::cout << i << "\n";
-    std::cout << s << "\n";
+    std::cout << i << "\n" << ::tpy::check_signals;
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_tuple_unpack_partial() -> None:
@@ -173,7 +173,7 @@ void test_tuple_unpack_partial() {
         i = std::get<0>(__tup_1);
         std::string_view s = std::get<1>(__tup_1);
     }
-    std::cout << i << "\n";
+    std::cout << i << "\n" << ::tpy::check_signals;
 }
 
 // def test_tuple_unpack_second_func() -> None:
@@ -196,8 +196,8 @@ void test_tuple_unpack_second_func() {
         i = std::get<0>(__tup_1);
         s = std::get<1>(__tup_1);
     }
-    std::cout << i << "\n";
-    std::cout << s << "\n";
+    std::cout << i << "\n" << ::tpy::check_signals;
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // test_range_var()

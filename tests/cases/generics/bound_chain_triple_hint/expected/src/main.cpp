@@ -12,7 +12,7 @@ namespace tpyapp::main {
 //     print(h.get().kind())
 void main() {
     Holder<Leaf> h = ::tpyapp::main::make<Leaf, Leaf, Leaf>(Leaf("a"));
-    std::cout << h.get().kind() << "\n";
+    std::cout << h.get().kind() << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_take, unsafe_release

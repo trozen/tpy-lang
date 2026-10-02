@@ -24,7 +24,7 @@ namespace tpyapp::main {
         (void)std::move(__r0).value();
         __sub_0.reset();
         e.set();
-        std::cout << "producer set" << "\n";
+        std::cout << "producer set" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -55,7 +55,7 @@ __coro_producer producer(::tpystd::asyncio::Event& e) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0 = nullptr;
-        std::cout << "consumer woke" << "\n";
+        std::cout << "consumer woke" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -86,7 +86,7 @@ __coro_consumer consumer(::tpystd::asyncio::Event& e) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0 = nullptr;
-        std::cout << "fast-path woke" << "\n";
+        std::cout << "fast-path woke" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -125,13 +125,13 @@ __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         e_fast.emplace(::tpystd::asyncio::Event());
-        std::cout << ::tpy::print_bool((*e_fast).is_set()) << "\n";
+        std::cout << ::tpy::print_bool((*e_fast).is_set()) << "\n" << ::tpy::check_signals;
         (*e_fast).set();
         (*e_fast).set();
-        std::cout << ::tpy::print_bool((*e_fast).is_set()) << "\n";
+        std::cout << ::tpy::print_bool((*e_fast).is_set()) << "\n" << ::tpy::check_signals;
         ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::fast_path_consumer((*e_fast))));
         e.emplace(::tpystd::asyncio::Event());
-        std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
+        std::cout << ::tpy::print_bool((*e).is_set()) << "\n" << ::tpy::check_signals;
         t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::consumer((*e)))));
         ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::producer((*e))));
         __sub_0 = &((*t));
@@ -143,9 +143,9 @@ __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0 = nullptr;
-        std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
+        std::cout << ::tpy::print_bool((*e).is_set()) << "\n" << ::tpy::check_signals;
         (*e).clear();
-        std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
+        std::cout << ::tpy::print_bool((*e).is_set()) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

@@ -18,13 +18,13 @@ void mutating(Holder& h) {
         auto& __case_0 = std::get<1>(__match_subject_1);
         auto& lst = __case_0.items;
         h.swap();
-        std::cout << ::tpy::__len__(lst) << "\n";
+        std::cout << ::tpy::__len__(lst) << "\n" << ::tpy::check_signals;
         break;
     }
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
         auto a = __case_1.age;
-        std::cout << "cat" << " " << a << "\n";
+        std::cout << "cat" << " " << a << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -44,13 +44,13 @@ void readonly_ok(const Holder& h) {
         auto& __case_0 = std::get<1>(__match_subject_1);
         auto& lst = __case_0.items;
         int32_t n = h.peek();
-        std::cout << ::tpy::__len__(lst) << " " << n << "\n";
+        std::cout << ::tpy::__len__(lst) << " " << n << "\n" << ::tpy::check_signals;
         break;
     }
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
         auto a = __case_1.age;
-        std::cout << "cat-ro" << " " << a << "\n";
+        std::cout << "cat-ro" << " " << a << "\n" << ::tpy::check_signals;
         break;
     }
     }

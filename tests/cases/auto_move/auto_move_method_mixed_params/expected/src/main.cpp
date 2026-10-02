@@ -34,18 +34,18 @@ void main() {
     Inner i = Inner();
     i.value = 10;
     h.set_with_tag(std::move(i), 5);
-    std::cout << h.inner.value << "\n";
+    std::cout << h.inner.value << "\n" << ::tpy::check_signals;
     Inner i2 = Inner();
     i2.value = 42;
     GenericBox<Inner> box = GenericBox<Inner>(i2);
-    std::cout << box.item.value << "\n";
-    std::cout << i2.value << "\n";
+    std::cout << box.item.value << "\n" << ::tpy::check_signals;
+    std::cout << i2.value << "\n" << ::tpy::check_signals;
     GenericHolder<Inner> gh = GenericHolder<Inner>(Inner());
     Inner i3 = Inner();
     i3.value = 7;
     int32_t f = gh.replace_with_flag(std::move(i3), 3);
-    std::cout << gh.item.value << "\n";
-    std::cout << f << "\n";
+    std::cout << gh.item.value << "\n" << ::tpy::check_signals;
+    std::cout << f << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -14,9 +14,9 @@ namespace tpyapp::main {
 //     # @native("c_multiply", binding="C") -> ::tpyapp::lib::c_multiply(6, 7)
 //     print(lib.c_mul(int32(6), int32(7)))
 void main() {
-    std::cout << ::myns::namespaced_add(10, 32) << "\n";
-    std::cout << ::bare_add(10, 32) << "\n";
-    std::cout << ::tpyapp::lib::c_multiply(6, 7) << "\n";
+    std::cout << ::myns::namespaced_add(10, 32) << "\n" << ::tpy::check_signals;
+    std::cout << ::bare_add(10, 32) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::lib::c_multiply(6, 7) << "\n" << ::tpy::check_signals;
 }
 
 // # Test module-qualified calls to @native vs @native(binding="C") functions

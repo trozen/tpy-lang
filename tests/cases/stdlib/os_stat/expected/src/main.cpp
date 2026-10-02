@@ -84,26 +84,26 @@ void main() {
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
     ::tpystd::os::_types::stat_result st = ::tpystd::os::stat((::tpy::str_concat(base, "/f.txt")));
-    std::cout << "size:" << " " << st.st_size << "\n";
-    std::cout << "is-reg:" << " " << ::tpy::print_bool(((static_cast<int64_t>(st.st_mode & 61440)) == 32768)) << "\n";
-    std::cout << "nlink>=1:" << " " << ::tpy::print_bool((st.st_nlink >= 1)) << "\n";
-    std::cout << "mtime>0:" << " " << ::tpy::print_bool((st.st_mtime > 0.0)) << " " << ::tpy::print_bool((st.st_mtime_ns > 0)) << "\n";
-    std::cout << "getsize:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_getsize((::tpy::str_concat(base, "/f.txt"))) == st.st_size)) << "\n";
-    std::cout << "getmtime:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_getmtime((::tpy::str_concat(base, "/f.txt"))) == st.st_mtime)) << "\n";
-    std::cout << "getatime:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_getatime((::tpy::str_concat(base, "/f.txt"))) == st.st_atime)) << "\n";
-    std::cout << "getctime:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_getctime((::tpy::str_concat(base, "/f.txt"))) == st.st_ctime)) << "\n";
-    std::cout << "dir-is-dir:" << " " << ::tpy::print_bool(((static_cast<int64_t>(::tpystd::os::stat(base).st_mode & 61440)) == 16384)) << "\n";
+    std::cout << "size:" << " " << st.st_size << "\n" << ::tpy::check_signals;
+    std::cout << "is-reg:" << " " << ::tpy::print_bool(((static_cast<int64_t>(st.st_mode & 61440)) == 32768)) << "\n" << ::tpy::check_signals;
+    std::cout << "nlink>=1:" << " " << ::tpy::print_bool((st.st_nlink >= 1)) << "\n" << ::tpy::check_signals;
+    std::cout << "mtime>0:" << " " << ::tpy::print_bool((st.st_mtime > 0.0)) << " " << ::tpy::print_bool((st.st_mtime_ns > 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "getsize:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_getsize((::tpy::str_concat(base, "/f.txt"))) == st.st_size)) << "\n" << ::tpy::check_signals;
+    std::cout << "getmtime:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_getmtime((::tpy::str_concat(base, "/f.txt"))) == st.st_mtime)) << "\n" << ::tpy::check_signals;
+    std::cout << "getatime:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_getatime((::tpy::str_concat(base, "/f.txt"))) == st.st_atime)) << "\n" << ::tpy::check_signals;
+    std::cout << "getctime:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_getctime((::tpy::str_concat(base, "/f.txt"))) == st.st_ctime)) << "\n" << ::tpy::check_signals;
+    std::cout << "dir-is-dir:" << " " << ::tpy::print_bool(((static_cast<int64_t>(::tpystd::os::stat(base).st_mode & 61440)) == 16384)) << "\n" << ::tpy::check_signals;
     ::tpy::stdlib::os::symlink("f.txt", (::tpy::str_concat(base, "/lnk")));
-    std::cout << "lstat-is-link:" << " " << ::tpy::print_bool(((static_cast<int64_t>(::tpystd::os::lstat((::tpy::str_concat(base, "/lnk"))).st_mode & 61440)) == 40960)) << "\n";
-    std::cout << "stat-follows-link:" << " " << ::tpy::print_bool((::tpystd::os::stat((::tpy::str_concat(base, "/lnk"))).st_size == 5)) << "\n";
-    std::cout << "samefile-self:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_samefile((::tpy::str_concat(base, "/f.txt")), (::tpy::str_concat(base, "/f.txt")))) << "\n";
-    std::cout << "samefile-via-link:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_samefile((::tpy::str_concat(base, "/lnk")), (::tpy::str_concat(base, "/f.txt")))) << "\n";
-    std::cout << "ismount-base:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_ismount(base)) << "\n";
-    std::cout << "ismount-root:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_ismount("/")) << "\n";
+    std::cout << "lstat-is-link:" << " " << ::tpy::print_bool(((static_cast<int64_t>(::tpystd::os::lstat((::tpy::str_concat(base, "/lnk"))).st_mode & 61440)) == 40960)) << "\n" << ::tpy::check_signals;
+    std::cout << "stat-follows-link:" << " " << ::tpy::print_bool((::tpystd::os::stat((::tpy::str_concat(base, "/lnk"))).st_size == 5)) << "\n" << ::tpy::check_signals;
+    std::cout << "samefile-self:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_samefile((::tpy::str_concat(base, "/f.txt")), (::tpy::str_concat(base, "/f.txt")))) << "\n" << ::tpy::check_signals;
+    std::cout << "samefile-via-link:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_samefile((::tpy::str_concat(base, "/lnk")), (::tpy::str_concat(base, "/f.txt")))) << "\n" << ::tpy::check_signals;
+    std::cout << "ismount-base:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_ismount(base)) << "\n" << ::tpy::check_signals;
+    std::cout << "ismount-root:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_ismount("/")) << "\n" << ::tpy::check_signals;
     ::tpystd::os::mkdir((::tpy::str_concat(base, "/d700")), 448);
-    std::cout << "mkdir-mode:" << " " << ::tpy::print_bool(((static_cast<int64_t>(::tpystd::os::stat((::tpy::str_concat(base, "/d700"))).st_mode & 63)) == 0)) << "\n";
+    std::cout << "mkdir-mode:" << " " << ::tpy::print_bool(((static_cast<int64_t>(::tpystd::os::stat((::tpy::str_concat(base, "/d700"))).st_mode & 63)) == 0)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::teardown(base);
-    std::cout << "clean:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists(base)) << "\n";
+    std::cout << "clean:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists(base)) << "\n" << ::tpy::check_signals;
 }
 
 // # os.stat/lstat + stat_result + os.path stat queries (getmtime/samefile/

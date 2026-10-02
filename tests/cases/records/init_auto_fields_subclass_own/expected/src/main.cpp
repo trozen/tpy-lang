@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(Holder(Res(9)).value())
 void main() {
-    std::cout << Holder(Res(::tpy::BigInt(9))).value() << "\n";
+    std::cout << Holder(Res(::tpy::BigInt(9))).value() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -30,23 +30,23 @@ namespace tpyapp::main {
 //
 //     print("ok")
 void main() {
-    std::cout << std::format("sub-bref-1={}", ::tpystd::re::sub("(\\w+)", "[$1]", "foo bar baz")) << "\n";
-    std::cout << std::format("sub-bref-2={}", ::tpystd::re::sub("(\\w+)\\s+(\\w+)", "$2 $1", "hello world")) << "\n";
-    std::cout << std::format("sub-bref-count={}", ::tpystd::re::sub("(\\w+)", "[$1]", "foo bar baz", 2)) << "\n";
+    std::cout << std::format("sub-bref-1={}", ::tpystd::re::sub("(\\w+)", "[$1]", "foo bar baz")) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("sub-bref-2={}", ::tpystd::re::sub("(\\w+)\\s+(\\w+)", "$2 $1", "hello world")) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("sub-bref-count={}", ::tpystd::re::sub("(\\w+)", "[$1]", "foo bar baz", 2)) << "\n" << ::tpy::check_signals;
     ::tpystd::re::Pattern p = ::tpystd::re::compile("(\\d+)-(\\d+)-(\\d+)");
     std::optional<::tpystd::re::Match> m = p.search("date 2024-01-15 here");
     if ((!m.has_value())) {
-        std::cout << "FAIL: groups search" << "\n";
+        std::cout << "FAIL: groups search" << "\n" << ::tpy::check_signals;
         return;
     }
-    std::cout << std::format("groups={}", ::tpy::list_to_str((*m).groups())) << "\n";
+    std::cout << std::format("groups={}", ::tpy::list_to_str((*m).groups())) << "\n" << ::tpy::check_signals;
     std::optional<::tpystd::re::Match> m2 = ::tpystd::re::compile("\\d+").search("abc 42");
     if ((!m2.has_value())) {
-        std::cout << "FAIL: nocap search" << "\n";
+        std::cout << "FAIL: nocap search" << "\n" << ::tpy::check_signals;
         return;
     }
-    std::cout << std::format("nocap-groups={}", ::tpy::list_to_str((*m2).groups())) << "\n";
-    std::cout << "ok" << "\n";
+    std::cout << std::format("nocap-groups={}", ::tpy::list_to_str((*m2).groups())) << "\n" << ::tpy::check_signals;
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // # re: PCRE2-specific behavior that diverges from CPython.

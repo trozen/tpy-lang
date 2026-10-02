@@ -34,10 +34,10 @@ void main() {
         auto __tup_1 = ::tpyapp::main::make_pair(i);
         int32_t n = std::get<0>(__tup_1);
         std::string_view s = std::get<1>(__tup_1);
-        std::cout << s << "\n";
+        std::cout << s << "\n" << ::tpy::check_signals;
         total = (::tpy::add_check<int32_t>(total, n));
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // main()

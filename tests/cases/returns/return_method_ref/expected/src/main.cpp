@@ -19,9 +19,9 @@ void test() {
     Holder h = Holder();
     Inner& x = h.get();
     x.mutate();
-    std::cout << h.inner.val << "\n";
+    std::cout << h.inner.val << "\n" << ::tpy::check_signals;
     const Inner& y = h.get_ro();
-    std::cout << y.val << "\n";
+    std::cout << y.val << "\n" << ::tpy::check_signals;
 }
 
 // test()

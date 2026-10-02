@@ -18,9 +18,9 @@ void main() {
     Point* ptr = &pt;
     Point* alias = &(::tpy::deref_check(ptr));
     alias->x = 7;
-    std::cout << pt.x << " " << alias->x << "\n";
+    std::cout << pt.x << " " << alias->x << "\n" << ::tpy::check_signals;
     alias = &*(__slot_1 = Point(3, 4));
-    std::cout << pt.x << " " << alias->x << "\n";
+    std::cout << pt.x << " " << alias->x << "\n" << ::tpy::check_signals;
 }
 
 // main()

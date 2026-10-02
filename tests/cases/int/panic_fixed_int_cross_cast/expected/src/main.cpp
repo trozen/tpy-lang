@@ -16,7 +16,7 @@ void __tpy_init() {
 
     x = 300;
     y = ::tpy::int_cast_check<uint8_t>(x);
-    std::cout << static_cast<int>(y) << "\n";
+    std::cout << static_cast<int>(y) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

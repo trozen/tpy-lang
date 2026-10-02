@@ -16,12 +16,12 @@ namespace tpyapp::main {
 //     print(c)
 void test_explicit() {
     int32_t a = int32_t{};
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
     std::string b = std::string{};
-    std::cout << b << "\n";
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
     bool c = bool{};
-    std::cout << ::tpy::print_bool(c) << "\n";
+    std::cout << ::tpy::print_bool(c) << "\n" << ::tpy::check_signals;
 }
 
 // def test_inferred() -> None:
@@ -33,10 +33,10 @@ void test_explicit() {
 //     print(len(s))
 void test_inferred() {
     int32_t x = int32_t{};
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     std::string s = std::string{};
-    std::cout << s << "\n";
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // def test_record() -> None:
@@ -45,8 +45,8 @@ void test_inferred() {
 //     print(p.y)
 void test_record() {
     Point p = Point{};
-    std::cout << p.x << "\n";
-    std::cout << p.y << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
+    std::cout << p.y << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

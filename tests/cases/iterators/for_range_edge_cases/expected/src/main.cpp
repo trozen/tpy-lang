@@ -46,39 +46,39 @@ void __tpy_init() {
     initialized = true;
 
     for (int32_t i = 0; i < 0; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     for (int32_t i = 5; i < 5; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     for (int32_t i = 5; i < 0; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     for (int32_t i = 0; i > 10; --i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     for (int32_t i = 0; i < 1; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     for (int32_t i = 3; i < 4; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     for (int32_t i = -3; i < 0; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     ::tpy::range_check_overflow<int32_t>(0, 10, 100);
     for (int32_t i = 0; i < 10; i += 100) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     ::tpy::range_check_overflow<int32_t>(10, 0, -100);
     for (int32_t i = 10; i > 0; i += -100) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     int32_t __stop_9 = ::tpy::add_check<int32_t>(1, 2);
     for (int32_t i = 0; i < __stop_9; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

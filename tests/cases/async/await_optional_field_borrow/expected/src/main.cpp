@@ -110,7 +110,7 @@ __coro_make make(bool present) {
             t->val = ::tpy::BigInt(99);
         }
         if (((*h).opt.has_value())) {
-            std::cout << (*(*h).opt).val << "\n";
+            std::cout << (*(*h).opt).val << "\n" << ::tpy::check_signals;
         }
         empty.emplace(H(nullptr));
         __sub_1.emplace((*empty));
@@ -122,7 +122,7 @@ __coro_make make(bool present) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         e = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << (((e == nullptr)) ? ("none") : ("?")) << "\n";
+        std::cout << (((e == nullptr)) ? ("none") : ("?")) << "\n" << ::tpy::check_signals;
         __sub_2.emplace(true);
         __state = S_RESUME_2;
         continue;
@@ -132,7 +132,7 @@ __coro_make make(bool present) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         owned = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << (((owned.has_value())) ? ((*owned).val) : (::tpy::BigInt(-1))) << "\n";
+        std::cout << (((owned.has_value())) ? ((*owned).val) : (::tpy::BigInt(-1))) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

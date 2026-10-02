@@ -13,7 +13,7 @@ void main() {
     Wrapper w = Wrapper();
     w.bump_twice();
     w.bump_twice();
-    std::cout << w.n << "\n";
+    std::cout << w.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

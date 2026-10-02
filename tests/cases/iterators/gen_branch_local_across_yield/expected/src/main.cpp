@@ -29,10 +29,10 @@ __gen_gen_match gen_match(::tpy::BigInt n) {
 //     print(list(gen_elif(7)))
 //     print(list(gen_match(5)))
 void main() {
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_if(::tpy::BigInt(5)))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_if(::tpy::BigInt(0)))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_elif(::tpy::BigInt(7)))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_match(::tpy::BigInt(5)))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_if(::tpy::BigInt(5)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_if(::tpy::BigInt(0)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_elif(::tpy::BigInt(7)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_match(::tpy::BigInt(5)))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

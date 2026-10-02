@@ -40,20 +40,20 @@ void __tpy_init() {
     h->init(0, 10);
     h->init(1, 20);
     h->init(2, 30);
-    std::cout << h->take(0) << "\n";
-    std::cout << h->take(1) << "\n";
-    std::cout << h->take(2) << "\n";
+    std::cout << h->take(0) << "\n" << ::tpy::check_signals;
+    std::cout << h->take(1) << "\n" << ::tpy::check_signals;
+    std::cout << h->take(2) << "\n" << ::tpy::check_signals;
     static ::tpy::UninitArrayStorage<int32_t, 1> __global_slot_2 = ::tpy::UninitArrayStorage<int32_t, 1>();
     a = &__global_slot_2;
     a->init0(42);
-    std::cout << a->take0() << "\n";
+    std::cout << a->take0() << "\n" << ::tpy::check_signals;
     static ::tpy::UninitHeapStorage<Point> __global_slot_3 = ::tpy::UninitHeapStorage<Point>(2);
     pts = &__global_slot_3;
     pts->init0(Point(5, 6));
     static Point __global_slot_4 = pts->take0();
     pt = &__global_slot_4;
-    std::cout << pt->x << "\n";
-    std::cout << pt->y << "\n";
+    std::cout << pt->x << "\n" << ::tpy::check_signals;
+    std::cout << pt->y << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

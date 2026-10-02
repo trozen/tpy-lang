@@ -58,7 +58,7 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 //     print("destroying", self.name)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
-    std::cout << "destroying" << " " << this->name << "\n";
+    std::cout << "destroying" << " " << this->name << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

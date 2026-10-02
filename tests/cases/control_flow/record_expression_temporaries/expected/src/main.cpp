@@ -37,11 +37,11 @@ int32_t condition(int32_t value) {
 //     print("constructor", runner.value)
 //     print("method", runner.read(True), runner.read(False))
 void main() {
-    std::cout << "free" << " " << ::tpyapp::main::free(true) << " " << ::tpyapp::main::free(false) << "\n";
-    std::cout << "condition" << " " << ::tpyapp::main::condition(1) << " " << ::tpyapp::main::condition(0) << "\n";
+    std::cout << "free" << " " << ::tpyapp::main::free(true) << " " << ::tpyapp::main::free(false) << "\n" << ::tpy::check_signals;
+    std::cout << "condition" << " " << ::tpyapp::main::condition(1) << " " << ::tpyapp::main::condition(0) << "\n" << ::tpy::check_signals;
     Runner runner = Runner(5);
-    std::cout << "constructor" << " " << runner.value << "\n";
-    std::cout << "method" << " " << runner.read(true) << " " << runner.read(false) << "\n";
+    std::cout << "constructor" << " " << runner.value << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << runner.read(true) << " " << runner.read(false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

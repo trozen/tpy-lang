@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def greet_pet(pet: Pet) -> None:
 //     print(pet.make_noise())
 void greet_pet(Pet& pet) {
-    std::cout << pet.make_noise() << "\n";
+    std::cout << pet.make_noise() << "\n" << ::tpy::check_signals;
 }
 
 // def greet_named(pet: NamedPet) -> None:
 //     print(pet.name())
 void greet_named(NamedPet& pet) {
-    std::cout << pet.name() << "\n";
+    std::cout << pet.name() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

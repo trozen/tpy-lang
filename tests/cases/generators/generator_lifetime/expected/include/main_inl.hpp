@@ -251,7 +251,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_rows::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         row = &(*((*__for_it_0))++);
-        std::cout << "gen_rows pass" << " " << ::tpy::__getitem__((*row), 0) << "\n";
+        std::cout << "gen_rows pass" << " " << ::tpy::__getitem__((*row), 0) << "\n" << ::tpy::check_signals;
         g.emplace(::tpyapp::main::items((*row)));
         __state = S_RESUME_0;
         return ::tpyapp::main::first((*g));

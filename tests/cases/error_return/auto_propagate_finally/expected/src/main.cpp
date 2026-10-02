@@ -34,18 +34,18 @@ std::expected<int32_t, MyErr> caller(int32_t x) {
                 if (!__try_tmp_1.has_value()) {
                     std::expected<int32_t, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(std::move(__try_tmp_1.error()));
                     __fin_ran_1 = true;
-                    std::cout << "cleanup-1" << "\n";
+                    std::cout << "cleanup-1" << "\n" << ::tpy::check_signals;
                     return __tpy_ret_0;
                 }
                 y = ::tpy::unwrap_ref_move(*__try_tmp_1);
             }
             std::expected<int32_t, MyErr> __tpy_ret_1 = y;
             __fin_ran_1 = true;
-            std::cout << "cleanup-1" << "\n";
+            std::cout << "cleanup-1" << "\n" << ::tpy::check_signals;
             return __tpy_ret_1;
         } catch (...) {
             if (!__fin_ran_1) {
-                std::cout << "cleanup-1" << "\n";
+                std::cout << "cleanup-1" << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -71,18 +71,18 @@ std::expected<int32_t, MyErr> caller_assign(int32_t x) {
                 if (!__try_tmp_2.has_value()) {
                     std::expected<int32_t, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(std::move(__try_tmp_2.error()));
                     __fin_ran_2 = true;
-                    std::cout << "cleanup-2" << "\n";
+                    std::cout << "cleanup-2" << "\n" << ::tpy::check_signals;
                     return __tpy_ret_0;
                 }
                 z = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
             std::expected<int32_t, MyErr> __tpy_ret_1 = z;
             __fin_ran_2 = true;
-            std::cout << "cleanup-2" << "\n";
+            std::cout << "cleanup-2" << "\n" << ::tpy::check_signals;
             return __tpy_ret_1;
         } catch (...) {
             if (!__fin_ran_2) {
-                std::cout << "cleanup-2" << "\n";
+                std::cout << "cleanup-2" << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -105,17 +105,17 @@ std::expected<void, MyErr> caller_stmt(int32_t x) {
                 if (!__try_tmp_3.has_value()) {
                     std::expected<void, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(std::move(__try_tmp_3.error()));
                     __fin_ran_3 = true;
-                    std::cout << "cleanup-3" << "\n";
+                    std::cout << "cleanup-3" << "\n" << ::tpy::check_signals;
                     return __tpy_ret_0;
                 }
             }
         } catch (...) {
             if (!__fin_ran_3) {
-                std::cout << "cleanup-3" << "\n";
+                std::cout << "cleanup-3" << "\n" << ::tpy::check_signals;
             }
             throw;
         }
-        std::cout << "cleanup-3" << "\n";
+        std::cout << "cleanup-3" << "\n" << ::tpy::check_signals;
     }
     return {};
 }
@@ -155,11 +155,11 @@ void main() {
             v = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
         // else:
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         goto __after_try_4;
         // except MyErr:
         __except_4:;
-        std::cout << "error-1" << "\n";
+        std::cout << "error-1" << "\n" << ::tpy::check_signals;
         __after_try_4:;
     }
     {
@@ -169,11 +169,11 @@ void main() {
             v = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
         // else:
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         goto __after_try_6;
         // except MyErr:
         __except_6:;
-        std::cout << "error-1" << "\n";
+        std::cout << "error-1" << "\n" << ::tpy::check_signals;
         __after_try_6:;
     }
     {
@@ -183,11 +183,11 @@ void main() {
             v = ::tpy::unwrap_ref_move(*__try_tmp_9);
         }
         // else:
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         goto __after_try_8;
         // except MyErr:
         __except_8:;
-        std::cout << "error-2" << "\n";
+        std::cout << "error-2" << "\n" << ::tpy::check_signals;
         __after_try_8:;
     }
     {
@@ -198,7 +198,7 @@ void main() {
         goto __after_try_10;
         // except MyErr:
         __except_10:;
-        std::cout << "error-3" << "\n";
+        std::cout << "error-3" << "\n" << ::tpy::check_signals;
         __after_try_10:;
     }
 }

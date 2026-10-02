@@ -12,7 +12,7 @@ void main() {
     ::tpy::Any x = ::tpy::make_any(std::string("hello"));
     if ((x.value.has_value() && x.value.type() == typeid(std::string))) {
         const std::string& __x = std::any_cast<const std::string&>(x.value);
-        std::cout << ::tpy::str_upper(__x) << "\n";
+        std::cout << ::tpy::str_upper(__x) << "\n" << ::tpy::check_signals;
     }
 }
 

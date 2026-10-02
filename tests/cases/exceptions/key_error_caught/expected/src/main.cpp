@@ -38,23 +38,23 @@ void main() {
     ::tpy::ordered_map<std::string, ::tpy::BigInt> d = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}});
     {
         try {
-            std::cout << ::tpy::__getitem__(d, "missing") << "\n";
+            std::cout << ::tpy::__getitem__(d, "missing") << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::KeyError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::dict_pop(d, "missing");
         } catch (const ::tpy::KeyError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::__delitem__(d, "missing");
         } catch (const ::tpy::KeyError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::ordered_set<::tpy::BigInt> s = ::tpy::ordered_set<::tpy::BigInt>({::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)});
@@ -62,7 +62,7 @@ void main() {
         try {
             ::tpy::set_remove(s, ::tpy::BigInt(99));
         } catch (const ::tpy::KeyError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::ordered_set<::tpy::BigInt> empty = ::tpy::ordered_set<::tpy::BigInt>();
@@ -70,7 +70,7 @@ void main() {
         try {
             ::tpy::set_pop(empty);
         } catch (const ::tpy::KeyError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

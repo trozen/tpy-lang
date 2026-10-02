@@ -23,9 +23,9 @@ void main() {
     h1.shared.get().bump();
     h2.shared.get().bump();
     counter.get().bump();
-    std::cout << h1.name << " " << h1.shared.get().value << "\n";
-    std::cout << h2.name << " " << h2.shared.get().value << "\n";
-    std::cout << "orig" << " " << counter.get().value << "\n";
+    std::cout << h1.name << " " << h1.shared.get().value << "\n" << ::tpy::check_signals;
+    std::cout << h2.name << " " << h2.shared.get().value << "\n" << ::tpy::check_signals;
+    std::cout << "orig" << " " << counter.get().value << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Rc

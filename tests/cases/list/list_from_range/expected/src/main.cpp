@@ -17,10 +17,10 @@ void __tpy_init() {
 
     static std::vector<int32_t> __global_slot_1 = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(5));
     nums = &__global_slot_1;
-    std::cout << ::tpy::ListPrinter((*nums)) << "\n";
+    std::cout << ::tpy::ListPrinter((*nums)) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_2 = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(2, 7));
     nums2 = &__global_slot_2;
-    std::cout << ::tpy::ListPrinter((*nums2)) << "\n";
+    std::cout << ::tpy::ListPrinter((*nums2)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

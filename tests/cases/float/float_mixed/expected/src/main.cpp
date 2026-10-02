@@ -22,9 +22,9 @@ void __tpy_init() {
     a = ((1) + (2.0));
     b = ((3.14) * (2));
     c = ((10) - (1.5));
-    std::cout << ::tpy::print_float(a) << "\n";
-    std::cout << ::tpy::print_float(b) << "\n";
-    std::cout << ::tpy::print_float(c) << "\n";
+    std::cout << ::tpy::print_float(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(c) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

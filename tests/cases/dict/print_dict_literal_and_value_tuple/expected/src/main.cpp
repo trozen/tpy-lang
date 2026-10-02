@@ -10,10 +10,10 @@ namespace tpyapp::main {
 //     y: int32 = 2
 //     print((x, y))
 void main() {
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, int32_t>({{"a", 1}})) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, int32_t>({{"a", 1}})) << "\n" << ::tpy::check_signals;
     int32_t x = 1;
     int32_t y = 2;
-    std::cout << ::tpy::TuplePrinter(std::tuple<int32_t, int32_t>{x, y}) << "\n";
+    std::cout << ::tpy::TuplePrinter(std::tuple<int32_t, int32_t>{x, y}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

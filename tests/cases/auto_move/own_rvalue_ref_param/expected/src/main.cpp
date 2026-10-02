@@ -40,20 +40,20 @@ int32_t use_int(int32_t x) {
 //     print(c.items[1].value)
 void main() {
     Box b = Box(42);
-    std::cout << ::tpyapp::main::consume(std::move(b)) << "\n";
+    std::cout << ::tpyapp::main::consume(std::move(b)) << "\n" << ::tpy::check_signals;
     Box b2 = Box(99);
-    std::cout << ::tpyapp::main::consume(Box(b2)) << "\n";
-    std::cout << b2.value << "\n";
+    std::cout << ::tpyapp::main::consume(Box(b2)) << "\n" << ::tpy::check_signals;
+    std::cout << b2.value << "\n" << ::tpy::check_signals;
     int32_t n = 7;
     int32_t __tmp_1 = n;
-    std::cout << ::tpyapp::main::use_int(std::move(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::use_int(std::move(__tmp_1)) << "\n" << ::tpy::check_signals;
     Container<Box> c = Container<Box>();
     Box b3 = Box(10);
     Box b4 = Box(20);
     c.push(std::move(b3));
     c.push(std::move(b4));
-    std::cout << ::tpy::__getitem__(c.items, 0).value << "\n";
-    std::cout << ::tpy::__getitem__(c.items, 1).value << "\n";
+    std::cout << ::tpy::__getitem__(c.items, 0).value << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(c.items, 1).value << "\n" << ::tpy::check_signals;
 }
 
 // main()

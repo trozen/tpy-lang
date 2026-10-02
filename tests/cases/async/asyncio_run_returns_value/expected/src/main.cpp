@@ -42,7 +42,7 @@ __coro_compute compute() {
 //     print(result)
 void main() {
     ::tpy::BigInt result = ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::compute()));
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
 }
 
 // # asyncio.run should return the awaited coroutine value, not only drive None coros.

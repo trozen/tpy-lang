@@ -780,7 +780,7 @@ inline std::vector<std::string> Letters::listed() const {
 //     print("show", list(xs))
 template<::tpystd::typing::Iterable<std::string> T_xs>
 void show(const T_xs& xs) {
-    std::cout << "show" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(xs)) << "\n";
+    std::cout << "show" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(xs)) << "\n" << ::tpy::check_signals;
 }
 // def proto_comp(xs: Iterable[int32]) -> Own[list[int32]]:
 //     # an Iterable param handed a stored-iterator record: the member advances

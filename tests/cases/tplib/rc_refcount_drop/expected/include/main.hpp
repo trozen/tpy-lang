@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const State& obj) {
 //     self.label = label
 //     print("init", label)
 inline State::State(std::string_view label) : label(label) {
-    std::cout << "init" << " " << label << "\n";
+    std::cout << "init" << " " << label << "\n" << ::tpy::check_signals;
 }
 
 inline State::State(State&& other) noexcept : label(std::move(other.label)) {
@@ -70,7 +70,7 @@ inline State& State::operator=(State&& other) noexcept {
 //     print("del", self.label)
 inline State::~State() {
     if (!this->__tpy_owned_) return;
-    std::cout << "del" << " " << this->label << "\n";
+    std::cout << "del" << " " << this->label << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

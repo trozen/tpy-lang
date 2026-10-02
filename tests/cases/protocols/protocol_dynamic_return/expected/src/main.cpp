@@ -32,10 +32,10 @@ Pet& get_global() {
 void main() {
     Dog dog = Dog();
     Pet* result = &::tpyapp::main::echo(dog);
-    std::cout << result->name() << "\n";
+    std::cout << result->name() << "\n" << ::tpy::check_signals;
     Pet* g = &::tpyapp::main::get_global();
-    std::cout << g->name() << "\n";
-    std::cout << ::tpyapp::main::echo(dog).name() << "\n";
+    std::cout << g->name() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::echo(dog).name() << "\n" << ::tpy::check_signals;
 }
 
 // global_pet: Pet = Cat()

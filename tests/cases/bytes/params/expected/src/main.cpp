@@ -46,13 +46,13 @@ bool is_empty(::tpy::BytesView data) {
 //     print(copied == b)
 void main() {
     ::tpy::BytesView b = ::tpy::bytes_literal("hello", 5);
-    std::cout << ::tpyapp::main::byte_len(b) << "\n";
-    std::cout << ::tpyapp::main::first_byte(b) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_empty(b)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_empty(::tpy::BytesView{})) << "\n";
+    std::cout << ::tpyapp::main::byte_len(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first_byte(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_empty(b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_empty(::tpy::BytesView{})) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes copied = ::tpyapp::main::copy_bytes(b);
-    std::cout << ::tpy::BytesPrinter(copied) << "\n";
-    std::cout << ::tpy::print_bool((copied == b)) << "\n";
+    std::cout << ::tpy::BytesPrinter(copied) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((copied == b)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

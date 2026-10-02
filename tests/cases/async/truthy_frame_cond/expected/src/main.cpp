@@ -193,7 +193,7 @@ __coro_and_branch and_branch(const std::vector<int32_t>& xs, std::optional<int32
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "zero" << " " << __await_lift_0 << "\n";
+        std::cout << "zero" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
         __sub_1.emplace(std::nullopt);
         __state = S_RESUME_1;
         continue;
@@ -203,7 +203,7 @@ __coro_and_branch and_branch(const std::vector<int32_t>& xs, std::optional<int32
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "none" << " " << __await_lift_1 << "\n";
+        std::cout << "none" << " " << __await_lift_1 << "\n" << ::tpy::check_signals;
         __sub_2.emplace(5);
         __state = S_RESUME_2;
         continue;
@@ -213,7 +213,7 @@ __coro_and_branch and_branch(const std::vector<int32_t>& xs, std::optional<int32
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << "five" << " " << __await_lift_2 << "\n";
+        std::cout << "five" << " " << __await_lift_2 << "\n" << ::tpy::check_signals;
         __coro_arg_0.emplace(std::vector<int32_t>{1});
         __sub_3.emplace((*__coro_arg_0));
         __state = S_RESUME_3;
@@ -234,7 +234,7 @@ __coro_and_branch and_branch(const std::vector<int32_t>& xs, std::optional<int32
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_4 = std::move(__r4).value();
         __sub_4.reset();
-        std::cout << "list" << " " << __await_lift_3 << " " << __await_lift_4 << "\n";
+        std::cout << "list" << " " << __await_lift_3 << " " << __await_lift_4 << "\n" << ::tpy::check_signals;
         __sub_5.emplace("x");
         __state = S_RESUME_5;
         continue;
@@ -253,7 +253,7 @@ __coro_and_branch and_branch(const std::vector<int32_t>& xs, std::optional<int32
         if (__r6.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_6 = std::move(__r6).value();
         __sub_6.reset();
-        std::cout << "str" << " " << __await_lift_5 << " " << __await_lift_6 << "\n";
+        std::cout << "str" << " " << __await_lift_5 << " " << __await_lift_6 << "\n" << ::tpy::check_signals;
         __coro_arg_2.emplace(std::vector<int32_t>{1});
         __sub_7.emplace((*__coro_arg_2), 5);
         __state = S_RESUME_7;
@@ -284,7 +284,7 @@ __coro_and_branch and_branch(const std::vector<int32_t>& xs, std::optional<int32
         if (__r9.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_9 = std::move(__r9).value();
         __sub_9.reset();
-        std::cout << "and" << " " << __await_lift_7 << " " << __await_lift_8 << " " << __await_lift_9 << "\n";
+        std::cout << "and" << " " << __await_lift_7 << " " << __await_lift_8 << " " << __await_lift_9 << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

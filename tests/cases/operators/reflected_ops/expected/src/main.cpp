@@ -13,11 +13,11 @@ namespace tpyapp::main {
 //     print(r.bits)
 void main() {
     Dur d = Dur(100);
-    std::cout << ::tpy::print_float(((1.5) * (d))) << "\n";
-    std::cout << ((10) + (d)) << "\n";
+    std::cout << ::tpy::print_float(((1.5) * (d))) << "\n" << ::tpy::check_signals;
+    std::cout << ((10) + (d)) << "\n" << ::tpy::check_signals;
     Flags f = Flags(1);
     Flags r = ((4) | (f));
-    std::cout << r.bits << "\n";
+    std::cout << r.bits << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void main() {
     Factory f = Factory();
     std::function<int32_t(int32_t)> add5 = f.make_adder(5);
-    std::cout << add5(10) << "\n";
+    std::cout << add5(10) << "\n" << ::tpy::check_signals;
     std::function<int32_t(int32_t)> add100 = f.make_adder(100);
-    std::cout << add100(42) << "\n";
+    std::cout << add100(42) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -29,9 +29,9 @@ void literal() {
     auto saved = std::tuple<Cell*, Cell*, int32_t>{current, current, current->value};
     current->value = 4;
     current = &*(__slot_2 = Cell(2));
-    std::cout << "literal before" << " " << std::get<0>(saved)->value << " " << current->value << " " << std::get<2>(saved) << "\n";
+    std::cout << "literal before" << " " << std::get<0>(saved)->value << " " << current->value << " " << std::get<2>(saved) << "\n" << ::tpy::check_signals;
     std::get<1>(saved)->value = 9;
-    std::cout << "literal after" << " " << std::get<0>(saved)->value << " " << current->value << " " << std::get<2>(saved) << "\n";
+    std::cout << "literal after" << " " << std::get<0>(saved)->value << " " << current->value << " " << std::get<2>(saved) << "\n" << ::tpy::check_signals;
 }
 
 // def singleton() -> None:
@@ -49,7 +49,7 @@ void singleton() {
     current->value = 4;
     current = &*(__slot_2 = Cell(2));
     std::get<0>(saved)->value = 9;
-    std::cout << "singleton" << " " << std::get<0>(saved)->value << " " << current->value << "\n";
+    std::cout << "singleton" << " " << std::get<0>(saved)->value << " " << current->value << "\n" << ::tpy::check_signals;
 }
 
 // def copies() -> None:
@@ -76,7 +76,7 @@ void copies() {
     current->value = 4;
     current = &*(__slot_2 = Cell(2));
     std::get<0>(saved)->value = 9;
-    std::cout << "copies" << " " << std::get<0>(saved)->value << " " << std::get<0>(pair)->value << " " << current->value << "\n";
+    std::cout << "copies" << " " << std::get<0>(saved)->value << " " << std::get<0>(pair)->value << " " << current->value << "\n" << ::tpy::check_signals;
 }
 
 // def reassigned() -> None:
@@ -101,7 +101,7 @@ void reassigned() {
     current->value = 4;
     current = &*(__slot_2 = Cell(2));
     std::get<0>(saved)->value = 9;
-    std::cout << "reassigned" << " " << std::get<0>(saved)->value << " " << current->value << " " << other.value << "\n";
+    std::cout << "reassigned" << " " << std::get<0>(saved)->value << " " << current->value << " " << other.value << "\n" << ::tpy::check_signals;
 }
 
 // def self_assignment() -> None:
@@ -122,7 +122,7 @@ void self_assignment() {
     saved = saved;
     current = &*(__slot_2 = Cell(2));
     std::get<0>(saved)->value = 9;
-    std::cout << "self" << " " << std::get<0>(saved)->value << " " << current->value << "\n";
+    std::cout << "self" << " " << std::get<0>(saved)->value << " " << current->value << "\n" << ::tpy::check_signals;
 }
 
 // def call_result() -> None:
@@ -141,7 +141,7 @@ void call_result() {
     current->value = 4;
     current = &*(__slot_2 = Cell(2));
     std::get<0>(saved)->value = 9;
-    std::cout << "call" << " " << std::get<0>(saved)->value << " " << current->value << "\n";
+    std::cout << "call" << " " << std::get<0>(saved)->value << " " << current->value << "\n" << ::tpy::check_signals;
 }
 
 // def branch(flag: bool) -> None:
@@ -167,7 +167,7 @@ void branch(bool flag) {
         current = &*(__slot_3 = Cell(3));
     }
     std::get<0>(saved)->value = 9;
-    std::cout << "branch" << " " << ::tpy::print_bool(flag) << " " << std::get<0>(saved)->value << " " << current->value << "\n";
+    std::cout << "branch" << " " << ::tpy::print_bool(flag) << " " << std::get<0>(saved)->value << " " << current->value << "\n" << ::tpy::check_signals;
 }
 
 // def scalar_inverse() -> None:
@@ -181,7 +181,7 @@ void scalar_inverse() {
     Cell* current = &__slot_1;
     std::tuple<int32_t> saved = std::tuple<int32_t>(current->value);
     (*current) = Cell(2);
-    std::cout << "scalar" << " " << std::get<0>(saved) << " " << current->value << "\n";
+    std::cout << "scalar" << " " << std::get<0>(saved) << " " << current->value << "\n" << ::tpy::check_signals;
 }
 
 // def walrus() -> None:
@@ -197,11 +197,11 @@ void walrus() {
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
     std::tuple<int32_t, Cell*> saved;
-    std::cout << "walrus scalar" << " " << std::get<0>((saved = std::tuple<int32_t, Cell*>{1, current})) << "\n";
+    std::cout << "walrus scalar" << " " << std::get<0>((saved = std::tuple<int32_t, Cell*>{1, current})) << "\n" << ::tpy::check_signals;
     current->value = 4;
     current = &*(__slot_2 = Cell(2));
     std::get<1>(saved)->value = 9;
-    std::cout << "walrus" << " " << std::get<1>(saved)->value << " " << current->value << "\n";
+    std::cout << "walrus" << " " << std::get<1>(saved)->value << " " << current->value << "\n" << ::tpy::check_signals;
 }
 
 // def moved_inverse() -> None:
@@ -217,7 +217,7 @@ void moved_inverse() {
     auto saved = std::tuple<Cell>(std::move((*current)));
     (*current) = Cell(2);
     std::get<0>(saved).value = 9;
-    std::cout << "moved" << " " << std::get<0>(saved).value << " " << current->value << "\n";
+    std::cout << "moved" << " " << std::get<0>(saved).value << " " << current->value << "\n" << ::tpy::check_signals;
 }
 
 
@@ -289,7 +289,7 @@ void closure() {
         std::get<0>(saved)->value = 9;
         return current->value;
     };
-    std::cout << "closure" << " " << inner() << "\n";
+    std::cout << "closure" << " " << inner() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -333,10 +333,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << value << "\n";
+            std::cout << "generator" << " " << value << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::asynchronous())) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::asynchronous())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::closure();
 }
 

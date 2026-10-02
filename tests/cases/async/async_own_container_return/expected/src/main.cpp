@@ -121,7 +121,7 @@ __coro_make_boxes make_boxes() {
         xs.emplace(std::move(__r0).value());
         __sub_0.reset();
         (*xs).push_back(3);
-        std::cout << ::tpy::__len__((*xs)) << "\n";
+        std::cout << ::tpy::__len__((*xs)) << "\n" << ::tpy::check_signals;
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -132,7 +132,7 @@ __coro_make_boxes make_boxes() {
         ba.emplace(std::move(__r1).value());
         __sub_1.reset();
         (*ba).push_back(99);
-        std::cout << ::tpy::__len__((*ba)) << " " << static_cast<int>(::tpy::bytes_getitem((*ba), 2)) << "\n";
+        std::cout << ::tpy::__len__((*ba)) << " " << static_cast<int>(::tpy::bytes_getitem((*ba), 2)) << "\n" << ::tpy::check_signals;
         __sub_2.emplace();
         __state = S_RESUME_2;
         continue;
@@ -143,7 +143,7 @@ __coro_make_boxes make_boxes() {
         arr.emplace(std::move(__r2).value());
         __sub_2.reset();
         ::tpy::__setitem__((*arr), 0, 70);
-        std::cout << ::tpy::__getitem__((*arr), 0) << " " << ::tpy::__getitem__((*arr), 2) << "\n";
+        std::cout << ::tpy::__getitem__((*arr), 0) << " " << ::tpy::__getitem__((*arr), 2) << "\n" << ::tpy::check_signals;
         __sub_3.emplace();
         __state = S_RESUME_3;
         continue;
@@ -154,7 +154,7 @@ __coro_make_boxes make_boxes() {
         bs.emplace(std::move(__r3).value());
         __sub_3.reset();
         (*bs).push_back(::tpystd::tplib::box::Box<int32_t>(3));
-        std::cout << ::tpy::__len__((*bs)) << "\n";
+        std::cout << ::tpy::__len__((*bs)) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

@@ -18,7 +18,7 @@ Box& first(std::vector<Box>& xs) {
 void main() {
     std::vector<Box> items = {Box(1), Box(2)};
     Box& head = ::tpyapp::main::first(items);
-    std::cout << head.v << "\n";
+    std::cout << head.v << "\n" << ::tpy::check_signals;
     Sink _ = Sink(items);
 }
 

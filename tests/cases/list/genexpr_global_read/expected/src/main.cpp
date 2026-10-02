@@ -82,7 +82,7 @@ int32_t bump() {
 // def main() -> None:
 //     print(bump(), limit)
 void main() {
-    std::cout << ::tpyapp::main::bump() << " " << limit << "\n";
+    std::cout << ::tpyapp::main::bump() << " " << limit << "\n" << ::tpy::check_signals;
 }
 
 // limit: int32 = int32(3)

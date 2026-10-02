@@ -16,9 +16,9 @@ void main() {
     std::vector<int32_t> nums = {1, 2, 3};
     int32_t* p = nums.data();
     uint32_t* q = reinterpret_cast<uint32_t*>(p);
-    std::cout << q[0] << "\n";
-    std::cout << q[1] << "\n";
-    std::cout << "done" << "\n";
+    std::cout << q[0] << "\n" << ::tpy::check_signals;
+    std::cout << q[1] << "\n" << ::tpy::check_signals;
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_cast, unsafe_ptr, unsafe_load

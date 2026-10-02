@@ -88,25 +88,25 @@ void main() {
     Holder src = Holder(start.as_const());
     ::tpy::Union<std::monostate, A*, B*> empty = std::monostate{};
     Holder dst = Holder(empty.as_const());
-    std::cout << ::tpyapp::main::describe(src) << "\n";
-    std::cout << ::tpyapp::main::describe(dst) << "\n";
+    std::cout << ::tpyapp::main::describe(src) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(dst) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::copy_field(dst, src);
-    std::cout << ::tpyapp::main::describe(dst) << "\n";
+    std::cout << ::tpyapp::main::describe(dst) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, A*, B*> alt{&(b)};
     Holder src2 = Holder(alt.as_const());
     ::tpyapp::main::copy_field(dst, src2);
-    std::cout << ::tpyapp::main::describe(dst) << "\n";
+    std::cout << ::tpyapp::main::describe(dst) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::clear(dst);
-    std::cout << ::tpyapp::main::describe(dst) << "\n";
+    std::cout << ::tpyapp::main::describe(dst) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, A*, B*> got = ::tpyapp::main::cycle(start);
     if ((std::holds_alternative<std::monostate>(got))) {
-        std::cout << "cycle lost it" << "\n";
+        std::cout << "cycle lost it" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "cycle kept it" << "\n";
+        std::cout << "cycle kept it" << "\n" << ::tpy::check_signals;
     }
     ::tpy::Union<std::monostate, A*, B*> p = ::tpyapp::main::pick_none();
     if ((std::holds_alternative<std::monostate>(p))) {
-        std::cout << "picked none" << "\n";
+        std::cout << "picked none" << "\n" << ::tpy::check_signals;
     }
 }
 

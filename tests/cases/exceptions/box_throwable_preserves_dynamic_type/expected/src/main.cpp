@@ -25,9 +25,9 @@ void main() {
                 try {
                     stored.__deref__().__raise__();
                 } catch (const ::tpy::ValueError& v) {
-                    std::cout << "caught as ValueError:" << " " << v.message << "\n";
+                    std::cout << "caught as ValueError:" << " " << v.message << "\n" << ::tpy::check_signals;
                 } catch (const ::tpy::BaseException&) {
-                    std::cout << "caught as BaseException -- slicing bug regressed!" << "\n";
+                    std::cout << "caught as BaseException -- slicing bug regressed!" << "\n" << ::tpy::check_signals;
                 }
             }
         }

@@ -49,13 +49,13 @@ __gen_frame_local frame_local(const Box& b) {
 //     print(label, "peep", list(peephole_while(v)))
 //     print(label, "local", list(frame_local(Box(v))))
 void drive(std::string_view label, std::optional<int32_t> v) {
-    std::cout << label << " " << "branch" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::branch_suspends(v))) << "\n";
-    std::cout << label << " " << "nosusp" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::branch_no_suspend(v))) << "\n";
-    std::cout << label << " " << "not" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::not_form(v))) << "\n";
-    std::cout << label << " " << "while" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::while_suspends(v))) << "\n";
-    std::cout << label << " " << "peep" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::peephole_while(v))) << "\n";
+    std::cout << label << " " << "branch" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::branch_suspends(v))) << "\n" << ::tpy::check_signals;
+    std::cout << label << " " << "nosusp" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::branch_no_suspend(v))) << "\n" << ::tpy::check_signals;
+    std::cout << label << " " << "not" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::not_form(v))) << "\n" << ::tpy::check_signals;
+    std::cout << label << " " << "while" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::while_suspends(v))) << "\n" << ::tpy::check_signals;
+    std::cout << label << " " << "peep" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::peephole_while(v))) << "\n" << ::tpy::check_signals;
     Box __tmp_1 = Box(v);
-    std::cout << label << " " << "local" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::frame_local(__tmp_1))) << "\n";
+    std::cout << label << " " << "local" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::frame_local(__tmp_1))) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

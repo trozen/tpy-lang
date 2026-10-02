@@ -60,7 +60,7 @@ void main() {
             __result.push_back(c.v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     {
         auto __src_3 = ::tpyapp::main::relay_twice(xs);
         auto&& __itr_3 = ::tpy::__iter__(__src_3);
@@ -87,7 +87,7 @@ void main() {
             __result.push_back(c.v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     Holder h = Holder({::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{3, C(7)}), ::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{4, C(8)})});
     {
         auto __src_6 = h.relay();
@@ -115,7 +115,7 @@ void main() {
             __result.push_back(c.v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
 }
 
 

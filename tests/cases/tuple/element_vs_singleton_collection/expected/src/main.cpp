@@ -65,10 +65,10 @@ int32_t tuple_dict(Box& b) {
 void main() {
     Box __tmp_1 = Box(2);
     Box __tmp_2 = Box(2);
-    std::cout << ::tpyapp::main::singleton_append(__tmp_1) << " " << ::tpyapp::main::tuple_append(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::singleton_append(__tmp_1) << " " << ::tpyapp::main::tuple_append(__tmp_2) << "\n" << ::tpy::check_signals;
     Box __tmp_3 = Box(2);
     Box __tmp_4 = Box(2);
-    std::cout << ::tpyapp::main::singleton_dict(__tmp_3) << " " << ::tpyapp::main::tuple_dict(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::singleton_dict(__tmp_3) << " " << ::tpyapp::main::tuple_dict(__tmp_4) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -20,13 +20,13 @@ namespace tpyapp::main {
 //     print(w)
 void test_ternary(std::string_view a, std::string_view b) {
     std::string_view x = ((true) ? (a) : (b));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     std::string_view y = ((false) ? (a) : (b));
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
     std::string_view z = ((true) ? ("literal_a") : ("literal_b"));
-    std::cout << z << "\n";
+    std::cout << z << "\n" << ::tpy::check_signals;
     std::string w = ((true) ? (std::string(a)) : (::tpy::fixed_to_str<int32_t>(42)));
-    std::cout << w << "\n";
+    std::cout << w << "\n" << ::tpy::check_signals;
 }
 
 // def test_or(a: str, b: str) -> None:
@@ -41,11 +41,11 @@ void test_ternary(std::string_view a, std::string_view b) {
 //     print(z)
 void test_or(std::string_view a, std::string_view b) {
     std::string_view x = ((!a.empty()) ? a : b);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     std::string_view y = ((!a.empty()) ? a : std::string_view("default"));
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
     std::string z = ((!a.empty()) ? std::string(a) : ::tpy::fixed_to_str<int32_t>(42));
-    std::cout << z << "\n";
+    std::cout << z << "\n" << ::tpy::check_signals;
 }
 
 // def test_and(a: str, b: str) -> None:
@@ -56,10 +56,10 @@ void test_or(std::string_view a, std::string_view b) {
 //     print(y)
 void test_and(std::string_view a, std::string_view b) {
     std::string_view x = ((!a.empty()) ? b : a);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     std::string_view __tmp_1 = "prefix";
     std::string_view y = ((!__tmp_1.empty()) ? b : __tmp_1);
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // test_ternary("hello", "world")

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def emit(n: int32, to_out: bool) -> None:
 //     print(n, file=sys.stdout if to_out else sys.stderr)  # tpyc: ok
 void emit(int32_t n, bool to_out) {
-    ::tpy::as_ostream(((to_out) ? ((*::tpystd::sys::stdout)) : ((*::tpystd::sys::stderr)))) << n << "\n";
+    ::tpy::as_ostream(((to_out) ? ((*::tpystd::sys::stdout)) : ((*::tpystd::sys::stderr)))) << n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

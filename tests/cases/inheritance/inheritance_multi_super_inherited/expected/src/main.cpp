@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(d.describe())
 void main() {
     D d = D();
-    std::cout << d.describe() << "\n";
+    std::cout << d.describe() << "\n" << ::tpy::check_signals;
 }
 
 // main()

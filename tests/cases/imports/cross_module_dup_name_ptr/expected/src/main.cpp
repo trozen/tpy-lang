@@ -19,9 +19,9 @@ void bump(::tpyapp::red::Tag* p) {
 void main() {
     ::tpyapp::red::Tag t = ::tpyapp::red::Tag(::tpy::BigInt(5));
     ::tpyapp::main::bump(&t);
-    std::cout << t.n << "\n";
+    std::cout << t.n << "\n" << ::tpy::check_signals;
     ::tpyapp::blue::Tag b = ::tpyapp::blue::Tag(::tpy::BigInt(10));
-    std::cout << b.n << "\n";
+    std::cout << b.n << "\n" << ::tpy::check_signals;
 }
 
 // from red import Tag

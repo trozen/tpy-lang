@@ -20,7 +20,7 @@ void test_break() {
         }
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << i << "\n";
+    std::cout << i << "\n" << ::tpy::check_signals;
 }
 
 // def test_continue():
@@ -39,7 +39,7 @@ void test_continue() {
         }
         total = ::tpy::add_check<int32_t>(total, i);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def test_nested_break():
@@ -61,7 +61,7 @@ void test_nested_break() {
             count = ::tpy::add_check<int32_t>(count, 1);
         }
     }
-    std::cout << count << "\n";
+    std::cout << count << "\n" << ::tpy::check_signals;
 }
 
 // def test_nested_continue():
@@ -83,7 +83,7 @@ void test_nested_continue() {
             count = ::tpy::add_check<int32_t>(count, 1);
         }
     }
-    std::cout << count << "\n";
+    std::cout << count << "\n" << ::tpy::check_signals;
 }
 
 // test_break()

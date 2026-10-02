@@ -102,27 +102,27 @@ void __tpy_init() {
 
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     pure_literals = &__global_slot_1;
-    std::cout << ::tpy::__getitem__((*pure_literals), 0) << "\n";
+    std::cout << ::tpy::__getitem__((*pure_literals), 0) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_2 = {1, 2, 3};
     mixed_int32 = &__global_slot_2;
-    std::cout << ::tpy::__getitem__((*mixed_int32), 0) << "\n";
+    std::cout << ::tpy::__getitem__((*mixed_int32), 0) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
     mixed_int32_rev = &__global_slot_3;
-    std::cout << ::tpy::__getitem__((*mixed_int32_rev), 1) << "\n";
+    std::cout << ::tpy::__getitem__((*mixed_int32_rev), 1) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_4 = {10, 20, 30};
     annotated_int32 = &__global_slot_4;
-    std::cout << ::tpy::__getitem__((*annotated_int32), 0) << "\n";
+    std::cout << ::tpy::__getitem__((*annotated_int32), 0) << "\n" << ::tpy::check_signals;
     static std::vector<::tpy::BigInt> __global_slot_5 = {100, 200, 300};
     annotated_bigint = &__global_slot_5;
-    std::cout << ::tpy::__getitem__((*annotated_bigint), 0) << "\n";
-    std::cout << ::tpyapp::main::local_mixed() << "\n";
+    std::cout << ::tpy::__getitem__((*annotated_bigint), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::local_mixed() << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_6 = {1, 2, 3};
     global_for_span = &__global_slot_6;
-    std::cout << ::tpyapp::main::sum_span(::tpy::as_mut_span((*global_for_span))) << "\n";
-    std::cout << ::tpyapp::main::test_local_span() << "\n";
+    std::cout << ::tpyapp::main::sum_span(::tpy::as_mut_span((*global_for_span))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_local_span() << "\n" << ::tpy::check_signals;
     static std::vector<::tpy::BigInt> __global_slot_7 = {1000, 2000, 3000};
     bigint_list = &__global_slot_7;
-    std::cout << ::tpyapp::main::sum_span_bigint(::tpy::as_mut_span((*bigint_list))) << "\n";
+    std::cout << ::tpyapp::main::sum_span_bigint(::tpy::as_mut_span((*bigint_list))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

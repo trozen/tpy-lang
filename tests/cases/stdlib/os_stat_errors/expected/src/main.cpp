@@ -33,35 +33,35 @@ void main() {
         try {
             ::tpystd::os::stat(missing);
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "stat: FileNotFoundError" << "\n";
+            std::cout << "stat: FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::os::lstat(missing);
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "lstat: FileNotFoundError" << "\n";
+            std::cout << "lstat: FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::stdlib::os::path_getmtime(missing);
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "getmtime: FileNotFoundError" << "\n";
+            std::cout << "getmtime: FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::stdlib::os::path_samefile(missing, missing);
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "samefile: FileNotFoundError" << "\n";
+            std::cout << "samefile: FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::os::stat(missing);
         } catch (const ::tpy::OSError&) {
-            std::cout << "stat: OSError base" << "\n";
+            std::cout << "stat: OSError base" << "\n" << ::tpy::check_signals;
         }
     }
 }

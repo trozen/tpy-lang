@@ -20,7 +20,7 @@ void free_fn(int64_t a, int32_t b) {
     int64_t s = (::tpy::add_check<int64_t>(a, static_cast<int64_t>(b)));
     int64_t r = (::tpy::add_check<int64_t>(static_cast<int64_t>(b), a));
     int64_t d = (::tpy::sub_check<int64_t>(a, static_cast<int64_t>(b)));
-    std::cout << "free" << " " << s << " " << r << " " << d << "\n";
+    std::cout << "free" << " " << s << " " << r << " " << d << "\n" << ::tpy::check_signals;
 }
 
 
@@ -130,10 +130,10 @@ int64_t try_finally(int64_t a, int32_t b) {
         try {
             r = (::tpy::mod_check<int64_t>(a, static_cast<int64_t>(b)));
         } catch (...) {
-            std::cout << "try_finally done" << "\n";
+            std::cout << "try_finally done" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "try_finally done" << "\n";
+        std::cout << "try_finally done" << "\n" << ::tpy::check_signals;
     }
     return r;
 }
@@ -181,7 +181,7 @@ void mixed(uint8_t u8, uint32_t u32, int8_t i8, int32_t b, int64_t a) {
     int32_t x = (::tpy::add_check<int32_t>(static_cast<int32_t>(u8), b));
     int64_t y = (::tpy::add_check<int64_t>(static_cast<int64_t>(u32), a));
     int32_t z = (::tpy::add_check<int32_t>(static_cast<int32_t>(i8), b));
-    std::cout << "mixed" << " " << x << " " << y << " " << z << "\n";
+    std::cout << "mixed" << " " << x << " " << y << " " << z << "\n" << ::tpy::check_signals;
 }
 
 // # aug-assign into a declared int64 local
@@ -224,28 +224,28 @@ void main() {
     int32_t b = 2147483647;
     ::tpyapp::main::free_fn(a, b);
     Acc acc = Acc(a, b);
-    std::cout << "ctor" << " " << acc.total << "\n";
-    std::cout << "method" << " " << acc.add(static_cast<int64_t>(3000000000), 3) << " " << acc.total << "\n";
-    std::cout << "module" << " " << gm << "\n";
-    std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int64_t>>(::tpyapp::main::gen(3, b, 30))) << "\n";
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int64_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int64_t>>(::tpyapp::main::async_fn(a, b))) << "\n";
+    std::cout << "ctor" << " " << acc.total << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << acc.add(static_cast<int64_t>(3000000000), 3) << " " << acc.total << "\n" << ::tpy::check_signals;
+    std::cout << "module" << " " << gm << "\n" << ::tpy::check_signals;
+    std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int64_t>>(::tpyapp::main::gen(3, b, 30))) << "\n" << ::tpy::check_signals;
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int64_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int64_t>>(::tpyapp::main::async_fn(a, b))) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = {3, -3, 2};
-    std::cout << "comp" << " " << ::tpy::ListPrinter(::tpyapp::main::comp(static_cast<int64_t>(3000000000), __tmp_1)) << "\n";
-    std::cout << "closure" << " " << ::tpyapp::main::closure(a, b) << "\n";
-    std::cout << "cm_body" << " " << ::tpyapp::main::cm_body(a, b) << "\n";
+    std::cout << "comp" << " " << ::tpy::ListPrinter(::tpyapp::main::comp(static_cast<int64_t>(3000000000), __tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << "closure" << " " << ::tpyapp::main::closure(a, b) << "\n" << ::tpy::check_signals;
+    std::cout << "cm_body" << " " << ::tpyapp::main::cm_body(a, b) << "\n" << ::tpy::check_signals;
     int64_t t = ::tpyapp::main::try_finally(a, b);
-    std::cout << "try_finally" << " " << t << "\n";
+    std::cout << "try_finally" << " " << t << "\n" << ::tpy::check_signals;
     {
-        std::cout << "er_body" << " " << ({ auto __er_2 = ::tpyapp::main::er_body(a, b); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "er_body" << " " << ({ auto __er_2 = ::tpyapp::main::er_body(a, b); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Failed:
         __except_1:;
-        std::cout << "er_body failed" << "\n";
+        std::cout << "er_body failed" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
-    std::cout << "match_arm" << " " << ::tpyapp::main::match_arm(0, (::tpy::add_check<int64_t>(a, 5)), b) << " " << ::tpyapp::main::match_arm(1, 3, 30) << "\n";
+    std::cout << "match_arm" << " " << ::tpyapp::main::match_arm(0, (::tpy::add_check<int64_t>(a, 5)), b) << " " << ::tpyapp::main::match_arm(1, 3, 30) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::mixed(200, static_cast<uint32_t>(4000000000), -100, (::tpy::sub_check<int32_t>(b, 1000)), a);
-    std::cout << "aug_local" << " " << ::tpyapp::main::aug_local(a, b) << "\n";
+    std::cout << "aug_local" << " " << ::tpyapp::main::aug_local(a, b) << "\n" << ::tpy::check_signals;
 }
 
 // import asyncio

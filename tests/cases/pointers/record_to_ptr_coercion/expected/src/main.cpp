@@ -34,12 +34,12 @@ int32_t read_point(const Point* p) {
 void test_coercion() {
     Point pt = Point(10, 20);
     ::tpyapp::main::modify_point(&pt);
-    std::cout << pt.x << "\n";
+    std::cout << pt.x << "\n" << ::tpy::check_signals;
     int32_t result = ::tpyapp::main::read_point(&pt);
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
     Point* ptr = &pt;
     int32_t result2 = ::tpyapp::main::read_point(ptr);
-    std::cout << result2 << "\n";
+    std::cout << result2 << "\n" << ::tpy::check_signals;
 }
 
 // # Run test

@@ -18,19 +18,19 @@ namespace tpyapp::main {
 void main() {
     {
         try {
-            std::cout << time::fromisoformat("14:30+05:00") << "\n";
+            std::cout << time::fromisoformat("14:30+05:00") << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "ValueError-aware-time-deferred" << "\n";
+            std::cout << "ValueError-aware-time-deferred" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << time::fromisoformat("14:30:15.5Z") << "\n";
+            std::cout << time::fromisoformat("14:30:15.5Z") << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "ValueError-aware-time-deferred" << "\n";
+            std::cout << "ValueError-aware-time-deferred" << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << time::fromisoformat("14:30:15.5") << "\n";
+    std::cout << time::fromisoformat("14:30:15.5") << "\n" << ::tpy::check_signals;
 }
 
 // # Documented rejects-valid divergence: CPython's time.fromisoformat

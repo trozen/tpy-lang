@@ -67,7 +67,7 @@ inline void Guard::__enter__() const {
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 //     print("exit sees", len(self.vals))
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    std::cout << "exit sees" << " " << ::tpy::__len__(this->vals) << "\n";
+    std::cout << "exit sees" << " " << ::tpy::__len__(this->vals) << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self):

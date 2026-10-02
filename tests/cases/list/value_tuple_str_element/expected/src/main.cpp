@@ -13,7 +13,7 @@ namespace tpyapp::main {
 void main() {
     std::tuple<std::string, int32_t> t = std::tuple<std::string, int32_t>{"a", 1};
     std::array<std::tuple<std::string, int32_t>, 1> xs = {t};
-    std::cout << ::tpy::__len__(xs) << " " << std::get<0>(::tpy::__getitem__(xs, 0)) << " " << std::get<1>(::tpy::__getitem__(xs, 0)) << " " << std::get<0>(t) << "\n";
+    std::cout << ::tpy::__len__(xs) << " " << std::get<0>(::tpy::__getitem__(xs, 0)) << " " << std::get<1>(::tpy::__getitem__(xs, 0)) << " " << std::get<0>(t) << "\n" << ::tpy::check_signals;
 }
 
 // main()

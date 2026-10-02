@@ -29,13 +29,13 @@ void main() {
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
-        std::cout << __pet.name << " " << __pet.age << "\n";
+        std::cout << __pet.name << " " << __pet.age << "\n" << ::tpy::check_signals;
     }
     ::tpy::Union<Cat, Dog> __slot_2 = ::tpyapp::main::make_cat("Whiskers", 9);
     ::tpy::Union<Cat*, Dog*> pet2 = ::tpy::to_ptr_variant(__slot_2);
     if (std::holds_alternative<Cat*>(pet2)) {
         auto& __pet2 = *std::get<Cat*>(pet2);
-        std::cout << __pet2.name << " " << __pet2.lives << "\n";
+        std::cout << __pet2.name << " " << __pet2.lives << "\n" << ::tpy::check_signals;
     }
 }
 

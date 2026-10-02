@@ -10,10 +10,10 @@ namespace tpyapp::main {
 //     print(HttpClient.DEFAULT_RATIO)
 //     print(HttpClient.ENABLED)
 void main() {
-    std::cout << HttpClient::TIMEOUT << "\n";
-    std::cout << HttpClient::MAX_RETRIES << "\n";
-    std::cout << ::tpy::print_float(HttpClient::DEFAULT_RATIO) << "\n";
-    std::cout << ::tpy::print_bool(HttpClient::ENABLED) << "\n";
+    std::cout << HttpClient::TIMEOUT << "\n" << ::tpy::check_signals;
+    std::cout << HttpClient::MAX_RETRIES << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(HttpClient::DEFAULT_RATIO) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(HttpClient::ENABLED) << "\n" << ::tpy::check_signals;
 }
 
 // main()

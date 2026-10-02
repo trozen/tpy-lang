@@ -20,8 +20,8 @@ void main() {
     storage.init(0, 42);
     storage.init(1, 99);
     Wrapper<int32_t> w = Wrapper<int32_t>(&storage);
-    std::cout << w.load_at(0) << "\n";
-    std::cout << w.load_at(1) << "\n";
+    std::cout << w.load_at(0) << "\n" << ::tpy::check_signals;
+    std::cout << w.load_at(1) << "\n" << ::tpy::check_signals;
     storage.drop(0);
     storage.drop(1);
 }

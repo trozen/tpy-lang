@@ -57,9 +57,9 @@ namespace tpyapp::main {
 //     print(use_aug(d), d.lives)      # 109 9
 void main() {
     Cat c = Cat(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::use_for(c) << " " << c.lives << "\n";
+    std::cout << ::tpyapp::main::use_for(c) << " " << c.lives << "\n" << ::tpy::check_signals;
     Cat d = Cat(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::use_aug(d) << " " << d.lives << "\n";
+    std::cout << ::tpyapp::main::use_aug(d) << " " << d.lives << "\n" << ::tpy::check_signals;
 }
 
 // main()

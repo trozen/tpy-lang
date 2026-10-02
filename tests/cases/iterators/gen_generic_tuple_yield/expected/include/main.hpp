@@ -125,7 +125,7 @@ std::expected<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>, ::tpy:
 
 template <typename K, typename V>
 void __gen_zip_pairs<K, V>::__finally_0() {
-    std::cout << "zip done" << "\n";
+    std::cout << "zip done" << "\n" << ::tpy::check_signals;
 }
 
 // def zip_pairs[K, V](ks: list[K], vs: list[V]) -> Iterator[tuple[K, V]]:  # tpyc: ok

@@ -291,7 +291,7 @@ void generic_read(::tpy::param_val_or_ref_t<T> marker) {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "generic" << " " << ::tpy::__getitem__(__case_0, 0) << " " << ::tpy::ValuePrinter(marker) << "\n";
+        std::cout << "generic" << " " << ::tpy::__getitem__(__case_0, 0) << " " << ::tpy::ValuePrinter(marker) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {

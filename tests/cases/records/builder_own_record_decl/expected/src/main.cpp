@@ -21,7 +21,7 @@ void run() {
     Builder b = Builder(41);
     Inner r = b.build();
     int32_t n = ::tpyapp::main::sink(std::move(r));
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // run()

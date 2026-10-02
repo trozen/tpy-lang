@@ -25,11 +25,11 @@ void main() {
     Handle* h = &__slot_1;
     h->fd = 42;
     Handle& alias = (*h);
-    std::cout << alias.fd << "\n";
+    std::cout << alias.fd << "\n" << ::tpy::check_signals;
     h = &*(__slot_2 = Handle());
     h->fd = 99;
-    std::cout << ::tpyapp::main::close(std::move((*h))) << "\n";
-    std::cout << alias.fd << "\n";
+    std::cout << ::tpyapp::main::close(std::move((*h))) << "\n" << ::tpy::check_signals;
+    std::cout << alias.fd << "\n" << ::tpy::check_signals;
 }
 
 // main()

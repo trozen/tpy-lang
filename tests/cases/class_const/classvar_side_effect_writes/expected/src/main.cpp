@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     print("side_effect")
 //     return Counter()
 Counter make_c() {
-    std::cout << "side_effect" << "\n";
+    std::cout << "side_effect" << "\n" << ::tpy::check_signals;
     return Counter();
 }
 
@@ -24,11 +24,11 @@ void main() {
     Counter::instances = 0;
     static_cast<void>(::tpyapp::main::make_c());
     Counter::instances = 5;
-    std::cout << Counter::instances << "\n";
+    std::cout << Counter::instances << "\n" << ::tpy::check_signals;
     std::vector<Counter> cs = {Counter(), Counter()};
     static_cast<void>(::tpy::__getitem__(cs, 0));
     Counter::instances = ::tpy::add_check<int32_t>(Counter::instances, 3);
-    std::cout << Counter::instances << "\n";
+    std::cout << Counter::instances << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(factory.Counter.LIMIT)  # tpyc: ok
 void main() {
     ::tpyapp::factory::Counter c = ::tpyapp::factory::Counter::make(7);
-    std::cout << c.value << "\n";
-    std::cout << ::tpyapp::factory::Counter::LIMIT << "\n";
+    std::cout << c.value << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::factory::Counter::LIMIT << "\n" << ::tpy::check_signals;
 }
 
 // # Regression: `import m` followed by `m.Cls.method()` and `m.Cls.CONST` works.

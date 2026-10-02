@@ -23,7 +23,7 @@ void test_list_one_branch(bool flag) {
     } else {
         return;
     }
-    std::cout << ::tpy::ListPrinter((*items)) << "\n";
+    std::cout << ::tpy::ListPrinter((*items)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_own_list_both_branches(flag: bool) -> None:
@@ -41,7 +41,7 @@ void test_own_list_both_branches(bool flag) {
     } else {
         items = &*(__slot_2 = {4, 5, 6});
     }
-    std::cout << ::tpy::ListPrinter((*items)) << "\n";
+    std::cout << ::tpy::ListPrinter((*items)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_reassigned_mixed(flag: bool) -> None:
@@ -62,7 +62,7 @@ void test_list_reassigned_mixed(bool flag) {
         items = &(base);
     }
     items->push_back(99);
-    std::cout << ::tpy::ListPrinter((*items)) << "\n";
+    std::cout << ::tpy::ListPrinter((*items)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_record_one_branch(flag: bool) -> None:
@@ -78,7 +78,7 @@ void test_record_one_branch(bool flag) {
     } else {
         return;
     }
-    std::cout << p->x << " " << p->y << "\n";
+    std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
 }
 
 // def test_record_both_branches(flag: bool) -> None:
@@ -96,7 +96,7 @@ void test_record_both_branches(bool flag) {
     } else {
         p = &*(__slot_2 = Point(3, 4));
     }
-    std::cout << p->x << " " << p->y << "\n";
+    std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
 }
 
 // def test_optional_record_one_branch(flag: bool) -> None:
@@ -115,7 +115,7 @@ void test_optional_record_one_branch(bool flag) {
         return;
     }
     if ((p != nullptr)) {
-        std::cout << p->x << " " << p->y << "\n";
+        std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
     }
 }
 

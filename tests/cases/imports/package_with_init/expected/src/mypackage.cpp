@@ -8,7 +8,7 @@ int32_t CONST{};
 // def func() -> None:
 //     print("from init")
 void func() {
-    std::cout << "from init" << "\n";
+    std::cout << "from init" << "\n" << ::tpy::check_signals;
 }
 
 // CONST: int32 = int32(42)

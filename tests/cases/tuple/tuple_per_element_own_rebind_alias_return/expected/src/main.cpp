@@ -37,8 +37,8 @@ int32_t use(Holder& h) {
 //     print(h.pair[1].val)  # 55 (returned tuple aliased h.pair, not a copy)
 void main() {
     Holder h = Holder(Box(5));
-    std::cout << ::tpyapp::main::use(h) << "\n";
-    std::cout << std::get<1>(h.pair).val << "\n";
+    std::cout << ::tpyapp::main::use(h) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(h.pair).val << "\n" << ::tpy::check_signals;
 }
 
 // main()

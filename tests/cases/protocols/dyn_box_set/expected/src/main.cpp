@@ -15,11 +15,11 @@ namespace tpyapp::main {
 //     print(b.get().name())
 void main() {
     ::tpystd::tplib::box::Box<Pet> b = ::tpystd::tplib::box::Box<Parrot>(Parrot("Polly"));
-    std::cout << b.get().name() << "\n";
+    std::cout << b.get().name() << "\n" << ::tpy::check_signals;
     b.set(std::make_unique<Dog>(Dog("Rex")));
-    std::cout << b.get().name() << "\n";
+    std::cout << b.get().name() << "\n" << ::tpy::check_signals;
     b.set(std::make_unique<Parrot>(Parrot("Mimi")));
-    std::cout << b.get().name() << "\n";
+    std::cout << b.get().name() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

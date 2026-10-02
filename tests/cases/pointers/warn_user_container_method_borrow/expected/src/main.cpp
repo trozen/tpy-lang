@@ -25,7 +25,7 @@ void main() {
         int32_t x = ::tpy::unwrap_ref(*__r_1);
         nl.add(3);
         nl.set_label("updated");
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
         break;
     }
 }

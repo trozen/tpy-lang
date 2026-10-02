@@ -104,17 +104,17 @@ void main() {
     Outer a = Outer(1);
     Outer b = Outer(2);
     Deep deep = Deep(3);
-    std::cout << "free-function" << " " << ::tpyapp::main::capture(a, b, true) << " " << a.inner.value << " " << b.inner.value << "\n";
-    std::cout << "shared-owner" << " " << ::tpyapp::main::capture(a, a, true) << "\n";
-    std::cout << "nested" << " " << ::tpyapp::main::nested(deep) << "\n";
-    std::cout << "readonly" << " " << ::tpyapp::main::shared(a, a) << "\n";
-    std::cout << "method" << " " << a.touch() << "\n";
+    std::cout << "free-function" << " " << ::tpyapp::main::capture(a, b, true) << " " << a.inner.value << " " << b.inner.value << "\n" << ::tpy::check_signals;
+    std::cout << "shared-owner" << " " << ::tpyapp::main::capture(a, a, true) << "\n" << ::tpy::check_signals;
+    std::cout << "nested" << " " << ::tpyapp::main::nested(deep) << "\n" << ::tpy::check_signals;
+    std::cout << "readonly" << " " << ::tpyapp::main::shared(a, a) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << a.touch() << "\n" << ::tpy::check_signals;
     Observer observer = Observer(a);
-    std::cout << "constructor" << " " << observer.value << " " << a.inner.value << "\n";
-    std::cout << "tuple-shapes" << " " << ::tpyapp::main::tuples(a) << "\n";
-    std::cout << "optional" << " " << ::tpyapp::main::optional(&(a)) << " " << ::tpyapp::main::optional(nullptr) << "\n";
+    std::cout << "constructor" << " " << observer.value << " " << a.inner.value << "\n" << ::tpy::check_signals;
+    std::cout << "tuple-shapes" << " " << ::tpyapp::main::tuples(a) << "\n" << ::tpy::check_signals;
+    std::cout << "optional" << " " << ::tpyapp::main::optional(&(a)) << " " << ::tpyapp::main::optional(nullptr) << "\n" << ::tpy::check_signals;
     Cell __tmp_1 = Cell(0);
-    std::cout << "union" << " " << ::tpyapp::main::union_(::tpy::Union<const Cell*, const Outer*>{&(a)}) << " " << ::tpyapp::main::union_(::tpy::Union<const Cell*, const Outer*>{&__tmp_1}) << "\n";
+    std::cout << "union" << " " << ::tpyapp::main::union_(::tpy::Union<const Cell*, const Outer*>{&(a)}) << " " << ::tpyapp::main::union_(::tpy::Union<const Cell*, const Outer*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

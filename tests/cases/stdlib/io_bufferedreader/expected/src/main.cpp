@@ -121,27 +121,27 @@ int64_t feed(::tpy::BytesView data) {
 //         print("closed -2", str(e))
 void main() {
     ::tpystd::io::BufferedReader br = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello", 43)))));
-    std::cout << ::tpy::BytesPrinter(br.readline()) << "\n";
-    std::cout << ::tpy::BytesPrinter(br.readline()) << "\n";
-    std::cout << ::tpy::BytesPrinter(br.readline()) << "\n";
-    std::cout << ::tpy::BytesPrinter(br.read()) << "\n";
-    std::cout << ::tpy::BytesPrinter(br.read()) << "\n";
-    std::cout << ::tpy::print_bool(br.closed()) << "\n";
+    std::cout << ::tpy::BytesPrinter(br.readline()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(br.readline()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(br.readline()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(br.read()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(br.read()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(br.closed()) << "\n" << ::tpy::check_signals;
     br.close();
-    std::cout << ::tpy::print_bool(br.closed()) << "\n";
+    std::cout << ::tpy::print_bool(br.closed()) << "\n" << ::tpy::check_signals;
     ::tpystd::io::BufferedReader r2 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("abcdefgh", 8)))));
-    std::cout << ::tpy::BytesPrinter(r2.read(3)) << "\n";
-    std::cout << ::tpy::BytesPrinter(r2.read(0)) << "\n";
-    std::cout << ::tpy::BytesPrinter(r2.read(100)) << "\n";
+    std::cout << ::tpy::BytesPrinter(r2.read(3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(r2.read(0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(r2.read(100)) << "\n" << ::tpy::check_signals;
     ::tpystd::io::BufferedReader r3 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("one\ntwo", 7)))));
-    std::cout << ::tpy::BytesPrinter(r3.readline()) << "\n";
-    std::cout << ::tpy::BytesPrinter(r3.readline()) << "\n";
-    std::cout << ::tpy::BytesPrinter(r3.readline()) << "\n";
+    std::cout << ::tpy::BytesPrinter(r3.readline()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(r3.readline()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(r3.readline()) << "\n" << ::tpy::check_signals;
     ::tpystd::io::BufferedReader r4 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("abcdefghij\n", 11)))), 3);
-    std::cout << ::tpy::BytesPrinter(r4.readline()) << "\n";
+    std::cout << ::tpy::BytesPrinter(r4.readline()) << "\n" << ::tpy::check_signals;
     ::tpystd::io::BufferedReader r5 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("abcdef\n", 7)))));
-    std::cout << ::tpy::BytesPrinter(r5.readline(3)) << "\n";
-    std::cout << ::tpy::BytesPrinter(r5.read()) << "\n";
+    std::cout << ::tpy::BytesPrinter(r5.readline(3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(r5.read()) << "\n" << ::tpy::check_signals;
     ::tpystd::io::BufferedReader r6 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("x\ny\nz\n", 6)))));
     auto& __src_0 = r6;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -149,28 +149,28 @@ void main() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         ::tpy::BytesView line = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::BytesPrinter(line) << "\n";
+        std::cout << ::tpy::BytesPrinter(line) << "\n" << ::tpy::check_signals;
     }
     ::tpystd::io::BufferedReader r7 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("p\nq\n", 4)))));
     std::vector<::tpy::Bytes> lines = r7.readlines();
-    std::cout << ::tpy::__len__(lines) << "\n";
+    std::cout << ::tpy::__len__(lines) << "\n" << ::tpy::check_signals;
     auto& __obj_2 = lines;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         ::tpy::BytesView ln = *__beg_2;
-        std::cout << ::tpy::BytesPrinter(ln) << "\n";
+        std::cout << ::tpy::BytesPrinter(ln) << "\n" << ::tpy::check_signals;
     }
     ::tpystd::io::BufferedReader r8 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("abcdefghij", 10)))), 3);
-    std::cout << ::tpy::BytesPrinter(r8.read(7)) << "\n";
-    std::cout << ::tpy::BytesPrinter(r8.read()) << "\n";
+    std::cout << ::tpy::BytesPrinter(r8.read(7)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(r8.read()) << "\n" << ::tpy::check_signals;
     ::tpystd::io::BufferedReader r9 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::BytesView{}))));
-    std::cout << ::tpy::BytesPrinter(r9.read()) << "\n";
-    std::cout << ::tpy::BytesPrinter(r9.readline()) << "\n";
+    std::cout << ::tpy::BytesPrinter(r9.read()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(r9.readline()) << "\n" << ::tpy::check_signals;
     auto __ctx_1 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("z\n", 2)))));
     auto& bc = __ctx_1.__enter__();
     try {
-        std::cout << ::tpy::BytesPrinter(bc.readline()) << "\n";
+        std::cout << ::tpy::BytesPrinter(bc.readline()) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -181,13 +181,13 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << ::tpy::print_bool(bc.closed()) << "\n";
+    std::cout << ::tpy::print_bool(bc.closed()) << "\n" << ::tpy::check_signals;
     {
         try {
             (void)(::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("x", 1)))), 0));
-            std::cout << "no-raise" << "\n";
+            std::cout << "no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "bufsize-ValueError" << "\n";
+            std::cout << "bufsize-ValueError" << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::io::BufferedReader rc = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("data", 4)))));
@@ -195,23 +195,23 @@ void main() {
     {
         try {
             rc.read();
-            std::cout << "no-raise" << "\n";
+            std::cout << "no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "closed-ValueError" << "\n";
+            std::cout << "closed-ValueError" << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::io::BufferedReader rl = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("ab\ncd\nef", 8)))), 4);
-    std::cout << "leftover" << " " << ::tpy::BytesPrinter(rl.readline()) << " " << ::tpy::BytesPrinter(rl.readline()) << " " << ::tpy::BytesPrinter(rl.readline()) << " " << ::tpy::BytesPrinter(rl.readline()) << "\n";
+    std::cout << "leftover" << " " << ::tpy::BytesPrinter(rl.readline()) << " " << ::tpy::BytesPrinter(rl.readline()) << " " << ::tpy::BytesPrinter(rl.readline()) << " " << ::tpy::BytesPrinter(rl.readline()) << "\n" << ::tpy::check_signals;
     ::tpystd::io::BufferedReader rcap = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("abcdefghij\nxy", 13)))), 3);
-    std::cout << "capped" << " " << ::tpy::BytesPrinter(rcap.readline(5)) << " " << ::tpy::BytesPrinter(rcap.readline()) << " " << ::tpy::BytesPrinter(rcap.read()) << "\n";
+    std::cout << "capped" << " " << ::tpy::BytesPrinter(rcap.readline(5)) << " " << ::tpy::BytesPrinter(rcap.readline()) << " " << ::tpy::BytesPrinter(rcap.read()) << "\n" << ::tpy::check_signals;
     ::tpystd::io::BufferedReader rmix = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("0123456789\nabc\n", 15)))), 3);
-    std::cout << "mixed" << " " << ::tpy::BytesPrinter(rmix.read(4)) << " " << ::tpy::BytesPrinter(rmix.readline()) << " " << ::tpy::BytesPrinter(rmix.read(2)) << " " << ::tpy::BytesPrinter(rmix.read(-1)) << "\n";
+    std::cout << "mixed" << " " << ::tpy::BytesPrinter(rmix.read(4)) << " " << ::tpy::BytesPrinter(rmix.readline()) << " " << ::tpy::BytesPrinter(rmix.read(2)) << " " << ::tpy::BytesPrinter(rmix.read(-1)) << "\n" << ::tpy::check_signals;
     ::tpystd::io::BufferedReader rneg = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("abc", 3)))));
     {
         try {
             rneg.read(-2);
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "read -2" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "read -2" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     rneg.close();
@@ -219,7 +219,7 @@ void main() {
         try {
             rneg.read(-2);
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "closed -2" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "closed -2" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -15,9 +15,9 @@ void test_binary_alias() {
     Acc a = Acc(3);
     Acc b = Acc(1);
     const Acc& c = ((a) + (b));
-    std::cout << c.n << "\n";
+    std::cout << c.n << "\n" << ::tpy::check_signals;
     a.n = 99;
-    std::cout << c.n << "\n";
+    std::cout << c.n << "\n" << ::tpy::check_signals;
 }
 
 // def test_binary_operand_alias():
@@ -31,7 +31,7 @@ void test_binary_operand_alias() {
     Acc b = Acc(5);
     const Acc& c = ((a) + (b));
     b.n = 42;
-    std::cout << c.n << "\n";
+    std::cout << c.n << "\n" << ::tpy::check_signals;
 }
 
 // def test_reflected_alias():
@@ -43,7 +43,7 @@ void test_reflected_alias() {
     Acc a = Acc(4);
     const Acc& c = ((7) + (a));
     a.n = 11;
-    std::cout << c.n << "\n";
+    std::cout << c.n << "\n" << ::tpy::check_signals;
 }
 
 // def test_unary_alias():
@@ -55,7 +55,7 @@ void test_unary_alias() {
     Acc a = Acc(6);
     const Acc& c = -(a);
     a.n = 8;
-    std::cout << c.n << "\n";
+    std::cout << c.n << "\n" << ::tpy::check_signals;
 }
 
 // def main():

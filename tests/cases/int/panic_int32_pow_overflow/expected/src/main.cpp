@@ -18,7 +18,7 @@ void __tpy_init() {
 
     x = 2;
     y = (::tpy::pow_check<int32_t>(x, 31));
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

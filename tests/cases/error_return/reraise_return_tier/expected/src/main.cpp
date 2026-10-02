@@ -38,7 +38,7 @@ std::expected<int32_t, NotFound> outer(std::string_view key) {
         __except_1:;
         {
             auto& e = *__err_opt_1;
-            std::cout << e.code << "\n";
+            std::cout << e.code << "\n" << ::tpy::check_signals;
             return ::tpy::make_unexpected(std::move(*__err_opt_1));
         }
         __after_try_1:;
@@ -72,13 +72,13 @@ void main() {
             v = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         goto __after_try_3;
         // except NotFound:
         __except_3:;
         {
             auto& e = *__err_opt_3;
-            std::cout << e.code << "\n";
+            std::cout << e.code << "\n" << ::tpy::check_signals;
         }
         __after_try_3:;
     }
@@ -91,13 +91,13 @@ void main() {
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
         // else:
-        std::cout << v2 << "\n";
+        std::cout << v2 << "\n" << ::tpy::check_signals;
         goto __after_try_5;
         // except NotFound:
         __except_5:;
         {
             auto& e = *__err_opt_5;
-            std::cout << e.code << "\n";
+            std::cout << e.code << "\n" << ::tpy::check_signals;
         }
         __after_try_5:;
     }

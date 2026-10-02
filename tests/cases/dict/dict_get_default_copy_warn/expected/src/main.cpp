@@ -20,12 +20,12 @@ void main() {
     ::tpy::__setitem__(d, "a", std::vector<int32_t>{1, 2});
     std::vector<int32_t> fallback = std::vector<int32_t>{};
     std::vector<int32_t> x = ::tpy::dict_get_default(d, "a", fallback);
-    std::cout << ::tpy::__len__(x) << "\n";
+    std::cout << ::tpy::__len__(x) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> y = std::vector<int32_t>(::tpy::dict_get_default(d, "a", fallback));
-    std::cout << ::tpy::__len__(y) << "\n";
+    std::cout << ::tpy::__len__(y) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> counts = ::tpy::ordered_map<std::string, int32_t>();
     int32_t m = ::tpy::dict_get_default(counts, "k", 5);
-    std::cout << m << "\n";
+    std::cout << m << "\n" << ::tpy::check_signals;
 }
 
 // main()

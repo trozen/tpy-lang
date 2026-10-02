@@ -52,10 +52,10 @@ void main() {
     NativeHandle h = NativeHandle(&t.sym);
     ArenaBuffer a = ArenaBuffer();
     SharedTable s = SharedTable();
-    std::cout << t.qty << " " << ::tpy::__len__(a.data) << " " << ::tpy::__len__(s.data) << "\n";
+    std::cout << t.qty << " " << ::tpy::__len__(a.data) << " " << ::tpy::__len__(s.data) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = {1, 2, 3};
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::forced(xs))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_forced(3))) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::forced(xs))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_forced(3))) << "\n" << ::tpy::check_signals;
 }
 
 // # Send/Sync opt-in / opt-out kit: class Foo(Send) verified opt-in,

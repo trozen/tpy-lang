@@ -27,10 +27,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "--" << "\n";
+    std::cout << "--" << "\n" << ::tpy::check_signals;
     {
         Box __tmp_3 = Box(nullptr);
         auto __src_2 = ::tpyapp::main::gen(__tmp_3);
@@ -39,7 +39,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_3);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
 }

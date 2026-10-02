@@ -54,16 +54,16 @@ void main() {
             result = &(::tpy::unwrap_ref(*__try_tmp_3));
         }
         // else:
-        std::cout << result->x << "\n";
-        std::cout << result->y << "\n";
+        std::cout << result->x << "\n" << ::tpy::check_signals;
+        std::cout << result->y << "\n" << ::tpy::check_signals;
         goto __after_try_2;
         // except E:
         __except_2:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_2:;
     }
-    std::cout << p.x << "\n";
-    std::cout << p.y << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
+    std::cout << p.y << "\n" << ::tpy::check_signals;
     Point p2 = Point(-1, 2);
     {
         {
@@ -73,11 +73,11 @@ void main() {
         goto __after_try_4;
         // except E:
         __except_4:;
-        std::cout << "caught" << "\n";
+        std::cout << "caught" << "\n" << ::tpy::check_signals;
         __after_try_4:;
     }
-    std::cout << p2.x << "\n";
-    std::cout << p2.y << "\n";
+    std::cout << p2.x << "\n" << ::tpy::check_signals;
+    std::cout << p2.y << "\n" << ::tpy::check_signals;
 }
 
 // main()

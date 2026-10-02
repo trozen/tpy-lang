@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     # Avoid str(e): TPy's OSError.__str__ format differs from CPython (BUGS.md).
 //     print("onerror fired")
 void report(const ::tpy::OSError& e) {
-    std::cout << "onerror fired" << "\n";
+    std::cout << "onerror fired" << "\n" << ::tpy::check_signals;
 }
 
 // def boom(e: readonly[OSError]) -> None:
@@ -171,23 +171,23 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view r = *__beg_0;
-        std::cout << "named:" << " " << r << "\n";
+        std::cout << "named:" << " " << r << "\n" << ::tpy::check_signals;
     }
-    auto __obj_1 = ::tpyapp::main::walk_rows(root, [](const ::tpy::OSError& e) { std::cout << "never" << "\n"; });
+    auto __obj_1 = ::tpyapp::main::walk_rows(root, [](const ::tpy::OSError& e) { std::cout << "never" << "\n" << ::tpy::check_signals; });
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view r = *__beg_1;
-        std::cout << "lambda:" << " " << r << "\n";
+        std::cout << "lambda:" << " " << r << "\n" << ::tpy::check_signals;
     }
     ::tpyapp::main::teardown(root);
     std::string_view missing = "tpy_oswalk_onerror_missing";
     int32_t n1 = ::tpyapp::main::yields(missing, report);
-    std::cout << "named yields:" << " " << n1 << "\n";
-    int32_t n2 = ::tpyapp::main::yields(missing, [](const ::tpy::OSError& e) { std::cout << "lam fired" << "\n"; });
-    std::cout << "lambda yields:" << " " << n2 << "\n";
+    std::cout << "named yields:" << " " << n1 << "\n" << ::tpy::check_signals;
+    int32_t n2 = ::tpyapp::main::yields(missing, [](const ::tpy::OSError& e) { std::cout << "lam fired" << "\n" << ::tpy::check_signals; });
+    std::cout << "lambda yields:" << " " << n2 << "\n" << ::tpy::check_signals;
     int32_t n3 = ::tpyapp::main::yields(missing, std::nullopt);
-    std::cout << "default yields:" << " " << n3 << "\n";
+    std::cout << "default yields:" << " " << n3 << "\n" << ::tpy::check_signals;
     {
         try {
             {
@@ -201,12 +201,12 @@ void main() {
                     std::string_view dp = std::get<0>(__tup_1);
                     auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
                     auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-                    std::cout << "yielded" << "\n";
+                    std::cout << "yielded" << "\n" << ::tpy::check_signals;
                 }
             }
-            std::cout << "no raise" << "\n";
+            std::cout << "no raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::RuntimeError&) {
-            std::cout << "aborted by onerror" << "\n";
+            std::cout << "aborted by onerror" << "\n" << ::tpy::check_signals;
         }
     }
 }

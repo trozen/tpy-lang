@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     CopyableResource r1 = CopyableResource(1);
     CopyableResource r2 = CopyableResource(r1);
-    std::cout << "r1 =" << " " << r1.id << "\n";
-    std::cout << "r2 =" << " " << r2.id << "\n";
+    std::cout << "r1 =" << " " << r1.id << "\n" << ::tpy::check_signals;
+    std::cout << "r2 =" << " " << r2.id << "\n" << ::tpy::check_signals;
 }
 
 // main()

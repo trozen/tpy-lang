@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print("ok")
 void main() {
     std::tuple<::tpy::Any, ::tpy::Any> t = std::tuple<::tpy::Any, ::tpy::Any>{::tpy::make_any(::tpy::BigInt(1)), ::tpy::make_any(static_cast<double>(2.5))};
-    std::cout << "ok" << "\n";
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     func()
 //     return int32(0)
 int32_t main() {
-    std::cout << ::tpyapp::mypackage::CONST << "\n";
+    std::cout << ::tpyapp::mypackage::CONST << "\n" << ::tpy::check_signals;
     ::tpyapp::mypackage::func();
     return 0;
 }

@@ -8,14 +8,14 @@ namespace tpyapp::main {
 //     print(kwargs["host"])
 //     print(kwargs["port"])
 void start(const Config& kwargs) {
-    std::cout << ::tpy::typed_dict_field_check(kwargs.host) << "\n";
-    std::cout << ::tpy::typed_dict_field_check(kwargs.port) << "\n";
+    std::cout << ::tpy::typed_dict_field_check(kwargs.host) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::typed_dict_field_check(kwargs.port) << "\n" << ::tpy::check_signals;
 }
 
 // def start_safe(**kwargs: Unpack[Config]) -> None:
 //     print("started")
 void start_safe(const Config& kwargs) {
-    std::cout << "started" << "\n";
+    std::cout << "started" << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -23,7 +23,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_1);
-            std::cout << got << "\n";
+            std::cout << got << "\n" << ::tpy::check_signals;
         }
     }
 }

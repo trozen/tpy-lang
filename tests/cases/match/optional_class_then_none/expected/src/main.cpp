@@ -29,9 +29,9 @@ int32_t describe(Point* p) {
 //     print(describe(None))
 void main() {
     Point p = Point(3);
-    std::cout << ::tpyapp::main::describe(&(p)) << "\n";
-    std::cout << p.x << "\n";
-    std::cout << ::tpyapp::main::describe(nullptr) << "\n";
+    std::cout << ::tpyapp::main::describe(&(p)) << "\n" << ::tpy::check_signals;
+    std::cout << p.x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(nullptr) << "\n" << ::tpy::check_signals;
 }
 
 // main()

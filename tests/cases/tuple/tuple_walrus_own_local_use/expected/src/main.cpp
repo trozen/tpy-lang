@@ -44,9 +44,9 @@ int32_t use_branches(bool c) {
 //     print(use_branches(True))
 //     print(use_branches(False))
 void main() {
-    std::cout << ::tpyapp::main::use() << "\n";
-    std::cout << ::tpyapp::main::use_branches(true) << "\n";
-    std::cout << ::tpyapp::main::use_branches(false) << "\n";
+    std::cout << ::tpyapp::main::use() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use_branches(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use_branches(false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def show(v: HasValue) -> None:
 //     print(v.value())
 void show(HasValue& v) {
-    std::cout << v.value() << "\n";
+    std::cout << v.value() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

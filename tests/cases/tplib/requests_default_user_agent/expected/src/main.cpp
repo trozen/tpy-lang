@@ -55,7 +55,7 @@ void main() {
     conn.sock = std::move(a);
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
     s.get("http://api.test/x");
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(b.recv(65536), ::tpy::bytes_literal_owned("User-Agent: tpy-requests/", 25)))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(b.recv(65536), ::tpy::bytes_literal_owned("User-Agent: tpy-requests/", 25)))) << "\n" << ::tpy::check_signals;
     b.close();
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a2 = std::move(std::get<0>(__tup_2));
@@ -68,8 +68,8 @@ void main() {
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "my-app/9"}});
     s2.get("http://api.test/x", nullptr, &(__tmp_1));
     ::tpy::Bytes sent = b2.recv(65536);
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(sent, ::tpy::bytes_literal_owned("User-Agent: my-app/9", 20)))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(sent, ::tpy::bytes_literal_owned("tpy-requests", 12)))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(sent, ::tpy::bytes_literal_owned("User-Agent: my-app/9", 20)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(sent, ::tpy::bytes_literal_owned("tpy-requests", 12)))) << "\n" << ::tpy::check_signals;
     b2.close();
     auto __tup_3 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a3 = std::move(std::get<0>(__tup_3));
@@ -82,8 +82,8 @@ void main() {
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"user-agent", "low/1"}});
     s3.get("http://api.test/x", nullptr, &(__tmp_2));
     ::tpy::Bytes sent3 = b3.recv(65536);
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(sent3, ::tpy::bytes_literal_owned("user-agent: low/1", 17)))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(sent3, ::tpy::bytes_literal_owned("tpy-requests", 12)))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(sent3, ::tpy::bytes_literal_owned("user-agent: low/1", 17)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(sent3, ::tpy::bytes_literal_owned("tpy-requests", 12)))) << "\n" << ::tpy::check_signals;
     b3.close();
 }
 

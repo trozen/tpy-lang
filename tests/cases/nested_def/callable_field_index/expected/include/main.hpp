@@ -200,7 +200,7 @@ inline App::App()
       writers(::tpy::ordered_map<std::string, std::function<int32_t(std::vector<int32_t>&)>>({{"touch", touch}})),
       notifications(::tpy::ordered_map<std::string, std::function<void(int32_t)>>({{"run", notify}})),
       direct_writer(touch) {
-    std::cout << "constructor" << " " << (::tpy::__getitem__(this->commands, "inc"))(1) << "\n";
+    std::cout << "constructor" << " " << (::tpy::__getitem__(this->commands, "inc"))(1) << "\n" << ::tpy::check_signals;
 }
 
 // @readonly
@@ -223,7 +223,7 @@ inline int32_t App::write(std::vector<int32_t>& values) const {
 //     print("property-getter")
 //     return self.callbacks
 inline std::vector<std::function<int32_t(int32_t)>>& App::selected() {
-    std::cout << "property-getter" << "\n";
+    std::cout << "property-getter" << "\n" << ::tpy::check_signals;
     return this->callbacks;
 }
 
@@ -233,7 +233,7 @@ inline std::vector<std::function<int32_t(int32_t)>>& App::selected() {
 //     print("property-getter")
 //     return self.callbacks
 inline const std::vector<std::function<int32_t(int32_t)>>& App::selected() const {
-    std::cout << "property-getter" << "\n";
+    std::cout << "property-getter" << "\n" << ::tpy::check_signals;
     return this->callbacks;
 }
 

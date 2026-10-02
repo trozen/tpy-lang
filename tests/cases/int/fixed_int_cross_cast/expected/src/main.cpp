@@ -46,25 +46,25 @@ void __tpy_init() {
     initialized = true;
 
     a = 42;
-    std::cout << ::tpy::int_cast_check<int16_t>(a) << "\n";
-    std::cout << ::tpy::int_cast_check<int32_t>(a) << "\n";
-    std::cout << ::tpy::int_cast_check<int64_t>(a) << "\n";
+    std::cout << ::tpy::int_cast_check<int16_t>(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::int_cast_check<int32_t>(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::int_cast_check<int64_t>(a) << "\n" << ::tpy::check_signals;
     b = 200;
-    std::cout << ::tpy::int_cast_check<uint16_t>(b) << "\n";
-    std::cout << ::tpy::int_cast_check<uint32_t>(b) << "\n";
-    std::cout << ::tpy::int_cast_check<uint64_t>(b) << "\n";
-    std::cout << ::tpy::int_cast_check<int16_t>(b) << "\n";
-    std::cout << ::tpy::int_cast_check<int32_t>(b) << "\n";
-    std::cout << ::tpy::int_cast_check<int64_t>(b) << "\n";
+    std::cout << ::tpy::int_cast_check<uint16_t>(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::int_cast_check<uint32_t>(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::int_cast_check<uint64_t>(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::int_cast_check<int16_t>(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::int_cast_check<int32_t>(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::int_cast_check<int64_t>(b) << "\n" << ::tpy::check_signals;
     c = 100;
-    std::cout << static_cast<int>(::tpy::int_cast_check<int8_t>(c)) << "\n";
-    std::cout << static_cast<int>(::tpy::int_cast_check<uint8_t>(c)) << "\n";
+    std::cout << static_cast<int>(::tpy::int_cast_check<int8_t>(c)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpy::int_cast_check<uint8_t>(c)) << "\n" << ::tpy::check_signals;
     d = 255;
-    std::cout << static_cast<int>(::tpy::int_cast_check<uint8_t>(d)) << "\n";
+    std::cout << static_cast<int>(::tpy::int_cast_check<uint8_t>(d)) << "\n" << ::tpy::check_signals;
     e = -42;
-    std::cout << ::tpy::int_cast_check<int16_t>(e) << "\n";
-    std::cout << ::tpy::int_cast_check<int32_t>(e) << "\n";
-    std::cout << ::tpy::int_cast_check<int64_t>(e) << "\n";
+    std::cout << ::tpy::int_cast_check<int16_t>(e) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::int_cast_check<int32_t>(e) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::int_cast_check<int64_t>(e) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

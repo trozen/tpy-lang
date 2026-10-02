@@ -61,14 +61,14 @@ inline CM::CM(const ::tpy::BigInt& n) : n(n) {}
 //     print("enter", self.n)
 //     return self.n
 inline ::tpy::BigInt CM::__enter__() const {
-    std::cout << "enter" << " " << this->n << "\n";
+    std::cout << "enter" << " " << this->n << "\n" << ::tpy::check_signals;
     return this->n;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 //     print("exit", self.n)
 inline void CM::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    std::cout << "exit" << " " << this->n << "\n";
+    std::cout << "exit" << " " << this->n << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

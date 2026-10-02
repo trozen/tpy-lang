@@ -37,10 +37,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << ::tpyapp::main::total(5) << "\n";
+    std::cout << ::tpyapp::main::total(5) << "\n" << ::tpy::check_signals;
 }
 
 // import itersrc

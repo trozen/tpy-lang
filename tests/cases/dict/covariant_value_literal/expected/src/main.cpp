@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(pets["b"].get().name())
 void main() {
     ::tpy::ordered_map<std::string, ::tpystd::tplib::box::Box<Pet>> pets = ::tpy::make_ordered_map<std::string, ::tpystd::tplib::box::Box<Pet>>("a", ::tpystd::tplib::box::Box<Dog>(Dog()), "b", ::tpystd::tplib::box::Box<Cat>(Cat()));
-    std::cout << ::tpy::__getitem__(pets, "a").get().name() << "\n";
-    std::cout << ::tpy::__getitem__(pets, "b").get().name() << "\n";
+    std::cout << ::tpy::__getitem__(pets, "a").get().name() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(pets, "b").get().name() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.box import Box

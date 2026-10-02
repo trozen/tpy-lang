@@ -20,7 +20,7 @@ void main() {
     };
     callbacks.push_back(add_offset);
     std::function<int32_t(int32_t)> f = ::tpy::__getitem__(callbacks, 0);
-    std::cout << f(5) << "\n";
+    std::cout << f(5) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -67,19 +67,19 @@ Expr make_lit(const ::tpy::BigInt& v) {
 //     print(eval_expr(holder.expr.get()))
 void main() {
     Expr __tmp_1 = Lit(::tpy::BigInt(42));
-    std::cout << ::tpyapp::main::eval_expr(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::eval_expr(__tmp_1) << "\n" << ::tpy::check_signals;
     BinOp e1 = BinOp(::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(10))), "+", ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(3))));
     Expr __tmp_2 = std::move(e1);
-    std::cout << ::tpyapp::main::eval_expr(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::eval_expr(__tmp_2) << "\n" << ::tpy::check_signals;
     BinOp e2 = BinOp(::tpystd::tplib::box::Box<Expr>(BinOp(::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(10))), "+", ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(3))))), "-", ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(1))));
     Expr __tmp_3 = std::move(e2);
-    std::cout << ::tpyapp::main::eval_expr(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::eval_expr(__tmp_3) << "\n" << ::tpy::check_signals;
     Expr e3 = ::tpyapp::main::make_lit(::tpy::BigInt(7));
-    std::cout << ::tpyapp::main::eval_expr(e3) << "\n";
+    std::cout << ::tpyapp::main::eval_expr(e3) << "\n" << ::tpy::check_signals;
     Expr local = Lit(::tpy::BigInt(99));
-    std::cout << ::tpyapp::main::eval_expr(local) << "\n";
+    std::cout << ::tpyapp::main::eval_expr(local) << "\n" << ::tpy::check_signals;
     ExprBox holder = ExprBox(::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(55))));
-    std::cout << ::tpyapp::main::eval_expr(holder.expr.get()) << "\n";
+    std::cout << ::tpyapp::main::eval_expr(holder.expr.get()) << "\n" << ::tpy::check_signals;
 }
 
 // # Mutual recursion: union alias references classes that reference back via Box

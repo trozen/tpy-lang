@@ -33,8 +33,8 @@ int32_t use(Holder& h) {
 void main() {
     Holder h = Holder(Box(5));
     int32_t r = ::tpyapp::main::use(h);
-    std::cout << r << "\n";
-    std::cout << std::get<1>(h.pair).val << "\n";
+    std::cout << r << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(h.pair).val << "\n" << ::tpy::check_signals;
 }
 
 // main()

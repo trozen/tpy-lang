@@ -15,9 +15,9 @@ namespace tpyapp::main {
 //     print(rc2.get().get().greet())
 void main() {
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Greeter>> rc = Rc<::tpystd::tplib::box::Box<Greeter>>::new_<::tpystd::tplib::box::Box<Greeter>>(::tpystd::tplib::box::Box<Greeter>(::tpy::make_adapter<Greeter>(Cat("Whiskers"))));
-    std::cout << rc.get().get().greet() << "\n";
+    std::cout << rc.get().get().greet() << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Greeter>> rc2 = Rc<::tpystd::tplib::box::Box<Greeter>>::new_<::tpystd::tplib::box::Box<Greeter>>(::tpystd::tplib::box::Box<Greeter>(::tpy::make_adapter<Greeter>(Cat("Mittens"))));
-    std::cout << rc2.get().get().greet() << "\n";
+    std::cout << rc2.get().get().greet() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box, Rc

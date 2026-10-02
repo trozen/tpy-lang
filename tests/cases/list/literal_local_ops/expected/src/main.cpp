@@ -68,9 +68,9 @@ int32_t from_empty(int32_t n) {
 //     print(fixed())
 //     print(from_empty(5))
 void main() {
-    std::cout << ::tpyapp::main::grown() << "\n";
-    std::cout << ::tpyapp::main::fixed() << "\n";
-    std::cout << ::tpyapp::main::from_empty(5) << "\n";
+    std::cout << ::tpyapp::main::grown() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::fixed() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::from_empty(5) << "\n" << ::tpy::check_signals;
 }
 
 // main()

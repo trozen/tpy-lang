@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(ib.val)
 void main() {
     IntBox ib = IntBox(42);
-    std::cout << ib.val << "\n";
+    std::cout << ib.val << "\n" << ::tpy::check_signals;
 }
 
 // main()

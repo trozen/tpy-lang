@@ -15,11 +15,11 @@ namespace tpyapp::main {
 //     print(h())  # hello
 void main() {
     std::function<int32_t(int32_t)> f = [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); };
-    std::cout << f(10) << "\n";
+    std::cout << f(10) << "\n" << ::tpy::check_signals;
     std::function<int32_t(int32_t, int32_t)> g = [](int32_t a, int32_t b) -> int32_t { return (::tpy::mul_check<int32_t>(a, b)); };
-    std::cout << g(3, 4) << "\n";
+    std::cout << g(3, 4) << "\n" << ::tpy::check_signals;
     std::function<std::string()> h = []() -> std::string { return "hello"; };
-    std::cout << h() << "\n";
+    std::cout << h() << "\n" << ::tpy::check_signals;
 }
 
 // main()

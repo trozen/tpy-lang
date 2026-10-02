@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Dog d = Dog("Rex");
     ::tpystd::tplib::box::Box<Pet> b = ::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(std::move(d)));
-    std::cout << b.get().name() << "\n";
+    std::cout << b.get().name() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

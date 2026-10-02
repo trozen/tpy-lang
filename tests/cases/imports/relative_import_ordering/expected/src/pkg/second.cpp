@@ -10,7 +10,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << "init: second" << "\n";
+    std::cout << "init: second" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::pkg::second

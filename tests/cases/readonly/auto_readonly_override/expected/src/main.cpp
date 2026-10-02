@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(s[int32(0)])
 void read_base(const Base& b) {
     std::span<const int32_t> s = b.items();
-    std::cout << ::tpy::__getitem__(s, 0) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def read_child(c: readonly[Child]) -> None:
@@ -18,8 +18,8 @@ void read_base(const Base& b) {
 //     print(s[int32(1)])
 void read_child(const Child& c) {
     std::span<const int32_t> s = c.items();
-    std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    std::cout << ::tpy::__getitem__(s, 1) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(s, 1) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -35,11 +35,11 @@ void read_child(const Child& c) {
 void main() {
     Base b = Base();
     std::span<int32_t> s = b.items();
-    std::cout << ::tpy::__getitem__(s, 0) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_base(b);
     Child c = Child();
     std::span<int32_t> s2 = c.items();
-    std::cout << ::tpy::__getitem__(s2, 0) << "\n";
+    std::cout << ::tpy::__getitem__(s2, 0) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_child(c);
 }
 

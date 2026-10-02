@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Doubler d = Doubler();
     ::tpyapp::main::apply_and_discard(d, 5);
-    std::cout << "ok" << "\n";
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // main()

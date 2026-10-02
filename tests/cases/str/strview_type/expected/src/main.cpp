@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(len(s))  # 5
 void test_strview_basic() {
     std::string_view s = "hello";
-    std::cout << s << "\n";
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // def test_strview_getitem() -> None:
@@ -20,8 +20,8 @@ void test_strview_basic() {
 //     print(s[-1])  # c
 void test_strview_getitem() {
     std::string_view s = "abc";
-    std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    std::cout << ::tpy::__getitem__(s, -1) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(s, -1) << "\n" << ::tpy::check_signals;
 }
 
 // test_strview_basic()

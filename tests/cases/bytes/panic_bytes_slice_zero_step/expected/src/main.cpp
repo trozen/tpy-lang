@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(data[::0])
 void main() {
     ::tpy::BytesView data = ::tpy::bytes_literal("hello", 5);
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_stepped_slice(data, ::tpy::Slice{std::nullopt, std::nullopt, 0})) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_stepped_slice(data, ::tpy::Slice{std::nullopt, std::nullopt, 0})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -19,7 +19,7 @@ void optional_target() {
         saved = p;
     }
     if ((saved != nullptr)) {
-        std::cout << saved->x << "\n";
+        std::cout << saved->x << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -79,7 +79,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_in_try::__next__() {
 }
 
 void __gen_in_try::__finally_0() {
-    std::cout << "in_try finally" << "\n";
+    std::cout << "in_try finally" << "\n" << ::tpy::check_signals;
 }
 
 // def in_try(xs: list[int32]) -> Iterator[int32]:
@@ -313,7 +313,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_break_continue::__next__() {
 }
 
 void __gen_break_continue::__finally_0() {
-    std::cout << "bc finally" << " " << x << "\n";
+    std::cout << "bc finally" << " " << x << "\n" << ::tpy::check_signals;
 }
 
 // def break_continue(xs: list[int32]) -> Iterator[int32]:
@@ -463,7 +463,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_abandoned::__next__() {
 }
 
 void __gen_abandoned::__finally_0() {
-    std::cout << "abandoned finally" << "\n";
+    std::cout << "abandoned finally" << "\n" << ::tpy::check_signals;
 }
 
 // def abandoned(xs: list[int32]) -> Iterator[int32]:
@@ -802,7 +802,7 @@ __coro_async_loop async_loop(const std::vector<int32_t>& xs) {
 }
 
 void __coro_async_try_loop::__finally_0() {
-    std::cout << "async_try_loop finally" << "\n";
+    std::cout << "async_try_loop finally" << "\n" << ::tpy::check_signals;
 }
 
 // async def async_try_loop(xs: list[int32]) -> int32:
@@ -855,25 +855,25 @@ int32_t take_first(const std::vector<int32_t>& xs) {
 void main() {
     std::vector<int32_t> xs = {1, 2, 3, 4, 5};
     std::vector<int32_t> filtered_r = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::filtered(xs, 1));
-    std::cout << "filtered" << " " << ::tpy::ListPrinter(filtered_r) << "\n";
+    std::cout << "filtered" << " " << ::tpy::ListPrinter(filtered_r) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> in_try_r = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::in_try(xs));
-    std::cout << "in_try" << " " << ::tpy::ListPrinter(in_try_r) << "\n";
+    std::cout << "in_try" << " " << ::tpy::ListPrinter(in_try_r) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> in_with_r = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::in_with(xs));
-    std::cout << "in_with" << " " << ::tpy::ListPrinter(in_with_r) << "\n";
+    std::cout << "in_with" << " " << ::tpy::ListPrinter(in_with_r) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> in_match_r = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::in_match(xs));
-    std::cout << "in_match" << " " << ::tpy::ListPrinter(in_match_r) << "\n";
+    std::cout << "in_match" << " " << ::tpy::ListPrinter(in_match_r) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> break_continue_r = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::break_continue(xs));
-    std::cout << "break_continue" << " " << ::tpy::ListPrinter(break_continue_r) << "\n";
+    std::cout << "break_continue" << " " << ::tpy::ListPrinter(break_continue_r) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> return_in_finally_r = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::return_in_finally(xs));
-    std::cout << "return_in_finally" << " " << ::tpy::ListPrinter(return_in_finally_r) << "\n";
+    std::cout << "return_in_finally" << " " << ::tpy::ListPrinter(return_in_finally_r) << "\n" << ::tpy::check_signals;
     int32_t first = ::tpyapp::main::take_first(xs);
-    std::cout << "abandoned" << " " << first << "\n";
+    std::cout << "abandoned" << " " << first << "\n" << ::tpy::check_signals;
     std::vector<int32_t> stop_r = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::stop_in_region(xs));
-    std::cout << "stop_in_region" << " " << ::tpy::ListPrinter(stop_r) << "\n";
+    std::cout << "stop_in_region" << " " << ::tpy::ListPrinter(stop_r) << "\n" << ::tpy::check_signals;
     int32_t total = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_loop(xs)));
-    std::cout << "async_loop" << " " << total << "\n";
+    std::cout << "async_loop" << " " << total << "\n" << ::tpy::check_signals;
     int32_t try_total = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_try_loop(xs)));
-    std::cout << "async_try_loop" << " " << try_total << "\n";
+    std::cout << "async_try_loop" << " " << try_total << "\n" << ::tpy::check_signals;
 }
 
 // # Resumable frames stack an empty join/resume case onto the case it falls into;

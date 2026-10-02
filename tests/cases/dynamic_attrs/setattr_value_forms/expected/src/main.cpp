@@ -24,11 +24,11 @@ void main() {
     b.__setattr__("port", ::tpy::make_any(int32_t(n)));
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(9));
     b.__setattr__("raw", a);
-    std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(b.__getattr__("lit")) << " " << ::tpy::any_cast_or_panic<int32_t>(b.__getattr__("port")) << " " << ::tpy::any_cast_or_panic<::tpy::BigInt>(b.__getattr__("raw")) << "\n";
+    std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(b.__getattr__("lit")) << " " << ::tpy::any_cast_or_panic<int32_t>(b.__getattr__("port")) << " " << ::tpy::any_cast_or_panic<::tpy::BigInt>(b.__getattr__("raw")) << "\n" << ::tpy::check_signals;
     Strict s = Strict();
     std::string_view v = "host";
     s.__setattr__("name", v);
-    std::cout << s._n << " " << s._v << "\n";
+    std::cout << s._n << " " << s._v << "\n" << ::tpy::check_signals;
 }
 
 // main()

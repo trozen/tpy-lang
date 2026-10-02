@@ -30,17 +30,17 @@ void __tpy_init() {
 
     static Config __global_slot_1 = Config("test");
     c = &__global_slot_1;
-    std::cout << ::tpy::print_bool((!c->max_retries.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!c->max_retries.has_value())) << "\n" << ::tpy::check_signals;
     c->max_retries = 5;
-    std::cout << ::tpy::print_optional_val(c->max_retries) << "\n";
-    std::cout << c->name << "\n";
+    std::cout << ::tpy::print_optional_val(c->max_retries) << "\n" << ::tpy::check_signals;
+    std::cout << c->name << "\n" << ::tpy::check_signals;
     r = c->get_retries();
-    std::cout << ::tpy::print_optional_val(r) << "\n";
-    std::cout << ::tpy::print_bool((r.has_value())) << "\n";
+    std::cout << ::tpy::print_optional_val(r) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((r.has_value())) << "\n" << ::tpy::check_signals;
     static Config __global_slot_2 = Config("other");
     c2 = &__global_slot_2;
     c2->max_retries = c->max_retries;
-    std::cout << ::tpy::print_optional_val(c2->max_retries) << "\n";
+    std::cout << ::tpy::print_optional_val(c2->max_retries) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

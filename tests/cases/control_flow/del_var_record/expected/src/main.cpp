@@ -14,10 +14,10 @@ void main() {
     std::optional<Point> __slot_2;
     Point __slot_1 = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
     Point* p = &__slot_1;
-    std::cout << p->x << "\n";
+    std::cout << p->x << "\n" << ::tpy::check_signals;
     { auto __del_sink = std::move(*p); }
     p = &*(__slot_2 = Point(::tpy::BigInt(3), ::tpy::BigInt(4)));
-    std::cout << p->x << "\n";
+    std::cout << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # del on record type locals

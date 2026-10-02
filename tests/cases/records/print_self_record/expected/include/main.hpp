@@ -50,7 +50,7 @@ inline std::string W::__str__() const {
 //     # The whole receiver is the print argument.
 //     print(self)
 inline void W::show() const {
-    std::cout << (*this) << "\n";
+    std::cout << (*this) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

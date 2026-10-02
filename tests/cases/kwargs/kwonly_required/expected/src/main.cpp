@@ -21,8 +21,8 @@ std::string format_value(int32_t value, int32_t width, std::string_view fill) {
 //     print(format_value(42, width=5))
 //     print(format_value(7, width=3, fill="0"))
 void main() {
-    std::cout << ::tpyapp::main::format_value(42, 5) << "\n";
-    std::cout << ::tpyapp::main::format_value(7, 3, "0") << "\n";
+    std::cout << ::tpyapp::main::format_value(42, 5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::format_value(7, 3, "0") << "\n" << ::tpy::check_signals;
 }
 
 // main()

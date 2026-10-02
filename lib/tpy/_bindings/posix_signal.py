@@ -38,12 +38,18 @@ def raise_signal(sig: int32) -> int32: ...
 
 # Raises KeyboardInterrupt when a Ctrl-C is pending for the calling thread
 # (tpy/core.hpp).
-@native("::tpy::check_interrupt")
-def check_interrupt() -> None: ...
+@native("::tpy::check_signals")
+def check_signals() -> None: ...
 
 # True while the SIGINT layer is armed (tpy/core.hpp).
 @native("::tpy::interrupt_armed")
 def interrupt_armed() -> bool: ...
+
+# Marks a Ctrl-C pending without consuming it, as the SIGINT handler does;
+# the next check point raises it (the embedding API's entry point,
+# interrupt.hpp).
+@native("::tpy_request_interrupt")
+def request_interrupt() -> None: ...
 
 # Wait for `fd` (readable, or writable when `want_write` != 0) with a timeout
 # in seconds (< 0: none), woken by a Ctrl-C on the interrupt target thread.

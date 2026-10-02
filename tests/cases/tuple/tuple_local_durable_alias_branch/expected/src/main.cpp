@@ -31,7 +31,7 @@ void main() {
     Box b = Box(5);
     auto pair = ::tpyapp::main::f(b, true);
     std::get<1>(pair)->val = 99;
-    std::cout << b.val << "\n";
+    std::cout << b.val << "\n" << ::tpy::check_signals;
 }
 
 // main()

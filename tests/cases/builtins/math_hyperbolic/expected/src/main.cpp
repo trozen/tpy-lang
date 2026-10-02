@@ -36,24 +36,24 @@ namespace tpyapp::main {
 //     r3 = math.atanh(math.tanh(0.3))
 //     print(r3 > 0.29 and r3 < 0.31)
 void main() {
-    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_sinh(0.0) == 0.0)) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_cosh(0.0) == 1.0)) << "\n";
-    std::cout << ::tpy::print_bool((::std::tanh(0.0) == 0.0)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_sinh(0.0) == 0.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_cosh(0.0) == 1.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::std::tanh(0.0) == 0.0)) << "\n" << ::tpy::check_signals;
     double s = ::tpy::stdlib::math::checked_sinh(1.0);
-    std::cout << ::tpy::print_bool(((s > 1.17) && (s < 1.18))) << "\n";
+    std::cout << ::tpy::print_bool(((s > 1.17) && (s < 1.18))) << "\n" << ::tpy::check_signals;
     double c = ::tpy::stdlib::math::checked_cosh(1.0);
-    std::cout << ::tpy::print_bool(((c > 1.54) && (c < 1.55))) << "\n";
+    std::cout << ::tpy::print_bool(((c > 1.54) && (c < 1.55))) << "\n" << ::tpy::check_signals;
     double t = ::std::tanh(10.0);
-    std::cout << ::tpy::print_bool((t > 0.9999)) << "\n";
-    std::cout << ::tpy::print_bool((::std::asinh(0.0) == 0.0)) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_acosh(1.0) == 0.0)) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_atanh(0.0) == 0.0)) << "\n";
+    std::cout << ::tpy::print_bool((t > 0.9999)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::std::asinh(0.0) == 0.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_acosh(1.0) == 0.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_atanh(0.0) == 0.0)) << "\n" << ::tpy::check_signals;
     double r1 = ::std::asinh(::tpy::stdlib::math::checked_sinh(0.5));
-    std::cout << ::tpy::print_bool(((r1 > 0.49) && (r1 < 0.51))) << "\n";
+    std::cout << ::tpy::print_bool(((r1 > 0.49) && (r1 < 0.51))) << "\n" << ::tpy::check_signals;
     double r2 = ::tpy::stdlib::math::checked_acosh(::tpy::stdlib::math::checked_cosh(1.5));
-    std::cout << ::tpy::print_bool(((r2 > 1.49) && (r2 < 1.51))) << "\n";
+    std::cout << ::tpy::print_bool(((r2 > 1.49) && (r2 < 1.51))) << "\n" << ::tpy::check_signals;
     double r3 = ::tpy::stdlib::math::checked_atanh(::std::tanh(0.3));
-    std::cout << ::tpy::print_bool(((r3 > 0.29) && (r3 < 0.31))) << "\n";
+    std::cout << ::tpy::print_bool(((r3 > 0.29) && (r3 < 0.31))) << "\n" << ::tpy::check_signals;
 }
 
 // # math module: hyperbolic functions (sinh/cosh/tanh) and their inverses

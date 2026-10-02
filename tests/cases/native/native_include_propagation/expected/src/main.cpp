@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(native_add(int32(10), int32(32)))
 void main() {
-    std::cout << ::nativelib::native_add(10, 32) << "\n";
+    std::cout << ::nativelib::native_add(10, 32) << "\n" << ::tpy::check_signals;
 }
 
 // from nativelib.ops import native_add

@@ -14,7 +14,7 @@ void both_element_arms(std::vector<Rec>& rs, bool c) {
     Rec& r = ((c) ? (::tpy::__getitem__(rs, 0)) : (::tpy::__getitem__(rs, 1)));
     r.n = ::tpy::add_check<int32_t>(r.n, 1);
     rs.push_back(Rec(9));
-    std::cout << ::tpy::__getitem__(rs, 0).n << " " << ::tpy::__len__(rs) << "\n";
+    std::cout << ::tpy::__getitem__(rs, 0).n << " " << ::tpy::__len__(rs) << "\n" << ::tpy::check_signals;
 }
 
 // def two_containers(xs: list[Rec], ys: list[Rec], c: bool) -> None:
@@ -29,7 +29,7 @@ void two_containers(std::vector<Rec>& xs, std::vector<Rec>& ys, bool c) {
     r.n = ::tpy::add_check<int32_t>(r.n, 10);
     xs.push_back(Rec(7));
     ys.push_back(Rec(8));
-    std::cout << ::tpy::__getitem__(xs, 0).n << " " << ::tpy::__getitem__(ys, 0).n << "\n";
+    std::cout << ::tpy::__getitem__(xs, 0).n << " " << ::tpy::__getitem__(ys, 0).n << "\n" << ::tpy::check_signals;
 }
 
 // def optional_arm(rs: list[Rec], c: bool) -> None:
@@ -45,7 +45,7 @@ void optional_arm(std::vector<Rec>& rs, bool c) {
         p->n = ::tpy::add_check<int32_t>(p->n, 100);
     }
     rs.push_back(Rec(5));
-    std::cout << ::tpy::__getitem__(rs, 0).n << "\n";
+    std::cout << ::tpy::__getitem__(rs, 0).n << "\n" << ::tpy::check_signals;
 }
 
 // def alias_arms(xs: list[Rec], ys: list[Rec], c: bool) -> None:
@@ -56,7 +56,7 @@ void optional_arm(std::vector<Rec>& rs, bool c) {
 void alias_arms(std::vector<Rec>& xs, std::vector<Rec>& ys, bool c) {
     std::vector<Rec>& picked = ((c) ? (xs) : (ys));
     xs.push_back(Rec(3));
-    std::cout << ::tpy::__len__(picked) << "\n";
+    std::cout << ::tpy::__len__(picked) << "\n" << ::tpy::check_signals;
 }
 
 // def value_elements(ns: list[int32], c: bool) -> None:
@@ -67,7 +67,7 @@ void alias_arms(std::vector<Rec>& xs, std::vector<Rec>& ys, bool c) {
 void value_elements(std::vector<int32_t>& ns, bool c) {
     int32_t v = ((c) ? (::tpy::__getitem__(ns, 0)) : (::tpy::__getitem__(ns, 1)));
     ns.push_back(6);
-    std::cout << v << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
 }
 
 // def first(rs: list[Rec]) -> Rec:
@@ -94,7 +94,7 @@ void call_arm(std::vector<Rec>& rs, bool c) {
     Rec& r = ((c) ? (::tpyapp::main::first(rs)) : (__select_slot_1.emplace(::tpyapp::main::make(5))));
     r.n = ::tpy::add_check<int32_t>(r.n, 1);
     rs.push_back(Rec(4));
-    std::cout << ::tpy::__getitem__(rs, 0).n << " " << ::tpy::__len__(rs) << "\n";
+    std::cout << ::tpy::__getitem__(rs, 0).n << " " << ::tpy::__len__(rs) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

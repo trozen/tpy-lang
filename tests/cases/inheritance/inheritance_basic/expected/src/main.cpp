@@ -33,15 +33,15 @@ void __tpy_init() {
 
     static Dog __global_slot_1 = Dog("Buddy", 3, "Golden Retriever");
     d = &__global_slot_1;
-    std::cout << d->breed << "\n";
-    std::cout << d->name << "\n";
-    std::cout << d->age << "\n";
-    std::cout << d->speak() << "\n";
-    std::cout << d->describe() << "\n";
+    std::cout << d->breed << "\n" << ::tpy::check_signals;
+    std::cout << d->name << "\n" << ::tpy::check_signals;
+    std::cout << d->age << "\n" << ::tpy::check_signals;
+    std::cout << d->speak() << "\n" << ::tpy::check_signals;
+    std::cout << d->describe() << "\n" << ::tpy::check_signals;
     static Animal __global_slot_2 = Animal("Generic", 5);
     a = &__global_slot_2;
-    std::cout << a->speak() << "\n";
-    std::cout << a->describe() << "\n";
+    std::cout << a->speak() << "\n" << ::tpy::check_signals;
+    std::cout << a->describe() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

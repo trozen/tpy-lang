@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void main() {
     std::vector<P> xs = {P()};
     P& n = ::tpyapp::main::pick(xs);
-    std::cout << ::tpy::__len__(n.vals) << "\n";
+    std::cout << ::tpy::__len__(n.vals) << "\n" << ::tpy::check_signals;
     xs.push_back(P());
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def pick(xs: list[P]) -> P:

@@ -36,7 +36,7 @@ int32_t f(const std::vector<int32_t>& xs) {
 //     print(f([1, 2, 3]))
 void main() {
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << ::tpyapp::main::f(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::f(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

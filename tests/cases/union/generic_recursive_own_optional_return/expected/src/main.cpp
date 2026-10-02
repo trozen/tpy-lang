@@ -32,8 +32,8 @@ void main() {
     Tree<int32_t>* s = ::tpy::optional_to_ptr(__slot_1);
     std::optional<Tree<int32_t>> __slot_2 = ::tpyapp::main::make_none();
     Tree<int32_t>* n = ::tpy::optional_to_ptr(__slot_2);
-    std::cout << ::tpy::print_bool((s != nullptr)) << "\n";
-    std::cout << ::tpy::print_bool((n == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((s != nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((n == nullptr)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

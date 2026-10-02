@@ -57,10 +57,10 @@ bool check(const Gate& gate, const ::tpyapp::lampmod::Lamp& lamp) {
 void main() {
     Gate __tmp_1 = Gate(true);
     ::tpyapp::lampmod::Lamp __tmp_2 = ::tpyapp::lampmod::Lamp(true);
-    std::cout << ((::tpyapp::main::check(__tmp_1, __tmp_2)) ? (1) : (0)) << "\n";
+    std::cout << ((::tpyapp::main::check(__tmp_1, __tmp_2)) ? (1) : (0)) << "\n" << ::tpy::check_signals;
     Gate __tmp_3 = Gate(true);
     ::tpyapp::lampmod::Lamp __tmp_4 = ::tpyapp::lampmod::Lamp(false);
-    std::cout << ((::tpyapp::main::check(__tmp_3, __tmp_4)) ? (1) : (0)) << "\n";
+    std::cout << ((::tpyapp::main::check(__tmp_3, __tmp_4)) ? (1) : (0)) << "\n" << ::tpy::check_signals;
 }
 
 // # A @function_macro resolves module-visible names (local record, imported

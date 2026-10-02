@@ -24,15 +24,15 @@ namespace tpyapp::main {
 //     print("method", d.cursor().get())
 void main() {
     (void)(Holder());
-    std::cout << "storage" << " " << 4 << "\n";
+    std::cout << "storage" << " " << 4 << "\n" << ::tpy::check_signals;
     ::Bag<Node> bag = ::Bag<Node>();
-    std::cout << "user storage" << " " << ::tpy::print_bool(bag.empty()) << "\n";
+    std::cout << "user storage" << " " << ::tpy::print_bool(bag.empty()) << "\n" << ::tpy::check_signals;
     ::Window<const Node> w = ::Window<const Node>();
-    std::cout << "user view" << " " << ::tpy::print_bool(w.empty()) << "\n";
+    std::cout << "user view" << " " << ::tpy::print_bool(w.empty()) << "\n" << ::tpy::check_signals;
     ::Buffer b = ::Buffer();
-    std::cout << "function" << " " << ::tpyapp::main::cursor_of(b).get() << "\n";
+    std::cout << "function" << " " << ::tpyapp::main::cursor_of(b).get() << "\n" << ::tpy::check_signals;
     Doc d = Doc();
-    std::cout << "method" << " " << d.cursor().get() << "\n";
+    std::cout << "method" << " " << d.cursor().get() << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native

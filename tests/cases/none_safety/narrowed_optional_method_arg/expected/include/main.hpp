@@ -60,13 +60,13 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 // def show(self, s: str) -> None:
 //     print(s)
 inline void Printer::show(std::string_view s) const {
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def show_int(self, n: int) -> None:
 //     print(n)
 inline void Printer::show_int(const ::tpy::BigInt& n) const {
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // def process(self, x: str | None) -> None:

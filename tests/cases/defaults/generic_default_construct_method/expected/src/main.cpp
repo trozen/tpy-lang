@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(c.get_or_default(99))
 void main() {
     Container<int32_t> c = Container<int32_t>(10);
-    std::cout << c.get_or_default() << "\n";
-    std::cout << c.get_or_default(99) << "\n";
+    std::cout << c.get_or_default() << "\n" << ::tpy::check_signals;
+    std::cout << c.get_or_default(99) << "\n" << ::tpy::check_signals;
 }
 
 // main()

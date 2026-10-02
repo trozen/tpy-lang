@@ -51,11 +51,11 @@ void main() {
             if (!__try_tmp_2.has_value()) goto __except_1;
             v = &(::tpy::unwrap_ref(*__try_tmp_2));
         }
-        std::cout << ::tpyapp::main::leaf_count((*v)) << "\n";
+        std::cout << ::tpyapp::main::leaf_count((*v)) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except E:
         __except_1:;
-        std::cout << "err" << "\n";
+        std::cout << "err" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }

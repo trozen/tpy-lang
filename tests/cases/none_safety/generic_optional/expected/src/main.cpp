@@ -51,36 +51,36 @@ void main() {
     Container<int32_t> c = Container<int32_t>(42);
     int32_t* v = c.get();
     if ((v != nullptr)) {
-        std::cout << "got:" << " " << ::tpy::print_optional(v) << "\n";
+        std::cout << "got:" << " " << ::tpy::print_optional(v) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "got: None" << "\n";
+        std::cout << "got: None" << "\n" << ::tpy::check_signals;
     }
     c.set(std::nullopt);
     int32_t* v2 = c.get();
     if ((v2 != nullptr)) {
-        std::cout << "after set:" << " " << ::tpy::print_optional(v2) << "\n";
+        std::cout << "after set:" << " " << ::tpy::print_optional(v2) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "after set: None" << "\n";
+        std::cout << "after set: None" << "\n" << ::tpy::check_signals;
     }
     c.set(99);
     int32_t* v3 = c.get();
     if ((v3 != nullptr)) {
-        std::cout << "restored:" << " " << ::tpy::print_optional(v3) << "\n";
+        std::cout << "restored:" << " " << ::tpy::print_optional(v3) << "\n" << ::tpy::check_signals;
     }
     Container<int32_t> c2 = Container<int32_t>(std::nullopt);
     int32_t* v4 = c2.get();
     if ((v4 == nullptr)) {
-        std::cout << "none init: ok" << "\n";
+        std::cout << "none init: ok" << "\n" << ::tpy::check_signals;
     }
     std::optional<int32_t> r = ::tpyapp::main::maybe_val(7);
     if ((r.has_value())) {
-        std::cout << "maybe:" << " " << ::tpy::print_optional_val(r) << "\n";
+        std::cout << "maybe:" << " " << ::tpy::print_optional_val(r) << "\n" << ::tpy::check_signals;
     }
     std::optional<int32_t> r2 = ::tpyapp::main::maybe_val(std::nullopt);
     if ((!r2.has_value())) {
-        std::cout << "maybe None: ok" << "\n";
+        std::cout << "maybe None: ok" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // main()

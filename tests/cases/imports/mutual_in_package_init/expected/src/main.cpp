@@ -26,7 +26,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::pkg::__tpy_init();
-    std::cout << ::tpyapp::main::main() << "\n";
+    std::cout << ::tpyapp::main::main() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

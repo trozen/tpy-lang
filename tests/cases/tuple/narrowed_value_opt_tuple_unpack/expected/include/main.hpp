@@ -117,7 +117,7 @@ inline void K::use(std::optional<std::tuple<double, int32_t>> r) const {
         const auto& __tup_1 = (*r);
         double a = std::get<0>(__tup_1);
         int32_t b = std::get<1>(__tup_1);
-        std::cout << "method" << " " << ::tpy::print_float(a) << " " << b << "\n";
+        std::cout << "method" << " " << ::tpy::print_float(a) << " " << b << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -133,9 +133,9 @@ inline void K::show() const {
         auto __tup_1 = (*this->tup);
         double a = std::get<0>(__tup_1);
         int32_t b = std::get<1>(__tup_1);
-        std::cout << "field" << " " << ::tpy::print_float(a) << " " << b << "\n";
+        std::cout << "field" << " " << ::tpy::print_float(a) << " " << b << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "field none" << "\n";
+        std::cout << "field none" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -147,7 +147,7 @@ inline void Guard::__enter__() const {
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 //     print("with exit")
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    std::cout << "with exit" << "\n";
+    std::cout << "with exit" << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

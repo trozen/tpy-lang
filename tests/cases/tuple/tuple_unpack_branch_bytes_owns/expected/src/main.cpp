@@ -40,8 +40,8 @@ void main() {
         a = std::get<0>(__tup_2);
         b = std::get<1>(__tup_2);
     }
-    std::cout << ::tpy::__len__(a) << "\n";
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // main()

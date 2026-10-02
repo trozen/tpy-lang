@@ -113,14 +113,14 @@ int32_t doubled(::tpy::Union<const std::vector<int32_t>*, const std::string*> x)
 //     print("nested", rows[0])
 //     print("comp", doubled(xs))
 void drive(const std::vector<int32_t>& xs, const std::vector<std::string>& ss, std::vector<Point>& pts, std::vector<std::vector<int32_t>>& rows, const ::tpy::ordered_map<std::string, int32_t>& d) {
-    std::cout << "scalar" << " " << ::tpyapp::main::scalar_elem(::tpy::Union<const std::vector<int32_t>*, const std::string*>{&(xs)}) << "\n";
-    std::cout << "dict" << " " << ::tpyapp::main::dict_elem(::tpy::Union<const ::tpy::ordered_map<std::string, int32_t>*, const std::string*>{&(d)}) << "\n";
-    std::cout << "str" << " " << ::tpyapp::main::str_elem(::tpy::Union<const int32_t*, const std::vector<std::string>*>{&(ss)}) << "\n";
+    std::cout << "scalar" << " " << ::tpyapp::main::scalar_elem(::tpy::Union<const std::vector<int32_t>*, const std::string*>{&(xs)}) << "\n" << ::tpy::check_signals;
+    std::cout << "dict" << " " << ::tpyapp::main::dict_elem(::tpy::Union<const ::tpy::ordered_map<std::string, int32_t>*, const std::string*>{&(d)}) << "\n" << ::tpy::check_signals;
+    std::cout << "str" << " " << ::tpyapp::main::str_elem(::tpy::Union<const int32_t*, const std::vector<std::string>*>{&(ss)}) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::rec_elem(::tpy::Union<std::vector<Point>*, std::string*>{&(pts)});
-    std::cout << "rec" << " " << ::tpy::__getitem__(pts, 0).n << "\n";
+    std::cout << "rec" << " " << ::tpy::__getitem__(pts, 0).n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::nested_elem(::tpy::Union<std::vector<std::vector<int32_t>>*, std::string*>{&(rows)});
-    std::cout << "nested" << " " << ::tpy::ListPrinter(::tpy::__getitem__(rows, 0)) << "\n";
-    std::cout << "comp" << " " << ::tpyapp::main::doubled(::tpy::Union<const std::vector<int32_t>*, const std::string*>{&(xs)}) << "\n";
+    std::cout << "nested" << " " << ::tpy::ListPrinter(::tpy::__getitem__(rows, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "comp" << " " << ::tpyapp::main::doubled(::tpy::Union<const std::vector<int32_t>*, const std::string*>{&(xs)}) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

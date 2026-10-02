@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(len(s))  # 5
 void test_string_basic() {
     ::tpy::String s = ::tpy::String("hello");
-    std::cout << s << "\n";
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // def test_string_from_int() -> None:
@@ -19,7 +19,7 @@ void test_string_basic() {
 //     print(s)  # 42
 void test_string_from_int() {
     ::tpy::String s = ::tpy::fixed_to_str<int32_t>(42);
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_string_from_bool() -> None:
@@ -27,7 +27,7 @@ void test_string_from_int() {
 //     print(s)  # True
 void test_string_from_bool() {
     ::tpy::String s = ::tpy::String(::tpy::bool_to_str(true));
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_string_getitem() -> None:
@@ -36,8 +36,8 @@ void test_string_from_bool() {
 //     print(s[-1])  # c
 void test_string_getitem() {
     ::tpy::String s = ::tpy::String("abc");
-    std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    std::cout << ::tpy::__getitem__(s, -1) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(s, -1) << "\n" << ::tpy::check_signals;
 }
 
 // test_string_basic()

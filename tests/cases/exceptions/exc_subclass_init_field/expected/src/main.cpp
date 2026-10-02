@@ -14,7 +14,7 @@ void main() {
         try {
             throw AppError(::tpy::BigInt(7));
         } catch (const AppError& e) {
-            std::cout << e.code << "\n";
+            std::cout << e.code << "\n" << ::tpy::check_signals;
         }
     }
 }

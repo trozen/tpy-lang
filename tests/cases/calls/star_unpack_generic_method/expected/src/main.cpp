@@ -17,7 +17,7 @@ void main() {
     items.push_back(Box<int32_t>(1));
     items.push_back(Box<int32_t>(2));
     items.push_back(Box<int32_t>(3));
-    std::cout << "list unpack:" << " " << p.total<int32_t>(::tpy::varargs<const Box<int32_t>>(::tpy::as_span(items))) << "\n";
+    std::cout << "list unpack:" << " " << p.total<int32_t>(::tpy::varargs<const Box<int32_t>>(::tpy::as_span(items))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

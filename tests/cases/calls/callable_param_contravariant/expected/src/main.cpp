@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //         print("got", x)
 void cb(std::optional<int32_t> x) {
     if ((!x.has_value())) {
-        std::cout << "none" << "\n";
+        std::cout << "none" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "got" << " " << ::tpy::print_optional_val(x) << "\n";
+        std::cout << "got" << " " << ::tpy::print_optional_val(x) << "\n" << ::tpy::check_signals;
     }
 }
 

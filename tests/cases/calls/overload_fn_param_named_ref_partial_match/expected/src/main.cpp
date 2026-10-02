@@ -22,8 +22,8 @@ int32_t add(int32_t a, int32_t b) {
 //     print(g(add, xs))      # picks the 2-param overload -> 6
 void main() {
     std::vector<int32_t> xs = {3, 4, 5};
-    std::cout << ::tpyapp::main::g<int32_t>(square, xs) << "\n";
-    std::cout << ::tpyapp::main::g<int32_t>(add, xs) << "\n";
+    std::cout << ::tpyapp::main::g<int32_t>(square, xs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::g<int32_t>(add, xs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

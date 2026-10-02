@@ -21,7 +21,7 @@ void show(::tpy::Union<const Other*, const WithScalar*, const WithStr*> u) {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& x = __case_0.n;
         if ((x.has_value())) {
-            std::cout << ::tpy::print_optional_val(x) << "\n";
+            std::cout << ::tpy::print_optional_val(x) << "\n" << ::tpy::check_signals;
         }
         break;
     }
@@ -29,14 +29,14 @@ void show(::tpy::Union<const Other*, const WithScalar*, const WithStr*> u) {
         auto& __case_1 = *std::get<2>(__match_subject_1);
         auto& t = __case_1.s;
         if ((t.has_value())) {
-            std::cout << (::tpy::str_concat("s=", (*t))) << "\n";
+            std::cout << (::tpy::str_concat("s=", (*t))) << "\n" << ::tpy::check_signals;
         }
         break;
     }
     case 0: {
         auto& __case_2 = *std::get<0>(__match_subject_1);
         auto v = __case_2.v;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         break;
     }
     }

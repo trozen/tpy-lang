@@ -14,7 +14,7 @@ namespace tpyapp::main {
 //     # The container rvalue is the argument, with no local in between.
 //     print(len(empty_set()))
 void f() {
-    std::cout << ::tpy::__len__(::tpyapp::main::empty_set()) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::empty_set()) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

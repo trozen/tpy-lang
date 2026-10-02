@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //     print(s)
 void main() {
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    std::cout << ::tpy::SetPrinter(s) << "\n";
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     s.insert(42);
-    std::cout << ::tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -91,18 +91,18 @@ void append_wrapper(std::vector<int32_t>& items, int32_t v) {
 //     print(sum_list(nums))
 void main() {
     Point p = Point(1, 2);
-    std::cout << ::tpyapp::main::read_point(p) << "\n";
+    std::cout << ::tpyapp::main::read_point(p) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::mutate_point(p);
-    std::cout << p.x << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
     std::vector<Point> pts = {Point(10, 20), Point(30, 40)};
     Point* ptr = ::tpyapp::main::get_elem_ptr(pts, 0);
-    std::cout << ::tpy::deref_check(ptr).x << "\n";
+    std::cout << ::tpy::deref_check(ptr).x << "\n" << ::tpy::check_signals;
     std::vector<int32_t> nums = {10, 20};
-    std::cout << ::tpyapp::main::sum_list(nums) << "\n";
+    std::cout << ::tpyapp::main::sum_list(nums) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::append_item(nums, 30);
-    std::cout << ::tpyapp::main::sum_list(nums) << "\n";
+    std::cout << ::tpyapp::main::sum_list(nums) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::append_wrapper(nums, 40);
-    std::cout << ::tpyapp::main::sum_list(nums) << "\n";
+    std::cout << ::tpyapp::main::sum_list(nums) << "\n" << ::tpy::check_signals;
 }
 
 // main()

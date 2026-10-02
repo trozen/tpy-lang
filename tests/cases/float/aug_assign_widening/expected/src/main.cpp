@@ -67,11 +67,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::print_float(::tpyapp::main::float_seed()) << "\n";
-    std::cout << ::tpy::print_float(::tpyapp::main::float_seed_add()) << "\n";
-    std::cout << ::tpy::print_float(::tpyapp::main::chain()) << "\n";
-    std::cout << ::tpy::print_float(::tpyapp::main::float_of_int_seed(::tpy::BigInt(14))) << "\n";
-    std::cout << ::tpy::print_float(static_cast<double>(::tpyapp::main::float32_stays())) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::float_seed()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpyapp::main::float_seed_add()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpyapp::main::chain()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpyapp::main::float_of_int_seed(::tpy::BigInt(14))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(static_cast<double>(::tpyapp::main::float32_stays())) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

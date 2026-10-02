@@ -35,15 +35,15 @@ int32_t pick(std::string_view v) {
 //     print(pick(n))   # Literal overload after join
 void main() {
     std::string_view m = "r";
-    std::cout << ::tpyapp::main::pick__lit_r__w(m) << "\n";
+    std::cout << ::tpyapp::main::pick__lit_r__w(m) << "\n" << ::tpy::check_signals;
     m = "w";
-    std::cout << ::tpyapp::main::pick__lit_r__w(m) << "\n";
+    std::cout << ::tpyapp::main::pick__lit_r__w(m) << "\n" << ::tpy::check_signals;
     bool cond = true;
     std::string_view n = "r";
     if (cond) {
         n = "w";
     }
-    std::cout << ::tpyapp::main::pick__lit_r__w(n) << "\n";
+    std::cout << ::tpyapp::main::pick__lit_r__w(n) << "\n" << ::tpy::check_signals;
 }
 
 // main()

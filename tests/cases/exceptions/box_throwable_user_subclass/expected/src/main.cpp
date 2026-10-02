@@ -25,9 +25,9 @@ void main() {
                 try {
                     stored.__deref__().__raise__();
                 } catch (const ParseError& pe) {
-                    std::cout << "caught as ParseError:" << " " << pe.message << " " << pe.line << "\n";
+                    std::cout << "caught as ParseError:" << " " << pe.message << " " << pe.line << "\n" << ::tpy::check_signals;
                 } catch (const ::tpy::BaseException&) {
-                    std::cout << "caught as BaseException -- slicing!" << "\n";
+                    std::cout << "caught as BaseException -- slicing!" << "\n" << ::tpy::check_signals;
                 }
             }
         }

@@ -112,21 +112,21 @@ void main() {
     Wrapper w1 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
     Dog __tmp_2 = Dog("Rex");
     Wrapper w2 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
-    std::cout << ::tpyapp::main::describe(w1) << "\n";
-    std::cout << ::tpyapp::main::describe(w2) << "\n";
-    std::cout << ::tpyapp::main::get_name(w1) << "\n";
-    std::cout << ::tpyapp::main::get_name(w2) << "\n";
-    std::cout << ::tpyapp::main::is_cat(w1) << "\n";
-    std::cout << ::tpyapp::main::is_cat(w2) << "\n";
+    std::cout << ::tpyapp::main::describe(w1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(w2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::get_name(w1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::get_name(w2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::is_cat(w1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::is_cat(w2) << "\n" << ::tpy::check_signals;
     ::tpy::Union<int32_t, std::string> __tmp_3 = "hello";
     Tagged t1 = Tagged("s", __tmp_3);
     ::tpy::Union<int32_t, std::string> __tmp_4 = 42;
     Tagged t2 = Tagged("n", __tmp_4);
     ::tpy::Union<int32_t, std::string> __tmp_5 = "other";
     Tagged t3 = Tagged("x", __tmp_5);
-    std::cout << ::tpyapp::main::show_tagged(t1) << "\n";
-    std::cout << ::tpyapp::main::show_tagged(t2) << "\n";
-    std::cout << ::tpyapp::main::show_tagged(t3) << "\n";
+    std::cout << ::tpyapp::main::show_tagged(t1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::show_tagged(t2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::show_tagged(t3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

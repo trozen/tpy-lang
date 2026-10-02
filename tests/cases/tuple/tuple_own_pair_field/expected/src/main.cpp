@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(p.points[1])
 void main() {
     Pair p = Pair();
-    std::cout << std::get<0>(p.points) << "\n";
-    std::cout << std::get<1>(p.points) << "\n";
+    std::cout << std::get<0>(p.points) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(p.points) << "\n" << ::tpy::check_signals;
 }
 
 // main()

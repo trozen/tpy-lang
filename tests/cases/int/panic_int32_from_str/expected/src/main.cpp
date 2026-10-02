@@ -14,7 +14,7 @@ void __tpy_init() {
     initialized = true;
 
     x = ::tpy::from_str_check<int32_t>("abc");
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

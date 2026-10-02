@@ -137,9 +137,9 @@ inline Holder::Holder() : val(std::nullopt) {}
 //         print("(empty)")
 inline void Holder::emit() const {
     if ((this->val.has_value())) {
-        std::cout << (*this->val).__deref__().speak() << "\n";
+        std::cout << (*this->val).__deref__().speak() << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "(empty)" << "\n";
+        std::cout << "(empty)" << "\n" << ::tpy::check_signals;
     }
 }
 void __tpy_init();

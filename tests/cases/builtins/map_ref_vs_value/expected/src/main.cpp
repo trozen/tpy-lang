@@ -57,8 +57,8 @@ void main() {
             p.x = (::tpy::add_check<int32_t>(p.x, 100));
         }
     }
-    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(pts, 1).x << "\n" << ::tpy::check_signals;
     {
         auto __src_2 = ::tpy::builtin_map<Point>(make_new, pts);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -69,8 +69,8 @@ void main() {
             p.x = 999;
         }
     }
-    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(pts, 1).x << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> vals = {10, 20};
     {
         auto __src_4 = ::tpy::builtin_map_n<::tpy::val_or_ref<Point>>(set_x, pts, vals);
@@ -81,8 +81,8 @@ void main() {
             const auto& p = ::tpy::unwrap_ref(*__r_5);
         }
     }
-    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(pts, 1).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

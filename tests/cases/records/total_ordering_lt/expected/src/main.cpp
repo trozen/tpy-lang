@@ -35,13 +35,13 @@ void __tpy_init() {
     b = &__global_slot_2;
     static Score __global_slot_3 = Score(3);
     c = &__global_slot_3;
-    std::cout << ::tpy::print_bool((((*a)) < ((*b)))) << "\n";
-    std::cout << ::tpy::print_bool((((*a)) <= ((*b)))) << "\n";
-    std::cout << ::tpy::print_bool((((*a)) > ((*b)))) << "\n";
-    std::cout << ::tpy::print_bool((((*a)) >= ((*b)))) << "\n";
-    std::cout << ::tpy::print_bool((((*a)) == ((*c)))) << "\n";
-    std::cout << ::tpy::print_bool((((*a)) <= ((*c)))) << "\n";
-    std::cout << ::tpy::print_bool((((*a)) >= ((*c)))) << "\n";
+    std::cout << ::tpy::print_bool((((*a)) < ((*b)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*a)) <= ((*b)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*a)) > ((*b)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*a)) >= ((*b)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*a)) == ((*c)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*a)) <= ((*c)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*a)) >= ((*c)))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

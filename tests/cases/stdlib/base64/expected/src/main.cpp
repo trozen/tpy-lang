@@ -106,83 +106,83 @@ namespace tpyapp::main {
 //     except ValueError:
 //         print("b16 char raised")
 void main() {
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("Man", 3))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TWFu", 4))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("Ma", 2))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TWE=", 4))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("M", 1))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TQ==", 4))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::BytesView{})) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::BytesView{})) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("hello world", 11))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("aGVsbG8gd29ybGQ=", 16))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64encode(::tpy::bytes_literal("Man", 3))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64decode(::tpy::bytes_literal("TWFu", 4))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("Man", 3))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TWFu", 4))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("Ma", 2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TWE=", 4))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("M", 1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TQ==", 4))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::BytesView{})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::BytesView{})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("hello world", 11))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("aGVsbG8gd29ybGQ=", 16))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64encode(::tpy::bytes_literal("Man", 3))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64decode(::tpy::bytes_literal("TWFu", 4))) << "\n" << ::tpy::check_signals;
     ::tpy::BytesView raw = ::tpy::bytes_literal("\xfb\xff", 2);
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(raw)) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64encode(raw)) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64decode(::tpy::bytes_literal("-_8=", 4))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("+/8=", 4))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(::tpy::BytesView{})) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(::tpy::bytes_literal("\000", 1))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(::tpy::bytes_literal("Hi!", 3))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode(::tpy::bytes_literal("486921", 6))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::BytesView{})) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("f", 1))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("fo", 2))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("foo", 3))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("foob", 4))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("fooba", 5))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("foobar", 6))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MY======", 8))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXQ====", 8))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW6===", 8))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW6YQ=", 8))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW6YTB", 8))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW6YTBOI======", 16))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(raw, ::tpy::bytes_literal_owned("-_", 2))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("-_8=", 4), ::tpy::bytes_literal_owned("-_", 2))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TWFu\n", 5))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("T W F u", 7))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TWFu", 4), std::nullopt, true)) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("mzxw6ytb", 8), true)) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW0YTB", 8), false, ::tpy::bytes_literal_owned("I", 1))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW1YTB", 8), false, ::tpy::bytes_literal_owned("L", 1))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(raw)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64encode(raw)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64decode(::tpy::bytes_literal("-_8=", 4))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("+/8=", 4))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(::tpy::BytesView{})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(::tpy::bytes_literal("\000", 1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(::tpy::bytes_literal("Hi!", 3))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode(::tpy::bytes_literal("486921", 6))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::BytesView{})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("f", 1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("fo", 2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("foo", 3))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("foob", 4))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("fooba", 5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("foobar", 6))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MY======", 8))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXQ====", 8))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW6===", 8))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW6YQ=", 8))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW6YTB", 8))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW6YTBOI======", 16))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(raw, ::tpy::bytes_literal_owned("-_", 2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("-_8=", 4), ::tpy::bytes_literal_owned("-_", 2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TWFu\n", 5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("T W F u", 7))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TWFu", 4), std::nullopt, true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("mzxw6ytb", 8), true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW0YTB", 8), false, ::tpy::bytes_literal_owned("I", 1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW1YTB", 8), false, ::tpy::bytes_literal_owned("L", 1))) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("Man", 3));
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(ba)) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes(::tpy::BytesView{})) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes(::tpy::bytes_literal("hello", 5))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes((::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 76)))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes((::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 77)))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::decodebytes(::tpy::bytes_literal("YWFh\n", 5))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::decodebytes(::tpy::bytes_literal("aGVsbG8=\n", 9))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64encode(::tpy::ByteArray(::tpy::bytes_literal("\xfb\xff", 2)))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(std::string_view("TWFu"))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64decode(std::string_view("TWFu"))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64decode(std::string_view("-_8="))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(std::string_view("MZXW6YTB"))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(std::string_view("mzxw6ytb"), true)) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode(std::string_view("486921"))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode(std::string_view("48af"), true)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(ba)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes(::tpy::BytesView{})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes(::tpy::bytes_literal("hello", 5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes((::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 76)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes((::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 77)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::decodebytes(::tpy::bytes_literal("YWFh\n", 5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::decodebytes(::tpy::bytes_literal("aGVsbG8=\n", 9))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64encode(::tpy::ByteArray(::tpy::bytes_literal("\xfb\xff", 2)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(std::string_view("TWFu"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64decode(std::string_view("TWFu"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64decode(std::string_view("-_8="))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(std::string_view("MZXW6YTB"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(std::string_view("mzxw6ytb"), true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode(std::string_view("486921"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode(std::string_view("48af"), true)) << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpystd::base64::b64decode(::tpy::bytes_literal("????", 4), std::nullopt, true);
         } catch (const ::tpy::ValueError&) {
-            std::cout << "b64 validate raised" << "\n";
+            std::cout << "b64 validate raised" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::base64::b32decode(::tpy::bytes_literal("MZXQ===", 7));
         } catch (const ::tpy::ValueError&) {
-            std::cout << "b32 length raised" << "\n";
+            std::cout << "b32 length raised" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::base64::b16decode(::tpy::bytes_literal("4G", 2));
         } catch (const ::tpy::ValueError&) {
-            std::cout << "b16 char raised" << "\n";
+            std::cout << "b16 char raised" << "\n" << ::tpy::check_signals;
         }
     }
 }

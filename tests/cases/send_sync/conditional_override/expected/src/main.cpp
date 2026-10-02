@@ -14,7 +14,7 @@ namespace tpyapp::main {
 //     assert_send[SendCell[int32]]()
 //     print("ok")
 void main() {
-    std::cout << "ok" << "\n";
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // main()

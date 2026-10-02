@@ -18,9 +18,9 @@ void over_params(const Box& p1, const Box& p2) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& b = *__beg_0;
         b.bump();
-        std::cout << "param_loop" << " " << b.n << "\n";
+        std::cout << "param_loop" << " " << b.n << "\n" << ::tpy::check_signals;
     }
-    std::cout << "param_source" << " " << p1.n << " " << p2.n << "\n";
+    std::cout << "param_source" << " " << p1.n << " " << p2.n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -41,9 +41,9 @@ void main() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& b = *__beg_0;
         b.bump();
-        std::cout << "loop" << " " << b.n << "\n";
+        std::cout << "loop" << " " << b.n << "\n" << ::tpy::check_signals;
     }
-    std::cout << "source" << " " << b1.n << " " << b2.n << "\n";
+    std::cout << "source" << " " << b1.n << " " << b2.n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::over_params(b1, b2);
 }
 

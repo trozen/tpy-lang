@@ -72,13 +72,13 @@ void apply(const std::tuple<T*, T*>& p) {
 void main() {
     T first = T(1);
     T second = T(2);
-    std::cout << ::tpyapp::main::read_first(std::tuple<T*, T*>{&(first), &(second)}) << "\n";
+    std::cout << ::tpyapp::main::read_first(std::tuple<T*, T*>{&(first), &(second)}) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::apply(std::tuple<T*, T*>{&(first), &(second)});
-    std::cout << first.x << "\n";
-    std::cout << second.x << "\n";
+    std::cout << first.x << "\n" << ::tpy::check_signals;
+    std::cout << second.x << "\n" << ::tpy::check_signals;
     ::tpyapp::main::apply(std::tuple<T*, T*>{&(first), nullptr});
-    std::cout << first.x << "\n";
-    std::cout << ::tpyapp::main::read_first(std::tuple<T*, T*>{nullptr, &(second)}) << "\n";
+    std::cout << first.x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_first(std::tuple<T*, T*>{nullptr, &(second)}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

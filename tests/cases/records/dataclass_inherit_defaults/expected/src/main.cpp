@@ -19,14 +19,14 @@ namespace tpyapp::main {
 //     print(p1 == p2)
 void main() {
     Point3D p1 = Point3D(1, 2);
-    std::cout << p1.x << "\n";
-    std::cout << p1.y << "\n";
-    std::cout << p1.z << "\n";
-    std::cout << p1 << "\n";
+    std::cout << p1.x << "\n" << ::tpy::check_signals;
+    std::cout << p1.y << "\n" << ::tpy::check_signals;
+    std::cout << p1.z << "\n" << ::tpy::check_signals;
+    std::cout << p1 << "\n" << ::tpy::check_signals;
     Point3D p2 = Point3D(1, 2, 99);
-    std::cout << p2.z << "\n";
-    std::cout << ::tpy::print_bool(((p1) == (Point3D(1, 2, 0)))) << "\n";
-    std::cout << ::tpy::print_bool(((p1) == (p2))) << "\n";
+    std::cout << p2.z << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((p1) == (Point3D(1, 2, 0)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((p1) == (p2))) << "\n" << ::tpy::check_signals;
 }
 
 // # @dataclass inheritance with defaults on child fields

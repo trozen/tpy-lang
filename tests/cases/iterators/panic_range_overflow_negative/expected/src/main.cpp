@@ -14,7 +14,7 @@ void __tpy_init() {
 
     ::tpy::range_check_overflow<int32_t>(-2147483647, -2147483648, -2);
     for (int32_t i = -2147483647; i > -2147483648; i += -2) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
 }
 

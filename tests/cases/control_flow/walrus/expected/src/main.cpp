@@ -23,7 +23,7 @@ void test_if_condition() {
     std::array<int32_t, 5> items = {1, 2, 3, 4, 5};
     int32_t n;
     if (((n = ::tpy::__len__(items)) > 3)) {
-        std::cout << n << "\n";
+        std::cout << n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -39,13 +39,13 @@ void test_optional_narrowing() {
     std::optional<int32_t> val;
     if (((val = ::tpyapp::main::get_opt(3)).has_value())) {
         int32_t result = (::tpy::add_check<int32_t>((*val), 5));
-        std::cout << result << "\n";
+        std::cout << result << "\n" << ::tpy::check_signals;
     }
     std::optional<int32_t> val2;
     if (((val2 = ::tpyapp::main::get_opt(-1)).has_value())) {
-        std::cout << "unreachable" << "\n";
+        std::cout << "unreachable" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "none" << "\n";
+        std::cout << "none" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -58,7 +58,7 @@ void test_and_chain() {
     int32_t y;
     int32_t z;
     if ((((y = (::tpy::mul_check<int32_t>(x, 2))) > 15) && ((z = (::tpy::add_check<int32_t>(y, 1))) > 20))) {
-        std::cout << y << " " << z << "\n";
+        std::cout << y << " " << z << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -73,7 +73,7 @@ void test_while_loop() {
     int32_t i = 0;
     int32_t v;
     while (((v = ::tpy::__getitem__(values, i)) != 0)) {
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
@@ -84,7 +84,7 @@ void test_while_loop() {
 void test_expression_position() {
     int32_t x;
     int32_t y = ::tpy::add_check<int32_t>((x = 5), 1);
-    std::cout << x << " " << y << "\n";
+    std::cout << x << " " << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_multiple_walrus() -> None:
@@ -94,7 +94,7 @@ void test_multiple_walrus() {
     int32_t p;
     int32_t q;
     int32_t a = ::tpy::add_check<int32_t>((p = 3), (q = 7));
-    std::cout << p << " " << q << " " << a << "\n";
+    std::cout << p << " " << q << " " << a << "\n" << ::tpy::check_signals;
 }
 
 // def test_reuse_walrus_target() -> None:
@@ -106,10 +106,10 @@ void test_multiple_walrus() {
 void test_reuse_walrus_target() {
     std::optional<int32_t> val;
     if (((val = ::tpyapp::main::get_opt(3)).has_value())) {
-        std::cout << ::tpy::print_optional_val(val) << "\n";
+        std::cout << ::tpy::print_optional_val(val) << "\n" << ::tpy::check_signals;
     }
     if (((val = ::tpyapp::main::get_opt(5)).has_value())) {
-        std::cout << ::tpy::print_optional_val(val) << "\n";
+        std::cout << ::tpy::print_optional_val(val) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -124,9 +124,9 @@ void test_walrus_in_branch() {
     if ((x > 5)) {
         int32_t n;
         int32_t y = (::tpy::mul_check<int32_t>((n = (::tpy::add_check<int32_t>(x, 1))), 2));
-        std::cout << n << " " << y << "\n";
+        std::cout << n << " " << y << "\n" << ::tpy::check_signals;
     }
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // def double(x: int32) -> int32:
@@ -146,13 +146,13 @@ int32_t double_(int32_t x) {
 void test_walrus_elif() {
     int32_t x = 5;
     if ((x > 10)) {
-        std::cout << "big" << "\n";
+        std::cout << "big" << "\n" << ::tpy::check_signals;
     } else {
         std::optional<int32_t> v;
         if (((v = ::tpyapp::main::get_opt(x)).has_value())) {
-            std::cout << ::tpy::print_optional_val(v) << "\n";
+            std::cout << ::tpy::print_optional_val(v) << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << "none" << "\n";
+            std::cout << "none" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -180,8 +180,8 @@ void test_comprehension_walrus() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(filtered) << "\n";
-    std::cout << y << "\n";
+    std::cout << ::tpy::ListPrinter(filtered) << "\n" << ::tpy::check_signals;
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -17,7 +17,7 @@ void main() {
         int32_t i = int32_t(__i_1);
         return Point(i);
     });
-    std::cout << (::tpy::add_check<int32_t>(::tpy::__len__(nums), ::tpy::__len__(pts))) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(::tpy::__len__(nums), ::tpy::__len__(pts))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

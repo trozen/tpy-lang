@@ -21,12 +21,12 @@ void main() {
     c.add(30);
     c.add(10);
     c.add(20);
-    std::cout << ::tpy::print_bool(c.is_sorted()) << "\n";
+    std::cout << ::tpy::print_bool(c.is_sorted()) << "\n" << ::tpy::check_signals;
     Container<int32_t> c2 = Container<int32_t>();
     c2.add(1);
     c2.add(2);
     c2.add(3);
-    std::cout << ::tpy::print_bool(c2.is_sorted()) << "\n";
+    std::cout << ::tpy::print_bool(c2.is_sorted()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

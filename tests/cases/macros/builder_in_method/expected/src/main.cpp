@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     return 0
 int32_t main() {
     Holder h = Holder();
-    std::cout << h.make() << "\n";
+    std::cout << h.make() << "\n" << ::tpy::check_signals;
     return 0;
 }
 

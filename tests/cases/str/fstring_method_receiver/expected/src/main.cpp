@@ -39,17 +39,17 @@ namespace tpyapp::main {
 void main() {
     int32_t n = 42;
     ::tpy::Bytes body = ::tpy::bytes_from_str(std::format("<p>epoch: {}</p>", n));
-    std::cout << ::tpy::__len__(body) << "\n";
-    std::cout << ::tpy::str_upper(std::format("a-{}-b", n)) << "\n";
-    std::cout << ::tpy::__len__(::tpy::str_split(std::format("a-{}-b", n), "-")) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::str_startswith(std::format("key={}", n), "key")) << "\n";
-    std::cout << ::tpyapp::main::take(::tpyapp::main::render(::tpy::BigInt(n))) << "\n";
+    std::cout << ::tpy::__len__(body) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_upper(std::format("a-{}-b", n)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(::tpy::str_split(std::format("a-{}-b", n), "-")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::str_startswith(std::format("key={}", n), "key")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take(::tpyapp::main::render(::tpy::BigInt(n))) << "\n" << ::tpy::check_signals;
     Page p = Page();
     p.body = ::tpy::bytes_from_str(std::format("<h1>{}</h1>", n));
-    std::cout << p.size() << "\n";
+    std::cout << p.size() << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Bytes> parts = {::tpy::bytes_from_str(std::format("<i>{}</i>", n))};
     parts.push_back(::tpy::bytes_from_str(std::format("<b>{}</b>", n)));
-    std::cout << ::tpy::__len__(parts) << " " << ::tpy::__len__(::tpy::__getitem__(parts, 0)) << "\n";
+    std::cout << ::tpy::__len__(parts) << " " << ::tpy::__len__(::tpy::__getitem__(parts, 0)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -21,7 +21,7 @@ void foo(bool cond) {
     } else {
         p = &*(__slot_2 = Point(3, 4));
     }
-    std::cout << p->x << " " << p->y << "\n";
+    std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
 }
 
 // # Global `p` — must get its own __global_slot, not reuse stale __slot from foo/pick
@@ -36,7 +36,7 @@ void __tpy_init() {
 
     static Point __global_slot_1 = Point(10, 20);
     p = &__global_slot_1;
-    std::cout << p->x << " " << p->y << "\n";
+    std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
     ::tpyapp::main::foo(true);
     Picker(99).pick(true);
 }

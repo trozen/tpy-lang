@@ -22,8 +22,8 @@ Point bump_copy(Point& p) {
 //     print(bump_copy(p).x, p.x)
 void main() {
     Point p = Point(1);
-    std::cout << ::tpyapp::main::bump(p).x << " " << p.x << "\n";
-    std::cout << ::tpyapp::main::bump_copy(p).x << " " << p.x << "\n";
+    std::cout << ::tpyapp::main::bump(p).x << " " << p.x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::bump_copy(p).x << " " << p.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

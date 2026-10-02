@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(hexcodec.offset_sum())            # needs the top-level-built list
 //     print(u.scaled(3))                       # aliased submodule global
 void main() {
-    std::cout << ::tpy::bytes_decode(::tpyapp::geo::hexcodec::hex_byte(58)) << "\n";
-    std::cout << ::tpyapp::geo::hexcodec::offset_sum() << "\n";
-    std::cout << ::tpyapp::geo::units::scaled(3) << "\n";
+    std::cout << ::tpy::bytes_decode(::tpyapp::geo::hexcodec::hex_byte(58)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::geo::hexcodec::offset_sum() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::geo::units::scaled(3) << "\n" << ::tpy::check_signals;
 }
 
 // # `from pkg import submod` must run the submodule's __tpy_init so its module-global

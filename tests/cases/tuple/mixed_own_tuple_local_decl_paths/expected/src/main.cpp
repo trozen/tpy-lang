@@ -111,11 +111,11 @@ int32_t walrus(Box& b) {
 void main() {
     Box b = Box(7);
     Box c = Box(8);
-    std::cout << "rebind:" << " " << ::tpyapp::main::rebind(b, c) << " " << b.val << " " << c.val << "\n";
-    std::cout << "branch:" << " " << ::tpyapp::main::branch_hoisted(b, c, true) << " " << b.val << " " << c.val << "\n";
-    std::cout << "loop:" << " " << ::tpyapp::main::loop_carried(b, c) << " " << b.val << " " << c.val << "\n";
-    std::cout << "try:" << " " << ::tpyapp::main::try_hoisted(b) << " " << b.val << "\n";
-    std::cout << "walrus:" << " " << ::tpyapp::main::walrus(b) << " " << b.val << "\n";
+    std::cout << "rebind:" << " " << ::tpyapp::main::rebind(b, c) << " " << b.val << " " << c.val << "\n" << ::tpy::check_signals;
+    std::cout << "branch:" << " " << ::tpyapp::main::branch_hoisted(b, c, true) << " " << b.val << " " << c.val << "\n" << ::tpy::check_signals;
+    std::cout << "loop:" << " " << ::tpyapp::main::loop_carried(b, c) << " " << b.val << " " << c.val << "\n" << ::tpy::check_signals;
+    std::cout << "try:" << " " << ::tpyapp::main::try_hoisted(b) << " " << b.val << "\n" << ::tpy::check_signals;
+    std::cout << "walrus:" << " " << ::tpyapp::main::walrus(b) << " " << b.val << "\n" << ::tpy::check_signals;
 }
 
 // main()

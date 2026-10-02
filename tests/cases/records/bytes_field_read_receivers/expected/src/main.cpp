@@ -46,13 +46,13 @@ void sec_free() {
     ::tpy::Bytes dv = ::tpy::__getitem__(d, "k").tag;
     ::tpy::Bytes hp = o.mid.inner.tag;
     std::string nm = o.inner.name;
-    std::cout << "free" << " " << ::tpy::BytesPrinter(tg) << " " << ::tpy::BytesPrinter(el) << " " << ::tpy::BytesPrinter(dv) << " " << ::tpy::BytesPrinter(hp) << " " << nm << "\n";
-    std::cout << "free sinks" << " " << ::tpy::print_bool((o.inner.tag == ::tpy::bytes_literal("t1", 2))) << " " << ::tpyapp::main::take(::tpy::__getitem__(rows, 0).tag) << "\n";
+    std::cout << "free" << " " << ::tpy::BytesPrinter(tg) << " " << ::tpy::BytesPrinter(el) << " " << ::tpy::BytesPrinter(dv) << " " << ::tpy::BytesPrinter(hp) << " " << nm << "\n" << ::tpy::check_signals;
+    std::cout << "free sinks" << " " << ::tpy::print_bool((o.inner.tag == ::tpy::bytes_literal("t1", 2))) << " " << ::tpyapp::main::take(::tpy::__getitem__(rows, 0).tag) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Bytes> acc = std::vector<::tpy::Bytes>{};
     acc.push_back(o.inner.tag);
     ::tpy::list_insert(acc, 0, ::tpy::__getitem__(rows, 0).tag);
     o.inner.tag = ::tpy::bytes_literal_owned("Z1", 2);
-    std::cout << "free copy" << " " << ::tpy::BytesPrinter(o.inner.tag) << " " << ::tpy::BytesPrinter(tg) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(acc, 0)) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(acc, 1)) << "\n";
+    std::cout << "free copy" << " " << ::tpy::BytesPrinter(o.inner.tag) << " " << ::tpy::BytesPrinter(tg) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(acc, 0)) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(acc, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // # the CHAIN's own mutate-after: writing the leaf through the same three hops
@@ -70,7 +70,7 @@ void sec_chain_write() {
     std::string nm = o.mid.inner.name;
     o.mid.inner.tag = ::tpy::bytes_literal_owned("Z2", 2);
     o.mid.inner.name = "n3";
-    std::cout << "chain write" << " " << ::tpy::BytesPrinter(hp) << " " << nm << " " << ::tpy::BytesPrinter(o.mid.inner.tag) << " " << o.mid.inner.name << "\n";
+    std::cout << "chain write" << " " << ::tpy::BytesPrinter(hp) << " " << nm << " " << ::tpy::BytesPrinter(o.mid.inner.tag) << " " << o.mid.inner.name << "\n" << ::tpy::check_signals;
 }
 
 // def zap(i: Inner) -> None:
@@ -127,14 +127,14 @@ void sec_callee(Inner& one, Outer& o, const Outer& o2, const Outer& o3) {
     ::tpy::Bytes v = one.tag;
     std::string s = one.name;
     ::tpyapp::main::zap(one);
-    std::cout << "callee root" << " " << ::tpy::BytesPrinter(v) << " " << s << " " << ::tpy::BytesPrinter(one.tag) << " " << one.name << "\n";
+    std::cout << "callee root" << " " << ::tpy::BytesPrinter(v) << " " << s << " " << ::tpy::BytesPrinter(one.tag) << " " << one.name << "\n" << ::tpy::check_signals;
     ::tpy::Bytes deep = o.inner.tag;
     ::tpyapp::main::zap_deep(o);
-    std::cout << "callee deep" << " " << ::tpy::BytesPrinter(deep) << " " << ::tpy::BytesPrinter(o.inner.tag) << "\n";
+    std::cout << "callee deep" << " " << ::tpy::BytesPrinter(deep) << " " << ::tpy::BytesPrinter(o.inner.tag) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes ro = o2.inner.tag;
-    std::cout << "callee readonly" << " " << ::tpyapp::main::peek_ro(o2) << " " << ::tpy::BytesPrinter(ro) << "\n";
+    std::cout << "callee readonly" << " " << ::tpyapp::main::peek_ro(o2) << " " << ::tpy::BytesPrinter(ro) << "\n" << ::tpy::check_signals;
     std::string pv = o3.inner.name;
-    std::cout << "callee plain" << " " << ::tpyapp::main::peek(o3) << " " << pv << "\n";
+    std::cout << "callee plain" << " " << ::tpyapp::main::peek(o3) << " " << pv << "\n" << ::tpy::check_signals;
 }
 
 // # the shallowest read there is -- one hop off a parameter. The `str` read has
@@ -150,7 +150,7 @@ void sec_one_hop(Inner& i) {
     std::string_view s = i.name;
     ::tpy::Bytes t = i.tag;
     i.tag = ::tpy::bytes_literal_owned("Z7", 2);
-    std::cout << "one hop" << " " << s << " " << ::tpy::BytesPrinter(t) << " " << ::tpy::BytesPrinter(i.tag) << " " << ::tpyapp::main::peek_ro_one(i) << "\n";
+    std::cout << "one hop" << " " << s << " " << ::tpy::BytesPrinter(t) << " " << ::tpy::BytesPrinter(i.tag) << " " << ::tpyapp::main::peek_ro_one(i) << "\n" << ::tpy::check_signals;
 }
 
 // def zapg() -> None:
@@ -171,7 +171,7 @@ void zapg() {
 void sec_global() {
     ::tpy::Bytes v = GLOB->tag;
     ::tpyapp::main::zapg();
-    std::cout << "global" << " " << ::tpy::BytesPrinter(v) << " " << ::tpy::BytesPrinter(GLOB->tag) << "\n";
+    std::cout << "global" << " " << ::tpy::BytesPrinter(v) << " " << ::tpy::BytesPrinter(GLOB->tag) << "\n" << ::tpy::check_signals;
 }
 
 // # an ALIAS bind alongside a deep field read: the read owns its copy for its
@@ -189,7 +189,7 @@ void sec_alias(Outer& o) {
     Mid& m = o.mid;
     m.inner.tag = ::tpy::bytes_literal_owned("Z4", 2);
     m.inner.name = "n5";
-    std::cout << "alias" << " " << ::tpy::BytesPrinter(v) << " " << s << " " << ::tpy::BytesPrinter(o.mid.inner.tag) << " " << o.mid.inner.name << "\n";
+    std::cout << "alias" << " " << ::tpy::BytesPrinter(v) << " " << s << " " << ::tpy::BytesPrinter(o.mid.inner.tag) << " " << o.mid.inner.name << "\n" << ::tpy::check_signals;
 }
 
 // # the deep read spelled THROUGH the alias, the write through the original:
@@ -203,7 +203,7 @@ void sec_alias_rev(Outer& o) {
     Mid& m = o.mid;
     ::tpy::Bytes v = m.inner.tag;
     o.mid.inner.tag = ::tpy::bytes_literal_owned("Z5", 2);
-    std::cout << "alias rev" << " " << ::tpy::BytesPrinter(v) << " " << ::tpy::BytesPrinter(o.mid.inner.tag) << "\n";
+    std::cout << "alias rev" << " " << ::tpy::BytesPrinter(v) << " " << ::tpy::BytesPrinter(o.mid.inner.tag) << "\n" << ::tpy::check_signals;
 }
 
 // # the one-hop `str` read with a second name bound to the record and the write
@@ -218,7 +218,7 @@ void sec_onehop_alias(Inner& i) {
     std::string v = i.name;
     Inner& m = i;
     m.name = "n7";
-    std::cout << "one hop alias" << " " << v << " " << i.name << "\n";
+    std::cout << "one hop alias" << " " << v << " " << i.name << "\n" << ::tpy::check_signals;
 }
 
 // # the same buffer reached the other way round: the read is registered under the
@@ -232,7 +232,7 @@ void sec_onehop_alias_rev(Inner& i) {
     Inner& m = i;
     std::string v = m.name;
     i.name = "n8";
-    std::cout << "one hop alias rev" << " " << v << " " << i.name << "\n";
+    std::cout << "one hop alias rev" << " " << v << " " << i.name << "\n" << ::tpy::check_signals;
 }
 
 // # a mutating METHOD replaces the field's buffer, so the view is demoted and
@@ -244,7 +244,7 @@ void sec_onehop_alias_rev(Inner& i) {
 void sec_onehop_method(Inner& i) {
     std::string v = i.name;
     i.rename();
-    std::cout << "one hop method" << " " << v << " " << i.name << "\n";
+    std::cout << "one hop method" << " " << v << " " << i.name << "\n" << ::tpy::check_signals;
 }
 
 // # a property hop mints a temporary the dotted path does not own, so the deep
@@ -254,7 +254,7 @@ void sec_onehop_method(Inner& i) {
 //     print("hidden", v)
 void sec_hidden_call(const Hidden& h) {
     ::tpy::Bytes v = h.inner().tag;
-    std::cout << "hidden" << " " << ::tpy::BytesPrinter(v) << "\n";
+    std::cout << "hidden" << " " << ::tpy::BytesPrinter(v) << "\n" << ::tpy::check_signals;
 }
 
 // # a `readonly` ROOT does not buy a view back: the read is two hops, and depth
@@ -266,7 +266,7 @@ void sec_hidden_call(const Hidden& h) {
 void sec_readonly_root(const Outer& o) {
     ::tpy::Bytes v = o.inner.tag;
     std::string s = o.inner.name;
-    std::cout << "readonly root" << " " << ::tpy::BytesPrinter(v) << " " << s << "\n";
+    std::cout << "readonly root" << " " << ::tpy::BytesPrinter(v) << " " << s << "\n" << ::tpy::check_signals;
 }
 
 
@@ -313,33 +313,33 @@ void sec_blocks(const Outer& o) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << "with" << " " << ::tpy::BytesPrinter(tg) << "\n";
+    std::cout << "with" << " " << ::tpy::BytesPrinter(tg) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes ft;
     {
         try {
             ft = o.mid.inner.tag;
         } catch (...) {
-            std::cout << "try" << " " << ::tpy::BytesPrinter(ft) << "\n";
+            std::cout << "try" << " " << ::tpy::BytesPrinter(ft) << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "try" << " " << ::tpy::BytesPrinter(ft) << "\n";
+        std::cout << "try" << " " << ::tpy::BytesPrinter(ft) << "\n" << ::tpy::check_signals;
     }
     int32_t k = ::tpyapp::main::take(o.inner.tag);
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
     case 2: {
-        std::cout << "match" << " " << ::tpy::BytesPrinter(o.inner.tag) << "\n";
+        std::cout << "match" << " " << ::tpy::BytesPrinter(o.inner.tag) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
-        std::cout << "match other" << "\n";
+        std::cout << "match other" << "\n" << ::tpy::check_signals;
         break;
     }
     }
     auto inner_read = [&o]() -> int32_t {
         return ::tpyapp::main::take(o.inner.tag);
     };
-    std::cout << "closure" << " " << inner_read() << "\n";
+    std::cout << "closure" << " " << inner_read() << "\n" << ::tpy::check_signals;
 }
 
 // # comprehension: the chained read inside the element expression
@@ -359,7 +359,7 @@ void sec_comp(const std::vector<Outer>& rows) {
         }
         std::move(__result);
     });
-    std::cout << "comp" << " " << ::tpy::ListPrinter(lens) << "\n";
+    std::cout << "comp" << " " << ::tpy::ListPrinter(lens) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -411,7 +411,7 @@ void main() {
     Outer ro_src = ::tpyapp::main::mk();
     ::tpyapp::main::sec_readonly_root(ro_src);
     ::tpy::Bytes got = Runner(::tpyapp::main::mk()).run();
-    std::cout << "method ret" << " " << ::tpy::BytesPrinter(got) << "\n";
+    std::cout << "method ret" << " " << ::tpy::BytesPrinter(got) << "\n" << ::tpy::check_signals;
     (void)(Snap(::tpyapp::main::mk()));
     Outer o = ::tpyapp::main::mk();
     {
@@ -421,7 +421,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen yield" << " " << v << "\n";
+            std::cout << "gen yield" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     Outer __tmp_12 = ::tpyapp::main::mk();

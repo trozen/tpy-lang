@@ -107,7 +107,7 @@ __coro_roundtrip roundtrip() {
 // def main() -> None:
 //     print(asyncio.run(roundtrip()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::roundtrip())) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::roundtrip())) << "\n" << ::tpy::check_signals;
 }
 
 // # Both ends of a channel held in one coroutine across awaits: tx, rx must

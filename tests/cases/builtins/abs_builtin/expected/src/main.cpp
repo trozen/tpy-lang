@@ -35,18 +35,18 @@ void __tpy_init() {
     initialized = true;
 
     x = -42;
-    std::cout << ::std::abs(x) << "\n";
-    std::cout << ::std::abs(10) << "\n";
-    std::cout << ::std::abs(0) << "\n";
+    std::cout << ::std::abs(x) << "\n" << ::tpy::check_signals;
+    std::cout << ::std::abs(10) << "\n" << ::tpy::check_signals;
+    std::cout << ::std::abs(0) << "\n" << ::tpy::check_signals;
     y = -100;
-    std::cout << ::std::abs(y) << "\n";
-    std::cout << ::std::abs(99) << "\n";
+    std::cout << ::std::abs(y) << "\n" << ::tpy::check_signals;
+    std::cout << ::std::abs(99) << "\n" << ::tpy::check_signals;
     big = ::tpy::BigInt(-1000000);
-    std::cout << ::tpy::BigInt::abs(big) << "\n";
+    std::cout << ::tpy::BigInt::abs(big) << "\n" << ::tpy::check_signals;
     z = -(3.14);
-    std::cout << ::tpy::print_float(::std::fabs(z)) << "\n";
-    std::cout << ::tpy::print_float(::std::fabs(2.5)) << "\n";
-    std::cout << ::tpy::print_float(::std::fabs(-(0.0))) << "\n";
+    std::cout << ::tpy::print_float(::std::fabs(z)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::std::fabs(2.5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::std::fabs(-(0.0))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -13,10 +13,10 @@ namespace tpyapp::main {
 //     c = Child()
 //     print(c.LIMIT)
 void main() {
-    std::cout << Parent::LIMIT << "\n";
-    std::cout << Parent::LIMIT << "\n";
+    std::cout << Parent::LIMIT << "\n" << ::tpy::check_signals;
+    std::cout << Parent::LIMIT << "\n" << ::tpy::check_signals;
     Child c = Child();
-    std::cout << Parent::LIMIT << "\n";
+    std::cout << Parent::LIMIT << "\n" << ::tpy::check_signals;
 }
 
 // main()

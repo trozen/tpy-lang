@@ -22,7 +22,7 @@ void use(Snap& s) {
         seen = ::tpy::add_check<int32_t>(seen, 1);
         s._items.push_back(99);
     }
-    std::cout << "free_fn:" << " " << seen << " " << ::tpy::__len__(s._items) << "\n";
+    std::cout << "free_fn:" << " " << seen << " " << ::tpy::__len__(s._items) << "\n" << ::tpy::check_signals;
 }
 
 // # free function: the method twin, to show the two spellings agree
@@ -40,7 +40,7 @@ void use_method(Snap& s) {
         int32_t x = *__beg_0;
         seen = ::tpy::add_check<int32_t>(seen, 1);
     }
-    std::cout << "method:" << " " << seen << "\n";
+    std::cout << "method:" << " " << seen << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -52,10 +52,10 @@ void use_method(Snap& s) {
 void main() {
     Snap s = Snap();
     ::tpyapp::main::use(s);
-    std::cout << "owner:" << " " << ::tpy::__len__(s._items) << "\n";
+    std::cout << "owner:" << " " << ::tpy::__len__(s._items) << "\n" << ::tpy::check_signals;
     Snap __tmp_1 = Snap();
     ::tpyapp::main::use_method(__tmp_1);
-    std::cout << "in_method:" << " " << Snap().total() << "\n";
+    std::cout << "in_method:" << " " << Snap().total() << "\n" << ::tpy::check_signals;
 }
 
 // main()

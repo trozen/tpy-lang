@@ -39,10 +39,10 @@ void main() {
     a.append(10);
     a.append(20);
     a.append(30);
-    std::cout << std::string(::tpy::__str__(a)) << "\n";
+    std::cout << std::string(::tpy::__str__(a)) << "\n" << ::tpy::check_signals;
     std::span<int32_t> s = a.__span__();
-    std::cout << ::tpy::__len__(s) << "\n";
-    std::cout << ::tpyapp::main::sum_span(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_span(s) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

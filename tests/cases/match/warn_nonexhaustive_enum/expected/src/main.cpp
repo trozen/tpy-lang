@@ -71,8 +71,8 @@ std::string describe(Color c) {
 //     print(describe(Color.Red))
 //     print(describe(Color.Green))
 void main() {
-    std::cout << ::tpyapp::main::describe(Color::Red) << "\n";
-    std::cout << ::tpyapp::main::describe(Color::Green) << "\n";
+    std::cout << ::tpyapp::main::describe(Color::Red) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(Color::Green) << "\n" << ::tpy::check_signals;
 }
 
 // # warning: non-exhaustive match on enum (missing member)

@@ -14,8 +14,8 @@ namespace tpyapp::main {
 //     return 0
 int32_t main() {
     __tpy_builder_config_1 cfg = ::tpyapp::main::__tpy_builder_build_config_1();
-    std::cout << cfg.host << "\n";
-    std::cout << cfg.port << "\n";
+    std::cout << cfg.host << "\n" << ::tpy::check_signals;
+    std::cout << cfg.port << "\n" << ::tpy::check_signals;
     return 0;
 }
 

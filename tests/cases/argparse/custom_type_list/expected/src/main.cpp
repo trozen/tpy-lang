@@ -36,10 +36,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& t = ::tpy::unwrap_ref(*__r_1);
-            std::cout << t << "\n";
+            std::cout << t << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "--" << "\n";
+    std::cout << "--" << "\n" << ::tpy::check_signals;
     std::vector<Tag>* paths = ::tpy::optional_to_ptr(args.paths);
     if ((paths != nullptr)) {
         auto& __src_2 = (*paths);
@@ -48,7 +48,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const auto& t = ::tpy::unwrap_ref(*__r_3);
-            std::cout << t << "\n";
+            std::cout << t << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -57,7 +57,7 @@ void main() {
 //     ["--include", "core", "--include", "extra",
 //      "--paths", "a", "b", "c"])
 void __tpy_builder_argparse_help_1() {
-    std::cout << "usage: prog [-h] [--include INCLUDE] [--paths PATHS [PATHS ...]]\n\noptions:\n  -h, --help                 show this help message and exit\n  --include INCLUDE\n  --paths PATHS [PATHS ...]" << "\n";
+    std::cout << "usage: prog [-h] [--include INCLUDE] [--paths PATHS [PATHS ...]]\n\noptions:\n  -h, --help                 show this help message and exit\n  --include INCLUDE\n  --paths PATHS [PATHS ...]" << "\n" << ::tpy::check_signals;
     ::tpy::sys_exit(0);
 }
 
@@ -87,7 +87,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         std::string_view __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "--include")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
                 ::tpy::sys_exit(2);
             }
             __tpy_argparse_acc_include.push_back(Tag::from_arg(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1)))));
@@ -101,13 +101,13 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
                 __tpy_argparse_j = (::tpy::add_check<int32_t>(__tpy_argparse_j, 1));
             }
             if (((::tpy::sub_check<int32_t>((::tpy::sub_check<int32_t>(__tpy_argparse_j, __tpy_argparse_i)), 1)) == 0)) {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", __tpy_argparse_tok)), " requires at least one value")) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", __tpy_argparse_tok)), " requires at least one value")) << "\n" << ::tpy::check_signals;
                 ::tpy::sys_exit(2);
             }
             __tpy_argparse_i = __tpy_argparse_j;
             __tpy_argparse_seen_paths = true;
         } else {
-            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n";
+            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
             ::tpy::sys_exit(2);
         }
     }

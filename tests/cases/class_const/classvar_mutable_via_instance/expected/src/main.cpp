@@ -16,12 +16,12 @@ namespace tpyapp::main {
 void main() {
     Counter a = Counter();
     Counter::instances = 5;
-    std::cout << Counter::instances << "\n";
-    std::cout << Counter::instances << "\n";
+    std::cout << Counter::instances << "\n" << ::tpy::check_signals;
+    std::cout << Counter::instances << "\n" << ::tpy::check_signals;
     Counter b = Counter();
     Counter::instances = 7;
-    std::cout << Counter::instances << "\n";
-    std::cout << Counter::instances << "\n";
+    std::cout << Counter::instances << "\n" << ::tpy::check_signals;
+    std::cout << Counter::instances << "\n" << ::tpy::check_signals;
 }
 
 // main()

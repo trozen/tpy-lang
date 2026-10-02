@@ -19,7 +19,7 @@ void main() {
         try {
             throw MyErr(std::nullopt);
         } catch (const MyErr& ex) {
-            std::cout << ::tpy::print_bool((!ex.e.has_value())) << "\n";
+            std::cout << ::tpy::print_bool((!ex.e.has_value())) << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -27,7 +27,7 @@ void main() {
             throw MyErr(7);
         } catch (const MyErr& ex) {
             if ((ex.e.has_value())) {
-                std::cout << ::tpy::print_optional_val(ex.e) << "\n";
+                std::cout << ::tpy::print_optional_val(ex.e) << "\n" << ::tpy::check_signals;
             }
         }
     }

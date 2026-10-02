@@ -162,7 +162,7 @@ inline std::ostream& operator<<(std::ostream& os, const PassBetween& obj) {
 //     print("parent init", value)
 //     self.value = value
 inline Parent::Parent(int32_t value) {
-    std::cout << "parent init" << " " << value << "\n";
+    std::cout << "parent init" << " " << value << "\n" << ::tpy::check_signals;
     this->value = value;
 }
 
@@ -170,7 +170,7 @@ inline Parent::Parent(int32_t value) {
 //     print("other init", m)
 //     self.m = m
 inline Other::Other(int32_t m) {
-    std::cout << "other init" << " " << m << "\n";
+    std::cout << "other init" << " " << m << "\n" << ::tpy::check_signals;
     this->m = m;
 }
 
@@ -205,7 +205,7 @@ inline Nested::Nested(int32_t value, int32_t extra) : Parent(value) {
 inline PassSuper::PassSuper()
     : Parent(1),
       y(3) {
-    std::cout << "pass-super: after" << " " << this->value << " " << this->y << "\n";
+    std::cout << "pass-super: after" << " " << this->value << " " << this->y << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self) -> None:
@@ -213,7 +213,7 @@ inline PassSuper::PassSuper()
 //     Parent.__init__(self, 2)  # tpyc: ok
 //     print("pass-base: after", self.value)
 inline PassBase::PassBase() : Parent(2) {
-    std::cout << "pass-base: after" << " " << this->value << "\n";
+    std::cout << "pass-base: after" << " " << this->value << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self) -> None:
@@ -222,7 +222,7 @@ inline PassBase::PassBase() : Parent(2) {
 //     super().__init__(5)  # tpyc: ok
 //     print("doc-pass: after", self.value)
 inline DocPass::DocPass() : Parent(5) {
-    std::cout << "doc-pass: after" << " " << this->value << "\n";
+    std::cout << "doc-pass: after" << " " << this->value << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self) -> None:
@@ -233,7 +233,7 @@ inline DocPass::DocPass() : Parent(5) {
 inline PassMulti::PassMulti()
     : Parent(3),
       Other(4) {
-    std::cout << "pass-multi: after" << " " << this->value << " " << this->m << "\n";
+    std::cout << "pass-multi: after" << " " << this->value << " " << this->m << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -12,9 +12,9 @@ namespace tpyapp::myns {
 //     print(copied.val)
 void main() {
     ::MyHandle h = ::MyHandle(42);
-    std::cout << h.val << "\n";
+    std::cout << h.val << "\n" << ::tpy::check_signals;
     ::MyHandle copied = ::tpyapp::myns::identity<::MyHandle>(h);
-    std::cout << copied.val << "\n";
+    std::cout << copied.val << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native

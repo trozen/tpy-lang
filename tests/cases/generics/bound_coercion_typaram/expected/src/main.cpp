@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print("compiled")
 void main() {
-    std::cout << "compiled" << "\n";
+    std::cout << "compiled" << "\n" << ::tpy::check_signals;
 }
 
 // main()
