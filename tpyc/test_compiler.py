@@ -1129,6 +1129,22 @@ class TestGenerateCmake:
         assert "${CMAKE_CURRENT_LIST_DIR}/runtime/include" in content
         assert (layout.root_dir / "runtime" / "include" / "tpy" / "tpy.hpp").is_file()
 
+    def test_compile_definitions_variable(self, tmp_path: Path):
+        """The variable is always set, so one host CMakeLists serves a build
+        with and without `--no-signals`."""
+        layout = self._make_layout(tmp_path)
+        runtime_inc = get_runtime_dir() / "cpp" / "include"
+        cpp_files = self._dummy_cpp(layout)
+        plain = layout.generate_cmake(
+            runtime_include_dir=runtime_inc, cpp_files=cpp_files,
+            bundle_runtime=False).read_text()
+        assert "set(TPYC_COMPILE_DEFINITIONS\n)\n" in plain
+        opted_out = layout.generate_cmake(
+            runtime_include_dir=runtime_inc, cpp_files=cpp_files,
+            bundle_runtime=False,
+            compile_definitions=["TPY_NO_SIGNALS"]).read_text()
+        assert "set(TPYC_COMPILE_DEFINITIONS\n    TPY_NO_SIGNALS\n)\n" in opted_out
+
 
 def _make_skeleton_module(records=(), protocols=(), functions=(), enums=()):
     """Build a minimal CompiledModule with given exports populated

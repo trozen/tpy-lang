@@ -18,6 +18,13 @@
 // callback) opens a tpy::DeferSignals scope (below): inside it no check point
 // or wait raises, and the Ctrl-C is raised at the first check point after it.
 //
+// A build that defines TPY_NO_SIGNALS compiles the layer out: check_signals()
+// and DeferSignals are empty, nothing installs a SIGINT handler and no
+// KeyboardInterrupt comes from a signal -- for generated code embedded in a
+// host that owns its signals. The define must be set on every TU of the target,
+// the runtime sources included (the link guard at the end of this header
+// rejects a runtime built without it).
+//
 // Free of system headers so it can sit under every generated TU.
 
 #include <atomic>
@@ -32,6 +39,8 @@ inline constexpr int kWaitReady = 1;
 inline constexpr int kWaitError = -1;  // errno set
 inline constexpr int kTimedOut = -2;
 inline constexpr int kInterrupted = -3;  // a Ctrl-C was consumed
+
+#ifndef TPY_NO_SIGNALS
 
 // What the SIGINT layer publishes while armed. Header check points reach the
 // layer through this table rather than by calling signal_impl.cpp directly, so
@@ -62,9 +71,13 @@ inline std::atomic<const Ops*> ops{nullptr};
 // waits do.
 inline constinit thread_local int defer_depth = 0;
 
+#endif  // TPY_NO_SIGNALS
+
 } // namespace tpy::interrupt_detail
 
 namespace tpy {
+
+#ifndef TPY_NO_SIGNALS
 
 // Defers Ctrl-C delivery on this thread for the scope's lifetime. While one is
 // open the SIGINT layer treats the thread as not deliverable: a check point
@@ -92,14 +105,51 @@ struct DeferSignals {
     DeferSignals& operator=(DeferSignals&&) = delete;
 };
 
+#else  // TPY_NO_SIGNALS
+
+// Nothing to defer. The constructor and destructor stay user-provided so the
+// scope local generated code declares is not an unused variable.
+struct DeferSignals {
+    DeferSignals() noexcept {}
+    ~DeferSignals() noexcept {}
+    DeferSignals(const DeferSignals&) = delete;
+    DeferSignals(DeferSignals&&) = delete;
+    DeferSignals& operator=(const DeferSignals&) = delete;
+    DeferSignals& operator=(DeferSignals&&) = delete;
+};
+
+#endif  // TPY_NO_SIGNALS
+
 } // namespace tpy
 
 extern "C" {
 // Defined in signal_impl.cpp; referenced only from code that runs when the
 // layer is linked (generated main(), the terminate handler it installs, and
 // the embedding API below it in core.hpp).
+#ifndef TPY_NO_SIGNALS
 int tpy_interrupt_process_startup();
 int tpy_interrupt_install(int with_handler);
 void tpy_request_interrupt();
+#else
+// The exception: the link guard below refers to it from every TU.
+extern const int tpy_signals_compiled_out;
+#endif
 [[noreturn]] void tpy_interrupt_exit_by_sigint();
 }
+
+#ifdef TPY_NO_SIGNALS
+namespace tpy::interrupt_detail {
+// Link guard: every TU compiled with TPY_NO_SIGNALS refers to a symbol that
+// only signal_impl.cpp compiled the same way defines. Without it, a runtime
+// built with the layer could still be armed (a host's own TU, asyncio.run)
+// and raise KeyboardInterrupt through cleanup bodies whose DeferSignals scope
+// was compiled empty here. `used` keeps the compiler from dropping it; on ELF
+// only `retain` keeps the linker's --gc-sections from doing the same.
+#if defined(__ELF__)
+[[gnu::used, gnu::retain]]
+#else
+[[gnu::used]]
+#endif
+inline constexpr const int* no_signals_link_guard = &tpy_signals_compiled_out;
+} // namespace tpy::interrupt_detail
+#endif

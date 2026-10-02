@@ -623,6 +623,46 @@ exits normally with it unraised, and in a `--no-main` host it waits for the
 next TPy call that reaches a check point (only the disarm that ends an
 `asyncio.run`-armed layer clears it).
 
+#### Compiling the layer out (`--no-signals`)
+
+A host that wants none of this builds with `tpyc --no-signals`, which adds the
+C++ define `TPY_NO_SIGNALS` to every compile. The generated code is the same;
+the runtime changes under the define:
+
+- `tpy::check_signals()`, the manipulator that ends every print chain, and
+  `tpy::DeferSignals` are empty, so `print`, `sys.stdout` / file I/O and
+  cleanup bodies carry no check and no thread-local access.
+- `time.sleep` and `input()` are the plain calls, a socket wait polls the
+  socket alone, `JoinHandle.join()` is a plain join, and worker threads are
+  spawned without touching the signal mask.
+- Nothing installs a SIGINT handler: a generated `main()` leaves SIGINT at its
+  inherited disposition (the terminate handler and `SIGPIPE` ignore stay), and
+  `asyncio.run` in a host installs none for the run. No signal becomes a
+  `KeyboardInterrupt`; `signal.raise_signal(SIGINT)` takes the process's
+  disposition. A `KeyboardInterrupt` the program raises itself is unaffected.
+- An `asyncio.run` whose tasks all wait with no timer and no I/O registered
+  raises `RuntimeError` (`asyncio.run: no progress possible`) instead of
+  blocking: without a SIGINT to wait for, nothing could ever wake it. Runs
+  that handle no SIGINT for another reason (an inherited ignore, a run off
+  the interrupt target thread) already behave this way.
+- `tpy::install_interrupt_handler()` and `tpy::request_interrupt()` are not
+  declared.
+
+The define is an ABI switch for the runtime headers, so it goes on every
+translation unit that includes them: the generated sources, the runtime's own
+`.cpp` files and the host's. `tpyc -b` does that for its own build; a build
+from `sources.cmake` applies `TPYC_COMPILE_DEFINITIONS` to the whole target
+(`target_compile_definitions(myapp PRIVATE ${TPYC_COMPILE_DEFINITIONS})`).
+A translation unit compiled with the define does not link against
+`signal_impl.cpp` compiled without it (undefined `tpy_signals_compiled_out`):
+that runtime could still be armed and raise `KeyboardInterrupt` through
+cleanup bodies whose deferral scope was compiled empty. The option does not
+apply to the REPL.
+
+What stays in an opted-out build, next to the syscalls it sits beside: a
+blocking socket operation still tries without waiting and then polls, and
+`asyncio.run` still asks once whether to watch for SIGINT and is told no.
+
 ---
 
 ## Module directives

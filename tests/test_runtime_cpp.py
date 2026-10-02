@@ -10,6 +10,7 @@ so the guarantee is pinned at its source.
 """
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -42,6 +43,8 @@ _SELFCHECKS = [
      "copy_iter borrows an lvalue source, owns a temporary and copies each element"),
     ("test_interrupt_embedding.cpp",
      "a --no-main host's Ctrl-C reaches TPy code through the embedding API"),
+    ("test_no_signals.cpp",
+     "TPY_NO_SIGNALS compiles the Ctrl-C layer out of every check point"),
     ("test_print_join.cpp",
      "print(*xs) separators span every segment and each source is borrowed"),
 ]
@@ -50,10 +53,20 @@ _SELFCHECKS = [
 # they need.
 _EXTRA_SOURCES = {
     "test_interrupt_embedding.cpp": ["stdlib/signal_impl.cpp"],
+    "test_no_signals.cpp": ["stdlib/signal_impl.cpp"],
 }
 _EXTRA_LIBS = {
     "test_interrupt_embedding.cpp": ["-pthread"],
+    "test_no_signals.cpp": ["-pthread"],
 }
+# Defines a self-check (and the runtime impls it links) is built with.
+_EXTRA_DEFINES = {
+    "test_no_signals.cpp": ["-DTPY_NO_SIGNALS"],
+}
+# Self-checks whose contract includes compiling clean: built under the strict
+# warning set of generated code, with the unused-variable warning that set
+# turns off (a host may not) back on.
+_STRICT_WARNINGS = {"test_no_signals.cpp"}
 
 
 # Self-checks also built the way a release build sees the headers: their
@@ -85,6 +98,9 @@ def test_runtime_selfcheck(source, what, flags, request, tmp_path):
     cross = exec_is_cross()
     cmd = [
         *CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}", *flags,
+        *_EXTRA_DEFINES.get(source, []),
+        *([*CPP_CONFIG.warn_flags, "-Wunused-variable"]
+          if source in _STRICT_WARNINGS else []),
         "-I", str(RUNTIME_DIR),
         *(["-c"] if cross else []),
         str(src),
@@ -109,3 +125,55 @@ def test_runtime_selfcheck(source, what, flags, request, tmp_path):
             f"--- stdout ---\n{run.stdout}\n--- stderr ---\n{run.stderr}",
             pytrace=False,
         )
+
+
+def test_no_signals_tu_rejects_a_runtime_with_the_layer(request, tmp_path):
+    """A TU built with TPY_NO_SIGNALS must not link against signal_impl.cpp
+    built without it: its DeferSignals scopes are empty, and that runtime
+    could still be armed and raise KeyboardInterrupt through them."""
+    if request.config.getoption("--no-exec") or exec_is_cross():
+        pytest.skip("needs a host link")
+    # Per-symbol sections, so the section GC below has the guard to itself.
+    base = [*CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}", "-I", str(RUNTIME_DIR),
+            "-ffunction-sections", "-fdata-sections"]
+    objects = []
+    for name, src, defines in [
+        ("tu.o", _CPP_TESTS / "test_no_signals.cpp", ["-DTPY_NO_SIGNALS"]),
+        ("rt.o", PROJECT_ROOT / "runtime" / "cpp" / "src" / "stdlib"
+         / "signal_impl.cpp", []),
+    ]:
+        obj = tmp_path / name
+        build = subprocess.run([*base, *defines, "-c", str(src), "-o", str(obj)],
+                               capture_output=True, text=True)
+        assert build.returncode == 0, build.stderr
+        objects.append(str(obj))
+    # A host's link commonly collects unreferenced sections; nothing refers to
+    # the guard, so only its `retain` keeps it (ELF linkers).
+    link_modes = [[]]
+    if sys.platform == "linux":
+        link_modes.append(["-Wl,--gc-sections"])
+    for mode in link_modes:
+        link = subprocess.run(
+            [*CPP_CONFIG.compiler, *objects, "-pthread", *mode,
+             "-o", str(tmp_path / "mixed")],
+            capture_output=True, text=True)
+        assert link.returncode != 0, f"a mixed-mode link must fail ({mode})"
+        assert "tpy_signals_compiled_out" in link.stderr, link.stderr
+
+
+def test_no_signals_leaves_the_embedding_api_undeclared(request, tmp_path):
+    """A host that calls tpy::request_interrupt() in a build whose layer is
+    compiled out gets a compile error, not a call that does nothing."""
+    if request.config.getoption("--no-exec"):
+        pytest.skip("--no-exec builds nothing")
+    src = tmp_path / "host.cpp"
+    src.write_text('#include "tpy/tpy.hpp"\n'
+                   "void host_handler() { tpy::request_interrupt(); }\n")
+    cmd = [*CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}", "-I", str(RUNTIME_DIR),
+           "-fsyntax-only", str(src)]
+    armed = subprocess.run(cmd, capture_output=True, text=True)
+    assert armed.returncode == 0, armed.stderr
+    compiled_out = subprocess.run([*cmd, "-DTPY_NO_SIGNALS"],
+                                  capture_output=True, text=True)
+    assert compiled_out.returncode != 0
+    assert "request_interrupt" in compiled_out.stderr, compiled_out.stderr

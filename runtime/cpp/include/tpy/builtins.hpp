@@ -34,6 +34,7 @@ namespace tpy {
 // typed before it.
 inline std::string input_line() {
     std::string line;
+#ifndef TPY_NO_SIGNALS
     if (const auto* ops = interrupt_detail::ops.load(std::memory_order_acquire)) {
         // std::getline would flush the tied std::cout first; keep doing so,
         // or a prompt printed without input()'s own prompt stays buffered.
@@ -49,6 +50,7 @@ inline std::string input_line() {
         }
         return line;
     }
+#endif
     if (!std::getline(std::cin, line)) {
         raise_eof_error("EOF when reading a line");
     }

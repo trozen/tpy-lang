@@ -52,7 +52,7 @@ class JoinHandle[R]:
 
     On the main thread join() is interruptible: a Ctrl-C raises
     KeyboardInterrupt and leaves the handle unconsumed, so join() can be
-    called again."""
+    called again (a plain join in a `--no-signals` build)."""
     _raw: _RawJoin[R]
     _consumed: bool
 

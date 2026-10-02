@@ -244,8 +244,15 @@ include(path/to/out/sources.cmake)
 add_executable(myapp ${TPYC_SOURCES})
 target_include_directories(myapp PRIVATE ${TPYC_INCLUDE_DIRS})
 target_link_libraries(myapp PRIVATE ${TPYC_LIBRARIES})
+target_compile_definitions(myapp PRIVATE ${TPYC_COMPILE_DEFINITIONS})
 set_target_properties(myapp PROPERTIES CXX_STANDARD ${TPYC_CXX_STANDARD})
 ```
+
+`TPYC_COMPILE_DEFINITIONS` is empty unless a build option fills it:
+`--no-signals` puts `TPY_NO_SIGNALS` there, which compiles the Ctrl-C layer
+out of the runtime for code embedded in a host (no SIGINT handler, no
+`KeyboardInterrupt` from a signal, no check points; the generated code is
+the same).
 
 The generated code needs C++23 and the GCC statement-expression extension:
 g++ 13+, clang++ 19+ or another LLVM-based compiler. MSVC is not supported.

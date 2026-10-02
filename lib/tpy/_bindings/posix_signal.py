@@ -37,17 +37,19 @@ def async_consume() -> int32: ...
 def raise_signal(sig: int32) -> int32: ...
 
 # Raises KeyboardInterrupt when a Ctrl-C is pending for the calling thread
-# (tpy/core.hpp).
+# (tpy/core.hpp). Empty in a `--no-signals` build.
 @native("::tpy::check_signals", checks_signals=True)
 def check_signals() -> None: ...
 
-# True while the SIGINT layer is armed (tpy/core.hpp).
+# True while the SIGINT layer is armed (tpy/core.hpp); never in a
+# `--no-signals` build.
 @native("::tpy::interrupt_armed")
 def interrupt_armed() -> bool: ...
 
 # Marks a Ctrl-C pending without consuming it, as the SIGINT handler does;
 # the next check point raises it (the embedding API's entry point,
-# interrupt.hpp).
+# interrupt.hpp). A `--no-signals` build has no such symbol, so a call there
+# fails to compile, like the host's `tpy::request_interrupt()`.
 @native("::tpy_request_interrupt")
 def request_interrupt() -> None: ...
 

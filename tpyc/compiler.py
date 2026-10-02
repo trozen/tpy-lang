@@ -393,6 +393,7 @@ class BuildLayout:
         bundle_runtime: bool = True,
         third_party_libs: list[Any] | None = None,
         runtime_cpp_sources: list[Path] | None = None,
+        compile_definitions: list[str] | None = None,
     ) -> Path:
         """Generate a .cmake include file with source/include/link variables.
 
@@ -402,6 +403,10 @@ class BuildLayout:
           TPYC_LIBRARIES    -- link libraries (from # tpy: link() directives,
                                extended at configure time by third-party
                                selectors)
+          TPYC_COMPILE_DEFINITIONS -- defines the build options selected
+                               (`--no-signals`); empty by default. They change
+                               the runtime headers, so they go on every TU
+                               that includes them, the host's own included.
           TPYC_CXX_STANDARD -- required C++ standard (23)
 
         When bundle_runtime is True (default), the runtime headers are copied
@@ -480,6 +485,7 @@ class BuildLayout:
             "#   add_executable(myapp ${TPYC_SOURCES})",
             "#   target_include_directories(myapp PRIVATE ${TPYC_INCLUDE_DIRS})",
             "#   target_link_libraries(myapp PRIVATE ${TPYC_LIBRARIES})",
+            "#   target_compile_definitions(myapp PRIVATE ${TPYC_COMPILE_DEFINITIONS})",
             "#   set_target_properties(myapp PROPERTIES CXX_STANDARD ${TPYC_CXX_STANDARD})",
             "",
             "set(TPYC_SOURCES",
@@ -515,6 +521,12 @@ class BuildLayout:
                     bundle_source_tree(lib, self.root_dir)
             if bundle_runtime:
                 collect_licenses(third_party_libs, self.root_dir)
+
+        lines.append("set(TPYC_COMPILE_DEFINITIONS")
+        for definition in (compile_definitions or []):
+            lines.append(f"    {definition}")
+        lines.append(")")
+        lines.append("")
 
         lines.append("set(TPYC_CXX_STANDARD 23)")
         lines.append("")
