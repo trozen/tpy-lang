@@ -28,6 +28,10 @@
 // pipe2, so there the self-pipe trick stands in (a plain pipe with CLOEXEC +
 // NONBLOCK set by hand).
 //
+// With TPY_NO_SIGNALS the layer is compiled out (see interrupt.hpp): what is
+// left is the plain fd wait, asyncio hooks that decline, raise_signal and the
+// exit-by-SIGINT of an uncaught KeyboardInterrupt.
+//
 // We intentionally do NOT #include signal_h.hpp here (mirrors the sibling
 // impls): its short signatures are kept in sync by hand.
 
@@ -72,6 +76,107 @@ namespace {
 
 namespace idet = tpy::interrupt_detail;
 
+constexpr long kNsPerSec = 1000000000L;
+// Longer waits are clamped (~31 years) so the timespec arithmetic below
+// cannot overflow.
+constexpr double kMaxWaitSeconds = 1e9;
+
+void set_sigint_default() noexcept {
+    struct sigaction dfl{};
+    dfl.sa_handler = SIG_DFL;
+    // Unqualified: sigemptyset is a function-like macro on macOS/BSD, so `::`
+    // would be a syntax error; plain lookup finds the libc function on Linux.
+    sigemptyset(&dfl.sa_mask);
+    ::sigaction(SIGINT, &dfl, nullptr);
+}
+
+// --- monotonic deadlines -------------------------------------------------
+
+timespec monotonic_now() {
+    timespec ts{};
+    ::clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts;
+}
+
+timespec deadline_after(double seconds) {
+    if (seconds > kMaxWaitSeconds) {
+        seconds = kMaxWaitSeconds;
+    }
+    timespec now = monotonic_now();
+    auto whole = static_cast<time_t>(seconds);
+    auto frac = static_cast<long>((seconds - static_cast<double>(whole))
+                                  * static_cast<double>(kNsPerSec));
+    timespec d{};
+    d.tv_sec = now.tv_sec + whole;
+    d.tv_nsec = now.tv_nsec + frac;
+    if (d.tv_nsec >= kNsPerSec) {
+        d.tv_sec += 1;
+        d.tv_nsec -= kNsPerSec;
+    }
+    return d;
+}
+
+// Time left until `deadline`; false once it has passed.
+bool remaining(const timespec& deadline, timespec& out) {
+    timespec now = monotonic_now();
+    out.tv_sec = deadline.tv_sec - now.tv_sec;
+    out.tv_nsec = deadline.tv_nsec - now.tv_nsec;
+    if (out.tv_nsec < 0) {
+        out.tv_sec -= 1;
+        out.tv_nsec += kNsPerSec;
+    }
+    return out.tv_sec > 0 || (out.tv_sec == 0 && out.tv_nsec > 0);
+}
+
+#if !defined(__linux__)
+// poll()'s millisecond timeout for `rem`, rounded up so poll() never returns
+// before the deadline has passed (the callers' loops re-check it).
+int ceil_ms(const timespec& rem) {
+    if (rem.tv_sec >= INT_MAX / 1000 - 1) {
+        return INT_MAX;
+    }
+    return static_cast<int>(rem.tv_sec * 1000 + (rem.tv_nsec + 999999) / 1000000);
+}
+#endif
+
+// poll() `fds` until one is ready or `deadline` (nullptr: none) passes.
+// Returns poll()'s count, 0 on timeout, -1 on error (errno set).
+// Polls at least once, also past the deadline, so an fd that is already
+// ready (a queued connection under a tiny timeout) is not reported as a
+// timeout -- as CPython does.
+int poll_until(pollfd* fds, nfds_t n, const timespec* deadline) {
+    for (bool first = true;; first = false) {
+        timespec rem{};
+        const timespec* tp = nullptr;
+        if (deadline != nullptr) {
+            if (!remaining(*deadline, rem)) {
+                if (!first) {
+                    return 0;
+                }
+                rem = timespec{};
+            }
+            tp = &rem;
+        }
+#if defined(__linux__)
+        int r = ::ppoll(fds, n, tp, nullptr);
+#else
+        int r = ::poll(fds, n, tp != nullptr ? ceil_ms(rem) : -1);
+#endif
+        if (r < 0 && errno == EINTR) {
+            // Some handler ran (poll is never restarted); a Ctrl-C shows up
+            // on the wake fd at the next poll.
+            continue;
+        }
+        if (r == 0) {
+            // The deadline check above, not poll()'s rounding, decides.
+            continue;
+        }
+        return r;
+    }
+}
+
+#ifndef TPY_NO_SIGNALS
+
 // The handler's write target and the fd waits / the reactor watch. One eventfd
 // on Linux; the two ends of a pipe elsewhere. Created on the first arm and
 // never closed: a handler running on another thread (or a host's handler
@@ -99,11 +204,6 @@ pthread_t g_target{};
 // Non-zero while asyncio.run on the target thread owns delivery.
 std::atomic<int> g_async_owner{0};
 
-constexpr long kNsPerSec = 1000000000L;
-// Longer waits are clamped (~31 years) so the timespec arithmetic below
-// cannot overflow.
-constexpr double kMaxWaitSeconds = 1e9;
-
 void post_interrupt() noexcept {
     idet::pending.store(1, std::memory_order_release);
     int fd = g_wake_wr.load(std::memory_order_relaxed);
@@ -115,15 +215,6 @@ void post_interrupt() noexcept {
         ssize_t r = ::write(fd, &one, sizeof(one));
         (void)r;
     }
-}
-
-void set_sigint_default() noexcept {
-    struct sigaction dfl{};
-    dfl.sa_handler = SIG_DFL;
-    // Unqualified: sigemptyset is a function-like macro on macOS/BSD, so `::`
-    // would be a syntax error; plain lookup finds the libc function on Linux.
-    sigemptyset(&dfl.sa_mask);
-    ::sigaction(SIGINT, &dfl, nullptr);
 }
 
 void on_sigint(int /*sig*/) {
@@ -206,55 +297,6 @@ bool deliverable_here() {
         && idet::defer_depth == 0;
 }
 
-// --- monotonic deadlines -------------------------------------------------
-
-timespec monotonic_now() {
-    timespec ts{};
-    ::clock_gettime(CLOCK_MONOTONIC, &ts);
-    return ts;
-}
-
-timespec deadline_after(double seconds) {
-    if (seconds > kMaxWaitSeconds) {
-        seconds = kMaxWaitSeconds;
-    }
-    timespec now = monotonic_now();
-    auto whole = static_cast<time_t>(seconds);
-    auto frac = static_cast<long>((seconds - static_cast<double>(whole))
-                                  * static_cast<double>(kNsPerSec));
-    timespec d{};
-    d.tv_sec = now.tv_sec + whole;
-    d.tv_nsec = now.tv_nsec + frac;
-    if (d.tv_nsec >= kNsPerSec) {
-        d.tv_sec += 1;
-        d.tv_nsec -= kNsPerSec;
-    }
-    return d;
-}
-
-// Time left until `deadline`; false once it has passed.
-bool remaining(const timespec& deadline, timespec& out) {
-    timespec now = monotonic_now();
-    out.tv_sec = deadline.tv_sec - now.tv_sec;
-    out.tv_nsec = deadline.tv_nsec - now.tv_nsec;
-    if (out.tv_nsec < 0) {
-        out.tv_sec -= 1;
-        out.tv_nsec += kNsPerSec;
-    }
-    return out.tv_sec > 0 || (out.tv_sec == 0 && out.tv_nsec > 0);
-}
-
-#if !defined(__linux__)
-// poll()'s millisecond timeout for `rem`, rounded up so poll() never returns
-// before the deadline has passed (the callers' loops re-check it).
-int ceil_ms(const timespec& rem) {
-    if (rem.tv_sec >= INT_MAX / 1000 - 1) {
-        return INT_MAX;
-    }
-    return static_cast<int>(rem.tv_sec * 1000 + (rem.tv_nsec + 999999) / 1000000);
-}
-#endif
-
 // Sleep until `deadline` without waking early and without restarting the
 // whole interval when a signal interrupts the sleep.
 void sleep_until(const timespec& deadline) {
@@ -268,42 +310,6 @@ void sleep_until(const timespec& deadline) {
         ::nanosleep(&rem, nullptr);
     }
 #endif
-}
-
-// poll() `fds` until one is ready or `deadline` (nullptr: none) passes.
-// Returns poll()'s count, 0 on timeout, -1 on error (errno set).
-// Polls at least once, also past the deadline, so an fd that is already
-// ready (a queued connection under a tiny timeout) is not reported as a
-// timeout -- as CPython does.
-int poll_until(pollfd* fds, nfds_t n, const timespec* deadline) {
-    for (bool first = true;; first = false) {
-        timespec rem{};
-        const timespec* tp = nullptr;
-        if (deadline != nullptr) {
-            if (!remaining(*deadline, rem)) {
-                if (!first) {
-                    return 0;
-                }
-                rem = timespec{};
-            }
-            tp = &rem;
-        }
-#if defined(__linux__)
-        int r = ::ppoll(fds, n, tp, nullptr);
-#else
-        int r = ::poll(fds, n, tp != nullptr ? ceil_ms(rem) : -1);
-#endif
-        if (r < 0 && errno == EINTR) {
-            // Some handler ran (poll is never restarted); a Ctrl-C shows up
-            // on the wake fd at the next poll.
-            continue;
-        }
-        if (r == 0) {
-            // The deadline check above, not poll()'s rounding, decides.
-            continue;
-        }
-        return r;
-    }
 }
 
 // --- the Ops table -------------------------------------------------------
@@ -500,9 +506,30 @@ void disarm() {
     g_installed = false;
 }
 
+// The wake fd a wait on this thread also watches, or -1 (poll() skips it).
+int wait_wake_fd() {
+    return deliverable_here() ? g_wake_rd.load() : -1;
+}
+
+#else  // TPY_NO_SIGNALS
+
+// The layer is compiled out: no handler, no wake fd, nothing ever pending. A
+// wait watches its own fd only.
+int wait_wake_fd() {
+    return -1;
+}
+
+int consume() {
+    return 0;
+}
+
+#endif  // TPY_NO_SIGNALS
+
 }  // namespace
 
 extern "C" {
+
+#ifndef TPY_NO_SIGNALS
 
 int tpy_interrupt_process_startup() {
     g_process_owned = true;
@@ -525,46 +552,6 @@ void tpy_request_interrupt() {
     int saved_errno = errno;
     post_interrupt();
     errno = saved_errno;
-}
-
-[[noreturn]] void tpy_interrupt_exit_by_sigint() {
-    set_sigint_default();
-    sigset_t set;
-    sigemptyset(&set);
-    sigaddset(&set, SIGINT);
-    ::pthread_sigmask(SIG_UNBLOCK, &set, nullptr);
-    ::raise(SIGINT);
-    // Only reached if SIGINT could not terminate the process.
-    std::_Exit(128 + SIGINT);
-}
-
-int tpy_interrupt_wait(int fd, int want_write, double timeout) {
-    const int wake = deliverable_here() ? g_wake_rd.load() : -1;
-    timespec deadline{};
-    const bool has_deadline = timeout >= 0.0;
-    if (has_deadline) {
-        deadline = deadline_after(timeout);
-    }
-    for (;;) {
-        pollfd fds[2]{};
-        fds[0].fd = fd;
-        fds[0].events = static_cast<short>(want_write != 0 ? POLLOUT : POLLIN);
-        fds[1].fd = wake;  // poll() skips a negative fd
-        fds[1].events = POLLIN;
-        int r = poll_until(fds, 2, has_deadline ? &deadline : nullptr);
-        if (r < 0) {
-            return idet::kWaitError;
-        }
-        if (r == 0) {
-            return idet::kTimedOut;
-        }
-        if (fds[1].revents != 0 && consume() != 0) {
-            return idet::kInterrupted;
-        }
-        if (fds[0].revents != 0) {
-            return idet::kWaitReady;
-        }
-    }
 }
 
 // asyncio.run takes over delivery for its duration. Returns the wake fd to
@@ -605,6 +592,66 @@ void tpy_interrupt_async_end() {
 // 1 if a Ctrl-C arrived since the last call (consuming it), else 0.
 int tpy_interrupt_async_consume() {
     return g_async_owner.load() != 0 ? consume() : 0;
+}
+
+#else  // TPY_NO_SIGNALS
+
+// What interrupt.hpp's link guard refers to. Only this build of the file
+// defines it, so a TU compiled with TPY_NO_SIGNALS (its DeferSignals scopes
+// are empty) cannot link against a layer that could still be armed.
+extern const int tpy_signals_compiled_out = 1;
+
+// asyncio.run handles no SIGINT.
+int tpy_interrupt_async_begin() {
+    return -1;
+}
+
+void tpy_interrupt_async_end() {}
+
+int tpy_interrupt_async_consume() {
+    return 0;
+}
+
+#endif  // TPY_NO_SIGNALS
+
+[[noreturn]] void tpy_interrupt_exit_by_sigint() {
+    set_sigint_default();
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGINT);
+    ::pthread_sigmask(SIG_UNBLOCK, &set, nullptr);
+    ::raise(SIGINT);
+    // Only reached if SIGINT could not terminate the process.
+    std::_Exit(128 + SIGINT);
+}
+
+int tpy_interrupt_wait(int fd, int want_write, double timeout) {
+    const int wake = wait_wake_fd();
+    timespec deadline{};
+    const bool has_deadline = timeout >= 0.0;
+    if (has_deadline) {
+        deadline = deadline_after(timeout);
+    }
+    for (;;) {
+        pollfd fds[2]{};
+        fds[0].fd = fd;
+        fds[0].events = static_cast<short>(want_write != 0 ? POLLOUT : POLLIN);
+        fds[1].fd = wake;
+        fds[1].events = POLLIN;
+        int r = poll_until(fds, 2, has_deadline ? &deadline : nullptr);
+        if (r < 0) {
+            return idet::kWaitError;
+        }
+        if (r == 0) {
+            return idet::kTimedOut;
+        }
+        if (fds[1].revents != 0 && consume() != 0) {
+            return idet::kInterrupted;
+        }
+        if (fds[0].revents != 0) {
+            return idet::kWaitReady;
+        }
+    }
 }
 
 // Sent to the whole process rather than raise()d on the calling thread: a

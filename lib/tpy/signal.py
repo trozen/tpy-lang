@@ -14,6 +14,9 @@ task first. The handler is the runtime's process-wide SIGINT layer
 (runtime/cpp/src/stdlib/signal_impl.cpp), installed at startup unless SIGINT
 was inherited as ignored. There is no `signal.signal` to install handlers of
 your own.
+
+A build with `--no-signals` has no such layer: a SIGINT there, one sent by
+`raise_signal` included, takes the process's own disposition.
 """
 from typing import Final
 
@@ -33,6 +36,7 @@ SIGKILL: Final[int32] = native_global("tpy_const_sigkill", binding="C")
 def raise_signal(sig: int32) -> None:
     """Send `sig` to the current process (CPython's `signal.raise_signal`).
     On the main thread a SIGINT raises KeyboardInterrupt before this returns,
-    as in CPython (inside `asyncio.run` it cancels the root task instead)."""
+    as in CPython (inside `asyncio.run` it cancels the root task instead);
+    not in a `--no-signals` build."""
     posix_signal.raise_signal(sig)
     posix_signal.check_signals()

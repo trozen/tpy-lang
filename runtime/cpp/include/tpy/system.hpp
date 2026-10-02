@@ -41,6 +41,7 @@ inline void time_sleep(double seconds) {
     if (seconds < 0) {
         raise_value_error("sleep length must be non-negative");
     }
+#ifndef TPY_NO_SIGNALS
     if (const auto* ops = interrupt_detail::ops.load(std::memory_order_acquire)) {
         if (!(seconds > 0.0)) {
             // No wait to cut short, but still a check point: `time.sleep(0)`
@@ -53,6 +54,7 @@ inline void time_sleep(double seconds) {
         }
         return;
     }
+#endif
     auto duration = std::chrono::duration<double>(seconds);
     std::this_thread::sleep_for(duration);
 }

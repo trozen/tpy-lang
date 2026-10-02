@@ -204,6 +204,37 @@ def test_options_key_sensitive_to_each_flag(tmp_path):
         assert make_key(**over) != base, over
 
 
+def test_no_signals_define_keys_the_build(monkeypatch):
+    # `--no-signals` changes no generated file: the define in the config's
+    # extra_flags is all that separates the two builds' PCH and cached binary.
+    from argparse import Namespace
+
+    from tpyc import cli
+    from tpyc.toolchain import CppCompilerConfig
+
+    monkeypatch.setattr(
+        CppCompilerConfig, "from_env",
+        classmethod(lambda cls, cxx="auto": CppCompilerConfig(
+            compiler=["g++"], extra_flags=["-fhost"])))
+
+    def args(no_signals):
+        return Namespace(cxx="auto", ccache=None, no_signals=no_signals,
+                         debug=False, default_int="int32", pch=True,
+                         no_main=False, emit_source=False, pcre2="bundled",
+                         mbedtls="bundled", date="bundled", zlib="bundled")
+
+    def key(no_signals):
+        ns = args(no_signals)
+        return cli._cache_options_key(ns, Path("/x/prog.py"), [],
+                                      cli._resolve_cpp_config(ns))
+
+    assert cli._resolve_cpp_config(args(False)).extra_flags == ["-fhost"]
+    assert cli._resolve_cpp_config(args(True)).extra_flags == [
+        "-fhost", "-DTPY_NO_SIGNALS"]
+    assert key(True) != key(False)
+    assert key(True) == key(True)
+
+
 def test_resolver_logs_hits_and_misses(tmp_path):
     (tmp_path / "util.py").write_text("")
     resolver = ModuleResolver(tmp_path)

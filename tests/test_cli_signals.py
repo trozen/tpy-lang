@@ -561,21 +561,21 @@ IGNORING_EXEC = ("import os, signal, sys\n"
                  "os.execv(sys.argv[1], sys.argv[1:])\n")
 
 
-@pytest.fixture(scope="module")
-def interrupt_binary(tmp_path_factory: pytest.TempPathFactory,
-                     request: pytest.FixtureRequest) -> Path:
+def _build_signal_program(work: Path, source: str,
+                          request: pytest.FixtureRequest,
+                          options: tuple[str, ...] = ()) -> Path:
+    """Build `source` through the real CLI in `work`; the binary's path."""
     if os.name != "posix":
         pytest.skip("requires POSIX signals")
     if (exec_is_cross() or request.config.getoption("--build-only")
             or request.config.getoption("--no-exec")):
         pytest.skip("SIGINT delivery needs a host-runnable binary")
-    work = tmp_path_factory.mktemp("sigint")
-    (work / "prog.py").write_text(INTERRUPT_PROGRAM)
+    (work / "prog.py").write_text(source)
     argv = [sys.executable, "-c",
             "import sys\nfrom tpyc.cli import main_tpyc\n"
             "sys.argv = ['tpyc', *sys.argv[1:]]\nsys.exit(main_tpyc())\n",
             "-b", "-q", "prog.py", "-o", "out",
-            "--cxx", request.config.getoption("--cxx"), "--no-pch"]
+            "--cxx", request.config.getoption("--cxx"), "--no-pch", *options]
     if request.config.getoption("--no-ccache"):
         argv.append("--no-ccache")
     env = {**os.environ, "CCACHE_BASEDIR": str(work)}
@@ -584,6 +584,13 @@ def interrupt_binary(tmp_path_factory: pytest.TempPathFactory,
     binary = work / "out" / "release" / "prog"
     assert result.returncode == 0 and binary.exists(), result.stdout + result.stderr
     return binary
+
+
+@pytest.fixture(scope="module")
+def interrupt_binary(tmp_path_factory: pytest.TempPathFactory,
+                     request: pytest.FixtureRequest) -> Path:
+    return _build_signal_program(tmp_path_factory.mktemp("sigint"),
+                                 INTERRUPT_PROGRAM, request)
 
 
 class _Child:
@@ -811,3 +818,230 @@ def test_inherited_sigint_ignore_is_kept(interrupt_binary: Path) -> None:
     returncode, out, err = _Child(interrupt_binary, "ignored",
                                   sigint_ignored=True).finish()
     assert (returncode, out, err) == (0, "survived\nasync: 1\n", "")
+
+
+# `--no-signals`: the Ctrl-C layer compiled out. "run" passes every kind of
+# check point once, so the opted-out stdlib composition is shown to work; the
+# other modes show that no signal becomes a KeyboardInterrupt.
+NO_SIGNALS_PROGRAM = """\
+import asyncio
+import signal
+import socket
+import sys
+import time
+from typing import Iterator
+from tpy import int32
+from tpy.thread import spawn
+
+
+class Res:
+    name: str
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def __del__(self) -> None:
+        # A cleanup body with a check point: its deferral scope is empty here.
+        print("del", self.name)
+
+
+def gen() -> Iterator[int32]:
+    try:
+        yield 1
+        yield 2
+    finally:
+        print("gen cleanup")
+
+
+class Work:
+    def run(self) -> int32:
+        time.sleep(0.01)
+        return 7
+
+
+async def amain() -> int32:
+    await asyncio.sleep(0.01)
+    return 5
+
+
+def mode_run() -> None:
+    r = Res("a")
+    for v in gen():
+        print(v)
+        break
+    h = spawn(Work())
+    print("join", h.join())
+    print("async", asyncio.run(amain()))
+    a, b = socket.socketpair()
+    a.sendall(b"hi")
+    print(b.recv(2))
+    sys.stdout.write("w\\n")
+    time.sleep(0)
+    line = input("? ")
+    print("in", line)
+    print("done", r.name)
+
+
+def mode_sleep() -> None:
+    try:
+        print("ready")
+        sys.stdout.flush()
+        time.sleep(30.0)
+        print("slept (WRONG)")
+    except KeyboardInterrupt:
+        print("caught")
+    finally:
+        print("finally")
+
+
+def mode_raise() -> None:
+    try:
+        signal.raise_signal(signal.SIGINT)
+        print("survived")
+    except KeyboardInterrupt:
+        print("caught")
+
+
+def mode_raise_msg() -> None:
+    raise KeyboardInterrupt("why")
+
+
+async def wait_forever() -> None:
+    ev = asyncio.Event()
+    print("waiting")
+    await ev.wait()
+
+
+def mode_deadlock() -> None:
+    try:
+        asyncio.run(wait_forever())
+        print("returned (WRONG)")
+    except RuntimeError:
+        print("deadlock reported")
+
+
+def main() -> None:
+    mode = sys.argv[1]
+    if mode == "run":
+        mode_run()
+    elif mode == "deadlock":
+        mode_deadlock()
+    elif mode == "sleep":
+        mode_sleep()
+    elif mode == "raise":
+        mode_raise()
+    elif mode == "raise_msg":
+        mode_raise_msg()
+
+
+main()
+"""
+
+
+# What the two builds of one source disagree on.
+RAISE_PROGRAM = """\
+import signal
+
+
+def main() -> None:
+    try:
+        signal.raise_signal(signal.SIGINT)
+        print("survived")
+    except KeyboardInterrupt:
+        print("caught")
+
+
+main()
+"""
+
+
+@pytest.fixture(scope="module")
+def no_signals_binary(tmp_path_factory: pytest.TempPathFactory,
+                      request: pytest.FixtureRequest) -> Path:
+    return _build_signal_program(tmp_path_factory.mktemp("nosignals"),
+                                 NO_SIGNALS_PROGRAM, request, ("--no-signals",))
+
+
+def test_no_signals_program_runs(no_signals_binary: Path) -> None:
+    child = _Child(no_signals_binary, "run", stdin_pipe=True)
+    returncode, out, err = child.finish(stdin=b"typed\n")
+    assert (returncode, out, err) == (
+        0, "1\ngen cleanup\njoin 7\nasync 5\nb'hi'\nw\n? in typed\ndone a\n"
+        "del a\n", "")
+
+
+def test_no_signals_reaches_sources_cmake(no_signals_binary: Path) -> None:
+    # A host that builds the generated C++ itself reads the define from here.
+    cmake = (no_signals_binary.parent.parent / "sources.cmake").read_text()
+    assert "set(TPYC_COMPILE_DEFINITIONS\n    TPY_NO_SIGNALS\n)\n" in cmake
+
+
+def test_no_signals_sigint_terminates(no_signals_binary: Path) -> None:
+    # No handler was installed: the SIGINT's default action ends the process
+    # in the sleep, with no KeyboardInterrupt, `except` or `finally`.
+    child = _Child(no_signals_binary, "sleep")
+    child.wait_line("ready")
+    child.interrupt()
+    returncode, out, err = child.finish()
+    assert (returncode, out, err) == (-signal.SIGINT, "ready\n", "")
+    # raise_signal follows the process disposition too.
+    returncode, out, err = _Child(no_signals_binary, "raise").finish()
+    assert (returncode, out, err) == (-signal.SIGINT, "", "")
+
+
+def test_no_signals_keeps_explicit_keyboard_interrupt(
+    no_signals_binary: Path,
+) -> None:
+    # A KeyboardInterrupt the program raises itself is untouched by the option,
+    # the uncaught report and the exit by SIGINT included.
+    returncode, out, err = _Child(no_signals_binary, "raise_msg").finish()
+    assert (returncode, out, err) == (
+        -signal.SIGINT, "", "KeyboardInterrupt: why\n")
+
+
+def test_no_signals_asyncio_reports_a_deadlock(no_signals_binary: Path) -> None:
+    # With no SIGINT to wait for, a run whose tasks all wait on nothing can
+    # never be woken: the reactor's no-progress guard raises instead of
+    # blocking (a default build keeps waiting for a Ctrl-C here).
+    returncode, out, err = _Child(no_signals_binary, "deadlock").finish()
+    assert (returncode, out, err) == (0, "waiting\ndeadlock reported\n", "")
+
+
+@pytest.mark.skipif(os.name != "posix", reason="requires POSIX process groups")
+def test_no_signals_keys_the_build_cache(
+    tmp_path: Path, request: pytest.FixtureRequest,
+) -> None:
+    # The flag changes no generated file, only the C++ build: a cached binary
+    # of the other mode must not be reused.
+    if (exec_is_cross() or request.config.getoption("--build-only")
+            or request.config.getoption("--no-exec")):
+        pytest.skip("needs a host-runnable binary")
+    (tmp_path / "prog.py").write_text(RAISE_PROGRAM)
+    (tmp_path / "launcher.py").write_text(LAUNCHER)
+    options = ["--cxx", request.config.getoption("--cxx"), "--no-pch"]
+    if request.config.getoption("--no-ccache"):
+        options.append("--no-ccache")
+    for flags, cold, returncode, stdout in [
+        ([], True, 0, "caught\n"),
+        (["--no-signals"], True, 128 + signal.SIGINT, ""),
+        (["--no-signals"], False, -signal.SIGINT, ""),
+        ([], True, 0, "caught\n"),
+    ]:
+        result = _run_cli(tmp_path, "tpyc", options + flags, "raise",
+                          rebuild=False)
+        context = f"{flags} cold={cold}: {result.stderr}"
+        assert result.returncode == returncode, context
+        assert result.stdout == stdout, context
+        assert ("analyzed" in result.stderr) == cold, context
+        assert ("cached:" in result.stderr) != cold, context
+
+
+def test_no_signals_does_not_apply_to_the_repl(tmp_path: Path) -> None:
+    result = subprocess.run(
+        [sys.executable, "-c",
+         "import sys\nfrom tpyc.cli import main_tpy\n"
+         "sys.argv = ['tpy', '-i', '--no-signals']\nsys.exit(main_tpy())\n"],
+        cwd=tmp_path, capture_output=True, text=True, stdin=subprocess.DEVNULL,
+        timeout=120)
+    assert result.returncode == 2, result.stderr
+    assert "--no-signals does not apply to the REPL" in result.stderr

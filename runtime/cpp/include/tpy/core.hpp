@@ -198,6 +198,8 @@ struct KeyboardInterrupt : BaseException {
     TPY_THROWABLE_VIRTUALS(KeyboardInterrupt)
 };
 
+#ifndef TPY_NO_SIGNALS
+
 // True while the process-wide SIGINT layer is armed (see interrupt.hpp).
 inline bool interrupt_armed() noexcept {
     return interrupt_detail::ops.load(std::memory_order_acquire) != nullptr;
@@ -246,6 +248,23 @@ inline bool install_interrupt_handler(bool install_sigint_handler = true) {
 inline void request_interrupt() noexcept {
     tpy_request_interrupt();
 }
+
+#else  // TPY_NO_SIGNALS
+
+// The layer is compiled out: every check point is the plain operation. The
+// embedding API is left undeclared, so a host that tries to arm a layer its
+// build removed fails to compile rather than silently getting no Ctrl-C.
+inline bool interrupt_armed() noexcept {
+    return false;
+}
+
+inline void check_signals() {}
+
+inline std::ostream& check_signals(std::ostream& os) {
+    return os;
+}
+
+#endif  // TPY_NO_SIGNALS
 
 // Forward decl: raise_fixedint_overflow (below) calls tpy_panic, whose
 // definition lives later in this header.
@@ -607,9 +626,11 @@ inline void process_startup() {
     // hung-up peer then returns EPIPE (a catchable OSError) instead of the
     // kernel's default SIGPIPE termination.
     std::signal(SIGPIPE, SIG_IGN);
+#ifndef TPY_NO_SIGNALS
     // Ctrl-C -> KeyboardInterrupt on this (the main) thread, unless SIGINT was
     // inherited as ignored, which CPython also leaves alone.
     tpy_interrupt_process_startup();
+#endif
 }
 
 /**

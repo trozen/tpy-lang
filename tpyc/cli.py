@@ -297,6 +297,25 @@ def _third_party_modes(args: argparse.Namespace) -> dict[str, str]:
     return {name: getattr(args, name) for name in THIRD_PARTY_LIBS}
 
 
+def _compile_definitions(args: argparse.Namespace) -> list[str]:
+    """C++ defines the options select. Every TU of the target must carry
+    them, the runtime sources included: the runtime headers change shape
+    under them (`TPY_NO_SIGNALS`: runtime/cpp/include/tpy/interrupt.hpp)."""
+    return ["TPY_NO_SIGNALS"] if args.no_signals else []
+
+
+def _resolve_cpp_config(args: argparse.Namespace) -> CppCompilerConfig:
+    """The toolchain config of this run, with the options that reach every
+    C++ compile folded in. `extra_flags` feeds the PCH stamp and the
+    whole-run cache key, so the defines key both."""
+    config = CppCompilerConfig.from_env(cxx=args.cxx)
+    if args.ccache is not None:
+        config.ccache = args.ccache
+    config.extra_flags = [*config.extra_flags,
+                          *(f"-D{d}" for d in _compile_definitions(args))]
+    return config
+
+
 def _cache_options_key(args: argparse.Namespace, input_path: Path,
                        lib_dirs: list[Path],
                        config: CppCompilerConfig) -> dict:
@@ -549,6 +568,11 @@ def _run_cli(is_runner: bool) -> int:
                         help="Parallel compile jobs (default: number of CPUs)")
     parser.add_argument("--no-main", dest="no_main", action="store_true",
                         help="Skip main() generation (emit __tpy_main instead, for linking with external C++)")
+    parser.add_argument("--no-signals", dest="no_signals", action="store_true",
+                        help="Compile the Ctrl-C layer out (builds with -DTPY_NO_SIGNALS): "
+                             "no SIGINT handler, no KeyboardInterrupt from a signal, "
+                             "no check points. For generated C++ embedded in a host; "
+                             "the generated code is unchanged")
     parser.add_argument("-q", "--quiet", action="store_true",
                         help="Suppress progress lines (show only errors and program output)")
     parser.add_argument("--info", action="store_true",
@@ -605,6 +629,10 @@ def _run_cli(is_runner: bool) -> int:
 
     # Handle REPL mode
     if args.repl:
+        if args.no_signals:
+            # The REPL resolves its own toolchain config; the flag would be
+            # dropped, not applied.
+            parser.error("--no-signals does not apply to the REPL")
         from .repl import REPLSession
         preload_files = []
         if args.input:
@@ -749,12 +777,10 @@ def _run_cli(is_runner: bool) -> int:
             and frontend_registry is None and args.verbose < 2):
         from . import build_cache
         try:
-            key_config = CppCompilerConfig.from_env(cxx=args.cxx)
+            key_config = _resolve_cpp_config(args)
         except (CompilerNotFoundError, ToolchainUnsupportedError):
             key_config = None  # cold path reports the error properly
         if key_config is not None:
-            if args.ccache is not None:
-                key_config.ccache = args.ccache
             cache_key = _cache_options_key(args, input_path, lib_dirs, key_config)
         # --rebuild skips the check but still falls through to record a
         # fresh manifest, so the *next* plain run can go warm.
@@ -804,9 +830,7 @@ def _run_cli(is_runner: bool) -> int:
             if key_config is not None:
                 cpp_config = key_config
             else:
-                cpp_config = CppCompilerConfig.from_env(cxx=args.cxx)
-                if args.ccache is not None:
-                    cpp_config.ccache = args.ccache
+                cpp_config = _resolve_cpp_config(args)
             progress.header(cpp_config, _build_variant(args), n_jobs)
         else:
             progress.header()
@@ -1005,6 +1029,7 @@ def _run_cli(is_runner: bool) -> int:
             bundle_runtime=args.bundle_runtime and not building and explicit_output,
             third_party_libs=third_party_plan.libs,
             runtime_cpp_sources=runtime_cpp_sources or None,
+            compile_definitions=_compile_definitions(args),
         )
 
         # Build if requested
