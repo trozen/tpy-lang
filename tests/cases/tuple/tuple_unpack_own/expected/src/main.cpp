@@ -19,9 +19,9 @@ void main() {
     auto __tup_1 = ::tpyapp::main::make();
     Pair p = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    std::cout << p.x << "\n";
-    std::cout << p.y << "\n";
-    std::cout << n << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
+    std::cout << p.y << "\n" << ::tpy::check_signals;
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // main()

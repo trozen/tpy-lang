@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(c.sum())
 void main() {
     Child c = Child(10, 20);
-    std::cout << c.x() << "\n";
-    std::cout << c.y() << "\n";
-    std::cout << c.sum() << "\n";
+    std::cout << c.x() << "\n" << ::tpy::check_signals;
+    std::cout << c.y() << "\n" << ::tpy::check_signals;
+    std::cout << c.sum() << "\n" << ::tpy::check_signals;
 }
 
 // main()

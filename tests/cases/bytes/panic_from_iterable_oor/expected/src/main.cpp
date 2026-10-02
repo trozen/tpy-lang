@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(bytes(xs))
 void main() {
     std::vector<int32_t> xs = {200, 999};
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(xs)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(xs)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

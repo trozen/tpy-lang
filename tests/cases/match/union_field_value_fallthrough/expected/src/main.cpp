@@ -88,21 +88,21 @@ std::string either(::tpy::Union<const Cat*, const Dog*> a) {
 //     print(either(Cat("x")))
 void main() {
     Dog __tmp_1 = Dog(::tpy::BigInt(4));
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
     Dog __tmp_2 = Dog(::tpy::BigInt(3));
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
     Dog __tmp_3 = Dog(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
     Cat __tmp_4 = Cat("rex");
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_4}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_4}) << "\n" << ::tpy::check_signals;
     Cat __tmp_5 = Cat("x");
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_5}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_5}) << "\n" << ::tpy::check_signals;
     Dog __tmp_6 = Dog(::tpy::BigInt(4));
-    std::cout << ::tpyapp::main::either(::tpy::Union<const Cat*, const Dog*>{&__tmp_6}) << "\n";
+    std::cout << ::tpyapp::main::either(::tpy::Union<const Cat*, const Dog*>{&__tmp_6}) << "\n" << ::tpy::check_signals;
     Dog __tmp_7 = Dog(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::either(::tpy::Union<const Cat*, const Dog*>{&__tmp_7}) << "\n";
+    std::cout << ::tpyapp::main::either(::tpy::Union<const Cat*, const Dog*>{&__tmp_7}) << "\n" << ::tpy::check_signals;
     Cat __tmp_8 = Cat("x");
-    std::cout << ::tpyapp::main::either(::tpy::Union<const Cat*, const Dog*>{&__tmp_8}) << "\n";
+    std::cout << ::tpyapp::main::either(::tpy::Union<const Cat*, const Dog*>{&__tmp_8}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

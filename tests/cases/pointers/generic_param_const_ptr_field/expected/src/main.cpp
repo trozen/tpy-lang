@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(ROView(c).read())   # 42, readonly source -> readonly borrow
 void main() {
     Counter c = Counter(42);
-    std::cout << RWView<Counter>(c).read() << "\n";
-    std::cout << ROView<Counter>(c).read() << "\n";
+    std::cout << RWView<Counter>(c).read() << "\n" << ::tpy::check_signals;
+    std::cout << ROView<Counter>(c).read() << "\n" << ::tpy::check_signals;
 }
 
 // main()

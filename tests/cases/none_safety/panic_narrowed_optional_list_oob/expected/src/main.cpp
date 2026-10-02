@@ -13,8 +13,8 @@ void read_oob(const std::vector<int32_t>* lst) {
     if ((lst == nullptr)) {
         return;
     }
-    std::cout << "before" << "\n";
-    std::cout << ::tpy::__getitem__((*lst), 10) << "\n";
+    std::cout << "before" << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*lst), 10) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

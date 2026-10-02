@@ -17,8 +17,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpyapp::main::add_pair(1, 2) << "\n";
-    std::cout << ::tpyapp::main::add_pair(std::nullopt, 2) << "\n";
+    std::cout << ::tpyapp::main::add_pair(1, 2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::add_pair(std::nullopt, 2) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

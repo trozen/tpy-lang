@@ -13,7 +13,7 @@ void main() {
     std::vector<int32_t> items = {1};
     ::tpy::pop_back(items);
     int32_t x = ::tpy::pop_back(items);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // main()

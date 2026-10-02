@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(rect_area(r))
 void main() {
     ::c_rect r = ::c_rect{10, 20, 100, 50};
-    std::cout << r.w << "\n";
-    std::cout << rect_area(&r) << "\n";
+    std::cout << r.w << "\n" << ::tpy::check_signals;
+    std::cout << rect_area(&r) << "\n" << ::tpy::check_signals;
 }
 
 // # Test: both `import lib` and `from lib import ...` coexist

@@ -43,14 +43,14 @@ Rec* passthrough(Rec* x) {
 //     print(xs[0].v)
 void main() {
     std::vector<Rec> xs = {Rec(1)};
-    std::cout << ::tpy::print_bool((::tpyapp::main::find(xs, 1) == nullptr)) << "\n";
-    std::cout << ::tpy::print_bool((::tpyapp::main::find(xs, 2) == nullptr)) << "\n";
-    std::cout << ::tpy::print_bool((::tpyapp::main::passthrough(::tpyapp::main::find(xs, 1)) == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((::tpyapp::main::find(xs, 1) == nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpyapp::main::find(xs, 2) == nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpyapp::main::passthrough(::tpyapp::main::find(xs, 1)) == nullptr)) << "\n" << ::tpy::check_signals;
     Rec* found = ::tpyapp::main::find(xs, 1);
     if ((found != nullptr)) {
         found->v = 9;
     }
-    std::cout << ::tpy::__getitem__(xs, 0).v << "\n";
+    std::cout << ::tpy::__getitem__(xs, 0).v << "\n" << ::tpy::check_signals;
 }
 
 // main()

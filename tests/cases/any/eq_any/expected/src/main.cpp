@@ -19,11 +19,11 @@ void main() {
     ::tpy::Any b = ::tpy::make_any(::tpy::BigInt(1));
     ::tpy::Any c = ::tpy::make_any(std::string("1"));
     ::tpy::Any d = ::tpy::make_any(::tpy::BigInt(2));
-    std::cout << ::tpy::print_bool((a == b)) << "\n";
-    std::cout << ::tpy::print_bool((a == c)) << "\n";
-    std::cout << ::tpy::print_bool((a == d)) << "\n";
-    std::cout << ::tpy::print_bool((a != b)) << "\n";
-    std::cout << ::tpy::print_bool((a != c)) << "\n";
+    std::cout << ::tpy::print_bool((a == b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a == c)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a == d)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a != b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a != c)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(my_abs(int32(-42)))
 //     print(add(int32(10), int32(32)))
 void main() {
-    std::cout << native_abs(-42) << "\n";
-    std::cout << native_add(10, 32) << "\n";
+    std::cout << native_abs(-42) << "\n" << ::tpy::check_signals;
+    std::cout << native_add(10, 32) << "\n" << ::tpy::check_signals;
 }
 
 // # Test @native(binding="C") for C function imports with explicit symbol names

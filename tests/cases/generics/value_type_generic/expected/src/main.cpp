@@ -31,15 +31,15 @@ Pair<int32_t> swap(Pair<int32_t> p) {
 void main() {
     Pair<int32_t> p = Pair<int32_t>(1, 2);
     Pair<int32_t> q = p;
-    std::cout << p.first << "\n";
-    std::cout << q.first << "\n";
+    std::cout << p.first << "\n" << ::tpy::check_signals;
+    std::cout << q.first << "\n" << ::tpy::check_signals;
     Pair<int32_t> s = ::tpyapp::main::swap(p);
-    std::cout << s.first << "\n";
-    std::cout << s.second << "\n";
+    std::cout << s.first << "\n" << ::tpy::check_signals;
+    std::cout << s.second << "\n" << ::tpy::check_signals;
     Pair<Vec2> vp = Pair<Vec2>(Vec2(1, 2), Vec2(3, 4));
-    std::cout << vp.first.x << "\n";
+    std::cout << vp.first.x << "\n" << ::tpy::check_signals;
     Pair<bool> bp = Pair<bool>(true, false);
-    std::cout << ::tpy::print_bool(bp.first) << "\n";
+    std::cout << ::tpy::print_bool(bp.first) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -50,8 +50,8 @@ std::string test_init_none_then_assign() {
 //     print(test_reassign_to_none())
 //     print(test_init_none_then_assign())
 void main() {
-    std::cout << ::tpyapp::main::test_reassign_to_none() << "\n";
-    std::cout << ::tpyapp::main::test_init_none_then_assign() << "\n";
+    std::cout << ::tpyapp::main::test_reassign_to_none() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_init_none_then_assign() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -48,34 +48,34 @@ namespace tpyapp::main {
 //     # Edge case: empty string.
 //     print(repr(""))
 void main() {
-    std::cout << ::tpy::repr_of("a\nb") << "\n";
-    std::cout << ::tpy::repr_of("tab\there") << "\n";
-    std::cout << ::tpy::repr_of("cr\rfoo") << "\n";
-    std::cout << ::tpy::repr_of("back\\slash") << "\n";
-    std::cout << ::tpy::repr_of("plain") << "\n";
-    std::cout << ::tpy::repr_of("can't") << "\n";
-    std::cout << ::tpy::repr_of("dq\"x") << "\n";
-    std::cout << ::tpy::repr_of("'and\"") << "\n";
+    std::cout << ::tpy::repr_of("a\nb") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of("tab\there") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of("cr\rfoo") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of("back\\slash") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of("plain") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of("can't") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of("dq\"x") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of("'and\"") << "\n" << ::tpy::check_signals;
     std::vector<std::string> items = std::vector<std::string>{};
     items.push_back("a\nb");
     items.push_back("c");
     items.push_back("can't");
-    std::cout << ::tpy::ListPrinter(items) << "\n";
+    std::cout << ::tpy::ListPrinter(items) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>();
     ::tpy::__setitem__(d, "key", "v\tab");
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<std::string> s = ::tpy::ordered_set<std::string>();
     s.insert("only-one\n");
-    std::cout << ::tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show_optional("a\nb");
     ::tpyapp::main::show_optional(std::nullopt);
-    std::cout << ::tpy::repr_of("") << "\n";
+    std::cout << ::tpy::repr_of("") << "\n" << ::tpy::check_signals;
 }
 
 // def show_optional(s: str | None) -> None:
 //     print(repr(s))
 void show_optional(std::optional<std::string_view> s) {
-    std::cout << ::tpy::repr_of(s ? std::make_optional(std::string(*s)) : std::nullopt) << "\n";
+    std::cout << ::tpy::repr_of(s ? std::make_optional(std::string(*s)) : std::nullopt) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -52,16 +52,16 @@ void main() {
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>();
     ::tpy::__setitem__(d, "alpha", "1");
     ::tpy::__setitem__(d, "beta", "2");
-    std::cout << ::tpy::print_bool(::tpyapp::main::dict_has("alpha", d)) << " " << ::tpy::print_bool(::tpyapp::main::dict_has("gamma", d)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::dict_missing("gamma", d)) << " " << ::tpy::print_bool(::tpyapp::main::dict_missing("alpha", d)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::dict_has("alpha", d)) << " " << ::tpy::print_bool(::tpyapp::main::dict_has("gamma", d)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::dict_missing("gamma", d)) << " " << ::tpy::print_bool(::tpyapp::main::dict_missing("alpha", d)) << "\n" << ::tpy::check_signals;
     std::string_view name = ::tpy::str_slice("xalpha", ::tpy::BasicSlice{1, std::nullopt});
-    std::cout << ::tpy::print_bool((d.contains(name))) << "\n";
-    std::cout << ::tpy::print_bool((d.contains("beta"))) << " " << ::tpy::print_bool((d.contains("zeta"))) << "\n";
+    std::cout << ::tpy::print_bool((d.contains(name))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((d.contains("beta"))) << " " << ::tpy::print_bool((d.contains("zeta"))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<std::string> s = ::tpy::ordered_set<std::string>();
     s.insert("x");
-    std::cout << ::tpy::print_bool(::tpyapp::main::set_has("x", s)) << " " << ::tpy::print_bool(::tpyapp::main::set_has("y", s)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::set_missing("y", s)) << " " << ::tpy::print_bool(::tpyapp::main::set_missing("x", s)) << "\n";
-    std::cout << ::tpy::print_bool((s.contains("x"))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::set_has("x", s)) << " " << ::tpy::print_bool(::tpyapp::main::set_has("y", s)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::set_missing("y", s)) << " " << ::tpy::print_bool(::tpyapp::main::set_missing("x", s)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((s.contains("x"))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

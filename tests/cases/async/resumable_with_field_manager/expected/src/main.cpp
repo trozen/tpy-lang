@@ -166,8 +166,8 @@ __coro_coro coro(H& h) {
 //     print("coro after", h.g.depth)
 void main() {
     H h = H();
-    std::cout << "plain" << " " << ::tpyapp::main::plain(h) << "\n";
-    std::cout << "plain after" << " " << h.g.depth << "\n";
+    std::cout << "plain" << " " << ::tpyapp::main::plain(h) << "\n" << ::tpy::check_signals;
+    std::cout << "plain after" << " " << h.g.depth << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen(h);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -175,12 +175,12 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen" << " " << x << "\n";
+            std::cout << "gen" << " " << x << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "gen after" << " " << h.g.depth << "\n";
-    std::cout << "coro" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(h))) << "\n";
-    std::cout << "coro after" << " " << h.g.depth << "\n";
+    std::cout << "gen after" << " " << h.g.depth << "\n" << ::tpy::check_signals;
+    std::cout << "coro" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(h))) << "\n" << ::tpy::check_signals;
+    std::cout << "coro after" << " " << h.g.depth << "\n" << ::tpy::check_signals;
 }
 
 // # A `with` whose manager is a FIELD read (`with h.g:`) inside a resumable

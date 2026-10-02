@@ -18,9 +18,9 @@ void store_str(std::optional<std::string_view> a) {
     ::tpy::ordered_map<std::string, std::string> out = ::tpy::ordered_map<std::string, std::string>();
     if ((a.has_value())) {
         ::tpy::__setitem__(out, "k", std::string((*a)));
-        std::cout << ::tpy::__len__(out) << " " << ::tpy::__getitem__(out, "k") << "\n";
+        std::cout << ::tpy::__len__(out) << " " << ::tpy::__getitem__(out, "k") << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << ::tpy::__len__(out) << "\n";
+        std::cout << ::tpy::__len__(out) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -34,7 +34,7 @@ void store_bytes(std::optional<::tpy::BytesView> a) {
     if ((a.has_value())) {
         ::tpy::__setitem__(out, "k", ::tpy::Bytes((*a)));
     }
-    std::cout << ::tpy::__len__(out) << " " << (((a.has_value())) ? (::tpy::__len__(::tpy::__getitem__(out, "k"))) : (0)) << "\n";
+    std::cout << ::tpy::__len__(out) << " " << (((a.has_value())) ? (::tpy::__len__(::tpy::__getitem__(out, "k"))) : (0)) << "\n" << ::tpy::check_signals;
 }
 
 // def store_list(a: str | None) -> None:
@@ -49,7 +49,7 @@ void store_list(std::optional<std::string_view> a) {
     if ((a.has_value())) {
         ::tpy::__setitem__(out, 0, std::string((*a)));
     }
-    std::cout << ::tpy::__getitem__(out, 0) << "\n";
+    std::cout << ::tpy::__getitem__(out, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def store_optional_value(a: str | None) -> None:
@@ -63,7 +63,7 @@ void store_optional_value(std::optional<std::string_view> a) {
     ::tpy::ordered_map<std::string, std::optional<std::string>> out = ::tpy::ordered_map<std::string, std::optional<std::string>>();
     ::tpy::__setitem__(out, "present", std::move(a ? std::make_optional(std::string(*a)) : std::nullopt));
     ::tpy::__setitem__(out, "absent", std::nullopt);
-    std::cout << ::tpy::__len__(out) << "\n";
+    std::cout << ::tpy::__len__(out) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

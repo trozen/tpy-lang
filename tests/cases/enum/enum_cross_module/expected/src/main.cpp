@@ -16,13 +16,13 @@ namespace tpyapp::main {
 //     print(c == Color.Red)
 void main() {
     ::tpyapp::colors::Color c = ::tpyapp::colors::Color::Red;
-    std::cout << c << "\n";
-    std::cout << ::tpy::EnumUtil<::tpyapp::colors::Color>::name(c) << "\n";
-    std::cout << ::tpyapp::colors::color_value(c) << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<::tpyapp::colors::Color>::name(c) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::colors::color_value(c) << "\n" << ::tpy::check_signals;
     ::tpyapp::colors::Color g = ::tpyapp::colors::Color::Green;
-    std::cout << ::tpy::print_bool((c == g)) << "\n";
-    std::cout << ::tpy::print_bool((c != g)) << "\n";
-    std::cout << ::tpy::print_bool((c == ::tpyapp::colors::Color::Red)) << "\n";
+    std::cout << ::tpy::print_bool((c == g)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((c != g)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((c == ::tpyapp::colors::Color::Red)) << "\n" << ::tpy::check_signals;
 }
 
 // # Test importing enum from another module

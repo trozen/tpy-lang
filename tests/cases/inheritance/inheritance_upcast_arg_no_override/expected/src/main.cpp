@@ -16,8 +16,8 @@ std::string name_of(Animal& a) {
 //     print(d.bark())
 void main() {
     Dog d = Dog("Rex", "Lab");
-    std::cout << ::tpyapp::main::name_of(d) << "\n";
-    std::cout << d.bark() << "\n";
+    std::cout << ::tpyapp::main::name_of(d) << "\n" << ::tpy::check_signals;
+    std::cout << d.bark() << "\n" << ::tpy::check_signals;
 }
 
 // main()

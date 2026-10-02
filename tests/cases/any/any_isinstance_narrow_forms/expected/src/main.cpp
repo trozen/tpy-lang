@@ -14,12 +14,12 @@ namespace tpyapp::main {
 void dispatch(::tpy::Any v) {
     if ((v.value.has_value() && v.value.type() == typeid(::tpy::BigInt))) {
         const ::tpy::BigInt& __v = std::any_cast<const ::tpy::BigInt&>(v.value);
-        std::cout << "int" << " " << __v << "\n";
+        std::cout << "int" << " " << __v << "\n" << ::tpy::check_signals;
     } else if ((v.value.has_value() && v.value.type() == typeid(std::string))) {
         const std::string& __v = std::any_cast<const std::string&>(v.value);
-        std::cout << "str" << " " << __v << "\n";
+        std::cout << "str" << " " << __v << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "other" << "\n";
+        std::cout << "other" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -58,10 +58,10 @@ void main() {
     ::tpyapp::main::dispatch(::tpy::make_any(::tpy::BigInt(1)));
     ::tpyapp::main::dispatch(::tpy::make_any(std::string("s")));
     ::tpyapp::main::dispatch(::tpy::make_any(static_cast<double>(1.5)));
-    std::cout << ::tpy::print_bool(::tpyapp::main::tuple_form(::tpy::make_any(::tpy::BigInt(1)))) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::tuple_form(::tpy::make_any(std::string("s")))) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::negated(::tpy::make_any(std::string("s")))) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::negated(::tpy::make_any(::tpy::BigInt(1)))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::tuple_form(::tpy::make_any(::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::tuple_form(::tpy::make_any(std::string("s")))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::negated(::tpy::make_any(std::string("s")))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::negated(::tpy::make_any(::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

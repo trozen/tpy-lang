@@ -22,12 +22,12 @@ void __tpy_init() {
 
     static Box<int32_t> __global_slot_1 = Box<int32_t>("mybox", 42);
     b = &__global_slot_1;
-    std::cout << b->name << "\n";
-    std::cout << b->get() << "\n";
+    std::cout << b->name << "\n" << ::tpy::check_signals;
+    std::cout << b->get() << "\n" << ::tpy::check_signals;
     static Wrapper<std::string> __global_slot_2 = Wrapper<std::string>(100, "hello");
     w = &__global_slot_2;
-    std::cout << w->get() << "\n";
-    std::cout << w->extra << "\n";
+    std::cout << w->get() << "\n" << ::tpy::check_signals;
+    std::cout << w->extra << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

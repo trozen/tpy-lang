@@ -23,9 +23,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpyapp::main::reduce_to_zero(2) << "\n";
-    std::cout << ::tpyapp::main::reduce_to_zero(0) << "\n";
-    std::cout << ::tpyapp::main::reduce_to_zero(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::reduce_to_zero(2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::reduce_to_zero(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::reduce_to_zero(std::nullopt) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -25,18 +25,18 @@ namespace tpyapp::main {
 void main() {
     int32_t x = 42;
     int32_t* p = &x;
-    std::cout << ::tpy::deref_check(p) << "\n";
+    std::cout << ::tpy::deref_check(p) << "\n" << ::tpy::check_signals;
     int32_t y = 77;
     const int32_t* rp = &y;
-    std::cout << ::tpy::deref_check(rp) << "\n";
+    std::cout << ::tpy::deref_check(rp) << "\n" << ::tpy::check_signals;
     int32_t z = 99;
     auto __tmp_1 = &z;
-    std::cout << ::tpyapp::main::deref_protocol(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::deref_protocol(__tmp_1) << "\n" << ::tpy::check_signals;
     int32_t w = 55;
     auto __tmp_2 = &w;
-    std::cout << ::tpyapp::main::deref_protocol(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::deref_protocol(__tmp_2) << "\n" << ::tpy::check_signals;
     Box b = Box(33);
-    std::cout << ::tpy::deref_check(b) << "\n";
+    std::cout << ::tpy::deref_check(b) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -32,16 +32,16 @@ std::string classify(const ::tpy::BigInt& code) {
 //     print(classify(503))
 //     print(200 == HTTPStatus.OK.value)       # True
 void main() {
-    std::cout << static_cast<int32_t>(::tpystd::http::HTTPStatus::OK) << "\n";
-    std::cout << static_cast<int32_t>(::tpystd::http::HTTPStatus::NOT_FOUND) << "\n";
-    std::cout << ::tpy::EnumUtil<::tpystd::http::HTTPStatus>::name(::tpystd::http::HTTPStatus::OK) << "\n";
-    std::cout << static_cast<int32_t>(::tpystd::http::HTTPStatus::INTERNAL_SERVER_ERROR) << "\n";
-    std::cout << ::tpy::EnumUtil<::tpystd::http::HTTPStatus>::name(::tpy::EnumUtil<::tpystd::http::HTTPStatus>::from_value(404)) << "\n";
-    std::cout << ::tpy::EnumUtil<::tpystd::http::HTTPStatus>::name(::tpy::EnumUtil<::tpystd::http::HTTPStatus>::from_value(204)) << "\n";
-    std::cout << ::tpyapp::main::classify(::tpy::BigInt(200)) << "\n";
-    std::cout << ::tpyapp::main::classify(::tpy::BigInt(404)) << "\n";
-    std::cout << ::tpyapp::main::classify(::tpy::BigInt(503)) << "\n";
-    std::cout << ::tpy::print_bool((200 == static_cast<int32_t>(::tpystd::http::HTTPStatus::OK))) << "\n";
+    std::cout << static_cast<int32_t>(::tpystd::http::HTTPStatus::OK) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(::tpystd::http::HTTPStatus::NOT_FOUND) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<::tpystd::http::HTTPStatus>::name(::tpystd::http::HTTPStatus::OK) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(::tpystd::http::HTTPStatus::INTERNAL_SERVER_ERROR) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<::tpystd::http::HTTPStatus>::name(::tpy::EnumUtil<::tpystd::http::HTTPStatus>::from_value(404)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<::tpystd::http::HTTPStatus>::name(::tpy::EnumUtil<::tpystd::http::HTTPStatus>::from_value(204)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(::tpy::BigInt(200)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(::tpy::BigInt(404)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(::tpy::BigInt(503)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((200 == static_cast<int32_t>(::tpystd::http::HTTPStatus::OK))) << "\n" << ::tpy::check_signals;
 }
 
 // # http.HTTPStatus is a plain IntEnum: numeric .value, .name, value-lookup, and

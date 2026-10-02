@@ -124,14 +124,14 @@ std::string flagged_int(std::optional<bool> b) {
 //     print(flagged(None), flagged(True), flagged(False))
 //     print(flagged_int(None), flagged_int(True), flagged_int(False))
 void main() {
-    std::cout << ::tpyapp::main::classify(std::nullopt) << "\n";
-    std::cout << ::tpyapp::main::classify(0) << "\n";
-    std::cout << ::tpyapp::main::classify(42) << "\n";
-    std::cout << ::tpyapp::main::describe(std::nullopt) << "\n";
-    std::cout << ::tpyapp::main::describe("hello") << "\n";
-    std::cout << ::tpyapp::main::describe("world") << "\n";
-    std::cout << ::tpyapp::main::flagged(std::nullopt) << " " << ::tpyapp::main::flagged(true) << " " << ::tpyapp::main::flagged(false) << "\n";
-    std::cout << ::tpyapp::main::flagged_int(std::nullopt) << " " << ::tpyapp::main::flagged_int(true) << " " << ::tpyapp::main::flagged_int(false) << "\n";
+    std::cout << ::tpyapp::main::classify(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(42) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe("hello") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe("world") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::flagged(std::nullopt) << " " << ::tpyapp::main::flagged(true) << " " << ::tpyapp::main::flagged(false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::flagged_int(std::nullopt) << " " << ::tpyapp::main::flagged_int(true) << " " << ::tpyapp::main::flagged_int(false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

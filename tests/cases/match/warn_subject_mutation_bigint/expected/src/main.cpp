@@ -18,13 +18,13 @@ void poke(Holder& h) {
         auto& __case_0 = std::get<0>(__match_subject_1);
         auto& b = __case_0.n;
         h.item = Small(9);
-        std::cout << b << "\n";
+        std::cout << b << "\n" << ::tpy::check_signals;
         break;
     }
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1);
         auto v = __case_1.v;
-        std::cout << "small" << " " << v << "\n";
+        std::cout << "small" << " " << v << "\n" << ::tpy::check_signals;
         break;
     }
     }

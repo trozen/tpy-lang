@@ -49,7 +49,7 @@ std::tuple<::tpy::Bytes, bool, bool> run_redirect(::tpy::BytesView status_line) 
     ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("{\"x\":1}", 7);
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"Content-Type", "text/plain"}});
     ::tpystd::tplib::requests::Response r = s.post("http://api.test/submit", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1}, nullptr, nullptr, &(__tmp_2));
-    std::cout << r.status_code << " " << r.url << "\n";
+    std::cout << r.status_code << " " << r.url << "\n" << ::tpy::check_signals;
     b.recv(65536);
     ::tpy::Bytes second = d.recv(65536);
     b.close();
@@ -68,7 +68,7 @@ void report(::tpy::BytesView status_line) {
     ::tpy::BytesView line = std::get<0>(__tup_1);
     bool has_body = std::get<1>(__tup_1);
     bool has_ct = std::get<2>(__tup_1);
-    std::cout << ::tpy::BytesPrinter(line) << " " << ::tpy::print_bool(has_body) << " " << ::tpy::print_bool(has_ct) << "\n";
+    std::cout << ::tpy::BytesPrinter(line) << " " << ::tpy::print_bool(has_body) << " " << ::tpy::print_bool(has_ct) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

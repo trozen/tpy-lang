@@ -226,7 +226,7 @@ void mutate_through_field(Holder& h) {
     while ((::tpy::__len__(h.rows) < 3)) {
         h.rows.push_back(1);
     }
-    std::cout << "rows" << " " << ::tpy::__len__(h.rows) << "\n";
+    std::cout << "rows" << " " << ::tpy::__len__(h.rows) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -251,12 +251,12 @@ void main() {
     rows.push_back({1});
     std::vector<int32_t> blank = std::vector<int32_t>{};
     rows.push_back(std::move(blank));
-    std::cout << "scalar" << " " << ::tpyapp::main::scalar_shapes(h, xs, ::tpy::char_from_str("x")) << "\n";
-    std::cout << "moded" << " " << ::tpyapp::main::moded_shapes(h, names, rows) << "\n";
-    std::cout << "operands" << " " << ::tpyapp::main::operand_positions(xs, 1) << "\n";
-    std::cout << "guards" << " " << ::tpyapp::main::guard_shapes(h, xs, names) << "\n";
+    std::cout << "scalar" << " " << ::tpyapp::main::scalar_shapes(h, xs, ::tpy::char_from_str("x")) << "\n" << ::tpy::check_signals;
+    std::cout << "moded" << " " << ::tpyapp::main::moded_shapes(h, names, rows) << "\n" << ::tpy::check_signals;
+    std::cout << "operands" << " " << ::tpyapp::main::operand_positions(xs, 1) << "\n" << ::tpy::check_signals;
+    std::cout << "guards" << " " << ::tpyapp::main::guard_shapes(h, xs, names) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << "drained" << " " << ::tpyapp::main::drain(__tmp_1) << "\n";
+    std::cout << "drained" << " " << ::tpyapp::main::drain(__tmp_1) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::mutate_through_field(h);
 }
 

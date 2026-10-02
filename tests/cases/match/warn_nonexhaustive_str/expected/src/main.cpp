@@ -28,9 +28,9 @@ std::string f(std::string_view s) {
 //     print(f("b"))
 //     print(f("z"))
 void main() {
-    std::cout << ::tpyapp::main::f("a") << "\n";
-    std::cout << ::tpyapp::main::f("b") << "\n";
-    std::cout << ::tpyapp::main::f("z") << "\n";
+    std::cout << ::tpyapp::main::f("a") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::f("b") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::f("z") << "\n" << ::tpy::check_signals;
 }
 
 // main()

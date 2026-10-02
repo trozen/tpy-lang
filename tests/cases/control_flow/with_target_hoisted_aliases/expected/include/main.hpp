@@ -52,7 +52,7 @@ inline Logger& Logger::__enter__() {
 // def __exit__(self, et, ev, tb) -> None:
 //     print("exit sees tag:", self.tag)
 inline void Logger::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    std::cout << "exit sees tag:" << " " << this->tag << "\n";
+    std::cout << "exit sees tag:" << " " << this->tag << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -48,24 +48,24 @@ std::array<int32_t, 3>* first_or_none(Grid& g, bool want) {
 void main() {
     Grid a = Grid();
     Grid b = Grid();
-    std::cout << ::tpy::print_bool(a.same_cells(b)) << "\n";
+    std::cout << ::tpy::print_bool(a.same_cells(b)) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(b.cells, 0, 99);
-    std::cout << ::tpy::print_bool(a.same_cells(b)) << "\n";
-    std::cout << a.spare_total() << "\n";
+    std::cout << ::tpy::print_bool(a.same_cells(b)) << "\n" << ::tpy::check_signals;
+    std::cout << a.spare_total() << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> made = ::tpyapp::main::fresh();
-    std::cout << ::tpy::__getitem__(made, 0) << " " << ::tpy::__getitem__(made, 2) << "\n";
+    std::cout << ::tpy::__getitem__(made, 0) << " " << ::tpy::__getitem__(made, 2) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3>* got = ::tpyapp::main::first_or_none(a, true);
     if ((got != nullptr)) {
         ::tpy::__setitem__((*got), 1, 42);
     }
-    std::cout << ::tpy::__getitem__(a.cells, 1) << "\n";
-    std::cout << ::tpy::print_bool((::tpyapp::main::first_or_none(a, false) == nullptr)) << "\n";
+    std::cout << ::tpy::__getitem__(a.cells, 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpyapp::main::first_or_none(a, false) == nullptr)) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> xs = {5, 6, 7};
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>(&(xs));
-    std::cout << al[0] << " " << ::tpy::__len__(al) << "\n";
+    std::cout << al[0] << " " << ::tpy::__len__(al) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
     ::tpystd::tplib::array_list::ArrayList<uint8_t, 8> bl = ::tpystd::tplib::array_list::ArrayList<uint8_t, 8>(&(ba));
-    std::cout << static_cast<int>(bl[0]) << " " << ::tpy::__len__(bl) << "\n";
+    std::cout << static_cast<int>(bl[0]) << " " << ::tpy::__len__(bl) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

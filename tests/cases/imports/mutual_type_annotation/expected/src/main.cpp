@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(a.twice())   # a.twice() -> H(self) * 2, exercising cross-cycle call
 void main() {
     ::tpyapp::a::A a = ::tpyapp::a::A(7);
-    std::cout << ::tpyapp::b::H(a) << "\n";
-    std::cout << a.twice() << "\n";
+    std::cout << ::tpyapp::b::H(a) << "\n" << ::tpy::check_signals;
+    std::cout << a.twice() << "\n" << ::tpy::check_signals;
 }
 
 // # Mutual cyclic name binding where a's method calls into b, and

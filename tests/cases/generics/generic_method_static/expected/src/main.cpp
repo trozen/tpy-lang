@@ -9,8 +9,8 @@ namespace tpyapp::main {
 //     print(Utils.identity[int32](int32(42)))
 //     print(Utils.identity[bool](True))
 void main() {
-    std::cout << Utils::identity<int32_t>(42) << "\n";
-    std::cout << ::tpy::print_bool(Utils::identity<bool>(true)) << "\n";
+    std::cout << Utils::identity<int32_t>(42) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(Utils::identity<bool>(true)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

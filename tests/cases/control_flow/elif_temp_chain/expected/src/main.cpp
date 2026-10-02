@@ -45,10 +45,10 @@ int32_t test(int32_t x) {
 //     print(test(3))
 //     print(test(7))
 void main() {
-    std::cout << ::tpyapp::main::test(-5) << "\n";
-    std::cout << ::tpyapp::main::test(2) << "\n";
-    std::cout << ::tpyapp::main::test(3) << "\n";
-    std::cout << ::tpyapp::main::test(7) << "\n";
+    std::cout << ::tpyapp::main::test(-5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test(2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test(3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test(7) << "\n" << ::tpy::check_signals;
 }
 
 // main()

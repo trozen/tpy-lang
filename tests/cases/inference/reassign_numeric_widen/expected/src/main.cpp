@@ -12,7 +12,7 @@ double G{};
 void test_int_widen(int64_t a64) {
     int64_t a = 1;
     a = a64;
-    std::cout << "int_widen" << " " << a << "\n";
+    std::cout << "int_widen" << " " << a << "\n" << ::tpy::check_signals;
 }
 
 // def test_float_stays_float(f32: float32) -> None:
@@ -22,7 +22,7 @@ void test_int_widen(int64_t a64) {
 void test_float_stays_float(float f32) {
     double c = 1.5;
     c = static_cast<double>(f32);
-    std::cout << "float_stays" << " " << ::tpy::print_float(c) << "\n";
+    std::cout << "float_stays" << " " << ::tpy::print_float(c) << "\n" << ::tpy::check_signals;
 }
 
 // def test_bigint_absorbs_fixedint() -> None:
@@ -32,7 +32,7 @@ void test_float_stays_float(float f32) {
 void test_bigint_absorbs_fixedint() {
     ::tpy::BigInt d = ::tpy::BigInt(1);
     d = ::tpy::BigInt(2);
-    std::cout << "bigint" << " " << d << "\n";
+    std::cout << "bigint" << " " << d << "\n" << ::tpy::check_signals;
 }
 
 // def test_unsigned_joins_default(u8: uint8) -> None:
@@ -43,7 +43,7 @@ void test_bigint_absorbs_fixedint() {
 void test_unsigned_joins_default(uint8_t u8) {
     int32_t e = 1;
     e = static_cast<int32_t>(u8);
-    std::cout << "unsigned" << " " << e << "\n";
+    std::cout << "unsigned" << " " << e << "\n" << ::tpy::check_signals;
 }
 
 // def test_order_free_join(u32: uint32, a64: int64) -> None:
@@ -56,7 +56,7 @@ void test_order_free_join(uint32_t u32, int64_t a64) {
     int64_t g = 1;
     g = static_cast<int64_t>(u32);
     g = a64;
-    std::cout << "order_free" << " " << g << "\n";
+    std::cout << "order_free" << " " << g << "\n" << ::tpy::check_signals;
 }
 
 // def test_branch_int_widen(c: bool, a64: int64) -> None:
@@ -70,7 +70,7 @@ void test_branch_int_widen(bool c, int64_t a64) {
     if (c) {
         h = a64;
     }
-    std::cout << "branch_int" << " " << h << "\n";
+    std::cout << "branch_int" << " " << h << "\n" << ::tpy::check_signals;
 }
 
 // def test_declared_float_local(c: bool) -> None:
@@ -85,7 +85,7 @@ void test_declared_float_local(bool c) {
     if (c) {
         x = 2.5;
     }
-    std::cout << "declared_local" << " " << ::tpy::print_float(x) << "\n";
+    std::cout << "declared_local" << " " << ::tpy::print_float(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_declared_float_param(t: float) -> None:
@@ -94,7 +94,7 @@ void test_declared_float_local(bool c) {
 //     print("declared_param", t + 0.5)
 void test_declared_float_param(double t) {
     t = static_cast<double>(0);
-    std::cout << "declared_param" << " " << ::tpy::print_float(((t) + (0.5))) << "\n";
+    std::cout << "declared_param" << " " << ::tpy::print_float(((t) + (0.5))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_declared_float_nonlocal(t: float) -> None:
@@ -109,7 +109,7 @@ void test_declared_float_nonlocal(double t) {
         t = static_cast<double>(0);
     };
     reset();
-    std::cout << "declared_nonlocal" << " " << ::tpy::print_float(((t) + (0.5))) << "\n";
+    std::cout << "declared_nonlocal" << " " << ::tpy::print_float(((t) + (0.5))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_declared_float_nonlocal_local() -> None:
@@ -126,7 +126,7 @@ void test_declared_float_nonlocal_local() {
         t = static_cast<double>(0);
     };
     reset();
-    std::cout << "declared_nonlocal_local" << " " << ::tpy::print_float(((t) + (0.5))) << "\n";
+    std::cout << "declared_nonlocal_local" << " " << ::tpy::print_float(((t) + (0.5))) << "\n" << ::tpy::check_signals;
 }
 
 // def pair() -> tuple[int32, int32]:
@@ -145,7 +145,7 @@ void test_declared_float_unpack() {
     auto __tup_1 = ::tpyapp::main::pair();
     x = std::get<0>(__tup_1);
     int32_t y = std::get<1>(__tup_1);
-    std::cout << "declared_unpack" << " " << ::tpy::print_float(((x) + (0.5))) << " " << y << "\n";
+    std::cout << "declared_unpack" << " " << ::tpy::print_float(((x) + (0.5))) << " " << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_declared_float_global() -> None:
@@ -155,7 +155,7 @@ void test_declared_float_unpack() {
 //     print("declared_global", G + 0.5)
 void test_declared_float_global() {
     G = static_cast<double>(0);
-    std::cout << "declared_global" << " " << ::tpy::print_float(((G) + (0.5))) << "\n";
+    std::cout << "declared_global" << " " << ::tpy::print_float(((G) + (0.5))) << "\n" << ::tpy::check_signals;
 }
 
 // # The local's own type still hints its reassignment's value, for what the
@@ -169,7 +169,7 @@ void test_hint_float32_literal() {
     ::tpy::ordered_map<std::string, float> __slot_1 = ::tpy::ordered_map<std::string, float>({{"a", 0.25f}});
     ::tpy::ordered_map<std::string, float>* e = &__slot_1;
     (*e) = ::tpy::ordered_map<std::string, float>({{"k", 0.5f}});
-    std::cout << "hint_float32" << " " << ::tpy::DictPrinter((*e)) << "\n";
+    std::cout << "hint_float32" << " " << ::tpy::DictPrinter((*e)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_hint_lambda() -> None:
@@ -182,7 +182,7 @@ void test_hint_lambda() {
     std::function<double(double)> h = [](double x) -> double { return x; };
     std::function<double(double)> k = h;
     k = [](double x) -> double { return ((x) + (1.0)); };
-    std::cout << "hint_lambda" << " " << ::tpy::print_float(k(1.0)) << "\n";
+    std::cout << "hint_lambda" << " " << ::tpy::print_float(k(1.0)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_hint_generic_call(xs: list[float]) -> None:
@@ -196,7 +196,7 @@ void test_hint_generic_call(std::vector<double>& xs) {
     std::vector<double>* ys = &(xs);
     ys = &*(__slot_1 = ::tpyapp::main::empty_list<double>(::tpy::BigInt(3)));
     ys->push_back(2.5);
-    std::cout << "hint_generic" << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << "hint_generic" << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def make_groups() -> Own[dict[str, list[float]]]:
@@ -216,7 +216,7 @@ void test_hint_nested_empty() {
     ::tpy::ordered_map<std::string, std::vector<double>>* d = &__slot_1;
     (*d) = ::tpy::ordered_map<std::string, std::vector<double>>({{"b", {}}});
     ::tpy::__getitem__((*d), "b").push_back(2.5);
-    std::cout << "hint_nested_empty" << " " << ::tpy::DictPrinter((*d)) << "\n";
+    std::cout << "hint_nested_empty" << " " << ::tpy::DictPrinter((*d)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_float_seed(c: bool) -> None:
@@ -235,7 +235,7 @@ void test_float_seed(bool c) {
     if (c) {
         total = 9.5;
     }
-    std::cout << "float_seed" << " " << ::tpy::print_float(total) << "\n";
+    std::cout << "float_seed" << " " << ::tpy::print_float(total) << "\n" << ::tpy::check_signals;
 }
 
 // def test_captured_none_seed() -> None:
@@ -250,7 +250,7 @@ void test_float_seed(bool c) {
 void test_captured_none_seed() {
     std::optional<int32_t> x = std::nullopt;
     auto g = [&x]() {
-        std::cout << "captured_none_seed" << " " << ::tpy::print_optional_val(x) << "\n";
+        std::cout << "captured_none_seed" << " " << ::tpy::print_optional_val(x) << "\n" << ::tpy::check_signals;
     };
     g();
     x = 5;

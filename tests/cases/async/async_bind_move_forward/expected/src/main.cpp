@@ -78,7 +78,7 @@ __coro_consume consume(std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         d.reset();
-        std::cout << __await_lift_0 << "\n";
+        std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
         e.emplace(::tpyapp::main::add_one(::tpy::BigInt(9)));
         __sub_1.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(std::move(*(e))));
         __state = S_RESUME_1;
@@ -89,7 +89,7 @@ __coro_consume consume(std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << __await_lift_1 << "\n";
+        std::cout << __await_lift_1 << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

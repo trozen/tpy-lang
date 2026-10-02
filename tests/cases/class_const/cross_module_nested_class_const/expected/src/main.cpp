@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(Limits.Inner.MAX)
 //     print(Limits.Inner.TAG)
 void main() {
-    std::cout << ::tpyapp::limits::Limits::Inner::MAX << "\n";
-    std::cout << ::tpyapp::limits::Limits::Inner::TAG << "\n";
+    std::cout << ::tpyapp::limits::Limits::Inner::MAX << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::limits::Limits::Inner::TAG << "\n" << ::tpy::check_signals;
 }
 
 // # Class constants on a *nested* record imported from another module.

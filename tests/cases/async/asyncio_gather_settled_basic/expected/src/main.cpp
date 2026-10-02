@@ -71,9 +71,9 @@ __coro_fetch fetch(int32_t n) {
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& r = *__beg_0;
             if ((r.value.has_value())) {
-                std::cout << "ok" << " " << (*r.value).get() << "\n";
+                std::cout << "ok" << " " << (*r.value).get() << "\n" << ::tpy::check_signals;
             } else {
-                std::cout << "exc-slot present but expected ok" << "\n";
+                std::cout << "exc-slot present but expected ok" << "\n" << ::tpy::check_signals;
             }
         }
         __state = S_DONE;

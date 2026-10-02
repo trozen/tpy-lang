@@ -66,18 +66,18 @@ int32_t sum_span(std::span<int32_t> values) {
 //     print(sum_span_bigint([100, 200, 300]))  # 600
 void main() {
     std::array<int32_t, 4> arr = {1, 2, 3, 4};
-    std::cout << ::tpyapp::main::sum_span(::tpy::as_mut_span(arr)) << "\n";
+    std::cout << ::tpyapp::main::sum_span(::tpy::as_mut_span(arr)) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     al.append(10);
     al.append(20);
     al.append(30);
-    std::cout << ::tpyapp::main::sum_span(al.__span__()) << "\n";
+    std::cout << ::tpyapp::main::sum_span(al.__span__()) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> lst = {100, 200, 300, 400};
-    std::cout << ::tpyapp::main::sum_span(::tpy::as_mut_span(lst)) << "\n";
-    std::cout << ::tpyapp::main::sum_span(::tpy::as_mut_span(std::array<int32_t, 5>{5, 5, 5, 5, 5})) << "\n";
+    std::cout << ::tpyapp::main::sum_span(::tpy::as_mut_span(lst)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_span(::tpy::as_mut_span(std::array<int32_t, 5>{5, 5, 5, 5, 5})) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> bigint_list = {1000, 2000, 3000};
-    std::cout << ::tpyapp::main::sum_span_bigint(::tpy::as_mut_span(bigint_list)) << "\n";
-    std::cout << ::tpyapp::main::sum_span_bigint(::tpy::as_mut_span(std::array<::tpy::BigInt, 3>{::tpy::BigInt(100), ::tpy::BigInt(200), ::tpy::BigInt(300)})) << "\n";
+    std::cout << ::tpyapp::main::sum_span_bigint(::tpy::as_mut_span(bigint_list)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_span_bigint(::tpy::as_mut_span(std::array<::tpy::BigInt, 3>{::tpy::BigInt(100), ::tpy::BigInt(200), ::tpy::BigInt(300)})) << "\n" << ::tpy::check_signals;
 }
 
 // """Tests that Spannable[T] types can coerce to Span[T]."""

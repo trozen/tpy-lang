@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     Dog d = Dog();
     Cat c = Cat();
-    std::cout << d.make_noise() << "\n";
-    std::cout << c.make_noise() << "\n";
+    std::cout << d.make_noise() << "\n" << ::tpy::check_signals;
+    std::cout << c.make_noise() << "\n" << ::tpy::check_signals;
 }
 
 // main()

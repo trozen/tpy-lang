@@ -31,8 +31,8 @@ int32_t use(bool c) {
 //     print(use(True))
 //     print(use(False))
 void main() {
-    std::cout << ::tpyapp::main::use(true) << "\n";
-    std::cout << ::tpyapp::main::use(false) << "\n";
+    std::cout << ::tpyapp::main::use(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use(false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

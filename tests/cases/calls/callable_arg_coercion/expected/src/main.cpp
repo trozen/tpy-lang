@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def cb(x: int32) -> None:
 //     print(x)
 void cb(int32_t x) {
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def take_list(xs: list[int32]) -> None:
 //     print(len(xs))
 void take_list(const std::vector<int32_t>& xs) {
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def use_callable(f: Callable[[int32], None]) -> None:

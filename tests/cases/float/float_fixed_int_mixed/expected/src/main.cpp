@@ -14,14 +14,14 @@ namespace tpyapp::main {
 //     print(2.0 ** uint32(3))
 //     print(10.0 + uint64(5))
 void forward() {
-    std::cout << ::tpy::print_float(((10.0) + static_cast<double>(5))) << "\n";
-    std::cout << ::tpy::print_float(((10.0) - static_cast<double>(3))) << "\n";
-    std::cout << ::tpy::print_float(((4.0) * static_cast<double>(3))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::truediv(12.0, static_cast<double>(4)))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::floordiv(13.0, static_cast<double>(5)))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::fmod(13.0, static_cast<double>(5)))) << "\n";
-    std::cout << ::tpy::print_float((std::pow(2.0, static_cast<double>(3)))) << "\n";
-    std::cout << ::tpy::print_float(((10.0) + static_cast<double>(5))) << "\n";
+    std::cout << ::tpy::print_float(((10.0) + static_cast<double>(5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(((10.0) - static_cast<double>(3))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(((4.0) * static_cast<double>(3))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::truediv(12.0, static_cast<double>(4)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::floordiv(13.0, static_cast<double>(5)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::fmod(13.0, static_cast<double>(5)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((std::pow(2.0, static_cast<double>(3)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(((10.0) + static_cast<double>(5))) << "\n" << ::tpy::check_signals;
 }
 
 // def reverse() -> None:
@@ -34,14 +34,14 @@ void forward() {
 //     print(uint32(2) ** 3.0)
 //     print(uint64(5) + 10.0)
 void reverse() {
-    std::cout << ::tpy::print_float((static_cast<double>(5) + (10.0))) << "\n";
-    std::cout << ::tpy::print_float((static_cast<double>(3) - (10.0))) << "\n";
-    std::cout << ::tpy::print_float((static_cast<double>(3) * (4.0))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::truediv(static_cast<double>(12), 4.0))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::floordiv(static_cast<double>(13), 5.0))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::fmod(static_cast<double>(13), 5.0))) << "\n";
-    std::cout << ::tpy::print_float((std::pow(static_cast<double>(2), 3.0))) << "\n";
-    std::cout << ::tpy::print_float((static_cast<double>(5) + (10.0))) << "\n";
+    std::cout << ::tpy::print_float((static_cast<double>(5) + (10.0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((static_cast<double>(3) - (10.0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((static_cast<double>(3) * (4.0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::truediv(static_cast<double>(12), 4.0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::floordiv(static_cast<double>(13), 5.0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::fmod(static_cast<double>(13), 5.0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((std::pow(static_cast<double>(2), 3.0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((static_cast<double>(5) + (10.0))) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

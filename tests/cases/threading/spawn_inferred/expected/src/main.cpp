@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     ::tpystd::tpy::thread::JoinHandle<::tpy::BigInt> a = ::tpystd::tpy::thread::spawn<::tpy::BigInt, Summer>(Summer({1, 2, 3}));
     ::tpystd::tpy::thread::JoinHandle<::tpy::BigInt> b = ::tpystd::tpy::thread::spawn<::tpy::BigInt, Summer>(Summer({10, 20}));
-    std::cout << "a:" << " " << a.join() << "\n";
-    std::cout << "b:" << " " << b.join() << "\n";
+    std::cout << "a:" << " " << a.join() << "\n" << ::tpy::check_signals;
+    std::cout << "b:" << " " << b.join() << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.thread import spawn

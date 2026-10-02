@@ -88,11 +88,11 @@ std::vector<int32_t> longest(int32_t n) {
 void main() {
     std::vector<int32_t> got = ::tpyapp::main::longest(4);
     got.push_back(99);
-    std::cout << ::tpy::__len__(got) << " " << ::tpy::__getitem__(got, -1) << "\n";
+    std::cout << ::tpy::__len__(got) << " " << ::tpy::__getitem__(got, -1) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d = ::tpyapp::main::tally(3);
-    std::cout << ::tpy::__getitem__(d, "n") << "\n";
+    std::cout << ::tpy::__getitem__(d, "n") << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> u = ::tpyapp::main::uniq(3);
-    std::cout << ::tpy::__len__(u) << "\n";
+    std::cout << ::tpy::__len__(u) << "\n" << ::tpy::check_signals;
 }
 
 // main()

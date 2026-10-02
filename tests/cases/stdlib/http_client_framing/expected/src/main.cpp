@@ -30,9 +30,9 @@ void run(std::string_view method, ::tpy::BytesView response) {
     b.sendall(response);
     b.close();
     ::tpystd::http::client::HTTPResponse resp = conn.getresponse();
-    std::cout << resp.status << " " << resp.reason << " " << resp.version << "\n";
-    std::cout << ::tpy::BytesPrinter(resp.read()) << "\n";
-    std::cout << ::tpy::BytesPrinter(resp.read()) << "\n";
+    std::cout << resp.status << " " << resp.reason << " " << resp.version << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(resp.read()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(resp.read()) << "\n" << ::tpy::check_signals;
     conn.close();
 }
 
@@ -94,9 +94,9 @@ void main() {
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n5\r\nworld\r\n0\r\n\r\n", 72));
     b.close();
     ::tpystd::http::client::HTTPResponse resp = conn.getresponse();
-    std::cout << ::tpy::BytesPrinter(resp.read(3)) << "\n";
-    std::cout << ::tpy::BytesPrinter(resp.read(4)) << "\n";
-    std::cout << ::tpy::BytesPrinter(resp.read()) << "\n";
+    std::cout << ::tpy::BytesPrinter(resp.read(3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(resp.read(4)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(resp.read()) << "\n" << ::tpy::check_signals;
     conn.close();
 }
 

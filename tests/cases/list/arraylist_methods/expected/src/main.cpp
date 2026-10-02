@@ -16,8 +16,8 @@ void test_contains() {
     a.append(10);
     a.append(20);
     a.append(30);
-    std::cout << ::tpy::print_bool((a.__contains__(20))) << "\n";
-    std::cout << ::tpy::print_bool((a.__contains__(99))) << "\n";
+    std::cout << ::tpy::print_bool((a.__contains__(20))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a.__contains__(99))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_eq() -> None:
@@ -37,9 +37,9 @@ void test_eq() {
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> b = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     b.append(1);
     b.append(2);
-    std::cout << ::tpy::print_bool((a == b)) << "\n";
+    std::cout << ::tpy::print_bool((a == b)) << "\n" << ::tpy::check_signals;
     b.append(3);
-    std::cout << ::tpy::print_bool((a == b)) << "\n";
+    std::cout << ::tpy::print_bool((a == b)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_repr() -> None:
@@ -51,7 +51,7 @@ void test_repr() {
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     a.append(10);
     a.append(20);
-    std::cout << ::tpy::repr_of(a) << "\n";
+    std::cout << ::tpy::repr_of(a) << "\n" << ::tpy::check_signals;
 }
 
 // def test_swap() -> None:
@@ -67,7 +67,7 @@ void test_swap() {
     a.append(2);
     a.append(3);
     a.swap(0, 2);
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
 }
 
 // def test_truncate() -> None:
@@ -86,8 +86,8 @@ void test_truncate() {
     a.append(30);
     a.append(40);
     a.truncate(2);
-    std::cout << a << "\n";
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }
 
 // def test_index() -> None:
@@ -101,7 +101,7 @@ void test_index() {
     a.append(10);
     a.append(20);
     a.append(30);
-    std::cout << a.index(20) << "\n";
+    std::cout << a.index(20) << "\n" << ::tpy::check_signals;
 }
 
 // def test_count() -> None:
@@ -121,9 +121,9 @@ void test_count() {
     a.append(1);
     a.append(3);
     a.append(1);
-    std::cout << a.count(1) << "\n";
-    std::cout << a.count(2) << "\n";
-    std::cout << a.count(99) << "\n";
+    std::cout << a.count(1) << "\n" << ::tpy::check_signals;
+    std::cout << a.count(2) << "\n" << ::tpy::check_signals;
+    std::cout << a.count(99) << "\n" << ::tpy::check_signals;
 }
 
 // def test_remove() -> None:
@@ -139,7 +139,7 @@ void test_remove() {
     a.append(20);
     a.append(30);
     a.remove(20);
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
 }
 
 // def test_reverse() -> None:
@@ -157,7 +157,7 @@ void test_reverse() {
     a.append(3);
     a.append(4);
     a.reverse();
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
 }
 
 // def test_sort() -> None:
@@ -203,7 +203,7 @@ void test_sort() {
     a.append(4);
     a.append(2);
     a.sort();
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> b = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     b.append(3);
     b.append(1);
@@ -211,20 +211,20 @@ void test_sort() {
     b.append(2);
     b.append(1);
     b.sort();
-    std::cout << b << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> c = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     c.sort();
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> d = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     d.append(42);
     d.sort();
-    std::cout << d << "\n";
+    std::cout << d << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> e = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     e.append(1);
     e.append(2);
     e.append(3);
     e.sort();
-    std::cout << e << "\n";
+    std::cout << e << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

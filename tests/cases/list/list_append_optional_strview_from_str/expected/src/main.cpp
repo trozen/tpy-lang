@@ -27,7 +27,7 @@ void main() {
     items.push_back(src1);
     items.push_back(({ auto __ov = (src2); __ov ? std::make_optional(std::string_view(*__ov)) : std::nullopt; }));
     items.push_back(({ auto __ov = (src3); __ov ? std::make_optional(std::string_view(*__ov)) : std::nullopt; }));
-    std::cout << ::tpy::ListPrinter(items) << "\n";
+    std::cout << ::tpy::ListPrinter(items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     std::array<int32_t, 3> arr = {10, 20, 30};
     int32_t i = -4;
-    std::cout << ::tpy::__getitem__(arr, i) << "\n";
+    std::cout << ::tpy::__getitem__(arr, i) << "\n" << ::tpy::check_signals;
 }
 
 // main()

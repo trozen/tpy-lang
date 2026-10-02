@@ -190,11 +190,11 @@ Box untouched() {
         try {
             auto* __tpy_retp_0 = &(b);
             __fin_ran_6 = true;
-            std::cout << "cleanup" << "\n";
+            std::cout << "cleanup" << "\n" << ::tpy::check_signals;
             return std::move(*__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_6) {
-                std::cout << "cleanup" << "\n";
+                std::cout << "cleanup" << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -241,16 +241,16 @@ Box del_other_local() {
 //     print(untouched().n)
 //     print(del_other_local().n)
 void main() {
-    std::cout << ::tpyapp::main::via_alias().n << "\n";
-    std::cout << ::tpyapp::main::via_closure().n << "\n";
-    std::cout << ::tpyapp::main::via_closure_rebind().n << "\n";
+    std::cout << ::tpyapp::main::via_alias().n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::via_closure().n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::via_closure_rebind().n << "\n" << ::tpy::check_signals;
     std::optional<Box> r = ::tpyapp::main::opt_via_closure(true);
     if ((r.has_value())) {
-        std::cout << (*r).n << "\n";
+        std::cout << (*r).n << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpyapp::main::closure_dels_other().n << "\n";
-    std::cout << ::tpyapp::main::untouched().n << "\n";
-    std::cout << ::tpyapp::main::del_other_local().n << "\n";
+    std::cout << ::tpyapp::main::closure_dels_other().n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::untouched().n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::del_other_local().n << "\n" << ::tpy::check_signals;
 }
 
 // main()

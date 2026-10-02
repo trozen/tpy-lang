@@ -25,7 +25,7 @@ void fill(std::vector<int32_t>& xs, int32_t v) {
 void main() {
     std::vector<int32_t> xs = std::vector<int32_t>{};
     ::tpyapp::main::fill(xs, 7);
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

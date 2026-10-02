@@ -107,11 +107,11 @@ __gen_nodes nodes(::tpy::BigInt n) {
 //     print(borrow_source_copies(src), len(src))
 //     print(filtered_moves())
 void main() {
-    std::cout << ::tpyapp::main::collect_list_nocopy() << "\n";
-    std::cout << ::tpyapp::main::collect_set() << "\n";
+    std::cout << ::tpyapp::main::collect_list_nocopy() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::collect_set() << "\n" << ::tpy::check_signals;
     std::vector<Node> src = {Node(::tpy::BigInt(1)), Node(::tpy::BigInt(2))};
-    std::cout << ::tpyapp::main::borrow_source_copies(src) << " " << ::tpy::__len__(src) << "\n";
-    std::cout << ::tpyapp::main::filtered_moves() << "\n";
+    std::cout << ::tpyapp::main::borrow_source_copies(src) << " " << ::tpy::__len__(src) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::filtered_moves() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -36,20 +36,20 @@ namespace tpyapp::main {
 //     print(len(data), data[0], data[1], data[2])
 void main() {
     std::vector<std::string> parts = ::tpy::str_split("a,b,c", ",");
-    std::cout << ::tpy::__len__(parts) << " " << ::tpy::__getitem__(parts, 0) << " " << ::tpy::__getitem__(parts, 1) << " " << ::tpy::__getitem__(parts, 2) << "\n";
+    std::cout << ::tpy::__len__(parts) << " " << ::tpy::__getitem__(parts, 0) << " " << ::tpy::__getitem__(parts, 1) << " " << ::tpy::__getitem__(parts, 2) << "\n" << ::tpy::check_signals;
     std::vector<std::string> words = ::tpy::str_split_whitespace("  one  two  three  ");
-    std::cout << ::tpy::__len__(words) << " " << ::tpy::__getitem__(words, 0) << " " << ::tpy::__getitem__(words, 1) << " " << ::tpy::__getitem__(words, 2) << "\n";
+    std::cout << ::tpy::__len__(words) << " " << ::tpy::__getitem__(words, 0) << " " << ::tpy::__getitem__(words, 1) << " " << ::tpy::__getitem__(words, 2) << "\n" << ::tpy::check_signals;
     std::vector<std::string> limited = ::tpy::str_split("a,b,c,d", ",", 2);
-    std::cout << ::tpy::__len__(limited) << " " << ::tpy::__getitem__(limited, 0) << " " << ::tpy::__getitem__(limited, 1) << " " << ::tpy::__getitem__(limited, 2) << "\n";
+    std::cout << ::tpy::__len__(limited) << " " << ::tpy::__getitem__(limited, 0) << " " << ::tpy::__getitem__(limited, 1) << " " << ::tpy::__getitem__(limited, 2) << "\n" << ::tpy::check_signals;
     std::vector<std::string> empties = ::tpy::str_split(",a,,b,", ",");
-    std::cout << ::tpy::__len__(empties) << "\n";
+    std::cout << ::tpy::__len__(empties) << "\n" << ::tpy::check_signals;
     std::vector<std::string> nomatch = ::tpy::str_split("hello", ",");
-    std::cout << ::tpy::__len__(nomatch) << " " << ::tpy::__getitem__(nomatch, 0) << "\n";
+    std::cout << ::tpy::__len__(nomatch) << " " << ::tpy::__getitem__(nomatch, 0) << "\n" << ::tpy::check_signals;
     std::vector<std::string> two = ::tpy::str_split_whitespace("one two three");
-    std::cout << ::tpy::__len__(two) << " " << ::tpy::__getitem__(two, 0) << " " << ::tpy::__getitem__(two, 1) << " " << ::tpy::__getitem__(two, 2) << "\n";
+    std::cout << ::tpy::__len__(two) << " " << ::tpy::__getitem__(two, 0) << " " << ::tpy::__getitem__(two, 1) << " " << ::tpy::__getitem__(two, 2) << "\n" << ::tpy::check_signals;
     std::string_view sep = ":";
     std::vector<std::string> data = ::tpy::str_split("x:y:z", sep);
-    std::cout << ::tpy::__len__(data) << " " << ::tpy::__getitem__(data, 0) << " " << ::tpy::__getitem__(data, 1) << " " << ::tpy::__getitem__(data, 2) << "\n";
+    std::cout << ::tpy::__len__(data) << " " << ::tpy::__getitem__(data, 0) << " " << ::tpy::__getitem__(data, 1) << " " << ::tpy::__getitem__(data, 2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -13,7 +13,7 @@ void main() {
     std::vector<Shape> xs = std::vector<Shape>{};
     xs.push_back(::tpyapp::shapes::Circle(1));
     xs.push_back(::tpyapp::shapes::Rect(2));
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // from shapes import Circle, Rect, Shape

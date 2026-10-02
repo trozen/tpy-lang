@@ -48,16 +48,16 @@ void __tpy_init() {
     mem = &__global_slot_1;
     ::tpy::__setitem__((*mem), 0, 42);
     ::tpy::__setitem__((*mem), 1, 8);
-    std::cout << ::tpyapp::main::sum_list((*mem)) << "\n";
-    std::cout << ::tpy::__len__((*mem)) << "\n";
+    std::cout << ::tpyapp::main::sum_list((*mem)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__((*mem)) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_2 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(5, {0}));
     data = &__global_slot_2;
     ::tpy::__setitem__((*data), 0, 100);
-    std::cout << ::tpy::__getitem__((*data), 0) << "\n";
+    std::cout << ::tpy::__getitem__((*data), 0) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_3 = {72, 73};
     chars = &__global_slot_3;
-    std::cout << static_cast<char>(::tpy::__getitem__((*chars), 0));
-    std::cout << static_cast<char>(::tpy::__getitem__((*chars), 1)) << "\n";
+    std::cout << static_cast<char>(::tpy::__getitem__((*chars), 0)) << ::tpy::check_signals;
+    std::cout << static_cast<char>(::tpy::__getitem__((*chars), 1)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

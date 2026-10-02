@@ -13,11 +13,11 @@ namespace tpyapp::main {
 //     print(c.value)
 void main() {
     Config c = Config("hello", ::tpy::BigInt(42));
-    std::cout << c.name << " " << c.value << "\n";
+    std::cout << c.name << " " << c.value << "\n" << ::tpy::check_signals;
     c.inc();
-    std::cout << c.value << "\n";
+    std::cout << c.value << "\n" << ::tpy::check_signals;
     c.value = ::tpy::BigInt(99);
-    std::cout << c.value << "\n";
+    std::cout << c.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

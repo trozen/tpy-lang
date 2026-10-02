@@ -32,23 +32,23 @@ namespace tpyapp::main {
 //     print(bytes(grown).decode())
 void main() {
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("\x01\x02\x03", 3));
-    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    std::cout << ::tpy::__len__(ba) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(ba) << "\n" << ::tpy::check_signals;
     ba.push_back(4);
-    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
     ::tpy::bytearray_setitem(ba, 0, 10);
-    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
     uint8_t popped = ::tpy::bytearray_pop(ba);
-    std::cout << static_cast<int>(popped) << "\n";
-    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
+    std::cout << static_cast<int>(popped) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
     ::tpy::bytearray_insert(ba, 1, 20);
-    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
     ba.clear();
-    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    std::cout << ::tpy::__len__(ba) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(ba) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray grown = ::tpy::ByteArray();
     grown = ::tpy::bytearray_concat(grown, ::tpy::bytes_literal_owned("xy", 2));
-    std::cout << ::tpy::bytes_decode(::tpy::Bytes(grown)) << "\n";
+    std::cout << ::tpy::bytes_decode(::tpy::Bytes(grown)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

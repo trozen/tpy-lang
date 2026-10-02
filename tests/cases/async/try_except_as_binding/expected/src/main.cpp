@@ -76,7 +76,7 @@ __coro_worker worker() {
         } catch (const ::tpy::CancelledError& e) {
             __sub_1 = nullptr;
             _.emplace(e);
-            std::cout << "caught" << "\n";
+            std::cout << "caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

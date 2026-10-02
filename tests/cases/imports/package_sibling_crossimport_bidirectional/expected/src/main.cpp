@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     ::tpyapp::pkg::a::A a = ::tpyapp::pkg::a::A();
     ::tpyapp::pkg::b::B b = ::tpyapp::pkg::b::B();
-    std::cout << (::tpy::add_check<int32_t>(a.kind(), b.kind())) << "\n";
-    std::cout << ::tpyapp::pkg::a::with_b() << "\n";
+    std::cout << (::tpy::add_check<int32_t>(a.kind(), b.kind())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::pkg::a::with_b() << "\n" << ::tpy::check_signals;
 }
 
 // from pkg import A, B, with_b

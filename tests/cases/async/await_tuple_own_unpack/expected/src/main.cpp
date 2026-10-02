@@ -47,7 +47,7 @@ namespace tpyapp::main {
         tag = std::get<1>(__tup_1);
         (*c).bump();
         (*c).bump();
-        std::cout << (*c).n << " " << tag << "\n";
+        std::cout << (*c).n << " " << tag << "\n" << ::tpy::check_signals;
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -61,7 +61,7 @@ namespace tpyapp::main {
         d.emplace(std::move(std::get<0>(__tup_2)));
         k = std::get<1>(__tup_2);
         (*d).bump();
-        std::cout << (*d).n << " " << k << "\n";
+        std::cout << (*d).n << " " << k << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -74,7 +74,7 @@ namespace tpyapp::main {
         const auto& __tup_3 = __await_lift_2;
         a = std::get<0>(__tup_3);
         b = std::get<1>(__tup_3);
-        std::cout << a << " " << b << "\n";
+        std::cout << a << " " << b << "\n" << ::tpy::check_signals;
         __sub_3.emplace(std::move(_RefPair()));
         __state = S_RESUME_3;
         continue;
@@ -88,7 +88,7 @@ namespace tpyapp::main {
         lst = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_4))));
         m = std::get<1>(__tup_4);
         lst->push_back(30);
-        std::cout << ::tpy::__len__((*lst)) << " " << ::tpy::__getitem__((*lst), 2) << " " << m << "\n";
+        std::cout << ::tpy::__len__((*lst)) << " " << ::tpy::__getitem__((*lst), 2) << " " << m << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

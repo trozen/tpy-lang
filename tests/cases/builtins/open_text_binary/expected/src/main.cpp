@@ -46,7 +46,7 @@ void main() {
     w.write("hello");
     w.close();
     ::tpy::TextFile r = ::tpy::builtin_open(tpath);
-    std::cout << r.read() << "\n";
+    std::cout << r.read() << "\n" << ::tpy::check_signals;
     r.close();
     ::tpy::BinaryFile bw = ::tpy::builtin_open_binary(bpath, "wb");
     bw.write(::tpy::bytes_literal("\x01\x02\x03", 3));
@@ -54,14 +54,14 @@ void main() {
     ::tpy::BinaryFile br = ::tpy::builtin_open_binary(bpath);
     ::tpy::Bytes data = br.read();
     br.close();
-    std::cout << ::tpy::__len__(data) << "\n";
-    std::cout << static_cast<int>(::tpy::bytes_getitem(data, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 2)) << "\n";
+    std::cout << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpy::bytes_getitem(data, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 2)) << "\n" << ::tpy::check_signals;
     std::string_view mode = "w";
     ::tpy::TextFile w2 = ::tpy::builtin_open_mode(tpath, mode);
     w2.write("world");
     w2.close();
     ::tpy::TextFile r2 = ::tpy::builtin_open(tpath);
-    std::cout << r2.read() << "\n";
+    std::cout << r2.read() << "\n" << ::tpy::check_signals;
     r2.close();
 }
 

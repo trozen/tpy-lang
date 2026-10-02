@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //         print("None list")
 void take_list(const std::vector<::tpy::BigInt>* lst) {
     if ((lst != nullptr)) {
-        std::cout << ::tpy::__getitem__((*lst), 0) << "\n";
+        std::cout << ::tpy::__getitem__((*lst), 0) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "None list" << "\n";
+        std::cout << "None list" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -24,9 +24,9 @@ void take_list(const std::vector<::tpy::BigInt>* lst) {
 //         print("None dict")
 void take_dict(const ::tpy::ordered_map<std::string, int32_t>* d) {
     if ((d != nullptr)) {
-        std::cout << ::tpy::__len__((*d)) << "\n";
+        std::cout << ::tpy::__len__((*d)) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "None dict" << "\n";
+        std::cout << "None dict" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -37,9 +37,9 @@ void take_dict(const ::tpy::ordered_map<std::string, int32_t>* d) {
 //         print("None set")
 void take_set(const ::tpy::ordered_set<int32_t>* s) {
     if ((s != nullptr)) {
-        std::cout << ::tpy::__len__((*s)) << "\n";
+        std::cout << ::tpy::__len__((*s)) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "None set" << "\n";
+        std::cout << "None set" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -57,7 +57,7 @@ void local_init() {
     ::tpy::ordered_set<int32_t> __slot_3 = ::tpy::ordered_set<int32_t>({1});
     ::tpy::ordered_set<int32_t>* s = &__slot_3;
     if ((((lst != nullptr) && (d != nullptr)) && (s != nullptr))) {
-        std::cout << ::tpy::__getitem__((*lst), 0) << " " << ::tpy::__len__((*d)) << " " << ::tpy::__len__((*s)) << "\n";
+        std::cout << ::tpy::__getitem__((*lst), 0) << " " << ::tpy::__len__((*d)) << " " << ::tpy::__len__((*s)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -87,7 +87,7 @@ void main() {
     Bag bag = Bag();
     bag.fill();
     if (((bag.items.has_value()) && (bag.by_key.has_value()))) {
-        std::cout << ::tpy::__getitem__((*bag.items), 0) << " " << ::tpy::__getitem__((*bag.by_key), "x") << "\n";
+        std::cout << ::tpy::__getitem__((*bag.items), 0) << " " << ::tpy::__getitem__((*bag.by_key), "x") << "\n" << ::tpy::check_signals;
     }
 }
 

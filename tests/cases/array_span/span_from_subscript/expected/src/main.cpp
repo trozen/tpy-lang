@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     std::array<std::array<int32_t, 2>, 2> matrix = {{{1, 2}, {3, 4}}};
     std::span<int32_t> s = ::tpy::as_mut_span(::tpy::__getitem__(matrix, 1));
-    std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    std::cout << ::tpy::__getitem__(s, 1) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(s, 1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

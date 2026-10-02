@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(BuildOpts.MAX_RETRIES)
 //     print(BuildOpts.RELEASE_TAG)
 void main() {
-    std::cout << ::tpy::print_bool(::BuildOpts::g_flag) << "\n";
-    std::cout << ::BuildOpts::kMaxRetries << "\n";
-    std::cout << ::BuildOpts::RELEASE_TAG << "\n";
+    std::cout << ::tpy::print_bool(::BuildOpts::g_flag) << "\n" << ::tpy::check_signals;
+    std::cout << ::BuildOpts::kMaxRetries << "\n" << ::tpy::check_signals;
+    std::cout << ::BuildOpts::RELEASE_TAG << "\n" << ::tpy::check_signals;
 }
 
 // # Phase 10: native_field("rename") on a @native class constant. The Python

@@ -40,35 +40,35 @@ namespace tpyapp::main {
 void main() {
     ::tpystd::datetime::timezone ist = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)), "IST");
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ist;
-    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(500000), __tmp_1).timestamp()) << "\n";
+    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(500000), __tmp_1).timestamp()) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = ::tpystd::datetime::UTC;
-    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(1970), ::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_2).timestamp()) << "\n";
+    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(1970), ::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_2).timestamp()) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = ::tpystd::datetime::UTC;
-    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(1969), ::tpy::BigInt(12), ::tpy::BigInt(31), ::tpy::BigInt(23), ::tpy::BigInt(59), ::tpy::BigInt(59), ::tpy::BigInt(250000), __tmp_3).timestamp()) << "\n";
-    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(1), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).timestamp()) << "\n";
-    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).timestamp()) << "\n";
-    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(28), ::tpy::BigInt(2), ::tpy::BigInt(30)).timestamp()) << "\n";
-    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(10), ::tpy::BigInt(31), ::tpy::BigInt(2), ::tpy::BigInt(30)).timestamp()) << "\n";
-    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(1), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(123456)).timestamp()) << "\n";
-    std::cout << datetime::fromtimestamp(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).timestamp()) << "\n";
+    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(1969), ::tpy::BigInt(12), ::tpy::BigInt(31), ::tpy::BigInt(23), ::tpy::BigInt(59), ::tpy::BigInt(59), ::tpy::BigInt(250000), __tmp_3).timestamp()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(1), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).timestamp()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).timestamp()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(28), ::tpy::BigInt(2), ::tpy::BigInt(30)).timestamp()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(10), ::tpy::BigInt(31), ::tpy::BigInt(2), ::tpy::BigInt(30)).timestamp()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(1), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(123456)).timestamp()) << "\n" << ::tpy::check_signals;
+    std::cout << datetime::fromtimestamp(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).timestamp()) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ist;
     ::tpystd::datetime::datetime aware = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(500000), __tmp_4);
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_5 = ::tpystd::datetime::UTC;
-    std::cout << aware.astimezone(__tmp_5) << "\n";
+    std::cout << aware.astimezone(__tmp_5) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_6 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(-8)));
-    std::cout << aware.astimezone(__tmp_6) << "\n";
-    std::cout << aware.astimezone() << "\n";
-    std::cout << ::tpy::repr_of(aware.astimezone()) << "\n";
+    std::cout << aware.astimezone(__tmp_6) << "\n" << ::tpy::check_signals;
+    std::cout << aware.astimezone() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(aware.astimezone()) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime n = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0));
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_7 = ::tpystd::datetime::UTC;
-    std::cout << n.astimezone(__tmp_7) << "\n";
-    std::cout << ::tpy::repr_of(n.astimezone()) << "\n";
+    std::cout << n.astimezone(__tmp_7) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(n.astimezone()) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime w = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(1), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0));
-    std::cout << ::tpy::repr_of(w.astimezone()) << "\n";
-    std::cout << ::tpy::print_bool((w.astimezone().timestamp() == w.timestamp())) << "\n";
+    std::cout << ::tpy::repr_of(w.astimezone()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((w.astimezone().timestamp() == w.timestamp())) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_8 = ::tpystd::datetime::UTC;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_9 = std::monostate{};
-    std::cout << ::tpy::print_bool(((w.astimezone(__tmp_8).astimezone().replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_9)) == (w))) << "\n";
+    std::cout << ::tpy::print_bool(((w.astimezone(__tmp_8).astimezone().replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_9)) == (w))) << "\n" << ::tpy::check_signals;
 }
 
 // # datetime v3 timestamp()/astimezone() under a pinned IANA zone with DST.

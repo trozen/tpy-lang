@@ -22,20 +22,20 @@ namespace tpyapp::main {
 //     print(u)
 void main() {
     ::tpy::Union<int32_t, std::string> a = 5;
-    std::cout << ::tpy::__str__(a) << "\n";
-    std::cout << ::tpy::__str__(a) << "\n";
+    std::cout << ::tpy::__str__(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__str__(a) << "\n" << ::tpy::check_signals;
     a = "hi";
-    std::cout << ::tpy::__str__(a) << "\n";
-    std::cout << ::tpy::__str__(a) << "\n";
+    std::cout << ::tpy::__str__(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__str__(a) << "\n" << ::tpy::check_signals;
     ::tpy::Union<Counter, std::string> __slot_1 = Counter(1);
     ::tpy::Union<Counter*, std::string*> u = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << ::tpy::__str__(u) << "\n";
-    std::cout << std::string(::tpy::__str__(u)) << "\n";
+    std::cout << ::tpy::__str__(u) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(u)) << "\n" << ::tpy::check_signals;
     if (true) {
         auto& __u = *std::get<Counter*>(u);
         __u.n = 99;
     }
-    std::cout << ::tpy::__str__(u) << "\n";
+    std::cout << ::tpy::__str__(u) << "\n" << ::tpy::check_signals;
 }
 
 // main()

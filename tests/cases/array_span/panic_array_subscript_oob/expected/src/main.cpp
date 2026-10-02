@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(arr[10])
 void main() {
     std::array<int32_t, 3> arr = {10, 20, 30};
-    std::cout << ::tpy::__getitem__(arr, 10) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 10) << "\n" << ::tpy::check_signals;
 }
 
 // main()

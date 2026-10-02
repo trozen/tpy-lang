@@ -64,11 +64,11 @@ __coro_coro coro(bool f) {
 void main() {
     std::tuple<int32_t, std::string> a = ::tpyapp::main::name_arms(true);
     std::tuple<int32_t, std::string> b = ::tpyapp::main::name_arms(false);
-    std::cout << "names:" << " " << std::get<0>(a) << " " << std::get<1>(a) << " " << std::get<0>(b) << " " << std::get<1>(b) << "\n";
+    std::cout << "names:" << " " << std::get<0>(a) << " " << std::get<1>(a) << " " << std::get<0>(b) << " " << std::get<1>(b) << "\n" << ::tpy::check_signals;
     std::tuple<int32_t, std::string> p = Pair(10).pick(true);
-    std::cout << "method:" << " " << std::get<0>(p) << " " << std::get<1>(p) << "\n";
+    std::cout << "method:" << " " << std::get<0>(p) << " " << std::get<1>(p) << "\n" << ::tpy::check_signals;
     std::tuple<int32_t, std::string> c = ::tpystd::asyncio::run<std::tuple<int32_t, std::string>>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::tuple<int32_t, std::string>>>(::tpyapp::main::coro(true)));
-    std::cout << "async:" << " " << std::get<0>(c) << " " << std::get<1>(c) << "\n";
+    std::cout << "async:" << " " << std::get<0>(c) << " " << std::get<1>(c) << "\n" << ::tpy::check_signals;
 }
 
 // # `return t if f else u` at a value-tuple return: the C++ conditional over the

@@ -16,7 +16,7 @@ void consume(Handles&& h) {
 void main() {
     Handles h = Handles();
     ::tpyapp::main::consume(std::move(h));
-    std::cout << "ok" << "\n";
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // main()

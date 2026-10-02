@@ -40,11 +40,11 @@ void __tpy_init() {
     static Leaf<std::string> __global_slot_1 = Leaf<std::string>("hello", 42, "bonus");
     leaf = &__global_slot_1;
     leaf->set_first("world");
-    std::cout << leaf->get_first() << "\n";
-    std::cout << leaf->get_second() << "\n";
-    std::cout << leaf->get_extra() << "\n";
-    std::cout << leaf->first << "\n";
-    std::cout << leaf->second << "\n";
+    std::cout << leaf->get_first() << "\n" << ::tpy::check_signals;
+    std::cout << leaf->get_second() << "\n" << ::tpy::check_signals;
+    std::cout << leaf->get_extra() << "\n" << ::tpy::check_signals;
+    std::cout << leaf->first << "\n" << ::tpy::check_signals;
+    std::cout << leaf->second << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

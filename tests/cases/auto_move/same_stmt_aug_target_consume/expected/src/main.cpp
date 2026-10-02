@@ -16,7 +16,7 @@ void main() {
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>({{3, 1}});
     Blob __tmp_1 = b;
     ::tpy::__setitem__(d, ::tpy::__len__(b.items), ::tpy::add_check<int32_t>(::tpy::__getitem__(d, ::tpy::__len__(b.items)), k.take(std::move(__tmp_1))));
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

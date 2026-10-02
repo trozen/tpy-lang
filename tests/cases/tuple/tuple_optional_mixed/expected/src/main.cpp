@@ -23,11 +23,11 @@ void show(const std::tuple<const T*, int32_t, const T*>& p) {
     int32_t n = std::get<1>(__tup_1);
     const T* b = std::get<2>(__tup_1);
     if ((a != nullptr)) {
-        std::cout << a->x << "\n";
+        std::cout << a->x << "\n" << ::tpy::check_signals;
     }
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
     if ((b != nullptr)) {
-        std::cout << b->x << "\n";
+        std::cout << b->x << "\n" << ::tpy::check_signals;
     }
 }
 

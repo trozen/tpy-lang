@@ -34,7 +34,7 @@ void free_positions() {
     bool b = ::tpyapp::main::anyslot<float>("free", 2.25f);
     bool c = ::tpyapp::main::anyslot<std::string>("free", "lit");
     bool d = ::tpyapp::main::anyslot<std::monostate>("free", std::monostate{});
-    std::cout << "free" << " " << ::tpy::print_bool(a) << " " << ::tpy::print_bool(b) << " " << ::tpy::print_bool(c) << " " << ::tpy::print_bool(d) << "\n";
+    std::cout << "free" << " " << ::tpy::print_bool(a) << " " << ::tpy::print_bool(b) << " " << ::tpy::print_bool(c) << " " << ::tpy::print_bool(d) << "\n" << ::tpy::check_signals;
 }
 
 // def view_source(k: str) -> None:
@@ -43,7 +43,7 @@ void free_positions() {
 //     # exactly as the monomorphic twin's slot does.
 //     print("view", anyslot("view", k))  # tpyc: ok
 void view_source(std::string_view k) {
-    std::cout << "view" << " " << ::tpy::print_bool(::tpyapp::main::anyslot<std::string>("view", k)) << "\n";
+    std::cout << "view" << " " << ::tpy::print_bool(::tpyapp::main::anyslot<std::string>("view", k)) << "\n" << ::tpy::check_signals;
 }
 
 // def ref_rvalue() -> None:
@@ -56,7 +56,7 @@ void view_source(std::string_view k) {
 //     print("ref_rvalue", anyslot("ref", mk_cell()))  # tpyc: ok
 void ref_rvalue() {
     Cell __tmp_1 = ::tpyapp::main::mk_cell();
-    std::cout << "ref_rvalue" << " " << ::tpy::print_bool(::tpyapp::main::anyslot<Cell>("ref", __tmp_1)) << "\n";
+    std::cout << "ref_rvalue" << " " << ::tpy::print_bool(::tpyapp::main::anyslot<Cell>("ref", __tmp_1)) << "\n" << ::tpy::check_signals;
 }
 
 // def ref_lvalue() -> None:
@@ -71,7 +71,7 @@ void ref_lvalue() {
     Cell c = Cell(1);
     Cell& seen = ::tpyapp::main::pass_through<Cell>(c);
     seen.n = ::tpy::add_check<int32_t>(seen.n, 1);
-    std::cout << "ref_lvalue" << " " << c.n << " " << seen.n << "\n";
+    std::cout << "ref_lvalue" << " " << c.n << " " << seen.n << "\n" << ::tpy::check_signals;
 }
 
 // def method_and_ctor() -> None:
@@ -80,7 +80,7 @@ void ref_lvalue() {
 //     print("method_ctor", b.v, b.holds(4))  # tpyc: ok
 void method_and_ctor() {
     Boxed<int32_t> b = Boxed<int32_t>(3);
-    std::cout << "method_ctor" << " " << b.v << " " << ::tpy::print_bool(b.holds(4)) << "\n";
+    std::cout << "method_ctor" << " " << b.v << " " << ::tpy::print_bool(b.holds(4)) << "\n" << ::tpy::check_signals;
 }
 
 // def comprehension() -> None:
@@ -98,7 +98,7 @@ void comprehension() {
         }
         std::move(__result);
     });
-    std::cout << "comprehension" << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << "comprehension" << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def closure() -> None:
@@ -109,7 +109,7 @@ void closure() {
     auto inner = []() -> bool {
         return ::tpyapp::main::anyslot<int32_t>("closure", 11);
     };
-    std::cout << "closure" << " " << ::tpy::print_bool(inner()) << "\n";
+    std::cout << "closure" << " " << ::tpy::print_bool(inner()) << "\n" << ::tpy::check_signals;
 }
 
 // def cond_operand(flag: bool) -> bool:
@@ -166,10 +166,10 @@ void try_finally() {
         try {
             seen = ::tpyapp::main::anyslot<int32_t>("try", 8);
         } catch (...) {
-            std::cout << "try_finally" << " " << ::tpy::print_bool(seen) << "\n";
+            std::cout << "try_finally" << " " << ::tpy::print_bool(seen) << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "try_finally" << " " << ::tpy::print_bool(seen) << "\n";
+        std::cout << "try_finally" << " " << ::tpy::print_bool(seen) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -180,7 +180,7 @@ void with_body() {
     auto __ctx_1 = Guard("g");
     auto label = __ctx_1.__enter__();
     try {
-        std::cout << "with_body" << " " << label << " " << ::tpy::print_bool(::tpyapp::main::anyslot<int32_t>("with", 9)) << "\n";
+        std::cout << "with_body" << " " << label << " " << ::tpy::print_bool(::tpyapp::main::anyslot<int32_t>("with", 9)) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -228,11 +228,11 @@ void error_return_body() {
             got = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // else:
-        std::cout << "error_return_body" << " " << got << "\n";
+        std::cout << "error_return_body" << " " << got << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Missing:
         __except_1:;
-        std::cout << "error_return_body" << " " << "missing" << "\n";
+        std::cout << "error_return_body" << " " << "missing" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }
@@ -254,7 +254,7 @@ void generator_body() {
             out = ::tpy::add_check<int32_t>(out, v);
         }
     }
-    std::cout << "generator_body" << " " << out << "\n";
+    std::cout << "generator_body" << " " << out << "\n" << ::tpy::check_signals;
 }
 
 // def generator_factory() -> None:
@@ -276,7 +276,7 @@ void generator_factory() {
             out = ::tpy::add_check<int32_t>(out, v);
         }
     }
-    std::cout << "generator" << " " << out << "\n";
+    std::cout << "generator" << " " << out << "\n" << ::tpy::check_signals;
 }
 
 // async def async_main() -> int32:
@@ -328,7 +328,7 @@ __coro_async_main async_main() {
 //     generator_factory()
 //     print("async", asyncio.run(async_main()))
 void main() {
-    std::cout << "module" << " " << ::tpy::print_bool(top_flag) << "\n";
+    std::cout << "module" << " " << ::tpy::print_bool(top_flag) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::free_positions();
     ::tpyapp::main::view_source("k");
     ::tpyapp::main::ref_rvalue();
@@ -336,15 +336,15 @@ void main() {
     ::tpyapp::main::method_and_ctor();
     ::tpyapp::main::comprehension();
     ::tpyapp::main::closure();
-    std::cout << "cond_operand" << " " << ::tpy::print_bool(::tpyapp::main::cond_operand(false)) << "\n";
-    std::cout << "while_condition" << " " << ::tpyapp::main::while_condition() << "\n";
-    std::cout << "match_arm" << " " << ::tpy::print_bool(::tpyapp::main::match_arm(1)) << "\n";
+    std::cout << "cond_operand" << " " << ::tpy::print_bool(::tpyapp::main::cond_operand(false)) << "\n" << ::tpy::check_signals;
+    std::cout << "while_condition" << " " << ::tpyapp::main::while_condition() << "\n" << ::tpy::check_signals;
+    std::cout << "match_arm" << " " << ::tpy::print_bool(::tpyapp::main::match_arm(1)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::try_finally();
     ::tpyapp::main::with_body();
     ::tpyapp::main::generator_body();
     ::tpyapp::main::error_return_body();
     ::tpyapp::main::generator_factory();
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_main())) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_main())) << "\n" << ::tpy::check_signals;
 }
 
 // # An rvalue at a generic `T` parameter hoists the `__tmp_N` temp only where the

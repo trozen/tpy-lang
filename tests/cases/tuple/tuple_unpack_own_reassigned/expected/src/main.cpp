@@ -26,8 +26,8 @@ void main() {
     Counter a = std::move(std::get<0>(__tup_1));
     Counter b = std::move(std::get<1>(__tup_1));
     a = ::tpyapp::main::make_one();
-    std::cout << a.n << "\n";
-    std::cout << b.n << "\n";
+    std::cout << a.n << "\n" << ::tpy::check_signals;
+    std::cout << b.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

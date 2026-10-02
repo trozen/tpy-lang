@@ -67,10 +67,10 @@ void main() {
     Point* b = ::tpyapp::main::via_alias();
     Point* c = ::tpyapp::main::via_both_branches(true);
     Point* d = ::tpyapp::main::via_ternary(false);
-    std::cout << ::tpy::deref_check(a).x << "\n";
-    std::cout << ::tpy::deref_check(b).y << "\n";
-    std::cout << ::tpy::deref_check(c).x << "\n";
-    std::cout << ::tpy::deref_check(d).y << "\n";
+    std::cout << ::tpy::deref_check(a).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::deref_check(b).y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::deref_check(c).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::deref_check(d).y << "\n" << ::tpy::check_signals;
 }
 
 // g: Point = Point(1, 2)

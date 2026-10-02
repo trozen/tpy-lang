@@ -66,8 +66,8 @@ int32_t outer(bool flag) {
 //     print(outer(True))
 //     print(outer(False))
 void main() {
-    std::cout << ::tpyapp::main::outer(true) << "\n";
-    std::cout << ::tpyapp::main::outer(false) << "\n";
+    std::cout << ::tpyapp::main::outer(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::outer(false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

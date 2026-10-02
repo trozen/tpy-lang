@@ -16,12 +16,12 @@ namespace tpyapp::main {
 //     print(len(d))
 void main() {
     Point p = Point(1, 2);
-    std::cout << ::tpy::print_bool((::tpy::__hash__(p) == ::tpy::__hash__(Point(1, 2)))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::__hash__(p) == ::tpy::__hash__(Point(3, 4)))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__(p) == ::tpy::__hash__(Point(1, 2)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::__hash__(p) == ::tpy::__hash__(Point(3, 4)))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<Point, std::string> d = ::tpy::ordered_map<Point, std::string>({{Point(1, 2), "a"}, {Point(3, 4), "b"}});
-    std::cout << ::tpy::__getitem__(d, Point(1, 2)) << "\n";
-    std::cout << ::tpy::__getitem__(d, Point(3, 4)) << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__getitem__(d, Point(1, 2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, Point(3, 4)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // # @dataclass(frozen=True) auto __hash__: enables hash() and dict keys

@@ -18,7 +18,7 @@ void __tpy_init() {
 
     ::tpyapp::mod_a::__tpy_init();
     ::tpyapp::mod_b::__tpy_init();
-    std::cout << "main init" << "\n";
+    std::cout << "main init" << "\n" << ::tpy::check_signals;
     ::tpyapp::mod_a::func_a();
     ::tpyapp::mod_b::func_b();
 }

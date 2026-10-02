@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(d.tag, d.a, d.b)
 void main() {
     Derived d = Derived();
-    std::cout << d.tag << " " << d.a << " " << d.b << "\n";
+    std::cout << d.tag << " " << d.a << " " << d.b << "\n" << ::tpy::check_signals;
 }
 
 // main()

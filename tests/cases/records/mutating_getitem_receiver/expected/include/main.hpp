@@ -664,7 +664,7 @@ inline auto Pair::__iter__() const {
 //     # Constructor body.
 //     print("ctor:", self.c["init"])  # tpyc: ok
 inline Holder::Holder() : c(Counts()) {
-    std::cout << "ctor:" << " " << this->c["init"] << "\n";
+    std::cout << "ctor:" << " " << this->c["init"] << "\n" << ::tpy::check_signals;
 }
 
 // def look(self, k: str) -> int32:

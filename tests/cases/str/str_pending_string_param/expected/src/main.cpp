@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def takes_string(s: String) -> None:
 //     print(s)
 void takes_string(const ::tpy::String& s) {
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_string_param() -> None:
@@ -17,7 +17,7 @@ void takes_string(const ::tpy::String& s) {
 void test_string_param() {
     std::string s = "hello";
     ::tpyapp::main::takes_string(s);
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // test_string_param()

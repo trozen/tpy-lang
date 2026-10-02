@@ -28,7 +28,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     std::vector<std::string> reprs = ({
         std::vector<std::string> __result;
         auto& __obj_1 = items;
@@ -41,7 +41,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(reprs) << "\n";
+    std::cout << ::tpy::ListPrinter(reprs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

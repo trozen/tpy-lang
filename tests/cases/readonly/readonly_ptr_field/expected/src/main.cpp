@@ -20,8 +20,8 @@ void main() {
     Data d = Data(42);
     Container c = Container();
     c.ptr = &d;
-    std::cout << c.read_value() << "\n";
-    std::cout << ::tpyapp::main::read_through(c) << "\n";
+    std::cout << c.read_value() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_through(c) << "\n" << ::tpy::check_signals;
 }
 
 // main()

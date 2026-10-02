@@ -19,16 +19,16 @@ void finally_only() {
     ::tpy::String tmp;
     {
         try {
-            std::cout << "body" << "\n";
+            std::cout << "body" << "\n" << ::tpy::check_signals;
         } catch (...) {
             tmp = (::tpy::str_concat("x", "y"));
-            std::cout << tmp << "\n";
+            std::cout << tmp << "\n" << ::tpy::check_signals;
             throw;
         }
         tmp = (::tpy::str_concat("x", "y"));
-        std::cout << tmp << "\n";
+        std::cout << tmp << "\n" << ::tpy::check_signals;
     }
-    std::cout << tmp << "\n";
+    std::cout << tmp << "\n" << ::tpy::check_signals;
 }
 
 // def throw_tier(trigger: bool) -> None:
@@ -50,19 +50,19 @@ void throw_tier(bool trigger) {
                 if (trigger) {
                     throw ::tpy::ValueError("boom");
                 }
-                std::cout << "ok" << "\n";
+                std::cout << "ok" << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::ValueError&) {
-                std::cout << "caught" << "\n";
+                std::cout << "caught" << "\n" << ::tpy::check_signals;
             }
         } catch (...) {
             note = (::tpy::str_concat("done", ((trigger) ? ("!") : ("."))));
-            std::cout << note << "\n";
+            std::cout << note << "\n" << ::tpy::check_signals;
             throw;
         }
         note = (::tpy::str_concat("done", ((trigger) ? ("!") : ("."))));
-        std::cout << note << "\n";
+        std::cout << note << "\n" << ::tpy::check_signals;
     }
-    std::cout << note << "\n";
+    std::cout << note << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

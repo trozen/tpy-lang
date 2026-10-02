@@ -57,16 +57,16 @@ std::string echo(std::string_view x) {
 //     print(c.kind("ok"))
 //     print(c.kind(True))
 void main() {
-    std::cout << ::tpyapp::main::kind(std::string_view("ok")) << "\n";
-    std::cout << ::tpyapp::main::kind(true) << "\n";
+    std::cout << ::tpyapp::main::kind(std::string_view("ok")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::kind(true) << "\n" << ::tpy::check_signals;
     std::string_view s = "ok";
-    std::cout << ::tpyapp::main::kind(s) << "\n";
-    std::cout << ::tpyapp::main::sv(std::string_view("v")) << "\n";
-    std::cout << ::tpyapp::main::gen_ov<std::string>("hi") << "\n";
-    std::cout << ::tpyapp::main::echo("hi") << "\n";
+    std::cout << ::tpyapp::main::kind(s) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sv(std::string_view("v")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::gen_ov<std::string>("hi") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::echo("hi") << "\n" << ::tpy::check_signals;
     C c = C();
-    std::cout << c.kind(std::string_view("ok")) << "\n";
-    std::cout << c.kind(true) << "\n";
+    std::cout << c.kind(std::string_view("ok")) << "\n" << ::tpy::check_signals;
+    std::cout << c.kind(true) << "\n" << ::tpy::check_signals;
 }
 
 // main()

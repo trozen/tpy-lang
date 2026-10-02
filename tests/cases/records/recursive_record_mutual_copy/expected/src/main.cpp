@@ -23,7 +23,7 @@ void main() {
     a.bs.push_back(B(2));
     int32_t c = ::tpyapp::main::copied_val(a);
     ::tpy::__getitem__(a.bs, 0).val = 20;
-    std::cout << a.val << " " << ::tpy::__getitem__(a.bs, 0).val << " " << c << " " << ::tpy::__len__(a.bs) << "\n";
+    std::cout << a.val << " " << ::tpy::__getitem__(a.bs, 0).val << " " << c << " " << ::tpy::__len__(a.bs) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -51,14 +51,14 @@ A& A::operator=(A&& other) noexcept {
 //     print("A del end", s)
 A::~A() {
     if (!this->__tpy_owned_) return;
-    std::cout << "A del begin" << " " << this->val << "\n";
+    std::cout << "A del begin" << " " << this->val << "\n" << ::tpy::check_signals;
     int32_t s = this->val;
     s = ::tpy::add_check<int32_t>(s, 1);
     s = ::tpy::add_check<int32_t>(s, 2);
     s = ::tpy::add_check<int32_t>(s, 3);
     s = ::tpy::add_check<int32_t>(s, 4);
     s = ::tpy::add_check<int32_t>(s, 5);
-    std::cout << "A del end" << " " << s << "\n";
+    std::cout << "A del end" << " " << s << "\n" << ::tpy::check_signals;
 }
 // main()
 void __tpy_init() {

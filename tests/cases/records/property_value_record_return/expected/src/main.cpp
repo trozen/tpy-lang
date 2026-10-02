@@ -14,10 +14,10 @@ namespace tpyapp::main {
 void main() {
     Track t = Track(::tpy::BigInt(3), ::tpy::BigInt(4));
     Coord p = t.position();
-    std::cout << p.x << " " << p.y << "\n";
-    std::cout << ::tpy::print_bool(((t.position()) == (Coord(::tpy::BigInt(3), ::tpy::BigInt(4))))) << "\n";
+    std::cout << p.x << " " << p.y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((t.position()) == (Coord(::tpy::BigInt(3), ::tpy::BigInt(4))))) << "\n" << ::tpy::check_signals;
     std::optional<Coord> g = t.goal();
-    std::cout << ::tpy::print_bool((!g.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!g.has_value())) << "\n" << ::tpy::check_signals;
 }
 
 // main()

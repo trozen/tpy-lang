@@ -44,7 +44,7 @@ int32_t pick(int32_t n) {
     }
     default: {
         seen = __match_subject_1;
-        std::cout << seen << "\n";
+        std::cout << seen << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -57,10 +57,10 @@ int32_t pick(int32_t n) {
 //     print(pick(0))
 //     print(pick(5))
 void main() {
-    std::cout << ::tpyapp::main::route(0) << "\n";
-    std::cout << ::tpyapp::main::route(7) << "\n";
-    std::cout << ::tpyapp::main::pick(0) << "\n";
-    std::cout << ::tpyapp::main::pick(5) << "\n";
+    std::cout << ::tpyapp::main::route(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::route(7) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick(5) << "\n" << ::tpy::check_signals;
 }
 
 // main()

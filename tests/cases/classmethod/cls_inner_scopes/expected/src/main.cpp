@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(Totals.plain_nested())
 //     print(Totals.shadowing_nested())
 void main() {
-    std::cout << Totals::plain_nested() << "\n";
-    std::cout << Totals::shadowing_nested() << "\n";
+    std::cout << Totals::plain_nested() << "\n" << ::tpy::check_signals;
+    std::cout << Totals::shadowing_nested() << "\n" << ::tpy::check_signals;
 }
 
 // main()

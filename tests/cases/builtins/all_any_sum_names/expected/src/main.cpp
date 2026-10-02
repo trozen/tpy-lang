@@ -33,12 +33,12 @@ int32_t total(const std::vector<int32_t>& xs) {
 //     print(check_any(bs))
 void main() {
     std::vector<bool> bs = {true, true, false};
-    std::cout << ::tpy::print_bool(::tpy::builtin_all(bs)) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::builtin_any(bs)) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::builtin_all(bs)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::builtin_any(bs)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> ns = {1, 2, 3};
-    std::cout << ::tpyapp::main::total(ns) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::check_all(bs)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::check_any(bs)) << "\n";
+    std::cout << ::tpyapp::main::total(ns) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::check_all(bs)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::check_any(bs)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

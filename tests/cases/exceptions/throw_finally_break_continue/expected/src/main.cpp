@@ -20,17 +20,17 @@ void test_break() {
             try {
                 if ((i == 2)) {
                     __fin_ran_1 = true;
-                    std::cout << "cleanup" << " " << i << "\n";
+                    std::cout << "cleanup" << " " << i << "\n" << ::tpy::check_signals;
                     break;
                 }
-                std::cout << i << "\n";
+                std::cout << i << "\n" << ::tpy::check_signals;
             } catch (...) {
                 if (!__fin_ran_1) {
-                    std::cout << "cleanup" << " " << i << "\n";
+                    std::cout << "cleanup" << " " << i << "\n" << ::tpy::check_signals;
                 }
                 throw;
             }
-            std::cout << "cleanup" << " " << i << "\n";
+            std::cout << "cleanup" << " " << i << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -51,17 +51,17 @@ void test_continue() {
             try {
                 if ((i == 2)) {
                     __fin_ran_2 = true;
-                    std::cout << "cleanup" << " " << i << "\n";
+                    std::cout << "cleanup" << " " << i << "\n" << ::tpy::check_signals;
                     continue;
                 }
-                std::cout << i << "\n";
+                std::cout << i << "\n" << ::tpy::check_signals;
             } catch (...) {
                 if (!__fin_ran_2) {
-                    std::cout << "cleanup" << " " << i << "\n";
+                    std::cout << "cleanup" << " " << i << "\n" << ::tpy::check_signals;
                 }
                 throw;
             }
-            std::cout << "cleanup" << " " << i << "\n";
+            std::cout << "cleanup" << " " << i << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -85,24 +85,24 @@ void test_break_for_else() {
             try {
                 if ((i == 2)) {
                     __fin_ran_3 = true;
-                    std::cout << "cleanup" << " " << i << "\n";
+                    std::cout << "cleanup" << " " << i << "\n" << ::tpy::check_signals;
                     goto __after_else_0;
                 }
-                std::cout << i << "\n";
+                std::cout << i << "\n" << ::tpy::check_signals;
             } catch (...) {
                 if (!__fin_ran_3) {
-                    std::cout << "cleanup" << " " << i << "\n";
+                    std::cout << "cleanup" << " " << i << "\n" << ::tpy::check_signals;
                 }
                 throw;
             }
-            std::cout << "cleanup" << " " << i << "\n";
+            std::cout << "cleanup" << " " << i << "\n" << ::tpy::check_signals;
         }
     }
     {
-        std::cout << "else ran" << "\n";
+        std::cout << "else ran" << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
-    std::cout << "after loop" << "\n";
+    std::cout << "after loop" << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -113,9 +113,9 @@ void test_break_for_else() {
 //     test_break_for_else()
 void main() {
     ::tpyapp::main::test_break();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_continue();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_break_for_else();
 }
 

@@ -39,12 +39,12 @@ int32_t handler_declares(std::string_view s) {
             if (!__try_tmp_2.has_value()) goto __except_1;
             d = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        std::cout << d << "\n";
+        std::cout << d << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except ParseError:
         __except_1:;
         n = -1;
-        std::cout << n << "\n";
+        std::cout << n << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     n = 9;
@@ -72,14 +72,14 @@ int32_t handler_binding_declares(std::string_view s) {
             if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
             d = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
-        std::cout << d << "\n";
+        std::cout << d << "\n" << ::tpy::check_signals;
         goto __after_try_3;
         // except ParseError:
         __except_3:;
         {
             auto& e = *__err_opt_3;
             n = -2;
-            std::cout << n << "\n";
+            std::cout << n << "\n" << ::tpy::check_signals;
         }
         __after_try_3:;
     }
@@ -105,7 +105,7 @@ int32_t try_body_declares(std::string_view s) {
             if (!__try_tmp_6.has_value()) goto __except_5;
             v = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         goto __after_try_5;
         // except ParseError:
         __except_5:;
@@ -123,12 +123,12 @@ int32_t try_body_declares(std::string_view s) {
 //     print(try_body_declares("1"))
 //     print(try_body_declares("x"))
 void main() {
-    std::cout << ::tpyapp::main::handler_declares("1") << "\n";
-    std::cout << ::tpyapp::main::handler_declares("x") << "\n";
-    std::cout << ::tpyapp::main::handler_binding_declares("0") << "\n";
-    std::cout << ::tpyapp::main::handler_binding_declares("x") << "\n";
-    std::cout << ::tpyapp::main::try_body_declares("1") << "\n";
-    std::cout << ::tpyapp::main::try_body_declares("x") << "\n";
+    std::cout << ::tpyapp::main::handler_declares("1") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::handler_declares("x") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::handler_binding_declares("0") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::handler_binding_declares("x") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::try_body_declares("1") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::try_body_declares("x") << "\n" << ::tpy::check_signals;
 }
 
 // main()

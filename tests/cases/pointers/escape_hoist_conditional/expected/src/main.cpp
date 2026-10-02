@@ -23,7 +23,7 @@ void conditional_hoist() {
             saved = p;
         }
     }
-    std::cout << saved->x << " " << saved->y << "\n";
+    std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
 
 // conditional_hoist()

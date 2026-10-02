@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def opaque(b: Box) -> None:
 //     print(0)
 void opaque(const Box& b) {
-    std::cout << 0 << "\n";
+    std::cout << 0 << "\n" << ::tpy::check_signals;
 }
 
 // def use_after_call(b: Box) -> int32:
@@ -30,7 +30,7 @@ void __tpy_init() {
     initialized = true;
 
     Box __tmp_1 = Box(4);
-    std::cout << ::tpyapp::main::use_after_call(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::use_after_call(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

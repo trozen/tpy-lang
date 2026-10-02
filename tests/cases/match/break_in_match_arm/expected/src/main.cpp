@@ -66,13 +66,13 @@ void break_plain() {
             goto __loop_break_1;
         }
         default: {
-            std::cout << "p" << " " << ::tpy::EnumUtil<Color>::name(c) << "\n";
+            std::cout << "p" << " " << ::tpy::EnumUtil<Color>::name(c) << "\n" << ::tpy::check_signals;
             break;
         }
         }
     }
     __loop_break_1:;
-    std::cout << "plain done" << "\n";
+    std::cout << "plain done" << "\n" << ::tpy::check_signals;
 }
 
 // def break_with_else() -> None:
@@ -97,16 +97,16 @@ void break_with_else() {
             goto __after_else_0;
         }
         default: {
-            std::cout << "e" << " " << ::tpy::EnumUtil<Color>::name(c) << "\n";
+            std::cout << "e" << " " << ::tpy::EnumUtil<Color>::name(c) << "\n" << ::tpy::check_signals;
             break;
         }
         }
     }
     {
-        std::cout << "else ran" << "\n";
+        std::cout << "else ran" << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
-    std::cout << "after else loop" << "\n";
+    std::cout << "after else loop" << "\n" << ::tpy::check_signals;
 }
 
 // def continue_in_arm() -> None:
@@ -129,7 +129,7 @@ void continue_in_arm() {
             break;
         }
         default: {
-            std::cout << "c" << " " << ::tpy::EnumUtil<Color>::name(c) << "\n";
+            std::cout << "c" << " " << ::tpy::EnumUtil<Color>::name(c) << "\n" << ::tpy::check_signals;
             break;
         }
         }
@@ -155,14 +155,14 @@ void break_in_while() {
             goto __loop_break_0;
         }
         default: {
-            std::cout << "w" << " " << i << "\n";
+            std::cout << "w" << " " << i << "\n" << ::tpy::check_signals;
             break;
         }
         }
         i = (::tpy::add_check<int32_t>(i, 1));
     }
     __loop_break_0:;
-    std::cout << "while done" << "\n";
+    std::cout << "while done" << "\n" << ::tpy::check_signals;
 }
 
 // def break_in_str_switch() -> None:
@@ -192,28 +192,28 @@ void break_in_str_switch() {
             switch (static_cast<unsigned char>(__match_subject_1[0])) {
             case 'a': {
                 if (__match_subject_1 == "a") {
-                    std::cout << "s a" << "\n";
+                    std::cout << "s a" << "\n" << ::tpy::check_signals;
                     goto __match_end_2;
                 }
                 break;
             }
             case 'b': {
                 if (__match_subject_1 == "bb") {
-                    std::cout << "s bb" << "\n";
+                    std::cout << "s bb" << "\n" << ::tpy::check_signals;
                     goto __match_end_2;
                 }
                 break;
             }
             case 'c': {
                 if (__match_subject_1 == "ccc") {
-                    std::cout << "s ccc" << "\n";
+                    std::cout << "s ccc" << "\n" << ::tpy::check_signals;
                     goto __match_end_2;
                 }
                 break;
             }
             case 'd': {
                 if (__match_subject_1 == "dddd") {
-                    std::cout << "s dddd" << "\n";
+                    std::cout << "s dddd" << "\n" << ::tpy::check_signals;
                     goto __match_end_2;
                 }
                 break;
@@ -227,13 +227,13 @@ void break_in_str_switch() {
             }
         }
         {
-            std::cout << "s other" << "\n";
+            std::cout << "s other" << "\n" << ::tpy::check_signals;
             goto __match_end_2;
         }
         __match_end_2:;
     }
     __loop_break_1:;
-    std::cout << "str done" << "\n";
+    std::cout << "str done" << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

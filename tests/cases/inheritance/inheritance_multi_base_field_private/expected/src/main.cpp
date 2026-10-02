@@ -15,7 +15,7 @@ void main() {
     s.tick_request();
     s.tick_request();
     s.tick_cache();
-    std::cout << s.report() << "\n";
+    std::cout << s.report() << "\n" << ::tpy::check_signals;
 }
 
 // main()

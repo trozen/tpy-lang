@@ -49,9 +49,9 @@ namespace tpyapp::main {
 //         print("falsy")
 void check(Signal s) {
     if ((static_cast<void>(s), true)) {
-        std::cout << "truthy" << "\n";
+        std::cout << "truthy" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "falsy" << "\n";
+        std::cout << "falsy" << "\n" << ::tpy::check_signals;
     }
 }
 

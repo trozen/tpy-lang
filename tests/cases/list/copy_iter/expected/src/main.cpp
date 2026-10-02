@@ -16,8 +16,8 @@ void test_extend_copy_iter_no_warn() {
     std::vector<Node> b = {Node(1), Node(2)};
     auto ci = ::tpy::copy_iter<Node>(b);
     ::tpy::list_extend(a, ci);
-    std::cout << ::tpy::__len__(a) << "\n";
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def test_extend_copy_iter_value_type() -> None:
@@ -29,7 +29,7 @@ void test_extend_copy_iter_value_type() {
     std::vector<int32_t> a = std::vector<int32_t>{};
     std::vector<int32_t> b = {1, 2, 3};
     ::tpy::list_extend(a, ::tpy::copy_iter<int32_t>(b));
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }
 
 // def test_iadd_copy_iter_no_warn() -> None:
@@ -42,8 +42,8 @@ void test_iadd_copy_iter_no_warn() {
     std::vector<Node> a = std::vector<Node>{};
     std::vector<Node> b = {Node(3)};
     ::tpy::list_extend(a, ::tpy::copy_iter<Node>(b));
-    std::cout << ::tpy::__len__(a) << "\n";
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_ctor_copy_iter_no_warn() -> None:
@@ -54,8 +54,8 @@ void test_iadd_copy_iter_no_warn() {
 void test_list_ctor_copy_iter_no_warn() {
     std::vector<Node> b = {Node(4)};
     std::vector<Node> a = ::tpy::construct<std::vector<Node>>(::tpy::copy_iter<Node>(b));
-    std::cout << ::tpy::__len__(a) << "\n";
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def test_extend_no_copy_iter_warns() -> None:
@@ -67,7 +67,7 @@ void test_extend_no_copy_iter_warns() {
     std::vector<Node> a = std::vector<Node>{};
     std::vector<Node> b = {Node(5)};
     ::tpy::list_extend(a, b);
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def test_for_loop_copy_iter() -> None:
@@ -87,8 +87,8 @@ void test_for_loop_copy_iter() {
         const auto& x = *__beg_0;
         total = ::tpy::add_check<int32_t>(total, x.val);
     }
-    std::cout << total << "\n";
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // test_extend_copy_iter_no_warn()

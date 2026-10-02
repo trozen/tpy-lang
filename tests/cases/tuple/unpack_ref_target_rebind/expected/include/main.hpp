@@ -236,7 +236,7 @@ inline void Holder::rebind(Cell& b, Cell& q) const {
     int32_t k = std::get<1>(__tup_1);
     x = &(q);
     x->n = 86;
-    std::cout << "method" << " " << b.n << " " << q.n << "\n";
+    std::cout << "method" << " " << b.n << " " << q.n << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, n: int32) -> None:

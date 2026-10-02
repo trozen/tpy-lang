@@ -67,14 +67,14 @@ inline void Field::take(std::monostate x) {
 //     print("enter")
 //     return self
 inline Guard& Guard::__enter__() {
-    std::cout << "enter" << "\n";
+    std::cout << "enter" << "\n" << ::tpy::check_signals;
     return (*this);
 }
 
 // def __exit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None:
 //     print("exit")
 inline void Guard::__exit__(std::monostate exc_type, std::monostate exc_val, std::monostate exc_tb) const {
-    std::cout << "exit" << "\n";
+    std::cout << "exit" << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

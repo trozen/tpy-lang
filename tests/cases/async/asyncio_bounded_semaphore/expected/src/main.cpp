@@ -137,7 +137,7 @@ __coro_worker worker(::tpystd::asyncio::BoundedSemaphore& sem, Counters& c) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         sem.emplace(::tpystd::asyncio::BoundedSemaphore(2));
-        std::cout << "locked0:" << " " << ::tpy::print_bool((*sem).locked()) << "\n";
+        std::cout << "locked0:" << " " << ::tpy::print_bool((*sem).locked()) << "\n" << ::tpy::check_signals;
         __sub_0.emplace((*sem));
         __state = S_RESUME_0;
         continue;
@@ -156,15 +156,15 @@ __coro_worker worker(::tpystd::asyncio::BoundedSemaphore& sem, Counters& c) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "locked_full:" << " " << ::tpy::print_bool((*sem).locked()) << "\n";
+        std::cout << "locked_full:" << " " << ::tpy::print_bool((*sem).locked()) << "\n" << ::tpy::check_signals;
         (*sem).release();
         (*sem).release();
         {
             try {
                 (*sem).release();
-                std::cout << "no error" << "\n";
+                std::cout << "no error" << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::ValueError&) {
-                std::cout << "caught over-release" << "\n";
+                std::cout << "caught over-release" << "\n" << ::tpy::check_signals;
             }
         }
         fresh.emplace(::tpystd::asyncio::BoundedSemaphore(2));
@@ -184,22 +184,22 @@ __coro_worker worker(::tpystd::asyncio::BoundedSemaphore& sem, Counters& c) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r2).value();
         __sub_2.reset();
-        std::cout << "peak:" << " " << (*c).peak << "\n";
+        std::cout << "peak:" << " " << (*c).peak << "\n" << ::tpy::check_signals;
         z.emplace(::tpystd::asyncio::BoundedSemaphore(0));
         {
             try {
                 (*z).release();
-                std::cout << "no zero error" << "\n";
+                std::cout << "no zero error" << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::ValueError&) {
-                std::cout << "caught zero over-release" << "\n";
+                std::cout << "caught zero over-release" << "\n" << ::tpy::check_signals;
             }
         }
         {
             try {
                 bad.emplace(::tpystd::asyncio::BoundedSemaphore(-1));
-                std::cout << "no negative error" << "\n";
+                std::cout << "no negative error" << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::ValueError&) {
-                std::cout << "caught negative" << "\n";
+                std::cout << "caught negative" << "\n" << ::tpy::check_signals;
             }
         }
         __state = S_DONE;

@@ -146,19 +146,19 @@ __coro_coro coro(B& b) {
 //     print("async", asyncio.run(coro(b5)))
 void main() {
     B b = B(1);
-    std::cout << "truthy" << " " << ::tpyapp::main::truthy(b) << "\n";
-    std::cout << "membership" << " " << ::tpyapp::main::membership(b) << "\n";
+    std::cout << "truthy" << " " << ::tpyapp::main::truthy(b) << "\n" << ::tpy::check_signals;
+    std::cout << "membership" << " " << ::tpyapp::main::membership(b) << "\n" << ::tpy::check_signals;
     b.items.clear();
-    std::cout << "truthyempty" << " " << ::tpyapp::main::truthy(b) << "\n";
-    std::cout << "membershipempty" << " " << ::tpyapp::main::membership(b) << "\n";
+    std::cout << "truthyempty" << " " << ::tpyapp::main::truthy(b) << "\n" << ::tpy::check_signals;
+    std::cout << "membershipempty" << " " << ::tpyapp::main::membership(b) << "\n" << ::tpy::check_signals;
     B b6 = B(5);
-    std::cout << "while" << " " << ::tpyapp::main::while_head(b6) << "\n";
-    std::cout << "temp" << " " << ::tpyapp::main::temp_receiver() << "\n";
+    std::cout << "while" << " " << ::tpyapp::main::while_head(b6) << "\n" << ::tpy::check_signals;
+    std::cout << "temp" << " " << ::tpyapp::main::temp_receiver() << "\n" << ::tpy::check_signals;
     B b2 = B(2);
     Reader r = Reader(b2);
-    std::cout << "ctor" << " " << r.v << "\n";
+    std::cout << "ctor" << " " << r.v << "\n" << ::tpy::check_signals;
     B b3 = B(1);
-    std::cout << "method" << " " << r.read(b3) << "\n";
+    std::cout << "method" << " " << r.read(b3) << "\n" << ::tpy::check_signals;
     B b4 = B(3);
     {
         auto __src_0 = ::tpyapp::main::gen(b4);
@@ -167,11 +167,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen" << " " << v << "\n";
+            std::cout << "gen" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     B b5 = B(1);
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(b5))) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(b5))) << "\n" << ::tpy::check_signals;
 }
 
 // # A borrow-returning CONTAINER call result read TRANSIENTLY -- a truthiness

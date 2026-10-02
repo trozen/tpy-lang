@@ -16,8 +16,8 @@ void main() {
     C<double> b = C<double>();
     C<int32_t>::counter = 10;
     C<double>::counter = 20;
-    std::cout << C<int32_t>::counter << "\n";
-    std::cout << C<double>::counter << "\n";
+    std::cout << C<int32_t>::counter << "\n" << ::tpy::check_signals;
+    std::cout << C<double>::counter << "\n" << ::tpy::check_signals;
 }
 
 // main()

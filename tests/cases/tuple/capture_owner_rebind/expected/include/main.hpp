@@ -179,7 +179,7 @@ inline void Runner::run() const {
     current->value = 4;
     current = &*(__slot_2 = Cell(2));
     std::get<0>(saved)->value = 9;
-    std::cout << "method" << " " << std::get<0>(saved)->value << " " << current->value << " " << this->result << "\n";
+    std::cout << "method" << " " << std::get<0>(saved)->value << " " << current->value << " " << this->result << "\n" << ::tpy::check_signals;
 }
 // def generic[T](seed: T) -> None:
 //     current = Cell(1)
@@ -198,7 +198,7 @@ void generic(::tpy::param_val_or_ref_t<T> seed) {
     current->value = 4;
     current = &*(__slot_2 = Cell(2));
     std::get<0>(saved)->value = 9;
-    std::cout << "generic" << " " << ::tpy::ValuePrinter(seed) << " " << std::get<0>(saved)->value << " " << current->value << "\n";
+    std::cout << "generic" << " " << ::tpy::ValuePrinter(seed) << " " << std::get<0>(saved)->value << " " << current->value << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

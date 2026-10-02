@@ -7,7 +7,7 @@ namespace myapp {
 // def main() -> None:
 //     print(add(int32(10), int32(32)))
 void main() {
-    std::cout << ::mypkg::utils::add(10, 32) << "\n";
+    std::cout << ::mypkg::utils::add(10, 32) << "\n" << ::tpy::check_signals;
 }
 
 // from mypkg.utils import add

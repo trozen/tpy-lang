@@ -48,11 +48,11 @@ void main() {
             idx = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // else:
-        std::cout << idx << "\n";
+        std::cout << idx << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except NotFound:
         __except_1:;
-        std::cout << "not found" << "\n";
+        std::cout << "not found" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     int32_t idx2;
@@ -63,11 +63,11 @@ void main() {
             idx2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
-        std::cout << idx2 << "\n";
+        std::cout << idx2 << "\n" << ::tpy::check_signals;
         goto __after_try_3;
         // except NotFound:
         __except_3:;
-        std::cout << "not found" << "\n";
+        std::cout << "not found" << "\n" << ::tpy::check_signals;
         __after_try_3:;
     }
 }

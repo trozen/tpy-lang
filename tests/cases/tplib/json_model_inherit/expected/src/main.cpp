@@ -42,26 +42,26 @@ namespace tpyapp::main {
 void main() {
     User u = User("Alice", 30, "alice@example.com");
     std::string s = u.to_json();
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
     User u2 = User::from_json(s);
-    std::cout << u2.name << " " << u2.age << " " << u2.email << "\n";
+    std::cout << u2.name << " " << u2.age << " " << u2.email << "\n" << ::tpy::check_signals;
     Admin a = Admin("Bob", 40, "bob@co.com", "superuser");
     std::string s2 = a.to_json();
-    std::cout << s2 << "\n";
+    std::cout << s2 << "\n" << ::tpy::check_signals;
     Admin a2 = Admin::from_json(s2);
-    std::cout << a2.name << " " << a2.age << " " << a2.email << " " << a2.role << "\n";
+    std::cout << a2.name << " " << a2.age << " " << a2.email << " " << a2.role << "\n" << ::tpy::check_signals;
     Extended ed = Extended(1);
-    std::cout << ed.to_json() << "\n";
+    std::cout << ed.to_json() << "\n" << ::tpy::check_signals;
     Extended ed2 = Extended(1, 2, 3);
-    std::cout << ed2.to_json() << "\n";
+    std::cout << ed2.to_json() << "\n" << ::tpy::check_signals;
     Extended ed3 = Extended::from_json("{\"x\": 10}");
-    std::cout << ed3.x << " " << ed3.y << " " << ed3.z << "\n";
+    std::cout << ed3.x << " " << ed3.y << " " << ed3.z << "\n" << ::tpy::check_signals;
     Scored sc = Scored("hello", std::nullopt, 42);
-    std::cout << sc.to_json() << "\n";
+    std::cout << sc.to_json() << "\n" << ::tpy::check_signals;
     Scored sc2 = Scored::from_json("{\"tag\": \"hi\", \"score\": 7}");
-    std::cout << sc2.tag << " " << ::tpy::print_optional_val(sc2.note) << " " << sc2.score << "\n";
-    std::cout << ::tpy::print_bool(((User("A", 1, "a")) == (User("A", 1, "a")))) << "\n";
-    std::cout << ::tpy::print_bool(((User("A", 1, "a")) == (User("A", 1, "b")))) << "\n";
+    std::cout << sc2.tag << " " << ::tpy::print_optional_val(sc2.note) << " " << sc2.score << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((User("A", 1, "a")) == (User("A", 1, "a")))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((User("A", 1, "a")) == (User("A", 1, "b")))) << "\n" << ::tpy::check_signals;
 }
 
 

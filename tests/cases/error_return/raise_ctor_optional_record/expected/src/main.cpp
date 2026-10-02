@@ -29,23 +29,23 @@ std::expected<::tpy::BigInt, Failed> run(bool ok) {
 //             print(e.node.v)
 void main() {
     {
-        std::cout << ({ auto __er_2 = ::tpyapp::main::run(true); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << ({ auto __er_2 = ::tpyapp::main::run(true); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Failed:
         __except_1:;
-        std::cout << "unexpected" << "\n";
+        std::cout << "unexpected" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     {
         std::optional<Failed> __err_opt_3;
-        std::cout << ({ auto __er_4 = ::tpyapp::main::run(false); if (!__er_4.has_value()) { __err_opt_3 = std::move(__er_4.error()); goto __except_3; } ::tpy::unwrap_ref_move(*__er_4); }) << "\n";
+        std::cout << ({ auto __er_4 = ::tpyapp::main::run(false); if (!__er_4.has_value()) { __err_opt_3 = std::move(__er_4.error()); goto __except_3; } ::tpy::unwrap_ref_move(*__er_4); }) << "\n" << ::tpy::check_signals;
         goto __after_try_3;
         // except Failed:
         __except_3:;
         {
             auto& e = *__err_opt_3;
             if ((e.node.has_value())) {
-                std::cout << (*e.node).v << "\n";
+                std::cout << (*e.node).v << "\n" << ::tpy::check_signals;
             }
         }
         __after_try_3:;

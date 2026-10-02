@@ -18,7 +18,7 @@ void loop_escape() {
         Point* p = &*(__slot_2 = Point(i, i));
         saved = p;
     }
-    std::cout << saved->x << " " << saved->y << "\n";
+    std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
 
 // loop_escape()

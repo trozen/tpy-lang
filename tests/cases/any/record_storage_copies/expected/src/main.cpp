@@ -17,9 +17,9 @@ void main() {
     c.n = ::tpy::BigInt(99);
     if ((a.value.has_value() && a.value.type() == typeid(Counter))) {
         const Counter& __a = std::any_cast<const Counter&>(a.value);
-        std::cout << "a.n =" << " " << __a.n << "\n";
+        std::cout << "a.n =" << " " << __a.n << "\n" << ::tpy::check_signals;
     }
-    std::cout << "c.n =" << " " << c.n << "\n";
+    std::cout << "c.n =" << " " << c.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

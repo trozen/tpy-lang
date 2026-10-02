@@ -74,7 +74,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_RESUME_2:  // after: yield h.box.n
     case S_JOIN_0: {
-        std::cout << label << "\n";
+        std::cout << label << "\n" << ::tpy::check_signals;
         __state = S_RESUME_3;
         return ::tpy::__len__(label);
     }
@@ -100,7 +100,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
 }

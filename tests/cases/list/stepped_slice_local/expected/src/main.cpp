@@ -17,11 +17,11 @@ namespace tpyapp::main {
 void test_stepped() {
     std::vector<int32_t> items = {1, 2, 3, 4, 5, 6, 7, 8};
     std::vector<int32_t> every_other = ::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, 2});
-    std::cout << ::tpy::ListPrinter(every_other) << "\n";
+    std::cout << ::tpy::ListPrinter(every_other) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> rev = ::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, -1});
-    std::cout << ::tpy::ListPrinter(rev) << "\n";
+    std::cout << ::tpy::ListPrinter(rev) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> mid = ::tpy::list_stepped_slice(items, ::tpy::Slice{1, 7, 2});
-    std::cout << ::tpy::ListPrinter(mid) << "\n";
+    std::cout << ::tpy::ListPrinter(mid) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

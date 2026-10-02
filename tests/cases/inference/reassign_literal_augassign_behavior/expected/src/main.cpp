@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     int32_t x = 0;
     x = ::tpy::add_check<int32_t>(x, 5);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // main()

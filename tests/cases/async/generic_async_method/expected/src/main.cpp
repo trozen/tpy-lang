@@ -29,7 +29,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         a = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << a << "\n";
+        std::cout << a << "\n" << ::tpy::check_signals;
         __sub_1.emplace((*c), "world");
         __state = S_RESUME_1;
         continue;
@@ -39,7 +39,7 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         b = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << b << "\n";
+        std::cout << b << "\n" << ::tpy::check_signals;
         __sub_2.emplace((*c), 42);
         __state = S_RESUME_2;
         continue;
@@ -49,8 +49,8 @@ namespace tpyapp::main {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         p = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << std::get<0>(p) << "\n";
-        std::cout << std::get<1>(p) << "\n";
+        std::cout << std::get<0>(p) << "\n" << ::tpy::check_signals;
+        std::cout << std::get<1>(p) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

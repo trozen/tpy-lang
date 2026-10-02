@@ -31,16 +31,16 @@ void main() {
 //         print(self.tup)
 void Bag::show() const {
     if ((this->items.has_value())) {
-        std::cout << ::tpy::print_optional_val<::tpy::ListPrinter<std::vector<::tpy::BigInt>>, std::vector<::tpy::BigInt>>(this->items) << "\n";
+        std::cout << ::tpy::print_optional_val<::tpy::ListPrinter<std::vector<::tpy::BigInt>>, std::vector<::tpy::BigInt>>(this->items) << "\n" << ::tpy::check_signals;
     }
     if ((this->by_key.has_value())) {
-        std::cout << ::tpy::print_optional_val<::tpy::DictPrinter<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>(this->by_key) << "\n";
+        std::cout << ::tpy::print_optional_val<::tpy::DictPrinter<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>(this->by_key) << "\n" << ::tpy::check_signals;
     }
     if ((this->elems.has_value())) {
-        std::cout << ::tpy::print_optional_val<::tpy::SetPrinter<int32_t>, ::tpy::ordered_set<int32_t>>(this->elems) << "\n";
+        std::cout << ::tpy::print_optional_val<::tpy::SetPrinter<int32_t>, ::tpy::ordered_set<int32_t>>(this->elems) << "\n" << ::tpy::check_signals;
     }
     if ((this->tup.has_value())) {
-        std::cout << ::tpy::print_optional_val<::tpy::TuplePrinter<::tpy::BigInt, int32_t>, std::tuple<::tpy::BigInt, int32_t>>(this->tup) << "\n";
+        std::cout << ::tpy::print_optional_val<::tpy::TuplePrinter<::tpy::BigInt, int32_t>, std::tuple<::tpy::BigInt, int32_t>>(this->tup) << "\n" << ::tpy::check_signals;
     }
 }
 // main()

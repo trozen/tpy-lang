@@ -39,7 +39,7 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         data = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << (::tpy::str_concat("got: ", ::tpy::bytes_decode(data))) << "\n";
+        std::cout << (::tpy::str_concat("got: ", ::tpy::bytes_decode(data))) << "\n" << ::tpy::check_signals;
         (*writer).write(::tpy::bytes_literal("x", 1));
         __sub_2.emplace((*writer));
         __state = S_RESUME_2;

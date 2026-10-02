@@ -27,11 +27,11 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     nums32 = &__global_slot_1;
     result = ::tpyapp::main::first<int32_t>((*nums32));
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
     static std::vector<::tpy::BigInt> __global_slot_2 = {10, 20, 30};
     nums = &__global_slot_2;
     result2 = ::tpyapp::main::first<::tpy::BigInt>((*nums));
-    std::cout << result2 << "\n";
+    std::cout << result2 << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

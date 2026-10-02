@@ -20,10 +20,10 @@ void inner(const ::tpy::BigInt& which) {
             }
             throw BErr{};
         } catch (const AErr&) {
-            std::cout << "inner saw it, re-raising" << "\n";
+            std::cout << "inner saw it, re-raising" << "\n" << ::tpy::check_signals;
             throw;
         } catch (const BErr&) {
-            std::cout << "inner saw it, re-raising" << "\n";
+            std::cout << "inner saw it, re-raising" << "\n" << ::tpy::check_signals;
             throw;
         }
     }
@@ -43,9 +43,9 @@ void main() {
             try {
                 ::tpyapp::main::inner(::tpy::BigInt(i));
             } catch (const AErr&) {
-                std::cout << "outer: AErr" << "\n";
+                std::cout << "outer: AErr" << "\n" << ::tpy::check_signals;
             } catch (const BErr&) {
-                std::cout << "outer: BErr" << "\n";
+                std::cout << "outer: BErr" << "\n" << ::tpy::check_signals;
             }
         }
     }

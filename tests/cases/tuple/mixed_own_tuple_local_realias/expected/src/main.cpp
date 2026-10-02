@@ -33,8 +33,8 @@ void main() {
     Box b = Box(7);
     Holder h = Holder(b);
     ::tpyapp::main::realias(h, b);
-    std::cout << "elem0:" << " " << std::get<0>(h.pair).val << "\n";
-    std::cout << "elem1:" << " " << std::get<1>(h.pair).val << "\n";
+    std::cout << "elem0:" << " " << std::get<0>(h.pair).val << "\n" << ::tpy::check_signals;
+    std::cout << "elem1:" << " " << std::get<1>(h.pair).val << "\n" << ::tpy::check_signals;
 }
 
 // main()

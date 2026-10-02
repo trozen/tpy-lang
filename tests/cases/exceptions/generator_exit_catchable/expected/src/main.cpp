@@ -31,7 +31,7 @@ void main() {
         try {
             ::tpyapp::main::boom();
         } catch (const ::tpy::GeneratorExit& e) {
-            std::cout << "caught:" << " " << e << "\n";
+            std::cout << "caught:" << " " << e << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -40,11 +40,11 @@ void main() {
                 try {
                     ::tpyapp::main::boom();
                 } catch (const ::tpy::Exception&) {
-                    std::cout << "wrong: Exception caught GeneratorExit" << "\n";
+                    std::cout << "wrong: Exception caught GeneratorExit" << "\n" << ::tpy::check_signals;
                 }
             }
         } catch (const ::tpy::BaseException&) {
-            std::cout << "BaseException caught it" << "\n";
+            std::cout << "BaseException caught it" << "\n" << ::tpy::check_signals;
         }
     }
 }

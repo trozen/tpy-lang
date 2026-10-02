@@ -116,8 +116,8 @@ void main() {
     hc._tls = std::move(cli);
     ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> conn = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(std::move(hc));
     ::tpystd::http::client::HTTPResponse resp = ::tpystd::urllib::request::_urlopen("https://das.test/health", std::nullopt, std::nullopt, nullptr, std::move(conn));
-    std::cout << resp.status << " " << resp.reason << "\n";
-    std::cout << ::tpy::BytesPrinter(resp.read()) << "\n";
+    std::cout << resp.status << " " << resp.reason << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(resp.read()) << "\n" << ::tpy::check_signals;
     srv.close();
 }
 

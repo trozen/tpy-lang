@@ -240,7 +240,7 @@ __coro_acoro acoro(std::string_view s) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << __await_lift_0 << "\n";
+        std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
         __sub_1.emplace("ccc");
         __state = S_RESUME_1;
         continue;
@@ -250,7 +250,7 @@ __coro_acoro acoro(std::string_view s) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << __await_lift_1 << "\n";
+        std::cout << __await_lift_1 << "\n" << ::tpy::check_signals;
         __sub_2.emplace("zz");
         __state = S_RESUME_2;
         continue;
@@ -260,7 +260,7 @@ __coro_acoro acoro(std::string_view s) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << __await_lift_2 << "\n";
+        std::cout << __await_lift_2 << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -291,7 +291,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -301,7 +301,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -311,7 +311,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_5);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain()));

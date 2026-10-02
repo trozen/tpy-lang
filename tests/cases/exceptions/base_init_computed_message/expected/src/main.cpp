@@ -26,28 +26,28 @@ void main() {
         try {
             throw Tagged(5);
         } catch (const Tagged& e) {
-            std::cout << e.n << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << e.n << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw Labelled("lab", Tagged(9));
         } catch (const Labelled& e2) {
-            std::cout << std::string(::tpy::__str__(e2)) << "\n";
+            std::cout << std::string(::tpy::__str__(e2)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw Numbered(7);
         } catch (const Numbered& e3) {
-            std::cout << e3.n << " " << std::string(::tpy::__str__(e3)) << "\n";
+            std::cout << e3.n << " " << std::string(::tpy::__str__(e3)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw Formatted(8);
         } catch (const Formatted& e4) {
-            std::cout << e4.n << " " << std::string(::tpy::__str__(e4)) << "\n";
+            std::cout << e4.n << " " << std::string(::tpy::__str__(e4)) << "\n" << ::tpy::check_signals;
         }
     }
 }

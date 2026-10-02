@@ -19,13 +19,13 @@ namespace tpyapp::main {
 void main() {
     std::array<int32_t, 3> arr = {10, 20, 30};
     int32_t i = -1;
-    std::cout << ::tpy::__getitem__(arr, i) << "\n";
+    std::cout << ::tpy::__getitem__(arr, i) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     int32_t j = -2;
-    std::cout << ::tpy::__getitem__(nums, j) << "\n";
+    std::cout << ::tpy::__getitem__(nums, j) << "\n" << ::tpy::check_signals;
     std::string_view s = "hello";
     int32_t k = -3;
-    std::cout << ::tpy::__getitem__(s, k) << "\n";
+    std::cout << ::tpy::__getitem__(s, k) << "\n" << ::tpy::check_signals;
 }
 
 // main()

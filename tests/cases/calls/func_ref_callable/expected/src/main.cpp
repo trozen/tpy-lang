@@ -25,7 +25,7 @@ int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t x) {
 // def printer(x: int32) -> None:
 //     print("got:", x)
 void printer(int32_t x) {
-    std::cout << "got:" << " " << x << "\n";
+    std::cout << "got:" << " " << x << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -44,13 +44,13 @@ void printer(int32_t x) {
 //     g: Callable[[str], str] = greet
 //     print(g("World"))  # Hello, World
 void main() {
-    std::cout << ::tpyapp::main::apply(double_, 21) << "\n";
+    std::cout << ::tpyapp::main::apply(double_, 21) << "\n" << ::tpy::check_signals;
     std::function<int32_t(int32_t)> f = double_;
-    std::cout << f(10) << "\n";
+    std::cout << f(10) << "\n" << ::tpy::check_signals;
     Handler h = Handler(printer);
     h.run(7);
     std::function<std::string(std::string_view)> g = greet;
-    std::cout << g("World") << "\n";
+    std::cout << g("World") << "\n" << ::tpy::check_signals;
 }
 
 // main()

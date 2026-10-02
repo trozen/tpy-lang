@@ -16,7 +16,7 @@ void __tpy_init() {
     static Finder __global_slot_1 = Finder();
     f = &__global_slot_1;
     f->find_last(4);
-    std::cout << f->result.x << " " << f->result.y << "\n";
+    std::cout << f->result.x << " " << f->result.y << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -20,8 +20,8 @@ void main() {
     S s = S();
     s.mutate_via_alias();
     s.mutate_via_alias_chained();
-    std::cout << s.inner.counter << "\n";
-    std::cout << "done" << "\n";
+    std::cout << s.inner.counter << "\n" << ::tpy::check_signals;
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.box import Box

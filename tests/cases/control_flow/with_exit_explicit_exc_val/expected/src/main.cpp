@@ -18,7 +18,7 @@ void main() {
     auto __ctx_1 = Tracker();
     auto a = __ctx_1.__enter__();
     try {
-        std::cout << std::format("body a={}", (a).to_string()) << "\n";
+        std::cout << std::format("body a={}", (a).to_string()) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -29,13 +29,13 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     {
         try {
             auto __ctx_2 = Tracker();
             auto b = __ctx_2.__enter__();
             try {
-                std::cout << std::format("body b={}", (b).to_string()) << "\n";
+                std::cout << std::format("body b={}", (b).to_string()) << "\n" << ::tpy::check_signals;
                 throw ::tpy::ValueError("explicit");
             } catch (::tpy::BaseException& __exc_2) {
                 __ctx_2.__exit__({}, &__exc_2, {});
@@ -45,7 +45,7 @@ void main() {
                 throw;
             }
         } catch (const ::tpy::ValueError& e) {
-            std::cout << std::format("outer caught: {}", std::string(::tpy::__str__(e))) << "\n";
+            std::cout << std::format("outer caught: {}", std::string(::tpy::__str__(e))) << "\n" << ::tpy::check_signals;
         }
     }
 }

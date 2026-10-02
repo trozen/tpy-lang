@@ -15,8 +15,8 @@ Point* get_ptr(Point* p) {
 //     print(p.x)  # tpyc: nullable(p)
 //     print(p.sum())  # tpyc: non_null(p)
 void read_via_param(Point* p) {
-    std::cout << ::tpy::deref_check(p).x << "\n";
-    std::cout << p->sum() << "\n";
+    std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << p->sum() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -50,22 +50,22 @@ void read_via_param(Point* p) {
 void main() {
     Point pt = Point(10, 20);
     Point* p = &pt;
-    std::cout << p->x << "\n";
-    std::cout << p->y << "\n";
-    std::cout << p->sum() << "\n";
+    std::cout << p->x << "\n" << ::tpy::check_signals;
+    std::cout << p->y << "\n" << ::tpy::check_signals;
+    std::cout << p->sum() << "\n" << ::tpy::check_signals;
     const Point* cp = &pt;
-    std::cout << cp->x << "\n";
+    std::cout << cp->x << "\n" << ::tpy::check_signals;
     const Point* cp2 = p;
-    std::cout << cp2->y << "\n";
+    std::cout << cp2->y << "\n" << ::tpy::check_signals;
     Point* q = p;
-    std::cout << q->y << "\n";
+    std::cout << q->y << "\n" << ::tpy::check_signals;
     Point* r = ::tpyapp::main::get_ptr(p);
-    std::cout << ::tpy::deref_check(r).x << "\n";
+    std::cout << ::tpy::deref_check(r).x << "\n" << ::tpy::check_signals;
     p = ::tpyapp::main::get_ptr(q);
-    std::cout << ::tpy::deref_check(p).x << "\n";
+    std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
     Point pt2 = Point(30, 40);
     p = &pt2;
-    std::cout << p->x << "\n";
+    std::cout << p->x << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_via_param(p);
 }
 

@@ -45,9 +45,9 @@ void selected(bool flag) {
     Cell& saved = ::tpyapp::main::forward(flag, first, second);
     first.value = 11;
     second.value = 22;
-    std::cout << "selected" << " " << ::tpy::print_bool(flag) << " " << saved.value << "\n";
+    std::cout << "selected" << " " << ::tpy::print_bool(flag) << " " << saved.value << "\n" << ::tpy::check_signals;
     saved.value = 33;
-    std::cout << "write-back" << " " << ::tpy::print_bool(flag) << " " << first.value << " " << second.value << "\n";
+    std::cout << "write-back" << " " << ::tpy::print_bool(flag) << " " << first.value << " " << second.value << "\n" << ::tpy::check_signals;
 }
 
 // def reseated():
@@ -70,7 +70,7 @@ void reseated() {
     saved = &(::tpyapp::main::identity((*saved)));
     first.value = 41;
     second.value = 42;
-    std::cout << "reseated" << " " << saved->value << " " << holder->value << "\n";
+    std::cout << "reseated" << " " << saved->value << " " << holder->value << "\n" << ::tpy::check_signals;
 }
 
 // def repeated():
@@ -83,7 +83,7 @@ void repeated() {
     Cell cell = Cell(1);
     Cell& saved = ::tpyapp::main::forward(false, cell, cell);
     saved.value = 43;
-    std::cout << "repeated" << " " << cell.value << "\n";
+    std::cout << "repeated" << " " << cell.value << "\n" << ::tpy::check_signals;
 }
 
 // def readonly_result():
@@ -96,7 +96,7 @@ void readonly_result() {
     Cell cell = Cell(1);
     const Cell& saved = ::tpyapp::main::observe(cell);
     cell.value = 44;
-    std::cout << "readonly" << " " << saved.value << "\n";
+    std::cout << "readonly" << " " << saved.value << "\n" << ::tpy::check_signals;
 }
 
 // def lazy(flag: bool):
@@ -113,7 +113,7 @@ void lazy(bool flag) {
     Cell& saved = ((flag) ? (::tpyapp::main::identity(first)) : (::tpyapp::main::identity(second)));
     first.value = 71;
     second.value = 72;
-    std::cout << "lazy" << " " << ::tpy::print_bool(flag) << " " << saved.value << "\n";
+    std::cout << "lazy" << " " << ::tpy::print_bool(flag) << " " << saved.value << "\n" << ::tpy::check_signals;
 }
 
 // def main():
@@ -136,8 +136,8 @@ void main() {
     ::tpyapp::main::lazy(true);
     ::tpyapp::main::lazy(false);
     Cell cell = Cell(1);
-    std::cout << "method" << " " << cell.via_method() << "\n";
-    std::cout << "constructor" << " " << Caller(1).value << "\n";
+    std::cout << "method" << " " << cell.via_method() << "\n" << ::tpy::check_signals;
+    std::cout << "constructor" << " " << Caller(1).value << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     return int32(0)
 int32_t main() {
     ::tpyapp::container::Box<int32_t> b = ::tpyapp::container::Box<int32_t>(42);
-    std::cout << b.value << "\n";
+    std::cout << b.value << "\n" << ::tpy::check_signals;
     return 0;
 }
 

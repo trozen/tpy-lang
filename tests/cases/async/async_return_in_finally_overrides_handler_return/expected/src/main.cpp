@@ -111,7 +111,7 @@ __coro_caller caller() {
 // def main() -> None:
 //     print(asyncio.run(caller()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::caller())) << "\n";
+    std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::caller())) << "\n" << ::tpy::check_signals;
 }
 
 // # Handler returns one value, then the suspending finally returns another

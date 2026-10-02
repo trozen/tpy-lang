@@ -23,7 +23,7 @@ void test_stop_snapshot() {
         n = 0;
         count = ::tpy::add_check<int32_t>(count, 1);
     }
-    std::cout << count << "\n";
+    std::cout << count << "\n" << ::tpy::check_signals;
 }
 
 // # 2. Mutating start/stop/step inside loop — all captured once
@@ -54,7 +54,7 @@ void test_all_args_snapshot() {
         step = 100;
         total = ::tpy::add_check<int32_t>(total, i);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // # 3. Function call in stop — evaluated once, not per-iteration
@@ -62,7 +62,7 @@ void test_all_args_snapshot() {
 //     print(n)  # side effect to verify call count
 //     return n
 int32_t get_stop(int32_t n) {
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
     return n;
 }
 
@@ -91,7 +91,7 @@ void __tpy_init() {
     for (int32_t i = 0; i < __stop_0; ++i) {
         count = ::tpy::add_check<int32_t>(count, 1);
     }
-    std::cout << count << "\n";
+    std::cout << count << "\n" << ::tpy::check_signals;
     n = 4;
     count2 = 0;
     int32_t __stop_1 = n;
@@ -99,7 +99,7 @@ void __tpy_init() {
         n = 0;
         count2 = ::tpy::add_check<int32_t>(count2, 1);
     }
-    std::cout << count2 << "\n";
+    std::cout << count2 << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_stop_snapshot();
     ::tpyapp::main::test_all_args_snapshot();
 }

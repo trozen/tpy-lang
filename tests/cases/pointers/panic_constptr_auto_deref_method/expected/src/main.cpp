@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(p.__len__())  # tpyc: nullable(p)
 void main() {
     const Counter* p = static_cast<const Counter*>(nullptr);
-    std::cout << ::tpy::deref_check(p).__len__() << "\n";
+    std::cout << ::tpy::deref_check(p).__len__() << "\n" << ::tpy::check_signals;
 }
 
 // main()

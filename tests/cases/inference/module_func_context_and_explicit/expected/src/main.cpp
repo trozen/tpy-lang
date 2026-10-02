@@ -21,10 +21,10 @@ void main() {
     std::array<int32_t, 2> arr = {1, 2};
     int32_t* p = arr.data();
     uint32_t* q1 = reinterpret_cast<uint32_t*>(p);
-    std::cout << q1[0] << "\n";
+    std::cout << q1[0] << "\n" << ::tpy::check_signals;
     uint32_t* q2 = reinterpret_cast<uint32_t*>(p);
-    std::cout << q2[0] << "\n";
-    std::cout << "done" << "\n";
+    std::cout << q2[0] << "\n" << ::tpy::check_signals;
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // import tpy.unsafe as m

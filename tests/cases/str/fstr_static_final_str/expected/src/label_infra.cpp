@@ -15,13 +15,13 @@ std::string tag(std::string_view kind, std::string_view value) {
 //     for p in parts:
 //         print(p)
 void emit(std::string_view fmt, const std::vector<std::string>& parts) {
-    std::cout << fmt << "\n";
+    std::cout << fmt << "\n" << ::tpy::check_signals;
     auto& __obj_0 = parts;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view p = *__beg_0;
-        std::cout << p << "\n";
+        std::cout << p << "\n" << ::tpy::check_signals;
     }
 }
 

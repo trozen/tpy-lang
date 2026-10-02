@@ -31,7 +31,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t k = *__beg_1;
-        std::cout << k << " " << ::tpy::__getitem__(evens, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(evens, k) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, int32_t> src = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 5}, {"c", 2}, {"d", 8}});
     ::tpy::ordered_map<std::string, int32_t> big = ({
@@ -54,7 +54,7 @@ void main() {
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         std::string_view k = *__beg_3;
-        std::cout << k << " " << ::tpy::__getitem__(big, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(big, k) << "\n" << ::tpy::check_signals;
     }
 }
 

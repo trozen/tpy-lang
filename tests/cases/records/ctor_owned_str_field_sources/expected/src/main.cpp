@@ -41,24 +41,24 @@ void main() {
     Owner o = Owner("n", ::tpy::bytes_literal("d", 1));
     Tags t = Tags("q", ::tpy::BigInt(3), o, std::nullopt);
     o.name = "changed";
-    std::cout << "ctor:" << " " << t.full << " " << t.conv << " " << t.fmt << " " << t.pick << " " << t.opt << " " << t.tail << " " << t.twice << " " << t.upper << " " << t.from_field << " " << t.echo << "\n";
+    std::cout << "ctor:" << " " << t.full << " " << t.conv << " " << t.fmt << " " << t.pick << " " << t.opt << " " << t.tail << " " << t.twice << " " << t.upper << " " << t.from_field << " " << t.echo << "\n" << ::tpy::check_signals;
     Tags t2 = Tags("r", ::tpy::BigInt(0), o, "m");
-    std::cout << "ctor2:" << " " << t2.pick << " " << t2.opt << " " << t2.from_field << "\n";
+    std::cout << "ctor2:" << " " << t2.pick << " " << t2.opt << " " << t2.from_field << "\n" << ::tpy::check_signals;
     t.reset("w", -1, o);
     o.name = "again";
-    std::cout << "method:" << " " << t.fmt << " " << t.pick << " " << t.from_field << "\n";
+    std::cout << "method:" << " " << t.fmt << " " << t.pick << " " << t.from_field << "\n" << ::tpy::check_signals;
     Blob b = Blob(::tpy::bytes_literal("ab", 2), o);
     o.data = ::tpy::bytes_literal_owned("changed", 7);
-    std::cout << "bytes:" << " " << ::tpy::BytesPrinter(b.joined) << " " << ::tpy::BytesPrinter(b.copied) << " " << ::tpy::BytesPrinter(b.from_field) << "\n";
+    std::cout << "bytes:" << " " << ::tpy::BytesPrinter(b.joined) << " " << ::tpy::BytesPrinter(b.copied) << " " << ::tpy::BytesPrinter(b.from_field) << "\n" << ::tpy::check_signals;
     b.reset(o);
-    std::cout << "bytes method:" << " " << ::tpy::BytesPrinter(b.from_field) << "\n";
+    std::cout << "bytes method:" << " " << ::tpy::BytesPrinter(b.from_field) << "\n" << ::tpy::check_signals;
     Walrus w = Walrus("k", ::tpy::BigInt(4));
-    std::cout << "walrus:" << " " << w.s << " " << w.n << " " << w.seen << "\n";
-    std::cout << "String:" << " " << Owned("s").s << "\n";
+    std::cout << "walrus:" << " " << w.s << " " << w.n << " " << w.seen << "\n" << ::tpy::check_signals;
+    std::cout << "String:" << " " << Owned("s").s << "\n" << ::tpy::check_signals;
     Viewer vw = Viewer("init");
     for (int32_t pick = 0; pick < 4; ++pick) {
         vw.retarget("view", ::tpy::BigInt(pick));
-        std::cout << "StrView method:" << " " << pick << " " << vw.v << "\n";
+        std::cout << "StrView method:" << " " << pick << " " << vw.v << "\n" << ::tpy::check_signals;
     }
 }
 

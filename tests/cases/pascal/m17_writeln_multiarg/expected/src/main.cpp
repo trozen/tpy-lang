@@ -22,16 +22,16 @@ void __tpy_init() {
 
     x = 7;
     y = 42;
-    std::cout << "x=";
-    std::cout << x;
-    std::cout << " y=";
-    std::cout << y << "\n";
-    std::cout << "a=";
-    std::cout << x;
-    std::cout << " b=";
-    std::cout << y;
-    std::cout << "\n";
-    std::cout << "done" << "\n";
+    std::cout << "x=" << ::tpy::check_signals;
+    std::cout << x << ::tpy::check_signals;
+    std::cout << " y=" << ::tpy::check_signals;
+    std::cout << y << "\n" << ::tpy::check_signals;
+    std::cout << "a=" << ::tpy::check_signals;
+    std::cout << x << ::tpy::check_signals;
+    std::cout << " b=" << ::tpy::check_signals;
+    std::cout << y << ::tpy::check_signals;
+    std::cout << "\n" << ::tpy::check_signals;
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

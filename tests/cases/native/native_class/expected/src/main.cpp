@@ -24,18 +24,18 @@ namespace tpyapp::main {
 //     print(c.brightness())
 void main() {
     ::Vec2 v = ::Vec2(3, 4);
-    std::cout << v.x << "\n";
-    std::cout << v.y << "\n";
-    std::cout << ::vec2_sum(&v) << "\n";
-    std::cout << v.sum() << "\n";
-    std::cout << v.dot(::Vec2(1, 2)) << "\n";
+    std::cout << v.x << "\n" << ::tpy::check_signals;
+    std::cout << v.y << "\n" << ::tpy::check_signals;
+    std::cout << ::vec2_sum(&v) << "\n" << ::tpy::check_signals;
+    std::cout << v.sum() << "\n" << ::tpy::check_signals;
+    std::cout << v.dot(::Vec2(1, 2)) << "\n" << ::tpy::check_signals;
     ::Vec2 z = ::Vec2::zero();
-    std::cout << z.x << "\n";
-    std::cout << z.y << "\n";
+    std::cout << z.x << "\n" << ::tpy::check_signals;
+    std::cout << z.y << "\n" << ::tpy::check_signals;
     ::ns::Color c = ::ns::Color(100, 150, 200);
-    std::cout << c.r << "\n";
-    std::cout << ::color_brightness(&c) << "\n";
-    std::cout << c.brightness() << "\n";
+    std::cout << c.r << "\n" << ::tpy::check_signals;
+    std::cout << ::color_brightness(&c) << "\n" << ::tpy::check_signals;
+    std::cout << c.brightness() << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native

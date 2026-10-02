@@ -63,7 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrap<T>& obj) {
 //     print("sink")
 template<typename T>
 void sink(::tpy::own_param_t<T> x) {
-    std::cout << "sink" << "\n";
+    std::cout << "sink" << "\n" << ::tpy::check_signals;
 }
 // def forward[T: Send](x: Own[T]) -> None:
 //     sink(x)

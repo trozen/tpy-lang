@@ -85,7 +85,7 @@ void main() {
             n = ::tpy::add_check<int32_t>(n, 1);
             total = ::tpy::add_check<int32_t>(total, v);
         }
-        std::cout << n << " " << total << "\n";
+        std::cout << n << " " << total << "\n" << ::tpy::check_signals;
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});

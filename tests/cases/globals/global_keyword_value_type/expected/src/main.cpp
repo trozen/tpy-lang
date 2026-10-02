@@ -34,8 +34,8 @@ void __tpy_init() {
     ::tpyapp::main::bump();
     ::tpyapp::main::bump();
     ::tpyapp::main::bump();
-    std::cout << counter << "\n";
-    std::cout << ::tpy::print_bool(flag) << "\n";
+    std::cout << counter << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(flag) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -28,13 +28,13 @@ void main() {
     int32_t total = 0;
     total = ::tpy::add_check<int32_t>(total, rx.recv());
     total = ::tpy::add_check<int32_t>(total, rx.recv());
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
     {
         try {
             rx.recv();
-            std::cout << "no raise" << "\n";
+            std::cout << "no raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::tplib::channel::ChannelClosed&) {
-            std::cout << "closed" << "\n";
+            std::cout << "closed" << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -18,7 +18,7 @@ std::vector<std::tuple<std::string, Node>> make_pairs() {
 void test_dict_ctor_ref_value_warns() {
     std::vector<std::tuple<std::string, Node>> pairs = {::tpy::tuple_to_storage<std::tuple<std::string, Node>>(std::tuple<std::string, Node>{"a", Node(1)})};
     ::tpy::ordered_map<std::string, Node> d = ::tpy::dict_construct<std::string, Node>(pairs);
-    std::cout << ::tpy::__len__(pairs) << "\n";
+    std::cout << ::tpy::__len__(pairs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict_ctor_value_types_no_warn() -> None:
@@ -29,7 +29,7 @@ void test_dict_ctor_ref_value_warns() {
 void test_dict_ctor_value_types_no_warn() {
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}};
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict_ctor_copy_no_warn() -> None:
@@ -40,7 +40,7 @@ void test_dict_ctor_value_types_no_warn() {
 void test_dict_ctor_copy_no_warn() {
     std::vector<std::tuple<std::string, Node>> pairs = {::tpy::tuple_to_storage<std::tuple<std::string, Node>>(std::tuple<std::string, Node>{"a", Node(1)})};
     ::tpy::ordered_map<std::string, Node> d = ::tpy::dict_construct<std::string, Node>(std::vector<std::tuple<std::string, Node>>(pairs));
-    std::cout << ::tpy::__len__(pairs) << "\n";
+    std::cout << ::tpy::__len__(pairs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict_ctor_last_use_no_warn() -> None:
@@ -51,7 +51,7 @@ void test_dict_ctor_copy_no_warn() {
 void test_dict_ctor_last_use_no_warn() {
     std::vector<std::tuple<std::string, Node>> pairs = {::tpy::tuple_to_storage<std::tuple<std::string, Node>>(std::tuple<std::string, Node>{"a", Node(1)})};
     ::tpy::ordered_map<std::string, Node> d = ::tpy::dict_construct<std::string, Node>(::tpy::own_iter(std::move(pairs)));
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict_ctor_rvalue_no_warn() -> None:
@@ -60,7 +60,7 @@ void test_dict_ctor_last_use_no_warn() {
 //     print(len(d))
 void test_dict_ctor_rvalue_no_warn() {
     ::tpy::ordered_map<std::string, Node> d = ::tpy::dict_construct<std::string, Node>(::tpyapp::main::make_pairs());
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict_ctor_nested_tuple_warns() -> None:
@@ -71,7 +71,7 @@ void test_dict_ctor_rvalue_no_warn() {
 void test_dict_ctor_nested_tuple_warns() {
     std::vector<std::tuple<std::string, std::tuple<std::string, Node>>> pairs = std::vector<std::tuple<std::string, std::tuple<std::string, Node>>>{};
     ::tpy::ordered_map<std::string, std::tuple<std::string, Node>> d = ::tpy::dict_construct<std::string, std::tuple<std::string, Node>>(pairs);
-    std::cout << ::tpy::__len__(pairs) << "\n";
+    std::cout << ::tpy::__len__(pairs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict_ctor_list_value_warns() -> None:
@@ -82,7 +82,7 @@ void test_dict_ctor_nested_tuple_warns() {
 void test_dict_ctor_list_value_warns() {
     std::vector<std::tuple<std::string, std::vector<Node>>> pairs = std::vector<std::tuple<std::string, std::vector<Node>>>{};
     ::tpy::ordered_map<std::string, std::vector<Node>> d = ::tpy::dict_construct<std::string, std::vector<Node>>(pairs);
-    std::cout << ::tpy::__len__(pairs) << "\n";
+    std::cout << ::tpy::__len__(pairs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict_ctor_nested_value_no_warn() -> None:
@@ -93,7 +93,7 @@ void test_dict_ctor_list_value_warns() {
 void test_dict_ctor_nested_value_no_warn() {
     std::vector<std::tuple<std::string, std::tuple<std::string, int32_t>>> pairs = std::vector<std::tuple<std::string, std::tuple<std::string, int32_t>>>{};
     ::tpy::ordered_map<std::string, std::tuple<std::string, int32_t>> d = ::tpy::dict_construct<std::string, std::tuple<std::string, int32_t>>(pairs);
-    std::cout << ::tpy::__len__(pairs) << "\n";
+    std::cout << ::tpy::__len__(pairs) << "\n" << ::tpy::check_signals;
 }
 
 // test_dict_ctor_ref_value_warns()

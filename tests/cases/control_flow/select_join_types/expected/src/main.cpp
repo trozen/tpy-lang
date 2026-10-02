@@ -29,11 +29,11 @@ void record_or(C& a, F& f) {
     std::optional<C> __select_slot_1;
     C& r = (true ? a : __select_slot_1.emplace(::tpyapp::main::make_c()));
     r.n = ::tpy::add_check<int32_t>(r.n, 1);
-    std::cout << "record_or_alias:" << " " << r.n << " " << a.n << "\n";
+    std::cout << "record_or_alias:" << " " << r.n << " " << a.n << "\n" << ::tpy::check_signals;
     std::optional<F> __select_slot_2;
     F& g = (::tpy::__bool__(f) ? f : __select_slot_2.emplace(::tpyapp::main::make_f()));
     g.n = ::tpy::add_check<int32_t>(g.n, 1);
-    std::cout << "record_or_fresh:" << " " << g.n << " " << f.n << "\n";
+    std::cout << "record_or_fresh:" << " " << g.n << " " << f.n << "\n" << ::tpy::check_signals;
 }
 
 // def list_or() -> None:
@@ -52,12 +52,12 @@ void list_or() {
     std::optional<std::vector<int32_t>> __select_slot_1;
     std::vector<int32_t>& x = ((::tpy::__len__(e) != 0) ? e : __select_slot_1.emplace(std::vector<int32_t>{5}));
     x.push_back(1);
-    std::cout << "list_or_fresh:" << " " << ::tpy::__len__(x) << " " << ::tpy::__len__(e) << "\n";
+    std::cout << "list_or_fresh:" << " " << ::tpy::__len__(x) << " " << ::tpy::__len__(e) << "\n" << ::tpy::check_signals;
     e.push_back(7);
     std::optional<std::vector<int32_t>> __select_slot_2;
     std::vector<int32_t>& y = ((::tpy::__len__(e) != 0) ? e : __select_slot_2.emplace(std::vector<int32_t>{5}));
     y.push_back(8);
-    std::cout << "list_or_alias:" << " " << ::tpy::__len__(y) << " " << ::tpy::__len__(e) << "\n";
+    std::cout << "list_or_alias:" << " " << ::tpy::__len__(y) << " " << ::tpy::__len__(e) << "\n" << ::tpy::check_signals;
 }
 
 // def int64_literal_arm(c: bool) -> None:
@@ -74,11 +74,11 @@ void int64_literal_arm(bool c) {
     std::optional<std::vector<int64_t>> __select_slot_1;
     std::vector<int64_t>& x = ((::tpy::__len__(e64) != 0) ? e64 : __select_slot_1.emplace(std::vector<int64_t>{5}));
     x.push_back(static_cast<int64_t>(1099511627776));
-    std::cout << "int64_or:" << " " << ::tpy::__getitem__(x, 0) << " " << ::tpy::__getitem__(x, 1) << " " << ::tpy::__len__(e64) << "\n";
+    std::cout << "int64_or:" << " " << ::tpy::__getitem__(x, 0) << " " << ::tpy::__getitem__(x, 1) << " " << ::tpy::__len__(e64) << "\n" << ::tpy::check_signals;
     std::optional<std::vector<int64_t>> __select_slot_2;
     std::vector<int64_t>& y = ((c) ? (e64) : (__select_slot_2.emplace(std::vector<int64_t>{5})));
     y.push_back(static_cast<int64_t>(2199023255552));
-    std::cout << "int64_ternary:" << " " << ::tpy::__len__(y) << " " << ::tpy::__len__(e64) << "\n";
+    std::cout << "int64_ternary:" << " " << ::tpy::__len__(y) << " " << ::tpy::__len__(e64) << "\n" << ::tpy::check_signals;
 }
 
 // def empty_literal_arm(c: bool) -> None:
@@ -105,19 +105,19 @@ void empty_literal_arm(bool c) {
     std::optional<std::vector<int32_t>> __select_slot_1;
     std::vector<int32_t>& a = ((::tpy::__len__(xs) != 0) ? xs : __select_slot_1.emplace(std::vector<int32_t>{}));
     a.push_back(2);
-    std::cout << "empty_list_or:" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << "empty_list_or:" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
     std::optional<::tpy::ordered_map<std::string, int32_t>> __select_slot_2;
     ::tpy::ordered_map<std::string, int32_t>& b = ((::tpy::__len__(d) != 0) ? d : __select_slot_2.emplace(::tpy::ordered_map<std::string, int32_t>()));
     ::tpy::__setitem__(b, "k", 1);
-    std::cout << "empty_dict_or:" << " " << ::tpy::__len__(b) << " " << ::tpy::__len__(d) << "\n";
+    std::cout << "empty_dict_or:" << " " << ::tpy::__len__(b) << " " << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
     std::optional<::tpy::ordered_set<int32_t>> __select_slot_3;
     ::tpy::ordered_set<int32_t>& s = ((::tpy::__len__(st) != 0) ? st : __select_slot_3.emplace(::tpy::ordered_set<int32_t>()));
     s.insert(3);
-    std::cout << "empty_set_or:" << " " << ::tpy::__len__(s) << " " << ::tpy::__len__(st) << "\n";
+    std::cout << "empty_set_or:" << " " << ::tpy::__len__(s) << " " << ::tpy::__len__(st) << "\n" << ::tpy::check_signals;
     std::optional<::tpy::ordered_map<std::string, int32_t>> __select_slot_4;
     ::tpy::ordered_map<std::string, int32_t>& t = ((c) ? (d) : (__select_slot_4.emplace(::tpy::ordered_map<std::string, int32_t>())));
     ::tpy::__setitem__(t, "j", 2);
-    std::cout << "empty_dict_ternary:" << " " << ::tpy::__len__(t) << " " << ::tpy::__len__(d) << "\n";
+    std::cout << "empty_dict_ternary:" << " " << ::tpy::__len__(t) << " " << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // def method_result_arm(c: bool) -> None:
@@ -133,7 +133,7 @@ void method_result_arm(bool c) {
     b.push_back(4);
     std::vector<int32_t> z = ((c) ? (::tpy::list_copy(b)) : (std::vector<int32_t>{2}));
     z.push_back(3);
-    std::cout << "copy_ternary:" << " " << ::tpy::__len__(z) << " " << ::tpy::__len__(b) << "\n";
+    std::cout << "copy_ternary:" << " " << ::tpy::__len__(z) << " " << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def literal_left() -> None:
@@ -147,7 +147,7 @@ void literal_left() {
     auto&& __tmp_1 = std::vector<int32_t>{5};
     std::vector<int32_t>& x = ((::tpy::__len__(__tmp_1) != 0) ? __tmp_1 : e);
     x.push_back(6);
-    std::cout << "literal_left:" << " " << ::tpy::__len__(x) << " " << ::tpy::__len__(e) << "\n";
+    std::cout << "literal_left:" << " " << ::tpy::__len__(x) << " " << ::tpy::__len__(e) << "\n" << ::tpy::check_signals;
 }
 
 // def nested_select() -> None:
@@ -168,13 +168,13 @@ void nested_select() {
     auto&& __tmp_1 = ((::tpy::__len__(e) != 0) ? e : f);
     std::vector<int32_t>& x = ((::tpy::__len__(__tmp_1) != 0) ? __tmp_1 : __select_slot_2.emplace(std::vector<int32_t>{7}));
     x.push_back(8);
-    std::cout << "nested_or:" << " " << ::tpy::__len__(x) << " " << ::tpy::__len__(e) << " " << ::tpy::__len__(f) << "\n";
+    std::cout << "nested_or:" << " " << ::tpy::__len__(x) << " " << ::tpy::__len__(e) << " " << ::tpy::__len__(f) << "\n" << ::tpy::check_signals;
     f.push_back(1);
     std::optional<std::vector<int32_t>> __select_slot_4;
     auto&& __tmp_3 = ((::tpy::__len__(e) != 0) ? e : f);
     std::vector<int32_t>& y = ((::tpy::__len__(__tmp_3) != 0) ? __tmp_3 : __select_slot_4.emplace(std::vector<int32_t>{7}));
     y.push_back(2);
-    std::cout << "nested_or_alias:" << " " << ::tpy::__len__(y) << " " << ::tpy::__len__(f) << "\n";
+    std::cout << "nested_or_alias:" << " " << ::tpy::__len__(y) << " " << ::tpy::__len__(f) << "\n" << ::tpy::check_signals;
 }
 
 // def int_widen_or() -> None:
@@ -192,10 +192,10 @@ void int_widen_or() {
     int32_t a = 0;
     int64_t b = static_cast<int64_t>(5000000000);
     int64_t x = (a ? int64_t(a) : b);
-    std::cout << "int_widen_or:" << " " << x << "\n";
+    std::cout << "int_widen_or:" << " " << x << "\n" << ::tpy::check_signals;
     uint8_t u = 0;
     uint8_t z = (u ? u : uint8_t(200));
-    std::cout << "int_literal_fits:" << " " << static_cast<int>(z) << "\n";
+    std::cout << "int_literal_fits:" << " " << static_cast<int>(z) << "\n" << ::tpy::check_signals;
 }
 
 // def int_literal_pair(c: bool) -> None:
@@ -211,7 +211,7 @@ void int_literal_pair(bool c) {
     auto&& __tmp_2 = static_cast<int64_t>(10000000000);
     ::tpy::BigInt y = (__tmp_2 ? __tmp_2 : ::tpy::BigInt(0));
     ::tpy::BigInt z = ((c) ? (::tpy::BigInt(0)) : (::tpy::BigInt(static_cast<int64_t>(10000000000LL))));
-    std::cout << "int_literal_pair:" << " " << x << " " << y << " " << z << "\n";
+    std::cout << "int_literal_pair:" << " " << x << " " << y << " " << z << "\n" << ::tpy::check_signals;
 }
 
 // def float_literal_elem(c: bool) -> None:
@@ -225,7 +225,7 @@ void float_literal_elem(bool c) {
     std::optional<std::vector<double>> __select_slot_1;
     std::vector<double>& y = ((c) ? (ef) : (__select_slot_1.emplace(std::vector<double>{2.5})));
     y.push_back(1.0);
-    std::cout << "float_literal_elem:" << " " << ::tpy::__len__(y) << " " << ::tpy::__len__(ef) << "\n";
+    std::cout << "float_literal_elem:" << " " << ::tpy::__len__(y) << " " << ::tpy::__len__(ef) << "\n" << ::tpy::check_signals;
 }
 
 // def float_or(f: float) -> None:
@@ -234,7 +234,7 @@ void float_literal_elem(bool c) {
 //     print("float_or:", x)
 void float_or(double f) {
     double x = (f ? f : 2.5);
-    std::cout << "float_or:" << " " << ::tpy::print_float(x) << "\n";
+    std::cout << "float_or:" << " " << ::tpy::print_float(x) << "\n" << ::tpy::check_signals;
 }
 
 // def int_float_select(a: int32, big: int64, f: float, c: bool) -> None:
@@ -267,25 +267,25 @@ void float_or(double f) {
 //     print("int_widen_usage:", ws[0], ws[1])
 void int_float_select(int32_t a, int64_t big, double f, bool c) {
     double x = ((c) ? (static_cast<double>(a)) : (2.5));
-    std::cout << "int_float_converted:" << " " << ::tpy::print_float(x) << "\n";
+    std::cout << "int_float_converted:" << " " << ::tpy::print_float(x) << "\n" << ::tpy::check_signals;
     double y = ((c) ? (static_cast<double>(a)) : (2.5));
-    std::cout << "int_float_declared:" << " " << ::tpy::print_float((::tpy::truediv(y, 2))) << "\n";
+    std::cout << "int_float_declared:" << " " << ::tpy::print_float((::tpy::truediv(y, 2))) << "\n" << ::tpy::check_signals;
     double v = (a ? double(a) : 2.5);
-    std::cout << "int_float_or_declared:" << " " << ::tpy::print_float((::tpy::truediv(v, 2))) << "\n";
+    std::cout << "int_float_or_declared:" << " " << ::tpy::print_float((::tpy::truediv(v, 2))) << "\n" << ::tpy::check_signals;
     if ((a || true)) {
-        std::cout << "int_float_or_condition" << "\n";
+        std::cout << "int_float_or_condition" << "\n" << ::tpy::check_signals;
     }
     int64_t w = ((c) ? (static_cast<int64_t>(a)) : (big));
-    std::cout << "int_widen_ternary:" << " " << w << "\n";
+    std::cout << "int_widen_ternary:" << " " << w << "\n" << ::tpy::check_signals;
     double g = ((c) ? (f) : (2.5));
-    std::cout << "float_ternary:" << " " << ::tpy::print_float(g) << "\n";
+    std::cout << "float_ternary:" << " " << ::tpy::print_float(g) << "\n" << ::tpy::check_signals;
     std::vector<double> fs = std::vector<double>{};
     fs.push_back(static_cast<double>(a));
-    std::cout << "int_float_declared_list:" << " " << ::tpy::print_float((::tpy::truediv(::tpy::__getitem__(fs, 0), 2))) << "\n";
+    std::cout << "int_float_declared_list:" << " " << ::tpy::print_float((::tpy::truediv(::tpy::__getitem__(fs, 0), 2))) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> ws = std::vector<int64_t>{};
     ws.push_back(a);
     ws.push_back(big);
-    std::cout << "int_widen_usage:" << " " << ::tpy::__getitem__(ws, 0) << " " << ::tpy::__getitem__(ws, 1) << "\n";
+    std::cout << "int_widen_usage:" << " " << ::tpy::__getitem__(ws, 0) << " " << ::tpy::__getitem__(ws, 1) << "\n" << ::tpy::check_signals;
 }
 
 // def half_ternary(a: int32, c: bool) -> float:
@@ -318,18 +318,18 @@ double half_or(int32_t a) {
 void declared_containers(bool c) {
     auto&& __tmp_1 = std::vector<double>{1};
     std::vector<double> y = ((::tpy::__len__(__tmp_1) != 0) ? std::move(__tmp_1) : std::vector<double>{2.5});
-    std::cout << "declared_list_or:" << " " << ::tpy::__len__(y) << " " << ::tpy::print_float((::tpy::truediv(::tpy::__getitem__(y, 0), 2))) << "\n";
+    std::cout << "declared_list_or:" << " " << ::tpy::__len__(y) << " " << ::tpy::print_float((::tpy::truediv(::tpy::__getitem__(y, 0), 2))) << "\n" << ::tpy::check_signals;
     auto&& __tmp_2 = std::vector<double>{};
     std::vector<double> e = ((::tpy::__len__(__tmp_2) != 0) ? std::vector<double>{2.5} : std::move(__tmp_2));
-    std::cout << "declared_list_and:" << " " << ::tpy::__len__(e) << "\n";
+    std::cout << "declared_list_and:" << " " << ::tpy::__len__(e) << "\n" << ::tpy::check_signals;
     auto&& __tmp_3 = ::tpy::ordered_map<std::string, double>({{"a", 1}});
     ::tpy::ordered_map<std::string, double> d = ((::tpy::__len__(__tmp_3) != 0) ? std::move(__tmp_3) : ::tpy::ordered_map<std::string, double>({{"b", 2.5}}));
-    std::cout << "declared_dict_or:" << " " << ::tpy::__len__(d) << " " << ::tpy::print_float((::tpy::truediv(::tpy::__getitem__(d, "a"), 2))) << "\n";
+    std::cout << "declared_dict_or:" << " " << ::tpy::__len__(d) << " " << ::tpy::print_float((::tpy::truediv(::tpy::__getitem__(d, "a"), 2))) << "\n" << ::tpy::check_signals;
     auto&& __tmp_4 = ::tpy::ordered_set<double>({1});
     ::tpy::ordered_set<double> s = ((::tpy::__len__(__tmp_4) != 0) ? std::move(__tmp_4) : ::tpy::ordered_set<double>({2.5}));
-    std::cout << "declared_set_or:" << " " << ::tpy::__len__(s) << "\n";
+    std::cout << "declared_set_or:" << " " << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     std::tuple<double, std::string> t = ((c) ? (std::tuple<double, std::string>{1, "x"}) : (std::tuple<double, std::string>{2.5, "y"}));
-    std::cout << "declared_tuple_ternary:" << " " << ::tpy::print_float((::tpy::truediv(std::get<0>(t), 2))) << " " << std::get<1>(t) << "\n";
+    std::cout << "declared_tuple_ternary:" << " " << ::tpy::print_float((::tpy::truediv(std::get<0>(t), 2))) << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
 }
 
 // def tuple_literal_arm(f: bool) -> tuple[int32, str]:
@@ -351,14 +351,14 @@ void int_float_optional_slot(int32_t a, bool c) {
     std::optional<double> o = (a ? double(a) : 2.5);
     std::optional<double> p = ((c) ? (static_cast<double>(a)) : (2.5));
     if (((o.has_value()) && (p.has_value()))) {
-        std::cout << "int_float_optional_slot:" << " " << ::tpy::print_float((::tpy::truediv((*o), 2))) << " " << ::tpy::print_float((::tpy::truediv((*p), 2))) << "\n";
+        std::cout << "int_float_optional_slot:" << " " << ::tpy::print_float((::tpy::truediv((*o), 2))) << " " << ::tpy::print_float((::tpy::truediv((*p), 2))) << "\n" << ::tpy::check_signals;
     }
 }
 
 // def show_float(tag: str, f: float) -> None:
 //     print(tag, f / 2)
 void show_float(std::string_view tag, double f) {
-    std::cout << tag << " " << ::tpy::print_float((::tpy::truediv(f, 2))) << "\n";
+    std::cout << tag << " " << ::tpy::print_float((::tpy::truediv(f, 2))) << "\n" << ::tpy::check_signals;
 }
 
 // def int_float_slots(a: int32, c: bool) -> None:
@@ -379,17 +379,17 @@ void show_float(std::string_view tag, double f) {
 //     z: float = 3 if c else 2.5  # tpyc: ok
 //     print("int_literal_float_declared:", z / 2)
 void int_float_slots(int32_t a, bool c) {
-    std::cout << "int_float_return:" << " " << ::tpy::print_float((::tpy::truediv(::tpyapp::main::half_ternary(a, c), 2))) << " " << ::tpy::print_float((::tpy::truediv(::tpyapp::main::half_or(a), 2))) << "\n";
+    std::cout << "int_float_return:" << " " << ::tpy::print_float((::tpy::truediv(::tpyapp::main::half_ternary(a, c), 2))) << " " << ::tpy::print_float((::tpy::truediv(::tpyapp::main::half_or(a), 2))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show_float("int_float_arg_ternary:", ((c) ? (static_cast<double>(a)) : (2.5)));
     ::tpyapp::main::show_float("int_float_arg_or:", (a ? double(a) : 2.5));
     double v = (a ? 2.5 : double(a));
-    std::cout << "int_float_and_declared:" << " " << ::tpy::print_float((::tpy::truediv(v, 2))) << "\n";
+    std::cout << "int_float_and_declared:" << " " << ::tpy::print_float((::tpy::truediv(v, 2))) << "\n" << ::tpy::check_signals;
     double w = (a ? double(a) : (a ? double(a) : 2.5));
-    std::cout << "int_float_nested_declared:" << " " << ::tpy::print_float((::tpy::truediv(w, 2))) << "\n";
+    std::cout << "int_float_nested_declared:" << " " << ::tpy::print_float((::tpy::truediv(w, 2))) << "\n" << ::tpy::check_signals;
     double w2 = (a ? double(a) : ((c) ? (static_cast<double>(a)) : (2.5)));
-    std::cout << "int_float_nested_ternary_declared:" << " " << ::tpy::print_float((::tpy::truediv(w2, 2))) << "\n";
+    std::cout << "int_float_nested_ternary_declared:" << " " << ::tpy::print_float((::tpy::truediv(w2, 2))) << "\n" << ::tpy::check_signals;
     double z = ((c) ? (static_cast<double>(3)) : (2.5));
-    std::cout << "int_literal_float_declared:" << " " << ::tpy::print_float((::tpy::truediv(z, 2))) << "\n";
+    std::cout << "int_literal_float_declared:" << " " << ::tpy::print_float((::tpy::truediv(z, 2))) << "\n" << ::tpy::check_signals;
 }
 
 // def int_float_guard(a: int32, g: float, k: int32) -> str:
@@ -539,8 +539,8 @@ void int_float_conditions(int32_t a, double g, bool c) {
             break;
         }
     }
-    std::cout << "int_float_while:" << " " << n << "\n";
-    std::cout << "int_float_not:" << " " << ::tpy::print_bool((!((a || g)))) << "\n";
+    std::cout << "int_float_while:" << " " << n << "\n" << ::tpy::check_signals;
+    std::cout << "int_float_not:" << " " << ::tpy::print_bool((!((a || g)))) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> ys = ({
         std::vector<int32_t> __result;
         auto __obj_0 = {1, 2, 3};
@@ -555,23 +555,23 @@ void int_float_conditions(int32_t a, double g, bool c) {
         }
         std::move(__result);
     });
-    std::cout << "int_float_filter:" << " " << ::tpy::__len__(ys) << "\n";
+    std::cout << "int_float_filter:" << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
     if ((a || g)) {
         if (!((a || g))) ::tpy::raise_assertion_error();
-        std::cout << "int_float_assert" << "\n";
+        std::cout << "int_float_assert" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "int_float_bool:" << " " << ::tpy::print_bool((a || g)) << " " << ::tpy::print_bool((a && g)) << "\n";
-    std::cout << "int_float_ternary_test:" << " " << (((a || g)) ? (1) : (2)) << "\n";
+    std::cout << "int_float_bool:" << " " << ::tpy::print_bool((a || g)) << " " << ::tpy::print_bool((a && g)) << "\n" << ::tpy::check_signals;
+    std::cout << "int_float_ternary_test:" << " " << (((a || g)) ? (1) : (2)) << "\n" << ::tpy::check_signals;
     int32_t m;
     if (((m = a) || g)) {
-        std::cout << "int_float_walrus_leaf:" << " " << m << "\n";
+        std::cout << "int_float_walrus_leaf:" << " " << m << "\n" << ::tpy::check_signals;
     }
-    std::cout << "int_float_genexpr:" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_int_float_conditions_1(std::in_place, [&]() { return std::array<int32_t, 3>{1, 2, 3}; }, a, g)) << "\n";
-    std::cout << "int_float_guard:" << " " << ::tpyapp::main::int_float_guard(a, g, 1) << " " << ::tpyapp::main::int_float_guard(a, g, 2) << "\n";
+    std::cout << "int_float_genexpr:" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_int_float_conditions_1(std::in_place, [&]() { return std::array<int32_t, 3>{1, 2, 3}; }, a, g)) << "\n" << ::tpy::check_signals;
+    std::cout << "int_float_guard:" << " " << ::tpyapp::main::int_float_guard(a, g, 1) << " " << ::tpyapp::main::int_float_guard(a, g, 2) << "\n" << ::tpy::check_signals;
     if (((c) ? ((a || g)) : (static_cast<bool>(g)))) {
-        std::cout << "int_float_ternary_arms" << "\n";
+        std::cout << "int_float_ternary_arms" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "int_float_ternary_arms_bool:" << " " << ::tpy::print_bool(((c) ? (static_cast<bool>(a)) : (static_cast<bool>(g)))) << "\n";
+    std::cout << "int_float_ternary_arms_bool:" << " " << ::tpy::print_bool(((c) ? (static_cast<bool>(a)) : (static_cast<bool>(g)))) << "\n" << ::tpy::check_signals;
 }
 
 // def mixed_truth_arms(n: int32, c: bool, r: C, xs: list[int32],
@@ -584,12 +584,12 @@ void int_float_conditions(int32_t a, double g, bool c) {
 //     print("mixed_arms_bool:", bool(xs if c else s))  # tpyc: ok
 void mixed_truth_arms(int32_t n, bool c, const C& r, const std::vector<int32_t>& xs, std::string_view s) {
     if (((c) ? (static_cast<bool>(n)) : ((!s.empty())))) {
-        std::cout << "mixed_arms_int_str" << "\n";
+        std::cout << "mixed_arms_int_str" << "\n" << ::tpy::check_signals;
     }
     if (((c) ? ((static_cast<void>(r), true)) : ((::tpy::__len__(xs) != 0)))) {
-        std::cout << "mixed_arms_record_list" << "\n";
+        std::cout << "mixed_arms_record_list" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "mixed_arms_bool:" << " " << ::tpy::print_bool(((c) ? ((::tpy::__len__(xs) != 0)) : ((!s.empty())))) << "\n";
+    std::cout << "mixed_arms_bool:" << " " << ::tpy::print_bool(((c) ? ((::tpy::__len__(xs) != 0)) : ((!s.empty())))) << "\n" << ::tpy::check_signals;
 }
 
 // def not_or(a: C) -> None:
@@ -598,9 +598,9 @@ void mixed_truth_arms(int32_t n, bool c, const C& r, const std::vector<int32_t>&
 //     a.n += 1
 //     print("not_or_after:", a.n)
 void not_or(C& a) {
-    std::cout << "not_or:" << " " << ::tpy::print_bool((!(((static_cast<void>(a), true) || (static_cast<void>(::tpyapp::main::make_c()), true))))) << "\n";
+    std::cout << "not_or:" << " " << ::tpy::print_bool((!(((static_cast<void>(a), true) || (static_cast<void>(::tpyapp::main::make_c()), true))))) << "\n" << ::tpy::check_signals;
     a.n = ::tpy::add_check<int32_t>(a.n, 1);
-    std::cout << "not_or_after:" << " " << a.n << "\n";
+    std::cout << "not_or_after:" << " " << a.n << "\n" << ::tpy::check_signals;
 }
 
 // def readonly_join(c: bool, ro: readonly[C], plain: C) -> None:
@@ -612,9 +612,9 @@ void not_or(C& a) {
 //     print("readonly_join_after:", r.n)
 void readonly_join(bool c, const C& ro, C& plain) {
     const C& r = ((c) ? (ro) : (plain));
-    std::cout << "readonly_join:" << " " << r.n << "\n";
+    std::cout << "readonly_join:" << " " << r.n << "\n" << ::tpy::check_signals;
     plain.n = ::tpy::add_check<int32_t>(plain.n, 5);
-    std::cout << "readonly_join_after:" << " " << r.n << "\n";
+    std::cout << "readonly_join_after:" << " " << r.n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -675,7 +675,7 @@ void main() {
         bool c = *__beg_1;
         ::tpyapp::main::declared_containers(c);
     }
-    std::cout << "tuple_literal_arm:" << " " << ::tpy::TuplePrinter(::tpyapp::main::tuple_literal_arm(true)) << " " << ::tpy::TuplePrinter(::tpyapp::main::tuple_literal_arm(false)) << "\n";
+    std::cout << "tuple_literal_arm:" << " " << ::tpy::TuplePrinter(::tpyapp::main::tuple_literal_arm(true)) << " " << ::tpy::TuplePrinter(::tpyapp::main::tuple_literal_arm(false)) << "\n" << ::tpy::check_signals;
     auto __obj_2 = {std::tuple<int32_t, bool>{3, true}, std::tuple<int32_t, bool>{0, false}};
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();

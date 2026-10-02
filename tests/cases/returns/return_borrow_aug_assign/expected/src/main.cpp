@@ -26,7 +26,7 @@ void test_aug_assign_warns() {
     std::vector<Point> data = {Point(1, 2), Point(3, 4)};
     Point& first = ::tpyapp::main::get_first(data);
     ::tpy::list_extend(data, {Point(5, 6)});
-    std::cout << ::tpy::__len__(data) << "\n";
+    std::cout << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
 }
 
 // def test_iter_aug_assign_warns() -> None:
@@ -46,7 +46,7 @@ void test_iter_aug_assign_warns() {
         ::tpy::list_extend(data, {Point(5, 6)});
         break;
     }
-    std::cout << ::tpy::__len__(data) << "\n";
+    std::cout << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
 }
 
 // def test_no_borrow_no_warn() -> None:
@@ -57,7 +57,7 @@ void test_iter_aug_assign_warns() {
 void test_no_borrow_no_warn() {
     std::vector<Point> data = {Point(1, 2), Point(3, 4)};
     ::tpy::list_extend(data, std::vector<Point>{Point(5, 6)});
-    std::cout << ::tpy::__len__(data) << "\n";
+    std::cout << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
 }
 
 // def test_borrow_cleared_no_warn() -> None:
@@ -73,7 +73,7 @@ void test_borrow_cleared_no_warn() {
     Point* first = &(::tpyapp::main::get_first(data));
     first = &*(__slot_1 = Point(9, 9));
     ::tpy::list_extend(data, {Point(5, 6)});
-    std::cout << ::tpy::__len__(data) << "\n";
+    std::cout << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

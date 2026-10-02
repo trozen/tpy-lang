@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(round(x, int32(-1)))
 void main() {
     int32_t x = 2147483647;
-    std::cout << ::tpy::round_fixed<int32_t>(x, -1) << "\n";
+    std::cout << ::tpy::round_fixed<int32_t>(x, -1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

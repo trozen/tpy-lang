@@ -47,39 +47,39 @@ void main() {
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    std::cout << "default:" << " " << ::tpy::print_bool((!a.gettimeout().has_value())) << " " << ::tpy::print_bool(a.getblocking()) << "\n";
+    std::cout << "default:" << " " << ::tpy::print_bool((!a.gettimeout().has_value())) << " " << ::tpy::print_bool(a.getblocking()) << "\n" << ::tpy::check_signals;
     a.settimeout(0.0);
-    std::cout << "zero:" << " " << ::tpy::print_bool((a.gettimeout() == 0.0)) << " " << ::tpy::print_bool(a.getblocking()) << "\n";
+    std::cout << "zero:" << " " << ::tpy::print_bool((a.gettimeout() == 0.0)) << " " << ::tpy::print_bool(a.getblocking()) << "\n" << ::tpy::check_signals;
     a.settimeout(2.5);
-    std::cout << "pos:" << " " << ::tpy::print_bool((a.gettimeout() == 2.5)) << " " << ::tpy::print_bool(a.getblocking()) << "\n";
+    std::cout << "pos:" << " " << ::tpy::print_bool((a.gettimeout() == 2.5)) << " " << ::tpy::print_bool(a.getblocking()) << "\n" << ::tpy::check_signals;
     a.settimeout(std::nullopt);
-    std::cout << "none:" << " " << ::tpy::print_bool((!a.gettimeout().has_value())) << " " << ::tpy::print_bool(a.getblocking()) << "\n";
+    std::cout << "none:" << " " << ::tpy::print_bool((!a.gettimeout().has_value())) << " " << ::tpy::print_bool(a.getblocking()) << "\n" << ::tpy::check_signals;
     a.setblocking(false);
-    std::cout << "nb:" << " " << ::tpy::print_bool((a.gettimeout() == 0.0)) << " " << ::tpy::print_bool(a.getblocking()) << "\n";
+    std::cout << "nb:" << " " << ::tpy::print_bool((a.gettimeout() == 0.0)) << " " << ::tpy::print_bool(a.getblocking()) << "\n" << ::tpy::check_signals;
     a.setblocking(true);
-    std::cout << "blk:" << " " << ::tpy::print_bool((!a.gettimeout().has_value())) << " " << ::tpy::print_bool(a.getblocking()) << "\n";
+    std::cout << "blk:" << " " << ::tpy::print_bool((!a.gettimeout().has_value())) << " " << ::tpy::print_bool(a.getblocking()) << "\n" << ::tpy::check_signals;
     {
         try {
             a.settimeout(-(1.0));
-            std::cout << "NO ERROR" << "\n";
+            std::cout << "NO ERROR" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "neg:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "neg:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             a.settimeout(std::numeric_limits<double>::quiet_NaN());
-            std::cout << "NO ERROR" << "\n";
+            std::cout << "NO ERROR" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "nan:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "nan:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             a.settimeout(std::numeric_limits<double>::infinity());
-            std::cout << "NO ERROR" << "\n";
+            std::cout << "NO ERROR" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OverflowError& e) {
-            std::cout << "inf:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "inf:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     a.close();

@@ -14,7 +14,7 @@ void test_static() {
     Point p = Point();
     p.x = 10;
     int32_t result = Factory::consume(Point(p));
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
 }
 
 // def test_protocol() -> None:

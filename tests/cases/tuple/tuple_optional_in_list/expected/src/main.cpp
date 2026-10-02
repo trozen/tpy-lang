@@ -15,9 +15,9 @@ void consume(const std::tuple<const T*, const T*>& p) {
     const T* a = std::get<0>(__tup_1);
     const T* b = std::get<1>(__tup_1);
     if ((a != nullptr)) {
-        std::cout << a->x << "\n";
+        std::cout << a->x << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "None" << "\n";
+        std::cout << "None" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -63,7 +63,7 @@ void main() {
     T* a = std::get<0>(__tup_1);
     T* b = std::get<1>(__tup_1);
     if ((a != nullptr)) {
-        std::cout << a->x << "\n";
+        std::cout << a->x << "\n" << ::tpy::check_signals;
     }
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
@@ -83,7 +83,7 @@ void main() {
         T* x = std::get<0>(__tup_2);
         T* y = std::get<1>(__tup_2);
         if ((x != nullptr)) {
-            std::cout << x->x << "\n";
+            std::cout << x->x << "\n" << ::tpy::check_signals;
         }
     }
 }

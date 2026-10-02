@@ -13,7 +13,7 @@ void test_non_last_use() {
     Item x = Item(1);
     Holder h = Holder();
     h.item = x;
-    std::cout << x.value << "\n";
+    std::cout << x.value << "\n" << ::tpy::check_signals;
 }
 
 // def test_last_use() -> None:
@@ -35,7 +35,7 @@ void test_container_non_last_use() {
     Item x = Item(3);
     std::vector<Item> items = std::vector<Item>{};
     items.push_back(x);
-    std::cout << x.value << "\n";
+    std::cout << x.value << "\n" << ::tpy::check_signals;
 }
 
 // def test_container_last_use() -> None:

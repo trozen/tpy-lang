@@ -19,7 +19,7 @@ Widget source() {
 //     print(w.n, built)
 void main() {
     Widget w = ::tpyapp::main::source().blank();
-    std::cout << w.n << " " << built << "\n";
+    std::cout << w.n << " " << built << "\n" << ::tpy::check_signals;
 }
 
 // built: int32 = 0

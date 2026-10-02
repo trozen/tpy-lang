@@ -25,7 +25,7 @@ void main() {
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);
         int32_t n = std::get<1>(__tup_1);
-        std::cout << k << " " << n << "\n";
+        std::cout << k << " " << n << "\n" << ::tpy::check_signals;
     }
     std::vector<std::tuple<int32_t, std::string>> ns = {std::tuple<int32_t, std::string>{1, "c"}, std::tuple<int32_t, std::string>{2, "a"}, std::tuple<int32_t, std::string>{3, "b"}};
     auto __obj_1 = ::tpyapp::main::by_name<int32_t>(ns);
@@ -36,16 +36,16 @@ void main() {
         const auto& __tup_2 = __for_tup_1;
         int32_t nm = std::get<0>(__tup_2);
         std::string_view s = std::get<1>(__tup_2);
-        std::cout << nm << " " << s << "\n";
+        std::cout << nm << " " << s << "\n" << ::tpy::check_signals;
     }
     auto __tup_3 = ::tpyapp::main::smaller<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1});
     std::string_view sk = std::get<0>(__tup_3);
     int32_t sn = std::get<1>(__tup_3);
-    std::cout << "min:" << " " << sk << " " << sn << "\n";
+    std::cout << "min:" << " " << sk << " " << sn << "\n" << ::tpy::check_signals;
     auto __tup_4 = ::tpyapp::main::larger<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1});
     std::string_view lk = std::get<0>(__tup_4);
     int32_t ln = std::get<1>(__tup_4);
-    std::cout << "max:" << " " << lk << " " << ln << "\n";
+    std::cout << "max:" << " " << lk << " " << ln << "\n" << ::tpy::check_signals;
 }
 
 // main()

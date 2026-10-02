@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(b.get())
 void main() {
     ::tpystd::tplib::box::Box<int32_t> b = ::tpystd::tplib::box::Box<int32_t>(42);
-    std::cout << b.get() << "\n";
+    std::cout << b.get() << "\n" << ::tpy::check_signals;
     b.set(100);
-    std::cout << b.get() << "\n";
+    std::cout << b.get() << "\n" << ::tpy::check_signals;
 }
 
 // # Test importing Box[T] from tplib standard library

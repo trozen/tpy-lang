@@ -49,7 +49,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "while:" << " " << got << "\n";
+            std::cout << "while:" << " " << got << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -60,7 +60,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "for:" << " " << got << "\n";
+            std::cout << "for:" << " " << got << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -70,7 +70,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "before_while:" << " " << got << "\n";
+            std::cout << "before_while:" << " " << got << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -80,7 +80,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "after_drain:" << " " << got << "\n";
+            std::cout << "after_drain:" << " " << got << "\n" << ::tpy::check_signals;
         }
     }
 }

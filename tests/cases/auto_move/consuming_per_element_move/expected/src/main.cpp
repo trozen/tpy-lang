@@ -26,7 +26,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& r = *__beg_1;
-        std::cout << r.value << " " << r.name << "\n";
+        std::cout << r.value << " " << r.name << "\n" << ::tpy::check_signals;
     }
 }
 

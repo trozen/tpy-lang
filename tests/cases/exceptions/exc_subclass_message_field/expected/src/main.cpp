@@ -15,8 +15,8 @@ void main() {
         try {
             throw AppError("boom");
         } catch (const AppError& e) {
-            std::cout << e.detail() << "\n";
-            std::cout << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << e.detail() << "\n" << ::tpy::check_signals;
+            std::cout << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

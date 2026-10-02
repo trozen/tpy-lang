@@ -59,15 +59,15 @@ namespace tpyapp::main {
 //     print(1 if p.state == RemoteState.BUSY else 0)
 void main() {
     Shape s = Shape();
-    std::cout << (((s.tint == Color::RED)) ? (1) : (0)) << "\n";
+    std::cout << (((s.tint == Color::RED)) ? (1) : (0)) << "\n" << ::tpy::check_signals;
     s.tint = Color::GREEN;
-    std::cout << (((s.tint == Color::GREEN)) ? (1) : (0)) << "\n";
+    std::cout << (((s.tint == Color::GREEN)) ? (1) : (0)) << "\n" << ::tpy::check_signals;
     Tagged t = Tagged();
-    std::cout << (((t.kind == Color::BLUE)) ? (1) : (0)) << "\n";
+    std::cout << (((t.kind == Color::BLUE)) ? (1) : (0)) << "\n" << ::tpy::check_signals;
     ::tpyapp::sidemod::Remote r = ::tpyapp::sidemod::Remote();
-    std::cout << (((r.state == ::tpyapp::sidemod::RemoteState::IDLE)) ? (1) : (0)) << "\n";
+    std::cout << (((r.state == ::tpyapp::sidemod::RemoteState::IDLE)) ? (1) : (0)) << "\n" << ::tpy::check_signals;
     Pinned p = Pinned();
-    std::cout << (((p.state == ::tpyapp::sidemod::RemoteState::BUSY)) ? (1) : (0)) << "\n";
+    std::cout << (((p.state == ::tpyapp::sidemod::RemoteState::BUSY)) ? (1) : (0)) << "\n" << ::tpy::check_signals;
 }
 
 // # Enum members as record field defaults: zero-arg construction uses the

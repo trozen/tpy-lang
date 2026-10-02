@@ -37,29 +37,29 @@ namespace tpyapp::main {
 void main() {
     double x = ::tpy::stdlib::math::checked_log(2.718281828);
     if (((x > 0.99) && (x < 1.01))) {
-        std::cout << "log(e) ok" << "\n";
+        std::cout << "log(e) ok" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "log(e) error" << "\n";
+        std::cout << "log(e) error" << "\n" << ::tpy::check_signals;
     }
     double z = ::tpy::stdlib::math::checked_sqrt(4.0);
     if (((z > 1.99) && (z < 2.01))) {
-        std::cout << "sqrt ok" << "\n";
+        std::cout << "sqrt ok" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "sqrt error" << "\n";
+        std::cout << "sqrt error" << "\n" << ::tpy::check_signals;
     }
     double s = ::tpy::stdlib::math::checked_sin(0.0);
     double c = ::tpy::stdlib::math::checked_cos(0.0);
     if (((((s > -(0.01)) && (s < 0.01)) && (c > 0.99)) && (c < 1.01))) {
-        std::cout << "sin/cos ok" << "\n";
+        std::cout << "sin/cos ok" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "sin/cos error" << "\n";
+        std::cout << "sin/cos error" << "\n" << ::tpy::check_signals;
     }
     ::tpy::BigInt f = ::tpy::BigInt::from_floor(3.7);
     ::tpy::BigInt ce = ::tpy::BigInt::from_ceil(3.2);
     if (((((static_cast<double>(f) > 2.99) && (static_cast<double>(f) < 3.01)) && (static_cast<double>(ce) > 3.99)) && (static_cast<double>(ce) < 4.01))) {
-        std::cout << "floor/ceil ok" << "\n";
+        std::cout << "floor/ceil ok" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "floor/ceil error" << "\n";
+        std::cout << "floor/ceil error" << "\n" << ::tpy::check_signals;
     }
 }
 

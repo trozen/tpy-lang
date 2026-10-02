@@ -20,8 +20,8 @@ int32_t maybe_show(Container<int32_t>* c) {
 //     print(maybe_show(None))
 void main() {
     IntBox __tmp_1 = IntBox(42);
-    std::cout << ::tpyapp::main::maybe_show(&(__tmp_1)) << "\n";
-    std::cout << ::tpyapp::main::maybe_show(nullptr) << "\n";
+    std::cout << ::tpyapp::main::maybe_show(&(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::maybe_show(nullptr) << "\n" << ::tpy::check_signals;
 }
 
 // main()

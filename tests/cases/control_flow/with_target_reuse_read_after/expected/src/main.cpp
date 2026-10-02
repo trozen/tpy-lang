@@ -88,9 +88,9 @@ int32_t rebound_needs_no_hoist() {
 //     print(probe(False))
 //     print(rebound_needs_no_hoist())
 void main() {
-    std::cout << ::tpyapp::main::probe(true) << "\n";
-    std::cout << ::tpyapp::main::probe(false) << "\n";
-    std::cout << ::tpyapp::main::rebound_needs_no_hoist() << "\n";
+    std::cout << ::tpyapp::main::probe(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::probe(false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::rebound_needs_no_hoist() << "\n" << ::tpy::check_signals;
 }
 
 // main()

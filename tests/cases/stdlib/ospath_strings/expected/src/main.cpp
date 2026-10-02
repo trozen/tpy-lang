@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def show2(pair: tuple[str, str]) -> None:
 //     print(pair[0] + " | " + pair[1])
 void show2(const std::tuple<std::string, std::string>& pair) {
-    std::cout << (::tpy::str_concat((::tpy::str_concat(std::get<0>(pair), " | ")), std::get<1>(pair))) << "\n";
+    std::cout << (::tpy::str_concat((::tpy::str_concat(std::get<0>(pair), " | ")), std::get<1>(pair))) << "\n" << ::tpy::check_signals;
 }
 
 // def main():
@@ -42,25 +42,25 @@ void show2(const std::tuple<std::string, std::string>& pair) {
 //     print(devnull)
 void main() {
     std::array<const std::string, 2> __tmp_1{"lib", "foo.py"};
-    std::cout << ::tpystd::os::path::join("/usr", ::tpy::varargs<const std::string>(__tmp_1)) << "\n";
+    std::cout << ::tpystd::os::path::join("/usr", ::tpy::varargs<const std::string>(__tmp_1)) << "\n" << ::tpy::check_signals;
     std::array<const std::string, 2> __tmp_2{"/etc", "x"};
-    std::cout << ::tpystd::os::path::join("/usr", ::tpy::varargs<const std::string>(__tmp_2)) << "\n";
+    std::cout << ::tpystd::os::path::join("/usr", ::tpy::varargs<const std::string>(__tmp_2)) << "\n" << ::tpy::check_signals;
     std::array<const std::string, 1> __tmp_3{"b"};
-    std::cout << ::tpystd::os::path::join("a", ::tpy::varargs<const std::string>(__tmp_3)) << "\n";
+    std::cout << ::tpystd::os::path::join("a", ::tpy::varargs<const std::string>(__tmp_3)) << "\n" << ::tpy::check_signals;
     std::array<const std::string, 1> __tmp_4{"b"};
-    std::cout << ::tpystd::os::path::join("a/", ::tpy::varargs<const std::string>(__tmp_4)) << "\n";
+    std::cout << ::tpystd::os::path::join("a/", ::tpy::varargs<const std::string>(__tmp_4)) << "\n" << ::tpy::check_signals;
     std::array<const std::string, 1> __tmp_5{"b"};
-    std::cout << ::tpystd::os::path::join("", ::tpy::varargs<const std::string>(__tmp_5)) << "\n";
+    std::cout << ::tpystd::os::path::join("", ::tpy::varargs<const std::string>(__tmp_5)) << "\n" << ::tpy::check_signals;
     std::array<const std::string, 1> __tmp_6{""};
-    std::cout << ::tpystd::os::path::join("a", ::tpy::varargs<const std::string>(__tmp_6)) << "\n";
-    std::cout << ::tpystd::os::path::join("/single", ::tpy::varargs<const std::string>()) << "\n";
+    std::cout << ::tpystd::os::path::join("a", ::tpy::varargs<const std::string>(__tmp_6)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::path::join("/single", ::tpy::varargs<const std::string>()) << "\n" << ::tpy::check_signals;
     auto __obj_0 = {"/a/b", "a/b", "a", "/", "//", "a/", "", "/a/b/"};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view p = *__beg_0;
         ::tpyapp::main::show2(::tpystd::os::path::split(p));
-        std::cout << (::tpy::str_concat((::tpy::str_concat(::tpystd::os::path::dirname(p), " <> ")), ::tpystd::os::path::basename(p))) << "\n";
+        std::cout << (::tpy::str_concat((::tpy::str_concat(::tpystd::os::path::dirname(p), " <> ")), ::tpystd::os::path::basename(p))) << "\n" << ::tpy::check_signals;
     }
     auto __obj_1 = {"foo.txt", "foo.tar.gz", ".bashrc", "/a/.bashrc", "foo", "a.", "/a/b", "..ext", "/d.ir/file"};
     auto __beg_1 = __obj_1.begin();
@@ -69,13 +69,13 @@ void main() {
         std::string_view q = *__beg_1;
         ::tpyapp::main::show2(::tpystd::os::path::splitext(q));
     }
-    std::cout << ::tpy::print_bool(::tpystd::os::path::isabs("/x")) << "\n";
-    std::cout << ::tpy::print_bool(::tpystd::os::path::isabs("x")) << "\n";
-    std::cout << ::tpy::print_bool(::tpystd::os::path::isabs("")) << "\n";
+    std::cout << ::tpy::print_bool(::tpystd::os::path::isabs("/x")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpystd::os::path::isabs("x")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpystd::os::path::isabs("")) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show2(::tpystd::os::path::splitdrive("/a/b"));
-    std::cout << (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(::tpystd::os::path::sep, ::tpystd::os::path::extsep)), ::tpystd::os::path::pardir)), ::tpystd::os::path::curdir)), ::tpystd::os::path::pathsep)) << "\n";
-    std::cout << ::tpystd::os::path::defpath << "\n";
-    std::cout << ::tpystd::os::path::devnull << "\n";
+    std::cout << (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(::tpystd::os::path::sep, ::tpystd::os::path::extsep)), ::tpystd::os::path::pardir)), ::tpystd::os::path::curdir)), ::tpystd::os::path::pathsep)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::path::defpath << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::path::devnull << "\n" << ::tpy::check_signals;
 }
 
 // # os.path v1 -- pure-string path manipulation (POSIX). Output is byte-compared

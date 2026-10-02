@@ -44,7 +44,7 @@ Payload unwrap_record(std::optional<Payload> x) {
 //     return ""
 ::tpy::String unwrap_string_with_print(std::optional<::tpy::String> x) {
     if ((x.has_value())) {
-        std::cout << ::tpy::print_optional_val(x) << "\n";
+        std::cout << ::tpy::print_optional_val(x) << "\n" << ::tpy::check_signals;
         return std::move((*x));
     }
     return "";
@@ -56,10 +56,10 @@ Payload unwrap_record(std::optional<Payload> x) {
 //     print(unwrap_bigint(100))
 //     print(unwrap_string_with_print("test"))
 void main() {
-    std::cout << ::tpyapp::main::unwrap_record(Payload("hello", ::tpy::BigInt(42))).data << "\n";
-    std::cout << ::tpyapp::main::unwrap_string("world") << "\n";
-    std::cout << ::tpyapp::main::unwrap_bigint(100) << "\n";
-    std::cout << ::tpyapp::main::unwrap_string_with_print("test") << "\n";
+    std::cout << ::tpyapp::main::unwrap_record(Payload("hello", ::tpy::BigInt(42))).data << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::unwrap_string("world") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::unwrap_bigint(100) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::unwrap_string_with_print("test") << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -64,8 +64,8 @@ int32_t forward_to_borrow(::tpy::Union<A, B>&& u) {
 //     print(describe(A(7)))
 //     print(describe(B(11)))
 void test_body_isinstance_narrowing() {
-    std::cout << ::tpyapp::main::describe(A(7)) << "\n";
-    std::cout << ::tpyapp::main::describe(B(11)) << "\n";
+    std::cout << ::tpyapp::main::describe(A(7)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(B(11)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_return_into_pointer_variant_receiver() -> None:
@@ -74,16 +74,16 @@ void test_body_isinstance_narrowing() {
 //     print(describe(pick(True)))
 //     print(describe(pick(False)))
 void test_return_into_pointer_variant_receiver() {
-    std::cout << ::tpyapp::main::describe(::tpyapp::main::pick(true)) << "\n";
-    std::cout << ::tpyapp::main::describe(::tpyapp::main::pick(false)) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpyapp::main::pick(true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpyapp::main::pick(false)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_forward_to_borrow_slot() -> None:
 //     print(forward_to_borrow(A(13)))
 //     print(forward_to_borrow(B(17)))
 void test_forward_to_borrow_slot() {
-    std::cout << ::tpyapp::main::forward_to_borrow(A(13)) << "\n";
-    std::cout << ::tpyapp::main::forward_to_borrow(B(17)) << "\n";
+    std::cout << ::tpyapp::main::forward_to_borrow(A(13)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::forward_to_borrow(B(17)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -21,17 +21,17 @@ void main() {
             if (!__try_tmp_2.has_value()) goto __except_1;
             p = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        std::cout << p->x << "\n";
+        std::cout << p->x << "\n" << ::tpy::check_signals;
         {
             auto __try_tmp_3 = Point::parse(-1);
             if (!__try_tmp_3.has_value()) goto __except_1;
             q = ::tpy::unwrap_ref_move(*__try_tmp_3);
         }
-        std::cout << q->x << "\n";
+        std::cout << q->x << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Invalid:
         __except_1:;
-        std::cout << "invalid" << "\n";
+        std::cout << "invalid" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }

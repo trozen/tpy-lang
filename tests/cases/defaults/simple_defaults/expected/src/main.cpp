@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def greet(name: str, greeting: str = "Hello") -> None:
 //     print(f"{greeting}, {name}!")
 void greet(std::string_view name, std::string_view greeting) {
-    std::cout << std::format("{}, {}!", greeting, name) << "\n";
+    std::cout << std::format("{}, {}!", greeting, name) << "\n" << ::tpy::check_signals;
 }
 
 // def add(a: int32, b: int32 = int32(0)) -> int32:
@@ -29,9 +29,9 @@ double scale(double value, double factor) {
 //         print(msg)
 void log(std::string_view msg, bool verbose) {
     if (verbose) {
-        std::cout << std::format("[V] {}", msg) << "\n";
+        std::cout << std::format("[V] {}", msg) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << msg << "\n";
+        std::cout << msg << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -50,10 +50,10 @@ void log(std::string_view msg, bool verbose) {
 void main() {
     ::tpyapp::main::greet("World");
     ::tpyapp::main::greet("World", "Hi");
-    std::cout << ::tpyapp::main::add(5) << "\n";
-    std::cout << ::tpyapp::main::add(5, 3) << "\n";
-    std::cout << ::tpy::print_float(::tpyapp::main::scale(2.5)) << "\n";
-    std::cout << ::tpy::print_float(::tpyapp::main::scale(2.5, 3.0)) << "\n";
+    std::cout << ::tpyapp::main::add(5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::add(5, 3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpyapp::main::scale(2.5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpyapp::main::scale(2.5, 3.0)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::log("info");
     ::tpyapp::main::log("debug", true);
 }

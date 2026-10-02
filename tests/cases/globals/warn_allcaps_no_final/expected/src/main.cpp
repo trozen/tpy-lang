@@ -8,7 +8,7 @@ int32_t MAX_SIZE{};
 // def main() -> None:
 //     print(MAX_SIZE)
 void main() {
-    std::cout << MAX_SIZE << "\n";
+    std::cout << MAX_SIZE << "\n" << ::tpy::check_signals;
 }
 
 // MAX_SIZE: int32 = 100  # tpyc: warning(/without Final/)

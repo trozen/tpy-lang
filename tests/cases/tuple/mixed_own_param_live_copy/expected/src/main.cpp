@@ -36,7 +36,7 @@ int32_t local_live(Box& b) {
 //     print("local-live", local_live(b), b.n)
 void main() {
     Box b = Box(0);
-    std::cout << "local-live" << " " << ::tpyapp::main::local_live(b) << " " << b.n << "\n";
+    std::cout << "local-live" << " " << ::tpyapp::main::local_live(b) << " " << b.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

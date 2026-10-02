@@ -134,9 +134,9 @@ int32_t via_match(NPt& p, int32_t tag) {
         n.emplace(NPt(3));
         a.emplace(Pt(5));
         d.emplace(Driver());
-        std::cout << "free" << " " << ::tpyapp::main::via_free((*n)) << "\n";
-        std::cout << "method" << " " << (*d).via_method((*n)) << " " << (*d).via_self() << "\n";
-        std::cout << "ctor" << " " << ::tpyapp::main::via_ctor((*a)) << " " << ::tpyapp::main::via_super((*a)) << "\n";
+        std::cout << "free" << " " << ::tpyapp::main::via_free((*n)) << "\n" << ::tpy::check_signals;
+        std::cout << "method" << " " << (*d).via_method((*n)) << " " << (*d).via_self() << "\n" << ::tpy::check_signals;
+        std::cout << "ctor" << " " << ::tpyapp::main::via_ctor((*a)) << " " << ::tpyapp::main::via_super((*a)) << "\n" << ::tpy::check_signals;
         {
             auto __src_0 = ::tpyapp::main::via_gen((*n));
             auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -144,7 +144,7 @@ int32_t via_match(NPt& p, int32_t tag) {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 int32_t v = ::tpy::unwrap_ref(*__r_1);
-                std::cout << "gen" << " " << v << "\n";
+                std::cout << "gen" << " " << v << "\n" << ::tpy::check_signals;
             }
         }
         __sub_0.emplace((*n));
@@ -156,10 +156,10 @@ int32_t via_match(NPt& p, int32_t tag) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "async" << " " << __await_lift_0 << "\n";
-        std::cout << "comp" << " " << ::tpyapp::main::via_comp((*n)) << "\n";
-        std::cout << "finally" << " " << ::tpyapp::main::via_finally((*n)) << "\n";
-        std::cout << "match" << " " << ::tpyapp::main::via_match((*n), 1) << "\n";
+        std::cout << "async" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
+        std::cout << "comp" << " " << ::tpyapp::main::via_comp((*n)) << "\n" << ::tpy::check_signals;
+        std::cout << "finally" << " " << ::tpyapp::main::via_finally((*n)) << "\n" << ::tpy::check_signals;
+        std::cout << "match" << " " << ::tpyapp::main::via_match((*n), 1) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

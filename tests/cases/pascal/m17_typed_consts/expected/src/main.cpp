@@ -30,11 +30,11 @@ void __tpy_init() {
     squares = &__global_slot_2;
     int32_t __stop_0 = ::tpy::add_check<int32_t>(5, 1);
     for (int32_t i = 1; i < __stop_0; ++i) {
-        std::cout << ::tpy::__getitem__((*primes), (::tpy::sub_check<int32_t>(::pascal_rt::runtime::builtins::check_subrange(i, 1, 5, "primes index"), 1))) << "\n";
+        std::cout << ::tpy::__getitem__((*primes), (::tpy::sub_check<int32_t>(::pascal_rt::runtime::builtins::check_subrange(i, 1, 5, "primes index"), 1))) << "\n" << ::tpy::check_signals;
     }
     int32_t __stop_1 = ::tpy::add_check<int32_t>(4, 1);
     for (int32_t i = 1; i < __stop_1; ++i) {
-        std::cout << ::tpy::__getitem__((*squares), (::tpy::sub_check<int32_t>(::pascal_rt::runtime::builtins::check_subrange(i, 1, 4, "squares index"), 1))) << "\n";
+        std::cout << ::tpy::__getitem__((*squares), (::tpy::sub_check<int32_t>(::pascal_rt::runtime::builtins::check_subrange(i, 1, 4, "squares index"), 1))) << "\n" << ::tpy::check_signals;
     }
 }
 

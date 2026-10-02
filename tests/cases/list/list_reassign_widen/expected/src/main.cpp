@@ -16,9 +16,9 @@ void main() {
     std::vector<int32_t> __slot_1 = {1, 2};
     std::vector<int32_t>* xs = &__slot_1;
     (*xs) = {3, 4, 5};
-    std::cout << ::tpy::__len__((*xs)) << "\n";
+    std::cout << ::tpy::__len__((*xs)) << "\n" << ::tpy::check_signals;
     xs->push_back(6);
-    std::cout << ::tpy::__len__((*xs)) << " " << ::tpy::__getitem__((*xs), 3) << "\n";
+    std::cout << ::tpy::__len__((*xs)) << " " << ::tpy::__getitem__((*xs), 3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

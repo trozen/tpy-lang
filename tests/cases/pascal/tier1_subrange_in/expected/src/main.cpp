@@ -101,15 +101,15 @@ void __tpy_init() {
     ::pascal_rt::runtime::__tpy_init();
     ::pascal_rt::runtime::builtins::__tpy_init();
     b = ::pascal_rt::runtime::builtins::check_subrange(42, 0, 255, "b");
-    std::cout << b << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
     d = day::sat;
     if (((d == day::sat) || (d == day::sun))) {
-        std::cout << "weekend" << "\n";
+        std::cout << "weekend" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "weekday" << "\n";
+        std::cout << "weekday" << "\n" << ::tpy::check_signals;
     }
     if ((((((5 == 1) || (5 == 3)) || (5 == 5)) || (5 == 7)) || (5 == 9))) {
-        std::cout << "odd small" << "\n";
+        std::cout << "odd small" << "\n" << ::tpy::check_signals;
     }
 }
 

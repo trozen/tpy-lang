@@ -21,8 +21,8 @@ void main() {
     xs.add(10);
     xs.add(20);
     xs.add(30);
-    std::cout << ::tpyapp::main::length_of(xs) << "\n";
-    std::cout << ::tpyapp::main::total(xs) << "\n";
+    std::cout << ::tpyapp::main::length_of(xs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::total(xs) << "\n" << ::tpy::check_signals;
     int32_t s = 0;
     auto& __src_0 = xs;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -32,7 +32,7 @@ void main() {
         int32_t x = ::tpy::unwrap_ref(*__r_1);
         s = ::tpy::add_check<int32_t>(s, x);
     }
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // main()

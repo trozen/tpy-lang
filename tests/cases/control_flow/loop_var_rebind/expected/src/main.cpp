@@ -15,7 +15,7 @@ void scalar() {
     for (int32_t __range_0 = 0; __range_0 < 3; ++__range_0) {
         x = __range_0;
     }
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def param_rebind(x: int32) -> None:
@@ -26,7 +26,7 @@ void param_rebind(int32_t x) {
     for (int32_t __range_0 = 0; __range_0 < 2; ++__range_0) {
         x = __range_0;
     }
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def fresh_stays_scoped() -> None:
@@ -39,7 +39,7 @@ void fresh_stays_scoped() {
     for (int32_t y = 0; y < 3; ++y) {
         total = (::tpy::add_check<int32_t>(total, y));
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // # A name two sibling loop bodies bind is ONE local declared ahead of the first
@@ -70,7 +70,7 @@ void body_local_then_head() {
         n = __range_2;
         total = ::tpy::add_check<int32_t>(total, n);
     }
-    std::cout << "body_local_then_head" << " " << total << "\n";
+    std::cout << "body_local_then_head" << " " << total << "\n" << ::tpy::check_signals;
 }
 
 // # The same with heads that may run zero times: the local is maybe-assigned,
@@ -107,7 +107,7 @@ void body_local_unprovable(int32_t k, const ::tpy::BigInt& end) {
         n = __range_2;
         total = (total) + (n);
     }
-    std::cout << "body_local_unprovable" << " " << total << "\n";
+    std::cout << "body_local_unprovable" << " " << total << "\n" << ::tpy::check_signals;
 }
 
 // def body_local_over_list(xs: list[int32]) -> None:
@@ -141,7 +141,7 @@ void body_local_over_list(const std::vector<int32_t>& xs) {
         total = ::tpy::add_check<int32_t>(total, n);
     }
     n = 1000;
-    std::cout << "body_local_over_list" << " " << (::tpy::add_check<int32_t>(total, n)) << "\n";
+    std::cout << "body_local_over_list" << " " << (::tpy::add_check<int32_t>(total, n)) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -176,7 +176,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen" << " " << v << "\n";
+            std::cout << "gen" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -209,7 +209,7 @@ void Acc::run(int32_t k) {
         n = __range_2;
         this->total = ::tpy::add_check<int32_t>(this->total, n);
     }
-    std::cout << "method" << " " << this->total << "\n";
+    std::cout << "method" << " " << this->total << "\n" << ::tpy::check_signals;
 }
 // main()
 void __tpy_init() {

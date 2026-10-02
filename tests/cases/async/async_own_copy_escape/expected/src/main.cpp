@@ -29,8 +29,8 @@ namespace tpyapp::main {
         r.emplace(std::move(__r0).value());
         __sub_0 = nullptr;
         (*c).v = ::tpy::BigInt(99);
-        std::cout << (*r).v << "\n";
-        std::cout << (*c).v << "\n";
+        std::cout << (*r).v << "\n" << ::tpy::check_signals;
+        std::cout << (*c).v << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

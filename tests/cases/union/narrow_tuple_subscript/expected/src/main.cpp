@@ -26,10 +26,10 @@ void main() {
     ::tpy::Union<Rec*, std::tuple<std::string, ::tpy::BigInt>*> v = ::tpy::to_ptr_variant(__slot_1);
     if (std::holds_alternative<Rec*>(v)) {
         auto& __v = *std::get<Rec*>(v);
-        std::cout << __v.n << "\n";
+        std::cout << __v.n << "\n" << ::tpy::check_signals;
     } else {
         auto& __v = *std::get<std::tuple<std::string, ::tpy::BigInt>*>(v);
-        std::cout << std::get<0>(__v) << " " << std::get<1>(__v) << "\n";
+        std::cout << std::get<0>(__v) << " " << std::get<1>(__v) << "\n" << ::tpy::check_signals;
     }
 }
 

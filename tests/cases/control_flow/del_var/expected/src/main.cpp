@@ -22,15 +22,15 @@ namespace tpyapp::main {
 //     print(a, b)
 void main() {
     int32_t x = 42;
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     x = 100;
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     int32_t a = 1;
     int32_t b = 2;
-    std::cout << a << " " << b << "\n";
+    std::cout << a << " " << b << "\n" << ::tpy::check_signals;
     a = 10;
     b = 20;
-    std::cout << a << " " << b << "\n";
+    std::cout << a << " " << b << "\n" << ::tpy::check_signals;
 }
 
 // main()

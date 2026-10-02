@@ -33,9 +33,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpyapp::main::count_char("xoxox", 'x') << "\n";
-    std::cout << ::tpy::__len__("hello") << "\n";
-    std::cout << static_cast<char>(65) << "\n";
+    std::cout << ::tpyapp::main::count_char("xoxox", 'x') << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__("hello") << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<char>(65) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

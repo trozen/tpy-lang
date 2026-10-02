@@ -16,7 +16,7 @@ __gen_squares squares(int32_t n) {
 //     print(result)
 void main() {
     std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::squares(5));
-    std::cout << ::tpy::ListPrinter(result) << "\n";
+    std::cout << ::tpy::ListPrinter(result) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print(h2.value)
 void main() {
     Holder h1 = Holder(std::nullopt);
-    std::cout << ::tpy::print_bool((!h1.value.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!h1.value.has_value())) << "\n" << ::tpy::check_signals;
     Holder h2 = Holder(42);
-    std::cout << ::tpy::print_optional_val(h2.value) << "\n";
+    std::cout << ::tpy::print_optional_val(h2.value) << "\n" << ::tpy::check_signals;
 }
 
 // main()

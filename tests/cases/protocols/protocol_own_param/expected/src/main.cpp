@@ -13,11 +13,11 @@ namespace tpyapp::main {
 //     print(to_list(words))
 void main() {
     std::vector<int32_t> nums = {1, 2, 3};
-    std::cout << ::tpyapp::main::first<int32_t>(std::move(nums)) << "\n";
+    std::cout << ::tpyapp::main::first<int32_t>(std::move(nums)) << "\n" << ::tpy::check_signals;
     std::vector<std::string> words = {"hello", "world"};
     std::vector<std::string> __tmp_1 = words;
-    std::cout << ::tpyapp::main::first<std::string>(std::move(__tmp_1)) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpyapp::main::to_list<std::string>(std::move(words))) << "\n";
+    std::cout << ::tpyapp::main::first<std::string>(std::move(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::to_list<std::string>(std::move(words))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

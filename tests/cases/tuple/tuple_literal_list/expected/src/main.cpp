@@ -76,14 +76,14 @@ __genexpr_main_1_frame __genexpr_main_1(const std::array<std::tuple<std::string,
 //     print(d2["x"], d2["y"])
 void main() {
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"c", 3}};
-    std::cout << ::tpy::TuplePrinter(::tpy::__getitem__(pairs, 0)) << " " << ::tpy::TuplePrinter(::tpy::__getitem__(pairs, 1)) << "\n";
+    std::cout << ::tpy::TuplePrinter(::tpy::__getitem__(pairs, 0)) << " " << ::tpy::TuplePrinter(::tpy::__getitem__(pairs, 1)) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<double, double>> points = {std::tuple<double, double>{1.0, 2.0}, std::tuple<double, double>{3.0, 4.0}};
-    std::cout << ::tpy::TuplePrinter(::tpy::__getitem__(points, 0)) << "\n";
+    std::cout << ::tpy::TuplePrinter(::tpy::__getitem__(points, 0)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
-    std::cout << ::tpy::__getitem__(d, "a") << " " << ::tpy::__getitem__(d, "c") << "\n";
+    std::cout << ::tpy::__getitem__(d, "a") << " " << ::tpy::__getitem__(d, "c") << "\n" << ::tpy::check_signals;
     std::array<std::tuple<std::string, int32_t>, 2> raw = {std::tuple<std::string, int32_t>{"x", 10}, std::tuple<std::string, int32_t>{"y", 20}};
     ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::dict_construct<std::string, int32_t>(::tpyapp::main::__genexpr_main_1(raw));
-    std::cout << ::tpy::__getitem__(d2, "x") << " " << ::tpy::__getitem__(d2, "y") << "\n";
+    std::cout << ::tpy::__getitem__(d2, "x") << " " << ::tpy::__getitem__(d2, "y") << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -16,9 +16,9 @@ void main() {
     std::tuple<std::tuple<int32_t, int32_t>, std::string> a = std::tuple<std::tuple<int32_t, int32_t>, std::string>{std::tuple<int32_t, int32_t>{1, 2}, "x"};
     std::tuple<std::tuple<int32_t, int32_t>, std::string> b = std::tuple<std::tuple<int32_t, int32_t>, std::string>{std::tuple<int32_t, int32_t>{1, 3}, "x"};
     std::tuple<std::tuple<int32_t, int32_t>, std::string> c = std::tuple<std::tuple<int32_t, int32_t>, std::string>{std::tuple<int32_t, int32_t>{1, 2}, "y"};
-    std::cout << ::tpy::print_bool(::tpyapp::main::less<std::tuple<std::tuple<int32_t, int32_t>, std::string>>(a, b)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::less<std::tuple<std::tuple<int32_t, int32_t>, std::string>>(a, c)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::less<std::tuple<std::tuple<int32_t, int32_t>, std::string>>(b, a)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::less<std::tuple<std::tuple<int32_t, int32_t>, std::string>>(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::less<std::tuple<std::tuple<int32_t, int32_t>, std::string>>(a, c)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::less<std::tuple<std::tuple<int32_t, int32_t>, std::string>>(b, a)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

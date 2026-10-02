@@ -14,9 +14,9 @@ void main() {
     Info partial = Info("Alice");
     {
         try {
-            std::cout << ::tpy::typed_dict_field_check(partial.age) << "\n";
+            std::cout << ::tpy::typed_dict_field_check(partial.age) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::KeyError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

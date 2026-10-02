@@ -18,11 +18,11 @@ namespace tpyapp::main {
 //     print(c2.__bool__())  # False
 void main() {
     Container c1 = Container(::tpy::BigInt(3));
-    std::cout << ::tpy::print_bool(::tpy::__bool__(c1)) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::__bool__(c1)) << "\n" << ::tpy::check_signals;
     Container c2 = Container(::tpy::BigInt(0));
-    std::cout << ::tpy::print_bool(::tpy::__bool__(c2)) << "\n";
-    std::cout << ::tpy::print_bool(c1.__bool__()) << "\n";
-    std::cout << ::tpy::print_bool(c2.__bool__()) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::__bool__(c2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(c1.__bool__()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(c2.__bool__()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(p)
 void main() {
     std::tuple<int32_t, int32_t> p = std::tuple<int32_t, int32_t>{1, 2};
-    std::cout << ::tpy::TuplePrinter(p) << "\n";
+    std::cout << ::tpy::TuplePrinter(p) << "\n" << ::tpy::check_signals;
 }
 
 // from lib import *

@@ -8,9 +8,13 @@
 namespace tpyapp::main {
 
 struct Sink;
+struct Closed;
+struct NoFlush;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def raising_sink() -> None:
+void raising_sink();
 // def main() -> None:
 void main();
 
@@ -35,6 +39,40 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
     return os;
 }
 
+// class Closed:
+struct Closed {
+
+
+    // def write(self, text: str) -> int32:
+    int32_t write(std::string_view text) const;
+
+    // def flush(self) -> None:
+    void flush() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Closed";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Closed& obj) {
+    ::tpy::print_object_default(os, "Closed", obj);
+    return os;
+}
+
+// class NoFlush:
+struct NoFlush {
+
+
+    // def write(self, text: str) -> int32:
+    int32_t write(std::string_view text) const;
+
+    // def flush(self) -> None:
+    void flush() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.NoFlush";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const NoFlush& obj) {
+    ::tpy::print_object_default(os, "NoFlush", obj);
+    return os;
+}
+
 
 // def __init__(self) -> None:
 //     self.parts = []
@@ -51,6 +89,29 @@ inline int32_t Sink::write(std::string_view text) {
 // def flush(self) -> None:
 //     pass
 inline void Sink::flush() const {
+}
+
+// def write(self, text: str) -> int32:
+//     raise ValueError("closed")
+inline int32_t Closed::write(std::string_view text) const {
+    throw ::tpy::ValueError("closed");
+}
+
+// def flush(self) -> None:
+//     pass
+inline void Closed::flush() const {
+}
+
+// def write(self, text: str) -> int32:
+//     return len(text)
+inline int32_t NoFlush::write(std::string_view text) const {
+    return ::tpy::__len__(text);
+}
+
+// def flush(self) -> None:
+//     raise ValueError("no flush")
+inline void NoFlush::flush() const {
+    throw ::tpy::ValueError("no flush");
 }
 void __tpy_init();
 } // namespace tpyapp::main

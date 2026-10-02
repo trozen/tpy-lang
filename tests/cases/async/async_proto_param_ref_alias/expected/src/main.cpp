@@ -25,8 +25,8 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         got = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "total:" << " " << got << "\n";
-        std::cout << "mutations reached the caller:" << " " << ::tpy::__getitem__((*pts), 0).x << " " << ::tpy::__getitem__((*pts), 1).x << "\n";
+        std::cout << "total:" << " " << got << "\n" << ::tpy::check_signals;
+        std::cout << "mutations reached the caller:" << " " << ::tpy::__getitem__((*pts), 0).x << " " << ::tpy::__getitem__((*pts), 1).x << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

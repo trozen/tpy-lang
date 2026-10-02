@@ -24,12 +24,12 @@ namespace tpyapp::main {
 void main() {
     std::string_view s = "abc";
     int32_t n = 3;
-    std::cout << (::tpy::str_repeat(s, n)) << "\n";
-    std::cout << (::tpy::str_repeat(s, 1)) << "\n";
-    std::cout << (::tpy::str_repeat(s, 0)) << "\n";
-    std::cout << (::tpy::str_repeat(s, n)) << "\n";
-    std::cout << (::tpy::str_repeat("xy", 4)) << "\n";
-    std::cout << (::tpy::str_repeat(s, -1)) << "\n";
+    std::cout << (::tpy::str_repeat(s, n)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_repeat(s, 1)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_repeat(s, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_repeat(s, n)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_repeat("xy", 4)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_repeat(s, -1)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

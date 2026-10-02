@@ -19,12 +19,12 @@ void __tpy_init() {
     initialized = true;
 
     x = 3.14;
-    std::cout << ::tpy::print_bool((x > 3.0)) << "\n";
-    std::cout << ::tpy::print_bool((x == 3.14)) << "\n";
-    std::cout << ::tpy::print_bool((x < 4.0)) << "\n";
-    std::cout << ::tpy::print_bool((x >= 3.14)) << "\n";
-    std::cout << ::tpy::print_bool((x <= 3.14)) << "\n";
-    std::cout << ::tpy::print_bool((x != 0.0)) << "\n";
+    std::cout << ::tpy::print_bool((x > 3.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((x == 3.14)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((x < 4.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((x >= 3.14)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((x <= 3.14)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((x != 0.0)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

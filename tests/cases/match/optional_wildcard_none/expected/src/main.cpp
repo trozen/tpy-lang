@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void label(std::optional<int32_t> v) {
     auto& __match_subject_1 = v;
     if (__match_subject_1.has_value() && (*__match_subject_1) == 5) {
-        std::cout << "five" << "\n";
+        std::cout << "five" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "other" << "\n";
+        std::cout << "other" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -45,8 +45,8 @@ void main() {
     ::tpyapp::main::label(5);
     ::tpyapp::main::label(1);
     ::tpyapp::main::label(std::nullopt);
-    std::cout << ::tpyapp::main::pick(5) << "\n";
-    std::cout << ::tpyapp::main::pick(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::pick(5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick(std::nullopt) << "\n" << ::tpy::check_signals;
 }
 
 // main()

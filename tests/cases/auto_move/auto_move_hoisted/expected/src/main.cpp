@@ -37,8 +37,8 @@ int32_t test(bool cond) {
 //     print(test(True))
 //     print(test(False))
 void main() {
-    std::cout << ::tpyapp::main::test(true) << "\n";
-    std::cout << ::tpyapp::main::test(false) << "\n";
+    std::cout << ::tpyapp::main::test(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test(false) << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init() {

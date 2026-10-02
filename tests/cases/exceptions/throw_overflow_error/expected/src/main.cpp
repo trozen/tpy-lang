@@ -28,14 +28,14 @@ void main() {
         try {
             ::tpyapp::main::fail();
         } catch (const ::tpy::OverflowError& e) {
-            std::cout << "caught OverflowError:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught OverflowError:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::fail();
         } catch (const ::tpy::ArithmeticError& e) {
-            std::cout << "caught via ArithmeticError:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught via ArithmeticError:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

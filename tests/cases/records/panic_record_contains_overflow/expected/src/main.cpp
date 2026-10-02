@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Bag b = Bag();
     ::tpy::BigInt k = ((::tpy::BigInt(2)).pow(::tpy::BigInt(40)));
-    std::cout << ::tpy::print_bool((b.__contains__((k).to_fixed_check<int32_t>()))) << "\n";
+    std::cout << ::tpy::print_bool((b.__contains__((k).to_fixed_check<int32_t>()))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

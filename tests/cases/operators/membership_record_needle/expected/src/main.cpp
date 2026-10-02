@@ -151,17 +151,17 @@ void main() {
     std::vector<Tag> tags = {Tag(1), Tag(2)};
     Tag __tmp_1 = Tag(1);
     Tag __tmp_2 = Tag(9);
-    std::cout << "reflexive" << " " << ::tpy::print_bool(::tpyapp::main::reflexive(tags, __tmp_1)) << " " << ::tpy::print_bool(::tpyapp::main::reflexive(tags, __tmp_2)) << "\n";
-    std::cout << "equal-not-identical" << " " << ::tpy::print_bool(::tpyapp::main::equal_not_identical(tags)) << "\n";
-    std::cout << "method" << " " << ::tpy::print_bool(Bag().has(Tag(2))) << " " << ::tpy::print_bool(Bag().has(Tag(9))) << "\n";
+    std::cout << "reflexive" << " " << ::tpy::print_bool(::tpyapp::main::reflexive(tags, __tmp_1)) << " " << ::tpy::print_bool(::tpyapp::main::reflexive(tags, __tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << "equal-not-identical" << " " << ::tpy::print_bool(::tpyapp::main::equal_not_identical(tags)) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << ::tpy::print_bool(Bag().has(Tag(2))) << " " << ::tpy::print_bool(Bag().has(Tag(9))) << "\n" << ::tpy::check_signals;
     Bag __tmp_3 = Bag();
     Tag __tmp_4 = Tag(1);
-    std::cout << "fstring" << " " << ::tpyapp::main::in_fstring(__tmp_3, __tmp_4) << "\n";
+    std::cout << "fstring" << " " << ::tpyapp::main::in_fstring(__tmp_3, __tmp_4) << "\n" << ::tpy::check_signals;
     std::vector<Tag> __tmp_5 = {Tag(2), Tag(7)};
-    std::cout << "comp" << " " << ::tpy::ListPrinter(::tpyapp::main::comp_flags(tags, __tmp_5)) << "\n";
+    std::cout << "comp" << " " << ::tpy::ListPrinter(::tpyapp::main::comp_flags(tags, __tmp_5)) << "\n" << ::tpy::check_signals;
     Tag __tmp_6 = Tag(1);
     Tag __tmp_7 = Tag(9);
-    std::cout << "closure" << " " << ::tpy::print_bool(::tpyapp::main::via_closure(tags, __tmp_6)) << " " << ::tpy::print_bool(::tpyapp::main::via_closure(tags, __tmp_7)) << "\n";
+    std::cout << "closure" << " " << ::tpy::print_bool(::tpyapp::main::via_closure(tags, __tmp_6)) << " " << ::tpy::print_bool(::tpyapp::main::via_closure(tags, __tmp_7)) << "\n" << ::tpy::check_signals;
     std::vector<Pt> pts = {Pt(std::numeric_limits<double>::quiet_NaN()), Pt(1.0)};
     int32_t i = 0;
     auto& __obj_0 = pts;
@@ -169,11 +169,11 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        std::cout << "holds" << " " << i << " " << ::tpy::print_bool(::tpyapp::main::holds(pts, p)) << " " << ::tpy::print_bool(::tpyapp::main::lacks(pts, p)) << "\n";
+        std::cout << "holds" << " " << i << " " << ::tpy::print_bool(::tpyapp::main::holds(pts, p)) << " " << ::tpy::print_bool(::tpyapp::main::lacks(pts, p)) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "holds-nan" << " " << ::tpy::print_bool(::tpyapp::main::holds(pts, ::tpy::__getitem__(pts, 0))) << "\n";
-    std::cout << "slice" << " " << ::tpy::print_bool(::tpyapp::main::in_slice(pts, ::tpy::__getitem__(pts, 0))) << "\n";
+    std::cout << "holds-nan" << " " << ::tpy::print_bool(::tpyapp::main::holds(pts, ::tpy::__getitem__(pts, 0))) << "\n" << ::tpy::check_signals;
+    std::cout << "slice" << " " << ::tpy::print_bool(::tpyapp::main::in_slice(pts, ::tpy::__getitem__(pts, 0))) << "\n" << ::tpy::check_signals;
     std::vector<bool> gflags = std::vector<bool>{};
     {
         auto __src_1 = ::tpyapp::main::gen_found(pts, pts);
@@ -185,21 +185,21 @@ void main() {
             gflags.push_back(r);
         }
     }
-    std::cout << "generator" << " " << ::tpy::ListPrinter(gflags) << "\n";
-    std::cout << "async" << " " << ::tpy::print_bool(::tpystd::asyncio::run<bool>(::tpy::make_adapter<::tpystd::coro::Cancellable<bool>>(::tpyapp::main::async_holds(pts, ::tpy::__getitem__(pts, 0))))) << "\n";
+    std::cout << "generator" << " " << ::tpy::ListPrinter(gflags) << "\n" << ::tpy::check_signals;
+    std::cout << "async" << " " << ::tpy::print_bool(::tpystd::asyncio::run<bool>(::tpy::make_adapter<::tpystd::coro::Cancellable<bool>>(::tpyapp::main::async_holds(pts, ::tpy::__getitem__(pts, 0))))) << "\n" << ::tpy::check_signals;
     int32_t j = 0;
     auto& __obj_3 = pts;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         const auto& q = *__beg_3;
-        std::cout << "generic-record" << " " << j << " " << ::tpy::print_bool(::tpyapp::main::has<Pt>(pts, q)) << "\n";
+        std::cout << "generic-record" << " " << j << " " << ::tpy::print_bool(::tpyapp::main::has<Pt>(pts, q)) << "\n" << ::tpy::check_signals;
         j = ::tpy::add_check<int32_t>(j, 1);
     }
     std::vector<int32_t> ns = {1, 2, 3};
-    std::cout << "generic-int" << " " << ::tpy::print_bool(::tpyapp::main::has<int32_t>(ns, 2)) << " " << ::tpy::print_bool(::tpyapp::main::has<int32_t>(ns, 9)) << "\n";
+    std::cout << "generic-int" << " " << ::tpy::print_bool(::tpyapp::main::has<int32_t>(ns, 2)) << " " << ::tpy::print_bool(::tpyapp::main::has<int32_t>(ns, 9)) << "\n" << ::tpy::check_signals;
     Pt __tmp_8 = Pt(std::numeric_limits<double>::quiet_NaN());
-    std::cout << "distinct-nan" << " " << ::tpy::print_bool(::tpyapp::main::holds(pts, __tmp_8)) << "\n";
+    std::cout << "distinct-nan" << " " << ::tpy::print_bool(::tpyapp::main::holds(pts, __tmp_8)) << "\n" << ::tpy::check_signals;
 }
 
 // # `x in xs` with a user-RECORD needle. Containment is CPython's

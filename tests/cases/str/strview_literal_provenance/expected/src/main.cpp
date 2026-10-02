@@ -78,17 +78,17 @@ std::string_view ternary_literal_branch(bool flag, std::string_view p) {
 //     print(ternary_literal_branch(False, "param"))
 void main() {
     std::vector<std::string> __tmp_1 = {"hi"};
-    std::cout << ::tpyapp::main::first_or_default(__tmp_1, "fallback") << "\n";
+    std::cout << ::tpyapp::main::first_or_default(__tmp_1, "fallback") << "\n" << ::tpy::check_signals;
     std::vector<std::string> __tmp_2 = std::vector<std::string>{};
-    std::cout << ::tpyapp::main::first_or_default(__tmp_2, "fallback") << "\n";
+    std::cout << ::tpyapp::main::first_or_default(__tmp_2, "fallback") << "\n" << ::tpy::check_signals;
     std::vector<std::string> __tmp_3 = {"a", "b", "c"};
-    std::cout << ::tpyapp::main::default_literal_only(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::default_literal_only(__tmp_3) << "\n" << ::tpy::check_signals;
     std::vector<std::string> __tmp_4 = std::vector<std::string>{};
-    std::cout << ::tpyapp::main::default_literal_only(__tmp_4) << "\n";
-    std::cout << ::tpyapp::main::conditional_literal_or_param(true, "param") << "\n";
-    std::cout << ::tpyapp::main::conditional_literal_or_param(false, "param") << "\n";
-    std::cout << ::tpyapp::main::ternary_literal_branch(true, "param") << "\n";
-    std::cout << ::tpyapp::main::ternary_literal_branch(false, "param") << "\n";
+    std::cout << ::tpyapp::main::default_literal_only(__tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::conditional_literal_or_param(true, "param") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::conditional_literal_or_param(false, "param") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::ternary_literal_branch(true, "param") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::ternary_literal_branch(false, "param") << "\n" << ::tpy::check_signals;
 }
 
 // main()

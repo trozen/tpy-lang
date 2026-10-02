@@ -46,36 +46,36 @@ std::vector<int32_t> new_list() {
 void free_function() {
     DefaultDict<std::string, std::vector<int32_t>> g = DefaultDict<std::string, std::vector<int32_t>>(new_list);
     g["a"].push_back(1);
-    std::cout << "free len:" << " " << ::tpy::__len__(g["a"]) << "\n";
+    std::cout << "free len:" << " " << ::tpy::__len__(g["a"]) << "\n" << ::tpy::check_signals;
     std::vector<int32_t>& x = g["a"];
     x.push_back(2);
-    std::cout << "free alias:" << " " << ::tpy::ListPrinter(g["a"]) << "\n";
+    std::cout << "free alias:" << " " << ::tpy::ListPrinter(g["a"]) << "\n" << ::tpy::check_signals;
     auto& __obj_0 = g["a"];
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        std::cout << "free for:" << " " << v << "\n";
+        std::cout << "free for:" << " " << v << "\n" << ::tpy::check_signals;
     }
     if ((::tpy::__len__(g["b"]) != 0)) {
-        std::cout << "free if: b nonempty" << "\n";
+        std::cout << "free if: b nonempty" << "\n" << ::tpy::check_signals;
     }
     if ((::tpy::__len__(g["a"]) != 0)) {
-        std::cout << "free if: a nonempty" << "\n";
+        std::cout << "free if: a nonempty" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "free in:" << " " << ::tpy::print_bool(::tpy::seq_contains(g["a"], 2)) << " " << ::tpy::print_bool(::tpy::seq_contains(g["a"], 5)) << " " << ::tpy::__len__(g) << "\n";
+    std::cout << "free in:" << " " << ::tpy::print_bool(::tpy::seq_contains(g["a"], 2)) << " " << ::tpy::print_bool(::tpy::seq_contains(g["a"], 5)) << " " << ::tpy::__len__(g) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(g["a"], 0, 5);
-    std::cout << "free setindex:" << " " << ::tpy::__getitem__(g["a"], 0) << "\n";
+    std::cout << "free setindex:" << " " << ::tpy::__getitem__(g["a"], 0) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(g, "c", std::vector<int32_t>{7, 8});
     std::vector<int32_t> y = {9};
     ::tpy::__setitem__(g, "d", std::move(y));
     ::tpy::__setitem__(g, "e", ::tpyapp::main::new_list());
-    std::cout << "free setitem:" << " " << ::tpy::ListPrinter(g["c"]) << " " << ::tpy::ListPrinter(g["d"]) << " " << ::tpy::ListPrinter(g["e"]) << "\n";
+    std::cout << "free setitem:" << " " << ::tpy::ListPrinter(g["c"]) << " " << ::tpy::ListPrinter(g["d"]) << " " << ::tpy::ListPrinter(g["e"]) << "\n" << ::tpy::check_signals;
     DefaultDict<std::string, ::tpy::ordered_set<int32_t>> s = DefaultDict<std::string, ::tpy::ordered_set<int32_t>>(new_set);
     s["k"].insert(3);
     ::tpy::ordered_set<int32_t>& t = s["k"];
     t.insert(4);
-    std::cout << "free set:" << " " << ::tpy::__len__(s["k"]) << " " << ::tpy::print_bool((t.contains(4))) << "\n";
+    std::cout << "free set:" << " " << ::tpy::__len__(s["k"]) << " " << ::tpy::print_bool((t.contains(4))) << "\n" << ::tpy::check_signals;
 }
 
 // def receivers() -> None:
@@ -114,26 +114,26 @@ void receivers() {
     x->push_back(10);
     x = &(r[1]);
     x->push_back(20);
-    std::cout << "rows:" << " " << ::tpy::ListPrinter(r[0]) << " " << ::tpy::ListPrinter(r[1]) << " " << ::tpy::__len__(r[0]) << "\n";
+    std::cout << "rows:" << " " << ::tpy::ListPrinter(r[0]) << " " << ::tpy::ListPrinter(r[1]) << " " << ::tpy::__len__(r[0]) << "\n" << ::tpy::check_signals;
     Box<std::vector<int32_t>> b = Box<std::vector<int32_t>>();
     b.add({1});
     std::vector<int32_t>& z = b[0];
     z.push_back(2);
-    std::cout << "box:" << " " << ::tpy::ListPrinter(b[0]) << " " << ::tpy::__len__(b[0]) << "\n";
+    std::cout << "box:" << " " << ::tpy::ListPrinter(b[0]) << " " << ::tpy::__len__(b[0]) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<std::vector<int32_t>, 4> al = ::tpystd::tplib::array_list::ArrayList<std::vector<int32_t>, 4>();
     al.append({3});
     ::tpy::__setitem__(al, 0, std::vector<int32_t>{5});
-    std::cout << "arraylist setitem:" << " " << ::tpy::ListPrinter(al[0]) << "\n";
+    std::cout << "arraylist setitem:" << " " << ::tpy::ListPrinter(al[0]) << "\n" << ::tpy::check_signals;
     std::vector<int32_t>& w = al[0];
     w.push_back(4);
     ::tpy::__setitem__(al[0], 0, 30);
-    std::cout << "arraylist:" << " " << ::tpy::ListPrinter(al[0]) << " " << ::tpy::__len__(al[0]) << "\n";
+    std::cout << "arraylist:" << " " << ::tpy::ListPrinter(al[0]) << " " << ::tpy::__len__(al[0]) << "\n" << ::tpy::check_signals;
     Pts p = Pts();
     Pt* q = &(p[0]);
     q->x = 11;
     q = &(p[1]);
     q->x = 22;
-    std::cout << "record reassign:" << " " << p[0].x << " " << p[1].x << "\n";
+    std::cout << "record reassign:" << " " << p[0].x << " " << p[1].x << "\n" << ::tpy::check_signals;
 }
 
 // def ro_reader(r: readonly[Rows]) -> int32:
@@ -210,9 +210,9 @@ void main() {
     Grouper gr = Grouper();
     gr.add(0, 5);
     gr.add(0, 6);
-    std::cout << "method:" << " " << gr.size(0) << " " << ::tpy::ListPrinter(gr.rows[0]) << "\n";
+    std::cout << "method:" << " " << gr.size(0) << " " << ::tpy::ListPrinter(gr.rows[0]) << "\n" << ::tpy::check_signals;
     Holder<int32_t> h = Holder<int32_t>();
-    std::cout << "generic method:" << " " << h.first(4) << " " << ::tpy::ListPrinter(h.box[0]) << "\n";
+    std::cout << "generic method:" << " " << h.first(4) << " " << ::tpy::ListPrinter(h.box[0]) << "\n" << ::tpy::check_signals;
     Box<std::vector<int32_t>> b = Box<std::vector<int32_t>>();
     b.add({6, 7});
     {
@@ -222,17 +222,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator:" << " " << v << "\n";
+            std::cout << "generator:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     Rows r = Rows();
     r[0].push_back(8);
-    std::cout << "closure:" << " " << ::tpyapp::main::with_closure(r) << "\n";
-    std::cout << "readonly:" << " " << ::tpyapp::main::ro_reader(r) << "\n";
+    std::cout << "closure:" << " " << ::tpyapp::main::with_closure(r) << "\n" << ::tpy::check_signals;
+    std::cout << "readonly:" << " " << ::tpyapp::main::ro_reader(r) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<Pt, 4> pa = ::tpystd::tplib::array_list::ArrayList<Pt, 4>();
     pa.append(Pt(3));
     pa.append(Pt(4));
-    std::cout << "readonly records:" << " " << ::tpyapp::main::ro_records(pa) << "\n";
+    std::cout << "readonly records:" << " " << ::tpyapp::main::ro_records(pa) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.array_list import ArrayList

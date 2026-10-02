@@ -12,9 +12,9 @@ namespace mylib {
 //     print(other_add(int32(20), int32(22)))   # -> ::other_ns::other_add
 //     print(global_mul(int32(6), int32(7)))    # -> ::global_mul
 void main() {
-    std::cout << ::mylib::ns_add_impl(10, 32) << "\n";
-    std::cout << ::other_ns::other_add(20, 22) << "\n";
-    std::cout << ::global_mul(6, 7) << "\n";
+    std::cout << ::mylib::ns_add_impl(10, 32) << "\n" << ::tpy::check_signals;
+    std::cout << ::other_ns::other_add(20, 22) << "\n" << ::tpy::check_signals;
+    std::cout << ::global_mul(6, 7) << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native

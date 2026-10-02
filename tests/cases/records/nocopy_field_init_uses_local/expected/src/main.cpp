@@ -15,7 +15,7 @@ int32_t pick(int32_t n) {
 //     print(f._x.v)
 void main() {
     Foo f = Foo(10);
-    std::cout << f._x.v << "\n";
+    std::cout << f._x.v << "\n" << ::tpy::check_signals;
 }
 
 // main()

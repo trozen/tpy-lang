@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     Owner alice = Owner("Alice", ::tpystd::tplib::box::Box<Parrot>(Parrot("Polly")));
     Owner bob = Owner("Bob", ::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex"))));
-    std::cout << alice.name_ << " " << alice.pet.get().name() << "\n";
-    std::cout << bob.name_ << " " << bob.pet.get().name() << "\n";
+    std::cout << alice.name_ << " " << alice.pet.get().name() << "\n" << ::tpy::check_signals;
+    std::cout << bob.name_ << " " << bob.pet.get().name() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

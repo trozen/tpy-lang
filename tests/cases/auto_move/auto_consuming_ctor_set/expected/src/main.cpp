@@ -17,10 +17,10 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({10, 20, 30});
     std::vector<int32_t> items = ::tpy::construct<std::vector<int32_t>>(::tpy::own_iter_set(std::move(s)));
-    std::cout << ::tpy::ListPrinter(items) << "\n";
+    std::cout << ::tpy::ListPrinter(items) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> nums = {1, 2, 3};
     ::tpy::ordered_set<int32_t> s2 = ::tpy::set_construct<int32_t>(::tpy::own_iter(std::move(nums)));
-    std::cout << ::tpy::SetPrinter(s2) << "\n";
+    std::cout << ::tpy::SetPrinter(s2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

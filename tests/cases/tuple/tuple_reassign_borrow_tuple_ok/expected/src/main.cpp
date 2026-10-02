@@ -19,7 +19,7 @@ namespace tpyapp::main {
 void main() {
     Holder __tmp_1 = Holder(Box(::tpy::BigInt(5)));
     Holder __tmp_2 = Holder(Box(::tpy::BigInt(7)));
-    std::cout << ::tpyapp::main::f(__tmp_1, __tmp_2) << "\n";
+    std::cout << ::tpyapp::main::f(__tmp_1, __tmp_2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

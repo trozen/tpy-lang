@@ -59,7 +59,7 @@ void main() {
     h.value = h.value;
     Holder<Point> hp = Holder<Point>();
     hp.set_value(p);
-    std::cout << r.width << "\n";
+    std::cout << r.width << "\n" << ::tpy::check_signals;
 }
 
 // main()

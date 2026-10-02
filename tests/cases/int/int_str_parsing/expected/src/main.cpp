@@ -45,21 +45,21 @@ void __tpy_init() {
     initialized = true;
 
     a = ::tpy::BigInt::from_str("42");
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
     b = ::tpy::BigInt::from_str("-123");
-    std::cout << b << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
     c = ::tpy::BigInt::from_str("+456");
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
     d = ::tpy::BigInt::from_str("0");
-    std::cout << d << "\n";
+    std::cout << d << "\n" << ::tpy::check_signals;
     e = ::tpy::BigInt::from_str("  789  ");
-    std::cout << e << "\n";
+    std::cout << e << "\n" << ::tpy::check_signals;
     f = ::tpy::BigInt::from_str("  -99  ");
-    std::cout << f << "\n";
+    std::cout << f << "\n" << ::tpy::check_signals;
     g = ::tpy::BigInt::from_str("12345678901234567890");
-    std::cout << g << "\n";
+    std::cout << g << "\n" << ::tpy::check_signals;
     h = ::tpy::BigInt::from_str("-12345678901234567890");
-    std::cout << h << "\n";
+    std::cout << h << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

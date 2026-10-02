@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def take(c: Own[Counter]) -> None:
 //     print(c.value)
 void take(Counter&& c) {
-    std::cout << c.value << "\n";
+    std::cout << c.value << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

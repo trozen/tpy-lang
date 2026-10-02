@@ -18,10 +18,10 @@ namespace tpyapp::main {
 void main() {
     float f = 0.1f;
     f = 0.1f;
-    std::cout << "float32" << " " << ::tpy::print_float(static_cast<double>(((f) * (3)))) << "\n";
+    std::cout << "float32" << " " << ::tpy::print_float(static_cast<double>(((f) * (3)))) << "\n" << ::tpy::check_signals;
     uint8_t u = 3;
     u = 0;
-    std::cout << "uint8" << " " << static_cast<int>(static_cast<uint8_t>(~(u))) << "\n";
+    std::cout << "uint8" << " " << static_cast<int>(static_cast<uint8_t>(~(u))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

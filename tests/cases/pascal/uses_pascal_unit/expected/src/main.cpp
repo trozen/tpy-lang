@@ -12,8 +12,8 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::MyMath::__tpy_init();
-    std::cout << ::tpyapp::MyMath::square(5) << "\n";
-    std::cout << ::tpyapp::MyMath::cube(3) << "\n";
+    std::cout << ::tpyapp::MyMath::square(5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::MyMath::cube(3) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

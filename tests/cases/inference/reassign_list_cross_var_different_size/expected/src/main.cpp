@@ -15,7 +15,7 @@ void main() {
     std::vector<int32_t>* a = &__slot_1;
     std::vector<int32_t> b = {4, 5};
     a = &(b);
-    std::cout << ::tpy::__len__((*a)) << "\n";
+    std::cout << ::tpy::__len__((*a)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -20,12 +20,12 @@ std::tuple<int32_t, std::string, bool> get_triple() {
 void main() {
     auto __tup_1 = ::tpyapp::main::get_triple();
     std::string_view b = std::get<1>(__tup_1);
-    std::cout << b << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
     auto __tup_2 = ::tpyapp::main::get_triple();
     int32_t a = std::get<0>(__tup_2);
     bool c = std::get<2>(__tup_2);
-    std::cout << a << "\n";
-    std::cout << ::tpy::print_bool(c) << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(c) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -7,7 +7,7 @@ namespace tpyapp::outer::inner::mod {
 // def func() -> None:
 //     print("nested module")
 void func() {
-    std::cout << "nested module" << "\n";
+    std::cout << "nested module" << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init() {

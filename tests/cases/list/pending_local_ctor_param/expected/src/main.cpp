@@ -36,30 +36,30 @@ void main() {
     std::vector<int32_t> other = {9};
     Holder h = Holder(std::move(other));
     h.xs.push_back(5);
-    std::cout << ::tpy::ListPrinter(h.xs) << "\n";
+    std::cout << ::tpy::ListPrinter(h.xs) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> src = {1};
     Wrap<int32_t> w = Wrap<int32_t>(std::move(src));
     w.xs.push_back(2);
-    std::cout << ::tpy::ListPrinter(w.xs) << "\n";
+    std::cout << ::tpy::ListPrinter(w.xs) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> wide = {3};
     Wrap<int64_t> w2 = Wrap<int64_t>(std::move(wide));
-    std::cout << ::tpy::ListPrinter(w2.xs) << "\n";
+    std::cout << ::tpy::ListPrinter(w2.xs) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> dd = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     ::tpy::ordered_map<std::string, int32_t> __tmp_1 = dd;
     DictHolder dh = DictHolder(std::move(__tmp_1));
-    std::cout << ::tpy::__getitem__(dd, "a") << " " << ::tpy::__getitem__(dh.d, "a") << "\n";
+    std::cout << ::tpy::__getitem__(dd, "a") << " " << ::tpy::__getitem__(dh.d, "a") << "\n" << ::tpy::check_signals;
     std::vector<int32_t> zs = {3, 4};
     {
         try {
             throw DataError(zs);
         } catch (const DataError& e) {
-            std::cout << e.n << "\n";
+            std::cout << e.n << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::ordered_set<int32_t> ss = ::tpy::ordered_set<int32_t>({1, 2});
     ::tpy::ordered_set<int32_t> __tmp_2 = ss;
     SetHolder sh = SetHolder(std::move(__tmp_2));
-    std::cout << ::tpy::__len__(ss) << " " << ::tpy::__len__(sh.s) << "\n";
+    std::cout << ::tpy::__len__(ss) << " " << ::tpy::__len__(sh.s) << "\n" << ::tpy::check_signals;
 }
 
 // main()

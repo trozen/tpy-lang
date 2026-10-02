@@ -124,7 +124,7 @@ void reseat_view(bool c) {
     std::string_view s = std::get<0>(__tup_1);
     int32_t n = std::get<1>(__tup_1);
     t1 = std::tuple<std::string, int32_t>{"qq", 5};
-    std::cout << "reseat_view" << " " << s << " " << n << " " << std::get<0>(t1) << "\n";
+    std::cout << "reseat_view" << " " << s << " " << n << " " << std::get<0>(t1) << "\n" << ::tpy::check_signals;
 }
 
 // def reseat_value(c: bool) -> None:
@@ -141,7 +141,7 @@ void reseat_value(bool c) {
     int32_t a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
     t1 = std::tuple<int32_t, int32_t>{7, 8};
-    std::cout << "reseat_value" << " " << a << " " << b << " " << std::get<0>(t1) << "\n";
+    std::cout << "reseat_value" << " " << a << " " << b << " " << std::get<0>(t1) << "\n" << ::tpy::check_signals;
 }
 
 // def nested_view(c: bool) -> None:
@@ -158,7 +158,7 @@ void nested_view(bool c) {
     const std::tuple<std::string, int32_t>& p = std::get<0>(__tup_1);
     int32_t n = std::get<1>(__tup_1);
     t1 = std::tuple<std::tuple<std::string, int32_t>, int32_t>{std::tuple<std::string, int32_t>{"qq", 5}, 4};
-    std::cout << "nested_view" << " " << std::get<0>(p) << " " << std::get<1>(p) << " " << n << "\n";
+    std::cout << "nested_view" << " " << std::get<0>(p) << " " << std::get<1>(p) << " " << n << "\n" << ::tpy::check_signals;
 }
 
 
@@ -182,10 +182,10 @@ __gen_gen_view gen_view(bool c) {
 //         print("gen", v)
 //     print("async", asyncio.run(coro(False, (1, 2), (3, 4))))
 void main() {
-    std::cout << "values" << " " << ::tpyapp::main::values(true, std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}) << "\n";
-    std::cout << "prvalue_arm" << " " << ::tpyapp::main::prvalue_arm(false, std::tuple<int32_t, int32_t>{1, 2}) << "\n";
-    std::cout << "local_arms" << " " << ::tpyapp::main::local_arms(false) << "\n";
-    std::cout << "strings" << " " << ::tpyapp::main::strings(false, std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}) << "\n";
+    std::cout << "values" << " " << ::tpyapp::main::values(true, std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}) << "\n" << ::tpy::check_signals;
+    std::cout << "prvalue_arm" << " " << ::tpyapp::main::prvalue_arm(false, std::tuple<int32_t, int32_t>{1, 2}) << "\n" << ::tpy::check_signals;
+    std::cout << "local_arms" << " " << ::tpyapp::main::local_arms(false) << "\n" << ::tpy::check_signals;
+    std::cout << "strings" << " " << ::tpyapp::main::strings(false, std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::reseat_view(true);
     ::tpyapp::main::reseat_value(true);
     ::tpyapp::main::nested_view(true);
@@ -196,10 +196,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view sv = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen_view" << " " << sv << "\n";
+            std::cout << "gen_view" << " " << sv << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "method" << " " << Picker(10).sum(false, std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}) << "\n";
+    std::cout << "method" << " " << Picker(10).sum(false, std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}) << "\n" << ::tpy::check_signals;
     {
         auto __src_2 = ::tpyapp::main::gen(true, std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -207,10 +207,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "gen" << " " << v << "\n";
+            std::cout << "gen" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(false, std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}))) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(false, std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}))) << "\n" << ::tpy::check_signals;
 }
 
 // # `a, b = t1 if c else t2` -- a SELECT over two tuple sources at an unpack.
@@ -252,7 +252,7 @@ void __tpy_init() {
     ms = std::get<0>(__tup_1);
     mn = std::get<1>(__tup_1);
     mt1 = std::tuple<std::string, int32_t>{"qq", 5};
-    std::cout << "module" << " " << ms << " " << mn << "\n";
+    std::cout << "module" << " " << ms << " " << mn << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }
 

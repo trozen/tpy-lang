@@ -12,7 +12,7 @@ namespace tpyapp::main {
 Handle with_reads() {
     Handle h = Handle(7);
     Handle alias = std::move(h);
-    std::cout << alias.fd << "\n";
+    std::cout << alias.fd << "\n" << ::tpy::check_signals;
     return alias;
 }
 
@@ -21,7 +21,7 @@ Handle with_reads() {
 //     print(r.fd)
 void main() {
     Handle r = ::tpyapp::main::with_reads();
-    std::cout << r.fd << "\n";
+    std::cout << r.fd << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -64,29 +64,29 @@ void __tpy_init() {
 
     a = 12;
     b = 10;
-    std::cout << (static_cast<int32_t>(a & b)) << "\n";
-    std::cout << (static_cast<int32_t>(a | b)) << "\n";
-    std::cout << (static_cast<int32_t>(a ^ b)) << "\n";
+    std::cout << (static_cast<int32_t>(a & b)) << "\n" << ::tpy::check_signals;
+    std::cout << (static_cast<int32_t>(a | b)) << "\n" << ::tpy::check_signals;
+    std::cout << (static_cast<int32_t>(a ^ b)) << "\n" << ::tpy::check_signals;
     c = 0;
-    std::cout << static_cast<int32_t>(~(c)) << "\n";
-    std::cout << 16 << "\n";
-    std::cout << 8 << "\n";
-    std::cout << ::tpy::BigInt::from_str("1267650600228229401496703205376") << "\n";
-    std::cout << 1024 << "\n";
+    std::cout << static_cast<int32_t>(~(c)) << "\n" << ::tpy::check_signals;
+    std::cout << 16 << "\n" << ::tpy::check_signals;
+    std::cout << 8 << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BigInt::from_str("1267650600228229401496703205376") << "\n" << ::tpy::check_signals;
+    std::cout << 1024 << "\n" << ::tpy::check_signals;
     x = 12;
     y = 10;
-    std::cout << (static_cast<int32_t>(x & y)) << "\n";
-    std::cout << (static_cast<int32_t>(x | y)) << "\n";
-    std::cout << (static_cast<int32_t>(x ^ y)) << "\n";
+    std::cout << (static_cast<int32_t>(x & y)) << "\n" << ::tpy::check_signals;
+    std::cout << (static_cast<int32_t>(x | y)) << "\n" << ::tpy::check_signals;
+    std::cout << (static_cast<int32_t>(x ^ y)) << "\n" << ::tpy::check_signals;
     z = 0;
-    std::cout << static_cast<int32_t>(~(z)) << "\n";
+    std::cout << static_cast<int32_t>(~(z)) << "\n" << ::tpy::check_signals;
     z = 5;
-    std::cout << static_cast<int32_t>(~(z)) << "\n";
+    std::cout << static_cast<int32_t>(~(z)) << "\n" << ::tpy::check_signals;
     big1 = ((((::tpy::BigInt(1)) << (::tpy::BigInt(100)))) | (((::tpy::BigInt(1)) << (::tpy::BigInt(50)))));
     big2 = ((((::tpy::BigInt(1)) << (::tpy::BigInt(100)))) | ((::tpy::lshift_check<int32_t>(1, 25))));
-    std::cout << ((((big1) & (big2))) >> (::tpy::BigInt(100))) << "\n";
-    std::cout << ((((big1) | (big2))) >> (::tpy::BigInt(100))) << "\n";
-    std::cout << ((((big1) ^ (big2))) >> (::tpy::BigInt(50))) << "\n";
+    std::cout << ((((big1) & (big2))) >> (::tpy::BigInt(100))) << "\n" << ::tpy::check_signals;
+    std::cout << ((((big1) | (big2))) >> (::tpy::BigInt(100))) << "\n" << ::tpy::check_signals;
+    std::cout << ((((big1) ^ (big2))) >> (::tpy::BigInt(50))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -18,7 +18,7 @@ void range_basic() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t s = *__beg_1;
-        std::cout << s << "\n";
+        std::cout << s << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -31,8 +31,8 @@ void range_transform() {
         int32_t x = int32_t(__i_0);
         return (::tpy::mul_check<int32_t>(x, 2));
     });
-    std::cout << ::tpy::__len__(doubled) << "\n";
-    std::cout << ::tpy::__getitem__(doubled, 0) << " " << ::tpy::__getitem__(doubled, 3) << "\n";
+    std::cout << ::tpy::__len__(doubled) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(doubled, 0) << " " << ::tpy::__getitem__(doubled, 3) << "\n" << ::tpy::check_signals;
 }
 
 // def range_empty() -> None:
@@ -43,7 +43,7 @@ void range_empty() {
         int32_t x = int32_t(__i_0);
         return x;
     });
-    std::cout << ::tpy::__len__(empty) << "\n";
+    std::cout << ::tpy::__len__(empty) << "\n" << ::tpy::check_signals;
 }
 
 // def range_two_arg() -> None:
@@ -60,7 +60,7 @@ void range_two_arg() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t i = *__beg_1;
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -83,7 +83,7 @@ void array_source() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t d = *__beg_1;
-        std::cout << d << "\n";
+        std::cout << d << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -113,7 +113,7 @@ void array_filter_fallback() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t e = *__beg_1;
-        std::cout << e << "\n";
+        std::cout << e << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -131,7 +131,7 @@ void range_three_arg() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t e = *__beg_1;
-        std::cout << e << "\n";
+        std::cout << e << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -149,7 +149,7 @@ void range_negative_step() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t c = *__beg_1;
-        std::cout << c << "\n";
+        std::cout << c << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -161,7 +161,7 @@ void range_empty_negative() {
         int32_t x = 0 + int32_t(__i_0) * (-1);
         return x;
     });
-    std::cout << ::tpy::__len__(empty) << "\n";
+    std::cout << ::tpy::__len__(empty) << "\n" << ::tpy::check_signals;
 }
 
 // def fallback_mutation() -> None:
@@ -185,7 +185,7 @@ void fallback_mutation() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t i = *__beg_1;
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -203,7 +203,7 @@ void explicit_array_annotation() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t i = *__beg_1;
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -226,7 +226,7 @@ void explicit_list_annotation() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t i = *__beg_1;
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
 }
 

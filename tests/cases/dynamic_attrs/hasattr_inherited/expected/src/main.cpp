@@ -13,11 +13,11 @@ namespace tpyapp::main {
 //     print(getattr(c, "missing", "fallback"))  # "fallback" via inherited raise
 void main() {
     Child c = Child();
-    std::cout << ::tpy::print_bool(true) << "\n";
-    std::cout << ::tpy::print_bool(({ bool __ok = true; try { (void)(c.__getattr__("host")); } catch (const ::tpy::AttributeError&) { __ok = false; } __ok; })) << "\n";
-    std::cout << ::tpy::print_bool(({ bool __ok = true; try { (void)(c.__getattr__("missing")); } catch (const ::tpy::AttributeError&) { __ok = false; } __ok; })) << "\n";
-    std::cout << ({ std::optional<std::string> __r; try { __r.emplace(c.__getattr__("host")); } catch (const ::tpy::AttributeError&) { __r.emplace("fallback"); } std::move(*__r); }) << "\n";
-    std::cout << ({ std::optional<std::string> __r; try { __r.emplace(c.__getattr__("missing")); } catch (const ::tpy::AttributeError&) { __r.emplace("fallback"); } std::move(*__r); }) << "\n";
+    std::cout << ::tpy::print_bool(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(({ bool __ok = true; try { (void)(c.__getattr__("host")); } catch (const ::tpy::AttributeError&) { __ok = false; } __ok; })) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(({ bool __ok = true; try { (void)(c.__getattr__("missing")); } catch (const ::tpy::AttributeError&) { __ok = false; } __ok; })) << "\n" << ::tpy::check_signals;
+    std::cout << ({ std::optional<std::string> __r; try { __r.emplace(c.__getattr__("host")); } catch (const ::tpy::AttributeError&) { __r.emplace("fallback"); } std::move(*__r); }) << "\n" << ::tpy::check_signals;
+    std::cout << ({ std::optional<std::string> __r; try { __r.emplace(c.__getattr__("missing")); } catch (const ::tpy::AttributeError&) { __r.emplace("fallback"); } std::move(*__r); }) << "\n" << ::tpy::check_signals;
 }
 
 // main()

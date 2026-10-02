@@ -24,11 +24,11 @@ void main() {
     auto __tup_1 = ::tpyapp::main::split(p);
     auto&& ref = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     Point owned = std::move(std::get<1>(__tup_1));
-    std::cout << ref << "\n";
-    std::cout << owned << "\n";
+    std::cout << ref << "\n" << ::tpy::check_signals;
+    std::cout << owned << "\n" << ::tpy::check_signals;
     p.x = 99;
-    std::cout << ref << "\n";
-    std::cout << owned << "\n";
+    std::cout << ref << "\n" << ::tpy::check_signals;
+    std::cout << owned << "\n" << ::tpy::check_signals;
 }
 
 // main()

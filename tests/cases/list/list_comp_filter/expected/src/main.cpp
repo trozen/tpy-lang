@@ -38,7 +38,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(pos) << "\n";
+    std::cout << ::tpy::ListPrinter(pos) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> evens = ({
         std::vector<int32_t> __result;
         const int32_t __stop_1 = 10;
@@ -50,7 +50,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(evens) << "\n";
+    std::cout << ::tpy::ListPrinter(evens) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> result = ({
         std::vector<int32_t> __result;
         const int32_t __stop_2 = 20;
@@ -62,7 +62,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(result) << "\n";
+    std::cout << ::tpy::ListPrinter(result) << "\n" << ::tpy::check_signals;
     std::vector<std::string> words = {"hi", "hello", "hey", "howdy", "yo"};
     std::vector<std::string> short_ = ({
         std::vector<std::string> __result;
@@ -78,7 +78,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(short_) << "\n";
+    std::cout << ::tpy::ListPrinter(short_) << "\n" << ::tpy::check_signals;
 }
 
 // main()

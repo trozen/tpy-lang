@@ -12,8 +12,8 @@ namespace tpyapp::main {
 //     print(reduce(xs, func=lambda a, b: a + b))
 void main() {
     std::vector<int32_t> xs = {1, 2, 3};
-    std::cout << ::tpyapp::main::reduce<int32_t, int32_t>(xs, [](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, 0) << "\n";
-    std::cout << ::tpyapp::main::reduce<int32_t>(xs, [](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }) << "\n";
+    std::cout << ::tpyapp::main::reduce<int32_t, int32_t>(xs, [](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::reduce<int32_t>(xs, [](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }) << "\n" << ::tpy::check_signals;
 }
 
 // main()

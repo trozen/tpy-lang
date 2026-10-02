@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(Holder(B("smoke")).label)
 void main() {
     A __tmp_1 = A("rel");
-    std::cout << Holder(::tpy::Union<const A*, const B*>{&__tmp_1}).label() << "\n";
+    std::cout << Holder(::tpy::Union<const A*, const B*>{&__tmp_1}).label() << "\n" << ::tpy::check_signals;
     B __tmp_2 = B("smoke");
-    std::cout << Holder(::tpy::Union<const A*, const B*>{&__tmp_2}).label() << "\n";
+    std::cout << Holder(::tpy::Union<const A*, const B*>{&__tmp_2}).label() << "\n" << ::tpy::check_signals;
 }
 
 // main()

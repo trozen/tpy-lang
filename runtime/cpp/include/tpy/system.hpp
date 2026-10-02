@@ -45,7 +45,7 @@ inline void time_sleep(double seconds) {
         if (!(seconds > 0.0)) {
             // No wait to cut short, but still a check point: `time.sleep(0)`
             // is how a busy loop stays interruptible.
-            check_interrupt();
+            check_signals();
             return;
         }
         if (ops->sleep(seconds) == interrupt_detail::kInterrupted) {
@@ -116,13 +116,13 @@ public:
     // delivered once it returns.
     int32_t write(std::string_view text) {
         sink_->write(text.data(), static_cast<std::streamsize>(text.size()));
-        check_interrupt();
+        check_signals();
         return static_cast<int32_t>(text.size());
     }
 
     void flush() {
         sink_->flush();
-        check_interrupt();
+        check_signals();
     }
 
     std::ostream& sink() const { return *sink_; }

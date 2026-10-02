@@ -13,7 +13,7 @@ namespace tpyapp::main {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "cleanup" << "\n";
+        std::cout << "cleanup" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -69,7 +69,7 @@ __coro_cleanup cleanup() {
             throw ::tpy::ValueError("boom");
         } catch (const ::tpy::ValueError&) {
             try {
-                std::cout << "caught" << "\n";
+                std::cout << "caught" << "\n" << ::tpy::check_signals;
                 __state = S_JOIN_1;
                 continue;
             } catch (...) {
@@ -97,7 +97,7 @@ __coro_caller caller() {
 // def main() -> None:
 //     print(asyncio.run(caller()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller())) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller())) << "\n" << ::tpy::check_signals;
 }
 
 // # M3.3.1: `await` inside `finally` combined with `except` handlers.

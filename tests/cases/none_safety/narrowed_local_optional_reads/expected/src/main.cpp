@@ -31,7 +31,7 @@ void step(std::optional<::tpy::BigInt> x, std::optional<int32_t> y, std::vector<
     (*x) = ((*x)) + (::tpy::BigInt(1));
     (*y) = ::tpy::mul_check<int32_t>((*y), 2);
     ::tpy::__setitem__((*lst), 0, (((*x)) + (::tpy::BigInt((*y)))));
-    std::cout << ::tpy::print_optional_val(x) << " " << ::tpy::print_optional_val(y) << " " << ::tpy::__getitem__((*lst), 0) << "\n";
+    std::cout << ::tpy::print_optional_val(x) << " " << ::tpy::print_optional_val(y) << " " << ::tpy::__getitem__((*lst), 0) << "\n" << ::tpy::check_signals;
 }
 
 // def local_path() -> None:
@@ -55,7 +55,7 @@ void local_path() {
     }
     (*a) = ((*a)) - (::tpy::BigInt(4));
     (*b) = ::tpy::add_check<int32_t>((*b), 5);
-    std::cout << ::tpy::print_optional_val(a) << " " << ::tpy::print_optional_val(b) << "\n";
+    std::cout << ::tpy::print_optional_val(a) << " " << ::tpy::print_optional_val(b) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

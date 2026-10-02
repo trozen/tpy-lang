@@ -42,11 +42,11 @@ int32_t retained(std::vector<Cell>& xs, Cell& seed) {
 void main() {
     std::vector<Cell> xs = {Cell(1), Cell(2)};
     Cell seed = Cell(3);
-    std::cout << "free" << " " << ::tpyapp::main::retained(xs, seed) << " " << ::tpy::__getitem__(xs, 0).value << " " << ::tpy::__getitem__(xs, 1).value << " " << seed.value << "\n";
+    std::cout << "free" << " " << ::tpyapp::main::retained(xs, seed) << " " << ::tpy::__getitem__(xs, 0).value << " " << ::tpy::__getitem__(xs, 1).value << " " << seed.value << "\n" << ::tpy::check_signals;
     Runner runner = Runner(xs);
-    std::cout << "constructor" << " " << runner.result << "\n";
+    std::cout << "constructor" << " " << runner.result << "\n" << ::tpy::check_signals;
     std::array<Cell, 2> cells = {Cell(1), Cell(2)};
-    std::cout << "method" << " " << runner.change(cells, seed) << " " << ::tpy::__getitem__(cells, 0).value << " " << ::tpy::__getitem__(cells, 1).value << " " << seed.value << "\n";
+    std::cout << "method" << " " << runner.change(cells, seed) << " " << ::tpy::__getitem__(cells, 0).value << " " << ::tpy::__getitem__(cells, 1).value << " " << seed.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

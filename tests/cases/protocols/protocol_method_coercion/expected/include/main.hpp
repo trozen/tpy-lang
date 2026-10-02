@@ -72,9 +72,9 @@ inline int32_t SimpleCalc::multiply(int32_t x, int32_t y) const {
 template<Calculator T_c>
 void use_calc(T_c& c) {
     int32_t result1 = c.add(10);
-    std::cout << result1 << "\n";
+    std::cout << result1 << "\n" << ::tpy::check_signals;
     int32_t result2 = c.multiply(6, 7);
-    std::cout << result2 << "\n";
+    std::cout << result2 << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

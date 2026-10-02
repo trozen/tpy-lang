@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def greet(a: Animal) -> None:
 //     print(a.name)
 void greet(const Animal& a) {
-    std::cout << a.name << "\n";
+    std::cout << a.name << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -26,14 +26,14 @@ void greet(const Animal& a) {
 void main() {
     Dog d = Dog("Rex", "Lab");
     Animal a = Dog("Buddy", "Poodle");
-    std::cout << a.name << "\n";
+    std::cout << a.name << "\n" << ::tpy::check_signals;
     ::tpyapp::main::greet(d);
     Dog __tmp_1 = Dog("Max", "Beagle");
     ::tpyapp::main::greet(__tmp_1);
     Puppy p = Puppy("Tiny", "Corgi", ::tpy::BigInt(8));
     ::tpyapp::main::greet(p);
     Animal a2 = std::move(p);
-    std::cout << a2.name << "\n";
+    std::cout << a2.name << "\n" << ::tpy::check_signals;
 }
 
 // main()

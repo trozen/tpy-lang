@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(len(items))
 void main() {
     std::vector<::tpy::Any> items = {::tpy::make_any(::tpy::BigInt(1)), ::tpy::make_any(std::string("hello")), ::tpy::make_any(static_cast<double>(3.14)), ::tpy::make_any(nullptr), ::tpy::make_any(bool(true))};
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

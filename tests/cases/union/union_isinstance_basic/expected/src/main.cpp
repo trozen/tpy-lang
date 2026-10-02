@@ -27,10 +27,10 @@ double area(::tpy::Union<const Circle*, const Rect*> s) {
 void main() {
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(5.0);
     ::tpy::Union<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << ::tpy::print_float(::tpyapp::main::area(c.as_const())) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::area(c.as_const())) << "\n" << ::tpy::check_signals;
     ::tpy::Union<Circle, Rect> __slot_2 = Rect(3.0, 4.0);
     ::tpy::Union<Circle*, Rect*> r = ::tpy::to_ptr_variant(__slot_2);
-    std::cout << ::tpy::print_float(::tpyapp::main::area(r.as_const())) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::area(r.as_const())) << "\n" << ::tpy::check_signals;
 }
 
 // main()

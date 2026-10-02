@@ -103,7 +103,7 @@ std::string chain_raise(const ::tpy::BigInt& n, bool flag) {
         }
     }
     if (__match_subject_1 == 1) {
-        std::cout << "chain_raise: next arm" << "\n";
+        std::cout << "chain_raise: next arm" << "\n" << ::tpy::check_signals;
         return "fell";
     }
     {
@@ -137,7 +137,7 @@ std::string chain_if_else(const ::tpy::BigInt& n, bool flag, bool pick) {
         }
     }
     if (__match_subject_1 == 1) {
-        std::cout << "chain_if_else: next arm" << "\n";
+        std::cout << "chain_if_else: next arm" << "\n" << ::tpy::check_signals;
         return "fell";
     }
     {
@@ -168,11 +168,11 @@ std::string chain_try_finally(const ::tpy::BigInt& n, bool flag) {
                 try {
                     std::string __tpy_ret_0 = "ret";
                     __fin_ran_1 = true;
-                    std::cout << "chain_try_finally: finally" << "\n";
+                    std::cout << "chain_try_finally: finally" << "\n" << ::tpy::check_signals;
                     return __tpy_ret_0;
                 } catch (...) {
                     if (!__fin_ran_1) {
-                        std::cout << "chain_try_finally: finally" << "\n";
+                        std::cout << "chain_try_finally: finally" << "\n" << ::tpy::check_signals;
                     }
                     throw;
                 }
@@ -180,7 +180,7 @@ std::string chain_try_finally(const ::tpy::BigInt& n, bool flag) {
         }
     }
     if (__match_subject_1 == 1) {
-        std::cout << "chain_try_finally: next arm" << "\n";
+        std::cout << "chain_try_finally: next arm" << "\n" << ::tpy::check_signals;
         return "fell";
     }
     {
@@ -207,12 +207,12 @@ void chain_break(const std::vector<::tpy::BigInt>& xs, bool flag) {
         auto& __match_subject_1 = x;
         if (__match_subject_1 == 2) {
             if (flag) {
-                std::cout << "chain_break: break at" << " " << x << "\n";
+                std::cout << "chain_break: break at" << " " << x << "\n" << ::tpy::check_signals;
                 break;
             }
         }
         {
-            std::cout << "chain_break: saw" << " " << x << "\n";
+            std::cout << "chain_break: saw" << " " << x << "\n" << ::tpy::check_signals;
             goto __match_end_2;
         }
         __match_end_2:;
@@ -255,7 +255,7 @@ std::string union_nested_match(::tpy::Union<const Cat*, const Dog*> a, Color c) 
             }
         }
         {
-            std::cout << "union_nested_match: next arm" << "\n";
+            std::cout << "union_nested_match: next arm" << "\n" << ::tpy::check_signals;
             return "fell";
         }
     }
@@ -300,7 +300,7 @@ std::string union_nested_match(::tpy::Union<const Cat*, const Dog*> a, Color c) 
             }
         }
         {
-            std::cout << "union_while_true: next arm" << "\n";
+            std::cout << "union_while_true: next arm" << "\n" << ::tpy::check_signals;
             return ::tpy::BigInt(-1);
         }
     }
@@ -334,7 +334,7 @@ std::string union_assert_false(::tpy::Union<const Cat*, const Dog*> a) {
             }
         }
         {
-            std::cout << "union_assert_false: next arm" << "\n";
+            std::cout << "union_assert_false: next arm" << "\n" << ::tpy::check_signals;
             return "fell";
         }
     }
@@ -369,18 +369,18 @@ void union_break(const std::vector<::tpy::Union<Cat, Dog>>& pets) {
             {
                 auto& n = __case_0.name;
                 if ((n == "Luna")) {
-                    std::cout << "union_break: break at" << " " << n << "\n";
+                    std::cout << "union_break: break at" << " " << n << "\n" << ::tpy::check_signals;
                     goto __loop_break_1;
                 }
             }
             {
-                std::cout << "union_break: next arm" << "\n";
+                std::cout << "union_break: next arm" << "\n" << ::tpy::check_signals;
                 goto __match_end_2;
             }
             break;
         }
         default: {
-            std::cout << "union_break: dog" << "\n";
+            std::cout << "union_break: dog" << "\n" << ::tpy::check_signals;
             goto __match_end_2;
             break;
         }
@@ -418,7 +418,7 @@ __match_end_2:;
     }
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
-        std::cout << "switch_while_true: cat" << "\n";
+        std::cout << "switch_while_true: cat" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -446,11 +446,11 @@ std::string switch_try_finally(::tpy::Union<const Cat*, const Dog*> a) {
             try {
                 std::string __tpy_ret_0 = "ret";
                 __fin_ran_2 = true;
-                std::cout << "switch_try_finally: finally" << "\n";
+                std::cout << "switch_try_finally: finally" << "\n" << ::tpy::check_signals;
                 return __tpy_ret_0;
             } catch (...) {
                 if (!__fin_ran_2) {
-                    std::cout << "switch_try_finally: finally" << "\n";
+                    std::cout << "switch_try_finally: finally" << "\n" << ::tpy::check_signals;
                 }
                 throw;
             }
@@ -458,7 +458,7 @@ std::string switch_try_finally(::tpy::Union<const Cat*, const Dog*> a) {
     }
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
-        std::cout << "switch_try_finally: cat" << "\n";
+        std::cout << "switch_try_finally: cat" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -517,52 +517,52 @@ void main() {
     ::tpy::Union<Cat*, Dog*> c1 = ::tpy::to_ptr_variant(__slot_3);
     ::tpy::Union<Cat, Dog> __slot_4 = Cat("Luna");
     ::tpy::Union<Cat*, Dog*> c2 = ::tpy::to_ptr_variant(__slot_4);
-    std::cout << ::tpyapp::main::describe(d1.as_const()) << "\n";
-    std::cout << ::tpyapp::main::describe(d2.as_const()) << "\n";
-    std::cout << ::tpyapp::main::describe(c1.as_const()) << "\n";
-    std::cout << ::tpyapp::main::describe(c2.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(d1.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(d2.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(c1.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(c2.as_const()) << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::chain_raise(::tpy::BigInt(1), true);
         } catch (const ::tpy::ValueError&) {
-            std::cout << "chain_raise: caught" << "\n";
+            std::cout << "chain_raise: caught" << "\n" << ::tpy::check_signals;
         }
     }
     std::string r = ::tpyapp::main::chain_raise(::tpy::BigInt(1), false);
-    std::cout << "chain_raise:" << " " << r << "\n";
+    std::cout << "chain_raise:" << " " << r << "\n" << ::tpy::check_signals;
     r = ::tpyapp::main::chain_if_else(::tpy::BigInt(1), true, false);
-    std::cout << "chain_if_else:" << " " << r << "\n";
+    std::cout << "chain_if_else:" << " " << r << "\n" << ::tpy::check_signals;
     r = ::tpyapp::main::chain_if_else(::tpy::BigInt(1), false, false);
-    std::cout << "chain_if_else:" << " " << r << "\n";
+    std::cout << "chain_if_else:" << " " << r << "\n" << ::tpy::check_signals;
     r = ::tpyapp::main::chain_try_finally(::tpy::BigInt(1), true);
-    std::cout << "chain_try_finally:" << " " << r << "\n";
+    std::cout << "chain_try_finally:" << " " << r << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> __tmp_1 = {1, 2, 3};
     ::tpyapp::main::chain_break(__tmp_1, true);
     r = ::tpyapp::main::union_nested_match(d1.as_const(), Color::BLUE);
-    std::cout << "union_nested_match:" << " " << r << "\n";
+    std::cout << "union_nested_match:" << " " << r << "\n" << ::tpy::check_signals;
     r = ::tpyapp::main::union_nested_match(d2.as_const(), Color::RED);
-    std::cout << "union_nested_match:" << " " << r << "\n";
+    std::cout << "union_nested_match:" << " " << r << "\n" << ::tpy::check_signals;
     ::tpy::BigInt k = ::tpyapp::main::union_while_true(d1.as_const());
-    std::cout << "union_while_true:" << " " << k << "\n";
+    std::cout << "union_while_true:" << " " << k << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::union_assert_false(d1.as_const());
         } catch (const ::tpy::AssertionError&) {
-            std::cout << "union_assert_false: caught" << "\n";
+            std::cout << "union_assert_false: caught" << "\n" << ::tpy::check_signals;
         }
     }
     r = ::tpyapp::main::union_assert_false(d2.as_const());
-    std::cout << "union_assert_false:" << " " << r << "\n";
+    std::cout << "union_assert_false:" << " " << r << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Union<Cat, Dog>> __tmp_2 = {Dog("Buddy"), Cat("Whiskers"), Cat("Luna"), Dog("Rex")};
     ::tpyapp::main::union_break(__tmp_2);
     k = ::tpyapp::main::switch_while_true(d1.as_const());
-    std::cout << "switch_while_true:" << " " << k << "\n";
+    std::cout << "switch_while_true:" << " " << k << "\n" << ::tpy::check_signals;
     k = ::tpyapp::main::switch_while_true(c1.as_const());
-    std::cout << "switch_while_true:" << " " << k << "\n";
+    std::cout << "switch_while_true:" << " " << k << "\n" << ::tpy::check_signals;
     r = ::tpyapp::main::switch_try_finally(d1.as_const());
-    std::cout << "switch_try_finally:" << " " << r << "\n";
+    std::cout << "switch_try_finally:" << " " << r << "\n" << ::tpy::check_signals;
     r = ::tpyapp::main::switch_try_finally(c1.as_const());
-    std::cout << "switch_try_finally:" << " " << r << "\n";
+    std::cout << "switch_try_finally:" << " " << r << "\n" << ::tpy::check_signals;
 }
 
 // # match/case with guard clauses (if conditions); the terminator sections pin

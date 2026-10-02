@@ -56,11 +56,11 @@ void mutate_borrowed(std::tuple<Box, Box*>&& p) {
 //     print(b.n)
 void main() {
     Box b = Box(2);
-    std::cout << ::tpyapp::main::take_mixed(::tpyapp::main::make_mixed(b)) << "\n";
-    std::cout << ::tpyapp::main::relay(b) << "\n";
-    std::cout << ::tpyapp::main::take_owned(::tpyapp::main::make_owned()) << "\n";
+    std::cout << ::tpyapp::main::take_mixed(::tpyapp::main::make_mixed(b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::relay(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take_owned(::tpyapp::main::make_owned()) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::mutate_borrowed(::tpyapp::main::make_mixed(b));
-    std::cout << b.n << "\n";
+    std::cout << b.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

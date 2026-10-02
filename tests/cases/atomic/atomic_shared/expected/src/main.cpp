@@ -17,9 +17,9 @@ void main() {
     ::tpystd::tplib::arc::Arc<Counter> b = a.clone();
     a.get().n.__iadd__(5);
     a.get().n.fetch_add(3);
-    std::cout << b.get().n.load() << "\n";
+    std::cout << b.get().n.load() << "\n" << ::tpy::check_signals;
     b.get().n.store(100, ::std::memory_order::relaxed);
-    std::cout << a.get().n.load() << "\n";
+    std::cout << a.get().n.load() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.arc import Arc

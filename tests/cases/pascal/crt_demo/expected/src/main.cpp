@@ -32,17 +32,17 @@ void __tpy_init() {
     ::tpyapp::crt::textcolor(::tpyapp::crt::red);
     ::tpyapp::crt::textbackground(::tpyapp::crt::yellow);
     ::tpyapp::crt::gotoxy(3, 5);
-    std::cout << "hello";
+    std::cout << "hello" << ::tpy::check_signals;
     ::tpyapp::crt::textcolor(::tpyapp::crt::lightgreen);
     ::tpyapp::crt::textbackground(::tpyapp::crt::black);
     ::tpyapp::crt::clreol();
-    std::cout << " world" << "\n";
+    std::cout << " world" << "\n" << ::tpy::check_signals;
     ::tpyapp::crt::delay(0);
     ::tpyapp::crt::sound(440);
     ::tpyapp::crt::nosound();
-    std::cout << "press a key: ";
+    std::cout << "press a key: " << ::tpy::check_signals;
     ch = ::tpyapp::crt::readkey();
-    std::cout << ch << "\n";
+    std::cout << ch << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -26,11 +26,11 @@ namespace tpyapp::main {
 void test_binary_ops() {
     int32_t a = 20;
     int32_t b = 7;
-    std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n";
-    std::cout << (::tpy::sub_check<int32_t>(a, b)) << "\n";
-    std::cout << (::tpy::mul_check<int32_t>(a, b)) << "\n";
-    std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n";
-    std::cout << (::tpy::mod_floor<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::sub_check<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::mul_check<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::mod_floor<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_unary_neg():
@@ -42,9 +42,9 @@ void test_binary_ops() {
 //     print(-y)  # 100
 void test_unary_neg() {
     int32_t x = 42;
-    std::cout << ::tpy::neg_check<int32_t>(x) << "\n";
+    std::cout << ::tpy::neg_check<int32_t>(x) << "\n" << ::tpy::check_signals;
     int32_t y = -100;
-    std::cout << ::tpy::neg_check<int32_t>(y) << "\n";
+    std::cout << ::tpy::neg_check<int32_t>(y) << "\n" << ::tpy::check_signals;
 }
 
 // def test_mixed_literals():
@@ -61,9 +61,9 @@ void test_unary_neg() {
 //     print(x * 2 + 3)  # 23
 void test_mixed_literals() {
     int32_t x = 10;
-    std::cout << (::tpy::add_check<int32_t>(x, 5)) << "\n";
-    std::cout << (::tpy::add_check<int32_t>(5, x)) << "\n";
-    std::cout << (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(x, 2)), 3)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(x, 5)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::add_check<int32_t>(5, x)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(x, 2)), 3)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_negative_division():
@@ -79,8 +79,8 @@ void test_mixed_literals() {
 void test_negative_division() {
     int32_t a = -17;
     int32_t b = 5;
-    std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n";
-    std::cout << (::tpy::mod_floor<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::mod_floor<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
 }
 
 // """Test int32 arithmetic operations with overflow checks."""

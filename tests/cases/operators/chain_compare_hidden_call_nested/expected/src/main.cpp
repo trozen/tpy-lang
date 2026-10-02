@@ -34,16 +34,16 @@ void main() {
     P p = P();
     calls = 0;
     bool coerced = ({ auto&& _cmp1 = p.narrow(); (1 < _cmp1) && (_cmp1 < 10); });
-    std::cout << "coerced:" << " " << ::tpy::print_bool(coerced) << " " << "calls:" << " " << calls << "\n";
+    std::cout << "coerced:" << " " << ::tpy::print_bool(coerced) << " " << "calls:" << " " << calls << "\n" << ::tpy::check_signals;
     calls = 0;
     bool nested = ({ auto&& _cmp1 = p.deep().v; (1 < _cmp1) && (_cmp1 < 10); });
-    std::cout << "nested receiver:" << " " << ::tpy::print_bool(nested) << " " << "calls:" << " " << calls << "\n";
+    std::cout << "nested receiver:" << " " << ::tpy::print_bool(nested) << " " << "calls:" << " " << calls << "\n" << ::tpy::check_signals;
     calls = 0;
     bool both = ({ auto&& _cmp0 = p.narrow(); auto&& _cmp1 = ((p.deep().v) + (::tpy::BigInt(1))); (_cmp0 < _cmp1) && (_cmp1 < 100); });
-    std::cout << "two hidden calls:" << " " << ::tpy::print_bool(both) << " " << "calls:" << " " << calls << "\n";
+    std::cout << "two hidden calls:" << " " << ::tpy::print_bool(both) << " " << "calls:" << " " << calls << "\n" << ::tpy::check_signals;
     calls = 0;
     bool member = ({ auto&& __in_lhs = p.deep().v; (__in_lhs == 5) || (__in_lhs == 9); });
-    std::cout << "nested needle:" << " " << ::tpy::print_bool(member) << " " << "calls:" << " " << calls << "\n";
+    std::cout << "nested needle:" << " " << ::tpy::print_bool(member) << " " << "calls:" << " " << calls << "\n" << ::tpy::check_signals;
 }
 
 // calls = 0

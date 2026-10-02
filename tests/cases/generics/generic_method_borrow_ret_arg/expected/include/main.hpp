@@ -136,7 +136,7 @@ inline Owner::Owner() : h(Holder(10)) {}
 inline void Owner::run() {
     Bumper<Cell> b = Bumper<Cell>();
     b.bump_it(this->h.borrow());
-    std::cout << "method" << " " << this->h.c.n << "\n";
+    std::cout << "method" << " " << this->h.c.n << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

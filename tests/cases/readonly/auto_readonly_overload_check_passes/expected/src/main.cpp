@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Box b = Box();
     b.value = 42;
-    std::cout << b.get() << "\n";
+    std::cout << b.get() << "\n" << ::tpy::check_signals;
 }
 
 // main()

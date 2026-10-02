@@ -471,7 +471,7 @@ inline Guard& Guard::operator=(Guard&& other) noexcept {
 //     print("sibling_loop_guard del", self.p.n())
 inline Guard::~Guard() {
     if (!this->__tpy_owned_) return;
-    std::cout << "sibling_loop_guard del" << " " << ::tpy::deref_check(this->p).n() << "\n";
+    std::cout << "sibling_loop_guard del" << " " << ::tpy::deref_check(this->p).n() << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self) -> None:
@@ -547,11 +547,11 @@ inline int32_t H::try_return() && {
         try {
             int32_t __tpy_ret_0 = ::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)})));
             __fin_ran_1 = true;
-            std::cout << "try_return finally" << " " << ::tpy::__len__(this->a.xs) << "\n";
+            std::cout << "try_return finally" << " " << ::tpy::__len__(this->a.xs) << "\n" << ::tpy::check_signals;
             return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_1) {
-                std::cout << "try_return finally" << " " << ::tpy::__len__(this->a.xs) << "\n";
+                std::cout << "try_return finally" << " " << ::tpy::__len__(this->a.xs) << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -570,11 +570,11 @@ inline ::tpy::BigInt H::try_return_scalar() && {
         try {
             ::tpy::BigInt __tpy_ret_0 = this->n;
             __fin_ran_2 = true;
-            std::cout << "try_return_scalar finally" << " " << this->n << "\n";
+            std::cout << "try_return_scalar finally" << " " << this->n << "\n" << ::tpy::check_signals;
             return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_2) {
-                std::cout << "try_return_scalar finally" << " " << this->n << "\n";
+                std::cout << "try_return_scalar finally" << " " << this->n << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -718,12 +718,12 @@ inline int32_t H::try_handler_return() && {
             } catch (const ::tpy::ValueError&) {
                 int32_t __tpy_ret_0 = ::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)})));
                 __fin_ran_4 = true;
-                std::cout << "try_handler_return finally" << " " << ::tpy::__len__(this->a.xs) << "\n";
+                std::cout << "try_handler_return finally" << " " << ::tpy::__len__(this->a.xs) << "\n" << ::tpy::check_signals;
                 return __tpy_ret_0;
             }
         } catch (...) {
             if (!__fin_ran_4) {
-                std::cout << "try_handler_return finally" << " " << ::tpy::__len__(this->a.xs) << "\n";
+                std::cout << "try_handler_return finally" << " " << ::tpy::__len__(this->a.xs) << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -745,7 +745,7 @@ inline int32_t H::try_handler_return() && {
 inline int32_t H::try_else_return() && {
     {
         try {
-            std::cout << "try_else_return body" << "\n";
+            std::cout << "try_else_return body" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
             return 0;
             goto __after_else_1;

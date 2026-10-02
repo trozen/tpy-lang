@@ -26,7 +26,7 @@ void main() {
     Holder h = Holder(Box(5));
     Box __tmp_1 = Box(3);
     int32_t first = ::tpyapp::main::use(h, __tmp_1);
-    std::cout << first << " " << std::get<1>(h.pair).val << "\n";
+    std::cout << first << " " << std::get<1>(h.pair).val << "\n" << ::tpy::check_signals;
 }
 
 // main()

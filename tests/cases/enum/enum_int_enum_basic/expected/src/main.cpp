@@ -71,21 +71,21 @@ namespace tpyapp::main {
 //     print(w)
 void main() {
     Priority p = Priority::High;
-    std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::Low) < static_cast<int32_t>(Priority::High))) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::High) > static_cast<int32_t>(Priority::Medium))) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::Low) <= static_cast<int32_t>(Priority::Low))) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::High) >= static_cast<int32_t>(Priority::Medium))) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<int32_t>(p) == 2)) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<int32_t>(p) != 1)) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::Low) == 0)) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::Low) < static_cast<int32_t>(Priority::High))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::High) > static_cast<int32_t>(Priority::Medium))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::Low) <= static_cast<int32_t>(Priority::Low))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::High) >= static_cast<int32_t>(Priority::Medium))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<int32_t>(p) == 2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<int32_t>(p) != 1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::Low) == 0)) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt x = ::tpy::BigInt((::tpy::add_check<int32_t>(static_cast<int32_t>(Priority::Medium), 10)));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     ::tpy::BigInt y = ::tpy::BigInt((::tpy::add_check<int32_t>(10, static_cast<int32_t>(Priority::Medium))));
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
     ::tpy::BigInt z = ::tpy::BigInt((::tpy::mul_check<int32_t>(static_cast<int32_t>(Priority::High), 3)));
-    std::cout << z << "\n";
+    std::cout << z << "\n" << ::tpy::check_signals;
     ::tpy::BigInt w = ::tpy::BigInt((::tpy::sub_check<int32_t>(static_cast<int32_t>(Priority::High), 1)));
-    std::cout << w << "\n";
+    std::cout << w << "\n" << ::tpy::check_signals;
 }
 
 // # IntEnum: arithmetic, ordering, and int comparison

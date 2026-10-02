@@ -44,11 +44,11 @@ int32_t via_subscript(const std::vector<Box>& items) {
 //     print(via_subscript(lst))
 void main() {
     Pair p = Pair(3, 4);
-    std::cout << ::tpyapp::main::via_field(p) << "\n";
+    std::cout << ::tpyapp::main::via_field(p) << "\n" << ::tpy::check_signals;
     std::vector<Box> lst = std::vector<Box>{};
     lst.push_back(Box(5));
     lst.push_back(Box(6));
-    std::cout << ::tpyapp::main::via_subscript(lst) << "\n";
+    std::cout << ::tpyapp::main::via_subscript(lst) << "\n" << ::tpy::check_signals;
 }
 
 // main()

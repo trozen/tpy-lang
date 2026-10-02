@@ -58,9 +58,9 @@ void use(std::optional<std::tuple<double, int32_t>> r) {
         const auto& __tup_1 = (*r);
         double a = std::get<0>(__tup_1);
         int32_t b = std::get<1>(__tup_1);
-        std::cout << "param" << " " << ::tpy::print_float(a) << " " << b << "\n";
+        std::cout << "param" << " " << ::tpy::print_float(a) << " " << b << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "param none" << "\n";
+        std::cout << "param none" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -81,13 +81,13 @@ void use_finally(std::optional<std::tuple<double, int32_t>> r) {
                 const auto& __tup_1 = (*r);
                 a = std::get<0>(__tup_1);
                 b = std::get<1>(__tup_1);
-                std::cout << "finally" << " " << ::tpy::print_float(a) << " " << b << "\n";
+                std::cout << "finally" << " " << ::tpy::print_float(a) << " " << b << "\n" << ::tpy::check_signals;
             }
         } catch (...) {
-            std::cout << "finally done" << "\n";
+            std::cout << "finally done" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally done" << "\n";
+        std::cout << "finally done" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -103,9 +103,9 @@ void use_and(std::optional<std::tuple<double, int32_t>> r) {
         const auto& __tup_1 = (*r);
         double a = std::get<0>(__tup_1);
         int32_t b = std::get<1>(__tup_1);
-        std::cout << "and" << " " << ::tpy::print_float(a) << " " << b << "\n";
+        std::cout << "and" << " " << ::tpy::print_float(a) << " " << b << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "and skip" << "\n";
+        std::cout << "and skip" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -118,7 +118,7 @@ void use_discard(std::optional<std::tuple<double, int32_t>> r) {
     if ((r.has_value())) {
         const auto& __tup_1 = (*r);
         double a = std::get<0>(__tup_1);
-        std::cout << "discard" << " " << ::tpy::print_float(a) << "\n";
+        std::cout << "discard" << " " << ::tpy::print_float(a) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -136,12 +136,12 @@ void use_reused(std::optional<std::tuple<double, int32_t>> r, std::optional<std:
         const auto& __tup_1 = (*r);
         double a = std::get<0>(__tup_1);
         int32_t b = std::get<1>(__tup_1);
-        std::cout << "reused" << " " << ::tpy::print_float(a) << " " << b << "\n";
+        std::cout << "reused" << " " << ::tpy::print_float(a) << " " << b << "\n" << ::tpy::check_signals;
         if ((s.has_value())) {
             const auto& __tup_2 = (*s);
             a = std::get<0>(__tup_2);
             b = std::get<1>(__tup_2);
-            std::cout << "reused" << " " << ::tpy::print_float(a) << " " << b << "\n";
+            std::cout << "reused" << " " << ::tpy::print_float(a) << " " << b << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -156,7 +156,7 @@ void use_str(std::optional<std::tuple<std::string, int32_t>> r) {
         const auto& __tup_1 = (*r);
         std::string_view a = std::get<0>(__tup_1);
         int32_t b = std::get<1>(__tup_1);
-        std::cout << "str" << " " << a << " " << b << "\n";
+        std::cout << "str" << " " << a << " " << b << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -166,7 +166,7 @@ void use_str(std::optional<std::tuple<std::string, int32_t>> r) {
 //     print("whole", s is None)
 void whole(std::optional<std::tuple<double, int32_t>> r) {
     std::optional<std::tuple<double, int32_t>> s = r;
-    std::cout << "whole" << " " << ::tpy::print_bool((!s.has_value())) << "\n";
+    std::cout << "whole" << " " << ::tpy::print_bool((!s.has_value())) << "\n" << ::tpy::check_signals;
 }
 
 // # early-return narrow: the unpack follows an `if r is None: return`
@@ -178,13 +178,13 @@ void whole(std::optional<std::tuple<double, int32_t>> r) {
 //     print("early", a, b)
 void use_early(std::optional<std::tuple<double, int32_t>> r) {
     if ((!r.has_value())) {
-        std::cout << "early none" << "\n";
+        std::cout << "early none" << "\n" << ::tpy::check_signals;
         return;
     }
     const auto& __tup_1 = (*r);
     double a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
-    std::cout << "early" << " " << ::tpy::print_float(a) << " " << b << "\n";
+    std::cout << "early" << " " << ::tpy::print_float(a) << " " << b << "\n" << ::tpy::check_signals;
 }
 
 // # closure: a nested def unpacks the narrowed enclosing param
@@ -200,7 +200,7 @@ void use_closure(std::optional<std::tuple<double, int32_t>> r) {
             const auto& __tup_1 = (*r);
             double a = std::get<0>(__tup_1);
             int32_t b = std::get<1>(__tup_1);
-            std::cout << "closure" << " " << ::tpy::print_float(a) << " " << b << "\n";
+            std::cout << "closure" << " " << ::tpy::print_float(a) << " " << b << "\n" << ::tpy::check_signals;
         }
     };
     inner();
@@ -224,7 +224,7 @@ void use_with(std::optional<std::tuple<double, int32_t>> r) {
             const auto& __tup_1 = (*r);
             a = std::get<0>(__tup_1);
             b = std::get<1>(__tup_1);
-            std::cout << "with" << " " << ::tpy::print_float(a) << " " << b << "\n";
+            std::cout << "with" << " " << ::tpy::print_float(a) << " " << b << "\n" << ::tpy::check_signals;
         }
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -255,12 +255,12 @@ void use_match(std::optional<std::tuple<double, int32_t>> r, int32_t k) {
             const auto& __tup_1 = (*r);
             double a = std::get<0>(__tup_1);
             int32_t b = std::get<1>(__tup_1);
-            std::cout << "match" << " " << ::tpy::print_float(a) << " " << b << "\n";
+            std::cout << "match" << " " << ::tpy::print_float(a) << " " << b << "\n" << ::tpy::check_signals;
         }
         break;
     }
     default: {
-        std::cout << "match other" << "\n";
+        std::cout << "match other" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -279,7 +279,7 @@ std::expected<double, Missing> first_of(std::optional<std::tuple<double, int32_t
         const auto& __tup_1 = (*r);
         double a = std::get<0>(__tup_1);
         int32_t b = std::get<1>(__tup_1);
-        std::cout << "error_return" << " " << b << "\n";
+        std::cout << "error_return" << " " << b << "\n" << ::tpy::check_signals;
         return a;
     }
     return ::tpy::make_unexpected(Missing{});
@@ -301,11 +301,11 @@ void use_error_return(std::optional<std::tuple<double, int32_t>> r) {
             a = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // else:
-        std::cout << "error_return" << " " << ::tpy::print_float(a) << "\n";
+        std::cout << "error_return" << " " << ::tpy::print_float(a) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Missing:
         __except_1:;
-        std::cout << "error_return missing" << "\n";
+        std::cout << "error_return missing" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }
@@ -364,20 +364,20 @@ void main() {
     ::tpyapp::main::use_str(rs);
     ::tpyapp::main::whole(r);
     ::tpyapp::main::whole(std::nullopt);
-    std::cout << "return" << " " << ::tpy::print_bool((!::tpyapp::main::find(0).has_value())) << "\n";
+    std::cout << "return" << " " << ::tpy::print_bool((!::tpyapp::main::find(0).has_value())) << "\n" << ::tpy::check_signals;
     std::optional<std::tuple<double, int32_t>> r1 = ::tpyapp::main::find_name(5);
     if ((r1.has_value())) {
         const auto& __tup_1 = (*r1);
         double a = std::get<0>(__tup_1);
         int32_t b = std::get<1>(__tup_1);
-        std::cout << "return" << " " << ::tpy::print_float(a) << " " << b << "\n";
+        std::cout << "return" << " " << ::tpy::print_float(a) << " " << b << "\n" << ::tpy::check_signals;
     }
     std::optional<std::tuple<std::string, int32_t>> r2 = ::tpyapp::main::find_str_name(6);
     if ((r2.has_value())) {
         const auto& __tup_2 = (*r2);
         std::string_view a2 = std::get<0>(__tup_2);
         int32_t b2 = std::get<1>(__tup_2);
-        std::cout << "return" << " " << a2 << " " << b2 << "\n";
+        std::cout << "return" << " " << a2 << " " << b2 << "\n" << ::tpy::check_signals;
     }
     ::tpyapp::main::use_early(std::tuple<double, int32_t>{1.5, 3});
     ::tpyapp::main::use_early(std::nullopt);

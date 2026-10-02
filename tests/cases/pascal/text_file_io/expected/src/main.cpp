@@ -76,16 +76,16 @@ void __tpy_init() {
     f->assign("out.txt");
     f->reset();
     line->assign(f->readln_line());
-    std::cout << "header: ";
-    std::cout << std::string(::tpy::__str__((*line))) << "\n";
+    std::cout << "header: " << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__((*line))) << "\n" << ::tpy::check_signals;
     sum = 0;
     while ((!(f->eof()))) {
         n = f->readln_int();
         sum = (::tpy::add_check<int32_t>(sum, n));
     }
     f->close();
-    std::cout << "sum: ";
-    std::cout << sum << "\n";
+    std::cout << "sum: " << ::tpy::check_signals;
+    std::cout << sum << "\n" << ::tpy::check_signals;
     f->assign("out.txt");
     f->append();
     f->writeln_int(50);
@@ -93,13 +93,13 @@ void __tpy_init() {
     f->close();
     f->assign("out.txt");
     f->reset();
-    std::cout << "lines: ";
+    std::cout << "lines: " << ::tpy::check_signals;
     n = 0;
     while ((!(f->eof()))) {
         line->assign(f->readln_line());
         n = (::tpy::add_check<int32_t>(n, 1));
     }
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
     f->close();
 }
 

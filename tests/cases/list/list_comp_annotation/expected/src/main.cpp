@@ -26,7 +26,7 @@ std::vector<::tpy::BigInt> make_bigints() {
 // def accept_wide(items: list[int64]) -> None:
 //     print(items)
 void accept_wide(const std::vector<int64_t>& items) {
-    std::cout << ::tpy::ListPrinter(items) << "\n";
+    std::cout << ::tpy::ListPrinter(items) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -71,7 +71,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(big) << "\n";
+    std::cout << ::tpy::ListPrinter(big) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> wide = ({
         std::vector<int64_t> __result;
         auto& __obj_1 = items;
@@ -84,9 +84,9 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(wide) << "\n";
+    std::cout << ::tpy::ListPrinter(wide) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> result = ::tpyapp::main::make_bigints();
-    std::cout << ::tpy::ListPrinter(result) << "\n";
+    std::cout << ::tpy::ListPrinter(result) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> doubled = ({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_2 = items;
@@ -99,7 +99,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(doubled) << "\n";
+    std::cout << ::tpy::ListPrinter(doubled) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> big_pos = ({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_3 = items;
@@ -114,7 +114,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(big_pos) << "\n";
+    std::cout << ::tpy::ListPrinter(big_pos) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> __tmp_1 = ({
         std::vector<int64_t> __result;
         auto& __obj_4 = items;
@@ -140,7 +140,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(same) << "\n";
+    std::cout << ::tpy::ListPrinter(same) << "\n" << ::tpy::check_signals;
 }
 
 // main()

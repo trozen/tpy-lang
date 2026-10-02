@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void main() {
     Box b = Box(100);
     std::string a = b.apply(5, std::string_view("sum"));
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
     int32_t c = b.apply(5, 7);
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
 }
 
 // main()

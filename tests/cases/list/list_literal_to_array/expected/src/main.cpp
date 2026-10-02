@@ -35,17 +35,17 @@ int32_t sum_array(const std::array<int32_t, 3>& arr) {
 //     print(count)  # 1
 void main() {
     std::array<int32_t, 3> arr1 = {1, 2, 3};
-    std::cout << ::tpyapp::main::sum_array(arr1) << "\n";
+    std::cout << ::tpyapp::main::sum_array(arr1) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> __tmp_1 = {10, 20, 30};
-    std::cout << ::tpyapp::main::sum_array(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::sum_array(__tmp_1) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> __tmp_2 = {100, 200, 300};
     int32_t result = ::tpyapp::main::sum_array(__tmp_2);
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> __tmp_3 = {1, 1, 1};
     if ((::tpyapp::main::sum_array(__tmp_3) > 0)) {
-        std::cout << 1 << "\n";
+        std::cout << 1 << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << 0 << "\n";
+        std::cout << 0 << "\n" << ::tpy::check_signals;
     }
     int32_t count = 0;
     while (true) {
@@ -53,7 +53,7 @@ void main() {
         if (!((::tpyapp::main::sum_array(__tmp_4) > count))) break;
         count = (::tpy::add_check<int32_t>(count, 1));
     }
-    std::cout << count << "\n";
+    std::cout << count << "\n" << ::tpy::check_signals;
 }
 
 // """Tests that list literals can be coerced to Array types.

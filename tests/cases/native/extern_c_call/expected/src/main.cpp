@@ -20,7 +20,7 @@ extern "C" int32_t Helper_Add(int32_t x) {
 //     print(y)
 extern "C" void app_init() {
     int32_t y = Helper_Add(42);
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import export

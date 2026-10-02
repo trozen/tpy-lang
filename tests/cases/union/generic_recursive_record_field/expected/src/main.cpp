@@ -47,10 +47,10 @@ void main() {
     Tree<int32_t> seed = std::vector<Tree<int32_t>>{1, std::vector<Tree<int32_t>>{2, 3}, 4};
     Holder h = Holder(std::move(seed));
     Tree<int32_t>& g = h.get();
-    std::cout << ::tpyapp::main::leaf_count(g) << "\n";
-    std::cout << ::tpyapp::main::leaf_count(h.get()) << "\n";
+    std::cout << ::tpyapp::main::leaf_count(g) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::leaf_count(h.get()) << "\n" << ::tpy::check_signals;
     Tree<int32_t> probe = std::vector<Tree<int32_t>>{9, 9, 9, 9};
-    std::cout << ::tpy::print_bool(h.matches(probe)) << "\n";
+    std::cout << ::tpy::print_bool(h.matches(probe)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

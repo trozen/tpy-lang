@@ -102,9 +102,9 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view r = *__beg_1;
-        std::cout << r << "\n";
+        std::cout << r << "\n" << ::tpy::check_signals;
     }
-    std::cout << "f.txt size:" << " " << size << "\n";
+    std::cout << "f.txt size:" << " " << size << "\n" << ::tpy::check_signals;
     int32_t n = 0;
     auto __obj_2 = ::tpystd::os::scandir((::tpy::str_concat(base, "/empty")));
     auto __beg_2 = __obj_2.begin();
@@ -113,7 +113,7 @@ void main() {
         const auto& _ = *__beg_2;
         n = ::tpy::add_check<int32_t>(n, 1);
     }
-    std::cout << "empty entries:" << " " << n << "\n";
+    std::cout << "empty entries:" << " " << n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::teardown(base);
 }
 

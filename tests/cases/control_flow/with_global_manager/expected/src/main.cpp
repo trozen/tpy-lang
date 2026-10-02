@@ -15,7 +15,7 @@ void main() {
     auto& __ctx_1 = *(g);
     auto n1 = __ctx_1.__enter__();
     try {
-        std::cout << n1 << "\n";
+        std::cout << n1 << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -29,7 +29,7 @@ void main() {
     auto& __ctx_2 = *(g);
     auto n2 = __ctx_2.__enter__();
     try {
-        std::cout << n2 << "\n";
+        std::cout << n2 << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -40,7 +40,7 @@ void main() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    std::cout << g->opens << "\n";
+    std::cout << g->opens << "\n" << ::tpy::check_signals;
 }
 
 // g = Counter()

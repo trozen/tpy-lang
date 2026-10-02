@@ -34,23 +34,23 @@ void main() {
     {
         try {
             ::tpystd::json::JsonValue flat = ::tpystd::json::loads("{\"name\": \"Alice\", \"age\": 30}");
-            std::cout << ::tpystd::json::dumps(flat, 2) << "\n";
-            std::cout << "---" << "\n";
-            std::cout << ::tpystd::json::dumps(flat, 4) << "\n";
+            std::cout << ::tpystd::json::dumps(flat, 2) << "\n" << ::tpy::check_signals;
+            std::cout << "---" << "\n" << ::tpy::check_signals;
+            std::cout << ::tpystd::json::dumps(flat, 4) << "\n" << ::tpy::check_signals;
             ::tpystd::json::JsonValue nested = ::tpystd::json::loads("{\"users\": [{\"id\": 1, \"name\": \"Alice\"}, {\"id\": 2, \"name\": \"Bob\"}], \"count\": 2}");
-            std::cout << "---" << "\n";
-            std::cout << ::tpystd::json::dumps(nested, 2) << "\n";
+            std::cout << "---" << "\n" << ::tpy::check_signals;
+            std::cout << ::tpystd::json::dumps(nested, 2) << "\n" << ::tpy::check_signals;
             ::tpystd::json::JsonValue empty_obj = ::tpystd::json::loads("{}");
-            std::cout << "---" << "\n";
-            std::cout << ::tpystd::json::dumps(empty_obj, 2) << "\n";
+            std::cout << "---" << "\n" << ::tpy::check_signals;
+            std::cout << ::tpystd::json::dumps(empty_obj, 2) << "\n" << ::tpy::check_signals;
             ::tpystd::json::JsonValue empty_arr = ::tpystd::json::loads("[]");
-            std::cout << "---" << "\n";
-            std::cout << ::tpystd::json::dumps(empty_arr, 2) << "\n";
-            std::cout << "---" << "\n";
+            std::cout << "---" << "\n" << ::tpy::check_signals;
+            std::cout << ::tpystd::json::dumps(empty_arr, 2) << "\n" << ::tpy::check_signals;
+            std::cout << "---" << "\n" << ::tpy::check_signals;
             ::tpystd::json::JsonValue sk = ::tpystd::json::loads("{\"b\": 1, \"a\": 2, \"c\": 3}");
-            std::cout << ::tpystd::json::dumps(sk, 2, true) << "\n";
+            std::cout << ::tpystd::json::dumps(sk, 2, true) << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::json::JSONDecodeError& e) {
-            std::cout << "ERR:" << " " << e.msg << "\n";
+            std::cout << "ERR:" << " " << e.msg << "\n" << ::tpy::check_signals;
         }
     }
 }

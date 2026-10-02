@@ -49,7 +49,7 @@ void write_fixtures() {
 //     print("bundle non-empty:", n > 50)
 void bundle_embedded() {
     int32_t n = ::tpystd::ssl::_bundled_ca_count();
-    std::cout << "bundle non-empty:" << " " << ::tpy::print_bool((n > 50)) << "\n";
+    std::cout << "bundle non-empty:" << " " << ::tpy::print_bool((n > 50)) << "\n" << ::tpy::check_signals;
 }
 
 // def default_context_rejects_self_signed() -> None:
@@ -108,17 +108,17 @@ void default_context_rejects_self_signed() {
         {
             try {
                 if (cli.do_handshake()) {
-                    std::cout << "FAIL: self-signed cert was accepted" << "\n";
+                    std::cout << "FAIL: self-signed cert was accepted" << "\n" << ::tpy::check_signals;
                     return;
                 }
             } catch (const ::tpystd::ssl::SSLCertVerificationError&) {
-                std::cout << "default context rejected self-signed cert" << "\n";
+                std::cout << "default context rejected self-signed cert" << "\n" << ::tpy::check_signals;
                 return;
             }
         }
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "FAIL: no verify decision" << "\n";
+    std::cout << "FAIL: no verify decision" << "\n" << ::tpy::check_signals;
 }
 
 // def bare_context_trusts_nothing() -> None:
@@ -183,17 +183,17 @@ void bare_context_trusts_nothing() {
         {
             try {
                 if (cli.do_handshake()) {
-                    std::cout << "FAIL: bare context accepted untrusted cert" << "\n";
+                    std::cout << "FAIL: bare context accepted untrusted cert" << "\n" << ::tpy::check_signals;
                     return;
                 }
             } catch (const ::tpystd::ssl::SSLError&) {
-                std::cout << "bare context rejected untrusted cert" << "\n";
+                std::cout << "bare context rejected untrusted cert" << "\n" << ::tpy::check_signals;
                 return;
             }
         }
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "FAIL: no verify decision" << "\n";
+    std::cout << "FAIL: no verify decision" << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

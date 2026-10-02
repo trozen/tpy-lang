@@ -224,7 +224,7 @@ inline double Roots::get() const {
 //     print("context manager: enter")
 //     return 0
 inline ::tpy::BigInt Unwind::__enter__() const {
-    std::cout << "context manager: enter" << "\n";
+    std::cout << "context manager: enter" << "\n" << ::tpy::check_signals;
     return ::tpy::BigInt(0);
 }
 
@@ -237,7 +237,7 @@ inline bool Unwind::__exit__(std::monostate exc_type, const ::tpy::BaseException
     if (!((exc_val != nullptr))) ::tpy::raise_assertion_error();
     if (!((dynamic_cast<const ::tpy::ValueError*>(exc_val) != nullptr))) ::tpy::raise_assertion_error();
     const ::tpy::ValueError& __exc_val = *dynamic_cast<const ::tpy::ValueError*>(exc_val);
-    std::cout << "context manager: exit ValueError" << "\n";
+    std::cout << "context manager: exit ValueError" << "\n" << ::tpy::check_signals;
     return false;
 }
 // def generic_root[T](tag: T, x: float) -> float:

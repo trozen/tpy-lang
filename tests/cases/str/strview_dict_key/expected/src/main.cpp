@@ -17,9 +17,9 @@ void test_set() {
     s.insert("hello");
     s.insert("world");
     s.insert("hello");
-    std::cout << ::tpy::__len__(s) << "\n";
-    std::cout << ::tpy::print_bool((s.contains("hello"))) << "\n";
-    std::cout << ::tpy::print_bool((s.contains("missing"))) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((s.contains("hello"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((s.contains("missing"))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict() -> None:
@@ -37,11 +37,11 @@ void test_dict() {
     ::tpy::__setitem__(d, "alice", ::tpy::BigInt(1));
     ::tpy::__setitem__(d, "bob", ::tpy::BigInt(2));
     ::tpy::__setitem__(d, "alice", ::tpy::BigInt(10));
-    std::cout << ::tpy::__getitem__(d, "alice") << "\n";
-    std::cout << ::tpy::__getitem__(d, "bob") << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
-    std::cout << ::tpy::print_bool((d.contains("alice"))) << "\n";
-    std::cout << ::tpy::print_bool((d.contains("missing"))) << "\n";
+    std::cout << ::tpy::__getitem__(d, "alice") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, "bob") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((d.contains("alice"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((d.contains("missing"))) << "\n" << ::tpy::check_signals;
 }
 
 // test_set()

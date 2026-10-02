@@ -31,7 +31,7 @@ void for_call_unpack() {
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
     }
-    std::cout << "for_call_unpack" << " " << a << " " << b << "\n";
+    std::cout << "for_call_unpack" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }
 
 // # while body: same, while spelling.
@@ -51,7 +51,7 @@ void while_call_unpack() {
         b = std::get<1>(__tup_1);
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "while_call_unpack" << " " << a << " " << b << "\n";
+    std::cout << "while_call_unpack" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }
 
 // # for body: a body-local tuple name is the source.
@@ -69,7 +69,7 @@ void loop_local_unpack() {
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
     }
-    std::cout << "loop_local_unpack" << " " << a << " " << b << "\n";
+    std::cout << "loop_local_unpack" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }
 
 // # for body: subscript, field and slice views of body locals.
@@ -94,7 +94,7 @@ void loop_local_views() {
         f = h.name;
         c = ::tpy::str_slice(s, ::tpy::BasicSlice{2, std::nullopt});
     }
-    std::cout << "loop_local_views" << " " << a << " " << f << " " << c << "\n";
+    std::cout << "loop_local_views" << " " << a << " " << f << " " << c << "\n" << ::tpy::check_signals;
 }
 
 // # if arm: subscript and field views of arm locals.
@@ -120,7 +120,7 @@ void branch_views(bool flag) {
         a = "else-literal";
         f = "else-field";
     }
-    std::cout << "branch_views" << " " << a << " " << f << "\n";
+    std::cout << "branch_views" << " " << a << " " << f << "\n" << ::tpy::check_signals;
 }
 
 // # match arm: the same subscript view.
@@ -141,7 +141,7 @@ void match_views(const ::tpy::BigInt& k) {
     } else {
         a = "default-arm";
     }
-    std::cout << "match_views" << " " << a << "\n";
+    std::cout << "match_views" << " " << a << "\n" << ::tpy::check_signals;
 }
 
 // # alias of a body-local view, and a slice of a slice.
@@ -165,7 +165,7 @@ void view_of_view() {
         std::string_view v2 = ::tpy::str_slice(s, ::tpy::BasicSlice{2, std::nullopt});
         x = ::tpy::str_slice(v2, ::tpy::BasicSlice{3, std::nullopt});
     }
-    std::cout << "view_of_view" << " " << w << " " << x << "\n";
+    std::cout << "view_of_view" << " " << w << " " << x << "\n" << ::tpy::check_signals;
 }
 
 // # nested subscript and a view-returning method call of body locals.
@@ -185,7 +185,7 @@ void deep_sources() {
         ::tpy::String s = (::tpy::str_concat((::tpy::str_concat("   strip-source-long-enough-to-defeat-sso-", ::tpy::fixed_to_str<int32_t>(i))), "   "));
         b = ::tpy::str_strip(s);
     }
-    std::cout << "deep_sources" << " " << a << " " << b << "\n";
+    std::cout << "deep_sources" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }
 
 // # elif arm and except handler: arm-local sources.
@@ -208,7 +208,7 @@ void elif_arm(const ::tpy::BigInt& k) {
     } else {
         a = "other";
     }
-    std::cout << "elif_arm" << " " << a << "\n";
+    std::cout << "elif_arm" << " " << a << "\n" << ::tpy::check_signals;
 }
 
 // def except_handler() -> None:
@@ -230,7 +230,7 @@ void except_handler() {
             a = std::get<0>(t);
         }
     }
-    std::cout << "except_handler" << " " << a << "\n";
+    std::cout << "except_handler" << " " << a << "\n" << ::tpy::check_signals;
 }
 
 // # try body with a handler, and a loop `else` clause.
@@ -251,7 +251,7 @@ void try_body() {
             a = "x";
         }
     }
-    std::cout << "try_body" << " " << a << "\n";
+    std::cout << "try_body" << " " << a << "\n" << ::tpy::check_signals;
 }
 
 // def loop_else() -> None:
@@ -270,7 +270,7 @@ void loop_else() {
         a = std::get<0>(t);
     }
     __after_else_0:;
-    std::cout << "loop_else" << " " << a << "\n";
+    std::cout << "loop_else" << " " << a << "\n" << ::tpy::check_signals;
 }
 
 // # @error_return body.
@@ -287,7 +287,7 @@ std::expected<::tpy::BigInt, Stop> er_body(const ::tpy::BigInt& k) {
         std::tuple<std::string, ::tpy::BigInt> t = ::tpyapp::main::mk(((::tpy::BigInt(i)) + (k)));
         a = std::get<0>(t);
     }
-    std::cout << "er_body" << " " << a << "\n";
+    std::cout << "er_body" << " " << a << "\n" << ::tpy::check_signals;
     return k;
 }
 
@@ -307,7 +307,7 @@ void closure_body() {
             std::tuple<std::string, ::tpy::BigInt> t = ::tpyapp::main::mk(::tpy::BigInt(i));
             a = std::get<0>(t);
         }
-        std::cout << "closure_body" << " " << a << "\n";
+        std::cout << "closure_body" << " " << a << "\n" << ::tpy::check_signals;
     };
     inner();
 }
@@ -336,7 +336,7 @@ void alias_arm(bool flag) {
         r = &(g);
         v = r->name;
     }
-    std::cout << "alias_arm" << " " << v << "\n";
+    std::cout << "alias_arm" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // def elem_alias_arm(flag: bool) -> None:
@@ -361,7 +361,7 @@ void elem_alias_arm(bool flag) {
         r = &(::tpy::__getitem__(gs, 0));
         v = r->name;
     }
-    std::cout << "elem_alias_arm" << " " << v << "\n";
+    std::cout << "elem_alias_arm" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // def try_alias() -> None:
@@ -388,7 +388,7 @@ void try_alias() {
             v = r->name;
         }
     }
-    std::cout << "try_alias" << " " << v << "\n";
+    std::cout << "try_alias" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // def with_target_arm(flag: bool) -> None:
@@ -433,7 +433,7 @@ void with_target_arm(bool flag) {
         __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
     }
-    std::cout << "with_target_arm" << " " << v << "\n";
+    std::cout << "with_target_arm" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // # a match capture rebinding a hoisted view reads the capture's subject.
@@ -455,7 +455,7 @@ void capture_rebind() {
             v = __match_subject_1.name;
         }
     }
-    std::cout << "capture_rebind" << " " << v << "\n";
+    std::cout << "capture_rebind" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // def first(t: tuple[str, int]) -> StrView:
@@ -487,7 +487,7 @@ void lending_operands(bool flag) {
         v = "else";
         w = "else";
     }
-    std::cout << "lending_operands" << " " << v << " " << w << "\n";
+    std::cout << "lending_operands" << " " << v << " " << w << "\n" << ::tpy::check_signals;
 }
 
 // # a loop variable reused by a later loop: the view reads the FIRST loop's
@@ -518,7 +518,7 @@ void reused_loop_var(const std::vector<std::string>& ps) {
     for (; __beg_2 != __end_2; ++__beg_2) {
         std::string_view s = *__beg_2;
     }
-    std::cout << "reused_loop_var" << " " << v << "\n";
+    std::cout << "reused_loop_var" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // # inverse: a Final global and a class constant are static storage.
@@ -540,7 +540,7 @@ void static_sources(bool flag) {
         a = "e";
         b = "e";
     }
-    std::cout << "static_sources" << " " << a << " " << b << "\n";
+    std::cout << "static_sources" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }
 
 // # a pre-block record MOVED into an arm-local alias at its last use: the view
@@ -562,7 +562,7 @@ void moved_alias(bool flag) {
     } else {
         i = "x";
     }
-    std::cout << "moved_alias" << " " << i << "\n";
+    std::cout << "moved_alias" << " " << i << "\n" << ::tpy::check_signals;
 }
 
 // # inverse: the pre-block record is read again, so the alias borrows it and
@@ -584,7 +584,7 @@ void kept_alias(bool flag) {
     } else {
         i = "x";
     }
-    std::cout << "kept_alias" << " " << i << " " << h.name << "\n";
+    std::cout << "kept_alias" << " " << i << " " << h.name << "\n" << ::tpy::check_signals;
 }
 
 // # a plain module variable read through its module owns when hoisted (the
@@ -609,7 +609,7 @@ void module_attr(bool flag) {
         b = "x";
     }
     ::tpyapp::store::reset();
-    std::cout << "module_attr" << " " << a << " " << b << "\n";
+    std::cout << "module_attr" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }
 
 // # a match capture over a CALL subject reads a temporary.
@@ -629,7 +629,7 @@ void capture_of_call() {
             v = __match_subject_1.name;
         }
     }
-    std::cout << "capture_of_call" << " " << v << "\n";
+    std::cout << "capture_of_call" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // # a view first bound in a loop NESTED in an `if` arm, over arm-local storage.
@@ -665,7 +665,7 @@ void nested_loop_in_arm(bool flag) {
         w = "e";
         f = "e";
     }
-    std::cout << "nested_loop_in_arm" << " " << w << " " << f << "\n";
+    std::cout << "nested_loop_in_arm" << " " << w << " " << f << "\n" << ::tpy::check_signals;
 }
 
 // # a loop-body local that shadows a module global is the function's own
@@ -681,7 +681,7 @@ void shadows_global() {
         std::tuple<std::string, ::tpy::BigInt> shadowed = ::tpyapp::main::mk(::tpy::BigInt(i));
         a = std::get<0>(shadowed);
     }
-    std::cout << "shadows_global" << " " << a << "\n";
+    std::cout << "shadows_global" << " " << a << "\n" << ::tpy::check_signals;
 }
 
 // # inverse: a module- or class-qualified call lends only its arguments, so a
@@ -698,7 +698,7 @@ void qualified_call(std::string_view s) {
         a = ::tpyapp::store::head(s);
         b = Util::head(s);
     }
-    std::cout << "qualified_call" << " " << a << " " << b << "\n";
+    std::cout << "qualified_call" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }
 
 
@@ -861,7 +861,7 @@ void generator_heads(const std::vector<std::string>& words) {
         }
         break;
     }
-    std::cout << "generator_heads" << " " << y << " " << y2 << " " << y3 << "\n";
+    std::cout << "generator_heads" << " " << y << " " << y2 << " " << y3 << "\n" << ::tpy::check_signals;
 }
 
 // # a record iterated through its generator `__iter__`, and a user iterator
@@ -927,7 +927,7 @@ void implicit_iter_heads() {
         }
         break;
     }
-    std::cout << "implicit_iter_heads" << " " << y << " " << z << " " << u << "\n";
+    std::cout << "implicit_iter_heads" << " " << y << " " << z << " " << u << "\n" << ::tpy::check_signals;
 }
 
 // # inverse: a for over a list param hands out its element, so the view of it
@@ -952,7 +952,7 @@ void list_param_head(const std::vector<std::string>& words) {
         }
         break;
     }
-    std::cout << "list_param_head" << " " << y << "\n";
+    std::cout << "list_param_head" << " " << y << "\n" << ::tpy::check_signals;
 }
 
 // # inverse: a param source stays a view.
@@ -968,7 +968,7 @@ void param_source(const std::tuple<std::string, ::tpy::BigInt>& p, const H& h) {
         a = std::get<0>(p);
         f = h.name;
     }
-    std::cout << "param_source" << " " << a << " " << f << "\n";
+    std::cout << "param_source" << " " << a << " " << f << "\n" << ::tpy::check_signals;
 }
 
 // # inverse: a body local read after the loop BEFORE the view is hoisted with
@@ -990,14 +990,14 @@ void read_order() {
         t = ::tpyapp::main::mk(::tpy::BigInt(i));
         a = std::get<0>(t);
     }
-    std::cout << "read_order" << " " << std::get<1>(t) << " " << a << "\n";
+    std::cout << "read_order" << " " << std::get<1>(t) << " " << a << "\n" << ::tpy::check_signals;
     std::string b;
     std::tuple<std::string, ::tpy::BigInt> u;
     for (int32_t j = 0; j < 2; ++j) {
         u = ::tpyapp::main::mk(::tpy::BigInt(j));
         b = std::get<0>(u);
     }
-    std::cout << "read_order_late" << " " << b << " " << std::get<1>(u) << "\n";
+    std::cout << "read_order_late" << " " << b << " " << std::get<1>(u) << "\n" << ::tpy::check_signals;
 }
 
 // # inverse: a loop-body view of storage bound BEFORE the loop stays a view.
@@ -1012,7 +1012,7 @@ void loop_durable_source() {
     for (int32_t i = 0; i < 2; ++i) {
         a = std::get<0>(t);
     }
-    std::cout << "loop_durable_source" << " " << a << "\n";
+    std::cout << "loop_durable_source" << " " << a << "\n" << ::tpy::check_signals;
 }
 
 // # inverse: an if-arm view of a function-scope local stays a view.
@@ -1031,7 +1031,7 @@ void branch_durable_source(bool flag) {
     } else {
         f = "else-field";
     }
-    std::cout << "branch_durable_source" << " " << f << "\n";
+    std::cout << "branch_durable_source" << " " << f << "\n" << ::tpy::check_signals;
 }
 
 // # inverse: the for-head target over a live container read after the loop.
@@ -1054,7 +1054,7 @@ void leaked_head() {
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
     }
-    std::cout << "leaked_head" << " " << a << " " << b << "\n";
+    std::cout << "leaked_head" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -1130,7 +1130,7 @@ void main() {
         __after_try_1:;
     }
     Box bx = Box();
-    std::cout << "ctor" << " " << bx.first << "\n";
+    std::cout << "ctor" << " " << bx.first << "\n" << ::tpy::check_signals;
     bx.hoist();
     ::tpyapp::main::closure_body();
     H __tmp_1 = H("param-holder-long-enough-to-defeat-sso");

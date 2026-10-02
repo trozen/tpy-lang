@@ -53,17 +53,17 @@ int32_t inherited(FancyCounter& f, int32_t k) {
 void main() {
     Counter a = Counter(3);
     Counter b = Counter(4);
-    std::cout << ::tpyapp::main::combine(a, b) << "\n";
-    std::cout << a.get() << "\n";
-    std::cout << b.get() << "\n";
+    std::cout << ::tpyapp::main::combine(a, b) << "\n" << ::tpy::check_signals;
+    std::cout << a.get() << "\n" << ::tpy::check_signals;
+    std::cout << b.get() << "\n" << ::tpy::check_signals;
     Counter c = Counter(10);
-    std::cout << ::tpyapp::main::narrowed_receiver(::tpy::Union<Counter*, Label*>{&(c)}) << "\n";
-    std::cout << c.get() << "\n";
+    std::cout << ::tpyapp::main::narrowed_receiver(::tpy::Union<Counter*, Label*>{&(c)}) << "\n" << ::tpy::check_signals;
+    std::cout << c.get() << "\n" << ::tpy::check_signals;
     Label __tmp_1 = Label("abc");
-    std::cout << ::tpyapp::main::narrowed_receiver(::tpy::Union<Counter*, Label*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::narrowed_receiver(::tpy::Union<Counter*, Label*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
     FancyCounter f = FancyCounter(20);
-    std::cout << ::tpyapp::main::inherited(f, 2) << "\n";
-    std::cout << f.get() << "\n";
+    std::cout << ::tpyapp::main::inherited(f, 2) << "\n" << ::tpy::check_signals;
+    std::cout << f.get() << "\n" << ::tpy::check_signals;
 }
 
 // main()

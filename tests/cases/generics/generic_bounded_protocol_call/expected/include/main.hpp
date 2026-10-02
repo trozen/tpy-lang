@@ -251,7 +251,7 @@ std::string stringify(::tpy::param_val_or_ref_t<T> item) {
 //     return len(a)
 template<::tpystd::typing::Sized T, Stringable U>
 int32_t process_both(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
-    std::cout << b.to_str() << "\n";
+    std::cout << b.to_str() << "\n" << ::tpy::check_signals;
     return ::tpy::__len__(a);
 }
 // def use_multi[T: MultiMethod](item: T) -> None:
@@ -259,8 +259,8 @@ int32_t process_both(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U
 //     print(item.get_value())
 template<MultiMethod T>
 void use_multi(::tpy::param_val_or_ref_t<T> item) {
-    std::cout << item.get_name() << "\n";
-    std::cout << item.get_value() << "\n";
+    std::cout << item.get_name() << "\n" << ::tpy::check_signals;
+    std::cout << item.get_value() << "\n" << ::tpy::check_signals;
 }
 // # Test 8: Nested bounded calls (passing bounded param to another bounded function)
 // def inner_len[T: Sized](x: T) -> int32:

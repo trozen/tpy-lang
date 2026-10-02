@@ -29,10 +29,10 @@ std::string classify(const Root* r) {
 //     print(classify(None))
 void main() {
     Sub __tmp_1 = Sub("a", ::tpy::BigInt(7));
-    std::cout << ::tpyapp::main::classify(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::classify(&(__tmp_1)) << "\n" << ::tpy::check_signals;
     Root __tmp_2 = Root("b");
-    std::cout << ::tpyapp::main::classify(&(__tmp_2)) << "\n";
-    std::cout << ::tpyapp::main::classify(nullptr) << "\n";
+    std::cout << ::tpyapp::main::classify(&(__tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(nullptr) << "\n" << ::tpy::check_signals;
 }
 
 // main()

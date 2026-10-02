@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print(Badge(4).bumped().n)
 void main() {
     Ticket t = Ticket(7).stamped();
-    std::cout << t.id << "\n";
-    std::cout << Ticket(1).logged().id << "\n";
-    std::cout << Badge(4).bumped().n << "\n";
+    std::cout << t.id << "\n" << ::tpy::check_signals;
+    std::cout << Ticket(1).logged().id << "\n" << ::tpy::check_signals;
+    std::cout << Badge(4).bumped().n << "\n" << ::tpy::check_signals;
 }
 
 // main()

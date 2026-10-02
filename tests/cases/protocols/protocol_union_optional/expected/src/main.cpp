@@ -26,18 +26,18 @@ namespace tpyapp::main {
 //     print(h3.count)
 void main() {
     std::vector<::tpy::BigInt> nums = {10, 20, 30};
-    std::cout << ::tpyapp::main::process(&(nums)) << "\n";
-    std::cout << ::tpyapp::main::process(static_cast<std::nullptr_t*>(nullptr)) << "\n";
-    std::cout << ::tpyapp::main::process() << "\n";
-    std::cout << ::tpyapp::main::with_else(&(nums)) << "\n";
-    std::cout << ::tpyapp::main::with_else(static_cast<std::nullptr_t*>(nullptr)) << "\n";
-    std::cout << ::tpyapp::main::with_else() << "\n";
+    std::cout << ::tpyapp::main::process(&(nums)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::process(static_cast<std::nullptr_t*>(nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::process() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_else(&(nums)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_else(static_cast<std::nullptr_t*>(nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_else() << "\n" << ::tpy::check_signals;
     Holder h1 = Holder(&(nums));
-    std::cout << h1.count << "\n";
+    std::cout << h1.count << "\n" << ::tpy::check_signals;
     Holder h2 = Holder(static_cast<std::nullptr_t*>(nullptr));
-    std::cout << h2.count << "\n";
+    std::cout << h2.count << "\n" << ::tpy::check_signals;
     Holder h3 = Holder();
-    std::cout << h3.count << "\n";
+    std::cout << h3.count << "\n" << ::tpy::check_signals;
 }
 
 // main()

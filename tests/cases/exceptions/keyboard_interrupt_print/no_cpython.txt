@@ -1,0 +1,2 @@
+Needs a Ctrl-C left pending by _bindings.posix_signal.request_interrupt, which has no CPython
+equivalent: a self-sent SIGINT there is raised at the next bytecode, before the print.

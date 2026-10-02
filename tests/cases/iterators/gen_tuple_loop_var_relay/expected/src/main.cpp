@@ -64,7 +64,7 @@ void main() {
                 std::get<1>(q)->val = 99;
                 first = false;
             } else {
-                std::cout << std::get<1>(q)->val << "\n";
+                std::cout << std::get<1>(q)->val << "\n" << ::tpy::check_signals;
             }
         }
     }
@@ -84,7 +84,7 @@ void main() {
             n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
-    std::cout << "free" << " " << ::tpy::ListPrinter(seen) << "\n";
+    std::cout << "free" << " " << ::tpy::ListPrinter(seen) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> seen_m = std::vector<int32_t>{};
     int32_t m = 0;
     {
@@ -102,7 +102,7 @@ void main() {
             m = ::tpy::add_check<int32_t>(m, 1);
         }
     }
-    std::cout << "method" << " " << ::tpy::ListPrinter(seen_m) << "\n";
+    std::cout << "method" << " " << ::tpy::ListPrinter(seen_m) << "\n" << ::tpy::check_signals;
 }
 
 

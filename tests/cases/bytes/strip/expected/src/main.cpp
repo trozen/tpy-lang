@@ -31,22 +31,22 @@ namespace tpyapp::main {
 //     print(len(v.rstrip()))
 void main() {
     ::tpy::BytesView padded = ::tpy::bytes_literal("  hello  ", 9);
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(padded)) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_lstrip_view(padded)) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_view(padded)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(padded)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_lstrip_view(padded)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_view(padded)) << "\n" << ::tpy::check_signals;
     ::tpy::BytesView tabs = ::tpy::bytes_literal("\thello\n", 7);
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(tabs)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(tabs)) << "\n" << ::tpy::check_signals;
     ::tpy::BytesView no_ws = ::tpy::bytes_literal("hello", 5);
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(no_ws)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(no_ws)) << "\n" << ::tpy::check_signals;
     ::tpy::BytesView empty = ::tpy::BytesView{};
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(empty)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(empty)) << "\n" << ::tpy::check_signals;
     ::tpy::BytesView only_ws = ::tpy::bytes_literal("   ", 3);
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(only_ws)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(only_ws)) << "\n" << ::tpy::check_signals;
     ::tpy::BytesView bv_data = ::tpy::bytes_literal("  hi  ", 6);
     ::tpy::BytesView v = ::tpy::bytes_slice(bv_data, ::tpy::BasicSlice{0, 6});
-    std::cout << ::tpy::__len__(::tpy::bytes_strip_view(v)) << "\n";
-    std::cout << ::tpy::__len__(::tpy::bytes_lstrip_view(v)) << "\n";
-    std::cout << ::tpy::__len__(::tpy::bytes_rstrip_view(v)) << "\n";
+    std::cout << ::tpy::__len__(::tpy::bytes_strip_view(v)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(::tpy::bytes_lstrip_view(v)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(::tpy::bytes_rstrip_view(v)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

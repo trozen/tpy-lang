@@ -25,13 +25,13 @@ namespace tpyapp::main {
                 auto* __tpy_retp_0 = &((*b));
                 __fin_ran_1 = true;
                 (*b).v = ::tpy::add_check<int32_t>((*b).v, 10);
-                std::cout << (*b).v << "\n";
+                std::cout << (*b).v << "\n" << ::tpy::check_signals;
                 __state = S_DONE;
                 return ::tpystd::tpy::Poll<Box>::ready(std::move(*__tpy_retp_0));
             } catch (...) {
                 if (!__fin_ran_1) {
                     (*b).v = ::tpy::add_check<int32_t>((*b).v, 10);
-                    std::cout << (*b).v << "\n";
+                    std::cout << (*b).v << "\n" << ::tpy::check_signals;
                 }
                 throw;
             }
@@ -83,7 +83,7 @@ __coro_driver driver() {
 // def main() -> None:
 //     print(asyncio.run(driver()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::driver())) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::driver())) << "\n" << ::tpy::check_signals;
 }
 
 // # An async Own[T] return of a local under try/finally: the finally reads

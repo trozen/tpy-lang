@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(x)
 void test_or(std::vector<int32_t>& a, std::vector<int32_t>& b) {
     std::vector<int32_t>& x = ((::tpy::__len__(a) != 0) ? a : b);
-    std::cout << ::tpy::ListPrinter(x) << "\n";
+    std::cout << ::tpy::ListPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_and(a: list[int32], b: list[int32]) -> None:
@@ -17,7 +17,7 @@ void test_or(std::vector<int32_t>& a, std::vector<int32_t>& b) {
 //     print(x)
 void test_and(std::vector<int32_t>& a, std::vector<int32_t>& b) {
     std::vector<int32_t>& x = ((::tpy::__len__(a) != 0) ? b : a);
-    std::cout << ::tpy::ListPrinter(x) << "\n";
+    std::cout << ::tpy::ListPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_ternary(a: list[int32], b: list[int32], cond: bool) -> None:
@@ -25,7 +25,7 @@ void test_and(std::vector<int32_t>& a, std::vector<int32_t>& b) {
 //     print(x)
 void test_ternary(std::vector<int32_t>& a, std::vector<int32_t>& b, bool cond) {
     std::vector<int32_t>& x = ((cond) ? (a) : (b));
-    std::cout << ::tpy::ListPrinter(x) << "\n";
+    std::cout << ::tpy::ListPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_literal_or() -> None:
@@ -34,7 +34,7 @@ void test_ternary(std::vector<int32_t>& a, std::vector<int32_t>& b, bool cond) {
 void test_literal_or() {
     auto&& __tmp_1 = std::vector<int32_t>{1, 2};
     std::vector<int32_t> x = ((::tpy::__len__(__tmp_1) != 0) ? std::move(__tmp_1) : std::vector<int32_t>{3, 4});
-    std::cout << ::tpy::ListPrinter(x) << "\n";
+    std::cout << ::tpy::ListPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_literal_ternary(cond: bool) -> None:
@@ -42,7 +42,7 @@ void test_literal_or() {
 //     print(x)
 void test_literal_ternary(bool cond) {
     std::vector<int32_t> x = ((cond) ? (std::vector<int32_t>{1, 2}) : (std::vector<int32_t>{3, 4}));
-    std::cout << ::tpy::ListPrinter(x) << "\n";
+    std::cout << ::tpy::ListPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_or_chain(a: list[int32], b: list[int32], c: list[int32]) -> None:
@@ -51,7 +51,7 @@ void test_literal_ternary(bool cond) {
 void test_or_chain(std::vector<int32_t>& a, std::vector<int32_t>& b, std::vector<int32_t>& c) {
     auto&& __tmp_1 = ((::tpy::__len__(a) != 0) ? a : b);
     std::vector<int32_t>& x = ((::tpy::__len__(__tmp_1) != 0) ? __tmp_1 : c);
-    std::cout << ::tpy::ListPrinter(x) << "\n";
+    std::cout << ::tpy::ListPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_local_vars_or() -> None:
@@ -64,7 +64,7 @@ void test_local_vars_or() {
     std::vector<int32_t> a = {1};
     std::vector<int32_t> b = {2};
     std::vector<int32_t>& x = ((::tpy::__len__(a) != 0) ? a : b);
-    std::cout << ::tpy::ListPrinter(x) << "\n";
+    std::cout << ::tpy::ListPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_int_literal_elements_or() -> None:
@@ -75,7 +75,7 @@ void test_local_vars_or() {
 void test_int_literal_elements_or() {
     auto&& __tmp_1 = std::vector<int32_t>{1, 2};
     std::vector<int32_t> x = ((::tpy::__len__(__tmp_1) != 0) ? std::move(__tmp_1) : std::vector<int32_t>{3, 4});
-    std::cout << ::tpy::ListPrinter(x) << "\n";
+    std::cout << ::tpy::ListPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_int_literal_elements_ternary(cond: bool) -> None:
@@ -83,7 +83,7 @@ void test_int_literal_elements_or() {
 //     print(x)
 void test_int_literal_elements_ternary(bool cond) {
     std::vector<int32_t> x = ((cond) ? (std::vector<int32_t>{1, 2}) : (std::vector<int32_t>{3, 4}));
-    std::cout << ::tpy::ListPrinter(x) << "\n";
+    std::cout << ::tpy::ListPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_or_alias_first(a: list[int32], b: list[int32]) -> None:
@@ -94,7 +94,7 @@ void test_int_literal_elements_ternary(bool cond) {
 void test_or_alias_first(std::vector<int32_t>& a, std::vector<int32_t>& b) {
     std::vector<int32_t>& x = ((::tpy::__len__(a) != 0) ? a : b);
     a.push_back(99);
-    std::cout << ::tpy::ListPrinter(x) << "\n";
+    std::cout << ::tpy::ListPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_or_alias_second(a: list[int32], b: list[int32]) -> None:
@@ -105,7 +105,7 @@ void test_or_alias_first(std::vector<int32_t>& a, std::vector<int32_t>& b) {
 void test_or_alias_second(std::vector<int32_t>& a, std::vector<int32_t>& b) {
     std::vector<int32_t>& x = ((::tpy::__len__(a) != 0) ? a : b);
     b.push_back(99);
-    std::cout << ::tpy::ListPrinter(x) << "\n";
+    std::cout << ::tpy::ListPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_and_alias(a: list[int32], b: list[int32]) -> None:
@@ -116,7 +116,7 @@ void test_or_alias_second(std::vector<int32_t>& a, std::vector<int32_t>& b) {
 void test_and_alias(std::vector<int32_t>& a, std::vector<int32_t>& b) {
     std::vector<int32_t>& x = ((::tpy::__len__(a) != 0) ? b : a);
     b.push_back(99);
-    std::cout << ::tpy::ListPrinter(x) << "\n";
+    std::cout << ::tpy::ListPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_or_chain_alias(a: list[int32], b: list[int32], c: list[int32]) -> None:
@@ -128,7 +128,7 @@ void test_or_chain_alias(std::vector<int32_t>& a, std::vector<int32_t>& b, std::
     auto&& __tmp_1 = ((::tpy::__len__(a) != 0) ? a : b);
     std::vector<int32_t>& x = ((::tpy::__len__(__tmp_1) != 0) ? __tmp_1 : c);
     b.push_back(99);
-    std::cout << ::tpy::ListPrinter(x) << "\n";
+    std::cout << ::tpy::ListPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_ternary_alias(a: list[int32], b: list[int32], cond: bool) -> None:
@@ -140,8 +140,8 @@ void test_or_chain_alias(std::vector<int32_t>& a, std::vector<int32_t>& b, std::
 void test_ternary_alias(std::vector<int32_t>& a, std::vector<int32_t>& b, bool cond) {
     std::vector<int32_t>& x = ((cond) ? (a) : (b));
     x.push_back(99);
-    std::cout << ::tpy::ListPrinter(a) << "\n";
-    std::cout << ::tpy::ListPrinter(b) << "\n";
+    std::cout << ::tpy::ListPrinter(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(b) << "\n" << ::tpy::check_signals;
 }
 
 // test_or([int32(1), int32(2)], [int32(3), int32(4)])

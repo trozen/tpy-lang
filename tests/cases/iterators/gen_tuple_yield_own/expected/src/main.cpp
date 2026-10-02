@@ -31,7 +31,7 @@ void main() {
             total = ((((total) + (i))) + (b.val));
         }
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -46,17 +46,17 @@ void main() {
     {
         try {
             ::tpyapp::main::_hang_request();
-            std::cout << "NO TIMEOUT" << "\n";
+            std::cout << "NO TIMEOUT" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::tplib::requests::Timeout& e) {
-            std::cout << "timeout msg ok:" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)).find("timed out") != std::string::npos)) << "\n";
+            std::cout << "timeout msg ok:" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)).find("timed out") != std::string::npos)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::_hang_request();
-            std::cout << "NO TIMEOUT" << "\n";
+            std::cout << "NO TIMEOUT" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::tplib::requests::RequestException& e) {
-            std::cout << "caught as base:" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)).find("timed out") != std::string::npos)) << "\n";
+            std::cout << "caught as base:" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)).find("timed out") != std::string::npos)) << "\n" << ::tpy::check_signals;
         }
     }
 }

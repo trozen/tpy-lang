@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print(c["debug"])
 void main() {
     Config c = Config("example.com", 9090, true);
-    std::cout << c.host << "\n";
-    std::cout << c.port << "\n";
-    std::cout << ::tpy::print_bool(c.debug) << "\n";
+    std::cout << c.host << "\n" << ::tpy::check_signals;
+    std::cout << c.port << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(c.debug) << "\n" << ::tpy::check_signals;
 }
 
 // main()

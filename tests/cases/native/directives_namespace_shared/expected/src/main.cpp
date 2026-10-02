@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print("ok")
 void main() {
-    std::cout << "ok" << "\n";
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // # Test that multiple native modules sharing the same cpp_namespace

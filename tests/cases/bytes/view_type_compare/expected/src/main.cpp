@@ -13,10 +13,10 @@ namespace tpyapp::main {
 //     ba.append(0x21)
 //     print("mutated", a == ba, ba > a)  # tpyc: ok
 void compare_pairs(::tpy::BytesView a, ::tpy::BytesView v, ::tpy::ByteArray& ba) {
-    std::cout << "pairs" << " " << ::tpy::print_bool((a == v)) << " " << ::tpy::print_bool((v == a)) << " " << ::tpy::print_bool((a == ba)) << " " << ::tpy::print_bool((ba == a)) << " " << ::tpy::print_bool((a != ::tpy::bytes_literal("zz", 2))) << " " << ::tpy::print_bool((::tpy::bytes_literal("zz", 2) != v)) << "\n";
-    std::cout << "order" << " " << ::tpy::print_bool((a < ::tpy::bytes_literal("b", 1))) << " " << ::tpy::print_bool((::tpy::bytes_literal("b", 1) > a)) << " " << ::tpy::print_bool((v <= a)) << " " << ::tpy::print_bool((ba >= v)) << " " << ::tpy::print_bool((a < ba)) << "\n";
+    std::cout << "pairs" << " " << ::tpy::print_bool((a == v)) << " " << ::tpy::print_bool((v == a)) << " " << ::tpy::print_bool((a == ba)) << " " << ::tpy::print_bool((ba == a)) << " " << ::tpy::print_bool((a != ::tpy::bytes_literal("zz", 2))) << " " << ::tpy::print_bool((::tpy::bytes_literal("zz", 2) != v)) << "\n" << ::tpy::check_signals;
+    std::cout << "order" << " " << ::tpy::print_bool((a < ::tpy::bytes_literal("b", 1))) << " " << ::tpy::print_bool((::tpy::bytes_literal("b", 1) > a)) << " " << ::tpy::print_bool((v <= a)) << " " << ::tpy::print_bool((ba >= v)) << " " << ::tpy::print_bool((a < ba)) << "\n" << ::tpy::check_signals;
     ba.push_back(33);
-    std::cout << "mutated" << " " << ::tpy::print_bool((a == ba)) << " " << ::tpy::print_bool((ba > a)) << "\n";
+    std::cout << "mutated" << " " << ::tpy::print_bool((a == ba)) << " " << ::tpy::print_bool((ba > a)) << "\n" << ::tpy::check_signals;
 }
 
 // # free function: a bytes needle in a tuple literal, a list, a set and a dict
@@ -26,10 +26,10 @@ void compare_pairs(::tpy::BytesView a, ::tpy::BytesView v, ::tpy::ByteArray& ba)
 //     print("set", name in s, name not in s, b"zz" in s)  # tpyc: ok
 //     print("dict", name in d, b"zz" not in d, name in d.keys())  # tpyc: ok
 void membership(::tpy::BytesView name, const std::vector<::tpy::Bytes>& xs, const ::tpy::ordered_set<::tpy::Bytes>& s, const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d) {
-    std::cout << "tuple" << " " << ::tpy::print_bool(((name == ::tpy::bytes_literal("PLAYPAL", 7)) || (name == ::tpy::bytes_literal("COLORMAP", 8)))) << " " << ::tpy::print_bool((!((name == ::tpy::bytes_literal("PLAYPAL", 7)) || (name == ::tpy::bytes_literal("COLORMAP", 8))))) << "\n";
-    std::cout << "list" << " " << ::tpy::print_bool(::tpy::seq_contains(xs, name)) << " " << ::tpy::print_bool(::tpy::seq_contains(xs, ::tpy::bytes_literal("zz", 2))) << "\n";
-    std::cout << "set" << " " << ::tpy::print_bool((s.contains(name))) << " " << ::tpy::print_bool((!(s.contains(name)))) << " " << ::tpy::print_bool((s.contains(::tpy::bytes_literal("zz", 2)))) << "\n";
-    std::cout << "dict" << " " << ::tpy::print_bool((d.contains(name))) << " " << ::tpy::print_bool((!(d.contains(::tpy::bytes_literal("zz", 2))))) << " " << ::tpy::print_bool((::tpy::dict_keys(d).contains(name))) << "\n";
+    std::cout << "tuple" << " " << ::tpy::print_bool(((name == ::tpy::bytes_literal("PLAYPAL", 7)) || (name == ::tpy::bytes_literal("COLORMAP", 8)))) << " " << ::tpy::print_bool((!((name == ::tpy::bytes_literal("PLAYPAL", 7)) || (name == ::tpy::bytes_literal("COLORMAP", 8))))) << "\n" << ::tpy::check_signals;
+    std::cout << "list" << " " << ::tpy::print_bool(::tpy::seq_contains(xs, name)) << " " << ::tpy::print_bool(::tpy::seq_contains(xs, ::tpy::bytes_literal("zz", 2))) << "\n" << ::tpy::check_signals;
+    std::cout << "set" << " " << ::tpy::print_bool((s.contains(name))) << " " << ::tpy::print_bool((!(s.contains(name)))) << " " << ::tpy::print_bool((s.contains(::tpy::bytes_literal("zz", 2)))) << "\n" << ::tpy::check_signals;
+    std::cout << "dict" << " " << ::tpy::print_bool((d.contains(name))) << " " << ::tpy::print_bool((!(d.contains(::tpy::bytes_literal("zz", 2))))) << " " << ::tpy::print_bool((::tpy::dict_keys(d).contains(name))) << "\n" << ::tpy::check_signals;
 }
 
 // # free function: a view local (a slice) as compare operand and needle
@@ -38,7 +38,7 @@ void membership(::tpy::BytesView name, const std::vector<::tpy::Bytes>& xs, cons
 //     print("view", x == b"bc", x in (b"bc", b"zz"), x < data)  # tpyc: ok
 void view_local(::tpy::BytesView data) {
     ::tpy::BytesView x = ::tpy::bytes_slice(data, ::tpy::BasicSlice{1, std::nullopt});
-    std::cout << "view" << " " << ::tpy::print_bool((x == ::tpy::bytes_literal("bc", 2))) << " " << ::tpy::print_bool(((x == ::tpy::bytes_literal("bc", 2)) || (x == ::tpy::bytes_literal("zz", 2)))) << " " << ::tpy::print_bool((x < data)) << "\n";
+    std::cout << "view" << " " << ::tpy::print_bool((x == ::tpy::bytes_literal("bc", 2))) << " " << ::tpy::print_bool(((x == ::tpy::bytes_literal("bc", 2)) || (x == ::tpy::bytes_literal("zz", 2)))) << " " << ::tpy::print_bool((x < data)) << "\n" << ::tpy::check_signals;
 }
 
 // # free function: ordering makes list[bytes] sortable
@@ -47,7 +47,7 @@ void view_local(::tpy::BytesView data) {
 //     print("sort", xs)
 void sort_bytes(std::vector<::tpy::Bytes>& xs) {
     ::tpy::sort_in_place(xs);
-    std::cout << "sort" << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << "sort" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // # free function: a view hashes like the owner it reads; the empty view
@@ -56,7 +56,7 @@ void sort_bytes(std::vector<::tpy::Bytes>& xs) {
 //     print("hash", hash(v) == hash(a), hash(b"") == hash(bytes()), b"" == a[len(a):])  # tpyc: ok
 void hashes(::tpy::BytesView a) {
     ::tpy::BytesView v = ::tpy::bytes_slice(a, ::tpy::BasicSlice{0, std::nullopt});
-    std::cout << "hash" << " " << ::tpy::print_bool((::tpy::__hash__(v) == ::tpy::__hash__(a))) << " " << ::tpy::print_bool((::tpy::__hash__(::tpy::Bytes{}) == ::tpy::__hash__(::tpy::Bytes()))) << " " << ::tpy::print_bool((::tpy::BytesView{} == ::tpy::bytes_slice(a, ::tpy::BasicSlice{::tpy::__len__(a), std::nullopt}))) << "\n";
+    std::cout << "hash" << " " << ::tpy::print_bool((::tpy::__hash__(v) == ::tpy::__hash__(a))) << " " << ::tpy::print_bool((::tpy::__hash__(::tpy::Bytes{}) == ::tpy::__hash__(::tpy::Bytes()))) << " " << ::tpy::print_bool((::tpy::BytesView{} == ::tpy::bytes_slice(a, ::tpy::BasicSlice{::tpy::__len__(a), std::nullopt}))) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -84,7 +84,7 @@ void filtered(const std::vector<::tpy::Bytes>& names) {
         }
         std::move(__result);
     });
-    std::cout << "comp" << " " << ::tpy::ListPrinter(kept) << "\n";
+    std::cout << "comp" << " " << ::tpy::ListPrinter(kept) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -109,16 +109,16 @@ void filtered(const std::vector<::tpy::Bytes>& names) {
 //     print("generic", first_is([b"b", b"c"], b"b"), first_is([b"b"], b"a"), first_is(["x"], "y"))
 void main() {
     Entry e = Entry(::tpy::bytes_literal("x", 1));
-    std::cout << "method" << " " << ::tpy::print_bool(e.is_named(::tpy::bytes_literal("x", 1))) << " " << ::tpy::print_bool(e.is_named(::tpy::bytes_literal("y", 1))) << " " << ::tpy::print_bool(e.has_tag(::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_bool(e.has_tag(::tpy::bytes_literal("c", 1))) << "\n";
-    std::cout << "contains" << " " << ::tpy::print_bool((e.__contains__(::tpy::bytes_literal("a", 1)))) << " " << ::tpy::print_bool((e.__contains__(::tpy::bytes_literal("x", 1)))) << " " << ::tpy::print_bool((!(e.__contains__(::tpy::bytes_literal("q", 1))))) << "\n";
+    std::cout << "method" << " " << ::tpy::print_bool(e.is_named(::tpy::bytes_literal("x", 1))) << " " << ::tpy::print_bool(e.is_named(::tpy::bytes_literal("y", 1))) << " " << ::tpy::print_bool(e.has_tag(::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_bool(e.has_tag(::tpy::bytes_literal("c", 1))) << "\n" << ::tpy::check_signals;
+    std::cout << "contains" << " " << ::tpy::print_bool((e.__contains__(::tpy::bytes_literal("a", 1)))) << " " << ::tpy::print_bool((e.__contains__(::tpy::bytes_literal("x", 1)))) << " " << ::tpy::print_bool((!(e.__contains__(::tpy::bytes_literal("q", 1))))) << "\n" << ::tpy::check_signals;
     Bag bag = Bag();
-    std::cout << "own_slot" << " " << ::tpy::print_bool((bag.__contains__(::tpy::bytes_literal_owned("abc", 3)))) << " " << ::tpy::print_bool((bag.__contains__(::tpy::bytes_literal_owned("zz", 2)))) << "\n";
+    std::cout << "own_slot" << " " << ::tpy::print_bool((bag.__contains__(::tpy::bytes_literal_owned("abc", 3)))) << " " << ::tpy::print_bool((bag.__contains__(::tpy::bytes_literal_owned("zz", 2)))) << "\n" << ::tpy::check_signals;
     Box<::tpy::Bytes> box = Box<::tpy::Bytes>(::tpy::bytes_literal_owned("abc", 3));
     Box<std::string> sbox = Box<std::string>("abc");
-    std::cout << "generic_slot" << " " << ::tpy::print_bool((box.__contains__(::tpy::bytes_literal("abc", 3)))) << " " << ::tpy::print_bool((box.__contains__(::tpy::bytes_literal("zz", 2)))) << " " << ::tpy::print_bool((sbox.__contains__("abc"))) << "\n";
+    std::cout << "generic_slot" << " " << ::tpy::print_bool((box.__contains__(::tpy::bytes_literal("abc", 3)))) << " " << ::tpy::print_bool((box.__contains__(::tpy::bytes_literal("zz", 2)))) << " " << ::tpy::print_bool((sbox.__contains__("abc"))) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
     ::tpyapp::main::compare_pairs(::tpy::bytes_literal("a", 1), ::tpy::bytes_literal("a", 1), ba);
-    std::cout << "alias" << " " << ::tpy::ByteArrayPrinter(ba) << "\n";
+    std::cout << "alias" << " " << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Bytes> __tmp_1 = {::tpy::bytes_literal_owned("COLORMAP", 8), ::tpy::bytes_literal_owned("x", 1)};
     ::tpy::ordered_set<::tpy::Bytes> __tmp_2 = ::tpy::ordered_set<::tpy::Bytes>({::tpy::bytes_literal_owned("COLORMAP", 8)});
     ::tpy::ordered_map<::tpy::Bytes, int32_t> __tmp_3 = ::tpy::ordered_map<::tpy::Bytes, int32_t>({{::tpy::bytes_literal_owned("COLORMAP", 8), 1}});
@@ -135,7 +135,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView m = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen" << " " << ::tpy::BytesPrinter(m) << "\n";
+            std::cout << "gen" << " " << ::tpy::BytesPrinter(m) << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<::tpy::Bytes> __tmp_6 = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("skip", 4), ::tpy::bytes_literal_owned("c", 1)};
@@ -143,7 +143,7 @@ void main() {
     std::vector<::tpy::Bytes> __tmp_7 = {::tpy::bytes_literal_owned("b", 1), ::tpy::bytes_literal_owned("c", 1)};
     std::vector<::tpy::Bytes> __tmp_8 = {::tpy::bytes_literal_owned("b", 1)};
     std::vector<std::string> __tmp_9 = {"x"};
-    std::cout << "generic" << " " << ::tpy::print_bool(::tpyapp::main::first_is<::tpy::Bytes>(__tmp_7, ::tpy::bytes_literal("b", 1))) << " " << ::tpy::print_bool(::tpyapp::main::first_is<::tpy::Bytes>(__tmp_8, ::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_bool(::tpyapp::main::first_is<std::string>(__tmp_9, "y")) << "\n";
+    std::cout << "generic" << " " << ::tpy::print_bool(::tpyapp::main::first_is<::tpy::Bytes>(__tmp_7, ::tpy::bytes_literal("b", 1))) << " " << ::tpy::print_bool(::tpyapp::main::first_is<::tpy::Bytes>(__tmp_8, ::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_bool(::tpyapp::main::first_is<std::string>(__tmp_9, "y")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

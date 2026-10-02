@@ -14,8 +14,8 @@ void main() {
     std::array<int32_t, 3> arr = {1, 2, 3};
     Box box = Box(arr);
     std::span<int32_t> s = ::tpy::as_mut_span(box.items);
-    std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    std::cout << ::tpy::__getitem__(s, 2) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(s, 2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

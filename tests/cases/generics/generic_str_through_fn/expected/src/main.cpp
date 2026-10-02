@@ -21,13 +21,13 @@ namespace tpyapp::main {
 //     print(n2)
 void main() {
     std::string s1 = ::tpyapp::main::apply<std::string>([](std::string_view s) -> std::string { return (::tpy::str_concat(s, "!")); }, "hello");
-    std::cout << s1 << "\n";
+    std::cout << s1 << "\n" << ::tpy::check_signals;
     std::string s2 = ::tpyapp::main::reduce2<std::string>([](std::string_view a, std::string_view b) -> std::string { return (::tpy::str_concat(a, b)); }, "foo", "bar");
-    std::cout << s2 << "\n";
+    std::cout << s2 << "\n" << ::tpy::check_signals;
     int32_t n1 = ::tpyapp::main::apply<int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, 41);
-    std::cout << n1 << "\n";
+    std::cout << n1 << "\n" << ::tpy::check_signals;
     int32_t n2 = ::tpyapp::main::reduce2<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, 10, 20);
-    std::cout << n2 << "\n";
+    std::cout << n2 << "\n" << ::tpy::check_signals;
 }
 
 // main()

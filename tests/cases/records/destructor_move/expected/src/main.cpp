@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def consume(t: Own[Tracker]) -> None:
 //     print("consumed", t.name)
 void consume(Tracker&& t) {
-    std::cout << "consumed" << " " << t.name << "\n";
+    std::cout << "consumed" << " " << t.name << "\n" << ::tpy::check_signals;
 }
 
 // def main():
@@ -21,10 +21,10 @@ void consume(Tracker&& t) {
 //     print("---")
 void main() {
     ::tpyapp::main::consume(Tracker("a"));
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     Tracker t = Tracker("b");
     ::tpyapp::main::consume(std::move(t));
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -30,10 +30,10 @@ void bump(Point& p) {
 void test() {
     std::vector<Point> pts = {Point(::tpy::BigInt(1)), Point(::tpy::BigInt(2))};
     ::tpyapp::main::bump(::tpyapp::main::find_first(pts));
-    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n" << ::tpy::check_signals;
     Holder h = Holder();
     ::tpyapp::main::bump(h.get());
-    std::cout << h.inner.x << "\n";
+    std::cout << h.inner.x << "\n" << ::tpy::check_signals;
 }
 
 // test()

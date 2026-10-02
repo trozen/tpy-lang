@@ -77,12 +77,12 @@ std::string_view strview_param_then_trusted(std::string_view p, int32_t n) {
 //     print(strview_param_then_trusted("hello", 3))
 void main() {
     Point seed = Point(11);
-    std::cout << ::tpyapp::main::param_then_trusted(seed, 0).x << "\n";
-    std::cout << ::tpyapp::main::param_then_trusted(seed, 3).x << "\n";
-    std::cout << ::tpyapp::main::trusted_then_param(seed, 0).x << "\n";
-    std::cout << ::tpyapp::main::trusted_then_param(seed, 3).x << "\n";
-    std::cout << ::tpyapp::main::strview_param_then_trusted("hello", 0) << "\n";
-    std::cout << ::tpyapp::main::strview_param_then_trusted("hello", 3) << "\n";
+    std::cout << ::tpyapp::main::param_then_trusted(seed, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::param_then_trusted(seed, 3).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::trusted_then_param(seed, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::trusted_then_param(seed, 3).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::strview_param_then_trusted("hello", 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::strview_param_then_trusted("hello", 3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

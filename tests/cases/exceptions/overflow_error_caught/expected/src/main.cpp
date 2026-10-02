@@ -25,23 +25,23 @@ namespace tpyapp::main {
 void main() {
     {
         try {
-            std::cout << ::tpy::BigInt::from_float(::tpystd::math::inf) << "\n";
+            std::cout << ::tpy::BigInt::from_float(::tpystd::math::inf) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OverflowError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpy::BigInt::from_float(-(::tpystd::math::inf)) << "\n";
+            std::cout << ::tpy::BigInt::from_float(-(::tpystd::math::inf)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OverflowError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpy::BigInt::from_float(::tpystd::math::inf) << "\n";
+            std::cout << ::tpy::BigInt::from_float(::tpystd::math::inf) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ArithmeticError& e) {
-            std::cout << "via ArithmeticError:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "via ArithmeticError:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

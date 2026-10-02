@@ -185,7 +185,7 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
         [[fallthrough]];
     case S_JOIN_3: {
         try {
-            std::cout << "finally-try" << "\n";
+            std::cout << "finally-try" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_2;
             continue;
         } catch (...) {
@@ -230,7 +230,7 @@ void sec_freelist() {
             s.push_back(9);
         }
     }
-    std::cout << "freelist" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n";
+    std::cout << "freelist" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // def sec_freerec() -> None:
@@ -250,7 +250,7 @@ void sec_freerec() {
             b.v = ::tpy::add_check<int32_t>(b.v, 10);
         }
     }
-    std::cout << "freerec" << " " << ::tpy::__getitem__(a, 0).v << " " << ::tpy::__getitem__(a, 1).v << "\n";
+    std::cout << "freerec" << " " << ::tpy::__getitem__(a, 0).v << " " << ::tpy::__getitem__(a, 1).v << "\n" << ::tpy::check_signals;
 }
 
 // def sec_method() -> None:
@@ -271,7 +271,7 @@ void sec_method() {
             s.push_back(9);
         }
     }
-    std::cout << "method" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n";
+    std::cout << "method" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // def sec_pack() -> None:
@@ -294,7 +294,7 @@ void sec_pack() {
             s.push_back(9);
         }
     }
-    std::cout << "pack" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << "\n";
+    std::cout << "pack" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def sec_selffield() -> None:
@@ -314,7 +314,7 @@ void sec_selffield() {
             s.push_back(9);
         }
     }
-    std::cout << "selffield" << " " << ::tpy::__len__(r.buf) << "\n";
+    std::cout << "selffield" << " " << ::tpy::__len__(r.buf) << "\n" << ::tpy::check_signals;
 }
 
 // def sec_framelocal() -> None:
@@ -332,7 +332,7 @@ void sec_framelocal() {
             s.push_back(9);
         }
     }
-    std::cout << "framelocal" << " " << "done" << "\n";
+    std::cout << "framelocal" << " " << "done" << "\n" << ::tpy::check_signals;
 }
 
 // def sec_alias() -> None:
@@ -352,7 +352,7 @@ void sec_alias() {
             b.v = ::tpy::add_check<int32_t>(b.v, 10);
         }
     }
-    std::cout << "alias" << " " << ::tpy::__getitem__(a, 0).v << " " << ::tpy::__getitem__(a, 1).v << "\n";
+    std::cout << "alias" << " " << ::tpy::__getitem__(a, 0).v << " " << ::tpy::__getitem__(a, 1).v << "\n" << ::tpy::check_signals;
 }
 
 // def sec_ternary() -> None:
@@ -370,7 +370,7 @@ void sec_ternary() {
             c.v = ::tpy::add_check<int32_t>(c.v, 10);
         }
     }
-    std::cout << "ternary" << " " << "done" << "\n";
+    std::cout << "ternary" << " " << "done" << "\n" << ::tpy::check_signals;
 }
 
 // def sec_dict() -> None:
@@ -390,7 +390,7 @@ void sec_dict() {
             ::tpy::__setitem__(d, 9, 9);
         }
     }
-    std::cout << "dict" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n";
+    std::cout << "dict" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // def sec_set() -> None:
@@ -410,7 +410,7 @@ void sec_set() {
             s.insert(9);
         }
     }
-    std::cout << "set" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n";
+    std::cout << "set" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // def sec_with() -> None:
@@ -430,7 +430,7 @@ void sec_with() {
             s.push_back(9);
         }
     }
-    std::cout << "with" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n";
+    std::cout << "with" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // def sec_finally() -> None:
@@ -450,7 +450,7 @@ void sec_finally() {
             s.push_back(9);
         }
     }
-    std::cout << "finally" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n";
+    std::cout << "finally" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // def sec_readonly() -> None:
@@ -471,7 +471,7 @@ void sec_readonly() {
             if (!__r_1.has_value()) break;
             const auto& s = ::tpy::unwrap_ref(*__r_1);
             h.buf.push_back(7);
-            std::cout << "readonly" << " " << ::tpy::__len__(s) << "\n";
+            std::cout << "readonly" << " " << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -491,10 +491,10 @@ void sec_iterparam() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "iterparam" << " " << v << "\n";
+            std::cout << "iterparam" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "iterparam-src" << " " << ::tpy::__getitem__(a, 0).v << " " << ::tpy::__getitem__(a, 1).v << "\n";
+    std::cout << "iterparam-src" << " " << ::tpy::__getitem__(a, 0).v << " " << ::tpy::__getitem__(a, 1).v << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

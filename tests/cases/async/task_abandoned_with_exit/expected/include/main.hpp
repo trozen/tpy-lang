@@ -113,13 +113,13 @@ struct __coro_main_coro {
 // def __enter__(self) -> None:
 //     print("enter")
 inline void CM::__enter__() const {
-    std::cout << "enter" << "\n";
+    std::cout << "enter" << "\n" << ::tpy::check_signals;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 //     print("exit exceptional" if exc_val is not None else "exit normal")
 inline void CM::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    std::cout << (((exc_val != nullptr)) ? ("exit exceptional") : ("exit normal")) << "\n";
+    std::cout << (((exc_val != nullptr)) ? ("exit exceptional") : ("exit normal")) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

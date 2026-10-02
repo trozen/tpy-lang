@@ -20,8 +20,8 @@ std::string greet(const Pet* p) {
 //     print(greet(None))
 void main() {
     Dog __tmp_1 = Dog("rex");
-    std::cout << ::tpyapp::main::greet(&(__tmp_1)) << "\n";
-    std::cout << ::tpyapp::main::greet(nullptr) << "\n";
+    std::cout << ::tpyapp::main::greet(&(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::greet(nullptr) << "\n" << ::tpy::check_signals;
 }
 
 // main()

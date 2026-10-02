@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //     print(d)
 void test_basic() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
     ::tpy::__delitem__(d, "b");
-    std::cout << ::tpy::__len__(d) << "\n";
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
 }
 
 // def test_multi_target() -> None:
@@ -27,8 +27,8 @@ void test_multi_target() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
     ::tpy::__delitem__(d, "x");
     ::tpy::__delitem__(d, "z");
-    std::cout << ::tpy::DictPrinter(d) << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // def test_del_then_insert() -> None:
@@ -40,7 +40,7 @@ void test_del_then_insert() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     ::tpy::__delitem__(d, "a");
     ::tpy::__setitem__(d, "c", 3);
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
 }
 
 // test_basic()

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(b.fetch())
 void main() {
     IntBox b = IntBox(7);
-    std::cout << b.fetch() << "\n";
+    std::cout << b.fetch() << "\n" << ::tpy::check_signals;
 }
 
 // main()

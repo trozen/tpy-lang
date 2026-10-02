@@ -46,10 +46,10 @@ namespace tpyapp::main {
 //     print(eval_expr(e))
 void main() {
     Expr __tmp_1 = Lit(::tpy::BigInt(42));
-    std::cout << ::tpyapp::main::eval_expr(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::eval_expr(__tmp_1) << "\n" << ::tpy::check_signals;
     BinOp e = BinOp(::tpystd::tplib::box::Box<Expr>(BinOp(::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(10))), "+", ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(3))))), "-", ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(1))));
     Expr __tmp_2 = std::move(e);
-    std::cout << ::tpyapp::main::eval_expr(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::eval_expr(__tmp_2) << "\n" << ::tpy::check_signals;
 }
 
 // # D20 mutual recursion with classes defined BEFORE the union alias.

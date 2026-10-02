@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // def speak(self) -> None:
 //     print("...")
 inline void Animal::speak() const {
-    std::cout << "..." << "\n";
+    std::cout << "..." << "\n" << ::tpy::check_signals;
 }
 
 // def make_noise(self) -> None:
@@ -60,7 +60,7 @@ inline void Animal::make_noise() const {
 // def speak(self) -> None:
 //     print("Woof!")
 inline void Dog::speak() const {
-    std::cout << "Woof!" << "\n";
+    std::cout << "Woof!" << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

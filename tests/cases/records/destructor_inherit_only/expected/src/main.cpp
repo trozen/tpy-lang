@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def consume(c: Own[Child]) -> None:
 //     print("consumed", c.name, c.tag)
 void consume(Child&& c) {
-    std::cout << "consumed" << " " << c.name << " " << c.tag << "\n";
+    std::cout << "consumed" << " " << c.name << " " << c.tag << "\n" << ::tpy::check_signals;
 }
 
 // def main():
@@ -20,9 +20,9 @@ void consume(Child&& c) {
 void main() {
     Child c = Child("x", "t1");
     ::tpyapp::main::consume(std::move(c));
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::consume(Child("y", "t2"));
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // main()

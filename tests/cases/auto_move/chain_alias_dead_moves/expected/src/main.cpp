@@ -22,8 +22,8 @@ int32_t take(Outer&& o) {
 void main() {
     Outer o = Outer();
     Inner& a = o.inner;
-    std::cout << ::tpy::__len__(a.vals) << "\n";
-    std::cout << ::tpyapp::main::take(std::move(o)) << "\n";
+    std::cout << ::tpy::__len__(a.vals) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take(std::move(o)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

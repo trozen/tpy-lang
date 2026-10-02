@@ -36,14 +36,14 @@ int32_t first_weight(const std::vector<std::tuple<int32_t, Box>>& rows, bool aga
 //     print(first_weight(rows, True))
 void main() {
     Holder h = Holder(Box(5), Box(6));
-    std::cout << h.get_weight("b") << "\n";
-    std::cout << h.peek() << "\n";
-    std::cout << h.arg_weight("b") << "\n";
+    std::cout << h.get_weight("b") << "\n" << ::tpy::check_signals;
+    std::cout << h.peek() << "\n" << ::tpy::check_signals;
+    std::cout << h.arg_weight("b") << "\n" << ::tpy::check_signals;
     h.bump("a");
-    std::cout << std::get<1>(::tpy::__getitem__(h.store, "a")).val << "\n";
+    std::cout << std::get<1>(::tpy::__getitem__(h.store, "a")).val << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<int32_t, Box>> rows = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{40, Box(7)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{41, Box(8)})};
-    std::cout << ::tpyapp::main::first_weight(rows, false) << "\n";
-    std::cout << ::tpyapp::main::first_weight(rows, true) << "\n";
+    std::cout << ::tpyapp::main::first_weight(rows, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first_weight(rows, true) << "\n" << ::tpy::check_signals;
 }
 
 // main()

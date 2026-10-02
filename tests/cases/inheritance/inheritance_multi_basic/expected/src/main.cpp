@@ -14,12 +14,12 @@ namespace tpyapp::main {
 //     print(w.value())
 void main() {
     Widget w = Widget("button", 5);
-    std::cout << w.name << "\n";
-    std::cout << w.count << "\n";
-    std::cout << w.describe() << "\n";
+    std::cout << w.name << "\n" << ::tpy::check_signals;
+    std::cout << w.count << "\n" << ::tpy::check_signals;
+    std::cout << w.describe() << "\n" << ::tpy::check_signals;
     w.inc();
     w.inc();
-    std::cout << w.value() << "\n";
+    std::cout << w.value() << "\n" << ::tpy::check_signals;
 }
 
 // main()

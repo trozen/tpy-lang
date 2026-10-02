@@ -33,7 +33,7 @@ __coro_boom boom() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "cleanup" << "\n";
+        std::cout << "cleanup" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -77,7 +77,7 @@ __coro_cleanup cleanup() {
             }
         } catch (const ::tpy::ValueError&) {
             __sub_0.reset();
-            std::cout << "caught" << "\n";
+            std::cout << "caught" << "\n" << ::tpy::check_signals;
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = 42;
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -96,7 +96,7 @@ __coro_cleanup cleanup() {
             continue;
         } catch (const ::tpy::ValueError&) {
             __sub_1.reset();
-            std::cout << "caught" << "\n";
+            std::cout << "caught" << "\n" << ::tpy::check_signals;
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = 42;
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -120,7 +120,7 @@ __coro_cleanup cleanup() {
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught" << "\n";
+            std::cout << "caught" << "\n" << ::tpy::check_signals;
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = 42;
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -156,7 +156,7 @@ __coro_caller caller() {
 // def main() -> None:
 //     print(asyncio.run(caller()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller())) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller())) << "\n" << ::tpy::check_signals;
 }
 
 // # `await` in finally with a throw from the try body. The catch in

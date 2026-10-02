@@ -15,11 +15,11 @@ namespace tpyapp::main {
 //     print(len(empty))
 void main() {
     std::vector<Item> items = ::tpy::make_vector<Item>(Heavy(1), Light(2), Heavy(3));
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
     std::vector<Item> single = ::tpy::make_vector<Item>(Light(42));
-    std::cout << ::tpy::__len__(single) << "\n";
+    std::cout << ::tpy::__len__(single) << "\n" << ::tpy::check_signals;
     std::vector<Item> empty = std::vector<Item>{};
-    std::cout << ::tpy::__len__(empty) << "\n";
+    std::cout << ::tpy::__len__(empty) << "\n" << ::tpy::check_signals;
 }
 
 // # List literal with non-copyable union elements.

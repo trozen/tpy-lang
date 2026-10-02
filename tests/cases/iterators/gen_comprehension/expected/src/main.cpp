@@ -60,7 +60,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_1 = ::tpyapp::main::two_then(4);
@@ -73,7 +73,7 @@ void main() {
             }
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> nums = {10, 20, 30, 40};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -85,7 +85,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> s = ({
         ::tpy::ordered_set<int32_t> __result;
         auto __obj_3 = ::tpyapp::main::two_then(2);
@@ -97,7 +97,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, int32_t> d = ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
         auto __obj_4 = ::tpyapp::main::two_then(2);
@@ -109,7 +109,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__getitem__(d, 2) << "\n";
+    std::cout << ::tpy::__getitem__(d, 2) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_5 = ::tpyapp::main::simple(3);
@@ -120,7 +120,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     Counter __tmp_1 = Counter(10);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -132,7 +132,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_7 = ::tpyapp::main::pairs(3);
@@ -145,7 +145,7 @@ void main() {
             __result.push_back((::tpy::add_check<int32_t>(a, b)));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_8 = ::tpyapp::main::head<int32_t>(nums, 0);
@@ -156,7 +156,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::vector<Node> xs = ({
         std::vector<Node> __result;
         auto __obj_9 = ::tpyapp::main::make_nodes(3);
@@ -168,7 +168,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 2).v << "\n";
+    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 2).v << "\n" << ::tpy::check_signals;
 }
 
 

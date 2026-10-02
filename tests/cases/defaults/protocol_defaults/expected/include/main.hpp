@@ -74,13 +74,13 @@ inline int32_t Impl::process(int32_t x, int32_t scale) const {
 //     print(c.call())
 template<Callable T_c>
 void use_callable(T_c& c) {
-    std::cout << c.call() << "\n";
+    std::cout << c.call() << "\n" << ::tpy::check_signals;
 }
 // def use_one_arg(p: OneArg) -> None:
 //     print(p.process(int32(10)))
 template<OneArg T_p>
 void use_one_arg(T_p& p) {
-    std::cout << p.process(10) << "\n";
+    std::cout << p.process(10) << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

@@ -31,7 +31,7 @@ void main() {
             total = ((total) + (std::get<1>(pair).val));
         }
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // main()

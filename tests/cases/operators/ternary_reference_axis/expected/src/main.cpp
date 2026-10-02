@@ -98,28 +98,28 @@ void main() {
     std::vector<int32_t> xs = {1};
     std::vector<int32_t> ys = {2};
     ::tpyapp::main::pick_list(true, xs, ys);
-    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(ys) << "\n";
+    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d1 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::ordered_map<std::string, int32_t>({{"b", 2}});
     ::tpyapp::main::pick_dict(false, d1, d2);
-    std::cout << ::tpy::__len__(d1) << " " << ::tpy::__len__(d2) << "\n";
+    std::cout << ::tpy::__len__(d1) << " " << ::tpy::__len__(d2) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> s1 = ::tpy::ordered_set<int32_t>({1});
     ::tpy::ordered_set<int32_t> s2 = ::tpy::ordered_set<int32_t>({2});
     ::tpyapp::main::pick_set(true, s1, s2);
-    std::cout << ::tpy::__len__(s1) << " " << ::tpy::__len__(s2) << "\n";
+    std::cout << ::tpy::__len__(s1) << " " << ::tpy::__len__(s2) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray b1 = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
     ::tpy::ByteArray b2 = ::tpy::ByteArray(::tpy::bytes_literal("bb", 2));
     ::tpyapp::main::pick_bytearray(false, b1, b2);
-    std::cout << ::tpy::__len__(b1) << " " << ::tpy::__len__(b2) << "\n";
-    std::cout << ::tpyapp::main::read_through(true, b1, b2) << "\n";
+    std::cout << ::tpy::__len__(b1) << " " << ::tpy::__len__(b2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_through(true, b1, b2) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> a1 = std::array<int32_t, 2>({1, 1});
     std::array<int32_t, 2> a2 = std::array<int32_t, 2>({2, 2});
     ::tpyapp::main::pick_array(true, a1, a2);
-    std::cout << ::tpy::__getitem__(a1, 0) << " " << ::tpy::__getitem__(a2, 0) << "\n";
+    std::cout << ::tpy::__getitem__(a1, 0) << " " << ::tpy::__getitem__(a2, 0) << "\n" << ::tpy::check_signals;
     Tag t1 = Tag(1);
     Tag t2 = Tag(2);
     ::tpyapp::main::pick_record(false, t1, t2);
-    std::cout << t1.n << " " << t2.n << "\n";
+    std::cout << t1.n << " " << t2.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

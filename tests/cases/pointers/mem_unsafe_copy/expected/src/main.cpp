@@ -15,9 +15,9 @@ void test_copy_mutable() {
     std::array<int32_t, 3> src = {10, 20, 30};
     std::array<int32_t, 3> dst = {0, 0, 0};
     std::copy_n(src.data(), 3, dst.data());
-    std::cout << dst.data()[0] << "\n";
-    std::cout << dst.data()[1] << "\n";
-    std::cout << dst.data()[2] << "\n";
+    std::cout << dst.data()[0] << "\n" << ::tpy::check_signals;
+    std::cout << dst.data()[1] << "\n" << ::tpy::check_signals;
+    std::cout << dst.data()[2] << "\n" << ::tpy::check_signals;
 }
 
 // def test_copy_from_constptr() -> None:
@@ -34,8 +34,8 @@ void test_copy_from_constptr() {
     int32_t* sp = src.data();
     const int32_t* cp = sp;
     std::copy_n(cp, 2, dst.data());
-    std::cout << dst.data()[0] << "\n";
-    std::cout << dst.data()[1] << "\n";
+    std::cout << dst.data()[0] << "\n" << ::tpy::check_signals;
+    std::cout << dst.data()[1] << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_copy_n

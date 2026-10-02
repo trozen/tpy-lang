@@ -13,7 +13,7 @@ namespace tpyapp::main {
 //     print(t.qty)
 void main() {
     Trade t = Trade(5);
-    std::cout << t.qty << "\n";
+    std::cout << t.qty << "\n" << ::tpy::check_signals;
 }
 
 // main()

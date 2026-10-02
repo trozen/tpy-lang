@@ -13,7 +13,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << "mod_c init" << "\n";
+    std::cout << "mod_c init" << "\n" << ::tpy::check_signals;
     shared_value = 42;
 }
 

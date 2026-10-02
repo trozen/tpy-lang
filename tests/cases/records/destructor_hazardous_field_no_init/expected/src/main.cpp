@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print("safe name empty:", s.name == "")
 void main() {
     Safe s = Safe();
-    std::cout << "safe name empty:" << " " << ::tpy::print_bool((s.name == "")) << "\n";
+    std::cout << "safe name empty:" << " " << ::tpy::print_bool((s.name == "")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(process(nums, "other"))
 void main() {
     std::vector<int32_t> nums = {10, 20, 30};
-    std::cout << ::tpyapp::main::process(nums, "iter_path") << "\n";
-    std::cout << ::tpyapp::main::process(nums, "other") << "\n";
+    std::cout << ::tpyapp::main::process(nums, "iter_path") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::process(nums, "other") << "\n" << ::tpy::check_signals;
 }
 
 // main()

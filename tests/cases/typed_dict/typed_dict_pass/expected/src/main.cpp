@@ -24,9 +24,9 @@ Point translate(const Point& p, int32_t dx, int32_t dy) {
 //     print(describe(p2))
 void main() {
     Point p = Point(1, 2);
-    std::cout << ::tpyapp::main::describe(p) << "\n";
+    std::cout << ::tpyapp::main::describe(p) << "\n" << ::tpy::check_signals;
     Point p2 = ::tpyapp::main::translate(p, 10, 20);
-    std::cout << ::tpyapp::main::describe(p2) << "\n";
+    std::cout << ::tpyapp::main::describe(p2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

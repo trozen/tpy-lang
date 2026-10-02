@@ -161,11 +161,11 @@ __gen_nodes nodes(::tpy::BigInt n) {
 //     print(filtered_value_moves())
 //     print(same_var_key_and_value())
 void main() {
-    std::cout << ::tpyapp::main::value_moves_key_field() << "\n";
-    std::cout << ::tpyapp::main::value_only() << "\n";
-    std::cout << ::tpyapp::main::key_does_not_move(::tpy::BigInt(0)) << "\n";
-    std::cout << ::tpyapp::main::filtered_value_moves() << "\n";
-    std::cout << ::tpyapp::main::same_var_key_and_value() << "\n";
+    std::cout << ::tpyapp::main::value_moves_key_field() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::value_only() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::key_does_not_move(::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::filtered_value_moves() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::same_var_key_and_value() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -51,9 +51,9 @@ void main() {
     n.fire();
     ::tpyapp::main::fire_direct(a, 11);
     auto ro_ptr = &a;
-    std::cout << ::tpy::ListPrinter(a.log) << "\n";
-    std::cout << ::tpy::ListPrinter(b.log) << "\n";
-    std::cout << ::tpy::print_bool((ro_ptr != nullptr)) << "\n";
+    std::cout << ::tpy::ListPrinter(a.log) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(b.log) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((ro_ptr != nullptr)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

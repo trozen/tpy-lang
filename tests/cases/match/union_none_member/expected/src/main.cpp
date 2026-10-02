@@ -35,11 +35,11 @@ int32_t pick(::tpy::Union<std::monostate, const A*, const B*> x) {
 //     print(pick(A()))
 //     print(pick(B()))
 void main() {
-    std::cout << ::tpyapp::main::pick(::tpy::Union<std::monostate, const A*, const B*>{std::monostate{}}) << "\n";
+    std::cout << ::tpyapp::main::pick(::tpy::Union<std::monostate, const A*, const B*>{std::monostate{}}) << "\n" << ::tpy::check_signals;
     A __tmp_1 = A();
-    std::cout << ::tpyapp::main::pick(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::pick(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
     B __tmp_2 = B();
-    std::cout << ::tpyapp::main::pick(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::pick(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

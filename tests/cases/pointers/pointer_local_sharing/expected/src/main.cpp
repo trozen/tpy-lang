@@ -17,8 +17,8 @@ void test_local_sharing() {
     Point x = Point(1, 2);
     Point& y = x;
     y.x = 99;
-    std::cout << x.x << "\n";
-    std::cout << y.x << "\n";
+    std::cout << x.x << "\n" << ::tpy::check_signals;
+    std::cout << y.x << "\n" << ::tpy::check_signals;
 }
 
 // # Test 2: copy() creates independent value
@@ -32,8 +32,8 @@ void test_copy_independence() {
     Point x = Point(10, 20);
     Point y = Point(x);
     y.x = 999;
-    std::cout << x.x << "\n";
-    std::cout << y.x << "\n";
+    std::cout << x.x << "\n" << ::tpy::check_signals;
+    std::cout << y.x << "\n" << ::tpy::check_signals;
 }
 
 // # Test 3: Init from param — local points to param's object
@@ -44,7 +44,7 @@ void test_copy_independence() {
 void test_init_from_param(Point& p) {
     Point& local = p;
     local.x = 42;
-    std::cout << p.x << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
 }
 
 // # Test 4: Init from container element — pointer into container
@@ -57,7 +57,7 @@ void test_init_from_element() {
     std::vector<Point> points = {Point(1, 1), Point(2, 2), Point(3, 3)};
     Point& elem = ::tpy::__getitem__(points, 0);
     elem.x = 100;
-    std::cout << ::tpy::__getitem__(points, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(points, 0).x << "\n" << ::tpy::check_signals;
 }
 
 // # Test 5: For-each over records — loop var is auto& reference
@@ -77,9 +77,9 @@ void test_foreach_mutation() {
         auto&& p = *__beg_0;
         p.x = ::tpy::add_check<int32_t>(p.x, 1);
     }
-    std::cout << ::tpy::__getitem__(points, 0).x << "\n";
-    std::cout << ::tpy::__getitem__(points, 1).x << "\n";
-    std::cout << ::tpy::__getitem__(points, 2).x << "\n";
+    std::cout << ::tpy::__getitem__(points, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(points, 1).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(points, 2).x << "\n" << ::tpy::check_signals;
 }
 
 // # Test 6: Rebinding pointer-local to different source
@@ -96,11 +96,11 @@ void test_rebinding() {
     Point a = Point(1, 1);
     Point b = Point(2, 2);
     Point* x = &(a);
-    std::cout << x->x << "\n";
+    std::cout << x->x << "\n" << ::tpy::check_signals;
     x = &(b);
-    std::cout << x->x << "\n";
+    std::cout << x->x << "\n" << ::tpy::check_signals;
     x->x = 77;
-    std::cout << b.x << "\n";
+    std::cout << b.x << "\n" << ::tpy::check_signals;
 }
 
 // # Test 7: Rvalue append — no copy needed
@@ -114,8 +114,8 @@ void test_rvalue_append() {
     std::vector<Point> results = std::vector<Point>{};
     results.push_back(Point(5, 5));
     results.push_back(Point(6, 6));
-    std::cout << ::tpy::__getitem__(results, 0).x << "\n";
-    std::cout << ::tpy::__getitem__(results, 1).x << "\n";
+    std::cout << ::tpy::__getitem__(results, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(results, 1).x << "\n" << ::tpy::check_signals;
 }
 
 // # Test 8: Build list with copy
@@ -135,8 +135,8 @@ void test_build_with_copy() {
     results.push_back(Point(p));
     p.x = 20;
     results.push_back(Point(p));
-    std::cout << ::tpy::__getitem__(results, 0).x << "\n";
-    std::cout << ::tpy::__getitem__(results, 1).x << "\n";
+    std::cout << ::tpy::__getitem__(results, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(results, 1).x << "\n" << ::tpy::check_signals;
 }
 
 // # Test 9: Init from global — local points to global's object
@@ -147,7 +147,7 @@ void test_build_with_copy() {
 void test_init_from_global() {
     Point& local = (*g);
     local.x = 500;
-    std::cout << g->x << "\n";
+    std::cout << g->x << "\n" << ::tpy::check_signals;
 }
 
 // # Test 10: Rebind pointer-local to global
@@ -162,7 +162,7 @@ void test_rebind_to_global() {
     Point* x = &(a);
     x = g;
     x->x = 600;
-    std::cout << g->x << "\n";
+    std::cout << g->x << "\n" << ::tpy::check_signals;
 }
 
 // # Test 11: List sharing — lists are non-value, assignment shares
@@ -176,8 +176,8 @@ void test_list_sharing() {
     std::vector<int32_t> a = {1, 2, 3};
     std::vector<int32_t>& b = a;
     b.push_back(4);
-    std::cout << ::tpy::__len__(a) << "\n";
-    std::cout << ::tpy::__getitem__(a, 3) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(a, 3) << "\n" << ::tpy::check_signals;
 }
 
 // # Test 12: Pointer copy chain — a→b→c, mutation through c visible in a
@@ -192,7 +192,7 @@ void test_pointer_chain() {
     Point& b = a;
     Point& c = b;
     c.x = 88;
-    std::cout << a.x << "\n";
+    std::cout << a.x << "\n" << ::tpy::check_signals;
 }
 
 // def test_method_on_pointer_local() -> None:
@@ -204,7 +204,7 @@ void test_method_on_pointer_local() {
     Counter c = Counter(0);
     c.increment();
     c.increment();
-    std::cout << c.val << "\n";
+    std::cout << c.val << "\n" << ::tpy::check_signals;
 }
 
 // # Test 14: For-each value elements from pointer-local list
@@ -224,7 +224,7 @@ void test_foreach_value_from_pointer_local() {
         int32_t n = *__beg_0;
         total = (::tpy::add_check<int32_t>(total, n));
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // g: Point = Point(0, 0)

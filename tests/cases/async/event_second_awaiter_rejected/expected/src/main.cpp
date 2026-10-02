@@ -20,9 +20,9 @@ void main() {
     {
         try {
             ::tpystd::coro::poll_once<std::monostate>(e);
-            std::cout << "ERROR: second poll should have raised" << "\n";
+            std::cout << "ERROR: second poll should have raised" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& ex) {
-            std::cout << "caught:" << " " << ex << "\n";
+            std::cout << "caught:" << " " << ex << "\n" << ::tpy::check_signals;
         }
     }
 }

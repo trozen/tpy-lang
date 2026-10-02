@@ -33,7 +33,7 @@ void __tpy_init() {
 
     int32_t __stop_0 = ::tpy::add_check<int32_t>(10, 1);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        std::cout << ::tpyapp::main::fib(i) << "\n";
+        std::cout << ::tpyapp::main::fib(i) << "\n" << ::tpy::check_signals;
     }
 }
 

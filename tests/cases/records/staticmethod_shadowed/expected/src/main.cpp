@@ -26,10 +26,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << Helper::add(10, 20) << "\n";
+    std::cout << Helper::add(10, 20) << "\n" << ::tpy::check_signals;
     static Helper __global_slot_1 = Helper(42);
     h = &__global_slot_1;
-    std::cout << ::tpyapp::main::use_helper((*h)) << "\n";
+    std::cout << ::tpyapp::main::use_helper((*h)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

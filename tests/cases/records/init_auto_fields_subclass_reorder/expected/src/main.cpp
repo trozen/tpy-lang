@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(s.b)
 void main() {
     Sub s = Sub(1, 2);
-    std::cout << s.a << "\n";
-    std::cout << s.b << "\n";
+    std::cout << s.a << "\n" << ::tpy::check_signals;
+    std::cout << s.b << "\n" << ::tpy::check_signals;
 }
 
 // main()

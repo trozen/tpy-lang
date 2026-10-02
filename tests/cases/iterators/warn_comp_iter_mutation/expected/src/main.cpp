@@ -696,58 +696,58 @@ int32_t read_only(const std::vector<int32_t>& xs) {
 //     print("read_only:", read_only([1, 2]))
 void main() {
     std::vector<int32_t> seed = {1, 2};
-    std::cout << "ctor:" << " " << Bag(seed, false).n << "\n";
+    std::cout << "ctor:" << " " << Bag(seed, false).n << "\n" << ::tpy::check_signals;
     Bag b = Bag(seed, false);
-    std::cout << "method:" << " " << b.run(false) << "\n";
+    std::cout << "method:" << " " << b.run(false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    std::cout << "free_fn:" << " " << ::tpyapp::main::free_fn(__tmp_1, false) << "\n";
+    std::cout << "free_fn:" << " " << ::tpyapp::main::free_fn(__tmp_1, false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_2 = {1, 2, 3};
-    std::cout << "direct:" << " " << ::tpyapp::main::direct(__tmp_2, false) << "\n";
+    std::cout << "direct:" << " " << ::tpyapp::main::direct(__tmp_2, false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_3 = {1, 2, 3};
-    std::cout << "element:" << " " << ::tpyapp::main::element(__tmp_3, false) << "\n";
+    std::cout << "element:" << " " << ::tpyapp::main::element(__tmp_3, false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_4 = {1, 2, 2};
-    std::cout << "set_comp:" << " " << ::tpyapp::main::set_comp(__tmp_4, false) << "\n";
+    std::cout << "set_comp:" << " " << ::tpyapp::main::set_comp(__tmp_4, false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_5 = {1, 2};
-    std::cout << "dict_comp:" << " " << ::tpyapp::main::dict_comp(__tmp_5, false) << "\n";
+    std::cout << "dict_comp:" << " " << ::tpyapp::main::dict_comp(__tmp_5, false) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> __tmp_6 = ::tpy::ordered_set<int32_t>({1, 2});
-    std::cout << "set_source:" << " " << ::tpyapp::main::set_source(__tmp_6, false) << "\n";
+    std::cout << "set_source:" << " " << ::tpyapp::main::set_source(__tmp_6, false) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, int32_t> __tmp_7 = ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});
-    std::cout << "dict_view:" << " " << ::tpyapp::main::dict_view(__tmp_7, false) << "\n";
+    std::cout << "dict_view:" << " " << ::tpyapp::main::dict_view(__tmp_7, false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_8 = {1, 2};
-    std::cout << "call_source:" << " " << ::tpyapp::main::call_source(__tmp_8, false) << "\n";
+    std::cout << "call_source:" << " " << ::tpyapp::main::call_source(__tmp_8, false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_9 = {1, 2};
-    std::cout << "nested_comp:" << " " << ::tpyapp::main::nested_comp(__tmp_9, false) << "\n";
+    std::cout << "nested_comp:" << " " << ::tpyapp::main::nested_comp(__tmp_9, false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_10 = {1, 2};
-    std::cout << "gen_body:" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::gen_body(__tmp_10, false)) << "\n";
+    std::cout << "gen_body:" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::gen_body(__tmp_10, false)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_11 = {1, 2};
-    std::cout << "async_body:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_body(__tmp_11, false))) << "\n";
+    std::cout << "async_body:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_body(__tmp_11, false))) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_12 = {1, 2};
-    std::cout << "nested_def:" << " " << ::tpyapp::main::nested_def(__tmp_12, false) << "\n";
+    std::cout << "nested_def:" << " " << ::tpyapp::main::nested_def(__tmp_12, false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_13 = {1, 2};
     std::vector<int32_t> __tmp_14 = {3};
-    std::cout << "in_for_body:" << " " << ::tpyapp::main::in_for_body(__tmp_13, __tmp_14, false) << "\n";
+    std::cout << "in_for_body:" << " " << ::tpyapp::main::in_for_body(__tmp_13, __tmp_14, false) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> __tmp_15 = {{1, 2}, {3}};
-    std::cout << "enclosing_element_loan:" << " " << ::tpyapp::main::enclosing_element_loan(__tmp_15, false) << "\n";
+    std::cout << "enclosing_element_loan:" << " " << ::tpyapp::main::enclosing_element_loan(__tmp_15, false) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> __tmp_16 = {{1, 2}, {3}};
-    std::cout << "enclosing_sibling:" << " " << ::tpyapp::main::enclosing_sibling(__tmp_16, false) << "\n";
+    std::cout << "enclosing_sibling:" << " " << ::tpyapp::main::enclosing_sibling(__tmp_16, false) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> __tmp_17 = {{1, 2}, {3}};
-    std::cout << "enclosing_unknown_index:" << " " << ::tpyapp::main::enclosing_unknown_index(__tmp_17, 1, false) << "\n";
+    std::cout << "enclosing_unknown_index:" << " " << ::tpyapp::main::enclosing_unknown_index(__tmp_17, 1, false) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> __tmp_18 = {{1, 2}, {3}};
-    std::cout << "for_nest_element:" << " " << ::tpyapp::main::for_nest_element(__tmp_18, false) << "\n";
+    std::cout << "for_nest_element:" << " " << ::tpyapp::main::for_nest_element(__tmp_18, false) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> __tmp_19 = {{1, 2}, {3}};
-    std::cout << "for_nest_sibling:" << " " << ::tpyapp::main::for_nest_sibling(__tmp_19, false) << "\n";
-    std::cout << "temp_receiver:" << " " << ::tpyapp::main::temp_receiver(false) << "\n";
-    std::cout << "self_named_source:" << " " << ::tpyapp::main::self_named_source() << "\n";
-    std::cout << "other_named_source:" << " " << ::tpyapp::main::other_named_source(false) << "\n";
+    std::cout << "for_nest_sibling:" << " " << ::tpyapp::main::for_nest_sibling(__tmp_19, false) << "\n" << ::tpy::check_signals;
+    std::cout << "temp_receiver:" << " " << ::tpyapp::main::temp_receiver(false) << "\n" << ::tpy::check_signals;
+    std::cout << "self_named_source:" << " " << ::tpyapp::main::self_named_source() << "\n" << ::tpy::check_signals;
+    std::cout << "other_named_source:" << " " << ::tpyapp::main::other_named_source(false) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_20 = {1, 2};
     std::vector<int32_t> __tmp_21 = {0};
-    std::cout << "other_container:" << " " << ::tpyapp::main::other_container(__tmp_20, __tmp_21) << "\n";
+    std::cout << "other_container:" << " " << ::tpyapp::main::other_container(__tmp_20, __tmp_21) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_22 = {1, 2};
-    std::cout << "after_comp:" << " " << ::tpyapp::main::after_comp(__tmp_22) << "\n";
+    std::cout << "after_comp:" << " " << ::tpyapp::main::after_comp(__tmp_22) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_23 = {1};
-    std::cout << "range_source:" << " " << ::tpyapp::main::range_source(__tmp_23) << "\n";
+    std::cout << "range_source:" << " " << ::tpyapp::main::range_source(__tmp_23) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_24 = {1, 2};
-    std::cout << "read_only:" << " " << ::tpyapp::main::read_only(__tmp_24) << "\n";
+    std::cout << "read_only:" << " " << ::tpyapp::main::read_only(__tmp_24) << "\n" << ::tpy::check_signals;
 }
 
 // import asyncio
@@ -788,7 +788,7 @@ void __tpy_init() {
         }
         std::move(__result);
     }));
-    std::cout << "module:" << " " << gn << "\n";
+    std::cout << "module:" << " " << gn << "\n" << ::tpy::check_signals;
     static std::vector<std::vector<Cell>> __global_slot_2 = {{Cell(1)}, {Cell(2)}};
     gcss = &__global_slot_2;
     gt = 0;
@@ -810,7 +810,7 @@ void __tpy_init() {
             std::move(__result);
         })));
     }
-    std::cout << "module_self_named:" << " " << gt << " " << ::tpy::__getitem__(::tpy::__getitem__((*gcss), 0), 0).v << " " << ::tpy::__getitem__(::tpy::__getitem__((*gcss), 1), 0).v << "\n";
+    std::cout << "module_self_named:" << " " << gt << " " << ::tpy::__getitem__(::tpy::__getitem__((*gcss), 0), 0).v << " " << ::tpy::__getitem__(::tpy::__getitem__((*gcss), 1), 0).v << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }
 

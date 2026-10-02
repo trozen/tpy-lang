@@ -79,46 +79,46 @@ void free_function() {
     int64_t slave = std::get<1>(__tup_1);
     ::tpystd::termios::TermAttributes old = ::tpystd::termios::tcgetattr(slave);
     ::tpystd::termios::TermAttributes prev = ::tpystd::tty::setcbreak(slave);
-    std::cout << "free: setcbreak returns old:" << " " << ::tpy::print_bool(((prev) == (old))) << "\n";
+    std::cout << "free: setcbreak returns old:" << " " << ::tpy::print_bool(((prev) == (old))) << "\n" << ::tpy::check_signals;
     ::tpystd::os::set_blocking(slave, true);
-    std::cout << "free: set_blocking no-op:" << " " << ::tpy::print_bool(::tpystd::os::get_blocking(slave)) << "\n";
+    std::cout << "free: set_blocking no-op:" << " " << ::tpy::print_bool(::tpystd::os::get_blocking(slave)) << "\n" << ::tpy::check_signals;
     ::tpystd::os::write(master, ::tpy::bytes_literal("a", 1));
-    std::cout << "free: cbreak read:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 16)) << "\n";
+    std::cout << "free: cbreak read:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 16)) << "\n" << ::tpy::check_signals;
     ::tpystd::os::set_blocking(slave, false);
-    std::cout << "free: blocking:" << " " << ::tpy::print_bool(::tpystd::os::get_blocking(slave)) << "\n";
+    std::cout << "free: blocking:" << " " << ::tpy::print_bool(::tpystd::os::get_blocking(slave)) << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpystd::os::read(slave, 16);
         } catch (const ::tpy::BlockingIOError&) {
-            std::cout << "free: cbreak empty: BlockingIOError" << "\n";
+            std::cout << "free: cbreak empty: BlockingIOError" << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::os::set_blocking(slave, true);
     ::tpystd::tty::setraw(slave);
     ::tpystd::os::write(master, ::tpy::bytes_literal("\x03", 1));
-    std::cout << "free: raw read:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 16)) << "\n";
+    std::cout << "free: raw read:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 16)) << "\n" << ::tpy::check_signals;
     ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsaflush, old);
-    std::cout << "free: restored:" << " " << ::tpy::print_bool(((::tpystd::termios::tcgetattr(slave)) == (old))) << "\n";
-    std::cout << "free: restored differs:" << " " << ::tpy::print_bool((::tpystd::termios::tcgetattr(slave) != old)) << "\n";
+    std::cout << "free: restored:" << " " << ::tpy::print_bool(((::tpystd::termios::tcgetattr(slave)) == (old))) << "\n" << ::tpy::check_signals;
+    std::cout << "free: restored differs:" << " " << ::tpy::print_bool((::tpystd::termios::tcgetattr(slave) != old)) << "\n" << ::tpy::check_signals;
     ::tpystd::os::write(master, ::tpy::bytes_literal("cd", 2));
     ::tpystd::os::set_blocking(slave, false);
     {
         try {
             ::tpystd::os::read(slave, 16);
         } catch (const ::tpy::BlockingIOError&) {
-            std::cout << "free: canonical waits for newline" << "\n";
+            std::cout << "free: canonical waits for newline" << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::os::set_blocking(slave, true);
-    std::cout << "free: blocking again:" << " " << ::tpy::print_bool(::tpystd::os::get_blocking(slave)) << "\n";
+    std::cout << "free: blocking again:" << " " << ::tpy::print_bool(::tpystd::os::get_blocking(slave)) << "\n" << ::tpy::check_signals;
     ::tpystd::os::write(master, ::tpy::bytes_literal("\n", 1));
-    std::cout << "free: canonical read:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 16)) << "\n";
+    std::cout << "free: canonical read:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 16)) << "\n" << ::tpy::check_signals;
     ::tpystd::termios::TermAttributes attrs = ::tpystd::termios::tcgetattr(slave);
     ::tpystd::termios::TermAttributes& alias = attrs;
     ::tpystd::tty::cfmakecbreak(alias);
-    std::cout << "free: alias mutated original:" << " " << ::tpy::print_bool((attrs != old)) << "\n";
+    std::cout << "free: alias mutated original:" << " " << ::tpy::print_bool((attrs != old)) << "\n" << ::tpy::check_signals;
     ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsanow, attrs);
-    std::cout << "free: applied:" << " " << ::tpy::print_bool(((::tpystd::termios::tcgetattr(slave)) == (attrs))) << "\n";
+    std::cout << "free: applied:" << " " << ::tpy::print_bool(((::tpystd::termios::tcgetattr(slave)) == (attrs))) << "\n" << ::tpy::check_signals;
     ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsanow, old);
     auto __tup_2 = ::tpystd::os::pipe();
     int64_t r = std::get<0>(__tup_2);
@@ -127,9 +127,9 @@ void free_function() {
         try {
             ::tpystd::termios::tcgetattr(r);
         } catch (const ::tpy::OSError&) {
-            std::cout << "free: wrong: termios.error is not an OSError" << "\n";
+            std::cout << "free: wrong: termios.error is not an OSError" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::termios::error& e) {
-            std::cout << "free: not a tty: termios.error" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)) == ::tpyapp::main::expected(::tpy_const_enotty))) << "\n";
+            std::cout << "free: not a tty: termios.error" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)) == ::tpyapp::main::expected(::tpy_const_enotty))) << "\n" << ::tpy::check_signals;
         }
     }
     auto __obj_0 = {master, slave, r, w};
@@ -156,9 +156,9 @@ void method() {
     int64_t slave = std::get<1>(__tup_1);
     ::tpystd::termios::TermAttributes before = ::tpystd::termios::tcgetattr(slave);
     RawSession session = RawSession(slave);
-    std::cout << "method: raw differs:" << " " << ::tpy::print_bool((::tpystd::termios::tcgetattr(slave) != before)) << "\n";
+    std::cout << "method: raw differs:" << " " << ::tpy::print_bool((::tpystd::termios::tcgetattr(slave) != before)) << "\n" << ::tpy::check_signals;
     session.restore();
-    std::cout << "method: restored:" << " " << ::tpy::print_bool(((::tpystd::termios::tcgetattr(slave)) == (before))) << "\n";
+    std::cout << "method: restored:" << " " << ::tpy::print_bool(((::tpystd::termios::tcgetattr(slave)) == (before))) << "\n" << ::tpy::check_signals;
     ::tpystd::os::close(master);
     ::tpystd::os::close(slave);
 }
@@ -187,14 +187,14 @@ void try_finally() {
         try {
             ::tpystd::tty::setcbreak(slave, ::tpy_const_termios_tcsadrain);
             ::tpystd::os::write(master, ::tpy::bytes_literal("x", 1));
-            std::cout << "finally: read:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 1)) << "\n";
+            std::cout << "finally: read:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 1)) << "\n" << ::tpy::check_signals;
         } catch (...) {
             ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsaflush, old);
             throw;
         }
         ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsaflush, old);
     }
-    std::cout << "finally: restored:" << " " << ::tpy::print_bool(((::tpystd::termios::tcgetattr(slave)) == (old))) << "\n";
+    std::cout << "finally: restored:" << " " << ::tpy::print_bool(((::tpystd::termios::tcgetattr(slave)) == (old))) << "\n" << ::tpy::check_signals;
     ::tpystd::os::close(master);
     ::tpystd::os::close(slave);
 }
@@ -218,8 +218,8 @@ void context_manager() {
     __ctx_1.__enter__();
     try {
         ::tpystd::os::write(master, ::tpy::bytes_literal("y", 1));
-        std::cout << "with: read:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 1)) << "\n";
-        std::cout << "with: cbreak:" << " " << ::tpy::print_bool((::tpystd::termios::tcgetattr(slave) != old)) << "\n";
+        std::cout << "with: read:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 1)) << "\n" << ::tpy::check_signals;
+        std::cout << "with: cbreak:" << " " << ::tpy::print_bool((::tpystd::termios::tcgetattr(slave) != old)) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -230,7 +230,7 @@ void context_manager() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << "with: restored:" << " " << ::tpy::print_bool(((::tpystd::termios::tcgetattr(slave)) == (old))) << "\n";
+    std::cout << "with: restored:" << " " << ::tpy::print_bool(((::tpystd::termios::tcgetattr(slave)) == (old))) << "\n" << ::tpy::check_signals;
     ::tpystd::os::close(master);
     ::tpystd::os::close(slave);
 }
@@ -311,10 +311,10 @@ void repr_str() {
     int64_t slave = std::get<1>(__tup_1);
     ::tpystd::termios::TermAttributes attrs = ::tpystd::termios::tcgetattr(slave);
     std::string text = ::tpy::repr_of(attrs);
-    std::cout << "repr: repr equals str:" << " " << ::tpy::print_bool((text == std::string(::tpy::__str__(attrs)))) << "\n";
-    std::cout << "repr: ends with ]]:" << " " << ::tpy::print_bool(::tpy::str_endswith(text, "]]")) << "\n";
+    std::cout << "repr: repr equals str:" << " " << ::tpy::print_bool((text == std::string(::tpy::__str__(attrs)))) << "\n" << ::tpy::check_signals;
+    std::cout << "repr: ends with ]]:" << " " << ::tpy::print_bool(::tpy::str_endswith(text, "]]")) << "\n" << ::tpy::check_signals;
     std::vector<std::string> cooked = ::tpy::str_split(::tpy::str_slice(text, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(::tpy::str_index(text, ", ["), 3)), -2}), ", ");
-    std::cout << "repr: cooked cc all bytes:" << " " << ::tpy::print_bool(((::tpy::__len__(cooked) == ::tpy_const_termios_nccs) && ::tpy::builtin_all(::tpyapp::main::__genexpr_repr_str_1(cooked)))) << "\n";
+    std::cout << "repr: cooked cc all bytes:" << " " << ::tpy::print_bool(((::tpy::__len__(cooked) == ::tpy_const_termios_nccs) && ::tpy::builtin_all(::tpyapp::main::__genexpr_repr_str_1(cooked)))) << "\n" << ::tpy::check_signals;
     ::tpystd::termios::TermAttributes old = ::tpystd::tty::setraw(slave);
     std::string raw = ::tpy::repr_of(::tpystd::termios::tcgetattr(slave));
     std::vector<std::string> items = ::tpy::str_split(::tpy::str_slice(raw, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(::tpy::str_index(raw, ", ["), 3)), -2}), ", ");
@@ -328,7 +328,7 @@ void repr_str() {
             nbytes = ::tpy::add_check<int32_t>(nbytes, 1);
         }
     }
-    std::cout << "repr: raw cc bytes:" << " " << ::tpy::print_bool((nbytes == (::tpy::sub_check<int32_t>(::tpy_const_termios_nccs, 2)))) << " " << "ints:" << " " << (::tpy::sub_check<int32_t>(::tpy::__len__(items), nbytes)) << "\n";
+    std::cout << "repr: raw cc bytes:" << " " << ::tpy::print_bool((nbytes == (::tpy::sub_check<int32_t>(::tpy_const_termios_nccs, 2)))) << " " << "ints:" << " " << (::tpy::sub_check<int32_t>(::tpy::__len__(items), nbytes)) << "\n" << ::tpy::check_signals;
     ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsanow, old);
     ::tpystd::os::close(master);
     ::tpystd::os::close(slave);
@@ -365,7 +365,7 @@ void tcsetattr_errors() {
         try {
             ::tpystd::termios::tcsetattr(slave, 99, attrs);
         } catch (const ::tpystd::termios::error& e) {
-            std::cout << "seterr: bad action: EINVAL" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)) == ::tpyapp::main::expected(::tpy_const_einval))) << "\n";
+            std::cout << "seterr: bad action: EINVAL" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)) == ::tpyapp::main::expected(::tpy_const_einval))) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::os::close(master);
@@ -374,21 +374,21 @@ void tcsetattr_errors() {
         try {
             ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsanow, attrs);
         } catch (const ::tpystd::termios::error& e) {
-            std::cout << "seterr: closed fd: EBADF" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)) == ::tpyapp::main::expected(::tpy_const_ebadf))) << "\n";
+            std::cout << "seterr: closed fd: EBADF" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)) == ::tpyapp::main::expected(::tpy_const_ebadf))) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::os::get_blocking(slave);
         } catch (const ::tpy::OSError&) {
-            std::cout << "seterr: closed get_blocking: OSError" << "\n";
+            std::cout << "seterr: closed get_blocking: OSError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::os::set_blocking(slave, true);
         } catch (const ::tpy::OSError&) {
-            std::cout << "seterr: closed set_blocking: OSError" << "\n";
+            std::cout << "seterr: closed set_blocking: OSError" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -413,10 +413,10 @@ void icrnl() {
     int64_t slave = std::get<1>(__tup_1);
     ::tpystd::termios::TermAttributes old = ::tpystd::tty::setcbreak(slave);
     ::tpystd::os::write(master, ::tpy::bytes_literal("\r", 1));
-    std::cout << "icrnl: cbreak:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 16)) << "\n";
+    std::cout << "icrnl: cbreak:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 16)) << "\n" << ::tpy::check_signals;
     ::tpystd::tty::setraw(slave);
     ::tpystd::os::write(master, ::tpy::bytes_literal("\r", 1));
-    std::cout << "icrnl: raw:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 16)) << "\n";
+    std::cout << "icrnl: raw:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 16)) << "\n" << ::tpy::check_signals;
     ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsanow, old);
     ::tpystd::os::close(master);
     ::tpystd::os::close(slave);
@@ -449,21 +449,21 @@ void negative_fd() {
         try {
             ::tpystd::termios::tcgetattr(-1);
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "negfd: tcgetattr: ValueError" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "negfd: tcgetattr: ValueError" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::termios::tcsetattr(-5, ::tpy_const_termios_tcsanow, attrs);
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "negfd: tcsetattr: ValueError" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "negfd: tcsetattr: ValueError" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::tty::setraw(-2);
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "negfd: setraw: ValueError" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "negfd: setraw: ValueError" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::os::close(master);

@@ -16,13 +16,13 @@ namespace tpyapp::main {
 void main() {
     Strict s = Strict();
     s.__delattr__("a");
-    std::cout << "deleted a" << "\n";
+    std::cout << "deleted a" << "\n" << ::tpy::check_signals;
     {
         try {
             s.__delattr__("_private");
-            std::cout << "never" << "\n";
+            std::cout << "never" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::AttributeError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

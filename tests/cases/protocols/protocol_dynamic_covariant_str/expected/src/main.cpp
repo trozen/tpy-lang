@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def greet(x: Named) -> None:
 //     print(x.name())
 void greet(Named& x) {
-    std::cout << x.name() << "\n";
+    std::cout << x.name() << "\n" << ::tpy::check_signals;
 }
 
 // def main():

@@ -26,7 +26,7 @@ void main() {
         int32_t item = *__beg_0;
         add(item);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // main()

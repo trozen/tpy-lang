@@ -26,7 +26,7 @@ int32_t sum_span(std::span<const int32_t> s) {
 void main() {
     std::array<int32_t, 3> arr = std::array<int32_t, 3>({10, 20, 30});
     int32_t result = ::tpyapp::main::sum_span(::tpy::as_span(arr));
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
 }
 
 // main()

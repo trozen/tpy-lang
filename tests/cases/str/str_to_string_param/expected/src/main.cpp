@@ -23,7 +23,7 @@ namespace tpyapp::main {
 //     print(out)
 void main() {
     ::tpy::String out = ::tpyapp::main::forward("hello from str");
-    std::cout << out << "\n";
+    std::cout << out << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -15,7 +15,7 @@ namespace tpyapp::main {
 //     print(add_one(a))
 void main() {
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(5));
-    std::cout << ::tpyapp::main::add_one(::tpy::any_cast_or_panic<::tpy::BigInt>(a)) << "\n";
+    std::cout << ::tpyapp::main::add_one(::tpy::any_cast_or_panic<::tpy::BigInt>(a)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

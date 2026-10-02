@@ -39,9 +39,9 @@ void update_renamed(int32_t a, int32_t b) {
 //     print(counter)
 void main() {
     ::tpyapp::main::update_same_name(10, 20);
-    std::cout << ::opentop << "\n";
+    std::cout << ::opentop << "\n" << ::tpy::check_signals;
     ::tpyapp::main::update_renamed(30, 40);
-    std::cout << ::g_counter << "\n";
+    std::cout << ::g_counter << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native_global

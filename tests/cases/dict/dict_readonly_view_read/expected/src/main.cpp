@@ -42,7 +42,7 @@ void main() {
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     ::tpy::__setitem__(d, "a", std::vector<int32_t>{1, 2});
     ::tpy::__setitem__(d, "b", std::vector<int32_t>{3});
-    std::cout << ::tpyapp::main::total(d) << "\n";
+    std::cout << ::tpyapp::main::total(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

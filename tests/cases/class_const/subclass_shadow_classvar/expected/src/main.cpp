@@ -15,11 +15,11 @@ namespace tpyapp::main {
 void main() {
     Parent::counter = 1;
     Child::counter = 2;
-    std::cout << Parent::counter << "\n";
-    std::cout << Child::counter << "\n";
+    std::cout << Parent::counter << "\n" << ::tpy::check_signals;
+    std::cout << Child::counter << "\n" << ::tpy::check_signals;
     Child::counter = ::tpy::add_check<int32_t>(Child::counter, 5);
-    std::cout << Parent::counter << "\n";
-    std::cout << Child::counter << "\n";
+    std::cout << Parent::counter << "\n" << ::tpy::check_signals;
+    std::cout << Child::counter << "\n" << ::tpy::check_signals;
 }
 
 // main()

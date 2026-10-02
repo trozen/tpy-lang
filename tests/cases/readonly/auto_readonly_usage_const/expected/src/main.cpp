@@ -109,22 +109,22 @@ int32_t sum_boxes(const std::vector<::tpystd::tplib::box::Box<Inner>>& boxes) {
 //     print(sum_boxes(boxes))
 void main() {
     Outer o = Outer(5);
-    std::cout << ::tpyapp::main::read_through_get(o) << "\n";
+    std::cout << ::tpyapp::main::read_through_get(o) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::write_through_get(o);
-    std::cout << ::tpyapp::main::read_through_get(o) << "\n";
+    std::cout << ::tpyapp::main::read_through_get(o) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::mutate_through_get(o);
     ::tpyapp::main::aug_through_get(o);
-    std::cout << ::tpyapp::main::read_through_get(o) << "\n";
+    std::cout << ::tpyapp::main::read_through_get(o) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::alias_write(o);
-    std::cout << ::tpyapp::main::alias_read(o) << "\n";
+    std::cout << ::tpyapp::main::alias_read(o) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::elem_alias_write(o);
-    std::cout << ::tpy::__getitem__(o.items, 0).v << "\n";
+    std::cout << ::tpy::__getitem__(o.items, 0).v << "\n" << ::tpy::check_signals;
     Cell c = Cell(2);
-    std::cout << ::tpyapp::main::read_user_accessor(c) << "\n";
+    std::cout << ::tpyapp::main::read_user_accessor(c) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::write_user_accessor(c);
-    std::cout << ::tpyapp::main::peek_user_accessor(c) << "\n";
+    std::cout << ::tpyapp::main::peek_user_accessor(c) << "\n" << ::tpy::check_signals;
     std::vector<::tpystd::tplib::box::Box<Inner>> boxes = ::tpy::make_vector<::tpystd::tplib::box::Box<Inner>>(::tpystd::tplib::box::Box<Inner>(Inner(1)), ::tpystd::tplib::box::Box<Inner>(Inner(2)), ::tpystd::tplib::box::Box<Inner>(Inner(3)));
-    std::cout << ::tpyapp::main::sum_boxes(boxes) << "\n";
+    std::cout << ::tpyapp::main::sum_boxes(boxes) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.box import Box

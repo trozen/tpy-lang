@@ -42,13 +42,13 @@ void main() {
     ::tpystd::tpy::thread::JoinHandle<std::vector<std::string>> h = ::tpystd::tpy::thread::spawn<std::vector<std::string>, Rows>(Rows(3));
     std::vector<std::string> rows = h.join();
     rows.push_back("extra");
-    std::cout << "list:" << " " << ::tpy::str_join(" ", rows) << "\n";
+    std::cout << "list:" << " " << ::tpy::str_join(" ", rows) << "\n" << ::tpy::check_signals;
     Tally t = ::tpystd::tpy::thread::spawn<Tally, Counter>(Counter(4)).join();
     t.total = ::tpy::add_check<int32_t>(t.total, 100);
     t.tags.push_back("late");
-    std::cout << "record:" << " " << t.total << " " << ::tpy::str_join(" ", t.tags) << "\n";
+    std::cout << "record:" << " " << t.total << " " << ::tpy::str_join(" ", t.tags) << "\n" << ::tpy::check_signals;
     int32_t s = ::tpystd::tpy::thread::spawn<int32_t, Summer>(Summer({1, 2, 3})).join();
-    std::cout << "value:" << " " << s << "\n";
+    std::cout << "value:" << " " << s << "\n" << ::tpy::check_signals;
     std::array<::tpystd::tpy::thread::JoinHandle<std::vector<std::string>>, 3> hs = ::tpy::array_from_index<::tpystd::tpy::thread::JoinHandle<std::vector<std::string>>, 3>([&](std::size_t __i_0) -> ::tpystd::tpy::thread::JoinHandle<std::vector<std::string>> {
         int32_t t = int32_t(__i_0);
         return ::tpystd::tpy::thread::spawn<std::vector<std::string>, Rows>(Rows(t));
@@ -68,7 +68,7 @@ void main() {
     ::tpy::__getitem__(joined, 2).push_back("post");
     std::vector<std::string>& last = ::tpy::__getitem__(joined, 2);
     ::tpy::__getitem__(joined, 2).push_back("aliased");
-    std::cout << "comprehension:" << " " << ::tpy::__len__(joined) << " " << ::tpy::str_join(" ", last) << "\n";
+    std::cout << "comprehension:" << " " << ::tpy::__len__(joined) << " " << ::tpy::str_join(" ", last) << "\n" << ::tpy::check_signals;
     Driver("end").collect(2);
 }
 

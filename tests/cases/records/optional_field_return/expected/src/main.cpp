@@ -23,12 +23,12 @@ void __tpy_init() {
     static Box __global_slot_1 = Box();
     b = &__global_slot_1;
     r = b->get_item();
-    std::cout << ::tpy::print_bool((r == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((r == nullptr)) << "\n" << ::tpy::check_signals;
     b->item = Point(3, 4);
     r = b->get_item();
-    std::cout << ::tpy::print_bool((r != nullptr)) << "\n";
-    std::cout << ::tpy::deref_check(r).x << "\n";
-    std::cout << ::tpy::deref_check(r).y << "\n";
+    std::cout << ::tpy::print_bool((r != nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::deref_check(r).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::deref_check(r).y << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

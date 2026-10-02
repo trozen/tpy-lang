@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     ::tpy::Any x = ::tpy::make_any(std::string("hello"));
     std::string s = ::tpy::any_cast_or_panic<std::string>(x);
-    std::cout << ::tpy::str_upper(s) << "\n";
+    std::cout << ::tpy::str_upper(s) << "\n" << ::tpy::check_signals;
 }
 
 // main()

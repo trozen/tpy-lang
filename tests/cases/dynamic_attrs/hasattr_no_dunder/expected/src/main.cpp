@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(hasattr(p, "z"))     # absent + no dunder -> False (compile-time)
 void main() {
     Point p = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
-    std::cout << ::tpy::print_bool(true) << "\n";
-    std::cout << ::tpy::print_bool(true) << "\n";
-    std::cout << ::tpy::print_bool(false) << "\n";
+    std::cout << ::tpy::print_bool(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

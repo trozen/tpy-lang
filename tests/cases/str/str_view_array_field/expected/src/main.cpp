@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void test_array_subscript_view() {
     std::array<std::string, 3> arr = {"hello", "world", "test"};
     std::string_view s = ::tpy::__getitem__(arr, 0);
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_array_subscript_mutated() -> None:
@@ -25,7 +25,7 @@ void test_array_subscript_mutated() {
     std::array<std::string, 2> arr = {"old", "value"};
     std::string s = ::tpy::__getitem__(arr, 0);
     ::tpy::__setitem__(arr, 0, "new");
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_record_field_view() -> None:
@@ -36,7 +36,7 @@ void test_array_subscript_mutated() {
 void test_record_field_view() {
     Person p = Person("Alice", 30);
     std::string_view s = p.name;
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_record_field_mutated() -> None:
@@ -49,7 +49,7 @@ void test_record_field_mutated() {
     Person p = Person("Bob", 25);
     std::string s = p.name;
     p.name = "Charlie";
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_record_reassigned() -> None:
@@ -63,7 +63,7 @@ void test_record_reassigned() {
     Person* p = &__slot_1;
     std::string s = p->name;
     (*p) = Person("Eve", 35);
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_record_method_mutates() -> None:
@@ -76,7 +76,7 @@ void test_record_method_mutates() {
     Person p = Person("Frank", 50);
     std::string s = p.name;
     p.rename("Grace");
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_readonly_method_preserves_view() -> None:
@@ -89,7 +89,7 @@ void test_readonly_method_preserves_view() {
     Person p = Person("Helen", 60);
     std::string_view s = p.name;
     std::string g = p.greeting();
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_field_aug_assign_mutates() -> None:
@@ -102,7 +102,7 @@ void test_field_aug_assign_mutates() {
     Person p = Person("Iris", 70);
     std::string s = p.name;
     p.name += "!";
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_array_passed_to_func(arr: Array[str, 2]) -> None:
@@ -113,7 +113,7 @@ void test_field_aug_assign_mutates() {
 void test_array_passed_to_func(std::array<std::string, 2>& arr) {
     std::string s = ::tpy::__getitem__(arr, 0);
     ::tpyapp::main::mutate_array(arr);
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def mutate_array(arr: Array[str, 2]) -> None:
@@ -135,8 +135,8 @@ void test_multiple_views_one_source() {
     std::string a = p.name;
     std::string b = p.name;
     p.name = "Y";
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // test_array_subscript_view()

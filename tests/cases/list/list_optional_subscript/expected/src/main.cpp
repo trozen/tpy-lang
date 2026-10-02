@@ -19,15 +19,15 @@ namespace tpyapp::main {
 void main() {
     std::vector<std::optional<P>> pairs = {P(1), std::nullopt, P(3)};
     if ((::tpy::__getitem__(pairs, 0).has_value())) {
-        std::cout << ::tpy::deref_optional_check(::tpy::__getitem__(pairs, 0)).x << "\n";
+        std::cout << ::tpy::deref_optional_check(::tpy::__getitem__(pairs, 0)).x << "\n" << ::tpy::check_signals;
     }
     P* first = ::tpy::optional_to_ptr(::tpy::__getitem__(pairs, 0));
     if ((first != nullptr)) {
-        std::cout << first->x << "\n";
+        std::cout << first->x << "\n" << ::tpy::check_signals;
     }
     P* second = ::tpy::optional_to_ptr(::tpy::__getitem__(pairs, 1));
     if ((second == nullptr)) {
-        std::cout << -1 << "\n";
+        std::cout << -1 << "\n" << ::tpy::check_signals;
     }
 }
 

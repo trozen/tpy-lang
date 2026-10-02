@@ -22,11 +22,11 @@ std::string greet(Pet* p) {
 //     print(greet(None))
 void main() {
     ::tpy::Adapter<Pet, Cat> __tmp_1{Cat("whiskers")};
-    std::cout << ::tpyapp::main::greet(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::greet(&(__tmp_1)) << "\n" << ::tpy::check_signals;
     Cat felix = Cat("felix");
     ::tpy::RefAdapter<Pet, Cat> __tmp_2{felix};
-    std::cout << ::tpyapp::main::greet(&(__tmp_2)) << "\n";
-    std::cout << ::tpyapp::main::greet(nullptr) << "\n";
+    std::cout << ::tpyapp::main::greet(&(__tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::greet(nullptr) << "\n" << ::tpy::check_signals;
 }
 
 // main()

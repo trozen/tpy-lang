@@ -29,21 +29,21 @@ namespace tpyapp::main {
 //     print(a.x, a2.x)      # 5 5
 void main() {
     ::tpystd::tplib::rc::Rc<State> r = Rc<State>::new_<State>(State(10));
-    std::cout << r.__deref__().x << "\n";
-    std::cout << r.__deref__().doubled() << "\n";
+    std::cout << r.__deref__().x << "\n" << ::tpy::check_signals;
+    std::cout << r.__deref__().doubled() << "\n" << ::tpy::check_signals;
     r.__deref__().x = 99;
-    std::cout << r.__deref__().x << "\n";
+    std::cout << r.__deref__().x << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::rc::Rc<State> r2 = r.clone();
     r2.__deref__().x = 5;
-    std::cout << r.__deref__().x << " " << r2.__deref__().x << "\n";
+    std::cout << r.__deref__().x << " " << r2.__deref__().x << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::arc::Arc<State> a = Arc<State>::new_<State>(State(10));
-    std::cout << a.__deref__().x << "\n";
-    std::cout << a.__deref__().doubled() << "\n";
+    std::cout << a.__deref__().x << "\n" << ::tpy::check_signals;
+    std::cout << a.__deref__().doubled() << "\n" << ::tpy::check_signals;
     a.__deref__().x = 99;
-    std::cout << a.__deref__().x << "\n";
+    std::cout << a.__deref__().x << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::arc::Arc<State> a2 = a.clone();
     a2.__deref__().x = 5;
-    std::cout << a.__deref__().x << " " << a2.__deref__().x << "\n";
+    std::cout << a.__deref__().x << " " << a2.__deref__().x << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Rc

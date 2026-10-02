@@ -24,19 +24,19 @@ namespace tpyapp::main {
 //     print(ch)
 //     print(unsafe_load(p, 0))
 extern "C" void sink(int8_t i8, int16_t i16, int32_t i32, int64_t i64, uint8_t u8, uint16_t u16, uint32_t u32, uint64_t u64, float f32, double d, bool flag, char ch, int32_t* p) {
-    std::cout << static_cast<int>(i8) << "\n";
-    std::cout << i16 << "\n";
-    std::cout << i32 << "\n";
-    std::cout << i64 << "\n";
-    std::cout << static_cast<int>(u8) << "\n";
-    std::cout << u16 << "\n";
-    std::cout << u32 << "\n";
-    std::cout << u64 << "\n";
-    std::cout << ::tpy::print_float(static_cast<double>(f32)) << "\n";
-    std::cout << ::tpy::print_float(d) << "\n";
-    std::cout << ::tpy::print_bool(flag) << "\n";
-    std::cout << ch << "\n";
-    std::cout << p[0] << "\n";
+    std::cout << static_cast<int>(i8) << "\n" << ::tpy::check_signals;
+    std::cout << i16 << "\n" << ::tpy::check_signals;
+    std::cout << i32 << "\n" << ::tpy::check_signals;
+    std::cout << i64 << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(u8) << "\n" << ::tpy::check_signals;
+    std::cout << u16 << "\n" << ::tpy::check_signals;
+    std::cout << u32 << "\n" << ::tpy::check_signals;
+    std::cout << u64 << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(static_cast<double>(f32)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(flag) << "\n" << ::tpy::check_signals;
+    std::cout << ch << "\n" << ::tpy::check_signals;
+    std::cout << p[0] << "\n" << ::tpy::check_signals;
 }
 
 // # The same families in return position -- the gate checks returns separately.
@@ -99,12 +99,12 @@ void main() {
     std::vector<int32_t> xs = {7, 8};
     int32_t* p = xs.data();
     sink(-1, -2, -3, -4, 1, 2, 3, 4, 0.5f, 1.25, true, ::tpy::char_from_str("z"), p);
-    std::cout << echo_i64(99) << "\n";
-    std::cout << ::tpy::print_float(static_cast<double>(echo_f32(1.5f))) << "\n";
-    std::cout << ::tpy::print_bool(echo_bool(false)) << "\n";
-    std::cout << echo_char(::tpy::char_from_str("q")) << "\n";
-    std::cout << echo_ptr(p)[1] << "\n";
-    std::cout << doubled(21) << "\n";
+    std::cout << echo_i64(99) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(static_cast<double>(echo_f32(1.5f))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(echo_bool(false)) << "\n" << ::tpy::check_signals;
+    std::cout << echo_char(::tpy::char_from_str("q")) << "\n" << ::tpy::check_signals;
+    std::cout << echo_ptr(p)[1] << "\n" << ::tpy::check_signals;
+    std::cout << doubled(21) << "\n" << ::tpy::check_signals;
 }
 
 // # Regression guard for the PERMITTED side of the C-ABI allow-list: fixed-width

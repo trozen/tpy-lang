@@ -51,42 +51,42 @@ void __tpy_init() {
 
     ::tpy::range_check_overflow<int32_t>(0, 2147483647, 2147483647);
     for (int32_t i = 0; i < 2147483647; i += 2147483647) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     count = 0;
     ::tpy::range_check_overflow<int32_t>(1, 2147483647, 2);
     for (int32_t i = 1; i < 2147483647; i += 2) {
         count = ::tpy::add_check<int32_t>(count, 1);
     }
-    std::cout << count << "\n";
+    std::cout << count << "\n" << ::tpy::check_signals;
     for (int32_t i = -2147483647; i > -2147483648; --i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     ::tpy::range_check_overflow<int32_t>(0, -1, -2147483648);
     for (int32_t i = 0; i > -1; i += -2147483648) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     ::tpy::range_check_overflow<int32_t>(0, 1, 2147483647);
     for (int32_t i = 0; i < 1; i += 2147483647) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     ::tpy::range_check_overflow<int32_t>(2147483647, 0, 2);
     for (int32_t i = 2147483647; i < 0; i += 2) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     ::tpy::range_check_overflow<int8_t>(0, 127, 127);
     for (int8_t i = 0; i < 127; i += 127) {
-        std::cout << static_cast<int>(i) << "\n";
+        std::cout << static_cast<int>(i) << "\n" << ::tpy::check_signals;
     }
     ::tpy::range_check_overflow<int8_t>(0, -1, -128);
     for (int8_t i = 0; i > -1; i += -128) {
-        std::cout << static_cast<int>(i) << "\n";
+        std::cout << static_cast<int>(i) << "\n" << ::tpy::check_signals;
     }
     ::tpy::range_check_overflow<uint8_t>(0, 250, 50);
     for (uint8_t i = 0; i < 250; i += 50) {
-        std::cout << static_cast<int>(i) << "\n";
+        std::cout << static_cast<int>(i) << "\n" << ::tpy::check_signals;
     }
-    std::cout << "all safe cases done" << "\n";
+    std::cout << "all safe cases done" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

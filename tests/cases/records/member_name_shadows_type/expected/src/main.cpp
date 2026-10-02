@@ -56,19 +56,19 @@ namespace tpyapp::main {
 //     b.get().n = 99                          # mutate through the moved Box (no copy)
 //     print(b.get().n)
 void main() {
-    std::cout << clock(::tpy::BigInt(5)).day().n << "\n";
-    std::cout << ::tpy::print_bool((widget(::tpy::BigInt(0)).kind() == Color::RED)) << "\n";
-    std::cout << gauge().read().n << "\n";
-    std::cout << sub().build().n << "\n";
-    std::cout << factory::day().n << " " << factory().relabel(day(::tpy::BigInt(4))) << "\n";
+    std::cout << clock(::tpy::BigInt(5)).day().n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((widget(::tpy::BigInt(0)).kind() == Color::RED)) << "\n" << ::tpy::check_signals;
+    std::cout << gauge().read().n << "\n" << ::tpy::check_signals;
+    std::cout << sub().build().n << "\n" << ::tpy::check_signals;
+    std::cout << factory::day().n << " " << factory().relabel(day(::tpy::BigInt(4))) << "\n" << ::tpy::check_signals;
     ::tpy::Adapter<shape, square> __tmp_1{square(::tpy::BigInt(4))};
-    std::cout << canvas().shape() << " " << canvas().draw(__tmp_1) << "\n";
-    std::cout << meter().build().n << " " << meter().day() << "\n";
-    std::cout << fsub(::tpy::BigInt(8)).build().n << "\n";
-    std::cout << printer().emit().n << "\n";
+    std::cout << canvas().shape() << " " << canvas().draw(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << meter().build().n << " " << meter().day() << "\n" << ::tpy::check_signals;
+    std::cout << fsub(::tpy::BigInt(8)).build().n << "\n" << ::tpy::check_signals;
+    std::cout << printer().emit().n << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::box::Box<day> b = holder(::tpy::BigInt(7)).boxed();
     b.get().n = ::tpy::BigInt(99);
-    std::cout << b.get().n << "\n";
+    std::cout << b.get().n << "\n" << ::tpy::check_signals;
 }
 
 // # A member named like a local type shadows that type in C++ record scope, so

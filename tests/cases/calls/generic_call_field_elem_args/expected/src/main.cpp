@@ -29,9 +29,9 @@ Rec mk_rec() {
 //     print("str_owned", take_str(1, name), name)
 void main() {
     W b = W();
-    std::cout << "field_list" << " " << ::tpyapp::main::take_list<int32_t>(1, b.items) << " " << ::tpy::ListPrinter(b.items) << "\n";
-    std::cout << "field_dict" << " " << ::tpyapp::main::take_dict<int32_t>(1, b.counts) << " " << ::tpy::DictPrinter(b.counts) << "\n";
-    std::cout << "field_recs" << " " << ::tpyapp::main::take_recs<int32_t>(1, b.recs) << " " << ::tpy::__len__(b.recs) << "\n";
+    std::cout << "field_list" << " " << ::tpyapp::main::take_list<int32_t>(1, b.items) << " " << ::tpy::ListPrinter(b.items) << "\n" << ::tpy::check_signals;
+    std::cout << "field_dict" << " " << ::tpyapp::main::take_dict<int32_t>(1, b.counts) << " " << ::tpy::DictPrinter(b.counts) << "\n" << ::tpy::check_signals;
+    std::cout << "field_recs" << " " << ::tpyapp::main::take_recs<int32_t>(1, b.recs) << " " << ::tpy::__len__(b.recs) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = 2;
@@ -41,7 +41,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << "comp_list" << " " << ::tpyapp::main::take_list<int32_t>(1, __tmp_1) << "\n";
+    std::cout << "comp_list" << " " << ::tpyapp::main::take_list<int32_t>(1, __tmp_1) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> __tmp_2 = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
         const int32_t __stop_1 = 2;
@@ -50,14 +50,14 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << "comp_dict" << " " << ::tpyapp::main::take_dict<int32_t>(1, __tmp_2) << "\n";
-    std::cout << "elem_rec" << " " << ::tpyapp::main::take_rec<int32_t>(1, ::tpy::__getitem__(b.recs, 0)) << " " << ::tpy::__getitem__(b.recs, 0).x << "\n";
+    std::cout << "comp_dict" << " " << ::tpyapp::main::take_dict<int32_t>(1, __tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "elem_rec" << " " << ::tpyapp::main::take_rec<int32_t>(1, ::tpy::__getitem__(b.recs, 0)) << " " << ::tpy::__getitem__(b.recs, 0).x << "\n" << ::tpy::check_signals;
     Rec __tmp_3 = Rec(3);
-    std::cout << "ctor_rvalue" << " " << ::tpyapp::main::take_rec<int32_t>(1, __tmp_3) << "\n";
+    std::cout << "ctor_rvalue" << " " << ::tpyapp::main::take_rec<int32_t>(1, __tmp_3) << "\n" << ::tpy::check_signals;
     Rec __tmp_4 = ::tpyapp::main::mk_rec();
-    std::cout << "own_call" << " " << ::tpyapp::main::take_rec<int32_t>(1, __tmp_4) << "\n";
+    std::cout << "own_call" << " " << ::tpyapp::main::take_rec<int32_t>(1, __tmp_4) << "\n" << ::tpy::check_signals;
     std::string_view name = "abcd";
-    std::cout << "str_owned" << " " << ::tpyapp::main::take_str<int32_t>(1, std::string(name)) << " " << name << "\n";
+    std::cout << "str_owned" << " " << ::tpyapp::main::take_str<int32_t>(1, std::string(name)) << " " << name << "\n" << ::tpy::check_signals;
 }
 
 // main()

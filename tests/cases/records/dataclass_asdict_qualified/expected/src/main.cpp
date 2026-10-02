@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void main() {
     Point p = Point(1, 2);
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", p.x}, {"y", p.y}});
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
     std::tuple<int32_t, int32_t> t = std::tuple<int32_t, int32_t>{p.x, p.y};
-    std::cout << ::tpy::TuplePrinter(t) << "\n";
+    std::cout << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;
 }
 
 // # Test fully qualified dataclasses.dataclass, dataclasses.asdict, dataclasses.astuple

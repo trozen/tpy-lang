@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(h.host)
 void main() {
     Headers h = Headers(::tpy::ordered_map<std::string, std::string>({{"content_type", "application/json"}, {"host", "example.com"}}));
-    std::cout << ::tpy::str_upper(h.__getattr__("content_type")) << "\n";
-    std::cout << h.__getattr__("host") << "\n";
+    std::cout << ::tpy::str_upper(h.__getattr__("content_type")) << "\n" << ::tpy::check_signals;
+    std::cout << h.__getattr__("host") << "\n" << ::tpy::check_signals;
 }
 
 // main()

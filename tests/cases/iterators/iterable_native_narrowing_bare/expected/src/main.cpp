@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(sum_fast(nums))  # 10
 void main() {
     std::vector<int32_t> nums = {1, 2, 3, 4};
-    std::cout << ::tpyapp::main::sum_fast(nums) << "\n";
+    std::cout << ::tpyapp::main::sum_fast(nums) << "\n" << ::tpy::check_signals;
 }
 
 // main()

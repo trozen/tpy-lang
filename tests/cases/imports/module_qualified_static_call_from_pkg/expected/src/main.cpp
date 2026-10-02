@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(models.Widget.SIZE)  # tpyc: ok
 void main() {
     ::tpyapp::pkg::models::Widget w = ::tpyapp::pkg::models::Widget::make(21);
-    std::cout << w.value << "\n";
-    std::cout << ::tpyapp::pkg::models::Widget::SIZE << "\n";
+    std::cout << w.value << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::pkg::models::Widget::SIZE << "\n" << ::tpy::check_signals;
 }
 
 // # Regression: `from pkg import sub` binds the submodule as a namespace, then

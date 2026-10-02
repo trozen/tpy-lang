@@ -45,7 +45,7 @@ void main() {
     if (::tpystd::tpy::version::is_compiled) {
     } else {
     }
-    std::cout << "ok" << "\n";
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // # tpy.version exposes tpyc's version + is_compiled flag (True when compiled,

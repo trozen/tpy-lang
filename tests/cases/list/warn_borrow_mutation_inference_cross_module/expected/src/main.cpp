@@ -15,7 +15,7 @@ void test_imported_read_no_warn() {
     std::vector<::tpyapp::helpers::Point> items = {::tpyapp::helpers::Point(1, 2)};
     ::tpyapp::helpers::Point& v = ::tpy::__getitem__(items, 0);
     ::tpyapp::helpers::sum_points(items);
-    std::cout << v.x << "\n";
+    std::cout << v.x << "\n" << ::tpy::check_signals;
 }
 
 // # --- Mutating imported function: warns ---
@@ -30,7 +30,7 @@ void test_imported_mutate_warns() {
     ::tpyapp::helpers::Point& v = ::tpy::__getitem__(items, 0);
     ::tpyapp::helpers::Point __tmp_1 = ::tpyapp::helpers::Point(9, 9);
     ::tpyapp::helpers::add_point(items, __tmp_1);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // # --- Transitive: imported wrapper that calls mutator ---
@@ -45,7 +45,7 @@ void test_imported_transitive_mutation_warns() {
     ::tpyapp::helpers::Point& v = ::tpy::__getitem__(items, 0);
     ::tpyapp::helpers::Point __tmp_1 = ::tpyapp::helpers::Point(9, 9);
     ::tpyapp::helpers::add_point_wrapper(items, __tmp_1);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // # --- Transitive: imported wrapper that only reads ---
@@ -59,7 +59,7 @@ void test_imported_transitive_read_no_warn() {
     std::vector<::tpyapp::helpers::Point> items = {::tpyapp::helpers::Point(1, 2)};
     ::tpyapp::helpers::Point& v = ::tpy::__getitem__(items, 0);
     ::tpyapp::helpers::read_wrapper(items);
-    std::cout << v.x << "\n";
+    std::cout << v.x << "\n" << ::tpy::check_signals;
 }
 
 // from helpers import Point, sum_points, add_point, add_point_wrapper, read_wrapper

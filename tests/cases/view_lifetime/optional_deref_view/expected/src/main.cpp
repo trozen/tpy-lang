@@ -15,7 +15,7 @@ namespace tpyapp::main {
 void str_single(std::optional<std::string_view> a) {
     if ((a.has_value())) {
         std::string_view x = (*a);
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -26,7 +26,7 @@ void str_single(std::optional<std::string_view> a) {
 void str_compound(std::optional<std::string_view> a, std::string_view b) {
     if ((a.has_value())) {
         std::string_view x = (((::tpy::__len__(b) > 0)) ? ((*a)) : (b));
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -38,7 +38,7 @@ void str_compound(std::optional<std::string_view> a, std::string_view b) {
 void bytes_compound(std::optional<::tpy::BytesView> a, ::tpy::BytesView b) {
     if ((a.has_value())) {
         ::tpy::Bytes y = ::tpy::Bytes((((::tpy::__len__(b) > 0)) ? ((*a)) : (b)));
-        std::cout << ::tpy::__len__(y) << "\n";
+        std::cout << ::tpy::__len__(y) << "\n" << ::tpy::check_signals;
     }
 }
 

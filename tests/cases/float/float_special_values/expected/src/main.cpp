@@ -38,26 +38,26 @@ namespace tpyapp::main {
 //     print(math.isinf(builtins.float("inf")))
 //     print(math.isnan(builtins.float("nan")))
 void main() {
-    std::cout << ::tpy::print_bool(::std::isnan(MY_NAN)) << "\n";
-    std::cout << ::tpy::print_bool(::std::isinf(MY_INF)) << "\n";
-    std::cout << ::tpy::print_bool(::std::isinf(MY_NEG_INF)) << "\n";
-    std::cout << ::tpy::print_bool((MY_INF > 0.0)) << "\n";
-    std::cout << ::tpy::print_bool((MY_NEG_INF < 0.0)) << "\n";
-    std::cout << ::tpy::print_bool(::std::isnan(std::numeric_limits<double>::quiet_NaN())) << "\n";
-    std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n";
-    std::cout << ::tpy::print_bool(::std::isinf(-std::numeric_limits<double>::infinity())) << "\n";
-    std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n";
-    std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n";
-    std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n";
-    std::cout << ::tpy::print_bool(::std::isinf(-std::numeric_limits<double>::infinity())) << "\n";
-    std::cout << ::tpy::print_bool(::std::isnan(std::numeric_limits<double>::quiet_NaN())) << "\n";
-    std::cout << ::tpy::print_bool(::std::isnan(std::numeric_limits<double>::quiet_NaN())) << "\n";
-    std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n";
-    std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n";
-    std::cout << ::tpy::print_bool(::std::isnan(-std::numeric_limits<double>::quiet_NaN())) << "\n";
-    std::cout << ::tpy::print_bool(::std::isnan(std::numeric_limits<double>::quiet_NaN())) << "\n";
-    std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n";
-    std::cout << ::tpy::print_bool(::std::isnan(std::numeric_limits<double>::quiet_NaN())) << "\n";
+    std::cout << ::tpy::print_bool(::std::isnan(MY_NAN)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isinf(MY_INF)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isinf(MY_NEG_INF)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((MY_INF > 0.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((MY_NEG_INF < 0.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isnan(std::numeric_limits<double>::quiet_NaN())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isinf(-std::numeric_limits<double>::infinity())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isinf(-std::numeric_limits<double>::infinity())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isnan(std::numeric_limits<double>::quiet_NaN())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isnan(std::numeric_limits<double>::quiet_NaN())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isnan(-std::numeric_limits<double>::quiet_NaN())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isnan(std::numeric_limits<double>::quiet_NaN())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::std::isnan(std::numeric_limits<double>::quiet_NaN())) << "\n" << ::tpy::check_signals;
 }
 
 // def test_shadow() -> None:
@@ -74,7 +74,7 @@ void test_shadow() {
         return ::tpy::BigInt(::tpy::__len__(s));
     };
     ::tpy::BigInt x = float_("nan");
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // import math

@@ -14,7 +14,7 @@ void test_int32_plus_bigint() {
     int32_t x = 5;
     int32_t y = 10;
     int32_t z = (::tpy::add_check<int32_t>(x, y));
-    std::cout << z << "\n";
+    std::cout << z << "\n" << ::tpy::check_signals;
 }
 
 // def test_bigint_plus_int32():
@@ -27,7 +27,7 @@ void test_bigint_plus_int32() {
     int32_t x = 10;
     int32_t y = 5;
     int32_t z = (::tpy::add_check<int32_t>(x, y));
-    std::cout << z << "\n";
+    std::cout << z << "\n" << ::tpy::check_signals;
 }
 
 // def test_mixed_arithmetic():
@@ -42,10 +42,10 @@ void test_bigint_plus_int32() {
 void test_mixed_arithmetic() {
     int32_t a = 20;
     int32_t b = 3;
-    std::cout << (::tpy::sub_check<int32_t>(a, b)) << "\n";
-    std::cout << (::tpy::mul_check<int32_t>(a, b)) << "\n";
-    std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n";
-    std::cout << (::tpy::mod_floor<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::sub_check<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::mul_check<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::mod_floor<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_large_bigint():
@@ -58,7 +58,7 @@ void test_large_bigint() {
     int32_t x = 5;
     ::tpy::BigInt y = ((::tpy::BigInt(10)).pow(::tpy::BigInt(20)));
     ::tpy::BigInt z = ((::tpy::BigInt(x)) + (y));
-    std::cout << z << "\n";
+    std::cout << z << "\n" << ::tpy::check_signals;
 }
 
 // def test_augmented_assign_mixed():
@@ -84,15 +84,15 @@ void test_augmented_assign_mixed() {
     int32_t x = 100;
     int32_t b = 7;
     x = ::tpy::add_check<int32_t>(x, b);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     x = ::tpy::sub_check<int32_t>(x, b);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     x = ::tpy::mul_check<int32_t>(x, b);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     x = ::tpy::div_check<int32_t>(x, b);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     x = ::tpy::mod_check<int32_t>(x, b);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_nested_literal_binop():
@@ -109,12 +109,12 @@ void test_augmented_assign_mixed() {
 //     print(z)  # 60
 void test_nested_literal_binop() {
     int32_t x = ::tpy::add_check<int32_t>(1, ::tpy::add_check<int32_t>(2, 3));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     int32_t y = ::tpy::mul_check<int32_t>(::tpy::add_check<int32_t>(1, 2), ::tpy::add_check<int32_t>(3, 4));
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
     int32_t z = 0;
     z = ::tpy::add_check<int32_t>(10, ::tpy::add_check<int32_t>(20, 30));
-    std::cout << z << "\n";
+    std::cout << z << "\n" << ::tpy::check_signals;
 }
 
 // test_int32_plus_bigint()

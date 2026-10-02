@@ -33,9 +33,9 @@ std::string classify(std::optional<int32_t> x) {
 //     print(classify(int32(1)))
 //     print(classify(int32(5)))
 void main() {
-    std::cout << ::tpyapp::main::classify(0) << "\n";
-    std::cout << ::tpyapp::main::classify(1) << "\n";
-    std::cout << ::tpyapp::main::classify(5) << "\n";
+    std::cout << ::tpyapp::main::classify(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(5) << "\n" << ::tpy::check_signals;
 }
 
 // main()

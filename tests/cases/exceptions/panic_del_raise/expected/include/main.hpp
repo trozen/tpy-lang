@@ -59,7 +59,7 @@ inline Fussy& Fussy::operator=(Fussy&& other) noexcept {
 inline Fussy::~Fussy() {
     if (!this->__tpy_owned_) return;
     try {
-        std::cout << "del" << " " << this->_id << "\n";
+        std::cout << "del" << " " << this->_id << "\n" << ::tpy::check_signals;
         throw ::tpy::ValueError("cleanup failed");
     } catch (const std::exception& __del_exc) {
         ::tpy::report_del_exception(__del_exc);

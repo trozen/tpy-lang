@@ -30,20 +30,20 @@ namespace tpyapp::main {
 void main() {
     int32_t n = 5;
     while (((n = (::tpy::sub_check<int32_t>(n, 1))) > 0)) {
-        std::cout << n << "\n";
+        std::cout << n << "\n" << ::tpy::check_signals;
     }
     std::optional<int32_t> x = 5;
     if ((!(x = std::nullopt).has_value())) {
-        std::cout << "none" << "\n";
+        std::cout << "none" << "\n" << ::tpy::check_signals;
     }
     std::string s = "asd";
     if ((!(s = (::tpy::str_concat(s, "!"))).empty())) {
-        std::cout << s << "\n";
+        std::cout << s << "\n" << ::tpy::check_signals;
     }
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
     ::tpy::Bytes b = ::tpy::bytes_literal_owned("hi", 2);
     if ((!(b = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("!", 1)))).empty())) {
-        std::cout << ::tpy::__len__(b) << "\n";
+        std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
     }
     int32_t m = 10;
     std::vector<int32_t> xs = ({
@@ -57,7 +57,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << m << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << m << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(c.diameter)
 void main() {
     Circle c = Circle(5);
-    std::cout << c.radius() << "\n";
-    std::cout << c.diameter() << "\n";
+    std::cout << c.radius() << "\n" << ::tpy::check_signals;
+    std::cout << c.diameter() << "\n" << ::tpy::check_signals;
 }
 
 // main()

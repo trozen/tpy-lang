@@ -17,7 +17,7 @@ Handle forward_via_alias(Handle&& h) {
 //     print(r.fd)
 void main() {
     Handle r = ::tpyapp::main::forward_via_alias(Handle(55));
-    std::cout << r.fd << "\n";
+    std::cout << r.fd << "\n" << ::tpy::check_signals;
 }
 
 // main()

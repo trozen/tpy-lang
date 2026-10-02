@@ -28,8 +28,8 @@ void main() {
     Box b = Box(4);
     std::array<Box*, 2> __tmp_1{&a, &b};
     ::tpyapp::main::bump_all(::tpy::varargs<Box>(__tmp_1));
-    std::cout << a.val << "\n";
-    std::cout << b.val << "\n";
+    std::cout << a.val << "\n" << ::tpy::check_signals;
+    std::cout << b.val << "\n" << ::tpy::check_signals;
 }
 
 // main()

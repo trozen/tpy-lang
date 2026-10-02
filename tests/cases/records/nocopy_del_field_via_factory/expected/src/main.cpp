@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def take(h: Own[Holder]) -> None:
 //     print("taken", h._r.id, "tag", h.tag)
 void take(Holder&& h) {
-    std::cout << "taken" << " " << h._r.id << " " << "tag" << " " << h.tag << "\n";
+    std::cout << "taken" << " " << h._r.id << " " << "tag" << " " << h.tag << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -17,9 +17,9 @@ void take(Holder&& h) {
 //     print("after take")
 void main() {
     Holder h = Holder(1, 42);
-    std::cout << "held" << " " << h._r.id << " " << "tag" << " " << h.tag << "\n";
+    std::cout << "held" << " " << h._r.id << " " << "tag" << " " << h.tag << "\n" << ::tpy::check_signals;
     ::tpyapp::main::take(std::move(h));
-    std::cout << "after take" << "\n";
+    std::cout << "after take" << "\n" << ::tpy::check_signals;
 }
 
 // main()

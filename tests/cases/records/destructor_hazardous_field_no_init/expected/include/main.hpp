@@ -74,7 +74,7 @@ inline Hazard& Hazard::operator=(Hazard&& other) noexcept {
 //     print("dropping hazard")
 inline Hazard::~Hazard() {
     if (!this->__tpy_owned_) return;
-    std::cout << "dropping hazard" << "\n";
+    std::cout << "dropping hazard" << "\n" << ::tpy::check_signals;
 }
 
 inline Safe::Safe(Safe&& other) noexcept : name(std::move(other.name)) {
@@ -92,7 +92,7 @@ inline Safe& Safe::operator=(Safe&& other) noexcept {
 //     print("dropping safe:", self.name)
 inline Safe::~Safe() {
     if (!this->__tpy_owned_) return;
-    std::cout << "dropping safe:" << " " << this->name << "\n";
+    std::cout << "dropping safe:" << " " << this->name << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

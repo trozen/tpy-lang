@@ -24,7 +24,7 @@ void main() {
         q = &(__match_subject_1.inner);
         q->n = ::tpy::BigInt(42);
     }
-    std::cout << h.inner.n << "\n";
+    std::cout << h.inner.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

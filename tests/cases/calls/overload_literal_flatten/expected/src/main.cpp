@@ -49,13 +49,13 @@ std::string get_field__lit_name(std::string_view name) {
 void main() {
     int32_t age = ::tpyapp::main::get_field__lit_age("age");
     std::string name = ::tpyapp::main::get_field__lit_name("name");
-    std::cout << (::tpy::add_check<int32_t>(age, 1)) << "\n";
-    std::cout << (::tpy::str_concat(name, "!")) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(age, 1)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat(name, "!")) << "\n" << ::tpy::check_signals;
     Record r = Record(25, "Alice");
     int32_t a = r.get__lit_age("age");
     std::string n = r.get__lit_name("name");
-    std::cout << (::tpy::add_check<int32_t>(a, 1)) << "\n";
-    std::cout << (::tpy::str_concat(n, "!")) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(a, 1)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat(n, "!")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

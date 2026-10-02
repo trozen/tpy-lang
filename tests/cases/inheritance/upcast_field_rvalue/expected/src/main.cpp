@@ -12,7 +12,7 @@ namespace tpyapp::main {
 //         print(label, h.plain.name, h.opt.name)
 void show(std::string_view label, const Holder& h) {
     if ((h.opt.has_value())) {
-        std::cout << label << " " << h.plain.name << " " << (*h.opt).name << "\n";
+        std::cout << label << " " << h.plain.name << " " << (*h.opt).name << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -49,7 +49,7 @@ void method_position() {
 void ctor_position() {
     CtorHolder c = CtorHolder("c");
     if ((c.opt.has_value())) {
-        std::cout << "ctor" << " " << c.plain.name << " " << (*c.opt).name << "\n";
+        std::cout << "ctor" << " " << c.plain.name << " " << (*c.opt).name << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -118,12 +118,12 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& s = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen" << " " << s << "\n";
+            std::cout << "gen" << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     ::tpyapp::main::show("gen", gh);
     Holder ah = Holder();
-    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::coro(ah))) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::coro(ah))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("async", ah);
 }
 

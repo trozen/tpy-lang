@@ -23,7 +23,7 @@ Cell bump(Cell&& c) {
 //     print("free:", c.n, d.n)
 void sec_free(const Cell& c) {
     Cell d = ::tpyapp::main::bump(Cell(c));
-    std::cout << "free:" << " " << c.n << " " << d.n << "\n";
+    std::cout << "free:" << " " << c.n << " " << d.n << "\n" << ::tpy::check_signals;
 }
 
 // # constructor: the copy is the ctor's Own[Cell] argument.
@@ -34,7 +34,7 @@ void sec_free(const Cell& c) {
 void sec_ctor(const Cell& c) {
     Holder h = Holder(Cell(c));
     h.cell.n = 7;
-    std::cout << "ctor:" << " " << c.n << " " << h.cell.n << "\n";
+    std::cout << "ctor:" << " " << c.n << " " << h.cell.n << "\n" << ::tpy::check_signals;
 }
 
 // def sec_generic(c: readonly[Cell]) -> None:
@@ -46,7 +46,7 @@ void sec_generic(const Cell& c) {
     GHolder<Cell> g = GHolder<Cell>(Cell(c.n));
     GHolder<Cell> g2 = g.cloned();
     g2.get().n = 7;
-    std::cout << "generic:" << " " << g.get().n << " " << g2.get().n << "\n";
+    std::cout << "generic:" << " " << g.get().n << " " << g2.get().n << "\n" << ::tpy::check_signals;
 }
 
 
@@ -72,7 +72,7 @@ void sec_generator(const Cell& c) {
             out.push_back(n);
         }
     }
-    std::cout << "generator:" << " " << ::tpy::__getitem__(out, 1) << " " << ::tpy::__getitem__(out, 0) << "\n";
+    std::cout << "generator:" << " " << ::tpy::__getitem__(out, 1) << " " << ::tpy::__getitem__(out, 0) << "\n" << ::tpy::check_signals;
 }
 
 // # async: the copy happens inside a coroutine frame.
@@ -103,7 +103,7 @@ __coro_copy_in_task copy_in_task(const Cell& c) {
 // def sec_async(c: readonly[Cell]) -> None:
 //     print("async:", c.n, asyncio.run(copy_in_task(c)))
 void sec_async(const Cell& c) {
-    std::cout << "async:" << " " << c.n << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::copy_in_task(c))) << "\n";
+    std::cout << "async:" << " " << c.n << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::copy_in_task(c))) << "\n" << ::tpy::check_signals;
 }
 
 // # comprehension: the loop variable over a readonly list is readonly.
@@ -123,7 +123,7 @@ void sec_comprehension(const std::vector<Cell>& cs) {
         }
         std::move(__result);
     });
-    std::cout << "comprehension:" << " " << ::tpy::__getitem__(cs, 0).n << " " << ::tpy::__getitem__(ns, 0) << "\n";
+    std::cout << "comprehension:" << " " << ::tpy::__getitem__(cs, 0).n << " " << ::tpy::__getitem__(ns, 0) << "\n" << ::tpy::check_signals;
 }
 
 // # closure: the copy is inside a nested function.
@@ -135,7 +135,7 @@ void sec_closure(const Cell& c) {
     auto inner = [&c]() -> int32_t {
         return ::tpyapp::main::bump(Cell(c)).n;
     };
-    std::cout << "closure:" << " " << c.n << " " << inner() << "\n";
+    std::cout << "closure:" << " " << c.n << " " << inner() << "\n" << ::tpy::check_signals;
 }
 
 // # context-manager body.
@@ -149,7 +149,7 @@ void sec_with(const Cell& c) {
     __ctx_1.__enter__();
     try {
         d = ::tpyapp::main::bump(Cell(c));
-        std::cout << "with:" << " " << c.n << " " << d->n << "\n";
+        std::cout << "with:" << " " << c.n << " " << d->n << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -174,7 +174,7 @@ void sec_try_finally(const Cell& c) {
     {
         try {
             d = ::tpyapp::main::bump(Cell(c));
-            std::cout << "try-finally:" << " " << c.n << " " << d->n << "\n";
+            std::cout << "try-finally:" << " " << c.n << " " << d->n << "\n" << ::tpy::check_signals;
         } catch (...) {
             throw;
         }
@@ -198,11 +198,11 @@ std::expected<int32_t, Missing> ret_copy(const Cell& c) {
 //         print("error-return: missing")
 void sec_error_return(const Cell& c) {
     {
-        std::cout << "error-return:" << " " << c.n << " " << ({ auto __er_2 = ::tpyapp::main::ret_copy(c); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "error-return:" << " " << c.n << " " << ({ auto __er_2 = ::tpyapp::main::ret_copy(c); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Missing:
         __except_1:;
-        std::cout << "error-return: missing" << "\n";
+        std::cout << "error-return: missing" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }
@@ -220,11 +220,11 @@ void sec_match(const Cell& c, int32_t k) {
     switch (__match_subject_1) {
     case 1: {
         Cell d = ::tpyapp::main::bump(Cell(c));
-        std::cout << "match:" << " " << c.n << " " << d.n << "\n";
+        std::cout << "match:" << " " << c.n << " " << d.n << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
-        std::cout << "match: none" << "\n";
+        std::cout << "match: none" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -254,7 +254,7 @@ const Cell& peek(const Holder& h) {
 //     sec_error_return(c)
 //     sec_match(c, 1)
 void main() {
-    std::cout << "module-level:" << " " << TOP_SRC->cell.n << " " << TOP->n << "\n";
+    std::cout << "module-level:" << " " << TOP_SRC->cell.n << " " << TOP->n << "\n" << ::tpy::check_signals;
     Cell c = Cell(1);
     ::tpyapp::main::sec_free(c);
     Holder(Cell(1)).sec_method();

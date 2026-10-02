@@ -34,14 +34,14 @@ std::string make() {
 //     print(len(b2))
 void main() {
     std::string s = std::string(::tpy::str_strip(::tpyapp::main::make()));
-    std::cout << s << "\n";
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     std::string s2 = std::string(::tpy::str_slice(::tpyapp::main::make(), ::tpy::BasicSlice{3, 9}));
-    std::cout << s2 << "\n";
+    std::cout << s2 << "\n" << ::tpy::check_signals;
     ::tpy::Bytes b = ::tpy::Bytes(::tpy::bytes_slice(::tpyapp::main::make_bytes(), ::tpy::BasicSlice{3, 9}));
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes b2 = ::tpy::Bytes(::tpy::bytes_strip_view(::tpyapp::main::make_bytes()));
-    std::cout << ::tpy::__len__(b2) << "\n";
+    std::cout << ::tpy::__len__(b2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

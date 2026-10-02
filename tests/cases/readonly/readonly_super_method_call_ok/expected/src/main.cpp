@@ -10,7 +10,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << Child().value_plus_one() << "\n";
+    std::cout << Child().value_plus_one() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

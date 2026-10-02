@@ -10,14 +10,14 @@ namespace tpyapp::main {
 //     print(x.x, x.y)  # tpyc: ok
 void direct_assign() {
     Point x = Point(7, 8);
-    std::cout << x.x << " " << x.y << "\n";
+    std::cout << x.x << " " << x.y << "\n" << ::tpy::check_signals;
 }
 
 // # Param usage — OK
 // def param_use(p: Point) -> None:
 //     print(p.x, p.y)  # tpyc: ok
 void param_use(const Point& p) {
-    std::cout << p.x << " " << p.y << "\n";
+    std::cout << p.x << " " << p.y << "\n" << ::tpy::check_signals;
 }
 
 // # Value type with init — OK
@@ -26,7 +26,7 @@ void param_use(const Point& p) {
 //     print(x)  # tpyc: ok
 void value_init() {
     int32_t x = 42;
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // # Assign before if, use after — OK
@@ -41,7 +41,7 @@ void assign_before_if(bool cond) {
     if (cond) {
         (*x) = Point(3, 4);
     }
-    std::cout << x->x << " " << x->y << "\n";
+    std::cout << x->x << " " << x->y << "\n" << ::tpy::check_signals;
 }
 
 // # Then-branch returns — code after if only reachable from else
@@ -55,7 +55,7 @@ void then_returns(bool cond) {
         return;
     }
     Point x = Point(5, 6);
-    std::cout << x.x << " " << x.y << "\n";
+    std::cout << x.x << " " << x.y << "\n" << ::tpy::check_signals;
 }
 
 // # Both branches return — dead code after is fine
@@ -89,7 +89,7 @@ void both_branches_assign(bool cond) {
     } else {
         x = 2;
     }
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // # Else-branch returns, then assigns — OK after if
@@ -107,7 +107,7 @@ void else_returns(bool cond) {
     } else {
         return;
     }
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // # Bare decl then unconditional assign — OK
@@ -118,7 +118,7 @@ void else_returns(bool cond) {
 void decl_then_assign() {
     int32_t x;
     x = 42;
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // # Loop var shadows assigned outer var — outer stays assigned after loop
@@ -137,7 +137,7 @@ void loop_shadow_outer() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         x = *__beg_0;
     }
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // direct_assign()
@@ -167,8 +167,8 @@ void __tpy_init() {
     ::tpyapp::main::assign_before_if(false);
     ::tpyapp::main::then_returns(true);
     ::tpyapp::main::then_returns(false);
-    std::cout << ::tpyapp::main::both_return(true) << "\n";
-    std::cout << ::tpyapp::main::both_return(false) << "\n";
+    std::cout << ::tpyapp::main::both_return(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::both_return(false) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::both_branches_assign(true);
     ::tpyapp::main::both_branches_assign(false);
     ::tpyapp::main::else_returns(true);

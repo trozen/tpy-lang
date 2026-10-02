@@ -44,17 +44,17 @@ void keepalive_cycles() {
     b.recv(65536);
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nres1", 42));
     ::tpystd::http::client::HTTPResponse r1 = conn.getresponse();
-    std::cout << ::tpy::bytes_decode(r1.read()) << " " << ::tpy::print_bool(r1.will_close) << "\n";
+    std::cout << ::tpy::bytes_decode(r1.read()) << " " << ::tpy::print_bool(r1.will_close) << "\n" << ::tpy::check_signals;
     conn.request("GET", "/two");
     b.recv(65536);
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n4\r\nres2\r\n3\r\n!!!\r\n0\r\n\r\n", 69));
     ::tpystd::http::client::HTTPResponse r2 = conn.getresponse();
-    std::cout << ::tpy::bytes_decode(r2.read()) << " " << ::tpy::print_bool(r2.will_close) << "\n";
+    std::cout << ::tpy::bytes_decode(r2.read()) << " " << ::tpy::print_bool(r2.will_close) << "\n" << ::tpy::check_signals;
     conn.request("GET", "/three");
     b.recv(65536);
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 4\r\nConnection: close\r\n\r\nres3", 61));
     ::tpystd::http::client::HTTPResponse r3 = conn.getresponse();
-    std::cout << ::tpy::bytes_decode(r3.read()) << " " << ::tpy::print_bool(r3.will_close) << "\n";
+    std::cout << ::tpy::bytes_decode(r3.read()) << " " << ::tpy::print_bool(r3.will_close) << "\n" << ::tpy::check_signals;
     conn.close();
     b.close();
 }
@@ -112,11 +112,11 @@ bool will_close_response(::tpy::BytesView response) {
 //     # keeps the unframed fallback from firing -> reusable.
 //     print(will_close_response(b"HTTP/1.1 204 No Content\r\n\r\n"))
 void will_close_variants() {
-    std::cout << ::tpy::print_bool(::tpyapp::main::will_close_response(::tpy::bytes_literal("HTTP/1.0 200 OK\r\nContent-Length: 3\r\n\r\nold", 41))) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::will_close_response(::tpy::bytes_literal("HTTP/1.0 200 OK\r\nConnection: keep-alive\r\nContent-Length: 3\r\n\r\nold", 65))) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::will_close_response(::tpy::bytes_literal("HTTP/1.0 200 OK\r\nKeep-Alive: timeout=15, max=100\r\nContent-Length: 3\r\n\r\nold", 74))) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::will_close_response(::tpy::bytes_literal("HTTP/1.1 200 OK\r\n\r\nuntil-close", 30))) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::will_close_response(::tpy::bytes_literal("HTTP/1.1 204 No Content\r\n\r\n", 27))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::will_close_response(::tpy::bytes_literal("HTTP/1.0 200 OK\r\nContent-Length: 3\r\n\r\nold", 41))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::will_close_response(::tpy::bytes_literal("HTTP/1.0 200 OK\r\nConnection: keep-alive\r\nContent-Length: 3\r\n\r\nold", 65))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::will_close_response(::tpy::bytes_literal("HTTP/1.0 200 OK\r\nKeep-Alive: timeout=15, max=100\r\nContent-Length: 3\r\n\r\nold", 74))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::will_close_response(::tpy::bytes_literal("HTTP/1.1 200 OK\r\n\r\nuntil-close", 30))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::will_close_response(::tpy::bytes_literal("HTTP/1.1 204 No Content\r\n\r\n", 27))) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -18,11 +18,11 @@ namespace tpyapp::main {
 void main() {
     std::vector<int32_t> nums = {10, 20, 30};
     Bag b1 = Bag(nums);
-    std::cout << ::tpy::ListPrinter(b1.items) << "\n";
-    std::cout << ::tpy::__len__(nums) << "\n";
+    std::cout << ::tpy::ListPrinter(b1.items) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(nums) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> nums2 = {40, 50};
     Bag b2 = Bag(::tpy::own_iter(std::move(nums2)));
-    std::cout << ::tpy::ListPrinter(b2.items) << "\n";
+    std::cout << ::tpy::ListPrinter(b2.items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

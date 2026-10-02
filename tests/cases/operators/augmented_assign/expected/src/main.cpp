@@ -54,30 +54,30 @@ namespace tpyapp::main {
 void test_aug_assign() {
     int32_t x = 10;
     x = ::tpy::add_check<int32_t>(x, 5);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     x = ::tpy::sub_check<int32_t>(x, 3);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     x = ::tpy::mul_check<int32_t>(x, 2);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     x = ::tpy::div_check<int32_t>(x, 4);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     x = ::tpy::mod_check<int32_t>(x, 4);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     x = 15;
     x = static_cast<int32_t>(x & 9);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     x = 9;
     x = static_cast<int32_t>(x | 6);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     x = 15;
     x = static_cast<int32_t>(x ^ 6);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     x = 1;
     x = ::tpy::lshift_check<int32_t>(x, 4);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     x = 32;
     x = ::tpy::rshift_check<int32_t>(x, 2);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // test_aug_assign()

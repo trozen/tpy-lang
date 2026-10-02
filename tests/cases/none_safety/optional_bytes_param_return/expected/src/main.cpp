@@ -38,12 +38,12 @@ std::optional<::tpy::Bytes> forward(std::optional<::tpy::BytesView> b) {
 //     print(forward(b"z") is None)
 //     print(forward(None) is None)
 void main() {
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_absent(std::nullopt)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_absent(::tpy::bytes_literal_owned("x", 1))) << "\n";
-    std::cout << ::tpy::print_bool((!::tpyapp::main::pick(true).has_value())) << "\n";
-    std::cout << ::tpy::print_bool((!::tpyapp::main::pick(false).has_value())) << "\n";
-    std::cout << ::tpy::print_bool((!::tpyapp::main::forward(::tpy::bytes_literal_owned("z", 1)).has_value())) << "\n";
-    std::cout << ::tpy::print_bool((!::tpyapp::main::forward(std::nullopt).has_value())) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_absent(std::nullopt)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_absent(::tpy::bytes_literal_owned("x", 1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!::tpyapp::main::pick(true).has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!::tpyapp::main::pick(false).has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!::tpyapp::main::forward(::tpy::bytes_literal_owned("z", 1)).has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!::tpyapp::main::forward(std::nullopt).has_value())) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -21,9 +21,9 @@ void __tpy_init() {
     static std::array<int32_t, 3> __global_slot_1 = {10, 20, 30};
     arr = &__global_slot_1;
     p = (*arr).data();
-    std::cout << p[0] << "\n";
+    std::cout << p[0] << "\n" << ::tpy::check_signals;
     p[2] = 99;
-    std::cout << p[2] << "\n";
+    std::cout << p[2] << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

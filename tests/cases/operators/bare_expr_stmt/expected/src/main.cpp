@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     print("peeked")
 //     return n
 int32_t peek(int32_t n) {
-    std::cout << "peeked" << "\n";
+    std::cout << "peeked" << "\n" << ::tpy::check_signals;
     return n;
 }
 
@@ -56,12 +56,12 @@ void main() {
     {
         try {
             (void)((::tpy::div_check<int32_t>(n, z)));
-            std::cout << "not reached" << "\n";
+            std::cout << "not reached" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError&) {
-            std::cout << "divided by zero" << "\n";
+            std::cout << "divided by zero" << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << n << " " << p.x << "\n";
+    std::cout << n << " " << p.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

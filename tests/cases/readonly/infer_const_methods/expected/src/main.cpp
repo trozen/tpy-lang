@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def show(v: DynValued) -> None:
 //     print(v.value())
 void show(DynValued& v) {
-    std::cout << v.value() << "\n";
+    std::cout << v.value() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -41,23 +41,23 @@ void main() {
     Counter c = Counter();
     c.increment();
     c.increment_twice();
-    std::cout << c.get() << "\n";
-    std::cout << ::tpy::print_bool(c.is_zero()) << "\n";
+    std::cout << c.get() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(c.is_zero()) << "\n" << ::tpy::check_signals;
     Box b = Box();
     b.push(1);
     b.push_default();
-    std::cout << b.size() << "\n";
+    std::cout << b.size() << "\n" << ::tpy::check_signals;
     SortableBox sb = SortableBox();
     sb.fill(3, 1);
     sb.sort_items();
-    std::cout << sb.get_first() << "\n";
+    std::cout << sb.get_first() << "\n" << ::tpy::check_signals;
     Outer o = Outer();
-    std::cout << o.sum_items() << "\n";
-    std::cout << o.get_extra() << "\n";
+    std::cout << o.sum_items() << "\n" << ::tpy::check_signals;
+    std::cout << o.get_extra() << "\n" << ::tpy::check_signals;
     o.mutate_extra();
-    std::cout << o.sum_items() << "\n";
+    std::cout << o.sum_items() << "\n" << ::tpy::check_signals;
     WithOpt wo = WithOpt();
-    std::cout << wo.get_child_value() << "\n";
+    std::cout << wo.get_child_value() << "\n" << ::tpy::check_signals;
     Valued __tmp_1{Valued(7)};
     ::tpyapp::main::show(__tmp_1);
 }

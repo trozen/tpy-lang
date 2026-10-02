@@ -32,4 +32,4 @@ def raise_signal(sig: int32) -> None:
     On the main thread a SIGINT raises KeyboardInterrupt before this returns,
     as in CPython (inside `asyncio.run` it cancels the root task instead)."""
     posix_signal.raise_signal(sig)
-    posix_signal.check_interrupt()
+    posix_signal.check_signals()

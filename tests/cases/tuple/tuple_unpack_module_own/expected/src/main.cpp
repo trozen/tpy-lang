@@ -16,8 +16,8 @@ std::tuple<int32_t, Point> make_pair() {
 //     print(p.x)
 //     print(p.y)
 void read_point() {
-    std::cout << p->x << "\n";
-    std::cout << p->y << "\n";
+    std::cout << p->x << "\n" << ::tpy::check_signals;
+    std::cout << p->y << "\n" << ::tpy::check_signals;
 }
 
 // n, p = make_pair()
@@ -35,9 +35,9 @@ void __tpy_init() {
     n = std::get<0>(__tup_1);
     static Point __global_slot_1 = std::move(std::get<1>(__tup_1));
     p = &__global_slot_1;
-    std::cout << n << "\n";
-    std::cout << p->x << "\n";
-    std::cout << p->y << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
+    std::cout << p->x << "\n" << ::tpy::check_signals;
+    std::cout << p->y << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_point();
 }
 

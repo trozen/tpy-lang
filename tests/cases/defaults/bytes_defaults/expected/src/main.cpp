@@ -36,12 +36,12 @@ namespace tpyapp::main {
 //     print(with_view_empty())
 //     print(with_view_default())
 void main() {
-    std::cout << ::tpyapp::main::with_bytes() << "\n";
-    std::cout << ::tpyapp::main::with_bytes(::tpy::bytes_literal("abc", 3)) << "\n";
-    std::cout << ::tpyapp::main::with_bytes_default() << "\n";
-    std::cout << ::tpyapp::main::with_bytes_default(::tpy::bytes_literal("abcdef", 6)) << "\n";
-    std::cout << ::tpyapp::main::with_view_empty() << "\n";
-    std::cout << ::tpyapp::main::with_view_default() << "\n";
+    std::cout << ::tpyapp::main::with_bytes() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_bytes(::tpy::bytes_literal("abc", 3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_bytes_default() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_bytes_default(::tpy::bytes_literal("abcdef", 6)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_view_empty() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_view_default() << "\n" << ::tpy::check_signals;
 }
 
 // main()

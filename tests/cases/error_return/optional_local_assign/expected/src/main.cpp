@@ -50,8 +50,8 @@ int32_t run(bool ok) {
 //     print(run(True))
 //     print(run(False))
 void main() {
-    std::cout << ::tpyapp::main::run(true) << "\n";
-    std::cout << ::tpyapp::main::run(false) << "\n";
+    std::cout << ::tpyapp::main::run(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::run(false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

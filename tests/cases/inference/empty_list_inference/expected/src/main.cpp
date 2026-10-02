@@ -12,7 +12,7 @@ std::vector<::tpy::BigInt>* result{};
 void test_append() {
     std::vector<int32_t> xs = std::vector<int32_t>{};
     xs.push_back(42);
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_ctor() -> None:
@@ -22,7 +22,7 @@ void test_append() {
 void test_list_ctor() {
     std::vector<int32_t> xs = std::vector<int32_t>();
     xs.push_back(42);
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_insert() -> None:
@@ -32,7 +32,7 @@ void test_list_ctor() {
 void test_insert() {
     std::vector<int32_t> xs = std::vector<int32_t>{};
     ::tpy::list_insert(xs, 0, 99);
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_multiple_append() -> None:
@@ -46,7 +46,7 @@ void test_multiple_append() {
     xs.push_back(1);
     xs.push_back(2);
     xs.push_back(3);
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_numeric_widen() -> None:
@@ -58,7 +58,7 @@ void test_numeric_widen() {
     std::vector<int64_t> xs = std::vector<int64_t>{};
     xs.push_back(1);
     xs.push_back(2);
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_return_context() -> Own[list[int]]:
@@ -80,7 +80,7 @@ void takes_list(const std::vector<::tpy::BigInt>& items) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const ::tpy::BigInt& x = *__beg_0;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -114,8 +114,8 @@ void test_alias_inference() {
     std::vector<int32_t> xs = std::vector<int32_t>{};
     std::vector<int32_t>& ys = xs;
     ys.push_back(42);
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
-    std::cout << ::tpy::ListPrinter(ys) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
 }
 
 // test_append()
@@ -140,7 +140,7 @@ void __tpy_init() {
     ::tpyapp::main::test_numeric_widen();
     static std::vector<::tpy::BigInt> __global_slot_1 = ::tpyapp::main::test_return_context();
     result = &__global_slot_1;
-    std::cout << ::tpy::ListPrinter((*result)) << "\n";
+    std::cout << ::tpy::ListPrinter((*result)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_param_context();
     ::tpyapp::main::test_param_overrides_inferred();
     ::tpyapp::main::test_alias_inference();

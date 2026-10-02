@@ -43,10 +43,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "while" << " " << v << "\n";
+            std::cout << "while" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "after while:" << " " << calls << "\n";
+    std::cout << "after while:" << " " << calls << "\n" << ::tpy::check_signals;
     {
         auto __src_2 = ::tpyapp::main::gen_branch(::tpy::BigInt(2));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -54,10 +54,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "branch" << " " << v << "\n";
+            std::cout << "branch" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "after branch:" << " " << calls << "\n";
+    std::cout << "after branch:" << " " << calls << "\n" << ::tpy::check_signals;
 }
 
 // calls = 0

@@ -13,7 +13,7 @@ void main() {
     HttpConn c = HttpConn(80);
     c._port = 8080;
     ::tpystd::tplib::box::Box<Conn> b = ::tpystd::tplib::box::Box<HttpConn>(std::move(c));
-    std::cout << b.get().port() << "\n";
+    std::cout << b.get().port() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

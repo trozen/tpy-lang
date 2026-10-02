@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print("ran")
 void takes_none(std::monostate x) {
     std::monostate local = x;
-    std::cout << "ran" << "\n";
+    std::cout << "ran" << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -25,7 +25,7 @@ void main() {
     auto __ctx_1 = Guard();
     __ctx_1.__enter__();
     try {
-        std::cout << "body" << "\n";
+        std::cout << "body" << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (...) {
         __ctx_1.__exit__({}, {}, {});

@@ -21,17 +21,17 @@ namespace tpyapp::main {
 //     print(datetime(2021, 7, 15, 16, 0, tzinfo=UTC).astimezone()
 //           == datetime(2021, 7, 15, 12, 0).astimezone())
 void main() {
-    std::cout << ::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(1), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone()) << "\n";
-    std::cout << ::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone()) << "\n";
-    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(1), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).timestamp()) << "\n";
-    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).timestamp()) << "\n";
-    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(14), ::tpy::BigInt(2), ::tpy::BigInt(30)).timestamp()) << "\n";
-    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(11), ::tpy::BigInt(7), ::tpy::BigInt(1), ::tpy::BigInt(30)).timestamp()) << "\n";
-    std::cout << datetime::fromtimestamp(1626364800.0) << "\n";
-    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).strftime("%Z %z") << "\n";
-    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone().strftime("%Z %z") << "\n";
+    std::cout << ::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(1), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(1), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).timestamp()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).timestamp()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(14), ::tpy::BigInt(2), ::tpy::BigInt(30)).timestamp()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(11), ::tpy::BigInt(7), ::tpy::BigInt(1), ::tpy::BigInt(30)).timestamp()) << "\n" << ::tpy::check_signals;
+    std::cout << datetime::fromtimestamp(1626364800.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).strftime("%Z %z") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone().strftime("%Z %z") << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ::tpystd::datetime::UTC;
-    std::cout << ::tpy::print_bool(((::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(16), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1).astimezone()) == (::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone()))) << "\n";
+    std::cout << ::tpy::print_bool(((::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(16), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1).astimezone()) == (::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone()))) << "\n" << ::tpy::check_signals;
 }
 
 // # datetime v3 TZ backend, POSIX-rule-string arm: TZ="EST5EDT,M3.2.0,M11.1.0"

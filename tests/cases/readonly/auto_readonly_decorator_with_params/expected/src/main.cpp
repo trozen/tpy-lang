@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void read_buf(const Buffer& b) {
     std::vector<int32_t> items = {99};
     std::span<const int32_t> s = b.merge_span(items);
-    std::cout << ::tpy::__getitem__(s, 0) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -24,7 +24,7 @@ void main() {
     Buffer b = Buffer();
     std::vector<int32_t> items = {99};
     std::span<int32_t> s = b.merge_span(items);
-    std::cout << ::tpy::__getitem__(s, 0) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_buf(b);
 }
 

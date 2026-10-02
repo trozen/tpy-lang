@@ -18,9 +18,9 @@ void main() {
     {
         v = &(__match_subject_1.buf);
         v->push_back(99);
-        std::cout << ::tpy::__len__((*v)) << "\n";
+        std::cout << ::tpy::__len__((*v)) << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::__len__(h.buf) << "\n";
+    std::cout << ::tpy::__len__(h.buf) << "\n" << ::tpy::check_signals;
 }
 
 // main()

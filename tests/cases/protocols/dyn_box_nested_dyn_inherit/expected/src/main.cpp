@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(b.get().name())
 void main() {
     ::tpystd::tplib::box::Box<Pet> b = ::tpystd::tplib::box::Box<Cat>(Cat("Whiskers"));
-    std::cout << b.get().name() << "\n";
+    std::cout << b.get().name() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

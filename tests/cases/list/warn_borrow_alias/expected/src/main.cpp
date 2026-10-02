@@ -22,7 +22,7 @@ void test_alias_append() {
     Point& v = ::tpy::__getitem__(items, 0);
     std::vector<Point>& alias = items;
     alias.push_back(Point(5, 6));
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_alias_subscript_assign() -> None:
@@ -37,7 +37,7 @@ void test_alias_subscript_assign() {
     Point& v = ::tpy::__getitem__(items, 0);
     std::vector<Point>& alias = items;
     ::tpy::__setitem__(alias, 0, Point(9, 9));
-    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n" << ::tpy::check_signals;
 }
 
 // def test_alias_del() -> None:
@@ -52,7 +52,7 @@ void test_alias_del() {
     Point& v = ::tpy::__getitem__(items, 0);
     std::vector<Point>& alias = items;
     ::tpy::__delitem__(alias, 1);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_alias_pass_to_func() -> None:
@@ -67,7 +67,7 @@ void test_alias_pass_to_func() {
     Point& v = ::tpy::__getitem__(items, 0);
     std::vector<Point>& alias = items;
     ::tpyapp::main::mutate_list(alias);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_alias_aug_assign() -> None:
@@ -82,7 +82,7 @@ void test_alias_aug_assign() {
     Point& v = ::tpy::__getitem__(items, 0);
     std::vector<Point>& alias = items;
     ::tpy::list_extend(alias, std::vector<Point>{Point(5, 6)});
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_alias_no_element_borrow() -> None:
@@ -95,7 +95,7 @@ void test_alias_no_element_borrow() {
     std::vector<Point> items = {Point(1, 2)};
     std::vector<Point>& alias = items;
     alias.push_back(Point(3, 4));
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_direct_still_works() -> None:
@@ -108,7 +108,7 @@ void test_direct_still_works() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
     items.push_back(Point(5, 6));
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // test_alias_append()

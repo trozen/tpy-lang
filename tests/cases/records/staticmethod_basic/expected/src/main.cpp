@@ -23,13 +23,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << Counter::zero() << "\n";
-    std::cout << Counter::add(10, 20) << "\n";
+    std::cout << Counter::zero() << "\n" << ::tpy::check_signals;
+    std::cout << Counter::add(10, 20) << "\n" << ::tpy::check_signals;
     static Counter __global_slot_1 = Counter(100);
     c = &__global_slot_1;
-    std::cout << c->zero() << "\n";
-    std::cout << c->add(3, 4) << "\n";
-    std::cout << c->get() << "\n";
+    std::cout << c->zero() << "\n" << ::tpy::check_signals;
+    std::cout << c->add(3, 4) << "\n" << ::tpy::check_signals;
+    std::cout << c->get() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

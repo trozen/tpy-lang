@@ -13,7 +13,7 @@ void main() {
     IntListHolder h = IntListHolder({1, 2, 3});
     Wrapper<IntListHolder> w = Wrapper<IntListHolder>(h);
     IntListHolder& result = w.get_holder();
-    std::cout << ::tpy::__len__(result.items()) << "\n";
+    std::cout << ::tpy::__len__(result.items()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -49,7 +49,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::vector<int32_t> b = {1, 2, 3, 4, 5};
     ::tpy::list_set_stepped_slice(b, ::tpy::Slice{std::nullopt, std::nullopt, -2}, std::vector<int32_t>{50, 30, 10});
@@ -58,7 +58,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::vector<int32_t> c = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     ::tpy::list_set_stepped_slice(c, ::tpy::Slice{1, 8, 3}, std::vector<int32_t>{100, 200, 300});
@@ -67,7 +67,7 @@ void main() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         int32_t x = *__beg_2;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::vector<int32_t> d = {1, 2, 3, 4, 5};
     ::tpy::list_set_stepped_slice(d, ::tpy::Slice{1, 4, 1}, std::vector<int32_t>{10, 20});
@@ -76,7 +76,7 @@ void main() {
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         int32_t x = *__beg_3;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::vector<int32_t> e = {1, 2, 3, 4, 5};
     ::tpy::list_set_stepped_slice(e, ::tpy::Slice{std::nullopt, std::nullopt, 2}, ::tpyapp::main::gen3());
@@ -85,7 +85,7 @@ void main() {
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
         int32_t x = *__beg_4;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 

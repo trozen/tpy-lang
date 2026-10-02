@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(kwargs["port"])
 //     print(kwargs["debug"])
 void connect(std::string_view host, const Options& kwargs) {
-    std::cout << host << "\n";
-    std::cout << kwargs.port << "\n";
-    std::cout << ::tpy::print_bool(kwargs.debug) << "\n";
+    std::cout << host << "\n" << ::tpy::check_signals;
+    std::cout << kwargs.port << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(kwargs.debug) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

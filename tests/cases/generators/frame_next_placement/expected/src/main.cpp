@@ -37,7 +37,7 @@ namespace tpyapp::main {
 //     print("relayed", relayed)
 void main() {
     std::vector<int32_t> __tmp_1 = {2};
-    std::cout << "free" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::gens::squares(5, __tmp_1)) << "\n";
+    std::cout << "free" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::gens::squares(5, __tmp_1)) << "\n" << ::tpy::check_signals;
     ::tpyapp::gens::Bag bag = ::tpyapp::gens::Bag();
     for (int32_t i = 0; i < 4; ++i) {
         bag.cells.push_back(::tpyapp::gens::Cell(i));
@@ -63,16 +63,16 @@ void main() {
             __result.push_back(c.v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::vector<std::string> log = std::vector<std::string>{};
     std::vector<int32_t> __tmp_2 = {1, 2};
     std::vector<int32_t> got = ::tpy::construct<std::vector<int32_t>>(::tpyapp::gens::guarded(__tmp_2, log));
-    std::cout << "finally" << " " << ::tpy::ListPrinter(got) << " " << ::tpy::ListPrinter(log) << "\n";
-    std::cout << "echoed" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::gens::echoed(3))) << "\n";
+    std::cout << "finally" << " " << ::tpy::ListPrinter(got) << " " << ::tpy::ListPrinter(log) << "\n" << ::tpy::check_signals;
+    std::cout << "echoed" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::gens::echoed(3))) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> down = ::tpy::construct<std::vector<int32_t>>(::tpyapp::cyc_a::countdown(3));
-    std::cout << "cycle" << " " << ::tpy::ListPrinter(down) << " " << ::tpyapp::cyc_b::total_countdown(2) << "\n";
+    std::cout << "cycle" << " " << ::tpy::ListPrinter(down) << " " << ::tpyapp::cyc_b::total_countdown(2) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> relayed = ::tpy::construct<std::vector<int32_t>>(::tpyapp::relay::stream(4));
-    std::cout << "relayed" << " " << ::tpy::ListPrinter(relayed) << "\n";
+    std::cout << "relayed" << " " << ::tpy::ListPrinter(relayed) << "\n" << ::tpy::check_signals;
 }
 
 // # A small generator's __next__ is inline in <mod>_inl.hpp, which every consumer

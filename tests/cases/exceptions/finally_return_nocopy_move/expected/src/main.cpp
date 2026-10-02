@@ -60,8 +60,8 @@ Handle f_alias() {
 //     print(f().n)
 //     print(f_alias().n)
 void main() {
-    std::cout << ::tpyapp::main::f().n << "\n";
-    std::cout << ::tpyapp::main::f_alias().n << "\n";
+    std::cout << ::tpyapp::main::f().n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::f_alias().n << "\n" << ::tpy::check_signals;
 }
 
 // main()

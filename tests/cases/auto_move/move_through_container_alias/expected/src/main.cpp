@@ -15,7 +15,7 @@ void list_scalars() {
     std::vector<int32_t> ys = {9};
     std::vector<int32_t> xs = std::move(ys);
     xs.push_back(3);
-    std::cout << "list" << " " << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << "\n";
+    std::cout << "list" << " " << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << "\n" << ::tpy::check_signals;
 }
 
 // # free function, @nocopy element -- a copy here would not compile
@@ -30,7 +30,7 @@ void nocopy_elements() {
     ys.push_back(Tag(1));
     std::vector<Tag> xs = std::move(ys);
     xs.push_back(Tag(2));
-    std::cout << "nocopy" << " " << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).n << " " << ::tpy::__getitem__(xs, 1).n << "\n";
+    std::cout << "nocopy" << " " << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).n << " " << ::tpy::__getitem__(xs, 1).n << "\n" << ::tpy::check_signals;
 }
 
 // # free function, dict / set / bytearray / nested list
@@ -61,7 +61,7 @@ void other_kinds() {
     std::vector<std::vector<int32_t>> ns = {{9}};
     std::vector<std::vector<int32_t>> n2 = std::move(ns);
     n2.push_back({1});
-    std::cout << "kinds" << " " << ::tpy::__len__(d2) << " " << ::tpy::__len__(s2) << " " << ::tpy::__len__(b2) << " " << ::tpy::__len__(n2) << "\n";
+    std::cout << "kinds" << " " << ::tpy::__len__(d2) << " " << ::tpy::__len__(s2) << " " << ::tpy::__len__(b2) << " " << ::tpy::__len__(n2) << "\n" << ::tpy::check_signals;
 }
 
 // # free function, source READ after the alias -- a borrow, not a move
@@ -74,7 +74,7 @@ void read_after() {
     std::vector<int32_t> ys = {7};
     std::vector<int32_t>& xs = ys;
     xs.push_back(8);
-    std::cout << "alias" << " " << ::tpy::__len__(ys) << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << "alias" << " " << ::tpy::__len__(ys) << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // # free function, readonly source -- the alias binds a const reference
@@ -83,7 +83,7 @@ void read_after() {
 //     print("readonly", len(xs))
 void readonly_source(const std::vector<int32_t>& ys) {
     const std::vector<int32_t>& xs = ys;
-    std::cout << "readonly" << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << "readonly" << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -109,7 +109,7 @@ void main() {
     ::tpyapp::main::nocopy_elements();
     ::tpyapp::main::other_kinds();
     Holder h = Holder();
-    std::cout << "constructor" << " " << h.total << "\n";
+    std::cout << "constructor" << " " << h.total << "\n" << ::tpy::check_signals;
     h.run();
     ::tpyapp::main::read_after();
     std::vector<int32_t> src = {1, 2};
@@ -121,7 +121,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << v << "\n";
+            std::cout << "generator" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
 }

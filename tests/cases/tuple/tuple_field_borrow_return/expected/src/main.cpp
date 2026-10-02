@@ -32,11 +32,11 @@ void main() {
     Holder h = Holder(Box(5));
     auto t = ::tpyapp::main::ret_field(h);
     std::get<1>(t)->val = 99;
-    std::cout << std::get<1>(h.pair).val << "\n";
+    std::cout << std::get<1>(h.pair).val << "\n" << ::tpy::check_signals;
     Holder h2 = Holder(Box(7));
     auto u = ::tpyapp::main::ret_alias(h2);
     std::get<1>(u)->val = 42;
-    std::cout << std::get<1>(h2.pair).val << "\n";
+    std::cout << std::get<1>(h2.pair).val << "\n" << ::tpy::check_signals;
 }
 
 // main()

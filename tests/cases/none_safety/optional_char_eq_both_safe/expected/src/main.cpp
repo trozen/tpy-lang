@@ -36,11 +36,11 @@ void __tpy_init() {
     sx = x;
     sy = y;
     n = std::nullopt;
-    std::cout << ::tpy::print_bool(::tpyapp::main::eq_both(sx, sx)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::eq_both(sx, sy)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::eq_both(n, sx)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::eq_both(sx, n)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::eq_both(n, n)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_both(sx, sx)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_both(sx, sy)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_both(n, sx)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_both(sx, n)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::eq_both(n, n)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

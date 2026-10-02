@@ -25,7 +25,7 @@ void main() {
         int32_t i = int32_t(__i_1);
         return i;
     });
-    std::cout << ::tpy::__len__(big) << " " << ::tpy::__getitem__(big, 1999) << " " << ::tpy::__len__(edge) << " " << ::tpy::__getitem__(edge, 1023) << "\n";
+    std::cout << ::tpy::__len__(big) << " " << ::tpy::__getitem__(big, 1999) << " " << ::tpy::__len__(edge) << " " << ::tpy::__getitem__(edge, 1023) << "\n" << ::tpy::check_signals;
 }
 
 // main()

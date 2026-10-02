@@ -10,8 +10,8 @@ std::tuple<int32_t, std::tuple<int32_t, int32_t>> t2;
 //     print(t)
 //     print(t2)
 void main() {
-    std::cout << ::tpy::TuplePrinter(t) << "\n";
-    std::cout << ::tpy::TuplePrinter(t2) << "\n";
+    std::cout << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(t2) << "\n" << ::tpy::check_signals;
 }
 
 // # Tuple global with bare int literals (tests resolve_int_literals for globals)

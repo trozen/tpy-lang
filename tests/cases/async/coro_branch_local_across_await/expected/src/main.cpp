@@ -138,10 +138,10 @@ __coro_coro_match coro_match(::tpy::BigInt n) {
 //     print(asyncio.run(coro_elif(7)))
 //     print(asyncio.run(coro_match(5)))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::coro_if(::tpy::BigInt(5)))) << "\n";
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::coro_if(::tpy::BigInt(0)))) << "\n";
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::coro_elif(::tpy::BigInt(7)))) << "\n";
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::coro_match(::tpy::BigInt(5)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::coro_if(::tpy::BigInt(5)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::coro_if(::tpy::BigInt(0)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::coro_elif(::tpy::BigInt(7)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::coro_match(::tpy::BigInt(5)))) << "\n" << ::tpy::check_signals;
 }
 
 // # A plain local first-assigned inside an if/elif/else/match branch and read

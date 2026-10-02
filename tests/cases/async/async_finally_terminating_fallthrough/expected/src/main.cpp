@@ -22,15 +22,15 @@ namespace tpyapp::main {
         {
             try {
                 try {
-                    std::cout << "try body ran" << "\n";
+                    std::cout << "try body ran" << "\n" << ::tpy::check_signals;
                 } catch (const ::tpy::ValueError&) {
-                    std::cout << "unreachable handler" << "\n";
+                    std::cout << "unreachable handler" << "\n" << ::tpy::check_signals;
                 }
             } catch (...) {
-                std::cout << "finally ran" << "\n";
+                std::cout << "finally ran" << "\n" << ::tpy::check_signals;
                 throw ::tpy::RuntimeError("from finally");
             }
-            std::cout << "finally ran" << "\n";
+            std::cout << "finally ran" << "\n" << ::tpy::check_signals;
             throw ::tpy::RuntimeError("from finally");
         }
         __state = S_DONE;
@@ -64,7 +64,7 @@ __coro_raise_from_finally raise_from_finally() {
             continue;
         } catch (const ::tpy::RuntimeError&) {
             __sub_0.reset();
-            std::cout << "caught from finally" << "\n";
+            std::cout << "caught from finally" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

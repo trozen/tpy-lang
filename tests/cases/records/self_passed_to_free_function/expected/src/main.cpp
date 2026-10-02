@@ -40,11 +40,11 @@ void append_item(Module& mod, int32_t val) {
 void main() {
     Module m = Module("test");
     m.init();
-    std::cout << m.describe() << "\n";
-    std::cout << m.name_upper() << "\n";
+    std::cout << m.describe() << "\n" << ::tpy::check_signals;
+    std::cout << m.name_upper() << "\n" << ::tpy::check_signals;
     m.reinit();
     m.add_item(42);
-    std::cout << ::tpy::ListPrinter(m._items) << "\n";
+    std::cout << ::tpy::ListPrinter(m._items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

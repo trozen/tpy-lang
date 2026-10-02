@@ -13,7 +13,7 @@ namespace tpyapp::main {
 void main() {
     Worker w = Worker();
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(w.go()));
-    std::cout << w.n << "\n";
+    std::cout << w.n << "\n" << ::tpy::check_signals;
 }
 
 // async def go(self) -> None:
@@ -25,7 +25,7 @@ void main() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __self.n = ::tpy::add_check<int32_t>(__self.n, 1);
-        std::cout << __self.n << "\n";
+        std::cout << __self.n << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

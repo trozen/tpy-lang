@@ -20,13 +20,13 @@ int32_t m{};
 //         print("free " + r)
 void free(int32_t k) {
     if ((k == 1)) {
-        std::cout << "free one" << "\n";
+        std::cout << "free one" << "\n" << ::tpy::check_signals;
     } else if ((k == 2)) {
         std::string_view r = "two";
-        std::cout << (::tpy::str_concat("free ", r)) << "\n";
+        std::cout << (::tpy::str_concat("free ", r)) << "\n" << ::tpy::check_signals;
     } else {
         std::string_view r = "other";
-        std::cout << (::tpy::str_concat("free ", r)) << "\n";
+        std::cout << (::tpy::str_concat("free ", r)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -43,14 +43,14 @@ void free(int32_t k) {
 //             print("else_if " + r)
 void else_if(int32_t k) {
     if ((k == 1)) {
-        std::cout << "else_if one" << "\n";
+        std::cout << "else_if one" << "\n" << ::tpy::check_signals;
     } else {
         if ((k == 2)) {
             std::string_view r = "two";
-            std::cout << (::tpy::str_concat("else_if ", r)) << "\n";
+            std::cout << (::tpy::str_concat("else_if ", r)) << "\n" << ::tpy::check_signals;
         } else {
             std::string_view r = "other";
-            std::cout << (::tpy::str_concat("else_if ", r)) << "\n";
+            std::cout << (::tpy::str_concat("else_if ", r)) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -69,15 +69,15 @@ void else_if(int32_t k) {
 //         print("chain2 " + r)
 void chain2(int32_t k) {
     if ((k == 1)) {
-        std::cout << "chain2 one" << "\n";
+        std::cout << "chain2 one" << "\n" << ::tpy::check_signals;
     } else if ((k == 2)) {
-        std::cout << "chain2 two" << "\n";
+        std::cout << "chain2 two" << "\n" << ::tpy::check_signals;
     } else if ((k == 3)) {
         std::string_view r = "three";
-        std::cout << (::tpy::str_concat("chain2 ", r)) << "\n";
+        std::cout << (::tpy::str_concat("chain2 ", r)) << "\n" << ::tpy::check_signals;
     } else {
         std::string_view r = "other";
-        std::cout << (::tpy::str_concat("chain2 ", r)) << "\n";
+        std::cout << (::tpy::str_concat("chain2 ", r)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -96,16 +96,16 @@ void chain2(int32_t k) {
 //         print("chain3 " + r)
 void chain3(int32_t k) {
     if ((k == 1)) {
-        std::cout << "chain3 one" << "\n";
+        std::cout << "chain3 one" << "\n" << ::tpy::check_signals;
     } else if ((k == 2)) {
         std::string_view r = "two";
-        std::cout << (::tpy::str_concat("chain3 ", r)) << "\n";
+        std::cout << (::tpy::str_concat("chain3 ", r)) << "\n" << ::tpy::check_signals;
     } else if ((k == 3)) {
         std::string_view r = "three";
-        std::cout << (::tpy::str_concat("chain3 ", r)) << "\n";
+        std::cout << (::tpy::str_concat("chain3 ", r)) << "\n" << ::tpy::check_signals;
     } else {
         std::string_view r = "other";
-        std::cout << (::tpy::str_concat("chain3 ", r)) << "\n";
+        std::cout << (::tpy::str_concat("chain3 ", r)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -124,13 +124,13 @@ void chain3(int32_t k) {
 void nested(int32_t k) {
     auto inner = [&k]() {
         if ((k == 1)) {
-            std::cout << "nested one" << "\n";
+            std::cout << "nested one" << "\n" << ::tpy::check_signals;
         } else if ((k == 2)) {
             std::string_view r = "two";
-            std::cout << (::tpy::str_concat("nested ", r)) << "\n";
+            std::cout << (::tpy::str_concat("nested ", r)) << "\n" << ::tpy::check_signals;
         } else {
             std::string_view r = "other";
-            std::cout << (::tpy::str_concat("nested ", r)) << "\n";
+            std::cout << (::tpy::str_concat("nested ", r)) << "\n" << ::tpy::check_signals;
         }
     };
     inner();
@@ -150,13 +150,13 @@ void nested(int32_t k) {
 void loop(int32_t k) {
     for (int32_t i = 0; i < 2; ++i) {
         if ((k == 1)) {
-            std::cout << "loop one" << "\n";
+            std::cout << "loop one" << "\n" << ::tpy::check_signals;
         } else if ((k == 2)) {
             int32_t r = (::tpy::mul_check<int32_t>(i, 2));
-            std::cout << (::tpy::str_concat("loop ", ::tpy::fixed_to_str<int32_t>(r))) << "\n";
+            std::cout << (::tpy::str_concat("loop ", ::tpy::fixed_to_str<int32_t>(r))) << "\n" << ::tpy::check_signals;
         } else {
             int32_t r = (::tpy::mul_check<int32_t>(i, 3));
-            std::cout << (::tpy::str_concat("loop ", ::tpy::fixed_to_str<int32_t>(r))) << "\n";
+            std::cout << (::tpy::str_concat("loop ", ::tpy::fixed_to_str<int32_t>(r))) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -178,16 +178,16 @@ void in_try(int32_t k) {
     {
         try {
             if ((k == 1)) {
-                std::cout << "try one" << "\n";
+                std::cout << "try one" << "\n" << ::tpy::check_signals;
             } else if ((k == 2)) {
                 std::string_view r = "two";
-                std::cout << (::tpy::str_concat("try ", r)) << "\n";
+                std::cout << (::tpy::str_concat("try ", r)) << "\n" << ::tpy::check_signals;
             } else {
                 std::string_view r = "other";
-                std::cout << (::tpy::str_concat("try ", r)) << "\n";
+                std::cout << (::tpy::str_concat("try ", r)) << "\n" << ::tpy::check_signals;
             }
         } catch (const ::tpy::ValueError&) {
-            std::cout << "try caught" << "\n";
+            std::cout << "try caught" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -210,18 +210,18 @@ void in_match(int32_t k) {
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
     case 0: {
-        std::cout << "match zero" << "\n";
+        std::cout << "match zero" << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
         if ((k == 1)) {
-            std::cout << "match one" << "\n";
+            std::cout << "match one" << "\n" << ::tpy::check_signals;
         } else if ((k == 2)) {
             std::string_view r = "two";
-            std::cout << (::tpy::str_concat("match ", r)) << "\n";
+            std::cout << (::tpy::str_concat("match ", r)) << "\n" << ::tpy::check_signals;
         } else {
             std::string_view r = "other";
-            std::cout << (::tpy::str_concat("match ", r)) << "\n";
+            std::cout << (::tpy::str_concat("match ", r)) << "\n" << ::tpy::check_signals;
         }
         break;
     }
@@ -242,15 +242,15 @@ void in_match(int32_t k) {
 //         print("ref " + str(b.v))
 void ref(int32_t k, Node& a, Node& b) {
     if ((k == 1)) {
-        std::cout << "ref one" << "\n";
+        std::cout << "ref one" << "\n" << ::tpy::check_signals;
     } else if ((k == 2)) {
         Node* n = &(a);
         n->v = ::tpy::add_check<int32_t>(n->v, 10);
-        std::cout << (::tpy::str_concat("ref ", ::tpy::fixed_to_str<int32_t>(a.v))) << "\n";
+        std::cout << (::tpy::str_concat("ref ", ::tpy::fixed_to_str<int32_t>(a.v))) << "\n" << ::tpy::check_signals;
     } else {
         Node* n = &(b);
         n->v = ::tpy::add_check<int32_t>(n->v, 20);
-        std::cout << (::tpy::str_concat("ref ", ::tpy::fixed_to_str<int32_t>(b.v))) << "\n";
+        std::cout << (::tpy::str_concat("ref ", ::tpy::fixed_to_str<int32_t>(b.v))) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -266,15 +266,15 @@ void ref(int32_t k, Node& a, Node& b) {
 //         print("unpack " + str(a + b))
 void unpack(int32_t k) {
     if ((k == 1)) {
-        std::cout << "unpack one" << "\n";
+        std::cout << "unpack one" << "\n" << ::tpy::check_signals;
     } else if ((k == 2)) {
         int32_t a = 1;
         int32_t b = 2;
-        std::cout << (::tpy::str_concat("unpack ", ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(a, b))))) << "\n";
+        std::cout << (::tpy::str_concat("unpack ", ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(a, b))))) << "\n" << ::tpy::check_signals;
     } else {
         int32_t a = 3;
         int32_t b = 4;
-        std::cout << (::tpy::str_concat("unpack ", ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(a, b))))) << "\n";
+        std::cout << (::tpy::str_concat("unpack ", ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(a, b))))) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -290,16 +290,16 @@ void unpack(int32_t k) {
 //         print("walrus " + str(w))
 void walrus(int32_t k) {
     if ((k == 1)) {
-        std::cout << "walrus one" << "\n";
+        std::cout << "walrus one" << "\n" << ::tpy::check_signals;
     } else if ((k == 2)) {
         int32_t w;
         if (((w = (::tpy::mul_check<int32_t>(k, 2))) > 0)) {
-            std::cout << (::tpy::str_concat("walrus ", ::tpy::fixed_to_str<int32_t>(w))) << "\n";
+            std::cout << (::tpy::str_concat("walrus ", ::tpy::fixed_to_str<int32_t>(w))) << "\n" << ::tpy::check_signals;
         }
     } else {
         int32_t w;
-        std::cout << (::tpy::str_concat("walrus ", ::tpy::fixed_to_str<int32_t>((w = (::tpy::mul_check<int32_t>(k, 3)))))) << "\n";
-        std::cout << (::tpy::str_concat("walrus ", ::tpy::fixed_to_str<int32_t>(w))) << "\n";
+        std::cout << (::tpy::str_concat("walrus ", ::tpy::fixed_to_str<int32_t>((w = (::tpy::mul_check<int32_t>(k, 3)))))) << "\n" << ::tpy::check_signals;
+        std::cout << (::tpy::str_concat("walrus ", ::tpy::fixed_to_str<int32_t>(w))) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -314,11 +314,11 @@ void walrus(int32_t k) {
 int32_t walrus_return(int32_t k) {
     if ((k == 1)) {
         int32_t w;
-        std::cout << (::tpy::str_concat("walrus_return ", ::tpy::fixed_to_str<int32_t>((w = (::tpy::mul_check<int32_t>(k, 2)))))) << "\n";
+        std::cout << (::tpy::str_concat("walrus_return ", ::tpy::fixed_to_str<int32_t>((w = (::tpy::mul_check<int32_t>(k, 2)))))) << "\n" << ::tpy::check_signals;
         return w;
     } else {
         int32_t w;
-        std::cout << (::tpy::str_concat("walrus_return ", ::tpy::fixed_to_str<int32_t>((w = (::tpy::mul_check<int32_t>(k, 3)))))) << "\n";
+        std::cout << (::tpy::str_concat("walrus_return ", ::tpy::fixed_to_str<int32_t>((w = (::tpy::mul_check<int32_t>(k, 3)))))) << "\n" << ::tpy::check_signals;
         return w;
     }
 }
@@ -335,13 +335,13 @@ int32_t walrus_return(int32_t k) {
 //         print("narrow " + r + " " + str(x))
 void narrow(std::optional<int32_t> x, int32_t k) {
     if ((!x.has_value())) {
-        std::cout << "narrow none" << "\n";
+        std::cout << "narrow none" << "\n" << ::tpy::check_signals;
     } else if ((k == 2)) {
         std::string_view r = "two";
-        std::cout << (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("narrow ", r)), " ")), ::tpy::fixed_to_str<int32_t>((*x)))) << "\n";
+        std::cout << (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("narrow ", r)), " ")), ::tpy::fixed_to_str<int32_t>((*x)))) << "\n" << ::tpy::check_signals;
     } else {
         std::string_view r = "other";
-        std::cout << (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("narrow ", r)), " ")), ::tpy::fixed_to_str<int32_t>((*x)))) << "\n";
+        std::cout << (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("narrow ", r)), " ")), ::tpy::fixed_to_str<int32_t>((*x)))) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -357,13 +357,13 @@ void narrow(std::optional<int32_t> x, int32_t k) {
 //         print("none_int", r)
 void none_int(int32_t k) {
     if ((k == 1)) {
-        std::cout << "none_int one" << "\n";
+        std::cout << "none_int one" << "\n" << ::tpy::check_signals;
     } else if ((k == 2)) {
         std::optional<int32_t> r = std::nullopt;
-        std::cout << "none_int" << " " << ::tpy::print_optional_val(r) << "\n";
+        std::cout << "none_int" << " " << ::tpy::print_optional_val(r) << "\n" << ::tpy::check_signals;
     } else {
         std::optional<int32_t> r = 5;
-        std::cout << "none_int" << " " << ::tpy::print_optional_val(r) << "\n";
+        std::cout << "none_int" << " " << ::tpy::print_optional_val(r) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -379,13 +379,13 @@ void none_int(int32_t k) {
 //         print("str_mix " + r)
 void str_mix(int32_t k, std::string_view a) {
     if ((k == 1)) {
-        std::cout << "str_mix one" << "\n";
+        std::cout << "str_mix one" << "\n" << ::tpy::check_signals;
     } else if ((k == 2)) {
         std::string r = "lit";
-        std::cout << (::tpy::str_concat("str_mix ", r)) << "\n";
+        std::cout << (::tpy::str_concat("str_mix ", r)) << "\n" << ::tpy::check_signals;
     } else {
         std::string r = (::tpy::str_concat(a, "!"));
-        std::cout << (::tpy::str_concat("str_mix ", r)) << "\n";
+        std::cout << (::tpy::str_concat("str_mix ", r)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -428,7 +428,7 @@ void all_three(int32_t k) {
     } else {
         r = "other";
     }
-    std::cout << (::tpy::str_concat("all_three ", r)) << "\n";
+    std::cout << (::tpy::str_concat("all_three ", r)) << "\n" << ::tpy::check_signals;
 }
 
 // # a rebind after the chain declares a fresh local (owning storage for a
@@ -446,16 +446,16 @@ void all_three(int32_t k) {
 //     print("rebind_after " + r)
 void rebind_after(int32_t k) {
     if ((k == 1)) {
-        std::cout << "rebind_after one" << "\n";
+        std::cout << "rebind_after one" << "\n" << ::tpy::check_signals;
     } else if ((k == 2)) {
         std::string_view r = "two";
-        std::cout << (::tpy::str_concat("rebind_after ", r)) << "\n";
+        std::cout << (::tpy::str_concat("rebind_after ", r)) << "\n" << ::tpy::check_signals;
     } else {
         std::string_view r = "other";
-        std::cout << (::tpy::str_concat("rebind_after ", r)) << "\n";
+        std::cout << (::tpy::str_concat("rebind_after ", r)) << "\n" << ::tpy::check_signals;
     }
     std::string r = "after";
-    std::cout << (::tpy::str_concat("rebind_after ", r)) << "\n";
+    std::cout << (::tpy::str_concat("rebind_after ", r)) << "\n" << ::tpy::check_signals;
 }
 
 // # an arm binding twice (declare, then assign) and one binding in a nested if
@@ -474,11 +474,11 @@ void rebind_after(int32_t k) {
 //         print("twice " + r)
 void twice(int32_t k) {
     if ((k == 1)) {
-        std::cout << "twice one" << "\n";
+        std::cout << "twice one" << "\n" << ::tpy::check_signals;
     } else if ((k == 2)) {
         std::string r = "two";
         r += "!";
-        std::cout << (::tpy::str_concat("twice ", r)) << "\n";
+        std::cout << (::tpy::str_concat("twice ", r)) << "\n" << ::tpy::check_signals;
     } else {
         std::string r;
         if ((k == 3)) {
@@ -486,7 +486,7 @@ void twice(int32_t k) {
         } else {
             r = "other";
         }
-        std::cout << (::tpy::str_concat("twice ", r)) << "\n";
+        std::cout << (::tpy::str_concat("twice ", r)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -510,10 +510,10 @@ __gen_gen gen(int32_t k) {
 //         print("capture else", v)
 void capture(int32_t k) {
     if ((k == 1)) {
-        std::cout << "capture one" << "\n";
+        std::cout << "capture one" << "\n" << ::tpy::check_signals;
     } else if ((k == 2)) {
         int32_t v = 20;
-        std::cout << "capture two" << " " << v << "\n";
+        std::cout << "capture two" << " " << v << "\n" << ::tpy::check_signals;
     } else {
         int32_t v;
         auto& __match_subject_1 = k;
@@ -523,7 +523,7 @@ void capture(int32_t k) {
             break;
         }
         }
-        std::cout << "capture else" << " " << v << "\n";
+        std::cout << "capture else" << " " << v << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -541,17 +541,17 @@ void capture(int32_t k) {
 //         print("def_arm " + r())
 void def_arm(int32_t k) {
     if ((k == 1)) {
-        std::cout << "def_arm one" << "\n";
+        std::cout << "def_arm one" << "\n" << ::tpy::check_signals;
     } else if ((k == 2)) {
         auto r = []() -> std::string {
             return "two";
         };
-        std::cout << (::tpy::str_concat("def_arm ", r())) << "\n";
+        std::cout << (::tpy::str_concat("def_arm ", r())) << "\n" << ::tpy::check_signals;
     } else {
         auto r = [&k]() -> std::string {
             return (::tpy::str_concat("other ", ::tpy::fixed_to_str<int32_t>(k)));
         };
-        std::cout << (::tpy::str_concat("def_arm ", r())) << "\n";
+        std::cout << (::tpy::str_concat("def_arm ", r())) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -655,11 +655,11 @@ void main() {
         ::tpyapp::main::ref(k, a, b);
         ::tpyapp::main::unpack(k);
         ::tpyapp::main::walrus(k);
-        std::cout << ::tpyapp::main::walrus_return(k) << "\n";
+        std::cout << ::tpyapp::main::walrus_return(k) << "\n" << ::tpy::check_signals;
         ::tpyapp::main::narrow(7, k);
         ::tpyapp::main::none_int(k);
         ::tpyapp::main::str_mix(k, "cat");
-        std::cout << ::tpyapp::main::after_return(k) << "\n";
+        std::cout << ::tpyapp::main::after_return(k) << "\n" << ::tpy::check_signals;
         ::tpyapp::main::all_three(k);
         ::tpyapp::main::rebind_after(k);
         ::tpyapp::main::twice(k);
@@ -670,12 +670,12 @@ void main() {
                 auto __r_2 = __itr_1.__next__();
                 if (!__r_2.has_value()) break;
                 std::string_view s = ::tpy::unwrap_ref(*__r_2);
-                std::cout << s << "\n";
+                std::cout << s << "\n" << ::tpy::check_signals;
             }
         }
         ::tpyapp::main::capture(k);
         ::tpyapp::main::def_arm(k);
-        std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::in_async(k))) << "\n";
+        std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::in_async(k))) << "\n" << ::tpy::check_signals;
     }
     for (int32_t k = 1; k < 5; ++k) {
         ::tpyapp::main::chain2(k);
@@ -709,13 +709,13 @@ void __tpy_init() {
     ::tpyapp::main::main();
     m = 2;
     if ((m == 1)) {
-        std::cout << "module one" << "\n";
+        std::cout << "module one" << "\n" << ::tpy::check_signals;
     } else if ((m == 2)) {
         std::string mr = "two";
-        std::cout << (::tpy::str_concat("module ", mr)) << "\n";
+        std::cout << (::tpy::str_concat("module ", mr)) << "\n" << ::tpy::check_signals;
     } else {
         std::string mr = "other";
-        std::cout << (::tpy::str_concat("module ", mr)) << "\n";
+        std::cout << (::tpy::str_concat("module ", mr)) << "\n" << ::tpy::check_signals;
     }
 }
 

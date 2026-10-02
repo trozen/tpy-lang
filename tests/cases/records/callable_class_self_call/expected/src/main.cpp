@@ -13,10 +13,10 @@ namespace tpyapp::main {
 //     print(f(10))
 void main() {
     Recursive r = Recursive();
-    std::cout << r.__call__(5) << "\n";
-    std::cout << r.__call__(0) << "\n";
+    std::cout << r.__call__(5) << "\n" << ::tpy::check_signals;
+    std::cout << r.__call__(0) << "\n" << ::tpy::check_signals;
     Fibonacci f = Fibonacci();
-    std::cout << f.__call__(10) << "\n";
+    std::cout << f.__call__(10) << "\n" << ::tpy::check_signals;
 }
 
 // main()

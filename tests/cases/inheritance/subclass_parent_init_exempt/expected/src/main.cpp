@@ -23,18 +23,18 @@ void main() {
         try {
             throw TaggedError(7);
         } catch (const TaggedError& e) {
-            std::cout << "multi-base native:" << " " << e.code << " " << e.tag << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "multi-base native:" << " " << e.code << " " << e.tag << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     Money m = Money(250);
-    std::cout << "protocol bases:" << " " << m.size() << "\n";
+    std::cout << "protocol bases:" << " " << m.size() << "\n" << ::tpy::check_signals;
     Point3 p = Point3(1, 2, 3);
-    std::cout << "annotation-only:" << " " << p.x << " " << p.y << " " << p.z << "\n";
+    std::cout << "annotation-only:" << " " << p.x << " " << p.y << " " << p.z << "\n" << ::tpy::check_signals;
     Named n = Named("n", 5);
-    std::cout << "explicit:" << " " << n.name << " " << n.count << "\n";
+    std::cout << "explicit:" << " " << n.name << " " << n.count << "\n" << ::tpy::check_signals;
     Child c = Child(8);
     c.bump();
-    std::cout << "inherited:" << " " << c.count << "\n";
+    std::cout << "inherited:" << " " << c.count << "\n" << ::tpy::check_signals;
 }
 
 // main()

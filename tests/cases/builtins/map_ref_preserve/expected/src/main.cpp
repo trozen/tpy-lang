@@ -47,9 +47,9 @@ void main() {
             p.x = (::tpy::mul_check<int32_t>(p.x, 10));
         }
     }
-    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
-    std::cout << ::tpy::__getitem__(pts, 2).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(pts, 1).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(pts, 2).x << "\n" << ::tpy::check_signals;
     {
         auto __src_2 = ::tpy::builtin_map<::tpy::val_or_ref<Point>>([](Point& p) -> Point& { return ::tpyapp::main::scale(p, 2); }, pts);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -59,8 +59,8 @@ void main() {
             const auto& p = ::tpy::unwrap_ref(*__r_3);
         }
     }
-    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(pts, 1).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

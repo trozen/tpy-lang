@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def f(l: readonly[list[int32]]) -> None:
 //     print(len(l))
 void f(const std::vector<int32_t>& l) {
-    std::cout << ::tpy::__len__(l) << "\n";
+    std::cout << ::tpy::__len__(l) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

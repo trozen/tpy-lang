@@ -24,7 +24,7 @@ Handle extract() {
 //     print(result.value)
 void main() {
     Handle result = ::tpyapp::main::extract();
-    std::cout << result.value << "\n";
+    std::cout << result.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

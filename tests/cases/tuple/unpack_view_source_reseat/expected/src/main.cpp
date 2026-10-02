@@ -40,7 +40,7 @@ void plain() {
     std::string a = std::get<0>(__tup_1);
     ::tpy::BigInt b = std::get<1>(__tup_1);
     t = ::tpyapp::main::mk(::tpy::BigInt(2));
-    std::cout << "plain" << " " << a << " " << b << " " << std::get<1>(t) << "\n";
+    std::cout << "plain" << " " << a << " " << b << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
 }
 
 // # narrowed Optional[tuple] source rebound to another tuple, then to None.
@@ -62,7 +62,7 @@ void narrowed() {
         std::string a = std::get<0>(__tup_1);
         ::tpy::BigInt b = std::get<1>(__tup_1);
         r = ::tpyapp::main::find(::tpy::BigInt(2));
-        std::cout << "narrowed" << " " << a << " " << b << "\n";
+        std::cout << "narrowed" << " " << a << " " << b << "\n" << ::tpy::check_signals;
     }
     std::optional<std::tuple<std::string, ::tpy::BigInt>> r2 = ::tpyapp::main::find(::tpy::BigInt(3));
     if ((r2.has_value())) {
@@ -70,7 +70,7 @@ void narrowed() {
         std::string c = std::get<0>(__tup_2);
         ::tpy::BigInt d = std::get<1>(__tup_2);
         r2 = std::nullopt;
-        std::cout << "narrowed_none" << " " << c << " " << d << "\n";
+        std::cout << "narrowed_none" << " " << c << " " << d << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -86,7 +86,7 @@ void bytes_elem() {
     ::tpy::Bytes a = std::get<0>(__tup_1);
     ::tpy::BigInt b = std::get<1>(__tup_1);
     t = ::tpyapp::main::mkb(::tpy::BigInt(2));
-    std::cout << "bytes_elem" << " " << ::tpy::BytesPrinter(a) << " " << b << "\n";
+    std::cout << "bytes_elem" << " " << ::tpy::BytesPrinter(a) << " " << b << "\n" << ::tpy::check_signals;
 }
 
 // # the reseat comes later in the loop body, read in the next iteration.
@@ -103,7 +103,7 @@ void loop_reseat() {
         std::string a = std::get<0>(__tup_1);
         ::tpy::BigInt b = std::get<1>(__tup_1);
         t = ::tpyapp::main::mk(::tpy::BigInt((::tpy::add_check<int32_t>(i, 10))));
-        std::cout << "loop_reseat" << " " << a << " " << b << "\n";
+        std::cout << "loop_reseat" << " " << a << " " << b << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -128,7 +128,7 @@ void closure_reseat() {
         t = ::tpyapp::main::mk(::tpy::BigInt(2));
     };
     reseat();
-    std::cout << "closure_reseat" << " " << a << " " << b << "\n";
+    std::cout << "closure_reseat" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }
 
 // # the subscript spelling with the nested def declared before the view.
@@ -149,7 +149,7 @@ void closure_subscript() {
     };
     std::string a = std::get<0>(t);
     reseat();
-    std::cout << "closure_subscript" << " " << a << "\n";
+    std::cout << "closure_subscript" << " " << a << "\n" << ::tpy::check_signals;
 }
 
 // # `del` of the source ends its storage: the unpack target, the subscript
@@ -173,15 +173,15 @@ void del_source() {
     std::string a = std::get<0>(__tup_1);
     ::tpy::BigInt b = std::get<1>(__tup_1);
     { auto __del_sink = std::move(t); }
-    std::cout << "del_unpack" << " " << a << " " << b << "\n";
+    std::cout << "del_unpack" << " " << a << " " << b << "\n" << ::tpy::check_signals;
     std::tuple<std::string, ::tpy::BigInt> u = ::tpyapp::main::mk(::tpy::BigInt(2));
     std::string s = std::get<0>(u);
     { auto __del_sink = std::move(u); }
-    std::cout << "del_subscript" << " " << s << "\n";
+    std::cout << "del_subscript" << " " << s << "\n" << ::tpy::check_signals;
     Named h = Named("named-holder-long-enough-to-defeat-sso");
     std::string f = h.name;
     { auto __del_sink = std::move(h); }
-    std::cout << "del_field" << " " << f << "\n";
+    std::cout << "del_field" << " " << f << "\n" << ::tpy::check_signals;
 }
 
 // # a nested def deletes the source through nonlocal.
@@ -204,7 +204,7 @@ void nested_del() {
         { auto __del_sink = std::move(t); }
     };
     drop();
-    std::cout << "nested_del" << " " << a << " " << b << "\n";
+    std::cout << "nested_del" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }
 
 // # a SIBLING closure rebinds the source while this closure's view is live.
@@ -231,7 +231,7 @@ void sibling_closure() {
         std::string a = std::get<0>(__tup_1);
         ::tpy::BigInt b = std::get<1>(__tup_1);
         reseat();
-        std::cout << "sibling_closure" << " " << a << " " << b << "\n";
+        std::cout << "sibling_closure" << " " << a << " " << b << "\n" << ::tpy::check_signals;
     };
     read();
 }
@@ -253,7 +253,7 @@ void closure_reads() {
     const auto& __tup_1 = t;
     std::string_view a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
-    std::cout << "closure_reads" << " " << a << " " << b << " " << peek() << "\n";
+    std::cout << "closure_reads" << " " << a << " " << b << " " << peek() << "\n" << ::tpy::check_signals;
 }
 
 // # `del` of the receiver of a method that hands back a view of its field.
@@ -273,7 +273,7 @@ void del_method_view(bool flag) {
     Named h = Named("method-view-holder-long-enough-to-defeat-sso");
     std::string v = std::string(h.nv());
     { auto __del_sink = std::move(h); }
-    std::cout << "del_method_view" << " " << v << "\n";
+    std::cout << "del_method_view" << " " << v << "\n" << ::tpy::check_signals;
     Named g = Named("hoisted-method-view-holder-long-enough-sso");
     std::string w;
     if (flag) {
@@ -282,7 +282,7 @@ void del_method_view(bool flag) {
         w = "else";
     }
     { auto __del_sink = std::move(g); }
-    std::cout << "del_hoisted_method_view" << " " << w << "\n";
+    std::cout << "del_hoisted_method_view" << " " << w << "\n" << ::tpy::check_signals;
 }
 
 // # inverse: no reseat, the target stays a zero-copy view.
@@ -295,7 +295,7 @@ void no_reseat() {
     const auto& __tup_1 = t;
     std::string_view a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
-    std::cout << "no_reseat" << " " << a << " " << b << "\n";
+    std::cout << "no_reseat" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }
 
 // # inverse: the subscript twin keeps its own verdict (owned after a reseat).
@@ -308,7 +308,7 @@ void subscript_twin() {
     std::tuple<std::string, ::tpy::BigInt> t = ::tpyapp::main::mk(::tpy::BigInt(1));
     std::string a = std::get<0>(t);
     t = ::tpyapp::main::mk(::tpy::BigInt(2));
-    std::cout << "subscript_twin" << " " << a << " " << std::get<1>(t) << "\n";
+    std::cout << "subscript_twin" << " " << a << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -356,7 +356,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen" << " " << v << "\n";
+            std::cout << "gen" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
 }

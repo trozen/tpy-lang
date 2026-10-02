@@ -23,7 +23,7 @@ void main() {
     h.items.push_back(42);
     s.fill(h);
     s.data.push_back(7);
-    std::cout << ::tpy::__len__(s.data) << " " << ::tpy::__getitem__(s.data, 0) << "\n";
+    std::cout << ::tpy::__len__(s.data) << " " << ::tpy::__getitem__(s.data, 0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

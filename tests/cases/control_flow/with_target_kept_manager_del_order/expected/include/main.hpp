@@ -86,7 +86,7 @@ inline Owner& Owner::operator=(Owner&& other) noexcept {
 //     print("owner dropped")
 inline Owner::~Owner() {
     if (!this->__tpy_owned_) return;
-    std::cout << "owner dropped" << "\n";
+    std::cout << "owner dropped" << "\n" << ::tpy::check_signals;
 }
 
 // def __enter__(self) -> Item:

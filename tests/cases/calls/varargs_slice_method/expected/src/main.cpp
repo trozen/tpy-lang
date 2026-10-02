@@ -13,7 +13,7 @@ void main() {
     const Box __tmp_2 = Box(20);
     const Box __tmp_3 = Box(30);
     std::array<const Box*, 3> __tmp_4{&__tmp_1, &__tmp_2, &__tmp_3};
-    std::cout << p.sum_tail(::tpy::varargs<const Box>(__tmp_4)) << "\n";
+    std::cout << p.sum_tail(::tpy::varargs<const Box>(__tmp_4)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

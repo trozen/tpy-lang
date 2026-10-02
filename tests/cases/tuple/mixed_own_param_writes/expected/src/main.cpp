@@ -567,11 +567,11 @@ int32_t pair_take(std::tuple<Tok, Tok>&& p) {
 //     print("field-write", sl.pair[0].n, sl.pair[1].n)
 void main() {
     Box b = Box(0);
-    std::cout << "free" << " " << ::tpyapp::main::free_write(std::tuple<Box, Box*>{Box(1), &(b)}) << " " << b.n << "\n";
-    std::cout << "method" << " " << H().unpack(std::tuple<Tok, Box*>{Tok(2), &(b)}) << " " << b.n << "\n";
+    std::cout << "free" << " " << ::tpyapp::main::free_write(std::tuple<Box, Box*>{Box(1), &(b)}) << " " << b.n << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << H().unpack(std::tuple<Tok, Box*>{Tok(2), &(b)}) << " " << b.n << "\n" << ::tpy::check_signals;
     Keeper k = Keeper(std::tuple<Tok, Box*>{Tok(3), &(b)});
-    std::cout << "ctor" << " " << k.own.n << " " << b.n << "\n";
-    std::cout << "closure" << " " << ::tpyapp::main::closure_write(std::tuple<Box, Box*>{Box(4), &(b)}) << " " << b.n << "\n";
+    std::cout << "ctor" << " " << k.own.n << " " << b.n << "\n" << ::tpy::check_signals;
+    std::cout << "closure" << " " << ::tpyapp::main::closure_write(std::tuple<Box, Box*>{Box(4), &(b)}) << " " << b.n << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen_write(std::tuple<Tok, Box*>{Tok(5), &(b)});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -579,37 +579,37 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << v << " " << b.n << "\n";
+            std::cout << "generator" << " " << v << " " << b.n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_write(std::tuple<Tok, Box*>{Tok(6), &(b)}))) << " " << b.n << "\n";
-    std::cout << "genexpr" << " " << ::tpyapp::main::genexpr_write(std::tuple<Box, Box*>{Box(7), &(b)}) << " " << b.n << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_write(std::tuple<Tok, Box*>{Tok(6), &(b)}))) << " " << b.n << "\n" << ::tpy::check_signals;
+    std::cout << "genexpr" << " " << ::tpyapp::main::genexpr_write(std::tuple<Box, Box*>{Box(7), &(b)}) << " " << b.n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::g_forward<Box>(std::tuple<Box, Box*>{Box(8), &(b)}, set_seven);
-    std::cout << "generic" << " " << b.n << "\n";
-    std::cout << "nocopy" << " " << ::tpyapp::main::nocopy_unpack(std::tuple<Tok, Box*>{Tok(9), &(b)}) << " " << b.n << "\n";
-    std::cout << "local-last" << " " << ::tpyapp::main::local_forward(b) << " " << b.n << "\n";
-    std::cout << "local-unpack" << " " << ::tpyapp::main::local_unpack_forward(b) << " " << b.n << "\n";
-    std::cout << "local-rebound" << " " << ::tpyapp::main::local_rebound(b, true) << " " << ::tpyapp::main::local_rebound(b, false) << "\n";
-    std::cout << "owned-live" << " " << ::tpyapp::main::owned_live(std::tuple<Box, Box>{Box(10), Box(11)}) << "\n";
-    std::cout << "closure-unpack" << " " << ::tpyapp::main::closure_unpack(std::tuple<Box, Box*>{Box(0), &(b)}) << " " << b.n << "\n";
-    std::cout << "closure-unpack-owned" << " " << ::tpyapp::main::closure_unpack_owned(std::tuple<Box, Box>{Box(0), Box(0)}) << "\n";
-    std::cout << "closure-unpack-uncalled" << " " << ::tpyapp::main::closure_unpack_uncalled(std::tuple<Box, Box*>{Box(0), &(b)}) << "\n";
-    std::cout << "closure-forward" << " " << ::tpyapp::main::closure_forward(std::tuple<Box, Box*>{Box(105), &(b)}) << " " << b.n << "\n";
-    std::cout << "return" << " " << ::tpyapp::main::give_back(std::tuple<Box, Box*>{Box(12), &(b)}).n << " " << b.n << "\n";
-    std::cout << "return-nocopy" << " " << ::tpyapp::main::give_tok(std::tuple<Tok, Box*>{Tok(17), &(b)}).n << " " << b.n << "\n";
-    std::cout << "return-local" << " " << ::tpyapp::main::give_local(b).n << " " << b.n << "\n";
+    std::cout << "generic" << " " << b.n << "\n" << ::tpy::check_signals;
+    std::cout << "nocopy" << " " << ::tpyapp::main::nocopy_unpack(std::tuple<Tok, Box*>{Tok(9), &(b)}) << " " << b.n << "\n" << ::tpy::check_signals;
+    std::cout << "local-last" << " " << ::tpyapp::main::local_forward(b) << " " << b.n << "\n" << ::tpy::check_signals;
+    std::cout << "local-unpack" << " " << ::tpyapp::main::local_unpack_forward(b) << " " << b.n << "\n" << ::tpy::check_signals;
+    std::cout << "local-rebound" << " " << ::tpyapp::main::local_rebound(b, true) << " " << ::tpyapp::main::local_rebound(b, false) << "\n" << ::tpy::check_signals;
+    std::cout << "owned-live" << " " << ::tpyapp::main::owned_live(std::tuple<Box, Box>{Box(10), Box(11)}) << "\n" << ::tpy::check_signals;
+    std::cout << "closure-unpack" << " " << ::tpyapp::main::closure_unpack(std::tuple<Box, Box*>{Box(0), &(b)}) << " " << b.n << "\n" << ::tpy::check_signals;
+    std::cout << "closure-unpack-owned" << " " << ::tpyapp::main::closure_unpack_owned(std::tuple<Box, Box>{Box(0), Box(0)}) << "\n" << ::tpy::check_signals;
+    std::cout << "closure-unpack-uncalled" << " " << ::tpyapp::main::closure_unpack_uncalled(std::tuple<Box, Box*>{Box(0), &(b)}) << "\n" << ::tpy::check_signals;
+    std::cout << "closure-forward" << " " << ::tpyapp::main::closure_forward(std::tuple<Box, Box*>{Box(105), &(b)}) << " " << b.n << "\n" << ::tpy::check_signals;
+    std::cout << "return" << " " << ::tpyapp::main::give_back(std::tuple<Box, Box*>{Box(12), &(b)}).n << " " << b.n << "\n" << ::tpy::check_signals;
+    std::cout << "return-nocopy" << " " << ::tpyapp::main::give_tok(std::tuple<Tok, Box*>{Tok(17), &(b)}).n << " " << b.n << "\n" << ::tpy::check_signals;
+    std::cout << "return-local" << " " << ::tpyapp::main::give_local(b).n << " " << b.n << "\n" << ::tpy::check_signals;
     TokPair tp = TokPair(std::tuple<Tok, Tok>{Tok(13), Tok(14)});
-    std::cout << "owned-twin" << " " << tp.first.n << " " << tp.sum(std::tuple<Tok, Tok>{Tok(15), Tok(16)}) << "\n";
-    std::cout << "genexpr-param" << " " << ::tpyapp::main::genexpr_param(std::tuple<Box, Box*>{Box(20), &(b)}) << " " << b.n << "\n";
-    std::cout << "genexpr-local" << " " << ::tpyapp::main::genexpr_local(b) << " " << b.n << "\n";
-    std::cout << "operator" << " " << ((Adder(30)) - (Tok(4))) << "\n";
+    std::cout << "owned-twin" << " " << tp.first.n << " " << tp.sum(std::tuple<Tok, Tok>{Tok(15), Tok(16)}) << "\n" << ::tpy::check_signals;
+    std::cout << "genexpr-param" << " " << ::tpyapp::main::genexpr_param(std::tuple<Box, Box*>{Box(20), &(b)}) << " " << b.n << "\n" << ::tpy::check_signals;
+    std::cout << "genexpr-local" << " " << ::tpyapp::main::genexpr_local(b) << " " << b.n << "\n" << ::tpy::check_signals;
+    std::cout << "operator" << " " << ((Adder(30)) - (Tok(4))) << "\n" << ::tpy::check_signals;
     ::tpy::Adapter<Taker, TakerImpl> __tmp_1{TakerImpl(40)};
-    std::cout << "adapter" << " " << ::tpyapp::main::use_taker(__tmp_1) << "\n";
+    std::cout << "adapter" << " " << ::tpyapp::main::use_taker(__tmp_1) << "\n" << ::tpy::check_signals;
     Init ini = Init(std::tuple<Tok, Box*>{Tok(21), &(b)}, std::tuple<Tok, Tok>{Tok(22), Tok(23)});
-    std::cout << "member-init" << " " << ini.n << " " << ini.m << " " << b.n << "\n";
+    std::cout << "member-init" << " " << ini.n << " " << ini.m << " " << b.n << "\n" << ::tpy::check_signals;
     Slot sl = Slot();
     sl.put(std::tuple<Box, Box*>{Box(24), &(b)});
-    std::cout << "field-write" << " " << std::get<0>(sl.pair).n << " " << std::get<1>(sl.pair).n << "\n";
+    std::cout << "field-write" << " " << std::get<0>(sl.pair).n << " " << std::get<1>(sl.pair).n << "\n" << ::tpy::check_signals;
 }
 
 // def reader(p: tuple[Own[Box], Box]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
@@ -702,8 +702,8 @@ void __tpy_init() {
     static Box __global_slot_1 = Box(71);
     GB = &__global_slot_1;
     G = ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::mk_box((*GB)));
-    std::cout << "global-genexpr" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_module_1(2, G)) << "\n";
-    std::cout << "global" << " " << ::tpyapp::main::reader(::tpy::tuple_to_pointer<std::tuple<Box, const Box*>>(G)) << "\n";
+    std::cout << "global-genexpr" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_module_1(2, G)) << "\n" << ::tpy::check_signals;
+    std::cout << "global" << " " << ::tpyapp::main::reader(::tpy::tuple_to_pointer<std::tuple<Box, const Box*>>(G)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

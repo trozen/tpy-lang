@@ -32,23 +32,23 @@ namespace tpyapp::main {
 //     print(byteswap64(uint64(0x0123456789abcdef)))  # 0xefcdab8967452301
 //     print(byteswap64(uint64(0x00000000ffffffff)))  # 0xffffffff00000000
 void main() {
-    std::cout << std::rotl<uint32_t>(1, 1) << "\n";
-    std::cout << std::rotl<uint32_t>(1, 31) << "\n";
-    std::cout << std::rotl<uint32_t>(static_cast<uint32_t>(2147483648), 1) << "\n";
-    std::cout << std::rotr<uint32_t>(1, 1) << "\n";
-    std::cout << std::rotr<uint32_t>(static_cast<uint32_t>(2147483648), 1) << "\n";
-    std::cout << std::rotr<uint32_t>(305419896, 8) << "\n";
-    std::cout << std::rotl<uint32_t>(static_cast<uint32_t>(3735928559), 0) << "\n";
-    std::cout << std::rotr<uint32_t>(static_cast<uint32_t>(3735928559), 32) << "\n";
-    std::cout << std::rotl<uint64_t>(1, 1) << "\n";
-    std::cout << std::rotl<uint64_t>(1, 63) << "\n";
-    std::cout << std::rotr<uint64_t>(1, 1) << "\n";
-    std::cout << std::rotr<uint64_t>(static_cast<uint64_t>(81985529216486895), 16) << "\n";
-    std::cout << std::byteswap<uint32_t>(305419896) << "\n";
-    std::cout << std::byteswap<uint32_t>(1) << "\n";
-    std::cout << std::byteswap<uint32_t>(static_cast<uint32_t>(4278255360)) << "\n";
-    std::cout << std::byteswap<uint64_t>(static_cast<uint64_t>(81985529216486895)) << "\n";
-    std::cout << std::byteswap<uint64_t>(static_cast<uint64_t>(4294967295)) << "\n";
+    std::cout << std::rotl<uint32_t>(1, 1) << "\n" << ::tpy::check_signals;
+    std::cout << std::rotl<uint32_t>(1, 31) << "\n" << ::tpy::check_signals;
+    std::cout << std::rotl<uint32_t>(static_cast<uint32_t>(2147483648), 1) << "\n" << ::tpy::check_signals;
+    std::cout << std::rotr<uint32_t>(1, 1) << "\n" << ::tpy::check_signals;
+    std::cout << std::rotr<uint32_t>(static_cast<uint32_t>(2147483648), 1) << "\n" << ::tpy::check_signals;
+    std::cout << std::rotr<uint32_t>(305419896, 8) << "\n" << ::tpy::check_signals;
+    std::cout << std::rotl<uint32_t>(static_cast<uint32_t>(3735928559), 0) << "\n" << ::tpy::check_signals;
+    std::cout << std::rotr<uint32_t>(static_cast<uint32_t>(3735928559), 32) << "\n" << ::tpy::check_signals;
+    std::cout << std::rotl<uint64_t>(1, 1) << "\n" << ::tpy::check_signals;
+    std::cout << std::rotl<uint64_t>(1, 63) << "\n" << ::tpy::check_signals;
+    std::cout << std::rotr<uint64_t>(1, 1) << "\n" << ::tpy::check_signals;
+    std::cout << std::rotr<uint64_t>(static_cast<uint64_t>(81985529216486895), 16) << "\n" << ::tpy::check_signals;
+    std::cout << std::byteswap<uint32_t>(305419896) << "\n" << ::tpy::check_signals;
+    std::cout << std::byteswap<uint32_t>(1) << "\n" << ::tpy::check_signals;
+    std::cout << std::byteswap<uint32_t>(static_cast<uint32_t>(4278255360)) << "\n" << ::tpy::check_signals;
+    std::cout << std::byteswap<uint64_t>(static_cast<uint64_t>(81985529216486895)) << "\n" << ::tpy::check_signals;
+    std::cout << std::byteswap<uint64_t>(static_cast<uint64_t>(4294967295)) << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.bits import rotl32, rotr32, rotl64, rotr64, byteswap32, byteswap64

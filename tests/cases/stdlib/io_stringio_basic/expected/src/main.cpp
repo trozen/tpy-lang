@@ -17,9 +17,9 @@ void basic_write_read() {
     ::tpystd::io::StringIO s = ::tpystd::io::StringIO();
     int32_t n1 = s.write("hello ");
     int32_t n2 = s.write("world");
-    std::cout << "wrote:" << " " << (::tpy::add_check<int32_t>(n1, n2)) << "\n";
-    std::cout << "getvalue:" << " " << s.getvalue() << "\n";
-    std::cout << "tell:" << " " << s.tell() << "\n";
+    std::cout << "wrote:" << " " << (::tpy::add_check<int32_t>(n1, n2)) << "\n" << ::tpy::check_signals;
+    std::cout << "getvalue:" << " " << s.getvalue() << "\n" << ::tpy::check_signals;
+    std::cout << "tell:" << " " << s.tell() << "\n" << ::tpy::check_signals;
 }
 
 // def initial_value_and_overwrite() -> None:
@@ -33,13 +33,13 @@ void basic_write_read() {
 //     print("after-extend getvalue:", s.getvalue())
 void initial_value_and_overwrite() {
     ::tpystd::io::StringIO s = ::tpystd::io::StringIO("hello");
-    std::cout << "initial pos:" << " " << s.tell() << "\n";
-    std::cout << "initial getvalue:" << " " << s.getvalue() << "\n";
+    std::cout << "initial pos:" << " " << s.tell() << "\n" << ::tpy::check_signals;
+    std::cout << "initial getvalue:" << " " << s.getvalue() << "\n" << ::tpy::check_signals;
     s.write("HE");
-    std::cout << "after-overwrite getvalue:" << " " << s.getvalue() << "\n";
-    std::cout << "after-overwrite pos:" << " " << s.tell() << "\n";
+    std::cout << "after-overwrite getvalue:" << " " << s.getvalue() << "\n" << ::tpy::check_signals;
+    std::cout << "after-overwrite pos:" << " " << s.tell() << "\n" << ::tpy::check_signals;
     s.write("LLO WORLD");
-    std::cout << "after-extend getvalue:" << " " << s.getvalue() << "\n";
+    std::cout << "after-extend getvalue:" << " " << s.getvalue() << "\n" << ::tpy::check_signals;
 }
 
 // def seek_then_read() -> None:
@@ -51,9 +51,9 @@ void initial_value_and_overwrite() {
 void seek_then_read() {
     ::tpystd::io::StringIO s = ::tpystd::io::StringIO("abcdefgh");
     s.seek(3);
-    std::cout << "read-from-3:" << " " << s.read() << "\n";
+    std::cout << "read-from-3:" << " " << s.read() << "\n" << ::tpy::check_signals;
     s.seek(0);
-    std::cout << "read-all:" << " " << s.read() << "\n";
+    std::cout << "read-all:" << " " << s.read() << "\n" << ::tpy::check_signals;
 }
 
 // def readline_iteration() -> None:
@@ -64,10 +64,10 @@ void seek_then_read() {
 //     print("readline-4 (eof):", s.readline())
 void readline_iteration() {
     ::tpystd::io::StringIO s = ::tpystd::io::StringIO("line1\nline2\nline3-no-newline");
-    std::cout << "readline-1:" << " " << s.readline() << "\n";
-    std::cout << "readline-2:" << " " << s.readline() << "\n";
-    std::cout << "readline-3:" << " " << s.readline() << "\n";
-    std::cout << "readline-4 (eof):" << " " << s.readline() << "\n";
+    std::cout << "readline-1:" << " " << s.readline() << "\n" << ::tpy::check_signals;
+    std::cout << "readline-2:" << " " << s.readline() << "\n" << ::tpy::check_signals;
+    std::cout << "readline-3:" << " " << s.readline() << "\n" << ::tpy::check_signals;
+    std::cout << "readline-4 (eof):" << " " << s.readline() << "\n" << ::tpy::check_signals;
 }
 
 // def for_iter() -> None:
@@ -82,7 +82,7 @@ void for_iter() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         std::string_view line = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "iter-line:" << " " << line << "\n";
+        std::cout << "iter-line:" << " " << line << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -93,7 +93,7 @@ void context_manager() {
     auto __ctx_1 = ::tpystd::io::StringIO("ctxmgr");
     auto& s = __ctx_1.__enter__();
     try {
-        std::cout << "inside-ctxmgr:" << " " << s.read() << "\n";
+        std::cout << "inside-ctxmgr:" << " " << s.read() << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -118,13 +118,13 @@ void context_manager() {
 void closed_raises() {
     ::tpystd::io::StringIO s = ::tpystd::io::StringIO("data");
     s.close();
-    std::cout << "closed:" << " " << ::tpy::print_bool(s.closed()) << "\n";
+    std::cout << "closed:" << " " << ::tpy::print_bool(s.closed()) << "\n" << ::tpy::check_signals;
     {
         try {
             s.read();
-            std::cout << "FAIL: read should raise" << "\n";
+            std::cout << "FAIL: read should raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "got ValueError on read:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "got ValueError on read:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -141,10 +141,10 @@ void truncate_basic() {
     ::tpystd::io::StringIO s = ::tpystd::io::StringIO("abcdefgh");
     s.seek(3);
     s.truncate();
-    std::cout << "truncate-default:" << " " << s.getvalue() << "\n";
+    std::cout << "truncate-default:" << " " << s.getvalue() << "\n" << ::tpy::check_signals;
     s.seek(0);
     s.truncate(2);
-    std::cout << "truncate-explicit:" << " " << s.getvalue() << "\n";
+    std::cout << "truncate-explicit:" << " " << s.getvalue() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -165,19 +165,19 @@ void truncate_basic() {
 //     truncate_basic()
 void main() {
     ::tpyapp::main::basic_write_read();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::initial_value_and_overwrite();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::seek_then_read();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::readline_iteration();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::for_iter();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::context_manager();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::closed_raises();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::truncate_basic();
 }
 

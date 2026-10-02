@@ -74,31 +74,31 @@ void main() {
     Both b = Both(1);
     StrOnly s = StrOnly(2);
     ReprOnly r = ReprOnly(3);
-    std::cout << b << "\n";
-    std::cout << s << "\n";
-    std::cout << r << "\n";
-    std::cout << ::tpy::repr_of(b) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::matches_default_repr(::tpy::repr_of(s), "StrOnly")) << "\n";
-    std::cout << ::tpy::repr_of(r) << "\n";
-    std::cout << ::tpy::ListPrinter(std::array<Both, 1>{b}) << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
+    std::cout << s << "\n" << ::tpy::check_signals;
+    std::cout << r << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::matches_default_repr(::tpy::repr_of(s), "StrOnly")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(r) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(std::array<Both, 1>{b}) << "\n" << ::tpy::check_signals;
     std::vector<StrOnly> bs = ::tpy::make_vector<StrOnly>(std::move(s));
     std::string bs_str = ::tpy::list_to_str(bs);
-    std::cout << ::tpy::print_bool(((::tpy::str_startswith(bs_str, "[<StrOnly object at 0x") || ::tpy::str_startswith(bs_str, "[<__main__.StrOnly object at 0x")) && ::tpy::str_endswith(bs_str, ">]"))) << "\n";
-    std::cout << ::tpy::ListPrinter(std::array<ReprOnly, 1>{r}) << "\n";
-    std::cout << ::tpy::TuplePrinter(std::tuple<Both*, ReprOnly*>{&(b), &(r)}) << "\n";
+    std::cout << ::tpy::print_bool(((::tpy::str_startswith(bs_str, "[<StrOnly object at 0x") || ::tpy::str_startswith(bs_str, "[<__main__.StrOnly object at 0x")) && ::tpy::str_endswith(bs_str, ">]"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(std::array<ReprOnly, 1>{r}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(std::tuple<Both*, ReprOnly*>{&(b), &(r)}) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ReprOnly> d = ::tpy::ordered_map<std::string, ReprOnly>({{"a", r}});
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
     ReprOnly __slot_1 = ReprOnly(7);
     ReprOnly* opt_some = &__slot_1;
     ReprOnly* opt_none = nullptr;
-    std::cout << ::tpy::repr_of((*opt_some)) << "\n";
-    std::cout << ::tpy::repr_of(opt_none) << "\n";
+    std::cout << ::tpy::repr_of((*opt_some)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(opt_none) << "\n" << ::tpy::check_signals;
     Neither n = Neither(8);
-    std::cout << ::tpy::print_bool(::tpyapp::main::matches_default_repr(::tpy::repr_of(n), "Neither")) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::matches_default_repr(::tpy::repr_of(n), "Neither")) << "\n" << ::tpy::check_signals;
     ChildOfRepr c = ChildOfRepr(9);
-    std::cout << ::tpy::repr_of(c) << "\n";
-    std::cout << std::format("{}", ::tpy::repr_of(b)) << "\n";
-    std::cout << std::format("{}", ::tpy::repr_of(r)) << "\n";
+    std::cout << ::tpy::repr_of(c) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", ::tpy::repr_of(b)) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", ::tpy::repr_of(r)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

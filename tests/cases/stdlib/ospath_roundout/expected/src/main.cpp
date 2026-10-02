@@ -53,7 +53,7 @@ namespace tpyapp::main {
 //
 //     os.rmdir(d)
 void main() {
-    std::cout << ::tpystd::os::path::normcase("/A/b.TXT") << "\n";
+    std::cout << ::tpystd::os::path::normcase("/A/b.TXT") << "\n" << ::tpy::check_signals;
     std::string tmp = ::tpy::stdlib::os::getcwd();
     ::tpy::String d = (::tpy::str_concat(tmp, "/tpy_ospath_roundout"));
     if (::tpy::stdlib::os::path_exists(d)) {
@@ -62,17 +62,17 @@ void main() {
     ::tpystd::os::mkdir(d);
     ::tpystd::os::_types::stat_result s = ::tpystd::os::stat(d);
     ::tpystd::os::_types::stat_result __tmp_1 = ::tpystd::os::stat(d);
-    std::cout << "same:" << " " << ::tpy::print_bool(::tpystd::os::path::samestat(s, __tmp_1)) << "\n";
+    std::cout << "same:" << " " << ::tpy::print_bool(::tpystd::os::path::samestat(s, __tmp_1)) << "\n" << ::tpy::check_signals;
     ::tpystd::os::_types::stat_result __tmp_2 = ::tpystd::os::stat(tmp);
-    std::cout << "diff:" << " " << ::tpy::print_bool(::tpystd::os::path::samestat(__tmp_2, s)) << "\n";
-    std::cout << "strict-eq:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_realpath(d, true) == ::tpy::stdlib::os::path_realpath(d, false))) << "\n";
+    std::cout << "diff:" << " " << ::tpy::print_bool(::tpystd::os::path::samestat(__tmp_2, s)) << "\n" << ::tpy::check_signals;
+    std::cout << "strict-eq:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_realpath(d, true) == ::tpy::stdlib::os::path_realpath(d, false))) << "\n" << ::tpy::check_signals;
     ::tpy::String missing = (::tpy::str_concat(d, "/nope"));
-    std::cout << "loose-ok:" << " " << ::tpy::print_bool((::tpy::__len__(::tpy::stdlib::os::path_realpath(missing, false)) > 0)) << "\n";
+    std::cout << "loose-ok:" << " " << ::tpy::print_bool((::tpy::__len__(::tpy::stdlib::os::path_realpath(missing, false)) > 0)) << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpy::stdlib::os::path_realpath(missing, true);
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "strict FileNotFoundError" << "\n";
+            std::cout << "strict FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::String lnk = (::tpy::str_concat(tmp, "/tpy_ospath_roundout_lnk"));
@@ -80,7 +80,7 @@ void main() {
         ::tpy::stdlib::os::remove(lnk);
     }
     ::tpy::stdlib::os::symlink(d, lnk);
-    std::cout << "symlink-resolves:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_realpath(lnk, true) == ::tpy::stdlib::os::path_realpath(d, true))) << "\n";
+    std::cout << "symlink-resolves:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_realpath(lnk, true) == ::tpy::stdlib::os::path_realpath(d, true))) << "\n" << ::tpy::check_signals;
     ::tpy::stdlib::os::remove(lnk);
     ::tpy::String dangling = (::tpy::str_concat(tmp, "/tpy_ospath_roundout_dangling"));
     if (::tpy::stdlib::os::path_lexists(dangling)) {
@@ -91,7 +91,7 @@ void main() {
         try {
             ::tpy::stdlib::os::path_realpath(dangling, true);
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "dangling FileNotFoundError" << "\n";
+            std::cout << "dangling FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::stdlib::os::remove(dangling);

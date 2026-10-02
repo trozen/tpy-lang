@@ -124,14 +124,14 @@ void main() {
     Dog d = Dog(0);
     Cat c = Cat(2);
     Bird b = Bird();
-    std::cout << "kind:" << " " << ::tpyapp::main::kind(&d) << " " << ::tpyapp::main::kind(&c) << " " << ::tpyapp::main::kind(&b) << "\n";
-    std::cout << "furry:" << " " << ::tpyapp::main::furry(&d) << " " << ::tpyapp::main::furry(&b) << "\n";
-    std::cout << "loud:" << " " << ::tpyapp::main::loud(&d, true) << " " << ::tpyapp::main::loud(&d, false) << " " << ::tpyapp::main::loud(&b, true) << "\n";
+    std::cout << "kind:" << " " << ::tpyapp::main::kind(&d) << " " << ::tpyapp::main::kind(&c) << " " << ::tpyapp::main::kind(&b) << "\n" << ::tpy::check_signals;
+    std::cout << "furry:" << " " << ::tpyapp::main::furry(&d) << " " << ::tpyapp::main::furry(&b) << "\n" << ::tpy::check_signals;
+    std::cout << "loud:" << " " << ::tpyapp::main::loud(&d, true) << " " << ::tpyapp::main::loud(&d, false) << " " << ::tpyapp::main::loud(&b, true) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::walk(&d);
     ::tpyapp::main::walk(&b);
-    std::cout << "walk:" << " " << d.walks << "\n";
-    std::cout << "method:" << " " << Shelter().house(&c) << " " << Shelter().house(&d) << "\n";
-    std::cout << "readonly:" << " " << ::tpyapp::main::paws(&d) << " " << ::tpyapp::main::paws(&b) << "\n";
+    std::cout << "walk:" << " " << d.walks << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << Shelter().house(&c) << " " << Shelter().house(&d) << "\n" << ::tpy::check_signals;
+    std::cout << "readonly:" << " " << ::tpyapp::main::paws(&d) << " " << ::tpyapp::main::paws(&b) << "\n" << ::tpy::check_signals;
 }
 
 // main()

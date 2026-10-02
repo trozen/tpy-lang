@@ -11,8 +11,8 @@ namespace tpyapp::main {
 //     print(c.total())   # all sources drained -> 0
 void main() {
     Consumer c = Consumer({Source(3), Source(2)});
-    std::cout << c.total() << "\n";
-    std::cout << c.total() << "\n";
+    std::cout << c.total() << "\n" << ::tpy::check_signals;
+    std::cout << c.total() << "\n" << ::tpy::check_signals;
 }
 
 

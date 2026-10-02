@@ -14,11 +14,11 @@ void describe(Canvas& c) {
     ::tpy::Union<Circle*, Square*> s = ::tpy::to_ptr_variant(c.shape());
     if (std::holds_alternative<Circle*>(s)) {
         auto& __s = *std::get<Circle*>(s);
-        std::cout << __s.radius << "\n";
+        std::cout << __s.radius << "\n" << ::tpy::check_signals;
     } else {
         if (true) {
             auto& __s = *std::get<Square*>(s);
-            std::cout << __s.side << "\n";
+            std::cout << __s.side << "\n" << ::tpy::check_signals;
         }
     }
 }

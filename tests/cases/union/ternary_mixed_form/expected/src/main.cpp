@@ -37,12 +37,12 @@ void main() {
     Holder h = Holder(::tpy::Union<const A*, const B*>{&__tmp_1});
     A param = A(::tpy::BigInt(3));
     ::tpyapp::main::bump(::tpy::Union<A*, B*>{&(param)}, h, true);
-    std::cout << param.x << "\n";
+    std::cout << param.x << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bump(::tpy::Union<A*, B*>{&(param)}, h, false);
     ::tpy::Union<A*, B*> pet = ::tpy::to_ptr_variant(h.pet);
     if (std::holds_alternative<B*>(pet)) {
         auto& __pet = *std::get<B*>(pet);
-        std::cout << __pet.y << "\n";
+        std::cout << __pet.y << "\n" << ::tpy::check_signals;
     }
 }
 

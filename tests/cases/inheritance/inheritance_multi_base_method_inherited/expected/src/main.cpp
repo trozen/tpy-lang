@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(Leaf().delegate())
 void main() {
-    std::cout << Leaf().delegate() << "\n";
+    std::cout << Leaf().delegate() << "\n" << ::tpy::check_signals;
 }
 
 // main()

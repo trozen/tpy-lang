@@ -13,10 +13,10 @@ namespace tpyapp::main {
 //         print(len(d))
 void main() {
     Holder h = Holder();
-    std::cout << ::tpy::builtin_sum<int32_t>(h.keys_of()) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(h.keys_of()) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, int32_t>* d = ::tpy::optional_to_ptr(h.d);
     if ((d != nullptr)) {
-        std::cout << ::tpy::__len__((*d)) << "\n";
+        std::cout << ::tpy::__len__((*d)) << "\n" << ::tpy::check_signals;
     }
 }
 

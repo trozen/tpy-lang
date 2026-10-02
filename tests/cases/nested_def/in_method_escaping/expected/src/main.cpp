@@ -20,8 +20,8 @@ void main() {
     Src s = Src();
     std::function<int32_t(int32_t)> f = s.reader();
     s.n = 100;
-    std::cout << f(1) << "\n";
-    std::cout << s.offset(10) << "\n";
+    std::cout << f(1) << "\n" << ::tpy::check_signals;
+    std::cout << s.offset(10) << "\n" << ::tpy::check_signals;
 }
 
 // main()

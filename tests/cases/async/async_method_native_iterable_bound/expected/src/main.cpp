@@ -13,7 +13,7 @@ namespace tpyapp::main {
 void main() {
     std::vector<int32_t> xs = {1, 2, 3, 4, 5};
     Wrap<std::vector<int32_t>> w = Wrap<std::vector<int32_t>>(xs);
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(w.total())) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(w.total())) << "\n" << ::tpy::check_signals;
 }
 
 // # Async method on a class with a `NativeIterable`-bounded type param.

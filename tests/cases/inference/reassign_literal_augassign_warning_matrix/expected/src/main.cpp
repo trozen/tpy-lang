@@ -29,16 +29,16 @@ int32_t ret_i32() {
 void main() {
     int32_t x = 0;
     x = ::tpy::add_check<int32_t>(x, 5);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     int32_t y = 0;
     y = ::tpy::add_check<int32_t>(y, ::tpyapp::main::ret_i32());
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
     ::tpy::BigInt z = ::tpy::BigInt(0);
     z = (z) + (::tpy::BigInt(5));
-    std::cout << z << "\n";
+    std::cout << z << "\n" << ::tpy::check_signals;
     ::tpy::BigInt w = ::tpy::BigInt(0);
     w = (w) + (::tpy::BigInt(5));
-    std::cout << w << "\n";
+    std::cout << w << "\n" << ::tpy::check_signals;
 }
 
 // main()

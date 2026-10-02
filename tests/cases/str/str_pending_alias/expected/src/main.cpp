@@ -15,8 +15,8 @@ void test_alias_augassign() {
     std::string_view s1 = "hello";
     std::string s2 = std::string(s1);
     s2 += " world";
-    std::cout << s1 << "\n";
-    std::cout << s2 << "\n";
+    std::cout << s1 << "\n" << ::tpy::check_signals;
+    std::cout << s2 << "\n" << ::tpy::check_signals;
 }
 
 // def test_alias_stays_view() -> None:
@@ -27,8 +27,8 @@ void test_alias_augassign() {
 void test_alias_stays_view() {
     std::string_view s1 = "hello";
     std::string_view s2 = s1;
-    std::cout << s1 << "\n";
-    std::cout << s2 << "\n";
+    std::cout << s1 << "\n" << ::tpy::check_signals;
+    std::cout << s2 << "\n" << ::tpy::check_signals;
 }
 
 // def test_chain_alias_promote() -> None:
@@ -44,9 +44,9 @@ void test_chain_alias_promote() {
     std::string b = std::string(a);
     std::string c = b;
     b += " y";
-    std::cout << a << "\n";
-    std::cout << b << "\n";
-    std::cout << c << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
+    std::cout << c << "\n" << ::tpy::check_signals;
 }
 
 // def test_reassign_from_owned_pending(cond: bool) -> None:
@@ -61,7 +61,7 @@ void test_reassign_from_owned_pending(bool cond) {
         std::string s = ::tpy::fixed_to_str<int32_t>(123);
         result = s;
     }
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
 }
 
 // def test_reassign_from_owned_pending_return(cond: bool) -> str:
@@ -90,8 +90,8 @@ void test_source_promotes_alias() {
     std::string a = "x";
     std::string b = a;
     a += " y";
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // def test_owned_reassign_no_backprop() -> None:
@@ -105,8 +105,8 @@ void test_owned_reassign_no_backprop() {
     std::string_view a = "x";
     std::string b = std::string(a);
     b = ::tpy::fixed_to_str<int32_t>(99);
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // test_alias_augassign()
@@ -128,8 +128,8 @@ void __tpy_init() {
     ::tpyapp::main::test_chain_alias_promote();
     ::tpyapp::main::test_reassign_from_owned_pending(true);
     ::tpyapp::main::test_reassign_from_owned_pending(false);
-    std::cout << ::tpyapp::main::test_reassign_from_owned_pending_return(true) << "\n";
-    std::cout << ::tpyapp::main::test_reassign_from_owned_pending_return(false) << "\n";
+    std::cout << ::tpyapp::main::test_reassign_from_owned_pending_return(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::test_reassign_from_owned_pending_return(false) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_source_promotes_alias();
     ::tpyapp::main::test_owned_reassign_no_backprop();
 }

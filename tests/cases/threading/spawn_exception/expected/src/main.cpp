@@ -14,9 +14,9 @@ void main() {
     ::tpystd::tpy::thread::JoinHandle<::tpy::BigInt> h = ::tpystd::tpy::thread::spawn<::tpy::BigInt, Boom>(Boom());
     {
         try {
-            std::cout << h.join() << "\n";
+            std::cout << h.join() << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught:" << " " << e << "\n";
+            std::cout << "caught:" << " " << e << "\n" << ::tpy::check_signals;
         }
     }
 }

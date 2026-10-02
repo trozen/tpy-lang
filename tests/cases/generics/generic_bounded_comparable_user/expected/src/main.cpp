@@ -24,12 +24,12 @@ void main() {
     MyInt x = MyInt(10);
     MyInt y = MyInt(20);
     MyInt z = MyInt(10);
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_less<MyInt>(x, y)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_less<MyInt>(y, x)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_less<MyInt>(x, y)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_less<MyInt>(y, x)) << "\n" << ::tpy::check_signals;
     MyInt& result = ::tpyapp::main::find_min<MyInt>(x, y);
-    std::cout << result.value << "\n";
-    std::cout << ::tpy::print_bool(((x) == (z))) << "\n";
-    std::cout << ::tpy::print_bool(((x) == (y))) << "\n";
+    std::cout << result.value << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((x) == (z))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((x) == (y))) << "\n" << ::tpy::check_signals;
 }
 
 // """Test user-defined record with __lt__ satisfies Comparable bound."""

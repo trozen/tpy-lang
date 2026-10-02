@@ -32,7 +32,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<std::string> words = {"a", "b", "c"};
@@ -43,7 +43,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-            std::cout << s << "\n";
+            std::cout << s << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<int32_t> one = {42};
@@ -54,7 +54,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_5);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<int32_t> empty = std::vector<int32_t>{};
@@ -65,7 +65,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_7);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
 }

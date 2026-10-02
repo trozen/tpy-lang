@@ -92,27 +92,27 @@ void main() {
     Cell cell = Cell(1);
     Cell& alias = cell;
     int32_t result = ::tpyapp::main::assign(cell, 3);
-    std::cout << "forward" << " " << result << " " << alias.value << "\n";
+    std::cout << "forward" << " " << result << " " << alias.value << "\n" << ::tpy::check_signals;
     ::tpyapp::main::setter(cell, 4);
-    std::cout << "void" << " " << alias.value << "\n";
+    std::cout << "void" << " " << alias.value << "\n" << ::tpy::check_signals;
     Cell other = Cell(2);
     ::tpyapp::main::selected(cell, other, false);
-    std::cout << "selected-left" << " " << cell.value << " " << other.value << "\n";
+    std::cout << "selected-left" << " " << cell.value << " " << other.value << "\n" << ::tpy::check_signals;
     ::tpyapp::main::selected(cell, other, true);
-    std::cout << "selected-right" << " " << cell.value << " " << other.value << "\n";
+    std::cout << "selected-right" << " " << cell.value << " " << other.value << "\n" << ::tpy::check_signals;
     ::tpyapp::main::both(cell, cell);
-    std::cout << "repeated" << " " << alias.value << " " << alias.other << "\n";
-    std::cout << "readonly-alias" << " " << ::tpyapp::main::observe(cell, cell) << " " << alias.value << "\n";
+    std::cout << "repeated" << " " << alias.value << " " << alias.other << "\n" << ::tpy::check_signals;
+    std::cout << "readonly-alias" << " " << ::tpyapp::main::observe(cell, cell) << " " << alias.value << "\n" << ::tpy::check_signals;
     int32_t before = cell.value;
     result = ::tpyapp::main::lazy(true, cell, other);
-    std::cout << "lazy-left" << " " << before << " " << result << " " << alias.value << " " << other.value << "\n";
+    std::cout << "lazy-left" << " " << before << " " << result << " " << alias.value << " " << other.value << "\n" << ::tpy::check_signals;
     ::tpyapp::main::setter(cell, before);
     result = ::tpyapp::main::lazy(false, cell, other);
-    std::cout << "lazy-right" << " " << result << " " << alias.value << " " << other.value << "\n";
+    std::cout << "lazy-right" << " " << result << " " << alias.value << " " << other.value << "\n" << ::tpy::check_signals;
     cell.update(13);
-    std::cout << "method" << " " << alias.value << "\n";
+    std::cout << "method" << " " << alias.value << "\n" << ::tpy::check_signals;
     Runner runner = Runner(14);
-    std::cout << "constructor" << " " << runner.value << "\n";
+    std::cout << "constructor" << " " << runner.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

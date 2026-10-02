@@ -58,22 +58,22 @@ void main() {
     if (::tpyapp::main::cond(::tpy::BigInt(n))) {
         std::optional<::tpy::BigInt> x = ::tpyapp::main::maybe(::tpy::BigInt(n));
         if ((x.has_value())) {
-            std::cout << ::tpy::print_optional_val(x) << "\n";
+            std::cout << ::tpy::print_optional_val(x) << "\n" << ::tpy::check_signals;
         }
     }
     if (::tpyapp::main::cond(::tpy::BigInt(n))) {
         int32_t x = 5;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     if (::tpyapp::main::cond(::tpy::BigInt(n))) {
         std::optional<std::string> s = ::tpyapp::main::maybe_s(::tpy::BigInt(n));
         if ((s.has_value())) {
-            std::cout << ::tpy::print_optional_val(s) << "\n";
+            std::cout << ::tpy::print_optional_val(s) << "\n" << ::tpy::check_signals;
         }
     }
     if (::tpyapp::main::cond(::tpy::BigInt(n))) {
         std::string s = "plain";
-        std::cout << s << "\n";
+        std::cout << s << "\n" << ::tpy::check_signals;
     }
 }
 

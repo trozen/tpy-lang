@@ -102,11 +102,11 @@ __coro_coro coro(int32_t n, const Error& e) {
 //     print("async", asyncio.run(coro(12, e)))
 void main() {
     Error e = Error("bad value");
-    std::cout << ::tpyapp::main::check_positive(5, "must be positive") << "\n";
-    std::cout << ::tpyapp::main::check_error(3, e) << "\n";
-    std::cout << "property" << " " << ::tpyapp::main::check_property(7, e) << "\n";
-    std::cout << "method_msg" << " " << ::tpyapp::main::check_method(8, e) << "\n";
-    std::cout << "method" << " " << Checker(100).check(9, e) << "\n";
+    std::cout << ::tpyapp::main::check_positive(5, "must be positive") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check_error(3, e) << "\n" << ::tpy::check_signals;
+    std::cout << "property" << " " << ::tpyapp::main::check_property(7, e) << "\n" << ::tpy::check_signals;
+    std::cout << "method_msg" << " " << ::tpyapp::main::check_method(8, e) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << Checker(100).check(9, e) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen(11, e);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -114,10 +114,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen" << " " << v << "\n";
+            std::cout << "gen" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(12, e))) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(12, e))) << "\n" << ::tpy::check_signals;
 }
 
 // # Assert with expression messages (variables, method calls, field access,

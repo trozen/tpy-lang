@@ -20,10 +20,10 @@ void main() {
     Tag* ptr = &tg;
     Holder h1 = Holder(std::tuple<Point*, Tag*>{&(p), ptr});
     Holder h2 = Holder(std::tuple<Point*, Tag*>{nullptr, ptr});
-    std::cout << ::tpy::deref_check(std::get<1>(h1.pair)).name << "\n";
-    std::cout << ::tpy::deref_check(std::get<1>(h2.pair)).name << "\n";
+    std::cout << ::tpy::deref_check(std::get<1>(h1.pair)).name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::deref_check(std::get<1>(h2.pair)).name << "\n" << ::tpy::check_signals;
     tg.name = 99;
-    std::cout << ::tpy::deref_check(std::get<1>(h1.pair)).name << "\n";
+    std::cout << ::tpy::deref_check(std::get<1>(h1.pair)).name << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -17,7 +17,7 @@ void dump_pairs(const std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>>& xs)
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& t = *__beg_0;
-        std::cout << std::get<0>(t) << " " << std::get<1>(t) << "\n";
+        std::cout << std::get<0>(t) << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -30,7 +30,7 @@ void dump_items(const ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>& d) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& kv = *__beg_0;
-        std::cout << std::get<0>(kv) << " " << std::get<1>(kv) << "\n";
+        std::cout << std::get<0>(kv) << " " << std::get<1>(kv) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -61,7 +61,7 @@ void main() {
     ::tpyapp::main::dump_pairs(pairs);
     ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> __tmp_1 = ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>({{::tpy::BigInt(5), ::tpy::BigInt(6)}, {::tpy::BigInt(7), ::tpy::BigInt(8)}});
     ::tpyapp::main::dump_items(__tmp_1);
-    std::cout << ::tpyapp::main::sum_first(pairs) << "\n";
+    std::cout << ::tpyapp::main::sum_first(pairs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

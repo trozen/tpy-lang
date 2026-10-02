@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(x)
 void main() {
     double x = ::tpy::stdlib::math::checked_sqrt(16.0);
-    std::cout << ::tpy::print_float(x) << "\n";
+    std::cout << ::tpy::print_float(x) << "\n" << ::tpy::check_signals;
 }
 
 // # Test that import X as Y works

@@ -24,9 +24,9 @@ void accept_timeout() {
             auto __tup_1 = srv.accept();
             ::tpystd::socket::socket conn = std::move(std::get<0>(__tup_1));
             const std::tuple<std::string, int32_t>& peer = std::get<1>(__tup_1);
-            std::cout << "accept: NO TIMEOUT" << "\n";
+            std::cout << "accept: NO TIMEOUT" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::TimeoutError& e) {
-            std::cout << "accept: timeout:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "accept: timeout:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     srv.close();
@@ -50,7 +50,7 @@ void accept_queued() {
     auto __tup_1 = srv.accept();
     ::tpystd::socket::socket conn = std::move(std::get<0>(__tup_1));
     const std::tuple<std::string, int32_t>& peer = std::get<1>(__tup_1);
-    std::cout << "accept queued: peer matches:" << " " << ::tpy::print_bool((peer == c.getsockname())) << "\n";
+    std::cout << "accept queued: peer matches:" << " " << ::tpy::print_bool((peer == c.getsockname())) << "\n" << ::tpy::check_signals;
     conn.close();
     c.close();
     srv.close();
@@ -80,7 +80,7 @@ void send_timeout() {
                 a.send(chunk);
             }
         } catch (const ::tpy::TimeoutError& e) {
-            std::cout << "send: timeout:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "send: timeout:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     a.close();
@@ -103,9 +103,9 @@ void blocking_send() {
     ::tpystd::tpy::thread::JoinHandle<int32_t> h = ::tpystd::tpy::thread::spawn<int32_t, Drain>(Drain(std::move(b)));
     ::tpy::Bytes data = (::tpy::bytes_repeat(::tpy::bytes_literal_owned("x", 1), 2000000));
     int32_t n = a.send(data);
-    std::cout << "blocking send: all sent:" << " " << ::tpy::print_bool((n == ::tpy::__len__(data))) << "\n";
+    std::cout << "blocking send: all sent:" << " " << ::tpy::print_bool((n == ::tpy::__len__(data))) << "\n" << ::tpy::check_signals;
     a.close();
-    std::cout << "blocking send: peer got:" << " " << h.join() << "\n";
+    std::cout << "blocking send: peer got:" << " " << h.join() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -154,31 +154,31 @@ void main() {
     a.settimeout(0.5);
     a.sendall(::tpy::bytes_literal("hi", 2));
     ::tpy::Bytes got = b.recv(2);
-    std::cout << "recv ok:" << " " << ::tpy::BytesPrinter(got) << "\n";
+    std::cout << "recv ok:" << " " << ::tpy::BytesPrinter(got) << "\n" << ::tpy::check_signals;
     a.settimeout(0.05);
     {
         try {
             a.recv(100);
-            std::cout << "NO TIMEOUT" << "\n";
+            std::cout << "NO TIMEOUT" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::TimeoutError& e) {
-            std::cout << "recv timeout:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "recv timeout:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             a.recv(100);
-            std::cout << "NO TIMEOUT" << "\n";
+            std::cout << "NO TIMEOUT" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OSError& e) {
-            std::cout << "as oserror:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "as oserror:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::io::BufferedReader r = a.makefile("rb");
     {
         try {
             r.read(10);
-            std::cout << "NO TIMEOUT" << "\n";
+            std::cout << "NO TIMEOUT" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::TimeoutError& e) {
-            std::cout << "makefile timeout:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "makefile timeout:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     a.close();

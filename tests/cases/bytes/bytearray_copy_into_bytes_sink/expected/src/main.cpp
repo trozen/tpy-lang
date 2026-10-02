@@ -89,17 +89,17 @@ void main() {
     ::tpy::BigInt tup = ::tpyapp::main::tuple_arg(std::tuple<::tpy::Bytes, ::tpy::BigInt>{::tpy::Bytes(ba), ::tpy::BigInt(1)});
     ba.push_back(99);
     ::tpy::bytearray_setitem(ba, 0, 122);
-    std::cout << "source" << " " << ::tpy::__len__(ba) << " " << static_cast<int>(::tpy::bytes_getitem(ba, 0)) << "\n";
-    std::cout << "element" << " " << ::tpy::__len__(::tpy::__getitem__(seen, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(seen, 0), 0)) << "\n";
-    std::cout << "local" << " " << ::tpy::__len__(local) << " " << static_cast<int>(::tpy::bytes_getitem(local, 0)) << "\n";
-    std::cout << "return" << " " << ::tpy::__len__(ret) << " " << static_cast<int>(::tpy::bytes_getitem(ret, 0)) << "\n";
-    std::cout << "field" << " " << ::tpy::__len__(held.data) << " " << static_cast<int>(::tpy::bytes_getitem(held.data, 0)) << "\n";
-    std::cout << "literal" << " " << ::tpy::__len__(::tpy::__getitem__(lit, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(lit, 0), 0)) << "\n";
-    std::cout << "dict" << " " << ::tpy::__len__(::tpy::__getitem__(dlit, "k")) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(dlit, "k"), 0)) << "\n";
-    std::cout << "comp" << " " << ::tpy::__len__(::tpy::__getitem__(comp, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(comp, 0), 0)) << "\n";
-    std::cout << "optional" << " " << (((opt.has_value())) ? (::tpy::__len__((*opt))) : (-1)) << "\n";
-    std::cout << "dict_optional" << " " << ::tpy::__len__(dopt) << "\n";
-    std::cout << "tuple_arg" << " " << tup << "\n";
+    std::cout << "source" << " " << ::tpy::__len__(ba) << " " << static_cast<int>(::tpy::bytes_getitem(ba, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "element" << " " << ::tpy::__len__(::tpy::__getitem__(seen, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(seen, 0), 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "local" << " " << ::tpy::__len__(local) << " " << static_cast<int>(::tpy::bytes_getitem(local, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "return" << " " << ::tpy::__len__(ret) << " " << static_cast<int>(::tpy::bytes_getitem(ret, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "field" << " " << ::tpy::__len__(held.data) << " " << static_cast<int>(::tpy::bytes_getitem(held.data, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "literal" << " " << ::tpy::__len__(::tpy::__getitem__(lit, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(lit, 0), 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "dict" << " " << ::tpy::__len__(::tpy::__getitem__(dlit, "k")) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(dlit, "k"), 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "comp" << " " << ::tpy::__len__(::tpy::__getitem__(comp, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(comp, 0), 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "optional" << " " << (((opt.has_value())) ? (::tpy::__len__((*opt))) : (-1)) << "\n" << ::tpy::check_signals;
+    std::cout << "dict_optional" << " " << ::tpy::__len__(dopt) << "\n" << ::tpy::check_signals;
+    std::cout << "tuple_arg" << " " << tup << "\n" << ::tpy::check_signals;
 }
 
 // main()

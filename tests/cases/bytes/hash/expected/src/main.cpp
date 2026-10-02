@@ -14,8 +14,8 @@ void test_hash_basic() {
     uint64_t h1 = ::tpy::__hash__(::tpy::bytes_literal_owned("hello", 5));
     uint64_t h2 = ::tpy::__hash__(::tpy::bytes_literal_owned("hello", 5));
     uint64_t h3 = ::tpy::__hash__(::tpy::bytes_literal_owned("world", 5));
-    std::cout << ::tpy::print_bool((h1 == h2)) << "\n";
-    std::cout << ::tpy::print_bool((h1 != h3)) << "\n";
+    std::cout << ::tpy::print_bool((h1 == h2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((h1 != h3)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict_key() -> None:
@@ -25,9 +25,9 @@ void test_hash_basic() {
 //     print(len(d))
 void test_dict_key() {
     ::tpy::ordered_map<::tpy::Bytes, std::string> d = ::tpy::ordered_map<::tpy::Bytes, std::string>({{::tpy::bytes_literal_owned("alice", 5), "A"}, {::tpy::bytes_literal_owned("bob", 3), "B"}});
-    std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal_owned("alice", 5)) << "\n";
-    std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal_owned("bob", 3)) << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal_owned("alice", 5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal_owned("bob", 3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // def test_set_element() -> None:
@@ -35,7 +35,7 @@ void test_dict_key() {
 //     print(len(s))
 void test_set_element() {
     ::tpy::ordered_set<::tpy::Bytes> s = ::tpy::ordered_set<::tpy::Bytes>({::tpy::bytes_literal_owned("x", 1), ::tpy::bytes_literal_owned("y", 1), ::tpy::bytes_literal_owned("x", 1)});
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // def test_bytes_view_hash() -> None:
@@ -49,7 +49,7 @@ void test_bytes_view_hash() {
     ::tpy::BytesView v = ::tpy::__getitem__(items, 0);
     uint64_t h1 = ::tpy::__hash__(v);
     uint64_t h2 = ::tpy::__hash__(::tpy::bytes_literal_owned("hello", 5));
-    std::cout << ::tpy::print_bool((h1 == h2)) << "\n";
+    std::cout << ::tpy::print_bool((h1 == h2)) << "\n" << ::tpy::check_signals;
 }
 
 // test_hash_basic()

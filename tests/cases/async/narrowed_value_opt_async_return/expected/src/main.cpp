@@ -104,7 +104,7 @@ __coro_pick_whole pick_whole(std::optional<int32_t> p) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << __await_lift_0 << "\n";
+        std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
         __sub_1.emplace(std::nullopt);
         __state = S_RESUME_1;
         continue;
@@ -114,7 +114,7 @@ __coro_pick_whole pick_whole(std::optional<int32_t> p) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << __await_lift_1 << "\n";
+        std::cout << __await_lift_1 << "\n" << ::tpy::check_signals;
         __sub_2.emplace(5);
         __state = S_RESUME_2;
         continue;
@@ -125,7 +125,7 @@ __coro_pick_whole pick_whole(std::optional<int32_t> p) {
         w = std::move(__r2).value();
         __sub_2.reset();
         if ((w.has_value())) {
-            std::cout << ::tpy::print_optional_val(w) << "\n";
+            std::cout << ::tpy::print_optional_val(w) << "\n" << ::tpy::check_signals;
         }
         __sub_3.emplace(std::nullopt);
         __state = S_RESUME_3;
@@ -137,7 +137,7 @@ __coro_pick_whole pick_whole(std::optional<int32_t> p) {
         w2 = std::move(__r3).value();
         __sub_3.reset();
         if ((!w2.has_value())) {
-            std::cout << "none" << "\n";
+            std::cout << "none" << "\n" << ::tpy::check_signals;
         }
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});

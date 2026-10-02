@@ -77,7 +77,7 @@ Counter* g{};
     }
     case S_JOIN_2: {
         try {
-            std::cout << n1 << "\n";
+            std::cout << n1 << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -92,13 +92,13 @@ Counter* g{};
         continue;
     }
     case S_JOIN_4: {
-        std::cout << g->opens << "\n";
+        std::cout << g->opens << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_5: {
         try {
-            std::cout << n2 << "\n";
+            std::cout << n2 << "\n" << ::tpy::check_signals;
             __state = S_JOIN_3;
             continue;
         } catch (...) {

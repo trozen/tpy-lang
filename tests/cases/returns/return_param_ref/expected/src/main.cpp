@@ -97,15 +97,15 @@ void main() {
     ::tpy::__getitem__(pts, 1).x = 30;
     ::tpy::__getitem__(pts, 2).x = 20;
     Point& best = ::tpyapp::main::find_max(pts);
-    std::cout << best.x << "\n";
+    std::cout << best.x << "\n" << ::tpy::check_signals;
     best.x = 99;
-    std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 1).x << "\n" << ::tpy::check_signals;
     Point& first = ::tpyapp::main::get_first(pts);
-    std::cout << first.x << "\n";
+    std::cout << first.x << "\n" << ::tpy::check_signals;
     Point& c = ::tpyapp::main::chained(pts);
-    std::cout << c.x << "\n";
+    std::cout << c.x << "\n" << ::tpy::check_signals;
     Point& b = ::tpyapp::main::both_branches(pts, true);
-    std::cout << b.x << "\n";
+    std::cout << b.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

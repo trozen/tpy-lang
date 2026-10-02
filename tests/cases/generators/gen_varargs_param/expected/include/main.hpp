@@ -891,7 +891,7 @@ inline Trace& Trace::__enter__() {
 //     print("with: exit")
 //     return False
 inline bool Trace::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc, std::monostate tb) const {
-    std::cout << "with: exit" << "\n";
+    std::cout << "with: exit" << "\n" << ::tpy::check_signals;
     return false;
 }
 

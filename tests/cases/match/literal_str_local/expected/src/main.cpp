@@ -22,11 +22,11 @@ void classify_items(const std::vector<std::string>& items) {
         std::string_view item = *__beg_0;
         auto& __match_subject_1 = item;
         if (__match_subject_1 == "apple") {
-            std::cout << "fruit" << "\n";
+            std::cout << "fruit" << "\n" << ::tpy::check_signals;
         } else if (__match_subject_1 == "carrot") {
-            std::cout << "vegetable" << "\n";
+            std::cout << "vegetable" << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << (::tpy::str_concat("unknown: ", item)) << "\n";
+            std::cout << (::tpy::str_concat("unknown: ", item)) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -58,35 +58,35 @@ void classify_many(const std::vector<std::string>& items) {
             switch (static_cast<unsigned char>(__match_subject_1[0])) {
             case 'b': {
                 if (__match_subject_1 == "blue") {
-                    std::cout << "color" << "\n";
+                    std::cout << "color" << "\n" << ::tpy::check_signals;
                     goto __match_end_2;
                 }
                 break;
             }
             case 'c': {
                 if (__match_subject_1 == "cat") {
-                    std::cout << "animal" << "\n";
+                    std::cout << "animal" << "\n" << ::tpy::check_signals;
                     goto __match_end_2;
                 }
                 break;
             }
             case 'd': {
                 if (__match_subject_1 == "dog") {
-                    std::cout << "animal" << "\n";
+                    std::cout << "animal" << "\n" << ::tpy::check_signals;
                     goto __match_end_2;
                 }
                 break;
             }
             case 'g': {
                 if (__match_subject_1 == "green") {
-                    std::cout << "color" << "\n";
+                    std::cout << "color" << "\n" << ::tpy::check_signals;
                     goto __match_end_2;
                 }
                 break;
             }
             case 'r': {
                 if (__match_subject_1 == "red") {
-                    std::cout << "color" << "\n";
+                    std::cout << "color" << "\n" << ::tpy::check_signals;
                     goto __match_end_2;
                 }
                 break;
@@ -95,7 +95,7 @@ void classify_many(const std::vector<std::string>& items) {
         }
         {
             auto& other = __match_subject_1;
-            std::cout << (::tpy::str_concat("other: ", other)) << "\n";
+            std::cout << (::tpy::str_concat("other: ", other)) << "\n" << ::tpy::check_signals;
             goto __match_end_2;
         }
         __match_end_2:;

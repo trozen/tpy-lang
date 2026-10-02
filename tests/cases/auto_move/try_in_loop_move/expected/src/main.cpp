@@ -21,11 +21,11 @@ void main() {
                 ::tpystd::tplib::box::Box<int32_t> a = ::tpystd::tplib::box::Box<int32_t>(7);
                 boxes.push_back(std::move(a));
             } catch (const ::tpy::Exception&) {
-                std::cout << "e" << "\n";
+                std::cout << "e" << "\n" << ::tpy::check_signals;
             }
         }
     }
-    std::cout << ::tpy::__len__(boxes) << "\n";
+    std::cout << ::tpy::__len__(boxes) << "\n" << ::tpy::check_signals;
 }
 
 // # A `try` inside a loop exercises the liveness fixpoint's try handling: a

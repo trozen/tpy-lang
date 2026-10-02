@@ -16,13 +16,13 @@ namespace tpyapp::main {
 //     print(c2.items[0].name)
 void main() {
     Container c = Container("empty");
-    std::cout << c.label << "\n";
-    std::cout << ::tpy::__len__(c.items) << "\n";
+    std::cout << c.label << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(c.items) << "\n" << ::tpy::check_signals;
     Item item = Item::from_json("{\"name\": \"widget\", \"value\": 42}");
     Container c2 = Container("one", ::tpy::make_vector<Item>(std::move(item)));
-    std::cout << c2.label << "\n";
-    std::cout << ::tpy::__len__(c2.items) << "\n";
-    std::cout << ::tpy::__getitem__(c2.items, 0).name << "\n";
+    std::cout << c2.label << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(c2.items) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(c2.items, 0).name << "\n" << ::tpy::check_signals;
 }
 
 

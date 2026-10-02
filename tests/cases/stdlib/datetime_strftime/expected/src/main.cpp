@@ -37,31 +37,31 @@ namespace tpyapp::main {
 //     print(datetime(2021, 3, 5, 14, 30).strftime("|%z %Z|"))
 void main() {
     ::tpystd::datetime::date d = ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5));
-    std::cout << d.strftime("%a %A %b %B %d %m %y %Y %j %w %u") << "\n";
-    std::cout << d.strftime("%c") << "\n";
-    std::cout << d.strftime("%x | %X") << "\n";
-    std::cout << d.strftime("%U %W %G %V") << "\n";
-    std::cout << ::tpystd::datetime::date(::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%y %U %W %V %u %j") << "\n";
-    std::cout << ::tpystd::datetime::date(::tpy::BigInt(2016), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%U %W %G %V %u") << "\n";
-    std::cout << ::tpystd::datetime::date(::tpy::BigInt(2018), ::tpy::BigInt(12), ::tpy::BigInt(31)).strftime("%U %W %G %V %u") << "\n";
-    std::cout << ::tpystd::datetime::date(::tpy::BigInt(2019), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%U %W %G %V %u") << "\n";
-    std::cout << ::tpystd::datetime::date(::tpy::BigInt(2020), ::tpy::BigInt(12), ::tpy::BigInt(31)).strftime("%G-%V-%u") << "\n";
-    std::cout << d.strftime("%z|%Z|") << "\n";
-    std::cout << d.strftime("100%% %") << "\n";
+    std::cout << d.strftime("%a %A %b %B %d %m %y %Y %j %w %u") << "\n" << ::tpy::check_signals;
+    std::cout << d.strftime("%c") << "\n" << ::tpy::check_signals;
+    std::cout << d.strftime("%x | %X") << "\n" << ::tpy::check_signals;
+    std::cout << d.strftime("%U %W %G %V") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::date(::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%y %U %W %V %u %j") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::date(::tpy::BigInt(2016), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%U %W %G %V %u") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::date(::tpy::BigInt(2018), ::tpy::BigInt(12), ::tpy::BigInt(31)).strftime("%U %W %G %V %u") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::date(::tpy::BigInt(2019), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%U %W %G %V %u") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::date(::tpy::BigInt(2020), ::tpy::BigInt(12), ::tpy::BigInt(31)).strftime("%G-%V-%u") << "\n" << ::tpy::check_signals;
+    std::cout << d.strftime("%z|%Z|") << "\n" << ::tpy::check_signals;
+    std::cout << d.strftime("100%% %") << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::time t = ::tpystd::datetime::time(::tpy::BigInt(0), ::tpy::BigInt(5), ::tpy::BigInt(3), ::tpy::BigInt(40));
-    std::cout << t.strftime("%H %I %p %M %S %f %j %Y %a") << "\n";
-    std::cout << ::tpystd::datetime::time(::tpy::BigInt(12), ::tpy::BigInt(0)).strftime("%I %p") << "\n";
-    std::cout << ::tpystd::datetime::time(::tpy::BigInt(13), ::tpy::BigInt(30)).strftime("%I %p") << "\n";
+    std::cout << t.strftime("%H %I %p %M %S %f %j %Y %a") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::time(::tpy::BigInt(12), ::tpy::BigInt(0)).strftime("%I %p") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::time(::tpy::BigInt(13), ::tpy::BigInt(30)).strftime("%I %p") << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::timezone ist = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)), "IST");
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ist;
     ::tpystd::datetime::datetime dt = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(123456), __tmp_1);
-    std::cout << dt.strftime("%Y-%m-%d %H:%M:%S.%f %z %Z") << "\n";
-    std::cout << dt.strftime("%c") << "\n";
+    std::cout << dt.strftime("%Y-%m-%d %H:%M:%S.%f %z %Z") << "\n" << ::tpy::check_signals;
+    std::cout << dt.strftime("%c") << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(-30), ::tpy::BigInt(-3)));
-    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3), ::tpy::BigInt(0), __tmp_2).strftime("%z %Z") << "\n";
+    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3), ::tpy::BigInt(0), __tmp_2).strftime("%z %Z") << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)));
-    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_3).strftime("%z %Z") << "\n";
-    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30)).strftime("|%z %Z|") << "\n";
+    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_3).strftime("%z %Z") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30)).strftime("|%z %Z|") << "\n" << ::tpy::check_signals;
 }
 
 // # datetime v3 strftime: full directive set on date/time/datetime with the

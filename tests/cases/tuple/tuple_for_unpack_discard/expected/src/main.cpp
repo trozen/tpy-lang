@@ -17,7 +17,7 @@ void main() {
         const auto& __for_tup_0 = *__beg_0;
         const auto& __tup_1 = __for_tup_0;
         std::string_view name = std::get<1>(__tup_1);
-        std::cout << name << "\n";
+        std::cout << name << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -75,7 +75,7 @@ inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
 // def store(self, p: Own[Point]) -> None:
 //     print(p.x)
 inline void MyHolder::store(Point&& p) const {
-    std::cout << p.x << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
 }
 
 // @staticmethod

@@ -115,14 +115,14 @@ inline Gate::Gate(const ::tpy::BigInt& n) : n(n) {}
 //     print("enter", self.n)
 //     return self.n
 inline ::tpy::BigInt Gate::__enter__() const {
-    std::cout << "enter" << " " << this->n << "\n";
+    std::cout << "enter" << " " << this->n << "\n" << ::tpy::check_signals;
     return this->n;
 }
 
 // def __exit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None:
 //     print("exit", self.n)
 inline void Gate::__exit__(std::monostate exc_type, std::monostate exc_val, std::monostate exc_tb) const {
-    std::cout << "exit" << " " << this->n << "\n";
+    std::cout << "exit" << " " << this->n << "\n" << ::tpy::check_signals;
 }
 
 // def __enter__(self) -> int:
@@ -138,7 +138,7 @@ inline ::tpy::BigInt Sup::__enter__() const {
 //     return False
 inline bool Sup::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
     if ((exc_val != nullptr)) {
-        std::cout << "suppressed:" << " " << std::string(::tpy::__str__((*exc_val))) << "\n";
+        std::cout << "suppressed:" << " " << std::string(::tpy::__str__((*exc_val))) << "\n" << ::tpy::check_signals;
         return true;
     }
     return false;
@@ -159,7 +159,7 @@ inline Guard& Guard::__enter__() {
 // def __exit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None:
 //     print("guard exit at", self.depth)
 inline void Guard::__exit__(std::monostate exc_type, std::monostate exc_val, std::monostate exc_tb) const {
-    std::cout << "guard exit at" << " " << this->depth << "\n";
+    std::cout << "guard exit at" << " " << this->depth << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self) -> None:

@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void test_array_overload() {
     std::array<int32_t, 3> arr = {10, 20, 30};
     int32_t* p = arr.data();
-    std::cout << p[1] << "\n";
+    std::cout << p[1] << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_overload() -> None:
@@ -21,7 +21,7 @@ void test_array_overload() {
 void test_list_overload() {
     std::vector<int32_t> lst = {40, 50, 60};
     int32_t* p = lst.data();
-    std::cout << p[2] << "\n";
+    std::cout << p[2] << "\n" << ::tpy::check_signals;
 }
 
 // def test_str_overload() -> None:
@@ -31,7 +31,7 @@ void test_list_overload() {
 void test_str_overload() {
     std::string_view s = "abc";
     const char* cp = s.data();
-    std::cout << cp[0] << "\n";
+    std::cout << cp[0] << "\n" << ::tpy::check_signals;
 }
 
 // def test_store_and_load() -> None:
@@ -46,8 +46,8 @@ void test_store_and_load() {
     int32_t* p = arr.data();
     p[0] = 77;
     p[1] = 88;
-    std::cout << p[0] << "\n";
-    std::cout << p[1] << "\n";
+    std::cout << p[0] << "\n" << ::tpy::check_signals;
+    std::cout << p[1] << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store

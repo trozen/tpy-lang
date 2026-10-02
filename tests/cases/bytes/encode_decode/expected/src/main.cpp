@@ -19,12 +19,12 @@ namespace tpyapp::main {
 void main() {
     std::string_view s = "hello bytes";
     ::tpy::Bytes encoded = ::tpy::bytes_from_str(s);
-    std::cout << ::tpy::BytesPrinter(encoded) << "\n";
+    std::cout << ::tpy::BytesPrinter(encoded) << "\n" << ::tpy::check_signals;
     std::string decoded = ::tpy::bytes_decode(encoded);
-    std::cout << decoded << "\n";
-    std::cout << ::tpy::print_bool((s == decoded)) << "\n";
+    std::cout << decoded << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((s == decoded)) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes combined = (::tpy::bytes_concat(::tpy::bytes_literal_owned("prefix:", 7), ::tpy::bytes_from_str(s)));
-    std::cout << ::tpy::BytesPrinter(combined) << "\n";
+    std::cout << ::tpy::BytesPrinter(combined) << "\n" << ::tpy::check_signals;
 }
 
 // main()

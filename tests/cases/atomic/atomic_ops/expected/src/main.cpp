@@ -75,28 +75,28 @@ namespace tpyapp::main {
 //     print("done")
 void main() {
     ::tpystd::tpy::atomic::Atomic<uint32_t> a = ::tpystd::tpy::atomic::Atomic<uint32_t>(0);
-    std::cout << a.load(::std::memory_order::relaxed) << "\n";
+    std::cout << a.load(::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
     a.store(10, ::std::memory_order::relaxed);
-    std::cout << a.load(::std::memory_order::relaxed) << "\n";
-    std::cout << a.exchange(20, ::std::memory_order::acq_rel) << "\n";
-    std::cout << a.load(::std::memory_order::relaxed) << "\n";
-    std::cout << a.fetch_add(5, ::std::memory_order::relaxed) << "\n";
-    std::cout << a.fetch_sub(3, ::std::memory_order::relaxed) << "\n";
-    std::cout << a.fetch_or(1, ::std::memory_order::relaxed) << "\n";
-    std::cout << a.fetch_and(15, ::std::memory_order::relaxed) << "\n";
-    std::cout << a.fetch_xor(2, ::std::memory_order::relaxed) << "\n";
-    std::cout << a.load(::std::memory_order::relaxed) << "\n";
+    std::cout << a.load(::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
+    std::cout << a.exchange(20, ::std::memory_order::acq_rel) << "\n" << ::tpy::check_signals;
+    std::cout << a.load(::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
+    std::cout << a.fetch_add(5, ::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
+    std::cout << a.fetch_sub(3, ::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
+    std::cout << a.fetch_or(1, ::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
+    std::cout << a.fetch_and(15, ::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
+    std::cout << a.fetch_xor(2, ::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
+    std::cout << a.load(::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
     auto __tup_1 = a.compare_exchange(5, 99, ::std::memory_order::acq_rel, ::std::memory_order::relaxed);
     bool ok = std::get<0>(__tup_1);
     uint32_t observed = std::get<1>(__tup_1);
-    std::cout << ::tpy::print_bool(ok) << "\n";
-    std::cout << observed << "\n";
-    std::cout << a.load(::std::memory_order::relaxed) << "\n";
+    std::cout << ::tpy::print_bool(ok) << "\n" << ::tpy::check_signals;
+    std::cout << observed << "\n" << ::tpy::check_signals;
+    std::cout << a.load(::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
     auto __tup_2 = a.compare_exchange(5, 1, ::std::memory_order::acq_rel, ::std::memory_order::relaxed);
     bool ok2 = std::get<0>(__tup_2);
     uint32_t cur = std::get<1>(__tup_2);
-    std::cout << ::tpy::print_bool(ok2) << "\n";
-    std::cout << cur << "\n";
+    std::cout << ::tpy::print_bool(ok2) << "\n" << ::tpy::check_signals;
+    std::cout << cur << "\n" << ::tpy::check_signals;
     while (true) {
         uint32_t cur2 = a.load(::std::memory_order::relaxed);
         auto __tup_3 = a.compare_exchange_weak(cur2, (::tpy::add_check<uint32_t>(cur2, 1)), ::std::memory_order::acq_rel, ::std::memory_order::relaxed);
@@ -105,33 +105,33 @@ void main() {
             break;
         }
     }
-    std::cout << a.load(::std::memory_order::relaxed) << "\n";
+    std::cout << a.load(::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
     ::tpystd::tpy::atomic::fence(::std::memory_order::seq_cst);
     ::tpystd::tpy::atomic::Atomic<uint32_t> b = ::tpystd::tpy::atomic::Atomic<uint32_t>(0);
     b.store(50);
-    std::cout << b.load() << "\n";
-    std::cout << b.fetch_add(5) << "\n";
-    std::cout << b.fetch_sub(2) << "\n";
+    std::cout << b.load() << "\n" << ::tpy::check_signals;
+    std::cout << b.fetch_add(5) << "\n" << ::tpy::check_signals;
+    std::cout << b.fetch_sub(2) << "\n" << ::tpy::check_signals;
     auto __tup_4 = b.compare_exchange(53, 60);
     bool ok3 = std::get<0>(__tup_4);
     uint32_t obs = std::get<1>(__tup_4);
-    std::cout << ::tpy::print_bool(ok3) << "\n";
-    std::cout << b.load() << "\n";
+    std::cout << ::tpy::print_bool(ok3) << "\n" << ::tpy::check_signals;
+    std::cout << b.load() << "\n" << ::tpy::check_signals;
     ::tpystd::tpy::atomic::fence();
     b.__iadd__(10);
     b.__isub__(5);
     b.__ior__(2);
     b.__iand__(15);
     b.__ixor__(1);
-    std::cout << b.load() << "\n";
-    std::cout << b << "\n";
-    std::cout << ::tpy::repr_of(b) << "\n";
+    std::cout << b.load() << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(b) << "\n" << ::tpy::check_signals;
     ::tpystd::tpy::atomic::Atomic<uint32_t> w = ::tpystd::tpy::atomic::Atomic<uint32_t>(static_cast<uint32_t>(4294967295));
-    std::cout << w.fetch_add(1, ::std::memory_order::relaxed) << "\n";
-    std::cout << w.load(::std::memory_order::relaxed) << "\n";
+    std::cout << w.fetch_add(1, ::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
+    std::cout << w.load(::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
     w.__isub__(1);
-    std::cout << w.load(::std::memory_order::relaxed) << "\n";
-    std::cout << "done" << "\n";
+    std::cout << w.load(::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // # Single-threaded correctness of the Atomic[T] primitive: the full

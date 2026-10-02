@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(v)
 void view_of_param(std::string_view s) {
     std::string_view v = ::tpy::str_strip(s);
-    std::cout << v << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
 }
 
 // def explicit_view_of_param(s: str) -> None:
@@ -18,7 +18,7 @@ void view_of_param(std::string_view s) {
 //     print(v)
 void explicit_view_of_param(std::string_view s) {
     std::string_view v = s;
-    std::cout << v << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
 }
 
 // def slice_of_param(s: str) -> None:
@@ -26,7 +26,7 @@ void explicit_view_of_param(std::string_view s) {
 //     print(v)
 void slice_of_param(std::string_view s) {
     std::string_view v = ::tpy::str_slice(s, ::tpy::BasicSlice{0, 3});
-    std::cout << v << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
 }
 
 // def return_inferred_strview(s: str) -> StrView:
@@ -66,7 +66,7 @@ void nested_def_return(std::string_view s) {
         ::tpy::BytesView v = ::tpy::bytes_slice(b, ::tpy::BasicSlice{0, 16});
         return v;
     };
-    std::cout << "nested_def:" << " " << inner_str(s) << " " << ::tpy::BytesPrinter(::tpy::Bytes(inner_bytes(::tpy::bytes_literal("0123456789abcdefghijklmnop", 26)))) << "\n";
+    std::cout << "nested_def:" << " " << inner_str(s) << " " << ::tpy::BytesPrinter(::tpy::Bytes(inner_bytes(::tpy::bytes_literal("0123456789abcdefghijklmnop", 26)))) << "\n" << ::tpy::check_signals;
 }
 
 std::string_view __gen_gen_nested_def_return::inner(std::string_view t) {
@@ -93,9 +93,9 @@ void main() {
     ::tpyapp::main::view_of_param("  trimmed  ");
     ::tpyapp::main::explicit_view_of_param("kept");
     ::tpyapp::main::slice_of_param("abcdef");
-    std::cout << ::tpyapp::main::return_inferred_strview("  a padded value long enough to show  ") << "\n";
+    std::cout << ::tpyapp::main::return_inferred_strview("  a padded value long enough to show  ") << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray buf = ::tpy::ByteArray(::tpy::bytes_literal("0123456789abcdefghijklmnop", 26));
-    std::cout << ::tpy::BytesPrinter(::tpy::Bytes(::tpyapp::main::return_inferred_bytesview(buf))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::Bytes(::tpyapp::main::return_inferred_bytesview(buf))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::nested_def_return("  a padded value long enough to show  ");
     {
         auto __src_0 = ::tpyapp::main::gen_nested_def_return("  another padded value, long too  ");
@@ -104,7 +104,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t step = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen_nested_def step:" << " " << step << "\n";
+            std::cout << "gen_nested_def step:" << " " << step << "\n" << ::tpy::check_signals;
         }
     }
 }

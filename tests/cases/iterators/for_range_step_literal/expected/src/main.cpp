@@ -26,14 +26,14 @@ void main() {
     for (int32_t i = 0; i < __stop_0; i += 2) {
         total = ::tpy::add_check<int32_t>(total, i);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
     int32_t down = 0;
     int32_t __start_1 = n;
     ::tpy::range_check_overflow<int32_t>(__start_1, 0, -2);
     for (int32_t j = __start_1; j > 0; j += -2) {
         down = ::tpy::add_check<int32_t>(down, j);
     }
-    std::cout << down << "\n";
+    std::cout << down << "\n" << ::tpy::check_signals;
 }
 
 // main()

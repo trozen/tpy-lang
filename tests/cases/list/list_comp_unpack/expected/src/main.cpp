@@ -63,7 +63,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(values) << "\n";
+    std::cout << ::tpy::ListPrinter(values) << "\n" << ::tpy::check_signals;
     std::vector<std::string> keys = ({
         std::vector<std::string> __result;
         auto& __obj_1 = pairs;
@@ -78,7 +78,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(keys) << "\n";
+    std::cout << ::tpy::ListPrinter(keys) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
     std::vector<int32_t> doubled = ({
         std::vector<int32_t> __result;
@@ -94,7 +94,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(doubled) << "\n";
+    std::cout << ::tpy::ListPrinter(doubled) << "\n" << ::tpy::check_signals;
     std::vector<std::string> big_keys = ({
         std::vector<std::string> __result;
         auto __obj_3 = ::tpy::dict_items(d);
@@ -111,7 +111,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(big_keys) << "\n";
+    std::cout << ::tpy::ListPrinter(big_keys) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::String> labels = ({
         std::vector<::tpy::String> __result;
         auto __obj_4 = ::tpy::dict_items(d);
@@ -126,7 +126,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(labels) << "\n";
+    std::cout << ::tpy::ListPrinter(labels) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> vals_only = ({
         std::vector<int32_t> __result;
         auto& __obj_5 = pairs;
@@ -140,7 +140,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(vals_only) << "\n";
+    std::cout << ::tpy::ListPrinter(vals_only) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> filtered = ({
         std::vector<int32_t> __result;
         auto __obj_6 = ::tpy::dict_items(d);
@@ -157,7 +157,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(filtered) << "\n";
+    std::cout << ::tpy::ListPrinter(filtered) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<std::string, int32_t, bool>> triples = {std::tuple<std::string, int32_t, bool>{"a", 1, true}, std::tuple<std::string, int32_t, bool>{"b", 2, false}, std::tuple<std::string, int32_t, bool>{"c", 3, true}};
     std::vector<int32_t> middle = ({
         std::vector<int32_t> __result;
@@ -172,7 +172,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(middle) << "\n";
+    std::cout << ::tpy::ListPrinter(middle) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::String> first_and_last = ({
         std::vector<::tpy::String> __result;
         auto& __obj_8 = triples;
@@ -187,7 +187,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(first_and_last) << "\n";
+    std::cout << ::tpy::ListPrinter(first_and_last) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, Point> point_map = ::tpy::ordered_map<std::string, Point>({{"a", Point(1, 2)}, {"b", Point(3, 4)}});
     std::vector<Point> pts = ({
         std::vector<Point> __result;
@@ -202,8 +202,8 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    std::cout << ::tpy::__getitem__(pts, 1).y << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(pts, 1).y << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -15,7 +15,7 @@ int32_t super() {
 //     print(x)
 void main() {
     int32_t x = ::tpyapp::main::super();
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // main()

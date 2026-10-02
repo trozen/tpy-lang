@@ -59,9 +59,9 @@ inline Client::Client(std::string_view name) : name(name) {}
 //     print(kwargs["host"])
 //     print(kwargs["port"])
 inline void Client::connect(const Options& kwargs) const {
-    std::cout << this->name << "\n";
-    std::cout << kwargs.host << "\n";
-    std::cout << kwargs.port << "\n";
+    std::cout << this->name << "\n" << ::tpy::check_signals;
+    std::cout << kwargs.host << "\n" << ::tpy::check_signals;
+    std::cout << kwargs.port << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

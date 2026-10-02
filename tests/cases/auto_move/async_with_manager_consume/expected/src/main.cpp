@@ -104,7 +104,7 @@ void main() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "exit sees" << " " << ::tpy::__len__(__self.vals) << "\n";
+        std::cout << "exit sees" << " " << ::tpy::__len__(__self.vals) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

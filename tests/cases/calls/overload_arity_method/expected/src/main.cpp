@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(c.scale(5, 3))
 void main() {
     Calculator c = Calculator(::tpy::BigInt(10));
-    std::cout << c.scale(5) << "\n";
-    std::cout << c.scale(5, 3) << "\n";
+    std::cout << c.scale(5) << "\n" << ::tpy::check_signals;
+    std::cout << c.scale(5, 3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

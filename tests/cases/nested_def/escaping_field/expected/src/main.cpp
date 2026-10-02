@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(h2.callback(42))
 void main() {
     Handler h = Handler(10);
-    std::cout << h.callback(5) << "\n";
+    std::cout << h.callback(5) << "\n" << ::tpy::check_signals;
     Handler h2 = Handler(100);
-    std::cout << h2.callback(42) << "\n";
+    std::cout << h2.callback(42) << "\n" << ::tpy::check_signals;
 }
 
 // main()

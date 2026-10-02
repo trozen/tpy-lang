@@ -30,10 +30,10 @@ void main() {
     ::tpy::Union<Cat*, Dog*> p = ::tpy::to_ptr_variant(z.pet);
     if (std::holds_alternative<Dog*>(p)) {
         auto& __p = *std::get<Dog*>(p);
-        std::cout << std::format("Zoo(pet={}, tag='{}')", ::tpy::repr_of(__p), z.tag) << "\n";
+        std::cout << std::format("Zoo(pet={}, tag='{}')", ::tpy::repr_of(__p), z.tag) << "\n" << ::tpy::check_signals;
     } else {
         auto& __p = *std::get<Cat*>(p);
-        std::cout << std::format("Zoo(pet={}, tag='{}')", ::tpy::repr_of(__p), z.tag) << "\n";
+        std::cout << std::format("Zoo(pet={}, tag='{}')", ::tpy::repr_of(__p), z.tag) << "\n" << ::tpy::check_signals;
     }
     Cat c = Cat("Whiskers");
     ::tpy::Union<Cat*, Dog*> pet2{&(c)};
@@ -41,10 +41,10 @@ void main() {
     ::tpy::Union<Cat*, Dog*> p2 = ::tpy::to_ptr_variant(z2.pet);
     if (std::holds_alternative<Cat*>(p2)) {
         auto& __p2 = *std::get<Cat*>(p2);
-        std::cout << std::format("Zoo(pet={}, tag='{}')", ::tpy::repr_of(__p2), z2.tag) << "\n";
+        std::cout << std::format("Zoo(pet={}, tag='{}')", ::tpy::repr_of(__p2), z2.tag) << "\n" << ::tpy::check_signals;
     } else {
         auto& __p2 = *std::get<Dog*>(p2);
-        std::cout << std::format("Zoo(pet={}, tag='{}')", ::tpy::repr_of(__p2), z2.tag) << "\n";
+        std::cout << std::format("Zoo(pet={}, tag='{}')", ::tpy::repr_of(__p2), z2.tag) << "\n" << ::tpy::check_signals;
     }
 }
 

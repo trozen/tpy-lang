@@ -52,9 +52,9 @@ bool has(const ::tpy::ordered_set<std::string>& s, std::string_view k) {
 //     s.discard(k)
 //     print(k in s, len(s))
 void empty_key(::tpy::ordered_set<std::string>& s, std::string_view k) {
-    std::cout << ::tpy::print_bool((s.contains(k))) << "\n";
+    std::cout << ::tpy::print_bool((s.contains(k))) << "\n" << ::tpy::check_signals;
     s.erase(k);
-    std::cout << ::tpy::print_bool((s.contains(k))) << " " << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::print_bool((s.contains(k))) << " " << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -86,17 +86,17 @@ void main() {
     s.insert("b");
     s.insert("c");
     ::tpyapp::main::discard_param(s, "a");
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::discard_literal(s);
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::remove_literal(s);
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<std::string> t = ::tpy::ordered_set<std::string>();
     t.insert("x");
     t.insert("y");
     ::tpyapp::main::remove_param(t, "x");
-    std::cout << ::tpy::__len__(t) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::has(t, "y")) << " " << ::tpy::print_bool(::tpyapp::main::has(t, "x")) << "\n";
+    std::cout << ::tpy::__len__(t) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::has(t, "y")) << " " << ::tpy::print_bool(::tpyapp::main::has(t, "x")) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<std::string> e = ::tpy::ordered_set<std::string>();
     e.insert("");
     e.insert("a");

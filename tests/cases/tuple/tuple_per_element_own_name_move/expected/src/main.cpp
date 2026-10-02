@@ -31,11 +31,11 @@ std::tuple<Box, int32_t> return_by_name(Box&& ob) {
 //     got, n = return_by_name(Box(7))
 //     print(got.val + n)
 void main() {
-    std::cout << ::tpyapp::main::pass_by_name(Box(5)) << "\n";
+    std::cout << ::tpyapp::main::pass_by_name(Box(5)) << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpyapp::main::return_by_name(Box(7));
     Box got = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    std::cout << (::tpy::add_check<int32_t>(got.val, n)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(got.val, n)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

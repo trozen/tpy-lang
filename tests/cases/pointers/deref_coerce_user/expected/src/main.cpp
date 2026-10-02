@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def print_point(p: Point) -> None:
 //     print(p.x, p.y)
 void print_point(const Point& p) {
-    std::cout << p.x << " " << p.y << "\n";
+    std::cout << p.x << " " << p.y << "\n" << ::tpy::check_signals;
 }
 
 // def test() -> None:

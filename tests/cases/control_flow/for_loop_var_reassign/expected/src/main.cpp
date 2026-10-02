@@ -17,10 +17,10 @@ int32_t module_count{};
 void original() {
     for (int32_t __range_0 = 0; __range_0 < 5; ++__range_0) {
         int32_t i = __range_0;
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
         i = (::tpy::add_check<int32_t>(i, 100));
     }
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // def steps32(base: int32, step: int32) -> None:
@@ -84,7 +84,7 @@ void steps32(int32_t base, int32_t step) {
             break;
         }
     }
-    std::cout << "int32 +1" << " " << count << " " << total << "\n";
+    std::cout << "int32 +1" << " " << count << " " << total << "\n" << ::tpy::check_signals;
     count = 0;
     total = 0;
     int32_t __start_1 = (::tpy::add_check<int32_t>(base, 5));
@@ -98,7 +98,7 @@ void steps32(int32_t base, int32_t step) {
             break;
         }
     }
-    std::cout << "int32 -1" << " " << count << " " << total << "\n";
+    std::cout << "int32 -1" << " " << count << " " << total << "\n" << ::tpy::check_signals;
     count = 0;
     total = 0;
     int32_t __start_2 = base;
@@ -113,7 +113,7 @@ void steps32(int32_t base, int32_t step) {
             break;
         }
     }
-    std::cout << "int32 +2" << " " << count << " " << total << "\n";
+    std::cout << "int32 +2" << " " << count << " " << total << "\n" << ::tpy::check_signals;
     count = 0;
     total = 0;
     int32_t __start_3 = (::tpy::add_check<int32_t>(base, 10));
@@ -128,7 +128,7 @@ void steps32(int32_t base, int32_t step) {
             break;
         }
     }
-    std::cout << "int32 -2" << " " << count << " " << total << "\n";
+    std::cout << "int32 -2" << " " << count << " " << total << "\n" << ::tpy::check_signals;
     count = 0;
     total = 0;
     int32_t __start_4 = base;
@@ -145,7 +145,7 @@ void steps32(int32_t base, int32_t step) {
             break;
         }
     }
-    std::cout << "int32 variable" << " " << count << " " << total << "\n";
+    std::cout << "int32 variable" << " " << count << " " << total << "\n" << ::tpy::check_signals;
 }
 
 // def steps64(base: int64, step: int64) -> None:
@@ -209,7 +209,7 @@ void steps64(int64_t base, int64_t step) {
             break;
         }
     }
-    std::cout << "int64 +1" << " " << count << " " << total << "\n";
+    std::cout << "int64 +1" << " " << count << " " << total << "\n" << ::tpy::check_signals;
     count = 0;
     total = 0;
     int64_t __start_1 = (::tpy::add_check<int64_t>(base, 5));
@@ -223,7 +223,7 @@ void steps64(int64_t base, int64_t step) {
             break;
         }
     }
-    std::cout << "int64 -1" << " " << count << " " << total << "\n";
+    std::cout << "int64 -1" << " " << count << " " << total << "\n" << ::tpy::check_signals;
     count = 0;
     total = 0;
     int64_t __start_2 = base;
@@ -238,7 +238,7 @@ void steps64(int64_t base, int64_t step) {
             break;
         }
     }
-    std::cout << "int64 +2" << " " << count << " " << total << "\n";
+    std::cout << "int64 +2" << " " << count << " " << total << "\n" << ::tpy::check_signals;
     count = 0;
     total = 0;
     int64_t __start_3 = (::tpy::add_check<int64_t>(base, 10));
@@ -253,7 +253,7 @@ void steps64(int64_t base, int64_t step) {
             break;
         }
     }
-    std::cout << "int64 -2" << " " << count << " " << total << "\n";
+    std::cout << "int64 -2" << " " << count << " " << total << "\n" << ::tpy::check_signals;
     count = 0;
     total = 0;
     int64_t __start_4 = base;
@@ -270,7 +270,7 @@ void steps64(int64_t base, int64_t step) {
             break;
         }
     }
-    std::cout << "int64 variable" << " " << count << " " << total << "\n";
+    std::cout << "int64 variable" << " " << count << " " << total << "\n" << ::tpy::check_signals;
 }
 
 // def steps_big(base: int, step: int) -> None:
@@ -334,7 +334,7 @@ void steps_big(const ::tpy::BigInt& base, const ::tpy::BigInt& step) {
             break;
         }
     }
-    std::cout << "BigInt +1" << " " << count << " " << total << "\n";
+    std::cout << "BigInt +1" << " " << count << " " << total << "\n" << ::tpy::check_signals;
     count = 0;
     total = ::tpy::BigInt(0);
     ::tpy::BigInt __start_1 = ((base) + (::tpy::BigInt(5)));
@@ -348,7 +348,7 @@ void steps_big(const ::tpy::BigInt& base, const ::tpy::BigInt& step) {
             break;
         }
     }
-    std::cout << "BigInt -1" << " " << count << " " << total << "\n";
+    std::cout << "BigInt -1" << " " << count << " " << total << "\n" << ::tpy::check_signals;
     count = 0;
     total = ::tpy::BigInt(0);
     ::tpy::BigInt __start_2 = base;
@@ -363,7 +363,7 @@ void steps_big(const ::tpy::BigInt& base, const ::tpy::BigInt& step) {
             break;
         }
     }
-    std::cout << "BigInt +2" << " " << count << " " << total << "\n";
+    std::cout << "BigInt +2" << " " << count << " " << total << "\n" << ::tpy::check_signals;
     count = 0;
     total = ::tpy::BigInt(0);
     ::tpy::BigInt __start_3 = ((base) + (::tpy::BigInt(10)));
@@ -378,7 +378,7 @@ void steps_big(const ::tpy::BigInt& base, const ::tpy::BigInt& step) {
             break;
         }
     }
-    std::cout << "BigInt -2" << " " << count << " " << total << "\n";
+    std::cout << "BigInt -2" << " " << count << " " << total << "\n" << ::tpy::check_signals;
     count = 0;
     total = ::tpy::BigInt(0);
     ::tpy::BigInt __start_4 = base;
@@ -394,7 +394,7 @@ void steps_big(const ::tpy::BigInt& base, const ::tpy::BigInt& step) {
             break;
         }
     }
-    std::cout << "BigInt variable" << " " << count << " " << total << "\n";
+    std::cout << "BigInt variable" << " " << count << " " << total << "\n" << ::tpy::check_signals;
 }
 
 // def binding_forms(subject: int32) -> None:
@@ -446,7 +446,7 @@ void binding_forms(int32_t subject) {
             break;
         }
     }
-    std::cout << "augassign" << " " << count << "\n";
+    std::cout << "augassign" << " " << count << "\n" << ::tpy::check_signals;
     count = 0;
     for (int32_t __range_1 = 0; __range_1 < 5; ++__range_1) {
         int32_t b = __range_1;
@@ -457,7 +457,7 @@ void binding_forms(int32_t subject) {
             break;
         }
     }
-    std::cout << "walrus" << " " << count << "\n";
+    std::cout << "walrus" << " " << count << "\n" << ::tpy::check_signals;
     int32_t total = 0;
     for (int32_t __range_2 = 0; __range_2 < 3; ++__range_2) {
         int32_t c = __range_2;
@@ -467,7 +467,7 @@ void binding_forms(int32_t subject) {
         }
         total = ::tpy::add_check<int32_t>(total, c);
     }
-    std::cout << "nested scalar" << " " << total << "\n";
+    std::cout << "nested scalar" << " " << total << "\n" << ::tpy::check_signals;
     count = 0;
     for (int32_t __range_4 = 0; __range_4 < 3; ++__range_4) {
         int32_t d = __range_4;
@@ -483,7 +483,7 @@ void binding_forms(int32_t subject) {
             break;
         }
     }
-    std::cout << "match capture" << " " << count << "\n";
+    std::cout << "match capture" << " " << count << "\n" << ::tpy::check_signals;
     count = 0;
     for (int32_t __range_5 = 0; __range_5 < 3; ++__range_5) {
         int32_t e = __range_5;
@@ -491,7 +491,7 @@ void binding_forms(int32_t subject) {
         int32_t other = 20;
         count = ::tpy::add_check<int32_t>(count, (::tpy::sub_check<int32_t>(other, e)));
     }
-    std::cout << "tuple assignment" << " " << count << "\n";
+    std::cout << "tuple assignment" << " " << count << "\n" << ::tpy::check_signals;
 }
 
 // def comprehension_forms() -> None:
@@ -525,7 +525,7 @@ void comprehension_forms() {
         });
         count = ::tpy::add_check<int32_t>(count, ::tpy::__len__(body_values));
     }
-    std::cout << "comprehension walrus" << " " << count << "\n";
+    std::cout << "comprehension walrus" << " " << count << "\n" << ::tpy::check_signals;
     count = 0;
     int32_t total = 0;
     for (int32_t __range_2 = 0; __range_2 < 3; ++__range_2) {
@@ -544,7 +544,7 @@ void comprehension_forms() {
         count = ::tpy::add_check<int32_t>(count, ::tpy::__len__(filtered_values));
         total = ::tpy::add_check<int32_t>(total, b);
     }
-    std::cout << "comprehension filter" << " " << count << " " << total << "\n";
+    std::cout << "comprehension filter" << " " << count << " " << total << "\n" << ::tpy::check_signals;
     total = 0;
     for (int32_t c = 0; c < 3; ++c) {
         std::array<int32_t, 2> shadow_values = ::tpy::array_from_index<int32_t, 2>([&](std::size_t __i_5) -> int32_t {
@@ -553,7 +553,7 @@ void comprehension_forms() {
         });
         total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(c, ::tpy::__len__(shadow_values))));
     }
-    std::cout << "comprehension shadow inverse" << " " << total << "\n";
+    std::cout << "comprehension shadow inverse" << " " << total << "\n" << ::tpy::check_signals;
 }
 
 // def closure_forms() -> None:
@@ -594,7 +594,7 @@ void closure_forms() {
         }
         return ::tpy::BigInt(count);
     };
-    std::cout << "closure body" << " " << inner() << "\n";
+    std::cout << "closure body" << " " << inner() << "\n" << ::tpy::check_signals;
     int32_t count = 0;
     for (int32_t __range_1 = 0; __range_1 < 3; ++__range_1) {
         int32_t a = __range_1;
@@ -604,7 +604,7 @@ void closure_forms() {
         write();
         count = ::tpy::add_check<int32_t>(count, 1);
     }
-    std::cout << "closure nonlocal" << " " << count << "\n";
+    std::cout << "closure nonlocal" << " " << count << "\n" << ::tpy::check_signals;
     int32_t total = 0;
     for (int32_t b = 0; b < 3; ++b) {
         auto local = [](int32_t b) -> int32_t {
@@ -612,7 +612,7 @@ void closure_forms() {
         };
         total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(b, local(10))));
     }
-    std::cout << "closure parameter inverse" << " " << total << "\n";
+    std::cout << "closure parameter inverse" << " " << total << "\n" << ::tpy::check_signals;
 }
 
 // def context_forms() -> None:
@@ -646,7 +646,7 @@ void context_forms() {
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
     __with_after_1:;
-    std::cout << "context body" << " " << count << " " << gate.exits << "\n";
+    std::cout << "context body" << " " << count << " " << gate.exits << "\n" << ::tpy::check_signals;
 }
 
 // def control_edges() -> None:
@@ -713,7 +713,7 @@ void control_edges() {
         }
     }
     {
-        std::cout << "continue finally else" << " " << count << " " << cleaned << "\n";
+        std::cout << "continue finally else" << " " << count << " " << cleaned << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
     count = 0;
@@ -742,21 +742,21 @@ void control_edges() {
         }
     }
     {
-        std::cout << "break unexpected else" << "\n";
+        std::cout << "break unexpected else" << "\n" << ::tpy::check_signals;
     }
     __after_else_2:;
-    std::cout << "break finally" << " " << count << " " << cleaned << "\n";
+    std::cout << "break finally" << " " << count << " " << cleaned << "\n" << ::tpy::check_signals;
     int32_t old = 7;
     for (int32_t __range_4 = 0; __range_4 < 3; ++__range_4) {
         old = __range_4;
         old = 20;
     }
-    std::cout << "existing target" << " " << old << "\n";
+    std::cout << "existing target" << " " << old << "\n" << ::tpy::check_signals;
     for (int32_t __range_5 = 0; __range_5 < 0; ++__range_5) {
         old = __range_5;
         old = 99;
     }
-    std::cout << "empty target" << " " << old << "\n";
+    std::cout << "empty target" << " " << old << "\n" << ::tpy::check_signals;
     count = 0;
     int32_t fresh;
     for (int32_t __range_6 = 0; __range_6 < 3; ++__range_6) {
@@ -764,7 +764,7 @@ void control_edges() {
         fresh = 30;
         count = ::tpy::add_check<int32_t>(count, 1);
     }
-    std::cout << "postloop target" << " " << count << " " << fresh << "\n";
+    std::cout << "postloop target" << " " << count << " " << fresh << "\n" << ::tpy::check_signals;
 }
 
 // def parameter_target(target: int32) -> int32:
@@ -808,7 +808,7 @@ void bound_order(const ::tpy::BigInt& step) {
         i = ::tpy::BigInt(10);
         count = ::tpy::add_check<int32_t>(count, 1);
     }
-    std::cout << "bound order" << " " << ::tpy::ListPrinter(events) << " " << count << "\n";
+    std::cout << "bound order" << " " << ::tpy::ListPrinter(events) << " " << count << "\n" << ::tpy::check_signals;
 }
 
 
@@ -863,7 +863,7 @@ __gen_generator generator() {
         continue;
     }
     case S_JOIN_1: {
-        std::cout << "async" << " " << count << "\n";
+        std::cout << "async" << " " << count << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -916,9 +916,9 @@ void match_body(const ::tpy::BigInt& subject) {
             i = ::tpy::add_check<int32_t>(i, 10);
             count = ::tpy::add_check<int32_t>(count, 1);
         }
-        std::cout << "match arm" << " " << count << "\n";
+        std::cout << "match arm" << " " << count << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "match unexpected arm" << "\n";
+        std::cout << "match unexpected arm" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -1000,7 +1000,7 @@ void container_inverse() {
         value = 10;
         count = ::tpy::add_check<int32_t>(count, 1);
     }
-    std::cout << "scalar container inverse" << " " << count << " " << ::tpy::ListPrinter(values) << "\n";
+    std::cout << "scalar container inverse" << " " << count << " " << ::tpy::ListPrinter(values) << "\n" << ::tpy::check_signals;
     std::array<Item, 2> items = {Item(::tpy::BigInt(1)), Item(::tpy::BigInt(2))};
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
@@ -1009,7 +1009,7 @@ void container_inverse() {
         auto&& item = *__beg_1;
         item.value = (item.value) + (::tpy::BigInt(10));
     }
-    std::cout << "reference container inverse" << " " << ::tpy::__getitem__(items, 0).value << " " << ::tpy::__getitem__(items, 1).value << "\n";
+    std::cout << "reference container inverse" << " " << ::tpy::__getitem__(items, 0).value << " " << ::tpy::__getitem__(items, 1).value << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -1067,13 +1067,13 @@ void main() {
     ::tpyapp::main::binding_forms(10);
     ::tpyapp::main::comprehension_forms();
     Worker worker = Worker();
-    std::cout << "constructor" << " " << worker.count << "\n";
-    std::cout << "method" << " " << worker.method() << "\n";
-    std::cout << "staticmethod" << " " << Worker::static_() << "\n";
+    std::cout << "constructor" << " " << worker.count << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << worker.method() << "\n" << ::tpy::check_signals;
+    std::cout << "staticmethod" << " " << Worker::static_() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::closure_forms();
     ::tpyapp::main::context_forms();
     ::tpyapp::main::control_edges();
-    std::cout << "parameter target" << " " << ::tpyapp::main::parameter_target(7) << "\n";
+    std::cout << "parameter target" << " " << ::tpyapp::main::parameter_target(7) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bound_order(::tpy::BigInt(1));
     int32_t count = 0;
     ::tpy::BigInt total = ::tpy::BigInt(0);
@@ -1088,23 +1088,23 @@ void main() {
             total = (total) + (value);
         }
     }
-    std::cout << "generator" << " " << count << " " << total << "\n";
+    std::cout << "generator" << " " << count << " " << total << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_body()));
     {
-        std::cout << "error_return" << " " << ({ auto __er_2 = ::tpyapp::main::error_body(); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "error_return" << " " << ({ auto __er_2 = ::tpyapp::main::error_body(); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except MarkerError:
         __except_1:;
-        std::cout << "error_return unexpected error" << "\n";
+        std::cout << "error_return unexpected error" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     ::tpyapp::main::match_body(::tpy::BigInt(1));
     std::vector<int32_t> generic_values = {0, 1, 2};
     std::vector<int32_t> concrete_values = {0, 1, 2};
-    std::cout << "generic twin" << " " << ::tpyapp::main::generic_count<int32_t>(generic_values) << " " << ::tpyapp::main::concrete_count(concrete_values) << "\n";
-    std::cout << "generic twin aliases" << " " << ::tpy::__len__(generic_values) << " " << ::tpy::__len__(concrete_values) << "\n";
-    std::cout << "readonly noalloc" << " " << ::tpyapp::main::readonly32(5) << "\n";
-    std::cout << "readonly heap" << " " << ::tpyapp::main::readonly_big(heap, ((heap) + (::tpy::BigInt(5)))) << "\n";
+    std::cout << "generic twin" << " " << ::tpyapp::main::generic_count<int32_t>(generic_values) << " " << ::tpyapp::main::concrete_count(concrete_values) << "\n" << ::tpy::check_signals;
+    std::cout << "generic twin aliases" << " " << ::tpy::__len__(generic_values) << " " << ::tpy::__len__(concrete_values) << "\n" << ::tpy::check_signals;
+    std::cout << "readonly noalloc" << " " << ::tpyapp::main::readonly32(5) << "\n" << ::tpy::check_signals;
+    std::cout << "readonly heap" << " " << ::tpyapp::main::readonly_big(heap, ((heap) + (::tpy::BigInt(5)))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::container_inverse();
 }
 
@@ -1132,7 +1132,7 @@ void __tpy_init() {
         module_target = ::tpy::add_check<int32_t>(module_target, 10);
         module_count = ::tpy::add_check<int32_t>(module_count, 1);
     }
-    std::cout << "module" << " " << module_count << "\n";
+    std::cout << "module" << " " << module_count << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }
 

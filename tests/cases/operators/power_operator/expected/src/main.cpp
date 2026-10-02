@@ -34,20 +34,20 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << 1 << "\n";
-    std::cout << 2 << "\n";
-    std::cout << 1024 << "\n";
-    std::cout << 27 << "\n";
-    std::cout << ::tpy::BigInt(static_cast<int64_t>(4294967296LL)) << "\n";
-    std::cout << ::tpy::BigInt::from_str("18446744073709551616") << "\n";
-    std::cout << ::tpy::BigInt::from_str("100000000000000000000") << "\n";
-    std::cout << -8 << "\n";
-    std::cout << 16 << "\n";
-    std::cout << 0 << "\n";
-    std::cout << 1 << "\n";
+    std::cout << 1 << "\n" << ::tpy::check_signals;
+    std::cout << 2 << "\n" << ::tpy::check_signals;
+    std::cout << 1024 << "\n" << ::tpy::check_signals;
+    std::cout << 27 << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BigInt(static_cast<int64_t>(4294967296LL)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BigInt::from_str("18446744073709551616") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BigInt::from_str("100000000000000000000") << "\n" << ::tpy::check_signals;
+    std::cout << -8 << "\n" << ::tpy::check_signals;
+    std::cout << 16 << "\n" << ::tpy::check_signals;
+    std::cout << 0 << "\n" << ::tpy::check_signals;
+    std::cout << 1 << "\n" << ::tpy::check_signals;
     x = 5;
     y = 3;
-    std::cout << (::tpy::pow_check<int32_t>(x, y)) << "\n";
+    std::cout << (::tpy::pow_check<int32_t>(x, y)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

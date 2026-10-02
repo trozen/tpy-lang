@@ -29,11 +29,11 @@ void main() {
     {
         try {
             std::string v = ::tpyapp::main::looker("host");
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
             v = ::tpyapp::main::looker("missing");
-            std::cout << "never" << "\n";
+            std::cout << "never" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::AttributeError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

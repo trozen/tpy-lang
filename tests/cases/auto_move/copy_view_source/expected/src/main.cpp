@@ -35,13 +35,13 @@ void main() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view s = *__beg_0;
         std::string_view u = std::string_view(s);
-        std::cout << u << "\n";
+        std::cout << u << "\n" << ::tpy::check_signals;
     }
     ::tpy::BytesView b = ::tpy::bytes_literal("xy", 2);
     ::tpy::BytesView v = ::tpy::BytesView(b);
-    std::cout << ::tpy::__len__(v) << "\n";
-    std::cout << ::tpyapp::main::owned("hi") << "\n";
-    std::cout << ::tpy::__len__(::tpyapp::main::owned_bytes(::tpy::bytes_literal("abc", 3))) << "\n";
+    std::cout << ::tpy::__len__(v) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::owned("hi") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(::tpyapp::main::owned_bytes(::tpy::bytes_literal("abc", 3))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

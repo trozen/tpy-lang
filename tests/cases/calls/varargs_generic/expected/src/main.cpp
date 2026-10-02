@@ -11,13 +11,13 @@ namespace tpyapp::main {
 //     print(count("a"))
 void main() {
     std::array<int32_t, 3> __tmp_1{10, 20, 30};
-    std::cout << ::tpyapp::main::first<int32_t>(::tpy::varargs<int32_t>(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::first<int32_t>(::tpy::varargs<int32_t>(__tmp_1)) << "\n" << ::tpy::check_signals;
     std::array<std::string, 2> __tmp_2{"hello", "world"};
-    std::cout << ::tpyapp::main::first<std::string>(::tpy::varargs<std::string>(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::first<std::string>(::tpy::varargs<std::string>(__tmp_2)) << "\n" << ::tpy::check_signals;
     std::array<const int32_t, 4> __tmp_3{1, 2, 3, 4};
-    std::cout << ::tpyapp::main::count<int32_t>(::tpy::varargs<const int32_t>(__tmp_3)) << "\n";
+    std::cout << ::tpyapp::main::count<int32_t>(::tpy::varargs<const int32_t>(__tmp_3)) << "\n" << ::tpy::check_signals;
     std::array<const std::string, 1> __tmp_4{"a"};
-    std::cout << ::tpyapp::main::count<std::string>(::tpy::varargs<const std::string>(__tmp_4)) << "\n";
+    std::cout << ::tpyapp::main::count<std::string>(::tpy::varargs<const std::string>(__tmp_4)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

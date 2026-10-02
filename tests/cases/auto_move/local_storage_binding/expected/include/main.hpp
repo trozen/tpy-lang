@@ -347,7 +347,7 @@ inline int32_t Manager::__enter__() const {
 // def __exit__(self, et, ev, tb) -> None:
 //     print("with exit")
 inline void Manager::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    std::cout << "with exit" << "\n";
+    std::cout << "with exit" << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, n: int32):

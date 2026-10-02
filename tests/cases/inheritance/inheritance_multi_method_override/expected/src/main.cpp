@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(b.greet())
 void main() {
     Both b = Both();
-    std::cout << b.greet() << "\n";
+    std::cout << b.greet() << "\n" << ::tpy::check_signals;
 }
 
 // main()

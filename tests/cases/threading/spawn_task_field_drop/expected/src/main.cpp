@@ -25,7 +25,7 @@ void main() {
         while ((g.get().done == 0)) {
             s.cv.wait(g);
         }
-        std::cout << g.get().done << "\n";
+        std::cout << g.get().done << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});

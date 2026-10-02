@@ -68,7 +68,7 @@ template<typename __F0>
       { __fn(__a0) } -> std::convertible_to<int32_t>;
   }
 void use(__F0&& f) {
-    std::cout << f(5) << "\n";
+    std::cout << f(5) << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

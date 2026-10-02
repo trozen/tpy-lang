@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     ::tpystd::tplib::box::Box<Pet> b1 = ::tpystd::tplib::box::Box<Parrot>(Parrot("Polly"));
     ::tpystd::tplib::box::Box<Pet> b2 = ::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex")));
-    std::cout << b1.__deref__().name() << "\n";
-    std::cout << b2.__deref__().name() << "\n";
+    std::cout << b1.__deref__().name() << "\n" << ::tpy::check_signals;
+    std::cout << b2.__deref__().name() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 inline Node::Node(std::string_view name)
     : name(name),
       next(std::nullopt) {
-    std::cout << "init" << " " << name << "\n";
+    std::cout << "init" << " " << name << "\n" << ::tpy::check_signals;
 }
 
 inline Node::Node(Node&& other) noexcept
@@ -76,7 +76,7 @@ inline Node& Node::operator=(Node&& other) noexcept {
 //     print("del", self.name)
 inline Node::~Node() {
     if (!this->__tpy_owned_) return;
-    std::cout << "del" << " " << this->name << "\n";
+    std::cout << "del" << " " << this->name << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

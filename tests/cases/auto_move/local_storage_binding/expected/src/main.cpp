@@ -132,7 +132,7 @@ int32_t closure_collision() {
     Cell target = std::move(source);
     Cell other = Cell(2);
     nested(other, true);
-    std::cout << "closure alias" << " " << other.value << "\n";
+    std::cout << "closure alias" << " " << other.value << "\n" << ::tpy::check_signals;
     return target.value;
 }
 
@@ -240,11 +240,11 @@ int32_t finalized() {
             target = std::move((*source));
             int32_t __tpy_ret_0 = target->value;
             __fin_ran_2 = true;
-            std::cout << "finally exit" << "\n";
+            std::cout << "finally exit" << "\n" << ::tpy::check_signals;
             return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_2) {
-                std::cout << "finally exit" << "\n";
+                std::cout << "finally exit" << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -334,7 +334,7 @@ void containers() {
         ::tpy::ByteArray buffer = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
         ::tpy::ByteArray data = std::move(buffer);
         ::tpy::bytearray_setitem(data, 0, 99);
-        std::cout << "containers" << " " << ::tpy::__getitem__(moved, 0).value << " " << ::tpy::__getitem__(array, 0).value << " " << ::tpy::__getitem__(table, 1).value << " " << ::tpy::__len__(members) << " " << static_cast<int>(::tpy::bytes_getitem(data, 0)) << "\n";
+        std::cout << "containers" << " " << ::tpy::__getitem__(moved, 0).value << " " << ::tpy::__getitem__(array, 0).value << " " << ::tpy::__getitem__(table, 1).value << " " << ::tpy::__len__(members) << " " << static_cast<int>(::tpy::bytes_getitem(data, 0)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -375,7 +375,7 @@ void hoisted_containers(bool flag) {
         return;
     }
     ::tpy::__getitem__((*table), 1).value = 8;
-    std::cout << "hoisted containers" << " " << ::tpy::__getitem__((*target), 0).value << " " << ::tpy::__getitem__((*table), 1).value << "\n";
+    std::cout << "hoisted containers" << " " << ::tpy::__getitem__((*target), 0).value << " " << ::tpy::__getitem__((*table), 1).value << "\n" << ::tpy::check_signals;
 }
 
 // def aliases() -> None:
@@ -396,12 +396,12 @@ void aliases() {
         Cell source = Cell(i);
         Cell& target = source;
         target.value = 7;
-        std::cout << "live source" << " " << source.value << "\n";
+        std::cout << "live source" << " " << source.value << "\n" << ::tpy::check_signals;
         Cell original = Cell(i);
         Cell& retained = original;
         Cell& other = original;
         other.value = 8;
-        std::cout << "third alias" << " " << retained.value << "\n";
+        std::cout << "third alias" << " " << retained.value << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -432,7 +432,7 @@ void copies(bool flag) {
         direct.value = 7;
         renamed.value = 8;
         qualified.value = 9;
-        std::cout << "copies" << " " << ::tpy::__getitem__(items, i).value << " " << direct.value << " " << renamed.value << " " << qualified.value << "\n";
+        std::cout << "copies" << " " << ::tpy::__getitem__(items, i).value << " " << direct.value << " " << renamed.value << " " << qualified.value << "\n" << ::tpy::check_signals;
     }
     std::optional<Item> hoisted;
     if (flag) {
@@ -441,7 +441,7 @@ void copies(bool flag) {
         return;
     }
     hoisted->value = 10;
-    std::cout << "hoisted copy" << " " << ::tpy::__getitem__(items, 0).value << " " << hoisted->value << "\n";
+    std::cout << "hoisted copy" << " " << ::tpy::__getitem__(items, 0).value << " " << hoisted->value << "\n" << ::tpy::check_signals;
 }
 
 // def escape_copy() -> None:
@@ -463,7 +463,7 @@ void escape_copy() {
         holder = &(duplicate->item);
     }
     holder->value = 9;
-    std::cout << "escape copy" << " " << ::tpy::__getitem__(items, 1).item.value << " " << holder->value << "\n";
+    std::cout << "escape copy" << " " << ::tpy::__getitem__(items, 1).item.value << " " << holder->value << "\n" << ::tpy::check_signals;
 }
 
 // def position_aliases(flag: bool) -> None:
@@ -516,7 +516,7 @@ void position_aliases(bool flag) {
         return;
     }
     target->value = 11;
-    std::cout << "branch alias" << " " << retained.value << "\n";
+    std::cout << "branch alias" << " " << retained.value << "\n" << ::tpy::check_signals;
     Cell with_source = Cell(11);
     Cell* managed_alias;
     auto __ctx_2 = Manager();
@@ -534,7 +534,7 @@ void position_aliases(bool flag) {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    std::cout << "with alias" << " " << with_source.value << "\n";
+    std::cout << "with alias" << " " << with_source.value << "\n" << ::tpy::check_signals;
     Cell try_source = Cell(12);
     Cell* finalized_alias;
     {
@@ -542,10 +542,10 @@ void position_aliases(bool flag) {
             finalized_alias = &(try_source);
             finalized_alias->value = ::tpy::add_check<int32_t>(finalized_alias->value, 1);
         } catch (...) {
-            std::cout << "finally alias" << " " << try_source.value << "\n";
+            std::cout << "finally alias" << " " << try_source.value << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally alias" << " " << try_source.value << "\n";
+        std::cout << "finally alias" << " " << try_source.value << "\n" << ::tpy::check_signals;
     }
     Cell match_source = Cell(13);
     Cell* matched_alias = &(match_source);
@@ -556,14 +556,14 @@ void position_aliases(bool flag) {
     } else {
         return;
     }
-    std::cout << "match alias" << " " << match_source.value << "\n";
+    std::cout << "match alias" << " " << match_source.value << "\n" << ::tpy::check_signals;
     Cell loop_source = Cell(14);
     Cell* loop_alias;
     for (int32_t i = 0; i < 2; ++i) {
         loop_alias = &(loop_source);
         loop_alias->value = ::tpy::add_check<int32_t>(loop_alias->value, i);
     }
-    std::cout << "loop alias" << " " << loop_source.value << " " << loop_alias->value << "\n";
+    std::cout << "loop alias" << " " << loop_source.value << " " << loop_alias->value << "\n" << ::tpy::check_signals;
 }
 
 // def closure_controls() -> None:
@@ -595,14 +595,14 @@ void closure_controls() {
         Cell& target = source;
         target.value = 19;
     }
-    std::cout << "live closure" << " " << read_source() << "\n";
+    std::cout << "live closure" << " " << read_source() << "\n" << ::tpy::check_signals;
     auto own_local = []() -> int32_t {
         Cell inner = Cell(5);
         Cell& target = inner;
         target.value = ::tpy::add_check<int32_t>(target.value, 1);
         return target.value;
     };
-    std::cout << "nested owner" << " " << own_local() << "\n";
+    std::cout << "nested owner" << " " << own_local() << "\n" << ::tpy::check_signals;
 }
 
 // def frame_aliases(n: int32) -> Iterator[int32]:
@@ -718,7 +718,7 @@ __coro_resumed_value resumed_value(int32_t value) {
         change = std::move(__r0).value();
         __sub_0.reset();
         target->value = ::tpy::add_check<int32_t>(target->value, change);
-        std::cout << "async alias" << " " << (*source).value << "\n";
+        std::cout << "async alias" << " " << (*source).value << "\n" << ::tpy::check_signals;
         original.emplace(Cell(i));
         moved = &((*original));
         __sub_1.emplace(20);
@@ -731,7 +731,7 @@ __coro_resumed_value resumed_value(int32_t value) {
         change = std::move(__r1).value();
         __sub_1.reset();
         moved->value = ::tpy::add_check<int32_t>(moved->value, change);
-        std::cout << "async last use" << " " << moved->value << "\n";
+        std::cout << "async last use" << " " << moved->value << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
     }
@@ -790,7 +790,7 @@ void downstream_moves() {
     for (int32_t i = 0; i < 2; ++i) {
         Cell source = Cell(i);
         Cell target = std::move(source);
-        std::cout << "owned argument" << " " << ::tpyapp::main::take_cell(std::move(target)) << "\n";
+        std::cout << "owned argument" << " " << ::tpyapp::main::take_cell(std::move(target)) << "\n" << ::tpy::check_signals;
         Cell element = Cell(i);
         Cell moved_element = std::move(element);
         items.push_back(std::move(moved_element));
@@ -798,10 +798,10 @@ void downstream_moves() {
         Cell moved_field = std::move(field);
         StoredCell stored = StoredCell(std::move(moved_field));
         stored.value.value = ::tpy::add_check<int32_t>(stored.value.value, 10);
-        std::cout << "owned field" << " " << stored.value.value << "\n";
+        std::cout << "owned field" << " " << stored.value.value << "\n" << ::tpy::check_signals;
     }
     ::tpy::__getitem__(items, 0).value = 20;
-    std::cout << "owned container" << " " << ::tpy::__getitem__(items, 0).value << " " << ::tpy::__getitem__(items, 1).value << "\n";
+    std::cout << "owned container" << " " << ::tpy::__getitem__(items, 0).value << " " << ::tpy::__getitem__(items, 1).value << "\n" << ::tpy::check_signals;
 }
 
 // def caught_alias() -> None:
@@ -821,7 +821,7 @@ void caught_alias() {
             target.value = 21;
             throw ::tpy::ValueError("test");
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught alias" << " " << source.value << "\n";
+            std::cout << "caught alias" << " " << source.value << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -845,7 +845,7 @@ void escape_move() {
         holder = &(duplicate->item);
     }
     holder->value = 22;
-    std::cout << "escape move" << " " << holder->value << "\n";
+    std::cout << "escape move" << " " << holder->value << "\n" << ::tpy::check_signals;
 }
 
 // def binding_controls() -> None:
@@ -869,7 +869,7 @@ void binding_controls() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator alias" << " " << value << "\n";
+            std::cout << "generator alias" << " " << value << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_aliases()));
@@ -908,31 +908,31 @@ void binding_controls() {
 //     escape_copy()
 //     binding_controls()
 void main() {
-    std::cout << "scoped" << " " << ::tpyapp::main::scoped(0, false) << " " << ::tpyapp::main::scoped(3, false) << " " << ::tpyapp::main::scoped(3, true) << "\n";
-    std::cout << "branch" << " " << ::tpyapp::main::branch(false) << " " << ::tpyapp::main::branch(true) << " " << ::tpyapp::main::scoped_branch(false) << " " << ::tpyapp::main::scoped_branch(true) << "\n";
-    std::cout << "chain" << " " << ::tpyapp::main::hoisted_chain(false) << " " << ::tpyapp::main::hoisted_chain(true) << "\n";
+    std::cout << "scoped" << " " << ::tpyapp::main::scoped(0, false) << " " << ::tpyapp::main::scoped(3, false) << " " << ::tpyapp::main::scoped(3, true) << "\n" << ::tpy::check_signals;
+    std::cout << "branch" << " " << ::tpyapp::main::branch(false) << " " << ::tpyapp::main::branch(true) << " " << ::tpyapp::main::scoped_branch(false) << " " << ::tpyapp::main::scoped_branch(true) << "\n" << ::tpy::check_signals;
+    std::cout << "chain" << " " << ::tpyapp::main::hoisted_chain(false) << " " << ::tpyapp::main::hoisted_chain(true) << "\n" << ::tpy::check_signals;
     int32_t closure_value = ::tpyapp::main::closure_collision();
-    std::cout << "closure owner" << " " << closure_value << "\n";
-    std::cout << "hoisted loops" << " " << ::tpyapp::main::hoisted_loops() << "\n";
+    std::cout << "closure owner" << " " << closure_value << "\n" << ::tpy::check_signals;
+    std::cout << "hoisted loops" << " " << ::tpyapp::main::hoisted_loops() << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = {2, 3};
-    std::cout << "native" << " " << ::tpyapp::main::native_loop(__tmp_1) << "\n";
+    std::cout << "native" << " " << ::tpyapp::main::native_loop(__tmp_1) << "\n" << ::tpy::check_signals;
     int32_t managed_value = ::tpyapp::main::managed();
-    std::cout << "with" << " " << managed_value << "\n";
+    std::cout << "with" << " " << managed_value << "\n" << ::tpy::check_signals;
     int32_t finalized_value = ::tpyapp::main::finalized();
-    std::cout << "finally" << " " << finalized_value << "\n";
-    std::cout << "match" << " " << ::tpyapp::main::matched(0) << " " << ::tpyapp::main::matched(1) << "\n";
+    std::cout << "finally" << " " << finalized_value << "\n" << ::tpy::check_signals;
+    std::cout << "match" << " " << ::tpyapp::main::matched(0) << " " << ::tpyapp::main::matched(1) << "\n" << ::tpy::check_signals;
     {
-        std::cout << "error return" << " " << ({ auto __er_2 = ::tpyapp::main::propagated(3); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "error return" << " " << ({ auto __er_2 = ::tpyapp::main::propagated(3); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Failure:
         __except_1:;
-        std::cout << "unexpected error" << "\n";
+        std::cout << "unexpected error" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     Runner runner = Runner(3);
-    std::cout << "constructor" << " " << runner.value << "\n";
-    std::cout << "method" << " " << runner.method(3) << "\n";
-    std::cout << "static" << " " << Runner::static_(3) << "\n";
+    std::cout << "constructor" << " " << runner.value << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << runner.method(3) << "\n" << ::tpy::check_signals;
+    std::cout << "static" << " " << Runner::static_(3) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::containers();
     ::tpyapp::main::hoisted_containers(false);
     ::tpyapp::main::hoisted_containers(true);

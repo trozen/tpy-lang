@@ -13,7 +13,7 @@ namespace tpyapp::main {
 void main() {
     Container<std::vector<::tpy::BigInt>> c = Container<std::vector<::tpy::BigInt>>({1, 2, 3});
     std::vector<::tpy::BigInt>& items = c.get_item();
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init() {

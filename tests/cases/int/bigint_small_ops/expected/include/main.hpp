@@ -193,13 +193,13 @@ inline ::tpy::BigInt Counter::get(const ::tpy::BigInt& value) {
 // def __enter__(self) -> None:
 //     print("context enter")
 inline void Scope::__enter__() const {
-    std::cout << "context enter" << "\n";
+    std::cout << "context enter" << "\n" << ::tpy::check_signals;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 //     print("context exit")
 inline void Scope::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    std::cout << "context exit" << "\n";
+    std::cout << "context exit" << "\n" << ::tpy::check_signals;
 }
 // def generic_compare[T: Comparable](a: T, b: T) -> bool:
 //     # The instantiated comparison must use the same operator as its concrete twin.

@@ -10,7 +10,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << "Hello, World!" << "\n";
+    std::cout << "Hello, World!" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

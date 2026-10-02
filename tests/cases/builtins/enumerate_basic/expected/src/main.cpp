@@ -42,7 +42,7 @@ void main() {
             const auto& __tup_1 = __for_tup_0;
             int32_t i = std::get<0>(__tup_1);
             std::string_view s = std::get<1>(__tup_1);
-            std::cout << i << " " << s << "\n";
+            std::cout << i << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     std::array<int32_t, 3> nums = {10, 20, 30};
@@ -56,7 +56,7 @@ void main() {
             const auto& __tup_2 = __for_tup_1;
             int32_t i = std::get<0>(__tup_2);
             int32_t n = std::get<1>(__tup_2);
-            std::cout << i << " " << n << "\n";
+            std::cout << i << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<::tpy::BigInt> empty = std::vector<::tpy::BigInt>{};
@@ -70,7 +70,7 @@ void main() {
             const auto& __tup_3 = __for_tup_2;
             int32_t i = std::get<0>(__tup_3);
             ::tpy::BigInt n = std::get<1>(__tup_3);
-            std::cout << i << " " << n << "\n";
+            std::cout << i << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     std::array<std::string, 1> one = {"only"};
@@ -84,7 +84,7 @@ void main() {
             const auto& __tup_4 = __for_tup_3;
             int32_t i = std::get<0>(__tup_4);
             std::string_view s = std::get<1>(__tup_4);
-            std::cout << i << " " << s << "\n";
+            std::cout << i << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     std::array<std::string, 3> letters = {"x", "y", "z"};
@@ -98,7 +98,7 @@ void main() {
             const auto& __tup_5 = __for_tup_4;
             int32_t i = std::get<0>(__tup_5);
             std::string_view s = std::get<1>(__tup_5);
-            std::cout << i << " " << s << "\n";
+            std::cout << i << " " << s << "\n" << ::tpy::check_signals;
         }
     }
 }

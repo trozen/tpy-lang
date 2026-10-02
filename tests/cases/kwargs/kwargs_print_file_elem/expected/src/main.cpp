@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(n, file=outs[which])  # tpyc: ok
 void emit(int32_t n, int32_t which) {
     std::array<::tpy::StdStream, 2> outs = {(*::tpystd::sys::stdout), (*::tpystd::sys::stderr)};
-    ::tpy::as_ostream(::tpy::__getitem__(outs, which)) << n << "\n";
+    ::tpy::as_ostream(::tpy::__getitem__(outs, which)) << n << "\n" << ::tpy::check_signals;
 }
 
 // # free function: a literal index, so the read is bounds-proven.
@@ -19,7 +19,7 @@ void emit(int32_t n, int32_t which) {
 //     print(n, file=outs[0])  # tpyc: ok
 void emit_first(int32_t n) {
     std::array<::tpy::StdStream, 2> outs = {(*::tpystd::sys::stdout), (*::tpystd::sys::stderr)};
-    ::tpy::as_ostream(::tpy::__getitem__(outs, 0)) << n << "\n";
+    ::tpy::as_ostream(::tpy::__getitem__(outs, 0)) << n << "\n" << ::tpy::check_signals;
 }
 
 // # free function: a single-element sink list, the same element read.
@@ -28,7 +28,7 @@ void emit_first(int32_t n) {
 //     print(n, file=outs[0])  # tpyc: ok
 void emit_only(int32_t n) {
     std::array<::tpy::StdStream, 1> outs = {(*::tpystd::sys::stdout)};
-    ::tpy::as_ostream(::tpy::__getitem__(outs, 0)) << n << "\n";
+    ::tpy::as_ostream(::tpy::__getitem__(outs, 0)) << n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

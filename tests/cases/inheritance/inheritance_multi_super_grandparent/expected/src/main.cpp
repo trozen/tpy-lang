@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(c.tag())
 void main() {
     C c = C();
-    std::cout << c.tag() << "\n";
+    std::cout << c.tag() << "\n" << ::tpy::check_signals;
 }
 
 // main()

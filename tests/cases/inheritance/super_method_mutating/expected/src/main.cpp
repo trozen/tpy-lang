@@ -19,12 +19,12 @@ void main() {
     Child c = Child();
     c.call_super_bump();
     c.call_super_bump();
-    std::cout << c.call_super_get() << "\n";
+    std::cout << c.call_super_get() << "\n" << ::tpy::check_signals;
     Multi m = Multi();
     m.call_super_bump();
     m.call_super_bump_other();
-    std::cout << m.x << "\n";
-    std::cout << m.y << "\n";
+    std::cout << m.x << "\n" << ::tpy::check_signals;
+    std::cout << m.y << "\n" << ::tpy::check_signals;
 }
 
 // main()

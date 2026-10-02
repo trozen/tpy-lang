@@ -21,7 +21,7 @@ void main() {
     Holder h = Holder();
     h.s = std::move(initial);
     if (!((h.s.has_value()))) ::tpy::raise_assertion_error();
-    std::cout << ::tpy::__len__((*h.s)) << "\n";
+    std::cout << ::tpy::__len__((*h.s)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

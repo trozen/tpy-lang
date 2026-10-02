@@ -14,7 +14,7 @@ void main() {
     std::vector<Row> rows = {Row(1)};
     std::vector<Row> xs = std::vector<Row>{};
     xs.push_back(Picker().pick(rows));
-    std::cout << ::tpy::__getitem__(xs, 0).v << "\n";
+    std::cout << ::tpy::__getitem__(xs, 0).v << "\n" << ::tpy::check_signals;
 }
 
 // main()

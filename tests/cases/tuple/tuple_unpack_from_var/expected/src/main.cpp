@@ -17,9 +17,9 @@ void main() {
     const auto& __tup_1 = t;
     int32_t a = std::get<0>(__tup_1);
     std::string_view b = std::get<1>(__tup_1);
-    std::cout << a << "\n";
-    std::cout << b << "\n";
-    std::cout << ::tpy::TuplePrinter(t) << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;
 }
 
 // main()

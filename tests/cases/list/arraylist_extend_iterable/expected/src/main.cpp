@@ -20,10 +20,10 @@ void main() {
     a.append(1);
     std::vector<int32_t> items = {10, 20, 30};
     a.extend(items);
-    std::cout << ::tpy::__len__(a) << "\n";
-    std::cout << a[0] << "\n";
-    std::cout << a[1] << "\n";
-    std::cout << a[3] << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
+    std::cout << a[0] << "\n" << ::tpy::check_signals;
+    std::cout << a[1] << "\n" << ::tpy::check_signals;
+    std::cout << a[3] << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

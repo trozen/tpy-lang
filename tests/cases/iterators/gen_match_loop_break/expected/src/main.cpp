@@ -93,7 +93,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_1);
-            std::cout << y << "\n";
+            std::cout << y << "\n" << ::tpy::check_signals;
         }
     }
 }

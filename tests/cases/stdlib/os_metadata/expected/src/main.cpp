@@ -46,14 +46,14 @@ void main() {
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
     ::tpystd::os::chmod(p, 416);
-    std::cout << "mode" << " " << ::tpy::builtin_oct((static_cast<int64_t>(::tpystd::os::stat(p).st_mode & 511))) << "\n";
-    std::cout << "access" << " " << ::tpy::print_bool(::tpystd::os::access(p, ::tpy::stdlib::os::kc_f_ok)) << " " << ::tpy::print_bool(::tpystd::os::access(p, ::tpy::stdlib::os::kc_r_ok)) << " " << ::tpy::print_bool(::tpystd::os::access(p, ::tpy::stdlib::os::kc_w_ok)) << " " << ::tpy::print_bool(::tpystd::os::access(p, ::tpy::stdlib::os::kc_x_ok)) << "\n";
-    std::cout << "missing" << " " << ::tpy::print_bool(::tpystd::os::access("tpy_nope_xyz", ::tpy::stdlib::os::kc_f_ok)) << "\n";
+    std::cout << "mode" << " " << ::tpy::builtin_oct((static_cast<int64_t>(::tpystd::os::stat(p).st_mode & 511))) << "\n" << ::tpy::check_signals;
+    std::cout << "access" << " " << ::tpy::print_bool(::tpystd::os::access(p, ::tpy::stdlib::os::kc_f_ok)) << " " << ::tpy::print_bool(::tpystd::os::access(p, ::tpy::stdlib::os::kc_r_ok)) << " " << ::tpy::print_bool(::tpystd::os::access(p, ::tpy::stdlib::os::kc_w_ok)) << " " << ::tpy::print_bool(::tpystd::os::access(p, ::tpy::stdlib::os::kc_x_ok)) << "\n" << ::tpy::check_signals;
+    std::cout << "missing" << " " << ::tpy::print_bool(::tpystd::os::access("tpy_nope_xyz", ::tpy::stdlib::os::kc_f_ok)) << "\n" << ::tpy::check_signals;
     ::tpystd::os::utime(p, std::tuple<double, double>{1000000000.0, 1500000000.0});
     ::tpystd::os::_types::stat_result st = ::tpystd::os::stat(p);
-    std::cout << "times" << " " << ::tpy::print_bool((st.st_atime == 1000000000.0)) << " " << ::tpy::print_bool((st.st_mtime == 1500000000.0)) << "\n";
+    std::cout << "times" << " " << ::tpy::print_bool((st.st_atime == 1000000000.0)) << " " << ::tpy::print_bool((st.st_mtime == 1500000000.0)) << "\n" << ::tpy::check_signals;
     ::tpystd::os::chown(p, st.st_uid, st.st_gid);
-    std::cout << "chown ok" << "\n";
+    std::cout << "chown ok" << "\n" << ::tpy::check_signals;
     ::tpy::stdlib::os::remove(p);
 }
 

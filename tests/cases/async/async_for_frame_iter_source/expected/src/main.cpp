@@ -76,8 +76,8 @@ __coro_bump bump(Bag& bag) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << __await_lift_0 << "\n";
-        std::cout << "mutations reached the bag:" << " " << ::tpy::__getitem__((*bag).items, 0).x << " " << ::tpy::__getitem__((*bag).items, 1).x << "\n";
+        std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
+        std::cout << "mutations reached the bag:" << " " << ::tpy::__getitem__((*bag).items, 0).x << " " << ::tpy::__getitem__((*bag).items, 1).x << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

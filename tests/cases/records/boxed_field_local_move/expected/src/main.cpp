@@ -16,7 +16,7 @@ void free_move(int32_t v) {
     Cell h = Cell();
     h.f = std::move(s);
     h.f.get().v = ::tpy::add_check<int32_t>(h.f.get().v, 1);
-    std::cout << "free.boxed_local_move" << " " << h.f.get().v << "\n";
+    std::cout << "free.boxed_local_move" << " " << h.f.get().v << "\n" << ::tpy::check_signals;
 }
 
 // def consuming_store() -> None:
@@ -28,7 +28,7 @@ void consuming_store() {
     TicketStash st = TicketStash();
     Ticket(42).stash(st);
     st.t.id = ::tpy::add_check<int32_t>(st.t.id, 1);
-    std::cout << "consuming.self_into_field" << " " << st.t.id << "\n";
+    std::cout << "consuming.self_into_field" << " " << st.t.id << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -37,7 +37,7 @@ void consuming_store() {
 //     consuming_store()
 void main() {
     ::tpyapp::main::free_move(5);
-    std::cout << "ctor.boxed_local_move" << " " << InCtor(6).tag << "\n";
+    std::cout << "ctor.boxed_local_move" << " " << InCtor(6).tag << "\n" << ::tpy::check_signals;
     ::tpyapp::main::consuming_store();
 }
 

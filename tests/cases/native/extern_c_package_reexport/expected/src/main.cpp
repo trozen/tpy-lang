@@ -12,7 +12,7 @@ namespace tpyapp::main {
 extern "C" void app_init() {
     abs(0);
     int32_t x = tpy_clock();
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import export

@@ -25,7 +25,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         i = ((*__for_i_0))++;
-        std::cout << "  gen" << " " << i << "\n";
+        std::cout << "  gen" << " " << i << "\n" << ::tpy::check_signals;
         __state = S_RESUME_0;
         return i;
     }

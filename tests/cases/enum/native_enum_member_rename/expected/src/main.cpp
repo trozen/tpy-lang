@@ -79,13 +79,13 @@ std::string describe(::cfg::Mode m) {
 //     print(Mode.MANUAL.name)
 //     print(Mode.MANUAL.value)
 void main() {
-    std::cout << ::tpy::__repr__(::cfg::Mode::None) << "\n";
-    std::cout << ::tpy::__repr__(::cfg::Mode::Auto) << "\n";
-    std::cout << ::tpy::__repr__(::cfg::Mode::Manual) << "\n";
-    std::cout << ::tpyapp::main::describe(::cfg::Mode::None) << "\n";
-    std::cout << ::tpyapp::main::describe(::cfg::Mode::Auto) << "\n";
-    std::cout << ::tpy::EnumUtil<::cfg::Mode>::name(::cfg::Mode::Manual) << "\n";
-    std::cout << static_cast<int32_t>(::cfg::Mode::Manual) << "\n";
+    std::cout << ::tpy::__repr__(::cfg::Mode::None) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__repr__(::cfg::Mode::Auto) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__repr__(::cfg::Mode::Manual) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::cfg::Mode::None) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::cfg::Mode::Auto) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<::cfg::Mode>::name(::cfg::Mode::Manual) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(::cfg::Mode::Manual) << "\n" << ::tpy::check_signals;
 }
 
 // # @native enum where one C++ member name (None) is a Python keyword.

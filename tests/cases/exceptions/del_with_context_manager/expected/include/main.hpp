@@ -69,14 +69,14 @@ inline Guard::Guard(int32_t tag) : _tag(tag) {}
 //     print("enter", self._tag)
 //     return self._tag
 inline int32_t Guard::__enter__() const {
-    std::cout << "enter" << " " << this->_tag << "\n";
+    std::cout << "enter" << " " << this->_tag << "\n" << ::tpy::check_signals;
     return this->_tag;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 //     print("exit", self._tag)
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    std::cout << "exit" << " " << this->_tag << "\n";
+    std::cout << "exit" << " " << this->_tag << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, id: int32):
@@ -103,7 +103,7 @@ inline Resource::~Resource() {
         auto __ctx_1 = Guard(this->_id);
         auto t = __ctx_1.__enter__();
         try {
-            std::cout << "cleanup" << " " << t << "\n";
+            std::cout << "cleanup" << " " << t << "\n" << ::tpy::check_signals;
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});

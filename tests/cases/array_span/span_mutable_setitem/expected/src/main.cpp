@@ -19,9 +19,9 @@ void set_first(std::span<int32_t> s, int32_t val) {
 void main() {
     std::array<int32_t, 3> arr = std::array<int32_t, 3>({10, 20, 30});
     ::tpyapp::main::set_first(::tpy::as_mut_span(arr), 42);
-    std::cout << ::tpy::__getitem__(arr, 0) << "\n";
-    std::cout << ::tpy::__getitem__(arr, 1) << "\n";
-    std::cout << ::tpy::__getitem__(arr, 2) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(arr, 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(arr, 2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

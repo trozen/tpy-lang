@@ -57,8 +57,8 @@ void test() {
     ::tpy::Union<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_2);
     ::tpyapp::main::rename(c, "Fluffy");
     ::tpyapp::main::rename(d, "Buddy");
-    std::cout << ::tpyapp::main::read_name(c.as_const()) << "\n";
-    std::cout << ::tpyapp::main::read_name(d.as_const()) << "\n";
+    std::cout << ::tpyapp::main::read_name(c.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_name(d.as_const()) << "\n" << ::tpy::check_signals;
 }
 
 // test()

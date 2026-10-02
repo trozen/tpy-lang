@@ -12,11 +12,11 @@ namespace tpyapp::main {
 void greet(::tpy::Union<const Cat*, const Dog*> pet) {
     if (std::holds_alternative<const Dog*>(pet)) {
         auto& __pet = *std::get<const Dog*>(pet);
-        std::cout << __pet.name << "\n";
+        std::cout << __pet.name << "\n" << ::tpy::check_signals;
     } else {
         if (true) {
             auto& __pet = *std::get<const Cat*>(pet);
-            std::cout << __pet.name << "\n";
+            std::cout << __pet.name << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -47,14 +47,14 @@ void main() {
     ::tpy::Union<Cat*, Dog*> r = ::tpy::to_ptr_variant(p.pet);
     if (std::holds_alternative<Dog*>(r)) {
         auto& __r = *std::get<Dog*>(r);
-        std::cout << __r.name << "\n";
+        std::cout << __r.name << "\n" << ::tpy::check_signals;
     }
     Cat __tmp_4 = Cat("Mittens");
     p.set_pet(::tpy::Union<const Cat*, const Dog*>{&__tmp_4});
     ::tpy::Union<Cat*, Dog*> r2 = ::tpy::to_ptr_variant(p.pet);
     if (std::holds_alternative<Cat*>(r2)) {
         auto& __r2 = *std::get<Cat*>(r2);
-        std::cout << __r2.name << "\n";
+        std::cout << __r2.name << "\n" << ::tpy::check_signals;
     }
 }
 

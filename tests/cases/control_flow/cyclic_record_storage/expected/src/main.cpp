@@ -70,12 +70,12 @@ int32_t retained() {
 //     print("method", runner.method(source, 3), source.value)
 void main() {
     Cell source = Cell(7);
-    std::cout << "copy" << " " << ::tpyapp::main::copied(source, 0) << " " << ::tpyapp::main::copied(source, 3) << " " << source.value << "\n";
-    std::cout << "replace" << " " << ::tpyapp::main::replaced(0) << " " << ::tpyapp::main::replaced(1) << " " << ::tpyapp::main::replaced(2) << " " << ::tpyapp::main::replaced(3) << "\n";
-    std::cout << "retained" << " " << ::tpyapp::main::retained() << "\n";
+    std::cout << "copy" << " " << ::tpyapp::main::copied(source, 0) << " " << ::tpyapp::main::copied(source, 3) << " " << source.value << "\n" << ::tpy::check_signals;
+    std::cout << "replace" << " " << ::tpyapp::main::replaced(0) << " " << ::tpyapp::main::replaced(1) << " " << ::tpyapp::main::replaced(2) << " " << ::tpyapp::main::replaced(3) << "\n" << ::tpy::check_signals;
+    std::cout << "retained" << " " << ::tpyapp::main::retained() << "\n" << ::tpy::check_signals;
     Runner runner = Runner(3);
-    std::cout << "constructor" << " " << runner.value << "\n";
-    std::cout << "method" << " " << runner.method(source, 3) << " " << source.value << "\n";
+    std::cout << "constructor" << " " << runner.value << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << runner.method(source, 3) << " " << source.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

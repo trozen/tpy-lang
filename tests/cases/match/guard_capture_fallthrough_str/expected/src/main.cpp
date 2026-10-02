@@ -18,18 +18,18 @@ namespace tpyapp::main {
 void classify(std::string_view s) {
     auto& __match_subject_1 = s;
     if (__match_subject_1 == "a") {
-        std::cout << "one" << "\n";
+        std::cout << "one" << "\n" << ::tpy::check_signals;
         goto __match_end_2;
     }
     {
         auto& x = __match_subject_1;
         if ((::tpy::__len__(x) >= 2)) {
-            std::cout << "long" << " " << x << "\n";
+            std::cout << "long" << " " << x << "\n" << ::tpy::check_signals;
             goto __match_end_2;
         }
     }
     {
-        std::cout << "short other" << "\n";
+        std::cout << "short other" << "\n" << ::tpy::check_signals;
         goto __match_end_2;
     }
     __match_end_2:;

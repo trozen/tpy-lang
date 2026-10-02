@@ -17,13 +17,13 @@ namespace tpyapp::main {
 //     print(r.area())
 void main() {
     ::ns::Vec2 v = ::ns::Vec2(3, 7);
-    std::cout << v.x << "\n";
-    std::cout << ::vec2_sum(&v) << "\n";
-    std::cout << v.sum() << "\n";
+    std::cout << v.x << "\n" << ::tpy::check_signals;
+    std::cout << ::vec2_sum(&v) << "\n" << ::tpy::check_signals;
+    std::cout << v.sum() << "\n" << ::tpy::check_signals;
     ::Rect r = ::Rect{0, 0, 40, 30};
-    std::cout << r.w << "\n";
-    std::cout << rect_area(&r) << "\n";
-    std::cout << r.area() << "\n";
+    std::cout << r.w << "\n" << ::tpy::check_signals;
+    std::cout << rect_area(&r) << "\n" << ::tpy::check_signals;
+    std::cout << r.area() << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native

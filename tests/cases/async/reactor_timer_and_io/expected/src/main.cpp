@@ -76,7 +76,7 @@ __coro_delayed_send delayed_send(::tpystd::socket::socket& sock) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         data = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << ::tpy::BytesPrinter(data) << "\n";
+        std::cout << ::tpy::BytesPrinter(data) << "\n" << ::tpy::check_signals;
         __sub_1 = &((*sender));
         __state = S_RESUME_1;
         continue;

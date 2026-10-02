@@ -114,11 +114,11 @@ std::tuple<Node*, ::tpy::BigInt> first_pair(std::vector<Node>& items) {
 //         print(r.val)
 void test_collapse_passthrough() {
     std::vector<Node> items = {Node(::tpy::BigInt(1))};
-    std::cout << ::tpy::print_bool((::tpyapp::main::passthrough(nullptr) == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((::tpyapp::main::passthrough(nullptr) == nullptr)) << "\n" << ::tpy::check_signals;
     Node* p1 = &::tpy::__getitem__(items, 0);
     Node* r = ::tpyapp::main::passthrough(p1);
     if ((r != nullptr)) {
-        std::cout << r->val << "\n";
+        std::cout << r->val << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -131,7 +131,7 @@ void test_optional_return_into_ptr_local() {
     std::vector<Node> items = {Node(::tpy::BigInt(1))};
     Node* p = ::tpyapp::main::first(items);
     if ((p != nullptr)) {
-        std::cout << p->val << "\n";
+        std::cout << p->val << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -145,9 +145,9 @@ void test_ptr_value_into_optional_return() {
     std::vector<Node> items = {Node(::tpy::BigInt(1)), Node(::tpy::BigInt(2)), Node(::tpy::BigInt(3))};
     Node* found = ::tpyapp::main::find(items, ::tpy::BigInt(2));
     if ((found != nullptr)) {
-        std::cout << found->val << "\n";
+        std::cout << found->val << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::print_bool((::tpyapp::main::find(items, ::tpy::BigInt(99)) == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((::tpyapp::main::find(items, ::tpy::BigInt(99)) == nullptr)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_readonly_variant() -> None:
@@ -161,7 +161,7 @@ void test_readonly_variant() {
     const Node* cp = &::tpy::__getitem__(items, 0);
     const Node* rc = ::tpyapp::main::passthrough_ro(cp);
     if ((rc != nullptr)) {
-        std::cout << rc->val << "\n";
+        std::cout << rc->val << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -172,7 +172,7 @@ void test_readonly_variant() {
 void test_ptr_into_optional_call_arg() {
     std::vector<Node> items = {Node(::tpy::BigInt(1))};
     Node* p = &::tpy::__getitem__(items, 0);
-    std::cout << ::tpyapp::main::consume(p) << "\n";
+    std::cout << ::tpyapp::main::consume(p) << "\n" << ::tpy::check_signals;
 }
 
 // def test_ptr_into_optional_tuple_slot() -> None:
@@ -182,7 +182,7 @@ void test_ptr_into_optional_call_arg() {
 void test_ptr_into_optional_tuple_slot() {
     std::vector<Node> items = {Node(::tpy::BigInt(1))};
     auto pair = ::tpyapp::main::first_pair(items);
-    std::cout << std::get<1>(pair) << "\n";
+    std::cout << std::get<1>(pair) << "\n" << ::tpy::check_signals;
 }
 
 // def test_mutable_to_readonly_widening() -> None:
@@ -192,7 +192,7 @@ void test_ptr_into_optional_tuple_slot() {
 void test_mutable_to_readonly_widening() {
     std::vector<Node> items = {Node(::tpy::BigInt(1))};
     Node* p = &::tpy::__getitem__(items, 0);
-    std::cout << ::tpyapp::main::consume_ro(p) << "\n";
+    std::cout << ::tpyapp::main::consume_ro(p) << "\n" << ::tpy::check_signals;
 }
 
 // def test_storage_form_optional_lifts_to_ptr() -> None:
@@ -200,7 +200,7 @@ void test_mutable_to_readonly_widening() {
 //     print(take_ptr_node(h.opt))
 void test_storage_form_optional_lifts_to_ptr() {
     Holder h = Holder(Node(::tpy::BigInt(2)));
-    std::cout << ::tpyapp::main::take_ptr_node(::tpy::optional_to_ptr(h.opt)) << "\n";
+    std::cout << ::tpyapp::main::take_ptr_node(::tpy::optional_to_ptr(h.opt)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

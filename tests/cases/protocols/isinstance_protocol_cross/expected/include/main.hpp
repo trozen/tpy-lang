@@ -23,9 +23,9 @@ void main();
 template<::tpystd::typing::Sequence<int32_t> T_items>
 void cross_protocol(const T_items& items) {
     if constexpr (::tpystd::tpy::Hashable<T_items>) {
-        std::cout << "hashable sequence of" << " " << ::tpy::__len__(items) << "\n";
+        std::cout << "hashable sequence of" << " " << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "non-hashable sequence of" << " " << ::tpy::__len__(items) << "\n";
+        std::cout << "non-hashable sequence of" << " " << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
     }
 }
 

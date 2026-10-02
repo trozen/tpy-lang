@@ -21,7 +21,7 @@ void __tpy_init() {
 
     ::tpyapp::lib::__tpy_init();
     c = ::tpyapp::lib::Color::GREEN;
-    std::cout << static_cast<int32_t>(c) << "\n";
+    std::cout << static_cast<int32_t>(c) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

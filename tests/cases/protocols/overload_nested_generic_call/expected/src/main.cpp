@@ -16,7 +16,7 @@ namespace tpyapp::main {
 //     print(b.get().get().name())
 void main() {
     ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<Pet>> b = ::tpyapp::main::double_wrap<Pet>(Rc<Pet>::new_<::tpy::Adapter<Pet, Dog>>(Dog("Spot")));
-    std::cout << b.get().get().name() << "\n";
+    std::cout << b.get().get().name() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box, Rc

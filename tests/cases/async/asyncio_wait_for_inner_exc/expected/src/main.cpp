@@ -50,13 +50,13 @@ __coro_fails fails() {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             v = std::move(__r0).value();
             __sub_0.reset();
-            std::cout << "not reached" << "\n";
-            std::cout << v << "\n";
+            std::cout << "not reached" << "\n" << ::tpy::check_signals;
+            std::cout << v << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ValueError& e) {
             __sub_0.reset();
-            std::cout << e << "\n";
+            std::cout << e << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -77,7 +77,7 @@ __coro_fails fails() {
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << e << "\n";
+            std::cout << e << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

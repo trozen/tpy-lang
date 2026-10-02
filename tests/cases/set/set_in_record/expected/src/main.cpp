@@ -13,11 +13,11 @@ namespace tpyapp::main {
 //     print("sweet" in item.tags)
 void main() {
     TaggedItem item = TaggedItem("apple", ::tpy::ordered_set<std::string>({"fruit", "red"}));
-    std::cout << ::tpy::__len__(item.tags) << "\n";
-    std::cout << ::tpy::print_bool((item.tags.contains("fruit"))) << "\n";
+    std::cout << ::tpy::__len__(item.tags) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((item.tags.contains("fruit"))) << "\n" << ::tpy::check_signals;
     item.tags.insert("sweet");
-    std::cout << ::tpy::__len__(item.tags) << "\n";
-    std::cout << ::tpy::print_bool((item.tags.contains("sweet"))) << "\n";
+    std::cout << ::tpy::__len__(item.tags) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((item.tags.contains("sweet"))) << "\n" << ::tpy::check_signals;
 }
 
 // from dataclasses import dataclass

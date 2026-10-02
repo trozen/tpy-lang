@@ -10,10 +10,10 @@ namespace tpyapp::main {
 //     print(use_normal())   # plain Final re-export still works (inverse case)
 //     print(NORMAL_VAL)
 void main() {
-    std::cout << ::tpyapp::mid::use_global() << "\n";
-    std::cout << ::tpy_test_global << "\n";
-    std::cout << ::tpyapp::mid::use_normal() << "\n";
-    std::cout << ::tpyapp::leaf::NORMAL_VAL << "\n";
+    std::cout << ::tpyapp::mid::use_global() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy_test_global << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::mid::use_normal() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::leaf::NORMAL_VAL << "\n" << ::tpy::check_signals;
 }
 
 // # Cross-module re-export of a native_global through a non-entry module's

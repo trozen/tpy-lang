@@ -30,8 +30,8 @@ void send(std::string_view url, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tp
     conn.sock = std::move(a);
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
     ::tpystd::tplib::requests::Response r = s.post(url, data);
-    std::cout << r.status_code << "\n";
-    std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n";
+    std::cout << r.status_code << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n" << ::tpy::check_signals;
     b.close();
 }
 

@@ -103,8 +103,9 @@ inline Emitter::Emitter(std::string_view tag) : tag(tag) {}
 //     print(self.tag, end="")
 //     print(end="|\n")  # tpyc: ok
 inline void Emitter::emit() const {
-    std::cout << this->tag;
-    std::cout << "|\n";
+    std::cout << ::tpy::check_signals;
+    std::cout << this->tag << ::tpy::check_signals;
+    std::cout << "|\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(r.describe())
 void main() {
     Rect r = Rect(3, 4);
-    std::cout << r.describe() << "\n";
+    std::cout << r.describe() << "\n" << ::tpy::check_signals;
     r.scale(2);
-    std::cout << r.describe() << "\n";
+    std::cout << r.describe() << "\n" << ::tpy::check_signals;
 }
 
 // main()

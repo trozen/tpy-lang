@@ -36,7 +36,7 @@ void main() {
             Cat __tmp_1 = Cat(::tpy::BigInt(2));
             ::tpyapp::main::check(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
         } catch (const PetError& e) {
-            std::cout << e.code << "\n";
+            std::cout << e.code << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -44,7 +44,7 @@ void main() {
             Dog __tmp_2 = Dog(::tpy::BigInt(1));
             ::tpyapp::main::check(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
         } catch (const PetError& e) {
-            std::cout << e.code << "\n";
+            std::cout << e.code << "\n" << ::tpy::check_signals;
         }
     }
 }

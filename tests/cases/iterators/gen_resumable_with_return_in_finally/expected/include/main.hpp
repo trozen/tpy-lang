@@ -142,7 +142,7 @@ inline CM::CM(std::string_view name) : name(name) {}
 //     print(f"enter {self.name}")
 //     return self
 inline CM& CM::__enter__() {
-    std::cout << std::format("enter {}", this->name) << "\n";
+    std::cout << std::format("enter {}", this->name) << "\n" << ::tpy::check_signals;
     return (*this);
 }
 
@@ -150,7 +150,7 @@ inline CM& CM::__enter__() {
 //     print(f"exit {self.name}")
 //     return False
 inline bool CM::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    std::cout << std::format("exit {}", this->name) << "\n";
+    std::cout << std::format("exit {}", this->name) << "\n" << ::tpy::check_signals;
     return false;
 }
 void __tpy_init();

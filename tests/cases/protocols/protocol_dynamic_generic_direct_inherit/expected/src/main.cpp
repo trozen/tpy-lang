@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def show(c: Container[int32]) -> None:
 //     print(c.get())
 void show(Container<int32_t>& c) {
-    std::cout << c.get() << "\n";
+    std::cout << c.get() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -20,7 +20,7 @@ void main() {
     ::tpyapp::main::show(b);
     IntBox __slot_1{IntBox()};
     Container<int32_t>* c = &__slot_1;
-    std::cout << c->get() << "\n";
+    std::cout << c->get() << "\n" << ::tpy::check_signals;
 }
 
 // main()

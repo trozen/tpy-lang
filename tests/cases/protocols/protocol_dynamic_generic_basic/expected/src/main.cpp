@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def show(c: Container[int32]) -> None:
 //     print(c.get())
 void show(Container<int32_t>& c) {
-    std::cout << c.get() << "\n";
+    std::cout << c.get() << "\n" << ::tpy::check_signals;
 }
 
 // def bump(c: Container[int32]) -> None:
@@ -32,12 +32,12 @@ void main() {
     std::optional<::tpy::Adapter<Container<int32_t>, Ratio>> __slot_2;
     ::tpy::Adapter<Container<int32_t>, Box> __slot_1{Box(7)};
     Container<int32_t>* c = &__slot_1;
-    std::cout << c->get() << "\n";
+    std::cout << c->get() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bump((*c));
-    std::cout << c->get() << "\n";
+    std::cout << c->get() << "\n" << ::tpy::check_signals;
     __slot_2.emplace(Ratio(42));
     c = &*__slot_2;
-    std::cout << c->get() << "\n";
+    std::cout << c->get() << "\n" << ::tpy::check_signals;
     ::tpy::Adapter<Container<int32_t>, Box> __tmp_1{Box(100)};
     ::tpyapp::main::show(__tmp_1);
     Ratio r = Ratio(99);

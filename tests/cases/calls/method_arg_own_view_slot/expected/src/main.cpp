@@ -15,7 +15,7 @@ void main() {
     std::string_view name = "abcd";
     std::string_view __tmp_1{name};
     b.keep(std::move(__tmp_1));
-    std::cout << b.n << " " << name << "\n";
+    std::cout << b.n << " " << name << "\n" << ::tpy::check_signals;
 }
 
 // main()

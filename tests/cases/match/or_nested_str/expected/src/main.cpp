@@ -93,14 +93,14 @@ std::string classify(std::string_view s) {
 //     print(classify("two"))
 //     print(classify("zzz"))
 void main() {
-    std::cout << ::tpyapp::main::classify("red") << "\n";
-    std::cout << ::tpyapp::main::classify("green") << "\n";
-    std::cout << ::tpyapp::main::classify("blue") << "\n";
-    std::cout << ::tpyapp::main::classify("cat") << "\n";
-    std::cout << ::tpyapp::main::classify("dog") << "\n";
-    std::cout << ::tpyapp::main::classify("bird") << "\n";
-    std::cout << ::tpyapp::main::classify("two") << "\n";
-    std::cout << ::tpyapp::main::classify("zzz") << "\n";
+    std::cout << ::tpyapp::main::classify("red") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify("green") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify("blue") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify("cat") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify("dog") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify("bird") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify("two") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify("zzz") << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -31,26 +31,26 @@ void main() {
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     if (true) {
         auto& __pet = *std::get<Dog*>(pet);
-        std::cout << __pet.name << "\n";
+        std::cout << __pet.name << "\n" << ::tpy::check_signals;
     }
     __slot_2.emplace(Cat("Whiskers"));
     pet = ::tpy::to_ptr_variant(*__slot_2);
     if (std::holds_alternative<Cat*>(pet)) {
         auto& __pet = *std::get<Cat*>(pet);
-        std::cout << __pet.name << "\n";
+        std::cout << __pet.name << "\n" << ::tpy::check_signals;
     }
     __slot_3.emplace(Dog("Buddy"));
     pet = ::tpy::to_ptr_variant(*__slot_3);
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
-        std::cout << __pet.name << "\n";
+        std::cout << __pet.name << "\n" << ::tpy::check_signals;
     }
     ::tpy::Union<Cat, Dog> __slot_4 = Cat("Luna");
     ::tpy::Union<Cat*, Dog*> other = ::tpy::to_ptr_variant(__slot_4);
     pet = other;
     if (std::holds_alternative<Cat*>(pet)) {
         auto& __pet = *std::get<Cat*>(pet);
-        std::cout << __pet.name << "\n";
+        std::cout << __pet.name << "\n" << ::tpy::check_signals;
     }
 }
 

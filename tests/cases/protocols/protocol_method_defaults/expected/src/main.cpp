@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(bump(t))
 void main() {
     Tally t = Tally();
-    std::cout << ::tpyapp::main::bump(t) << "\n";
+    std::cout << ::tpyapp::main::bump(t) << "\n" << ::tpy::check_signals;
 }
 
 // main()

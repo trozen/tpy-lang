@@ -26,11 +26,11 @@ void main() {
     Counter a = Counter();
     ::tpyapp::main::bump(a);
     ::tpyapp::main::bump(a);
-    std::cout << Counter::instances << "\n";
+    std::cout << Counter::instances << "\n" << ::tpy::check_signals;
     FrozenCounter::instances = 0;
     FrozenCounter f = FrozenCounter("widget");
     FrozenCounter::instances = 5;
-    std::cout << FrozenCounter::instances << "\n";
+    std::cout << FrozenCounter::instances << "\n" << ::tpy::check_signals;
 }
 
 // from dataclasses import dataclass

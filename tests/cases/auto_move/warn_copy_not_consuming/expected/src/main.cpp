@@ -20,7 +20,7 @@ void main() {
         auto&& x = *__beg_0;
         result.push_back(x);
     }
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

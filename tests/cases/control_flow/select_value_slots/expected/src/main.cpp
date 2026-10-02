@@ -54,7 +54,7 @@ void local_decl(bool c, std::vector<std::string>& log) {
     v.n = ::tpy::add_check<int32_t>(v.n, 1);
     std::vector<int32_t> xs = ((c) ? (std::vector<int32_t>{1}) : (std::vector<int32_t>{2, 3}));
     xs.push_back(9);
-    std::cout << "local_decl" << " " << ::tpy::print_bool(c) << " " << z.n << " " << w.n << " " << v.n << " " << a.n << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "local_decl" << " " << ::tpy::print_bool(c) << " " << z.n << " " << w.n << " " << v.n << " " << a.n << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def loop_body(c: bool, log: list[str]) -> None:
@@ -69,7 +69,7 @@ void loop_body(bool c, std::vector<std::string>& log) {
     for (int32_t i = 0; i < 2; ++i) {
         C z = ((c) ? (C(a)) : (::tpyapp::main::make(log)));
         z.n = ::tpy::add_check<int32_t>(z.n, i);
-        std::cout << "loop_body" << " " << ::tpy::print_bool(c) << " " << i << " " << z.n << " " << a.n << "\n";
+        std::cout << "loop_body" << " " << ::tpy::print_bool(c) << " " << i << " " << z.n << " " << a.n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -83,7 +83,7 @@ void branch_first(bool c, bool d) {
     if (c) {
         C z = ((d) ? (C(1)) : (C(2)));
         z.n = ::tpy::add_check<int32_t>(z.n, 1);
-        std::cout << "branch_first" << " " << ::tpy::print_bool(d) << " " << z.n << "\n";
+        std::cout << "branch_first" << " " << ::tpy::print_bool(d) << " " << z.n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -103,7 +103,7 @@ void reassigned(bool c, bool d, std::vector<std::string>& log) {
     int32_t first = z->n;
     (*z) = ((d) ? (C(3)) : (::tpyapp::main::make(log)));
     z->n = ::tpy::add_check<int32_t>(z->n, 1);
-    std::cout << "reassigned" << " " << ::tpy::print_bool(c) << " " << ::tpy::print_bool(d) << " " << first << " " << z->n << "\n";
+    std::cout << "reassigned" << " " << ::tpy::print_bool(c) << " " << ::tpy::print_bool(d) << " " << first << " " << z->n << "\n" << ::tpy::check_signals;
 }
 
 // def hoisted(c: bool, d: bool) -> None:
@@ -124,7 +124,7 @@ void hoisted(bool c, bool d) {
         y = &*(__slot_2 = ((d) ? (C(2)) : (C(3))));
     }
     y->n = ::tpy::add_check<int32_t>(y->n, 1);
-    std::cout << "hoisted" << " " << ::tpy::print_bool(c) << " " << ::tpy::print_bool(d) << " " << y->n << "\n";
+    std::cout << "hoisted" << " " << ::tpy::print_bool(c) << " " << ::tpy::print_bool(d) << " " << y->n << "\n" << ::tpy::check_signals;
 }
 
 // def give(a: C, c: bool, log: list[str]) -> Own[C]:
@@ -154,7 +154,7 @@ void own_return(bool c, std::vector<std::string>& log) {
     r.n = ::tpy::add_check<int32_t>(r.n, 1);
     std::vector<int32_t> xs = ::tpyapp::main::give_list(c);
     xs.push_back(3);
-    std::cout << "own_return" << " " << ::tpy::print_bool(c) << " " << r.n << " " << a.n << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << "own_return" << " " << ::tpy::print_bool(c) << " " << r.n << " " << a.n << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def or_local(log: list[str]) -> None:
@@ -179,7 +179,7 @@ void or_local(std::vector<std::string>& log) {
     auto&& __tmp_3 = ::tpy::ordered_set<int32_t>({1, 2});
     ::tpy::ordered_set<int32_t> s = ((::tpy::__len__(__tmp_3) != 0) ? std::move(__tmp_3) : ::tpy::ordered_set<int32_t>({3, 4}));
     s.insert(5);
-    std::cout << "or_local" << " " << z.n << " " << y.n << " " << ::tpy::__len__(s) << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "or_local" << " " << z.n << " " << y.n << " " << ::tpy::__len__(s) << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def give_or_name(a: C) -> Own[C]:
@@ -222,7 +222,7 @@ void or_return(std::vector<std::string>& log) {
     q.n = ::tpy::add_check<int32_t>(q.n, 1);
     std::vector<int32_t> xs = ::tpyapp::main::give_or_list();
     xs.push_back(3);
-    std::cout << "or_return" << " " << r.n << " " << q.n << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "or_return" << " " << r.n << " " << q.n << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def member_init(c: bool, log: list[str]) -> None:
@@ -232,7 +232,7 @@ void or_return(std::vector<std::string>& log) {
 void member_init(bool c, std::vector<std::string>& log) {
     Holder h = Holder(c, log);
     h.f.n = ::tpy::add_check<int32_t>(h.f.n, 1);
-    std::cout << "member_init" << " " << ::tpy::print_bool(c) << " " << h.f.n << " " << ::tpy::__len__(log) << "\n";
+    std::cout << "member_init" << " " << ::tpy::print_bool(c) << " " << h.f.n << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 
 // def give_chain(a: C, b: C) -> Own[C]:
@@ -253,7 +253,7 @@ void or_chain() {
     C __tmp_2 = C(0);
     C r = ::tpyapp::main::give_chain(__tmp_1, __tmp_2);
     r.n = ::tpy::add_check<int32_t>(r.n, 1);
-    std::cout << "or_chain" << " " << r.n << "\n";
+    std::cout << "or_chain" << " " << r.n << "\n" << ::tpy::check_signals;
 }
 
 // def own_arg(c: bool, d: bool, log: list[str]) -> None:
@@ -267,10 +267,10 @@ void or_chain() {
 //     print("own_arg_or", c, take(a or C(5)).n)  # tpyc: warning(/copies C into owned storage/)
 void own_arg(bool c, bool d, std::vector<std::string>& log) {
     C a = C(1);
-    std::cout << "own_arg" << " " << ::tpy::print_bool(c) << " " << ::tpyapp::main::take(((c) ? (C(a)) : (::tpyapp::main::make(log)))).n << " " << a.n << "\n";
-    std::cout << "own_arg_nested" << " " << ::tpy::print_bool(c) << " " << ::tpy::print_bool(d) << " " << ::tpyapp::main::take(((c) ? (C(1)) : (((d) ? (C(2)) : (::tpyapp::main::make(log)))))).n << "\n";
+    std::cout << "own_arg" << " " << ::tpy::print_bool(c) << " " << ::tpyapp::main::take(((c) ? (C(a)) : (::tpyapp::main::make(log)))).n << " " << a.n << "\n" << ::tpy::check_signals;
+    std::cout << "own_arg_nested" << " " << ::tpy::print_bool(c) << " " << ::tpy::print_bool(d) << " " << ::tpyapp::main::take(((c) ? (C(1)) : (((d) ? (C(2)) : (::tpyapp::main::make(log)))))).n << "\n" << ::tpy::check_signals;
     C __tmp_1 = (::tpy::__bool__(a) ? a : C(5));
-    std::cout << "own_arg_or" << " " << ::tpy::print_bool(c) << " " << ::tpyapp::main::take(std::move(__tmp_1)).n << "\n";
+    std::cout << "own_arg_or" << " " << ::tpy::print_bool(c) << " " << ::tpyapp::main::take(std::move(__tmp_1)).n << "\n" << ::tpy::check_signals;
 }
 
 // def give_nocopy(c: bool) -> Own[N]:
@@ -291,7 +291,7 @@ void nocopy_select(bool c) {
     z.n = ::tpy::add_check<int32_t>(z.n, 1);
     N r = ::tpyapp::main::give_nocopy(c);
     r.n = ::tpy::add_check<int32_t>(r.n, 1);
-    std::cout << "nocopy" << " " << ::tpy::print_bool(c) << " " << z.n << " " << r.n << "\n";
+    std::cout << "nocopy" << " " << ::tpy::print_bool(c) << " " << z.n << " " << r.n << "\n" << ::tpy::check_signals;
 }
 
 // async def async_body(c: bool) -> Own[C]:
@@ -317,7 +317,7 @@ void nocopy_select(bool c) {
         __sub_0.reset();
         z.emplace(((c) ? (C(1)) : (::tpyapp::main::fresh())));
         (*z).n = ::tpy::add_check<int32_t>((*z).n, 1);
-        std::cout << "async_local" << " " << ::tpy::print_bool(c) << " " << (*z).n << "\n";
+        std::cout << "async_local" << " " << ::tpy::print_bool(c) << " " << (*z).n << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         C __tpy_async_ret = ((c) ? (C(2)) : (::tpyapp::main::fresh()));
         return ::tpystd::tpy::Poll<C>::ready(std::move(__tpy_async_ret));
@@ -384,7 +384,7 @@ void main() {
         }
         C r = ::tpystd::asyncio::run<C>(::tpy::make_adapter<::tpystd::coro::Cancellable<C>>(::tpyapp::main::async_body(c)));
         r.n = ::tpy::add_check<int32_t>(r.n, 1);
-        std::cout << "async_return" << " " << ::tpy::print_bool(c) << " " << r.n << "\n";
+        std::cout << "async_return" << " " << ::tpy::print_bool(c) << " " << r.n << "\n" << ::tpy::check_signals;
         {
             auto __src_2 = ::tpyapp::main::gen(c);
             auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -392,7 +392,7 @@ void main() {
                 auto __r_3 = __itr_2.__next__();
                 if (!__r_3.has_value()) break;
                 int32_t v = ::tpy::unwrap_ref(*__r_3);
-                std::cout << "gen" << " " << ::tpy::print_bool(c) << " " << v << "\n";
+                std::cout << "gen" << " " << ::tpy::print_bool(c) << " " << v << "\n" << ::tpy::check_signals;
             }
         }
     }

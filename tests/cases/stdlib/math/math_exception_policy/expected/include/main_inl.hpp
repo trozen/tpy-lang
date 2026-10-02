@@ -22,7 +22,7 @@ inline std::expected<double, ::tpy::StopIteration> __gen_values::__next__() {
         return ::tpy::stdlib::math::checked_sqrt(-(1.0));
     }
     case S_RESUME_1: {  // after: yield sqrt(-1.0)  # tpyc: ok
-        std::cout << "generator: unreachable" << "\n";
+        std::cout << "generator: unreachable" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

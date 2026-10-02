@@ -1,3 +1,5 @@
+raise: write closed
+raise: flush no flush
 captured 17 pieces:
   len=5
   len=1

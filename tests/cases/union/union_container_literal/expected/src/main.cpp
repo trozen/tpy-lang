@@ -12,7 +12,7 @@ void process_dict(const ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, st
     ::tpy::Union<int32_t, std::string> v = ::tpy::__getitem__(d, "a");
     if (std::holds_alternative<std::string>(v)) {
         auto& __v = std::get<std::string>(v);
-        std::cout << "str:" << " " << ::tpy::__str__(__v) << "\n";
+        std::cout << "str:" << " " << ::tpy::__str__(__v) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -28,7 +28,7 @@ void process_list(const std::vector<::tpy::Union<int32_t, std::string>>& items) 
         auto&& item = *__beg_0;
         if (std::holds_alternative<std::string>(item)) {
             auto& __item = std::get<std::string>(item);
-            std::cout << "str:" << " " << ::tpy::__str__(__item) << "\n";
+            std::cout << "str:" << " " << ::tpy::__str__(__item) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -41,7 +41,7 @@ void consume_dict(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::str
     ::tpy::Union<int32_t, std::string> v = ::tpy::__getitem__(d, "a");
     if (std::holds_alternative<std::string>(v)) {
         auto& __v = std::get<std::string>(v);
-        std::cout << "own str:" << " " << ::tpy::__str__(__v) << "\n";
+        std::cout << "own str:" << " " << ::tpy::__str__(__v) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -53,7 +53,7 @@ void consume_list(std::vector<::tpy::Union<int32_t, std::string>>&& items) {
     ::tpy::Union<int32_t, std::string> v = ::tpy::__getitem__(items, 0);
     if (std::holds_alternative<std::string>(v)) {
         auto& __v = std::get<std::string>(v);
-        std::cout << "own list:" << " " << ::tpy::__str__(__v) << "\n";
+        std::cout << "own list:" << " " << ::tpy::__str__(__v) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -166,7 +166,7 @@ void main() {
     ::tpy::Union<::tpy::BigInt, std::string> v = ::tpy::__getitem__(d, "a");
     if (std::holds_alternative<::tpy::BigInt>(v)) {
         auto& __v = std::get<::tpy::BigInt>(v);
-        std::cout << ((__v) + (::tpy::BigInt(1))) << "\n";
+        std::cout << ((__v) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, std::optional<::tpy::BigInt>> d2 = ::tpy::ordered_map<std::string, std::optional<::tpy::BigInt>>({{"x", 42}, {"y", std::nullopt}});
     std::vector<::tpy::Union<::tpy::BigInt, std::string>> lst = {1, "hello", 2, "world"};
@@ -174,7 +174,7 @@ void main() {
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(::tpy::__getitem__(pets, "rex"));
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
-        std::cout << __pet.name << "\n";
+        std::cout << __pet.name << "\n" << ::tpy::check_signals;
     }
     std::vector<::tpy::Union<Cat, Dog>> animals = {Dog("Buddy"), Cat("Mimi")};
     auto& __obj_0 = animals;
@@ -184,11 +184,11 @@ void main() {
         const auto& a = *__beg_0;
         if (std::holds_alternative<Dog>(a)) {
             auto& __a = std::get<Dog>(a);
-            std::cout << "dog:" << " " << __a.name << "\n";
+            std::cout << "dog:" << " " << __a.name << "\n" << ::tpy::check_signals;
         } else {
             if (true) {
                 auto& __a = std::get<Cat>(a);
-                std::cout << "cat:" << " " << __a.name << "\n";
+                std::cout << "cat:" << " " << __a.name << "\n" << ::tpy::check_signals;
             }
         }
     }
@@ -206,7 +206,7 @@ void main() {
     ::tpy::Union<int32_t, std::string> v2 = ::tpy::__getitem__(d4, "b");
     if (std::holds_alternative<std::string>(v2)) {
         auto& __v2 = std::get<std::string>(v2);
-        std::cout << ::tpy::__str__(__v2) << "\n";
+        std::cout << ::tpy::__str__(__v2) << "\n" << ::tpy::check_signals;
     }
     std::vector<::tpy::Union<int32_t, std::string>> items2 = ::tpyapp::main::make_list();
     auto& __obj_1 = items2;
@@ -216,39 +216,39 @@ void main() {
         auto&& item = *__beg_1;
         if (std::holds_alternative<std::string>(item)) {
             auto& __item = std::get<std::string>(item);
-            std::cout << ::tpy::__str__(__item) << "\n";
+            std::cout << ::tpy::__str__(__item) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::BigInt>, std::string>> d5 = ::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::BigInt>, std::string>>({{"nums", std::vector<::tpy::BigInt>{1, 2, 3}}, {"label", "test"}});
     ::tpy::Union<std::vector<::tpy::BigInt>*, std::string*> v3 = ::tpy::to_ptr_variant(::tpy::__getitem__(d5, "label"));
     if (std::holds_alternative<std::string*>(v3)) {
         auto& __v3 = *std::get<std::string*>(v3);
-        std::cout << ::tpy::__str__(__v3) << "\n";
+        std::cout << ::tpy::__str__(__v3) << "\n" << ::tpy::check_signals;
     }
     std::vector<::tpy::Union<std::vector<int32_t>, std::string>> mixed = {std::vector<int32_t>{10, 20}, "hi"};
     ::tpy::Union<std::vector<int32_t>*, std::string*> v4 = ::tpy::to_ptr_variant(::tpy::__getitem__(mixed, 1));
     if (std::holds_alternative<std::string*>(v4)) {
         auto& __v4 = *std::get<std::string*>(v4);
-        std::cout << ::tpy::__str__(__v4) << "\n";
+        std::cout << ::tpy::__str__(__v4) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d7 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({std::tuple<std::string, ::tpy::Union<int32_t, std::string>>{"x", "hello"}, std::tuple<std::string, ::tpy::Union<int32_t, std::string>>{"y", 1}});
     ::tpy::Union<int32_t, std::string> v5 = ::tpy::__getitem__(d7, "x");
     if (std::holds_alternative<std::string>(v5)) {
         auto& __v5 = std::get<std::string>(v5);
-        std::cout << ::tpy::__str__(__v5) << "\n";
+        std::cout << ::tpy::__str__(__v5) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d8 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"p", "hi"}, {"q", 99}}));
     ::tpy::Union<int32_t, std::string> v6 = ::tpy::__getitem__(d8, "p");
     if (std::holds_alternative<std::string>(v6)) {
         auto& __v6 = std::get<std::string>(v6);
-        std::cout << ::tpy::__str__(__v6) << "\n";
+        std::cout << ::tpy::__str__(__v6) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d9 = ::tpy::ordered_map<std::string, std::optional<int32_t>>({std::tuple<std::string, std::optional<int32_t>>{"a", 42}, std::tuple<std::string, std::optional<int32_t>>{"b", std::nullopt}});
-    std::cout << ::tpy::DictPrinter(d9) << "\n";
-    std::cout << ::tpy::DictPrinter(d) << "\n";
-    std::cout << ::tpy::ListPrinter(lst) << "\n";
+    std::cout << ::tpy::DictPrinter(d9) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(lst) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d6 = ::tpy::ordered_map<std::string, std::optional<int32_t>>({{"x", 42}, {"y", std::nullopt}});
-    std::cout << ::tpy::DictPrinter(d6) << "\n";
+    std::cout << ::tpy::DictPrinter(d6) << "\n" << ::tpy::check_signals;
 }
 
 // main()

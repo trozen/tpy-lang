@@ -55,12 +55,12 @@ void main() {
     ::tpystd::tplib::rc::Rc<Counter> a = Rc<Counter>::new_<Counter>(Counter(1));
     ::tpystd::tplib::rc::Rc<Counter> b = a.clone();
     b.get().n = 42;
-    std::cout << ::tpyapp::main::observe(a) << "\n";
-    std::cout << ::tpyapp::main::downgrade_readonly(a) << "\n";
+    std::cout << ::tpyapp::main::observe(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::downgrade_readonly(a) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::rc::Weak<Counter> wk = a.downgrade();
-    std::cout << ::tpyapp::main::via_readonly_weak(wk) << "\n";
+    std::cout << ::tpyapp::main::via_readonly_weak(wk) << "\n" << ::tpy::check_signals;
     Registry reg = Registry(a.clone());
-    std::cout << reg.handle().get().n << "\n";
+    std::cout << reg.handle().get().n << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Rc

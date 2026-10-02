@@ -43,11 +43,11 @@ void main() {
     Point p = ::tpyapp::main::make(1);
     p.x = 10;
     Factory __tmp_1 = Factory(5);
-    std::cout << p.x << " " << ::tpyapp::main::owned(1).x << " " << ::tpyapp::main::owned_method(__tmp_1).x << "\n";
-    std::cout << Point(1).updated().updated().x << "\n";
+    std::cout << p.x << " " << ::tpyapp::main::owned(1).x << " " << ::tpyapp::main::owned_method(__tmp_1).x << "\n" << ::tpy::check_signals;
+    std::cout << Point(1).updated().updated().x << "\n" << ::tpy::check_signals;
     Ticket t = ::tpyapp::main::issue(7);
     t.id = ::tpy::add_check<int32_t>(t.id, 1);
-    std::cout << t.id << "\n";
+    std::cout << t.id << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -11,9 +11,9 @@ std::array<int32_t, 3>* arr_global{};
 //     print(arr[1])
 //     print(arr[2])
 void use_array(const std::array<int32_t, 3>& arr) {
-    std::cout << ::tpy::__getitem__(arr, 0) << "\n";
-    std::cout << ::tpy::__getitem__(arr, 1) << "\n";
-    std::cout << ::tpy::__getitem__(arr, 2) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(arr, 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(arr, 2) << "\n" << ::tpy::check_signals;
 }
 
 // def get_global_array() -> Array[int32, 3]:

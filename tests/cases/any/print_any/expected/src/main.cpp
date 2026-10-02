@@ -21,11 +21,11 @@ void main() {
     ::tpy::Any c = ::tpy::make_any(static_cast<double>(3.14));
     ::tpy::Any d = ::tpy::make_any(std::monostate{});
     ::tpy::Any e = ::tpy::make_any(bool(true));
-    std::cout << a << "\n";
-    std::cout << b << "\n";
-    std::cout << c << "\n";
-    std::cout << d << "\n";
-    std::cout << e << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
+    std::cout << c << "\n" << ::tpy::check_signals;
+    std::cout << d << "\n" << ::tpy::check_signals;
+    std::cout << e << "\n" << ::tpy::check_signals;
 }
 
 // main()

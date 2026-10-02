@@ -22,7 +22,7 @@ void show(std::string_view tag, const std::tuple<const C*, int32_t>& p) {
     const C* a = std::get<0>(__tup_1);
     int32_t k = std::get<1>(__tup_1);
     if ((a != nullptr)) {
-        std::cout << tag << " " << a->v << "\n";
+        std::cout << tag << " " << a->v << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -103,7 +103,7 @@ __coro_adup adup() {
         t.emplace(std::move(__r0).value());
         __sub_0.reset();
         std::get<0>((*t)).v = 9;
-        std::cout << "async_dup" << " " << std::get<1>((*t)).v << "\n";
+        std::cout << "async_dup" << " " << std::get<1>((*t)).v << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -132,7 +132,7 @@ void walrus_member() {
     C* d = nullptr;
     h.q = ::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{1, (d = &(c), *d)});
     c.v = 44;
-    std::cout << "walrus_member" << " " << std::get<1>(h.q).v << " " << d->v << "\n";
+    std::cout << "walrus_member" << " " << std::get<1>(h.q).v << " " << d->v << "\n" << ::tpy::check_signals;
 }
 
 // # scalar return: the same walrus into an Own slot copies like `return c`.
@@ -161,7 +161,7 @@ void container_ternary() {
     std::vector<int32_t> xs = {1, 2};
     bool k = true;
     std::vector<int32_t> __tmp_1 = ((k) ? (xs) : (std::vector<int32_t>{3}));
-    std::cout << "container_ternary" << " " << ::tpyapp::main::takel(std::move(__tmp_1)) << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << "container_ternary" << " " << ::tpyapp::main::takel(std::move(__tmp_1)) << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def getter_member() -> None:
@@ -176,7 +176,7 @@ void getter_member() {
     H h = H();
     h.q = ::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{1, g.get()});
     g.c.v = 33;
-    std::cout << "getter_member" << " " << std::get<1>(h.q).v << "\n";
+    std::cout << "getter_member" << " " << std::get<1>(h.q).v << "\n" << ::tpy::check_signals;
 }
 
 // def dict_setitem() -> None:
@@ -304,7 +304,7 @@ void main() {
             std::get<1>(pr).v = 777;
         }
     }
-    std::cout << "yield_param" << " " << p.v << "\n";
+    std::cout << "yield_param" << " " << p.v << "\n" << ::tpy::check_signals;
     {
         auto __src_2 = ::tpyapp::main::yield_live_local();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -338,17 +338,17 @@ void main() {
             std::get<1>(mx)->v = 80;
         }
     }
-    std::cout << "yield_mixed" << " " << a.v << " " << b.v << "\n";
+    std::cout << "yield_mixed" << " " << a.v << " " << b.v << "\n" << ::tpy::check_signals;
     std::tuple<C, C> t = ::tpyapp::main::dup();
     std::get<0>(t).v = 9;
-    std::cout << "dup" << " " << std::get<1>(t).v << "\n";
+    std::cout << "dup" << " " << std::get<1>(t).v << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::run_adup()));
     ::tpyapp::main::getter_member();
     ::tpyapp::main::walrus_member();
     C wc = C(5);
     C wr = ::tpyapp::main::walrus_return(wc);
     wr.v = 55;
-    std::cout << "walrus_return" << " " << wc.v << "\n";
+    std::cout << "walrus_return" << " " << wc.v << "\n" << ::tpy::check_signals;
     ::tpyapp::main::container_ternary();
     ::tpyapp::main::dict_setitem();
     ::tpyapp::main::list_setitem();

@@ -27,7 +27,7 @@ namespace tpyapp::main {
 void main() {
     Box<int32_t> box_int = Box<int32_t>(42);
     int32_t val = box_int.take();
-    std::cout << val << "\n";
+    std::cout << val << "\n" << ::tpy::check_signals;
     Box<std::vector<int32_t>> box_list = Box<std::vector<int32_t>>({1, 2, 3});
     std::vector<int32_t> taken = box_list.take();
     auto& __obj_0 = taken;
@@ -35,9 +35,9 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
-    std::cout << box_int.get() << "\n";
+    std::cout << box_int.get() << "\n" << ::tpy::check_signals;
     std::vector<int32_t> c = box_list.take();
     c.push_back(4);
     auto& __obj_1 = c;
@@ -45,7 +45,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 

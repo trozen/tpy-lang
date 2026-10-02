@@ -12,7 +12,7 @@ namespace tpyapp::main {
 //     print("free body")
 //     return None  # tpyc: ok
 void free_fn() {
-    std::cout << "free body" << "\n";
+    std::cout << "free body" << "\n" << ::tpy::check_signals;
     return;
 }
 
@@ -27,13 +27,13 @@ void try_finally() {
     {
         bool __fin_ran_1 = false;
         try {
-            std::cout << "try body" << "\n";
+            std::cout << "try body" << "\n" << ::tpy::check_signals;
             __fin_ran_1 = true;
-            std::cout << "try finally" << "\n";
+            std::cout << "try finally" << "\n" << ::tpy::check_signals;
             return;
         } catch (...) {
             if (!__fin_ran_1) {
-                std::cout << "try finally" << "\n";
+                std::cout << "try finally" << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -50,7 +50,7 @@ void with_body() {
     __ctx_1.__enter__();
     bool __fin_ran_2 = false;
     try {
-        std::cout << "with body" << "\n";
+        std::cout << "with body" << "\n" << ::tpy::check_signals;
         __fin_ran_2 = true;
         __ctx_1.__exit__({}, nullptr, {});
         return;
@@ -77,11 +77,11 @@ void match_arm(int32_t k) {
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
     case 0: {
-        std::cout << "match zero" << "\n";
+        std::cout << "match zero" << "\n" << ::tpy::check_signals;
         return;
     }
     default: {
-        std::cout << "match other" << "\n";
+        std::cout << "match other" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -96,7 +96,7 @@ void match_arm(int32_t k) {
 //     inner()
 void closure_host() {
     auto inner = []() {
-        std::cout << "closure inner" << "\n";
+        std::cout << "closure inner" << "\n" << ::tpy::check_signals;
         return;
     };
     inner();
@@ -107,7 +107,7 @@ void closure_host() {
 //     print("unann body")
 //     return None  # tpyc: ok
 void unannotated() {
-    std::cout << "unann body" << "\n";
+    std::cout << "unann body" << "\n" << ::tpy::check_signals;
     return;
 }
 
@@ -122,7 +122,7 @@ std::expected<void, Bad> er_step(bool ok) {
     if ((!(ok))) {
         return ::tpy::make_unexpected(Bad{});
     }
-    std::cout << "er body" << "\n";
+    std::cout << "er body" << "\n" << ::tpy::check_signals;
     return {};
 }
 
@@ -156,7 +156,7 @@ __gen_gen_bare gen_bare() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "async body" << "\n";
+        std::cout << "async body" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -190,18 +190,18 @@ __coro_aret aret() {
                 if ((k > 0)) {
                     std::optional<int32_t> __tpy_async_ret_0 = k;
                     __fin_ran_3 = true;
-                    std::cout << "opt_async_finally done" << "\n";
+                    std::cout << "opt_async_finally done" << "\n" << ::tpy::check_signals;
                     __state = S_DONE;
                     return ::tpystd::tpy::Poll<std::optional<int32_t>>::ready(std::move(__tpy_async_ret_0));
                 }
                 std::optional<int32_t> __tpy_async_ret_1 = std::nullopt;
                 __fin_ran_3 = true;
-                std::cout << "opt_async_finally done" << "\n";
+                std::cout << "opt_async_finally done" << "\n" << ::tpy::check_signals;
                 __state = S_DONE;
                 return ::tpystd::tpy::Poll<std::optional<int32_t>>::ready(std::move(__tpy_async_ret_1));
             } catch (...) {
                 if (!__fin_ran_3) {
-                    std::cout << "opt_async_finally done" << "\n";
+                    std::cout << "opt_async_finally done" << "\n" << ::tpy::check_signals;
                 }
                 throw;
             }
@@ -255,7 +255,7 @@ __coro_opt_async_finally opt_async_finally(int32_t k) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         zero = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << "opt_async_finally" << " " << ::tpy::print_optional_val(pos) << " " << ::tpy::print_optional_val(zero) << "\n";
+        std::cout << "opt_async_finally" << " " << ::tpy::print_optional_val(pos) << " " << ::tpy::print_optional_val(zero) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -370,7 +370,7 @@ void main() {
     ::tpyapp::main::free_fn();
     Rec r = Rec(1);
     r.bump();
-    std::cout << "method" << " " << r.n << "\n";
+    std::cout << "method" << " " << r.n << "\n" << ::tpy::check_signals;
     Rec::announce();
     ::tpyapp::main::try_finally();
     ::tpyapp::main::with_body();
@@ -390,24 +390,24 @@ void main() {
         goto __after_try_1;
         // except Bad:
         __except_1:;
-        std::cout << "er caught" << "\n";
+        std::cout << "er caught" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
-    std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen())) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_bare())) << "\n";
+    std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen())) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_bare())) << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain()));
-    std::cout << "opt_int_bare" << " " << ::tpy::print_optional_val(::tpyapp::main::opt_int_bare(1)) << " " << ::tpy::print_optional_val(::tpyapp::main::opt_int_bare(0)) << "\n";
+    std::cout << "opt_int_bare" << " " << ::tpy::print_optional_val(::tpyapp::main::opt_int_bare(1)) << " " << ::tpy::print_optional_val(::tpyapp::main::opt_int_bare(0)) << "\n" << ::tpy::check_signals;
     Rec store = Rec(10);
     Rec* found = ::tpyapp::main::opt_rec_bare(store, true);
     if ((found != nullptr)) {
         found->n = 11;
     }
-    std::cout << "opt_rec_bare" << " " << store.n << " " << ::tpy::print_bool((::tpyapp::main::opt_rec_bare(store, false) == nullptr)) << "\n";
-    std::cout << "opt_int_none" << " " << ::tpy::print_optional_val(::tpyapp::main::opt_int_none(1)) << " " << ::tpy::print_optional_val(::tpyapp::main::opt_int_none(0)) << "\n";
-    std::cout << "opt_str_none" << " " << ::tpy::print_optional_val(::tpyapp::main::opt_str_none(1)) << " " << ::tpy::print_optional_val(::tpyapp::main::opt_str_none(0)) << "\n";
+    std::cout << "opt_rec_bare" << " " << store.n << " " << ::tpy::print_bool((::tpyapp::main::opt_rec_bare(store, false) == nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << "opt_int_none" << " " << ::tpy::print_optional_val(::tpyapp::main::opt_int_none(1)) << " " << ::tpy::print_optional_val(::tpyapp::main::opt_int_none(0)) << "\n" << ::tpy::check_signals;
+    std::cout << "opt_str_none" << " " << ::tpy::print_optional_val(::tpyapp::main::opt_str_none(1)) << " " << ::tpy::print_optional_val(::tpyapp::main::opt_str_none(0)) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, int32_t, std::string> pos = ::tpyapp::main::union_bare(1);
     ::tpy::Union<std::monostate, int32_t, std::string> neg = ::tpyapp::main::union_bare(-1);
     ::tpy::Union<std::monostate, int32_t, std::string> zero = ::tpyapp::main::union_bare(0);
-    std::cout << "union_bare" << " " << ::tpy::__str__(pos) << " " << ::tpy::__str__(neg) << " " << ::tpy::__str__(zero) << "\n";
+    std::cout << "union_bare" << " " << ::tpy::__str__(pos) << " " << ::tpy::__str__(neg) << " " << ::tpy::__str__(zero) << "\n" << ::tpy::check_signals;
 }
 
 // # `return None` and bare `return` are one statement: at a void slot both emit

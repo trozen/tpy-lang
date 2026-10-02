@@ -44,13 +44,13 @@ int32_t read_through_call(Box& b) {
 //     print(read_through_call(Box()))
 void main() {
     std::vector<int32_t> xs = {10, 20, 30};
-    std::cout << ::tpyapp::main::first(xs) << "\n";
-    std::cout << ::tpyapp::main::at(xs, 2) << "\n";
-    std::cout << ::tpyapp::main::sum_two(xs, 0, 1) << "\n";
+    std::cout << ::tpyapp::main::first(xs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::at(xs, 2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_two(xs, 0, 1) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, int32_t> scores = ::tpy::ordered_map<int32_t, int32_t>({{1, 100}, {2, 200}});
-    std::cout << ::tpyapp::main::dget(scores, 2) << "\n";
+    std::cout << ::tpyapp::main::dget(scores, 2) << "\n" << ::tpy::check_signals;
     Box __tmp_1 = Box();
-    std::cout << ::tpyapp::main::read_through_call(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::read_through_call(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -200,17 +200,17 @@ __coro_via_async via_async(::tpyapp::keeper::Rec& r) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         a.emplace(::tpyapp::keeper::Rec(0));
-        std::cout << "local" << " " << ::tpyapp::main::via_local((*a)) << "\n";
-        std::cout << "field" << " " << ::tpyapp::main::via_field((*a)) << "\n";
-        std::cout << "global" << " " << ::tpyapp::main::via_global((*a)) << "\n";
-        std::cout << "static" << " " << ::tpyapp::main::via_static((*a)) << "\n";
-        std::cout << "class" << " " << ::tpyapp::main::via_class((*a)) << "\n";
-        std::cout << "super" << " " << ::tpyapp::main::via_super((*a)) << "\n";
-        std::cout << "ctor" << " " << ::tpyapp::main::via_ctor((*a)) << "\n";
-        std::cout << "comp" << " " << ::tpyapp::main::via_comp((*a)) << "\n";
-        std::cout << "with" << " " << ::tpyapp::main::via_with((*a)) << "\n";
-        std::cout << "finally" << " " << ::tpyapp::main::via_finally((*a)) << "\n";
-        std::cout << "free" << " " << ::tpyapp::main::via_free((*a)) << "\n";
+        std::cout << "local" << " " << ::tpyapp::main::via_local((*a)) << "\n" << ::tpy::check_signals;
+        std::cout << "field" << " " << ::tpyapp::main::via_field((*a)) << "\n" << ::tpy::check_signals;
+        std::cout << "global" << " " << ::tpyapp::main::via_global((*a)) << "\n" << ::tpy::check_signals;
+        std::cout << "static" << " " << ::tpyapp::main::via_static((*a)) << "\n" << ::tpy::check_signals;
+        std::cout << "class" << " " << ::tpyapp::main::via_class((*a)) << "\n" << ::tpy::check_signals;
+        std::cout << "super" << " " << ::tpyapp::main::via_super((*a)) << "\n" << ::tpy::check_signals;
+        std::cout << "ctor" << " " << ::tpyapp::main::via_ctor((*a)) << "\n" << ::tpy::check_signals;
+        std::cout << "comp" << " " << ::tpyapp::main::via_comp((*a)) << "\n" << ::tpy::check_signals;
+        std::cout << "with" << " " << ::tpyapp::main::via_with((*a)) << "\n" << ::tpy::check_signals;
+        std::cout << "finally" << " " << ::tpyapp::main::via_finally((*a)) << "\n" << ::tpy::check_signals;
+        std::cout << "free" << " " << ::tpyapp::main::via_free((*a)) << "\n" << ::tpy::check_signals;
         {
             auto __src_0 = ::tpyapp::main::via_gen((*a));
             auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -218,7 +218,7 @@ __coro_via_async via_async(::tpyapp::keeper::Rec& r) {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 int32_t x = ::tpy::unwrap_ref(*__r_1);
-                std::cout << "gen" << " " << x << "\n";
+                std::cout << "gen" << " " << x << "\n" << ::tpy::check_signals;
             }
         }
         __sub_0.emplace((*a));
@@ -230,8 +230,8 @@ __coro_via_async via_async(::tpyapp::keeper::Rec& r) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "async" << " " << __await_lift_0 << "\n";
-        std::cout << "total" << " " << (*a).v << "\n";
+        std::cout << "async" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
+        std::cout << "total" << " " << (*a).v << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

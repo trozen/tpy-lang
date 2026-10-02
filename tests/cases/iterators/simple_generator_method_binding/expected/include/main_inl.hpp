@@ -34,7 +34,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Source_gen::__next__()
                 continue;
             } else {
                 if ((i == static_cast<int32_t>(Color::GREEN))) {
-                    std::cout << "green" << "\n";
+                    std::cout << "green" << "\n" << ::tpy::check_signals;
                 }
                 __state = S_RESUME_0;
                 return i;

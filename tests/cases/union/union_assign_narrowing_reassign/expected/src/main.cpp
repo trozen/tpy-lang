@@ -12,10 +12,10 @@ namespace tpyapp::main {
 void check(::tpy::Union<const Circle*, const Rect*> s) {
     if (std::holds_alternative<const Circle*>(s)) {
         auto& __s = *std::get<const Circle*>(s);
-        std::cout << ::tpy::print_float(__s.radius) << "\n";
+        std::cout << ::tpy::print_float(__s.radius) << "\n" << ::tpy::check_signals;
     } else {
         auto& __s = *std::get<const Rect*>(s);
-        std::cout << ::tpy::print_float(__s.width) << "\n";
+        std::cout << ::tpy::print_float(__s.width) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -29,12 +29,12 @@ void main() {
     std::optional<::tpy::Union<Circle, Rect>> __slot_2;
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(1.0);
     ::tpy::Union<Circle*, Rect*> s = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << ::tpy::print_float((*std::get<Circle*>(s)).radius) << "\n";
+    std::cout << ::tpy::print_float((*std::get<Circle*>(s)).radius) << "\n" << ::tpy::check_signals;
     __slot_2.emplace(Rect(3.0, 4.0));
     s = ::tpy::to_ptr_variant(*__slot_2);
     if (std::holds_alternative<Rect*>(s)) {
         auto& __s = *std::get<Rect*>(s);
-        std::cout << ::tpy::print_float(__s.width) << "\n";
+        std::cout << ::tpy::print_float(__s.width) << "\n" << ::tpy::check_signals;
     }
 }
 

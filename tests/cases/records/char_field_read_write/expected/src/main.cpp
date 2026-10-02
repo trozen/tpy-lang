@@ -21,7 +21,7 @@ char swap(P& p, char z) {
 //         print(p.c)
 void show(const P& p) {
     if ((p.c == 'x')) {
-        std::cout << p.c << "\n";
+        std::cout << p.c << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -39,8 +39,8 @@ void main() {
     char x = 'x';
     P p = P(x);
     ::tpyapp::main::show(p);
-    std::cout << ::tpyapp::main::swap(p, z) << "\n";
-    std::cout << p.get() << "\n";
+    std::cout << ::tpyapp::main::swap(p, z) << "\n" << ::tpy::check_signals;
+    std::cout << p.get() << "\n" << ::tpy::check_signals;
     p.put(x);
     ::tpyapp::main::show(p);
 }

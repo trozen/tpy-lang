@@ -94,26 +94,26 @@ void main() {
     Holder h = Holder();
     std::vector<int32_t> got = ::tpyapp::main::take_container(h);
     got.push_back(3);
-    std::cout << ::tpy::__len__(h.items) << " " << ::tpy::__len__(got) << "\n";
+    std::cout << ::tpy::__len__(h.items) << " " << ::tpy::__len__(got) << "\n" << ::tpy::check_signals;
     Payload rec = ::tpyapp::main::take_record(h);
     rec.n = 42;
-    std::cout << h.p.n << " " << rec.n << "\n";
+    std::cout << h.p.n << " " << rec.n << "\n" << ::tpy::check_signals;
     Payload rec_free = ::tpyapp::main::take_record_free(h);
     rec_free.n = 43;
-    std::cout << h.p.n << " " << rec_free.n << "\n";
+    std::cout << h.p.n << " " << rec_free.n << "\n" << ::tpy::check_signals;
     Payload rec_field = ::tpyapp::main::take_record_field(h);
     rec_field.n = 44;
-    std::cout << h.p.n << " " << rec_field.n << "\n";
+    std::cout << h.p.n << " " << rec_field.n << "\n" << ::tpy::check_signals;
     Payload rec_if = ::tpyapp::main::take_record_ifexpr(h, false);
     rec_if.n = 45;
-    std::cout << h.p.n << " " << rec_if.n << "\n";
+    std::cout << h.p.n << " " << rec_if.n << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> rows = {{5}};
     std::vector<int32_t> free = ::tpyapp::main::take_free(rows);
     free.push_back(6);
-    std::cout << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << " " << ::tpy::__len__(free) << "\n";
+    std::cout << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << " " << ::tpy::__len__(free) << "\n" << ::tpy::check_signals;
     h.items.push_back(9);
     h.p.n = 7;
-    std::cout << ::tpy::__len__(h.items) << " " << ::tpy::__len__(got) << " " << h.p.n << " " << rec.n << "\n";
+    std::cout << ::tpy::__len__(h.items) << " " << ::tpy::__len__(got) << " " << h.p.n << " " << rec.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

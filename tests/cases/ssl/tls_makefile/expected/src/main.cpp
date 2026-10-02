@@ -120,7 +120,7 @@ void main() {
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
     if ((!(::tpyapp::main::drive(cli, srv)))) {
-        std::cout << "FAIL: handshake did not converge" << "\n";
+        std::cout << "FAIL: handshake did not converge" << "\n" << ::tpy::check_signals;
         return;
     }
     cli.setblocking(true);
@@ -128,12 +128,12 @@ void main() {
     srv.sendall(::tpy::bytes_literal("first line\nsecond line\ntail without newline", 43));
     srv.close();
     ::tpystd::io::BufferedReader reader = cli.makefile();
-    std::cout << "l1:" << " " << ::tpy::str_rstrip(::tpy::bytes_decode(reader.readline())) << "\n";
+    std::cout << "l1:" << " " << ::tpy::str_rstrip(::tpy::bytes_decode(reader.readline())) << "\n" << ::tpy::check_signals;
     cli.close();
-    std::cout << "l2:" << " " << ::tpy::str_rstrip(::tpy::bytes_decode(reader.readline())) << "\n";
+    std::cout << "l2:" << " " << ::tpy::str_rstrip(::tpy::bytes_decode(reader.readline())) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes rest = reader.read();
-    std::cout << "rest:" << " " << ::tpy::bytes_decode(rest) << "\n";
-    std::cout << "eof:" << " " << ::tpy::print_bool((::tpy::__len__(reader.read()) == 0)) << "\n";
+    std::cout << "rest:" << " " << ::tpy::bytes_decode(rest) << "\n" << ::tpy::check_signals;
+    std::cout << "eof:" << " " << ::tpy::print_bool((::tpy::__len__(reader.read()) == 0)) << "\n" << ::tpy::check_signals;
     reader.close();
 }
 

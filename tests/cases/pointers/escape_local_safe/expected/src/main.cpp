@@ -18,7 +18,7 @@ void loop_escape_copy_ok() {
         Point p = Point(i, i);
         (*saved) = Point(p);
     }
-    std::cout << saved->x << " " << saved->y << "\n";
+    std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
 
 // # Rvalue in loop: no escape (fresh storage)
@@ -33,7 +33,7 @@ void loop_rvalue_ok() {
     for (int32_t i = 0; i < 3; ++i) {
         (*saved) = Point(i, i);
     }
-    std::cout << saved->x << " " << saved->y << "\n";
+    std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
 
 // # For-each from outer-scoped container: safe
@@ -54,7 +54,7 @@ void foreach_outer_container() {
         auto&& p = *__beg_0;
         saved = &(p);
     }
-    std::cout << saved->x << " " << saved->y << "\n";
+    std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
 
 // # Value type: no escape concern
@@ -70,7 +70,7 @@ void value_type_ok() {
         int32_t n = (::tpy::mul_check<int32_t>(i, 10));
         saved = n;
     }
-    std::cout << saved << "\n";
+    std::cout << saved << "\n" << ::tpy::check_signals;
 }
 
 // # For-each var name reused: p first declared inside a loop, then reused
@@ -100,7 +100,7 @@ void foreach_shadow_safe() {
         auto&& p = *__beg_1;
         saved = &(p);
     }
-    std::cout << saved->x << " " << saved->y << "\n";
+    std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
 
 // # Sequential loops with same var name: first loop's depth must not
@@ -132,7 +132,7 @@ void sequential_loops_same_var() {
         auto&& p = *__beg_1;
         saved = &(p);
     }
-    std::cout << saved->x << " " << saved->y << "\n";
+    std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
 
 // # Same-scope assignment: both vars at same depth, no escape.
@@ -143,7 +143,7 @@ void sequential_loops_same_var() {
 void same_scope_ok() {
     Point a = Point(1, 1);
     Point b = std::move(a);
-    std::cout << b.x << "\n";
+    std::cout << b.x << "\n" << ::tpy::check_signals;
 }
 
 // # Lvalue-init pointer-local with rvalue rebind in loop: rebind slot
@@ -168,7 +168,7 @@ void lvalue_init_rvalue_rebind() {
             best = &*(__slot_1 = Point(p));
         }
     }
-    std::cout << best->x << " " << best->y << "\n";
+    std::cout << best->x << " " << best->y << "\n" << ::tpy::check_signals;
 }
 
 // # Rvalue-init pointer-local: alias preserves original value after rebind.
@@ -185,8 +185,8 @@ void rvalue_alias_preserved() {
     Point* p = &__slot_1;
     Point& alias = (*p);
     p = &*(__slot_2 = Point(2, 2));
-    std::cout << alias.x << " " << alias.y << "\n";
-    std::cout << p->x << " " << p->y << "\n";
+    std::cout << alias.x << " " << alias.y << "\n" << ::tpy::check_signals;
+    std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
 }
 
 // # Rvalue rebind in one if-branch only.
@@ -201,7 +201,7 @@ void if_branch_rvalue_rebind() {
     if ((p->x > 0)) {
         (*p) = Point(2, 2);
     }
-    std::cout << p->x << " " << p->y << "\n";
+    std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
 }
 
 // # Different rvalue rebinds in if vs else.
@@ -220,7 +220,7 @@ void if_else_rvalue_rebinds() {
     } else {
         (*p) = Point(3, 3);
     }
-    std::cout << p->x << " " << p->y << "\n";
+    std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
 }
 
 // # Alias preserved through if-branch rvalue rebind.
@@ -239,8 +239,8 @@ void if_alias_preserved() {
     if ((p->x > 0)) {
         p = &*(__slot_2 = Point(2, 2));
     }
-    std::cout << alias.x << " " << alias.y << "\n";
-    std::cout << p->x << " " << p->y << "\n";
+    std::cout << alias.x << " " << alias.y << "\n" << ::tpy::check_signals;
+    std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
 }
 
 // # Rvalue rebind inside while loop.
@@ -259,7 +259,7 @@ void while_rvalue_rebind() {
         (*p) = Point(i, i);
         i = (::tpy::add_check<int32_t>(i, 1));
     }
-    std::cout << p->x << " " << p->y << "\n";
+    std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
 }
 
 // loop_escape_copy_ok()

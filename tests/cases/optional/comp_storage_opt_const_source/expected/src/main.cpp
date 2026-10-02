@@ -27,7 +27,7 @@ void from_readonly(const std::vector<std::optional<P>>& items) {
             __result.push_back((((v.has_value())) ? ((*v).x) : (-1)));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_1 = items;
@@ -39,7 +39,7 @@ void from_readonly(const std::vector<std::optional<P>>& items) {
             __result.push_back(::tpyapp::main::peek(::tpy::optional_to_ptr(v)));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
 }
 
 // def from_inferred(items: list[P | None]) -> None:
@@ -57,7 +57,7 @@ void from_inferred(const std::vector<std::optional<P>>& items) {
             __result.push_back((((v.has_value())) ? ((*v).x) : (-1)));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
 }
 
 // def from_local() -> None:
@@ -77,7 +77,7 @@ void from_local() {
             __result.push_back((((v.has_value())) ? ((*v).x) : (-1)));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(({
         ::tpy::ordered_set<int32_t> __result;
         auto& __obj_1 = xs;
@@ -88,7 +88,7 @@ void from_local() {
             __result.insert(::tpyapp::main::peek(::tpy::optional_to_ptr(v)));
         }
         std::move(__result);
-    }))) << "\n";
+    }))) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

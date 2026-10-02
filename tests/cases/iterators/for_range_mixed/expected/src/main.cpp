@@ -42,13 +42,13 @@ void __tpy_init() {
             break;
         }
     }
-    std::cout << count << "\n";
+    std::cout << count << "\n" << ::tpy::check_signals;
     end = 5;
     big_start = ((::tpy::BigInt(1)) << (::tpy::BigInt(40)));
     ::tpy::BigInt __start_1 = big_start;
     ::tpy::BigInt __stop_1 = ((big_start) + (::tpy::BigInt(end)));
     for (::tpy::BigInt i = __start_1; i < __stop_1; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
 }
 

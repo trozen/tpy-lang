@@ -83,7 +83,7 @@ int32_t block_shadow() {
         int32_t __unpack_0_1 = 2;
         half = __unpack_0_0;
         int32_t extra = __unpack_0_1;
-        std::cout << "inner" << " " << half << " " << extra << "\n";
+        std::cout << "inner" << " " << half << " " << extra << "\n" << ::tpy::check_signals;
     }
     return half;
 }
@@ -97,7 +97,7 @@ int32_t block_shadow() {
 void shadows() {
     int32_t tag = 7;
     std::string_view count = "seven";
-    std::cout << "shadow" << " " << tag << " " << count << "\n";
+    std::cout << "shadow" << " " << tag << " " << count << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -134,11 +134,11 @@ void shadows() {
 //     shadows()
 //     print("globals", tag, count)
 void main() {
-    std::cout << "module" << " " << half << "\n";
-    std::cout << "free" << " " << ::tpyapp::main::free_fn() << "\n";
-    std::cout << "method" << " " << Sizer(2).scaled() << "\n";
-    std::cout << "qualified" << " " << ::tpyapp::consts::WIDTH << " " << ::tpyapp::consts::label << " " << ::tpy::__len__((*::tpyapp::consts::sizes)) << "\n";
-    std::cout << "comprehension" << " " << ::tpyapp::main::comp_total() << "\n";
+    std::cout << "module" << " " << half << "\n" << ::tpy::check_signals;
+    std::cout << "free" << " " << ::tpyapp::main::free_fn() << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << Sizer(2).scaled() << "\n" << ::tpy::check_signals;
+    std::cout << "qualified" << " " << ::tpyapp::consts::WIDTH << " " << ::tpyapp::consts::label << " " << ::tpy::__len__((*::tpyapp::consts::sizes)) << "\n" << ::tpy::check_signals;
+    std::cout << "comprehension" << " " << ::tpyapp::main::comp_total() << "\n" << ::tpy::check_signals;
     int32_t gtotal = 0;
     {
         auto __src_0 = ::tpyapp::main::gen_sizes();
@@ -150,21 +150,21 @@ void main() {
             gtotal = ::tpy::add_check<int32_t>(gtotal, g);
         }
     }
-    std::cout << "generator" << " " << gtotal << "\n";
-    std::cout << "closure" << " " << ::tpyapp::main::closure_sum() << "\n";
-    std::cout << "scalars" << " " << ::tpyapp::consts::label << " " << ::tpy::__len__((*::tpyapp::consts::sizes)) << " " << ::tpyapp::consts::step << "\n";
+    std::cout << "generator" << " " << gtotal << "\n" << ::tpy::check_signals;
+    std::cout << "closure" << " " << ::tpyapp::main::closure_sum() << "\n" << ::tpy::check_signals;
+    std::cout << "scalars" << " " << ::tpyapp::consts::label << " " << ::tpy::__len__((*::tpyapp::consts::sizes)) << " " << ::tpyapp::consts::step << "\n" << ::tpy::check_signals;
     ::tpyapp::consts::sizes->push_back(4);
-    std::cout << "alias" << " " << ::tpy::__len__((*::tpyapp::consts::sizes)) << " " << ::tpy::__len__((*::tpyapp::consts::sizes)) << "\n";
+    std::cout << "alias" << " " << ::tpy::__len__((*::tpyapp::consts::sizes)) << " " << ::tpy::__len__((*::tpyapp::consts::sizes)) << "\n" << ::tpy::check_signals;
     int32_t blocked = ::tpyapp::main::block_shadow();
-    std::cout << "block" << " " << blocked << "\n";
-    std::cout << "star" << " " << ::tpyapp::starmod::depth << "\n";
+    std::cout << "block" << " " << blocked << "\n" << ::tpy::check_signals;
+    std::cout << "star" << " " << ::tpyapp::starmod::depth << "\n" << ::tpy::check_signals;
     ::tpyapp::consts::Counter& borrowed = ::tpyapp::consts::get_shared();
     borrowed.n = 9;
-    std::cout << "borrow" << " " << ::tpyapp::consts::shared->n << "\n";
+    std::cout << "borrow" << " " << ::tpyapp::consts::shared->n << "\n" << ::tpy::check_signals;
     ::tpyapp::consts::bump();
-    std::cout << "rebind" << " " << ::tpyapp::consts::shared->n << " " << ::tpyapp::consts::tally << "\n";
+    std::cout << "rebind" << " " << ::tpyapp::consts::shared->n << " " << ::tpyapp::consts::tally << "\n" << ::tpy::check_signals;
     ::tpyapp::main::shadows();
-    std::cout << "globals" << " " << tag << " " << count << "\n";
+    std::cout << "globals" << " " << tag << " " << count << "\n" << ::tpy::check_signals;
 }
 
 // # An UNANNOTATED module-level binding is exported like an annotated one:

@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print(b.x)         # 10
 void main() {
     ::tpystd::tplib::box::Box<State> b = ::tpystd::tplib::box::Box<State>(State(1));
-    std::cout << b.__deref__().x << "\n";
+    std::cout << b.__deref__().x << "\n" << ::tpy::check_signals;
     b.__deref__().x = 10;
-    std::cout << b.__deref__().x << "\n";
+    std::cout << b.__deref__().x << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

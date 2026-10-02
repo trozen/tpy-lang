@@ -19,7 +19,7 @@ __gen_gen gen(int32_t n, int32_t brk) {
 //     for v in gen(3, 1):
 //         print(v)
 void main() {
-    std::cout << "no break:" << "\n";
+    std::cout << "no break:" << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen(3, 99);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -27,10 +27,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "break:" << "\n";
+    std::cout << "break:" << "\n" << ::tpy::check_signals;
     {
         auto __src_2 = ::tpyapp::main::gen(3, 1);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -38,7 +38,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
 }

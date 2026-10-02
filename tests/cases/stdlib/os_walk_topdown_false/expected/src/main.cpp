@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def report(e: readonly[OSError]) -> None:
 //     print("onerror fired")
 void report(const ::tpy::OSError& e) {
-    std::cout << "onerror fired" << "\n";
+    std::cout << "onerror fired" << "\n" << ::tpy::check_signals;
 }
 
 // def walk_rows(root: str) -> Own[list[str]]:
@@ -222,15 +222,15 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view r = *__beg_0;
-        std::cout << r << "\n";
+        std::cout << r << "\n" << ::tpy::check_signals;
     }
-    std::cout << "post-order ok:" << " " << ::tpy::print_bool(::tpyapp::main::order_ok(root)) << "\n";
+    std::cout << "post-order ok:" << " " << ::tpy::print_bool(::tpyapp::main::order_ok(root)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::teardown(root);
     std::string_view missing = "tpy_oswalk_bu_missing";
     ::tpy::BigInt n1 = ::tpyapp::main::yields(missing, report);
-    std::cout << "named yields:" << " " << n1 << "\n";
+    std::cout << "named yields:" << " " << n1 << "\n" << ::tpy::check_signals;
     ::tpy::BigInt n2 = ::tpyapp::main::yields(missing, std::nullopt);
-    std::cout << "default yields:" << " " << n2 << "\n";
+    std::cout << "default yields:" << " " << n2 << "\n" << ::tpy::check_signals;
 }
 
 // # os.walk(topdown=False): bottom-up post-order (each dir after its subdirs).

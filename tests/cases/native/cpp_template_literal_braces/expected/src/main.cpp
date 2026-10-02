@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(lambda_sum(20, 22))
 //     print(square(7))
 void main() {
-    std::cout << []() { return 20 + 22; }() << "\n";
-    std::cout << ({ int t = 7; t * t; }) << "\n";
+    std::cout << []() { return 20 + 22; }() << "\n" << ::tpy::check_signals;
+    std::cout << ({ int t = 7; t * t; }) << "\n" << ::tpy::check_signals;
 }
 
 // # @cpp_template free functions with literal C++ braces, spelled via the

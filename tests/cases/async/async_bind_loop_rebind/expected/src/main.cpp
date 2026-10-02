@@ -55,7 +55,7 @@ __coro_add_one add_one(::tpy::BigInt n) {
     }
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
-            std::cout << total << "\n";
+            std::cout << total << "\n" << ::tpy::check_signals;
             __state = S_DONE;
             return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }

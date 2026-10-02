@@ -36,18 +36,18 @@ namespace tpyapp::main {
 //     print(z)
 void main() {
     char c = 'A';
-    std::cout << (::tpy::str_concat("hello", ::tpy::char_to_str(c))) << "\n";
-    std::cout << (::tpy::str_concat(::tpy::char_to_str(c), "hello")) << "\n";
-    std::cout << (::tpy::str_concat(::tpy::char_to_str(c), ::tpy::char_to_str(c))) << "\n";
-    std::cout << (::tpy::str_repeat(::tpy::char_to_str(c), 3)) << "\n";
-    std::cout << (::tpy::str_repeat(::tpy::char_to_str(c), 3)) << "\n";
-    std::cout << ::tpy::__len__(c) << "\n";
+    std::cout << (::tpy::str_concat("hello", ::tpy::char_to_str(c))) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat(::tpy::char_to_str(c), "hello")) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat(::tpy::char_to_str(c), ::tpy::char_to_str(c))) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_repeat(::tpy::char_to_str(c), 3)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_repeat(::tpy::char_to_str(c), 3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(c) << "\n" << ::tpy::check_signals;
     std::string_view s = "B";
-    std::cout << ::tpy::ord_str(s) << "\n";
-    std::cout << static_cast<int32_t>(static_cast<unsigned char>(c)) << "\n";
+    std::cout << ::tpy::ord_str(s) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(static_cast<unsigned char>(c)) << "\n" << ::tpy::check_signals;
     std::string_view s2 = "Z";
     char z = ::tpy::char_from_str(s2);
-    std::cout << z << "\n";
+    std::cout << z << "\n" << ::tpy::check_signals;
 }
 
 // main()

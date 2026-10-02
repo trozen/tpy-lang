@@ -124,7 +124,7 @@ inline void Container::iter_then_mutate() {
 inline void Container::ptr_then_mutate() {
     Point* ptr = &::tpy::__getitem__(this->items, 0);
     this->items.push_back(Point(5, 6));
-    std::cout << ::tpy::__len__(this->items) << "\n";
+    std::cout << ::tpy::__len__(this->items) << "\n" << ::tpy::check_signals;
 }
 
 // def safe_subscript_assign(self) -> None:
@@ -135,7 +135,7 @@ inline void Container::ptr_then_mutate() {
 inline void Container::safe_subscript_assign() {
     Point* ptr = &::tpy::__getitem__(this->items, 0);
     ::tpy::__setitem__(this->items, 0, Point(9, 9));
-    std::cout << ::tpy::__len__(this->items) << "\n";
+    std::cout << ::tpy::__len__(this->items) << "\n" << ::tpy::check_signals;
 }
 
 // def aug_assign_field_container(self) -> None:
@@ -146,7 +146,7 @@ inline void Container::safe_subscript_assign() {
 inline void Container::aug_assign_field_container() {
     Point* ptr = &::tpy::__getitem__(this->items, 0);
     ::tpy::list_extend(this->items, std::vector<Point>{Point(5, 6)});
-    std::cout << ::tpy::__len__(this->items) << "\n";
+    std::cout << ::tpy::__len__(this->items) << "\n" << ::tpy::check_signals;
 }
 
 // def field_reassign_while_borrowed(self) -> None:
@@ -157,7 +157,7 @@ inline void Container::aug_assign_field_container() {
 inline void Container::field_reassign_while_borrowed() {
     Point* ptr = &::tpy::__getitem__(this->items, 0);
     this->items = {Point(9, 9)};
-    std::cout << ::tpy::__len__(this->items) << "\n";
+    std::cout << ::tpy::__len__(this->items) << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, p: Point) -> None:

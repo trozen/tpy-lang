@@ -14,7 +14,7 @@ void run_handler(const Handler& h) {
 //     h = Handler(lambda n: print("cb", n))
 //     run_handler(h)
 void main() {
-    Handler h = Handler([](int32_t n) { std::cout << "cb" << " " << n << "\n"; });
+    Handler h = Handler([](int32_t n) { std::cout << "cb" << " " << n << "\n" << ::tpy::check_signals; });
     ::tpyapp::main::run_handler(h);
 }
 

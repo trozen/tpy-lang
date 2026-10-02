@@ -24,13 +24,13 @@ void main() {
     h.tags.insert(30);
     ::tpy::__getitem__(h.grid, 0).push_back(6);
     h.empty_l.push_back(99);
-    std::cout << ::tpy::ListPrinter(h.items) << " " << ::tpy::__len__(h.empty_l) << " " << ::tpy::__len__(h.empty_d) << "\n";
-    std::cout << ::tpy::__getitem__(h.names, 0) << " " << ::tpy::__getitem__(h.names, 1) << " " << (::tpy::add_check<int32_t>(::tpy::__getitem__(h.counts, "k"), ::tpy::__getitem__(h.counts, "j"))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(h.tags)) << " " << (::tpy::add_check<int32_t>(::tpy::__getitem__(h.arr, 0), ::tpy::__getitem__(h.arr, 2))) << "\n";
-    std::cout << ::tpy::__getitem__(h.pts, 0).v << " " << ::tpy::__getitem__(h.pts, 1).v << " " << ::tpy::__getitem__(h.moved, 0).v << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(h.grid, 0)) << " " << ::tpy::ListPrinter(::tpy::__getitem__(h.grid, 1)) << " " << ::tpy::ListPrinter(h.copied) << "\n";
+    std::cout << ::tpy::ListPrinter(h.items) << " " << ::tpy::__len__(h.empty_l) << " " << ::tpy::__len__(h.empty_d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(h.names, 0) << " " << ::tpy::__getitem__(h.names, 1) << " " << (::tpy::add_check<int32_t>(::tpy::__getitem__(h.counts, "k"), ::tpy::__getitem__(h.counts, "j"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(h.tags)) << " " << (::tpy::add_check<int32_t>(::tpy::__getitem__(h.arr, 0), ::tpy::__getitem__(h.arr, 2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(h.pts, 0).v << " " << ::tpy::__getitem__(h.pts, 1).v << " " << ::tpy::__getitem__(h.moved, 0).v << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(h.grid, 0)) << " " << ::tpy::ListPrinter(::tpy::__getitem__(h.grid, 1)) << " " << ::tpy::ListPrinter(h.copied) << "\n" << ::tpy::check_signals;
     h.ones.push_back(2);
-    std::cout << "ones" << " " << ::tpy::ListPrinter(h.ones) << " " << ::tpy::__len__(h.ones) << " " << "one_arr" << " " << ::tpy::ListPrinter(h.one_arr) << "\n";
+    std::cout << "ones" << " " << ::tpy::ListPrinter(h.ones) << " " << ::tpy::__len__(h.ones) << " " << "one_arr" << " " << ::tpy::ListPrinter(h.one_arr) << "\n" << ::tpy::check_signals;
 }
 
 

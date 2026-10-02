@@ -13,7 +13,7 @@ void main() {
     std::vector<int32_t> a = {1, 2, 3};
     std::vector<int32_t> b = {10, 20};
     ::tpy::list_extend(b, ::tpy::own_iter(std::move(a)));
-    std::cout << ::tpy::ListPrinter(b) << "\n";
+    std::cout << ::tpy::ListPrinter(b) << "\n" << ::tpy::check_signals;
 }
 
 // main()

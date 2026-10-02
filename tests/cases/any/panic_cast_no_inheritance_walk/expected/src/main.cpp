@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     ::tpy::Any a = ::tpy::make_any(Dog("Rex"));
     Animal parent = ::tpy::any_cast_or_panic<Animal>(a);
-    std::cout << parent.name << "\n";
+    std::cout << parent.name << "\n" << ::tpy::check_signals;
 }
 
 // main()

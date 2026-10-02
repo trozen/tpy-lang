@@ -28,17 +28,17 @@ namespace tpyapp::main {
 void main() {
     Key a = Key(::tpy::BigInt(42));
     Key b = Key(::tpy::BigInt(42));
-    std::cout << ::tpy::print_bool((::tpy::__hash__(a) == ::tpy::__hash__(b))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__(a) == ::tpy::__hash__(b))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<Key, std::string> d = ::tpy::ordered_map<Key, std::string>();
     ::tpy::__setitem__(d, a, "hello");
-    std::cout << ::tpy::__getitem__(d, b) << "\n";
+    std::cout << ::tpy::__getitem__(d, b) << "\n" << ::tpy::check_signals;
     Key c = Key(::tpy::BigInt(-1));
     Key e = Key(::tpy::BigInt(-1));
-    std::cout << ::tpy::print_bool((::tpy::__hash__(c) == ::tpy::__hash__(e))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::__hash__(c) == ::tpy::__hash__(a))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__(c) == ::tpy::__hash__(e))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::__hash__(c) == ::tpy::__hash__(a))) << "\n" << ::tpy::check_signals;
     Key big = Key(((::tpy::BigInt(10)).pow(::tpy::BigInt(30))));
     Key big2 = Key(((::tpy::BigInt(10)).pow(::tpy::BigInt(30))));
-    std::cout << ::tpy::print_bool((::tpy::__hash__(big) == ::tpy::__hash__(big2))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__(big) == ::tpy::__hash__(big2))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

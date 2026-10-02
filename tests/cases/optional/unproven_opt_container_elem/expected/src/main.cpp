@@ -23,7 +23,7 @@ std::vector<P> make() {
 int32_t free_fn(const std::vector<P>* d) {
     int32_t n = 0;
     n = ::tpy::add_check<int32_t>(n, ::tpy::__getitem__(::tpy::deref_check(d), 0).x);
-    std::cout << "free print" << " " << ::tpy::__getitem__(::tpy::deref_check(d), 0).x << "\n";
+    std::cout << "free print" << " " << ::tpy::__getitem__(::tpy::deref_check(d), 0).x << "\n" << ::tpy::check_signals;
     return n;
 }
 
@@ -83,7 +83,7 @@ __coro_coro coro(std::vector<P>* d) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "async" << " " << __await_lift_0 << "\n";
+        std::cout << "async" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -137,11 +137,11 @@ int32_t try_finally(const std::vector<P>* d) {
         try {
             int32_t __tpy_ret_0 = ::tpy::__getitem__(::tpy::deref_check(d), 0).x;
             __fin_ran_1 = true;
-            std::cout << "finally ran" << "\n";
+            std::cout << "finally ran" << "\n" << ::tpy::check_signals;
             return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_1) {
-                std::cout << "finally ran" << "\n";
+                std::cout << "finally ran" << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -218,7 +218,7 @@ void decl_alias(std::vector<std::optional<Rec>>* xs) {
     if ((r != nullptr)) {
         r->n = 9;
     }
-    std::cout << "decl alias" << " " << ::tpy::deref_optional_check(::tpy::__getitem__(::tpy::deref_check(xs), 0)).n << "\n";
+    std::cout << "decl alias" << " " << ::tpy::deref_optional_check(::tpy::__getitem__(::tpy::deref_check(xs), 0)).n << "\n" << ::tpy::check_signals;
 }
 
 // def is_none(xs: list[Rec | None] | None) -> bool:
@@ -268,7 +268,7 @@ int32_t bytes_elem(const std::vector<::tpy::Bytes>* d) {
 void owned_after_mutation(std::vector<std::string>* d) {
     std::string t = ::tpy::__getitem__(::tpy::deref_check(d), 0);
     ::tpy::deref_check(d).clear();
-    std::cout << "owned after mutation" << " " << t << "\n";
+    std::cout << "owned after mutation" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // def loop_var_elem(rows: list[Optional[list[str]]]) -> None:
@@ -289,7 +289,7 @@ void loop_var_elem(std::vector<std::optional<std::vector<std::string>>>& rows) {
         t = ::tpy::__getitem__(::tpy::deref_optional_check(d), 0);
     }
     rows.clear();
-    std::cout << "loop var elem" << " " << t << "\n";
+    std::cout << "loop var elem" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // def index_read(h: H) -> int32:
@@ -414,9 +414,9 @@ int32_t global_slot() {
 void main() {
     std::vector<P> __tmp_1 = std::vector<P>{P(1)};
     int32_t n = ::tpyapp::main::free_fn(&(__tmp_1));
-    std::cout << "free" << " " << n << "\n";
+    std::cout << "free" << " " << n << "\n" << ::tpy::check_signals;
     std::vector<P> __tmp_2 = std::vector<P>{P(2)};
-    std::cout << "method" << " " << M().meth(&(__tmp_2)) << "\n";
+    std::cout << "method" << " " << M().meth(&(__tmp_2)) << "\n" << ::tpy::check_signals;
     {
         std::vector<P> __tmp_3 = std::vector<P>{P(6)};
         auto __src_0 = ::tpyapp::main::gen(&(__tmp_3));
@@ -425,59 +425,59 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen" << " " << v << "\n";
+            std::cout << "gen" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_main()));
     std::vector<P> __tmp_4 = std::vector<P>{P(8)};
-    std::cout << "closure" << " " << ::tpyapp::main::closure(&(__tmp_4)) << "\n";
+    std::cout << "closure" << " " << ::tpyapp::main::closure(&(__tmp_4)) << "\n" << ::tpy::check_signals;
     std::vector<P> __tmp_5 = std::vector<P>{P(9)};
-    std::cout << "ctor" << " " << Ctor(&(__tmp_5)).k << "\n";
+    std::cout << "ctor" << " " << Ctor(&(__tmp_5)).k << "\n" << ::tpy::check_signals;
     std::vector<P> __tmp_6 = std::vector<P>{P(10)};
-    std::cout << "comprehension" << " " << ::tpy::ListPrinter(::tpyapp::main::comprehension(&(__tmp_6))) << "\n";
+    std::cout << "comprehension" << " " << ::tpy::ListPrinter(::tpyapp::main::comprehension(&(__tmp_6))) << "\n" << ::tpy::check_signals;
     std::vector<P> __tmp_7 = std::vector<P>{P(11)};
     n = ::tpyapp::main::try_finally(&(__tmp_7));
-    std::cout << "try" << " " << n << "\n";
+    std::cout << "try" << " " << n << "\n" << ::tpy::check_signals;
     std::vector<P> __tmp_8 = std::vector<P>{P(12)};
-    std::cout << "match" << " " << ::tpyapp::main::match_arm(&(__tmp_8), 1) << "\n";
-    std::cout << "pointer local" << " " << ::tpyapp::main::pointer_local(true) << "\n";
+    std::cout << "match" << " " << ::tpyapp::main::match_arm(&(__tmp_8), 1) << "\n" << ::tpy::check_signals;
+    std::cout << "pointer local" << " " << ::tpyapp::main::pointer_local(true) << "\n" << ::tpy::check_signals;
     H __tmp_9 = H();
-    std::cout << "field" << " " << ::tpyapp::main::field_recv(__tmp_9) << "\n";
-    std::cout << "own" << " " << ::tpyapp::main::own_param(::tpyapp::main::make()) << "\n";
+    std::cout << "field" << " " << ::tpyapp::main::field_recv(__tmp_9) << "\n" << ::tpy::check_signals;
+    std::cout << "own" << " " << ::tpyapp::main::own_param(::tpyapp::main::make()) << "\n" << ::tpy::check_signals;
     std::vector<P> __tmp_10 = std::vector<P>{P(14)};
-    std::cout << "readonly" << " " << ::tpyapp::main::readonly_param(&(__tmp_10)) << "\n";
+    std::cout << "readonly" << " " << ::tpyapp::main::readonly_param(&(__tmp_10)) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<Rec>> __tmp_11 = std::vector<std::optional<Rec>>{Rec(4)};
     ::tpyapp::main::decl_alias(&(__tmp_11));
     std::vector<std::optional<Rec>> __tmp_12 = std::vector<std::optional<Rec>>{Rec(4)};
     std::vector<std::optional<Rec>> __tmp_13 = std::vector<std::optional<Rec>>{std::nullopt};
-    std::cout << "is none" << " " << ::tpy::print_bool(::tpyapp::main::is_none(&(__tmp_12))) << " " << ::tpy::print_bool(::tpyapp::main::is_none(&(__tmp_13))) << "\n";
+    std::cout << "is none" << " " << ::tpy::print_bool(::tpyapp::main::is_none(&(__tmp_12))) << " " << ::tpy::print_bool(::tpyapp::main::is_none(&(__tmp_13))) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<Rec>> __tmp_14 = std::vector<std::optional<Rec>>{Rec(4)};
     std::vector<std::optional<Rec>> __tmp_15 = std::vector<std::optional<Rec>>{std::nullopt};
-    std::cout << "truthy" << " " << ::tpyapp::main::truthy(&(__tmp_14)) << " " << ::tpyapp::main::truthy(&(__tmp_15)) << "\n";
+    std::cout << "truthy" << " " << ::tpyapp::main::truthy(&(__tmp_14)) << " " << ::tpyapp::main::truthy(&(__tmp_15)) << "\n" << ::tpy::check_signals;
     std::vector<std::string> __tmp_16 = std::vector<std::string>{"ab"};
-    std::cout << "str elem" << " " << ::tpyapp::main::str_elem(&(__tmp_16)) << "\n";
+    std::cout << "str elem" << " " << ::tpyapp::main::str_elem(&(__tmp_16)) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Bytes> __tmp_17 = std::vector<::tpy::Bytes>{::tpy::bytes_literal_owned("xyz", 3)};
-    std::cout << "bytes elem" << " " << ::tpyapp::main::bytes_elem(&(__tmp_17)) << "\n";
+    std::cout << "bytes elem" << " " << ::tpyapp::main::bytes_elem(&(__tmp_17)) << "\n" << ::tpy::check_signals;
     std::vector<std::string> __tmp_18 = std::vector<std::string>{"long enough to live on the heap, not in SSO"};
     ::tpyapp::main::owned_after_mutation(&(__tmp_18));
     std::vector<std::optional<std::vector<std::string>>> __tmp_19 = {std::vector<std::string>{"long enough to live on the heap, not in SSO"}};
     ::tpyapp::main::loop_var_elem(__tmp_19);
     H __tmp_20 = H();
-    std::cout << "index" << " " << ::tpyapp::main::index_read(__tmp_20) << "\n";
+    std::cout << "index" << " " << ::tpyapp::main::index_read(__tmp_20) << "\n" << ::tpy::check_signals;
     std::vector<P> __tmp_21 = std::vector<P>{P(15)};
-    std::cout << "nested field elem" << " " << ::tpyapp::main::nested_field_elem(&(__tmp_21)) << "\n";
+    std::cout << "nested field elem" << " " << ::tpyapp::main::nested_field_elem(&(__tmp_21)) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> __tmp_22 = std::vector<std::vector<int32_t>>{{16, 17}};
-    std::cout << "nested elem" << " " << ::tpyapp::main::nested_elem(&(__tmp_22)) << "\n";
+    std::cout << "nested elem" << " " << ::tpyapp::main::nested_elem(&(__tmp_22)) << "\n" << ::tpy::check_signals;
     std::vector<P> __tmp_23 = std::vector<P>{P(18)};
-    std::cout << "unpack" << " " << ::tpyapp::main::unpack_source(&(__tmp_23)) << "\n";
+    std::cout << "unpack" << " " << ::tpyapp::main::unpack_source(&(__tmp_23)) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<std::vector<int32_t>>> __tmp_24 = {std::vector<int32_t>{19}, std::vector<int32_t>{20}};
-    std::cout << "storage loop var" << " " << ::tpy::ListPrinter(::tpyapp::main::storage_loop_var(__tmp_24)) << "\n";
+    std::cout << "storage loop var" << " " << ::tpy::ListPrinter(::tpyapp::main::storage_loop_var(__tmp_24)) << "\n" << ::tpy::check_signals;
     Bag __tmp_25 = Bag();
-    std::cout << "record getitem" << " " << ::tpyapp::main::record_getitem(&(__tmp_25)) << "\n";
+    std::cout << "record getitem" << " " << ::tpyapp::main::record_getitem(&(__tmp_25)) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray __tmp_26 = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
-    std::cout << "bytearray" << " " << ::tpyapp::main::bytearray_read(&(__tmp_26)) << "\n";
-    std::cout << "global" << " " << ::tpyapp::main::global_slot() << "\n";
-    std::cout << "overload trial" << " " << ::tpyapp::main::overload_trial() << "\n";
+    std::cout << "bytearray" << " " << ::tpyapp::main::bytearray_read(&(__tmp_26)) << "\n" << ::tpy::check_signals;
+    std::cout << "global" << " " << ::tpyapp::main::global_slot() << "\n" << ::tpy::check_signals;
+    std::cout << "overload trial" << " " << ::tpyapp::main::overload_trial() << "\n" << ::tpy::check_signals;
 }
 
 // # Element reads off an Optional container receiver sema could NOT prove

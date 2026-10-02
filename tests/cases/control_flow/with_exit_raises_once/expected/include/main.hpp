@@ -71,7 +71,7 @@ inline ::tpy::BigInt Thrower::__enter__() const {
 //     print("exit ran")
 //     raise RuntimeError("from exit")
 inline void Thrower::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    std::cout << "exit ran" << "\n";
+    std::cout << "exit ran" << "\n" << ::tpy::check_signals;
     throw ::tpy::RuntimeError("from exit");
 }
 
@@ -88,7 +88,7 @@ inline ::tpy::BigInt Quiet::__enter__() const {
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 //     print(f"exit {self.tag}")
 inline void Quiet::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    std::cout << std::format("exit {}", this->tag) << "\n";
+    std::cout << std::format("exit {}", this->tag) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

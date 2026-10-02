@@ -13,10 +13,10 @@ namespace tpyapp::main {
 //         print("no name")
 void greet(std::optional<std::string_view> name) {
     if ((name.has_value())) {
-        std::cout << ::tpy::str_upper((*name)) << "\n";
-        std::cout << ::tpy::print_bool(::tpy::str_startswith((*name), "A")) << "\n";
+        std::cout << ::tpy::str_upper((*name)) << "\n" << ::tpy::check_signals;
+        std::cout << ::tpy::print_bool(::tpy::str_startswith((*name), "A")) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "no name" << "\n";
+        std::cout << "no name" << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(c.last_access)
 void main() {
     CachingContainer c = CachingContainer(42);
-    std::cout << c[0] << "\n";
-    std::cout << c.last_access << "\n";
+    std::cout << c[0] << "\n" << ::tpy::check_signals;
+    std::cout << c.last_access << "\n" << ::tpy::check_signals;
 }
 
 // main()

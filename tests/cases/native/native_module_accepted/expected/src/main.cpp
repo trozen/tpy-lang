@@ -11,11 +11,11 @@ namespace tpyapp::main {
 //     c = NativeClass(int32(42))
 //     print(c.value)
 void main() {
-    std::cout << ::nativelib::native_func(10) << "\n";
-    std::cout << native_c_func(5) << "\n";
-    std::cout << (3 + 4) << "\n";
+    std::cout << ::nativelib::native_func(10) << "\n" << ::tpy::check_signals;
+    std::cout << native_c_func(5) << "\n" << ::tpy::check_signals;
+    std::cout << (3 + 4) << "\n" << ::tpy::check_signals;
     ::nativelib::NativeClass c = ::nativelib::NativeClass(42);
-    std::cout << c.value << "\n";
+    std::cout << c.value << "\n" << ::tpy::check_signals;
 }
 
 // from nativelib import native_func, native_c_func, NativeClass, tmpl_add

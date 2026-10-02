@@ -268,16 +268,16 @@ __genexpr_main_5_frame __genexpr_main_5(const std::vector<std::string>& __src) {
 //     print(" ".join(w.upper() for w in words))
 void main() {
     std::vector<int32_t> squares = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_main_1(5));
-    std::cout << ::tpy::ListPrinter(squares) << "\n";
+    std::cout << ::tpy::ListPrinter(squares) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> items = {1, 2, 3};
     ::tpy::list_extend(items, ::tpyapp::main::__genexpr_main_2(3));
-    std::cout << ::tpy::ListPrinter(items) << "\n";
+    std::cout << ::tpy::ListPrinter(items) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> mods = ::tpy::set_construct<int32_t>(::tpyapp::main::__genexpr_main_3(10));
-    std::cout << ::tpy::SetPrinter(mods) << "\n";
+    std::cout << ::tpy::SetPrinter(mods) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpyapp::main::__genexpr_main_4(4));
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
     std::vector<std::string> words = {"hello", "world", "test"};
-    std::cout << ::tpy::str_join(" ", ::tpyapp::main::__genexpr_main_5(words)) << "\n";
+    std::cout << ::tpy::str_join(" ", ::tpyapp::main::__genexpr_main_5(words)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -38,8 +38,8 @@ int32_t fwd_local() {
 //     print(fwd((A(1), A(2))))
 //     print(fwd_local())
 void main() {
-    std::cout << ::tpyapp::main::fwd(std::tuple<A, A>{A(1), A(2)}) << "\n";
-    std::cout << ::tpyapp::main::fwd_local() << "\n";
+    std::cout << ::tpyapp::main::fwd(std::tuple<A, A>{A(1), A(2)}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::fwd_local() << "\n" << ::tpy::check_signals;
 }
 
 // main()

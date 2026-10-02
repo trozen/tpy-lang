@@ -73,44 +73,44 @@ void main() {
     while ((::tpy::__len__(h) > 0)) {
         out.push_back(::tpystd::heapq::heappop<::tpy::BigInt>(h));
     }
-    std::cout << ::tpy::ListPrinter(out) << "\n";
+    std::cout << ::tpy::ListPrinter(out) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> data = {9, 5, 6, 2, 3, 1, 8, 4, 7};
     ::tpystd::heapq::heapify<int32_t>(data);
-    std::cout << ::tpy::__getitem__(data, 0) << "\n";
+    std::cout << ::tpy::__getitem__(data, 0) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> h2 = {1, 3, 5};
     ::tpystd::heapq::heapify<int32_t>(h2);
-    std::cout << ::tpystd::heapq::heappushpop<int32_t>(h2, 0) << "\n";
-    std::cout << ::tpystd::heapq::heappushpop<int32_t>(h2, 4) << "\n";
-    std::cout << ::tpy::__getitem__(h2, 0) << "\n";
+    std::cout << ::tpystd::heapq::heappushpop<int32_t>(h2, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::heapq::heappushpop<int32_t>(h2, 4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(h2, 0) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> h2eq = {2, 4, 6};
     ::tpystd::heapq::heapify<int32_t>(h2eq);
-    std::cout << ::tpystd::heapq::heappushpop<int32_t>(h2eq, 2) << "\n";
-    std::cout << ::tpy::__getitem__(h2eq, 0) << "\n";
+    std::cout << ::tpystd::heapq::heappushpop<int32_t>(h2eq, 2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(h2eq, 0) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> h3 = {1, 3, 5};
     ::tpystd::heapq::heapify<int32_t>(h3);
-    std::cout << ::tpystd::heapq::heapreplace<int32_t>(h3, 10) << "\n";
-    std::cout << ::tpy::__getitem__(h3, 0) << "\n";
+    std::cout << ::tpystd::heapq::heapreplace<int32_t>(h3, 10) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(h3, 0) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> h4 = std::vector<::tpy::BigInt>{};
     ::tpystd::heapq::heappush<::tpy::BigInt>(h4, 42);
-    std::cout << ::tpystd::heapq::heappop<::tpy::BigInt>(h4) << "\n";
-    std::cout << ::tpy::__len__(h4) << "\n";
+    std::cout << ::tpystd::heapq::heappop<::tpy::BigInt>(h4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(h4) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> nums = {9, 2, 7, 1, 8, 4, 6, 3, 5};
-    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nsmallest<int32_t>(3, nums)) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nlargest<int32_t>(3, nums)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nsmallest<int32_t>(3, nums)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nlargest<int32_t>(3, nums)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_2 = {3, 1, 2};
-    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nsmallest<int32_t>(20, __tmp_2)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nsmallest<int32_t>(20, __tmp_2)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_3 = {3, 1, 2};
-    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nlargest<int32_t>(20, __tmp_3)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nlargest<int32_t>(20, __tmp_3)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_4 = {3, 1, 2};
-    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nsmallest<int32_t>(0, __tmp_4)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nsmallest<int32_t>(0, __tmp_4)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_5 = {3, 1, 2};
-    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nlargest<int32_t>(0, __tmp_5)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nlargest<int32_t>(0, __tmp_5)) << "\n" << ::tpy::check_signals;
     std::vector<std::string> words = std::vector<std::string>{};
     ::tpystd::heapq::heappush<std::string>(words, "cherry");
     ::tpystd::heapq::heappush<std::string>(words, "apple");
     ::tpystd::heapq::heappush<std::string>(words, "banana");
     while ((::tpy::__len__(words) > 0)) {
-        std::cout << ::tpystd::heapq::heappop<std::string>(words) << "\n";
+        std::cout << ::tpystd::heapq::heappop<std::string>(words) << "\n" << ::tpy::check_signals;
     }
 }
 

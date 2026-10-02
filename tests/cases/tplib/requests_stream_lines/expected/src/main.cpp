@@ -45,7 +45,7 @@ void lines_chunked() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView line = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "line:" << " " << ::tpy::bytes_decode(line) << "\n";
+            std::cout << "line:" << " " << ::tpy::bytes_decode(line) << "\n" << ::tpy::check_signals;
         }
     }
     b.close();
@@ -96,13 +96,13 @@ void lines_trailing_newline() {
             lines.push_back(::tpy::bytes_decode(line));
         }
     }
-    std::cout << "count:" << " " << ::tpy::__len__(lines) << "\n";
+    std::cout << "count:" << " " << ::tpy::__len__(lines) << "\n" << ::tpy::check_signals;
     auto& __obj_2 = lines;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         std::string_view ln = *__beg_2;
-        std::cout << "line:" << " " << ln << "\n";
+        std::cout << "line:" << " " << ln << "\n" << ::tpy::check_signals;
     }
     b.close();
 }
@@ -146,7 +146,7 @@ void lines_crlf() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView line = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "crlf:" << " " << ::tpy::bytes_decode(line) << " " << "len" << " " << ::tpy::__len__(line) << "\n";
+            std::cout << "crlf:" << " " << ::tpy::bytes_decode(line) << " " << "len" << " " << ::tpy::__len__(line) << "\n" << ::tpy::check_signals;
         }
     }
     b.close();

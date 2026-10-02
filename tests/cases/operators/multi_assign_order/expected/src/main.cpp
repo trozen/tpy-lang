@@ -18,11 +18,11 @@ void main() {
     int32_t __ma_0 = 7;
     ::tpy::__setitem__(a, (b = 1), __ma_0);
     b = __ma_0;
-    std::cout << ::tpy::ListPrinter(a) << " " << b << "\n";
+    std::cout << ::tpy::ListPrinter(a) << " " << b << "\n" << ::tpy::check_signals;
     std::vector<int32_t> c = {1, 2};
     std::vector<int32_t>& d = c;
     d.push_back(3);
-    std::cout << ::tpy::ListPrinter(c) << "\n";
+    std::cout << ::tpy::ListPrinter(c) << "\n" << ::tpy::check_signals;
 }
 
 // main()

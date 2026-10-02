@@ -13,7 +13,7 @@ Container make() {
 // def show(c: "Container") -> None:
 //     print(c.value)
 void show(const Container& c) {
-    std::cout << c.value << "\n";
+    std::cout << c.value << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

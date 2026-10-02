@@ -34,18 +34,18 @@ void main() {
     a.push_back(9);
     b.push_back(9);
     bool c = true;
-    std::cout << ::tpy::__getitem__(((c) ? (a) : (b)), 0) << "\n";
+    std::cout << ::tpy::__getitem__(((c) ? (a) : (b)), 0) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(a, 0, 42);
-    std::cout << ::tpy::__getitem__(((c) ? (a) : (b)), 0) << "\n";
+    std::cout << ::tpy::__getitem__(((c) ? (a) : (b)), 0) << "\n" << ::tpy::check_signals;
     c = false;
     ::tpy::__setitem__(b, 1, 77);
-    std::cout << ::tpy::__getitem__(((c) ? (a) : (b)), 1) << "\n";
+    std::cout << ::tpy::__getitem__(((c) ? (a) : (b)), 1) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d1 = ::tpy::ordered_map<std::string, int32_t>({{"k", 1}});
     ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::ordered_map<std::string, int32_t>({{"k", 2}});
     bool flag = false;
-    std::cout << ::tpy::__getitem__(((flag) ? (d1) : (d2)), "k") << "\n";
+    std::cout << ::tpy::__getitem__(((flag) ? (d1) : (d2)), "k") << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(d2, "k", 8);
-    std::cout << ::tpy::__getitem__(((flag) ? (d1) : (d2)), "k") << "\n";
+    std::cout << ::tpy::__getitem__(((flag) ? (d1) : (d2)), "k") << "\n" << ::tpy::check_signals;
 }
 
 // main()

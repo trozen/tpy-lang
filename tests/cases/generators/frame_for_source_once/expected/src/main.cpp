@@ -811,7 +811,7 @@ void main() {
     std::vector<Cell> pcells = {Cell(1), Cell(2)};
     auto __tmp_2 = ::tpyapp::main::param_src(pcells);
     ::tpyapp::main::drain(__tmp_2);
-    std::cout << "param after" << " " << ::tpy::__getitem__(pcells, 0).v << " " << ::tpy::__getitem__(pcells, 1).v << "\n";
+    std::cout << "param after" << " " << ::tpy::__getitem__(pcells, 0).v << " " << ::tpy::__getitem__(pcells, 1).v << "\n" << ::tpy::check_signals;
     Bag b0 = Bag();
     {
         auto __src_0 = b0.walk();
@@ -820,28 +820,28 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-            std::cout << s << "\n";
+            std::cout << s << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "field after" << " " << ::tpy::__getitem__(b0.cells, 0).v << " " << ::tpy::__getitem__(b0.cells, 1).v << "\n";
+    std::cout << "field after" << " " << ::tpy::__getitem__(b0.cells, 0).v << " " << ::tpy::__getitem__(b0.cells, 1).v << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::vector<Cell>> table = ::tpy::ordered_map<std::string, std::vector<Cell>>({{"a", {Cell(1), Cell(2)}}});
     auto __tmp_3 = ::tpyapp::main::subscript_src(table);
     ::tpyapp::main::drain(__tmp_3);
-    std::cout << "subscript after" << " " << ::tpy::__getitem__(::tpy::__getitem__(table, "a"), 0).v << " " << ::tpy::__getitem__(::tpy::__getitem__(table, "a"), 1).v << "\n";
+    std::cout << "subscript after" << " " << ::tpy::__getitem__(::tpy::__getitem__(table, "a"), 0).v << " " << ::tpy::__getitem__(::tpy::__getitem__(table, "a"), 1).v << "\n" << ::tpy::check_signals;
     Bag b1 = Bag();
     auto __tmp_4 = ::tpyapp::main::accessor_src(b1);
     ::tpyapp::main::drain(__tmp_4);
-    std::cout << "accessor after" << " " << ::tpy::__getitem__(b1.cells, 0).v << " " << "calls" << " " << b1.calls << "\n";
+    std::cout << "accessor after" << " " << ::tpy::__getitem__(b1.cells, 0).v << " " << "calls" << " " << b1.calls << "\n" << ::tpy::check_signals;
     Bag b2 = Bag();
     auto __tmp_5 = ::tpyapp::main::property_src(b2);
     ::tpyapp::main::drain(__tmp_5);
-    std::cout << "property after" << " " << ::tpy::__getitem__(b2.cells, 0).v << " " << ::tpy::__getitem__(b2.cells, 1).v << "\n";
+    std::cout << "property after" << " " << ::tpy::__getitem__(b2.cells, 0).v << " " << ::tpy::__getitem__(b2.cells, 1).v << "\n" << ::tpy::check_signals;
     auto __tmp_6 = ::tpyapp::main::own_call_src();
     ::tpyapp::main::drain(__tmp_6);
     std::vector<Cell> ccells = {Cell(1), Cell(2)};
     auto __tmp_7 = ::tpyapp::main::copy_src(ccells);
     ::tpyapp::main::drain(__tmp_7);
-    std::cout << "copy after" << " " << ::tpy::__getitem__(ccells, 0).v << " " << ::tpy::__getitem__(ccells, 1).v << "\n";
+    std::cout << "copy after" << " " << ::tpy::__getitem__(ccells, 0).v << " " << ::tpy::__getitem__(ccells, 1).v << "\n" << ::tpy::check_signals;
     auto __tmp_8 = ::tpyapp::main::literal_src();
     ::tpyapp::main::drain(__tmp_8);
     auto __tmp_9 = ::tpyapp::main::slice_mut_src();
@@ -860,39 +860,39 @@ void main() {
     auto __tmp_16 = ::tpyapp::main::gen_call_src();
     ::tpyapp::main::drain(__tmp_16);
     Bag b3 = Bag();
-    std::cout << "async_accessor" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_accessor(b3))) << " " << "calls" << " " << b3.calls << "\n";
+    std::cout << "async_accessor" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_accessor(b3))) << " " << "calls" << " " << b3.calls << "\n" << ::tpy::check_signals;
     std::vector<Cell> __tmp_17 = {Cell(1), Cell(2), Cell(3)};
-    std::cout << "async_slice" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_slice(__tmp_17))) << "\n";
-    std::cout << "gx_named" << " " << ::tpyapp::main::gx_named() << "\n";
-    std::cout << "gx_own_call" << " " << ::tpyapp::main::gx_own_call() << "\n";
+    std::cout << "async_slice" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_slice(__tmp_17))) << "\n" << ::tpy::check_signals;
+    std::cout << "gx_named" << " " << ::tpyapp::main::gx_named() << "\n" << ::tpy::check_signals;
+    std::cout << "gx_own_call" << " " << ::tpyapp::main::gx_own_call() << "\n" << ::tpy::check_signals;
     Bag b4 = Bag();
-    std::cout << "gx_accessor" << " " << ::tpyapp::main::gx_accessor(b4) << " " << "calls" << " " << b4.calls << "\n";
+    std::cout << "gx_accessor" << " " << ::tpyapp::main::gx_accessor(b4) << " " << "calls" << " " << b4.calls << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_18 = {1, 2, 3};
     std::vector<int32_t> __tmp_19 = {10, 20};
-    std::cout << "zip_names" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::zip_names_src(__tmp_18, __tmp_19))) << "\n";
+    std::cout << "zip_names" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::zip_names_src(__tmp_18, __tmp_19))) << "\n" << ::tpy::check_signals;
     auto __tmp_20 = ::tpyapp::main::enumerate_cells_src();
     ::tpyapp::main::drain(__tmp_20);
     auto __tmp_21 = ::tpyapp::main::reversed_temp_src();
     ::tpyapp::main::drain(__tmp_21);
     std::vector<int32_t> __tmp_22 = {1, 2, 3};
-    std::cout << "genexpr" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::genexpr_src(__tmp_22))) << "\n";
+    std::cout << "genexpr" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::genexpr_src(__tmp_22))) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_23 = {1, 2, 3};
-    std::cout << "genexpr_capture" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::genexpr_capture_src(__tmp_23, 10))) << "\n";
+    std::cout << "genexpr_capture" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::genexpr_capture_src(__tmp_23, 10))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, Cell> rd = ::tpy::ordered_map<std::string, Cell>({{"a", Cell(5)}, {"b", Cell(6)}});
-    std::cout << "readonly_view" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::readonly_view_src(rd))) << "\n";
+    std::cout << "readonly_view" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::readonly_view_src(rd))) << "\n" << ::tpy::check_signals;
     Bag b5 = Bag();
-    std::cout << "const_method" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::const_method_src(b5))) << "\n";
+    std::cout << "const_method" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::const_method_src(b5))) << "\n" << ::tpy::check_signals;
     std::vector<Cell> __tmp_24 = {Cell(1)};
     std::vector<Cell> __tmp_25 = {Cell(2)};
-    std::cout << "ternary_params" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::ternary_params_src(__tmp_24, __tmp_25, false))) << "\n";
+    std::cout << "ternary_params" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::ternary_params_src(__tmp_24, __tmp_25, false))) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_26 = {1, 2};
-    std::cout << "delegate_proto" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::delegate_proto_src(__tmp_26))) << "\n";
+    std::cout << "delegate_proto" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::delegate_proto_src(__tmp_26))) << "\n" << ::tpy::check_signals;
     Holder h = Holder(3);
-    std::cout << "iter_object" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::iter_object_src(h))) << " " << "gets" << " " << h.gets << " " << "left" << " " << h.it.n << "\n";
+    std::cout << "iter_object" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::iter_object_src(h))) << " " << "gets" << " " << h.gets << " " << "left" << " " << h.it.n << "\n" << ::tpy::check_signals;
     std::vector<Row> rows = {Row(1, 2), Row(3, 4)};
     auto __tmp_27 = ::tpyapp::main::nested_src(rows);
     ::tpyapp::main::drain(__tmp_27);
-    std::cout << "nested after" << " " << ::tpy::__getitem__(::tpy::__getitem__(rows, 1).cells, 1).v << "\n";
+    std::cout << "nested after" << " " << ::tpy::__getitem__(::tpy::__getitem__(rows, 1).cells, 1).v << "\n" << ::tpy::check_signals;
     Bag b6 = Bag();
     {
         std::vector<int32_t> __tmp_28 = {5, 6};
@@ -902,28 +902,28 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-            std::cout << s << "\n";
+            std::cout << s << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "method_zip after" << " " << ::tpy::__getitem__(b6.cells, 0).v << " " << ::tpy::__getitem__(b6.cells, 1).v << "\n";
+    std::cout << "method_zip after" << " " << ::tpy::__getitem__(b6.cells, 0).v << " " << ::tpy::__getitem__(b6.cells, 1).v << "\n" << ::tpy::check_signals;
     auto __tmp_29 = ::tpyapp::main::arg_temp_src();
     ::tpyapp::main::drain(__tmp_29);
     std::vector<int32_t> __tmp_30 = {1, 2};
-    std::cout << "nested_combinator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::nested_combinator_src(__tmp_30))) << "\n";
-    std::cout << "combinator_temp" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::combinator_temp_src())) << "\n";
+    std::cout << "nested_combinator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::nested_combinator_src(__tmp_30))) << "\n" << ::tpy::check_signals;
+    std::cout << "combinator_temp" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::combinator_temp_src())) << "\n" << ::tpy::check_signals;
     auto __tmp_31 = ::tpyapp::main::str_literal_src();
     ::tpyapp::main::drain(__tmp_31);
     std::vector<Cell> ncells = {Cell(1), Cell(2)};
-    std::cout << "next_unpack" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::next_unpack_src(ncells))) << " " << ::tpy::__getitem__(ncells, 0).v << " " << ::tpy::__getitem__(ncells, 1).v << "\n";
+    std::cout << "next_unpack" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::next_unpack_src(ncells))) << " " << ::tpy::__getitem__(ncells, 0).v << " " << ::tpy::__getitem__(ncells, 1).v << "\n" << ::tpy::check_signals;
     std::vector<Cell> __tmp_32 = {Cell(6)};
-    std::cout << "shared_var" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::shared_var_src(__tmp_32))) << "\n";
-    std::cout << "own_param_iter" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::own_param_iter_src(Holder(2)))) << "\n";
-    std::cout << "async_combinator_temp" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_combinator_temp())) << "\n";
+    std::cout << "shared_var" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::shared_var_src(__tmp_32))) << "\n" << ::tpy::check_signals;
+    std::cout << "own_param_iter" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::own_param_iter_src(Holder(2)))) << "\n" << ::tpy::check_signals;
+    std::cout << "async_combinator_temp" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_combinator_temp())) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_33 = {1, 2};
     std::vector<int32_t> __tmp_34 = {3, 4};
-    std::cout << "async_zip" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_zip(__tmp_33, __tmp_34))) << "\n";
+    std::cout << "async_zip" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_zip(__tmp_33, __tmp_34))) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_35 = {1, 2};
-    std::cout << "async_genexpr" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_genexpr(__tmp_35))) << "\n";
+    std::cout << "async_genexpr" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_genexpr(__tmp_35))) << "\n" << ::tpy::check_signals;
 }
 
 

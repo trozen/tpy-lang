@@ -10,10 +10,10 @@ namespace tpyapp::main {
 //     print(make_pair_sum(100, 200))
 void main() {
     ::tpyapp::a::Pair __tmp_1 = ::tpyapp::a::Pair(3, 4);
-    std::cout << ::tpyapp::b::sum_pair(__tmp_1) << "\n";
+    std::cout << ::tpyapp::b::sum_pair(__tmp_1) << "\n" << ::tpy::check_signals;
     ::tpyapp::a::Pair __tmp_2 = ::tpyapp::a::Pair(10, 20);
-    std::cout << ::tpyapp::a::add_pair(__tmp_2) << "\n";
-    std::cout << ::tpyapp::b::make_pair_sum(100, 200) << "\n";
+    std::cout << ::tpyapp::a::add_pair(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::b::make_pair_sum(100, 200) << "\n" << ::tpy::check_signals;
 }
 
 // # Cycle members can carry class macros (@dataclass) without breaking

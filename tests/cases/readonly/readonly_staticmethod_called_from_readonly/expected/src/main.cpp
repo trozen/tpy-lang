@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpyapp::main::add_one(3) << "\n";
+    std::cout << ::tpyapp::main::add_one(3) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

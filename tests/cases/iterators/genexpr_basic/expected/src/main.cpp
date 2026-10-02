@@ -799,37 +799,37 @@ __genexpr_main_14_frame __genexpr_main_14(const std::vector<std::tuple<std::stri
 //     print(sum_items(v for _, v in pairs))
 void main() {
     auto __tmp_1 = ::tpyapp::main::__genexpr_main_1(5);
-    std::cout << ::tpyapp::main::sum_items(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_1) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> items = {1, 2, 3, 4, 5};
     auto __tmp_2 = ::tpyapp::main::__genexpr_main_2(items);
-    std::cout << ::tpyapp::main::sum_items(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_2) << "\n" << ::tpy::check_signals;
     auto __tmp_3 = ::tpyapp::main::__genexpr_main_3(10);
-    std::cout << ::tpyapp::main::sum_items(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_3) << "\n" << ::tpy::check_signals;
     auto __tmp_4 = ::tpyapp::main::__genexpr_main_4(5, 10);
-    std::cout << ::tpyapp::main::sum_items(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_4) << "\n" << ::tpy::check_signals;
     auto __tmp_5 = ::tpyapp::main::__genexpr_main_5(0, 10, 2);
-    std::cout << ::tpyapp::main::sum_items(__tmp_5) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_5) << "\n" << ::tpy::check_signals;
     auto __tmp_6 = ::tpyapp::main::__genexpr_main_6(10, 0, -2);
-    std::cout << ::tpyapp::main::sum_items(__tmp_6) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_6) << "\n" << ::tpy::check_signals;
     auto __tmp_7 = ::tpyapp::main::__genexpr_main_7(std::in_place, [&]() { return std::array<int32_t, 3>{10, 20, 30}; });
-    std::cout << ::tpyapp::main::sum_items(__tmp_7) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_7) << "\n" << ::tpy::check_signals;
     auto __tmp_8 = ::tpyapp::main::__genexpr_main_8(std::in_place, [&]() { return std::array<int32_t, 5>{1, 2, 3, 4, 5}; });
-    std::cout << ::tpyapp::main::sum_items(__tmp_8) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_8) << "\n" << ::tpy::check_signals;
     int32_t multiplier = 3;
     auto __tmp_9 = ::tpyapp::main::__genexpr_main_9(5, multiplier);
-    std::cout << ::tpyapp::main::sum_items(__tmp_9) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_9) << "\n" << ::tpy::check_signals;
     auto __tmp_10 = ::tpyapp::main::__genexpr_main_10(items, multiplier);
-    std::cout << ::tpyapp::main::sum_items(__tmp_10) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_10) << "\n" << ::tpy::check_signals;
     int32_t threshold = 3;
     auto __tmp_11 = ::tpyapp::main::__genexpr_main_11(10, threshold);
-    std::cout << ::tpyapp::main::sum_items(__tmp_11) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_11) << "\n" << ::tpy::check_signals;
     auto __tmp_12 = ::tpyapp::main::__genexpr_main_12(items, threshold);
-    std::cout << ::tpyapp::main::sum_items(__tmp_12) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_12) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> nums = {1, 2, 3};
-    std::cout << ::tpy::str_join(", ", ::tpyapp::main::__genexpr_main_13(nums)) << "\n";
+    std::cout << ::tpy::str_join(", ", ::tpyapp::main::__genexpr_main_13(nums)) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"c", 3}};
     auto __tmp_13 = ::tpyapp::main::__genexpr_main_14(pairs);
-    std::cout << ::tpyapp::main::sum_items(__tmp_13) << "\n";
+    std::cout << ::tpyapp::main::sum_items(__tmp_13) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -70,7 +70,7 @@ int32_t discard_snd(const std::vector<std::tuple<int32_t, int32_t>>& ps) {
 void main() {
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});
     std::vector<std::tuple<int32_t, int32_t>> ps = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-    std::cout << ::tpyapp::main::sum_items(d) << " " << ::tpyapp::main::sum_pairs(ps) << " " << ::tpyapp::main::discard_snd(ps) << "\n";
+    std::cout << ::tpyapp::main::sum_items(d) << " " << ::tpyapp::main::sum_pairs(ps) << " " << ::tpyapp::main::discard_snd(ps) << "\n" << ::tpy::check_signals;
 }
 
 // main()

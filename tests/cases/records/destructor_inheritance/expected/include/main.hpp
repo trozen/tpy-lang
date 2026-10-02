@@ -73,7 +73,7 @@ inline Base& Base::operator=(Base&& other) noexcept {
 //     print("Base destroyed")
 inline Base::~Base() {
     if (!this->__tpy_owned_) return;
-    std::cout << "Base destroyed" << "\n";
+    std::cout << "Base destroyed" << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, label: str):
@@ -99,7 +99,7 @@ inline Child& Child::operator=(Child&& other) noexcept {
 //     print("Child destroyed:", self.label)
 inline Child::~Child() {
     if (!this->__tpy_owned_) return;
-    std::cout << "Child destroyed:" << " " << this->label << "\n";
+    std::cout << "Child destroyed:" << " " << this->label << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

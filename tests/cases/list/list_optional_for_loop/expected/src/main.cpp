@@ -35,9 +35,9 @@ void main() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& it = *__beg_0;
         if ((it.has_value())) {
-            std::cout << (*it).x << "\n";
+            std::cout << (*it).x << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << -1 << "\n";
+            std::cout << -1 << "\n" << ::tpy::check_signals;
         }
     }
     auto& __obj_1 = pairs;
@@ -45,7 +45,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& it = *__beg_1;
-        std::cout << ::tpyapp::main::borrow(::tpy::optional_to_ptr(it)) << "\n";
+        std::cout << ::tpyapp::main::borrow(::tpy::optional_to_ptr(it)) << "\n" << ::tpy::check_signals;
     }
 }
 

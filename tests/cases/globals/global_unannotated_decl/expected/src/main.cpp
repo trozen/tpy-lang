@@ -30,9 +30,9 @@ void main() {
     ::tpyapp::main::bump();
     (void)(P());
     P::boost();
-    std::cout << count << "\n";
+    std::cout << count << "\n" << ::tpy::check_signals;
     ::tpyapp::main::reset();
-    std::cout << count << "\n";
+    std::cout << count << "\n" << ::tpy::check_signals;
 }
 
 // # `global` of a bare (unannotated) module global must be accepted and mutate

@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print(x)
 void f(const ::tpy::BigInt& __param_x) {
     ::tpy::BigInt x = __param_x;
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     x = ::tpy::BigInt(99);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // f(42)

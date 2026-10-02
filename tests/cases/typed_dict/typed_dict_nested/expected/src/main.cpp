@@ -18,10 +18,10 @@ namespace tpyapp::main {
 void main() {
     Address addr = Address("Berlin", 10115);
     Person p = Person("Alice", addr);
-    std::cout << p.addr.city << "\n";
-    std::cout << p.addr.zip_code << "\n";
+    std::cout << p.addr.city << "\n" << ::tpy::check_signals;
+    std::cout << p.addr.zip_code << "\n" << ::tpy::check_signals;
     p.addr.zip_code = 10117;
-    std::cout << p.addr.zip_code << "\n";
+    std::cout << p.addr.zip_code << "\n" << ::tpy::check_signals;
 }
 
 // main()

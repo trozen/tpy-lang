@@ -60,8 +60,8 @@ void main() {
     std::vector<Box> items = std::vector<Box>{};
     items.push_back(Box(10));
     items.push_back(Box(20));
-    std::cout << ::tpyapp::main::via_mut(items) << "\n";
-    std::cout << ::tpyapp::main::via_ro(items) << "\n";
+    std::cout << ::tpyapp::main::via_mut(items) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::via_ro(items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

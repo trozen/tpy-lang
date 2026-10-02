@@ -152,7 +152,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "free:" << " " << v << "\n";
+            std::cout << "free:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -162,7 +162,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "single:" << " " << v << "\n";
+            std::cout << "single:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -172,7 +172,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "modcall:" << " " << v << "\n";
+            std::cout << "modcall:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -183,7 +183,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "method:" << " " << v << "\n";
+            std::cout << "method:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -193,7 +193,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "generic:" << " " << v << "\n";
+            std::cout << "generic:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -204,7 +204,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-            std::cout << "genowner-imported:" << " " << v << "\n";
+            std::cout << "genowner-imported:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -215,7 +215,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-            std::cout << "genowner-local:" << " " << v << "\n";
+            std::cout << "genowner-local:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpyapp::gensrc::Bag bag = ::tpyapp::gensrc::Bag();
@@ -226,10 +226,10 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-            std::cout << "mutate:" << " " << v << "\n";
+            std::cout << "mutate:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "mutate: after" << " " << bag.n << "\n";
+    std::cout << "mutate: after" << " " << bag.n << "\n" << ::tpy::check_signals;
     {
         auto __src_16 = ::tpyapp::main::lazy_interleave();
         auto&& __itr_16 = ::tpy::__iter__(__src_16);
@@ -237,8 +237,8 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
-            std::cout << "lazy:" << " " << v << "\n";
-            std::cout << "lazy: consumer pulled" << "\n";
+            std::cout << "lazy:" << " " << v << "\n" << ::tpy::check_signals;
+            std::cout << "lazy: consumer pulled" << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -248,14 +248,14 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_19);
-            std::cout << "abandon:" << " " << v << "\n";
+            std::cout << "abandon:" << " " << v << "\n" << ::tpy::check_signals;
             if ((v == 1)) {
                 break;
             }
         }
     }
-    std::cout << "abandon: after break" << "\n";
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_position())) << "\n";
+    std::cout << "abandon: after break" << "\n" << ::tpy::check_signals;
+    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_position())) << "\n" << ::tpy::check_signals;
 }
 
 // # A resumable frame delegating to a generator defined in ANOTHER module: the

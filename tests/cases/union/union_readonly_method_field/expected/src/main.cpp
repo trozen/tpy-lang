@@ -24,15 +24,15 @@ void main() {
     Dog d = Dog("Rex");
     ::tpy::Union<Cat*, Dog*> pet{&(d)};
     Zoo z = Zoo(Inner(pet.as_const()));
-    std::cout << z.get_pet_name() << "\n";
-    std::cout << z.get_pet_name_auto() << "\n";
+    std::cout << z.get_pet_name() << "\n" << ::tpy::check_signals;
+    std::cout << z.get_pet_name_auto() << "\n" << ::tpy::check_signals;
     Cat c = Cat("Whiskers");
     ::tpy::Union<Cat*, Dog*> pet2{&(c)};
     Zoo z2 = Zoo(Inner(pet2.as_const()));
-    std::cout << z2.get_pet_name() << "\n";
-    std::cout << z2.get_pet_name_auto() << "\n";
+    std::cout << z2.get_pet_name() << "\n" << ::tpy::check_signals;
+    std::cout << z2.get_pet_name_auto() << "\n" << ::tpy::check_signals;
     z.rename_pet("Buddy");
-    std::cout << z.get_pet_name() << "\n";
+    std::cout << z.get_pet_name() << "\n" << ::tpy::check_signals;
 }
 
 // main()

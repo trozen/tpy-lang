@@ -49,8 +49,8 @@ std::string relabel(const Box& b) {
 //     print(repair(b), b.pair[0], b.pair[1])  # 15 1 2 -- field untouched
 void main() {
     Box b = Box("hi", std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(1), ::tpy::BigInt(2)});
-    std::cout << ::tpyapp::main::relabel(b) << " " << b.label << "\n";
-    std::cout << ::tpyapp::main::repair(b) << " " << std::get<0>(b.pair) << " " << std::get<1>(b.pair) << "\n";
+    std::cout << ::tpyapp::main::relabel(b) << " " << b.label << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::repair(b) << " " << std::get<0>(b.pair) << " " << std::get<1>(b.pair) << "\n" << ::tpy::check_signals;
 }
 
 // main()

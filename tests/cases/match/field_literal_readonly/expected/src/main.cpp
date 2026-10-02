@@ -32,11 +32,11 @@ std::string describe(const R& r) {
 //     print(describe(R("yo")))
 void main() {
     R __tmp_1 = R("hi");
-    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n" << ::tpy::check_signals;
     R __tmp_2 = R("bye");
-    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n" << ::tpy::check_signals;
     R __tmp_3 = R("yo");
-    std::cout << ::tpyapp::main::describe(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

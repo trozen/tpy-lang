@@ -31,7 +31,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_view::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         c = *((*__for_it_0))++;
-        std::cout << "view_char:" << " " << c << "\n";
+        std::cout << "view_char:" << " " << c << "\n" << ::tpy::check_signals;
         n = ::tpy::add_check<int32_t>(n, 1);
         __state = S_RESUME_0;
         return n;
@@ -66,7 +66,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_name::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         c = *((*__for_it_0))++;
-        std::cout << "name_char:" << " " << c << "\n";
+        std::cout << "name_char:" << " " << c << "\n" << ::tpy::check_signals;
         n = ::tpy::add_check<int32_t>(n, 1);
         __state = S_RESUME_0;
         return n;

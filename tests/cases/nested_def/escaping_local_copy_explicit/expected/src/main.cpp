@@ -19,7 +19,7 @@ std::function<int32_t()> make_getter() {
         return cfg_copy.value;
     };
     cfg.value = 999;
-    std::cout << cfg.value << "\n";
+    std::cout << cfg.value << "\n" << ::tpy::check_signals;
     return get_value;
 }
 
@@ -28,7 +28,7 @@ std::function<int32_t()> make_getter() {
 //     print(getter())
 void main() {
     std::function<int32_t()> getter = ::tpyapp::main::make_getter();
-    std::cout << getter() << "\n";
+    std::cout << getter() << "\n" << ::tpy::check_signals;
 }
 
 // main()

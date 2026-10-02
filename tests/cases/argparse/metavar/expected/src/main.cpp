@@ -15,13 +15,13 @@ namespace tpyapp::main {
 int32_t main() {
     std::vector<std::string> __tmp_1 = {"-h"};
     __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
-    std::cout << args.path << "\n";
+    std::cout << args.path << "\n" << ::tpy::check_signals;
     return 0;
 }
 
 // args = parser.parse_args(["-h"])
 void __tpy_builder_argparse_help_1() {
-    std::cout << "usage: prog [-h] [--count N] [--names NAME] PATH\n\nTest metavar override.\n\npositional arguments:\n  PATH          file path\n\noptions:\n  -h, --help    show this help message and exit\n  --count N     count\n  --names NAME  names" << "\n";
+    std::cout << "usage: prog [-h] [--count N] [--names NAME] PATH\n\nTest metavar override.\n\npositional arguments:\n  PATH          file path\n\noptions:\n  -h, --help    show this help message and exit\n  --count N     count\n  --names NAME  names" << "\n" << ::tpy::check_signals;
     ::tpy::sys_exit(0);
 }
 
@@ -47,14 +47,14 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         std::string_view __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "--count")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
                 ::tpy::sys_exit(2);
             }
             count = ::tpy::BigInt::from_str(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1))));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
         } else if ((__tpy_argparse_tok == "--names")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
                 ::tpy::sys_exit(2);
             }
             __tpy_argparse_acc_names.push_back(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1))));
@@ -65,12 +65,12 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
             __tpy_argparse_pi = (::tpy::add_check<int32_t>(__tpy_argparse_pi, 1));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
         } else {
-            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unexpected positional argument: ")), __tpy_argparse_tok)) << "\n";
+            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unexpected positional argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
             ::tpy::sys_exit(2);
         }
     }
     if ((__tpy_argparse_pi < 1)) {
-        ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat("prog: error: ", "missing required positional argument(s)")) << "\n";
+        ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat("prog: error: ", "missing required positional argument(s)")) << "\n" << ::tpy::check_signals;
         ::tpy::sys_exit(2);
     }
     if (__tpy_argparse_seen_names) {

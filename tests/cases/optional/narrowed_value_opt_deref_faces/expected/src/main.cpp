@@ -93,16 +93,16 @@ int32_t whole_copy(std::optional<int32_t> p) {
 //     print(whole_copy(6))
 //     print(whole_copy(None))
 void main() {
-    std::cout << ::tpyapp::main::reassign(5) << "\n";
-    std::cout << ::tpyapp::main::reassign(std::nullopt) << "\n";
-    std::cout << ::tpyapp::main::reassign_view("v") << "\n";
-    std::cout << ::tpyapp::main::reassign_view(std::nullopt) << "\n";
-    std::cout << ::tpyapp::main::aug_param(3) << "\n";
-    std::cout << ::tpyapp::main::aug_param(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::reassign(5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::reassign(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::reassign_view("v") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::reassign_view(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::aug_param(3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::aug_param(std::nullopt) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d = ::tpy::ordered_map<std::string, std::optional<int32_t>>({{"a", 1}, {"b", std::nullopt}, {"c", 2}});
-    std::cout << ::tpyapp::main::aug_loopvar(d) << "\n";
-    std::cout << ::tpyapp::main::whole_copy(6) << "\n";
-    std::cout << ::tpyapp::main::whole_copy(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::aug_loopvar(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::whole_copy(6) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::whole_copy(std::nullopt) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -44,9 +44,9 @@ int32_t count_leaves(const Tree<int32_t>& t) {
 void main() {
     Tree<int32_t> seed = std::vector<Tree<int32_t>>{1, std::vector<Tree<int32_t>>{2, 3}, 4};
     Summary s = Summary(seed);
-    std::cout << s.n << "\n";
+    std::cout << s.n << "\n" << ::tpy::check_signals;
     Tree<int32_t> leaf = 7;
-    std::cout << Summary(leaf).n << "\n";
+    std::cout << Summary(leaf).n << "\n" << ::tpy::check_signals;
 }
 
 // main()

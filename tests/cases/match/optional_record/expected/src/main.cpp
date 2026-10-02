@@ -105,14 +105,14 @@ std::string check_color(std::optional<Color> c) {
 //     print(check_color(Color.Red))
 //     print(check_color(Color.Green))
 void main() {
-    std::cout << ::tpyapp::main::check_point(nullptr) << "\n";
+    std::cout << ::tpyapp::main::check_point(nullptr) << "\n" << ::tpy::check_signals;
     Point __tmp_1 = Point(0, 0);
-    std::cout << ::tpyapp::main::check_point(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::check_point(&(__tmp_1)) << "\n" << ::tpy::check_signals;
     Point __tmp_2 = Point(3, 4);
-    std::cout << ::tpyapp::main::check_point(&(__tmp_2)) << "\n";
-    std::cout << ::tpyapp::main::check_color(std::nullopt) << "\n";
-    std::cout << ::tpyapp::main::check_color(Color::Red) << "\n";
-    std::cout << ::tpyapp::main::check_color(Color::Green) << "\n";
+    std::cout << ::tpyapp::main::check_point(&(__tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check_color(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check_color(Color::Red) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check_color(Color::Green) << "\n" << ::tpy::check_signals;
 }
 
 // from dataclasses import dataclass

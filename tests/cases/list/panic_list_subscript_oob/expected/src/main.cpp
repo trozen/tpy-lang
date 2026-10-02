@@ -14,7 +14,7 @@ namespace tpyapp::main {
 void test_list_subscript_oob() {
     std::vector<int32_t> nums = {1, 2, 3};
     int32_t x = ::tpy::__getitem__(nums, 10);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // test_list_subscript_oob()

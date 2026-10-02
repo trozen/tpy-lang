@@ -17,9 +17,9 @@ void main() {
     b.add(1);
     b.add(2);
     b.add(3);
-    std::cout << ::tpy::print_bool((b.__contains__(2))) << "\n";
-    std::cout << ::tpy::print_bool((b.__contains__(5))) << "\n";
-    std::cout << ::tpy::print_bool((!(b.__contains__(5)))) << "\n";
+    std::cout << ::tpy::print_bool((b.__contains__(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((b.__contains__(5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!(b.__contains__(5)))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -22,8 +22,8 @@ void main() {
     ORIGIN->x = 100;
     ORIGIN->y = 200;
     Point& ref = ::tpyapp::main::get_origin();
-    std::cout << ref.x << "\n";
-    std::cout << ref.y << "\n";
+    std::cout << ref.x << "\n" << ::tpy::check_signals;
+    std::cout << ref.y << "\n" << ::tpy::check_signals;
 }
 
 // # Global variable - lives for the duration of the program

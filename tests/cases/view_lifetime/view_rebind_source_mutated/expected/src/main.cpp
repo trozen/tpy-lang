@@ -17,7 +17,7 @@ void straight_line(const std::vector<std::string>& xs, std::vector<std::string>&
     ys.clear();
     std::string __tmp_1{PAD};
     ys.push_back(std::move(__tmp_1));
-    std::cout << "straight_line" << " " << v << "\n";
+    std::cout << "straight_line" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // def literal_then_element(ys: list[str]) -> None:
@@ -32,7 +32,7 @@ void literal_then_element(std::vector<std::string>& ys) {
     ys.clear();
     std::string __tmp_1{PAD};
     ys.push_back(std::move(__tmp_1));
-    std::cout << "literal_then_element" << " " << v << "\n";
+    std::cout << "literal_then_element" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // def compound_source(c: bool, xs: list[str], ys: list[str],
@@ -48,7 +48,7 @@ void compound_source(bool c, const std::vector<std::string>& xs, const std::vect
     zs.clear();
     std::string __tmp_1{PAD};
     zs.push_back(std::move(__tmp_1));
-    std::cout << "compound_source" << " " << v << "\n";
+    std::cout << "compound_source" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // def if_arms(k: int32, xs: list[str], ys: list[str]) -> None:
@@ -69,7 +69,7 @@ void if_arms(int32_t k, const std::vector<std::string>& xs, std::vector<std::str
     ys.clear();
     std::string __tmp_1{PAD};
     ys.push_back(std::move(__tmp_1));
-    std::cout << "if_arms" << " " << v << "\n";
+    std::cout << "if_arms" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // def match_arms(k: int32, xs: list[str], ys: list[str]) -> None:
@@ -97,7 +97,7 @@ void match_arms(int32_t k, const std::vector<std::string>& xs, std::vector<std::
     ys.clear();
     std::string __tmp_1{PAD};
     ys.push_back(std::move(__tmp_1));
-    std::cout << "match_arms" << " " << v << "\n";
+    std::cout << "match_arms" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // def try_handler(k: int32, xs: list[str]) -> None:
@@ -125,7 +125,7 @@ void try_handler(int32_t k, std::vector<std::string>& xs) {
     xs.clear();
     std::string __tmp_1{PAD};
     xs.push_back(std::move(__tmp_1));
-    std::cout << "try_handler" << " " << v << "\n";
+    std::cout << "try_handler" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // def bytes_face(xs: list[bytes], ys: list[bytes]) -> None:
@@ -139,7 +139,7 @@ void bytes_face(const std::vector<::tpy::Bytes>& xs, std::vector<::tpy::Bytes>& 
     v = ::tpy::__getitem__(ys, 0);
     ys.clear();
     ys.push_back(::tpy::bytes_literal_owned("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ", 40));
-    std::cout << "bytes_face" << " " << ::tpy::BytesPrinter(v) << "\n";
+    std::cout << "bytes_face" << " " << ::tpy::BytesPrinter(v) << "\n" << ::tpy::check_signals;
 }
 
 // def no_mutation(xs: list[str], ys: list[str]) -> None:
@@ -149,7 +149,7 @@ void bytes_face(const std::vector<::tpy::Bytes>& xs, std::vector<::tpy::Bytes>& 
 void no_mutation(const std::vector<std::string>& xs, const std::vector<std::string>& ys) {
     std::string_view v = ::tpy::__getitem__(xs, 0);
     v = ::tpy::__getitem__(ys, 0);
-    std::cout << "no_mutation" << " " << v << "\n";
+    std::cout << "no_mutation" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

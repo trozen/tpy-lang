@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def read_animal(p: Ptr[readonly[Animal]]) -> None:
 //     print(p.name)
 void read_animal(const Animal* p) {
-    std::cout << ::tpy::deref_check(p).name << "\n";
+    std::cout << ::tpy::deref_check(p).name << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -38,12 +38,12 @@ void main() {
     ::tpyapp::main::read_animal(&d);
     Dog* dp = &d;
     Animal* ap = dp;
-    std::cout << ap->name << "\n";
+    std::cout << ap->name << "\n" << ::tpy::check_signals;
     const Animal* cap = dp;
-    std::cout << cap->name << "\n";
+    std::cout << cap->name << "\n" << ::tpy::check_signals;
     const Dog* cdp = &d;
     const Animal* cap2 = cdp;
-    std::cout << cap2->name << "\n";
+    std::cout << cap2->name << "\n" << ::tpy::check_signals;
     Puppy p = Puppy("Tiny", "Corgi", ::tpy::BigInt(8));
     ::tpyapp::main::read_animal(&p);
 }

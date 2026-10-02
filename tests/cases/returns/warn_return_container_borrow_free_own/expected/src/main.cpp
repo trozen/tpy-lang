@@ -29,7 +29,7 @@ std::vector<int32_t> take_copy(std::vector<std::vector<int32_t>>& rows) {
 //     print(len(take(rows)), len(take_copy(rows)), len(rows[0]))
 void main() {
     std::vector<std::vector<int32_t>> rows = {{1, 2}, {3}};
-    std::cout << ::tpy::__len__(::tpyapp::main::take(rows)) << " " << ::tpy::__len__(::tpyapp::main::take_copy(rows)) << " " << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::take(rows)) << " " << ::tpy::__len__(::tpyapp::main::take_copy(rows)) << " " << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

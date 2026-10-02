@@ -15,7 +15,7 @@ int32_t consume(Container&& c) {
 //     print(consume(c))  # tpyc: ok
 void main() {
     Container c = Container(Handle(42));
-    std::cout << ::tpyapp::main::consume(std::move(c)) << "\n";
+    std::cout << ::tpyapp::main::consume(std::move(c)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

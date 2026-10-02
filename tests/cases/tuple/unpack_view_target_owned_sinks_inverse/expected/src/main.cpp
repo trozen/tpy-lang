@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     return len(xs)
 ::tpy::BigInt literals() {
     std::array<std::string, 2> xs = {"ab", "c"};
-    std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << "\n";
+    std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << "\n" << ::tpy::check_signals;
     return ::tpy::BigInt(::tpy::__len__(xs));
 }
 
@@ -20,7 +20,7 @@ namespace tpyapp::main {
 //     return len(xs)
 ::tpy::BigInt owned_source(const ::tpy::String& s) {
     std::array<::tpy::String, 1> xs = {s};
-    std::cout << ::tpy::__getitem__(xs, 0) << "\n";
+    std::cout << ::tpy::__getitem__(xs, 0) << "\n" << ::tpy::check_signals;
     return ::tpy::BigInt(::tpy::__len__(xs));
 }
 
@@ -39,7 +39,7 @@ namespace tpyapp::main {
     if ((x == "ab")) {
         n = (::tpy::add_check<int32_t>(n, ::tpy::__len__(x)));
     }
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
     return ::tpy::BigInt(n);
 }
 
@@ -48,9 +48,9 @@ namespace tpyapp::main {
 //     print(owned_source(String("kept")))
 //     print(view_reads(("ab", "c")))
 void main() {
-    std::cout << ::tpyapp::main::literals() << "\n";
-    std::cout << ::tpyapp::main::owned_source(::tpy::String("kept")) << "\n";
-    std::cout << ::tpyapp::main::view_reads(std::tuple<std::string, std::string>{"ab", "c"}) << "\n";
+    std::cout << ::tpyapp::main::literals() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::owned_source(::tpy::String("kept")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::view_reads(std::tuple<std::string, std::string>{"ab", "c"}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

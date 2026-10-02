@@ -197,13 +197,13 @@ void main() {
     auto __tup_1 = ::tpyapp::main::f(__tmp_1);
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
-    std::cout << "free" << " " << a << " " << b << "\n";
+    std::cout << "free" << " " << a << " " << b << "\n" << ::tpy::check_signals;
     ::tpy::Bytes __tmp_2 = ::tpy::bytes_literal_owned("hi", 2);
     auto __tup_2 = ::tpyapp::main::send(::tpy::Union<std::monostate, const ::tpy::Bytes*, const ::tpy::ordered_map<std::string, std::string>*>{&__tmp_2});
     const ::tpy::BigInt& c = std::get<0>(__tup_2);
     const ::tpy::BigInt& d = std::get<1>(__tup_2);
-    std::cout << "union_lift" << " " << c << " " << d << "\n";
-    std::cout << "method_ctor" << " " << K().run() << "\n";
+    std::cout << "union_lift" << " " << c << " " << d << "\n" << ::tpy::check_signals;
+    std::cout << "method_ctor" << " " << K().run() << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -211,10 +211,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << x << "\n";
+            std::cout << "generator" << " " << x << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::co())) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::co())) << "\n" << ::tpy::check_signals;
     auto inner = []() -> ::tpy::BigInt {
         M __tmp_3 = M();
         auto __tup_3 = ::tpyapp::main::f(__tmp_3);
@@ -222,7 +222,7 @@ void main() {
         const ::tpy::BigInt& q = std::get<1>(__tup_3);
         return ((p) + (q));
     };
-    std::cout << "closure" << " " << inner() << "\n";
+    std::cout << "closure" << " " << inner() << "\n" << ::tpy::check_signals;
     ::tpy::BigInt e;
     ::tpy::BigInt g;
     {
@@ -231,12 +231,12 @@ void main() {
             auto __tup_4 = ::tpyapp::main::f(__tmp_4);
             e = std::get<0>(__tup_4);
             g = std::get<1>(__tup_4);
-            std::cout << "try" << " " << e << " " << g << "\n";
+            std::cout << "try" << " " << e << " " << g << "\n" << ::tpy::check_signals;
         } catch (...) {
-            std::cout << "finally" << "\n";
+            std::cout << "finally" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally" << "\n";
+        std::cout << "finally" << "\n" << ::tpy::check_signals;
     }
     ::tpy::BigInt h;
     ::tpy::BigInt i;
@@ -247,7 +247,7 @@ void main() {
         auto __tup_5 = ::tpyapp::main::f(__tmp_5);
         h = std::get<0>(__tup_5);
         i = std::get<1>(__tup_5);
-        std::cout << "with" << " " << w << " " << h << " " << i << "\n";
+        std::cout << "with" << " " << w << " " << h << " " << i << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -266,7 +266,7 @@ void main() {
         auto __tup_6 = ::tpyapp::main::f(__tmp_6);
         const ::tpy::BigInt& j = std::get<0>(__tup_6);
         const ::tpy::BigInt& l = std::get<1>(__tup_6);
-        std::cout << "match" << " " << j << " " << l << "\n";
+        std::cout << "match" << " " << j << " " << l << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
@@ -278,33 +278,33 @@ void main() {
         auto __tup_7 = ::tpyapp::main::f(__tmp_7);
         const ::tpy::BigInt& m1 = std::get<0>(__tup_7);
         const ::tpy::BigInt& m2 = std::get<1>(__tup_7);
-        std::cout << "loop" << " " << it << " " << m1 << " " << m2 << "\n";
+        std::cout << "loop" << " " << it << " " << m1 << " " << m2 << "\n" << ::tpy::check_signals;
     }
     {
-        std::cout << "error_return" << " " << ({ auto __er_3 = ::tpyapp::main::er_body(); if (!__er_3.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_3); }) << "\n";
+        std::cout << "error_return" << " " << ({ auto __er_3 = ::tpyapp::main::er_body(); if (!__er_3.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_3); }) << "\n" << ::tpy::check_signals;
         goto __after_try_2;
         // except E:
         __except_2:;
-        std::cout << "error_return E" << "\n";
+        std::cout << "error_return E" << "\n" << ::tpy::check_signals;
         __after_try_2:;
     }
     M __tmp_8 = M();
     auto __tup_8 = ::tpyapp::main::gv<int32_t>(__tmp_8, 7);
     int32_t g1 = std::get<0>(__tup_8);
     const ::tpy::BigInt& g2 = std::get<1>(__tup_8);
-    std::cout << "generic" << " " << g1 << " " << g2 << "\n";
+    std::cout << "generic" << " " << g1 << " " << g2 << "\n" << ::tpy::check_signals;
     M __tmp_9 = M();
     auto __tup_9 = ::tpyapp::main::sp(__tmp_9);
     std::string_view s = std::get<0>(__tup_9);
     const ::tpy::BigInt& n = std::get<1>(__tup_9);
-    std::cout << "str_elem" << " " << s << " " << n << "\n";
+    std::cout << "str_elem" << " " << s << " " << n << "\n" << ::tpy::check_signals;
     M __tmp_10 = M();
     auto __tup_10 = ::tpyapp::main::pick(__tmp_10);
     auto&& r1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_10)));
     auto&& r2 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_10)));
     const ::tpy::BigInt& rn = std::get<2>(__tup_10);
     r1.v = ::tpy::BigInt(9);
-    std::cout << "alias" << " " << r2.v << " " << rn << "\n";
+    std::cout << "alias" << " " << r2.v << " " << rn << "\n" << ::tpy::check_signals;
 }
 
 // # A tuple-unpack source whose call argument needs a hoisted temp (a record
@@ -327,7 +327,7 @@ void __tpy_init() {
     auto __tup_1 = ::tpyapp::main::f(__tmp_1);
     ma = std::get<0>(__tup_1);
     mb = std::get<1>(__tup_1);
-    std::cout << "module" << " " << ma << " " << mb << "\n";
+    std::cout << "module" << " " << ma << " " << mb << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

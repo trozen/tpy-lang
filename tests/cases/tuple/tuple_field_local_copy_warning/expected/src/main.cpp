@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(m.pp[1].x)
 void main() {
     Mixed m = Mixed();
-    std::cout << std::get<0>(m.pp).x << "\n";
-    std::cout << std::get<1>(m.pp).x << "\n";
+    std::cout << std::get<0>(m.pp).x << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(m.pp).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

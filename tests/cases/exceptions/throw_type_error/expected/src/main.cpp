@@ -22,7 +22,7 @@ void main() {
         try {
             ::tpyapp::main::fail(::tpy::BigInt(42));
         } catch (const ::tpy::TypeError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

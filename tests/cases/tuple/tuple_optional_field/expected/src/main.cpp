@@ -14,9 +14,9 @@ namespace tpyapp::main {
 void main() {
     Point p = Point(1, 2);
     Holder h1 = Holder(std::tuple<Point*, int32_t>{&(p), 42});
-    std::cout << ::tpy::TuplePrinter(h1.pair) << "\n";
+    std::cout << ::tpy::TuplePrinter(h1.pair) << "\n" << ::tpy::check_signals;
     Holder h2 = Holder(std::tuple<Point*, int32_t>{nullptr, 99});
-    std::cout << ::tpy::TuplePrinter(h2.pair) << "\n";
+    std::cout << ::tpy::TuplePrinter(h2.pair) << "\n" << ::tpy::check_signals;
 }
 
 // main()

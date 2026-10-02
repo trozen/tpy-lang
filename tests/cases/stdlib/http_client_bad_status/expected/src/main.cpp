@@ -35,11 +35,11 @@ void attempt(::tpy::BytesView response) {
     {
         try {
             conn.getresponse();
-            std::cout << "no-raise" << "\n";
+            std::cout << "no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::http::client::UnknownProtocol&) {
-            std::cout << "UnknownProtocol" << "\n";
+            std::cout << "UnknownProtocol" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::http::client::BadStatusLine&) {
-            std::cout << "BadStatusLine" << "\n";
+            std::cout << "BadStatusLine" << "\n" << ::tpy::check_signals;
         }
     }
     conn.close();

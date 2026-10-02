@@ -27,20 +27,20 @@ namespace tpyapp::main {
 void test_list_membership() {
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
     if (::tpy::seq_contains(nums, 30)) {
-        std::cout << "30 in list: yes" << "\n";
+        std::cout << "30 in list: yes" << "\n" << ::tpy::check_signals;
     }
     if (::tpy::seq_contains(nums, 99)) {
-        std::cout << "99 in list: yes" << "\n";
+        std::cout << "99 in list: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "99 in list: no" << "\n";
+        std::cout << "99 in list: no" << "\n" << ::tpy::check_signals;
     }
     if (!::tpy::seq_contains(nums, 99)) {
-        std::cout << "99 not in list: yes" << "\n";
+        std::cout << "99 not in list: yes" << "\n" << ::tpy::check_signals;
     }
     if (!::tpy::seq_contains(nums, 30)) {
-        std::cout << "30 not in list: yes" << "\n";
+        std::cout << "30 not in list: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "30 not in list: no" << "\n";
+        std::cout << "30 not in list: no" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -60,15 +60,15 @@ void test_list_membership() {
 void test_array_membership() {
     std::array<int32_t, 4> arr = {1, 2, 3, 4};
     if (::tpy::seq_contains(arr, 3)) {
-        std::cout << "3 in array: yes" << "\n";
+        std::cout << "3 in array: yes" << "\n" << ::tpy::check_signals;
     }
     if (::tpy::seq_contains(arr, 5)) {
-        std::cout << "5 in array: yes" << "\n";
+        std::cout << "5 in array: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "5 in array: no" << "\n";
+        std::cout << "5 in array: no" << "\n" << ::tpy::check_signals;
     }
     if (!::tpy::seq_contains(arr, 5)) {
-        std::cout << "5 not in array: yes" << "\n";
+        std::cout << "5 not in array: yes" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -92,12 +92,12 @@ bool check_span_contains(std::span<int32_t> data, int32_t value) {
 void test_span_membership() {
     std::array<int32_t, 5> nums = {100, 200, 300, 400, 500};
     if (::tpyapp::main::check_span_contains(::tpy::as_mut_span(nums), 300)) {
-        std::cout << "300 in span: yes" << "\n";
+        std::cout << "300 in span: yes" << "\n" << ::tpy::check_signals;
     }
     if (::tpyapp::main::check_span_contains(::tpy::as_mut_span(nums), 999)) {
-        std::cout << "999 in span: yes" << "\n";
+        std::cout << "999 in span: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "999 in span: no" << "\n";
+        std::cout << "999 in span: no" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -131,28 +131,28 @@ void test_span_membership() {
 void test_string_membership() {
     std::string_view text = "hello world";
     if ((text.find("o") != std::string::npos)) {
-        std::cout << "'o' in string: yes" << "\n";
+        std::cout << "'o' in string: yes" << "\n" << ::tpy::check_signals;
     }
     if ((text.find("z") != std::string::npos)) {
-        std::cout << "'z' in string: yes" << "\n";
+        std::cout << "'z' in string: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "'z' in string: no" << "\n";
+        std::cout << "'z' in string: no" << "\n" << ::tpy::check_signals;
     }
     if ((std::string_view("hello world").find("ell") != std::string::npos)) {
-        std::cout << "'ell' in literal: yes" << "\n";
+        std::cout << "'ell' in literal: yes" << "\n" << ::tpy::check_signals;
     }
     if ((std::string_view("hello world").find("xyz") != std::string::npos)) {
-        std::cout << "'xyz' in literal: yes" << "\n";
+        std::cout << "'xyz' in literal: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "'xyz' in literal: no" << "\n";
+        std::cout << "'xyz' in literal: no" << "\n" << ::tpy::check_signals;
     }
     if ((text.find("z") == std::string::npos)) {
-        std::cout << "'z' not in string: yes" << "\n";
+        std::cout << "'z' not in string: yes" << "\n" << ::tpy::check_signals;
     }
     if ((text.find("e") == std::string::npos)) {
-        std::cout << "'e' not in string: yes" << "\n";
+        std::cout << "'e' not in string: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "'e' not in string: no" << "\n";
+        std::cout << "'e' not in string: no" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -174,13 +174,13 @@ void test_string_membership() {
 void test_membership_in_conditions() {
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     if ((::tpy::seq_contains(nums, 2) && ::tpy::seq_contains(nums, 4))) {
-        std::cout << "both 2 and 4 in list" << "\n";
+        std::cout << "both 2 and 4 in list" << "\n" << ::tpy::check_signals;
     }
     if ((::tpy::seq_contains(nums, 10) || ::tpy::seq_contains(nums, 3))) {
-        std::cout << "10 or 3 in list" << "\n";
+        std::cout << "10 or 3 in list" << "\n" << ::tpy::check_signals;
     }
     if ((::tpy::seq_contains(nums, 1) && !::tpy::seq_contains(nums, 99))) {
-        std::cout << "1 in and 99 not in list" << "\n";
+        std::cout << "1 in and 99 not in list" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -199,10 +199,10 @@ void test_membership_with_variables() {
     int32_t target = 10;
     int32_t missing = 7;
     if (::tpy::seq_contains(nums, target)) {
-        std::cout << "target found" << "\n";
+        std::cout << "target found" << "\n" << ::tpy::check_signals;
     }
     if (!::tpy::seq_contains(nums, missing)) {
-        std::cout << "missing not found" << "\n";
+        std::cout << "missing not found" << "\n" << ::tpy::check_signals;
     }
 }
 

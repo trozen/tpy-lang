@@ -28,7 +28,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_chunks::__next__
     case S_RESUME_0: {  // after: yield n
         (*out).push_back(std::move((*buf)));
         (*seen).push_back(::tpy::Bytes((*ba)));
-        std::cout << ::tpy::__len__((*out)) << " " << ::tpy::__len__(::tpy::__getitem__((*out), 0)) << " " << ::tpy::__len__(::tpy::__getitem__((*seen), 0)) << "\n";
+        std::cout << ::tpy::__len__((*out)) << " " << ::tpy::__len__(::tpy::__getitem__((*out), 0)) << " " << ::tpy::__len__(::tpy::__getitem__((*seen), 0)) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -15,11 +15,11 @@ namespace tpyapp::main {
 void test_unary() {
     Vec2 v = Vec2(3, 4);
     Vec2 neg = -(v);
-    std::cout << neg.x << "\n";
-    std::cout << neg.y << "\n";
+    std::cout << neg.x << "\n" << ::tpy::check_signals;
+    std::cout << neg.y << "\n" << ::tpy::check_signals;
     Vec2 pos = +(v);
-    std::cout << pos.x << "\n";
-    std::cout << pos.y << "\n";
+    std::cout << pos.x << "\n" << ::tpy::check_signals;
+    std::cout << pos.y << "\n" << ::tpy::check_signals;
 }
 
 // def test_contains() -> None:
@@ -31,11 +31,11 @@ void test_unary() {
 //     print(int32(10) not in v)
 void test_contains() {
     Vec2 v = Vec2(10, 20);
-    std::cout << ::tpy::print_bool((v.__contains__(10))) << "\n";
-    std::cout << ::tpy::print_bool((v.__contains__(20))) << "\n";
-    std::cout << ::tpy::print_bool((v.__contains__(99))) << "\n";
-    std::cout << ::tpy::print_bool((!(v.__contains__(99)))) << "\n";
-    std::cout << ::tpy::print_bool((!(v.__contains__(10)))) << "\n";
+    std::cout << ::tpy::print_bool((v.__contains__(10))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((v.__contains__(20))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((v.__contains__(99))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!(v.__contains__(99)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!(v.__contains__(10)))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_sub_mul() -> None:
@@ -51,11 +51,11 @@ void test_sub_mul() {
     Vec2 a = Vec2(5, 7);
     Vec2 b = Vec2(2, 3);
     Vec2 d = ((a) - (b));
-    std::cout << d.x << "\n";
-    std::cout << d.y << "\n";
+    std::cout << d.x << "\n" << ::tpy::check_signals;
+    std::cout << d.y << "\n" << ::tpy::check_signals;
     Vec2 s = ((a) * (3));
-    std::cout << s.x << "\n";
-    std::cout << s.y << "\n";
+    std::cout << s.x << "\n" << ::tpy::check_signals;
+    std::cout << s.y << "\n" << ::tpy::check_signals;
 }
 
 // def test_iadd() -> None:
@@ -66,8 +66,8 @@ void test_sub_mul() {
 void test_iadd() {
     Vec2 v = Vec2(1, 2);
     v.__iadd__(Vec2(3, 4));
-    std::cout << v.x << "\n";
-    std::cout << v.y << "\n";
+    std::cout << v.x << "\n" << ::tpy::check_signals;
+    std::cout << v.y << "\n" << ::tpy::check_signals;
 }
 
 // def test_isub() -> None:
@@ -78,8 +78,8 @@ void test_iadd() {
 void test_isub() {
     Vec2 v = Vec2(10, 20);
     v.__isub__(Vec2(3, 5));
-    std::cout << v.x << "\n";
-    std::cout << v.y << "\n";
+    std::cout << v.x << "\n" << ::tpy::check_signals;
+    std::cout << v.y << "\n" << ::tpy::check_signals;
 }
 
 // def test_hash() -> None:
@@ -89,7 +89,7 @@ void test_isub() {
 void test_hash() {
     Vec2 v = Vec2(1, 2);
     uint64_t h = ::tpy::__hash__(v);
-    std::cout << ::tpy::print_bool((h > 0)) << "\n";
+    std::cout << ::tpy::print_bool((h > 0)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_len() -> None:
@@ -97,7 +97,7 @@ void test_hash() {
 //     print(len(v))
 void test_len() {
     Vec2 v = Vec2(1, 2);
-    std::cout << ::tpy::__len__(v) << "\n";
+    std::cout << ::tpy::__len__(v) << "\n" << ::tpy::check_signals;
 }
 
 // def test_eq() -> None:
@@ -111,9 +111,9 @@ void test_eq() {
     Vec2 a = Vec2(1, 2);
     Vec2 b = Vec2(1, 2);
     Vec2 c = Vec2(3, 4);
-    std::cout << ::tpy::print_bool(((a) == (b))) << "\n";
-    std::cout << ::tpy::print_bool(((a) == (c))) << "\n";
-    std::cout << ::tpy::print_bool((a != c)) << "\n";
+    std::cout << ::tpy::print_bool(((a) == (b))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) == (c))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a != c)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_explicit_ne() -> None:
@@ -126,8 +126,8 @@ void test_explicit_ne() {
     Tag a = Tag(1);
     Tag b = Tag(1);
     Tag c = Tag(2);
-    std::cout << ::tpy::print_bool(((a) != (b))) << "\n";
-    std::cout << ::tpy::print_bool(((a) != (c))) << "\n";
+    std::cout << ::tpy::print_bool(((a) != (b))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) != (c))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_inherited_eq() -> None:
@@ -140,8 +140,8 @@ void test_inherited_eq() {
     Child a = Child(1, 2);
     Child b = Child(1, 2);
     Child c = Child(3, 4);
-    std::cout << ::tpy::print_bool((a == b)) << "\n";
-    std::cout << ::tpy::print_bool((a == c)) << "\n";
+    std::cout << ::tpy::print_bool((a == b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a == c)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_comparisons() -> None:
@@ -158,12 +158,12 @@ void test_comparisons() {
     Score a = Score(10);
     Score b = Score(20);
     Score c = Score(10);
-    std::cout << ::tpy::print_bool(((a) < (b))) << "\n";
-    std::cout << ::tpy::print_bool(((a) > (b))) << "\n";
-    std::cout << ::tpy::print_bool(((a) <= (c))) << "\n";
-    std::cout << ::tpy::print_bool(((a) >= (c))) << "\n";
-    std::cout << ::tpy::print_bool(((b) > (a))) << "\n";
-    std::cout << ::tpy::print_bool(((b) <= (a))) << "\n";
+    std::cout << ::tpy::print_bool(((a) < (b))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) > (b))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) <= (c))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) >= (c))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((b) > (a))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((b) <= (a))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_invert() -> None:
@@ -176,10 +176,10 @@ void test_comparisons() {
 void test_invert() {
     Mask m = Mask(0);
     Mask inv = ~(m);
-    std::cout << inv.bits << "\n";
+    std::cout << inv.bits << "\n" << ::tpy::check_signals;
     Mask m2 = Mask(5);
     Mask inv2 = ~(m2);
-    std::cout << inv2.bits << "\n";
+    std::cout << inv2.bits << "\n" << ::tpy::check_signals;
 }
 
 // def test_builtin_pos() -> None:
@@ -189,9 +189,9 @@ void test_invert() {
 //     print(+y)
 void test_builtin_pos() {
     int32_t x = 5;
-    std::cout << +x << "\n";
+    std::cout << +x << "\n" << ::tpy::check_signals;
     double y = -(3.14);
-    std::cout << ::tpy::print_float(+(y)) << "\n";
+    std::cout << ::tpy::print_float(+(y)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

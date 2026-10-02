@@ -23,15 +23,15 @@ void main() {
     std::tuple<int32_t, std::string> a = std::tuple<int32_t, std::string>{1, "hello"};
     std::tuple<int32_t, std::string> b = std::tuple<int32_t, std::string>{1, "hello"};
     std::tuple<int32_t, std::string> c = std::tuple<int32_t, std::string>{2, "world"};
-    std::cout << ::tpy::print_bool((a == b)) << "\n";
-    std::cout << ::tpy::print_bool((a != b)) << "\n";
-    std::cout << ::tpy::print_bool((a == c)) << "\n";
-    std::cout << ::tpy::print_bool((a != c)) << "\n";
+    std::cout << ::tpy::print_bool((a == b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a != b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a == c)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a != c)) << "\n" << ::tpy::check_signals;
     if ((a == b)) {
-        std::cout << "equal" << "\n";
+        std::cout << "equal" << "\n" << ::tpy::check_signals;
     }
     if ((a != c)) {
-        std::cout << "not equal" << "\n";
+        std::cout << "not equal" << "\n" << ::tpy::check_signals;
     }
 }
 

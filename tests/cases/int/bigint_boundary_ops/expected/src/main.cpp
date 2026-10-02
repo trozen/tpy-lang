@@ -42,31 +42,31 @@ namespace tpyapp::main {
 //     print(a > b)
 //     print(a >= b)
 void probe(std::string_view label, const ::tpy::BigInt& a, const ::tpy::BigInt& b, int32_t shift) {
-    std::cout << "===" << "\n";
-    std::cout << label << "\n";
-    std::cout << "===" << "\n";
-    std::cout << a << "\n";
-    std::cout << b << "\n";
-    std::cout << ((a) + (b)) << "\n";
-    std::cout << ((a) - (b)) << "\n";
-    std::cout << ((a) * (b)) << "\n";
+    std::cout << "===" << "\n" << ::tpy::check_signals;
+    std::cout << label << "\n" << ::tpy::check_signals;
+    std::cout << "===" << "\n" << ::tpy::check_signals;
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
+    std::cout << ((a) + (b)) << "\n" << ::tpy::check_signals;
+    std::cout << ((a) - (b)) << "\n" << ::tpy::check_signals;
+    std::cout << ((a) * (b)) << "\n" << ::tpy::check_signals;
     if ((b != 0)) {
-        std::cout << ((a) / (b)) << "\n";
-        std::cout << ((a) % (b)) << "\n";
+        std::cout << ((a) / (b)) << "\n" << ::tpy::check_signals;
+        std::cout << ((a) % (b)) << "\n" << ::tpy::check_signals;
     }
-    std::cout << ((a) & (b)) << "\n";
-    std::cout << ((a) | (b)) << "\n";
-    std::cout << ((a) ^ (b)) << "\n";
-    std::cout << ((a) << (::tpy::BigInt(shift))) << "\n";
-    std::cout << ((a) >> (::tpy::BigInt(shift))) << "\n";
-    std::cout << -(a) << "\n";
-    std::cout << ~(a) << "\n";
-    std::cout << ::tpy::print_bool((a == b)) << "\n";
-    std::cout << ::tpy::print_bool((a != b)) << "\n";
-    std::cout << ::tpy::print_bool((a < b)) << "\n";
-    std::cout << ::tpy::print_bool((a <= b)) << "\n";
-    std::cout << ::tpy::print_bool((a > b)) << "\n";
-    std::cout << ::tpy::print_bool((a >= b)) << "\n";
+    std::cout << ((a) & (b)) << "\n" << ::tpy::check_signals;
+    std::cout << ((a) | (b)) << "\n" << ::tpy::check_signals;
+    std::cout << ((a) ^ (b)) << "\n" << ::tpy::check_signals;
+    std::cout << ((a) << (::tpy::BigInt(shift))) << "\n" << ::tpy::check_signals;
+    std::cout << ((a) >> (::tpy::BigInt(shift))) << "\n" << ::tpy::check_signals;
+    std::cout << -(a) << "\n" << ::tpy::check_signals;
+    std::cout << ~(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a == b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a != b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a < b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a <= b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a > b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a >= b)) << "\n" << ::tpy::check_signals;
 }
 
 // B: int = 1 << 62
@@ -143,14 +143,14 @@ void __tpy_init() {
     WIDE_POS = ((::tpy::BigInt(1)) << (::tpy::BigInt(70)));
     WIDE_NEG = -(((::tpy::BigInt(1)) << (::tpy::BigInt(70))));
     ONE_BIG = ::tpy::BigInt(1);
-    std::cout << SMALL_MAX << "\n";
-    std::cout << ((SMALL_MAX) + (::tpy::BigInt(1))) << "\n";
-    std::cout << ((BIG_POS) - (::tpy::BigInt(1))) << "\n";
-    std::cout << SMALL_MIN << "\n";
-    std::cout << ((SMALL_MIN) - (::tpy::BigInt(1))) << "\n";
-    std::cout << ((BIG_NEG) + (::tpy::BigInt(1))) << "\n";
-    std::cout << ((((B) + (::tpy::BigInt(1)))) - (::tpy::BigInt(2))) << "\n";
-    std::cout << ((((-(B)) - (::tpy::BigInt(1)))) + (::tpy::BigInt(2))) << "\n";
+    std::cout << SMALL_MAX << "\n" << ::tpy::check_signals;
+    std::cout << ((SMALL_MAX) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
+    std::cout << ((BIG_POS) - (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
+    std::cout << SMALL_MIN << "\n" << ::tpy::check_signals;
+    std::cout << ((SMALL_MIN) - (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
+    std::cout << ((BIG_NEG) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
+    std::cout << ((((B) + (::tpy::BigInt(1)))) - (::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ((((-(B)) - (::tpy::BigInt(1)))) + (::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::probe("small_max + one", SMALL_MAX, ::tpy::BigInt(1), 1);
     ::tpyapp::main::probe("small_min + minus_one", SMALL_MIN, ::tpy::BigInt(-1), 1);
     ::tpyapp::main::probe("big_pos + three", BIG_POS, ::tpy::BigInt(3), 2);
@@ -159,31 +159,31 @@ void __tpy_init() {
     ::tpyapp::main::probe("wide_neg + seven", WIDE_NEG, ::tpy::BigInt(7), 31);
     ::tpyapp::main::probe("zero + big_pos", ::tpy::BigInt(0), BIG_POS, 63);
     ::tpyapp::main::probe("minus_one + wide_pos", ::tpy::BigInt(-1), WIDE_POS, 64);
-    std::cout << ((BIG_POS) << (::tpy::BigInt(63))) << "\n";
-    std::cout << ((BIG_POS) >> (::tpy::BigInt(63))) << "\n";
-    std::cout << ((BIG_NEG) << (::tpy::BigInt(63))) << "\n";
-    std::cout << ((BIG_NEG) >> (::tpy::BigInt(63))) << "\n";
-    std::cout << -1 << "\n";
-    std::cout << ((((ONE_BIG) << (::tpy::BigInt(200)))) >> (::tpy::BigInt(199))) << "\n";
+    std::cout << ((BIG_POS) << (::tpy::BigInt(63))) << "\n" << ::tpy::check_signals;
+    std::cout << ((BIG_POS) >> (::tpy::BigInt(63))) << "\n" << ::tpy::check_signals;
+    std::cout << ((BIG_NEG) << (::tpy::BigInt(63))) << "\n" << ::tpy::check_signals;
+    std::cout << ((BIG_NEG) >> (::tpy::BigInt(63))) << "\n" << ::tpy::check_signals;
+    std::cout << -1 << "\n" << ::tpy::check_signals;
+    std::cout << ((((ONE_BIG) << (::tpy::BigInt(200)))) >> (::tpy::BigInt(199))) << "\n" << ::tpy::check_signals;
     shift_count = ::tpy::BigInt(65);
-    std::cout << ((BIG_POS) << (shift_count)) << "\n";
-    std::cout << ((BIG_NEG) >> (shift_count)) << "\n";
-    std::cout << ((((B) + (::tpy::BigInt(1)))).pow(::tpy::BigInt(2))) << "\n";
-    std::cout << ((((-(B)) - (::tpy::BigInt(1)))).pow(::tpy::BigInt(3))) << "\n";
-    std::cout << ((-(((B) + (::tpy::BigInt(1))))).pow(::tpy::BigInt(4))) << "\n";
-    std::cout << ((WIDE_NEG).pow(::tpy::BigInt(0))) << "\n";
-    std::cout << ((((WIDE_POS) / (((ONE_BIG) << (::tpy::BigInt(60)))))).pow(::tpy::BigInt(6))) << "\n";
+    std::cout << ((BIG_POS) << (shift_count)) << "\n" << ::tpy::check_signals;
+    std::cout << ((BIG_NEG) >> (shift_count)) << "\n" << ::tpy::check_signals;
+    std::cout << ((((B) + (::tpy::BigInt(1)))).pow(::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ((((-(B)) - (::tpy::BigInt(1)))).pow(::tpy::BigInt(3))) << "\n" << ::tpy::check_signals;
+    std::cout << ((-(((B) + (::tpy::BigInt(1))))).pow(::tpy::BigInt(4))) << "\n" << ::tpy::check_signals;
+    std::cout << ((WIDE_NEG).pow(::tpy::BigInt(0))) << "\n" << ::tpy::check_signals;
+    std::cout << ((((WIDE_POS) / (((ONE_BIG) << (::tpy::BigInt(60)))))).pow(::tpy::BigInt(6))) << "\n" << ::tpy::check_signals;
     in_i32_max = ((((ONE_BIG) << (::tpy::BigInt(31)))) - (::tpy::BigInt(1)));
     in_i32_min = -(((ONE_BIG) << (::tpy::BigInt(31))));
     in_i64_from_big = ((((ONE_BIG) << (::tpy::BigInt(62)))) + (::tpy::BigInt(123)));
-    std::cout << (in_i32_max).to_fixed_check<int32_t>() << "\n";
-    std::cout << (in_i32_min).to_fixed_check<int32_t>() << "\n";
-    std::cout << (in_i64_from_big).to_fixed_check<int64_t>() << "\n";
-    std::cout << (-(in_i64_from_big)).to_fixed_check<int64_t>() << "\n";
-    std::cout << ::tpy::BigInt::from_str("  +123456789012345678901234567890  ") << "\n";
-    std::cout << ::tpy::BigInt::from_str(" -999999999999999999999999999999 ") << "\n";
-    std::cout << ::tpy::BigInt::from_float(1.9e+20) << "\n";
-    std::cout << ::tpy::BigInt::from_float(-(1.9e+20)) << "\n";
+    std::cout << (in_i32_max).to_fixed_check<int32_t>() << "\n" << ::tpy::check_signals;
+    std::cout << (in_i32_min).to_fixed_check<int32_t>() << "\n" << ::tpy::check_signals;
+    std::cout << (in_i64_from_big).to_fixed_check<int64_t>() << "\n" << ::tpy::check_signals;
+    std::cout << (-(in_i64_from_big)).to_fixed_check<int64_t>() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BigInt::from_str("  +123456789012345678901234567890  ") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BigInt::from_str(" -999999999999999999999999999999 ") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BigInt::from_float(1.9e+20) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BigInt::from_float(-(1.9e+20)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(p.wrap("hello"))
 void main() {
     Processor<int32_t> p = Processor<int32_t>(1);
-    std::cout << p.process() << "\n";
-    std::cout << p.wrap<std::string>("hello") << "\n";
+    std::cout << p.process() << "\n" << ::tpy::check_signals;
+    std::cout << p.wrap<std::string>("hello") << "\n" << ::tpy::check_signals;
 }
 
 // main()

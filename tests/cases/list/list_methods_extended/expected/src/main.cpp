@@ -14,10 +14,10 @@ namespace tpyapp::main {
 void print_list(const std::vector<int32_t>& nums) {
     int32_t i = 0;
     while ((i < ::tpy::__len__(nums))) {
-        std::cout << nums[static_cast<std::size_t>(i)] << "\n";
+        std::cout << nums[static_cast<std::size_t>(i)] << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
 }
 
 // # === list[T] methods ===
@@ -41,13 +41,13 @@ void print_list(const std::vector<int32_t>& nums) {
 void test_pop_at_index() {
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
     int32_t val = ::tpy::list_pop_at(nums, 2);
-    std::cout << val << "\n";
+    std::cout << val << "\n" << ::tpy::check_signals;
     ::tpyapp::main::print_list(nums);
     val = ::tpy::list_pop_at(nums, 0);
-    std::cout << val << "\n";
+    std::cout << val << "\n" << ::tpy::check_signals;
     ::tpyapp::main::print_list(nums);
     val = ::tpy::list_pop_at(nums, -1);
-    std::cout << val << "\n";
+    std::cout << val << "\n" << ::tpy::check_signals;
     ::tpyapp::main::print_list(nums);
 }
 
@@ -60,10 +60,10 @@ void test_pop_at_index() {
 //     print(nums.index(40))  # 4
 void test_index() {
     std::vector<int32_t> nums = {10, 20, 30, 20, 40};
-    std::cout << ::tpy::list_index(nums, 10) << "\n";
-    std::cout << ::tpy::list_index(nums, 20) << "\n";
-    std::cout << ::tpy::list_index(nums, 30) << "\n";
-    std::cout << ::tpy::list_index(nums, 40) << "\n";
+    std::cout << ::tpy::list_index(nums, 10) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::list_index(nums, 20) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::list_index(nums, 30) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::list_index(nums, 40) << "\n" << ::tpy::check_signals;
 }
 
 // def test_count() -> None:
@@ -75,10 +75,10 @@ void test_index() {
 //     print(nums.count(5))  # 0 (not found)
 void test_count() {
     std::vector<int32_t> nums = {1, 2, 2, 3, 2, 4, 2};
-    std::cout << ::tpy::list_count(nums, 1) << "\n";
-    std::cout << ::tpy::list_count(nums, 2) << "\n";
-    std::cout << ::tpy::list_count(nums, 3) << "\n";
-    std::cout << ::tpy::list_count(nums, 5) << "\n";
+    std::cout << ::tpy::list_count(nums, 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::list_count(nums, 2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::list_count(nums, 3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::list_count(nums, 5) << "\n" << ::tpy::check_signals;
 }
 
 // def test_reverse() -> None:
@@ -112,8 +112,8 @@ void test_copy() {
     std::vector<int32_t> nums = {1, 2, 3};
     std::vector<int32_t> copy = ::tpy::list_copy(nums);
     nums.push_back(4);
-    std::cout << ::tpy::__len__(nums) << "\n";
-    std::cout << ::tpy::__len__(copy) << "\n";
+    std::cout << ::tpy::__len__(nums) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(copy) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::print_list(copy);
 }
 
@@ -154,17 +154,17 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << "=== list pop(index) ===" << "\n";
+    std::cout << "=== list pop(index) ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_pop_at_index();
-    std::cout << "=== list index ===" << "\n";
+    std::cout << "=== list index ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_index();
-    std::cout << "=== list count ===" << "\n";
+    std::cout << "=== list count ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_count();
-    std::cout << "=== list reverse ===" << "\n";
+    std::cout << "=== list reverse ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_reverse();
-    std::cout << "=== list copy ===" << "\n";
+    std::cout << "=== list copy ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_copy();
-    std::cout << "=== list setitem ===" << "\n";
+    std::cout << "=== list setitem ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_setitem();
 }
 

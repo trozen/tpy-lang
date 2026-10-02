@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def sink(n: int32) -> None:
 //     print(n)
 void sink(int32_t n) {
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

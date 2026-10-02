@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(h.boxed.get().x)
 void main() {
     Holder h = Holder();
-    std::cout << h.boxed.get().x << "\n";
+    std::cout << h.boxed.get().x << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

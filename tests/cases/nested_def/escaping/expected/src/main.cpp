@@ -22,9 +22,9 @@ std::function<int32_t(int32_t)> make_adder(int32_t n) {
 //     print(add100(42))
 void main() {
     std::function<int32_t(int32_t)> add5 = ::tpyapp::main::make_adder(5);
-    std::cout << add5(10) << "\n";
+    std::cout << add5(10) << "\n" << ::tpy::check_signals;
     std::function<int32_t(int32_t)> add100 = ::tpyapp::main::make_adder(100);
-    std::cout << add100(42) << "\n";
+    std::cout << add100(42) << "\n" << ::tpy::check_signals;
 }
 
 // main()

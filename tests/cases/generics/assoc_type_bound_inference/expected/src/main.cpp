@@ -11,9 +11,9 @@ namespace tpyapp::main {
 void main() {
     IntBox __tmp_1 = IntBox(::tpy::BigInt(42));
     ::tpy::BigInt n = ::tpyapp::main::unwrap<::tpy::BigInt, IntBox>(__tmp_1);
-    std::cout << ((n) + (::tpy::BigInt(1))) << "\n";
+    std::cout << ((n) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
     StrBox __tmp_2 = StrBox("hello");
-    std::cout << ::tpyapp::main::unwrap<std::string, StrBox>(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::unwrap<std::string, StrBox>(__tmp_2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

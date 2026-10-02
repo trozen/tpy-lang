@@ -51,15 +51,15 @@ void main() {
     ::tpy::Union<A*, B*, C*> b = ::tpy::to_ptr_variant(__slot_2);
     ::tpy::Union<A, B, C> __slot_3 = C(9);
     ::tpy::Union<A*, B*, C*> c = ::tpy::to_ptr_variant(__slot_3);
-    std::cout << "pick" << " " << ::tpyapp::main::pick(a.as_const()) << " " << ::tpyapp::main::pick(b.as_const()) << " " << ::tpyapp::main::pick(c.as_const()) << "\n";
-    std::cout << "then" << " " << ::tpyapp::main::then_reads(a.as_const()) << " " << ::tpyapp::main::then_reads(c.as_const()) << "\n";
-    std::cout << "label" << " " << ::tpyapp::main::label(a.as_const()) << " " << ::tpyapp::main::label(b.as_const()) << "\n";
+    std::cout << "pick" << " " << ::tpyapp::main::pick(a.as_const()) << " " << ::tpyapp::main::pick(b.as_const()) << " " << ::tpyapp::main::pick(c.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << "then" << " " << ::tpyapp::main::then_reads(a.as_const()) << " " << ::tpyapp::main::then_reads(c.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << "label" << " " << ::tpyapp::main::label(a.as_const()) << " " << ::tpyapp::main::label(b.as_const()) << "\n" << ::tpy::check_signals;
     ::tpy::Union<A, B> __slot_4 = A(3);
     ::tpy::Union<A*, B*> p = ::tpy::to_ptr_variant(__slot_4);
     ::tpy::Union<A, B> __slot_5 = B(4);
     ::tpy::Union<A*, B*> q = ::tpy::to_ptr_variant(__slot_5);
-    std::cout << "pair" << " " << ::tpyapp::main::pair(p.as_const()) << " " << ::tpyapp::main::pair(q.as_const()) << "\n";
-    std::cout << "method" << " " << Reader("r").pick(a.as_const()) << " " << Reader("r").pick(b.as_const()) << "\n";
+    std::cout << "pair" << " " << ::tpyapp::main::pair(p.as_const()) << " " << ::tpyapp::main::pair(q.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << Reader("r").pick(a.as_const()) << " " << Reader("r").pick(b.as_const()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

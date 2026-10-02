@@ -31,8 +31,8 @@ std::vector<int32_t> make_list(int32_t x) {
 void main() {
     std::vector<int32_t> a = ::tpyapp::main::make_empty<int32_t>();
     a.push_back(99);
-    std::cout << ::tpy::__len__(a) << "\n";
-    std::cout << ::tpy::__getitem__(a, 0) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(a, 0) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> b = ::tpyapp::main::make_single<int32_t>(42);
     b.push_back(100);
     auto& __obj_0 = b;
@@ -40,7 +40,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::vector<int32_t> c = ::tpyapp::main::make_list(10);
     c.push_back(100);
@@ -49,7 +49,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -67,11 +67,11 @@ std::optional<Color> maybe_color(bool flag) {
 void main() {
     std::optional<Color> c = ::tpyapp::main::maybe_color(true);
     if ((c.has_value())) {
-        std::cout << ::tpy::print_optional_val(c) << "\n";
+        std::cout << ::tpy::print_optional_val(c) << "\n" << ::tpy::check_signals;
     }
     c = ::tpyapp::main::maybe_color(false);
     if ((!c.has_value())) {
-        std::cout << "no color" << "\n";
+        std::cout << "no color" << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def log() -> None:
 //     print("log")
 void log() {
-    std::cout << "log" << "\n";
+    std::cout << "log" << "\n" << ::tpy::check_signals;
 }
 
 // def main():
@@ -33,21 +33,21 @@ void main() {
     }
     int32_t i = 0;
     while ((i < 2)) {
-        std::cout << p->x << "\n";
+        std::cout << p->x << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     ::tpyapp::main::log();
-    std::cout << p->x << "\n";
+    std::cout << p->x << "\n" << ::tpy::check_signals;
     {
         try {
-            std::cout << "try" << "\n";
+            std::cout << "try" << "\n" << ::tpy::check_signals;
         } catch (...) {
-            std::cout << "fin" << "\n";
+            std::cout << "fin" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "fin" << "\n";
+        std::cout << "fin" << "\n" << ::tpy::check_signals;
     }
-    std::cout << p->x << "\n";
+    std::cout << p->x << "\n" << ::tpy::check_signals;
 }
 
 // main()

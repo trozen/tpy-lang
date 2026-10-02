@@ -14,8 +14,8 @@ void main() {
     ::tpyapp::storage::Buffer s = ::tpyapp::storage::Buffer();
     s.add("hello");
     s.add(" world");
-    std::cout << s.size() << "\n";
-    std::cout << s.dump() << "\n";
+    std::cout << s.size() << "\n" << ::tpy::check_signals;
+    std::cout << s.dump() << "\n" << ::tpy::check_signals;
 }
 
 // import storage

@@ -39,7 +39,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view x = ::tpy::unwrap_ref(*__r_1);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
             count = ::tpy::add_check<int32_t>(count, 1);
             if ((count == 2)) {
                 break;
@@ -53,7 +53,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t y = ::tpy::unwrap_ref(*__r_3);
-            std::cout << y << "\n";
+            std::cout << y << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -63,7 +63,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             std::string_view z = ::tpy::unwrap_ref(*__r_5);
-            std::cout << z << "\n";
+            std::cout << z << "\n" << ::tpy::check_signals;
         }
     }
 }

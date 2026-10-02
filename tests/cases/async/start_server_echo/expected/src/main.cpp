@@ -155,7 +155,7 @@ __coro_client client(int32_t port, std::string_view msg) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r1).value();
         __sub_1 = nullptr;
-        std::cout << __await_lift_0 << "\n";
+        std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
         __sub_2 = &((*b));
         __state = S_RESUME_2;
         continue;
@@ -165,7 +165,7 @@ __coro_client client(int32_t port, std::string_view msg) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r2).value();
         __sub_2 = nullptr;
-        std::cout << __await_lift_1 << "\n";
+        std::cout << __await_lift_1 << "\n" << ::tpy::check_signals;
         (*server).close();
         __sub_3.emplace((*server));
         __state = S_RESUME_3;

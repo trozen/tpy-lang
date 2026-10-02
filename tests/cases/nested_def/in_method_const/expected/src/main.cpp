@@ -16,8 +16,8 @@ int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
 //     print(c.scaled(2))
 void main() {
     C c = C();
-    std::cout << c.peek(8) << "\n";
-    std::cout << c.scaled(2) << "\n";
+    std::cout << c.peek(8) << "\n" << ::tpy::check_signals;
+    std::cout << c.scaled(2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

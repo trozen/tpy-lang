@@ -14,7 +14,7 @@ void __tpy_init() {
 
     static std::vector<int32_t> __global_slot_1 = ::tpy::construct<std::vector<int32_t>>(Counter(5));
     result = &__global_slot_1;
-    std::cout << ::tpy::ListPrinter((*result)) << "\n";
+    std::cout << ::tpy::ListPrinter((*result)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -16,8 +16,8 @@ int32_t use_rect(::SDL_Rect* r) {
 //     print(use_rect(r))
 void main() {
     ::SDL_Rect r = ::SDL_Rect{0, 0, 800, 600};
-    std::cout << r.w << "\n";
-    std::cout << ::tpyapp::main::use_rect(&r) << "\n";
+    std::cout << r.w << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use_rect(&r) << "\n" << ::tpy::check_signals;
 }
 
 // # Test @native(binding="C") on a class -- C struct import with aggregate init

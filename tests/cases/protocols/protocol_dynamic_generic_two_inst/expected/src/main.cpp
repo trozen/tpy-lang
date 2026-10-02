@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def show_int(c: Container[int32]) -> None:
 //     print(c.get())
 void show_int(Container<int32_t>& c) {
-    std::cout << c.get() << "\n";
+    std::cout << c.get() << "\n" << ::tpy::check_signals;
 }
 
 // def show_str(c: Container[str]) -> None:
 //     print(c.get())
 void show_str(Container<std::string>& c) {
-    std::cout << c.get() << "\n";
+    std::cout << c.get() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -29,17 +29,17 @@ namespace tpyapp::main {
 //     os.unlink("tpy_os_sysinfo_t")
 //     print("unlink", not os.path.exists("tpy_os_sysinfo_t"))
 void main() {
-    std::cout << ::tpystd::os::name << " " << ::tpystd::os::sep << " " << ::tpystd::os::pathsep << " " << ::tpy::repr_of(::tpystd::os::linesep) << "\n";
-    std::cout << ::tpystd::os::curdir << " " << ::tpystd::os::pardir << " " << ::tpystd::os::extsep << " " << ::tpystd::os::devnull << "\n";
-    std::cout << "pid" << " " << ::tpy::print_bool((::tpy::stdlib::os::getpid() > 0)) << " " << ::tpy::print_bool((::tpy::stdlib::os::getppid() > 0)) << "\n";
-    std::cout << "ids" << " " << ::tpy::print_bool((::tpy::stdlib::os::getuid() >= 0)) << " " << ::tpy::print_bool((::tpy::stdlib::os::getgid() >= 0)) << " " << ::tpy::print_bool((::tpy::stdlib::os::geteuid() == ::tpy::stdlib::os::getuid())) << " " << ::tpy::print_bool((::tpy::stdlib::os::getegid() == ::tpy::stdlib::os::getgid())) << "\n";
+    std::cout << ::tpystd::os::name << " " << ::tpystd::os::sep << " " << ::tpystd::os::pathsep << " " << ::tpy::repr_of(::tpystd::os::linesep) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::curdir << " " << ::tpystd::os::pardir << " " << ::tpystd::os::extsep << " " << ::tpystd::os::devnull << "\n" << ::tpy::check_signals;
+    std::cout << "pid" << " " << ::tpy::print_bool((::tpy::stdlib::os::getpid() > 0)) << " " << ::tpy::print_bool((::tpy::stdlib::os::getppid() > 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "ids" << " " << ::tpy::print_bool((::tpy::stdlib::os::getuid() >= 0)) << " " << ::tpy::print_bool((::tpy::stdlib::os::getgid() >= 0)) << " " << ::tpy::print_bool((::tpy::stdlib::os::geteuid() == ::tpy::stdlib::os::getuid())) << " " << ::tpy::print_bool((::tpy::stdlib::os::getegid() == ::tpy::stdlib::os::getgid())) << "\n" << ::tpy::check_signals;
     std::optional<int64_t> c = ::tpystd::os::cpu_count();
-    std::cout << "cpu" << " " << ::tpy::print_bool(((c.has_value()) && ((*c) > 0))) << "\n";
-    std::cout << "strerror" << " " << ::tpy::stdlib::os::strerror(2) << "\n";
-    std::cout << "isatty" << " " << ::tpy::print_bool(::tpy::stdlib::os::isatty(99999)) << "\n";
+    std::cout << "cpu" << " " << ::tpy::print_bool(((c.has_value()) && ((*c) > 0))) << "\n" << ::tpy::check_signals;
+    std::cout << "strerror" << " " << ::tpy::stdlib::os::strerror(2) << "\n" << ::tpy::check_signals;
+    std::cout << "isatty" << " " << ::tpy::print_bool(::tpy::stdlib::os::isatty(99999)) << "\n" << ::tpy::check_signals;
     int64_t old = ::tpy::stdlib::os::umask(23);
     int64_t restored = ::tpy::stdlib::os::umask(old);
-    std::cout << "umask" << " " << ::tpy::print_bool((old >= 0)) << " " << ::tpy::print_bool((restored == 23)) << "\n";
+    std::cout << "umask" << " " << ::tpy::print_bool((old >= 0)) << " " << ::tpy::print_bool((restored == 23)) << "\n" << ::tpy::check_signals;
     auto __ctx_1 = ::tpy::builtin_open_mode("tpy_os_sysinfo_t", "w");
     auto& fh = __ctx_1.__enter__();
     try {
@@ -55,7 +55,7 @@ void main() {
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
     ::tpystd::os::unlink("tpy_os_sysinfo_t");
-    std::cout << "unlink" << " " << ::tpy::print_bool((!(::tpy::stdlib::os::path_exists("tpy_os_sysinfo_t")))) << "\n";
+    std::cout << "unlink" << " " << ::tpy::print_bool((!(::tpy::stdlib::os::path_exists("tpy_os_sysinfo_t")))) << "\n" << ::tpy::check_signals;
 }
 
 // # os module constants (name/sep/.../devnull) + process identity (getpid/getuid

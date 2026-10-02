@@ -12,9 +12,9 @@ namespace tpyapp::main {
 void main() {
     Slot s = Slot();
     if ((s.p == nullptr)) {
-        std::cout << "null" << "\n";
+        std::cout << "null" << "\n" << ::tpy::check_signals;
     }
-    std::cout << s.tag << "\n";
+    std::cout << s.tag << "\n" << ::tpy::check_signals;
 }
 
 // main()

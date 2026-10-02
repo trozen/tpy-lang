@@ -128,35 +128,35 @@ bool unconditional(Counter& c) {
 void main() {
     Counter __slot_1 = Counter();
     Counter* c = &__slot_1;
-    std::cout << "and_skips_rhs" << " " << ::tpy::print_bool(::tpyapp::main::and_skips_rhs((*c))) << " " << c->n << "\n";
+    std::cout << "and_skips_rhs" << " " << ::tpy::print_bool(::tpyapp::main::and_skips_rhs((*c))) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
-    std::cout << "and_runs_rhs" << " " << ::tpy::print_bool(::tpyapp::main::and_runs_rhs((*c))) << " " << c->n << "\n";
+    std::cout << "and_runs_rhs" << " " << ::tpy::print_bool(::tpyapp::main::and_runs_rhs((*c))) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
-    std::cout << "or_skips_rhs" << " " << ::tpy::print_bool(::tpyapp::main::or_skips_rhs((*c))) << " " << c->n << "\n";
+    std::cout << "or_skips_rhs" << " " << ::tpy::print_bool(::tpyapp::main::or_skips_rhs((*c))) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
-    std::cout << "or_runs_rhs" << " " << ::tpy::print_bool(::tpyapp::main::or_runs_rhs((*c))) << " " << c->n << "\n";
+    std::cout << "or_runs_rhs" << " " << ::tpy::print_bool(::tpyapp::main::or_runs_rhs((*c))) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
-    std::cout << "ternary_skips_else" << " " << ::tpy::print_bool(::tpyapp::main::ternary_skips_else((*c))) << " " << c->n << "\n";
+    std::cout << "ternary_skips_else" << " " << ::tpy::print_bool(::tpyapp::main::ternary_skips_else((*c))) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
-    std::cout << "ternary_then_skipped" << " " << ::tpy::print_bool(::tpyapp::main::ternary_skips_then((*c), false)) << " " << c->n << "\n";
+    std::cout << "ternary_then_skipped" << " " << ::tpy::print_bool(::tpyapp::main::ternary_skips_then((*c), false)) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
-    std::cout << "ternary_then_taken" << " " << ::tpy::print_bool(::tpyapp::main::ternary_skips_then((*c), true)) << " " << c->n << "\n";
+    std::cout << "ternary_then_taken" << " " << ::tpy::print_bool(::tpyapp::main::ternary_skips_then((*c), true)) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
-    std::cout << "nested_and_skipped" << " " << ::tpy::print_bool(::tpyapp::main::nested_and((*c), false)) << " " << c->n << "\n";
+    std::cout << "nested_and_skipped" << " " << ::tpy::print_bool(::tpyapp::main::nested_and((*c), false)) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
-    std::cout << "nested_and_taken" << " " << ::tpy::print_bool(::tpyapp::main::nested_and((*c), true)) << " " << c->n << "\n";
+    std::cout << "nested_and_taken" << " " << ::tpy::print_bool(::tpyapp::main::nested_and((*c), true)) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
-    std::cout << "nested_mixed_or_short" << " " << ::tpy::print_bool(::tpyapp::main::nested_mixed((*c), true, true)) << " " << c->n << "\n";
+    std::cout << "nested_mixed_or_short" << " " << ::tpy::print_bool(::tpyapp::main::nested_mixed((*c), true, true)) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
-    std::cout << "nested_mixed_shallow" << " " << ::tpy::print_bool(::tpyapp::main::nested_mixed((*c), false, false)) << " " << c->n << "\n";
+    std::cout << "nested_mixed_shallow" << " " << ::tpy::print_bool(::tpyapp::main::nested_mixed((*c), false, false)) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
-    std::cout << "nested_mixed_deep" << " " << ::tpy::print_bool(::tpyapp::main::nested_mixed((*c), false, true)) << " " << c->n << "\n";
+    std::cout << "nested_mixed_deep" << " " << ::tpy::print_bool(::tpyapp::main::nested_mixed((*c), false, true)) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
-    std::cout << "nested_ternary_skipped" << " " << ::tpy::print_bool(::tpyapp::main::nested_ternary((*c), false)) << " " << c->n << "\n";
+    std::cout << "nested_ternary_skipped" << " " << ::tpy::print_bool(::tpyapp::main::nested_ternary((*c), false)) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
-    std::cout << "nested_ternary_taken" << " " << ::tpy::print_bool(::tpyapp::main::nested_ternary((*c), true)) << " " << c->n << "\n";
+    std::cout << "nested_ternary_taken" << " " << ::tpy::print_bool(::tpyapp::main::nested_ternary((*c), true)) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
-    std::cout << "unconditional" << " " << ::tpy::print_bool(::tpyapp::main::unconditional((*c))) << " " << c->n << "\n";
+    std::cout << "unconditional" << " " << ::tpy::print_bool(::tpyapp::main::unconditional((*c))) << " " << c->n << "\n" << ::tpy::check_signals;
 }
 
 // main()

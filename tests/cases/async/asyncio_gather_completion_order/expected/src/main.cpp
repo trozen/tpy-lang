@@ -23,7 +23,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0 = nullptr;
-        std::cout << "slow done" << "\n";
+        std::cout << "slow done" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         int32_t __tpy_async_ret = 100;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -49,7 +49,7 @@ __coro_slow slow(::tpystd::asyncio::Event& start) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         start.set();
-        std::cout << "fast done" << "\n";
+        std::cout << "fast done" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         int32_t __tpy_async_ret = 200;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -90,8 +90,8 @@ __coro_fast fast(::tpystd::asyncio::Event& start) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         results.emplace(std::move(__r0).value());
         __sub_0.reset();
-        std::cout << "result[0]:" << " " << ::tpy::__getitem__((*results), 0) << "\n";
-        std::cout << "result[1]:" << " " << ::tpy::__getitem__((*results), 1) << "\n";
+        std::cout << "result[0]:" << " " << ::tpy::__getitem__((*results), 0) << "\n" << ::tpy::check_signals;
+        std::cout << "result[1]:" << " " << ::tpy::__getitem__((*results), 1) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

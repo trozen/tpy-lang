@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Bag b = Bag();
     b.fill(9);
-    std::cout << ::tpy::ListPrinter(b.items) << "\n";
+    std::cout << ::tpy::ListPrinter(b.items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -46,17 +46,17 @@ void main() {
                 v = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
             // else:
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
             goto __after_try_1;
             // except NotFound:
             __except_1:;
-            std::cout << "not found" << "\n";
+            std::cout << "not found" << "\n" << ::tpy::check_signals;
             __after_try_1:;
         } catch (...) {
-            std::cout << "finally 1" << "\n";
+            std::cout << "finally 1" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally 1" << "\n";
+        std::cout << "finally 1" << "\n" << ::tpy::check_signals;
     }
     int32_t v2;
     {
@@ -67,17 +67,17 @@ void main() {
                 v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
             }
             // else:
-            std::cout << v2 << "\n";
+            std::cout << v2 << "\n" << ::tpy::check_signals;
             goto __after_try_3;
             // except NotFound:
             __except_3:;
-            std::cout << "not found" << "\n";
+            std::cout << "not found" << "\n" << ::tpy::check_signals;
             __after_try_3:;
         } catch (...) {
-            std::cout << "finally 2" << "\n";
+            std::cout << "finally 2" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally 2" << "\n";
+        std::cout << "finally 2" << "\n" << ::tpy::check_signals;
     }
 }
 

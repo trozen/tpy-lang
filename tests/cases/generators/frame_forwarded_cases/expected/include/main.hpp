@@ -511,14 +511,14 @@ inline Ctx::Ctx(std::string_view name) : name(name) {}
 //     print("enter", self.name)
 //     return self
 inline Ctx& Ctx::__enter__() {
-    std::cout << "enter" << " " << this->name << "\n";
+    std::cout << "enter" << " " << this->name << "\n" << ::tpy::check_signals;
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 //     print("exit", self.name)
 inline void Ctx::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    std::cout << "exit" << " " << this->name << "\n";
+    std::cout << "exit" << " " << this->name << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -19,8 +19,8 @@ std::string check(std::optional<int32_t> v) {
 //     print(check(int32(42)))
 //     print(check(None))
 void main() {
-    std::cout << ::tpyapp::main::check(42) << "\n";
-    std::cout << ::tpyapp::main::check(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::check(42) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::check(std::nullopt) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -90,17 +90,17 @@ int32_t scalar_copies(const std::tuple<int32_t, bool>& pair) {
 void main() {
     Cell cell = Cell(1);
     Cell other = Cell(2);
-    std::cout << "mixed" << " " << ::tpyapp::main::mixed(std::tuple<int32_t, Cell*>{cell.value, &(cell)}) << " " << cell.value << "\n";
-    std::cout << "singleton" << " " << ::tpyapp::main::singleton(std::tuple<Cell*>(&(cell)), cell) << "\n";
-    std::cout << "readonly" << " " << ::tpyapp::main::readonly_capture(std::tuple<const Cell*>(&(cell)), cell) << "\n";
-    std::cout << "mixed-access-distinct" << " " << ::tpyapp::main::mixed_access(std::tuple<const Cell*, Cell*>{&(cell), &(other)}) << "\n";
-    std::cout << "mixed-access-shared" << " " << ::tpyapp::main::mixed_access(std::tuple<const Cell*, Cell*>{&(cell), &(cell)}) << "\n";
-    std::cout << "tuple-copy-distinct" << " " << ::tpyapp::main::copies(std::tuple<Cell*, int32_t>{&(cell), 1}, other) << "\n";
-    std::cout << "tuple-copy-shared" << " " << ::tpyapp::main::copies(std::tuple<Cell*, int32_t>{&(cell), 1}, cell) << "\n";
-    std::cout << "tuple-scalar-copy" << " " << ::tpyapp::main::scalar_copies(std::tuple<int32_t, bool>{27, true}) << "\n";
-    std::cout << "method" << " " << cell.observe(std::tuple<Cell*>(&(cell))) << "\n";
+    std::cout << "mixed" << " " << ::tpyapp::main::mixed(std::tuple<int32_t, Cell*>{cell.value, &(cell)}) << " " << cell.value << "\n" << ::tpy::check_signals;
+    std::cout << "singleton" << " " << ::tpyapp::main::singleton(std::tuple<Cell*>(&(cell)), cell) << "\n" << ::tpy::check_signals;
+    std::cout << "readonly" << " " << ::tpyapp::main::readonly_capture(std::tuple<const Cell*>(&(cell)), cell) << "\n" << ::tpy::check_signals;
+    std::cout << "mixed-access-distinct" << " " << ::tpyapp::main::mixed_access(std::tuple<const Cell*, Cell*>{&(cell), &(other)}) << "\n" << ::tpy::check_signals;
+    std::cout << "mixed-access-shared" << " " << ::tpyapp::main::mixed_access(std::tuple<const Cell*, Cell*>{&(cell), &(cell)}) << "\n" << ::tpy::check_signals;
+    std::cout << "tuple-copy-distinct" << " " << ::tpyapp::main::copies(std::tuple<Cell*, int32_t>{&(cell), 1}, other) << "\n" << ::tpy::check_signals;
+    std::cout << "tuple-copy-shared" << " " << ::tpyapp::main::copies(std::tuple<Cell*, int32_t>{&(cell), 1}, cell) << "\n" << ::tpy::check_signals;
+    std::cout << "tuple-scalar-copy" << " " << ::tpyapp::main::scalar_copies(std::tuple<int32_t, bool>{27, true}) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << cell.observe(std::tuple<Cell*>(&(cell))) << "\n" << ::tpy::check_signals;
     Observer observer = Observer(std::tuple<Cell*>(&(cell)));
-    std::cout << "constructor" << " " << observer.value << " " << cell.value << "\n";
+    std::cout << "constructor" << " " << observer.value << " " << cell.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

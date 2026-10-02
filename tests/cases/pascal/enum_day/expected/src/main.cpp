@@ -100,14 +100,14 @@ void __tpy_init() {
 
     d = day::fri;
     if ((d == day::fri)) {
-        std::cout << "TGIF" << "\n";
+        std::cout << "TGIF" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "not yet" << "\n";
+        std::cout << "not yet" << "\n" << ::tpy::check_signals;
     }
     if (((d != day::sat) && (d != day::sun))) {
-        std::cout << "weekday" << "\n";
+        std::cout << "weekday" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "weekend" << "\n";
+        std::cout << "weekend" << "\n" << ::tpy::check_signals;
     }
 }
 

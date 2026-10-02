@@ -12,9 +12,9 @@ namespace tpyapp::main {
 void main() {
     Node __tmp_1 = Node(::tpy::BigInt(5));
     Holder h = Holder(&(__tmp_1));
-    std::cout << h.found << " " << ::tpy::print_bool(h.present) << "\n";
+    std::cout << h.found << " " << ::tpy::print_bool(h.present) << "\n" << ::tpy::check_signals;
     Holder e = Holder(nullptr);
-    std::cout << e.found << " " << ::tpy::print_bool(e.present) << "\n";
+    std::cout << e.found << " " << ::tpy::print_bool(e.present) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(d.d, d.a, d.b)
 void main() {
     Inherited i = Inherited();
-    std::cout << i.tag << " " << i.a << " " << i.b << "\n";
+    std::cout << i.tag << " " << i.a << " " << i.b << "\n" << ::tpy::check_signals;
     Defaulted d = Defaulted();
-    std::cout << d.d << " " << d.a << " " << d.b << "\n";
+    std::cout << d.d << " " << d.a << " " << d.b << "\n" << ::tpy::check_signals;
 }
 
 // main()

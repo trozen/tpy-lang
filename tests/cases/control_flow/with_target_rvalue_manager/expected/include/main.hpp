@@ -80,7 +80,7 @@ inline Counter& Counter::__enter__() {
 // def __exit__(self, et, ev, tb) -> None:
 //     print("exit sees", self.n)
 inline void Counter::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    std::cout << "exit sees" << " " << this->n << "\n";
+    std::cout << "exit sees" << " " << this->n << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

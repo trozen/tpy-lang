@@ -76,7 +76,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_guarded::__next__() {
 }
 
 void __gen_guarded::__finally_0() {
-    std::cout << "  callee: cleanup" << "\n";
+    std::cout << "  callee: cleanup" << "\n" << ::tpy::check_signals;
 }
 
 // def guarded() -> Iterator[int32]:

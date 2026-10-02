@@ -33,28 +33,28 @@ void main() {
     int32_t major = std::get<0>(__tup_1);
     int32_t minor = std::get<1>(__tup_1);
     int32_t patch = std::get<2>(__tup_1);
-    std::cout << major << "\n";
-    std::cout << minor << "\n";
-    std::cout << patch << "\n";
+    std::cout << major << "\n" << ::tpy::check_signals;
+    std::cout << minor << "\n" << ::tpy::check_signals;
+    std::cout << patch << "\n" << ::tpy::check_signals;
     const auto& __tup_2 = PAIR;
     std::string_view label = std::get<0>(__tup_2);
     bool flag = std::get<1>(__tup_2);
-    std::cout << label << "\n";
-    std::cout << ::tpy::print_bool(flag) << "\n";
+    std::cout << label << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(flag) << "\n" << ::tpy::check_signals;
     const auto& __tup_3 = ARITH;
     int32_t a = std::get<0>(__tup_3);
     int32_t b = std::get<1>(__tup_3);
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
     const auto& __tup_4 = NESTED;
     std::tuple<std::string_view, int32_t> inner = std::get<0>(__tup_4);
     std::string_view outer = std::get<1>(__tup_4);
     const auto& __tup_5 = inner;
     std::string_view name = std::get<0>(__tup_5);
     int32_t val = std::get<1>(__tup_5);
-    std::cout << name << "\n";
-    std::cout << val << "\n";
-    std::cout << outer << "\n";
+    std::cout << name << "\n" << ::tpy::check_signals;
+    std::cout << val << "\n" << ::tpy::check_signals;
+    std::cout << outer << "\n" << ::tpy::check_signals;
 }
 
 // main()

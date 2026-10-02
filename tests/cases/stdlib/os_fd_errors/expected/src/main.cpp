@@ -42,35 +42,35 @@ void main() {
         try {
             ::tpystd::os::open(_MISSING, ::tpy::stdlib::os::kc_o_rdonly);
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "open: FileNotFoundError" << "\n";
+            std::cout << "open: FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::os::read(99999, 4);
         } catch (const ::tpy::OSError&) {
-            std::cout << "read: OSError" << "\n";
+            std::cout << "read: OSError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::os::fstat(99999);
         } catch (const ::tpy::OSError&) {
-            std::cout << "fstat: OSError" << "\n";
+            std::cout << "fstat: OSError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::os::chmod(_MISSING, 384);
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "chmod: FileNotFoundError" << "\n";
+            std::cout << "chmod: FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::os::utime(_MISSING, std::tuple<double, double>{1.0, 1.0});
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "utime: FileNotFoundError" << "\n";
+            std::cout << "utime: FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
 }

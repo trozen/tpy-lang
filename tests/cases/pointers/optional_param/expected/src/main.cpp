@@ -57,11 +57,11 @@ void __tpy_init() {
     points->push_back(Point(3, 4));
     points->push_back(Point(5, 6));
     result = ::tpyapp::main::find((*points), 3);
-    std::cout << ::tpyapp::main::describe(result) << "\n";
-    std::cout << ::tpyapp::main::describe(nullptr) << "\n";
-    std::cout << ::tpyapp::main::describe(::tpyapp::main::find((*points), 99)) << "\n";
-    std::cout << ::tpy::deref_check(::tpyapp::main::find((*points), 5)).x << "\n";
-    std::cout << ::tpy::deref_check(::tpyapp::main::find((*points), 5)).mag() << "\n";
+    std::cout << ::tpyapp::main::describe(result) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(nullptr) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpyapp::main::find((*points), 99)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::deref_check(::tpyapp::main::find((*points), 5)).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::deref_check(::tpyapp::main::find((*points), 5)).mag() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

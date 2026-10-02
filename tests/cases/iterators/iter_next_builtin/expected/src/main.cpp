@@ -33,29 +33,29 @@ void main() {
             if (!__try_tmp_5.has_value()) goto __except_4;
             v = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         {
             auto __try_tmp_6 = ::tpy::next(it);
             if (!__try_tmp_6.has_value()) goto __except_4;
             v = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         {
             auto __try_tmp_7 = ::tpy::next(it);
             if (!__try_tmp_7.has_value()) goto __except_4;
             v = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         {
             auto __try_tmp_8 = ::tpy::next(it);
             if (!__try_tmp_8.has_value()) goto __except_4;
             v = ::tpy::unwrap_ref_move(*__try_tmp_8);
         }
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         goto __after_try_4;
         // except StopIteration:
         __except_4:;
-        std::cout << "done" << "\n";
+        std::cout << "done" << "\n" << ::tpy::check_signals;
         __after_try_4:;
     }
     Counter c2 = Counter(5);

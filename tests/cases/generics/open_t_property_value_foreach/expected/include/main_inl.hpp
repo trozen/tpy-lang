@@ -30,7 +30,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_chars::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         ch = *((*__for_it_0))++;
-        std::cout << "prop_char:" << " " << ch << "\n";
+        std::cout << "prop_char:" << " " << ch << "\n" << ::tpy::check_signals;
         n = ::tpy::add_check<int32_t>(n, 1);
         __state = S_RESUME_0;
         return n;
@@ -65,7 +65,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_chars_m::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         ch = *((*__for_it_0))++;
-        std::cout << "meth_char:" << " " << ch << "\n";
+        std::cout << "meth_char:" << " " << ch << "\n" << ::tpy::check_signals;
         n = ::tpy::add_check<int32_t>(n, 1);
         __state = S_RESUME_0;
         return n;

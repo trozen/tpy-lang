@@ -28,11 +28,11 @@ void main() {
         try {
             result = ::tpyapp::main::risky(5);
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught" << "\n";
+            std::cout << "caught" << "\n" << ::tpy::check_signals;
             goto __after_else_1;
         }
         // else:
-        std::cout << result << "\n";
+        std::cout << result << "\n" << ::tpy::check_signals;
         __after_else_1:;
     }
 }

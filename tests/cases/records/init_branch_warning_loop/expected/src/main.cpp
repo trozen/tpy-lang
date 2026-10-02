@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(a.total)
 void main() {
     Accum a = Accum(4);
-    std::cout << a.total << "\n";
+    std::cout << a.total << "\n" << ::tpy::check_signals;
 }
 
 // main()

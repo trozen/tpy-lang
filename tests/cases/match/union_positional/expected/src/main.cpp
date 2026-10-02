@@ -16,13 +16,13 @@ void describe(::tpy::Union<const Circle*, const Rect*> s) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         auto r = __case_0.radius;
-        std::cout << ::tpy::print_float(r) << "\n";
+        std::cout << ::tpy::print_float(r) << "\n" << ::tpy::check_signals;
         break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         auto h = __case_1.height;
-        std::cout << ::tpy::print_float(h) << "\n";
+        std::cout << ::tpy::print_float(h) << "\n" << ::tpy::check_signals;
         break;
     }
     }

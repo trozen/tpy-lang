@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(p.magnitude_sq())
 void main() {
     Point p = Point(3, 4);
-    std::cout << p.magnitude_sq() << "\n";
+    std::cout << p.magnitude_sq() << "\n" << ::tpy::check_signals;
 }
 
 // main()

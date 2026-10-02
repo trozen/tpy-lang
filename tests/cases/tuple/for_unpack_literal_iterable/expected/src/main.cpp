@@ -28,16 +28,16 @@ void main() {
         const auto& __tup_1 = __for_tup_0;
         std::string_view name = std::get<0>(__tup_1);
         int32_t n = std::get<1>(__tup_1);
-        std::cout << name << " " << n << "\n";
+        std::cout << name << " " << n << "\n" << ::tpy::check_signals;
         total = ::tpy::add_check<int32_t>(total, n);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
     auto __obj_1 = {std::tuple<std::string, int32_t>{"x", 4}, std::tuple<std::string, int32_t>{"y", 5}};
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& pair = *__beg_1;
-        std::cout << ::tpy::TuplePrinter(pair) << "\n";
+        std::cout << ::tpy::TuplePrinter(pair) << "\n" << ::tpy::check_signals;
     }
     int32_t acc = 0;
     auto __obj_2 = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
@@ -50,7 +50,7 @@ void main() {
         int32_t b = std::get<1>(__tup_2);
         acc = ::tpy::add_check<int32_t>(acc, (::tpy::mul_check<int32_t>(a, b)));
     }
-    std::cout << acc << "\n";
+    std::cout << acc << "\n" << ::tpy::check_signals;
 }
 
 // main()

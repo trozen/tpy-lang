@@ -88,15 +88,15 @@ void __tpy_init() {
         g = &__global_slot_2;
     }
     if ((g != nullptr)) {
-        std::cout << g->x << "\n";
+        std::cout << g->x << "\n" << ::tpy::check_signals;
         g->x = ::tpy::add_check<int32_t>(g->x, 10);
-        std::cout << g->x << "\n";
+        std::cout << g->x << "\n" << ::tpy::check_signals;
     }
     V = &*(__global_slot_3 = Node(3));
     S = V;
-    std::cout << S->x << "\n";
+    std::cout << S->x << "\n" << ::tpy::check_signals;
     V = &*(__global_slot_4 = Node(4));
-    std::cout << V->x << "\n";
+    std::cout << V->x << "\n" << ::tpy::check_signals;
     static std::vector<Node> __global_slot_5 = {Node(5), Node(6)};
     pool = &__global_slot_5;
     q = nullptr;
@@ -108,7 +108,7 @@ void __tpy_init() {
     if ((q != nullptr)) {
         q->x = ::tpy::add_check<int32_t>(q->x, 100);
     }
-    std::cout << ::tpy::__getitem__((*pool), 0).x << "\n";
+    std::cout << ::tpy::__getitem__((*pool), 0).x << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

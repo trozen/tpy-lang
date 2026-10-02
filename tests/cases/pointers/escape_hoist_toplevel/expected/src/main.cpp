@@ -25,7 +25,7 @@ void __tpy_init() {
         Point* p = &*(__global_slot_2 = Point(i, i));
         saved = p;
     }
-    std::cout << saved->x << " " << saved->y << "\n";
+    std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

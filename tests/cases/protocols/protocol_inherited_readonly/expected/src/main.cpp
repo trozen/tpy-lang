@@ -15,8 +15,8 @@ void __tpy_init() {
 
     static Impl __global_slot_1 = Impl(42);
     obj = &__global_slot_1;
-    std::cout << ::tpyapp::main::read_via_child((*obj)) << "\n";
-    std::cout << ::tpyapp::main::read_via_bound<Impl>((*obj)) << "\n";
+    std::cout << ::tpyapp::main::read_via_child((*obj)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_via_bound<Impl>((*obj)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

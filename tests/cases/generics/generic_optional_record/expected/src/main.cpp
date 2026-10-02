@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //         print(p.x)
 void accept_opt(const Point* p) {
     if ((p != nullptr)) {
-        std::cout << p->x << "\n";
+        std::cout << p->x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -36,16 +36,16 @@ void main() {
     Container<Point> c = Container<Point>(Point(::tpy::BigInt(1), ::tpy::BigInt(2)));
     Point* p = c.get();
     if ((p != nullptr)) {
-        std::cout << p->x << "\n";
-        std::cout << p->y << "\n";
-        std::cout << p->sum() << "\n";
+        std::cout << p->x << "\n" << ::tpy::check_signals;
+        std::cout << p->y << "\n" << ::tpy::check_signals;
+        std::cout << p->sum() << "\n" << ::tpy::check_signals;
     }
     Point* p2 = c.get();
     ::tpyapp::main::accept_opt(p2);
     Container<::tpy::BigInt> c2 = Container<::tpy::BigInt>(42);
     ::tpy::BigInt* v = c2.get();
     if ((v != nullptr)) {
-        std::cout << ::tpy::print_optional(v) << "\n";
+        std::cout << ::tpy::print_optional(v) << "\n" << ::tpy::check_signals;
     }
 }
 

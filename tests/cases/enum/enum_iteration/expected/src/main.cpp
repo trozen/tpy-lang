@@ -93,7 +93,7 @@ void print_colors() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         Color c = *__beg_0;
-        std::cout << c << "\n";
+        std::cout << c << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -111,7 +111,7 @@ void count_members() {
         Status s = *__beg_0;
         count = ::tpy::add_check<int32_t>(count, 1);
     }
-    std::cout << count << "\n";
+    std::cout << count << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

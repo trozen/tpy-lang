@@ -36,24 +36,24 @@ void __tpy_init() {
     initialized = true;
 
     p = nullptr;
-    std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((p == nullptr)) << "\n" << ::tpy::check_signals;
     x = 7;
     p = &x;
-    std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    std::cout << ::tpy::print_bool((p != nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((p == nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((p != nullptr)) << "\n" << ::tpy::check_signals;
     p = nullptr;
-    std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((p == nullptr)) << "\n" << ::tpy::check_signals;
     cp = nullptr;
-    std::cout << ::tpy::print_bool((cp == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((cp == nullptr)) << "\n" << ::tpy::check_signals;
     cp = &x;
-    std::cout << ::tpy::print_bool((cp == nullptr)) << "\n";
-    std::cout << ::tpy::print_bool((cp != nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((cp == nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((cp != nullptr)) << "\n" << ::tpy::check_signals;
     cp = nullptr;
-    std::cout << ::tpy::print_bool((cp == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((cp == nullptr)) << "\n" << ::tpy::check_signals;
     if ((p != nullptr)) {
-        std::cout << ::tpy::deref_check(p) << "\n";
+        std::cout << ::tpy::deref_check(p) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << 0 << "\n";
+        std::cout << 0 << "\n" << ::tpy::check_signals;
     }
 }
 

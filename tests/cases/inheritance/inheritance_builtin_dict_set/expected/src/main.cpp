@@ -37,14 +37,14 @@ void main() {
     ::tpy::__setitem__(c, "a", 1);
     ::tpyapp::main::bump(c, "a");
     ::tpyapp::main::bump(c, "b");
-    std::cout << c.label << " " << ::tpy::__len__(c) << " " << c["a"] << " " << c["b"] << "\n";
+    std::cout << c.label << " " << ::tpy::__len__(c) << " " << c["a"] << " " << c["b"] << "\n" << ::tpy::check_signals;
     Tags t = Tags();
     t.insert(7);
     ::tpyapp::main::add_tag(t, 8);
     t.insert(7);
-    std::cout << ::tpy::__len__(t) << "\n";
+    std::cout << ::tpy::__len__(t) << "\n" << ::tpy::check_signals;
     t.erase(7);
-    std::cout << ::tpy::__len__(t) << "\n";
+    std::cout << ::tpy::__len__(t) << "\n" << ::tpy::check_signals;
 }
 
 // main()

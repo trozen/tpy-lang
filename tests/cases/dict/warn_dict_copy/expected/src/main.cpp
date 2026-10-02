@@ -22,7 +22,7 @@ void test_warn_update_not_last_use() {
     ::tpy::ordered_map<std::string, Node> a = ::tpy::ordered_map<std::string, Node>();
     ::tpy::ordered_map<std::string, Node> b = ::tpy::ordered_map<std::string, Node>({{"a", Node(1)}});
     ::tpy::dict_update(a, b);
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def test_no_warn_update_last_use() -> None:
@@ -35,7 +35,7 @@ void test_no_warn_update_last_use() {
     ::tpy::ordered_map<std::string, Node> a = ::tpy::ordered_map<std::string, Node>();
     ::tpy::ordered_map<std::string, Node> b = ::tpy::ordered_map<std::string, Node>({{"a", Node(1)}});
     ::tpy::dict_update(a, b);
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }
 
 // def test_no_warn_update_explicit_copy() -> None:
@@ -48,7 +48,7 @@ void test_no_warn_update_explicit_copy() {
     ::tpy::ordered_map<std::string, Node> a = ::tpy::ordered_map<std::string, Node>();
     ::tpy::ordered_map<std::string, Node> b = ::tpy::ordered_map<std::string, Node>({{"a", Node(1)}});
     ::tpy::dict_update(a, ::tpy::ordered_map<std::string, Node>(b));
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def test_no_warn_update_rvalue() -> None:
@@ -61,7 +61,7 @@ void test_no_warn_update_rvalue() {
     ::tpy::ordered_map<std::string, Node> a = ::tpy::ordered_map<std::string, Node>();
     ::tpy::dict_update(a, ::tpyapp::main::make_dict());
     ::tpy::dict_update(a, ::tpy::ordered_map<std::string, Node>({{"b", Node(2)}}));
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }
 
 // def test_no_warn_update_value_types() -> None:
@@ -74,7 +74,7 @@ void test_no_warn_update_value_types() {
     ::tpy::ordered_map<std::string, int32_t> a = ::tpy::ordered_map<std::string, int32_t>();
     ::tpy::ordered_map<std::string, int32_t> b = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     ::tpy::dict_update(a, b);
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def test_warn_ior_not_last_use() -> None:
@@ -87,7 +87,7 @@ void test_warn_ior_not_last_use() {
     ::tpy::ordered_map<std::string, Node> a = ::tpy::ordered_map<std::string, Node>();
     ::tpy::ordered_map<std::string, Node> b = ::tpy::ordered_map<std::string, Node>({{"a", Node(1)}});
     ::tpy::dict_update(a, b);
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def test_no_warn_ior_last_use() -> None:
@@ -100,7 +100,7 @@ void test_no_warn_ior_last_use() {
     ::tpy::ordered_map<std::string, Node> a = ::tpy::ordered_map<std::string, Node>();
     ::tpy::ordered_map<std::string, Node> b = ::tpy::ordered_map<std::string, Node>({{"a", Node(1)}});
     ::tpy::dict_update(a, b);
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }
 
 // test_warn_update_not_last_use()

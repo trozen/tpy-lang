@@ -34,24 +34,24 @@ void __tpy_init() {
 
     static std::vector<int32_t> __global_slot_1 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(3, {1, 2}));
     repeated = &__global_slot_1;
-    std::cout << ::tpy::__len__((*repeated)) << "\n";
+    std::cout << ::tpy::__len__((*repeated)) << "\n" << ::tpy::check_signals;
     int32_t __stop_0 = ::tpy::__len__((*repeated));
     for (int32_t i = 0; i < __stop_0; ++i) {
-        std::cout << (*repeated)[static_cast<std::size_t>(i)] << "\n";
+        std::cout << (*repeated)[static_cast<std::size_t>(i)] << "\n" << ::tpy::check_signals;
     }
     static std::vector<int32_t> __global_slot_2 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(2, {10, 20}));
     nums = &__global_slot_2;
-    std::cout << ::tpy::__len__((*nums)) << "\n";
+    std::cout << ::tpy::__len__((*nums)) << "\n" << ::tpy::check_signals;
     int32_t __stop_1 = ::tpy::__len__((*nums));
     for (int32_t i = 0; i < __stop_1; ++i) {
-        std::cout << (*nums)[static_cast<std::size_t>(i)] << "\n";
+        std::cout << (*nums)[static_cast<std::size_t>(i)] << "\n" << ::tpy::check_signals;
     }
     static std::vector<int32_t> __global_slot_3 = std::vector<int32_t>{};
     empty = &__global_slot_3;
-    std::cout << ::tpy::__len__((*empty)) << "\n";
+    std::cout << ::tpy::__len__((*empty)) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_4 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(-5, {1, 2, 3}));
     neg = &__global_slot_4;
-    std::cout << ::tpy::__len__((*neg)) << "\n";
+    std::cout << ::tpy::__len__((*neg)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -30,8 +30,8 @@ void main() {
     p->y = 2;
     Point& alias = (*p);
     Point __tmp_1 = (*p);
-    std::cout << ::tpyapp::main::consume(std::move(__tmp_1)) << "\n";
-    std::cout << alias.x << "\n";
+    std::cout << ::tpyapp::main::consume(std::move(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << alias.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

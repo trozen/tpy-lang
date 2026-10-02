@@ -55,11 +55,11 @@ namespace tpyapp::main {
 //     print(s.value)
 void main() {
     Signal s = Signal::Error;
-    std::cout << s << "\n";
-    std::cout << static_cast<int32_t>(s) << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(s) << "\n" << ::tpy::check_signals;
     s = Signal::Ok;
-    std::cout << s << "\n";
-    std::cout << static_cast<int32_t>(s) << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(s) << "\n" << ::tpy::check_signals;
 }
 
 // # Enum with negative values

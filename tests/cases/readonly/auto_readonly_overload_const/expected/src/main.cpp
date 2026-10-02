@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void read_container(const Container<int32_t>& c) {
     int32_t x = c[0];
     std::span<const int32_t> s = c.__getitem__(::tpy::BasicSlice{0, 2});
-    std::cout << x << "\n";
-    std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    std::cout << ::tpy::__getitem__(s, 1) << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(s, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(s, 1) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -37,8 +37,8 @@ void main() {
     c.add(30);
     int32_t x = c[1];
     std::span<int32_t> s = c.__getitem__(::tpy::BasicSlice{0, 2});
-    std::cout << x << "\n";
-    std::cout << ::tpy::__getitem__(s, 0) << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(s, 0) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_container(c);
 }
 

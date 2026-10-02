@@ -97,19 +97,19 @@ void main() {
     Node n = Node(42);
     Node* p = &n;
     Container c = Container(p);
-    std::cout << c.read_if_present() << "\n";
-    std::cout << c.call_if_present() << "\n";
-    std::cout << c.read_without_check() << "\n";
-    std::cout << c.read_after_merge() << "\n";
-    std::cout << c.read_after_method_call() << "\n";
-    std::cout << c.read_after_reassign(p) << "\n";
-    std::cout << ::tpyapp::main::read_field(c) << "\n";
-    std::cout << ::tpyapp::main::read_after_assert(c) << "\n";
-    std::cout << ::tpyapp::main::read_after_early_return(c) << "\n";
-    std::cout << ::tpyapp::main::read_after_field_pass(c) << "\n";
-    std::cout << ::tpyapp::main::read_after_container_pass(c) << "\n";
+    std::cout << c.read_if_present() << "\n" << ::tpy::check_signals;
+    std::cout << c.call_if_present() << "\n" << ::tpy::check_signals;
+    std::cout << c.read_without_check() << "\n" << ::tpy::check_signals;
+    std::cout << c.read_after_merge() << "\n" << ::tpy::check_signals;
+    std::cout << c.read_after_method_call() << "\n" << ::tpy::check_signals;
+    std::cout << c.read_after_reassign(p) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_field(c) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_after_assert(c) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_after_early_return(c) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_after_field_pass(c) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_after_container_pass(c) << "\n" << ::tpy::check_signals;
     Wrapper w = Wrapper(c);
-    std::cout << w.read_after_inner_mutate() << "\n";
+    std::cout << w.read_after_inner_mutate() << "\n" << ::tpy::check_signals;
 }
 
 // main()

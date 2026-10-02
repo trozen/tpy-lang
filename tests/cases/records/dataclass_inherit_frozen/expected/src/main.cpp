@@ -17,13 +17,13 @@ namespace tpyapp::main {
 //     print(d[Vec3(1, 2, 3)])
 void main() {
     Vec3 v = Vec3(1, 2, 3);
-    std::cout << v << "\n";
-    std::cout << v.x << "\n";
-    std::cout << v.z << "\n";
-    std::cout << ::tpy::print_bool(((v) == (Vec3(1, 2, 3)))) << "\n";
-    std::cout << ::tpy::print_bool(((v) == (Vec3(1, 2, 4)))) << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
+    std::cout << v.x << "\n" << ::tpy::check_signals;
+    std::cout << v.z << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((v) == (Vec3(1, 2, 3)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((v) == (Vec3(1, 2, 4)))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<Vec3, std::string> d = ::tpy::make_ordered_map<Vec3, std::string>(std::move(v), "a");
-    std::cout << ::tpy::__getitem__(d, Vec3(1, 2, 3)) << "\n";
+    std::cout << ::tpy::__getitem__(d, Vec3(1, 2, 3)) << "\n" << ::tpy::check_signals;
 }
 
 // # @dataclass(frozen=True) inheritance: both parent and child frozen

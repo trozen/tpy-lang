@@ -29,7 +29,7 @@ void main() {
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
     __with_after_1:;
-    std::cout << ::tpy::__len__(boxes) << "\n";
+    std::cout << ::tpy::__len__(boxes) << "\n" << ::tpy::check_signals;
 }
 
 // # A @nocopy local at its genuine last use inside a `with` body is moved, not

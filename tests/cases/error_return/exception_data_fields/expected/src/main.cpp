@@ -52,13 +52,13 @@ void main() {
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // else:
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except ParseError:
         __except_1:;
         {
             auto& e = *__err_opt_1;
-            std::cout << e.line << "\n";
+            std::cout << e.line << "\n" << ::tpy::check_signals;
         }
         __after_try_1:;
     }
@@ -71,15 +71,15 @@ void main() {
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
-        std::cout << v2 << "\n";
+        std::cout << v2 << "\n" << ::tpy::check_signals;
         goto __after_try_3;
         // except ParseError:
         __except_3:;
         {
             auto& e = *__err_opt_3;
-            std::cout << e.line << "\n";
-            std::cout << e.column << "\n";
-            std::cout << e.detail << "\n";
+            std::cout << e.line << "\n" << ::tpy::check_signals;
+            std::cout << e.column << "\n" << ::tpy::check_signals;
+            std::cout << e.detail << "\n" << ::tpy::check_signals;
         }
         __after_try_3:;
     }
@@ -91,11 +91,11 @@ void main() {
             v3 = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
         // else:
-        std::cout << v3 << "\n";
+        std::cout << v3 << "\n" << ::tpy::check_signals;
         goto __after_try_5;
         // except ParseError:
         __except_5:;
-        std::cout << "error without binding" << "\n";
+        std::cout << "error without binding" << "\n" << ::tpy::check_signals;
         __after_try_5:;
     }
 }

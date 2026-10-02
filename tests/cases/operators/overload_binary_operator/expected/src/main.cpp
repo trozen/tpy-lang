@@ -23,13 +23,13 @@ void main() {
     Day a = Day(::tpy::BigInt(10));
     Day b = Day(::tpy::BigInt(3));
     Delta diff = ((a) - (b));
-    std::cout << diff.n << "\n";
+    std::cout << diff.n << "\n" << ::tpy::check_signals;
     Day moved = ((a) - (Delta(::tpy::BigInt(2))));
-    std::cout << moved.ordinal << "\n";
+    std::cout << moved.ordinal << "\n" << ::tpy::check_signals;
     Day later = ((a) + (Delta(::tpy::BigInt(5))));
-    std::cout << later.ordinal << "\n";
+    std::cout << later.ordinal << "\n" << ::tpy::check_signals;
     Delta total = ((Delta(::tpy::BigInt(4))) + (Delta(::tpy::BigInt(6))));
-    std::cout << total.n << "\n";
+    std::cout << total.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

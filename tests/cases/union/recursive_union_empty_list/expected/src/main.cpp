@@ -28,7 +28,7 @@ void main() {
         break;
     }
     }
-    std::cout << ::tpy::__str__(x) << "\n";
+    std::cout << ::tpy::__str__(x) << "\n" << ::tpy::check_signals;
 }
 
 // main()

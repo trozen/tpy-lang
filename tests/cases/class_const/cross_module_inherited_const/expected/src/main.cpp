@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     c = Child()
 //     print(c.LIMIT)
 void main() {
-    std::cout << ::tpyapp::limits::Parent::LIMIT << "\n";
+    std::cout << ::tpyapp::limits::Parent::LIMIT << "\n" << ::tpy::check_signals;
     ::tpyapp::limits::Child c = ::tpyapp::limits::Child();
-    std::cout << ::tpyapp::limits::Parent::LIMIT << "\n";
+    std::cout << ::tpyapp::limits::Parent::LIMIT << "\n" << ::tpy::check_signals;
 }
 
 // # Cross-module + Phase 6 MRO walk: importing only `Child` from `limits`,

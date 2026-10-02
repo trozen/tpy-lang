@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(c.name)
 void main() {
     ::tpyapp::pkg::colors::Color c = ::tpyapp::pkg::colors::Color::Green;
-    std::cout << ::tpy::EnumUtil<::tpyapp::pkg::colors::Color>::name(c) << "\n";
+    std::cout << ::tpy::EnumUtil<::tpyapp::pkg::colors::Color>::name(c) << "\n" << ::tpy::check_signals;
 }
 
 // # Aliased enum re-exported through pkg/__init__.py (`from .colors import Color as C`).

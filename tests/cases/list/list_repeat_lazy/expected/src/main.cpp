@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void test_lazy_variable_count() {
     int32_t n = 5;
     ::tpy::repeat_range<int32_t> x = ::tpy::repeat_range<int32_t>(n, {7});
-    std::cout << ::tpy::__len__(x) << "\n";
+    std::cout << ::tpy::__len__(x) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::consume(x);
 }
 
@@ -30,7 +30,7 @@ void test_lazy_for_loop() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -53,7 +53,7 @@ void test_direct_iterable_arg() {
 void test_print_lazy_repeat() {
     int32_t n = 4;
     ::tpy::repeat_range<int32_t> r = ::tpy::repeat_range<int32_t>(n, {5});
-    std::cout << ::tpy::ListPrinter(r) << "\n";
+    std::cout << ::tpy::ListPrinter(r) << "\n" << ::tpy::check_signals;
 }
 
 // test_lazy_variable_count()

@@ -25,12 +25,12 @@ void in_try(H& h) {
         if ((::tpy::__len__((v = &(h.view()), *v)) > 0)) {
             v->push_back(9);
         }
-        std::cout << ::tpy::ListPrinter(h.items) << "\n";
-        std::cout << n << "\n";
+        std::cout << ::tpy::ListPrinter(h.items) << "\n" << ::tpy::check_signals;
+        std::cout << n << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except E:
         __except_1:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }
@@ -48,11 +48,11 @@ void er_value(H& h) {
         if ((::tpy::__len__((u = &((*({ auto __er_4 = h.er_view(); if (!__er_4.has_value()) goto __except_3; &::tpy::unwrap_ref(*__er_4); }))), *u)) > 0)) {
             u->push_back(7);
         }
-        std::cout << ::tpy::ListPrinter(h.items) << "\n";
+        std::cout << ::tpy::ListPrinter(h.items) << "\n" << ::tpy::check_signals;
         goto __after_try_3;
         // except E:
         __except_3:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_3:;
     }
 }
@@ -66,7 +66,7 @@ void in_while(H& h) {
     while ((::tpy::__len__((x = &(h.view()), *x)) < 6)) {
         x->push_back(50);
     }
-    std::cout << ::tpy::ListPrinter(h.items) << "\n";
+    std::cout << ::tpy::ListPrinter(h.items) << "\n" << ::tpy::check_signals;
 }
 
 // def in_if(h: H) -> None:
@@ -79,8 +79,8 @@ void in_if(H& h) {
     if ((::tpy::__len__((w = &(h.view()), *w)) > 0)) {
         w->push_back(8);
     }
-    std::cout << ::tpy::__len__((*w)) << "\n";
-    std::cout << ::tpy::ListPrinter(h.items) << "\n";
+    std::cout << ::tpy::__len__((*w)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(h.items) << "\n" << ::tpy::check_signals;
 }
 
 // def readonly_walrus(h: H) -> None:
@@ -89,7 +89,7 @@ void in_if(H& h) {
 void readonly_walrus(const H& h) {
     const std::vector<int32_t>* r = nullptr;
     if ((::tpy::__len__((r = &(h.rview()), *r)) > 0)) {
-        std::cout << ::tpy::__getitem__((*r), 0) << "\n";
+        std::cout << ::tpy::__getitem__((*r), 0) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -110,7 +110,7 @@ void owned_walrus() {
     if ((::tpy::__len__((fresh = ::tpyapp::main::make(), *fresh)) > 0)) {
         (*fresh).push_back(30);
     }
-    std::cout << ::tpy::ListPrinter((*fresh)) << "\n";
+    std::cout << ::tpy::ListPrinter((*fresh)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

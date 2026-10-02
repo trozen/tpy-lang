@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(p.b)
 void main() {
     Pair<::tpystd::tplib::box::Box<Pet>, int32_t> p = Pair<::tpystd::tplib::box::Box<Pet>, int32_t>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex"))), 5);
-    std::cout << p.a.get().name() << "\n";
-    std::cout << p.b << "\n";
+    std::cout << p.a.get().name() << "\n" << ::tpy::check_signals;
+    std::cout << p.b << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

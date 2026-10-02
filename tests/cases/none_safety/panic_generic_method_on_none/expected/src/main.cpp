@@ -16,9 +16,9 @@ int32_t generic_on_optional(Bag* b) {
 //     print(generic_on_optional(b))
 void main() {
     Bag __tmp_1 = Bag(1);
-    std::cout << ::tpyapp::main::generic_on_optional(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::generic_on_optional(&(__tmp_1)) << "\n" << ::tpy::check_signals;
     Bag* b = nullptr;
-    std::cout << ::tpyapp::main::generic_on_optional(b) << "\n";
+    std::cout << ::tpyapp::main::generic_on_optional(b) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -24,10 +24,10 @@ std::tuple<Box, Box*> make_mixed(Box& b) {
 void main() {
     auto p = ::tpyapp::main::make_mixed((*V));
     std::get<1>(p)->n = 43;
-    std::cout << "local" << " " << V->n << "\n";
+    std::cout << "local" << " " << V->n << "\n" << ::tpy::check_signals;
     V->n = 2;
     std::get<1>(mixed).n = 44;
-    std::cout << "mixed_write" << " " << V->n << "\n";
+    std::cout << "mixed_write" << " " << V->n << "\n" << ::tpy::check_signals;
 }
 
 // V = Box(2)

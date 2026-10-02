@@ -14,8 +14,8 @@ void main() {
     std::vector<::tpy::BigInt> xs = {1, 2};
     Bag b = Bag(xs);
     b.items.push_back(3);
-    std::cout << ::tpy::__len__(b.items) << "\n";
-    std::cout << ::tpy::__getitem__(b.items, 2) << "\n";
+    std::cout << ::tpy::__len__(b.items) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(b.items, 2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

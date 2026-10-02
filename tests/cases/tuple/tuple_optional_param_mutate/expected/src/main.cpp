@@ -26,8 +26,8 @@ void main() {
     T t1 = T(1);
     T t2 = T(2);
     ::tpyapp::main::bump_first(std::tuple<T*, T*>{&(t1), &(t2)});
-    std::cout << t1.x << "\n";
-    std::cout << t2.x << "\n";
+    std::cout << t1.x << "\n" << ::tpy::check_signals;
+    std::cout << t2.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

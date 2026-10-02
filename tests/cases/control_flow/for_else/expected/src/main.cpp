@@ -18,12 +18,12 @@ void search_break(const std::vector<int32_t>& items, int32_t target) {
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t item = *__beg_1;
         if ((item == target)) {
-            std::cout << "found" << "\n";
+            std::cout << "found" << "\n" << ::tpy::check_signals;
             goto __after_else_0;
         }
     }
     {
-        std::cout << "not found" << "\n";
+        std::cout << "not found" << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
 }
@@ -35,10 +35,10 @@ void search_break(const std::vector<int32_t>& items, int32_t target) {
 //         print("complete")
 void no_break() {
     for (int32_t i = 0; i < 3; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     {
-        std::cout << "complete" << "\n";
+        std::cout << "complete" << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
 }
@@ -61,10 +61,10 @@ void with_continue() {
         if ((x == 2)) {
             continue;
         }
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     {
-        std::cout << "done" << "\n";
+        std::cout << "done" << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
 }
@@ -85,10 +85,10 @@ void nested_inner_else() {
             }
         }
         {
-            std::cout << "inner complete" << "\n";
+            std::cout << "inner complete" << "\n" << ::tpy::check_signals;
         }
         __after_else_1:;
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -108,10 +108,10 @@ void nested_outer_else() {
                 break;
             }
         }
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     {
-        std::cout << "outer complete" << "\n";
+        std::cout << "outer complete" << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
 }
@@ -135,13 +135,13 @@ void nested_both_else() {
             }
         }
         {
-            std::cout << "inner complete" << "\n";
+            std::cout << "inner complete" << "\n" << ::tpy::check_signals;
         }
         __after_else_2:;
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     {
-        std::cout << "outer complete" << "\n";
+        std::cout << "outer complete" << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
 }
@@ -163,7 +163,7 @@ void empty_iterable() {
         goto __after_else_0;
     }
     {
-        std::cout << "empty else" << "\n";
+        std::cout << "empty else" << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
 }
@@ -190,7 +190,7 @@ void var_decl_in_else() {
     }
     {
         std::string_view msg = "all checked";
-        std::cout << msg << "\n";
+        std::cout << msg << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
 }

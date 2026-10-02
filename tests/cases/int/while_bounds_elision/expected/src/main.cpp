@@ -15,7 +15,7 @@ void test_while_basic() {
     std::array<int32_t, 5> arr = {10, 20, 30, 40, 50};
     int32_t i = 0;
     while ((i < ::tpy::__len__(arr))) {
-        std::cout << arr[static_cast<std::size_t>(i)] << "\n";
+        std::cout << arr[static_cast<std::size_t>(i)] << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
@@ -32,7 +32,7 @@ void test_while_increment_before_access() {
     int32_t i = 0;
     while ((i < (::tpy::sub_check<int32_t>(::tpy::__len__(arr), 1)))) {
         i = ::tpy::add_check<int32_t>(i, 1);
-        std::cout << ::tpy::__getitem__(arr, i) << "\n";
+        std::cout << ::tpy::__getitem__(arr, i) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -47,7 +47,7 @@ void test_while_no_literal_init() {
     std::array<int32_t, 5> arr = {10, 20, 30, 40, 50};
     int32_t i = 0;
     while ((i < ::tpy::__len__(arr))) {
-        std::cout << ::tpy::__getitem__(arr, i) << "\n";
+        std::cout << ::tpy::__getitem__(arr, i) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
@@ -65,7 +65,7 @@ void test_while_negative_init() {
     int32_t i = -1;
     i = ::tpy::add_check<int32_t>(i, 1);
     while ((i < ::tpy::__len__(arr))) {
-        std::cout << ::tpy::__getitem__(arr, i) << "\n";
+        std::cout << ::tpy::__getitem__(arr, i) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
@@ -81,7 +81,7 @@ void test_while_list() {
     std::vector<int32_t> lst = {1, 2, 3};
     int32_t i = 0;
     while ((i < ::tpy::__len__(lst))) {
-        std::cout << lst[static_cast<std::size_t>(i)] << "\n";
+        std::cout << lst[static_cast<std::size_t>(i)] << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
@@ -97,7 +97,7 @@ void test_while_bigint_index() {
     std::vector<int32_t> lst = {1, 2, 3};
     ::tpy::BigInt i = ::tpy::BigInt(0);
     while ((i < ::tpy::BigInt(::tpy::__len__(lst)))) {
-        std::cout << lst[static_cast<std::size_t>(i.to_fixed_check<int32_t>())] << "\n";
+        std::cout << lst[static_cast<std::size_t>(i.to_fixed_check<int32_t>())] << "\n" << ::tpy::check_signals;
         i = (i) + (::tpy::BigInt(1));
     }
 }
@@ -115,11 +115,11 @@ void test_while_post_loop_not_safe() {
     std::array<int32_t, 5> arr = {1, 2, 3, 4, 5};
     int32_t i = 0;
     while ((i < ::tpy::__len__(arr))) {
-        std::cout << arr[static_cast<std::size_t>(i)] << "\n";
+        std::cout << arr[static_cast<std::size_t>(i)] << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     i = 0;
-    std::cout << ::tpy::__getitem__(arr, i) << "\n";
+    std::cout << ::tpy::__getitem__(arr, i) << "\n" << ::tpy::check_signals;
 }
 
 // test_while_basic()

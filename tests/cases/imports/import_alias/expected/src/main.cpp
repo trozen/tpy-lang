@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     return int32(0)
 int32_t main() {
     ::tpyapp::utils::Point p = ::tpyapp::utils::Point(3, 4);
-    std::cout << p.x << "\n";
-    std::cout << ::tpyapp::utils::MAX_VALUE << "\n";
-    std::cout << ::tpyapp::utils::add(10, 20) << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::utils::MAX_VALUE << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::utils::add(10, 20) << "\n" << ::tpy::check_signals;
     return 0;
 }
 

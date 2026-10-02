@@ -29,7 +29,7 @@ namespace tpyapp::main {
         r = std::move(__r0).value();
         __sub_0.reset();
         r->inner.n = ::tpy::BigInt(99);
-        std::cout << (*w).inner.n << "\n";
+        std::cout << (*w).inner.n << "\n" << ::tpy::check_signals;
         __sub_1.emplace((*w));
         __state = S_RESUME_1;
         continue;
@@ -40,7 +40,7 @@ namespace tpyapp::main {
         s = std::move(__r1).value();
         __sub_1.reset();
         s->n = ::tpy::BigInt(5);
-        std::cout << (*w).inner.n << "\n";
+        std::cout << (*w).inner.n << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

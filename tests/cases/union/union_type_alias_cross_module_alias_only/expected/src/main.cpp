@@ -13,7 +13,7 @@ std::string describe(::tpy::Union<const ::tpyapp::shapes::Circle*, const ::tpyap
 // def main() -> None:
 //     print("ok")
 void main() {
-    std::cout << "ok" << "\n";
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // from shapes import Shape

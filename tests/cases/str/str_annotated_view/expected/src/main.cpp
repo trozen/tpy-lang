@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(a)
 void literal_view() {
     std::string_view a = "hello";
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
 }
 
 // def literal_promote_augassign() -> None:
@@ -20,7 +20,7 @@ void literal_view() {
 void literal_promote_augassign() {
     std::string b = "hello";
     b += " world";
-    std::cout << b << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // def literal_promote_reassign() -> None:
@@ -30,7 +30,7 @@ void literal_promote_augassign() {
 void literal_promote_reassign() {
     std::string c = "start";
     c += " end";
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
 }
 
 // def multiple_views() -> None:
@@ -41,8 +41,8 @@ void literal_promote_reassign() {
 void multiple_views() {
     std::string_view x = "one";
     std::string_view y = "two";
-    std::cout << x << "\n";
-    std::cout << y << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

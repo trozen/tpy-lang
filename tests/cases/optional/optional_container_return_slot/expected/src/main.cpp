@@ -163,7 +163,7 @@ int32_t size(bool flag) {
 // def main() -> None:
 //     print(size(True), size(False))
 void main() {
-    std::cout << ::tpyapp::main::size(true) << " " << ::tpyapp::main::size(false) << "\n";
+    std::cout << ::tpyapp::main::size(true) << " " << ::tpyapp::main::size(false) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.box import Box

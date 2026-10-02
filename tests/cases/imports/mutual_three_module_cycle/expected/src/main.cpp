@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(call_b())
 void main() {
-    std::cout << ::tpyapp::a::call_b() << "\n";
+    std::cout << ::tpyapp::a::call_b() << "\n" << ::tpy::check_signals;
 }
 
 // # 3-module SCC: a -> b -> c -> a. Tarjan finds the SCC, the

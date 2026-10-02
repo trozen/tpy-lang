@@ -14,7 +14,7 @@ void test_ptr_borrow_field_write() {
     Point p = Point(1, 2);
     Point* ptr = &p;
     p.x = 10;
-    std::cout << p.x << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
 }
 
 // def test_ptr_borrow_append() -> None:
@@ -27,7 +27,7 @@ void test_ptr_borrow_append() {
     std::vector<Point> items = {Point(1, 2)};
     Point* ptr = &::tpy::__getitem__(items, 0);
     items.push_back(Point(3, 4));
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_ptr_borrow_subscript_assign() -> None:
@@ -40,7 +40,7 @@ void test_ptr_borrow_subscript_assign() {
     std::vector<Point> items = {Point(1, 2)};
     Point* ptr = &::tpy::__getitem__(items, 0);
     ::tpy::__setitem__(items, 0, Point(9, 9));
-    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n" << ::tpy::check_signals;
 }
 
 // def test_ptr_reassign_clears() -> None:
@@ -57,7 +57,7 @@ void test_ptr_reassign_clears() {
     Point* ptr = &p;
     ptr = &q;
     p.x = 10;
-    std::cout << p.x << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
 }
 
 // test_ptr_borrow_field_write()

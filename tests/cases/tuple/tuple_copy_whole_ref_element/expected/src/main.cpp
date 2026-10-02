@@ -14,10 +14,10 @@ namespace tpyapp::main {
 void main() {
     Box b = Box(5);
     Holder h = Holder(b);
-    std::cout << std::get<0>(h.pair) << "\n";
-    std::cout << std::get<1>(h.pair).val << "\n";
+    std::cout << std::get<0>(h.pair) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(h.pair).val << "\n" << ::tpy::check_signals;
     auto t = std::tuple<int32_t, Box>{1, b};
-    std::cout << (::tpy::add_check<int32_t>(std::get<0>(t), std::get<1>(t).val)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(std::get<0>(t), std::get<1>(t).val)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

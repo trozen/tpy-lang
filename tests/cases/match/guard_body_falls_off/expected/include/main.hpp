@@ -190,14 +190,14 @@ inline void K::method(bool c) const {
     switch (__match_subject_1) {
     case 3: {
         if (c) {
-            std::cout << "method: guard" << "\n";
+            std::cout << "method: guard" << "\n" << ::tpy::check_signals;
         } else {
             goto __match_default_2;
         }
         break;
     }
     default: __match_default_2: {
-        std::cout << "method: default" << "\n";
+        std::cout << "method: default" << "\n" << ::tpy::check_signals;
         break;
     }
     }

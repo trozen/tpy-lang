@@ -30,8 +30,8 @@ void main() {
     auto __tup_1 = ::tpyapp::main::pair();
     ::tpystd::tplib::box::Box<int32_t> x = std::move(std::get<0>(__tup_1));
     ::tpystd::tplib::box::Box<int32_t> y = std::move(std::get<1>(__tup_1));
-    std::cout << x.get() << "\n";
-    std::cout << y.get() << "\n";
+    std::cout << x.get() << "\n" << ::tpy::check_signals;
+    std::cout << y.get() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.box import Box

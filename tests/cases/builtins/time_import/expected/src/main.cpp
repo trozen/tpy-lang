@@ -15,9 +15,9 @@ namespace tpyapp::main {
 void main() {
     double t = ::tpy::time_time();
     if ((t > 1704067200)) {
-        std::cout << "ok" << "\n";
+        std::cout << "ok" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "error: timestamp too small" << "\n";
+        std::cout << "error: timestamp too small" << "\n" << ::tpy::check_signals;
     }
 }
 

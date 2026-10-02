@@ -40,38 +40,38 @@ void main() {
     std::vector<::tpy::BigInt> xs = {10, 20, 30};
     {
         try {
-            std::cout << ::tpy::__getitem__(xs, 5) << "\n";
+            std::cout << ::tpy::__getitem__(xs, 5) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::LookupError& e) {
-            std::cout << "caught lookup:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught lookup:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::ordered_map<std::string, ::tpy::BigInt> d = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}});
     {
         try {
-            std::cout << ::tpy::__getitem__(d, "missing") << "\n";
+            std::cout << ::tpy::__getitem__(d, "missing") << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::LookupError&) {
-            std::cout << "caught lookup: dict miss" << "\n";
+            std::cout << "caught lookup: dict miss" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw ::tpy::LookupError("by hand");
         } catch (const ::tpy::Exception& e) {
-            std::cout << "caught exception:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught exception:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpy::__getitem__(xs, 9) << "\n";
+            std::cout << ::tpy::__getitem__(xs, 9) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::Exception& e) {
-            std::cout << "index via Exception:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "index via Exception:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpy::__getitem__(d, "gone") << "\n";
+            std::cout << ::tpy::__getitem__(d, "gone") << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::Exception&) {
-            std::cout << "key via Exception" << "\n";
+            std::cout << "key via Exception" << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(len(d))
 void main() {
     ::tpy::ordered_map<::tpy::Any, ::tpy::BigInt> d = ::tpy::ordered_map<::tpy::Any, ::tpy::BigInt>({{::tpy::make_any(::tpy::BigInt(1)), ::tpy::BigInt(1)}, {::tpy::make_any(std::string("two")), ::tpy::BigInt(2)}, {::tpy::make_any(static_cast<double>(3.5)), ::tpy::BigInt(3)}});
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

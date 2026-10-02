@@ -12,7 +12,7 @@ void show(const ::tpystd::tplib::array_list::ArrayList<Point, 8>& lst) {
     int32_t __stop_0 = ::tpy::__len__(lst);
     for (int32_t i = 0; i < __stop_0; ++i) {
         const Point& pt = lst[i];
-        std::cout << pt.x << " " << pt.y << "\n";
+        std::cout << pt.x << " " << pt.y << "\n" << ::tpy::check_signals;
     }
 }
 

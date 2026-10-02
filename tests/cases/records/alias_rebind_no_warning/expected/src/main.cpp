@@ -19,7 +19,7 @@ void sync_first_section() {
     Point& alias = (*p);
     p = &*(__slot_2 = Point(50));
     alias.bump();
-    std::cout << "sync_first:" << " " << alias.x << " " << p->x << "\n";
+    std::cout << "sync_first:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # loan taken before the loop, rebind inside it: same init/slot split, and the
@@ -44,7 +44,7 @@ void rebind_in_loop_section() {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     alias.bump();
-    std::cout << "rebind_in_loop:" << " " << alias.x << " " << p->x << "\n";
+    std::cout << "rebind_in_loop:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # sibling branch arms: the then-arm's rebind moves `p` into the slot on ITS
@@ -66,12 +66,12 @@ void branch_arms_section(bool c) {
     Point* p = &__slot_1;
     if (c) {
         (*p) = Point(16);
-        std::cout << "branch_arms_then:" << " " << p->x << "\n";
+        std::cout << "branch_arms_then:" << " " << p->x << "\n" << ::tpy::check_signals;
     } else {
         Point& alias = (*p);
         p = &*(__slot_2 = Point(50));
         alias.bump();
-        std::cout << "branch_arms_else:" << " " << alias.x << " " << p->x << "\n";
+        std::cout << "branch_arms_else:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -89,9 +89,9 @@ void dead_alias_section() {
     Point* p = &__slot_1;
     (*p) = Point(4);
     Point& alias = (*p);
-    std::cout << "dead_alias_pre:" << " " << alias.x << "\n";
+    std::cout << "dead_alias_pre:" << " " << alias.x << "\n" << ::tpy::check_signals;
     p = &*(__slot_2 = Point(50));
-    std::cout << "dead_alias:" << " " << p->x << "\n";
+    std::cout << "dead_alias:" << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # `None` stores a null handle; the object the loan holds is untouched.
@@ -109,7 +109,7 @@ void none_rebind_section() {
     Point& alias = (*p);
     p = nullptr;
     alias.bump();
-    std::cout << "none_rebind:" << " " << alias.x << " " << ::tpy::print_bool((p == nullptr)) << "\n";
+    std::cout << "none_rebind:" << " " << alias.x << " " << ::tpy::print_bool((p == nullptr)) << "\n" << ::tpy::check_signals;
 }
 
 // # a container insert copies at the boundary (intended here -- the mutation
@@ -128,7 +128,7 @@ void container_insert_section() {
     xs.push_back(Point((*p)));
     p->bump();
     (*p) = Point(50);
-    std::cout << "container_insert:" << " " << ::tpy::__getitem__(xs, 0).x << " " << p->x << "\n";
+    std::cout << "container_insert:" << " " << ::tpy::__getitem__(xs, 0).x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # rebinding the Ptr LOCAL (a value type) copies a pointer; it clobbers nothing.
@@ -145,7 +145,7 @@ void rebound_ptr_section() {
     Point* q = &a;
     q = &b;
     q->x = ::tpy::add_check<int32_t>(q->x, 100);
-    std::cout << "rebound_ptr:" << " " << a.x << " " << b.x << "\n";
+    std::cout << "rebound_ptr:" << " " << a.x << " " << b.x << "\n" << ::tpy::check_signals;
 }
 
 // # hatch 1: copy() gives the loan an independent object.
@@ -163,7 +163,7 @@ void hatch_copy_section() {
     Point held = Point((*p));
     (*p) = Point(50);
     held.bump();
-    std::cout << "hatch_copy:" << " " << held.x << " " << p->x << "\n";
+    std::cout << "hatch_copy:" << " " << held.x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # hatch 2: Rc keeps identity AND refcount, so the rebind drops one handle only.
@@ -179,7 +179,7 @@ void hatch_rc_section() {
     ::tpystd::tplib::rc::Rc<Point> shared = r->clone();
     (*r) = Rc<Point>::new_<Point>(Point(50));
     shared.__deref__().bump();
-    std::cout << "hatch_rc:" << " " << shared.__deref__().x << " " << r->__deref__().x << "\n";
+    std::cout << "hatch_rc:" << " " << shared.__deref__().x << " " << r->__deref__().x << "\n" << ::tpy::check_signals;
 }
 
 // # hatch 3: a fresh name for the new value -- allocation-free, semantics-preserving.
@@ -197,7 +197,7 @@ void hatch_fresh_name_section() {
     Point& alias = (*p);
     Point q = Point(50);
     alias.bump();
-    std::cout << "hatch_fresh_name:" << " " << alias.x << " " << p->x << " " << q.x << "\n";
+    std::cout << "hatch_fresh_name:" << " " << alias.x << " " << p->x << " " << q.x << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

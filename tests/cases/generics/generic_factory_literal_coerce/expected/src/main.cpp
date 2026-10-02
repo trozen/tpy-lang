@@ -32,15 +32,15 @@ void main() {
     ::tpyapp::main::pair<double>(3.5, 4.5);
     ::tpystd::tplib::box::Box<int32_t> bi = ::tpystd::tplib::box::Box<int32_t>(42);
     ::tpystd::tplib::box::Box<double> bf = ::tpystd::tplib::box::Box<double>(2.71);
-    std::cout << bi.get() << "\n";
-    std::cout << ::tpy::print_float(bf.get()) << "\n";
+    std::cout << bi.get() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(bf.get()) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::rc::Rc<int32_t> ri = Rc<int32_t>::new_<int32_t>(7);
     ::tpystd::tplib::rc::Rc<double> rf = Rc<double>::new_<double>(3.14);
-    std::cout << ri.get() << "\n";
-    std::cout << ::tpy::print_float(rf.get()) << "\n";
+    std::cout << ri.get() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(rf.get()) << "\n" << ::tpy::check_signals;
     Converter c = Converter();
-    std::cout << c.identity<int32_t>(42) << "\n";
-    std::cout << ::tpy::print_float(c.identity<double>(2.5)) << "\n";
+    std::cout << c.identity<int32_t>(42) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(c.identity<double>(2.5)) << "\n" << ::tpy::check_signals;
 }
 
 // """

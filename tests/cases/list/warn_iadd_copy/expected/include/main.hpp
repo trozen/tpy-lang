@@ -58,7 +58,7 @@ inline Node::Node(int32_t val) : val(val) {}
 template<typename T>
 void test_iadd_generic_warns(std::vector<T>& a, const std::vector<T>& b) {
     ::tpy::list_extend(a, b);
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

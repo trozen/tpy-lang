@@ -10,10 +10,10 @@ namespace tpyapp::main {
 //     print(Counter.twice())
 //     print(Counter.calls)
 void main() {
-    std::cout << Counter::bump() << "\n";
-    std::cout << Counter::scaled_start() << "\n";
-    std::cout << Counter::twice() << "\n";
-    std::cout << Counter::calls << "\n";
+    std::cout << Counter::bump() << "\n" << ::tpy::check_signals;
+    std::cout << Counter::scaled_start() << "\n" << ::tpy::check_signals;
+    std::cout << Counter::twice() << "\n" << ::tpy::check_signals;
+    std::cout << Counter::calls << "\n" << ::tpy::check_signals;
 }
 
 // main()

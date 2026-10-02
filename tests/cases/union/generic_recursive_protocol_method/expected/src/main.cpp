@@ -42,7 +42,7 @@ int32_t leaf_count(const Tree<int32_t>& t) {
 void main() {
     Counter c = Counter();
     Tree<int32_t> seed = std::vector<Tree<int32_t>>{1, std::vector<Tree<int32_t>>{2, 3}, 4};
-    std::cout << ::tpyapp::main::use(c, seed) << "\n";
+    std::cout << ::tpyapp::main::use(c, seed) << "\n" << ::tpy::check_signals;
 }
 
 // main()

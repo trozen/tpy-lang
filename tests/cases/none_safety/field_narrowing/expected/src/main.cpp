@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void show_port(const Config& cfg) {
     if ((cfg.port.has_value())) {
         ::tpy::BigInt p = (*cfg.port);
-        std::cout << p << "\n";
+        std::cout << p << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "no port" << "\n";
+        std::cout << "no port" << "\n" << ::tpy::check_signals;
     }
 }
 

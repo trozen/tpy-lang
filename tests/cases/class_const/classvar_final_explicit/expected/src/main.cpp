@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(HttpClient.TIMEOUT)
 //     print(HttpClient.MAX_RETRIES)
 void main() {
-    std::cout << HttpClient::TIMEOUT << "\n";
-    std::cout << HttpClient::MAX_RETRIES << "\n";
+    std::cout << HttpClient::TIMEOUT << "\n" << ::tpy::check_signals;
+    std::cout << HttpClient::MAX_RETRIES << "\n" << ::tpy::check_signals;
 }
 
 // main()

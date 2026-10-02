@@ -46,25 +46,25 @@ namespace tpyapp::main {
 //     print(l5)
 void main() {
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", 1}, {"b", "hello"}});
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Union<int32_t, std::string>> lst = {1, "two", 3};
-    std::cout << ::tpy::ListPrinter(lst) << "\n";
+    std::cout << ::tpy::ListPrinter(lst) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d2 = ::tpy::ordered_map<std::string, std::optional<int32_t>>({{"x", 42}, {"y", std::nullopt}});
-    std::cout << ::tpy::DictPrinter(d2) << "\n";
+    std::cout << ::tpy::DictPrinter(d2) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<std::string>> l2 = {"a", std::nullopt, "b"};
-    std::cout << ::tpy::ListPrinter(l2) << "\n";
+    std::cout << ::tpy::ListPrinter(l2) << "\n" << ::tpy::check_signals;
     std::tuple<::tpy::Union<int32_t, std::string>, ::tpy::Union<int32_t, std::string>> t = std::tuple<::tpy::Union<int32_t, std::string>, ::tpy::Union<int32_t, std::string>>{1, "hi"};
-    std::cout << ::tpy::TuplePrinter(t) << "\n";
+    std::cout << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::BigInt>, std::string>> d3 = ::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::BigInt>, std::string>>({{"nums", std::vector<::tpy::BigInt>{1, 2}}, {"tag", "ok"}});
-    std::cout << ::tpy::DictPrinter(d3) << "\n";
+    std::cout << ::tpy::DictPrinter(d3) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<std::vector<::tpy::BigInt>>> l3 = {std::vector<::tpy::BigInt>{1, 2}, std::nullopt, std::vector<::tpy::BigInt>{3}};
-    std::cout << ::tpy::ListPrinter(l3) << "\n";
+    std::cout << ::tpy::ListPrinter(l3) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ::tpy::Union<Pt, std::string>> d4 = ::tpy::ordered_map<std::string, ::tpy::Union<Pt, std::string>>({{"p", Pt(1, 2)}, {"name", "origin"}});
-    std::cout << ::tpy::DictPrinter(d4) << "\n";
+    std::cout << ::tpy::DictPrinter(d4) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<std::string, ::tpy::Union<int32_t, std::string>>> l4 = {std::tuple<std::string, ::tpy::Union<int32_t, std::string>>{"a", 1}, std::tuple<std::string, ::tpy::Union<int32_t, std::string>>{"b", "two"}};
-    std::cout << ::tpy::ListPrinter(l4) << "\n";
+    std::cout << ::tpy::ListPrinter(l4) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Union<std::monostate, int32_t, std::string>> l5 = {1, "two", std::monostate{}};
-    std::cout << ::tpy::ListPrinter(l5) << "\n";
+    std::cout << ::tpy::ListPrinter(l5) << "\n" << ::tpy::check_signals;
 }
 
 // main()

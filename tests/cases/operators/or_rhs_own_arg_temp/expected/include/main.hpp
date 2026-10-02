@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 //     print("bag", len(vals))
 //     self.vals = vals
 inline Bag::Bag(const std::vector<int32_t>& vals) {
-    std::cout << "bag" << " " << ::tpy::__len__(vals) << "\n";
+    std::cout << "bag" << " " << ::tpy::__len__(vals) << "\n" << ::tpy::check_signals;
     this->vals = vals;
 }
 void __tpy_init();

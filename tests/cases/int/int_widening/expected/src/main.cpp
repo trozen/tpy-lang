@@ -7,37 +7,37 @@ namespace tpyapp::main {
 // def print_i16(x: int16) -> None:
 //     print(x)
 void print_i16(int16_t x) {
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def print_i32(x: int32) -> None:
 //     print(x)
 void print_i32(int32_t x) {
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def print_i64(x: int64) -> None:
 //     print(x)
 void print_i64(int64_t x) {
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def print_u16(x: uint16) -> None:
 //     print(x)
 void print_u16(uint16_t x) {
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def print_u32(x: uint32) -> None:
 //     print(x)
 void print_u32(uint32_t x) {
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def print_u64(x: uint64) -> None:
 //     print(x)
 void print_u64(uint64_t x) {
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(HttpClient.USER_AGENT)
 //     print(HttpClient.SCHEME)
 void main() {
-    std::cout << HttpClient::USER_AGENT << "\n";
-    std::cout << HttpClient::SCHEME << "\n";
+    std::cout << HttpClient::USER_AGENT << "\n" << ::tpy::check_signals;
+    std::cout << HttpClient::SCHEME << "\n" << ::tpy::check_signals;
 }
 
 // main()

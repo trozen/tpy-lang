@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     print(helper.get_value())
 //     return int32(0)
 int32_t main() {
-    std::cout << ::tpyapp::helper::get_value() << "\n";
+    std::cout << ::tpyapp::helper::get_value() << "\n" << ::tpy::check_signals;
     return 0;
 }
 

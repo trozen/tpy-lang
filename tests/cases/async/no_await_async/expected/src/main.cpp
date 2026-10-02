@@ -30,7 +30,7 @@ __coro_f f() {
 //     print(poll_once(f()).value())
 void main() {
     auto __tmp_1 = ::tpyapp::main::f();
-    std::cout << ::tpystd::coro::poll_once<int32_t>(__tmp_1).value() << "\n";
+    std::cout << ::tpystd::coro::poll_once<int32_t>(__tmp_1).value() << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.coro import poll_once

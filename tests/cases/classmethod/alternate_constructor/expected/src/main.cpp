@@ -20,13 +20,13 @@ namespace tpyapp::main {
 //     print(r.x)
 void main() {
     Point p = Point::origin();
-    std::cout << p.x << " " << p.y << " " << Point::created << "\n";
+    std::cout << p.x << " " << p.y << " " << Point::created << "\n" << ::tpy::check_signals;
     Point q = Point::diagonal(3);
-    std::cout << q.x << " " << q.y << " " << Point::created << "\n";
+    std::cout << q.x << " " << q.y << " " << Point::created << "\n" << ::tpy::check_signals;
     Point r = Point::origin();
-    std::cout << r.x << " " << Point::created << "\n";
+    std::cout << r.x << " " << Point::created << "\n" << ::tpy::check_signals;
     r.x = 9;
-    std::cout << r.x << "\n";
+    std::cout << r.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

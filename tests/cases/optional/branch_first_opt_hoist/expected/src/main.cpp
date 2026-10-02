@@ -175,16 +175,16 @@ int32_t try_position(bool c) {
             if ((!s.has_value())) {
                 int32_t __tpy_ret_0 = 0;
                 __fin_ran_1 = true;
-                std::cout << "try: cleanup" << "\n";
+                std::cout << "try: cleanup" << "\n" << ::tpy::check_signals;
                 return __tpy_ret_0;
             }
             int32_t __tpy_ret_1 = ::tpy::__len__((*s));
             __fin_ran_1 = true;
-            std::cout << "try: cleanup" << "\n";
+            std::cout << "try: cleanup" << "\n" << ::tpy::check_signals;
             return __tpy_ret_1;
         } catch (...) {
             if (!__fin_ran_1) {
-                std::cout << "try: cleanup" << "\n";
+                std::cout << "try: cleanup" << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -207,10 +207,10 @@ int32_t try_position(bool c) {
 //     t = try_position(True)
 //     print("try:", t)
 void main() {
-    std::cout << "method:" << " " << Box("hi").pick(true) << " " << Box("hi").pick(false) << "\n";
-    std::cout << "scalar:" << " " << ::tpyapp::main::scalar_position(true) << " " << ::tpyapp::main::scalar_position(false) << "\n";
-    std::cout << "view:" << " " << ::tpyapp::main::view_position(true) << " " << ::tpyapp::main::view_position(false) << "\n";
-    std::cout << "gen:" << " ";
+    std::cout << "method:" << " " << Box("hi").pick(true) << " " << Box("hi").pick(false) << "\n" << ::tpy::check_signals;
+    std::cout << "scalar:" << " " << ::tpyapp::main::scalar_position(true) << " " << ::tpyapp::main::scalar_position(false) << "\n" << ::tpy::check_signals;
+    std::cout << "view:" << " " << ::tpyapp::main::view_position(true) << " " << ::tpyapp::main::view_position(false) << "\n" << ::tpy::check_signals;
+    std::cout << "gen:" << " " << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen(true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -218,14 +218,14 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << " ";
+            std::cout << v << " " << ::tpy::check_signals;
         }
     }
-    std::cout << "\n";
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(true))) << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(false))) << "\n";
-    std::cout << "closure:" << " " << ::tpyapp::main::closure_position(true) << " " << ::tpyapp::main::closure_position(false) << "\n";
+    std::cout << "\n" << ::tpy::check_signals;
+    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(true))) << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(false))) << "\n" << ::tpy::check_signals;
+    std::cout << "closure:" << " " << ::tpyapp::main::closure_position(true) << " " << ::tpyapp::main::closure_position(false) << "\n" << ::tpy::check_signals;
     int32_t t = ::tpyapp::main::try_position(true);
-    std::cout << "try:" << " " << t << "\n";
+    std::cout << "try:" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // # A value-repr Optional local first bound in BOTH arms of an if/else hoists a

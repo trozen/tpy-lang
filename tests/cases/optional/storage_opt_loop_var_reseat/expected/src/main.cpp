@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(h.probe())
 void main() {
     Holder h = Holder();
-    std::cout << h.probe() << "\n";
+    std::cout << h.probe() << "\n" << ::tpy::check_signals;
     h.bump();
-    std::cout << h.probe() << "\n";
+    std::cout << h.probe() << "\n" << ::tpy::check_signals;
 }
 
 // main()

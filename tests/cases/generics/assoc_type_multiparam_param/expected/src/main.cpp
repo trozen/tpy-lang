@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(show_k(p) + 1)        # K = int, distinct from V
 void main() {
     IntStr p = IntStr(::tpy::BigInt(5), "zz");
-    std::cout << ::tpyapp::main::show_v<::tpy::BigInt, std::string>(p) << "\n";
-    std::cout << ((::tpyapp::main::show_k<::tpy::BigInt, std::string>(p)) + (::tpy::BigInt(1))) << "\n";
+    std::cout << ::tpyapp::main::show_v<::tpy::BigInt, std::string>(p) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpyapp::main::show_k<::tpy::BigInt, std::string>(p)) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

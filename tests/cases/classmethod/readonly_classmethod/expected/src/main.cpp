@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(Limits.base())
 //     print(Limits.doubled())
 void main() {
-    std::cout << Limits::base() << "\n";
-    std::cout << Limits::doubled() << "\n";
+    std::cout << Limits::base() << "\n" << ::tpy::check_signals;
+    std::cout << Limits::doubled() << "\n" << ::tpy::check_signals;
 }
 
 // main()

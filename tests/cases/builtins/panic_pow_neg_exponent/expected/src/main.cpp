@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     int32_t a = 2;
     int32_t b = -1;
-    std::cout << ::tpy::pow_check<int32_t>(a, b) << "\n";
+    std::cout << ::tpy::pow_check<int32_t>(a, b) << "\n" << ::tpy::check_signals;
 }
 
 // main()

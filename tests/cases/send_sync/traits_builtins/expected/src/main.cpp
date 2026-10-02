@@ -35,8 +35,8 @@ void main() {
     ::tpy::BytesView bv = ::tpy::bytes_literal("abc", 3);
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
     ::tpystd::tplib::rc::Rc<int32_t> rc = Rc<int32_t>::new_<int32_t>(7);
-    std::cout << n << " " << ::tpy::print_float(f) << " " << ::tpy::print_bool(ok) << " " << s << "\n";
-    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(ar) << " " << ::tpy::__len__(st) << " " << ::tpy::__len__(d) << " " << std::get<0>(t) << " " << ::tpy::__len__(bv) << " " << ::tpy::__len__(ba) << " " << rc.get() << "\n";
+    std::cout << n << " " << ::tpy::print_float(f) << " " << ::tpy::print_bool(ok) << " " << s << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(ar) << " " << ::tpy::__len__(st) << " " << ::tpy::__len__(d) << " " << std::get<0>(t) << " " << ::tpy::__len__(bv) << " " << ::tpy::__len__(ba) << " " << rc.get() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.rc import Rc

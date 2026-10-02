@@ -24,7 +24,7 @@ void main() {
         std::string_view k = *__beg_0;
         ::tpyapp::main::del_it(t, k);
     }
-    std::cout << t._last_deleted << "\n";
+    std::cout << t._last_deleted << "\n" << ::tpy::check_signals;
 }
 
 // main()

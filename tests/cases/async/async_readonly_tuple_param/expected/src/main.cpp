@@ -82,7 +82,7 @@ int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<cons
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "asum:" << " " << __await_lift_0 << "\n";
+        std::cout << "asum:" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
         (*a).n = 100;
         __coro_arg_1 = std::tuple<Tag*, Tag*>{&((*a)), &((*b))};
         __sub_1.emplace(__coro_arg_1);
@@ -94,7 +94,7 @@ int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<cons
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "after:" << " " << __await_lift_1 << "\n";
+        std::cout << "after:" << " " << __await_lift_1 << "\n" << ::tpy::check_signals;
         total = 0;
         {
             auto __src_0 = ::tpyapp::main::gsum(std::tuple<const Tag*, const Tag*>{&((*a)), &((*b))});
@@ -106,8 +106,8 @@ int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<cons
                 total = ::tpy::add_check<int32_t>(total, v);
             }
         }
-        std::cout << "gsum:" << " " << total << "\n";
-        std::cout << "pick:" << " " << ::tpyapp::main::pick(std::tuple<const Tag*, const Tag*>{&((*a)), &((*b))}, std::tuple<const Tag*, const Tag*>{&((*b)), &((*a))}, true) << "\n";
+        std::cout << "gsum:" << " " << total << "\n" << ::tpy::check_signals;
+        std::cout << "pick:" << " " << ::tpyapp::main::pick(std::tuple<const Tag*, const Tag*>{&((*a)), &((*b))}, std::tuple<const Tag*, const Tag*>{&((*b)), &((*a))}, true) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

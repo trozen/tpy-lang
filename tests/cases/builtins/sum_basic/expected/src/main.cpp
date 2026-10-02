@@ -99,17 +99,17 @@ __genexpr_main_1_frame<std::invoke_result_t<F_make>> __genexpr_main_1(std::in_pl
 //     print(sum(x * x for x in [1, 2, 3, 4]))
 void main() {
     std::array<int32_t, 5> vals = {1, 2, 3, 4, 5};
-    std::cout << ::tpy::builtin_sum<int32_t>(vals) << "\n";
-    std::cout << ::tpy::builtin_sum_start<int32_t>(vals, 100) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(vals) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_sum_start<int32_t>(vals, 100) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> big = {1000000000, 2000000000, static_cast<int64_t>(3000000000)};
-    std::cout << ::tpy::builtin_sum<int64_t>(big) << "\n";
+    std::cout << ::tpy::builtin_sum<int64_t>(big) << "\n" << ::tpy::check_signals;
     std::array<double, 3> floats = {1.5, 2.5, 3.0};
-    std::cout << ::tpy::print_float(::tpy::builtin_sum_float(floats)) << "\n";
-    std::cout << ::tpy::print_float(::tpy::builtin_sum_start_float(floats, 10.0)) << "\n";
+    std::cout << ::tpy::print_float(::tpy::builtin_sum_float(floats)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpy::builtin_sum_start_float(floats, 10.0)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> empty = std::vector<int32_t>{};
-    std::cout << ::tpy::builtin_sum<int32_t>(empty) << "\n";
-    std::cout << ::tpy::builtin_sum_start<int32_t>(empty, 42) << "\n";
-    std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_1(std::in_place, [&]() { return std::array<int32_t, 4>{1, 2, 3, 4}; })) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(empty) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_sum_start<int32_t>(empty, 42) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_1(std::in_place, [&]() { return std::array<int32_t, 4>{1, 2, 3, 4}; })) << "\n" << ::tpy::check_signals;
 }
 
 // main()

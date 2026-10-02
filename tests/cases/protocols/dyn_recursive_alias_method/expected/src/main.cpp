@@ -16,7 +16,7 @@ int32_t run(Counter& c) {
 //     print(run(LeafCounter()))
 void main() {
     ::tpy::Adapter<Counter, LeafCounter> __tmp_1{LeafCounter()};
-    std::cout << ::tpyapp::main::run(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::run(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // from treelib import Tree, leaf_count

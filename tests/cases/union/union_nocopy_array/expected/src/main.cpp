@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print(len(uniform))
 void main() {
     std::array<Item, 3> items = {Heavy(1), Light(2), Heavy(3)};
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
     std::array<Heavy, 2> uniform = {Heavy(10), Heavy(20)};
-    std::cout << ::tpy::__len__(uniform) << "\n";
+    std::cout << ::tpy::__len__(uniform) << "\n" << ::tpy::check_signals;
 }
 
 // # Array literal with non-copyable union elements.

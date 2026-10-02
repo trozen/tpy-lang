@@ -39,7 +39,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& c = *__beg_1;
-        std::cout << c.get().value << "\n";
+        std::cout << c.get().value << "\n" << ::tpy::check_signals;
     }
 }
 

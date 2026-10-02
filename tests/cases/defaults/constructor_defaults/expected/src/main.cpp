@@ -26,20 +26,20 @@ namespace tpyapp::main {
 //     print(n2.value)
 void main() {
     Point p1 = Point();
-    std::cout << p1.x << "\n";
-    std::cout << p1.y << "\n";
+    std::cout << p1.x << "\n" << ::tpy::check_signals;
+    std::cout << p1.y << "\n" << ::tpy::check_signals;
     Point p2 = Point(3);
-    std::cout << p2.x << "\n";
-    std::cout << p2.y << "\n";
+    std::cout << p2.x << "\n" << ::tpy::check_signals;
+    std::cout << p2.y << "\n" << ::tpy::check_signals;
     Point p3 = Point(3, 4);
-    std::cout << p3.x << "\n";
-    std::cout << p3.y << "\n";
+    std::cout << p3.x << "\n" << ::tpy::check_signals;
+    std::cout << p3.y << "\n" << ::tpy::check_signals;
     Named n1 = Named("test");
-    std::cout << n1.name << "\n";
-    std::cout << n1.value << "\n";
+    std::cout << n1.name << "\n" << ::tpy::check_signals;
+    std::cout << n1.value << "\n" << ::tpy::check_signals;
     Named n2 = Named("test", 99);
-    std::cout << n2.name << "\n";
-    std::cout << n2.value << "\n";
+    std::cout << n2.name << "\n" << ::tpy::check_signals;
+    std::cout << n2.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

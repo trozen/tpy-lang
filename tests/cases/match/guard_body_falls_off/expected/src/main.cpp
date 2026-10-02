@@ -56,14 +56,14 @@ void func(int32_t a, bool c) {
     switch (__match_subject_1) {
     case 3: {
         if (c) {
-            std::cout << "func: guard" << "\n";
+            std::cout << "func: guard" << "\n" << ::tpy::check_signals;
         } else {
             goto __match_default_2;
         }
         break;
     }
     default: __match_default_2: {
-        std::cout << "func: default" << "\n";
+        std::cout << "func: default" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -83,16 +83,16 @@ void two_guards(int32_t a, int32_t k) {
     switch (__match_subject_1) {
     case 3: {
         if ((k == 1)) {
-            std::cout << "two_guards: first" << "\n";
+            std::cout << "two_guards: first" << "\n" << ::tpy::check_signals;
         } else if ((k == 2)) {
-            std::cout << "two_guards: second" << "\n";
+            std::cout << "two_guards: second" << "\n" << ::tpy::check_signals;
         } else {
             goto __match_default_2;
         }
         break;
     }
     default: __match_default_2: {
-        std::cout << "two_guards: default" << "\n";
+        std::cout << "two_guards: default" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -119,23 +119,23 @@ void mixed(int32_t a, bool c) {
     switch (__match_subject_1) {
     case 3: {
         if (c) {
-            std::cout << "mixed: guard" << "\n";
+            std::cout << "mixed: guard" << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << "mixed: plain" << "\n";
+            std::cout << "mixed: plain" << "\n" << ::tpy::check_signals;
             return;
         }
         break;
     }
     case 5: {
-        std::cout << "mixed: five" << "\n";
+        std::cout << "mixed: five" << "\n" << ::tpy::check_signals;
         return;
     }
     default: {
-        std::cout << "mixed: default" << "\n";
+        std::cout << "mixed: default" << "\n" << ::tpy::check_signals;
         break;
     }
     }
-    std::cout << "mixed: after" << "\n";
+    std::cout << "mixed: after" << "\n" << ::tpy::check_signals;
 }
 
 // def middle(a: int32, c: bool) -> None:
@@ -152,23 +152,23 @@ void middle(int32_t a, bool c) {
     auto& __match_subject_1 = a;
     switch (__match_subject_1) {
     case 1: {
-        std::cout << "middle: one" << "\n";
+        std::cout << "middle: one" << "\n" << ::tpy::check_signals;
         break;
     }
     case 3: {
         if (c) {
-            std::cout << "middle: guard" << "\n";
+            std::cout << "middle: guard" << "\n" << ::tpy::check_signals;
         } else {
             goto __match_default_2;
         }
         break;
     }
     case 5: {
-        std::cout << "middle: five" << "\n";
+        std::cout << "middle: five" << "\n" << ::tpy::check_signals;
         break;
     }
     default: __match_default_2: {
-        std::cout << "middle: default" << "\n";
+        std::cout << "middle: default" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -187,14 +187,14 @@ void or_arm(int32_t a, bool c) {
     case 6:
     {
         if (c) {
-            std::cout << "or: guard" << "\n";
+            std::cout << "or: guard" << "\n" << ::tpy::check_signals;
         } else {
             goto __match_default_2;
         }
         break;
     }
     default: __match_default_2: {
-        std::cout << "or: default" << "\n";
+        std::cout << "or: default" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -211,14 +211,14 @@ void enum_(Color col, bool c) {
     switch (__match_subject_1) {
     case Color::Green: {
         if (c) {
-            std::cout << "enum: guard" << "\n";
+            std::cout << "enum: guard" << "\n" << ::tpy::check_signals;
         } else {
             goto __match_default_2;
         }
         break;
     }
     default: __match_default_2: {
-        std::cout << "enum: default" << "\n";
+        std::cout << "enum: default" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -236,20 +236,20 @@ void enum_(Color col, bool c) {
 void optional(std::optional<int32_t> a, bool c) {
     auto& __match_subject_1 = a;
     if (!__match_subject_1.has_value()) {
-        std::cout << "optional: none" << "\n";
+        std::cout << "optional: none" << "\n" << ::tpy::check_signals;
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
         switch (__match_inner_1) {
         case 3: {
             if (c) {
-                std::cout << "optional: guard" << "\n";
+                std::cout << "optional: guard" << "\n" << ::tpy::check_signals;
             } else {
                 goto __match_default_2;
             }
             break;
         }
         default: __match_default_2: {
-            std::cout << "optional: default" << "\n";
+            std::cout << "optional: default" << "\n" << ::tpy::check_signals;
             break;
         }
         }
@@ -269,17 +269,17 @@ void no_default(int32_t a, bool c) {
     switch (__match_subject_1) {
     case 3: {
         if (c) {
-            std::cout << "no_default: guard" << "\n";
+            std::cout << "no_default: guard" << "\n" << ::tpy::check_signals;
         }
         break;
     }
     case 4: {
-        std::cout << "no_default: four" << "\n";
+        std::cout << "no_default: four" << "\n" << ::tpy::check_signals;
         break;
     }
     default: break;
     }
-    std::cout << "no_default: after" << "\n";
+    std::cout << "no_default: after" << "\n" << ::tpy::check_signals;
 }
 
 // # one guarded arm that does not suspend beside one that yields
@@ -301,7 +301,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generator::__next__() {
         switch (__match_subject_1) {
         case 3: {
             if (c) {
-                std::cout << "generator: guard" << "\n";
+                std::cout << "generator: guard" << "\n" << ::tpy::check_signals;
                 __state = S_JOIN_0;
                 continue;
             } else {
@@ -311,7 +311,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generator::__next__() {
         }
         case 4: {
             if (c) {
-                std::cout << "generator: guard yields" << "\n";
+                std::cout << "generator: guard yields" << "\n" << ::tpy::check_signals;
                 __state = S_RESUME_0;
                 return 40;
             } else {
@@ -320,7 +320,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generator::__next__() {
             break;
         }
         default: __match_default_2: {
-            std::cout << "generator: default" << "\n";
+            std::cout << "generator: default" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
             break;
@@ -365,14 +365,14 @@ __gen_generator generator(int32_t a, bool c) {
         switch (__match_subject_1) {
         case 3: {
             if (c) {
-                std::cout << "async: guard" << "\n";
+                std::cout << "async: guard" << "\n" << ::tpy::check_signals;
             } else {
                 goto __match_default_2;
             }
             break;
         }
         default: __match_default_2: {
-            std::cout << "async: default" << "\n";
+            std::cout << "async: default" << "\n" << ::tpy::check_signals;
             break;
         }
         }
@@ -419,22 +419,22 @@ void nested(int32_t a, int32_t b, bool c) {
         switch (__match_subject_2) {
         case 3: {
             if (c) {
-                std::cout << "nested: inner guard" << "\n";
+                std::cout << "nested: inner guard" << "\n" << ::tpy::check_signals;
             } else {
                 goto __match_default_3;
             }
             break;
         }
         default: __match_default_3: {
-            std::cout << "nested: inner default" << "\n";
+            std::cout << "nested: inner default" << "\n" << ::tpy::check_signals;
             break;
         }
         }
-        std::cout << "nested: after inner" << "\n";
+        std::cout << "nested: after inner" << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
-        std::cout << "nested: outer default" << "\n";
+        std::cout << "nested: outer default" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -463,7 +463,7 @@ void loop(int32_t a, bool c) {
         switch (__match_subject_1) {
         case 3: {
             if (c) {
-                std::cout << "loop: guard" << " " << i << "\n";
+                std::cout << "loop: guard" << " " << i << "\n" << ::tpy::check_signals;
                 if ((i == 2)) {
                     goto __loop_break_0;
                 }
@@ -474,14 +474,14 @@ void loop(int32_t a, bool c) {
             break;
         }
         default: __match_default_2: {
-            std::cout << "loop: default" << " " << i << "\n";
+            std::cout << "loop: default" << " " << i << "\n" << ::tpy::check_signals;
             break;
         }
         }
-        std::cout << "loop: after" << " " << i << "\n";
+        std::cout << "loop: after" << " " << i << "\n" << ::tpy::check_signals;
     }
     __loop_break_0:;
-    std::cout << "loop: done" << " " << i << "\n";
+    std::cout << "loop: done" << " " << i << "\n" << ::tpy::check_signals;
 }
 
 // async def amain() -> None:
@@ -572,7 +572,7 @@ void main() {
                     auto __r_3 = __itr_2.__next__();
                     if (!__r_3.has_value()) break;
                     int32_t v = ::tpy::unwrap_ref(*__r_3);
-                    std::cout << "generator: got" << " " << v << "\n";
+                    std::cout << "generator: got" << " " << v << "\n" << ::tpy::check_signals;
                 }
             }
         }

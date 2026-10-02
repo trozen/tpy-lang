@@ -122,18 +122,18 @@ void server_roundtrip() {
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
     if ((!(::tpyapp::main::drive(cli, srv)))) {
-        std::cout << "FAIL: handshake did not converge" << "\n";
+        std::cout << "FAIL: handshake did not converge" << "\n" << ::tpy::check_signals;
         return;
     }
-    std::cout << "server handshake:" << " " << ::tpyapp::main::tls_ver(srv.version()) << "\n";
+    std::cout << "server handshake:" << " " << ::tpyapp::main::tls_ver(srv.version()) << "\n" << ::tpy::check_signals;
     cli.setblocking(true);
     srv.setblocking(true);
     cli.sendall(::tpy::bytes_literal("ping from client", 16));
-    std::cout << "server recv:" << " " << ::tpy::bytes_decode(srv.recv(64)) << "\n";
+    std::cout << "server recv:" << " " << ::tpy::bytes_decode(srv.recv(64)) << "\n" << ::tpy::check_signals;
     srv.sendall(::tpy::bytes_literal("pong from server", 16));
-    std::cout << "client recv:" << " " << ::tpy::bytes_decode(cli.recv(64)) << "\n";
+    std::cout << "client recv:" << " " << ::tpy::bytes_decode(cli.recv(64)) << "\n" << ::tpy::check_signals;
     srv.close();
-    std::cout << "client eof:" << " " << ::tpy::print_bool((::tpy::__len__(cli.recv(64)) == 0)) << "\n";
+    std::cout << "client eof:" << " " << ::tpy::print_bool((::tpy::__len__(cli.recv(64)) == 0)) << "\n" << ::tpy::check_signals;
     cli.close();
 }
 
@@ -156,9 +156,9 @@ void missing_cert_chain() {
     {
         try {
             ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
-            std::cout << "FAIL: expected SSLError, got" << " " << srv.version() << "\n";
+            std::cout << "FAIL: expected SSLError, got" << " " << srv.version() << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::ssl::SSLError&) {
-            std::cout << "no cert chain rejected" << "\n";
+            std::cout << "no cert chain rejected" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -199,9 +199,9 @@ void malformed_cert() {
     {
         try {
             ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
-            std::cout << "FAIL: expected SSLError, got" << " " << srv.version() << "\n";
+            std::cout << "FAIL: expected SSLError, got" << " " << srv.version() << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::ssl::SSLError&) {
-            std::cout << "malformed cert rejected" << "\n";
+            std::cout << "malformed cert rejected" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -226,9 +226,9 @@ void server_hostname_rejected() {
     {
         try {
             ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "localhost", false, true);
-            std::cout << "FAIL: expected SSLError, got" << " " << srv.version() << "\n";
+            std::cout << "FAIL: expected SSLError, got" << " " << srv.version() << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::ssl::SSLError&) {
-            std::cout << "server_hostname with server_side rejected" << "\n";
+            std::cout << "server_hostname with server_side rejected" << "\n" << ::tpy::check_signals;
         }
     }
 }

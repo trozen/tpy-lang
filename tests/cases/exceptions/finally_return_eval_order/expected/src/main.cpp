@@ -35,7 +35,7 @@ namespace tpyapp::main {
 //     print("bump")
 //     return 10
 ::tpy::BigInt bump() {
-    std::cout << "bump" << "\n";
+    std::cout << "bump" << "\n" << ::tpy::check_signals;
     return ::tpy::BigInt(10);
 }
 
@@ -64,8 +64,8 @@ namespace tpyapp::main {
 //     print(f())
 //     print(g())
 void main() {
-    std::cout << ::tpyapp::main::f() << "\n";
-    std::cout << ::tpyapp::main::g() << "\n";
+    std::cout << ::tpyapp::main::f() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::g() << "\n" << ::tpy::check_signals;
 }
 
 // main()

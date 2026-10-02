@@ -47,7 +47,7 @@ std::vector<int32_t> longest(int32_t n) {
 void main() {
     std::vector<int32_t> got = ::tpyapp::main::longest(4);
     got.push_back(99);
-    std::cout << ::tpy::__len__(got) << " " << ::tpy::__getitem__(got, -1) << "\n";
+    std::cout << ::tpy::__len__(got) << " " << ::tpy::__getitem__(got, -1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

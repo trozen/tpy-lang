@@ -15,10 +15,10 @@ namespace tpyapp::main {
 //     f: Callable[[int32], int32] = identity
 //     print(f(7))                               # 7
 void main() {
-    std::cout << ::tpyapp::main::apply(::tpyapp::helper::identity<int32_t>, 42) << "\n";
-    std::cout << ::tpy::TuplePrinter(::tpyapp::main::apply_swap(::tpyapp::helper::swap<int32_t, int32_t>, 1, 2)) << "\n";
+    std::cout << ::tpyapp::main::apply(::tpyapp::helper::identity<int32_t>, 42) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(::tpyapp::main::apply_swap(::tpyapp::helper::swap<int32_t, int32_t>, 1, 2)) << "\n" << ::tpy::check_signals;
     std::function<int32_t(int32_t)> f = ::tpyapp::helper::identity<int32_t>;
-    std::cout << f(7) << "\n";
+    std::cout << f(7) << "\n" << ::tpy::check_signals;
 }
 
 // from helper import identity, swap

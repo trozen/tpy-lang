@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(p.city)
 void main() {
     Person p = Person("Alice", "NYC");
-    std::cout << p.name << "\n";
-    std::cout << p.city << "\n";
+    std::cout << p.name << "\n" << ::tpy::check_signals;
+    std::cout << p.city << "\n" << ::tpy::check_signals;
 }
 
 // main()

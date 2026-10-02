@@ -138,7 +138,7 @@ inline void Holder::reseat() const {
     std::string a = std::get<0>(__tup_1);
     ::tpy::BigInt b = std::get<1>(__tup_1);
     t = ::tpyapp::main::mk(::tpy::BigInt(2));
-    std::cout << "method" << " " << a << " " << b << " " << std::get<1>(t) << "\n";
+    std::cout << "method" << " " << a << " " << b << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

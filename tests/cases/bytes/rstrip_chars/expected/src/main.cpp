@@ -14,12 +14,12 @@ namespace tpyapp::main {
 //     data: bytes = b"hello\x00\x00\x00end"
 //     print(len(data[0:8].rstrip(b"\x00")))          # 5
 void main() {
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("hello\000\000\000", 8), ::tpy::bytes_literal("\000", 1))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("hello...", 8), ::tpy::bytes_literal(".", 1))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("abcba", 5), ::tpy::bytes_literal("ab", 2))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal("\000", 1))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("hello\000\000\000", 8), ::tpy::bytes_literal("\000", 1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("hello...", 8), ::tpy::bytes_literal(".", 1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("abcba", 5), ::tpy::bytes_literal("ab", 2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal("\000", 1))) << "\n" << ::tpy::check_signals;
     ::tpy::BytesView data = ::tpy::bytes_literal("hello\000\000\000end", 11);
-    std::cout << ::tpy::__len__(::tpy::bytes_rstrip_chars_view(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 8}), ::tpy::bytes_literal("\000", 1))) << "\n";
+    std::cout << ::tpy::__len__(::tpy::bytes_rstrip_chars_view(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 8}), ::tpy::bytes_literal("\000", 1))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

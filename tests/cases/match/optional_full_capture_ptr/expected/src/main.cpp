@@ -196,7 +196,7 @@ int32_t field_src(Box& b) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "async" << " " << __await_lift_0 << " " << c.lives << "\n";
+        std::cout << "async" << " " << __await_lift_0 << " " << c.lives << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -241,23 +241,23 @@ __coro_amain amain(Cat& c) {
 //     print("field_src", r, stored)
 void main() {
     Cat a = Cat(2);
-    std::cout << "free_fn" << " " << ::tpyapp::main::free_fn(&(a)) << " " << a.lives << "\n";
-    std::cout << "free_fn_none" << " " << ::tpyapp::main::free_fn(nullptr) << "\n";
+    std::cout << "free_fn" << " " << ::tpyapp::main::free_fn(&(a)) << " " << a.lives << "\n" << ::tpy::check_signals;
+    std::cout << "free_fn_none" << " " << ::tpyapp::main::free_fn(nullptr) << "\n" << ::tpy::check_signals;
     Cat __tmp_1 = Cat(3);
-    std::cout << "unproven" << " " << ::tpyapp::main::unproven(&(__tmp_1)) << "\n";
+    std::cout << "unproven" << " " << ::tpyapp::main::unproven(&(__tmp_1)) << "\n" << ::tpy::check_signals;
     Cat b = Cat(4);
-    std::cout << "after_none" << " " << ::tpyapp::main::after_none(&(b)) << " " << b.lives << "\n";
-    std::cout << "after_none_none" << " " << ::tpyapp::main::after_none(nullptr) << "\n";
+    std::cout << "after_none" << " " << ::tpyapp::main::after_none(&(b)) << " " << b.lives << "\n" << ::tpy::check_signals;
+    std::cout << "after_none_none" << " " << ::tpyapp::main::after_none(nullptr) << "\n" << ::tpy::check_signals;
     Cat c = Cat(5);
-    std::cout << "ctor" << " " << Holder(&(c)).seen << " " << c.lives << "\n";
+    std::cout << "ctor" << " " << Holder(&(c)).seen << " " << c.lives << "\n" << ::tpy::check_signals;
     Cat d = Cat(6);
     Holder holder = Holder(nullptr);
-    std::cout << "method" << " " << holder.bump(&(d)) << " " << d.lives << "\n";
+    std::cout << "method" << " " << holder.bump(&(d)) << " " << d.lives << "\n" << ::tpy::check_signals;
     Cat e = Cat(7);
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain(e)));
-    std::cout << "async_after" << " " << e.lives << "\n";
+    std::cout << "async_after" << " " << e.lives << "\n" << ::tpy::check_signals;
     Cat f = Cat(8);
-    std::cout << "in_try" << " " << ::tpyapp::main::in_try(&(f)) << " " << f.lives << "\n";
+    std::cout << "in_try" << " " << ::tpyapp::main::in_try(&(f)) << " " << f.lives << "\n" << ::tpy::check_signals;
     Cat __tmp_2 = Cat(9);
     Box box = Box(&(__tmp_2));
     int32_t r = ::tpyapp::main::field_src(box);
@@ -266,7 +266,7 @@ void main() {
     if ((p != nullptr)) {
         stored = p->lives;
     }
-    std::cout << "field_src" << " " << r << " " << stored << "\n";
+    std::cout << "field_src" << " " << r << " " << stored << "\n" << ::tpy::check_signals;
 }
 
 // import asyncio

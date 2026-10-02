@@ -114,7 +114,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 //     print(asyncio.run(main_coro()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::main_coro())) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::main_coro())) << "\n" << ::tpy::check_signals;
 }
 
 // # An `async def` passed as a value to a `Callable[[...], Own[Cancellable[T]]]`

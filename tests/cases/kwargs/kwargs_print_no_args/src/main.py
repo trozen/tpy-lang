@@ -22,7 +22,7 @@ class Emitter:
 # free function: every argument-less kwarg form
 def free_position() -> None:
     print("free:", end="")
-    print(end="")  # tpyc: ok -- emits nothing
+    print(end="")  # tpyc: ok -- emits only the Ctrl-C check point
     print(end="a")  # tpyc: ok
     print(sep=",")  # tpyc: ok -- sep has nothing to separate, so just "\n"
     print(sep=",", end="b\n")  # tpyc: ok

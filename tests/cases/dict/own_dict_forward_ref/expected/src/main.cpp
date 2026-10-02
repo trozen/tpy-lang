@@ -16,8 +16,8 @@ void main() {
     ::tpy::__setitem__(h.counts, Point(1), 10);
     ::tpy::__setitem__(h.counts, Point(2), 20);
     ::tpy::__setitem__(h.counts, Point(1), 30);
-    std::cout << ::tpy::__len__(h.counts) << "\n";
-    std::cout << ::tpy::__getitem__(h.counts, Point(1)) << "\n";
+    std::cout << ::tpy::__len__(h.counts) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(h.counts, Point(1)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

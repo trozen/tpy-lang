@@ -70,7 +70,7 @@ inline Module::Module(std::string_view name)
 // def log(self, s: str):
 //     print(self._name + ": " + s)
 inline void Module::log(std::string_view s) const {
-    std::cout << (::tpy::str_concat((::tpy::str_concat(this->_name, ": ")), s)) << "\n";
+    std::cout << (::tpy::str_concat((::tpy::str_concat(this->_name, ": ")), s)) << "\n" << ::tpy::check_signals;
 }
 
 // # Passes self to mutating free function -- must NOT be const

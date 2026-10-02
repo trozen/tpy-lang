@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     print("side_effect")
 //     return C()
 C make_c() {
-    std::cout << "side_effect" << "\n";
+    std::cout << "side_effect" << "\n" << ::tpy::check_signals;
     return C();
 }
 
@@ -18,9 +18,9 @@ C make_c() {
 //     # Subscript also has side effects (range check), so it must be evaluated.
 //     print(cs[0].LIMIT)
 void main() {
-    std::cout << ({ static_cast<void>(::tpyapp::main::make_c()); C::LIMIT; }) << "\n";
+    std::cout << ({ static_cast<void>(::tpyapp::main::make_c()); C::LIMIT; }) << "\n" << ::tpy::check_signals;
     std::vector<C> cs = {C(), C()};
-    std::cout << ({ static_cast<void>(::tpy::__getitem__(cs, 0)); C::LIMIT; }) << "\n";
+    std::cout << ({ static_cast<void>(::tpy::__getitem__(cs, 0)); C::LIMIT; }) << "\n" << ::tpy::check_signals;
 }
 
 // main()

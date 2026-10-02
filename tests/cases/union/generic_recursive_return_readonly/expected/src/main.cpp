@@ -42,7 +42,7 @@ int32_t leaf_count(const Tree<int32_t>& t) {
 void main() {
     Holder h = Holder(std::vector<Tree<int32_t>>{1, std::vector<Tree<int32_t>>{2, 3}});
     const Tree<int32_t>& v = h.view();
-    std::cout << ::tpyapp::main::leaf_count(v) << "\n";
+    std::cout << ::tpyapp::main::leaf_count(v) << "\n" << ::tpy::check_signals;
 }
 
 // main()

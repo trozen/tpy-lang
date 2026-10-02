@@ -13,7 +13,7 @@ void main() {
     Field f = Field();
     f.reset();
     f.reset();
-    std::cout << f.n << "\n";
+    std::cout << f.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -43,8 +43,8 @@ std::string describe_structural() {
 //     print(describe())
 //     print(describe_structural())
 void main() {
-    std::cout << ::tpyapp::main::describe() << "\n";
-    std::cout << ::tpyapp::main::describe_structural() << "\n";
+    std::cout << ::tpyapp::main::describe() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe_structural() << "\n" << ::tpy::check_signals;
 }
 
 // main()

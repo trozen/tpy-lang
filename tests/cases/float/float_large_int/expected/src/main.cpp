@@ -31,13 +31,13 @@ void __tpy_init() {
     a = ::tpy::BigInt::from_float(1e+18);
     b = ::tpy::BigInt::from_float(1e+50);
     c = ::tpy::BigInt::from_float(-(1e+50));
-    std::cout << a << "\n";
-    std::cout << b << "\n";
-    std::cout << c << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
+    std::cout << c << "\n" << ::tpy::check_signals;
     d = ::tpy::BigInt::from_float(1.9e+20);
     e = ::tpy::BigInt::from_float(-(1.9e+20));
-    std::cout << d << "\n";
-    std::cout << e << "\n";
+    std::cout << d << "\n" << ::tpy::check_signals;
+    std::cout << e << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

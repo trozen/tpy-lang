@@ -23,11 +23,11 @@ void __tpy_init() {
     x = ::tpy::BigInt(0);
     x = 10;
     x = ::tpy::BigInt(20);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     f = 0.0;
     f = static_cast<double>(3.0f);
     f = 1.5;
-    std::cout << ::tpy::print_float(f) << "\n";
+    std::cout << ::tpy::print_float(f) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

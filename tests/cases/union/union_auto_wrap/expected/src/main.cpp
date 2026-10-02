@@ -12,10 +12,10 @@ namespace tpyapp::main {
 void process(::tpy::Union<const A*, const B*> v) {
     if (std::holds_alternative<const A*>(v)) {
         auto& __v = *std::get<const A*>(v);
-        std::cout << __v.x << "\n";
+        std::cout << __v.x << "\n" << ::tpy::check_signals;
     } else {
         auto& __v = *std::get<const B*>(v);
-        std::cout << __v.y << "\n";
+        std::cout << __v.y << "\n" << ::tpy::check_signals;
     }
 }
 

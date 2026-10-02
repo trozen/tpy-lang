@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(platform_value())
 void main() {
-    std::cout << ::platform_value() << "\n";
+    std::cout << ::platform_value() << "\n" << ::tpy::check_signals;
 }
 
 // # Test platform-filtered include directive

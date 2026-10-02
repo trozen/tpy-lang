@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(c.doubled())
 void main() {
     Counter c = Counter(21);
-    std::cout << c.get_value() << "\n";
-    std::cout << c.doubled() << "\n";
+    std::cout << c.get_value() << "\n" << ::tpy::check_signals;
+    std::cout << c.doubled() << "\n" << ::tpy::check_signals;
 }
 
 // main()

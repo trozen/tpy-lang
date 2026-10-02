@@ -18,11 +18,11 @@ void main() {
     {
         try {
             std::string v = b.__getattr__("host");
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
             v = b.__getattr__("missing");
-            std::cout << "never:" << " " << v << "\n";
+            std::cout << "never:" << " " << v << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::AttributeError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

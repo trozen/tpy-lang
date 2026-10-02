@@ -60,12 +60,12 @@ namespace tpyapp::main {
 //     # Int comparison
 //     print(SmallEnum.B == int8(1))
 void main() {
-    std::cout << SmallEnum::A << "\n";
-    std::cout << SmallEnum::C << "\n";
+    std::cout << SmallEnum::A << "\n" << ::tpy::check_signals;
+    std::cout << SmallEnum::C << "\n" << ::tpy::check_signals;
     int8_t x = (::tpy::add_check<int8_t>(static_cast<int8_t>(SmallEnum::B), 10));
-    std::cout << static_cast<int>(x) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<int8_t>(SmallEnum::A) < static_cast<int8_t>(SmallEnum::C))) << "\n";
-    std::cout << ::tpy::print_bool((static_cast<int8_t>(SmallEnum::B) == 1)) << "\n";
+    std::cout << static_cast<int>(x) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<int8_t>(SmallEnum::A) < static_cast<int8_t>(SmallEnum::C))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((static_cast<int8_t>(SmallEnum::B) == 1)) << "\n" << ::tpy::check_signals;
 }
 
 // # IntEnum with explicit int8 underlying type via mixin syntax

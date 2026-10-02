@@ -57,9 +57,9 @@ int32_t neg(Prio p) {
 //     print(f"m={-p}")
 void main() {
     Prio p = Prio::HIGH;
-    std::cout << (-static_cast<int32_t>(p)) << "\n";
-    std::cout << ::tpyapp::main::neg(Prio::LOW) << "\n";
-    std::cout << std::format("m={}", (-static_cast<int32_t>(p))) << "\n";
+    std::cout << (-static_cast<int32_t>(p)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::neg(Prio::LOW) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("m={}", (-static_cast<int32_t>(p))) << "\n" << ::tpy::check_signals;
 }
 
 // # IntEnum unary minus: -p negates the underlying value (result is int, not Prio).

@@ -62,7 +62,7 @@ struct Wrapper {
     // def print_wrapped(self) -> None:
     //     print(self.value.to_str())
     void print_wrapped() {
-        std::cout << this->value.to_str() << "\n";
+        std::cout << this->value.to_str() << "\n" << ::tpy::check_signals;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };

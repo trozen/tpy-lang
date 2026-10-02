@@ -19,7 +19,7 @@ void __tpy_init() {
     ::tpyapp::b::__tpy_init();
     static ::tpyapp::c::Original __global_slot_1 = ::tpyapp::c::Original(7);
     x = &__global_slot_1;
-    std::cout << x->val << "\n";
+    std::cout << x->val << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

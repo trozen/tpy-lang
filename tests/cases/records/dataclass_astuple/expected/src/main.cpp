@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Point p = Point(1, 2);
     std::tuple<int32_t, int32_t> t = std::tuple<int32_t, int32_t>{p.x, p.y};
-    std::cout << ::tpy::TuplePrinter(t) << "\n";
+    std::cout << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;
 }
 
 // # Test astuple() on a flat dataclass

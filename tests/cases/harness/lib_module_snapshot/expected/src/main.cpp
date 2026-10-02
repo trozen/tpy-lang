@@ -31,9 +31,9 @@ void main() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const auto& c = ::tpy::unwrap_ref(*__r_1);
-        std::cout << c.hits << "\n";
+        std::cout << c.hits << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::__len__(counters) << "\n";
+    std::cout << ::tpy::__len__(counters) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

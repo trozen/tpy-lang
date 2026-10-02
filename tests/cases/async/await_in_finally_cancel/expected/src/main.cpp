@@ -13,7 +13,7 @@ namespace tpyapp::main {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "cleanup-ran" << "\n";
+        std::cout << "cleanup-ran" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -141,7 +141,7 @@ __coro_coro coro() {
             continue;
         } catch (const ::tpy::CancelledError&) {
             __sub_1 = nullptr;
-            std::cout << "got-cancelled" << "\n";
+            std::cout << "got-cancelled" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

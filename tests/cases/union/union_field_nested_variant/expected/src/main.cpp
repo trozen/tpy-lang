@@ -45,8 +45,8 @@ void main() {
     ::tpy::Union<Cat, Dog> __slot_3 = Dog("Rex");
     ::tpy::Union<Cat*, Dog*> dog = ::tpy::to_ptr_variant(__slot_3);
     Zoo z2 = Zoo(dog.as_const());
-    std::cout << ::tpyapp::main::describe_zoo(z1) << "\n";
-    std::cout << ::tpyapp::main::describe_zoo(z2) << "\n";
+    std::cout << ::tpyapp::main::describe_zoo(z1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe_zoo(z2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

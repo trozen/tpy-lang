@@ -76,7 +76,7 @@ inline void Holder::finish() {
     if ((!this->slot.has_value())) {
         return;
     }
-    std::cout << (*this->slot).get().v << "\n";
+    std::cout << (*this->slot).get().v << "\n" << ::tpy::check_signals;
     this->slot = std::nullopt;
 }
 void __tpy_init();

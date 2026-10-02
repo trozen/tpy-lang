@@ -67,7 +67,7 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
 // def log(self, msg: str) -> None:
 //     print("[log] " + msg)
 inline void Logger::log(std::string_view msg) const {
-    std::cout << (::tpy::str_concat("[log] ", msg)) << "\n";
+    std::cout << (::tpy::str_concat("[log] ", msg)) << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, v: int32) -> None:

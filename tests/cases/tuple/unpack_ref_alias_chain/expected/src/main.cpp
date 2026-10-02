@@ -15,7 +15,7 @@ void alias_chain() {
     Counter& t = g.get();
     Counter& y = t;
     y.bump();
-    std::cout << g.n << "\n";
+    std::cout << g.n << "\n" << ::tpy::check_signals;
 }
 
 // def unpack_method_and_ternary() -> None:
@@ -37,8 +37,8 @@ void unpack_method_and_ternary() {
     Counter& b = __unpack_0_1;
     a.bump();
     b.bump();
-    std::cout << g0.n << "\n";
-    std::cout << g1.n << "\n";
+    std::cout << g0.n << "\n" << ::tpy::check_signals;
+    std::cout << g1.n << "\n" << ::tpy::check_signals;
 }
 
 // def reassign_to_ref() -> None:
@@ -55,7 +55,7 @@ void reassign_to_ref() {
     x = &(g.get());
     Counter& y = (*x);
     y.bump();
-    std::cout << g.n << "\n";
+    std::cout << g.n << "\n" << ::tpy::check_signals;
 }
 
 // alias_chain()

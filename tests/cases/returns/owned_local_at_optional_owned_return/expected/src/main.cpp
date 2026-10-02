@@ -59,9 +59,9 @@ std::optional<std::string> from_own_param(std::string k) {
 //     print(from_bytes(b"a"), from_own_param(String("a")))
 //     print(from_local(""), from_own_param(String("")))
 void main() {
-    std::cout << ::tpy::print_optional_val(::tpyapp::main::from_local("a")) << " " << ::tpy::print_optional_val(::tpyapp::main::from_concat("a")) << "\n";
-    std::cout << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::Bytes>(::tpyapp::main::from_bytes(::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_optional_val(::tpyapp::main::from_own_param(::tpy::String("a"))) << "\n";
-    std::cout << ::tpy::print_optional_val(::tpyapp::main::from_local("")) << " " << ::tpy::print_optional_val(::tpyapp::main::from_own_param(::tpy::String(""))) << "\n";
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::from_local("a")) << " " << ::tpy::print_optional_val(::tpyapp::main::from_concat("a")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::Bytes>(::tpyapp::main::from_bytes(::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_optional_val(::tpyapp::main::from_own_param(::tpy::String("a"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::from_local("")) << " " << ::tpy::print_optional_val(::tpyapp::main::from_own_param(::tpy::String(""))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

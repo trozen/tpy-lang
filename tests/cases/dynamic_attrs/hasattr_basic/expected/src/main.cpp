@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(hasattr(h, "missing"))  # False via dunder raise
 void main() {
     Headers h = Headers("example.com");
-    std::cout << ::tpy::print_bool(({ bool __ok = true; try { (void)(h.__getattr__("host")); } catch (const ::tpy::AttributeError&) { __ok = false; } __ok; })) << "\n";
-    std::cout << ::tpy::print_bool(({ bool __ok = true; try { (void)(h.__getattr__("missing")); } catch (const ::tpy::AttributeError&) { __ok = false; } __ok; })) << "\n";
+    std::cout << ::tpy::print_bool(({ bool __ok = true; try { (void)(h.__getattr__("host")); } catch (const ::tpy::AttributeError&) { __ok = false; } __ok; })) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(({ bool __ok = true; try { (void)(h.__getattr__("missing")); } catch (const ::tpy::AttributeError&) { __ok = false; } __ok; })) << "\n" << ::tpy::check_signals;
 }
 
 // main()

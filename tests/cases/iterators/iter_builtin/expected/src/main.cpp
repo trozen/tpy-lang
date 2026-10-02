@@ -42,7 +42,7 @@ void main() {
             break;
             __after_try_1:;
         }
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
     bool exhausted = false;
     {
@@ -57,7 +57,7 @@ void main() {
         __after_try_3:;
     }
     if (exhausted) {
-        std::cout << "exhausted" << "\n";
+        std::cout << "exhausted" << "\n" << ::tpy::check_signals;
     }
 }
 

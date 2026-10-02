@@ -13,9 +13,9 @@ namespace tpyapp::main {
 //     print(c)
 void process(::tpy::BytesView data) {
     ::tpy::BytesView b = data;
-    std::cout << ::tpy::BytesPrinter(b) << "\n";
+    std::cout << ::tpy::BytesPrinter(b) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes c = (::tpy::bytes_concat(data, ::tpy::bytes_literal_owned("!", 1)));
-    std::cout << ::tpy::BytesPrinter(c) << "\n";
+    std::cout << ::tpy::BytesPrinter(c) << "\n" << ::tpy::check_signals;
 }
 
 // def augassign(data: bytes) -> None:
@@ -25,7 +25,7 @@ void process(::tpy::BytesView data) {
 void augassign(::tpy::BytesView data) {
     ::tpy::Bytes b = ::tpy::Bytes(data);
     b = ::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("!", 1));
-    std::cout << ::tpy::BytesPrinter(b) << "\n";
+    std::cout << ::tpy::BytesPrinter(b) << "\n" << ::tpy::check_signals;
 }
 
 // def literal_view() -> None:
@@ -33,7 +33,7 @@ void augassign(::tpy::BytesView data) {
 //     print(b)
 void literal_view() {
     ::tpy::BytesView b = ::tpy::bytes_literal("hello", 5);
-    std::cout << ::tpy::BytesPrinter(b) << "\n";
+    std::cout << ::tpy::BytesPrinter(b) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(s)
 void test_str_constructor() {
     std::string s = ::tpy::fixed_to_str<int32_t>(42);
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_augassign() -> None:
@@ -20,7 +20,7 @@ void test_str_constructor() {
 void test_augassign() {
     std::string s = "hello";
     s += " world";
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_reassign_from_owned() -> None:
@@ -30,7 +30,7 @@ void test_augassign() {
 void test_reassign_from_owned() {
     std::string s = "start";
     s = ::tpy::fixed_to_str<int32_t>(99);
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // test_str_constructor()

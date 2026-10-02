@@ -43,8 +43,8 @@ void main() {
     Holder h = Holder(Box(7));
     auto t = ::tpyapp::main::pick(h);
     std::get<1>(t)->val = 99;
-    std::cout << std::get<0>(t) << "\n";
-    std::cout << std::get<1>(h.pair).val << "\n";
+    std::cout << std::get<0>(t) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(h.pair).val << "\n" << ::tpy::check_signals;
 }
 
 // main()

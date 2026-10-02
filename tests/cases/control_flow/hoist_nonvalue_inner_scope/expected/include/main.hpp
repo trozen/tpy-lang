@@ -278,7 +278,7 @@ inline int32_t CM::__enter__() const {
 // def __exit__(self, et, ev, tb) -> None:
 //     print("with_body exit", self.n)
 inline void CM::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    std::cout << "with_body exit" << " " << this->n << "\n";
+    std::cout << "with_body exit" << " " << this->n << "\n" << ::tpy::check_signals;
 }
 
 // # Constructor position.

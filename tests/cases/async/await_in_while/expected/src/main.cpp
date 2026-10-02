@@ -79,7 +79,7 @@ __coro_loop_sum loop_sum(::tpy::BigInt n) {
 // def main() -> None:
 //     print(asyncio.run(loop_sum(5)))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::loop_sum(::tpy::BigInt(5)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::loop_sum(::tpy::BigInt(5)))) << "\n" << ::tpy::check_signals;
 }
 
 // # `await` inside a `while` loop body.

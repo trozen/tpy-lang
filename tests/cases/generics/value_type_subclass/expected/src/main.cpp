@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(d.double())
 void main() {
     Derived d = Derived(7);
-    std::cout << d.x << "\n";
-    std::cout << d.double_() << "\n";
+    std::cout << d.x << "\n" << ::tpy::check_signals;
+    std::cout << d.double_() << "\n" << ::tpy::check_signals;
 }
 
 // main()

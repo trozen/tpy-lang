@@ -70,9 +70,9 @@ std::string color_name(Color c) {
 //     print(color_name(Color.Green))
 //     print(color_name(Color.Blue))
 void main() {
-    std::cout << ::tpyapp::main::color_name(Color::Red) << "\n";
-    std::cout << ::tpyapp::main::color_name(Color::Green) << "\n";
-    std::cout << ::tpyapp::main::color_name(Color::Blue) << "\n";
+    std::cout << ::tpyapp::main::color_name(Color::Red) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::color_name(Color::Green) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::color_name(Color::Blue) << "\n" << ::tpy::check_signals;
 }
 
 // # Enum if/elif chain with comparison

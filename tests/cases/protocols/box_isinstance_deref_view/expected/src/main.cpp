@@ -20,9 +20,9 @@ std::string describe(::tpystd::tplib::box::Box<Pet>& b) {
 //     print(describe(Box(Cat())))
 void main() {
     ::tpystd::tplib::box::Box<Pet> __tmp_1 = ::tpystd::tplib::box::Box<Dog>(Dog());
-    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::box::Box<Pet> __tmp_2 = ::tpystd::tplib::box::Box<Cat>(Cat());
-    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.box import Box

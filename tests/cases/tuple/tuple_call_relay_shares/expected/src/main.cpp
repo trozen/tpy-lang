@@ -20,8 +20,8 @@ void main() {
     Holder h = Holder(Box(5), 42);
     auto t = ::tpyapp::main::relay(h);
     std::get<0>(t)->val = 99;
-    std::cout << h.box.val << "\n";
-    std::cout << std::get<1>(t) << "\n";
+    std::cout << h.box.val << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(t) << "\n" << ::tpy::check_signals;
 }
 
 // main()

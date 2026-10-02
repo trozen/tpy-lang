@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     Cell unchanged = Cell(3, false);
     Cell changed = Cell(3, true);
-    std::cout << "unchanged" << " " << unchanged.value << " " << unchanged.before << "\n";
-    std::cout << "changed" << " " << changed.value << " " << changed.before << "\n";
+    std::cout << "unchanged" << " " << unchanged.value << " " << unchanged.before << "\n" << ::tpy::check_signals;
+    std::cout << "changed" << " " << changed.value << " " << changed.before << "\n" << ::tpy::check_signals;
 }
 
 // main()

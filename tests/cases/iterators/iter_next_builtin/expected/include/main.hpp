@@ -94,12 +94,12 @@ void consume_two(T_it& it) {
             if (!__try_tmp_3.has_value()) goto __except_1;
             b = ::tpy::unwrap_ref_move(*__try_tmp_3);
         }
-        std::cout << a << "\n";
-        std::cout << b << "\n";
+        std::cout << a << "\n" << ::tpy::check_signals;
+        std::cout << b << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except StopIteration:
         __except_1:;
-        std::cout << "stopped early" << "\n";
+        std::cout << "stopped early" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }

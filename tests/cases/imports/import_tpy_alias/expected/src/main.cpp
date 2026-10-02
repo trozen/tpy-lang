@@ -19,9 +19,9 @@ void __tpy_init() {
 
     x = 42;
     y = 123;
-    std::cout << x << "\n";
-    std::cout << y << "\n";
-    std::cout << (::tpy::add_check<int32_t>(x, y)) << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
+    std::cout << y << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::add_check<int32_t>(x, y)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

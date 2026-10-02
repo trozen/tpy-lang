@@ -13,7 +13,7 @@ void fill(Slots& s) {
     Data z = Data(5);
     ::tpy::__setitem__(s, 0, z);
     ::tpy::__setitem__(s, 1, Data(9));
-    std::cout << z.value << "\n";
+    std::cout << z.value << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -23,7 +23,7 @@ void fill(Slots& s) {
 void main() {
     Slots s = Slots();
     ::tpyapp::main::fill(s);
-    std::cout << s[0].value << " " << s[1].value << "\n";
+    std::cout << s[0].value << " " << s[1].value << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -27,14 +27,14 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        std::cout << k << "\n";
+        std::cout << k << "\n" << ::tpy::check_signals;
     }
     auto __obj_1 = ::tpy::dict_values(d);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const ::tpy::BigInt& v = *__beg_1;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
     auto __obj_2 = ::tpy::dict_items(d);
     auto __beg_2 = __obj_2.begin();
@@ -44,11 +44,11 @@ void main() {
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);
         ::tpy::BigInt v = std::get<1>(__tup_1);
-        std::cout << k << " " << v << "\n";
+        std::cout << k << " " << v << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::__len__(::tpy::dict_keys(d)) << "\n";
-    std::cout << ::tpy::__len__(::tpy::dict_values(d)) << "\n";
-    std::cout << ::tpy::__len__(::tpy::dict_items(d)) << "\n";
+    std::cout << ::tpy::__len__(::tpy::dict_keys(d)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(::tpy::dict_values(d)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(::tpy::dict_items(d)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(Point(4).x)
 void main() {
-    std::cout << Point(4).x << "\n";
+    std::cout << Point(4).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

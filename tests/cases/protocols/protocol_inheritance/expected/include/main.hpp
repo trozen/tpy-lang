@@ -71,8 +71,8 @@ struct Container {
     //     print(self.value.to_str())
     //     print(len(self.value))
     void describe() {
-        std::cout << this->value.to_str() << "\n";
-        std::cout << ::tpy::__len__(this->value) << "\n";
+        std::cout << this->value.to_str() << "\n" << ::tpy::check_signals;
+        std::cout << ::tpy::__len__(this->value) << "\n" << ::tpy::check_signals;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };

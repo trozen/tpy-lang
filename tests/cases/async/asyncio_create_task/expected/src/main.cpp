@@ -46,7 +46,7 @@ __coro_sub sub() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         val = std::move(__r0).value();
         __sub_0 = nullptr;
-        std::cout << val << "\n";
+        std::cout << val << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

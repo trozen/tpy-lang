@@ -79,14 +79,14 @@ std::string bucket(double x) {
 //     print(bucket(1.0))
 //     print(bucket(2.0))
 void main() {
-    std::cout << ::tpyapp::main::greet("hello", true) << "\n";
-    std::cout << ::tpyapp::main::greet("hello", false) << "\n";
-    std::cout << ::tpyapp::main::greet("bye", true) << "\n";
-    std::cout << ::tpyapp::main::greet("bye", false) << "\n";
-    std::cout << ::tpyapp::main::greet("ok", false) << "\n";
-    std::cout << ::tpyapp::main::bucket(0.0) << "\n";
-    std::cout << ::tpyapp::main::bucket(1.0) << "\n";
-    std::cout << ::tpyapp::main::bucket(2.0) << "\n";
+    std::cout << ::tpyapp::main::greet("hello", true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::greet("hello", false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::greet("bye", true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::greet("bye", false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::greet("ok", false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::bucket(0.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::bucket(1.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::bucket(2.0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

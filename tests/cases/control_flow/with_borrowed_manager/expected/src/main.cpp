@@ -12,7 +12,7 @@ void run(Counter& c) {
     auto& __ctx_1 = c;
     __ctx_1.__enter__();
     try {
-        std::cout << "inside:" << " " << c.n << "\n";
+        std::cout << "inside:" << " " << c.n << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (...) {
         __ctx_1.__exit__({}, {}, {});
@@ -20,7 +20,7 @@ void run(Counter& c) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, {}, {});
-    std::cout << "after:" << " " << c.n << "\n";
+    std::cout << "after:" << " " << c.n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -36,7 +36,7 @@ void main() {
     auto& __ctx_2 = c;
     __ctx_2.__enter__();
     try {
-        std::cout << "second inside:" << " " << c.n << "\n";
+        std::cout << "second inside:" << " " << c.n << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (...) {
         __ctx_2.__exit__({}, {}, {});
@@ -44,7 +44,7 @@ void main() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, {}, {});
-    std::cout << "second after:" << " " << c.n << "\n";
+    std::cout << "second after:" << " " << c.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

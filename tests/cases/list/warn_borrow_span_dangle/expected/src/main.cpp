@@ -14,7 +14,7 @@ void test_span_append_warns() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4), Point(5, 6)};
     std::span<Point> span = ::tpy::list_slice(items, ::tpy::BasicSlice{1, 3});
     items.push_back(Point(9, 9));
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_span_subscript_write_ok() -> None:
@@ -27,7 +27,7 @@ void test_span_subscript_write_ok() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     std::span<Point> span = ::tpy::list_slice(items, ::tpy::BasicSlice{0, 2});
     ::tpy::__setitem__(items, 0, Point(9, 9));
-    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n" << ::tpy::check_signals;
 }
 
 // def test_span_del_warns() -> None:
@@ -40,7 +40,7 @@ void test_span_del_warns() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     std::span<Point> span = ::tpy::list_slice(items, ::tpy::BasicSlice{0, 2});
     ::tpy::__delitem__(items, 0);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_span_no_mutation_no_warn() -> None:
@@ -52,8 +52,8 @@ void test_span_del_warns() {
 void test_span_no_mutation_no_warn() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     std::span<Point> span = ::tpy::list_slice(items, ::tpy::BasicSlice{0, 2});
-    std::cout << ::tpy::__getitem__(span, 0).x << "\n";
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__getitem__(span, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_no_span_no_warn() -> None:
@@ -64,7 +64,7 @@ void test_span_no_mutation_no_warn() {
 void test_no_span_no_warn() {
     std::vector<Point> items = {Point(1, 2)};
     items.push_back(Point(3, 4));
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_value_type_span_warns() -> None:
@@ -77,7 +77,7 @@ void test_value_type_span_warns() {
     std::vector<int32_t> items = {1, 2, 3};
     std::span<int32_t> span = ::tpy::list_slice(items, ::tpy::BasicSlice{0, 2});
     items.push_back(9);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // test_span_append_warns()

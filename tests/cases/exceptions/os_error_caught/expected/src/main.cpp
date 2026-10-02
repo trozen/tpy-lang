@@ -61,7 +61,7 @@ void main() {
             try {
                 f->read();
             } catch (const ::tpy::OSError& e) {
-                std::cout << "read on write-only:" << " " << std::string(::tpy::__str__(e)) << "\n";
+                std::cout << "read on write-only:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
             }
         }
         goto __with_exit_2;
@@ -81,7 +81,7 @@ void main() {
             try {
                 f->write("xyz");
             } catch (const ::tpy::OSError& e) {
-                std::cout << "write on read-only:" << " " << std::string(::tpy::__str__(e)) << "\n";
+                std::cout << "write on read-only:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
             }
         }
         goto __with_exit_3;
@@ -101,7 +101,7 @@ void main() {
             try {
                 f->readline();
             } catch (const ::tpy::OSError& e) {
-                std::cout << "readline on write-only:" << " " << std::string(::tpy::__str__(e)) << "\n";
+                std::cout << "readline on write-only:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
             }
         }
         goto __with_exit_4;

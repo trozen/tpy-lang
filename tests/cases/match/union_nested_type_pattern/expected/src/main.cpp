@@ -93,16 +93,16 @@ void main() {
     ::tpy::Union<Box<int32_t>*, Box<std::string>*> a = ::tpy::to_ptr_variant(__slot_1);
     ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_2 = Box<int32_t>(42);
     ::tpy::Union<Box<int32_t>*, Box<std::string>*> b = ::tpy::to_ptr_variant(__slot_2);
-    std::cout << ::tpyapp::main::unwrap(a.as_const()) << "\n";
-    std::cout << ::tpyapp::main::unwrap(b.as_const()) << "\n";
-    std::cout << ::tpyapp::main::describe(a.as_const()) << "\n";
-    std::cout << ::tpyapp::main::describe(b.as_const()) << "\n";
+    std::cout << ::tpyapp::main::unwrap(a.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::unwrap(b.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(a.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(b.as_const()) << "\n" << ::tpy::check_signals;
     ::tpy::Union<Pair<int32_t>, Pair<std::string>> __slot_3 = Pair<std::string>("abc", "xyz");
     ::tpy::Union<Pair<int32_t>*, Pair<std::string>*> c = ::tpy::to_ptr_variant(__slot_3);
     ::tpy::Union<Pair<int32_t>, Pair<std::string>> __slot_4 = Pair<int32_t>(99, "end");
     ::tpy::Union<Pair<int32_t>*, Pair<std::string>*> d = ::tpy::to_ptr_variant(__slot_4);
-    std::cout << ::tpyapp::main::mixed(c.as_const()) << "\n";
-    std::cout << ::tpyapp::main::mixed(d.as_const()) << "\n";
+    std::cout << ::tpyapp::main::mixed(c.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::mixed(d.as_const()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

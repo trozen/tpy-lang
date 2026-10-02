@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print("box constructed")
 void main() {
     ::tpystd::tplib::rc::Rc<std::monostate> r = Rc<std::monostate>::new_<std::monostate>(std::monostate{});
-    std::cout << "rc constructed" << "\n";
+    std::cout << "rc constructed" << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::box::Box<std::monostate> b = ::tpystd::tplib::box::Box<std::monostate>(std::monostate{});
-    std::cout << "box constructed" << "\n";
+    std::cout << "box constructed" << "\n" << ::tpy::check_signals;
 }
 
 // # Box[None] / Rc[None] -- value-bearing TPy wrappers instantiated with

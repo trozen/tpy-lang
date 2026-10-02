@@ -41,10 +41,10 @@ std::string describe(bool x) {
 //     val = True
 //     print(describe(val))
 void main() {
-    std::cout << ::tpyapp::main::describe__lit_True(true) << "\n";
-    std::cout << ::tpyapp::main::describe__lit_False(false) << "\n";
+    std::cout << ::tpyapp::main::describe__lit_True(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe__lit_False(false) << "\n" << ::tpy::check_signals;
     bool val = true;
-    std::cout << ::tpyapp::main::describe(val) << "\n";
+    std::cout << ::tpyapp::main::describe(val) << "\n" << ::tpy::check_signals;
 }
 
 // main()

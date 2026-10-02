@@ -24,7 +24,7 @@ void test_augassign() {
         x = ::tpyapp::main::get_big();
     }
     x = (x) + (::tpy::BigInt(1));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_binop() -> None:
@@ -39,7 +39,7 @@ void test_binop() {
         x = ::tpyapp::main::get_big();
     }
     ::tpy::BigInt y = ((x) + (::tpy::BigInt(10)));
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_elif_chain() -> None:
@@ -69,7 +69,7 @@ void test_elif_chain() {
         }
     }
     x = (x) + (::tpy::BigInt(1));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // test_augassign()

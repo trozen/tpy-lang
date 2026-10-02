@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def greet(ch: char = 'X') -> None:
 //     print(ch)
 void greet(char ch) {
-    std::cout << ch << "\n";
+    std::cout << ch << "\n" << ::tpy::check_signals;
 }
 
 // def bracket(text: str, open_ch: char = '(', close_ch: char = ')') -> str:
@@ -25,8 +25,8 @@ std::string bracket(std::string_view text, char open_ch, char close_ch) {
 void main() {
     ::tpyapp::main::greet();
     ::tpyapp::main::greet('A');
-    std::cout << ::tpyapp::main::bracket("hello") << "\n";
-    std::cout << ::tpyapp::main::bracket("hello", '[', ']') << "\n";
+    std::cout << ::tpyapp::main::bracket("hello") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::bracket("hello", '[', ']') << "\n" << ::tpy::check_signals;
 }
 
 // main()

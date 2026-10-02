@@ -28,11 +28,11 @@ namespace tpyapp::main {
 //     r = R()
 //     print(r.big, r.neg, r.small, r.wide, r.wrapped)
 void main() {
-    std::cout << ::tpyapp::main::g() << "\n";
-    std::cout << ::tpyapp::main::g(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)) << "\n";
-    std::cout << ::tpyapp::main::w() << "\n";
+    std::cout << ::tpyapp::main::g() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::g(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::w() << "\n" << ::tpy::check_signals;
     R r = R();
-    std::cout << r.big << " " << r.neg << " " << r.small << " " << r.wide << " " << r.wrapped << "\n";
+    std::cout << r.big << " " << r.neg << " " << r.small << " " << r.wide << " " << r.wrapped << "\n" << ::tpy::check_signals;
 }
 
 // # A >int32 int literal used as a DEFAULT value (function param, dataclass field

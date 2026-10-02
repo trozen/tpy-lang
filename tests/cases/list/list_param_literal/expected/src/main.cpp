@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(len(x))
 void takes_list(std::vector<::tpy::BigInt>& x) {
     x.push_back(42);
-    std::cout << ::tpy::__len__(x) << "\n";
+    std::cout << ::tpy::__len__(x) << "\n" << ::tpy::check_signals;
 }
 
 // def takes_list_int32(x: list[int32]) -> None:
@@ -17,13 +17,13 @@ void takes_list(std::vector<::tpy::BigInt>& x) {
 //     print(len(x))
 void takes_list_int32(std::vector<int32_t>& x) {
     x.push_back(99);
-    std::cout << ::tpy::__len__(x) << "\n";
+    std::cout << ::tpy::__len__(x) << "\n" << ::tpy::check_signals;
 }
 
 // def takes_array(x: Array[int32, 3]) -> None:
 //     print(x[0])
 void takes_array(const std::array<int32_t, 3>& x) {
-    std::cout << ::tpy::__getitem__(x, 0) << "\n";
+    std::cout << ::tpy::__getitem__(x, 0) << "\n" << ::tpy::check_signals;
 }
 
 // # Empty list literals

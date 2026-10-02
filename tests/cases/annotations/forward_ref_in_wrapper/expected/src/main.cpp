@@ -30,7 +30,7 @@ void main() {
     Tree root = Tree(10, std::nullopt);
     root.children.push_back(Tree(1, 10));
     root.children.push_back(Tree(2, 10));
-    std::cout << ::tpyapp::main::total(root) << "\n";
+    std::cout << ::tpyapp::main::total(root) << "\n" << ::tpy::check_signals;
 }
 
 // main()

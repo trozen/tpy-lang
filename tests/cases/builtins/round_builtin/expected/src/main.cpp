@@ -31,20 +31,20 @@ namespace tpyapp::main {
 //     m: int32 = int32(1250)
 //     print(round(m, int32(-2)))
 void main() {
-    std::cout << ::tpy::round_to<int32_t>(3.7) << "\n";
-    std::cout << ::tpy::round_to<int32_t>(-(1.5)) << "\n";
-    std::cout << ::tpy::round_to<int32_t>(0.5) << "\n";
-    std::cout << ::tpy::round_to<int32_t>(2.5) << "\n";
-    std::cout << ::tpy::round_to<int32_t>(3.5) << "\n";
-    std::cout << ::tpy::round_to<int32_t>(4.5) << "\n";
-    std::cout << ::tpy::print_float(::tpy::round_float(3.14159, 2)) << "\n";
-    std::cout << ::tpy::print_float(::tpy::round_float(2.71828, 3)) << "\n";
+    std::cout << ::tpy::round_to<int32_t>(3.7) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::round_to<int32_t>(-(1.5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::round_to<int32_t>(0.5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::round_to<int32_t>(2.5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::round_to<int32_t>(3.5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::round_to<int32_t>(4.5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpy::round_float(3.14159, 2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpy::round_float(2.71828, 3)) << "\n" << ::tpy::check_signals;
     int64_t x = ::tpy::round_to<int64_t>(9.9);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     int32_t n = 42;
-    std::cout << (n) << "\n";
+    std::cout << (n) << "\n" << ::tpy::check_signals;
     int32_t m = 1250;
-    std::cout << ::tpy::round_fixed<int32_t>(m, -2) << "\n";
+    std::cout << ::tpy::round_fixed<int32_t>(m, -2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

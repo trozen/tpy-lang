@@ -19,7 +19,7 @@ void store(Holder& h) {
 void main() {
     Holder h = Holder();
     ::tpyapp::main::store(h);
-    std::cout << "stored" << "\n";
+    std::cout << "stored" << "\n" << ::tpy::check_signals;
 }
 
 // main()

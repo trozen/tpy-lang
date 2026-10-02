@@ -40,7 +40,7 @@ __coro_payload payload() {
 // def main() -> None:
 //     print(asyncio.run(payload()))
 void main() {
-    std::cout << ::tpy::BytesPrinter(::tpystd::asyncio::run<::tpy::Bytes>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::Bytes>>(::tpyapp::main::payload()))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::asyncio::run<::tpy::Bytes>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::Bytes>>(::tpyapp::main::payload()))) << "\n" << ::tpy::check_signals;
 }
 
 // # asyncio.run over an async def returning bytes: bytes is a TPy value type

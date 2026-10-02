@@ -38,11 +38,11 @@ int32_t global_source() {
 //     print(global_source())  # 55
 void main() {
     int32_t result1 = ::tpyapp::main::return_owned_int32();
-    std::cout << result1 << "\n";
+    std::cout << result1 << "\n" << ::tpy::check_signals;
     ::tpy::BigInt big = ::tpy::BigInt(100);
     int32_t result2 = ::tpyapp::main::take_owned_int32((big).to_fixed_check<int32_t>());
-    std::cout << result2 << "\n";
-    std::cout << ::tpyapp::main::global_source() << "\n";
+    std::cout << result2 << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::global_source() << "\n" << ::tpy::check_signals;
 }
 
 // """Tests that coercions work correctly through Own[T] wrapper.

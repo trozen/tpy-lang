@@ -16,12 +16,12 @@ namespace tpyapp::main {
 //     print(0 in data)    # False
 void main() {
     ::tpy::BytesView data = ::tpy::bytes_literal("hello world", 11);
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::bytes_literal_owned("world", 5)))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::bytes_literal_owned("xyz", 3)))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::Bytes{}))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::bytes_literal_owned("hello world", 11)))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 104))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 0))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::bytes_literal_owned("world", 5)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::bytes_literal_owned("xyz", 3)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::Bytes{}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::bytes_literal_owned("hello world", 11)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 104))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 0))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

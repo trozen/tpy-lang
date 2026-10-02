@@ -21,7 +21,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_frame_view::__next__()
         return ::tpy::__len__(label);
     }
     case S_RESUME_0: {  // after: yield len(label)
-        std::cout << "frame" << " " << label << "\n";
+        std::cout << "frame" << " " << label << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

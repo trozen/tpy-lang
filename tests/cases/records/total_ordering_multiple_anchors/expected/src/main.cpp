@@ -32,11 +32,11 @@ void __tpy_init() {
     a = &__global_slot_1;
     static Score __global_slot_2 = Score(5);
     b = &__global_slot_2;
-    std::cout << ::tpy::print_bool((((*a)) < ((*b)))) << "\n";
-    std::cout << ::tpy::print_bool((((*a)) <= ((*b)))) << "\n";
-    std::cout << ::tpy::print_bool((((*a)) > ((*b)))) << "\n";
-    std::cout << ::tpy::print_bool((((*a)) >= ((*b)))) << "\n";
-    std::cout << ::tpy::print_bool((((*a)) == (Score(2)))) << "\n";
+    std::cout << ::tpy::print_bool((((*a)) < ((*b)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*a)) <= ((*b)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*a)) > ((*b)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*a)) >= ((*b)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((*a)) == (Score(2)))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

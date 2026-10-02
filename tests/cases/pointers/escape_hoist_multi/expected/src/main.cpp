@@ -29,8 +29,8 @@ void multi_hoist() {
         saved_a = a;
         saved_b = b;
     }
-    std::cout << saved_a->x << " " << saved_a->y << "\n";
-    std::cout << saved_b->x << " " << saved_b->y << "\n";
+    std::cout << saved_a->x << " " << saved_a->y << "\n" << ::tpy::check_signals;
+    std::cout << saved_b->x << " " << saved_b->y << "\n" << ::tpy::check_signals;
 }
 
 // multi_hoist()

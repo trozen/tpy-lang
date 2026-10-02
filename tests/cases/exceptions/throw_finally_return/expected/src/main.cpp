@@ -15,11 +15,11 @@ int32_t return_from_try() {
         try {
             int32_t __tpy_ret_0 = 42;
             __fin_ran_1 = true;
-            std::cout << "finally 1" << "\n";
+            std::cout << "finally 1" << "\n" << ::tpy::check_signals;
             return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_1) {
-                std::cout << "finally 1" << "\n";
+                std::cout << "finally 1" << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -42,12 +42,12 @@ int32_t return_from_except() {
             } catch (const ::tpy::ValueError&) {
                 int32_t __tpy_ret_0 = 99;
                 __fin_ran_2 = true;
-                std::cout << "finally 2" << "\n";
+                std::cout << "finally 2" << "\n" << ::tpy::check_signals;
                 return __tpy_ret_0;
             }
         } catch (...) {
             if (!__fin_ran_2) {
-                std::cout << "finally 2" << "\n";
+                std::cout << "finally 2" << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -71,24 +71,24 @@ std::string return_from_multiple_paths(bool flag) {
             if (flag) {
                 std::string __tpy_ret_0 = "yes";
                 __fin_ran_3 = true;
-                std::cout << "finally 3" << "\n";
+                std::cout << "finally 3" << "\n" << ::tpy::check_signals;
                 return __tpy_ret_0;
             }
             for (int32_t i = 0; i < 3; ++i) {
                 if ((i == 1)) {
                     std::string __tpy_ret_2 = "loop";
                     __fin_ran_3 = true;
-                    std::cout << "finally 3" << "\n";
+                    std::cout << "finally 3" << "\n" << ::tpy::check_signals;
                     return __tpy_ret_2;
                 }
             }
             std::string __tpy_ret_3 = "default";
             __fin_ran_3 = true;
-            std::cout << "finally 3" << "\n";
+            std::cout << "finally 3" << "\n" << ::tpy::check_signals;
             return __tpy_ret_3;
         } catch (...) {
             if (!__fin_ran_3) {
-                std::cout << "finally 3" << "\n";
+                std::cout << "finally 3" << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -110,16 +110,16 @@ std::optional<int32_t> return_optional(bool flag) {
             if (flag) {
                 std::optional<int32_t> __tpy_ret_0 = 7;
                 __fin_ran_4 = true;
-                std::cout << "finally 4" << "\n";
+                std::cout << "finally 4" << "\n" << ::tpy::check_signals;
                 return __tpy_ret_0;
             }
             std::optional<int32_t> __tpy_ret_1 = std::nullopt;
             __fin_ran_4 = true;
-            std::cout << "finally 4" << "\n";
+            std::cout << "finally 4" << "\n" << ::tpy::check_signals;
             return __tpy_ret_1;
         } catch (...) {
             if (!__fin_ran_4) {
-                std::cout << "finally 4" << "\n";
+                std::cout << "finally 4" << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -138,17 +138,17 @@ std::optional<int32_t> return_optional(bool flag) {
 //     if r2 is None:
 //         print("none")
 void main() {
-    std::cout << ::tpyapp::main::return_from_try() << "\n";
-    std::cout << ::tpyapp::main::return_from_except() << "\n";
-    std::cout << ::tpyapp::main::return_from_multiple_paths(true) << "\n";
-    std::cout << ::tpyapp::main::return_from_multiple_paths(false) << "\n";
+    std::cout << ::tpyapp::main::return_from_try() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::return_from_except() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::return_from_multiple_paths(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::return_from_multiple_paths(false) << "\n" << ::tpy::check_signals;
     std::optional<int32_t> r = ::tpyapp::main::return_optional(true);
     if ((r.has_value())) {
-        std::cout << ::tpy::print_optional_val(r) << "\n";
+        std::cout << ::tpy::print_optional_val(r) << "\n" << ::tpy::check_signals;
     }
     std::optional<int32_t> r2 = ::tpyapp::main::return_optional(false);
     if ((!r2.has_value())) {
-        std::cout << "none" << "\n";
+        std::cout << "none" << "\n" << ::tpy::check_signals;
     }
 }
 

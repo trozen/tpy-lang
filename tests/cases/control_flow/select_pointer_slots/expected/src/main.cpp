@@ -34,7 +34,7 @@ void local_records(bool c) {
     if ((xs != nullptr)) {
         xs->n = ::tpy::add_check<int32_t>(xs->n, 5);
     }
-    std::cout << "local_records:" << " " << a.n << " " << b.n << "\n";
+    std::cout << "local_records:" << " " << a.n << " " << b.n << "\n" << ::tpy::check_signals;
 }
 
 // def local_containers(c: bool) -> None:
@@ -52,7 +52,7 @@ void local_containers(bool c) {
     if ((xs != nullptr)) {
         xs->push_back(9);
     }
-    std::cout << "local_containers:" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << "\n";
+    std::cout << "local_containers:" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def local_narrowed(c: bool, p: C | None, q: C | None) -> None:
@@ -68,7 +68,7 @@ void local_narrowed(bool c, C* p, C* q) {
         if ((xs != nullptr)) {
             xs->n = ::tpy::add_check<int32_t>(xs->n, 5);
         }
-        std::cout << "local_narrowed:" << " " << p->n << " " << q->n << "\n";
+        std::cout << "local_narrowed:" << " " << p->n << " " << q->n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -87,7 +87,7 @@ void local_narrowed_plain(bool c, C* p) {
         if ((xs != nullptr)) {
             xs->n = ::tpy::add_check<int32_t>(xs->n, 5);
         }
-        std::cout << "local_narrowed_plain:" << " " << p->n << " " << b.n << "\n";
+        std::cout << "local_narrowed_plain:" << " " << p->n << " " << b.n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -104,7 +104,7 @@ void local_none_arm(bool c) {
     if ((xs != nullptr)) {
         xs->n = ::tpy::add_check<int32_t>(xs->n, 5);
     }
-    std::cout << "local_none_arm:" << " " << a.n << " " << ::tpy::print_bool((xs == nullptr)) << "\n";
+    std::cout << "local_none_arm:" << " " << a.n << " " << ::tpy::print_bool((xs == nullptr)) << "\n" << ::tpy::check_signals;
 }
 
 // def return_select(c: bool) -> None:
@@ -121,7 +121,7 @@ void return_select(bool c) {
     if ((r != nullptr)) {
         r->n = ::tpy::add_check<int32_t>(r->n, 5);
     }
-    std::cout << "return_select:" << " " << a.n << " " << b.n << "\n";
+    std::cout << "return_select:" << " " << a.n << " " << b.n << "\n" << ::tpy::check_signals;
 }
 
 // def arg_select(c: bool) -> None:
@@ -137,7 +137,7 @@ void arg_select(bool c) {
     C b = C(2);
     ::tpyapp::main::bump(&(((c) ? (a) : (b))));
     ::tpyapp::main::bump(((c) ? (&(a)) : (nullptr)));
-    std::cout << "arg_select:" << " " << a.n << " " << b.n << "\n";
+    std::cout << "arg_select:" << " " << a.n << " " << b.n << "\n" << ::tpy::check_signals;
 }
 
 // def receiver_mutate(c: bool, p: C | None, q: C | None) -> None:
@@ -148,7 +148,7 @@ void arg_select(bool c) {
 void receiver_mutate(bool c, C* p, C* q) {
     if (((p != nullptr) && (q != nullptr))) {
         ((c) ? ((*p)) : ((*q))).bump();
-        std::cout << "receiver_mutate:" << " " << p->n << " " << q->n << "\n";
+        std::cout << "receiver_mutate:" << " " << p->n << " " << q->n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -158,7 +158,7 @@ void receiver_mutate(bool c, C* p, C* q) {
 //         print("receiver_read:", (p if c else q).area())  # tpyc: ok
 void receiver_read(bool c, C* p, C* q) {
     if (((p != nullptr) && (q != nullptr))) {
-        std::cout << "receiver_read:" << " " << ((c) ? ((*p)) : ((*q))).area() << "\n";
+        std::cout << "receiver_read:" << " " << ((c) ? ((*p)) : ((*q))).area() << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -172,7 +172,7 @@ void receiver_pointer_local(bool c, C& a, C& b) {
     C* x = &(a);
     x = &(b);
     ((c) ? ((*x)) : (a)).bump();
-    std::cout << "receiver_pointer_local:" << " " << a.n << " " << b.n << "\n";
+    std::cout << "receiver_pointer_local:" << " " << a.n << " " << b.n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

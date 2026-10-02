@@ -27,12 +27,12 @@ void main() {
         auto& __w = *std::get<std::vector<::tpy::BigInt>*>(w);
         {
             try {
-                std::cout << ::tpy::__getitem__(__w, 99) << "\n";
+                std::cout << ::tpy::__getitem__(__w, 99) << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::IndexError&) {
-                std::cout << "IndexError caught" << "\n";
+                std::cout << "IndexError caught" << "\n" << ::tpy::check_signals;
             }
         }
-        std::cout << ::tpy::__getitem__(__w, -1) << "\n";
+        std::cout << ::tpy::__getitem__(__w, -1) << "\n" << ::tpy::check_signals;
     }
 }
 

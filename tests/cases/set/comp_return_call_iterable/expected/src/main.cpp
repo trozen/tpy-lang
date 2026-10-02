@@ -29,7 +29,7 @@ std::vector<int32_t> make() {
 // def main() -> None:
 //     print(len(uniq()))
 void main() {
-    std::cout << ::tpy::__len__(::tpyapp::main::uniq()) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::uniq()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

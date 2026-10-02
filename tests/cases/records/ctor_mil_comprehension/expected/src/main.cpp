@@ -14,9 +14,9 @@ namespace tpyapp::main {
 void main() {
     Grid g = Grid(3);
     ::tpy::__getitem__(g.cells, 0).v = 9;
-    std::cout << ::tpy::__len__(g.cells) << " " << ::tpy::__getitem__(g.cells, 0).v << " " << ::tpy::__getitem__(g.cells, 2).v << "\n";
-    std::cout << ::tpy::__len__(g.seen) << " " << ::tpy::print_bool((g.seen.contains(4))) << "\n";
-    std::cout << ::tpy::__len__(g.index) << " " << ::tpy::__getitem__(g.index, 2) << "\n";
+    std::cout << ::tpy::__len__(g.cells) << " " << ::tpy::__getitem__(g.cells, 0).v << " " << ::tpy::__getitem__(g.cells, 2).v << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(g.seen) << " " << ::tpy::print_bool((g.seen.contains(4))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(g.index) << " " << ::tpy::__getitem__(g.index, 2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

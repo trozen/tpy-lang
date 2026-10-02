@@ -24,14 +24,14 @@ void main() {
         t->val = ::tpy::BigInt(99);
     }
     if ((h.opt.has_value())) {
-        std::cout << (*h.opt).val << "\n";
+        std::cout << (*h.opt).val << "\n" << ::tpy::check_signals;
     }
     Holder empty = Holder(nullptr);
     Box* u = nullptr;
     if (((u = ::tpy::optional_to_ptr(empty.opt)) != nullptr)) {
-        std::cout << "unexpected" << " " << u->val << "\n";
+        std::cout << "unexpected" << " " << u->val << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "none ok" << "\n";
+        std::cout << "none ok" << "\n" << ::tpy::check_signals;
     }
 }
 

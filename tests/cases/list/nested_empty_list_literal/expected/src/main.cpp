@@ -17,7 +17,7 @@ int32_t rows() {
 // def main() -> None:
 //     print(rows())
 void main() {
-    std::cout << ::tpyapp::main::rows() << "\n";
+    std::cout << ::tpyapp::main::rows() << "\n" << ::tpy::check_signals;
 }
 
 // main()

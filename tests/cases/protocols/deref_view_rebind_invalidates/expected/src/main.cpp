@@ -23,7 +23,7 @@ std::string f() {
 // def main() -> None:
 //     print(f())
 void main() {
-    std::cout << ::tpyapp::main::f() << "\n";
+    std::cout << ::tpyapp::main::f() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.box import Box

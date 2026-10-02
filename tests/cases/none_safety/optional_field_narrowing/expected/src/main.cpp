@@ -15,9 +15,9 @@ void test_field_narrowing() {
     Wrapper w = Wrapper();
     w._node = Node(42);
     if ((w._node.has_value())) {
-        std::cout << (*w._node).val << "\n";
+        std::cout << (*w._node).val << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "none" << "\n";
+        std::cout << "none" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -30,7 +30,7 @@ void test_nested_field() {
     Wrapper w = Wrapper();
     w._node = Node(99);
     if (!((w._node.has_value()))) ::tpy::raise_assertion_error();
-    std::cout << (*w._node).val << "\n";
+    std::cout << (*w._node).val << "\n" << ::tpy::check_signals;
 }
 
 // def test_alias() -> None:
@@ -44,7 +44,7 @@ void test_alias() {
     w._node = Node(7);
     if ((w._node.has_value())) {
         Node& n = (*w._node);
-        std::cout << n.val << "\n";
+        std::cout << n.val << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -57,7 +57,7 @@ void test_method_call() {
     Wrapper w = Wrapper();
     w._node = Node(6);
     if ((w._node.has_value())) {
-        std::cout << (*w._node).doubled() << "\n";
+        std::cout << (*w._node).doubled() << "\n" << ::tpy::check_signals;
     }
 }
 

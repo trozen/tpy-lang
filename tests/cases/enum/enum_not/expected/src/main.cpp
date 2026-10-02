@@ -54,10 +54,10 @@ namespace tpyapp::main {
 //     print(x)
 void main() {
     Color c = Color::Red;
-    std::cout << ::tpy::print_bool((!((static_cast<void>(c), true)))) << "\n";
-    std::cout << ::tpy::print_bool((!((static_cast<void>(Color::Green), true)))) << "\n";
+    std::cout << ::tpy::print_bool((!((static_cast<void>(c), true)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!((static_cast<void>(Color::Green), true)))) << "\n" << ::tpy::check_signals;
     bool x = (!((static_cast<void>(Color::Blue), true)));
-    std::cout << ::tpy::print_bool(x) << "\n";
+    std::cout << ::tpy::print_bool(x) << "\n" << ::tpy::check_signals;
 }
 
 // # not operator on enum values (all enums are truthy, so not is always False)

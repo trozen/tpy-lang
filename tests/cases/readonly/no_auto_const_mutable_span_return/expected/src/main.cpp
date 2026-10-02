@@ -13,7 +13,7 @@ void main() {
     Buffer b = Buffer();
     std::span<int32_t> s = b.items();
     ::tpy::__setitem__(s, 0, 99);
-    std::cout << ::tpy::__getitem__(b._items, 0) << "\n";
+    std::cout << ::tpy::__getitem__(b._items, 0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 // def check_outside() -> None:
 //     print("outside null?", (_get_current_executor() is None))
 void check_outside() {
-    std::cout << "outside null?" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n";
+    std::cout << "outside null?" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n" << ::tpy::check_signals;
 }
 
 // async def check_inside() -> None:
@@ -28,11 +28,11 @@ void check_outside() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         h = ::tpystd::asyncio::_executor::_get_current_executor();
-        std::cout << "inside null?" << " " << ::tpy::print_bool((h == nullptr)) << "\n";
+        std::cout << "inside null?" << " " << ::tpy::print_bool((h == nullptr)) << "\n" << ::tpy::check_signals;
         ::tpystd::asyncio::_executor::_clear_current_executor();
-        std::cout << "after clear:" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n";
+        std::cout << "after clear:" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n" << ::tpy::check_signals;
         ::tpystd::asyncio::_executor::_set_current_executor(h);
-        std::cout << "after restore:" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n";
+        std::cout << "after restore:" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -52,7 +52,7 @@ __coro_check_inside check_inside() {
 //     print("sleep_until_steady past deadline: ok")
 void check_sleep() {
     ::tpy::stdlib::time::sleep_until_steady(((::tpy::stdlib::time::monotonic()) - (1.0)));
-    std::cout << "sleep_until_steady past deadline: ok" << "\n";
+    std::cout << "sleep_until_steady past deadline: ok" << "\n" << ::tpy::check_signals;
 }
 
 // async def trivial() -> None:
@@ -89,9 +89,9 @@ __coro_trivial trivial() {
 //     print("second run completed, null?", (_get_current_executor() is None))
 void check_teardown() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::trivial()));
-    std::cout << "after run, null?" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n";
+    std::cout << "after run, null?" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::trivial()));
-    std::cout << "second run completed, null?" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n";
+    std::cout << "second run completed, null?" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

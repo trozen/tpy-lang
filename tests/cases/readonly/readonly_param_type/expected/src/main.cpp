@@ -22,8 +22,8 @@ int32_t call_readonly_method(const Point& p) {
 //     print(call_readonly_method(p))
 void main() {
     Point p = Point(3, 4);
-    std::cout << ::tpyapp::main::observe(p) << "\n";
-    std::cout << ::tpyapp::main::call_readonly_method(p) << "\n";
+    std::cout << ::tpyapp::main::observe(p) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::call_readonly_method(p) << "\n" << ::tpy::check_signals;
 }
 
 // main()

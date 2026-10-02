@@ -22,7 +22,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_1);
-            std::cout << (::tpy::add_check<int32_t>(std::get<0>(pair), std::get<1>(pair))) << "\n";
+            std::cout << (::tpy::add_check<int32_t>(std::get<0>(pair), std::get<1>(pair))) << "\n" << ::tpy::check_signals;
         }
     }
 }

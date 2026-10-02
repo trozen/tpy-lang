@@ -48,24 +48,24 @@ std::tuple<std::string, int32_t> make_addr() {
 //     print(boxes[0].get())
 void main() {
     std::vector<int32_t> ports = {(::tpyapp::main::port()).to_fixed_check<int32_t>(), (::tpyapp::main::port()).to_fixed_check<int32_t>()};
-    std::cout << ::tpy::__getitem__(ports, 0) << "\n";
+    std::cout << ::tpy::__getitem__(ports, 0) << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpyapp::main::make_addr();
     std::string_view host = std::get<0>(__tup_1);
     int32_t p = std::get<1>(__tup_1);
-    std::cout << p << "\n";
+    std::cout << p << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<std::string, int32_t>> addrs = {std::tuple<std::string, int32_t>{"a", (::tpyapp::main::port()).to_fixed_check<int32_t>()}};
     auto __tup_2 = ::tpy::__getitem__(addrs, 0);
     int32_t np = std::get<1>(__tup_2);
-    std::cout << np << "\n";
+    std::cout << np << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> ports_set = ::tpy::ordered_set<int32_t>({(::tpyapp::main::port()).to_fixed_check<int32_t>(), (((::tpyapp::main::port()) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>()});
-    std::cout << "set" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(ports_set)) << "\n";
+    std::cout << "set" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(ports_set)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> by_name = ::tpy::ordered_map<std::string, int32_t>({{"http", (::tpyapp::main::port()).to_fixed_check<int32_t>()}});
-    std::cout << "dict_value" << " " << ::tpy::__getitem__(by_name, "http") << "\n";
+    std::cout << "dict_value" << " " << ::tpy::__getitem__(by_name, "http") << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::string> by_port = ::tpy::ordered_map<int32_t, std::string>({{(::tpyapp::main::port()).to_fixed_check<int32_t>(), "http"}});
-    std::cout << "dict_key" << " " << ::tpy::__getitem__(by_port, 8765) << "\n";
+    std::cout << "dict_key" << " " << ::tpy::__getitem__(by_port, 8765) << "\n" << ::tpy::check_signals;
     std::vector<::tpystd::tplib::box::Box<int32_t>> boxes = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(1), ::tpystd::tplib::box::Box<int32_t>(2));
     ::tpy::__getitem__(boxes, 0).set(99);
-    std::cout << ::tpy::__getitem__(boxes, 0).get() << "\n";
+    std::cout << ::tpy::__getitem__(boxes, 0).get() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

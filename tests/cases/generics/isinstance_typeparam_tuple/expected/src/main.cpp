@@ -11,13 +11,13 @@ namespace tpyapp::main {
 //     print(is_dog_or_cat(Animal(1))) # False (neither)
 void main() {
     Dog __tmp_1 = Dog(1);
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_dog_or_cat<Dog>(__tmp_1)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_dog_or_cat<Dog>(__tmp_1)) << "\n" << ::tpy::check_signals;
     Cat __tmp_2 = Cat(1);
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_dog_or_cat<Cat>(__tmp_2)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_dog_or_cat<Cat>(__tmp_2)) << "\n" << ::tpy::check_signals;
     Puppy __tmp_3 = Puppy(1);
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_dog_or_cat<Puppy>(__tmp_3)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_dog_or_cat<Puppy>(__tmp_3)) << "\n" << ::tpy::check_signals;
     Animal __tmp_4 = Animal(1);
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_dog_or_cat<Animal>(__tmp_4)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_dog_or_cat<Animal>(__tmp_4)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

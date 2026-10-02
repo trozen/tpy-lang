@@ -18,7 +18,7 @@ void __tpy_init() {
     ::pascal_rt::runtime::__tpy_init();
     ::pascal_rt::runtime::builtins::__tpy_init();
     b = ::pascal_rt::runtime::builtins::check_subrange(300, 0, 255, "b");
-    std::cout << b << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

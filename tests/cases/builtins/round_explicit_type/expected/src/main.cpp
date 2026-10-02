@@ -17,11 +17,11 @@ namespace tpyapp::main {
 //     print(c)
 void main() {
     int64_t a = ::tpy::round_to<int64_t>(7.7);
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
     int32_t b = ::tpy::round_to<int32_t>(2.5);
-    std::cout << b << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
     int64_t c = ::tpy::round_to<int64_t>(99.9);
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
 }
 
 // main()

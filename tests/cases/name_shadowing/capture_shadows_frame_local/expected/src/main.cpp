@@ -28,7 +28,7 @@ void main() {
             out = ::tpy::add_check<int32_t>(out, v);
         }
     }
-    std::cout << out << "\n";
+    std::cout << out << "\n" << ::tpy::check_signals;
 }
 
 // main()

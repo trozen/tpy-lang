@@ -22,7 +22,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_nested_def_return:
         return 0;
     }
     case S_RESUME_0: {  // after: yield 0
-        std::cout << "gen_nested_def:" << " " << inner(s) << "\n";
+        std::cout << "gen_nested_def:" << " " << inner(s) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

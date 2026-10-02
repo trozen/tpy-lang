@@ -34,17 +34,17 @@ int32_t double_(int32_t x) {
 //     print(apply(handler.cb, 10))
 void main() {
     std::function<int32_t(int32_t)> f = double_;
-    std::cout << ::tpyapp::main::apply(f, 21) << "\n";
+    std::cout << ::tpyapp::main::apply(f, 21) << "\n" << ::tpy::check_signals;
     std::function<int32_t(int32_t)> g = [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 100)); };
-    std::cout << ::tpyapp::main::apply(g, 5) << "\n";
+    std::cout << ::tpyapp::main::apply(g, 5) << "\n" << ::tpy::check_signals;
     std::function<int32_t(int32_t)> h = double_;
     std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t>(h, std::array<int32_t, 3>{1, 2, 3}));
-    std::cout << ::tpy::ListPrinter(result) << "\n";
+    std::cout << ::tpy::ListPrinter(result) << "\n" << ::tpy::check_signals;
     std::function<bool(int32_t)> is_pos = [](int32_t x) -> bool { return (x > 0); };
     std::vector<int32_t> result2 = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter(is_pos, std::array<int32_t, 4>{-1, 2, -3, 4}));
-    std::cout << ::tpy::ListPrinter(result2) << "\n";
+    std::cout << ::tpy::ListPrinter(result2) << "\n" << ::tpy::check_signals;
     Handler handler = Handler(double_);
-    std::cout << ::tpyapp::main::apply(handler.cb, 10) << "\n";
+    std::cout << ::tpyapp::main::apply(handler.cb, 10) << "\n" << ::tpy::check_signals;
 }
 
 // main()

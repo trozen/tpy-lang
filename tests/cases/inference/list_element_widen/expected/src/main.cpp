@@ -14,8 +14,8 @@ void test_int32_to_int64_append() {
     std::vector<int64_t> xs = {1, 2};
     xs.push_back(3);
     int64_t v = ::tpy::__getitem__(xs, 0);
-    std::cout << v << "\n";
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_literal_to_int64_append() -> None:
@@ -28,8 +28,8 @@ void test_literal_to_int64_append() {
     std::vector<int64_t> xs = {1, 2};
     xs.push_back(3);
     int64_t v = ::tpy::__getitem__(xs, 0);
-    std::cout << v << "\n";
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_int32_to_int64_insert() -> None:
@@ -41,7 +41,7 @@ void test_int32_to_int64_insert() {
     std::vector<int64_t> xs = {1, 2};
     ::tpy::list_insert(xs, 0, 99);
     int64_t v = ::tpy::__getitem__(xs, 0);
-    std::cout << v << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
 }
 
 // def test_same_type_no_widen() -> None:
@@ -51,7 +51,7 @@ void test_int32_to_int64_insert() {
 void test_same_type_no_widen() {
     std::vector<int32_t> xs = {1, 2};
     xs.push_back(3);
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_multiple_widens() -> None:
@@ -63,7 +63,7 @@ void test_multiple_widens() {
     std::vector<int64_t> xs = {1};
     xs.push_back(2);
     xs.push_back(3);
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // test_int32_to_int64_append()

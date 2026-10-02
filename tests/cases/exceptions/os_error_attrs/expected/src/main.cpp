@@ -46,21 +46,21 @@ void main() {
         try {
             ::tpyapp::main::fail(true);
         } catch (const ::tpy::OSError& e) {
-            std::cout << e.error_number << " " << e.strerror_text << "\n";
+            std::cout << e.error_number << " " << e.strerror_text << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::fail(false);
         } catch (const DeviceError& e) {
-            std::cout << e.error_number << " " << e.strerror_text << "\n";
+            std::cout << e.error_number << " " << e.strerror_text << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::fail(false);
         } catch (const ::tpy::OSError& e) {
-            std::cout << e.error_number << " " << e.strerror_text << "\n";
+            std::cout << e.error_number << " " << e.strerror_text << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void test_list_view() {
     std::vector<::tpy::Bytes> items = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
     ::tpy::BytesView x = ::tpy::__getitem__(items, 0);
-    std::cout << ::tpy::BytesPrinter(x) << "\n";
+    std::cout << ::tpy::BytesPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_mutation_fallback() -> None:
@@ -25,7 +25,7 @@ void test_list_mutation_fallback() {
     std::vector<::tpy::Bytes> items = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
     ::tpy::Bytes x = ::tpy::__getitem__(items, 0);
     items.push_back(::tpy::bytes_literal_owned("carol", 5));
-    std::cout << ::tpy::BytesPrinter(x) << "\n";
+    std::cout << ::tpy::BytesPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_reassign_fallback() -> None:
@@ -39,7 +39,7 @@ void test_list_reassign_fallback() {
     std::vector<::tpy::Bytes>* items = &__slot_1;
     ::tpy::Bytes x = ::tpy::__getitem__((*items), 0);
     (*items) = {::tpy::bytes_literal_owned("dave", 4)};
-    std::cout << ::tpy::BytesPrinter(x) << "\n";
+    std::cout << ::tpy::BytesPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_subscript_write_fallback() -> None:
@@ -52,7 +52,7 @@ void test_list_subscript_write_fallback() {
     std::vector<::tpy::Bytes> items = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
     ::tpy::Bytes x = ::tpy::__getitem__(items, 0);
     ::tpy::__setitem__(items, 0, ::tpy::bytes_literal_owned("eve", 3));
-    std::cout << ::tpy::BytesPrinter(x) << "\n";
+    std::cout << ::tpy::BytesPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // test_list_view()

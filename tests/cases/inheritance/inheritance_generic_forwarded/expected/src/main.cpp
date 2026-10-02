@@ -15,8 +15,8 @@ void __tpy_init() {
 
     static Wrapper<std::string> __global_slot_1 = Wrapper<std::string>("hello", 42);
     w = &__global_slot_1;
-    std::cout << w->get_value() << "\n";
-    std::cout << w->get_extra() << "\n";
+    std::cout << w->get_value() << "\n" << ::tpy::check_signals;
+    std::cout << w->get_extra() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

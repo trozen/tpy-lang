@@ -15,8 +15,8 @@ namespace tpyapp::main {
 void test_single() {
     Point* p = static_cast<Point*>(::operator new(sizeof(Point), std::align_val_t(alignof(Point))));
     ::new(static_cast<void*>(p)) Point(Point(10, 20));
-    std::cout << ::tpy::deref_check(p).x << "\n";
-    std::cout << p->y << "\n";
+    std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << p->y << "\n" << ::tpy::check_signals;
     ::tpy::destroy_at(p);
     ::operator delete(p, std::align_val_t(alignof(Point)));
 }
@@ -35,7 +35,7 @@ void test_mutate() {
     ::new(static_cast<void*>(p)) Point(Point(1, 2));
     ::tpy::deref_check(p).x = 100;
     p->y = 200;
-    std::cout << p->x << " " << p->y << "\n";
+    std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
     ::tpy::destroy_at(p);
     ::operator delete(p, std::align_val_t(alignof(Point)));
 }
@@ -62,9 +62,9 @@ void test_alloc_n() {
     ::new(static_cast<void*>(p)) Point(Point(1, 2));
     ::new(static_cast<void*>(p1)) Point(Point(3, 4));
     ::new(static_cast<void*>(p2)) Point(Point(5, 6));
-    std::cout << p[0].x << " " << p[0].y << "\n";
-    std::cout << p[1].x << " " << p[1].y << "\n";
-    std::cout << p[2].x << " " << p[2].y << "\n";
+    std::cout << p[0].x << " " << p[0].y << "\n" << ::tpy::check_signals;
+    std::cout << p[1].x << " " << p[1].y << "\n" << ::tpy::check_signals;
+    std::cout << p[2].x << " " << p[2].y << "\n" << ::tpy::check_signals;
     ::tpy::destroy_at(p);
     ::tpy::destroy_at(p1);
     ::tpy::destroy_at(p2);
@@ -81,7 +81,7 @@ void test_alloc_n() {
 void test_explicit_type_arg() {
     int32_t* p = static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))));
     ::new(static_cast<void*>(p)) int32_t(99);
-    std::cout << p[0] << "\n";
+    std::cout << p[0] << "\n" << ::tpy::check_signals;
     ::tpy::destroy_at(p);
     ::operator delete(p, std::align_val_t(alignof(int32_t)));
 }
@@ -104,9 +104,9 @@ void test_alloc_n_value_type() {
     ::new(static_cast<void*>(p)) int32_t(10);
     ::new(static_cast<void*>((p + 1))) int32_t(20);
     ::new(static_cast<void*>((p + 2))) int32_t(30);
-    std::cout << p[0] << "\n";
-    std::cout << p[1] << "\n";
-    std::cout << p[2] << "\n";
+    std::cout << p[0] << "\n" << ::tpy::check_signals;
+    std::cout << p[1] << "\n" << ::tpy::check_signals;
+    std::cout << p[2] << "\n" << ::tpy::check_signals;
     ::tpy::destroy_at(p);
     ::tpy::destroy_at((p + 1));
     ::tpy::destroy_at((p + 2));

@@ -16,13 +16,13 @@ namespace tpyapp::main {
 void main() {
     Strict s = Strict();
     s.__setattr__("host", "ok");
-    std::cout << "set host" << "\n";
+    std::cout << "set host" << "\n" << ::tpy::check_signals;
     {
         try {
             s.__setattr__("_private", "bad");
-            std::cout << "never" << "\n";
+            std::cout << "never" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::AttributeError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

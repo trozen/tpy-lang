@@ -19,13 +19,13 @@ namespace tpyapp::main {
 //     print(user["age"])
 void main() {
     UserInfo user = UserInfo("Alice", 30, true);
-    std::cout << user.name << "\n";
-    std::cout << user.age << "\n";
-    std::cout << ::tpy::print_bool(user.active) << "\n";
+    std::cout << user.name << "\n" << ::tpy::check_signals;
+    std::cout << user.age << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(user.active) << "\n" << ::tpy::check_signals;
     user.age = 31;
-    std::cout << user.age << "\n";
+    std::cout << user.age << "\n" << ::tpy::check_signals;
     user.age = ::tpy::add_check<int32_t>(user.age, 1);
-    std::cout << user.age << "\n";
+    std::cout << user.age << "\n" << ::tpy::check_signals;
 }
 
 // main()

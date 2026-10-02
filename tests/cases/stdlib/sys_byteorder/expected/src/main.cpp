@@ -15,13 +15,13 @@ namespace tpyapp::main {
 //     print(n < sys.maxunicode)
 void main() {
     std::string_view bo = ::tpystd::sys::byteorder;
-    std::cout << bo << "\n";
-    std::cout << ::tpy::print_bool((bo == "little")) << "\n";
-    std::cout << ::tpystd::sys::maxunicode << "\n";
-    std::cout << ::tpy::print_bool((::tpystd::sys::maxunicode == 1114111)) << "\n";
-    std::cout << ((::tpystd::sys::maxunicode) + (::tpy::BigInt(1))) << "\n";
+    std::cout << bo << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((bo == "little")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::sys::maxunicode << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpystd::sys::maxunicode == 1114111)) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpystd::sys::maxunicode) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
     int32_t n = 32;
-    std::cout << ::tpy::print_bool((::tpy::BigInt(n) < ::tpystd::sys::maxunicode)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::BigInt(n) < ::tpystd::sys::maxunicode)) << "\n" << ::tpy::check_signals;
 }
 
 // # sys.byteorder is the platform endianness string; sys.maxunicode is the

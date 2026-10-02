@@ -20,7 +20,7 @@ void test() {
     ::tpy::Union<std::monostate, int32_t, std::string> b = "hello";
     ::tpyapp::main::accept(a);
     ::tpyapp::main::accept(b);
-    std::cout << "ok" << "\n";
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // test()

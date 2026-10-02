@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(x)
 void main() {
     int8_t x = (::tpy::lshift_check<int8_t>(1, 7));
-    std::cout << static_cast<int>(x) << "\n";
+    std::cout << static_cast<int>(x) << "\n" << ::tpy::check_signals;
 }
 
 // main()

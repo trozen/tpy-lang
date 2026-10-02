@@ -18,9 +18,9 @@ void expect_error(std::string_view s) {
     {
         try {
             ::tpystd::json::JsonValue v = ::tpystd::json::loads(s);
-            std::cout << "UNEXPECTED OK" << "\n";
+            std::cout << "UNEXPECTED OK" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::json::JSONDecodeError& e) {
-            std::cout << e.lineno << " " << e.colno << "\n";
+            std::cout << e.lineno << " " << e.colno << "\n" << ::tpy::check_signals;
         }
     }
 }

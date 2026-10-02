@@ -37,8 +37,8 @@ std::string classify(const ::tpy::BigInt& x) {
 //     print(classify(1), calls)
 //     print(classify(2), calls)
 void main() {
-    std::cout << ::tpyapp::main::classify(::tpy::BigInt(1)) << " " << calls << "\n";
-    std::cout << ::tpyapp::main::classify(::tpy::BigInt(2)) << " " << calls << "\n";
+    std::cout << ::tpyapp::main::classify(::tpy::BigInt(1)) << " " << calls << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(::tpy::BigInt(2)) << " " << calls << "\n" << ::tpy::check_signals;
 }
 
 // calls = 0

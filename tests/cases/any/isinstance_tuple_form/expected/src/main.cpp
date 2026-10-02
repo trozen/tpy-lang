@@ -26,10 +26,10 @@ std::string classify(::tpy::Any x) {
 //     print(classify(2.5))
 //     print(classify(None))
 void main() {
-    std::cout << ::tpyapp::main::classify(::tpy::make_any(::tpy::BigInt(1))) << "\n";
-    std::cout << ::tpyapp::main::classify(::tpy::make_any(std::string("hi"))) << "\n";
-    std::cout << ::tpyapp::main::classify(::tpy::make_any(static_cast<double>(2.5))) << "\n";
-    std::cout << ::tpyapp::main::classify(::tpy::make_any(std::monostate{})) << "\n";
+    std::cout << ::tpyapp::main::classify(::tpy::make_any(::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(::tpy::make_any(std::string("hi"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(::tpy::make_any(static_cast<double>(2.5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(::tpy::make_any(std::monostate{})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

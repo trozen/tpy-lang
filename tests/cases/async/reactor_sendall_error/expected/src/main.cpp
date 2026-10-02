@@ -35,12 +35,12 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            std::cout << "no error" << "\n";
+            std::cout << "no error" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::OSError&) {
             __sub_0.reset();
-            std::cout << "OSError caught" << "\n";
+            std::cout << "OSError caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -58,7 +58,7 @@ namespace tpyapp::main {
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::OSError&) {
-            std::cout << "OSError caught" << "\n";
+            std::cout << "OSError caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

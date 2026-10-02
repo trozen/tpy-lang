@@ -23,17 +23,17 @@ namespace tpyapp::main {
 void main() {
     std::vector<int32_t> lst = {10, 20, 30};
     std::span<const int32_t> ros = std::span<const int32_t>(lst);
-    std::cout << ::tpy::__len__(ros) << "\n";
-    std::cout << ::tpy::__getitem__(ros, 0) << "\n";
+    std::cout << ::tpy::__len__(ros) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(ros, 0) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> arr = {1, 2, 3};
     std::span<int32_t> s = std::span<int32_t>(arr);
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(s, 0, 99);
-    std::cout << ::tpy::__getitem__(arr, 0) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 0) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> lst2 = {5, 6};
     std::span<const int32_t> ros2 = std::span<const int32_t>(lst2);
-    std::cout << ::tpy::__len__(ros2) << "\n";
-    std::cout << ::tpy::__getitem__(ros2, 0) << "\n";
+    std::cout << ::tpy::__len__(ros2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(ros2, 0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

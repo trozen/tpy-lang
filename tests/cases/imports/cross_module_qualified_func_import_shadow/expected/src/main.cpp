@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(fa.make(5))   # 1005 -- qualified fa.make (int), with bare fb.make in scope
 //     print(make("xy"))   # 2 -- bare import is fb.make (str)
 void main() {
-    std::cout << ::tpyapp::fa::make(::tpy::BigInt(5)) << "\n";
-    std::cout << ::tpyapp::fb::make("xy") << "\n";
+    std::cout << ::tpyapp::fa::make(::tpy::BigInt(5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::fb::make("xy") << "\n" << ::tpy::check_signals;
 }
 
 // # Sibling of the qualified-ctor shadow bug for module functions: `fa.make(...)`

@@ -29,13 +29,13 @@ std::vector<int32_t> make_list(int32_t n) {
 //     print(len(g.mirror), g.mirror[0])
 void main() {
     Grid g = Grid(7);
-    std::cout << ::tpy::__len__(g.cells) << " " << ::tpy::__getitem__(g.cells, 0) << " " << ::tpy::__len__(g.tags) << " " << ::tpy::__getitem__(g.tags, 3) << "\n";
+    std::cout << ::tpy::__len__(g.cells) << " " << ::tpy::__getitem__(g.cells, 0) << " " << ::tpy::__len__(g.tags) << " " << ::tpy::__getitem__(g.tags, 3) << "\n" << ::tpy::check_signals;
     g.fill_own(3);
-    std::cout << ::tpy::__len__(g.data) << " " << ::tpy::__getitem__(g.data, 2) << "\n";
+    std::cout << ::tpy::__len__(g.data) << " " << ::tpy::__getitem__(g.data, 2) << "\n" << ::tpy::check_signals;
     Holder h = Holder();
     h.items.push_back(42);
     g.fill_borrow(h);
-    std::cout << ::tpy::__len__(g.mirror) << " " << ::tpy::__getitem__(g.mirror, 0) << "\n";
+    std::cout << ::tpy::__len__(g.mirror) << " " << ::tpy::__getitem__(g.mirror, 0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

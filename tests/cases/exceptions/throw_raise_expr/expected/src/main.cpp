@@ -23,7 +23,7 @@ void test_raise_variable() {
             AppError e = AppError(10);
             e.__raise__();
         } catch (const AppError& caught) {
-            std::cout << caught.code << "\n";
+            std::cout << caught.code << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -44,7 +44,7 @@ void test_raise_reassigned() {
             (*e) = AppError(2);
             (*e).__raise__();
         } catch (const AppError& caught) {
-            std::cout << caught.code << "\n";
+            std::cout << caught.code << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -62,7 +62,7 @@ void test_raise_different_types() {
             OtherError e = OtherError("first");
             e.__raise__();
         } catch (const OtherError& caught) {
-            std::cout << caught.tag << "\n";
+            std::cout << caught.tag << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -78,7 +78,7 @@ void test_raise_function_result() {
         try {
             ::tpyapp::main::make_error(7).__raise__();
         } catch (const AppError& caught) {
-            std::cout << caught.code << "\n";
+            std::cout << caught.code << "\n" << ::tpy::check_signals;
         }
     }
 }

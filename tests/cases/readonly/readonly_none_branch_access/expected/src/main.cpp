@@ -17,7 +17,7 @@ void observe_field(bool flag, const Box& p) {
         x = &(p);
     }
     if ((x != nullptr)) {
-        std::cout << x->v << "\n";
+        std::cout << x->v << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -34,7 +34,7 @@ void observe_method(bool flag, const Box& p) {
         x = &(p);
     }
     if ((x != nullptr)) {
-        std::cout << x->get_v() << "\n";
+        std::cout << x->get_v() << "\n" << ::tpy::check_signals;
     }
 }
 

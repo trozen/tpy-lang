@@ -33,13 +33,13 @@ int32_t report(int32_t a, int32_t b, int32_t count) {
 //     print(n2)
 void main() {
     std::string s = ::tpyapp::main::report(3, 0, std::string_view("tag"));
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
     int32_t n = ::tpyapp::main::report(3, 0, 4);
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
     std::string s2 = ::tpyapp::main::report(2, 5, std::string_view("sum"));
-    std::cout << s2 << "\n";
+    std::cout << s2 << "\n" << ::tpy::check_signals;
     int32_t n2 = ::tpyapp::main::report(2, 5, 3);
-    std::cout << n2 << "\n";
+    std::cout << n2 << "\n" << ::tpy::check_signals;
 }
 
 // main()

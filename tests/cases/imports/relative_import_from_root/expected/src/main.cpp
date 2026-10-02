@@ -14,7 +14,7 @@ void __tpy_init() {
 
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::consumer::__tpy_init();
-    std::cout << ::tpyapp::pkg::consumer::compute() << "\n";
+    std::cout << ::tpyapp::pkg::consumer::compute() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

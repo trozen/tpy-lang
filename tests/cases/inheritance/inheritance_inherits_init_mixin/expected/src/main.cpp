@@ -14,11 +14,11 @@ namespace tpyapp::main {
 //     print(b.hello())
 void main() {
     WithMixin a = WithMixin(7);
-    std::cout << a.x << "\n";
-    std::cout << a.hello() << "\n";
+    std::cout << a.x << "\n" << ::tpy::check_signals;
+    std::cout << a.hello() << "\n" << ::tpy::check_signals;
     WithMixinReversed b = WithMixinReversed(13);
-    std::cout << b.x << "\n";
-    std::cout << b.hello() << "\n";
+    std::cout << b.x << "\n" << ::tpy::check_signals;
+    std::cout << b.hello() << "\n" << ::tpy::check_signals;
 }
 
 // main()

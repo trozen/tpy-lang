@@ -114,19 +114,19 @@ std::string kind(const V& v) {
 void main() {
     V a = ::tpyapp::main::make_int();
     V b = ::tpyapp::main::make_float();
-    std::cout << ::tpy::__str__(a) << "\n";
-    std::cout << ::tpy::__str__(b) << "\n";
-    std::cout << ::tpyapp::main::kind(a) << "\n";
-    std::cout << ::tpyapp::main::kind(b) << "\n";
+    std::cout << ::tpy::__str__(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__str__(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::kind(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::kind(b) << "\n" << ::tpy::check_signals;
     V n = ::tpyapp::main::make_null();
-    std::cout << ::tpy::__str__(n) << "\n";
-    std::cout << ::tpyapp::main::kind(n) << "\n";
+    std::cout << ::tpy::__str__(n) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::kind(n) << "\n" << ::tpy::check_signals;
     V xs = ::tpyapp::main::make_mixed_list();
-    std::cout << ::tpy::__str__(xs) << "\n";
-    std::cout << ::tpyapp::main::kind(xs) << "\n";
+    std::cout << ::tpy::__str__(xs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::kind(xs) << "\n" << ::tpy::check_signals;
     V d = ::tpyapp::main::make_mixed_dict();
-    std::cout << ::tpy::__str__(d) << "\n";
-    std::cout << ::tpyapp::main::kind(d) << "\n";
+    std::cout << ::tpy::__str__(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::kind(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

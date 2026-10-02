@@ -47,9 +47,9 @@ void main() {
     {
         try {
             s.get("http://api.test/one");
-            std::cout << "NO RAISE" << "\n";
+            std::cout << "NO RAISE" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::tplib::requests::TooManyRedirects&) {
-            std::cout << "caught TooManyRedirects" << "\n";
+            std::cout << "caught TooManyRedirects" << "\n" << ::tpy::check_signals;
         }
     }
     b.close();

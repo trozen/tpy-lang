@@ -104,7 +104,7 @@ void main() {
             std::vector<::tpy::BigInt> xs = {1, 2, 3};
             ::tpy::list_remove(xs, ::tpy::BigInt(99));
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -112,95 +112,95 @@ void main() {
             ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
             ::tpy::bytearray_remove(ba, 200);
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{300})) << "\n";
+            std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{300})) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::str_split("abc", "");
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpy::str_index("hello", "xyz") << "\n";
+            std::cout << ::tpy::str_index("hello", "xyz") << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpy::str_rindex("hello", "xyz") << "\n";
+            std::cout << ::tpy::str_rindex("hello", "xyz") << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(0, 10, 0))) << "\n";
+            std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(0, 10, 0))) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             std::vector<::tpy::BigInt> zs = {1, 2, 3, 4};
-            std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(zs, ::tpy::Slice{std::nullopt, std::nullopt, 0})) << "\n";
+            std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(zs, ::tpy::Slice{std::nullopt, std::nullopt, 0})) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::TextFile f = ::tpy::builtin_open_mode("anything", "z");
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpy::print_float(::tpy::float_from_str("not_a_number")) << "\n";
+            std::cout << ::tpy::print_float(::tpy::float_from_str("not_a_number")) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpy::BigInt::from_str("not_a_number") << "\n";
+            std::cout << ::tpy::BigInt::from_str("not_a_number") << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::time_sleep(-(1.0));
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             int32_t a = 1;
             int32_t b = -1;
-            std::cout << (::tpy::lshift_check<int32_t>(a, b)) << "\n";
+            std::cout << (::tpy::lshift_check<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::BigInt c = ::tpy::BigInt(1);
-            std::cout << ((c) << (::tpy::BigInt(-1))) << "\n";
+            std::cout << ((c) << (::tpy::BigInt(-1))) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -94,7 +94,7 @@ struct __gen_sec_gen : public ::tpy::next_iter_mixin<__gen_sec_gen, int32_t> {
 inline void Runner::run(std::vector<std::string>& xs) const {
     std::string v = ::tpy::__getitem__(xs, 0);
     ::tpyapp::viewmod::bump(xs);
-    std::cout << "method" << " " << v << " " << ::tpy::__getitem__(xs, 0) << "\n";
+    std::cout << "method" << " " << v << " " << ::tpy::__getitem__(xs, 0) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

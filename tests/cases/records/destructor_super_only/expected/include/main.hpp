@@ -70,7 +70,7 @@ inline Base& Base::operator=(Base&& other) noexcept {
 //     print("Base destroyed")
 inline Base::~Base() {
     if (!this->__tpy_owned_) return;
-    std::cout << "Base destroyed" << "\n";
+    std::cout << "Base destroyed" << "\n" << ::tpy::check_signals;
 }
 
 inline Child::Child(Child&& other) noexcept : Base(std::move(other)) {

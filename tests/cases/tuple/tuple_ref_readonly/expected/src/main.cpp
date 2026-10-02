@@ -14,8 +14,8 @@ void main() {
     Container c = Container(42);
     Wrapper w = Wrapper(c);
     auto pair = w.get_pair();
-    std::cout << (*std::get<0>(pair)) << "\n";
-    std::cout << std::get<1>(pair) << "\n";
+    std::cout << (*std::get<0>(pair)) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(pair) << "\n" << ::tpy::check_signals;
 }
 
 // main()

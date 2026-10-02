@@ -20,7 +20,7 @@ void main();
 //     print(x)
 template<typename T>
 void show(::tpy::param_val_or_ref_t<T> x) {
-    std::cout << ::tpy::ValuePrinter(x) << "\n";
+    std::cout << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

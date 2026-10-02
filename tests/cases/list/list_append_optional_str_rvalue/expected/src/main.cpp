@@ -35,7 +35,7 @@ void main() {
     items.push_back(({ auto __ov = (::tpyapp::main::maybe_prefix(subject, false)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
     ::tpy::list_insert(items, 1, ({ auto __ov = (::tpyapp::main::maybe_prefix(subject, true)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
     ::tpy::__setitem__(items, 0, ({ auto __ov = (::tpyapp::main::maybe_prefix(subject, false)); __ov ? std::make_optional(std::string(*__ov)) : std::nullopt; }));
-    std::cout << ::tpy::ListPrinter(items) << "\n";
+    std::cout << ::tpy::ListPrinter(items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -78,7 +78,7 @@ void main() {
     ::tpystd::os::mkdir(base);
     ::tpystd::os::makedirs((::tpy::str_concat(base, "/a/b")));
     ::tpystd::os::makedirs((::tpy::str_concat(base, "/a/b")), 511, true);
-    std::cout << "makedirs:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isdir((::tpy::str_concat(base, "/a")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isdir((::tpy::str_concat(base, "/a/b")))) << "\n";
+    std::cout << "makedirs:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isdir((::tpy::str_concat(base, "/a")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isdir((::tpy::str_concat(base, "/a/b")))) << "\n" << ::tpy::check_signals;
     auto __obj_0 = {"one.txt", "two.txt"};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -99,19 +99,19 @@ void main() {
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
     }
-    std::cout << "listdir:" << " " << ::tpy::str_join(",", ::tpy::builtin_sorted<std::string>(::tpystd::os::listdir(base))) << "\n";
+    std::cout << "listdir:" << " " << ::tpy::str_join(",", ::tpy::builtin_sorted<std::string>(::tpystd::os::listdir(base))) << "\n" << ::tpy::check_signals;
     ::tpy::stdlib::os::symlink("one.txt", (::tpy::str_concat(base, "/lnk")));
-    std::cout << "symlink:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_islink((::tpy::str_concat(base, "/lnk")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_lexists((::tpy::str_concat(base, "/lnk")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isfile((::tpy::str_concat(base, "/lnk")))) << "\n";
-    std::cout << "readlink:" << " " << ::tpy::stdlib::os::readlink((::tpy::str_concat(base, "/lnk"))) << "\n";
+    std::cout << "symlink:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_islink((::tpy::str_concat(base, "/lnk")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_lexists((::tpy::str_concat(base, "/lnk")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isfile((::tpy::str_concat(base, "/lnk")))) << "\n" << ::tpy::check_signals;
+    std::cout << "readlink:" << " " << ::tpy::stdlib::os::readlink((::tpy::str_concat(base, "/lnk"))) << "\n" << ::tpy::check_signals;
     ::tpy::stdlib::os::rename((::tpy::str_concat(base, "/one.txt")), (::tpy::str_concat(base, "/renamed.txt")));
-    std::cout << "rename:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/renamed.txt")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/one.txt")))) << "\n";
+    std::cout << "rename:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/renamed.txt")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/one.txt")))) << "\n" << ::tpy::check_signals;
     ::tpystd::os::replace((::tpy::str_concat(base, "/two.txt")), (::tpy::str_concat(base, "/final.txt")));
-    std::cout << "replace:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/final.txt")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/two.txt")))) << "\n";
+    std::cout << "replace:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/final.txt")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/two.txt")))) << "\n" << ::tpy::check_signals;
     ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/lnk")));
     ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/renamed.txt")));
     ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/final.txt")));
     ::tpystd::os::removedirs((::tpy::str_concat(base, "/a/b")));
-    std::cout << "torn down:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists(base)) << "\n";
+    std::cout << "torn down:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists(base)) << "\n" << ::tpy::check_signals;
 }
 
 // # os mutating ops: mkdir/makedirs/listdir(controlled dir)/symlink/rename/

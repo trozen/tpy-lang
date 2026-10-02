@@ -31,22 +31,22 @@ void main() {
     Container c1 = Container(::tpy::BigInt(3));
     Container c2 = Container(::tpy::BigInt(0));
     if (::tpy::__bool__(c1)) {
-        std::cout << "c1 truthy" << "\n";
+        std::cout << "c1 truthy" << "\n" << ::tpy::check_signals;
     }
     if (::tpy::__bool__(c2)) {
-        std::cout << "c2 truthy" << "\n";
+        std::cout << "c2 truthy" << "\n" << ::tpy::check_signals;
     }
     Container __slot_1 = Container(::tpy::BigInt(2));
     Container* c3 = &__slot_1;
     while (::tpy::__bool__((*c3))) {
-        std::cout << c3->count << "\n";
+        std::cout << c3->count << "\n" << ::tpy::check_signals;
         (*c3) = Container(((c3->count) - (::tpy::BigInt(1))));
     }
     if ((!(::tpy::__bool__(c2)))) {
-        std::cout << "c2 falsy" << "\n";
+        std::cout << "c2 falsy" << "\n" << ::tpy::check_signals;
     }
     if ((::tpy::__bool__(c1) && (!(::tpy::__bool__(c2))))) {
-        std::cout << "c1 and not c2" << "\n";
+        std::cout << "c1 and not c2" << "\n" << ::tpy::check_signals;
     }
 }
 

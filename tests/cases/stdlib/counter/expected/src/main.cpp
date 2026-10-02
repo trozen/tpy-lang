@@ -38,9 +38,9 @@ namespace tpyapp::main {
 void main() {
     std::vector<std::string> words = {"a", "b", "a", "c", "a", "b", "c"};
     ::tpystd::collections::Counter<std::string> c = ::tpystd::collections::Counter<std::string>(&(words));
-    std::cout << c["a"] << " " << c["b"] << " " << c["z"] << "\n";
-    std::cout << ::tpy::__len__(c) << " " << ::tpy::print_bool((c.__contains__("a"))) << " " << ::tpy::print_bool((c.__contains__("z"))) << "\n";
-    std::cout << c.total() << "\n";
+    std::cout << c["a"] << " " << c["b"] << " " << c["z"] << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(c) << " " << ::tpy::print_bool((c.__contains__("a"))) << " " << ::tpy::print_bool((c.__contains__("z"))) << "\n" << ::tpy::check_signals;
+    std::cout << c.total() << "\n" << ::tpy::check_signals;
     auto __obj_0 = c.most_common(3);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -49,24 +49,24 @@ void main() {
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);
         const ::tpy::BigInt& n = std::get<1>(__tup_1);
-        std::cout << k << " " << n << "\n";
+        std::cout << k << " " << n << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::__len__(c.most_common(0)) << "\n";
-    std::cout << ::tpy::__len__(c.most_common(99)) << "\n";
+    std::cout << ::tpy::__len__(c.most_common(0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(c.most_common(99)) << "\n" << ::tpy::check_signals;
     std::array<std::string, 3> __tmp_1 = {"a", "x", "x"};
     ::tpystd::collections::Counter<std::string> more = ::tpystd::collections::Counter<std::string>(&(__tmp_1));
     c.update(more);
-    std::cout << c["a"] << " " << c["x"] << "\n";
+    std::cout << c["a"] << " " << c["x"] << "\n" << ::tpy::check_signals;
     c.subtract(more);
-    std::cout << c["a"] << " " << c["x"] << "\n";
+    std::cout << c["a"] << " " << c["x"] << "\n" << ::tpy::check_signals;
     c.subtract(more);
-    std::cout << c["x"] << " " << c.total() << "\n";
+    std::cout << c["x"] << " " << c.total() << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> __tmp_2 = {1, 1, 2};
     ::tpystd::collections::Counter<int32_t> nums = ::tpystd::collections::Counter<int32_t>(&(__tmp_2));
     ::tpy::__setitem__(nums, 3, ::tpy::BigInt(5));
-    std::cout << nums[1] << " " << nums[2] << " " << nums[3] << "\n";
+    std::cout << nums[1] << " " << nums[2] << " " << nums[3] << "\n" << ::tpy::check_signals;
     ::tpystd::collections::Counter<std::string> empty = ::tpystd::collections::Counter<std::string>();
-    std::cout << ::tpy::__len__(empty) << " " << empty["nope"] << "\n";
+    std::cout << ::tpy::__len__(empty) << " " << empty["nope"] << "\n" << ::tpy::check_signals;
 }
 
 // # collections.Counter v1: construct/[]/len/in/total, most_common(n) (n=0, n>len,

@@ -20,12 +20,12 @@ void main() {
     v.push_back(10);
     v.push_back(20);
     v.push_back(30);
-    std::cout << static_cast<int32_t>(v.size()) << "\n";
-    std::cout << v[1] << "\n";
-    std::cout << ::tpy::pop_back(v) << "\n";
-    std::cout << static_cast<int32_t>(v.size()) << "\n";
+    std::cout << static_cast<int32_t>(v.size()) << "\n" << ::tpy::check_signals;
+    std::cout << v[1] << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::pop_back(v) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(v.size()) << "\n" << ::tpy::check_signals;
     v.clear();
-    std::cout << static_cast<int32_t>(v.size()) << "\n";
+    std::cout << static_cast<int32_t>(v.size()) << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native, cpp_template

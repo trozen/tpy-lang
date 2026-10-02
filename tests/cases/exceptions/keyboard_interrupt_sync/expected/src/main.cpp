@@ -24,9 +24,9 @@ void free_function() {
     {
         try {
             ::tpyapp::main::interrupt();
-            std::cout << "free: not reached" << "\n";
+            std::cout << "free: not reached" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::KeyboardInterrupt&) {
-            std::cout << "free: caught KeyboardInterrupt" << "\n";
+            std::cout << "free: caught KeyboardInterrupt" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -47,13 +47,13 @@ void with_finally() {
                 try {
                     ::tpyapp::main::interrupt();
                 } catch (...) {
-                    std::cout << "finally: cleanup ran" << "\n";
+                    std::cout << "finally: cleanup ran" << "\n" << ::tpy::check_signals;
                     throw;
                 }
-                std::cout << "finally: cleanup ran" << "\n";
+                std::cout << "finally: cleanup ran" << "\n" << ::tpy::check_signals;
             }
         } catch (const ::tpy::KeyboardInterrupt&) {
-            std::cout << "finally: caught after cleanup" << "\n";
+            std::cout << "finally: caught after cleanup" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -85,7 +85,7 @@ void with_exit() {
             __with_exit_1:
             __ctx_1.__exit__({}, nullptr, {});
         } catch (const ::tpy::KeyboardInterrupt&) {
-            std::cout << (::tpy::str_concat("with: ", ::tpy::str_join(",", guard.events))) << "\n";
+            std::cout << (::tpy::str_concat("with: ", ::tpy::str_join(",", guard.events))) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -103,7 +103,7 @@ void method() {
         try {
             w.run();
         } catch (const ::tpy::KeyboardInterrupt&) {
-            std::cout << (::tpy::str_concat((::tpy::str_concat("method: caught after ", (w.steps).to_string())), " step")) << "\n";
+            std::cout << (::tpy::str_concat((::tpy::str_concat("method: caught after ", (w.steps).to_string())), " step")) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -162,7 +162,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_numbers::__next__() {
 }
 
 void __gen_numbers::__finally_0() {
-    std::cout << "generator: finally ran" << "\n";
+    std::cout << "generator: finally ran" << "\n" << ::tpy::check_signals;
 }
 
 // def numbers() -> Iterator[int]:
@@ -193,7 +193,7 @@ void generator() {
                 }
             }
         } catch (const ::tpy::KeyboardInterrupt&) {
-            std::cout << (::tpy::str_concat((::tpy::str_concat("generator: caught after ", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(seen)))), " item")) << "\n";
+            std::cout << (::tpy::str_concat((::tpy::str_concat("generator: caught after ", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(seen)))), " item")) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -221,7 +221,7 @@ void closure() {
         try {
             bump();
         } catch (const ::tpy::KeyboardInterrupt&) {
-            std::cout << (::tpy::str_concat("closure: caught, count=", ::tpy::fixed_to_str<int32_t>(count))) << "\n";
+            std::cout << (::tpy::str_concat("closure: caught, count=", ::tpy::fixed_to_str<int32_t>(count))) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -242,11 +242,11 @@ void not_an_exception() {
                 try {
                     ::tpyapp::main::interrupt();
                 } catch (const ::tpy::Exception&) {
-                    std::cout << "exception: WRONG, swallowed by except Exception" << "\n";
+                    std::cout << "exception: WRONG, swallowed by except Exception" << "\n" << ::tpy::check_signals;
                 }
             }
         } catch (const ::tpy::KeyboardInterrupt&) {
-            std::cout << "exception: passed through except Exception" << "\n";
+            std::cout << "exception: passed through except Exception" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -268,12 +268,12 @@ void reraise() {
                 try {
                     ::tpyapp::main::interrupt();
                 } catch (const ::tpy::KeyboardInterrupt&) {
-                    std::cout << "reraise: handling" << "\n";
+                    std::cout << "reraise: handling" << "\n" << ::tpy::check_signals;
                     throw;
                 }
             }
         } catch (const ::tpy::KeyboardInterrupt&) {
-            std::cout << "reraise: caught again" << "\n";
+            std::cout << "reraise: caught again" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -318,13 +318,13 @@ __coro_quiet quiet() {
 //     except KeyboardInterrupt:
 //         print("async: caught KeyboardInterrupt after the run")
 void after_async_run() {
-    std::cout << (::tpy::str_concat("async: run returned ", (::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::quiet()))).to_string())) << "\n";
+    std::cout << (::tpy::str_concat("async: run returned ", (::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::quiet()))).to_string())) << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::interrupt();
-            std::cout << "async: not reached" << "\n";
+            std::cout << "async: not reached" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::KeyboardInterrupt&) {
-            std::cout << "async: caught KeyboardInterrupt after the run" << "\n";
+            std::cout << "async: caught KeyboardInterrupt after the run" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -343,11 +343,11 @@ void message() {
         try {
             ::tpyapp::main::interrupt();
         } catch (const ::tpy::KeyboardInterrupt& e) {
-            std::cout << (::tpy::str_concat("message: signal ", ::tpy::repr_of(std::string(::tpy::__str__(e))))) << "\n";
+            std::cout << (::tpy::str_concat("message: signal ", ::tpy::repr_of(std::string(::tpy::__str__(e))))) << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << (::tpy::str_concat("message: bare ", ::tpy::repr_of(std::string(::tpy::__str__(::tpy::KeyboardInterrupt()))))) << "\n";
-    std::cout << (::tpy::str_concat("message: given ", ::tpy::repr_of(std::string(::tpy::__str__(::tpy::KeyboardInterrupt("why")))))) << "\n";
+    std::cout << (::tpy::str_concat("message: bare ", ::tpy::repr_of(std::string(::tpy::__str__(::tpy::KeyboardInterrupt()))))) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::str_concat("message: given ", ::tpy::repr_of(std::string(::tpy::__str__(::tpy::KeyboardInterrupt("why")))))) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -373,7 +373,7 @@ void main() {
     ::tpyapp::main::reraise();
     ::tpyapp::main::after_async_run();
     ::tpyapp::main::message();
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // # A synchronous SIGINT (signal.raise_signal) raises KeyboardInterrupt on the

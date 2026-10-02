@@ -107,7 +107,7 @@ __coro_go go() {
 // def main() -> None:
 //     print(asyncio.run(go()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::go())) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::go())) << "\n" << ::tpy::check_signals;
 }
 
 // # Await inside an except handler body.

@@ -41,27 +41,27 @@ void main() {
     Sink sink = Sink();
     std::vector<int32_t> data = {9};
     sink.take(data);
-    std::cout << ::tpy::ListPrinter(data) << "\n";
+    std::cout << ::tpy::ListPrinter(data) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> e = std::vector<int32_t>{};
     sink.take(e);
-    std::cout << ::tpy::ListPrinter(e) << "\n";
+    std::cout << ::tpy::ListPrinter(e) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> span_src = {1, 2, 3};
-    std::cout << sink.first(::tpy::as_mut_span(span_src)) << "\n";
+    std::cout << sink.first(::tpy::as_mut_span(span_src)) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> w = {4};
     sink.widen(w);
-    std::cout << ::tpy::ListPrinter(w) << "\n";
+    std::cout << ::tpy::ListPrinter(w) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     sink.add(d);
-    std::cout << ::tpy::__getitem__(d, "a") << " " << ::tpy::__getitem__(d, "z") << "\n";
+    std::cout << ::tpy::__getitem__(d, "a") << " " << ::tpy::__getitem__(d, "z") << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
     sink.grow(s);
-    std::cout << ::tpy::__len__(s) << " " << ::tpy::print_bool((s.contains(50))) << "\n";
+    std::cout << ::tpy::__len__(s) << " " << ::tpy::print_bool((s.contains(50))) << "\n" << ::tpy::check_signals;
     std::string_view word = "hi";
-    std::cout << sink.greet(word) << "\n";
+    std::cout << sink.greet(word) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::box::Box<std::vector<int32_t>> b = ::tpystd::tplib::box::Box<std::vector<int32_t>>({1, 2});
     std::vector<int32_t> other = {7};
     b.set(std::move(other));
-    std::cout << ::tpy::ListPrinter(b.get()) << "\n";
+    std::cout << ::tpy::ListPrinter(b.get()) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

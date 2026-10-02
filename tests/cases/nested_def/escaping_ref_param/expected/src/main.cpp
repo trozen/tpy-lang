@@ -24,9 +24,9 @@ std::function<int32_t()> make_getter(const Config& cfg) {
 void main() {
     Config c = Config(10);
     std::function<int32_t()> getter = ::tpyapp::main::make_getter(c);
-    std::cout << getter() << "\n";
+    std::cout << getter() << "\n" << ::tpy::check_signals;
     c.value = 42;
-    std::cout << getter() << "\n";
+    std::cout << getter() << "\n" << ::tpy::check_signals;
 }
 
 // main()

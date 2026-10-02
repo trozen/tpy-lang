@@ -277,7 +277,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_post_continue::__next_
             __state = S_JOIN_0;
             continue;
         } else {
-            std::cout << (::tpy::add_check<int32_t>(x, 100)) << "\n";
+            std::cout << (::tpy::add_check<int32_t>(x, 100)) << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         }

@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print(g.boxes[0].v)
 void main() {
     Grid g = Grid({7});
-    std::cout << g.n << " " << ::tpy::__getitem__(g.cells, 0) << " " << ::tpy::__getitem__(g.cells, 1) << "\n";
+    std::cout << g.n << " " << ::tpy::__getitem__(g.cells, 0) << " " << ::tpy::__getitem__(g.cells, 1) << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(g.boxes, 0).v = 9;
-    std::cout << ::tpy::__getitem__(g.boxes, 0).v << "\n";
+    std::cout << ::tpy::__getitem__(g.boxes, 0).v << "\n" << ::tpy::check_signals;
 }
 
 // main()

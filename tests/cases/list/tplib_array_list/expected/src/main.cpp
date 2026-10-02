@@ -83,39 +83,39 @@ namespace tpyapp::main {
 //     print(len(d))               # 4
 void main() {
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     a.append(10);
     a.append(20);
     a.append(30);
-    std::cout << ::tpy::__len__(a) << "\n";
-    std::cout << a[0] << "\n";
-    std::cout << a[2] << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
+    std::cout << a[0] << "\n" << ::tpy::check_signals;
+    std::cout << a[2] << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(a, 1, 99);
-    std::cout << a[1] << "\n";
-    std::cout << a.pop() << "\n";
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << a[1] << "\n" << ::tpy::check_signals;
+    std::cout << a.pop() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     a.insert(0, 5);
-    std::cout << a[0] << "\n";
-    std::cout << a[1] << "\n";
-    std::cout << ::tpy::__len__(a) << "\n";
-    std::cout << a.pop(1) << "\n";
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << a[0] << "\n" << ::tpy::check_signals;
+    std::cout << a[1] << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
+    std::cout << a.pop(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     a.append(5);
-    std::cout << a.index(5) << "\n";
-    std::cout << a.count(5) << "\n";
-    std::cout << a.index(99) << "\n";
+    std::cout << a.index(5) << "\n" << ::tpy::check_signals;
+    std::cout << a.count(5) << "\n" << ::tpy::check_signals;
+    std::cout << a.index(99) << "\n" << ::tpy::check_signals;
     a.remove(99);
-    std::cout << ::tpy::__len__(a) << "\n";
-    std::cout << a[0] << "\n";
-    std::cout << a[1] << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
+    std::cout << a[0] << "\n" << ::tpy::check_signals;
+    std::cout << a[1] << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(a, 1, 7);
     a.reverse();
-    std::cout << a[0] << "\n";
-    std::cout << a[1] << "\n";
+    std::cout << a[0] << "\n" << ::tpy::check_signals;
+    std::cout << a[1] << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> b = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>(a);
     ::tpy::__setitem__(b, 0, 100);
-    std::cout << a[0] << "\n";
-    std::cout << b[0] << "\n";
+    std::cout << a[0] << "\n" << ::tpy::check_signals;
+    std::cout << b[0] << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> c = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     c.append(1);
     c.append(2);
@@ -126,7 +126,7 @@ void main() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     auto& __src_2 = c;
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -134,18 +134,18 @@ void main() {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_3);
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     a.clear();
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> arr = {10, 20, 30};
     std::span<int32_t> s = ::tpy::as_mut_span(arr);
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> d = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>(&(s));
-    std::cout << ::tpy::__len__(d) << "\n";
-    std::cout << d[0] << "\n";
-    std::cout << d[2] << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
+    std::cout << d[0] << "\n" << ::tpy::check_signals;
+    std::cout << d[2] << "\n" << ::tpy::check_signals;
     d.append(40);
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import ArrayList

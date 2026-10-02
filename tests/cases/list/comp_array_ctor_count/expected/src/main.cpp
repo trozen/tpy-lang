@@ -15,12 +15,12 @@ void main() {
         int32_t i = int32_t(__i_0);
         return P();
     });
-    std::cout << ::tpy::__len__(pts) << " " << ::tpy::__len__((*log)) << "\n";
+    std::cout << ::tpy::__len__(pts) << " " << ::tpy::__len__((*log)) << "\n" << ::tpy::check_signals;
     std::array<Outer, 3> outs = ::tpy::array_from_index<Outer, 3>([&](std::size_t __i_1) -> Outer {
         int32_t i = int32_t(__i_1);
         return Outer();
     });
-    std::cout << ::tpy::__len__(outs) << " " << ::tpy::__len__((*log)) << "\n";
+    std::cout << ::tpy::__len__(outs) << " " << ::tpy::__len__((*log)) << "\n" << ::tpy::check_signals;
 }
 
 // # The Array comprehension build constructs each element in place exactly once:

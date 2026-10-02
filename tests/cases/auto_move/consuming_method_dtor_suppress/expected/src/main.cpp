@@ -15,9 +15,9 @@ namespace tpyapp::main {
 void main() {
     HeapVal h = HeapVal(42);
     int32_t val = std::move(h).take();
-    std::cout << "got" << " " << val << "\n";
+    std::cout << "got" << " " << val << "\n" << ::tpy::check_signals;
     int32_t val2 = HeapVal(99).take();
-    std::cout << "got" << " " << val2 << "\n";
+    std::cout << "got" << " " << val2 << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out

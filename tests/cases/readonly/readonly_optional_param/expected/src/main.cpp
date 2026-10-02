@@ -36,10 +36,10 @@ int32_t f2(const Point* p) {
 //     print(f2(None))
 void main() {
     Point p = Point(42);
-    std::cout << ::tpyapp::main::f1(&(p)) << "\n";
-    std::cout << ::tpyapp::main::f2(&(p)) << "\n";
-    std::cout << ::tpyapp::main::f1(nullptr) << "\n";
-    std::cout << ::tpyapp::main::f2(nullptr) << "\n";
+    std::cout << ::tpyapp::main::f1(&(p)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::f2(&(p)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::f1(nullptr) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::f2(nullptr) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void main() {
     Holder<MyNumber> h = Holder<MyNumber>(MyNumber(10));
     MyNumber& num = h.get_item();
-    std::cout << num.add(5) << "\n";
+    std::cout << num.add(5) << "\n" << ::tpy::check_signals;
 }
 
 // main()

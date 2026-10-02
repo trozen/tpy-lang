@@ -17,7 +17,7 @@ void main() {
     x = (x) - static_cast<double>(3);
     x = (x) * static_cast<double>(2);
     x = ::tpy::truediv(x, static_cast<double>(4));
-    std::cout << ::tpy::print_float(x) << "\n";
+    std::cout << ::tpy::print_float(x) << "\n" << ::tpy::check_signals;
 }
 
 // main()

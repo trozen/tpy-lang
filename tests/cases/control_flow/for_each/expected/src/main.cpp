@@ -38,7 +38,7 @@ void print_span(std::span<int32_t> data) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -108,7 +108,7 @@ void __tpy_init() {
         int32_t x = *__beg_0;
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
     static std::array<int32_t, 3> __global_slot_2 = {10, 20, 30};
     arr = &__global_slot_2;
     auto& __obj_1 = (*arr);
@@ -116,9 +116,9 @@ void __tpy_init() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t val = *__beg_1;
-        std::cout << val << "\n";
+        std::cout << val << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpyapp::main::sum_array() << "\n";
+    std::cout << ::tpyapp::main::sum_array() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::print_span(::tpy::as_mut_span(std::array<int32_t, 3>{7, 8, 9}));
     text = "AB";
     auto& __obj_2 = text;
@@ -126,9 +126,9 @@ void __tpy_init() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         char c = *__beg_2;
-        std::cout << c << "\n";
+        std::cout << c << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpyapp::main::nested_sum() << "\n";
+    std::cout << ::tpyapp::main::nested_sum() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

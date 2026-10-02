@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(c.identity(True))
 void main() {
     Converter c = Converter();
-    std::cout << c.identity<int32_t>(42) << "\n";
-    std::cout << c.identity<std::string>("hello") << "\n";
-    std::cout << ::tpy::print_bool(c.identity<bool>(true)) << "\n";
+    std::cout << c.identity<int32_t>(42) << "\n" << ::tpy::check_signals;
+    std::cout << c.identity<std::string>("hello") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(c.identity<bool>(true)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

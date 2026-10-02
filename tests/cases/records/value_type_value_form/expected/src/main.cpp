@@ -64,11 +64,11 @@ Coord ret_try_finally(int32_t n) {
             c = Coord(n, n);
             Coord __tpy_ret_0 = c;
             __fin_ran_1 = true;
-            std::cout << "ret try_finally: finally" << "\n";
+            std::cout << "ret try_finally: finally" << "\n" << ::tpy::check_signals;
             return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_1) {
-                std::cout << "ret try_finally: finally" << "\n";
+                std::cout << "ret try_finally: finally" << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -176,27 +176,27 @@ Coord ret_match(int32_t n) {
 //
 //     print("ret closure", use(shift(3)))
 void returns() {
-    std::cout << "ret free" << " " << ::tpyapp::main::use(::tpyapp::main::ret_free(3)) << "\n";
+    std::cout << "ret free" << " " << ::tpyapp::main::use(::tpyapp::main::ret_free(3)) << "\n" << ::tpy::check_signals;
     Walker w = Walker();
     Coord stepped = w.stepped(4);
-    std::cout << "ret method" << " " << ::tpyapp::main::use(stepped) << "\n";
+    std::cout << "ret method" << " " << ::tpyapp::main::use(stepped) << "\n" << ::tpy::check_signals;
     Coord at = w.at();
     Coord vis = w.visual(1);
-    std::cout << "ret field" << " " << ::tpyapp::main::use(at) << " " << ::tpyapp::main::use(vis) << "\n";
+    std::cout << "ret field" << " " << ::tpyapp::main::use(at) << " " << ::tpyapp::main::use(vis) << "\n" << ::tpy::check_signals;
     Pair<int32_t> swapped = ::tpyapp::main::swap_pair(Pair<int32_t>(1, 2));
-    std::cout << "ret generic" << " " << swapped.first << " " << swapped.second << "\n";
-    std::cout << "ret date" << " " << ::tpyapp::main::next_day(::tpystd::datetime::date(::tpy::BigInt(2024), ::tpy::BigInt(2), ::tpy::BigInt(28))).day() << "\n";
+    std::cout << "ret generic" << " " << swapped.first << " " << swapped.second << "\n" << ::tpy::check_signals;
+    std::cout << "ret date" << " " << ::tpyapp::main::next_day(::tpystd::datetime::date(::tpy::BigInt(2024), ::tpy::BigInt(2), ::tpy::BigInt(28))).day() << "\n" << ::tpy::check_signals;
     Coord settled = ::tpyapp::main::ret_try_finally(5);
-    std::cout << "ret try_finally" << " " << ::tpyapp::main::use(settled) << "\n";
-    std::cout << "ret with" << " " << ::tpyapp::main::use(::tpyapp::main::ret_with(6)) << "\n";
-    std::cout << "ret match" << " " << ::tpyapp::main::use(::tpyapp::main::ret_match(1)) << " " << ::tpyapp::main::use(::tpyapp::main::ret_match(2)) << "\n";
+    std::cout << "ret try_finally" << " " << ::tpyapp::main::use(settled) << "\n" << ::tpy::check_signals;
+    std::cout << "ret with" << " " << ::tpyapp::main::use(::tpyapp::main::ret_with(6)) << "\n" << ::tpy::check_signals;
+    std::cout << "ret match" << " " << ::tpyapp::main::use(::tpyapp::main::ret_match(1)) << " " << ::tpyapp::main::use(::tpyapp::main::ret_match(2)) << "\n" << ::tpy::check_signals;
     Coord base = Coord(1, 2);
     auto shift = [&base](int32_t d) -> Coord {
         Coord c = base;
         c = Coord((::tpy::add_check<int32_t>(c.column, d)), c.row);
         return c;
     };
-    std::cout << "ret closure" << " " << ::tpyapp::main::use(shift(3)) << "\n";
+    std::cout << "ret closure" << " " << ::tpyapp::main::use(shift(3)) << "\n" << ::tpy::check_signals;
 }
 
 // def field_reads() -> None:
@@ -220,14 +220,14 @@ void field_reads() {
     h.maybe = Coord(3, 4);
     Coord c = h.c;
     std::optional<Coord> m = h.maybe;
-    std::cout << "field plain" << " " << ::tpyapp::main::use(c) << "\n";
+    std::cout << "field plain" << " " << ::tpyapp::main::use(c) << "\n" << ::tpy::check_signals;
     if ((m.has_value())) {
-        std::cout << "field optional" << " " << (*m).column << " " << (*m).row << "\n";
+        std::cout << "field optional" << " " << (*m).column << " " << (*m).row << "\n" << ::tpy::check_signals;
     }
     Segment s = Segment(Coord(1, 2), Coord(3, 4));
     Coord a = s.a;
     s = Segment(s.b, a);
-    std::cout << "field nested" << " " << ::tpyapp::main::use(s.a) << " " << ::tpyapp::main::use(s.b) << "\n";
+    std::cout << "field nested" << " " << ::tpyapp::main::use(s.a) << " " << ::tpyapp::main::use(s.b) << "\n" << ::tpy::check_signals;
 }
 
 // def arguments() -> None:
@@ -248,16 +248,16 @@ void field_reads() {
 //         print("arg error_return: bad")
 void arguments() {
     Coord a = Coord(1, 2);
-    std::cout << "arg ctor" << " " << ::tpyapp::main::use(Coord(3, 4)) << "\n";
-    std::cout << "arg call" << " " << ::tpyapp::main::use(::tpyapp::main::make(5)) << "\n";
-    std::cout << "arg kwarg" << " " << ::tpyapp::main::use(Coord(6, 7)) << "\n";
-    std::cout << "arg copy" << " " << ::tpyapp::main::use(Coord(a)) << "\n";
+    std::cout << "arg ctor" << " " << ::tpyapp::main::use(Coord(3, 4)) << "\n" << ::tpy::check_signals;
+    std::cout << "arg call" << " " << ::tpyapp::main::use(::tpyapp::main::make(5)) << "\n" << ::tpy::check_signals;
+    std::cout << "arg kwarg" << " " << ::tpyapp::main::use(Coord(6, 7)) << "\n" << ::tpy::check_signals;
+    std::cout << "arg copy" << " " << ::tpyapp::main::use(Coord(a)) << "\n" << ::tpy::check_signals;
     {
-        std::cout << "arg error_return" << " " << ({ auto __er_2 = ::tpyapp::main::checked(Coord(8, 9)); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "arg error_return" << " " << ({ auto __er_2 = ::tpyapp::main::checked(Coord(8, 9)); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Bad:
         __except_1:;
-        std::cout << "arg error_return: bad" << "\n";
+        std::cout << "arg error_return: bad" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }
@@ -396,7 +396,7 @@ __coro_flip_later flip_later(int32_t n) {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 Coord c = ::tpy::unwrap_ref(*__r_1);
-                std::cout << "generator" << " " << ::tpyapp::main::use(c) << "\n";
+                std::cout << "generator" << " " << ::tpyapp::main::use(c) << "\n" << ::tpy::check_signals;
             }
         }
         std::cout << "generator generic" << " " << ::tpy::ListPrinter(({
@@ -409,7 +409,7 @@ __coro_flip_later flip_later(int32_t n) {
                 __result.push_back(v);
             }
             std::move(__result);
-        })) << "\n";
+        })) << "\n" << ::tpy::check_signals;
         ::tpystd::datetime::date __tmp_1 = ::tpystd::datetime::date(::tpy::BigInt(2024), ::tpy::BigInt(2), ::tpy::BigInt(27));
         std::cout << "generator date" << " " << ::tpy::ListPrinter(({
             std::vector<int32_t> __result;
@@ -421,7 +421,7 @@ __coro_flip_later flip_later(int32_t n) {
                 __result.push_back(v);
             }
             std::move(__result);
-        })) << "\n";
+        })) << "\n" << ::tpy::check_signals;
         std::vector<Coord> __tmp_2 = {Coord(1, 2), Coord(3, 4)};
         std::cout << "generator loop var" << " " << ::tpy::ListPrinter(({
             std::vector<int32_t> __result;
@@ -433,7 +433,7 @@ __coro_flip_later flip_later(int32_t n) {
                 __result.push_back(v);
             }
             std::move(__result);
-        })) << "\n";
+        })) << "\n" << ::tpy::check_signals;
         Coord __tmp_3 = Coord(1, 2);
         std::cout << "generator method result" << " " << ::tpy::ListPrinter(({
             std::vector<int32_t> __result;
@@ -445,7 +445,7 @@ __coro_flip_later flip_later(int32_t n) {
                 __result.push_back(::tpyapp::main::use(c));
             }
             std::move(__result);
-        })) << "\n";
+        })) << "\n" << ::tpy::check_signals;
         std::cout << "generator optional call" << " " << ::tpy::ListPrinter(({
             std::vector<int32_t> __result;
             auto __obj_6 = ::tpyapp::main::maybe_columns(4);
@@ -466,7 +466,7 @@ __coro_flip_later flip_later(int32_t n) {
                 __result.push_back(v);
             }
             std::move(__result);
-        })) << "\n";
+        })) << "\n" << ::tpy::check_signals;
         __sub_0.emplace(4);
         __state = S_RESUME_0;
         continue;
@@ -476,7 +476,7 @@ __coro_flip_later flip_later(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "async" << " " << ::tpyapp::main::use(__await_lift_0) << "\n";
+        std::cout << "async" << " " << ::tpyapp::main::use(__await_lift_0) << "\n" << ::tpy::check_signals;
         __sub_1.emplace(3);
         __state = S_RESUME_1;
         continue;
@@ -486,7 +486,7 @@ __coro_flip_later flip_later(int32_t n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "async method result" << " " << ::tpyapp::main::use(__await_lift_1) << "\n";
+        std::cout << "async method result" << " " << ::tpyapp::main::use(__await_lift_1) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -574,28 +574,28 @@ void optionals() {
         int32_t n = *__beg_0;
         std::optional<Coord> r = ::tpyapp::main::maybe_at(n);
         if ((r.has_value())) {
-            std::cout << "optional" << " " << (*r).column << " " << (*r).row << "\n";
+            std::cout << "optional" << " " << (*r).column << " " << (*r).row << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << "optional none" << "\n";
+            std::cout << "optional none" << "\n" << ::tpy::check_signals;
         }
         std::optional<Coord> p = ::tpyapp::main::plain_at(n);
         if ((p.has_value())) {
-            std::cout << "optional plain" << " " << (*p).column << " " << (*p).row << "\n";
+            std::cout << "optional plain" << " " << (*p).column << " " << (*p).row << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << "optional plain none" << "\n";
+            std::cout << "optional plain none" << "\n" << ::tpy::check_signals;
         }
         std::optional<Coord> q = ::tpyapp::main::narrowed_at(n);
         if ((q.has_value())) {
-            std::cout << "optional narrowed" << " " << (*q).column << " " << (*q).row << "\n";
+            std::cout << "optional narrowed" << " " << (*q).column << " " << (*q).row << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << "optional narrowed none" << "\n";
+            std::cout << "optional narrowed none" << "\n" << ::tpy::check_signals;
         }
     }
     Holder h = Holder(Coord(1, 2));
     h.maybe = Coord(7, 8);
     std::optional<Coord> f = h.get_maybe();
     if ((f.has_value())) {
-        std::cout << "optional field" << " " << (*f).column << " " << (*f).row << "\n";
+        std::cout << "optional field" << " " << (*f).column << " " << (*f).row << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -620,10 +620,10 @@ void tuples() {
     const auto& __tup_1 = t;
     Coord c = std::get<0>(__tup_1);
     int32_t n = std::get<1>(__tup_1);
-    std::cout << "tuple unpack" << " " << ::tpyapp::main::use(c) << " " << n << "\n";
+    std::cout << "tuple unpack" << " " << ::tpyapp::main::use(c) << " " << n << "\n" << ::tpy::check_signals;
     std::tuple<Coord, int32_t> u = std::tuple<Coord, int32_t>{Coord(3, 4), 1};
     u = std::tuple<Coord, int32_t>{Coord(5, 6), 2};
-    std::cout << "tuple rebind" << " " << ::tpyapp::main::use(std::get<0>(u)) << " " << std::get<1>(u) << "\n";
+    std::cout << "tuple rebind" << " " << ::tpyapp::main::use(std::get<0>(u)) << " " << std::get<1>(u) << "\n" << ::tpy::check_signals;
 }
 
 // def dict_items() -> None:
@@ -646,7 +646,7 @@ void dict_items() {
         Coord v = std::get<1>(__tup_1);
         total = ::tpy::add_check<int32_t>(total, ::tpyapp::main::use(v));
     }
-    std::cout << "dict items" << " " << total << "\n";
+    std::cout << "dict items" << " " << total << "\n" << ::tpy::check_signals;
 }
 
 // def walrus() -> None:
@@ -656,7 +656,7 @@ void dict_items() {
 void walrus() {
     Coord c{};
     if (((c = ::tpyapp::main::make(3)).row > 1)) {
-        std::cout << "walrus" << " " << ::tpyapp::main::use(c) << "\n";
+        std::cout << "walrus" << " " << ::tpyapp::main::use(c) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -684,7 +684,7 @@ void ternary(bool f) {
     Coord c = ((f) ? (Coord(5, 6)) : (Coord(7, 8)));
     Coord d = ((f) ? (a) : (b));
     Coord e = ((f) ? (a) : (Coord(9, 9)));
-    std::cout << "ternary" << " " << ::tpy::print_bool(f) << " " << ::tpyapp::main::use(c) << " " << ::tpyapp::main::use(d) << " " << ::tpyapp::main::use(e) << "\n";
+    std::cout << "ternary" << " " << ::tpy::print_bool(f) << " " << ::tpyapp::main::use(c) << " " << ::tpyapp::main::use(d) << " " << ::tpyapp::main::use(e) << "\n" << ::tpy::check_signals;
 }
 
 // def union_field_slots(n: int32) -> None:
@@ -727,7 +727,7 @@ void union_field_slots(int32_t n) {
         ::tpy::Union<int32_t, std::string> __tmp_2 = ::tpy::neg_check<int32_t>(n);
         t = Tagged(__tmp_2, 2);
     }
-    std::cout << "union if" << " " << t.n << "\n";
+    std::cout << "union if" << " " << t.n << "\n" << ::tpy::check_signals;
     Tagged u{};
     {
         try {
@@ -737,7 +737,7 @@ void union_field_slots(int32_t n) {
             return;
         }
     }
-    std::cout << "union try" << " " << u.n << "\n";
+    std::cout << "union try" << " " << u.n << "\n" << ::tpy::check_signals;
     Tagged w{};
     auto __ctx_2 = Ctx();
     __ctx_2.__enter__();
@@ -754,7 +754,7 @@ void union_field_slots(int32_t n) {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    std::cout << "union with" << " " << w.n << "\n";
+    std::cout << "union with" << " " << w.n << "\n" << ::tpy::check_signals;
     Tagged x{};
     auto __obj_0 = {Tagged(1, 5), Tagged(6, 6)};
     auto __beg_0 = __obj_0.begin();
@@ -762,7 +762,7 @@ void union_field_slots(int32_t n) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         x = *__beg_0;
     }
-    std::cout << "union for after" << " " << x.n << "\n";
+    std::cout << "union for after" << " " << x.n << "\n" << ::tpy::check_signals;
     Tagged m{};
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
@@ -776,11 +776,11 @@ void union_field_slots(int32_t n) {
         break;
     }
     }
-    std::cout << "union match" << " " << m.n << "\n";
+    std::cout << "union match" << " " << m.n << "\n" << ::tpy::check_signals;
     Tagged k{};
     ::tpy::Union<int32_t, std::string> __tmp_6 = n;
     if (((k = Tagged(__tmp_6, 9)).n > 0)) {
-        std::cout << "union walrus" << " " << k.n << "\n";
+        std::cout << "union walrus" << " " << k.n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -847,7 +847,7 @@ void calm_try() {
             return;
         }
     }
-    std::cout << "calm try" << " " << z.n << "\n";
+    std::cout << "calm try" << " " << z.n << "\n" << ::tpy::check_signals;
 }
 
 // def calm_slots(n: int32) -> None:
@@ -868,10 +868,10 @@ void calm_try() {
 void calm_slots(int32_t n) {
     Calm z{};
     z = Calm(n);
-    std::cout << "calm annotated" << " " << z.n << "\n";
+    std::cout << "calm annotated" << " " << z.n << "\n" << ::tpy::check_signals;
     Calm w{};
     if (((w = Calm((::tpy::add_check<int32_t>(n, 1)))).n > 0)) {
-        std::cout << "calm walrus" << " " << w.n << "\n";
+        std::cout << "calm walrus" << " " << w.n << "\n" << ::tpy::check_signals;
     }
     Calm m{};
     auto& __match_subject_1 = n;
@@ -885,7 +885,7 @@ void calm_slots(int32_t n) {
         break;
     }
     }
-    std::cout << "calm match" << " " << m.n << "\n";
+    std::cout << "calm match" << " " << m.n << "\n" << ::tpy::check_signals;
 }
 
 // def calm_more_slots(f: bool) -> None:
@@ -919,7 +919,7 @@ void calm_more_slots(bool f) {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    std::cout << "calm with" << " " << w.n << "\n";
+    std::cout << "calm with" << " " << w.n << "\n" << ::tpy::check_signals;
     Calm x{};
     auto __obj_0 = {Calm(13), Calm(14)};
     auto __beg_0 = __obj_0.begin();
@@ -927,14 +927,14 @@ void calm_more_slots(bool f) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         x = *__beg_0;
     }
-    std::cout << "calm for after" << " " << x.n << "\n";
+    std::cout << "calm for after" << " " << x.n << "\n" << ::tpy::check_signals;
     Wrapped r{};
     if (f) {
         r = Wrapped(Calm(15), 1);
     } else {
         r = Wrapped(Calm(16), 2);
     }
-    std::cout << "calm wrapped" << " " << r.z.n << " " << r.k << "\n";
+    std::cout << "calm wrapped" << " " << r.z.n << " " << r.k << "\n" << ::tpy::check_signals;
 }
 
 // @error_return(Bad)
@@ -1064,7 +1064,7 @@ __coro_calm_async calm_async(int32_t n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<Calm>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "calm finally body" << "\n";
+        std::cout << "calm finally body" << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
     }
@@ -1137,9 +1137,9 @@ Calm calm_hoist(bool f) {
         p = Calm(2);
     }
     Calm w = p;
-    std::cout << std::format("calm hoist {} {}", p.n, w.n) << "\n";
+    std::cout << std::format("calm hoist {} {}", p.n, w.n) << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 2; ++_) {
-        std::cout << "calm loop" << " " << p.n << "\n";
+        std::cout << "calm loop" << " " << p.n << "\n" << ::tpy::check_signals;
     }
     return p;
 }
@@ -1160,7 +1160,7 @@ void calm_subscript(std::vector<Calm>& xs, bool f) {
         m = ::tpy::__getitem__(xs, 1);
     }
     ::tpy::__setitem__(xs, 0, Calm(5));
-    std::cout << "calm subscript" << " " << m.n << "\n";
+    std::cout << "calm subscript" << " " << m.n << "\n" << ::tpy::check_signals;
 }
 
 // def pick_calm(f: bool) -> Calm | int32:
@@ -1193,10 +1193,10 @@ void calm_union(bool f) {
     }
     if (std::holds_alternative<Calm>(v)) {
         auto& __v = std::get<Calm>(v);
-        std::cout << "calm union" << " " << __v.n << "\n";
+        std::cout << "calm union" << " " << __v.n << "\n" << ::tpy::check_signals;
     } else {
         auto& __v = std::get<int32_t>(v);
-        std::cout << "calm union" << " " << ::tpy::__str__(__v) << "\n";
+        std::cout << "calm union" << " " << ::tpy::__str__(__v) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -1214,7 +1214,7 @@ void calm_tuple(bool f) {
     } else {
         t = std::tuple<Calm, int32_t>{Calm(2), 2};
     }
-    std::cout << "calm tuple" << " " << std::get<0>(t).n << " " << std::get<1>(t) << "\n";
+    std::cout << "calm tuple" << " " << std::get<0>(t).n << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -1255,25 +1255,25 @@ __gen_tuple_gen tuple_gen(int32_t n) {
 //     i = Measured()  # tpyc: ok
 //     print("spellings", a.n, b.n, c.n, d.a, d.b, e.n, f.z.n, g.n, h.n, i.n)
 void spellings() {
-    std::cout << "spelling classmethod" << "\n";
+    std::cout << "spelling classmethod" << "\n" << ::tpy::check_signals;
     Noisy a = Noisy::fresh();
-    std::cout << "spelling super" << "\n";
+    std::cout << "spelling super" << "\n" << ::tpy::check_signals;
     NoisyChild b = NoisyChild();
-    std::cout << "spelling inherited" << "\n";
+    std::cout << "spelling inherited" << "\n" << ::tpy::check_signals;
     NoisyHeir c = NoisyHeir();
-    std::cout << "spelling dataclass" << "\n";
+    std::cout << "spelling dataclass" << "\n" << ::tpy::check_signals;
     Settings d = Settings();
-    std::cout << "spelling by type" << "\n";
+    std::cout << "spelling by type" << "\n" << ::tpy::check_signals;
     Noisy e = Noisy{};
-    std::cout << "spelling factory" << "\n";
+    std::cout << "spelling factory" << "\n" << ::tpy::check_signals;
     Crate f = Crate();
-    std::cout << "spelling protocol by type" << "\n";
+    std::cout << "spelling protocol by type" << "\n" << ::tpy::check_signals;
     Measured g = Measured{};
-    std::cout << "spelling protocol keyword" << "\n";
+    std::cout << "spelling protocol keyword" << "\n" << ::tpy::check_signals;
     Measured h = Measured(static_cast<std::nullptr_t*>(nullptr), 5);
-    std::cout << "spelling protocol" << "\n";
+    std::cout << "spelling protocol" << "\n" << ::tpy::check_signals;
     Measured i = Measured();
-    std::cout << "spellings" << " " << a.n << " " << b.n << " " << c.n << " " << d.a << " " << d.b << " " << e.n << " " << f.z.n << " " << g.n << " " << h.n << " " << i.n << "\n";
+    std::cout << "spellings" << " " << a.n << " " << b.n << " " << c.n << " " << d.a << " " << d.b << " " << e.n << " " << f.z.n << " " << g.n << " " << h.n << " " << i.n << "\n" << ::tpy::check_signals;
 }
 
 // # zero-argument construction resolves the first default in the type's module
@@ -1291,7 +1291,7 @@ void default_scope() {
     Noisy z = Noisy();
     ::tpyapp::other::Far far = ::tpyapp::other::Far();
     ::tpyapp::other::Far near_far = ::tpyapp::other::Far();
-    std::cout << "default scope" << " " << K << " " << z.n << " " << far.n << " " << near_far.n << "\n";
+    std::cout << "default scope" << " " << K << " " << z.n << " " << far.n << " " << near_far.n << "\n" << ::tpy::check_signals;
 }
 
 // def arrays() -> None:
@@ -1308,13 +1308,13 @@ void default_scope() {
 //     print("array zero", z[0], z[2])
 void arrays() {
     std::array<Noisy, 3> a = std::array<Noisy, 3>();
-    std::cout << "array local" << " " << ::tpy::__getitem__(a, 2).n << "\n";
+    std::cout << "array local" << " " << ::tpy::__getitem__(a, 2).n << "\n" << ::tpy::check_signals;
     Grid g = Grid();
-    std::cout << "array field" << " " << ::tpy::__getitem__(g.cells, 1).n << "\n";
+    std::cout << "array field" << " " << ::tpy::__getitem__(g.cells, 1).n << "\n" << ::tpy::check_signals;
     std::array<std::array<Noisy, 2>, 2> c = std::array<std::array<Noisy, 2>, 2>();
-    std::cout << "array nested" << " " << ::tpy::__getitem__(::tpy::__getitem__(c, 1), 1).n << "\n";
+    std::cout << "array nested" << " " << ::tpy::__getitem__(::tpy::__getitem__(c, 1), 1).n << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> z = std::array<int32_t, 3>();
-    std::cout << "array zero" << " " << ::tpy::__getitem__(z, 0) << " " << ::tpy::__getitem__(z, 2) << "\n";
+    std::cout << "array zero" << " " << ::tpy::__getitem__(z, 0) << " " << ::tpy::__getitem__(z, 2) << "\n" << ::tpy::check_signals;
 }
 
 // def inherited() -> None:
@@ -1328,7 +1328,7 @@ void inherited() {
     NoisyHeir a = NoisyHeir{};
     NoisyValueHeir b = NoisyValueHeir();
     NoisyValueHeir c = NoisyValueHeir{};
-    std::cout << "inherited" << " " << a.n << " " << b.n << " " << c.n << "\n";
+    std::cout << "inherited" << " " << a.n << " " << b.n << " " << c.n << "\n" << ::tpy::check_signals;
 }
 
 // def generic_cells() -> None:
@@ -1344,7 +1344,7 @@ void generic_cells() {
     Cell<int32_t> b = Cell<int32_t>{};
     IntCell c = IntCell();
     IntCell d = IntCell{};
-    std::cout << "generic" << " " << a.k << " " << b.k << " " << c.k << " " << d.k << "\n";
+    std::cout << "generic" << " " << a.k << " " << b.k << " " << c.k << " " << d.k << "\n" << ::tpy::check_signals;
 }
 
 // def factory_fields(f: bool) -> None:
@@ -1364,7 +1364,7 @@ void factory_fields(bool f) {
     } else {
         p = Outer(Calm(3), 4);
     }
-    std::cout << "factory" << " " << o.z.n << " " << o.k << " " << p.z.n << " " << p.k << "\n";
+    std::cout << "factory" << " " << o.z.n << " " << o.k << " " << p.z.n << " " << p.k << "\n" << ::tpy::check_signals;
 }
 
 // def no_args(f: bool) -> None:
@@ -1384,7 +1384,7 @@ void no_args(bool f) {
     } else {
         b = NoArgs();
     }
-    std::cout << "no-args" << " " << a.n << " " << a.s << " " << b.n << " " << b.s << "\n";
+    std::cout << "no-args" << " " << a.n << " " << a.s << " " << b.n << " " << b.s << "\n" << ::tpy::check_signals;
 }
 
 // def heirs(f: bool) -> None:
@@ -1407,17 +1407,17 @@ void no_args(bool f) {
 void heirs(bool f) {
     RH a = RH();
     std::array<RH, 2> d = std::array<RH, 2>();
-    std::cout << "heir" << " " << a.n << " " << a.m << " " << ::tpy::__getitem__(d, 1).n << " " << ::tpy::__getitem__(d, 1).m << "\n";
+    std::cout << "heir" << " " << a.n << " " << a.m << " " << ::tpy::__getitem__(d, 1).n << " " << ::tpy::__getitem__(d, 1).m << "\n" << ::tpy::check_signals;
     DVH b = DVH{};
     std::array<DVH, 2> c = std::array<DVH, 2>();
-    std::cout << "heir by type" << " " << b.n << " " << b.m << " " << ::tpy::__getitem__(c, 1).n << " " << ::tpy::__getitem__(c, 1).m << "\n";
+    std::cout << "heir by type" << " " << b.n << " " << b.m << " " << ::tpy::__getitem__(c, 1).n << " " << ::tpy::__getitem__(c, 1).m << "\n" << ::tpy::check_signals;
     RVH e{};
     if (f) {
         e = RVH(3);
     } else {
         e = RVH(4);
     }
-    std::cout << "heir value" << " " << e.n << " " << e.m << "\n";
+    std::cout << "heir value" << " " << e.n << " " << e.m << "\n" << ::tpy::check_signals;
 }
 
 // def keyword_only() -> None:
@@ -1426,7 +1426,7 @@ void heirs(bool f) {
 //     print("keyword only", k.a, k.b)
 void keyword_only() {
     KW k = KW(1, 2);
-    std::cout << "keyword only" << " " << k.a << " " << k.b << "\n";
+    std::cout << "keyword only" << " " << k.a << " " << k.b << "\n" << ::tpy::check_signals;
 }
 
 // def generic_slots(f: bool) -> None:
@@ -1458,7 +1458,7 @@ void generic_slots(bool f) {
     } else {
         p = Pair<Calm>(b, a);
     }
-    std::cout << "generic slots" << " " << c.k << " " << p.first.n << " " << p.second.n << "\n";
+    std::cout << "generic slots" << " " << c.k << " " << p.first.n << " " << p.second.n << "\n" << ::tpy::check_signals;
 }
 
 
@@ -1475,7 +1475,7 @@ __gen_gauge_gen gauge_gen(int32_t n) {
 void composite_slots(int32_t n) {
     std::tuple<Calm, int32_t> t{};
     t = std::tuple<Calm, int32_t>{Calm(n), n};
-    std::cout << "composite annotated" << " " << std::get<0>(t).n << " " << std::get<1>(t) << "\n";
+    std::cout << "composite annotated" << " " << std::get<0>(t).n << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
 }
 
 // def calm_copy(f: bool) -> None:
@@ -1496,7 +1496,7 @@ void calm_copy(bool f) {
         b = Calm(3);
     }
     b = a;
-    std::cout << "calm copy" << " " << a.n << " " << b.n << "\n";
+    std::cout << "calm copy" << " " << a.n << " " << b.n << "\n" << ::tpy::check_signals;
 }
 
 
@@ -1575,15 +1575,15 @@ void stores() {
             __result.push_back(v);
         }
         std::move(__result);
-    })) << " " << ::tpyapp::main::use(h.c) << "\n";
+    })) << " " << ::tpyapp::main::use(h.c) << "\n" << ::tpy::check_signals;
     std::optional<Coord> m = h.maybe;
     if ((m.has_value())) {
-        std::cout << "store generator optional" << " " << (*m).column << " " << (*m).row << "\n";
+        std::cout << "store generator optional" << " " << (*m).column << " " << (*m).row << "\n" << ::tpy::check_signals;
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::store_async(h)));
     std::optional<Coord> n = h.maybe;
     if ((n.has_value())) {
-        std::cout << "store async" << " " << ::tpyapp::main::use(h.c) << " " << (*n).column << " " << (*n).row << "\n";
+        std::cout << "store async" << " " << ::tpyapp::main::use(h.c) << " " << (*n).column << " " << (*n).row << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -1614,7 +1614,7 @@ void stores() {
                 __result.push_back(v);
             }
             std::move(__result);
-        })) << "\n";
+        })) << "\n" << ::tpy::check_signals;
         std::cout << "union generator generic" << " " << ::tpy::ListPrinter(({
             std::vector<int32_t> __result;
             auto __obj_1 = ::tpyapp::main::tagged_pairs(3);
@@ -1625,7 +1625,7 @@ void stores() {
                 __result.push_back(v);
             }
             std::move(__result);
-        })) << "\n";
+        })) << "\n" << ::tpy::check_signals;
         __sub_0.emplace(2);
         __state = S_RESUME_0;
         continue;
@@ -1635,7 +1635,7 @@ void stores() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "union async" << " " << __await_lift_0 << "\n";
+        std::cout << "union async" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
         calm.emplace(({
             std::vector<int32_t> __result;
             auto __obj_2 = ::tpyapp::main::calm_gen(4);
@@ -1647,7 +1647,7 @@ void stores() {
             }
             std::move(__result);
         }));
-        std::cout << "calm generator" << " " << ::tpy::ListPrinter((*calm)) << "\n";
+        std::cout << "calm generator" << " " << ::tpy::ListPrinter((*calm)) << "\n" << ::tpy::check_signals;
         __sub_1.emplace(20);
         __state = S_RESUME_1;
         continue;
@@ -1657,7 +1657,7 @@ void stores() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "calm async" << " " << __await_lift_1 << "\n";
+        std::cout << "calm async" << " " << __await_lift_1 << "\n" << ::tpy::check_signals;
         __sub_2.emplace(21);
         __state = S_RESUME_2;
         continue;
@@ -1667,7 +1667,7 @@ void stores() {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         finished = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << "calm finally" << " " << finished.n << "\n";
+        std::cout << "calm finally" << " " << finished.n << "\n" << ::tpy::check_signals;
         std::cout << "text rebind" << " " << ::tpy::ListPrinter(({
             std::vector<std::string> __result;
             auto __obj_3 = ::tpyapp::main::text_rebinds(true);
@@ -1688,7 +1688,7 @@ void stores() {
                 __result.push_back(v);
             }
             std::move(__result);
-        })) << "\n";
+        })) << "\n" << ::tpy::check_signals;
         std::cout << "union rebind" << " " << ::tpy::ListPrinter(({
             std::vector<std::string> __result;
             auto __obj_5 = ::tpyapp::main::union_rebinds();
@@ -1699,7 +1699,7 @@ void stores() {
                 __result.push_back(v);
             }
             std::move(__result);
-        })) << "\n";
+        })) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -1767,9 +1767,9 @@ __coro_deferred_resumables deferred_resumables() {
 //     ternary(True)
 //     ternary(False)
 void main() {
-    std::cout << "module" << " " << ORIGIN.n << " " << FAR.n << " " << near.n << " " << near_count << "\n";
+    std::cout << "module" << " " << ORIGIN.n << " " << FAR.n << " " << near.n << " " << near_count << "\n" << ::tpy::check_signals;
     Calm r = ::tpyapp::main::calm_hoist(true);
-    std::cout << "calm hoist return" << " " << r.n << "\n";
+    std::cout << "calm hoist return" << " " << r.n << "\n" << ::tpy::check_signals;
     std::vector<Calm> __tmp_1 = {Calm(1), Calm(2)};
     ::tpyapp::main::calm_subscript(__tmp_1, true);
     ::tpyapp::main::calm_union(true);
@@ -1786,7 +1786,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << "tuple generator" << " " << ::tpy::ListPrinter(tuples_seen) << "\n";
+    std::cout << "tuple generator" << " " << ::tpy::ListPrinter(tuples_seen) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::spellings();
     ::tpyapp::main::default_scope();
     ::tpyapp::main::arrays();
@@ -1808,10 +1808,10 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << "generic generator" << " " << ::tpy::ListPrinter(cells) << "\n";
+    std::cout << "generic generator" << " " << ::tpy::ListPrinter(cells) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::composite_slots(8);
     ::tpyapp::main::union_field_slots(1);
-    std::cout << "skipped super" << " " << TagChild(3).k << "\n";
+    std::cout << "skipped super" << " " << TagChild(3).k << "\n" << ::tpy::check_signals;
     ::tpyapp::main::calm_try();
     ::tpyapp::main::calm_slots(1);
     ::tpyapp::main::calm_more_slots(true);
@@ -1823,17 +1823,17 @@ void main() {
             if (!__try_tmp_6.has_value()) goto __except_5;
             bound = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
-        std::cout << "calm error_return" << " " << bound << "\n";
+        std::cout << "calm error_return" << " " << bound << "\n" << ::tpy::check_signals;
         {
             auto __try_tmp_7 = ::tpyapp::main::tree_bind(18);
             if (!__try_tmp_7.has_value()) goto __except_5;
             tree = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
-        std::cout << "calm tree" << " " << tree << "\n";
+        std::cout << "calm tree" << " " << tree << "\n" << ::tpy::check_signals;
         goto __after_try_5;
         // except Bad:
         __except_5:;
-        std::cout << "calm error_return: bad" << "\n";
+        std::cout << "calm error_return: bad" << "\n" << ::tpy::check_signals;
         __after_try_5:;
     }
     ::tpyapp::main::calm_copy(true);
@@ -1848,7 +1848,7 @@ void main() {
     ::tpyapp::main::dict_items();
     ::tpyapp::main::walrus();
     ::tpyapp::main::set_global();
-    std::cout << "global" << " " << ::tpyapp::main::use(G) << "\n";
+    std::cout << "global" << " " << ::tpyapp::main::use(G) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::ternary(true);
     ::tpyapp::main::ternary(false);
 }
@@ -1893,7 +1893,7 @@ void __tpy_init() {
     near = __unpack_0_0;
     near_count = __unpack_0_1;
     near_pair = std::tuple<Calm, int32_t>{Calm(4), 4};
-    std::cout << "module tuple" << " " << std::get<0>(near_pair).n << " " << std::get<1>(near_pair) << "\n";
+    std::cout << "module tuple" << " " << std::get<0>(near_pair).n << " " << std::get<1>(near_pair) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }
 

@@ -35,23 +35,23 @@ namespace tpyapp::main {
 //     print(big)
 void main() {
     int64_t a = static_cast<int64_t>(9223372036854775807);
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
     int64_t b = static_cast<int64_t>((-9223372036854775807LL - 1));
-    std::cout << b << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
     int64_t x = 1000000000;
     int64_t y = 2000000000;
-    std::cout << (::tpy::add_check<int64_t>(x, y)) << "\n";
-    std::cout << (::tpy::mul_check<int64_t>(x, 3)) << "\n";
+    std::cout << (::tpy::add_check<int64_t>(x, y)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::mul_check<int64_t>(x, 3)) << "\n" << ::tpy::check_signals;
     uint64_t c = 0;
     uint64_t d = static_cast<uint64_t>(18446744073709551615ull);
-    std::cout << c << "\n";
-    std::cout << d << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
+    std::cout << d << "\n" << ::tpy::check_signals;
     uint64_t u = static_cast<uint64_t>(10000000000);
     uint64_t v = static_cast<uint64_t>(5000000000);
-    std::cout << (::tpy::add_check<uint64_t>(u, v)) << "\n";
-    std::cout << (::tpy::sub_check<uint64_t>(u, v)) << "\n";
+    std::cout << (::tpy::add_check<uint64_t>(u, v)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::sub_check<uint64_t>(u, v)) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt big = ::tpy::BigInt(static_cast<int64_t>(a));
-    std::cout << big << "\n";
+    std::cout << big << "\n" << ::tpy::check_signals;
 }
 
 // main()

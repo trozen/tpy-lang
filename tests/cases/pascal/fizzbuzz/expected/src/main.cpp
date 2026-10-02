@@ -26,14 +26,14 @@ void __tpy_init() {
     int32_t __stop_0 = ::tpy::add_check<int32_t>(15, 1);
     for (int32_t i = 1; i < __stop_0; ++i) {
         if (((::tpy::mod_floor<int32_t>(i, 15)) == 0)) {
-            std::cout << "FizzBuzz" << "\n";
+            std::cout << "FizzBuzz" << "\n" << ::tpy::check_signals;
         } else {
             if (((::tpy::mod_floor<int32_t>(i, 3)) == 0)) {
-                std::cout << "Fizz" << "\n";
+                std::cout << "Fizz" << "\n" << ::tpy::check_signals;
             } else if (((::tpy::mod_floor<int32_t>(i, 5)) == 0)) {
-                std::cout << "Buzz" << "\n";
+                std::cout << "Buzz" << "\n" << ::tpy::check_signals;
             } else {
-                std::cout << i << "\n";
+                std::cout << i << "\n" << ::tpy::check_signals;
             }
         }
     }

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(pt)
 void main() {
     ::tpyapp::pkg::sub::Point pt = ::tpyapp::pkg::sub::Point(::tpy::BigInt(3), ::tpy::BigInt(4));
-    std::cout << pt << "\n";
+    std::cout << pt << "\n" << ::tpy::check_signals;
 }
 
 // # Aliased record re-exported through pkg/__init__.py (`from .sub import Point as P`).

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def print_area(b: Box[Shape]) -> None:
 //     print(b.get().area())
 void print_area(::tpystd::tplib::box::Box<Shape>& b) {
-    std::cout << ::tpy::print_float(b.get().area()) << "\n";
+    std::cout << ::tpy::print_float(b.get().area()) << "\n" << ::tpy::check_signals;
 }
 
 // def make_shape() -> Own[Box[Shape]]:
@@ -41,9 +41,9 @@ void main() {
     ::tpyapp::main::print_area(__tmp_2);
     ::tpystd::tplib::box::Box<Circle> bc2 = ::tpystd::tplib::box::Box<Circle>(Circle(2.0));
     ::tpystd::tplib::box::Box<Shape> b_shape = std::move(bc2);
-    std::cout << ::tpy::print_float(b_shape.get().area()) << "\n";
+    std::cout << ::tpy::print_float(b_shape.get().area()) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::box::Box<Shape> b3 = ::tpyapp::main::make_shape();
-    std::cout << ::tpy::print_float(b3.get().area()) << "\n";
+    std::cout << ::tpy::print_float(b3.get().area()) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

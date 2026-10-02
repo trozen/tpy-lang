@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(h.slot is None)
 void main() {
     Holder h = Holder();
-    std::cout << ::tpy::print_bool(h.step()) << "\n";
-    std::cout << ::tpy::print_bool((!h.slot.has_value())) << "\n";
+    std::cout << ::tpy::print_bool(h.step()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!h.slot.has_value())) << "\n" << ::tpy::check_signals;
 }
 
 // main()

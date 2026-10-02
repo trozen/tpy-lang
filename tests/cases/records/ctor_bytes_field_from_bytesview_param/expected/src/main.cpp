@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(len(b.data), b.data[0])
 void main() {
     Blob b = Blob(::tpy::bytes_literal("abc", 3));
-    std::cout << ::tpy::__len__(b.data) << " " << static_cast<int>(::tpy::bytes_getitem(b.data, 0)) << "\n";
+    std::cout << ::tpy::__len__(b.data) << " " << static_cast<int>(::tpy::bytes_getitem(b.data, 0)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

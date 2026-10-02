@@ -66,7 +66,7 @@ inline Node::Node(int32_t val) : val(val) {}
 template<typename K, typename V>
 void test_dict_ctor_generic_warns(const std::vector<std::tuple<K, V>>& pairs) {
     ::tpy::ordered_map<K, V> d = ::tpy::dict_construct<K, V>(pairs);
-    std::cout << ::tpy::__len__(pairs) << "\n";
+    std::cout << ::tpy::__len__(pairs) << "\n" << ::tpy::check_signals;
 }
 // def test_dict_ctor_partial_generic_warns[V](pairs: list[tuple[str, V]]) -> None:
 //     """str is concrete value type, V unknown -- should 'may copy'."""
@@ -75,7 +75,7 @@ void test_dict_ctor_generic_warns(const std::vector<std::tuple<K, V>>& pairs) {
 template<typename V>
 void test_dict_ctor_partial_generic_warns(const std::vector<std::tuple<std::string, V>>& pairs) {
     ::tpy::ordered_map<std::string, V> d = ::tpy::dict_construct<std::string, V>(pairs);
-    std::cout << ::tpy::__len__(pairs) << "\n";
+    std::cout << ::tpy::__len__(pairs) << "\n" << ::tpy::check_signals;
 }
 // def test_dict_ctor_nested_generic_warns[K, V](pairs: list[tuple[K, tuple[str, V]]]) -> None:
 //     """V nested inside inner tuple -- recursive check still fires."""
@@ -84,7 +84,7 @@ void test_dict_ctor_partial_generic_warns(const std::vector<std::tuple<std::stri
 template<typename K, typename V>
 void test_dict_ctor_nested_generic_warns(const std::vector<std::tuple<K, std::tuple<std::string, V>>>& pairs) {
     ::tpy::ordered_map<K, std::tuple<std::string, V>> d = ::tpy::dict_construct<K, std::tuple<std::string, V>>(pairs);
-    std::cout << ::tpy::__len__(pairs) << "\n";
+    std::cout << ::tpy::__len__(pairs) << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

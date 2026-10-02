@@ -36,17 +36,17 @@ void __tpy_init() {
     initialized = true;
 
     x = 300;
-    std::cout << static_cast<int>(static_cast<uint8_t>(x)) << "\n";
-    std::cout << static_cast<int>(static_cast<uint8_t>(-1)) << "\n";
-    std::cout << static_cast<int>(static_cast<uint8_t>(-3)) << "\n";
-    std::cout << static_cast<int>(static_cast<uint8_t>(1000)) << "\n";
-    std::cout << static_cast<int>(static_cast<int8_t>(200)) << "\n";
-    std::cout << static_cast<int>(static_cast<int8_t>(200)) << "\n";
-    std::cout << static_cast<int>(static_cast<uint8_t>(42)) << "\n";
-    std::cout << static_cast<int>(static_cast<int8_t>(-100)) << "\n";
-    std::cout << static_cast<int>(static_cast<uint8_t>(300)) << "\n";
-    std::cout << static_cast<int>(static_cast<uint8_t>(-1)) << "\n";
-    std::cout << static_cast<int>(static_cast<int8_t>(-129)) << "\n";
+    std::cout << static_cast<int>(static_cast<uint8_t>(x)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<uint8_t>(-1)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<uint8_t>(-3)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<uint8_t>(1000)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<int8_t>(200)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<int8_t>(200)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<uint8_t>(42)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<int8_t>(-100)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<uint8_t>(300)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<uint8_t>(-1)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(static_cast<int8_t>(-129)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

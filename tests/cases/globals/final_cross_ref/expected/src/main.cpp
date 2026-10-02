@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(BASE)
 //     print(ALIAS)
 void main() {
-    std::cout << BASE << "\n";
-    std::cout << ALIAS << "\n";
+    std::cout << BASE << "\n" << ::tpy::check_signals;
+    std::cout << ALIAS << "\n" << ::tpy::check_signals;
 }
 
 // main()

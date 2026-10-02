@@ -19,11 +19,11 @@ void main() {
     Holder h = Holder(::tpy::BigInt(7));
     Registry r = Registry();
     r.install(&h, 42);
-    std::cout << ::tpy::print_bool((_ptr_g != nullptr)) << "\n";
-    std::cout << ::tpy::print_bool((_opt_int_g.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((_ptr_g != nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((_opt_int_g.has_value())) << "\n" << ::tpy::check_signals;
     r.clear();
-    std::cout << ::tpy::print_bool((_ptr_g == nullptr)) << "\n";
-    std::cout << ::tpy::print_bool((!_opt_int_g.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((_ptr_g == nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!_opt_int_g.has_value())) << "\n" << ::tpy::check_signals;
 }
 
 // _ptr_g: Ptr[Holder] = None

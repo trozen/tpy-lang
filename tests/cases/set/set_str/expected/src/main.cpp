@@ -16,11 +16,11 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2, 3});
     std::string x = ::tpy::set_to_str(s);
-    std::cout << x << "\n";
-    std::cout << std::format("set: {}", ::tpy::set_to_str(s)) << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
+    std::cout << std::format("set: {}", ::tpy::set_to_str(s)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> empty = ::tpy::ordered_set<int32_t>();
-    std::cout << ::tpy::set_to_str(empty) << "\n";
-    std::cout << std::format("empty: {}", ::tpy::set_to_str(empty)) << "\n";
+    std::cout << ::tpy::set_to_str(empty) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("empty: {}", ::tpy::set_to_str(empty)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

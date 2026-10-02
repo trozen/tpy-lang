@@ -26,14 +26,14 @@ void main() {
     int32_t* p = &::tpy::__getitem__(arr, 0);
     std::span<int32_t> s = std::span(p, static_cast<size_t>(3));
     ::tpy::__setitem__(s, 0, 42);
-    std::cout << ::tpy::__getitem__(arr, 0) << "\n";
-    std::cout << ::tpy::__getitem__(s, 1) << "\n";
-    std::cout << ::tpy::__getitem__(s, 2) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(s, 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(s, 2) << "\n" << ::tpy::check_signals;
     const int32_t* rp = &::tpy::__getitem__(arr, 0);
     std::span<const int32_t> rs = std::span(rp, static_cast<size_t>(3));
-    std::cout << ::tpy::__getitem__(rs, 0) << "\n";
-    std::cout << ::tpy::__getitem__(rs, 1) << "\n";
-    std::cout << ::tpy::__getitem__(rs, 2) << "\n";
+    std::cout << ::tpy::__getitem__(rs, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(rs, 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(rs, 2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

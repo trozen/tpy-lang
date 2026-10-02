@@ -49,7 +49,7 @@ inline void Counter::increment(int32_t amount) {
 // def display(self, prefix: str = "count") -> None:
 //     print(f"{prefix}: {self.count}")
 inline void Counter::display(std::string_view prefix) const {
-    std::cout << std::format("{}: {}", prefix, this->count) << "\n";
+    std::cout << std::format("{}: {}", prefix, this->count) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

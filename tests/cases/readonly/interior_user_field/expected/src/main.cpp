@@ -15,7 +15,7 @@ void main() {
     c.tick();
     c.tick();
     c.tick();
-    std::cout << c.value() << "\n";
+    std::cout << c.value() << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_take, unsafe_release

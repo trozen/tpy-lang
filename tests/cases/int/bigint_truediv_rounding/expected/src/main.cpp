@@ -45,36 +45,36 @@ namespace tpyapp::main {
 void main() {
     ::tpy::BigInt a = ::tpy::BigInt::from_str("-86399999913600000000");
     ::tpy::BigInt b = ::tpy::BigInt(1000000);
-    std::cout << ::tpy::print_float((::tpy::truediv(a, b))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(a, b))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt c = ((((::tpy::BigInt(1)) << (::tpy::BigInt(60)))) + ((::tpy::lshift_check<int32_t>(1, 7))));
     ::tpy::BigInt d = ::tpy::BigInt(3);
-    std::cout << ::tpy::print_float((::tpy::truediv(c, d))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(c, d))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt e = ((((::tpy::BigInt(1)) << (::tpy::BigInt(53)))) + (::tpy::BigInt(1)));
     ::tpy::BigInt f = ::tpy::BigInt(1);
-    std::cout << ::tpy::print_float((::tpy::truediv(e, f))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(e, f))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt g = ((((::tpy::BigInt(10)).pow(::tpy::BigInt(23)))) + (::tpy::BigInt(1)));
     ::tpy::BigInt h = ((::tpy::BigInt(10)).pow(::tpy::BigInt(22)));
-    std::cout << ::tpy::print_float((::tpy::truediv(g, h))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(g, h))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt z = ::tpy::BigInt(0);
     ::tpy::BigInt w = ::tpy::BigInt(-5);
-    std::cout << ::tpy::print_float((::tpy::truediv(z, w))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(z, w))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt tiny = ::tpy::BigInt(1);
     ::tpy::BigInt huge = ((::tpy::BigInt(10)).pow(::tpy::BigInt(330)));
-    std::cout << ::tpy::print_float((::tpy::truediv(tiny, huge))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::truediv(-(tiny), huge))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(tiny, huge))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::truediv(-(tiny), huge))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt big = ((::tpy::BigInt(10)).pow(::tpy::BigInt(400)));
     {
         try {
-            std::cout << ::tpy::print_float((::tpy::truediv(big, d))) << "\n";
+            std::cout << ::tpy::print_float((::tpy::truediv(big, d))) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OverflowError& ex) {
-            std::cout << "overflow:" << " " << ex << "\n";
+            std::cout << "overflow:" << " " << ex << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpy::print_float((::tpy::truediv(tiny, z))) << "\n";
+            std::cout << ::tpy::print_float((::tpy::truediv(tiny, z))) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError& ex) {
-            std::cout << "zerodiv:" << " " << ex << "\n";
+            std::cout << "zerodiv:" << " " << ex << "\n" << ::tpy::check_signals;
         }
     }
 }

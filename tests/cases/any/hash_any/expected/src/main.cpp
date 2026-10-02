@@ -17,7 +17,7 @@ void main() {
     ::tpy::ordered_set<::tpy::BigInt> seen = ::tpy::ordered_set<::tpy::BigInt>();
     seen.insert(::tpy::BigInt(::tpy::__hash__(a)));
     seen.insert(::tpy::BigInt(::tpy::__hash__(b)));
-    std::cout << ::tpy::print_bool((::tpy::__len__(seen) >= 1)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__len__(seen) >= 1)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

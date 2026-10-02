@@ -102,17 +102,17 @@ std::string read(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
 void main() {
     ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog({"x"});
     ::tpy::Union<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << ::tpyapp::main::known(d.as_const()) << "\n";
-    std::cout << ::tpyapp::main::tag(d, "y") << "\n";
-    std::cout << ::tpyapp::main::read(d.as_const()) << "\n";
+    std::cout << ::tpyapp::main::known(d.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::tag(d, "y") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read(d.as_const()) << "\n" << ::tpy::check_signals;
     ::tpy::Union<Bird, Cat, Dog> __slot_2 = Cat({"p"});
     ::tpy::Union<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    std::cout << ::tpyapp::main::tag(c, "q") << "\n";
-    std::cout << ::tpyapp::main::read(c.as_const()) << "\n";
+    std::cout << ::tpyapp::main::tag(c, "q") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read(c.as_const()) << "\n" << ::tpy::check_signals;
     ::tpy::Union<Bird, Cat, Dog> __slot_3 = Bird({"m"});
     ::tpy::Union<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
-    std::cout << ::tpyapp::main::tag(b, "n") << "\n";
-    std::cout << ::tpyapp::main::read(b.as_const()) << "\n";
+    std::cout << ::tpyapp::main::tag(b, "n") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read(b.as_const()) << "\n" << ::tpy::check_signals;
 }
 
 // # Parenthesized (nested) or-pattern groups on a union subject: the group is

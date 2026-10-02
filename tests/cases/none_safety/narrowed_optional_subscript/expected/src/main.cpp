@@ -13,11 +13,11 @@ namespace tpyapp::main {
 //         print("none")
 void check(std::optional<std::string_view> s) {
     if ((s.has_value())) {
-        std::cout << ::tpy::__getitem__((*s), 0) << "\n";
-        std::cout << ::tpy::str_slice((*s), ::tpy::BasicSlice{1, 4}) << "\n";
-        std::cout << ::tpy::__len__((*s)) << "\n";
+        std::cout << ::tpy::__getitem__((*s), 0) << "\n" << ::tpy::check_signals;
+        std::cout << ::tpy::str_slice((*s), ::tpy::BasicSlice{1, 4}) << "\n" << ::tpy::check_signals;
+        std::cout << ::tpy::__len__((*s)) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "none" << "\n";
+        std::cout << "none" << "\n" << ::tpy::check_signals;
     }
 }
 

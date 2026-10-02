@@ -16,8 +16,8 @@ std::tuple<int32_t, Box> make_pair(int32_t v) {
 //     print(h.t[1].val)
 void main() {
     H h = H();
-    std::cout << std::get<0>(h.t) << "\n";
-    std::cout << std::get<1>(h.t).val << "\n";
+    std::cout << std::get<0>(h.t) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(h.t).val << "\n" << ::tpy::check_signals;
 }
 
 // main()

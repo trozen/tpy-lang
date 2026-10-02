@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(c.transform("inherited"))
 void main() {
     Child<int32_t> c = Child<int32_t>(5);
-    std::cout << c.transform<int32_t>(42) << "\n";
-    std::cout << c.transform<std::string>("inherited") << "\n";
+    std::cout << c.transform<int32_t>(42) << "\n" << ::tpy::check_signals;
+    std::cout << c.transform<std::string>("inherited") << "\n" << ::tpy::check_signals;
 }
 
 // main()

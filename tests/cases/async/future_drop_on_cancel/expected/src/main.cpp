@@ -66,7 +66,7 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
             continue;
         } catch (const ::tpy::CancelledError&) {
             __sub_0 = nullptr;
-            std::cout << "cancelled" << "\n";
+            std::cout << "cancelled" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -104,9 +104,9 @@ __coro_main_coro main_coro() {
 void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
     if (::tpy::seq_contains((*dropped), "payload")) {
-        std::cout << "dropped:" << " " << "payload" << "\n";
+        std::cout << "dropped:" << " " << "payload" << "\n" << ::tpy::check_signals;
     }
-    std::cout << "count:" << " " << ::tpy::__len__((*dropped)) << "\n";
+    std::cout << "count:" << " " << ::tpy::__len__((*dropped)) << "\n" << ::tpy::check_signals;
 }
 
 // # Future result must be dropped if its awaiter is cancelled after the

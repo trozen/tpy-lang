@@ -42,9 +42,9 @@ void main() {
     Box a = Box(5);
     Box b = Box(6);
     std::array<const Box*, 2> __tmp_1{&a, &b};
-    std::cout << ::tpyapp::main::forward_mutable(::tpy::varargs<const Box>(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::forward_mutable(::tpy::varargs<const Box>(__tmp_1)) << "\n" << ::tpy::check_signals;
     std::array<const Box*, 2> __tmp_2{&a, &b};
-    std::cout << ::tpyapp::main::forward_readonly(::tpy::varargs<const Box>(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::forward_readonly(::tpy::varargs<const Box>(__tmp_2)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

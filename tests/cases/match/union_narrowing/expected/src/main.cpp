@@ -15,12 +15,12 @@ void describe(::tpy::Union<const Circle*, const Rect*> s) {
     switch (__match_subject_1.index()) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        std::cout << ::tpy::print_float(__case_0.radius) << "\n";
+        std::cout << ::tpy::print_float(__case_0.radius) << "\n" << ::tpy::check_signals;
         break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        std::cout << ::tpy::print_float(((__case_1.width) * (__case_1.height))) << "\n";
+        std::cout << ::tpy::print_float(((__case_1.width) * (__case_1.height))) << "\n" << ::tpy::check_signals;
         break;
     }
     }

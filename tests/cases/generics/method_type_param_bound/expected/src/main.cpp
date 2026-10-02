@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(p.with_default())
 void main() {
     Pair<int32_t> p = Pair<int32_t>(3, 7);
-    std::cout << p.min_val() << "\n";
-    std::cout << p.with_default() << "\n";
+    std::cout << p.min_val() << "\n" << ::tpy::check_signals;
+    std::cout << p.with_default() << "\n" << ::tpy::check_signals;
 }
 
 // main()

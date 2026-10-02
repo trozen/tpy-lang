@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(f.y)
 void main() {
     Foo f = Foo();
-    std::cout << f.x << "\n";
-    std::cout << f.y << "\n";
+    std::cout << f.x << "\n" << ::tpy::check_signals;
+    std::cout << f.y << "\n" << ::tpy::check_signals;
 }
 
 // main()

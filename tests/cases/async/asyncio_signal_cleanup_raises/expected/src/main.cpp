@@ -82,9 +82,9 @@ void main() {
         try {
             ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::serve()));
         } catch (const ::tpy::ValueError& e) {
-            std::cout << (::tpy::str_concat("caught ValueError: ", std::string(::tpy::__str__(e)))) << "\n";
+            std::cout << (::tpy::str_concat("caught ValueError: ", std::string(::tpy::__str__(e)))) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::KeyboardInterrupt&) {
-            std::cout << "caught KeyboardInterrupt (WRONG)" << "\n";
+            std::cout << "caught KeyboardInterrupt (WRONG)" << "\n" << ::tpy::check_signals;
         }
     }
 }

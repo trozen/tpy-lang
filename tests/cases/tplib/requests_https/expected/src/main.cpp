@@ -126,15 +126,15 @@ void main() {
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(std::move(conn));
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"db", "das"}});
     ::tpystd::tplib::requests::Response r = s.get("https://das.test/v1/tables", &(__tmp_1));
-    std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << " " << r.reason << "\n";
-    std::cout << r.headers["Content-Type"] << "\n";
+    std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << " " << r.reason << "\n" << ::tpy::check_signals;
+    std::cout << r.headers["Content-Type"] << "\n" << ::tpy::check_signals;
     ::tpystd::json::JsonValue d = r.json();
     if (std::holds_alternative<::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>>(d.value)) {
         auto& __d = std::get<::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>>(d.value);
         ::tpystd::json::JsonValue& v = ::tpy::__getitem__(__d, "rows");
         if (std::holds_alternative<::tpy::BigInt>(v.value)) {
             auto& __v = std::get<::tpy::BigInt>(v.value);
-            std::cout << "rows =" << " " << ::tpy::__str__(__v) << "\n";
+            std::cout << "rows =" << " " << ::tpy::__str__(__v) << "\n" << ::tpy::check_signals;
         }
     }
     srv.close();

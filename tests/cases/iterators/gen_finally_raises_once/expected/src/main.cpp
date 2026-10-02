@@ -13,7 +13,7 @@ int32_t _code{};
 //     return _code
 ::tpy::BigInt bump() {
     _code = ::tpy::add_check<int32_t>(_code, 1);
-    std::cout << std::format("side-effect {}", _code) << "\n";
+    std::cout << std::format("side-effect {}", _code) << "\n" << ::tpy::check_signals;
     return ::tpy::BigInt(_code);
 }
 
@@ -44,7 +44,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_handler_exit::__next__(
         } catch (const ::tpy::ValueError&) {
             bool __fin_ran_3 = false;
             try {
-                std::cout << "caught" << "\n";
+                std::cout << "caught" << "\n" << ::tpy::check_signals;
                 __fin_ran_3 = true;
                 this->__finally_0();
                 __state = S_JOIN_0;
@@ -212,10 +212,10 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_nested_exit::__next__()
 }
 
 void __gen_nested_exit::__finally_0() {
-    std::cout << "outer fin" << "\n";
+    std::cout << "outer fin" << "\n" << ::tpy::check_signals;
 }
 void __gen_nested_exit::__finally_1() {
-    std::cout << "inner fin" << "\n";
+    std::cout << "inner fin" << "\n" << ::tpy::check_signals;
     throw Err(::tpyapp::main::bump());
 }
 

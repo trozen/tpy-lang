@@ -58,10 +58,10 @@ Color lookup(std::string_view name) {
 //     print(Color["Blue"])
 //     print(lookup("Green"))
 void main() {
-    std::cout << ::tpy::EnumUtil<Color>::from_name("Red") << "\n";
-    std::cout << ::tpy::EnumUtil<Color>::from_name("Green") << "\n";
-    std::cout << ::tpy::EnumUtil<Color>::from_name("Blue") << "\n";
-    std::cout << ::tpyapp::main::lookup("Green") << "\n";
+    std::cout << ::tpy::EnumUtil<Color>::from_name("Red") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<Color>::from_name("Green") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<Color>::from_name("Blue") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::lookup("Green") << "\n" << ::tpy::check_signals;
 }
 
 // # Test enum name lookup via subscript: Color["Red"]

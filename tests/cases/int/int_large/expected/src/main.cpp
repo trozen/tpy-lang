@@ -31,10 +31,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(20)) << "\n";
-    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(25)) << "\n";
-    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(50)) << "\n";
-    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(100)) << "\n";
+    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(20)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(25)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(50)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(100)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

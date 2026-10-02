@@ -60,8 +60,8 @@ void main() {
     ::tpy::BinaryFile r = ::tpy::builtin_open_binary(path, "rb");
     ::tpy::Bytes data = r.read();
     r.close();
-    std::cout << ::tpy::__len__(data) << "\n";
-    std::cout << static_cast<int>(::tpy::bytes_getitem(data, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 2)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 3)) << "\n";
+    std::cout << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpy::bytes_getitem(data, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 2)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 3)) << "\n" << ::tpy::check_signals;
     auto __ctx_1 = ::tpy::builtin_open_binary(path, "wb");
     auto& f1 = __ctx_1.__enter__();
     try {
@@ -91,7 +91,7 @@ void main() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    std::cout << ::tpy::__len__(data2) << "\n";
+    std::cout << ::tpy::__len__(data2) << "\n" << ::tpy::check_signals;
     auto __ctx_3 = ::tpy::builtin_open_binary(path, "ab");
     auto& f3 = __ctx_3.__enter__();
     try {
@@ -121,7 +121,7 @@ void main() {
     }
     __with_exit_4:
     __ctx_4.__exit__({}, nullptr, {});
-    std::cout << ::tpy::__len__(data3) << "\n";
+    std::cout << ::tpy::__len__(data3) << "\n" << ::tpy::check_signals;
     auto __ctx_5 = ::tpy::builtin_open_binary(path, "wb");
     auto& f5 = __ctx_5.__enter__();
     try {
@@ -141,11 +141,11 @@ void main() {
     ::tpy::Bytes second = r2.readline();
     ::tpy::Bytes third = r2.readline();
     r2.close();
-    std::cout << ::tpy::__len__(first) << " " << ::tpy::__len__(second) << " " << ::tpy::__len__(third) << "\n";
+    std::cout << ::tpy::__len__(first) << " " << ::tpy::__len__(second) << " " << ::tpy::__len__(third) << "\n" << ::tpy::check_signals;
     ::tpy::BinaryFile r3 = ::tpy::builtin_open_binary(path, "rb");
     std::vector<::tpy::Bytes> lines = r3.readlines();
     r3.close();
-    std::cout << ::tpy::__len__(lines) << "\n";
+    std::cout << ::tpy::__len__(lines) << "\n" << ::tpy::check_signals;
 }
 
 // main()

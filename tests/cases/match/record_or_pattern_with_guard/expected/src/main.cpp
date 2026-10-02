@@ -33,12 +33,12 @@ int32_t f(Point& p, bool ok) {
 //     print(f(Point(2, 2), True))
 void main() {
     Point pt = Point(1, 1);
-    std::cout << ::tpyapp::main::f(pt, true) << "\n";
-    std::cout << pt.x << "\n";
+    std::cout << ::tpyapp::main::f(pt, true) << "\n" << ::tpy::check_signals;
+    std::cout << pt.x << "\n" << ::tpy::check_signals;
     Point __tmp_1 = Point(1, 1);
-    std::cout << ::tpyapp::main::f(__tmp_1, false) << "\n";
+    std::cout << ::tpyapp::main::f(__tmp_1, false) << "\n" << ::tpy::check_signals;
     Point __tmp_2 = Point(2, 2);
-    std::cout << ::tpyapp::main::f(__tmp_2, true) << "\n";
+    std::cout << ::tpyapp::main::f(__tmp_2, true) << "\n" << ::tpy::check_signals;
 }
 
 // # A record arm whose or-alternatives carry a GUARD: the guard composes into

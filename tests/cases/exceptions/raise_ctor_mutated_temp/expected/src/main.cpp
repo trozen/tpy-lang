@@ -15,7 +15,7 @@ void main() {
             Bag __tmp_1 = Bag({1, 2});
             throw BErr(__tmp_1);
         } catch (const BErr& e) {
-            std::cout << e.total << "\n";
+            std::cout << e.total << "\n" << ::tpy::check_signals;
         }
     }
 }

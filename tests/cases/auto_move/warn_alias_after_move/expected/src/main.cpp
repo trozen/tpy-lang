@@ -22,7 +22,7 @@ void main() {
     Point& alias = p;
     Point __tmp_1 = p;
     ::tpyapp::main::consume(std::move(__tmp_1));
-    std::cout << alias.x << "\n";
+    std::cout << alias.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

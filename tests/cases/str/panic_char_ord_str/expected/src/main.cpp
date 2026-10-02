@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(ord(s))
 void main() {
     std::string_view s = "hello";
-    std::cout << ::tpy::ord_str(s) << "\n";
+    std::cout << ::tpy::ord_str(s) << "\n" << ::tpy::check_signals;
 }
 
 // main()

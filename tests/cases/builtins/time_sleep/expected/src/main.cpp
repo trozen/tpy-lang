@@ -20,9 +20,9 @@ void main() {
     double end = ::tpy::time_time();
     double elapsed = ((end) - (start));
     if ((elapsed >= 0.05)) {
-        std::cout << "ok" << "\n";
+        std::cout << "ok" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "error: sleep too short" << "\n";
+        std::cout << "error: sleep too short" << "\n" << ::tpy::check_signals;
     }
 }
 

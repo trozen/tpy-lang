@@ -19,9 +19,9 @@ namespace tpyapp::main {
 void main() {
     {
         try {
-            std::cout << ::tpyapp::main::force_miss("missing") << "\n";
+            std::cout << ::tpyapp::main::force_miss("missing") << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::KeyError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

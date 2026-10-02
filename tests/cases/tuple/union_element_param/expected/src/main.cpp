@@ -21,9 +21,9 @@ int32_t passthrough(const std::tuple<::tpy::Union<const Cat*, const Dog*>, int32
 //     print("cat:", read_second((Cat(9), 3)))
 //     print("pass:", passthrough((Dog(1), 5)))
 void main() {
-    std::cout << "dog:" << " " << ::tpyapp::main::read_second(::tpy::tuple_value_to_borrow<std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>>(std::tuple<::tpy::Union<Cat, Dog>, int32_t>{Dog(7), 2})) << "\n";
-    std::cout << "cat:" << " " << ::tpyapp::main::read_second(::tpy::tuple_value_to_borrow<std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>>(std::tuple<::tpy::Union<Cat, Dog>, int32_t>{Cat(9), 3})) << "\n";
-    std::cout << "pass:" << " " << ::tpyapp::main::passthrough(::tpy::tuple_value_to_borrow<std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>>(std::tuple<::tpy::Union<Cat, Dog>, int32_t>{Dog(1), 5})) << "\n";
+    std::cout << "dog:" << " " << ::tpyapp::main::read_second(::tpy::tuple_value_to_borrow<std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>>(std::tuple<::tpy::Union<Cat, Dog>, int32_t>{Dog(7), 2})) << "\n" << ::tpy::check_signals;
+    std::cout << "cat:" << " " << ::tpyapp::main::read_second(::tpy::tuple_value_to_borrow<std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>>(std::tuple<::tpy::Union<Cat, Dog>, int32_t>{Cat(9), 3})) << "\n" << ::tpy::check_signals;
+    std::cout << "pass:" << " " << ::tpyapp::main::passthrough(::tpy::tuple_value_to_borrow<std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>>(std::tuple<::tpy::Union<Cat, Dog>, int32_t>{Dog(1), 5})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

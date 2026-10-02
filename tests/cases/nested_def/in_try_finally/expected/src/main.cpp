@@ -37,17 +37,17 @@ void main() {
                 }
                 return std::nullopt;
             };
-            std::cout << g() << "\n";
-            std::cout << g() << "\n";
+            std::cout << g() << "\n" << ::tpy::check_signals;
+            std::cout << g() << "\n" << ::tpy::check_signals;
             r = h(true);
             if ((r.has_value())) {
-                std::cout << ::tpy::print_optional_val(r) << "\n";
+                std::cout << ::tpy::print_optional_val(r) << "\n" << ::tpy::check_signals;
             }
         } catch (...) {
-            std::cout << "done" << "\n";
+            std::cout << "done" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "done" << "\n";
+        std::cout << "done" << "\n" << ::tpy::check_signals;
     }
 }
 

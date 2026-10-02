@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print("held:", h.value())
 void main() {
     Holder<Token> h = Holder<Token>(Token(7));
-    std::cout << "held:" << " " << h.value() << "\n";
+    std::cout << "held:" << " " << h.value() << "\n" << ::tpy::check_signals;
 }
 
 // main()

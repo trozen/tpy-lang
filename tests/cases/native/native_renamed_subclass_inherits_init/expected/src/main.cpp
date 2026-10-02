@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(s.get())
 void main() {
     Sub s = Sub(7);
-    std::cout << s.get() << "\n";
+    std::cout << s.get() << "\n" << ::tpy::check_signals;
 }
 
 // # Empty subclass of an @native class whose C++ name differs from its Python

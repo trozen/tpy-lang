@@ -28,21 +28,21 @@ namespace tpyapp::main {
 //     df: float32 = float32(-3.0)
 //     print(cf % df)          # -2.0
 void main() {
-    std::cout << ::tpy::print_float((::tpy::fmod(7.5, 2.5))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::fmod(7.0, 3.0))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::fmod(-(7.0), -(3.0)))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::fmod(-(1.5), 2.5))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::fmod(1.5, -(2.5)))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::fmod(-(7.0), 3.0))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::fmod(7.0, -(3.0)))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::fmod(-(0.0), 3.0))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::fmod(0.0, -(3.0)))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::fmod(7.5, 2.5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::fmod(7.0, 3.0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::fmod(-(7.0), -(3.0)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::fmod(-(1.5), 2.5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::fmod(1.5, -(2.5)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::fmod(-(7.0), 3.0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::fmod(7.0, -(3.0)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::fmod(-(0.0), 3.0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::fmod(0.0, -(3.0)))) << "\n" << ::tpy::check_signals;
     float af = -(7.0f);
     float bf = 3.0f;
-    std::cout << ::tpy::print_float(static_cast<double>((::tpy::fmod_f32(af, bf)))) << "\n";
+    std::cout << ::tpy::print_float(static_cast<double>((::tpy::fmod_f32(af, bf)))) << "\n" << ::tpy::check_signals;
     float cf = 7.0f;
     float df = -(3.0f);
-    std::cout << ::tpy::print_float(static_cast<double>((::tpy::fmod_f32(cf, df)))) << "\n";
+    std::cout << ::tpy::print_float(static_cast<double>((::tpy::fmod_f32(cf, df)))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

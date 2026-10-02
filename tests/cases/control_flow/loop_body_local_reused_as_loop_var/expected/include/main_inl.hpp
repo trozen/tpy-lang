@@ -34,7 +34,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
             auto __end_0 = __obj_0.end();
             for (; __beg_0 != __end_0; ++__beg_0) {
                 n = *__beg_0;
-                std::cout << "gen in" << " " << n << "\n";
+                std::cout << "gen in" << " " << n << "\n" << ::tpy::check_signals;
             }
             __state = S_RESUME_1;
             return n;
@@ -83,7 +83,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_two_siblings::__ne
             auto __end_1 = __obj_1.end();
             for (; __beg_1 != __end_1; ++__beg_1) {
                 n = *__beg_1;
-                std::cout << "gen_two_siblings in" << " " << n << "\n";
+                std::cout << "gen_two_siblings in" << " " << n << "\n" << ::tpy::check_signals;
             }
             __state = S_RESUME_1;
             return n;
@@ -120,7 +120,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_unpack_body::__nex
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             n = *__beg_1;
-            std::cout << "gen_unpack_body in" << " " << n << "\n";
+            std::cout << "gen_unpack_body in" << " " << n << "\n" << ::tpy::check_signals;
         }
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(n, m));

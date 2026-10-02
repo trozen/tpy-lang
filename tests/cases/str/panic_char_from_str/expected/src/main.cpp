@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     std::string_view s = "hello";
     char c = ::tpy::char_from_str(s);
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
 }
 
 // main()

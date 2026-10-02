@@ -43,7 +43,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        std::cout << k << " " << ::tpy::__getitem__(doubled, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(doubled, k) << "\n" << ::tpy::check_signals;
     }
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"x", 10}, std::tuple<std::string, int32_t>{"y", 20}, std::tuple<std::string, int32_t>{"z", 30}};
     ::tpy::ordered_map<std::string, int32_t> result = ({
@@ -59,9 +59,9 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__getitem__(result, "x") << "\n";
-    std::cout << ::tpy::__getitem__(result, "y") << "\n";
-    std::cout << ::tpy::__getitem__(result, "z") << "\n";
+    std::cout << ::tpy::__getitem__(result, "x") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(result, "y") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(result, "z") << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::string> swapped = ({
         ::tpy::ordered_map<int32_t, std::string> __result;
         auto __obj_3 = ::tpy::dict_items(prices);
@@ -75,9 +75,9 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__getitem__(swapped, 3) << "\n";
-    std::cout << ::tpy::__getitem__(swapped, 1) << "\n";
-    std::cout << ::tpy::__getitem__(swapped, 5) << "\n";
+    std::cout << ::tpy::__getitem__(swapped, 3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(swapped, 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(swapped, 5) << "\n" << ::tpy::check_signals;
 }
 
 // main()

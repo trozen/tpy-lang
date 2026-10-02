@@ -14,11 +14,11 @@ namespace tpyapp::main {
 //     print(a(32))
 void main() {
     Doubler d = Doubler();
-    std::cout << d.__call__(5) << "\n";
-    std::cout << d.__call__(100) << "\n";
+    std::cout << d.__call__(5) << "\n" << ::tpy::check_signals;
+    std::cout << d.__call__(100) << "\n" << ::tpy::check_signals;
     Adder a = Adder(10);
-    std::cout << a.__call__(5) << "\n";
-    std::cout << a.__call__(32) << "\n";
+    std::cout << a.__call__(5) << "\n" << ::tpy::check_signals;
+    std::cout << a.__call__(32) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void test_list_inferred() {
     std::vector<double> xs = {1.5, 2.5, 3.5};
     xs.push_back(4.5);
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_annotated_float32() -> None:
@@ -19,7 +19,7 @@ void test_list_inferred() {
 //     print(xs)
 void test_list_annotated_float32() {
     std::vector<float> xs = {1.0, 2.0, 3.0};
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict_inferred() -> None:
@@ -27,7 +27,7 @@ void test_list_annotated_float32() {
 //     print(d)
 void test_dict_inferred() {
     ::tpy::ordered_map<std::string, double> d = ::tpy::ordered_map<std::string, double>({{"a", 1.5}, {"b", 2.5}});
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
 }
 
 // def test_set_inferred() -> None:
@@ -35,7 +35,7 @@ void test_dict_inferred() {
 //     print(s)
 void test_set_inferred() {
     ::tpy::ordered_set<double> s = ::tpy::ordered_set<double>({1.5, 2.5, 3.5});
-    std::cout << ::tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
 }
 
 // def test_ternary_float_literal() -> None:
@@ -45,7 +45,7 @@ void test_set_inferred() {
 void test_ternary_float_literal() {
     float x = 1.0f;
     float y = ((true) ? (x) : (2.0f));
-    std::cout << ::tpy::print_float(static_cast<double>(y)) << "\n";
+    std::cout << ::tpy::print_float(static_cast<double>(y)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_annotated_float64() -> None:
@@ -53,7 +53,7 @@ void test_ternary_float_literal() {
 //     print(b)
 void test_annotated_float64() {
     double b = 5.0;
-    std::cout << ::tpy::print_float(b) << "\n";
+    std::cout << ::tpy::print_float(b) << "\n" << ::tpy::check_signals;
 }
 
 // test_list_inferred()

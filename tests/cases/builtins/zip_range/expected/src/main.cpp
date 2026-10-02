@@ -26,7 +26,7 @@ void main() {
             const auto& __tup_1 = __for_tup_0;
             int32_t i = std::get<0>(__tup_1);
             std::string_view name = std::get<1>(__tup_1);
-            std::cout << i << " " << name << "\n";
+            std::cout << i << " " << name << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -39,7 +39,7 @@ void main() {
             const auto& __tup_2 = __for_tup_1;
             int32_t a = std::get<0>(__tup_2);
             int32_t b = std::get<1>(__tup_2);
-            std::cout << a << " " << b << "\n";
+            std::cout << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
 }

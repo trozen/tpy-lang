@@ -76,7 +76,7 @@ std::string first_of(const std::tuple<std::string, std::string>& src) {
     std::string_view x = std::get<0>(__tup_1);
     std::string_view y = std::get<1>(__tup_1);
     std::vector<std::string> xs = {std::string(x), std::string(y)};
-    std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << "\n";
+    std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << "\n" << ::tpy::check_signals;
     return ::tpy::BigInt(::tpy::__len__(xs));
 }
 
@@ -122,7 +122,7 @@ std::string accumulate(const std::tuple<std::string, std::string>& t) {
         const ::tpy::BigInt& num = std::get<1>(__tup_1);
         seen.push_back(std::string(name));
     }
-    std::cout << ::tpy::__getitem__(seen, 0) << " " << ::tpy::__getitem__(seen, 1) << "\n";
+    std::cout << ::tpy::__getitem__(seen, 0) << " " << ::tpy::__getitem__(seen, 1) << "\n" << ::tpy::check_signals;
     return ::tpy::BigInt(::tpy::__len__(seen));
 }
 
@@ -140,15 +140,15 @@ std::string accumulate(const std::tuple<std::string, std::string>& t) {
 void main() {
     std::tuple<std::string, std::string> src = std::tuple<std::string, std::string>{"ab", "c"};
     std::tuple<::tpy::Bytes, ::tpy::Bytes> bsrc = std::tuple<::tpy::Bytes, ::tpy::Bytes>{::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)};
-    std::cout << ::tpyapp::main::first_of(src) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpyapp::main::first_bytes(bsrc)) << "\n";
-    std::cout << ::tpyapp::main::bytes_elements(bsrc) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpyapp::main::bytes_accumulate(bsrc)) << "\n";
-    std::cout << ::tpyapp::main::elements(src) << "\n";
-    std::cout << ::tpyapp::main::own_arg(src) << "\n";
-    std::cout << ::tpyapp::main::accumulate(src) << "\n";
+    std::cout << ::tpyapp::main::first_of(src) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpyapp::main::first_bytes(bsrc)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::bytes_elements(bsrc) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpyapp::main::bytes_accumulate(bsrc)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::elements(src) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::own_arg(src) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::accumulate(src) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<std::string, ::tpy::BigInt>> __tmp_1 = {std::tuple<std::string, ::tpy::BigInt>{"a", ::tpy::BigInt(1)}, std::tuple<std::string, ::tpy::BigInt>{"b", ::tpy::BigInt(2)}};
-    std::cout << ::tpyapp::main::collect(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::collect(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

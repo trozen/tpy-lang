@@ -14,7 +14,7 @@ int32_t add(int32_t a, int32_t b) {
 // def main() -> None:
 //     print(add(2, 3))
 void main() {
-    std::cout << ::tpyapp::main::add(2, 3) << "\n";
+    std::cout << ::tpyapp::main::add(2, 3) << "\n" << ::tpy::check_signals;
 }
 
 // # A @function_macro runs at compile time on the decorated function: it reads

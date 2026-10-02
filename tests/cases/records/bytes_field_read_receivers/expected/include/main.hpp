@@ -281,7 +281,7 @@ inline Runner::Runner(Outer&& o) : o(std::move(o)) {}
 //     return self.o.inner.tag  # tpyc: ok
 inline ::tpy::Bytes Runner::run() const {
     ::tpy::Bytes tg = this->o.inner.tag;
-    std::cout << "method" << " " << ::tpy::BytesPrinter(tg) << " " << ::tpy::print_bool((this->o.mid.inner.tag == ::tpy::bytes_literal("t2", 2))) << "\n";
+    std::cout << "method" << " " << ::tpy::BytesPrinter(tg) << " " << ::tpy::print_bool((this->o.mid.inner.tag == ::tpy::bytes_literal("t2", 2))) << "\n" << ::tpy::check_signals;
     return this->o.inner.tag;
 }
 
@@ -292,7 +292,7 @@ inline ::tpy::Bytes Runner::run() const {
 inline Snap::Snap(const Outer& o) {
     ::tpy::Bytes tg = o.inner.tag;
     this->n = ::tpyapp::main::take(tg);
-    std::cout << "ctor" << " " << ::tpy::BytesPrinter(tg) << " " << ::tpy::BytesPrinter(o.mid.inner.tag) << "\n";
+    std::cout << "ctor" << " " << ::tpy::BytesPrinter(tg) << " " << ::tpy::BytesPrinter(o.mid.inner.tag) << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self) -> None:

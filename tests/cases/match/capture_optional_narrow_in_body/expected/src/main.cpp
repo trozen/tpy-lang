@@ -22,10 +22,10 @@ void describe(::tpy::Union<const Build*, const Test*> s) {
         auto& t = __case_0.target;
         auto& j = __case_0.jobs;
         if ((t.has_value())) {
-            std::cout << (::tpy::str_concat("target=", (*t))) << "\n";
+            std::cout << (::tpy::str_concat("target=", (*t))) << "\n" << ::tpy::check_signals;
         }
         if ((j.has_value())) {
-            std::cout << (::tpy::str_concat("jobs=", (*j))) << "\n";
+            std::cout << (::tpy::str_concat("jobs=", (*j))) << "\n" << ::tpy::check_signals;
         }
         break;
     }
@@ -33,7 +33,7 @@ void describe(::tpy::Union<const Build*, const Test*> s) {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         auto& f = __case_1.filter_;
         if ((f.has_value())) {
-            std::cout << (::tpy::str_concat("filter=", (*f))) << "\n";
+            std::cout << (::tpy::str_concat("filter=", (*f))) << "\n" << ::tpy::check_signals;
         }
         break;
     }

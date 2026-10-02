@@ -31,8 +31,8 @@ std::tuple<int32_t, int32_t, int32_t> get_triple() {
 //     print(lo)
 //     print(hi)
 void use_globals() {
-    std::cout << lo << "\n";
-    std::cout << hi << "\n";
+    std::cout << lo << "\n" << ::tpy::check_signals;
+    std::cout << hi << "\n" << ::tpy::check_signals;
 }
 
 // # Unpack from function call
@@ -66,19 +66,19 @@ void __tpy_init() {
     auto __tup_1 = ::tpyapp::main::get_pair();
     a = std::get<0>(__tup_1);
     b = std::get<1>(__tup_1);
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
     int32_t __unpack_0_0 = 100;
     int32_t __unpack_0_1 = 200;
     x = __unpack_0_0;
     y = __unpack_0_1;
-    std::cout << x << "\n";
-    std::cout << y << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
+    std::cout << y << "\n" << ::tpy::check_signals;
     auto __tup_2 = ::tpyapp::main::get_triple();
     first = std::get<0>(__tup_2);
     last = std::get<2>(__tup_2);
-    std::cout << first << "\n";
-    std::cout << last << "\n";
+    std::cout << first << "\n" << ::tpy::check_signals;
+    std::cout << last << "\n" << ::tpy::check_signals;
     int32_t __unpack_1_0 = 0;
     int32_t __unpack_1_1 = 99;
     lo = __unpack_1_0;
@@ -88,8 +88,8 @@ void __tpy_init() {
     int32_t __unpack_2_1 = 99;
     LO = __unpack_2_0;
     HI = __unpack_2_1;
-    std::cout << LO << "\n";
-    std::cout << HI << "\n";
+    std::cout << LO << "\n" << ::tpy::check_signals;
+    std::cout << HI << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

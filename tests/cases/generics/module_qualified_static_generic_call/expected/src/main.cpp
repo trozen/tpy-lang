@@ -14,8 +14,8 @@ int32_t use(int32_t x, int32_t y) {
 //     print(use(5, 6), use(9, 2))
 //     print(helpers.Util.second("a", "b"))
 void main() {
-    std::cout << ::tpyapp::main::use(5, 6) << " " << ::tpyapp::main::use(9, 2) << "\n";
-    std::cout << ::tpyapp::helpers::Util::second<std::string>("a", "b") << "\n";
+    std::cout << ::tpyapp::main::use(5, 6) << " " << ::tpyapp::main::use(9, 2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::helpers::Util::second<std::string>("a", "b") << "\n" << ::tpy::check_signals;
 }
 
 // # A generic STATIC method called through its module (`mod.Cls.m(args)`): the

@@ -13,13 +13,13 @@ namespace tpyapp::main {
 //     print(c.sum_with_base(*nums))
 void main() {
     Calculator c = Calculator(100);
-    std::cout << c.sum_with_base(::tpy::varargs<const int32_t>()) << "\n";
+    std::cout << c.sum_with_base(::tpy::varargs<const int32_t>()) << "\n" << ::tpy::check_signals;
     std::array<const int32_t, 1> __tmp_1{1};
-    std::cout << c.sum_with_base(::tpy::varargs<const int32_t>(__tmp_1)) << "\n";
+    std::cout << c.sum_with_base(::tpy::varargs<const int32_t>(__tmp_1)) << "\n" << ::tpy::check_signals;
     std::array<const int32_t, 3> __tmp_2{1, 2, 3};
-    std::cout << c.sum_with_base(::tpy::varargs<const int32_t>(__tmp_2)) << "\n";
+    std::cout << c.sum_with_base(::tpy::varargs<const int32_t>(__tmp_2)) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> nums = {10, 20, 30};
-    std::cout << c.sum_with_base(::tpy::varargs<const int32_t>(::tpy::as_span(nums))) << "\n";
+    std::cout << c.sum_with_base(::tpy::varargs<const int32_t>(::tpy::as_span(nums))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

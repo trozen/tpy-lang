@@ -18,14 +18,14 @@ namespace tpyapp::main {
 //     # chain: slice -> rstrip -> upper
 //     print(b"hello\x00\x00"[0:7].rstrip(b"\x00").upper())  # b'HELLO'
 void main() {
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("hello", 5))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("Hello World", 11))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("ALREADY", 7))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("123abc", 6))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("hello", 5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("Hello World", 11))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("ALREADY", 7))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("123abc", 6))) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("mixed Case", 10));
-    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_upper(ba)) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_slice(::tpy::bytes_literal_owned("hello world", 11), ::tpy::BasicSlice{0, 5}))) << "\n";
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_rstrip_chars_view(::tpy::bytes_slice(::tpy::bytes_literal_owned("hello\000\000", 7), ::tpy::BasicSlice{0, 7}), ::tpy::bytes_literal("\000", 1)))) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_upper(ba)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_slice(::tpy::bytes_literal_owned("hello world", 11), ::tpy::BasicSlice{0, 5}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_rstrip_chars_view(::tpy::bytes_slice(::tpy::bytes_literal_owned("hello\000\000", 7), ::tpy::BasicSlice{0, 7}), ::tpy::bytes_literal("\000", 1)))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

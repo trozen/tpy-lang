@@ -46,7 +46,7 @@ void main() {
     Point pt = Point(1, 2);
     std::array<Point, 2> pts = {Point(1, 2), Point(3, 4)};
     Point& q = ::tpyapp::main::identity(pt);
-    std::cout << q.x << "\n";
+    std::cout << q.x << "\n" << ::tpy::check_signals;
     Holder h = Holder(pt);
     h.p = ::tpyapp::main::identity(pt);
     ::tpy::__setitem__(pts, 0, ::tpyapp::main::identity(::tpy::__getitem__(pts, 1)));
@@ -57,8 +57,8 @@ void main() {
     Holder h2 = Holder(pt);
     h.p = h2.p;
     h.p = ::tpy::__getitem__(pts, 0);
-    std::cout << h.p.x << "\n";
-    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
+    std::cout << h.p.x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

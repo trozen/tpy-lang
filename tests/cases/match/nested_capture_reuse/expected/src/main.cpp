@@ -64,10 +64,10 @@ std::string relabel(const Cat& a, const Cat& b) {
 void main() {
     Cat __tmp_1 = Cat(::tpy::BigInt(1));
     Cat __tmp_2 = Cat(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::pick(__tmp_1, __tmp_2) << "\n";
+    std::cout << ::tpyapp::main::pick(__tmp_1, __tmp_2) << "\n" << ::tpy::check_signals;
     Cat __tmp_3 = Cat(::tpy::BigInt(1));
     Cat __tmp_4 = Cat(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::relabel(__tmp_3, __tmp_4) << "\n";
+    std::cout << ::tpyapp::main::relabel(__tmp_3, __tmp_4) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //     print(h.count_str())
 void main() {
     Holder h = Holder();
-    std::cout << h.scan_dict() << "\n";
-    std::cout << h.sum_list() << "\n";
-    std::cout << h.sum_set() << "\n";
-    std::cout << h.count_str() << "\n";
+    std::cout << h.scan_dict() << "\n" << ::tpy::check_signals;
+    std::cout << h.sum_list() << "\n" << ::tpy::check_signals;
+    std::cout << h.sum_set() << "\n" << ::tpy::check_signals;
+    std::cout << h.count_str() << "\n" << ::tpy::check_signals;
 }
 
 // main()

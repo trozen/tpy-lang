@@ -102,7 +102,7 @@ inline void Sink::fill(int32_t n) {
         goto __after_try_1;
         // except E:
         __except_1:;
-        std::cout << "fill error" << "\n";
+        std::cout << "fill error" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }

@@ -56,9 +56,9 @@ void main() {
     hc.sock = std::move(a);
     ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> conn = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(hc));
     ::tpystd::http::client::HTTPResponse resp = ::tpystd::urllib::request::_urlopen("http://api.test:8002/health", std::nullopt, std::nullopt, nullptr, std::move(conn));
-    std::cout << resp.status << " " << resp.reason << "\n";
-    std::cout << ::tpy::BytesPrinter(resp.read()) << "\n";
-    std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n";
+    std::cout << resp.status << " " << resp.reason << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(resp.read()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n" << ::tpy::check_signals;
     b.close();
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
@@ -68,31 +68,31 @@ void main() {
     hc2.sock = std::move(c);
     ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> conn2 = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(hc2));
     ::tpystd::http::client::HTTPResponse resp2 = ::tpystd::urllib::request::_urlopen("http://api.test/v1", ::tpy::bytes_literal_owned("{\"x\":1}", 7), std::nullopt, nullptr, std::move(conn2));
-    std::cout << resp2.status << "\n";
-    std::cout << ::tpy::BytesPrinter(d.recv(65536)) << "\n";
+    std::cout << resp2.status << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(d.recv(65536)) << "\n" << ::tpy::check_signals;
     d.close();
     {
         try {
             ::tpystd::urllib::request::urlopen("ftp://api.test/x");
-            std::cout << "no-raise" << "\n";
+            std::cout << "no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::urllib::request::URLError&) {
-            std::cout << "scheme URLError" << "\n";
+            std::cout << "scheme URLError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::urllib::request::urlopen("http:///path");
-            std::cout << "no-raise" << "\n";
+            std::cout << "no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::urllib::request::URLError&) {
-            std::cout << "no-host URLError" << "\n";
+            std::cout << "no-host URLError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::urllib::request::urlopen("http:///path");
-            std::cout << "no-raise" << "\n";
+            std::cout << "no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OSError&) {
-            std::cout << "no-host OSError" << "\n";
+            std::cout << "no-host OSError" << "\n" << ::tpy::check_signals;
         }
     }
 }

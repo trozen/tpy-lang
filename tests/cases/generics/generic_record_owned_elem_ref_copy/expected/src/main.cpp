@@ -14,8 +14,8 @@ void main() {
     std::vector<R> items = {R(::tpy::BigInt(1))};
     Owned<R> held = ::tpyapp::main::grab<R>(items);
     ::tpy::__getitem__(items, 0).n = ::tpy::BigInt(99);
-    std::cout << held.v.n << "\n";
-    std::cout << ::tpy::__getitem__(items, 0).n << "\n";
+    std::cout << held.v.n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(items, 0).n << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -8,7 +8,7 @@ Timer* time{};
 // def f():
 //     print(time.x)
 void f() {
-    std::cout << time->x << "\n";
+    std::cout << time->x << "\n" << ::tpy::check_signals;
 }
 
 // import time

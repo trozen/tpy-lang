@@ -26,13 +26,13 @@ int64_t partial(int64_t a, int64_t b, int64_t c, int64_t d) {
 //     print(partial(5, d=9))
 //     print(partial(5, 6, d=9))
 void main() {
-    std::cout << ::tpyapp::main::combine(1, 10, 20) << "\n";
-    std::cout << ::tpyapp::main::combine(1, 2, 20) << "\n";
-    std::cout << ::tpyapp::main::combine(1, 10, 3) << "\n";
-    std::cout << ::tpyapp::main::combine(1, 2, 3) << "\n";
-    std::cout << ::tpyapp::main::partial(5, 10, 30, 40) << "\n";
-    std::cout << ::tpyapp::main::partial(5, 10, 30, 9) << "\n";
-    std::cout << ::tpyapp::main::partial(5, 6, 30, 9) << "\n";
+    std::cout << ::tpyapp::main::combine(1, 10, 20) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::combine(1, 2, 20) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::combine(1, 10, 3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::combine(1, 2, 3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::partial(5, 10, 30, 40) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::partial(5, 10, 30, 9) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::partial(5, 6, 30, 9) << "\n" << ::tpy::check_signals;
 }
 
 // main()

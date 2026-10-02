@@ -24,7 +24,7 @@ void test_local_keywords() {
     int32_t delete_ = 10;
     int32_t new_ = 20;
     int32_t result = (::tpy::add_check<int32_t>(delete_, new_));
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
 }
 
 // def test_for_loop_keyword() -> None:
@@ -43,7 +43,7 @@ void test_for_loop_keyword() {
         int32_t operator_ = *__beg_0;
         total = (::tpy::add_check<int32_t>(total, operator_));
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def delete(x: int32) -> int32:
@@ -59,11 +59,11 @@ int32_t delete_(int32_t x) {
 //     test_for_loop_keyword()
 //     print(delete(7))
 void main() {
-    std::cout << ::tpyapp::main::get_or_default(5, 42) << "\n";
-    std::cout << ::tpyapp::main::get_or_default(-1, 42) << "\n";
+    std::cout << ::tpyapp::main::get_or_default(5, 42) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::get_or_default(-1, 42) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_local_keywords();
     ::tpyapp::main::test_for_loop_keyword();
-    std::cout << ::tpyapp::main::delete_(7) << "\n";
+    std::cout << ::tpyapp::main::delete_(7) << "\n" << ::tpy::check_signals;
 }
 
 // main()

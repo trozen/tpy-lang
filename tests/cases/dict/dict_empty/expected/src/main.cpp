@@ -13,11 +13,11 @@ namespace tpyapp::main {
 //     print(len(d))
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
-    std::cout << ::tpy::DictPrinter(d) << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(d, "x", 1);
-    std::cout << ::tpy::DictPrinter(d) << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

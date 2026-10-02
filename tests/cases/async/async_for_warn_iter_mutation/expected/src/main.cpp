@@ -117,7 +117,7 @@ __coro_runner runner() {
     }
     case S_JOIN_2: {
         (*src).push(9);
-        std::cout << "post_loop:" << " " << ::tpy::ListPrinter((*src).seen) << "\n";
+        std::cout << "post_loop:" << " " << ::tpy::ListPrinter((*src).seen) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -216,7 +216,7 @@ __coro_post_loop post_loop() {
         continue;
     }
     case S_JOIN_3: {
-        std::cout << "nested:" << " " << ::tpy::ListPrinter((*outer).seen) << " " << ::tpy::ListPrinter((*inner).seen) << "\n";
+        std::cout << "nested:" << " " << ::tpy::ListPrinter((*outer).seen) << " " << ::tpy::ListPrinter((*inner).seen) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -290,7 +290,7 @@ __coro_nested nested() {
         continue;
     }
     case S_JOIN_2: {
-        std::cout << "hop:" << " " << ::tpy::ListPrinter(::tpy::__getitem__(sh.rows, 0).seen) << "\n";
+        std::cout << "hop:" << " " << ::tpy::ListPrinter(::tpy::__getitem__(sh.rows, 0).seen) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -356,7 +356,7 @@ __coro_hop hop(Shelf& sh) {
         continue;
     }
     case S_JOIN_2: {
-        std::cout << "field_hop:" << " " << ::tpy::__len__(sh.one.seen) << "\n";
+        std::cout << "field_hop:" << " " << ::tpy::__len__(sh.one.seen) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -420,7 +420,7 @@ __coro_field_hop field_hop(Shelf& sh) {
         continue;
     }
     case S_JOIN_2: {
-        std::cout << "elem_distinct:" << " " << ::tpy::ListPrinter(::tpy::__getitem__(rows, 1).seen) << "\n";
+        std::cout << "elem_distinct:" << " " << ::tpy::ListPrinter(::tpy::__getitem__(rows, 1).seen) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -484,7 +484,7 @@ __coro_elem_distinct elem_distinct(std::vector<Source>& rows) {
         continue;
     }
     case S_JOIN_2: {
-        std::cout << "elem_unknown:" << " " << ::tpy::ListPrinter(::tpy::__getitem__(rows, i.to_fixed_check<int32_t>()).seen) << "\n";
+        std::cout << "elem_unknown:" << " " << ::tpy::ListPrinter(::tpy::__getitem__(rows, i.to_fixed_check<int32_t>()).seen) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -538,7 +538,7 @@ __coro_elem_unknown elem_unknown(std::vector<Source>& rows, ::tpy::BigInt i) {
         (void)std::move(__r1).value();
         __sub_1.reset();
         rows.push_back(Source(::tpy::BigInt(1)));
-        std::cout << "elem_container:" << " " << x << "\n";
+        std::cout << "elem_container:" << " " << x << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
     }
@@ -560,7 +560,7 @@ __coro_elem_unknown elem_unknown(std::vector<Source>& rows, ::tpy::BigInt i) {
         continue;
     }
     case S_JOIN_2: {
-        std::cout << "elem_container len:" << " " << ::tpy::__len__(rows) << "\n";
+        std::cout << "elem_container len:" << " " << ::tpy::__len__(rows) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -625,7 +625,7 @@ __coro_elem_container elem_container(std::vector<Source>& rows) {
         continue;
     }
     case S_JOIN_2: {
-        std::cout << "ptr_iter:" << " " << ::tpy::ListPrinter(::tpy::__getitem__(feeds, 0).hits) << "\n";
+        std::cout << "ptr_iter:" << " " << ::tpy::ListPrinter(::tpy::__getitem__(feeds, 0).hits) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

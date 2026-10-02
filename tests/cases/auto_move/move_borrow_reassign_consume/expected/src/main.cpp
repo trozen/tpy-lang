@@ -25,9 +25,9 @@ void call_source() {
     b = &(g.itself());
     Bag __tmp_1 = (*b);
     ::tpyapp::main::take(std::move(__tmp_1));
-    std::cout << ::tpy::__len__(g.xs) << "\n";
+    std::cout << ::tpy::__len__(g.xs) << "\n" << ::tpy::check_signals;
     g.xs.push_back(9);
-    std::cout << ::tpy::__len__(g.xs) << "\n";
+    std::cout << ::tpy::__len__(g.xs) << "\n" << ::tpy::check_signals;
 }
 
 // def ternary_source(flag: bool) -> None:
@@ -53,10 +53,10 @@ void ternary_source(bool flag) {
     ::tpyapp::main::take(std::move(__tmp_1));
     if (flag) {
         g.xs.push_back(9);
-        std::cout << ::tpy::__len__(g.xs) << "\n";
+        std::cout << ::tpy::__len__(g.xs) << "\n" << ::tpy::check_signals;
     } else {
         h.xs.push_back(9);
-        std::cout << ::tpy::__len__(h.xs) << "\n";
+        std::cout << ::tpy::__len__(h.xs) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -75,7 +75,7 @@ Token sink(Token&& t) {
 void owned_still_moves() {
     Token t = Token(::tpy::BigInt(7));
     Token out = ::tpyapp::main::sink(std::move(t));
-    std::cout << out.n << "\n";
+    std::cout << out.n << "\n" << ::tpy::check_signals;
 }
 
 // call_source()

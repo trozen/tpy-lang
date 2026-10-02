@@ -19,15 +19,15 @@ namespace tpyapp::main {
 //     print(stack.is_empty())  # True
 void main() {
     Stack<int32_t> stack = Stack<int32_t>();
-    std::cout << ::tpy::print_bool(stack.is_empty()) << "\n";
+    std::cout << ::tpy::print_bool(stack.is_empty()) << "\n" << ::tpy::check_signals;
     stack.push(10);
     stack.push(20);
     stack.push(30);
-    std::cout << ::tpy::print_bool(stack.is_empty()) << "\n";
-    std::cout << stack.pop() << "\n";
-    std::cout << stack.pop() << "\n";
-    std::cout << stack.pop() << "\n";
-    std::cout << ::tpy::print_bool(stack.is_empty()) << "\n";
+    std::cout << ::tpy::print_bool(stack.is_empty()) << "\n" << ::tpy::check_signals;
+    std::cout << stack.pop() << "\n" << ::tpy::check_signals;
+    std::cout << stack.pop() << "\n" << ::tpy::check_signals;
+    std::cout << stack.pop() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(stack.is_empty()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

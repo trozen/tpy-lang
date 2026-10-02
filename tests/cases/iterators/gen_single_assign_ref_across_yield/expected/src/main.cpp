@@ -25,10 +25,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << ::tpy::__getitem__(items, 0).n << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).n << "\n" << ::tpy::check_signals;
 }
 
 // main()

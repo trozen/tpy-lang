@@ -47,7 +47,7 @@ int32_t take(std::tuple<C, const C*>&& t) {
 //     print("arg_quiet", take((C(1), b)))  # tpyc: ok
 void arg_quiet() {
     C b = C(2);
-    std::cout << "arg_quiet" << " " << ::tpyapp::main::take(std::tuple<C, C*>{C(1), &(b)}) << "\n";
+    std::cout << "arg_quiet" << " " << ::tpyapp::main::take(std::tuple<C, C*>{C(1), &(b)}) << "\n" << ::tpy::check_signals;
 }
 
 // def setitem_quiet(c: C) -> None:
@@ -82,7 +82,7 @@ void show(std::string_view tag, const std::tuple<const C*, int32_t>& p) {
     const C* a = std::get<0>(__tup_1);
     int32_t k = std::get<1>(__tup_1);
     if ((a != nullptr)) {
-        std::cout << tag << " " << a->v << " " << k << "\n";
+        std::cout << tag << " " << a->v << " " << k << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -95,10 +95,10 @@ void show(std::string_view tag, const std::tuple<const C*, int32_t>& p) {
 //     print("field_last_use", h.q[1].v)
 void field_quiet(H& h) {
     h.q = ::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{1, C(11)});
-    std::cout << "field_fresh" << " " << std::get<1>(h.q).v << "\n";
+    std::cout << "field_fresh" << " " << std::get<1>(h.q).v << "\n" << ::tpy::check_signals;
     C last = C(12);
     h.q = ::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{2, std::move(last)});
-    std::cout << "field_last_use" << " " << std::get<1>(h.q).v << "\n";
+    std::cout << "field_last_use" << " " << std::get<1>(h.q).v << "\n" << ::tpy::check_signals;
 }
 
 // def local_alias() -> None:
@@ -111,7 +111,7 @@ void local_alias() {
     C c = C(1);
     auto t = std::tuple<int32_t, C*>{1, &(c)};
     std::get<1>(t)->v = 21;
-    std::cout << "local_alias" << " " << c.v << "\n";
+    std::cout << "local_alias" << " " << c.v << "\n" << ::tpy::check_signals;
 }
 
 // def walrus_alias() -> None:
@@ -123,9 +123,9 @@ void local_alias() {
 void walrus_alias() {
     C c = C(1);
     std::tuple<int32_t, C*> u;
-    std::cout << "walrus_alias" << " " << std::get<0>((u = std::tuple<int32_t, C*>{9, &(c)})) << "\n";
+    std::cout << "walrus_alias" << " " << std::get<0>((u = std::tuple<int32_t, C*>{9, &(c)})) << "\n" << ::tpy::check_signals;
     c.v = 99;
-    std::cout << "walrus_alias" << " " << std::get<1>(u)->v << "\n";
+    std::cout << "walrus_alias" << " " << std::get<1>(u)->v << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -161,7 +161,7 @@ void main() {
             std::get<1>(p).v = 777;
         }
     }
-    std::cout << "yield_copy" << " " << src.v << "\n";
+    std::cout << "yield_copy" << " " << src.v << "\n" << ::tpy::check_signals;
     {
         auto __src_2 = ::tpyapp::main::yield_fresh();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -169,7 +169,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "yield_fresh" << " " << std::get<1>(p).v << "\n";
+            std::cout << "yield_fresh" << " " << std::get<1>(p).v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -180,7 +180,7 @@ void main() {
             if (!__r_5.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_5);
             std::get<1>(p).v = 777;
-            std::cout << "yield_last_use" << " " << std::get<1>(p).v << "\n";
+            std::cout << "yield_last_use" << " " << std::get<1>(p).v << "\n" << ::tpy::check_signals;
         }
     }
     C b = C(2);
@@ -194,7 +194,7 @@ void main() {
             std::get<1>(m)->v = 80;
         }
     }
-    std::cout << "yield_mixed_borrow" << " " << b.v << "\n";
+    std::cout << "yield_mixed_borrow" << " " << b.v << "\n" << ::tpy::check_signals;
     {
         auto __src_8 = ::tpyapp::main::yield_values();
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
@@ -202,7 +202,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             const auto& vt = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "yield_values" << " " << std::get<1>(std::get<1>(vt)) << "\n";
+            std::cout << "yield_values" << " " << std::get<1>(std::get<1>(vt)) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpyapp::main::arg_quiet();

@@ -57,19 +57,19 @@ namespace tpyapp::main {
 //     print(len(s))               # 0
 void main() {
     ::tpystd::tplib::fix_str::FixStr<16> s = ::tpystd::tplib::fix_str::FixStr<16>();
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     char h = 'h';
     char i = 'i';
     s.append(h);
     s.append(i);
-    std::cout << ::tpy::__len__(s) << "\n";
-    std::cout << s[0] << "\n";
-    std::cout << s[1] << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
+    std::cout << s[0] << "\n" << ::tpy::check_signals;
+    std::cout << s[1] << "\n" << ::tpy::check_signals;
     char o = 'o';
     ::tpy::__setitem__(s, 1, o);
-    std::cout << s[1] << "\n";
-    std::cout << s.pop() << "\n";
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << s[1] << "\n" << ::tpy::check_signals;
+    std::cout << s.pop() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     char e = 'e';
     char y = 'y';
     s.append(e);
@@ -80,7 +80,7 @@ void main() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         char c = ::tpy::unwrap_ref(*__r_1);
-        std::cout << c << "\n";
+        std::cout << c << "\n" << ::tpy::check_signals;
     }
     auto& __src_2 = s;
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -88,19 +88,19 @@ void main() {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         char c = ::tpy::unwrap_ref(*__r_3);
-        std::cout << c << "\n";
+        std::cout << c << "\n" << ::tpy::check_signals;
     }
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
     std::string greeting = std::string(::tpy::__str__(s));
-    std::cout << greeting << "\n";
-    std::cout << std::format("val={}", ::tpy::__str__(s)) << "\n";
+    std::cout << greeting << "\n" << ::tpy::check_signals;
+    std::cout << std::format("val={}", ::tpy::__str__(s)) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::fix_str::FixStr<16> t = ::tpystd::tplib::fix_str::FixStr<16>(s);
     char b = 'b';
     ::tpy::__setitem__(t, 0, b);
-    std::cout << s[0] << "\n";
-    std::cout << t[0] << "\n";
+    std::cout << s[0] << "\n" << ::tpy::check_signals;
+    std::cout << t[0] << "\n" << ::tpy::check_signals;
     s.clear();
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import FixStr

@@ -22,7 +22,7 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            std::cout << "not reached" << "\n";
+            std::cout << "not reached" << "\n" << ::tpy::check_signals;
             __fin_ran_1 = true;
             this->__finally_0();
             __state = S_JOIN_0;
@@ -62,7 +62,7 @@ namespace tpyapp::main {
 }
 
 void __coro_background::__finally_0() {
-    std::cout << "background cleanup ran" << "\n";
+    std::cout << "background cleanup ran" << "\n" << ::tpy::check_signals;
 }
 
 // async def background() -> None:
@@ -81,7 +81,7 @@ __coro_background background() {
         __state = S_DONE;  // until a yield sets where to resume
         t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::background())));
         { auto __del_sink = std::move(t); }
-        std::cout << "main done" << "\n";
+        std::cout << "main done" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

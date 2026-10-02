@@ -261,10 +261,10 @@ __gen_gen gen(::tpy::Union<const ::tpy::ByteArray*, const std::vector<int32_t>*>
 void main() {
     std::vector<int32_t> xs = {1, 2, 3};
     ::tpy::Union<::tpy::ByteArray*, std::vector<int32_t>*> u{&(xs)};
-    std::cout << "total" << " " << ::tpyapp::main::total(u.as_const()) << "\n";
-    std::cout << "doubled" << " " << ::tpy::ListPrinter(::tpyapp::main::doubled(u.as_const())) << "\n";
-    std::cout << "scaled" << " " << ::tpyapp::main::scaled(u.as_const(), u.as_const()) << "\n";
-    std::cout << "ranged" << " " << ::tpyapp::main::ranged(u.as_const()) << "\n";
+    std::cout << "total" << " " << ::tpyapp::main::total(u.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << "doubled" << " " << ::tpy::ListPrinter(::tpyapp::main::doubled(u.as_const())) << "\n" << ::tpy::check_signals;
+    std::cout << "scaled" << " " << ::tpyapp::main::scaled(u.as_const(), u.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << "ranged" << " " << ::tpyapp::main::ranged(u.as_const()) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen(u.as_const());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -272,14 +272,14 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen" << " " << v << "\n";
+            std::cout << "gen" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     ::tpy::Union<::tpy::ByteArray*, std::vector<int32_t>*> b{&(ba)};
-    std::cout << "other arm" << " " << ::tpyapp::main::total(b.as_const()) << " " << ::tpyapp::main::scaled(b.as_const(), b.as_const()) << " " << ::tpyapp::main::ranged(b.as_const()) << "\n";
+    std::cout << "other arm" << " " << ::tpyapp::main::total(b.as_const()) << " " << ::tpyapp::main::scaled(b.as_const(), b.as_const()) << " " << ::tpyapp::main::ranged(b.as_const()) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(xs, 0, 10);
-    std::cout << "after" << " " << ::tpyapp::main::total(u.as_const()) << "\n";
+    std::cout << "after" << " " << ::tpyapp::main::total(u.as_const()) << "\n" << ::tpy::check_signals;
 }
 
 

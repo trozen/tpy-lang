@@ -19,11 +19,11 @@ namespace tpyapp::main {
 void main() {
     ::tpy::UninitHeapStorage<int32_t> s = ::tpy::UninitHeapStorage<int32_t>(1);
     s.init0(42);
-    std::cout << "var_decl:" << " " << s.load0() << "\n";
+    std::cout << "var_decl:" << " " << s.load0() << "\n" << ::tpy::check_signals;
     s.drop0();
     Wrapper<int32_t> w = Wrapper<int32_t>(99);
-    std::cout << "field:" << " " << w.get() << "\n";
-    std::cout << "done" << "\n";
+    std::cout << "field:" << " " << w.get() << "\n" << ::tpy::check_signals;
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.mem import UninitHeapStorage

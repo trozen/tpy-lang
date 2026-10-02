@@ -22,9 +22,9 @@ void __tpy_init() {
     a = 5;
     b = 3.14;
     c = 1.0;
-    std::cout << ::tpy::print_float(a) << "\n";
-    std::cout << ::tpy::print_float(b) << "\n";
-    std::cout << ::tpy::print_float(c) << "\n";
+    std::cout << ::tpy::print_float(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(c) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

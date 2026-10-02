@@ -345,32 +345,32 @@ int64_t side_effect(Tally& t, bool flag) {
 //     print("side_effect_taken", side_effect(t, True), t.n)
 void main() {
     Bx bx = Bx();
-    std::cout << "free_call" << " " << ::tpyapp::main::free_call(false) << " " << ::tpyapp::main::free_call(true) << "\n";
-    std::cout << "user_ctor" << " " << ::tpyapp::main::user_ctor() << "\n";
-    std::cout << "generic_ctor" << " " << ::tpyapp::main::generic_ctor(false) << " " << ::tpyapp::main::generic_ctor(true) << "\n";
-    std::cout << "free_type_param" << " " << ::tpyapp::main::free_type_param(false) << " " << ::tpyapp::main::free_type_param(true) << "\n";
-    std::cout << "free_generator" << " " << ::tpyapp::main::free_generator(false) << " " << ::tpyapp::main::free_generator(true) << "\n";
-    std::cout << "method_generator" << " " << ::tpyapp::main::method_generator(bx, false) << " " << ::tpyapp::main::method_generator(bx, true) << "\n";
-    std::cout << "protocol_union" << " " << ::tpyapp::main::protocol_union(false) << " " << ::tpyapp::main::protocol_union(true) << "\n";
-    std::cout << "narrow_int" << " " << ::tpy::print_bool(::tpyapp::main::narrow_int(false)) << " " << ::tpy::print_bool(::tpyapp::main::narrow_int(true)) << "\n";
-    std::cout << "narrow_float" << " " << ::tpy::print_float(static_cast<double>(::tpyapp::main::narrow_float(false))) << " " << ::tpy::print_float(static_cast<double>(::tpyapp::main::narrow_float(true))) << "\n";
-    std::cout << "fixed_array" << " " << ::tpyapp::main::fixed_array(false) << " " << ::tpyapp::main::fixed_array(true) << "\n";
-    std::cout << "nested_list" << " " << ::tpyapp::main::nested_list(false) << " " << ::tpyapp::main::nested_list(true) << "\n";
-    std::cout << "same_width_int" << " " << ::tpyapp::main::same_width_int(false) << " " << ::tpyapp::main::same_width_int(true) << "\n";
-    std::cout << "same_width_float" << " " << ::tpy::print_float(::tpyapp::main::same_width_float(false)) << " " << ::tpy::print_float(::tpyapp::main::same_width_float(true)) << "\n";
-    std::cout << "empty_literal" << " " << ::tpyapp::main::empty_literal(true) << "\n";
-    std::cout << "repeat_literal" << " " << ::tpyapp::main::repeat_literal(true, 2) << "\n";
-    std::cout << "dict_literal" << " " << ::tpyapp::main::dict_literal(true) << "\n";
-    std::cout << "set_literal" << " " << ::tpyapp::main::set_literal(true) << "\n";
-    std::cout << "and_rhs" << " " << ::tpy::print_bool(::tpyapp::main::and_rhs(false)) << " " << ::tpy::print_bool(::tpyapp::main::and_rhs(true)) << "\n";
-    std::cout << "or_rhs" << " " << ::tpy::print_bool(::tpyapp::main::or_rhs(true)) << " " << ::tpy::print_bool(::tpyapp::main::or_rhs(false)) << "\n";
-    std::cout << "ternary_then" << " " << ::tpyapp::main::ternary_then(false) << " " << ::tpyapp::main::ternary_then(true) << "\n";
-    std::cout << "ternary_else" << " " << ::tpyapp::main::ternary_else(true) << " " << ::tpyapp::main::ternary_else(false) << "\n";
-    std::cout << "chained" << " " << ::tpy::print_bool(::tpyapp::main::chained(5, 1)) << " " << ::tpy::print_bool(::tpyapp::main::chained(-5, -1)) << "\n";
-    std::cout << "relocated_decl" << " " << ::tpyapp::main::relocated_decl(false) << " " << ::tpyapp::main::relocated_decl(true) << "\n";
+    std::cout << "free_call" << " " << ::tpyapp::main::free_call(false) << " " << ::tpyapp::main::free_call(true) << "\n" << ::tpy::check_signals;
+    std::cout << "user_ctor" << " " << ::tpyapp::main::user_ctor() << "\n" << ::tpy::check_signals;
+    std::cout << "generic_ctor" << " " << ::tpyapp::main::generic_ctor(false) << " " << ::tpyapp::main::generic_ctor(true) << "\n" << ::tpy::check_signals;
+    std::cout << "free_type_param" << " " << ::tpyapp::main::free_type_param(false) << " " << ::tpyapp::main::free_type_param(true) << "\n" << ::tpy::check_signals;
+    std::cout << "free_generator" << " " << ::tpyapp::main::free_generator(false) << " " << ::tpyapp::main::free_generator(true) << "\n" << ::tpy::check_signals;
+    std::cout << "method_generator" << " " << ::tpyapp::main::method_generator(bx, false) << " " << ::tpyapp::main::method_generator(bx, true) << "\n" << ::tpy::check_signals;
+    std::cout << "protocol_union" << " " << ::tpyapp::main::protocol_union(false) << " " << ::tpyapp::main::protocol_union(true) << "\n" << ::tpy::check_signals;
+    std::cout << "narrow_int" << " " << ::tpy::print_bool(::tpyapp::main::narrow_int(false)) << " " << ::tpy::print_bool(::tpyapp::main::narrow_int(true)) << "\n" << ::tpy::check_signals;
+    std::cout << "narrow_float" << " " << ::tpy::print_float(static_cast<double>(::tpyapp::main::narrow_float(false))) << " " << ::tpy::print_float(static_cast<double>(::tpyapp::main::narrow_float(true))) << "\n" << ::tpy::check_signals;
+    std::cout << "fixed_array" << " " << ::tpyapp::main::fixed_array(false) << " " << ::tpyapp::main::fixed_array(true) << "\n" << ::tpy::check_signals;
+    std::cout << "nested_list" << " " << ::tpyapp::main::nested_list(false) << " " << ::tpyapp::main::nested_list(true) << "\n" << ::tpy::check_signals;
+    std::cout << "same_width_int" << " " << ::tpyapp::main::same_width_int(false) << " " << ::tpyapp::main::same_width_int(true) << "\n" << ::tpy::check_signals;
+    std::cout << "same_width_float" << " " << ::tpy::print_float(::tpyapp::main::same_width_float(false)) << " " << ::tpy::print_float(::tpyapp::main::same_width_float(true)) << "\n" << ::tpy::check_signals;
+    std::cout << "empty_literal" << " " << ::tpyapp::main::empty_literal(true) << "\n" << ::tpy::check_signals;
+    std::cout << "repeat_literal" << " " << ::tpyapp::main::repeat_literal(true, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "dict_literal" << " " << ::tpyapp::main::dict_literal(true) << "\n" << ::tpy::check_signals;
+    std::cout << "set_literal" << " " << ::tpyapp::main::set_literal(true) << "\n" << ::tpy::check_signals;
+    std::cout << "and_rhs" << " " << ::tpy::print_bool(::tpyapp::main::and_rhs(false)) << " " << ::tpy::print_bool(::tpyapp::main::and_rhs(true)) << "\n" << ::tpy::check_signals;
+    std::cout << "or_rhs" << " " << ::tpy::print_bool(::tpyapp::main::or_rhs(true)) << " " << ::tpy::print_bool(::tpyapp::main::or_rhs(false)) << "\n" << ::tpy::check_signals;
+    std::cout << "ternary_then" << " " << ::tpyapp::main::ternary_then(false) << " " << ::tpyapp::main::ternary_then(true) << "\n" << ::tpy::check_signals;
+    std::cout << "ternary_else" << " " << ::tpyapp::main::ternary_else(true) << " " << ::tpyapp::main::ternary_else(false) << "\n" << ::tpy::check_signals;
+    std::cout << "chained" << " " << ::tpy::print_bool(::tpyapp::main::chained(5, 1)) << " " << ::tpy::print_bool(::tpyapp::main::chained(-5, -1)) << "\n" << ::tpy::check_signals;
+    std::cout << "relocated_decl" << " " << ::tpyapp::main::relocated_decl(false) << " " << ::tpyapp::main::relocated_decl(true) << "\n" << ::tpy::check_signals;
     Tally t = Tally();
-    std::cout << "side_effect_skipped" << " " << ::tpyapp::main::side_effect(t, false) << " " << t.n << "\n";
-    std::cout << "side_effect_taken" << " " << ::tpyapp::main::side_effect(t, true) << " " << t.n << "\n";
+    std::cout << "side_effect_skipped" << " " << ::tpyapp::main::side_effect(t, false) << " " << t.n << "\n" << ::tpy::check_signals;
+    std::cout << "side_effect_taken" << " " << ::tpyapp::main::side_effect(t, true) << " " << t.n << "\n" << ::tpy::check_signals;
 }
 
 

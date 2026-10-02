@@ -34,7 +34,7 @@ std::optional<::tpy::Bytes> maybe_blob(int32_t k) {
 int32_t text_len(int32_t k) {
     std::optional<std::string> s;
     if (((s = ::tpyapp::main::maybe_text(k)).has_value())) {
-        std::cout << ::tpy::print_optional_val(s) << "\n";
+        std::cout << ::tpy::print_optional_val(s) << "\n" << ::tpy::check_signals;
         return ::tpy::__len__((*s));
     }
     return -1;
@@ -104,11 +104,11 @@ int32_t reassigned(int32_t k) {
 //     print(from_blob_param(b"abc"), from_blob_param(None))
 //     print(reassigned(0))
 void main() {
-    std::cout << ::tpyapp::main::text_len(1) << " " << ::tpyapp::main::text_len(0) << "\n";
-    std::cout << ::tpyapp::main::blob_len(1) << " " << ::tpyapp::main::blob_len(0) << "\n";
-    std::cout << ::tpyapp::main::from_text_param("abcd") << " " << ::tpyapp::main::from_text_param(std::nullopt) << "\n";
-    std::cout << ::tpyapp::main::from_blob_param(::tpy::bytes_literal_owned("abc", 3)) << " " << ::tpyapp::main::from_blob_param(std::nullopt) << "\n";
-    std::cout << ::tpyapp::main::reassigned(0) << "\n";
+    std::cout << ::tpyapp::main::text_len(1) << " " << ::tpyapp::main::text_len(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::blob_len(1) << " " << ::tpyapp::main::blob_len(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::from_text_param("abcd") << " " << ::tpyapp::main::from_text_param(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::from_blob_param(::tpy::bytes_literal_owned("abc", 3)) << " " << ::tpyapp::main::from_blob_param(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::reassigned(0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

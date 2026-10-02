@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(SHL, SHR, POW, NESTED, AND_, OR_, XOR)
 //     print(Z)
 void main() {
-    std::cout << SUM << " " << DIFF << " " << PROD << " " << QUOT << " " << MODR << "\n";
-    std::cout << SHL << " " << SHR << " " << POW << " " << NESTED << " " << AND_ << " " << OR_ << " " << XOR << "\n";
-    std::cout << Z << "\n";
+    std::cout << SUM << " " << DIFF << " " << PROD << " " << QUOT << " " << MODR << "\n" << ::tpy::check_signals;
+    std::cout << SHL << " " << SHR << " " << POW << " " << NESTED << " " << AND_ << " " << OR_ << " " << XOR << "\n" << ::tpy::check_signals;
+    std::cout << Z << "\n" << ::tpy::check_signals;
 }
 
 // main()

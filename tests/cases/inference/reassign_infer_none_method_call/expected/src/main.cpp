@@ -19,7 +19,7 @@ void __tpy_init() {
     b = &__global_slot_1;
     x = std::nullopt;
     x = b->get();
-    std::cout << ::tpy::print_optional_val(x) << "\n";
+    std::cout << ::tpy::print_optional_val(x) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

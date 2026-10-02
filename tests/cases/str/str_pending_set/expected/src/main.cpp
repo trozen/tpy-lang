@@ -34,8 +34,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::SetPrinter(::tpyapp::main::in_set()) << "\n";
-    std::cout << ::tpy::SetPrinter(::tpyapp::main::in_set_comp()) << "\n";
+    std::cout << ::tpy::SetPrinter(::tpyapp::main::in_set()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::SetPrinter(::tpyapp::main::in_set_comp()) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -28,7 +28,7 @@ void read_dicts() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& d = ::tpy::unwrap_ref(*__r_1);
-            std::cout << ::tpy::__getitem__(d, "k") << "\n";
+            std::cout << ::tpy::__getitem__(d, "k") << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -45,8 +45,8 @@ void read_list_normalized() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& xs = ::tpy::unwrap_ref(*__r_1);
-            std::cout << ::tpy::__getitem__(xs, -1) << "\n";
-            std::cout << ::tpy::__getitem__(xs, 0) << "\n";
+            std::cout << ::tpy::__getitem__(xs, -1) << "\n" << ::tpy::check_signals;
+            std::cout << ::tpy::__getitem__(xs, 0) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -76,10 +76,10 @@ void list_oob_raises() {
             const auto& xs = ::tpy::unwrap_ref(*__r_1);
             {
                 try {
-                    std::cout << ::tpy::__getitem__(xs, 99) << "\n";
-                    std::cout << "FAIL: no IndexError" << "\n";
+                    std::cout << ::tpy::__getitem__(xs, 99) << "\n" << ::tpy::check_signals;
+                    std::cout << "FAIL: no IndexError" << "\n" << ::tpy::check_signals;
                 } catch (const ::tpy::IndexError&) {
-                    std::cout << "got IndexError" << "\n";
+                    std::cout << "got IndexError" << "\n" << ::tpy::check_signals;
                 }
             }
         }
@@ -105,10 +105,10 @@ void dict_missing_raises() {
             const auto& d = ::tpy::unwrap_ref(*__r_1);
             {
                 try {
-                    std::cout << ::tpy::__getitem__(d, "absent") << "\n";
-                    std::cout << "FAIL: no KeyError" << "\n";
+                    std::cout << ::tpy::__getitem__(d, "absent") << "\n" << ::tpy::check_signals;
+                    std::cout << "FAIL: no KeyError" << "\n" << ::tpy::check_signals;
                 } catch (const ::tpy::KeyError&) {
-                    std::cout << "got KeyError" << "\n";
+                    std::cout << "got KeyError" << "\n" << ::tpy::check_signals;
                 }
             }
             break;
@@ -130,15 +130,15 @@ void dict_missing_raises() {
 //     dict_missing_raises()
 void main() {
     ::tpyapp::main::read_dicts();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_list_normalized();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::string> m = ::tpy::ordered_map<std::string, std::string>();
     ::tpy::__setitem__(m, "k", "ro");
-    std::cout << ::tpyapp::main::read_ro_dict(m) << "\n";
-    std::cout << "---" << "\n";
+    std::cout << ::tpyapp::main::read_ro_dict(m) << "\n" << ::tpy::check_signals;
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::list_oob_raises();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::dict_missing_raises();
 }
 

@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(o.tag)
 void main() {
     Owner o = Owner(1, 42);
-    std::cout << o.h.id << "\n";
-    std::cout << o.tag << "\n";
+    std::cout << o.h.id << "\n" << ::tpy::check_signals;
+    std::cout << o.tag << "\n" << ::tpy::check_signals;
 }
 
 // main()

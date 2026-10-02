@@ -154,15 +154,15 @@ __gen_counts_ordered counts_ordered(const Cat& c, bool k) {
 void main() {
     Cat __tmp_1 = Cat(3);
     Cat __tmp_2 = Cat(5);
-    std::cout << "plain:" << " " << ::tpyapp::main::plain(__tmp_1) << " " << ::tpyapp::main::plain(__tmp_2) << "\n";
+    std::cout << "plain:" << " " << ::tpyapp::main::plain(__tmp_1) << " " << ::tpyapp::main::plain(__tmp_2) << "\n" << ::tpy::check_signals;
     Cat __tmp_3 = Cat(3);
     Cat __tmp_4 = Cat(5);
     Cat __tmp_5 = Cat(7);
-    std::cout << "nonfinal:" << " " << ::tpyapp::main::nonfinal(__tmp_3) << " " << ::tpyapp::main::nonfinal(__tmp_4) << " " << ::tpyapp::main::nonfinal(__tmp_5) << "\n";
+    std::cout << "nonfinal:" << " " << ::tpyapp::main::nonfinal(__tmp_3) << " " << ::tpyapp::main::nonfinal(__tmp_4) << " " << ::tpyapp::main::nonfinal(__tmp_5) << "\n" << ::tpy::check_signals;
     Cat __tmp_6 = Cat(3);
     Cat __tmp_7 = Cat(5);
-    std::cout << "opt_inner:" << " " << ::tpyapp::main::opt_inner(nullptr) << " " << ::tpyapp::main::opt_inner(&(__tmp_6)) << " " << ::tpyapp::main::opt_inner(&(__tmp_7)) << "\n";
-    std::cout << "method:" << " " << Shelter(Cat(3)).status() << " " << Shelter(Cat(5)).status() << "\n";
+    std::cout << "opt_inner:" << " " << ::tpyapp::main::opt_inner(nullptr) << " " << ::tpyapp::main::opt_inner(&(__tmp_6)) << " " << ::tpyapp::main::opt_inner(&(__tmp_7)) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << Shelter(Cat(3)).status() << " " << Shelter(Cat(5)).status() << "\n" << ::tpy::check_signals;
     {
         Cat __tmp_8 = Cat(1);
         auto __src_0 = ::tpyapp::main::counts(__tmp_8);
@@ -171,7 +171,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen_one:" << " " << v << "\n";
+            std::cout << "gen_one:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -182,7 +182,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "gen_five:" << " " << v << "\n";
+            std::cout << "gen_five:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -193,7 +193,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "gen_guarded:" << " " << v << "\n";
+            std::cout << "gen_guarded:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -204,7 +204,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "gen_unguarded:" << " " << v << "\n";
+            std::cout << "gen_unguarded:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
 }

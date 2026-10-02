@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void test_list_view() {
     std::vector<std::string> names = {"alice", "bob"};
     std::string_view x = ::tpy::__getitem__(names, 0);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_mutation_fallback() -> None:
@@ -25,7 +25,7 @@ void test_list_mutation_fallback() {
     std::vector<std::string> names = {"alice", "bob"};
     std::string x = ::tpy::__getitem__(names, 0);
     names.push_back("carol");
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_reassign_fallback() -> None:
@@ -39,7 +39,7 @@ void test_list_reassign_fallback() {
     std::vector<std::string>* names = &__slot_1;
     std::string x = ::tpy::__getitem__((*names), 0);
     (*names) = {"dave"};
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_subscript_write_fallback() -> None:
@@ -52,7 +52,7 @@ void test_list_subscript_write_fallback() {
     std::vector<std::string> names = {"alice", "bob"};
     std::string x = ::tpy::__getitem__(names, 0);
     ::tpy::__setitem__(names, 0, "eve");
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_pop_fallback() -> None:
@@ -65,7 +65,7 @@ void test_list_pop_fallback() {
     std::vector<std::string> names = {"alice", "bob"};
     std::string x = ::tpy::__getitem__(names, 0);
     ::tpy::list_pop_at(names, 1);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // test_list_view()

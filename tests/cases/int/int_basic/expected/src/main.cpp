@@ -35,15 +35,15 @@ int32_t neg{};
 void test_arithmetic() {
     int32_t a = 10;
     int32_t b = 3;
-    std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n";
-    std::cout << (::tpy::sub_check<int32_t>(a, b)) << "\n";
-    std::cout << (::tpy::mul_check<int32_t>(a, b)) << "\n";
-    std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n";
-    std::cout << (::tpy::mod_floor<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::sub_check<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::mul_check<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::mod_floor<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
     int32_t c = -7;
     int32_t d = 3;
-    std::cout << (::tpy::div_floor<int32_t>(c, d)) << "\n";
-    std::cout << (::tpy::mod_floor<int32_t>(c, d)) << "\n";
+    std::cout << (::tpy::div_floor<int32_t>(c, d)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::mod_floor<int32_t>(c, d)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_comparison():
@@ -62,13 +62,13 @@ void test_comparison() {
     int32_t x = 42;
     int32_t y = 100;
     if ((x < y)) {
-        std::cout << "x < y" << "\n";
+        std::cout << "x < y" << "\n" << ::tpy::check_signals;
     }
     if ((x != y)) {
-        std::cout << "x != y" << "\n";
+        std::cout << "x != y" << "\n" << ::tpy::check_signals;
     }
     if ((x == 42)) {
-        std::cout << "x == 42" << "\n";
+        std::cout << "x == 42" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -89,12 +89,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(10)) << "\n";
-    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(20)) << "\n";
+    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(10)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::factorial(::tpy::BigInt(20)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_arithmetic();
     ::tpyapp::main::test_comparison();
     neg = -42;
-    std::cout << neg << "\n";
+    std::cout << neg << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

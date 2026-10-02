@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //     print(item)
 void main() {
     Item item = Item("widget", "a useful widget", "WDG-001");
-    std::cout << item.get_name() << "\n";
-    std::cout << item.get_desc() << "\n";
-    std::cout << item.get_label() << "\n";
-    std::cout << item << "\n";
+    std::cout << item.get_name() << "\n" << ::tpy::check_signals;
+    std::cout << item.get_desc() << "\n" << ::tpy::check_signals;
+    std::cout << item.get_label() << "\n" << ::tpy::check_signals;
+    std::cout << item << "\n" << ::tpy::check_signals;
 }
 
 // main()

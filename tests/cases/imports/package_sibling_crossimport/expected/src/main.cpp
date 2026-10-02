@@ -30,13 +30,13 @@ void main() {
     ::tpyapp::pkg::a::A a = ::tpyapp::pkg::a::A();
     ::tpyapp::pkg::b::B b = ::tpyapp::pkg::b::B();
     ::tpyapp::pkg::a::Container<int32_t> box = ::tpyapp::pkg::a::Container<int32_t>(42);
-    std::cout << (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(a.value(), b.value())), ::tpyapp::pkg::b::V)), ::tpyapp::pkg::a::f(5))) << "\n";
-    std::cout << ::tpyapp::pkg::b::K::ONE << "\n";
-    std::cout << ::tpyapp::main::cap() << "\n";
-    std::cout << ::tpyapp::main::cap(10) << "\n";
-    std::cout << box.get() << "\n";
+    std::cout << (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(a.value(), b.value())), ::tpyapp::pkg::b::V)), ::tpyapp::pkg::a::f(5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::pkg::b::K::ONE << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::cap() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::cap(10) << "\n" << ::tpy::check_signals;
+    std::cout << box.get() << "\n" << ::tpy::check_signals;
     ::tpy::RefAdapter<::tpyapp::pkg::b::Greeter, ::tpyapp::pkg::b::B> __tmp_1{b};
-    std::cout << ::tpyapp::main::takes_greeter(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::takes_greeter(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // from pkg import A, B, Container, Greeter, K, V, f

@@ -78,18 +78,18 @@ bool via_alias(const ::tpy::ordered_map<std::string, int32_t>& d) {
 //     print("alias:", via_alias(c))
 void main() {
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"a", {1}}});
-    std::cout << "free:" << " " << ::tpy::print_bool(::tpyapp::main::has_key(d, "a")) << " " << ::tpy::print_bool(::tpyapp::main::has_key(d, "b")) << "\n";
+    std::cout << "free:" << " " << ::tpy::print_bool(::tpyapp::main::has_key(d, "a")) << " " << ::tpy::print_bool(::tpyapp::main::has_key(d, "b")) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    std::cout << "free set:" << " " << ::tpy::print_bool(::tpyapp::main::lacks(s, 1)) << " " << ::tpy::print_bool(::tpyapp::main::lacks(s, 3)) << "\n";
+    std::cout << "free set:" << " " << ::tpy::print_bool(::tpyapp::main::lacks(s, 1)) << " " << ::tpy::print_bool(::tpyapp::main::lacks(s, 3)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = {1, 2};
-    std::cout << "free list:" << " " << ::tpy::print_bool(::tpyapp::main::in_list(xs, 2)) << " " << ::tpy::print_bool(::tpyapp::main::in_list(xs, 5)) << "\n";
-    std::cout << "generic fn:" << " " << ::tpy::print_bool(::tpyapp::main::gfind<int32_t>(s, 2)) << " " << ::tpy::print_bool(::tpyapp::main::gfind<int32_t>(s, 7)) << "\n";
+    std::cout << "free list:" << " " << ::tpy::print_bool(::tpyapp::main::in_list(xs, 2)) << " " << ::tpy::print_bool(::tpyapp::main::in_list(xs, 5)) << "\n" << ::tpy::check_signals;
+    std::cout << "generic fn:" << " " << ::tpy::print_bool(::tpyapp::main::gfind<int32_t>(s, 2)) << " " << ::tpy::print_bool(::tpyapp::main::gfind<int32_t>(s, 7)) << "\n" << ::tpy::check_signals;
     Bag<std::string, int32_t> b = Bag<std::string, int32_t>();
     b.add("x", 1);
     b.add("x", 2);
-    std::cout << "method:" << " " << ::tpy::print_bool((b.__contains__("x"))) << " " << ::tpy::print_bool((b.__contains__("y"))) << "\n";
-    std::cout << "generic method:" << " " << ::tpy::print_bool(b.has("x")) << " " << ::tpy::print_bool(b.has("y")) << "\n";
-    std::cout << "user recv:" << " " << ::tpy::print_bool(::tpyapp::main::user_recv(Pos())) << "\n";
+    std::cout << "method:" << " " << ::tpy::print_bool((b.__contains__("x"))) << " " << ::tpy::print_bool((b.__contains__("y"))) << "\n" << ::tpy::check_signals;
+    std::cout << "generic method:" << " " << ::tpy::print_bool(b.has("x")) << " " << ::tpy::print_bool(b.has("y")) << "\n" << ::tpy::check_signals;
+    std::cout << "user recv:" << " " << ::tpy::print_bool(::tpyapp::main::user_recv(Pos())) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> c = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     {
         std::vector<std::string> __tmp_1 = {"a", "z"};
@@ -99,11 +99,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             bool r = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator:" << " " << ::tpy::print_bool(r) << "\n";
+            std::cout << "generator:" << " " << ::tpy::print_bool(r) << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "closure:" << " " << ::tpy::print_bool(::tpyapp::main::via_closure(c)) << "\n";
-    std::cout << "alias:" << " " << ::tpy::print_bool(::tpyapp::main::via_alias(c)) << "\n";
+    std::cout << "closure:" << " " << ::tpy::print_bool(::tpyapp::main::via_closure(c)) << "\n" << ::tpy::check_signals;
+    std::cout << "alias:" << " " << ::tpy::print_bool(::tpyapp::main::via_alias(c)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -75,9 +75,9 @@ struct JoinHandle {
     //         # wake fd, so the wait goes in slices. A KeyboardInterrupt out of
     //         # it leaves the handle unconsumed.
     //         while not self._raw.wait_for(0.1):
-    //             posix_signal.check_interrupt()
+    //             posix_signal.check_signals()
     //         # A Ctrl-C during the last slice is still this join's to deliver.
-    //         posix_signal.check_interrupt()
+    //         posix_signal.check_signals()
     //     self._consumed = True
     //     return self._raw.join()
     ::tpy::own_return_t<R> join() {
@@ -86,9 +86,9 @@ struct JoinHandle {
         }
         if (::tpy::interrupt_armed()) {
             while ((!(this->_raw.wait_for(0.1)))) {
-                ::tpy::check_interrupt();
+                ::tpy::check_signals();
             }
-            ::tpy::check_interrupt();
+            ::tpy::check_signals();
         }
         this->_consumed = true;
         return this->_raw.join();

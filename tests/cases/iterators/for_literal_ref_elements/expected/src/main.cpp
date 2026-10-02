@@ -19,7 +19,7 @@ void in_function() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& b = *__beg_0;
         b.bump();
-        std::cout << "function" << " " << b.n << "\n";
+        std::cout << "function" << " " << b.n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -35,7 +35,7 @@ void nocopy_element() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& t = *__beg_0;
         t.bump();
-        std::cout << "nocopy" << " " << t.n << "\n";
+        std::cout << "nocopy" << " " << t.n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -51,7 +51,7 @@ void container_element() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& xs = *__beg_0;
         xs.push_back(9);
-        std::cout << "container" << " " << ::tpy::__len__(xs) << "\n";
+        std::cout << "container" << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -77,7 +77,7 @@ __gen_in_generator in_generator() {
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& b = *__beg_0;
             b.bump();
-            std::cout << "async" << " " << b.n << "\n";
+            std::cout << "async" << " " << b.n << "\n" << ::tpy::check_signals;
         }
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -109,7 +109,7 @@ void in_closure() {
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& b = *__beg_0;
             b.bump();
-            std::cout << "closure" << " " << b.n << "\n";
+            std::cout << "closure" << " " << b.n << "\n" << ::tpy::check_signals;
         }
     };
     inner();
@@ -131,7 +131,7 @@ void main() {
     ::tpyapp::main::nocopy_element();
     ::tpyapp::main::container_element();
     Holder h = Holder();
-    std::cout << "constructor" << " " << h.total << "\n";
+    std::cout << "constructor" << " " << h.total << "\n" << ::tpy::check_signals;
     h.run();
     {
         auto __src_0 = ::tpyapp::main::in_generator();
@@ -140,7 +140,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << v << "\n";
+            std::cout << "generator" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::in_async()));
@@ -168,7 +168,7 @@ void __tpy_init() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& mb = *__beg_0;
         mb.bump();
-        std::cout << "module" << " " << mb.n << "\n";
+        std::cout << "module" << " " << mb.n << "\n" << ::tpy::check_signals;
     }
 }
 

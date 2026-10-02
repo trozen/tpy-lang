@@ -49,9 +49,9 @@ namespace tpyapp::main {
 //     print(inferred.value == Color.RED, inferred.value == Color.BLUE)
 void main() {
     Box<Color> b = Box<Color>(Color::RED);
-    std::cout << ::tpy::print_bool((b.value == Color::RED)) << " " << ::tpy::print_bool((b.value == Color::BLUE)) << "\n";
+    std::cout << ::tpy::print_bool((b.value == Color::RED)) << " " << ::tpy::print_bool((b.value == Color::BLUE)) << "\n" << ::tpy::check_signals;
     Box<Color> inferred = Box<Color>(Color::BLUE);
-    std::cout << ::tpy::print_bool((inferred.value == Color::RED)) << " " << ::tpy::print_bool((inferred.value == Color::BLUE)) << "\n";
+    std::cout << ::tpy::print_bool((inferred.value == Color::RED)) << " " << ::tpy::print_bool((inferred.value == Color::BLUE)) << "\n" << ::tpy::check_signals;
 }
 
 // # An enum as a generic record's type argument, spelled BOTH ways -- explicit

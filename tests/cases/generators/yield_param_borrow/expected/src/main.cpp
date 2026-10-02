@@ -105,7 +105,7 @@ __gen_late_gen late_gen() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << __await_lift_0 << "\n";
+        std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -152,7 +152,7 @@ void main() {
             if (!__r_1.has_value()) break;
             auto&& got = ::tpy::unwrap_ref(*__r_1);
             got.push_back(9);
-            std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, (::tpy::sub_check<int32_t>(::tpy::__len__(xs), 1))) << "\n";
+            std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, (::tpy::sub_check<int32_t>(::tpy::__len__(xs), 1))) << "\n" << ::tpy::check_signals;
         }
     }
     P p = P(1);
@@ -164,7 +164,7 @@ void main() {
             if (!__r_3.has_value()) break;
             auto&& gotp = ::tpy::unwrap_ref(*__r_3);
             gotp.x = ::tpy::add_check<int32_t>(gotp.x, 10);
-            std::cout << p.x << "\n";
+            std::cout << p.x << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
@@ -176,7 +176,7 @@ void main() {
             if (!__r_5.has_value()) break;
             auto&& gotd = ::tpy::unwrap_ref(*__r_5);
             ::tpy::__setitem__(gotd, "b", 2);
-            std::cout << ::tpy::__len__(d) << "\n";
+            std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -186,7 +186,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t got_n = ::tpy::unwrap_ref(*__r_7);
-            std::cout << got_n << "\n";
+            std::cout << got_n << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain()));

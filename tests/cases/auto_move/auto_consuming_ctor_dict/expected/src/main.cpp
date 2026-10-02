@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
     std::vector<std::string> keys = ::tpy::construct<std::vector<std::string>>(::tpy::own_iter_dict(std::move(d)));
-    std::cout << ::tpy::ListPrinter(keys) << "\n";
+    std::cout << ::tpy::ListPrinter(keys) << "\n" << ::tpy::check_signals;
 }
 
 // main()

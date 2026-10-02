@@ -42,8 +42,8 @@ void main() {
         break;
     }
     }
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // main()

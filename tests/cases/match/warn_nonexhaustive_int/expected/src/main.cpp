@@ -30,9 +30,9 @@ int32_t f(int32_t n) {
 //     print(f(2))
 //     print(f(7))
 void main() {
-    std::cout << ::tpyapp::main::f(1) << "\n";
-    std::cout << ::tpyapp::main::f(2) << "\n";
-    std::cout << ::tpyapp::main::f(7) << "\n";
+    std::cout << ::tpyapp::main::f(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::f(2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::f(7) << "\n" << ::tpy::check_signals;
 }
 
 // main()

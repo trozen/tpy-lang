@@ -17,10 +17,10 @@ void main() {
     H h = H();
     ::tpy::ByteArray& v = h.view();
     v.push_back(33);
-    std::cout << ::tpy::__len__(h.buf) << " " << ::tpy::__len__(v) << "\n";
+    std::cout << ::tpy::__len__(h.buf) << " " << ::tpy::__len__(v) << "\n" << ::tpy::check_signals;
     std::vector<int32_t>& ns = h.nums();
     ns.push_back(3);
-    std::cout << ::tpy::__len__(h.xs) << " " << ::tpy::__len__(ns) << "\n";
+    std::cout << ::tpy::__len__(h.xs) << " " << ::tpy::__len__(ns) << "\n" << ::tpy::check_signals;
 }
 
 // main()

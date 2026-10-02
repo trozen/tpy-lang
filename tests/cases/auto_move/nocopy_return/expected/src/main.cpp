@@ -19,7 +19,7 @@ Handle make(int32_t val) {
 //     print(h.fd)
 void main() {
     Handle h = ::tpyapp::main::make(99);
-    std::cout << h.fd << "\n";
+    std::cout << h.fd << "\n" << ::tpy::check_signals;
 }
 
 // main()

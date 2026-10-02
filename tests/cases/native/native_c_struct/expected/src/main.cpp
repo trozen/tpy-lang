@@ -19,14 +19,14 @@ namespace tpyapp::main {
 //     print(r.area())
 void main() {
     ::Point p = ::Point{10, 20};
-    std::cout << p.x << "\n";
-    std::cout << p.y << "\n";
-    std::cout << point_sum(&p) << "\n";
-    std::cout << p.manhattan() << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
+    std::cout << p.y << "\n" << ::tpy::check_signals;
+    std::cout << point_sum(&p) << "\n" << ::tpy::check_signals;
+    std::cout << p.manhattan() << "\n" << ::tpy::check_signals;
     ::Rect r = ::Rect{0, 0, 800, 600};
-    std::cout << r.w << "\n";
-    std::cout << rect_area(&r) << "\n";
-    std::cout << r.area() << "\n";
+    std::cout << r.w << "\n" << ::tpy::check_signals;
+    std::cout << rect_area(&r) << "\n" << ::tpy::check_signals;
+    std::cout << r.area() << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native

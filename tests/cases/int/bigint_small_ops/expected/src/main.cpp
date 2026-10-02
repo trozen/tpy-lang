@@ -86,26 +86,26 @@ __coro_async_ops async_ops(::tpy::BigInt a, ::tpy::BigInt b) {
 //     print("tuple", single[0] < pair[1], pair[0] // pair[1])  # tpyc: ok
 void wrappers(std::optional<::tpy::BigInt> value, const ::tpy::Union<::tpy::BigInt, std::string>& variant, const std::tuple<::tpy::BigInt, ::tpy::BigInt>& pair) {
     if ((value.has_value())) {
-        std::cout << "optional" << " " << (((*value)) >> (::tpy::BigInt(1))) << " " << ~((*value)) << "\n";
+        std::cout << "optional" << " " << (((*value)) >> (::tpy::BigInt(1))) << " " << ~((*value)) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "optional none" << "\n";
+        std::cout << "optional none" << "\n" << ::tpy::check_signals;
     }
     auto& __match_subject_1 = variant;
     switch (__match_subject_1.index()) {
     case 0: {
         auto& __case_0 = std::get<0>(__match_subject_1);
         auto& number = __case_0;
-        std::cout << "match int" << " " << ((number) & (std::get<1>(pair))) << "\n";
+        std::cout << "match int" << " " << ((number) & (std::get<1>(pair))) << "\n" << ::tpy::check_signals;
         break;
     }
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1);
-        std::cout << "match str" << "\n";
+        std::cout << "match str" << "\n" << ::tpy::check_signals;
         break;
     }
     }
     std::tuple<::tpy::BigInt> single = std::tuple<::tpy::BigInt>(std::get<0>(pair));
-    std::cout << "tuple" << " " << ::tpy::print_bool((std::get<0>(single) < std::get<1>(pair))) << " " << ((std::get<0>(pair)) / (std::get<1>(pair))) << "\n";
+    std::cout << "tuple" << " " << ::tpy::print_bool((std::get<0>(single) < std::get<1>(pair))) << " " << ((std::get<0>(pair)) / (std::get<1>(pair))) << "\n" << ::tpy::check_signals;
 }
 
 // def operators(a: int, b: int) -> None:
@@ -118,15 +118,15 @@ void wrappers(std::optional<::tpy::BigInt> value, const ::tpy::Union<::tpy::BigI
 //         print("identity", quotient * b + remainder == a)
 //         print("remainder", abs(remainder) < abs(b), remainder == 0 or (remainder < 0) == (b < 0))
 void operators(const ::tpy::BigInt& a, const ::tpy::BigInt& b) {
-    std::cout << "compare" << " " << a << " " << b << " " << ::tpy::print_bool((a == b)) << " " << ::tpy::print_bool((a != b)) << " " << ::tpy::print_bool((a < b)) << " " << ::tpy::print_bool((a <= b)) << " " << ::tpy::print_bool((a > b)) << " " << ::tpy::print_bool((a >= b)) << "\n";
-    std::cout << "bitwise" << " " << ((a) & (b)) << " " << ((a) | (b)) << " " << ((a) ^ (b)) << " " << ~(a) << "\n";
+    std::cout << "compare" << " " << a << " " << b << " " << ::tpy::print_bool((a == b)) << " " << ::tpy::print_bool((a != b)) << " " << ::tpy::print_bool((a < b)) << " " << ::tpy::print_bool((a <= b)) << " " << ::tpy::print_bool((a > b)) << " " << ::tpy::print_bool((a >= b)) << "\n" << ::tpy::check_signals;
+    std::cout << "bitwise" << " " << ((a) & (b)) << " " << ((a) | (b)) << " " << ((a) ^ (b)) << " " << ~(a) << "\n" << ::tpy::check_signals;
     if ((b != 0)) {
         auto __tup_1 = ::tpy::divmod_bigint(a, b);
         const ::tpy::BigInt& quotient = std::get<0>(__tup_1);
         const ::tpy::BigInt& remainder = std::get<1>(__tup_1);
-        std::cout << "division" << " " << ((a) / (b)) << " " << ((a) % (b)) << " " << quotient << " " << remainder << "\n";
-        std::cout << "identity" << " " << ::tpy::print_bool((((((quotient) * (b))) + (remainder)) == a)) << "\n";
-        std::cout << "remainder" << " " << ::tpy::print_bool((::tpy::BigInt::abs(remainder) < ::tpy::BigInt::abs(b))) << " " << ::tpy::print_bool(((remainder == 0) || ((remainder < 0) == (b < 0)))) << "\n";
+        std::cout << "division" << " " << ((a) / (b)) << " " << ((a) % (b)) << " " << quotient << " " << remainder << "\n" << ::tpy::check_signals;
+        std::cout << "identity" << " " << ::tpy::print_bool((((((quotient) * (b))) + (remainder)) == a)) << "\n" << ::tpy::check_signals;
+        std::cout << "remainder" << " " << ::tpy::print_bool((::tpy::BigInt::abs(remainder) < ::tpy::BigInt::abs(b))) << " " << ::tpy::print_bool(((remainder == 0) || ((remainder < 0) == (b < 0)))) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -162,49 +162,49 @@ void exceptions(const ::tpy::BigInt& a, const ::tpy::BigInt& zero, const ::tpy::
     {
         try {
             try {
-                std::cout << ((a) / (zero)) << "\n";
+                std::cout << ((a) / (zero)) << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::ZeroDivisionError&) {
-                std::cout << "errors floor" << "\n";
+                std::cout << "errors floor" << "\n" << ::tpy::check_signals;
             }
         } catch (...) {
-            std::cout << "errors finally" << "\n";
+            std::cout << "errors finally" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "errors finally" << "\n";
+        std::cout << "errors finally" << "\n" << ::tpy::check_signals;
     }
     {
         try {
-            std::cout << ((a) % (zero)) << "\n";
+            std::cout << ((a) % (zero)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError&) {
-            std::cout << "errors modulo" << "\n";
+            std::cout << "errors modulo" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpy::TuplePrinter(::tpy::divmod_bigint(a, zero)) << "\n";
+            std::cout << ::tpy::TuplePrinter(::tpy::divmod_bigint(a, zero)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError&) {
-            std::cout << "errors divmod" << "\n";
+            std::cout << "errors divmod" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpy::print_float((::tpy::truediv(a, zero))) << "\n";
+            std::cout << ::tpy::print_float((::tpy::truediv(a, zero))) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError&) {
-            std::cout << "errors true division" << "\n";
+            std::cout << "errors true division" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ((a) << (negative)) << "\n";
+            std::cout << ((a) << (negative)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "errors left shift" << "\n";
+            std::cout << "errors left shift" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ((a) >> (negative)) << "\n";
+            std::cout << ((a) >> (negative)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "errors right shift" << "\n";
+            std::cout << "errors right shift" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -318,13 +318,13 @@ void main() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         int32_t shift = *__beg_2;
-        std::cout << "shift fixed" << " " << shift << " " << ((one) << (shift)) << " " << ((-(one)) << (shift)) << " " << ((low) >> (shift)) << " " << ((high) >> (shift)) << "\n";
+        std::cout << "shift fixed" << " " << shift << " " << ((one) << (shift)) << " " << ((-(one)) << (shift)) << " " << ((low) >> (shift)) << " " << ((high) >> (shift)) << "\n" << ::tpy::check_signals;
         ::tpy::BigInt count = shift;
-        std::cout << "shift bigint" << " " << count << " " << ((one) << (count)) << " " << ((-(one)) << (count)) << " " << ((low) >> (count)) << " " << ((high) >> (count)) << "\n";
+        std::cout << "shift bigint" << " " << count << " " << ((one) << (count)) << " " << ((-(one)) << (count)) << " " << ((low) >> (count)) << " " << ((high) >> (count)) << "\n" << ::tpy::check_signals;
     }
-    std::cout << "shift max" << " " << ((low) >> (::tpy::BigInt(2147483647))) << " " << ((high) >> (::tpy::BigInt(2147483647))) << "\n";
-    std::cout << "complement endpoints" << " " << ~(low) << " " << ~(high) << "\n";
-    std::cout << "heap inverse" << " " << ((((one) << (::tpy::BigInt(200)))) >> (::tpy::BigInt(199))) << " " << ((((low) - (::tpy::BigInt(1)))) & (high)) << "\n";
+    std::cout << "shift max" << " " << ((low) >> (::tpy::BigInt(2147483647))) << " " << ((high) >> (::tpy::BigInt(2147483647))) << "\n" << ::tpy::check_signals;
+    std::cout << "complement endpoints" << " " << ~(low) << " " << ~(high) << "\n" << ::tpy::check_signals;
+    std::cout << "heap inverse" << " " << ((((one) << (::tpy::BigInt(200)))) >> (::tpy::BigInt(199))) << " " << ((((low) - (::tpy::BigInt(1)))) & (high)) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt compound = ::tpy::BigInt(-17);
     compound = (compound) / (::tpy::BigInt(3));
     compound = (compound) % (::tpy::BigInt(4));
@@ -333,11 +333,11 @@ void main() {
     compound = (compound) | (::tpy::BigInt(3));
     compound = (compound) & (::tpy::BigInt(6));
     compound = (compound) ^ (::tpy::BigInt(1));
-    std::cout << "compound" << " " << compound << "\n";
+    std::cout << "compound" << " " << compound << "\n" << ::tpy::check_signals;
     Number number = Number(::tpy::BigInt(-17), ::tpy::BigInt(3));
-    std::cout << "constructor" << " " << number.value << "\n";
-    std::cout << "method" << " " << ::tpy::print_bool(number.check(-5)) << "\n";
-    std::cout << "generic twin" << " " << ::tpy::print_bool(::tpyapp::main::compare(low, high)) << " " << ::tpy::print_bool(::tpyapp::main::generic_compare<::tpy::BigInt>(low, high)) << "\n";
+    std::cout << "constructor" << " " << number.value << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << ::tpy::print_bool(number.check(-5)) << "\n" << ::tpy::check_signals;
+    std::cout << "generic twin" << " " << ::tpy::print_bool(::tpyapp::main::compare(low, high)) << " " << ::tpy::print_bool(::tpyapp::main::generic_compare<::tpy::BigInt>(low, high)) << "\n" << ::tpy::check_signals;
     ::tpy::Union<::tpy::BigInt, std::string> __tmp_1 = high;
     ::tpyapp::main::wrappers(-17, __tmp_1, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(-17), ::tpy::BigInt(3)});
     ::tpy::Union<::tpy::BigInt, std::string> __tmp_2 = "inverse";
@@ -350,11 +350,11 @@ void main() {
             auto __r_4 = __itr_3.__next__();
             if (!__r_4.has_value()) break;
             const ::tpy::BigInt& value = ::tpy::unwrap_ref(*__r_4);
-            std::cout << "generator" << " " << value << "\n";
+            std::cout << "generator" << " " << value << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::BigInt __tmp_4 = ::tpy::BigInt(-17);
-    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::async_ops(__tmp_4, ::tpy::BigInt(3)))) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::async_ops(__tmp_4, ::tpy::BigInt(3)))) << "\n" << ::tpy::check_signals;
     std::array<::tpy::BigInt, 4> values = {low, -(one), one, high};
     std::vector<::tpy::BigInt> results = ({
         std::vector<::tpy::BigInt> __result;
@@ -375,16 +375,16 @@ void main() {
     auto __end_6 = __obj_6.end();
     for (; __beg_6 != __end_6; ++__beg_6) {
         const ::tpy::BigInt& value = *__beg_6;
-        std::cout << "comprehension" << " " << value << "\n";
+        std::cout << "comprehension" << " " << value << "\n" << ::tpy::check_signals;
     }
     auto captured = [&low](const ::tpy::BigInt& other) -> bool {
         return (low < other);
     };
-    std::cout << "closure" << " " << ::tpy::print_bool(captured(::tpy::BigInt(-17))) << "\n";
+    std::cout << "closure" << " " << ::tpy::print_bool(captured(::tpy::BigInt(-17))) << "\n" << ::tpy::check_signals;
     auto __ctx_1 = Scope();
     __ctx_1.__enter__();
     try {
-        std::cout << "context body" << " " << ((low) / (::tpy::BigInt(3))) << " " << ((low) % (::tpy::BigInt(3))) << "\n";
+        std::cout << "context body" << " " << ((low) / (::tpy::BigInt(3))) << " " << ((low) % (::tpy::BigInt(3))) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -396,7 +396,7 @@ void main() {
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
     {
-        std::cout << "error_return" << " " << ({ auto __er_2 = ::tpyapp::main::checked_floor(::tpy::BigInt(-17), ::tpy::BigInt(3)); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "error_return" << " " << ({ auto __er_2 = ::tpyapp::main::checked_floor(::tpy::BigInt(-17), ::tpy::BigInt(3)); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
         {
             auto __try_tmp_3 = ::tpyapp::main::checked_floor(::tpy::BigInt(17), ::tpy::BigInt(0));
             if (!__try_tmp_3.has_value()) goto __except_1;
@@ -404,7 +404,7 @@ void main() {
         goto __after_try_1;
         // except InvalidOperand:
         __except_1:;
-        std::cout << "error_return caught" << "\n";
+        std::cout << "error_return caught" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     ::tpyapp::main::exceptions(::tpy::BigInt(-17), ::tpy::BigInt(0), ::tpy::BigInt(-1));
@@ -412,12 +412,12 @@ void main() {
     bool chain = ({ auto&& _cmp0 = counter.get(-17); auto&& _cmp1 = counter.get(3); (_cmp0 < _cmp1) && (_cmp1 < counter.get(17)); });
     bool stopped = ({ auto&& _cmp0 = counter.get(17); auto&& _cmp1 = counter.get(3); (_cmp0 < _cmp1) && (_cmp1 < counter.get(-17)); });
     bool lazy = (::tpyapp::main::compare(high, low) && ::tpyapp::main::compare(counter.get(1), high));
-    std::cout << "evaluation" << " " << ::tpy::print_bool(chain) << " " << ::tpy::print_bool(stopped) << " " << ::tpy::print_bool(lazy) << " " << counter.calls << "\n";
+    std::cout << "evaluation" << " " << ::tpy::print_bool(chain) << " " << ::tpy::print_bool(stopped) << " " << ::tpy::print_bool(lazy) << " " << counter.calls << "\n" << ::tpy::check_signals;
     ::tpy::BigInt rounded = ((((one) << (::tpy::BigInt(60)))) + (((one) << (::tpy::BigInt(7)))));
     ::tpy::BigInt divisor = ::tpy::BigInt(3);
     ::tpy::BigInt zero = ::tpy::BigInt(0);
-    std::cout << "rounding" << " " << ::tpy::print_float((::tpy::truediv(rounded, divisor))) << " " << ::tpy::print_float((::tpy::truediv(static_cast<double>(rounded), static_cast<double>(divisor)))) << "\n";
-    std::cout << "true small" << " " << ::tpy::print_float((::tpy::truediv(one, divisor))) << " " << ::tpy::print_float((::tpy::truediv(zero, -(divisor)))) << "\n";
+    std::cout << "rounding" << " " << ::tpy::print_float((::tpy::truediv(rounded, divisor))) << " " << ::tpy::print_float((::tpy::truediv(static_cast<double>(rounded), static_cast<double>(divisor)))) << "\n" << ::tpy::check_signals;
+    std::cout << "true small" << " " << ::tpy::print_float((::tpy::truediv(one, divisor))) << " " << ::tpy::print_float((::tpy::truediv(zero, -(divisor)))) << "\n" << ::tpy::check_signals;
 }
 
 // # BigInt inline arithmetic retains Python results across boundaries and body positions.
@@ -439,7 +439,7 @@ void __tpy_init() {
     module_a = ::tpy::BigInt(-17);
     module_b = ::tpy::BigInt(-3);
     module_less = (module_a < module_b);
-    std::cout << "module" << " " << ::tpy::print_bool(module_less) << "\n";
+    std::cout << "module" << " " << ::tpy::print_bool(module_less) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }
 

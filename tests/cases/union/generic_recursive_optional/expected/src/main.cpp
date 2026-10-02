@@ -21,8 +21,8 @@ namespace tpyapp::main {
 //     print(maybe_count(None))
 void main() {
     ::tpyapp::treelib::Tree<::tpy::BigInt> t = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{2, 3}, 4};
-    std::cout << ::tpyapp::main::maybe_count(&(t)) << "\n";
-    std::cout << ::tpyapp::main::maybe_count(nullptr) << "\n";
+    std::cout << ::tpyapp::main::maybe_count(&(t)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::maybe_count(nullptr) << "\n" << ::tpy::check_signals;
 }
 
 // # Optional narrowing of a generic recursive alias instance: a `Tree[int] | None`

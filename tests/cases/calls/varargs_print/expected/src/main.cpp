@@ -10,7 +10,7 @@ namespace tpyapp::main {
 // def show(*xs: int) -> None:
 //     print(xs)
 void show(::tpy::varargs<const ::tpy::BigInt> xs) {
-    std::cout << ::tpy::VarargsPrinter(xs) << "\n";
+    std::cout << ::tpy::VarargsPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

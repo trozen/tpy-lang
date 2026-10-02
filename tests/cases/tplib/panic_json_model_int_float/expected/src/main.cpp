@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(m.n)
 void main() {
     M m = M::from_json("{\"n\": 1.5}");
-    std::cout << m.n << "\n";
+    std::cout << m.n << "\n" << ::tpy::check_signals;
 }
 
 

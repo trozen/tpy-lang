@@ -21,7 +21,7 @@ void free_fn() {
     std::vector<int32_t>* o = &__slot_1;
     if ((o != nullptr)) {
         ::tpyapp::main::take((*o));
-        std::cout << "free_fn" << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(o) << "\n";
+        std::cout << "free_fn" << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(o) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -38,7 +38,7 @@ void method() {
     Sink s = Sink(0);
     if ((o != nullptr)) {
         s.absorb((*o));
-        std::cout << "method" << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(o) << "\n";
+        std::cout << "method" << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(o) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -53,7 +53,7 @@ void static_method() {
     std::vector<int32_t>* o = &__slot_1;
     if ((o != nullptr)) {
         Sink::collect((*o));
-        std::cout << "static_method" << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(o) << "\n";
+        std::cout << "static_method" << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(o) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -68,7 +68,7 @@ void constructor() {
     std::vector<int32_t>* o = &__slot_1;
     if ((o != nullptr)) {
         Filler f = Filler((*o));
-        std::cout << "constructor" << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(o) << " " << f.n << "\n";
+        std::cout << "constructor" << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(o) << " " << f.n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -83,7 +83,7 @@ void generic_fn() {
     std::vector<int32_t>* o = &__slot_1;
     if ((o != nullptr)) {
         ::tpyapp::main::gen_take<int32_t>(1, (*o));
-        std::cout << "generic_fn" << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(o) << "\n";
+        std::cout << "generic_fn" << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(o) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -100,7 +100,7 @@ void generic_method() {
     GR<int32_t> g = GR<int32_t>(1);
     if ((o != nullptr)) {
         g.absorb((*o));
-        std::cout << "generic_method" << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(o) << "\n";
+        std::cout << "generic_method" << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(o) << "\n" << ::tpy::check_signals;
     }
 }
 

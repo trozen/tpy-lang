@@ -25,16 +25,16 @@ __gen_alias_param alias_param(Holder& h) {
 //     print(b.cells[0].v, b.cells[1].v)
 void main() {
     Holder h = Holder();
-    std::cout << ::tpy::builtin_sum<int32_t>(h.direct()) << "\n";
-    std::cout << ::tpy::builtin_sum<int32_t>(h.via_alias()) << "\n";
-    std::cout << ::tpy::builtin_sum<int32_t>(h.simple_alias()) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(h.direct()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_sum<int32_t>(h.via_alias()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_sum<int32_t>(h.simple_alias()) << "\n" << ::tpy::check_signals;
     Holder h2 = Holder();
-    std::cout << "live" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(h2.live_alias())) << "\n";
+    std::cout << "live" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(h2.live_alias())) << "\n" << ::tpy::check_signals;
     Holder h3 = Holder();
-    std::cout << "param" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::alias_param(h3))) << "\n";
+    std::cout << "param" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::alias_param(h3))) << "\n" << ::tpy::check_signals;
     Bumper b = Bumper();
-    std::cout << ::tpy::builtin_sum<int32_t>(b.bump()) << "\n";
-    std::cout << ::tpy::__getitem__(b.cells, 0).v << " " << ::tpy::__getitem__(b.cells, 1).v << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(b.bump()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(b.cells, 0).v << " " << ::tpy::__getitem__(b.cells, 1).v << "\n" << ::tpy::check_signals;
 }
 
 

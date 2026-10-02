@@ -184,7 +184,7 @@ inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
 //     print("tagged init", tag)
 //     self.tag = tag
 inline Tagged::Tagged(std::string_view tag) {
-    std::cout << "tagged init" << " " << tag << "\n";
+    std::cout << "tagged init" << " " << tag << "\n" << ::tpy::check_signals;
     this->tag = tag;
 }
 
@@ -203,7 +203,7 @@ inline int32_t Money::size() const {
 //     print("counter init", start)
 //     self.count = start
 inline Counter::Counter(int32_t start) {
-    std::cout << "counter init" << " " << start << "\n";
+    std::cout << "counter init" << " " << start << "\n" << ::tpy::check_signals;
     this->count = start;
 }
 

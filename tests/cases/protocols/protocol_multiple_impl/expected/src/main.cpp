@@ -19,11 +19,11 @@ void __tpy_init() {
 
     static Box __global_slot_1 = Box(5, 3);
     b = &__global_slot_1;
-    std::cout << b->__str__() << "\n";
-    std::cout << b->describe() << "\n";
-    std::cout << b->size() << "\n";
-    std::cout << b->width << "\n";
-    std::cout << b->height << "\n";
+    std::cout << b->__str__() << "\n" << ::tpy::check_signals;
+    std::cout << b->describe() << "\n" << ::tpy::check_signals;
+    std::cout << b->size() << "\n" << ::tpy::check_signals;
+    std::cout << b->width << "\n" << ::tpy::check_signals;
+    std::cout << b->height << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

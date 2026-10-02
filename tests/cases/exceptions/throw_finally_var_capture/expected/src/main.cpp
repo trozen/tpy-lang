@@ -46,30 +46,30 @@ void main() {
         try {
             x = ::tpyapp::main::get_int();
         } catch (...) {
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::string s;
     {
         try {
             s = ::tpyapp::main::get_str();
         } catch (...) {
-            std::cout << s << "\n";
+            std::cout << s << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << s << "\n";
+        std::cout << s << "\n" << ::tpy::check_signals;
     }
     std::optional<std::vector<int32_t>> items;
     {
         try {
             items = ::tpyapp::main::get_list();
         } catch (...) {
-            std::cout << ::tpy::__len__((*items)) << "\n";
+            std::cout << ::tpy::__len__((*items)) << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << ::tpy::__len__((*items)) << "\n";
+        std::cout << ::tpy::__len__((*items)) << "\n" << ::tpy::check_signals;
     }
 }
 

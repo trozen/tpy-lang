@@ -26,12 +26,12 @@ void main() {
             n = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         v->push_back(9);
-        std::cout << ::tpy::ListPrinter(h.items) << "\n";
-        std::cout << n << "\n";
+        std::cout << ::tpy::ListPrinter(h.items) << "\n" << ::tpy::check_signals;
+        std::cout << n << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except E:
         __except_1:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }

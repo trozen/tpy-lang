@@ -46,10 +46,10 @@ int32_t via_branches(std::vector<int32_t>& xs, bool c) {
 //     print(via_branches(xs, False))
 void main() {
     std::vector<int32_t> xs = {10, 20, 30};
-    std::cout << ::tpyapp::main::via_ternary(xs, true) << "\n";
-    std::cout << ::tpyapp::main::via_ternary(xs, false) << "\n";
-    std::cout << ::tpyapp::main::via_branches(xs, true) << "\n";
-    std::cout << ::tpyapp::main::via_branches(xs, false) << "\n";
+    std::cout << ::tpyapp::main::via_ternary(xs, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::via_ternary(xs, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::via_branches(xs, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::via_branches(xs, false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

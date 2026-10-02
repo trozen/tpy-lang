@@ -25,7 +25,7 @@ void main() {
     Inner __tmp_2 = ::tpyapp::main::make_inner(4);
     HolderMut d = HolderMut(__tmp_2);
     Outer e = Outer(HolderConst(Inner(5)));
-    std::cout << a.x << " " << b.x << " " << c.x << " " << d.x << " " << e.y << "\n";
+    std::cout << a.x << " " << b.x << " " << c.x << " " << d.x << " " << e.y << "\n" << ::tpy::check_signals;
 }
 
 // main()

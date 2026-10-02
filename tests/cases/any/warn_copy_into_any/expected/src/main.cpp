@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void warn_record_not_last_use() {
     Node n = Node(1);
     ::tpy::Any a = ::tpy::make_any(n);
-    std::cout << n.n << "\n";
+    std::cout << n.n << "\n" << ::tpy::check_signals;
 }
 
 // def no_warn_record_last_use() -> None:
@@ -24,7 +24,7 @@ void no_warn_record_last_use() {
     ::tpy::Any a = ::tpy::make_any(n);
     if ((a.value.has_value() && a.value.type() == typeid(Node))) {
         const Node& __a = std::any_cast<const Node&>(a.value);
-        std::cout << __a.n << "\n";
+        std::cout << __a.n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -35,7 +35,7 @@ void no_warn_record_last_use() {
 void no_warn_record_explicit_copy() {
     Node n = Node(3);
     ::tpy::Any a = ::tpy::make_any(n);
-    std::cout << n.n << "\n";
+    std::cout << n.n << "\n" << ::tpy::check_signals;
 }
 
 // def no_warn_record_rvalue() -> None:
@@ -46,7 +46,7 @@ void no_warn_record_rvalue() {
     ::tpy::Any a = ::tpy::make_any(Node(4));
     if ((a.value.has_value() && a.value.type() == typeid(Node))) {
         const Node& __a = std::any_cast<const Node&>(a.value);
-        std::cout << __a.n << "\n";
+        std::cout << __a.n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -57,7 +57,7 @@ void no_warn_record_rvalue() {
 void warn_list_not_last_use() {
     std::vector<int32_t> xs = {1, 2};
     ::tpy::Any a = ::tpy::make_any(xs);
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def warn_dict_not_last_use() -> None:
@@ -67,7 +67,7 @@ void warn_list_not_last_use() {
 void warn_dict_not_last_use() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"k", 1}});
     ::tpy::Any a = ::tpy::make_any(d);
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // def warn_set_not_last_use() -> None:
@@ -77,7 +77,7 @@ void warn_dict_not_last_use() {
 void warn_set_not_last_use() {
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
     ::tpy::Any a = ::tpy::make_any(s);
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // def no_warn_str_not_last_use() -> None:
@@ -87,7 +87,7 @@ void warn_set_not_last_use() {
 void no_warn_str_not_last_use() {
     std::string_view s = "hello";
     ::tpy::Any a = ::tpy::make_any(std::string(s));
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def no_warn_int_not_last_use() -> None:
@@ -97,7 +97,7 @@ void no_warn_str_not_last_use() {
 void no_warn_int_not_last_use() {
     int32_t x = 42;
     ::tpy::Any a = ::tpy::make_any(int32_t(x));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def takes_any(a: Any) -> None:
@@ -106,7 +106,7 @@ void no_warn_int_not_last_use() {
 void takes_any(::tpy::Any a) {
     if ((a.value.has_value() && a.value.type() == typeid(Node))) {
         const Node& __a = std::any_cast<const Node&>(a.value);
-        std::cout << __a.n << "\n";
+        std::cout << __a.n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -117,7 +117,7 @@ void takes_any(::tpy::Any a) {
 void warn_arg_coerce_not_last_use() {
     Node n = Node(5);
     ::tpyapp::main::takes_any(::tpy::make_any(n));
-    std::cout << n.n << "\n";
+    std::cout << n.n << "\n" << ::tpy::check_signals;
 }
 
 // def returns_any(n: Node) -> Any:
@@ -137,10 +137,10 @@ void warn_arg_coerce_not_last_use() {
 void exercise_returns_any() {
     Node n = Node(6);
     ::tpy::Any a = ::tpyapp::main::returns_any(n);
-    std::cout << n.n << "\n";
+    std::cout << n.n << "\n" << ::tpy::check_signals;
     if ((a.value.has_value() && a.value.type() == typeid(Node))) {
         const Node& __a = std::any_cast<const Node&>(a.value);
-        std::cout << __a.n << "\n";
+        std::cout << __a.n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -152,8 +152,8 @@ void exercise_returns_any() {
 void warn_list_literal_element() {
     Node n = Node(7);
     std::vector<::tpy::Any> xs = {::tpy::make_any(n)};
-    std::cout << n.n << "\n";
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << n.n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def warn_dict_literal_value() -> None:
@@ -164,8 +164,8 @@ void warn_list_literal_element() {
 void warn_dict_literal_value() {
     Node n = Node(8);
     ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>({{"k", ::tpy::make_any(n)}});
-    std::cout << n.n << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << n.n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // def warn_subscript_assign_dict_any() -> None:
@@ -177,7 +177,7 @@ void warn_subscript_assign_dict_any() {
     Node n = Node(9);
     ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>();
     ::tpy::__setitem__(d, "k", ::tpy::make_any(n));
-    std::cout << n.n << "\n";
+    std::cout << n.n << "\n" << ::tpy::check_signals;
 }
 
 // def warn_field_assign_any() -> None:
@@ -189,7 +189,7 @@ void warn_field_assign_any() {
     Node n = Node(10);
     Holder h = Holder();
     h.payload = ::tpy::make_any(n);
-    std::cout << n.n << "\n";
+    std::cout << n.n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

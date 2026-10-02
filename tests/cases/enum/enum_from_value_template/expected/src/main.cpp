@@ -120,8 +120,8 @@ Color flip(Holder& h) {
 //     print(f"p={Prio.HIGH}")
 void main() {
     Holder h = Holder();
-    std::cout << ::tpyapp::main::flip(h) << " " << ::tpy::print_bool(::tpyapp::main::prios(Prio::LOW, 5)) << "\n";
-    std::cout << std::format("p={}", static_cast<int>(Prio::HIGH)) << "\n";
+    std::cout << ::tpyapp::main::flip(h) << " " << ::tpy::print_bool(::tpyapp::main::prios(Prio::LOW, 5)) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("p={}", static_cast<int>(Prio::HIGH)) << "\n" << ::tpy::check_signals;
 }
 
 // # `Prio(n)` on an IntEnum resolves the from-value template, alongside the

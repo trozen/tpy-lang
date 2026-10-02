@@ -1911,7 +1911,7 @@ void drain(T_it& it) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         std::string_view s = ::tpy::unwrap_ref(*__r_1);
-        std::cout << s << "\n";
+        std::cout << s << "\n" << ::tpy::check_signals;
     }
 }
 

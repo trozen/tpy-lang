@@ -14,12 +14,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << "before first import" << "\n";
+    std::cout << "before first import" << "\n" << ::tpy::check_signals;
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::first::__tpy_init();
-    std::cout << "after first, before second" << "\n";
+    std::cout << "after first, before second" << "\n" << ::tpy::check_signals;
     ::tpyapp::pkg::second::__tpy_init();
-    std::cout << "after second" << "\n";
+    std::cout << "after second" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::pkg::consumer

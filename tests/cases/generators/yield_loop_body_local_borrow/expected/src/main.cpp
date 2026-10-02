@@ -122,7 +122,7 @@ void main() {
             auto& __tup_1 = __for_tup_0;
             int32_t level = std::get<0>(__tup_1);
             auto&& kids = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-            std::cout << "level" << " " << level << " " << "kids" << " " << ::tpy::__len__(kids) << "\n";
+            std::cout << "level" << " " << level << " " << "kids" << " " << ::tpy::__len__(kids) << "\n" << ::tpy::check_signals;
             if ((level == 1)) {
                 kids.clear();
             }

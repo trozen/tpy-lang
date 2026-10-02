@@ -24,8 +24,8 @@ void helper(Node& n) {
 void main() {
     Node n = Node();
     Holder h = Holder(n);
-    std::cout << n.x << "\n";
-    std::cout << ::tpy::print_bool(h.started) << "\n";
+    std::cout << n.x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(h.started) << "\n" << ::tpy::check_signals;
 }
 
 // main()

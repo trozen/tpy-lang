@@ -27,7 +27,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view w = *__beg_0;
-        std::cout << w << "\n";
+        std::cout << w << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, ::tpy::BigInt> d = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}, {"b", ::tpy::BigInt(2)}});
     auto& __obj_1 = d;
@@ -35,7 +35,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        std::cout << k << "\n";
+        std::cout << k << "\n" << ::tpy::check_signals;
     }
     auto __obj_2 = ::tpy::dict_items(d);
     auto __beg_2 = __obj_2.begin();
@@ -45,7 +45,7 @@ void main() {
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);
         const ::tpy::BigInt& v = std::get<1>(__tup_1);
-        std::cout << k << " " << v << "\n";
+        std::cout << k << " " << v << "\n" << ::tpy::check_signals;
     }
 }
 

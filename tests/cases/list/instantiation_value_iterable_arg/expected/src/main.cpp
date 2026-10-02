@@ -87,15 +87,15 @@ int32_t from_borrow_call(std::vector<int32_t>& src) {
 //     print("borrow", from_borrow_call([1, 2]))
 //     print("method", Reader("r").count(6))
 void main() {
-    std::cout << "range" << " " << ::tpyapp::main::from_range() << "\n";
-    std::cout << "set" << " " << ::tpyapp::main::set_from_range() << "\n";
-    std::cout << "str" << " " << ::tpyapp::main::from_str("abcd") << "\n";
+    std::cout << "range" << " " << ::tpyapp::main::from_range() << "\n" << ::tpy::check_signals;
+    std::cout << "set" << " " << ::tpyapp::main::set_from_range() << "\n" << ::tpy::check_signals;
+    std::cout << "str" << " " << ::tpyapp::main::from_str("abcd") << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> data = {1, 2, 3};
-    std::cout << "span" << " " << ::tpyapp::main::from_span(::tpy::as_mut_span(data)) << "\n";
-    std::cout << "array" << " " << ::tpyapp::main::from_array() << "\n";
+    std::cout << "span" << " " << ::tpyapp::main::from_span(::tpy::as_mut_span(data)) << "\n" << ::tpy::check_signals;
+    std::cout << "array" << " " << ::tpyapp::main::from_array() << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = {1, 2};
-    std::cout << "borrow" << " " << ::tpyapp::main::from_borrow_call(__tmp_1) << "\n";
-    std::cout << "method" << " " << Reader("r").count(6) << "\n";
+    std::cout << "borrow" << " " << ::tpyapp::main::from_borrow_call(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << Reader("r").count(6) << "\n" << ::tpy::check_signals;
 }
 
 // main()

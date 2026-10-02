@@ -58,9 +58,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 inline void Box::make() const {
     int32_t k = 1;
     std::function<::tpy::BigInt()> f = ::tpyapp::main::hold([k]() -> ::tpy::BigInt { return ::tpy::BigInt(k); });
-    std::cout << f() << "\n";
+    std::cout << f() << "\n" << ::tpy::check_signals;
     k = 2;
-    std::cout << k << "\n";
+    std::cout << k << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

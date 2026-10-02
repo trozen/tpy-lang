@@ -33,7 +33,7 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    std::cout << "after VE" << "\n";
+    std::cout << "after VE" << "\n" << ::tpy::check_signals;
     {
         try {
             auto __ctx_2 = SuppressVE();
@@ -47,11 +47,11 @@ void main() {
                 throw;
             }
         } catch (const ::tpy::RuntimeError&) {
-            std::cout << "unexpected re-raise" << "\n";
+            std::cout << "unexpected re-raise" << "\n" << ::tpy::check_signals;
             goto __after_else_1;
         }
         // else:
-        std::cout << "after RE" << "\n";
+        std::cout << "after RE" << "\n" << ::tpy::check_signals;
         __after_else_1:;
     }
     {
@@ -67,7 +67,7 @@ void main() {
                 throw;
             }
         } catch (const ::tpy::IndexError& e) {
-            std::cout << (::tpy::str_concat("propagated: ", std::string(::tpy::__str__(e)))) << "\n";
+            std::cout << (::tpy::str_concat("propagated: ", std::string(::tpy::__str__(e)))) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -88,11 +88,11 @@ bool SuppressVE::__exit__(std::monostate exc_type, const ::tpy::BaseException* e
         return false;
     }
     if (const ::tpy::ValueError* __exc_val_ptr = dynamic_cast<const ::tpy::ValueError*>(exc_val); (__exc_val_ptr != nullptr)) {
-        std::cout << (::tpy::str_concat("suppressed VE: ", std::string(::tpy::__str__((*__exc_val_ptr))))) << "\n";
+        std::cout << (::tpy::str_concat("suppressed VE: ", std::string(::tpy::__str__((*__exc_val_ptr))))) << "\n" << ::tpy::check_signals;
         return true;
     }
     if (((dynamic_cast<const ::tpy::OSError*>(exc_val) != nullptr) || (dynamic_cast<const ::tpy::RuntimeError*>(exc_val) != nullptr))) {
-        std::cout << (::tpy::str_concat("suppressed family: ", std::string(::tpy::__str__((*exc_val))))) << "\n";
+        std::cout << (::tpy::str_concat("suppressed family: ", std::string(::tpy::__str__((*exc_val))))) << "\n" << ::tpy::check_signals;
         return true;
     }
     return false;

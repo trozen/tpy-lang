@@ -18,15 +18,15 @@ namespace tpyapp::main {
 //     print("c", file=s, flush=False)
 //     print("flushes after flush=False:", s.flushes)
 void main() {
-    std::cout << "flush via stdout" << "\n" << std::flush;
-    std::cout << "no-flush via stdout" << "\n";
+    std::cout << "flush via stdout" << "\n" << std::flush << ::tpy::check_signals;
+    std::cout << "no-flush via stdout" << "\n" << ::tpy::check_signals;
     CountingSink s = CountingSink();
-    ::tpy::as_ostream(s) << "a" << "\n";
-    std::cout << "flushes after no-flush:" << " " << s.flushes << "\n";
-    ::tpy::as_ostream(s) << "b" << "\n" << std::flush;
-    std::cout << "flushes after flush=True:" << " " << s.flushes << "\n";
-    ::tpy::as_ostream(s) << "c" << "\n";
-    std::cout << "flushes after flush=False:" << " " << s.flushes << "\n";
+    ::tpy::as_ostream(s) << "a" << "\n" << ::tpy::check_signals;
+    std::cout << "flushes after no-flush:" << " " << s.flushes << "\n" << ::tpy::check_signals;
+    ::tpy::as_ostream(s) << "b" << "\n" << std::flush << ::tpy::check_signals;
+    std::cout << "flushes after flush=True:" << " " << s.flushes << "\n" << ::tpy::check_signals;
+    ::tpy::as_ostream(s) << "c" << "\n" << ::tpy::check_signals;
+    std::cout << "flushes after flush=False:" << " " << s.flushes << "\n" << ::tpy::check_signals;
 }
 
 // main()

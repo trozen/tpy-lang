@@ -29,7 +29,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk::__next__() {
     case S_RESUME_1: {  // after: yield value_of(m := (nodes[i] if flag else None))  # tpyc: ok
         if ((m != nullptr)) {
             m->v = ::tpy::add_check<int32_t>(m->v, 100);
-            std::cout << m->v << "\n";
+            std::cout << m->v << "\n" << ::tpy::check_signals;
         }
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;

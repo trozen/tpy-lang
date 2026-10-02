@@ -79,15 +79,15 @@ void write_plain(std::optional<int32_t> p) {
 //     write_plain(11)
 //     print(GP)
 void main() {
-    std::cout << ::tpyapp::main::read_ret() << "\n";
+    std::cout << ::tpyapp::main::read_ret() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::enable();
-    std::cout << ::tpyapp::main::read_ret() << "\n";
-    std::cout << ::tpyapp::main::read_sink() << "\n";
-    std::cout << ::tpyapp::main::read_aug() << "\n";
+    std::cout << ::tpyapp::main::read_ret() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_sink() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_aug() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::write_from(3);
-    std::cout << ::tpyapp::main::read_ret() << "\n";
+    std::cout << ::tpyapp::main::read_ret() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::write_plain(11);
-    std::cout << GP << "\n";
+    std::cout << GP << "\n" << ::tpy::check_signals;
 }
 
 // GO: int32 | None = None

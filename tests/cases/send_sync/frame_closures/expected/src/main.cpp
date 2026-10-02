@@ -13,7 +13,7 @@ void take(const std::function<void(int32_t)>& cb) {
 // def free_fn(n: int32) -> None:
 //     print("free", n)
 void free_fn(int32_t n) {
-    std::cout << "free" << " " << n << "\n";
+    std::cout << "free" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -28,14 +28,14 @@ void free_fn(int32_t n) {
 //         print("nested", n + k)
 //     take(nested)
 void main() {
-    ::tpyapp::main::take([](int32_t n) { std::cout << "lam" << " " << n << "\n"; });
+    ::tpyapp::main::take([](int32_t n) { std::cout << "lam" << " " << n << "\n" << ::tpy::check_signals; });
     int32_t k = 10;
-    ::tpyapp::main::take([k](int32_t n) { std::cout << "cap" << " " << (::tpy::add_check<int32_t>(n, k)) << "\n"; });
+    ::tpyapp::main::take([k](int32_t n) { std::cout << "cap" << " " << (::tpy::add_check<int32_t>(n, k)) << "\n" << ::tpy::check_signals; });
     ::tpyapp::main::take(free_fn);
     std::array<int32_t, 2> xs = {1, 2};
-    ::tpyapp::main::take([xs](int32_t n) { std::cout << "list" << " " << (::tpy::add_check<int32_t>(n, ::tpy::__getitem__(xs, 0))) << "\n"; });
+    ::tpyapp::main::take([xs](int32_t n) { std::cout << "list" << " " << (::tpy::add_check<int32_t>(n, ::tpy::__getitem__(xs, 0))) << "\n" << ::tpy::check_signals; });
     auto nested = [k](int32_t n) {
-        std::cout << "nested" << " " << (::tpy::add_check<int32_t>(n, k)) << "\n";
+        std::cout << "nested" << " " << (::tpy::add_check<int32_t>(n, k)) << "\n" << ::tpy::check_signals;
     };
     ::tpyapp::main::take(nested);
 }

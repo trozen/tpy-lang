@@ -16,14 +16,14 @@ namespace tpyapp::main {
 //     print(native_stub.frame_count)
 //     print(native_stub.tick)
 void main() {
-    std::cout << ::engine::score << "\n";
-    std::cout << ::lives << "\n";
-    std::cout << ::DG_FrameCount << "\n";
-    std::cout << ::tick << "\n";
-    std::cout << ::engine::score << "\n";
-    std::cout << ::lives << "\n";
-    std::cout << ::DG_FrameCount << "\n";
-    std::cout << ::tick << "\n";
+    std::cout << ::engine::score << "\n" << ::tpy::check_signals;
+    std::cout << ::lives << "\n" << ::tpy::check_signals;
+    std::cout << ::DG_FrameCount << "\n" << ::tpy::check_signals;
+    std::cout << ::tick << "\n" << ::tpy::check_signals;
+    std::cout << ::engine::score << "\n" << ::tpy::check_signals;
+    std::cout << ::lives << "\n" << ::tpy::check_signals;
+    std::cout << ::DG_FrameCount << "\n" << ::tpy::check_signals;
+    std::cout << ::tick << "\n" << ::tpy::check_signals;
 }
 
 // # Cross-module native_global import: the use site must emit the rename/binding

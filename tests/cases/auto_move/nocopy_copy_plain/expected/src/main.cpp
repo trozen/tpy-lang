@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     Counter a = Counter(5);
     Counter b = Counter(a);
-    std::cout << a.count << "\n";
-    std::cout << b.count << "\n";
+    std::cout << a.count << "\n" << ::tpy::check_signals;
+    std::cout << b.count << "\n" << ::tpy::check_signals;
 }
 
 // main()

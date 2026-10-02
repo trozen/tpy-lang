@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //         print(p.x)
 void show(const T* p) {
     if ((p != nullptr)) {
-        std::cout << p->x << "\n";
+        std::cout << p->x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -34,7 +34,7 @@ void main() {
     ::tpyapp::main::show(&(t));
     ::tpyapp::main::show(nullptr);
     ::tpyapp::main::bump(&(t));
-    std::cout << t.x << "\n";
+    std::cout << t.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

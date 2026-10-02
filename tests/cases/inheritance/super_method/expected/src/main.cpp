@@ -16,9 +16,9 @@ void __tpy_init() {
 
     static Dog __global_slot_1 = Dog("Rex", "Labrador");
     d = &__global_slot_1;
-    std::cout << d->speak() << "\n";
-    std::cout << d->full_speak() << "\n";
-    std::cout << d->describe() << "\n";
+    std::cout << d->speak() << "\n" << ::tpy::check_signals;
+    std::cout << d->full_speak() << "\n" << ::tpy::check_signals;
+    std::cout << d->describe() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

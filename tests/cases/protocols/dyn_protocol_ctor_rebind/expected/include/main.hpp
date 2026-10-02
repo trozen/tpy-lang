@@ -117,10 +117,10 @@ inline Announcer::Announcer() {
     std::optional<Cat> __slot_2;
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    std::cout << pet->name() << "\n";
+    std::cout << pet->name() << "\n" << ::tpy::check_signals;
     __slot_2.emplace(Cat());
     pet = &*__slot_2;
-    std::cout << pet->name() << "\n";
+    std::cout << pet->name() << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

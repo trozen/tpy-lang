@@ -29,7 +29,7 @@ void main();
 //     print("generic", v)
 template<typename T>
 void show(::tpy::param_val_or_ref_t<T> v) {
-    std::cout << "generic" << " " << ::tpy::ValuePrinter(v) << "\n";
+    std::cout << "generic" << " " << ::tpy::ValuePrinter(v) << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

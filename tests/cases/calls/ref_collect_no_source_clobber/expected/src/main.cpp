@@ -23,10 +23,10 @@ Named& identity(Named& n) {
 void main() {
     std::vector<Named> src = {Named("alice"), Named("bob")};
     std::vector<Named> result = ::tpy::construct<std::vector<Named>>(::tpy::copy_iter<Named>(::tpy::builtin_map<::tpy::val_or_ref<Named>>(identity, src)));
-    std::cout << ::tpy::__getitem__(src, 0).name << "\n";
-    std::cout << ::tpy::__getitem__(src, 1).name << "\n";
-    std::cout << ::tpy::__getitem__(result, 0).name << "\n";
-    std::cout << ::tpy::__getitem__(result, 1).name << "\n";
+    std::cout << ::tpy::__getitem__(src, 0).name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(src, 1).name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(result, 0).name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(result, 1).name << "\n" << ::tpy::check_signals;
 }
 
 // main()

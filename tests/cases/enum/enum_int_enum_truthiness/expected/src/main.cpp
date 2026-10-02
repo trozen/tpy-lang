@@ -64,17 +64,17 @@ namespace tpyapp::main {
 //     print(not Status.On)
 void main() {
     if ((static_cast<int32_t>(Status::Off) != 0)) {
-        std::cout << "off is truthy" << "\n";
+        std::cout << "off is truthy" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "off is falsy" << "\n";
+        std::cout << "off is falsy" << "\n" << ::tpy::check_signals;
     }
     if ((static_cast<int32_t>(Status::On) != 0)) {
-        std::cout << "on is truthy" << "\n";
+        std::cout << "on is truthy" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "on is falsy" << "\n";
+        std::cout << "on is falsy" << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::print_bool((!((static_cast<int32_t>(Status::Off) != 0)))) << "\n";
-    std::cout << ::tpy::print_bool((!((static_cast<int32_t>(Status::On) != 0)))) << "\n";
+    std::cout << ::tpy::print_bool((!((static_cast<int32_t>(Status::Off) != 0)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!((static_cast<int32_t>(Status::On) != 0)))) << "\n" << ::tpy::check_signals;
 }
 
 // # IntEnum truthiness: value 0 is falsy, non-zero is truthy

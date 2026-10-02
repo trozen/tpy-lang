@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(hash(x))
 void main() {
     ::tpy::Any x = ::tpy::make_any(std::vector<int32_t>{1, 2, 3});
-    std::cout << ::tpy::__hash__(x) << "\n";
+    std::cout << ::tpy::__hash__(x) << "\n" << ::tpy::check_signals;
 }
 
 // main()

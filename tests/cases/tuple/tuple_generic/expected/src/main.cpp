@@ -24,17 +24,17 @@ namespace tpyapp::main {
 void main() {
     std::tuple<int32_t, int32_t> nums = std::tuple<int32_t, int32_t>{10, 20};
     int32_t x = ::tpyapp::main::first_of_pair<int32_t>(nums);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     std::tuple<int32_t, std::string> pair = std::tuple<int32_t, std::string>{5, "five"};
     std::tuple<std::string, int32_t> swapped = ::tpyapp::main::swap<int32_t, std::string>(pair);
-    std::cout << ::tpy::TuplePrinter(swapped) << "\n";
+    std::cout << ::tpy::TuplePrinter(swapped) << "\n" << ::tpy::check_signals;
     Point pt = Point(1, 2);
     auto pt_pair = std::tuple<int32_t, Point*>{42, &(pt)};
     auto swapped2 = ::tpyapp::main::swap<int32_t, Point>(pt_pair);
-    std::cout << std::get<0>(swapped2)->x << "\n";
-    std::cout << std::get<1>(swapped2) << "\n";
+    std::cout << std::get<0>(swapped2)->x << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(swapped2) << "\n" << ::tpy::check_signals;
     pt.x = 99;
-    std::cout << std::get<0>(swapped2)->x << "\n";
+    std::cout << std::get<0>(swapped2)->x << "\n" << ::tpy::check_signals;
 }
 
 // main()

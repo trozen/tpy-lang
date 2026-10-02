@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void incomplete(std::string_view mode) {
     auto& __match_subject_1 = mode;
     if (__match_subject_1 == "r") {
-        std::cout << "read" << "\n";
+        std::cout << "read" << "\n" << ::tpy::check_signals;
     } else if (__match_subject_1 == "w") {
-        std::cout << "write" << "\n";
+        std::cout << "write" << "\n" << ::tpy::check_signals;
     }
 }
 

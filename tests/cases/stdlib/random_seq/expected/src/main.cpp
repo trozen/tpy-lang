@@ -106,30 +106,30 @@ namespace tpyapp::main {
 void main() {
     ::tpystd::random::seed(42);
     std::vector<int32_t> items = {10, 20, 30, 40, 50};
-    std::cout << "choice_seed42:" << "\n";
+    std::cout << "choice_seed42:" << "\n" << ::tpy::check_signals;
     int32_t i = 0;
     while ((i < 8)) {
-        std::cout << ::tpystd::random::choice<int32_t>(items) << "\n";
+        std::cout << ::tpystd::random::choice<int32_t>(items) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     ::tpystd::random::seed(7);
     std::vector<std::string> words = {"alpha", "beta", "gamma", "delta"};
-    std::cout << "choice_str:" << "\n";
+    std::cout << "choice_str:" << "\n" << ::tpy::check_signals;
     i = 0;
     while ((i < 6)) {
-        std::cout << ::tpystd::random::choice<std::string>(words) << "\n";
+        std::cout << ::tpystd::random::choice<std::string>(words) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     ::tpystd::random::seed(99);
     std::vector<int32_t> deck = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     ::tpystd::random::shuffle<int32_t>(deck);
-    std::cout << "shuffle_99:" << "\n";
+    std::cout << "shuffle_99:" << "\n" << ::tpy::check_signals;
     auto& __obj_0 = deck;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
     ::tpystd::random::seed(123);
     std::vector<int32_t> arr = {1, 2, 3, 4, 5};
@@ -142,55 +142,55 @@ void main() {
         int32_t v = *__beg_1;
         s = ::tpy::add_check<int32_t>(s, v);
     }
-    std::cout << "shuffle_multiset_sum:" << " " << s << "\n";
+    std::cout << "shuffle_multiset_sum:" << " " << s << "\n" << ::tpy::check_signals;
     std::vector<int32_t> empty = std::vector<int32_t>{};
     ::tpystd::random::shuffle<int32_t>(empty);
-    std::cout << "shuffle_empty_len:" << " " << ::tpy::__len__(empty) << "\n";
+    std::cout << "shuffle_empty_len:" << " " << ::tpy::__len__(empty) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> single = {42};
     ::tpystd::random::shuffle<int32_t>(single);
-    std::cout << "shuffle_single:" << " " << ::tpy::__getitem__(single, 0) << "\n";
+    std::cout << "shuffle_single:" << " " << ::tpy::__getitem__(single, 0) << "\n" << ::tpy::check_signals;
     ::tpystd::random::seed(42);
-    std::cout << "getrandbits_32:" << "\n";
+    std::cout << "getrandbits_32:" << "\n" << ::tpy::check_signals;
     i = 0;
     while ((i < 4)) {
-        std::cout << ::tpystd::random::getrandbits(32) << "\n";
+        std::cout << ::tpystd::random::getrandbits(32) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     ::tpystd::random::seed(42);
-    std::cout << "getrandbits_33:" << "\n";
+    std::cout << "getrandbits_33:" << "\n" << ::tpy::check_signals;
     i = 0;
     while ((i < 3)) {
-        std::cout << ::tpystd::random::getrandbits(33) << "\n";
+        std::cout << ::tpystd::random::getrandbits(33) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     ::tpystd::random::seed(42);
-    std::cout << "getrandbits_64:" << "\n";
+    std::cout << "getrandbits_64:" << "\n" << ::tpy::check_signals;
     i = 0;
     while ((i < 3)) {
-        std::cout << ::tpystd::random::getrandbits(64) << "\n";
+        std::cout << ::tpystd::random::getrandbits(64) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     ::tpystd::random::seed(42);
-    std::cout << "getrandbits_100:" << "\n";
+    std::cout << "getrandbits_100:" << "\n" << ::tpy::check_signals;
     i = 0;
     while ((i < 2)) {
-        std::cout << ::tpystd::random::getrandbits(100) << "\n";
+        std::cout << ::tpystd::random::getrandbits(100) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     ::tpystd::random::seed(42);
-    std::cout << "getrandbits_small:" << "\n";
-    std::cout << ::tpystd::random::getrandbits(1) << "\n";
-    std::cout << ::tpystd::random::getrandbits(7) << "\n";
+    std::cout << "getrandbits_small:" << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::random::getrandbits(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::random::getrandbits(7) << "\n" << ::tpy::check_signals;
     ::tpystd::random::seed(-42);
     ::tpy::BigInt a0 = ::tpystd::random::getrandbits(32);
     ::tpystd::random::seed(42);
     ::tpy::BigInt b0 = ::tpystd::random::getrandbits(32);
-    std::cout << "seed_neg_eq_pos:" << " " << ::tpy::print_bool((a0 == b0)) << "\n";
+    std::cout << "seed_neg_eq_pos:" << " " << ::tpy::print_bool((a0 == b0)) << "\n" << ::tpy::check_signals;
     ::tpystd::random::seed(-2147483648);
     ::tpy::BigInt c0 = ::tpystd::random::getrandbits(32);
     ::tpystd::random::seed(-2147483648);
     ::tpy::BigInt c1 = ::tpystd::random::getrandbits(32);
-    std::cout << "seed_int32min_reproducible:" << " " << ::tpy::print_bool((c0 == c1)) << "\n";
+    std::cout << "seed_int32min_reproducible:" << " " << ::tpy::print_bool((c0 == c1)) << "\n" << ::tpy::check_signals;
 }
 
 // # random.choice / shuffle, getrandbits(k > 32), seed(negative).

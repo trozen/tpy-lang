@@ -14,8 +14,8 @@ namespace tpyapp::main {
 void main() {
     Wrapper w = Wrapper(::tpy::BigInt(42));
     ::tpy::BigInt result = std::move(w).take();
-    std::cout << result << "\n";
-    std::cout << Wrapper(::tpy::BigInt(99)).take() << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
+    std::cout << Wrapper(::tpy::BigInt(99)).take() << "\n" << ::tpy::check_signals;
 }
 
 // main()

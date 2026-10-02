@@ -13,9 +13,9 @@ std::vector<int32_t>* nums{};
 //     print(sp[0])
 //     print(sp[1])
 void span_ops(std::span<int32_t> sp) {
-    std::cout << ::tpy::__len__(sp) << "\n";
-    std::cout << ::tpy::__getitem__(sp, 0) << "\n";
-    std::cout << ::tpy::__getitem__(sp, 1) << "\n";
+    std::cout << ::tpy::__len__(sp) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(sp, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(sp, 1) << "\n" << ::tpy::check_signals;
 }
 
 // """Tests that methods work on all container types via unified module lookup."""
@@ -60,25 +60,25 @@ void __tpy_init() {
     al->append(10);
     al->append(20);
     al->append(30);
-    std::cout << ::tpy::__len__((*al)) << "\n";
-    std::cout << (*al)[0] << "\n";
-    std::cout << (*al)[2] << "\n";
+    std::cout << ::tpy::__len__((*al)) << "\n" << ::tpy::check_signals;
+    std::cout << (*al)[0] << "\n" << ::tpy::check_signals;
+    std::cout << (*al)[2] << "\n" << ::tpy::check_signals;
     static std::array<int32_t, 3> __global_slot_2 = {100, 200, 300};
     arr = &__global_slot_2;
-    std::cout << ::tpy::__len__((*arr)) << "\n";
-    std::cout << ::tpy::__getitem__((*arr), 0) << "\n";
-    std::cout << ::tpy::__getitem__((*arr), 2) << "\n";
+    std::cout << ::tpy::__len__((*arr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*arr), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*arr), 2) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__((*arr), 1, 250);
-    std::cout << ::tpy::__getitem__((*arr), 1) << "\n";
+    std::cout << ::tpy::__getitem__((*arr), 1) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::span_ops(::tpy::as_mut_span((*arr)));
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
     nums = &__global_slot_3;
     nums->push_back(4);
-    std::cout << ::tpy::__len__((*nums)) << "\n";
-    std::cout << ::tpy::__getitem__((*nums), 0) << "\n";
-    std::cout << ::tpy::__getitem__((*nums), 3) << "\n";
+    std::cout << ::tpy::__len__((*nums)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*nums), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*nums), 3) << "\n" << ::tpy::check_signals;
     ::tpy::pop_back((*nums));
-    std::cout << ::tpy::__len__((*nums)) << "\n";
+    std::cout << ::tpy::__len__((*nums)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

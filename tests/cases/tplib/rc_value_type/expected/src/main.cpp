@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     ::tpystd::tplib::rc::Rc<int32_t> r1 = Rc<int32_t>::new_<int32_t>(7);
     ::tpystd::tplib::rc::Rc<int32_t> r2 = r1.clone();
-    std::cout << r1.get() << " " << r2.get() << "\n";
+    std::cout << r1.get() << " " << r2.get() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Rc

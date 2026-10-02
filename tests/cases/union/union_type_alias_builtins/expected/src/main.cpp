@@ -12,10 +12,10 @@ namespace tpyapp::main {
 void show_num(const Num& x) {
     if (std::holds_alternative<bool>(x)) {
         const auto& __x = std::get<bool>(x);
-        std::cout << "bool" << "\n";
+        std::cout << "bool" << "\n" << ::tpy::check_signals;
     } else {
         const auto& __x = std::get<::tpy::BigInt>(x);
-        std::cout << "int" << "\n";
+        std::cout << "int" << "\n" << ::tpy::check_signals;
     }
 }
 

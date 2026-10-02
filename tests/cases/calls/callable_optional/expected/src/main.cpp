@@ -29,7 +29,7 @@ int32_t apply(int32_t n, std::optional<std::function<int32_t(int32_t)>> f) {
 // def report(code: int32) -> None:
 //     print("report:", code)
 void report(int32_t code) {
-    std::cout << "report:" << " " << code << "\n";
+    std::cout << "report:" << " " << code << "\n" << ::tpy::check_signals;
 }
 
 // def triple(x: int32) -> int32:
@@ -66,15 +66,15 @@ __gen_scan scan(int32_t n, std::optional<std::function<void(int32_t)>> onerror) 
 void main() {
     Emitter e = Emitter();
     e.emit("ignored");
-    e.set_handler([](std::string_view s) { std::cout << "got:" << " " << s << "\n"; });
+    e.set_handler([](std::string_view s) { std::cout << "got:" << " " << s << "\n" << ::tpy::check_signals; });
     e.emit("hello");
     e.emit("world");
-    ::tpyapp::main::run(1, [](int32_t c) { std::cout << "lambda:" << " " << c << "\n"; });
+    ::tpyapp::main::run(1, [](int32_t c) { std::cout << "lambda:" << " " << c << "\n" << ::tpy::check_signals; });
     ::tpyapp::main::run(2, report);
     ::tpyapp::main::run(3);
-    std::cout << "apply-lambda:" << " " << ::tpyapp::main::apply(5, [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 100)); }) << "\n";
-    std::cout << "apply-name:" << " " << ::tpyapp::main::apply(5, triple) << "\n";
-    std::cout << "apply-none:" << " " << ::tpyapp::main::apply(5) << "\n";
+    std::cout << "apply-lambda:" << " " << ::tpyapp::main::apply(5, [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 100)); }) << "\n" << ::tpy::check_signals;
+    std::cout << "apply-name:" << " " << ::tpyapp::main::apply(5, triple) << "\n" << ::tpy::check_signals;
+    std::cout << "apply-none:" << " " << ::tpyapp::main::apply(5) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::scan(3, report);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -82,7 +82,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "scan:" << " " << v << "\n";
+            std::cout << "scan:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -92,7 +92,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "scan-none:" << " " << v << "\n";
+            std::cout << "scan-none:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
 }

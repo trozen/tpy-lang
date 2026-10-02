@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(BIG_VALUE)
 void main() {
-    std::cout << ::tpyapp::constants::BIG_VALUE << "\n";
+    std::cout << ::tpyapp::constants::BIG_VALUE << "\n" << ::tpy::check_signals;
 }
 
 // # Cross-module import of a Final[int] (BigInt) constant

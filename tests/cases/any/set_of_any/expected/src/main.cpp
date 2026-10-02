@@ -17,7 +17,7 @@ void main() {
     ::tpy::Any b = ::tpy::make_any(std::string("hello"));
     s.insert(a);
     s.insert(b);
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // main()

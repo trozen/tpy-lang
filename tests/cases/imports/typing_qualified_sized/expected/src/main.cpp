@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(count(data))
 void main() {
     std::vector<int32_t> data = {1, 2, 3};
-    std::cout << ::tpyapp::main::count(data) << "\n";
+    std::cout << ::tpyapp::main::count(data) << "\n" << ::tpy::check_signals;
 }
 
 // main()

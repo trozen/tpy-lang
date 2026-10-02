@@ -60,7 +60,7 @@ int32_t probe(bool flag) {
             throw ::tpy::ValueError("stop");
         } catch (...) {
             total = ::tpy::add_check<int32_t>(total, view->n);
-            std::cout << "finally saw" << " " << total << "\n";
+            std::cout << "finally saw" << " " << total << "\n" << ::tpy::check_signals;
             throw;
         }
     }
@@ -81,14 +81,14 @@ void main() {
         try {
             ::tpyapp::main::probe(true);
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught 1" << "\n";
+            std::cout << "caught 1" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::probe(false);
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught 2" << "\n";
+            std::cout << "caught 2" << "\n" << ::tpy::check_signals;
         }
     }
 }

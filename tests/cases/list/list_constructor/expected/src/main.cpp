@@ -23,7 +23,7 @@ void test_local_list() {
     std::vector<int32_t> local_nums = std::vector<int32_t>();
     local_nums.push_back(100);
     local_nums.push_back(200);
-    std::cout << ::tpy::__len__(local_nums) << "\n";
+    std::cout << ::tpy::__len__(local_nums) << "\n" << ::tpy::check_signals;
 }
 
 // """Tests list[T]() constructor syntax."""
@@ -83,42 +83,42 @@ void __tpy_init() {
     nums = &__global_slot_1;
     nums->push_back(1);
     nums->push_back(2);
-    std::cout << ::tpy::__len__((*nums)) << "\n";
+    std::cout << ::tpy::__len__((*nums)) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_2 = std::vector<int32_t>();
     other = &__global_slot_2;
     other->push_back(3);
-    std::cout << ::tpy::__len__((*other)) << "\n";
+    std::cout << ::tpy::__len__((*other)) << "\n" << ::tpy::check_signals;
     static std::vector<Point> __global_slot_3 = std::vector<Point>();
     points = &__global_slot_3;
     points->push_back(Point(10, 20));
-    std::cout << ::tpy::__len__((*points)) << "\n";
-    std::cout << ::tpy::__getitem__((*points), 0).x << "\n";
+    std::cout << ::tpy::__len__((*points)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*points), 0).x << "\n" << ::tpy::check_signals;
     static std::vector<std::vector<Point>> __global_slot_4 = std::vector<std::vector<Point>>();
     nested = &__global_slot_4;
     static std::vector<Point> __global_slot_5 = std::vector<Point>();
     inner = &__global_slot_5;
     inner->push_back(Point(99, 88));
     nested->push_back((*inner));
-    std::cout << ::tpy::__len__((*nested)) << "\n";
-    std::cout << ::tpy::__getitem__(::tpy::__getitem__((*nested), 0), 0).x << "\n";
+    std::cout << ::tpy::__len__((*nested)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__((*nested), 0), 0).x << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_local_list();
-    std::cout << ::tpy::ListPrinter(std::vector<int32_t>()) << "\n";
-    std::cout << ::tpy::ListPrinter(std::vector<::tpy::BigInt>()) << "\n";
-    std::cout << ::tpy::ListPrinter(std::vector<int32_t>({1, 2, 3})) << "\n";
-    std::cout << ::tpy::ListPrinter(std::vector<int32_t>({10, 20})) << "\n";
+    std::cout << ::tpy::ListPrinter(std::vector<int32_t>()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(std::vector<::tpy::BigInt>()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(std::vector<int32_t>({1, 2, 3})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(std::vector<int32_t>({10, 20})) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_6 = {100, 200, 300};
     src = &__global_slot_6;
     static std::vector<int32_t> __global_slot_7 = ::tpy::construct<std::vector<int32_t>>((*src));
     copy = &__global_slot_7;
-    std::cout << ::tpy::ListPrinter((*copy)) << "\n";
+    std::cout << ::tpy::ListPrinter((*copy)) << "\n" << ::tpy::check_signals;
     copy->push_back(400);
-    std::cout << ::tpy::__len__((*src)) << "\n";
-    std::cout << ::tpy::__len__((*copy)) << "\n";
+    std::cout << ::tpy::__len__((*src)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__((*copy)) << "\n" << ::tpy::check_signals;
     static std::array<int32_t, 3> __global_slot_8 = {5, 6, 7};
     arr = &__global_slot_8;
     static std::vector<int32_t> __global_slot_9 = ::tpy::construct<std::vector<int32_t>>((*arr));
     from_arr = &__global_slot_9;
-    std::cout << ::tpy::ListPrinter((*from_arr)) << "\n";
+    std::cout << ::tpy::ListPrinter((*from_arr)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

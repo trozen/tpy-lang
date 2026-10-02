@@ -49,11 +49,11 @@ int32_t count(const Tree<int32_t>& t) {
 void main() {
     Tree<int32_t> tree = std::vector<Tree<int32_t>>{1, 2};
     auto p = ::tpyapp::main::keep_param(tree);
-    std::cout << ::tpyapp::main::count(std::get<0>(p)) << "\n";
+    std::cout << ::tpyapp::main::count(std::get<0>(p)) << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpyapp::main::own_escape();
     Tree<int32_t> q = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    std::cout << ::tpyapp::main::count(q) << "\n";
+    std::cout << ::tpyapp::main::count(q) << "\n" << ::tpy::check_signals;
 }
 
 // main()

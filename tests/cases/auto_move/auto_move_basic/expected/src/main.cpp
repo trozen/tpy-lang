@@ -22,7 +22,7 @@ void main() {
     p.x = 10;
     p.y = 32;
     int32_t result = ::tpyapp::main::consume(std::move(p));
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
 }
 
 // main()

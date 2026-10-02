@@ -12,7 +12,7 @@ void main() {
     IntBox __slot_1{IntBox(7)};
     Cloneable<int32_t>* c = &__slot_1;
     ::tpystd::tplib::box::Box<Cloneable<int32_t>> b = ::tpystd::tplib::box::Box<Cloneable<int32_t>>(c->replicate());
-    std::cout << b.__deref__().value() << "\n";
+    std::cout << b.__deref__().value() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

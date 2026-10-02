@@ -57,29 +57,29 @@ void local_source(Slot& s) {
 //         print(len(s.boxes))
 void main() {
     Slot s = Slot();
-    std::cout << s.size() << "\n";
+    std::cout << s.size() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::local_source(s);
-    std::cout << s.size() << "\n";
+    std::cout << s.size() << "\n" << ::tpy::check_signals;
     s.grow();
-    std::cout << s.size() << "\n";
+    std::cout << s.size() << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray owned = ::tpy::ByteArray(::tpy::bytes_literal("xyz", 3));
     s.take(std::move(owned));
-    std::cout << s.size() << "\n";
+    std::cout << s.size() << "\n" << ::tpy::check_signals;
     s.grow();
-    std::cout << s.size() << "\n";
+    std::cout << s.size() << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray borrowed = ::tpy::ByteArray(::tpy::bytes_literal("q", 1));
     s.copy_in(borrowed);
-    std::cout << s.size() << "\n";
-    std::cout << ::tpyapp::main::read_bound(s) << "\n";
+    std::cout << s.size() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_bound(s) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> nums = {1, 2, 3};
     s.take_list(std::move(nums));
     if ((s.xs.has_value())) {
-        std::cout << ::tpy::__len__((*s.xs)) << "\n";
+        std::cout << ::tpy::__len__((*s.xs)) << "\n" << ::tpy::check_signals;
     }
     std::vector<::tpystd::tplib::box::Box<int32_t>> boxes = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(4), ::tpystd::tplib::box::Box<int32_t>(5));
     s.take_boxes(std::move(boxes));
     if ((s.boxes.has_value())) {
-        std::cout << ::tpy::__len__((*s.boxes)) << "\n";
+        std::cout << ::tpy::__len__((*s.boxes)) << "\n" << ::tpy::check_signals;
     }
 }
 

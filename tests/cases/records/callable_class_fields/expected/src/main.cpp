@@ -16,13 +16,13 @@ namespace tpyapp::main {
 //     print(a(6.0))
 void main() {
     Counter c = Counter();
-    std::cout << c.__call__(1) << "\n";
-    std::cout << c.__call__(5) << "\n";
-    std::cout << c.__call__(10) << "\n";
+    std::cout << c.__call__(1) << "\n" << ::tpy::check_signals;
+    std::cout << c.__call__(5) << "\n" << ::tpy::check_signals;
+    std::cout << c.__call__(10) << "\n" << ::tpy::check_signals;
     Accumulator a = Accumulator(0.0);
-    std::cout << ::tpy::print_float(a.__call__(1.5)) << "\n";
-    std::cout << ::tpy::print_float(a.__call__(2.5)) << "\n";
-    std::cout << ::tpy::print_float(a.__call__(6.0)) << "\n";
+    std::cout << ::tpy::print_float(a.__call__(1.5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(a.__call__(2.5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(a.__call__(6.0)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -14,10 +14,10 @@ void main() {
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(5));
     if (((a.value.has_value() && a.value.type() == typeid(::tpy::BigInt)) && (std::any_cast<const ::tpy::BigInt&>(a.value) > 0))) {
         const ::tpy::BigInt& __a = std::any_cast<const ::tpy::BigInt&>(a.value);
-        std::cout << "positive int" << "\n";
+        std::cout << "positive int" << "\n" << ::tpy::check_signals;
     }
     if (((a.value.has_value() && a.value.type() == typeid(std::string)) || (::tpy::__len__("x") > 0))) {
-        std::cout << "either str or non-empty literal" << "\n";
+        std::cout << "either str or non-empty literal" << "\n" << ::tpy::check_signals;
     }
 }
 

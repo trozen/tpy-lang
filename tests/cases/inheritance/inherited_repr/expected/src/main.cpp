@@ -23,17 +23,17 @@ namespace tpyapp::main {
 //     print(lc)
 void main() {
     Dog d = Dog("rex");
-    std::cout << d << "\n";
-    std::cout << ::tpy::repr_of(d) << "\n";
+    std::cout << d << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(d) << "\n" << ::tpy::check_signals;
     Cat c = Cat("whiskers");
-    std::cout << c << "\n";
-    std::cout << ::tpy::repr_of(c) << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(c) << "\n" << ::tpy::check_signals;
     Echo e = Echo("hello");
-    std::cout << e << "\n";
+    std::cout << e << "\n" << ::tpy::check_signals;
     Pet p = Pet("rover");
-    std::cout << p << "\n";
+    std::cout << p << "\n" << ::tpy::check_signals;
     LoudCat lc = LoudCat("garfield");
-    std::cout << lc << "\n";
+    std::cout << lc << "\n" << ::tpy::check_signals;
 }
 
 // main()

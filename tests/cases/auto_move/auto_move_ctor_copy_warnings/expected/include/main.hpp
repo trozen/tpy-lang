@@ -172,7 +172,7 @@ inline void Holder::set_inner(Inner&& inner) {
 //     self.inner = inner  # tpyc: warning(/copies.*field/)
 //     print(inner.value)
 inline NotLastUse::NotLastUse(Inner&& inner) : inner(inner) {
-    std::cout << inner.value << "\n";
+    std::cout << inner.value << "\n" << ::tpy::check_signals;
 }
 
 // def set(self, inner: Own[Inner]) -> None:
@@ -186,7 +186,7 @@ inline void OptHolder::set(Inner&& inner) {
 //     print(inner.value)
 inline void OptHolder::set_not_last(Inner&& inner) {
     this->inner = inner;
-    std::cout << inner.value << "\n";
+    std::cout << inner.value << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -50,13 +50,13 @@ void main() {
     base.push_back({1.0, 2.0});
     std::vector<std::vector<double>> out = ::tpyapp::main::rows(base);
     ::tpy::__getitem__(out, 0).push_back(9.0);
-    std::cout << ::tpy::__len__(out) << " " << ::tpy::__len__(::tpy::__getitem__(out, 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(out, 0), 2)) << "\n";
+    std::cout << ::tpy::__len__(out) << " " << ::tpy::__len__(::tpy::__getitem__(out, 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(out, 0), 2)) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> local = std::vector<std::vector<int32_t>>{};
     std::vector<int32_t> part = std::vector<int32_t>{};
     part.push_back(1);
     local.push_back(std::move(part));
     ::tpy::__getitem__(local, 0).push_back(2);
-    std::cout << ::tpy::__len__(local) << " " << ::tpy::__len__(::tpy::__getitem__(local, 0)) << " " << ::tpy::__getitem__(::tpy::__getitem__(local, 0), 1) << "\n";
+    std::cout << ::tpy::__len__(local) << " " << ::tpy::__len__(::tpy::__getitem__(local, 0)) << " " << ::tpy::__getitem__(::tpy::__getitem__(local, 0), 1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

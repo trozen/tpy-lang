@@ -1007,14 +1007,14 @@ inline Guard::Guard(int32_t n) : n(n) {}
 //     print("with_in_finally enter")
 //     return self.n
 inline int32_t Guard::__enter__() const {
-    std::cout << "with_in_finally enter" << "\n";
+    std::cout << "with_in_finally enter" << "\n" << ::tpy::check_signals;
     return this->n;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 //     print("with_in_finally exit")
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    std::cout << "with_in_finally exit" << "\n";
+    std::cout << "with_in_finally exit" << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -14,7 +14,7 @@ void __tpy_init() {
     initialized = true;
 
     x = ::tpy::float_from_str("not_a_number");
-    std::cout << ::tpy::print_float(x) << "\n";
+    std::cout << ::tpy::print_float(x) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

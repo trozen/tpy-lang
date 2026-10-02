@@ -26,14 +26,14 @@ namespace tpyapp::main {
 void main() {
     Box __tmp_1 = Box(::tpy::BigInt(11), ::tpy::BigInt(22), ::tpy::BigInt(33));
     __gen_Box_vals it = __tmp_1.vals();
-    std::cout << ::tpyapp::main::clobber() << "\n";
+    std::cout << ::tpyapp::main::clobber() << "\n" << ::tpy::check_signals;
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -75,13 +75,13 @@ void append_needle(std::vector<std::string>* xs) {
 //     print(narrow_list_hits(data))
 void main() {
     std::vector<std::string> data = {NEEDLE, "short", "another-string-past-sso-length"};
-    std::cout << ::tpyapp::main::proto_hits(data) << "\n";
-    std::cout << ::tpyapp::main::narrow_list_hits(&(data)) << "\n";
+    std::cout << ::tpyapp::main::proto_hits(data) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::narrow_list_hits(&(data)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<std::string> __tmp_1 = ::tpy::ordered_set<std::string>({NEEDLE, "another-string-past-sso-length"});
-    std::cout << ::tpyapp::main::narrow_set_hits(&(__tmp_1)) << "\n";
-    std::cout << ::tpyapp::main::narrow_list_hits(nullptr) << "\n";
+    std::cout << ::tpyapp::main::narrow_set_hits(&(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::narrow_list_hits(nullptr) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::append_needle(&(data));
-    std::cout << ::tpyapp::main::narrow_list_hits(&(data)) << "\n";
+    std::cout << ::tpyapp::main::narrow_list_hits(&(data)) << "\n" << ::tpy::check_signals;
 }
 
 // NEEDLE = "transfer-encoding-very-long-key"

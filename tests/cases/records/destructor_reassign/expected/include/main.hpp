@@ -108,7 +108,7 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 //     print("drop", self.name)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
-    std::cout << "drop" << " " << this->name << "\n";
+    std::cout << "drop" << " " << this->name << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, tag: str):
@@ -130,7 +130,7 @@ inline Base& Base::operator=(Base&& other) noexcept {
 //     print("~Base", self.tag)
 inline Base::~Base() {
     if (!this->__tpy_owned_) return;
-    std::cout << "~Base" << " " << this->tag << "\n";
+    std::cout << "~Base" << " " << this->tag << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, tag: str):
@@ -152,7 +152,7 @@ inline Child& Child::operator=(Child&& other) noexcept {
 //     print("~Child", self.tag)
 inline Child::~Child() {
     if (!this->__tpy_owned_) return;
-    std::cout << "~Child" << " " << this->tag << "\n";
+    std::cout << "~Child" << " " << this->tag << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

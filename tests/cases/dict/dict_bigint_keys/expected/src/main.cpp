@@ -14,11 +14,11 @@ namespace tpyapp::main {
 //     print(len(d))
 void main() {
     ::tpy::ordered_map<::tpy::BigInt, std::string> d = ::tpy::ordered_map<::tpy::BigInt, std::string>({{::tpy::BigInt(1), "one"}, {::tpy::BigInt(2), "two"}, {::tpy::BigInt(3), "three"}});
-    std::cout << ::tpy::__getitem__(d, 1) << "\n";
-    std::cout << ::tpy::__getitem__(d, 2) << "\n";
-    std::cout << ::tpy::print_bool((d.contains(1))) << "\n";
-    std::cout << ::tpy::print_bool((d.contains(99))) << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__getitem__(d, 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, 2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((d.contains(1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((d.contains(99))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

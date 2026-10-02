@@ -93,9 +93,9 @@ int32_t first_decl(std::optional<P>&& x) {
 //     a = P(7)
 //     print(take(a))
 void test_call_arg_lvalue_and_none() {
-    std::cout << ::tpyapp::main::take(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::take(std::nullopt) << "\n" << ::tpy::check_signals;
     P a = P(7);
-    std::cout << ::tpyapp::main::take(std::move(a)) << "\n";
+    std::cout << ::tpyapp::main::take(std::move(a)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_field_assign() -> None:
@@ -109,10 +109,10 @@ void test_field_assign() {
     Holder h = Holder();
     h.store(P(42));
     if ((h.slot.has_value())) {
-        std::cout << (*h.slot).x << "\n";
+        std::cout << (*h.slot).x << "\n" << ::tpy::check_signals;
     }
     h.store(std::nullopt);
-    std::cout << ::tpy::print_bool((!h.slot.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!h.slot.has_value())) << "\n" << ::tpy::check_signals;
 }
 
 // def test_return_into_pointer_receiver() -> None:
@@ -128,17 +128,17 @@ void test_return_into_pointer_receiver() {
     std::optional<P> __slot_1 = ::tpyapp::main::make(11);
     P* r = ::tpy::optional_to_ptr(__slot_1);
     if ((r != nullptr)) {
-        std::cout << r->x << "\n";
+        std::cout << r->x << "\n" << ::tpy::check_signals;
     }
     std::optional<P> __slot_2 = ::tpyapp::main::make(-1);
     P* s = ::tpy::optional_to_ptr(__slot_2);
-    std::cout << ::tpy::print_bool((s == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((s == nullptr)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_forward_own_return_to_own_param() -> None:
 //     print(take(make(int32(13))))
 void test_forward_own_return_to_own_param() {
-    std::cout << ::tpyapp::main::take(::tpyapp::main::make(13)) << "\n";
+    std::cout << ::tpyapp::main::take(::tpyapp::main::make(13)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_return_passthrough() -> None:
@@ -153,11 +153,11 @@ void test_return_passthrough() {
     std::optional<P> __slot_1 = ::tpyapp::main::passthrough(P(17));
     P* pt = ::tpy::optional_to_ptr(__slot_1);
     if ((pt != nullptr)) {
-        std::cout << pt->x << "\n";
+        std::cout << pt->x << "\n" << ::tpy::check_signals;
     }
     std::optional<P> __slot_2 = ::tpyapp::main::passthrough(std::nullopt);
     P* nope = ::tpy::optional_to_ptr(__slot_2);
-    std::cout << ::tpy::print_bool((nope == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((nope == nullptr)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_forward_to_borrow_slot() -> None:
@@ -165,24 +165,24 @@ void test_return_passthrough() {
 //     print(forward_borrow(P(19)))
 //     print(forward_borrow(None))
 void test_forward_to_borrow_slot() {
-    std::cout << ::tpyapp::main::forward_borrow(P(19)) << "\n";
-    std::cout << ::tpyapp::main::forward_borrow(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::forward_borrow(P(19)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::forward_borrow(std::nullopt) << "\n" << ::tpy::check_signals;
 }
 
 // def test_reassign_pointer_local() -> None:
 //     print(reassign_pointer(P(31)))
 //     print(reassign_pointer(None))
 void test_reassign_pointer_local() {
-    std::cout << ::tpyapp::main::reassign_pointer(P(31)) << "\n";
-    std::cout << ::tpyapp::main::reassign_pointer(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::reassign_pointer(P(31)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::reassign_pointer(std::nullopt) << "\n" << ::tpy::check_signals;
 }
 
 // def test_first_decl_pointer_local() -> None:
 //     print(first_decl(P(37)))
 //     print(first_decl(None))
 void test_first_decl_pointer_local() {
-    std::cout << ::tpyapp::main::first_decl(P(37)) << "\n";
-    std::cout << ::tpyapp::main::first_decl(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::first_decl(P(37)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::first_decl(std::nullopt) << "\n" << ::tpy::check_signals;
 }
 
 // def test_rebind_from_successive_returns() -> None:
@@ -202,11 +202,11 @@ void test_rebind_from_successive_returns() {
     __slot_2 = ::tpyapp::main::make(43);
     z = ::tpy::optional_to_ptr(__slot_2);
     if ((z != nullptr)) {
-        std::cout << z->x << "\n";
+        std::cout << z->x << "\n" << ::tpy::check_signals;
     }
     __slot_3 = ::tpyapp::main::make(-1);
     z = ::tpy::optional_to_ptr(__slot_3);
-    std::cout << ::tpy::print_bool((z == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((z == nullptr)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

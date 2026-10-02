@@ -386,7 +386,7 @@ inline Noisy& Noisy::operator=(Noisy&& other) noexcept {
 inline Noisy::~Noisy() {
     if (!this->__tpy_owned_) return;
     if (this->armed) {
-        std::cout << "drop" << " " << this->name << "\n";
+        std::cout << "drop" << " " << this->name << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -429,7 +429,7 @@ inline void Runner::run() const {
     Point& alias = (*p);
     p = &*(__slot_2 = Point(50));
     alias.bump();
-    std::cout << "method:" << " " << alias.x << " " << p->x << "\n";
+    std::cout << "method:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // def __enter__(self) -> None:

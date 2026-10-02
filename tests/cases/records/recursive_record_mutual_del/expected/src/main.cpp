@@ -15,7 +15,7 @@ void main() {
     a.bs.push_back(B(2));
     ::tpy::__getitem__(a.bs, 0).as_.push_back(A(3));
     ::tpy::__getitem__(a.bs, 0).val = 20;
-    std::cout << a.val << " " << ::tpy::__getitem__(a.bs, 0).val << " " << ::tpy::__len__(::tpy::__getitem__(a.bs, 0).as_) << "\n";
+    std::cout << a.val << " " << ::tpy::__getitem__(a.bs, 0).val << " " << ::tpy::__len__(::tpy::__getitem__(a.bs, 0).as_) << "\n" << ::tpy::check_signals;
 }
 
 // main()

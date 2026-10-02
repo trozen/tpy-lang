@@ -61,30 +61,30 @@ void main() {
     conn.sock = std::move(a);
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/missing");
-    std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << " " << r.text() << "\n";
+    std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << " " << r.text() << "\n" << ::tpy::check_signals;
     {
         try {
             r.raise_for_status();
-            std::cout << "no-raise" << "\n";
+            std::cout << "no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::tplib::requests::HTTPError&) {
-            std::cout << "HTTPError" << "\n";
+            std::cout << "HTTPError" << "\n" << ::tpy::check_signals;
         }
     }
     b.close();
     {
         try {
             ::tpystd::tplib::requests::get("http:///no-host");
-            std::cout << "no-raise" << "\n";
+            std::cout << "no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::tplib::requests::ConnectionError&) {
-            std::cout << "ConnectionError" << "\n";
+            std::cout << "ConnectionError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::tplib::requests::get("http:///no-host");
-            std::cout << "no-raise" << "\n";
+            std::cout << "no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OSError&) {
-            std::cout << "OSError" << "\n";
+            std::cout << "OSError" << "\n" << ::tpy::check_signals;
         }
     }
     auto __tup_2 = ::tpystd::socket::socketpair();
@@ -98,9 +98,9 @@ void main() {
     {
         try {
             s2.get("http://api.test/x");
-            std::cout << "no-raise" << "\n";
+            std::cout << "no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::tplib::requests::ConnectionError&) {
-            std::cout << "ConnectionError" << "\n";
+            std::cout << "ConnectionError" << "\n" << ::tpy::check_signals;
         }
     }
 }

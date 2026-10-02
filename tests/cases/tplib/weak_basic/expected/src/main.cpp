@@ -18,12 +18,12 @@ namespace tpyapp::main {
 void main() {
     ::tpystd::tplib::rc::Rc<Cell> rc = Rc<Cell>::new_<Cell>(Cell(10));
     ::tpystd::tplib::rc::Weak<Cell> w = rc.downgrade();
-    std::cout << rc.get().val << "\n";
+    std::cout << rc.get().val << "\n" << ::tpy::check_signals;
     std::optional<::tpystd::tplib::rc::Rc<Cell>> rc2 = w.upgrade();
     if (!((rc2.has_value()))) ::tpy::raise_assertion_error();
-    std::cout << (*rc2).get().val << "\n";
+    std::cout << (*rc2).get().val << "\n" << ::tpy::check_signals;
     (*rc2).get().val = 99;
-    std::cout << rc.get().val << "\n";
+    std::cout << rc.get().val << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.rc import Rc, Weak

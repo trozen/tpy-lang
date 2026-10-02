@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(i.val)
 void main() {
     ::tpyapp::shapes::Container c = ::tpyapp::shapes::Container(::tpyapp::shapes::Container::Kind::A);
-    std::cout << c.kind << "\n";
+    std::cout << c.kind << "\n" << ::tpy::check_signals;
     ::tpyapp::shapes::Container::Inner i = ::tpyapp::shapes::Container::Inner(42);
-    std::cout << i.val << "\n";
+    std::cout << i.val << "\n" << ::tpy::check_signals;
 }
 
 // # Cross-module access to nested types: constructors and enum members

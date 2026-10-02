@@ -22,14 +22,14 @@ void main() {
         try {
             ::tpystd::re::compile("[invalid");
         } catch (const ::tpystd::re::error&) {
-            std::cout << "caught re_error" << "\n";
+            std::cout << "caught re_error" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::re::compile("(?P<>x)");
         } catch (const ::tpystd::re::error& _exc) {
-            std::cout << "caught with binding" << "\n";
+            std::cout << "caught with binding" << "\n" << ::tpy::check_signals;
         }
     }
 }

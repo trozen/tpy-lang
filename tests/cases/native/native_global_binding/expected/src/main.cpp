@@ -11,11 +11,11 @@ namespace tpyapp::main {
 //     print(lives)
 //     print(deref(data))
 void main() {
-    std::cout << ::DG_FrameCount << "\n";
-    std::cout << ::tick << "\n";
-    std::cout << ::engine::score << "\n";
-    std::cout << ::lives << "\n";
-    std::cout << ::tpy::deref_check(::shared_data) << "\n";
+    std::cout << ::DG_FrameCount << "\n" << ::tpy::check_signals;
+    std::cout << ::tick << "\n" << ::tpy::check_signals;
+    std::cout << ::engine::score << "\n" << ::tpy::check_signals;
+    std::cout << ::lives << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::deref_check(::shared_data) << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native_global

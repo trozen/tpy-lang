@@ -14,7 +14,7 @@ void __tpy_init() {
     initialized = true;
 
     x = ::tpy::from_float_check<int32_t>(3000000000.0);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

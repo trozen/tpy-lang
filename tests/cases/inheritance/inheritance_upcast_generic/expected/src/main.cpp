@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def read_container(c: Container[int32]) -> None:
 //     print(c.value)
 void read_container(const Container<int32_t>& c) {
-    std::cout << c.value << "\n";
+    std::cout << c.value << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -20,7 +20,7 @@ void read_container(const Container<int32_t>& c) {
 void main() {
     IntContainer ic = IntContainer(42);
     Container<int32_t>& c = ic;
-    std::cout << c.value << "\n";
+    std::cout << c.value << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_container(ic);
 }
 

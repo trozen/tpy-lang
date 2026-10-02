@@ -21,11 +21,11 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        std::cout << k << "\n";
+        std::cout << k << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::__len__(::tpy::dict_keys(d)) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::dict_keys(d).contains("b"))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::dict_keys(d).contains("z"))) << "\n";
+    std::cout << ::tpy::__len__(::tpy::dict_keys(d)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::dict_keys(d).contains("b"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::dict_keys(d).contains("z"))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

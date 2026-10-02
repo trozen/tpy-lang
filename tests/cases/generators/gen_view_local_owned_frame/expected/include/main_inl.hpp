@@ -23,7 +23,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_across_yield::_
         return 1;
     }
     case S_RESUME_0: {  // after: yield 1
-        std::cout << host << " " << port << "\n";
+        std::cout << host << " " << port << "\n" << ::tpy::check_signals;
         __state = S_RESUME_1;
         return 2;
     }
@@ -128,7 +128,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_static_sources::__next
         return 1;
     }
     case S_RESUME_0: {  // after: yield 1
-        std::cout << lit << " " << view << "\n";
+        std::cout << lit << " " << view << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

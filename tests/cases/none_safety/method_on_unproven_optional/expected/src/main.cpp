@@ -24,9 +24,9 @@ int32_t dyn_on_optional(Pet* p) {
 //     print(dyn_on_optional(d))
 void main() {
     Bag __tmp_1 = Bag(1);
-    std::cout << ::tpyapp::main::generic_on_optional(&(__tmp_1)) << "\n";
+    std::cout << ::tpyapp::main::generic_on_optional(&(__tmp_1)) << "\n" << ::tpy::check_signals;
     Dog d = Dog();
-    std::cout << ::tpyapp::main::dyn_on_optional(&(d)) << "\n";
+    std::cout << ::tpyapp::main::dyn_on_optional(&(d)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

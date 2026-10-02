@@ -17,7 +17,7 @@ void main() {
     (void)(Counter());
     (void)(Counter());
     Counter::instances = ::tpy::add_check<int32_t>(Counter::instances, 7);
-    std::cout << Counter::instances << "\n";
+    std::cout << Counter::instances << "\n" << ::tpy::check_signals;
 }
 
 // main()

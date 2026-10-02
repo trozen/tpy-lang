@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(len(h.data), h.tag)
 void main() {
     Holder h = Holder(::tpy::bytes_literal("hello", 5), "h");
-    std::cout << ::tpy::__len__(h.data) << " " << h.tag << "\n";
+    std::cout << ::tpy::__len__(h.data) << " " << h.tag << "\n" << ::tpy::check_signals;
 }
 
 // main()

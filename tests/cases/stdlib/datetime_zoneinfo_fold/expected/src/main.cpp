@@ -66,50 +66,50 @@ void main() {
     ::tpystd::datetime::datetime fold_wall = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1);
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_2 = true;
     ::tpystd::datetime::datetime fold_wall1 = fold_wall.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_2, 1);
-    std::cout << fold_wall.fold() << " " << fold_wall1.fold() << "\n";
-    std::cout << ::tpy::print_optional_val(fold_wall.utcoffset()) << " " << ::tpy::print_optional_val(fold_wall.dst()) << " " << ::tpy::print_optional_val(fold_wall.tzname()) << "\n";
-    std::cout << ::tpy::print_optional_val(fold_wall1.utcoffset()) << " " << ::tpy::print_optional_val(fold_wall1.dst()) << " " << ::tpy::print_optional_val(fold_wall1.tzname()) << "\n";
-    std::cout << ::tpy::print_float(fold_wall.timestamp()) << " " << ::tpy::print_float(fold_wall1.timestamp()) << "\n";
+    std::cout << fold_wall.fold() << " " << fold_wall1.fold() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(fold_wall.utcoffset()) << " " << ::tpy::print_optional_val(fold_wall.dst()) << " " << ::tpy::print_optional_val(fold_wall.tzname()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(fold_wall1.utcoffset()) << " " << ::tpy::print_optional_val(fold_wall1.dst()) << " " << ::tpy::print_optional_val(fold_wall1.tzname()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(fold_wall.timestamp()) << " " << ::tpy::print_float(fold_wall1.timestamp()) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = waw;
     ::tpystd::datetime::datetime gap_wall = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(3), ::tpy::BigInt(26), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_3);
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_4 = true;
     ::tpystd::datetime::datetime gap_wall1 = gap_wall.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_4, 1);
-    std::cout << ::tpy::print_optional_val(gap_wall.utcoffset()) << " " << ::tpy::print_optional_val(gap_wall.dst()) << " " << ::tpy::print_optional_val(gap_wall.tzname()) << "\n";
-    std::cout << ::tpy::print_optional_val(gap_wall1.utcoffset()) << " " << ::tpy::print_optional_val(gap_wall1.dst()) << " " << ::tpy::print_optional_val(gap_wall1.tzname()) << "\n";
-    std::cout << ::tpy::print_float(gap_wall.timestamp()) << " " << ::tpy::print_float(gap_wall1.timestamp()) << "\n";
-    std::cout << ::tpy::print_bool(((fold_wall) == (fold_wall1))) << " " << ::tpy::print_bool((::tpy::__hash__(fold_wall) == ::tpy::__hash__(fold_wall1))) << "\n";
-    std::cout << ::tpy::print_bool(((fold_wall) < (fold_wall1))) << " " << ::tpy::print_bool(((fold_wall) > (fold_wall1))) << "\n";
-    std::cout << ((fold_wall1) - (fold_wall)) << "\n";
+    std::cout << ::tpy::print_optional_val(gap_wall.utcoffset()) << " " << ::tpy::print_optional_val(gap_wall.dst()) << " " << ::tpy::print_optional_val(gap_wall.tzname()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(gap_wall1.utcoffset()) << " " << ::tpy::print_optional_val(gap_wall1.dst()) << " " << ::tpy::print_optional_val(gap_wall1.tzname()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(gap_wall.timestamp()) << " " << ::tpy::print_float(gap_wall1.timestamp()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((fold_wall) == (fold_wall1))) << " " << ::tpy::print_bool((::tpy::__hash__(fold_wall) == ::tpy::__hash__(fold_wall1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((fold_wall) < (fold_wall1))) << " " << ::tpy::print_bool(((fold_wall) > (fold_wall1))) << "\n" << ::tpy::check_signals;
+    std::cout << ((fold_wall1) - (fold_wall)) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime naive = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(2), ::tpy::BigInt(30));
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_5 = true;
     ::tpystd::datetime::datetime naive1 = naive.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_5, 1);
-    std::cout << ::tpy::print_bool(((naive) == (naive1))) << " " << ::tpy::print_bool((::tpy::__hash__(naive) == ::tpy::__hash__(naive1))) << "\n";
-    std::cout << ::tpy::repr_of(naive1) << "\n";
+    std::cout << ::tpy::print_bool(((naive) == (naive1))) << " " << ::tpy::print_bool((::tpy::__hash__(naive) == ::tpy::__hash__(naive1))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(naive1) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_6 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)));
     ::tpystd::datetime::datetime fixed = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_6);
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_7 = true;
     ::tpystd::datetime::datetime fixed1 = fixed.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_7, 1);
-    std::cout << ::tpy::print_bool(((fixed.utcoffset()) == (fixed1.utcoffset()))) << " " << ::tpy::print_bool(((!fixed.dst().has_value()) && (!fixed1.dst().has_value()))) << " " << ::tpy::print_bool((fixed.tzname() == fixed1.tzname())) << " " << ::tpy::print_bool((fixed.timestamp() == fixed1.timestamp())) << "\n";
-    std::cout << ::tpy::repr_of(fixed1) << "\n";
+    std::cout << ::tpy::print_bool(((fixed.utcoffset()) == (fixed1.utcoffset()))) << " " << ::tpy::print_bool(((!fixed.dst().has_value()) && (!fixed1.dst().has_value()))) << " " << ::tpy::print_bool((fixed.tzname() == fixed1.tzname())) << " " << ::tpy::print_bool((fixed.timestamp() == fixed1.timestamp())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(fixed1) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_8 = waw;
     ::tpystd::datetime::datetime rezoned = fixed1.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_8);
-    std::cout << rezoned << " " << rezoned.fold() << "\n";
+    std::cout << rezoned << " " << rezoned.fold() << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_9 = std::monostate{};
             (void)(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_9, ::tpy::BigInt(2)));
-            std::cout << "no-raise" << "\n";
+            std::cout << "no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "ValueError-fold" << "\n";
+            std::cout << "ValueError-fold" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_10 = true;
             naive.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_10, -1);
-            std::cout << "no-raise" << "\n";
+            std::cout << "no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "ValueError-replace-fold" << "\n";
+            std::cout << "ValueError-replace-fold" << "\n" << ::tpy::check_signals;
         }
     }
 }

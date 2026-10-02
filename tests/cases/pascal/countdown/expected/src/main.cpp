@@ -16,7 +16,7 @@ void __tpy_init() {
 
     int32_t __stop_0 = ::tpy::sub_check<int32_t>(1, 1);
     for (int32_t i = 5; i > __stop_0; --i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
 }
 

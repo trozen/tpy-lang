@@ -25,7 +25,7 @@ namespace tpyapp::main {
             continue;
         } catch (const ::tpy::ValueError& e) {
             __sub_0.reset();
-            std::cout << std::format("caught: {}", ::tpy::__str__(e)) << "\n";
+            std::cout << std::format("caught: {}", ::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -48,7 +48,7 @@ namespace tpyapp::main {
             continue;
         } catch (const ::tpy::ValueError& e) {
             __sub_1.reset();
-            std::cout << std::format("caught: {}", ::tpy::__str__(e)) << "\n";
+            std::cout << std::format("caught: {}", ::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -71,7 +71,7 @@ namespace tpyapp::main {
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ValueError& e) {
-            std::cout << std::format("caught: {}", ::tpy::__str__(e)) << "\n";
+            std::cout << std::format("caught: {}", ::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -81,7 +81,7 @@ namespace tpyapp::main {
     case S_JOIN_3: {
         try {
             try {
-                std::cout << v << "\n";
+                std::cout << v << "\n" << ::tpy::check_signals;
                 throw ::tpy::ValueError("boom");
             } catch (...) {
                 this->__finally_exc_0 = std::current_exception();
@@ -89,7 +89,7 @@ namespace tpyapp::main {
                 continue;
             }
         } catch (const ::tpy::ValueError& e) {
-            std::cout << std::format("caught: {}", ::tpy::__str__(e)) << "\n";
+            std::cout << std::format("caught: {}", ::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -120,7 +120,7 @@ __coro_main_coro main_coro() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "aenter" << "\n";
+        std::cout << "aenter" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         int32_t __tpy_async_ret = 0;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -138,7 +138,7 @@ __coro_main_coro main_coro() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "aexit" << "\n";
+        std::cout << "aexit" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

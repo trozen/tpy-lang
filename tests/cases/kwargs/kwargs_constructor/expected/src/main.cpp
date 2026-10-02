@@ -18,13 +18,13 @@ namespace tpyapp::main {
 //     print(f"c2: {c2.host}:{c2.port} verbose={c2.verbose}")
 void main() {
     Point p1 = Point(::tpy::BigInt(10), ::tpy::BigInt(20));
-    std::cout << std::format("p1: ({}, {})", (p1.x).to_string(), (p1.y).to_string()) << "\n";
+    std::cout << std::format("p1: ({}, {})", (p1.x).to_string(), (p1.y).to_string()) << "\n" << ::tpy::check_signals;
     Point p2 = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
-    std::cout << std::format("p2: ({}, {})", (p2.x).to_string(), (p2.y).to_string()) << "\n";
+    std::cout << std::format("p2: ({}, {})", (p2.x).to_string(), (p2.y).to_string()) << "\n" << ::tpy::check_signals;
     Config c1 = Config("localhost", ::tpy::BigInt(8080), true);
-    std::cout << std::format("c1: {}:{} verbose={}", c1.host, (c1.port).to_string(), ::tpy::bool_to_str(c1.verbose)) << "\n";
+    std::cout << std::format("c1: {}:{} verbose={}", c1.host, (c1.port).to_string(), ::tpy::bool_to_str(c1.verbose)) << "\n" << ::tpy::check_signals;
     Config c2 = Config("example.com", ::tpy::BigInt(9090));
-    std::cout << std::format("c2: {}:{} verbose={}", c2.host, (c2.port).to_string(), ::tpy::bool_to_str(c2.verbose)) << "\n";
+    std::cout << std::format("c2: {}:{} verbose={}", c2.host, (c2.port).to_string(), ::tpy::bool_to_str(c2.verbose)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

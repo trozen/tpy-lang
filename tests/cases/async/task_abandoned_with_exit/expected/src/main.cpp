@@ -110,7 +110,7 @@ __coro_main_coro main_coro() {
 //     print("after run")
 void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
-    std::cout << "after run" << "\n";
+    std::cout << "after run" << "\n" << ::tpy::check_signals;
 }
 
 // # A coroutine dropped mid-suspension while inside a `with` region still runs

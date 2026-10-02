@@ -63,7 +63,7 @@ int32_t run(bool flag) {
 //     print("returned:", r)
 void main() {
     int32_t r = ::tpyapp::main::run(true);
-    std::cout << "returned:" << " " << r << "\n";
+    std::cout << "returned:" << " " << r << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(BuildOpts.MAX_RETRIES)
 //     print(BuildOpts.RELEASE_TAG)
 void main() {
-    std::cout << ::tpy::print_bool(::BuildOpts::FLAG) << "\n";
-    std::cout << ::BuildOpts::MAX_RETRIES << "\n";
-    std::cout << ::BuildOpts::RELEASE_TAG << "\n";
+    std::cout << ::tpy::print_bool(::BuildOpts::FLAG) << "\n" << ::tpy::check_signals;
+    std::cout << ::BuildOpts::MAX_RETRIES << "\n" << ::tpy::check_signals;
+    std::cout << ::BuildOpts::RELEASE_TAG << "\n" << ::tpy::check_signals;
 }
 
 // # @native class with `Final[T]` (no value): bind to C++ static members.

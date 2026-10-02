@@ -10,8 +10,8 @@ std::function<void(int32_t)> action;
 //   writeln('shout: ', n);
 // end;
 void shout(int32_t n) {
-    std::cout << "shout: ";
-    std::cout << n << "\n";
+    std::cout << "shout: " << ::tpy::check_signals;
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // procedure whisper(n: integer);
@@ -19,8 +19,8 @@ void shout(int32_t n) {
 //   writeln('whisper: ', n);
 // end;
 void whisper(int32_t n) {
-    std::cout << "whisper: ";
-    std::cout << n << "\n";
+    std::cout << "whisper: " << ::tpy::check_signals;
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // action: IntAction;

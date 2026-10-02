@@ -22,7 +22,7 @@ void __tpy_init() {
 
     static std::vector<::tpy::BigInt> __global_slot_1 = ::tpyapp::main::get_items();
     items = &__global_slot_1;
-    std::cout << ::tpy::__len__((*items)) << "\n";
+    std::cout << ::tpy::__len__((*items)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

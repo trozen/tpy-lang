@@ -15,7 +15,7 @@ void main() {
     IntBox box = IntBox(42);
     Holder<IntBox> h = Holder<IntBox>(box);
     IntBox& result = h.get_item();
-    std::cout << result.get() << "\n";
+    std::cout << result.get() << "\n" << ::tpy::check_signals;
 }
 
 // main()

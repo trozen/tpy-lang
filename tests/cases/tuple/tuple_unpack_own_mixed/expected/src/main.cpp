@@ -13,7 +13,7 @@ std::tuple<Counter, int32_t> make() {
 // def consume(c: Own[Counter]) -> None:
 //     print(c.n)
 void consume(Counter&& c) {
-    std::cout << c.n << "\n";
+    std::cout << c.n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -25,7 +25,7 @@ void main() {
     Counter a = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     ::tpyapp::main::consume(std::move(a));
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // main()

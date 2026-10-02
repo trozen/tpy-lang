@@ -50,7 +50,7 @@ void holder_writes(std::optional<std::string_view> s, std::string_view text, int
         std::move(__result);
     });
     k.flat = Flat(__tmp_1);
-    std::cout << "holder.ctor_arg_temp" << " " << k.flat.n << "\n";
+    std::cout << "holder.ctor_arg_temp" << " " << k.flat.n << "\n" << ::tpy::check_signals;
 }
 
 // def make_buf(n: int32) -> Own[bytearray]:
@@ -74,14 +74,14 @@ Res make_res(int32_t v) {
 // def show_cb(n: int32) -> None:
 //     print("ctor.callback", n)
 void show_cb(int32_t n) {
-    std::cout << "ctor.callback" << " " << n << "\n";
+    std::cout << "ctor.callback" << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // def pick(a: int32) -> int32:
 //     print("ctor.pick", a)
 //     return a
 int32_t pick(int32_t a) {
-    std::cout << "ctor.pick" << " " << a << "\n";
+    std::cout << "ctor.pick" << " " << a << "\n" << ::tpy::check_signals;
     return a;
 }
 
@@ -112,7 +112,7 @@ int32_t union_tag(::tpy::Union<const UA*, const UB*> x) {
 void view_of_borrow() {
     Holds h = Holds();
     std::string_view v = h.peek().name;
-    std::cout << "local.view_of_borrow" << " " << v << "\n";
+    std::cout << "local.view_of_borrow" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // def nested_writes(p: Own[str], t: tuple[int, int32] | None,
@@ -140,7 +140,7 @@ void nested_writes(std::string p, std::optional<std::tuple<::tpy::BigInt, int32_
     };
     inner();
     inner();
-    std::cout << "nested.captured" << " " << ::tpy::__len__(h.x) << " " << ::tpy::__len__(p) << " " << ::tpy::TuplePrinter(v.t) << " " << ::tpy::print_optional_val(v.o) << " " << ::tpy::print_optional_val<::tpy::TuplePrinter<::tpy::BigInt, int32_t>, std::tuple<::tpy::BigInt, int32_t>>(t) << " " << ::tpy::print_optional_val(n) << "\n";
+    std::cout << "nested.captured" << " " << ::tpy::__len__(h.x) << " " << ::tpy::__len__(p) << " " << ::tpy::TuplePrinter(v.t) << " " << ::tpy::print_optional_val(v.o) << " " << ::tpy::print_optional_val<::tpy::TuplePrinter<::tpy::BigInt, int32_t>, std::tuple<::tpy::BigInt, int32_t>>(t) << " " << ::tpy::print_optional_val(n) << "\n" << ::tpy::check_signals;
 }
 
 // def call_lambda(f: Callable[[], int32]) -> int32:
@@ -161,7 +161,7 @@ void lambda_reads() {
     Sink k = Sink();
     std::vector<int32_t> __tmp_1 = xs;
     int32_t n = k.put(std::move(__tmp_1));
-    std::cout << "lambda.live" << " " << n << " " << ::tpyapp::main::call_lambda([xs]() -> int32_t { return ::tpy::__len__(xs); }) << "\n";
+    std::cout << "lambda.live" << " " << n << " " << ::tpyapp::main::call_lambda([xs]() -> int32_t { return ::tpy::__len__(xs); }) << "\n" << ::tpy::check_signals;
 }
 
 // def ctor_writes() -> None:
@@ -196,14 +196,14 @@ void ctor_writes() {
     pl.show();
     pl.fill();
     Derived d = Derived("a string long enough to leave the small buffer");
-    std::cout << "ctor.base" << " " << ::tpy::print_bool((d.a == d.b)) << " " << ::tpy::__len__(d.a) << " " << d.c << " " << d.d << "\n";
+    std::cout << "ctor.base" << " " << ::tpy::print_bool((d.a == d.b)) << " " << ::tpy::__len__(d.a) << " " << d.c << " " << d.d << "\n" << ::tpy::check_signals;
     Reads r = Reads();
-    std::cout << "ctor.base_reads" << " " << r.a << " " << r.b << "\n";
+    std::cout << "ctor.base_reads" << " " << r.a << " " << r.b << "\n" << ::tpy::check_signals;
     BasedOrder bo = BasedOrder(7);
-    std::cout << "ctor.based_order" << " " << bo.a << " " << bo.b.v << " " << bo.r.val << "\n";
+    std::cout << "ctor.based_order" << " " << bo.a << " " << bo.b.v << " " << bo.r.val << "\n" << ::tpy::check_signals;
     ViewSlots vs = ViewSlots("vs");
     vs.set(3);
-    std::cout << "view_slots" << " " << ::tpy::print_bool((!vs.o.has_value())) << "\n";
+    std::cout << "view_slots" << " " << ::tpy::print_bool((!vs.o.has_value())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::view_of_borrow();
 }
 
@@ -272,7 +272,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t k = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen.yield" << " " << k << "\n";
+            std::cout << "gen.yield" << " " << k << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro(b)));
@@ -349,7 +349,7 @@ void main() {
         (void)std::move(__r2).value();
         __sub_2.reset();
         __self.xs.push_back(42);
-        std::cout << "async.frame_locals" << " " << ::tpy::ListPrinter(__self.xs) << " " << ::tpy::print_optional_val(__self.tag) << " " << label << "\n";
+        std::cout << "async.frame_locals" << " " << ::tpy::ListPrinter(__self.xs) << " " << ::tpy::print_optional_val(__self.tag) << " " << label << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -447,7 +447,7 @@ void Box::method_writes(std::optional<std::string_view> s, std::optional<::tpy::
     this->show("method.ref_fresh");
     P* op = ::tpy::optional_to_ptr(this->op);
     if ((op != nullptr)) {
-        std::cout << "method.op_copy" << " " << op->v << " " << ::tpy::__getitem__(ps, 0).v << "\n";
+        std::cout << "method.op_copy" << " " << op->v << " " << ::tpy::__getitem__(ps, 0).v << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -491,7 +491,7 @@ Built::Built(int32_t n, Src& s, ::tpy::Any p, std::string_view text, P&& own, bo
       cp(s.peek()),
       cb(s.cb),
       n(n),
-      action([n]() { std::cout << "ctor.lambda" << " " << n << "\n"; }),
+      action([n]() { std::cout << "ctor.lambda" << " " << n << "\n" << ::tpy::check_signals; }),
       payload(p),
       name(text),
       lab(::tpy::str_slice(text, ::tpy::BasicSlice{1, 3})),

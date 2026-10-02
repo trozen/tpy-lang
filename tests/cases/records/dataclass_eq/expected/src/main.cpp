@@ -22,19 +22,19 @@ namespace tpyapp::main {
 //     print(c1 == c2)
 //     print(c1 == c3)
 void main() {
-    std::cout << ::tpy::print_bool(((Id(1)) == (Id(1)))) << "\n";
-    std::cout << ::tpy::print_bool(((Id(1)) == (Id(2)))) << "\n";
+    std::cout << ::tpy::print_bool(((Id(1)) == (Id(1)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((Id(1)) == (Id(2)))) << "\n" << ::tpy::check_signals;
     Point p1 = Point(1, 2);
     Point p2 = Point(1, 2);
     Point p3 = Point(1, 3);
-    std::cout << ::tpy::print_bool(((p1) == (p2))) << "\n";
-    std::cout << ::tpy::print_bool(((p1) == (p3))) << "\n";
-    std::cout << ::tpy::print_bool((p1 != p3)) << "\n";
+    std::cout << ::tpy::print_bool(((p1) == (p2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((p1) == (p3))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((p1 != p3)) << "\n" << ::tpy::check_signals;
     Config c1 = Config("a", 1);
     Config c2 = Config("a", 1);
     Config c3 = Config("a", 1, "x");
-    std::cout << ::tpy::print_bool(((c1) == (c2))) << "\n";
-    std::cout << ::tpy::print_bool(((c1) == (c3))) << "\n";
+    std::cout << ::tpy::print_bool(((c1) == (c2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((c1) == (c3))) << "\n" << ::tpy::check_signals;
 }
 
 // # @dataclass auto-generated __eq__ (field-by-field comparison)

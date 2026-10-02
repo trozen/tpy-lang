@@ -38,7 +38,7 @@ namespace tpyapp::main {
         (void)std::move(__r1).value();
         __sub_1.reset();
         if ((saved != nullptr)) {
-            std::cout << saved->x << "\n";
+            std::cout << saved->x << "\n" << ::tpy::check_signals;
         }
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});

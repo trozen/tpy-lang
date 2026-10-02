@@ -12,7 +12,7 @@ void main() {
     Dog __slot_1{Dog()};
     Cloneable* d = &__slot_1;
     ::tpystd::tplib::box::Box<Cloneable> b = ::tpystd::tplib::box::Box<Cloneable>(d->replicate());
-    std::cout << b.__deref__().name() << "\n";
+    std::cout << b.__deref__().name() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

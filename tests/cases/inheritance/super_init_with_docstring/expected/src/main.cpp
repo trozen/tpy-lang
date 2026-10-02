@@ -21,19 +21,19 @@ namespace tpyapp::main {
 //     print("pass-between:", pb.value, pb.m, pb.a, pb.b)
 void main() {
     Child c = Child(10, 20);
-    std::cout << "docstring:" << " " << c.value << " " << c.extra << "\n";
+    std::cout << "docstring:" << " " << c.value << " " << c.extra << "\n" << ::tpy::check_signals;
     Nested n = Nested(3, 4);
-    std::cout << "nested-def:" << " " << n.value << " " << n.extra << "\n";
+    std::cout << "nested-def:" << " " << n.value << " " << n.extra << "\n" << ::tpy::check_signals;
     PassSuper p = PassSuper();
-    std::cout << "pass-super:" << " " << p.value << " " << p.y << "\n";
+    std::cout << "pass-super:" << " " << p.value << " " << p.y << "\n" << ::tpy::check_signals;
     PassBase b = PassBase();
-    std::cout << "pass-base:" << " " << b.value << "\n";
+    std::cout << "pass-base:" << " " << b.value << "\n" << ::tpy::check_signals;
     PassMulti m = PassMulti();
-    std::cout << "pass-multi:" << " " << m.value << " " << m.m << "\n";
+    std::cout << "pass-multi:" << " " << m.value << " " << m.m << "\n" << ::tpy::check_signals;
     DocPass dp = DocPass();
-    std::cout << "doc-pass:" << " " << dp.value << "\n";
+    std::cout << "doc-pass:" << " " << dp.value << "\n" << ::tpy::check_signals;
     PassBetween pb = PassBetween();
-    std::cout << "pass-between:" << " " << pb.value << " " << pb.m << " " << pb.a << " " << pb.b << "\n";
+    std::cout << "pass-between:" << " " << pb.value << " " << pb.m << " " << pb.a << " " << pb.b << "\n" << ::tpy::check_signals;
 }
 
 
@@ -51,7 +51,7 @@ PassBetween::PassBetween()
       Other(7),
       a(8),
       b(9) {
-    std::cout << "pass-between: after" << " " << this->value << " " << this->m << " " << this->a << " " << this->b << "\n";
+    std::cout << "pass-between: after" << " " << this->value << " " << this->m << " " << this->a << " " << this->b << "\n" << ::tpy::check_signals;
 }
 // main()
 void __tpy_init() {

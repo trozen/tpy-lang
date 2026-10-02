@@ -14,10 +14,10 @@ namespace tpyapp::main {
 void main() {
     ::tpy::Any a = ::tpy::make_any(std::monostate{});
     ::tpy::Any b = ::tpy::make_any(::tpy::BigInt(42));
-    std::cout << ::tpy::print_bool((a.value.has_value() && a.value.type() == typeid(std::monostate))) << "\n";
-    std::cout << ::tpy::print_bool((b.value.has_value() && b.value.type() == typeid(std::monostate))) << "\n";
-    std::cout << ::tpy::print_bool((!(a.value.has_value() && a.value.type() == typeid(std::monostate)))) << "\n";
-    std::cout << ::tpy::print_bool((!(b.value.has_value() && b.value.type() == typeid(std::monostate)))) << "\n";
+    std::cout << ::tpy::print_bool((a.value.has_value() && a.value.type() == typeid(std::monostate))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((b.value.has_value() && b.value.type() == typeid(std::monostate))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!(a.value.has_value() && a.value.type() == typeid(std::monostate)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!(b.value.has_value() && b.value.type() == typeid(std::monostate)))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

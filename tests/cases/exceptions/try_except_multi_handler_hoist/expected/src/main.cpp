@@ -47,9 +47,9 @@ int32_t run(int32_t n) {
 //     print(run(1))
 //     print(run(2))
 void main() {
-    std::cout << ::tpyapp::main::run(0) << "\n";
-    std::cout << ::tpyapp::main::run(1) << "\n";
-    std::cout << ::tpyapp::main::run(2) << "\n";
+    std::cout << ::tpyapp::main::run(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::run(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::run(2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

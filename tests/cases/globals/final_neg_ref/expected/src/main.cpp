@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(A, NA)
 //     print(B, NB)
 void main() {
-    std::cout << A << " " << NA << "\n";
-    std::cout << B << " " << NB << "\n";
+    std::cout << A << " " << NA << "\n" << ::tpy::check_signals;
+    std::cout << B << " " << NB << "\n" << ::tpy::check_signals;
 }
 
 // main()

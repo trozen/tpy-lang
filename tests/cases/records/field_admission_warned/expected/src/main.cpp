@@ -28,7 +28,7 @@ void holder(std::vector<int32_t>& xs) {
     (*q).v = 51;
     h.xs = ((::tpy::__len__(xs) != 0) ? xs : std::vector<int32_t>{});
     xs.push_back(96);
-    std::cout << "holder.walrus_or" << " " << h.p.v << " " << (*q).v << " " << ::tpy::ListPrinter(h.xs) << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << "holder.walrus_or" << " " << h.p.v << " " << (*q).v << " " << ::tpy::ListPrinter(h.xs) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // # nested def: a captured Own param is copied, never moved -- so `nested`
@@ -50,7 +50,7 @@ void nested(std::vector<int32_t>&& p) {
     setit();
     h.f.push_back(9);
     setit();
-    std::cout << "nested.captured" << " " << ::tpy::ListPrinter(h.f) << " " << ::tpy::__len__(p) << "\n";
+    std::cout << "nested.captured" << " " << ::tpy::ListPrinter(h.f) << " " << ::tpy::__len__(p) << "\n" << ::tpy::check_signals;
 }
 
 // def own_args(xs: list[int32]) -> None:
@@ -62,7 +62,7 @@ void own_args(std::vector<int32_t>& xs) {
     std::vector<int32_t> __tmp_1 = ((::tpy::__len__(xs) != 0) ? xs : std::vector<int32_t>{0});
     std::vector<int32_t> ys = ::tpyapp::main::keep_list(std::move(__tmp_1));
     xs.push_back(81);
-    std::cout << "own_arg.or" << " " << ::tpy::ListPrinter(ys) << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << "own_arg.or" << " " << ::tpy::ListPrinter(ys) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def keep_list(xs: Own[list[int32]]) -> Own[list[int32]]:
@@ -83,12 +83,12 @@ std::vector<int32_t> keep_list(std::vector<int32_t>&& xs) {
 void comp_elems() {
     Many m = Many(P(1));
     ::tpy::__getitem__(m.xs, 0).v = 9;
-    std::cout << "ctor.comp_elem" << " " << ::tpy::__getitem__(m.xs, 0).v << " " << ::tpy::__getitem__(m.xs, 1).v << "\n";
+    std::cout << "ctor.comp_elem" << " " << ::tpy::__getitem__(m.xs, 0).v << " " << ::tpy::__getitem__(m.xs, 1).v << "\n" << ::tpy::check_signals;
     P r = P(5);
     m.reset(P(2), r);
     ::tpy::__getitem__(m.xs, 0).v = 8;
     r.v = 6;
-    std::cout << "method.comp_elem" << " " << ::tpy::__getitem__(m.xs, 0).v << " " << ::tpy::__getitem__(m.xs, 1).v << " " << ::tpy::__getitem__(m.d, 0).v << " " << ::tpy::__getitem__(m.d, 1).v << "\n";
+    std::cout << "method.comp_elem" << " " << ::tpy::__getitem__(m.xs, 0).v << " " << ::tpy::__getitem__(m.xs, 1).v << " " << ::tpy::__getitem__(m.d, 0).v << " " << ::tpy::__getitem__(m.d, 1).v << "\n" << ::tpy::check_signals;
 }
 
 // def mk_opt(v: int32) -> Own[P] | None:
@@ -329,12 +329,12 @@ void slot_holder(const OptSrc& o, PqSrc& u, std::vector<std::optional<P>>& xs) {
     Slots s = Slots(o, u);
     s.op = ::tpy::__getitem__(xs, 0);
     ::tpyapp::main::bump_at(xs, 0);
-    std::cout << "holder.opt_elem" << " " << s.show_op() << " " << ::tpyapp::main::show_at(xs, 0) << "\n";
+    std::cout << "holder.opt_elem" << " " << s.show_op() << " " << ::tpyapp::main::show_at(xs, 0) << "\n" << ::tpy::check_signals;
     s.pq = ::tpyapp::main::mk_pq(4);
-    std::cout << "holder.pq_call" << " " << s.showu_pq() << "\n";
+    std::cout << "holder.pq_call" << " " << s.showu_pq() << "\n" << ::tpy::check_signals;
     s.pq = u.f;
     ::tpyapp::main::bumpu_src(u);
-    std::cout << "holder.pq_field" << " " << s.showu_pq() << " " << ::tpyapp::main::showu_src(u) << "\n";
+    std::cout << "holder.pq_field" << " " << s.showu_pq() << " " << ::tpyapp::main::showu_src(u) << "\n" << ::tpy::check_signals;
 }
 
 // def slot_writes() -> None:
@@ -364,15 +364,15 @@ void slot_writes() {
     ::tpyapp::main::store_g(s, P(9));
     ::tpyapp::main::bump_src(o);
     ::tpyapp::main::bumpu_src(u);
-    std::cout << "ctor.opt_pq" << " " << s.show_op() << " " << ::tpyapp::main::show_src(o) << " " << s.showu_pq() << " " << ::tpyapp::main::showu_src(u) << " " << s.show_g2() << " " << s.showu_g3() << "\n";
+    std::cout << "ctor.opt_pq" << " " << s.show_op() << " " << ::tpyapp::main::show_src(o) << " " << s.showu_pq() << " " << ::tpyapp::main::showu_src(u) << " " << s.show_g2() << " " << s.showu_g3() << "\n" << ::tpy::check_signals;
     Deep h = Deep(OptSrc(P(30)), PqSrc(P(40)));
     std::vector<std::optional<P>> xs = {P(50), std::nullopt};
     std::vector<::tpy::Union<P, R>> us = {R(60)};
     ::tpy::ordered_map<std::string, std::optional<P>> d = ::tpy::ordered_map<std::string, std::optional<P>>({{"k", P(70)}});
     ::tpy::ordered_map<std::string, ::tpy::Union<P, R>> du = ::tpy::ordered_map<std::string, ::tpy::Union<P, R>>({{"k", P(80)}});
     s.writes(o, u, h, xs, us, d, du);
-    std::cout << "gen.opt_pq" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(s.gen_writes(o, us))) << "\n";
-    std::cout << "async.opt_pq" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(s.async_writes(h, du))) << "\n";
+    std::cout << "gen.opt_pq" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(s.gen_writes(o, us))) << "\n" << ::tpy::check_signals;
+    std::cout << "async.opt_pq" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(s.async_writes(h, du))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::slot_holder(o, u, xs);
 }
 
@@ -408,7 +408,7 @@ void main() {
     std::vector<int32_t> xs = {1};
     Holder h = Holder(xs);
     xs.push_back(94);
-    std::cout << "ctor.or" << " " << ::tpy::ListPrinter(h.xs) << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << "ctor.or" << " " << ::tpy::ListPrinter(h.xs) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __slot_1 = std::vector<int32_t>{1, 2};
     std::vector<int32_t>* items = &__slot_1;
     Src src = Src(P(4));
@@ -423,11 +423,11 @@ void main() {
     ::tpy::Union<P*, Q*> u = ::tpy::to_ptr_variant(built.u);
     if (std::holds_alternative<P*>(u)) {
         auto& __u = *std::get<P*>(u);
-        std::cout << "ctor.copies" << " " << built.mine.v << " " << s.v.v << " " << __u.v << " " << built.a.v << " " << built.b.v << " " << a.v << "\n";
+        std::cout << "ctor.copies" << " " << built.mine.v << " " << s.v.v << " " << __u.v << " " << built.a.v << " " << built.b.v << " " << a.v << "\n" << ::tpy::check_signals;
     }
     Derived d = Derived(Item(5));
     d.ia.v = 55;
-    std::cout << "ctor.base" << " " << d.ia.v << " " << d.ib.v << "\n";
+    std::cout << "ctor.base" << " " << d.ia.v << " " << d.ib.v << "\n" << ::tpy::check_signals;
     ::tpyapp::main::nested({1, 2, 3});
     Opt o = Opt();
     std::vector<P> __tmp_1 = {P(7)};
@@ -499,21 +499,21 @@ void Holder::writes(std::vector<int32_t>& xs, std::vector<int32_t>* items, Src& 
     std::optional<P> q;
     this->p = (q = ::tpyapp::main::mk(1), *q);
     (*q).v = 50;
-    std::cout << "method.walrus" << " " << this->p.v << " " << (*q).v << "\n";
+    std::cout << "method.walrus" << " " << this->p.v << " " << (*q).v << "\n" << ::tpy::check_signals;
     auto&& __tmp_1 = std::vector<int32_t>{7};
     this->ys = ((::tpy::__len__(__tmp_1) != 0) ? xs : std::move(__tmp_1));
     xs.push_back(95);
-    std::cout << "method.and" << " " << ::tpy::ListPrinter(this->ys) << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << "method.and" << " " << ::tpy::ListPrinter(this->ys) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     this->items = ::tpy::ptr_to_optional(items);
     if ((items != nullptr)) {
         items->push_back(3);
     }
-    std::cout << "method.opt_param" << " " << ::tpy::print_optional_val<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(this->items) << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(items) << "\n";
+    std::cout << "method.opt_param" << " " << ::tpy::print_optional_val<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(this->items) << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(items) << "\n" << ::tpy::check_signals;
     this->byval = s.peek();
     s.v.v = 77;
     P* byval = ::tpy::optional_to_ptr(this->byval);
     if ((byval != nullptr)) {
-        std::cout << "method.accessor" << " " << byval->v << " " << s.v.v << "\n";
+        std::cout << "method.accessor" << " " << byval->v << " " << s.v.v << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -562,38 +562,38 @@ void Holder::writes(std::vector<int32_t>& xs, std::vector<int32_t>* items, Src& 
 void Slots::writes(OptSrc& o, PqSrc& u, Deep& h, std::vector<std::optional<P>>& xs, std::vector<::tpy::Union<P, R>>& us, ::tpy::ordered_map<std::string, std::optional<P>>& d, ::tpy::ordered_map<std::string, ::tpy::Union<P, R>>& du) {
     this->op = o.f;
     ::tpyapp::main::bump_src(o);
-    std::cout << "method.opt_field" << " " << this->show_op() << " " << ::tpyapp::main::show_src(o) << "\n";
+    std::cout << "method.opt_field" << " " << this->show_op() << " " << ::tpyapp::main::show_src(o) << "\n" << ::tpy::check_signals;
     this->op = this->g2;
     this->bump_g2();
-    std::cout << "method.opt_self_field" << " " << this->show_op() << " " << this->show_g2() << "\n";
+    std::cout << "method.opt_self_field" << " " << this->show_op() << " " << this->show_g2() << "\n" << ::tpy::check_signals;
     this->op = h.a.f;
     ::tpyapp::main::bump_deep(h);
-    std::cout << "method.opt_chain" << " " << this->show_op() << " " << ::tpyapp::main::show_deep(h) << "\n";
+    std::cout << "method.opt_chain" << " " << this->show_op() << " " << ::tpyapp::main::show_deep(h) << "\n" << ::tpy::check_signals;
     this->op = ::tpy::__getitem__(xs, 0);
     ::tpyapp::main::bump_at(xs, 0);
-    std::cout << "method.opt_elem" << " " << this->show_op() << " " << ::tpyapp::main::show_at(xs, 0) << "\n";
+    std::cout << "method.opt_elem" << " " << this->show_op() << " " << ::tpyapp::main::show_at(xs, 0) << "\n" << ::tpy::check_signals;
     this->op = ::tpy::__getitem__(d, "k");
     ::tpyapp::main::bump_key(d, "k");
-    std::cout << "method.opt_dict" << " " << this->show_op() << " " << ::tpyapp::main::show_key(d, "k") << "\n";
+    std::cout << "method.opt_dict" << " " << this->show_op() << " " << ::tpyapp::main::show_key(d, "k") << "\n" << ::tpy::check_signals;
     this->op = ::tpyapp::main::mk_opt(9);
-    std::cout << "method.opt_call" << " " << this->show_op() << "\n";
+    std::cout << "method.opt_call" << " " << this->show_op() << "\n" << ::tpy::check_signals;
     this->pq = u.f;
     ::tpyapp::main::bumpu_src(u);
-    std::cout << "method.pq_field" << " " << this->showu_pq() << " " << ::tpyapp::main::showu_src(u) << "\n";
+    std::cout << "method.pq_field" << " " << this->showu_pq() << " " << ::tpyapp::main::showu_src(u) << "\n" << ::tpy::check_signals;
     this->pq = this->g3;
     this->bumpu_g3();
-    std::cout << "method.pq_self_field" << " " << this->showu_pq() << " " << this->showu_g3() << "\n";
+    std::cout << "method.pq_self_field" << " " << this->showu_pq() << " " << this->showu_g3() << "\n" << ::tpy::check_signals;
     this->pq = h.b.f;
     ::tpyapp::main::bumpu_deep(h);
-    std::cout << "method.pq_chain" << " " << this->showu_pq() << " " << ::tpyapp::main::showu_deep(h) << "\n";
+    std::cout << "method.pq_chain" << " " << this->showu_pq() << " " << ::tpyapp::main::showu_deep(h) << "\n" << ::tpy::check_signals;
     this->pq = ::tpy::__getitem__(us, 0);
     ::tpyapp::main::bumpu_at(us, 0);
-    std::cout << "method.pq_elem" << " " << this->showu_pq() << " " << ::tpyapp::main::showu_at(us, 0) << "\n";
+    std::cout << "method.pq_elem" << " " << this->showu_pq() << " " << ::tpyapp::main::showu_at(us, 0) << "\n" << ::tpy::check_signals;
     this->pq = ::tpy::__getitem__(du, "k");
     ::tpyapp::main::bumpu_key(du, "k");
-    std::cout << "method.pq_dict" << " " << this->showu_pq() << " " << ::tpyapp::main::showu_key(du, "k") << "\n";
+    std::cout << "method.pq_dict" << " " << this->showu_pq() << " " << ::tpyapp::main::showu_key(du, "k") << "\n" << ::tpy::check_signals;
     this->pq = ::tpyapp::main::mk_pq(-8);
-    std::cout << "method.pq_call" << " " << this->showu_pq() << "\n";
+    std::cout << "method.pq_call" << " " << this->showu_pq() << "\n" << ::tpy::check_signals;
 }
 // # Field writes that copy where CPython aliases, each warned: every write is
 // # followed by a mutation and both sides are printed, pinning TPy's copy.

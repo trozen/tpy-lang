@@ -37,7 +37,7 @@ struct Window {
     std::span<const int32_t> __getitem__(::tpy::Slice index) const {
         std::optional<int32_t> s_step = index.step;
         int32_t step = (((s_step.has_value())) ? ((*s_step)) : (1));
-        std::cout << step << "\n";
+        std::cout << step << "\n" << ::tpy::check_signals;
         return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{0, ::tpy::__len__(this->_data)});
     }
 

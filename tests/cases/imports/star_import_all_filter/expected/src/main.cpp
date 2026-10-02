@@ -18,8 +18,8 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::lib::__tpy_init();
-    std::cout << ::tpyapp::lib::Public().val << "\n";
-    std::cout << ::tpyapp::lib::Hidden().val << "\n";
+    std::cout << ::tpyapp::lib::Public().val << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::lib::Hidden().val << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -14,7 +14,7 @@ namespace tpyapp::main {
 void test_out_of_bounds() {
     std::vector<int32_t> items = {10, 20, 30};
     int32_t x = ::tpy::__getitem__(items, 10);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // test_out_of_bounds()

@@ -16,8 +16,8 @@ double log(double x, double base) {
 //     print(log(1.0))
 //     print(log(8.0, 2.0))
 void main() {
-    std::cout << ::tpy::print_float(::std::log(1.0)) << "\n";
-    std::cout << ::tpy::print_float(::tpyapp::main::log(8.0, 2.0)) << "\n";
+    std::cout << ::tpy::print_float(::std::log(1.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpyapp::main::log(8.0, 2.0)) << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native

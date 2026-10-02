@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     DefaultFactory factory = DefaultFactory();
     Point p = ::tpyapp::main::make_point<DefaultFactory>(factory, 10, 20);
-    std::cout << p.x << "\n";
-    std::cout << p.y << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
+    std::cout << p.y << "\n" << ::tpy::check_signals;
 }
 
 // main()

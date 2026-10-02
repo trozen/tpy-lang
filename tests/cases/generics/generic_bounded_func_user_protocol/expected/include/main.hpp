@@ -63,7 +63,7 @@ inline std::string Point::to_string() const {
 //     print("got printable")
 template<Printable T>
 void print_item(::tpy::param_val_or_ref_t<T> item) {
-    std::cout << "got printable" << "\n";
+    std::cout << "got printable" << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

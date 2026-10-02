@@ -23,8 +23,8 @@ int32_t compute(const Point& p) {
 //     print(p.magnitude_sq())
 //     print(p.distance_sq(Point(int32(0), int32(0))))
 void use_readonly(const Point& p) {
-    std::cout << p.magnitude_sq() << "\n";
-    std::cout << p.distance_sq(Point(0, 0)) << "\n";
+    std::cout << p.magnitude_sq() << "\n" << ::tpy::check_signals;
+    std::cout << p.distance_sq(Point(0, 0)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -36,10 +36,10 @@ void use_readonly(const Point& p) {
 //     use_readonly(p)
 void main() {
     Point p = Point(3, 4);
-    std::cout << p.magnitude_sq() << "\n";
-    std::cout << p.distance_sq(Point(1, 1)) << "\n";
-    std::cout << ::tpyapp::main::add_values(10, 20) << "\n";
-    std::cout << ::tpyapp::main::compute(p) << "\n";
+    std::cout << p.magnitude_sq() << "\n" << ::tpy::check_signals;
+    std::cout << p.distance_sq(Point(1, 1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::add_values(10, 20) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::compute(p) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::use_readonly(p);
 }
 

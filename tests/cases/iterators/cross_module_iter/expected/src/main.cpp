@@ -21,7 +21,7 @@ void main() {
         int32_t v = ::tpy::unwrap_ref(*__r_1);
         total = ::tpy::add_check<int32_t>(total, v);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // # Iterate a cross-module generic iterable WITHOUT importing its type -- only

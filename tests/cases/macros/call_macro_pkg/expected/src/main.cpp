@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(s)
 void main() {
     std::string s = ::tpyapp::mypkg::helpers::tag("x", 42);
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // from mypkg.macros import make_tag

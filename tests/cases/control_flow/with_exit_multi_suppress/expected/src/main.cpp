@@ -16,7 +16,7 @@ void run() {
     auto b = __ctx_2.__enter__();
     try {
         try {
-            std::cout << std::format("body a={} b={}", (a).to_string(), (b).to_string()) << "\n";
+            std::cout << std::format("body a={} b={}", (a).to_string(), (b).to_string()) << "\n" << ::tpy::check_signals;
             throw ::tpy::ValueError("inner-only");
         } catch (::tpy::BaseException& __exc_2) {
             if (!__ctx_2.__exit__({}, &__exc_2, {})) throw;
@@ -34,7 +34,7 @@ void run() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << "after with" << "\n";
+    std::cout << "after with" << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

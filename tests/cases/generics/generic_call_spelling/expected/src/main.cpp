@@ -15,9 +15,9 @@ void main() {
     int32_t p = ::tpyapp::main::pick<int32_t>(1, 2);
     int32_t x = 3;
     int32_t y = 4;
-    std::cout << p << " " << ::tpyapp::main::pick<int32_t>(x, y) << "\n";
-    std::cout << Util::smax<int32_t>(x, y) << "\n";
-    std::cout << ::tpyapp::genmod::gf<int32_t>(x, y) << "\n";
+    std::cout << p << " " << ::tpyapp::main::pick<int32_t>(x, y) << "\n" << ::tpy::check_signals;
+    std::cout << Util::smax<int32_t>(x, y) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::genmod::gf<int32_t>(x, y) << "\n" << ::tpy::check_signals;
 }
 
 // # Explicit template-arg spelling at generic call sites: a plain f[T] call

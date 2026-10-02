@@ -35,11 +35,11 @@ void update(Holder* h, const ::tpy::BigInt& v, bool attach) {
 void main() {
     Holder h = Holder(::tpy::BigInt(7));
     ::tpyapp::main::update(&h, ::tpy::BigInt(42), true);
-    std::cout << ::tpy::print_bool((_ptr_g != nullptr)) << "\n";
-    std::cout << ::tpy::print_bool((_opt_int_g.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((_ptr_g != nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((_opt_int_g.has_value())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::update(&h, ::tpy::BigInt(0), false);
-    std::cout << ::tpy::print_bool((_ptr_g == nullptr)) << "\n";
-    std::cout << ::tpy::print_bool((!_opt_int_g.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((_ptr_g == nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!_opt_int_g.has_value())) << "\n" << ::tpy::check_signals;
 }
 
 // _ptr_g: Ptr[Holder] = None

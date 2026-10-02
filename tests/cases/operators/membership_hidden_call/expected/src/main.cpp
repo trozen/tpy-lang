@@ -41,16 +41,16 @@ void main() {
     P p = P();
     calls = 0;
     bool hit = ({ auto&& __in_lhs = p.probe(); (__in_lhs == 5) || (__in_lhs == 9); });
-    std::cout << "property hit:" << " " << ::tpy::print_bool(hit) << " " << "calls:" << " " << calls << "\n";
+    std::cout << "property hit:" << " " << ::tpy::print_bool(hit) << " " << "calls:" << " " << calls << "\n" << ::tpy::check_signals;
     calls = 0;
     bool miss = ({ auto&& __in_lhs = p.probe(); !((__in_lhs == 1) || (__in_lhs == 2)); });
-    std::cout << "property miss:" << " " << ::tpy::print_bool(miss) << " " << "calls:" << " " << calls << "\n";
+    std::cout << "property miss:" << " " << ::tpy::print_bool(miss) << " " << "calls:" << " " << calls << "\n" << ::tpy::check_signals;
     calls = 0;
     bool single = ((p.probe() == 5));
-    std::cout << "single:" << " " << ::tpy::print_bool(single) << " " << "calls:" << " " << calls << "\n";
-    std::cout << "plain field:" << " " << ::tpy::print_bool(({ auto&& __in_lhs = p.plain; (__in_lhs == 6) || (__in_lhs == 7); })) << "\n";
+    std::cout << "single:" << " " << ::tpy::print_bool(single) << " " << "calls:" << " " << calls << "\n" << ::tpy::check_signals;
+    std::cout << "plain field:" << " " << ::tpy::print_bool(({ auto&& __in_lhs = p.plain; (__in_lhs == 6) || (__in_lhs == 7); })) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt n = p.plain;
-    std::cout << "name needle:" << " " << ::tpy::print_bool(((n == 6) || (n == 7))) << "\n";
+    std::cout << "name needle:" << " " << ::tpy::print_bool(((n == 6) || (n == 7))) << "\n" << ::tpy::check_signals;
 }
 
 // # The `x in (a, b)` needle renders once per element, so anything but a name or

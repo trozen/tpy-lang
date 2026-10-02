@@ -12,7 +12,7 @@ void main() {
         Res __rep_0 = Res(7);
         ::tpy::array_from_index<Res, 3>([&](std::size_t) -> Res { return __rep_0; });
     });
-    std::cout << ::tpy::__len__(rs) << " " << ::tpy::__getitem__(rs, 0).v << " " << ::tpy::__getitem__(rs, 2).v << "\n";
+    std::cout << ::tpy::__len__(rs) << " " << ::tpy::__getitem__(rs, 0).v << " " << ::tpy::__getitem__(rs, 2).v << "\n" << ::tpy::check_signals;
 }
 
 // main()

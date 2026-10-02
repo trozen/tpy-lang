@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(fac.Counter.LIMIT)  # tpyc: ok
 void main() {
     ::tpyapp::factory::Counter c = ::tpyapp::factory::Counter::make(11);
-    std::cout << c.value << "\n";
-    std::cout << ::tpyapp::factory::Counter::LIMIT << "\n";
+    std::cout << c.value << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::factory::Counter::LIMIT << "\n" << ::tpy::check_signals;
 }
 
 // # Regression: `import m as alias` followed by `alias.Cls.method()` and

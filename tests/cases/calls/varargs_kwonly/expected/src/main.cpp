@@ -29,10 +29,10 @@ std::string f(::tpy::varargs<const int32_t> args, std::string_view sep) {
 //     print(f())
 void main() {
     std::array<const int32_t, 3> __tmp_1{1, 2, 3};
-    std::cout << ::tpyapp::main::f(::tpy::varargs<const int32_t>(__tmp_1), ", ") << "\n";
+    std::cout << ::tpyapp::main::f(::tpy::varargs<const int32_t>(__tmp_1), ", ") << "\n" << ::tpy::check_signals;
     std::array<const int32_t, 3> __tmp_2{1, 2, 3};
-    std::cout << ::tpyapp::main::f(::tpy::varargs<const int32_t>(__tmp_2), " + ") << "\n";
-    std::cout << ::tpyapp::main::f(::tpy::varargs<const int32_t>(), ", ") << "\n";
+    std::cout << ::tpyapp::main::f(::tpy::varargs<const int32_t>(__tmp_2), " + ") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::f(::tpy::varargs<const int32_t>(), ", ") << "\n" << ::tpy::check_signals;
 }
 
 // main()

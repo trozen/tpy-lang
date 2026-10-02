@@ -17,12 +17,12 @@ namespace tpyapp::main {
 void main() {
     Vec2 a = Vec2(1, 2);
     Vec2 b = a;
-    std::cout << a.total() << "\n";
-    std::cout << b.total() << "\n";
+    std::cout << a.total() << "\n" << ::tpy::check_signals;
+    std::cout << b.total() << "\n" << ::tpy::check_signals;
     Rect r = Rect(Vec2(0, 0), Vec2(10, 20));
-    std::cout << r.pos.x << "\n";
-    std::cout << r.size.total() << "\n";
-    std::cout << r.origin_sum() << "\n";
+    std::cout << r.pos.x << "\n" << ::tpy::check_signals;
+    std::cout << r.size.total() << "\n" << ::tpy::check_signals;
+    std::cout << r.origin_sum() << "\n" << ::tpy::check_signals;
 }
 
 // main()

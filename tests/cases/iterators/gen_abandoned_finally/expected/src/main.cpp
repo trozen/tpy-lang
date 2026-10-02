@@ -58,7 +58,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 void __gen_gen::__finally_0() {
-    std::cout << "cleanup" << " " << tag << "\n";
+    std::cout << "cleanup" << " " << tag << "\n" << ::tpy::check_signals;
 }
 
 // def gen(tag: str) -> Iterator[int]:
@@ -79,11 +79,11 @@ void temp_source() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
             break;
         }
     }
-    std::cout << "after temp" << "\n";
+    std::cout << "after temp" << "\n" << ::tpy::check_signals;
 }
 
 // def named_source() -> None:
@@ -100,10 +100,10 @@ void named_source() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
         break;
     }
-    std::cout << "after named" << "\n";
+    std::cout << "after named" << "\n" << ::tpy::check_signals;
 }
 
 // def exhausted() -> None:
@@ -118,10 +118,10 @@ void exhausted() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "after full" << "\n";
+    std::cout << "after full" << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

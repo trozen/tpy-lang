@@ -19,12 +19,12 @@ void main() {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& x = *std::get<1>(__match_subject_1);
-        std::cout << x.name << "\n";
+        std::cout << x.name << "\n" << ::tpy::check_signals;
         break;
     }
     case 0: {
         auto& y = *std::get<0>(__match_subject_1);
-        std::cout << y.name << "\n";
+        std::cout << y.name << "\n" << ::tpy::check_signals;
         break;
     }
     }

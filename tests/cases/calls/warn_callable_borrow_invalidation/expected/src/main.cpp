@@ -19,9 +19,9 @@ void mutate(std::vector<P>& xs) {
 void use_callable(const std::function<void(std::vector<P>&)>& f) {
     std::vector<P> xs = {P(1), P(2)};
     P& p = ::tpy::__getitem__(xs, 0);
-    std::cout << p.v << "\n";
+    std::cout << p.v << "\n" << ::tpy::check_signals;
     f(xs);
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def use_local() -> None:
@@ -35,9 +35,9 @@ void use_local() {
     std::function<void(std::vector<P>&)> f = mutate;
     std::vector<P> xs = {P(1), P(2)};
     P& p = ::tpy::__getitem__(xs, 0);
-    std::cout << p.v << "\n";
+    std::cout << p.v << "\n" << ::tpy::check_signals;
     f(xs);
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def use_direct() -> None:
@@ -49,9 +49,9 @@ void use_local() {
 void use_direct() {
     std::vector<P> xs = {P(1), P(2)};
     P& p = ::tpy::__getitem__(xs, 0);
-    std::cout << p.v << "\n";
+    std::cout << p.v << "\n" << ::tpy::check_signals;
     ::tpyapp::main::mutate(xs);
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

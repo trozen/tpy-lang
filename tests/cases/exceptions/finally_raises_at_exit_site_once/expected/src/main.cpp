@@ -12,7 +12,7 @@ int32_t _code{};
 //     return _code
 ::tpy::BigInt bump() {
     _code = ::tpy::add_check<int32_t>(_code, 1);
-    std::cout << std::format("side-effect {}", _code) << "\n";
+    std::cout << std::format("side-effect {}", _code) << "\n" << ::tpy::check_signals;
     return ::tpy::BigInt(_code);
 }
 
@@ -58,7 +58,7 @@ void brk_out() {
                     }
                     break;
                 }
-                std::cout << std::format("iter {}", i) << "\n";
+                std::cout << std::format("iter {}", i) << "\n" << ::tpy::check_signals;
             } catch (...) {
                 if (!__fin_ran_2) {
                     if ((i == 1)) {
@@ -118,18 +118,18 @@ void cont_out() {
                 try {
                     [[maybe_unused]] ::tpy::BigInt __tpy_ret_0 = ::tpy::BigInt(3);
                     __fin_ran_5 = true;
-                    std::cout << "inner fin" << "\n";
+                    std::cout << "inner fin" << "\n" << ::tpy::check_signals;
                     throw Err(::tpyapp::main::bump());
                 } catch (...) {
                     if (!__fin_ran_5) {
-                        std::cout << "inner fin" << "\n";
+                        std::cout << "inner fin" << "\n" << ::tpy::check_signals;
                         throw Err(::tpyapp::main::bump());
                     }
                     throw;
                 }
             }
         } catch (...) {
-            std::cout << "outer fin" << "\n";
+            std::cout << "outer fin" << "\n" << ::tpy::check_signals;
             throw;
         }
     }
@@ -166,39 +166,39 @@ void cont_out() {
 //         print(f"caught code={e.code}")
 void main() {
     _code = 0;
-    std::cout << "-- ret_out --" << "\n";
+    std::cout << "-- ret_out --" << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::ret_out(::tpy::BigInt(5));
         } catch (const Err& e) {
-            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
+            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n" << ::tpy::check_signals;
         }
     }
     _code = 0;
-    std::cout << "-- brk_out --" << "\n";
+    std::cout << "-- brk_out --" << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::brk_out();
         } catch (const Err& e) {
-            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
+            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n" << ::tpy::check_signals;
         }
     }
     _code = 0;
-    std::cout << "-- cont_out --" << "\n";
+    std::cout << "-- cont_out --" << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::cont_out();
         } catch (const Err& e) {
-            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
+            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n" << ::tpy::check_signals;
         }
     }
     _code = 0;
-    std::cout << "-- nested_ret --" << "\n";
+    std::cout << "-- nested_ret --" << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::nested_ret();
         } catch (const Err& e) {
-            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
+            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n" << ::tpy::check_signals;
         }
     }
 }

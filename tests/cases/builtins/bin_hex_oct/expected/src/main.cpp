@@ -39,30 +39,30 @@ namespace tpyapp::main {
 //     print(hex(-2 ** 64))
 //     print(oct(-2 ** 64))
 void main() {
-    std::cout << ::tpy::builtin_bin(0) << "\n";
-    std::cout << ::tpy::builtin_bin(1) << "\n";
-    std::cout << ::tpy::builtin_bin(42) << "\n";
-    std::cout << ::tpy::builtin_bin(255) << "\n";
-    std::cout << ::tpy::builtin_bin(-1) << "\n";
-    std::cout << ::tpy::builtin_bin(-42) << "\n";
-    std::cout << ::tpy::builtin_hex(0) << "\n";
-    std::cout << ::tpy::builtin_hex(1) << "\n";
-    std::cout << ::tpy::builtin_hex(255) << "\n";
-    std::cout << ::tpy::builtin_hex(256) << "\n";
-    std::cout << ::tpy::builtin_hex(-1) << "\n";
-    std::cout << ::tpy::builtin_oct(0) << "\n";
-    std::cout << ::tpy::builtin_oct(1) << "\n";
-    std::cout << ::tpy::builtin_oct(8) << "\n";
-    std::cout << ::tpy::builtin_oct(64) << "\n";
-    std::cout << ::tpy::builtin_oct(-8) << "\n";
+    std::cout << ::tpy::builtin_bin(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_bin(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_bin(42) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_bin(255) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_bin(-1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_bin(-42) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_hex(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_hex(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_hex(255) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_hex(256) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_hex(-1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_oct(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_oct(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_oct(8) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_oct(64) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_oct(-8) << "\n" << ::tpy::check_signals;
     int64_t big = static_cast<int64_t>(1000000000000);
-    std::cout << ::tpy::builtin_hex(big) << "\n";
-    std::cout << ::tpy::builtin_bin_bigint(((((::tpy::BigInt(2)).pow(::tpy::BigInt(64)))) + (::tpy::BigInt(1)))) << "\n";
-    std::cout << ::tpy::builtin_hex_bigint(((((::tpy::BigInt(2)).pow(::tpy::BigInt(64)))) + (::tpy::BigInt(1)))) << "\n";
-    std::cout << ::tpy::builtin_oct_bigint(((((::tpy::BigInt(2)).pow(::tpy::BigInt(64)))) + (::tpy::BigInt(1)))) << "\n";
-    std::cout << ::tpy::builtin_bin_bigint(-(((::tpy::BigInt(2)).pow(::tpy::BigInt(64))))) << "\n";
-    std::cout << ::tpy::builtin_hex_bigint(-(((::tpy::BigInt(2)).pow(::tpy::BigInt(64))))) << "\n";
-    std::cout << ::tpy::builtin_oct_bigint(-(((::tpy::BigInt(2)).pow(::tpy::BigInt(64))))) << "\n";
+    std::cout << ::tpy::builtin_hex(big) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_bin_bigint(((((::tpy::BigInt(2)).pow(::tpy::BigInt(64)))) + (::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_hex_bigint(((((::tpy::BigInt(2)).pow(::tpy::BigInt(64)))) + (::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_oct_bigint(((((::tpy::BigInt(2)).pow(::tpy::BigInt(64)))) + (::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_bin_bigint(-(((::tpy::BigInt(2)).pow(::tpy::BigInt(64))))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_hex_bigint(-(((::tpy::BigInt(2)).pow(::tpy::BigInt(64))))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_oct_bigint(-(((::tpy::BigInt(2)).pow(::tpy::BigInt(64))))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

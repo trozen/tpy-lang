@@ -53,34 +53,34 @@ namespace tpyapp::main {
 //     print(1.0000000001)
 //     print(0.9999999999)
 void main() {
-    std::cout << ::tpy::print_float(1.0) << "\n";
-    std::cout << ::tpy::print_float(5.0) << "\n";
-    std::cout << ::tpy::print_float(100.0) << "\n";
-    std::cout << ::tpy::print_float(-(42.0)) << "\n";
-    std::cout << ::tpy::print_float(0.5) << "\n";
-    std::cout << ::tpy::print_float(3.14) << "\n";
-    std::cout << ::tpy::print_float(-(2.5)) << "\n";
-    std::cout << ::tpy::print_float(0.1) << "\n";
-    std::cout << ::tpy::print_float(0.2) << "\n";
-    std::cout << ::tpy::print_float(0.3) << "\n";
-    std::cout << ::tpy::print_float(3.14159265358979) << "\n";
-    std::cout << ::tpy::print_float(2.718281828459045) << "\n";
-    std::cout << ::tpy::print_float(123456789.0) << "\n";
-    std::cout << ::tpy::print_float(123456789.123456) << "\n";
-    std::cout << ::tpy::print_float(9999999999.999998) << "\n";
-    std::cout << ::tpy::print_float(0.000123) << "\n";
-    std::cout << ::tpy::print_float(0.0001) << "\n";
-    std::cout << ::tpy::print_float(1e-05) << "\n";
-    std::cout << ::tpy::print_float(-(0.000123)) << "\n";
-    std::cout << ::tpy::print_float(-(1e-05)) << "\n";
+    std::cout << ::tpy::print_float(1.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(5.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(100.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(-(42.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(0.5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(3.14) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(-(2.5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(0.1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(0.2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(0.3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(3.14159265358979) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(2.718281828459045) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(123456789.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(123456789.123456) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(9999999999.999998) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(0.000123) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(0.0001) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(1e-05) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(-(0.000123)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(-(1e-05)) << "\n" << ::tpy::check_signals;
     double x = 1.1;
-    std::cout << ::tpy::print_float(x) << "\n";
+    std::cout << ::tpy::print_float(x) << "\n" << ::tpy::check_signals;
     double y = 2.5;
-    std::cout << ::tpy::print_float(y) << "\n";
-    std::cout << ::tpy::print_float(1e-09) << "\n";
-    std::cout << ::tpy::print_float(1e-10) << "\n";
-    std::cout << ::tpy::print_float(1.0000000001) << "\n";
-    std::cout << ::tpy::print_float(0.9999999999) << "\n";
+    std::cout << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(1e-09) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(1e-10) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(1.0000000001) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(0.9999999999) << "\n" << ::tpy::check_signals;
 }
 
 // main()

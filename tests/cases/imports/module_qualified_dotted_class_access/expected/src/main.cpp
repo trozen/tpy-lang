@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(pkg.sub.Widget.SIZE)  # tpyc: ok
 void main() {
     ::tpyapp::pkg::sub::Widget w = ::tpyapp::pkg::sub::Widget::make(13);
-    std::cout << w.value << "\n";
-    std::cout << ::tpyapp::pkg::sub::Widget::SIZE << "\n";
+    std::cout << w.value << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::pkg::sub::Widget::SIZE << "\n" << ::tpy::check_signals;
 }
 
 // # Regression: `import pkg.sub` followed by `pkg.sub.Cls.method()` and

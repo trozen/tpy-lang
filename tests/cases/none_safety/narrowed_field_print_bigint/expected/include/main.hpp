@@ -52,12 +52,12 @@ inline Stats::Stats(std::optional<::tpy::BigInt> total, std::optional<::tpy::Big
 //         print(self.label, self.total)
 inline void Stats::show() const {
     if ((!this->total.has_value())) {
-        std::cout << "no total" << "\n";
+        std::cout << "no total" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << (*this->total) << "\n";
+        std::cout << (*this->total) << "\n" << ::tpy::check_signals;
     }
     if ((this->label.has_value())) {
-        std::cout << (*this->label) << " " << ::tpy::print_optional_val(this->total) << "\n";
+        std::cout << (*this->label) << " " << ::tpy::print_optional_val(this->total) << "\n" << ::tpy::check_signals;
     }
 }
 void __tpy_init();

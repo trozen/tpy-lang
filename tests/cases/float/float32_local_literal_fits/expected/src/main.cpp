@@ -22,9 +22,9 @@ float f32() {
 //     print("declared", f * 3)
 void declared() {
     float f = 0.1f;
-    std::cout << "declared" << " " << ::tpy::print_float(static_cast<double>(((f) * (3)))) << "\n";
+    std::cout << "declared" << " " << ::tpy::print_float(static_cast<double>(((f) * (3)))) << "\n" << ::tpy::check_signals;
     f = 0.5f;
-    std::cout << "declared" << " " << ::tpy::print_float(static_cast<double>(((f) * (3)))) << "\n";
+    std::cout << "declared" << " " << ::tpy::print_float(static_cast<double>(((f) * (3)))) << "\n" << ::tpy::check_signals;
 }
 
 // # a float32 local a nested def stores a float literal into through `nonlocal`
@@ -44,7 +44,7 @@ void nonlocal_store() {
         v = 0.25f;
     };
     reset();
-    std::cout << "nonlocal" << " " << ::tpy::print_float(static_cast<double>(((v) * (2)))) << "\n";
+    std::cout << "nonlocal" << " " << ::tpy::print_float(static_cast<double>(((v) * (2)))) << "\n" << ::tpy::check_signals;
 }
 
 // # an infinite literal fits a float32
@@ -55,7 +55,7 @@ void nonlocal_store() {
 void infinite() {
     float f = 1.5f;
     f = std::numeric_limits<float>::infinity();
-    std::cout << "infinite" << " " << ::tpy::print_float(static_cast<double>(f)) << "\n";
+    std::cout << "infinite" << " " << ::tpy::print_float(static_cast<double>(f)) << "\n" << ::tpy::check_signals;
 }
 
 // declared()

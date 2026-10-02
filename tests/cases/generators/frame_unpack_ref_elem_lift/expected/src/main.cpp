@@ -90,7 +90,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_try::__next__() {
 }
 
 void __gen_gen_try::__finally_0() {
-    std::cout << "try/finally done" << "\n";
+    std::cout << "try/finally done" << "\n" << ::tpy::check_signals;
 }
 
 // def gen_try(pairs: list[tuple[int32, Box]]) -> Iterator[int32]:
@@ -261,7 +261,7 @@ __coro_coro_subscript coro_subscript(std::vector<std::tuple<int32_t, Box>>& pair
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "async" << " " << __await_lift_0 << " " << std::get<1>(::tpy::__getitem__(pairs, 0)).n << "\n";
+        std::cout << "async" << " " << __await_lift_0 << " " << std::get<1>(::tpy::__getitem__(pairs, 0)).n << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -291,7 +291,7 @@ __coro_main_coro main_coro(std::vector<std::tuple<int32_t, Box>>& pairs) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "async chain" << " " << __await_lift_0 << " " << std::get<1>(::tpy::__getitem__(hs, 0).pair).n << "\n";
+        std::cout << "async chain" << " " << __await_lift_0 << " " << std::get<1>(::tpy::__getitem__(hs, 0).pair).n << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -390,10 +390,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "subscript" << " " << v << "\n";
+            std::cout << "subscript" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "subscript container" << " " << std::get<1>(::tpy::__getitem__(xs, 0)).n << "\n";
+    std::cout << "subscript container" << " " << std::get<1>(::tpy::__getitem__(xs, 0)).n << "\n" << ::tpy::check_signals;
     Holder h = Holder(Box(20));
     {
         auto __src_2 = ::tpyapp::main::gen_field(h);
@@ -402,10 +402,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "field" << " " << v << "\n";
+            std::cout << "field" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "field container" << " " << std::get<1>(h.pair).n << "\n";
+    std::cout << "field container" << " " << std::get<1>(h.pair).n << "\n" << ::tpy::check_signals;
     {
         auto __src_4 = ::tpyapp::main::gen_local();
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -413,7 +413,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "local" << " " << v << "\n";
+            std::cout << "local" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<std::tuple<int32_t, Box>> ys = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{30, Box(31)})};
@@ -424,10 +424,10 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "try" << " " << v << "\n";
+            std::cout << "try" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "try container" << " " << std::get<1>(::tpy::__getitem__(ys, 0)).n << "\n";
+    std::cout << "try container" << " " << std::get<1>(::tpy::__getitem__(ys, 0)).n << "\n" << ::tpy::check_signals;
     {
         std::vector<std::tuple<int32_t, int32_t>> __tmp_1 = {std::tuple<int32_t, int32_t>{40, 41}};
         auto __src_8 = ::tpyapp::main::gen_value(__tmp_1);
@@ -436,7 +436,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "value" << " " << v << "\n";
+            std::cout << "value" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     Holder h2 = Holder(Box(50));
@@ -447,10 +447,10 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-            std::cout << "call" << " " << v << "\n";
+            std::cout << "call" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "call container" << " " << std::get<1>(h2.pair).n << "\n";
+    std::cout << "call container" << " " << std::get<1>(h2.pair).n << "\n" << ::tpy::check_signals;
     {
         std::vector<std::tuple<int32_t, Box>> __tmp_2 = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{70, Box(71)})};
         auto __src_12 = ::tpyapp::main::gen_readonly(__tmp_2);
@@ -459,7 +459,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-            std::cout << "readonly" << " " << v << "\n";
+            std::cout << "readonly" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<std::tuple<int32_t, Box>> zs = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{60, Box(61)})};
@@ -473,7 +473,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-            std::cout << "pack" << " " << v << "\n";
+            std::cout << "pack" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -484,10 +484,10 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
-            std::cout << "pack bump" << " " << v << "\n";
+            std::cout << "pack bump" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "pack container" << " " << std::get<1>(ph.pair).n << "\n";
+    std::cout << "pack container" << " " << std::get<1>(ph.pair).n << "\n" << ::tpy::check_signals;
     std::vector<Holder> chain = {Holder(Box(80))};
     {
         auto __src_18 = ::tpyapp::main::gen_chain(chain);
@@ -496,10 +496,10 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_19);
-            std::cout << "chain" << " " << v << "\n";
+            std::cout << "chain" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "chain container" << " " << std::get<1>(::tpy::__getitem__(chain, 0).pair).n << "\n";
+    std::cout << "chain container" << " " << std::get<1>(::tpy::__getitem__(chain, 0).pair).n << "\n" << ::tpy::check_signals;
     std::vector<Holder> alias = {Holder(Box(90))};
     {
         auto __src_20 = ::tpyapp::main::gen_alias_root(alias);
@@ -508,10 +508,10 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_21);
-            std::cout << "alias" << " " << v << "\n";
+            std::cout << "alias" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "alias container" << " " << std::get<1>(::tpy::__getitem__(alias, 0).pair).n << "\n";
+    std::cout << "alias container" << " " << std::get<1>(::tpy::__getitem__(alias, 0).pair).n << "\n" << ::tpy::check_signals;
     std::vector<Holder> loop = {Holder(Box(100)), Holder(Box(110))};
     {
         auto __src_22 = ::tpyapp::main::gen_loop_root(loop);
@@ -520,10 +520,10 @@ void main() {
             auto __r_23 = __itr_22.__next__();
             if (!__r_23.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_23);
-            std::cout << "loop" << " " << v << "\n";
+            std::cout << "loop" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "loop container" << " " << std::get<1>(::tpy::__getitem__(loop, 0).pair).n << " " << std::get<1>(::tpy::__getitem__(loop, 1).pair).n << "\n";
+    std::cout << "loop container" << " " << std::get<1>(::tpy::__getitem__(loop, 0).pair).n << " " << std::get<1>(::tpy::__getitem__(loop, 1).pair).n << "\n" << ::tpy::check_signals;
     Grid pro = Grid(Box(140));
     {
         auto __src_24 = ::tpyapp::main::gen_ptr_ro(&pro);
@@ -532,7 +532,7 @@ void main() {
             auto __r_25 = __itr_24.__next__();
             if (!__r_25.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_25);
-            std::cout << "ptr_ro" << " " << v << "\n";
+            std::cout << "ptr_ro" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     Grid gro = Grid(Box(150));
@@ -544,7 +544,7 @@ void main() {
             auto __r_27 = __itr_26.__next__();
             if (!__r_27.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_27);
-            std::cout << "loop_ro" << " " << v << "\n";
+            std::cout << "loop_ro" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -554,7 +554,7 @@ void main() {
             auto __r_29 = __itr_28.__next__();
             if (!__r_29.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_29);
-            std::cout << "loop_ptr_ro" << " " << v << "\n";
+            std::cout << "loop_ptr_ro" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     Keeper k = Keeper(Box(130));
@@ -565,7 +565,7 @@ void main() {
             auto __r_31 = __itr_30.__next__();
             if (!__r_31.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_31);
-            std::cout << "gen_ro" << " " << v << "\n";
+            std::cout << "gen_ro" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -575,10 +575,10 @@ void main() {
             auto __r_33 = __itr_32.__next__();
             if (!__r_33.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_33);
-            std::cout << "gen_bump" << " " << v << "\n";
+            std::cout << "gen_bump" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "gen_bump container" << " " << std::get<1>(k.h.pair).n << "\n";
+    std::cout << "gen_bump container" << " " << std::get<1>(k.h.pair).n << "\n" << ::tpy::check_signals;
     std::vector<Holder> ws = {Holder(Box(120))};
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro_chain(ws)));
 }

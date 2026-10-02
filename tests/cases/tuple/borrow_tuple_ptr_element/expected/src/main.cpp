@@ -54,14 +54,14 @@ int32_t via_plain() {
 //     print(via_plain())
 void main() {
     std::vector<Node> items = {Node(1), Node(2)};
-    std::cout << ::tpyapp::main::via_local(items) << "\n";
+    std::cout << ::tpyapp::main::via_local(items) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::via_param(&::tpy::__getitem__(items, 0));
-    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n" << ::tpy::check_signals;
     std::vector<Node*> ps = std::vector<Node*>{};
     ps.push_back(&::tpy::__getitem__(items, 0));
     ::tpyapp::main::via_subscript(ps);
-    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
-    std::cout << ::tpyapp::main::via_plain() << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::via_plain() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -50,11 +50,11 @@ void main() {
             }
         }
         // else:
-        std::cout << idx << "\n";
+        std::cout << idx << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except NotFound:
         __except_1:;
-        std::cout << "not found" << "\n";
+        std::cout << "not found" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }

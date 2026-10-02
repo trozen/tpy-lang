@@ -67,24 +67,24 @@ bool first_pair_only(Counter& c, int32_t a, int32_t b) {
 void main() {
     Counter __slot_1 = Counter();
     Counter* c = &__slot_1;
-    std::cout << "inline_skipped" << " " << ::tpy::print_bool(::tpyapp::main::inline_chain((*c), 5, 1)) << " " << c->n << "\n";
+    std::cout << "inline_skipped" << " " << ::tpy::print_bool(::tpyapp::main::inline_chain((*c), 5, 1)) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
-    std::cout << "inline_taken" << " " << ::tpy::print_bool(::tpyapp::main::first_pair_only((*c), 0, 5)) << " " << c->n << "\n";
+    std::cout << "inline_taken" << " " << ::tpy::print_bool(::tpyapp::main::first_pair_only((*c), 0, 5)) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
     std::vector<int32_t> __tmp_1 = {1};
-    std::cout << "stmtexpr_skipped" << " " << ::tpy::print_bool(::tpyapp::main::stmtexpr_chain((*c), 5, __tmp_1)) << " " << c->n << "\n";
+    std::cout << "stmtexpr_skipped" << " " << ::tpy::print_bool(::tpyapp::main::stmtexpr_chain((*c), 5, __tmp_1)) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
     std::vector<int32_t> __tmp_2 = {5};
-    std::cout << "stmtexpr_taken" << " " << ::tpy::print_bool(::tpyapp::main::stmtexpr_chain((*c), 0, __tmp_2)) << " " << c->n << "\n";
+    std::cout << "stmtexpr_taken" << " " << ::tpy::print_bool(::tpyapp::main::stmtexpr_chain((*c), 0, __tmp_2)) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
     std::vector<int32_t> __tmp_3 = {1, 9};
-    std::cout << "long_skip_first" << " " << ::tpy::print_bool(::tpyapp::main::stmtexpr_chain_long((*c), 5, __tmp_3)) << " " << c->n << "\n";
+    std::cout << "long_skip_first" << " " << ::tpy::print_bool(::tpyapp::main::stmtexpr_chain_long((*c), 5, __tmp_3)) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
     std::vector<int32_t> __tmp_4 = {5, 1};
-    std::cout << "long_skip_mid" << " " << ::tpy::print_bool(::tpyapp::main::stmtexpr_chain_long((*c), 0, __tmp_4)) << " " << c->n << "\n";
+    std::cout << "long_skip_mid" << " " << ::tpy::print_bool(::tpyapp::main::stmtexpr_chain_long((*c), 0, __tmp_4)) << " " << c->n << "\n" << ::tpy::check_signals;
     (*c) = Counter();
     std::vector<int32_t> __tmp_5 = {1, 5};
-    std::cout << "long_taken" << " " << ::tpy::print_bool(::tpyapp::main::stmtexpr_chain_long((*c), 0, __tmp_5)) << " " << c->n << "\n";
+    std::cout << "long_taken" << " " << ::tpy::print_bool(::tpyapp::main::stmtexpr_chain_long((*c), 0, __tmp_5)) << " " << c->n << "\n" << ::tpy::check_signals;
 }
 
 // main()

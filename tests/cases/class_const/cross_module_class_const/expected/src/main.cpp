@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(Limits.MAX_RETRIES)
 //     print(Limits.GREETING)
 void main() {
-    std::cout << ::tpyapp::limits::Limits::MAX_RETRIES << "\n";
-    std::cout << ::tpyapp::limits::Limits::GREETING << "\n";
+    std::cout << ::tpyapp::limits::Limits::MAX_RETRIES << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::limits::Limits::GREETING << "\n" << ::tpy::check_signals;
 }
 
 // # Class constants on a record imported from another module.

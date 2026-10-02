@@ -19,11 +19,11 @@ void test_or_int() {
     int32_t a = 0;
     int32_t b = 42;
     int32_t x = (a ? a : b);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     int32_t c = 1;
     int32_t d = 2;
     int32_t y = (c ? c : d);
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_and_int() -> None:
@@ -40,11 +40,11 @@ void test_and_int() {
     int32_t a = 0;
     int32_t b = 42;
     int32_t x = (a ? b : a);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     int32_t c = 1;
     int32_t d = 2;
     int32_t y = (c ? d : c);
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_or_str() -> None:
@@ -60,10 +60,10 @@ void test_or_str() {
     std::string_view empty = "";
     std::string_view fallback = "default";
     std::string_view x = ((!empty.empty()) ? empty : fallback);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     std::string_view name = "alice";
     std::string_view y = ((!name.empty()) ? name : fallback);
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_and_str() -> None:
@@ -79,10 +79,10 @@ void test_and_str() {
     std::string_view empty = "";
     std::string_view fallback = "world";
     std::string_view x = ((!empty.empty()) ? fallback : empty);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     std::string_view name = "hello";
     std::string_view y = ((!name.empty()) ? fallback : name);
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_or_float() -> None:
@@ -99,11 +99,11 @@ void test_or_float() {
     double a = 0.0;
     double b = 3.14;
     double x = (a ? a : b);
-    std::cout << ::tpy::print_float(x) << "\n";
+    std::cout << ::tpy::print_float(x) << "\n" << ::tpy::check_signals;
     double c = 1.5;
     double d = 2.5;
     double y = (c ? c : d);
-    std::cout << ::tpy::print_float(y) << "\n";
+    std::cout << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
 }
 
 // def test_and_float() -> None:
@@ -120,11 +120,11 @@ void test_and_float() {
     double a = 0.0;
     double b = 3.14;
     double x = (a ? b : a);
-    std::cout << ::tpy::print_float(x) << "\n";
+    std::cout << ::tpy::print_float(x) << "\n" << ::tpy::check_signals;
     double c = 1.5;
     double d = 2.5;
     double y = (c ? d : c);
-    std::cout << ::tpy::print_float(y) << "\n";
+    std::cout << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
 }
 
 // def test_or_bigint() -> None:
@@ -136,7 +136,7 @@ void test_or_bigint() {
     ::tpy::BigInt a = ::tpy::BigInt(0);
     ::tpy::BigInt b = ::tpy::BigInt(100);
     ::tpy::BigInt x = (a ? a : b);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_chained() -> None:
@@ -157,13 +157,13 @@ void test_chained() {
     int32_t c = 3;
     auto&& __tmp_1 = (a ? a : b);
     int32_t x = (__tmp_1 ? __tmp_1 : c);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     int32_t d = 1;
     int32_t e = 2;
     int32_t f = 3;
     auto&& __tmp_2 = (d ? e : d);
     int32_t y = (__tmp_2 ? f : __tmp_2);
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_or_with_literal() -> None:
@@ -173,13 +173,13 @@ void test_chained() {
 void test_or_with_literal() {
     int32_t a = 0;
     int32_t x = (a ? a : 99);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def accepts_int(v: int32) -> None:
 //     print(v)
 void accepts_int(int32_t v) {
-    std::cout << v << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
 }
 
 // def returns_int(a: int32, b: int32) -> int32:
@@ -197,7 +197,7 @@ void test_as_arg_and_return() {
     int32_t a = 0;
     int32_t b = 7;
     ::tpyapp::main::accepts_int((a ? a : b));
-    std::cout << ::tpyapp::main::returns_int(0, 5) << "\n";
+    std::cout << ::tpyapp::main::returns_int(0, 5) << "\n" << ::tpy::check_signals;
 }
 
 // def test_bool_operands(flag: bool, other: bool) -> bool:
@@ -217,7 +217,7 @@ void test_mixed_returns_bool() {
     int32_t a = 1;
     double b = 2.0;
     if ((a && b)) {
-        std::cout << "mixed condition ok" << "\n";
+        std::cout << "mixed condition ok" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -232,10 +232,10 @@ void test_condition_context() {
     int32_t a = 1;
     int32_t b = 2;
     if ((a && b)) {
-        std::cout << "both truthy" << "\n";
+        std::cout << "both truthy" << "\n" << ::tpy::check_signals;
     }
     if ((a || b)) {
-        std::cout << "at least one truthy" << "\n";
+        std::cout << "at least one truthy" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -255,13 +255,13 @@ void test_record_with_bool() {
     Counter zero = Counter(0);
     Counter five = Counter(5);
     Counter& x = (::tpy::__bool__(zero) ? zero : five);
-    std::cout << x.count << "\n";
+    std::cout << x.count << "\n" << ::tpy::check_signals;
     Counter& y = (::tpy::__bool__(five) ? zero : five);
-    std::cout << y.count << "\n";
+    std::cout << y.count << "\n" << ::tpy::check_signals;
     x.count = 99;
-    std::cout << five.count << "\n";
+    std::cout << five.count << "\n" << ::tpy::check_signals;
     y.count = 77;
-    std::cout << zero.count << "\n";
+    std::cout << zero.count << "\n" << ::tpy::check_signals;
 }
 
 // def test_record_without_bool() -> None:
@@ -281,13 +281,13 @@ void test_record_without_bool() {
     Point a = Point(1, 2);
     Point b = Point(3, 4);
     Point& x = (true ? a : b);
-    std::cout << x.x << "\n";
+    std::cout << x.x << "\n" << ::tpy::check_signals;
     Point& y = (true ? b : a);
-    std::cout << y.x << "\n";
+    std::cout << y.x << "\n" << ::tpy::check_signals;
     x.x = 99;
-    std::cout << a.x << "\n";
+    std::cout << a.x << "\n" << ::tpy::check_signals;
     y.x = 77;
-    std::cout << b.x << "\n";
+    std::cout << b.x << "\n" << ::tpy::check_signals;
 }
 
 // def test_record_or_constructor() -> None:
@@ -302,11 +302,11 @@ void test_record_or_constructor() {
     Counter zero = Counter(0);
     std::optional<Counter> __select_slot_1;
     Counter& x = (::tpy::__bool__(zero) ? zero : __select_slot_1.emplace(Counter(5)));
-    std::cout << x.count << "\n";
+    std::cout << x.count << "\n" << ::tpy::check_signals;
     Counter five = Counter(5);
     std::optional<Counter> __select_slot_2;
     Counter& y = (::tpy::__bool__(five) ? __select_slot_2.emplace(Counter(0)) : five);
-    std::cout << y.count << "\n";
+    std::cout << y.count << "\n" << ::tpy::check_signals;
 }
 
 // def test_annotated() -> None:
@@ -333,19 +333,19 @@ void test_annotated() {
     int32_t a = 0;
     int32_t b = 42;
     int32_t x = (a ? a : b);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     int32_t c = 1;
     int32_t d = 2;
     int32_t y = (c ? d : c);
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
     std::string_view empty = "";
     std::string_view fallback = "default";
     std::string s = std::string(((!empty.empty()) ? empty : fallback));
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
     double fa = 0.0;
     double fb = 3.14;
     double f = (fa ? fa : fb);
-    std::cout << ::tpy::print_float(f) << "\n";
+    std::cout << ::tpy::print_float(f) << "\n" << ::tpy::check_signals;
 }
 
 // def test_literal_or_literal() -> None:
@@ -362,16 +362,16 @@ void test_annotated() {
 void test_literal_or_literal() {
     auto&& __tmp_1 = 0;
     int32_t x = (__tmp_1 ? __tmp_1 : 1);
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     auto&& __tmp_2 = 3;
     int32_t y = (__tmp_2 ? 0 : __tmp_2);
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
     auto&& __tmp_3 = 0;
     ::tpy::BigInt xi = ::tpy::BigInt((__tmp_3 ? __tmp_3 : 1));
-    std::cout << xi << "\n";
+    std::cout << xi << "\n" << ::tpy::check_signals;
     auto&& __tmp_4 = 3;
     ::tpy::BigInt yi = ::tpy::BigInt((__tmp_4 ? 0 : __tmp_4));
-    std::cout << yi << "\n";
+    std::cout << yi << "\n" << ::tpy::check_signals;
 }
 
 // # A literal left operand with a variable right one, at the free-function,
@@ -396,11 +396,11 @@ void test_literal_or_literal() {
 void test_literal_lhs_free(double a) {
     auto&& __tmp_1 = 0;
     double w = (__tmp_1 ? double(__tmp_1) : a);
-    std::cout << "free:" << " " << ::tpy::print_float(w) << "\n";
+    std::cout << "free:" << " " << ::tpy::print_float(w) << "\n" << ::tpy::check_signals;
     int32_t n = 5;
     auto&& __tmp_2 = 0;
     int32_t k = (__tmp_2 ? n : __tmp_2);
-    std::cout << "free:" << " " << k << "\n";
+    std::cout << "free:" << " " << k << "\n" << ::tpy::check_signals;
     auto&& __tmp_3 = 0.0;
     double f = (__tmp_3 ? __tmp_3 : a);
     auto&& __tmp_4 = -1;
@@ -408,10 +408,10 @@ void test_literal_lhs_free(double a) {
     ::tpy::BigInt big = ::tpy::BigInt(7);
     auto&& __tmp_5 = 0;
     ::tpy::BigInt s = (__tmp_5 ? ::tpy::BigInt(__tmp_5) : big);
-    std::cout << "free:" << " " << ::tpy::print_float(f) << " " << m << " " << s << "\n";
+    std::cout << "free:" << " " << ::tpy::print_float(f) << " " << m << " " << s << "\n" << ::tpy::check_signals;
     auto&& __tmp_6 = ::tpy::BigInt::from_str("123456789012345678901234567890");
     ::tpy::BigInt h = (__tmp_6 ? __tmp_6 : big);
-    std::cout << "free:" << " " << h << "\n";
+    std::cout << "free:" << " " << h << "\n" << ::tpy::check_signals;
 }
 
 
@@ -454,7 +454,7 @@ void main() {
     ::tpyapp::main::test_chained();
     ::tpyapp::main::test_or_with_literal();
     ::tpyapp::main::test_as_arg_and_return();
-    std::cout << ::tpy::print_bool(::tpyapp::main::test_bool_operands(true, false)) << " " << ::tpy::print_bool(::tpyapp::main::test_bool_operands(true, true)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::test_bool_operands(true, false)) << " " << ::tpy::print_bool(::tpyapp::main::test_bool_operands(true, true)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_mixed_returns_bool();
     ::tpyapp::main::test_condition_context();
     ::tpyapp::main::test_record_with_bool();
@@ -463,7 +463,7 @@ void main() {
     ::tpyapp::main::test_annotated();
     ::tpyapp::main::test_literal_or_literal();
     ::tpyapp::main::test_literal_lhs_free(2.5);
-    std::cout << "method:" << " " << LiteralLhs(4).pick() << "\n";
+    std::cout << "method:" << " " << LiteralLhs(4).pick() << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen_literal_lhs(3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -471,7 +471,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t g = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator:" << " " << g << "\n";
+            std::cout << "generator:" << " " << g << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -12,7 +12,7 @@ std::vector<int32_t>* log{};
 void main() {
     Writer().add(2);
     Writer().add(3);
-    std::cout << ::tpy::__len__((*log)) << " " << ::tpy::__getitem__((*log), 0) << " " << ::tpy::__getitem__((*log), 2) << "\n";
+    std::cout << ::tpy::__len__((*log)) << " " << ::tpy::__getitem__((*log), 0) << " " << ::tpy::__getitem__((*log), 2) << "\n" << ::tpy::check_signals;
 }
 
 // # `global` of a bare reference-type module global from a method: the method

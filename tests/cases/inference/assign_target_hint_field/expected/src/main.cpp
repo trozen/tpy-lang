@@ -24,16 +24,16 @@ namespace tpyapp::main {
 void main() {
     WithArray<int32_t, 3> a = WithArray<int32_t, 3>();
     ::tpy::__setitem__(a.data, 0, 10);
-    std::cout << "array:" << " " << ::tpy::__getitem__(a.data, 0) << "\n";
+    std::cout << "array:" << " " << ::tpy::__getitem__(a.data, 0) << "\n" << ::tpy::check_signals;
     WithList<int32_t> l = WithList<int32_t>();
     l.items.push_back(42);
-    std::cout << "list:" << " " << ::tpy::ListPrinter(l.items) << "\n";
+    std::cout << "list:" << " " << ::tpy::ListPrinter(l.items) << "\n" << ::tpy::check_signals;
     WithDict<std::string, int32_t> d = WithDict<std::string, int32_t>();
     ::tpy::__setitem__(d.data, "x", 99);
-    std::cout << "dict:" << " " << ::tpy::DictPrinter(d.data) << "\n";
+    std::cout << "dict:" << " " << ::tpy::DictPrinter(d.data) << "\n" << ::tpy::check_signals;
     WithHeapStorage<int32_t> h = WithHeapStorage<int32_t>(7);
-    std::cout << "heap:" << " " << h.get() << "\n";
-    std::cout << "done" << "\n";
+    std::cout << "heap:" << " " << h.get() << "\n" << ::tpy::check_signals;
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.mem import UninitHeapStorage

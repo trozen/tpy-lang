@@ -142,7 +142,7 @@ __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         q.emplace(::tpystd::asyncio::Queue<int32_t>(2));
-        std::cout << "empty:" << " " << ::tpy::print_bool((*q).empty()) << " " << "full:" << " " << ::tpy::print_bool((*q).full()) << " " << "qsize:" << " " << (*q).qsize() << " " << "maxsize:" << " " << (*q).maxsize << "\n";
+        std::cout << "empty:" << " " << ::tpy::print_bool((*q).empty()) << " " << "full:" << " " << ::tpy::print_bool((*q).full()) << " " << "qsize:" << " " << (*q).qsize() << " " << "maxsize:" << " " << (*q).maxsize << "\n" << ::tpy::check_signals;
         out.emplace(std::vector<int32_t>{});
         pt.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::producer((*q)))));
         ct.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::consumer((*q), (*out)))));
@@ -165,7 +165,7 @@ __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "got:" << " " << ::tpy::ListPrinter((*out)) << "\n";
+        std::cout << "got:" << " " << ::tpy::ListPrinter((*out)) << "\n" << ::tpy::check_signals;
         __sub_2.emplace((*q));
         __state = S_RESUME_2;
         continue;
@@ -175,23 +175,23 @@ __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r2).value();
         __sub_2.reset();
-        std::cout << "joined again" << "\n";
+        std::cout << "joined again" << "\n" << ::tpy::check_signals;
         {
             try {
                 (*q).task_done();
-                std::cout << "no task_done error" << "\n";
+                std::cout << "no task_done error" << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::ValueError&) {
-                std::cout << "caught task_done" << "\n";
+                std::cout << "caught task_done" << "\n" << ::tpy::check_signals;
             }
         }
         (*q).put_nowait(99);
-        std::cout << "get_nowait:" << " " << (*q).get_nowait() << "\n";
+        std::cout << "get_nowait:" << " " << (*q).get_nowait() << "\n" << ::tpy::check_signals;
         {
             try {
                 (*q).get_nowait();
-                std::cout << "no empty error" << "\n";
+                std::cout << "no empty error" << "\n" << ::tpy::check_signals;
             } catch (const ::tpystd::asyncio::QueueEmpty&) {
-                std::cout << "caught empty" << "\n";
+                std::cout << "caught empty" << "\n" << ::tpy::check_signals;
             }
         }
         qb.emplace(::tpystd::asyncio::Queue<int32_t>(1));
@@ -199,15 +199,15 @@ __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32
         {
             try {
                 (*qb).put_nowait(2);
-                std::cout << "no full error" << "\n";
+                std::cout << "no full error" << "\n" << ::tpy::check_signals;
             } catch (const ::tpystd::asyncio::QueueFull&) {
-                std::cout << "caught full" << "\n";
+                std::cout << "caught full" << "\n" << ::tpy::check_signals;
             }
         }
         qu.emplace(::tpystd::asyncio::Queue<int32_t>(0));
         (*qu).put_nowait(1);
         (*qu).put_nowait(2);
-        std::cout << "unbounded full:" << " " << ::tpy::print_bool((*qu).full()) << " " << "qsize:" << " " << (*qu).qsize() << "\n";
+        std::cout << "unbounded full:" << " " << ::tpy::print_bool((*qu).full()) << " " << "qsize:" << " " << (*qu).qsize() << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

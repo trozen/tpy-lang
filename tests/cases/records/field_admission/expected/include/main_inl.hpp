@@ -47,7 +47,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_writes::__next
         __self.show("gen.writes");
         std::vector<int32_t> __tmp_1 = {n, n};
         __self.xs = {::tpyapp::main::count(__tmp_1), 7};
-        std::cout << "gen.literal_arg_temp" << " " << ::tpy::ListPrinter(__self.xs) << "\n";
+        std::cout << "gen.literal_arg_temp" << " " << ::tpy::ListPrinter(__self.xs) << "\n" << ::tpy::check_signals;
         ys.emplace(std::vector<int32_t>{n, 30});
         (*ys).push_back(31);
         __self.xs = std::move((*ys));
@@ -58,7 +58,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_writes::__next
         return 2;
     }
     case S_RESUME_1: {  // after: yield 2
-        std::cout << "gen.frame_locals" << " " << ::tpy::ListPrinter(__self.xs) << " " << ::tpy::print_optional_val(__self.tag) << " " << label << "\n";
+        std::cout << "gen.frame_locals" << " " << ::tpy::ListPrinter(__self.xs) << " " << ::tpy::print_optional_val(__self.tag) << " " << label << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(c.first_str())
 void main() {
     Combined c = Combined();
-    std::cout << c.total_int_len() << "\n";
-    std::cout << c.first_str() << "\n";
+    std::cout << c.total_int_len() << "\n" << ::tpy::check_signals;
+    std::cout << c.first_str() << "\n" << ::tpy::check_signals;
 }
 
 // main()

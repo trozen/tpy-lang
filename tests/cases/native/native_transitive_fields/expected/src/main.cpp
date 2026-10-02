@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print(m.read())
 void main() {
     M m = M(get_s());
-    std::cout << ::tpy::print_bool(m.read()) << "\n";
+    std::cout << ::tpy::print_bool(m.read()) << "\n" << ::tpy::check_signals;
     m.write();
-    std::cout << ::tpy::print_bool(m.read()) << "\n";
+    std::cout << ::tpy::print_bool(m.read()) << "\n" << ::tpy::check_signals;
 }
 
 // # Chained field access through intermediate record types that are NOT imported

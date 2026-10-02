@@ -115,8 +115,8 @@ __coro_sender sender(::tpystd::socket::socket& sock) {
         }
     }
     case S_JOIN_1: {
-        std::cout << pos << "\n";
-        std::cout << mismatches << "\n";
+        std::cout << pos << "\n" << ::tpy::check_signals;
+        std::cout << mismatches << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

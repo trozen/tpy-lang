@@ -19,7 +19,7 @@ int32_t check(int32_t n, const Error& e) {
 //     print(check(-1, e))
 void main() {
     Error e = Error("bad value");
-    std::cout << ::tpyapp::main::check(-1, e) << "\n";
+    std::cout << ::tpyapp::main::check(-1, e) << "\n" << ::tpy::check_signals;
 }
 
 // main()

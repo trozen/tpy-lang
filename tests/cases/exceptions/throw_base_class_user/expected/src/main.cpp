@@ -14,7 +14,7 @@ void main() {
         try {
             throw AppError(7);
         } catch (const ::tpy::Exception&) {
-            std::cout << "caught as Exception" << "\n";
+            std::cout << "caught as Exception" << "\n" << ::tpy::check_signals;
         }
     }
 }

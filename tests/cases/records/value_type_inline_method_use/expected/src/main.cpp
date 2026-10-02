@@ -13,7 +13,7 @@ void main() {
     Owner o = Owner();
     o.add(2.0, 20);
     o.add(1.0, 10);
-    std::cout << ::tpy::print_float(::tpy::__getitem__(o.heap, 0).deadline) << "\n";
+    std::cout << ::tpy::print_float(::tpy::__getitem__(o.heap, 0).deadline) << "\n" << ::tpy::check_signals;
 }
 
 // import heapq

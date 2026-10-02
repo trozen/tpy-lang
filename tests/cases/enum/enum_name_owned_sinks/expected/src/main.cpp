@@ -70,11 +70,11 @@ std::string owned_local(Color c) {
 //     print(label)
 void view_positions(Color c) {
     std::string_view v = ::tpy::EnumUtil<Color>::name(c);
-    std::cout << v << " " << ::tpy::__len__(v) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::EnumUtil<Color>::name(c) == "RED")) << "\n";
-    std::cout << std::format("<{}>", ::tpy::EnumUtil<Color>::name(c)) << "\n";
+    std::cout << v << " " << ::tpy::__len__(v) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::EnumUtil<Color>::name(c) == "RED")) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("<{}>", ::tpy::EnumUtil<Color>::name(c)) << "\n" << ::tpy::check_signals;
     std::string_view label = ::tpy::EnumUtil<Color>::name(c);
-    std::cout << label << "\n";
+    std::cout << label << "\n" << ::tpy::check_signals;
 }
 
 // def owned_slot(c: Color) -> None:
@@ -86,7 +86,7 @@ void view_positions(Color c) {
 void owned_slot(Color c) {
     std::vector<std::string> xs = std::vector<std::string>{};
     xs.push_back(std::string(::tpy::EnumUtil<Color>::name(c)));
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -103,8 +103,8 @@ __gen_frame_view frame_view(Color c) {
 //     for n in frame_view(Color.RED):
 //         print("frame yield", n)
 void main() {
-    std::cout << ::tpyapp::main::owned_return(Color::RED) << "\n";
-    std::cout << ::tpyapp::main::owned_local(Color::GREEN) << "\n";
+    std::cout << ::tpyapp::main::owned_return(Color::RED) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::owned_local(Color::GREEN) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::view_positions(Color::RED);
     ::tpyapp::main::owned_slot(Color::GREEN);
     {
@@ -114,7 +114,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "frame yield" << " " << n << "\n";
+            std::cout << "frame yield" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
 }

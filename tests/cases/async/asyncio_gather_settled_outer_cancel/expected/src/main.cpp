@@ -111,12 +111,12 @@ __coro_gather_helper gather_helper() {
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             results.emplace(std::move(__r1).value());
             __sub_1 = nullptr;
-            std::cout << "got" << " " << ::tpy::__len__((*results)) << " " << "results (unexpected, cancel should propagate)" << "\n";
+            std::cout << "got" << " " << ::tpy::__len__((*results)) << " " << "results (unexpected, cancel should propagate)" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::CancelledError&) {
             __sub_1 = nullptr;
-            std::cout << "outer cancelled" << "\n";
+            std::cout << "outer cancelled" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

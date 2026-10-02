@@ -16,7 +16,7 @@ void f(::tpy::Union<std::monostate, const A*, const B*> v, bool flag) {
     auto& __match_subject_1 = v;
     switch (__match_subject_1.index()) {
     case 0: {
-        std::cout << "is none" << "\n";
+        std::cout << "is none" << "\n" << ::tpy::check_signals;
         goto __match_end_2;
         break;
     }
@@ -24,18 +24,18 @@ void f(::tpy::Union<std::monostate, const A*, const B*> v, bool flag) {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         {
             if (flag) {
-                std::cout << "is A flagged" << "\n";
+                std::cout << "is A flagged" << "\n" << ::tpy::check_signals;
                 goto __match_end_2;
             }
         }
         {
-            std::cout << "other" << "\n";
+            std::cout << "other" << "\n" << ::tpy::check_signals;
             goto __match_end_2;
         }
         break;
     }
     default: {
-        std::cout << "other" << "\n";
+        std::cout << "other" << "\n" << ::tpy::check_signals;
         goto __match_end_2;
         break;
     }

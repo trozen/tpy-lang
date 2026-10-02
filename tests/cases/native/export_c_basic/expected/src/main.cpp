@@ -8,14 +8,14 @@ namespace tpyapp::main {
 // def app_init() -> None:
 //     print("app_init called")
 extern "C" void app_init() {
-    std::cout << "app_init called" << "\n";
+    std::cout << "app_init called" << "\n" << ::tpy::check_signals;
 }
 
 // @export("app_tick", binding="C")
 // def game_tick(time: int32) -> None:
 //     print(time)
 extern "C" void app_tick(int32_t time) {
-    std::cout << time << "\n";
+    std::cout << time << "\n" << ::tpy::check_signals;
 }
 
 // # Test @export(binding="C") for C function exports

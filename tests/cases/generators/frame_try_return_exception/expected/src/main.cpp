@@ -143,7 +143,7 @@ __coro_a_dead a_dead(int32_t n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "async_leaf" << " " << __await_lift_0 << " " << __await_lift_1 << "\n";
+        std::cout << "async_leaf" << " " << __await_lift_0 << " " << __await_lift_1 << "\n" << ::tpy::check_signals;
         __sub_2.emplace(3);
         __state = S_RESUME_2;
         continue;
@@ -153,7 +153,7 @@ __coro_a_dead a_dead(int32_t n) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << "async_dead" << " " << __await_lift_2 << "\n";
+        std::cout << "async_dead" << " " << __await_lift_2 << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -219,16 +219,16 @@ __coro_a_main a_main() {
 //
 //     asyncio.run(a_main())
 void main() {
-    std::cout << "module" << " " << m_seen << " " << ::tpy::__getitem__((*m_nodes), 0).v << " " << ::tpy::__getitem__((*m_nodes), 1).v << "\n";
+    std::cout << "module" << " " << m_seen << " " << ::tpy::__getitem__((*m_nodes), 0).v << " " << ::tpy::__getitem__((*m_nodes), 1).v << "\n" << ::tpy::check_signals;
     Indices src = Indices(4);
-    std::cout << "free" << " " << ::tpyapp::main::total(src) << "\n";
+    std::cout << "free" << " " << ::tpyapp::main::total(src) << "\n" << ::tpy::check_signals;
     Indices src2 = Indices(2);
     {
-        std::cout << "error_return" << " " << ({ auto __er_15 = ::tpyapp::main::first_two(src2); if (!__er_15.has_value()) goto __except_14; ::tpy::unwrap_ref_move(*__er_15); }) << "\n";
+        std::cout << "error_return" << " " << ({ auto __er_15 = ::tpyapp::main::first_two(src2); if (!__er_15.has_value()) goto __except_14; ::tpy::unwrap_ref_move(*__er_15); }) << "\n" << ::tpy::check_signals;
         goto __after_try_14;
         // except StopIteration:
         __except_14:;
-        std::cout << "error_return" << " " << "stopped" << "\n";
+        std::cout << "error_return" << " " << "stopped" << "\n" << ::tpy::check_signals;
         __after_try_14:;
     }
     std::vector<Node> nodes = ::tpyapp::main::fresh();
@@ -243,7 +243,7 @@ void main() {
             n.v = 90;
         }
     }
-    std::cout << "gen_leaf" << " " << ::tpy::__getitem__(nodes, 0).v << " " << ::tpy::__getitem__(nodes, 1).v << "\n";
+    std::cout << "gen_leaf" << " " << ::tpy::__getitem__(nodes, 0).v << " " << ::tpy::__getitem__(nodes, 1).v << "\n" << ::tpy::check_signals;
     std::vector<Node> nodes_empty = ::tpyapp::main::fresh();
     int32_t empty_seen = 0;
     {
@@ -257,7 +257,7 @@ void main() {
             empty_seen = ::tpy::add_check<int32_t>(empty_seen, 1);
         }
     }
-    std::cout << "gen_leaf_empty" << " " << empty_seen << " " << ::tpy::__getitem__(nodes_empty, 0).v << " " << ::tpy::__getitem__(nodes_empty, 1).v << "\n";
+    std::cout << "gen_leaf_empty" << " " << empty_seen << " " << ::tpy::__getitem__(nodes_empty, 0).v << " " << ::tpy::__getitem__(nodes_empty, 1).v << "\n" << ::tpy::check_signals;
     std::vector<Node> nodes2 = ::tpyapp::main::fresh();
     {
         auto __src_4 = ::tpyapp::main::walk(nodes2);
@@ -269,8 +269,8 @@ void main() {
             n.v = ::tpy::add_check<int32_t>(n.v, 10);
         }
     }
-    std::cout << "gen_helper" << " " << ::tpy::__getitem__(nodes2, 0).v << " " << ::tpy::__getitem__(nodes2, 1).v << "\n";
-    std::cout << "method" << " " << Counter(3).count() << "\n";
+    std::cout << "gen_helper" << " " << ::tpy::__getitem__(nodes2, 0).v << " " << ::tpy::__getitem__(nodes2, 1).v << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << Counter(3).count() << "\n" << ::tpy::check_signals;
     std::vector<Node> dead_nodes = ::tpyapp::main::fresh();
     {
         auto __src_6 = ::tpyapp::main::dead_pass(dead_nodes);
@@ -282,7 +282,7 @@ void main() {
             n.v = ::tpy::add_check<int32_t>(n.v, 90);
         }
     }
-    std::cout << "dead_pass" << " " << ::tpy::__getitem__(dead_nodes, 0).v << " " << ::tpy::__getitem__(dead_nodes, 1).v << "\n";
+    std::cout << "dead_pass" << " " << ::tpy::__getitem__(dead_nodes, 0).v << " " << ::tpy::__getitem__(dead_nodes, 1).v << "\n" << ::tpy::check_signals;
     std::vector<Node> nested_nodes = ::tpyapp::main::fresh();
     {
         auto __tmp_2 = Indices(1);
@@ -295,7 +295,7 @@ void main() {
             n.v = ::tpy::add_check<int32_t>(n.v, 5);
         }
     }
-    std::cout << "nested" << " " << ::tpy::__getitem__(nested_nodes, 0).v << " " << ::tpy::__getitem__(nested_nodes, 1).v << "\n";
+    std::cout << "nested" << " " << ::tpy::__getitem__(nested_nodes, 0).v << " " << ::tpy::__getitem__(nested_nodes, 1).v << "\n" << ::tpy::check_signals;
     std::vector<Node> __tmp_3 = ::tpyapp::main::fresh();
     std::cout << "dead_break" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -307,7 +307,7 @@ void main() {
             __result.push_back(n.v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::vector<Node> __tmp_4 = ::tpyapp::main::fresh();
     std::cout << "dead_return" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -319,7 +319,7 @@ void main() {
             __result.push_back(n.v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::a_main()));
 }
 

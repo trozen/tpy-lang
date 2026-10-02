@@ -53,9 +53,9 @@ namespace tpyapp::main {
 //     print(c)
 void main() {
     Color c = Color::Red;
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
     c = Color::Blue;
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
 }
 
 // # Basic enum: define, assign, print

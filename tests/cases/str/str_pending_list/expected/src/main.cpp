@@ -84,13 +84,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::ListPrinter(::tpyapp::main::in_list()) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpyapp::main::in_tuple_list()) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpyapp::main::in_list_var()) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpyapp::main::in_tuple_list_var()) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpyapp::main::in_list_repeat()) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpyapp::main::in_list_comp()) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpyapp::main::in_nested_tuple_list()) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::in_list()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::in_tuple_list()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::in_list_var()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::in_tuple_list_var()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::in_list_repeat()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::in_list_comp()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::in_nested_tuple_list()) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -14,8 +14,8 @@ void main() {
     WidePages p = WidePages();
     ::tpy::BigInt k = ::tpy::BigInt(static_cast<int64_t>(17592186044416LL));
     ::tpy::__setitem__(p, k.to_fixed_check<int64_t>(), 9);
-    std::cout << p[k.to_fixed_check<int64_t>()] << "\n";
-    std::cout << p[((k) + (::tpy::BigInt(1))).to_fixed_check<int64_t>()] << "\n";
+    std::cout << p[k.to_fixed_check<int64_t>()] << "\n" << ::tpy::check_signals;
+    std::cout << p[((k) + (::tpy::BigInt(1))).to_fixed_check<int64_t>()] << "\n" << ::tpy::check_signals;
 }
 
 // main()

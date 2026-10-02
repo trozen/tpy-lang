@@ -23,7 +23,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<::tpy::BigInt>>, ::tpy::StopI
         return (*buf);
     }
     case S_RESUME_0: {  // after: yield buf                 # tpyc: ok
-        std::cout << "resume sees:" << " " << ::tpy::ListPrinter((*buf)) << "\n";
+        std::cout << "resume sees:" << " " << ::tpy::ListPrinter((*buf)) << "\n" << ::tpy::check_signals;
         (*buf).push_back(99);
         __state = S_RESUME_1;
         return (*buf);
@@ -61,7 +61,7 @@ inline std::expected<std::tuple<std::string, std::vector<std::string>*, std::vec
         return std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>{"root", &((*dirs)), &((*files))};
     }
     case S_RESUME_0: {  // after: yield ("root", dirs, files)   # tpyc: ok
-        std::cout << "after prune, dirs =" << " " << ::tpy::ListPrinter((*dirs)) << "\n";
+        std::cout << "after prune, dirs =" << " " << ::tpy::ListPrinter((*dirs)) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

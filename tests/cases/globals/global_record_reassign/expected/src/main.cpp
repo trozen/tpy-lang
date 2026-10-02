@@ -23,11 +23,11 @@ void __tpy_init() {
 
     static Container __global_slot_1 = Container(1);
     c = &__global_slot_1;
-    std::cout << c->value << "\n";
+    std::cout << c->value << "\n" << ::tpy::check_signals;
     (*c) = Container(2);
-    std::cout << c->value << "\n";
+    std::cout << c->value << "\n" << ::tpy::check_signals;
     (*c) = Container(3);
-    std::cout << c->value << "\n";
+    std::cout << c->value << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print("owned", owned[1].v)
 void main() {
     std::get<0>(::tpyapp::helper::pair)->v = 9;
-    std::cout << "borrow" << " " << ::tpyapp::helper::V->v << " " << std::get<1>(::tpyapp::helper::pair) << "\n";
+    std::cout << "borrow" << " " << ::tpyapp::helper::V->v << " " << std::get<1>(::tpyapp::helper::pair) << "\n" << ::tpy::check_signals;
     std::get<1>(::tpyapp::helper::owned).v = 7;
-    std::cout << "owned" << " " << std::get<1>(::tpyapp::helper::owned).v << "\n";
+    std::cout << "owned" << " " << std::get<1>(::tpyapp::helper::owned).v << "\n" << ::tpy::check_signals;
 }
 
 // # An IMPORTING module sees a tuple global by its binding type alone, so which

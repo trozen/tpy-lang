@@ -63,7 +63,7 @@ void main() {
             int32_t i = std::get<0>(__tup_1);
             int32_t v = std::get<1>(__tup_1);
             if ((i == 2)) {
-                std::cout << v << "\n";
+                std::cout << v << "\n" << ::tpy::check_signals;
             }
         }
     }
@@ -75,7 +75,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
     int32_t total = 0;
@@ -92,7 +92,7 @@ void main() {
             total = (::tpy::add_check<int32_t>(total, v));
         }
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
     {
         auto __src_6 = ::tpy::builtin_map<int32_t>(double_, ::tpy::builtin_filter(is_positive, nums));
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -100,7 +100,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -114,7 +114,7 @@ void main() {
             int32_t i = std::get<0>(__tup_3);
             int32_t v = std::get<1>(__tup_3);
             if ((i == 1)) {
-                std::cout << v << "\n";
+                std::cout << v << "\n" << ::tpy::check_signals;
             }
         }
     }

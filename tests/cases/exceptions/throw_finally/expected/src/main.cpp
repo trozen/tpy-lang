@@ -41,35 +41,35 @@ void main() {
             try {
                 ::tpyapp::main::fail(false);
             } catch (const ::tpy::ValueError&) {
-                std::cout << "caught" << "\n";
+                std::cout << "caught" << "\n" << ::tpy::check_signals;
             }
         } catch (...) {
-            std::cout << "finally 1" << "\n";
+            std::cout << "finally 1" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally 1" << "\n";
+        std::cout << "finally 1" << "\n" << ::tpy::check_signals;
     }
     {
         try {
             try {
                 ::tpyapp::main::fail(true);
             } catch (const ::tpy::ValueError&) {
-                std::cout << "caught" << "\n";
+                std::cout << "caught" << "\n" << ::tpy::check_signals;
             }
         } catch (...) {
-            std::cout << "finally 2" << "\n";
+            std::cout << "finally 2" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally 2" << "\n";
+        std::cout << "finally 2" << "\n" << ::tpy::check_signals;
     }
     {
         try {
-            std::cout << "try body" << "\n";
+            std::cout << "try body" << "\n" << ::tpy::check_signals;
         } catch (...) {
-            std::cout << "finally 3" << "\n";
+            std::cout << "finally 3" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally 3" << "\n";
+        std::cout << "finally 3" << "\n" << ::tpy::check_signals;
     }
 }
 

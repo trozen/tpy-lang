@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(len(s))
 void test_literal() {
     std::string_view s = "hello";
-    std::cout << s << "\n";
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // def test_param(msg: str) -> None:
@@ -19,7 +19,7 @@ void test_literal() {
 //     print(s)
 void test_param(std::string_view msg) {
     std::string_view s = msg;
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_strview_source() -> None:
@@ -29,7 +29,7 @@ void test_param(std::string_view msg) {
 void test_strview_source() {
     std::string_view sv = "view";
     std::string_view s = sv;
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // test_literal()

@@ -24,14 +24,14 @@ void main() {
     Cell c = Cell(7);
     Maker m = Maker();
     auto p = m.pair(c);
-    std::cout << "pair:" << " " << std::get<0>(p)->val << " " << std::get<1>(p)->val << "\n";
+    std::cout << "pair:" << " " << std::get<0>(p)->val << " " << std::get<1>(p)->val << "\n" << ::tpy::check_signals;
     auto d = m.declared_pair(c);
-    std::cout << "declared:" << " " << std::get<1>(d)->val << "\n";
+    std::cout << "declared:" << " " << std::get<1>(d)->val << "\n" << ::tpy::check_signals;
     auto x = m.mixed(c);
-    std::cout << "mixed:" << " " << std::get<0>(x).val << " " << std::get<1>(x)->val << "\n";
+    std::cout << "mixed:" << " " << std::get<0>(x).val << " " << std::get<1>(x)->val << "\n" << ::tpy::check_signals;
     auto b = m.bump_pair(c);
     std::get<1>(b)->val = 42;
-    std::cout << "bump:" << " " << std::get<1>(b)->val << " " << c.val << " " << m.n << "\n";
+    std::cout << "bump:" << " " << std::get<1>(b)->val << " " << c.val << " " << m.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

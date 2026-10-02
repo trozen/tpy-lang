@@ -13,11 +13,11 @@ namespace tpyapp::main {
 //     print(f"debug: {wp!r}")
 void main() {
     Wrapper<Pair> wp = Wrapper<Pair>(Pair(1, 2));
-    std::cout << std::string(::tpy::__str__(wp)) << "\n";
-    std::cout << ::tpy::repr_of(wp) << "\n";
-    std::cout << wp << "\n";
-    std::cout << std::format("val = {}", ::tpy::__str__(wp)) << "\n";
-    std::cout << std::format("debug: {}", ::tpy::repr_of(wp)) << "\n";
+    std::cout << std::string(::tpy::__str__(wp)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(wp) << "\n" << ::tpy::check_signals;
+    std::cout << wp << "\n" << ::tpy::check_signals;
+    std::cout << std::format("val = {}", ::tpy::__str__(wp)) << "\n" << ::tpy::check_signals;
+    std::cout << std::format("debug: {}", ::tpy::repr_of(wp)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

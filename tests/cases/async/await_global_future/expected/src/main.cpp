@@ -47,7 +47,7 @@ __coro_producer producer() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         x = std::move(__r0).value();
         __sub_0 = nullptr;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

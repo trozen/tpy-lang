@@ -47,7 +47,7 @@ int32_t depth(const Expr& e) {
 void main() {
     Expr e = std::vector<Expr>{1, std::vector<Expr>{2, 3}};
     auto __tmp_1 = Counter();
-    std::cout << ::tpyapp::main::run(__tmp_1, e) << "\n";
+    std::cout << ::tpyapp::main::run(__tmp_1, e) << "\n" << ::tpy::check_signals;
 }
 
 // main()

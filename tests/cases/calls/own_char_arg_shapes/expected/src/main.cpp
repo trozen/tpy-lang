@@ -21,9 +21,9 @@ void feed(Sink& s, bool flag, char a, char b) {
 void main() {
     Sink s = Sink();
     ::tpyapp::main::feed(s, true, ::tpy::char_from_str("a"), ::tpy::char_from_str("b"));
-    std::cout << s.n << " " << s.last << "\n";
+    std::cout << s.n << " " << s.last << "\n" << ::tpy::check_signals;
     ::tpyapp::main::feed(s, false, ::tpy::char_from_str("a"), ::tpy::char_from_str("b"));
-    std::cout << s.n << " " << s.last << "\n";
+    std::cout << s.n << " " << s.last << "\n" << ::tpy::check_signals;
 }
 
 // main()

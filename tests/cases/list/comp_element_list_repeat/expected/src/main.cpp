@@ -25,7 +25,7 @@ void main() {
         std::move(__result);
     });
     ::tpy::__setitem__(::tpy::__getitem__(rows, 0), 0, 1.0);
-    std::cout << ::tpy::__len__(rows) << " " << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(rows, 0), 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(rows, 1), 0)) << "\n";
+    std::cout << ::tpy::__len__(rows) << " " << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(rows, 0), 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(rows, 1), 0)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> table = ({
         ::tpy::ordered_map<int32_t, std::vector<int32_t>> __result;
         const int32_t __stop_1 = 2;
@@ -35,7 +35,7 @@ void main() {
         std::move(__result);
     });
     ::tpy::__setitem__(::tpy::__getitem__(table, 0), 1, 5);
-    std::cout << ::tpy::__len__(table) << " " << ::tpy::__len__(::tpy::__getitem__(table, 0)) << " " << ::tpy::__getitem__(::tpy::__getitem__(table, 0), 1) << " " << ::tpy::__getitem__(::tpy::__getitem__(table, 1), 1) << "\n";
+    std::cout << ::tpy::__len__(table) << " " << ::tpy::__len__(::tpy::__getitem__(table, 0)) << " " << ::tpy::__getitem__(::tpy::__getitem__(table, 0), 1) << " " << ::tpy::__getitem__(::tpy::__getitem__(table, 1), 1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

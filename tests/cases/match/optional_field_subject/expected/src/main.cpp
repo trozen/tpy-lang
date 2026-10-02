@@ -23,7 +23,7 @@ void main() {
     Holder h = Holder();
     auto __match_subject_1 = ::tpy::optional_to_ptr(h.opt);
     if (__match_subject_1 == nullptr) {
-        std::cout << "none" << "\n";
+        std::cout << "none" << "\n" << ::tpy::check_signals;
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
         {
@@ -32,16 +32,16 @@ void main() {
         }
     }
     if ((h.opt.has_value())) {
-        std::cout << (*h.opt).val << "\n";
+        std::cout << (*h.opt).val << "\n" << ::tpy::check_signals;
     }
     h.opt = std::nullopt;
     auto __match_subject_2 = ::tpy::optional_to_ptr(h.opt);
     if (__match_subject_2 == nullptr) {
-        std::cout << "none2" << "\n";
+        std::cout << "none2" << "\n" << ::tpy::check_signals;
     } else {
         auto& __match_inner_2 = (*__match_subject_2);
         {
-            std::cout << "box2" << "\n";
+            std::cout << "box2" << "\n" << ::tpy::check_signals;
         }
     }
 }

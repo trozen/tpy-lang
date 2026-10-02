@@ -30,7 +30,7 @@ void __tpy_init() {
     initialized = true;
 
     Box __tmp_1 = Box(5);
-    std::cout << ::tpyapp::main::use_after_call(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::use_after_call(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

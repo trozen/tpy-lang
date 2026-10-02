@@ -31,7 +31,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         uint8_t v = *__beg_0;
-        std::cout << static_cast<int>(v) << "\n";
+        std::cout << static_cast<int>(v) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ByteArray d = Canvas(5).draw(3);
     auto& __obj_1 = d;
@@ -39,7 +39,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         uint8_t v = *__beg_1;
-        std::cout << static_cast<int>(v) << "\n";
+        std::cout << static_cast<int>(v) << "\n" << ::tpy::check_signals;
     }
 }
 

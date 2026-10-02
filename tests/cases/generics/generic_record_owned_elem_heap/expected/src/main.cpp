@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(heap_sort(words))
 void main() {
     std::vector<::tpy::BigInt> nums = {5, 1, 4, 2, 3};
-    std::cout << ::tpy::ListPrinter(::tpyapp::main::heap_sort<::tpy::BigInt>(nums)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::heap_sort<::tpy::BigInt>(nums)) << "\n" << ::tpy::check_signals;
     std::vector<std::string> words = {"pear", "apple", "kiwi", "fig"};
-    std::cout << ::tpy::ListPrinter(::tpyapp::main::heap_sort<std::string>(words)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::heap_sort<std::string>(words)) << "\n" << ::tpy::check_signals;
 }
 
 // import heapq

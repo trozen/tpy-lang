@@ -26,7 +26,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::DictPrinter(fixed) << "\n";
+    std::cout << ::tpy::DictPrinter(fixed) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> jagged = ({
         ::tpy::ordered_map<int32_t, std::vector<int32_t>> __result;
         const int32_t __stop_1 = 4;
@@ -43,9 +43,9 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::DictPrinter(jagged) << "\n";
+    std::cout << ::tpy::DictPrinter(jagged) << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(jagged, 2).push_back(99);
-    std::cout << ::tpy::DictPrinter(jagged) << "\n";
+    std::cout << ::tpy::DictPrinter(jagged) << "\n" << ::tpy::check_signals;
 }
 
 // main()

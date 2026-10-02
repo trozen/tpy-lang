@@ -28,8 +28,8 @@ namespace tpyapp::main {
 void main() {
     V3 base = V3(3.0);
     Body b = Body(::tpystd::tplib::box::Box<Material>(Material(V3(2.0))));
-    std::cout << ::tpy::print_float(b.material.__deref__().bounce(5.0)) << "\n";
-    std::cout << ::tpy::print_float(base.mul(b.material.__deref__().color).x) << "\n";
+    std::cout << ::tpy::print_float(b.material.__deref__().bounce(5.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(base.mul(b.material.__deref__().color).x) << "\n" << ::tpy::check_signals;
     std::array<Body, 1> bodies = {Body(::tpystd::tplib::box::Box<Material>(Material(V3(4.0))))};
     Body* hit = nullptr;
     int32_t __stop_0 = ::tpy::__len__(bodies);
@@ -39,15 +39,15 @@ void main() {
     if ((hit == nullptr)) {
         return;
     }
-    std::cout << ::tpy::print_float(hit->material.__deref__().bounce(5.0)) << "\n";
-    std::cout << ::tpy::print_float(base.mul(hit->material.__deref__().color).x) << "\n";
+    std::cout << ::tpy::print_float(hit->material.__deref__().bounce(5.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(base.mul(hit->material.__deref__().color).x) << "\n" << ::tpy::check_signals;
     hit->material.__deref__().color = V3(8.0);
     auto& __obj_1 = bodies;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& body = *__beg_1;
-        std::cout << ::tpy::print_float(body.material.__deref__().bounce(1.0)) << "\n";
+        std::cout << ::tpy::print_float(body.material.__deref__().bounce(1.0)) << "\n" << ::tpy::check_signals;
     }
 }
 

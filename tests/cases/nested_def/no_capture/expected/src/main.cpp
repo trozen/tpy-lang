@@ -13,8 +13,8 @@ void main() {
     auto double_ = [](int32_t x) -> int32_t {
         return (::tpy::mul_check<int32_t>(x, 2));
     };
-    std::cout << double_(21) << "\n";
-    std::cout << double_(0) << "\n";
+    std::cout << double_(21) << "\n" << ::tpy::check_signals;
+    std::cout << double_(0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

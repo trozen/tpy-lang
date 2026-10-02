@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void main() {
     Box<int32_t> b = Box<int32_t>(10);
     ::tpy::BigInt r1 = b.transform<::tpy::BigInt>(42);
-    std::cout << r1 << "\n";
+    std::cout << r1 << "\n" << ::tpy::check_signals;
     std::string r2 = b.transform<std::string>("world");
-    std::cout << r2 << "\n";
+    std::cout << r2 << "\n" << ::tpy::check_signals;
 }
 
 // main()

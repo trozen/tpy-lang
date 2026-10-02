@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Vec2 z = Vec2::zero();
     Vec2 d = Vec2::diagonal(4);
-    std::cout << z.x << " " << z.y << " " << d.x << " " << d.y << "\n";
+    std::cout << z.x << " " << z.y << " " << d.x << " " << d.y << "\n" << ::tpy::check_signals;
 }
 
 // main()

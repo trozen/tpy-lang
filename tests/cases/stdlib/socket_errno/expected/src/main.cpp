@@ -23,9 +23,9 @@ void refused() {
     {
         try {
             s.connect(std::tuple<std::string, int32_t>{"127.0.0.1", 1});
-            std::cout << "NO ERROR" << "\n";
+            std::cout << "NO ERROR" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OSError& e) {
-            std::cout << "refused:" << " " << ::tpy::print_bool((e.error_number == ::tpy_const_econnrefused)) << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)).find(e.strerror_text) != std::string::npos)) << "\n";
+            std::cout << "refused:" << " " << ::tpy::print_bool((e.error_number == ::tpy_const_econnrefused)) << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)).find(e.strerror_text) != std::string::npos)) << "\n" << ::tpy::check_signals;
         }
     }
     s.close();
@@ -44,9 +44,9 @@ void resolve_failure() {
     {
         try {
             ::tpystd::socket::gethostbyname("bad name!");
-            std::cout << "NO ERROR" << "\n";
+            std::cout << "NO ERROR" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::socket::gaierror& e) {
-            std::cout << "gaierror:" << " " << ::tpy::print_bool((e.error_number != 0)) << " " << ::tpy::print_bool((::tpy::__len__(e.strerror_text) > 0)) << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)).find(e.strerror_text) != std::string::npos)) << "\n";
+            std::cout << "gaierror:" << " " << ::tpy::print_bool((e.error_number != 0)) << " " << ::tpy::print_bool((::tpy::__len__(e.strerror_text) > 0)) << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)).find(e.strerror_text) != std::string::npos)) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -59,7 +59,7 @@ void resolve_failure() {
 //     print("unset:", not e.errno, not e.strerror)
 void unset_defaults() {
     ::tpy::OSError e = ::tpy::OSError("plain");
-    std::cout << "unset:" << " " << ::tpy::print_bool((!(e.error_number))) << " " << ::tpy::print_bool((!((!e.strerror_text.empty())))) << "\n";
+    std::cout << "unset:" << " " << ::tpy::print_bool((!(e.error_number))) << " " << ::tpy::print_bool((!((!e.strerror_text.empty())))) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -34,8 +34,8 @@ void send(std::string_view method, std::string_view url, ::tpy::Union<std::monos
     conn.sock = std::move(a);
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
     ::tpystd::tplib::requests::Response r = s.request(method, url, nullptr, data, body_json, nullptr, auth);
-    std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << "\n";
-    std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n";
+    std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n" << ::tpy::check_signals;
     b.close();
 }
 

@@ -29,7 +29,7 @@ int32_t in_branch(int32_t n) {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
     return n;
 }
@@ -56,7 +56,7 @@ void in_loop() {
         }
         __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
-        std::cout << w << "\n";
+        std::cout << w << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -88,7 +88,7 @@ int32_t nonvalue_rvalue_reassigned(int32_t n) {
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
     xs->push_back(9);
-    std::cout << ::tpy::ListPrinter((*xs)) << "\n";
+    std::cout << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
     (*xs) = {n, n, n};
     return ::tpy::__len__((*xs));
 }
@@ -145,7 +145,7 @@ int32_t kept_manager_and_reseat() {
         auto& __ctx_6 = (*__slot_1);
         inner = &(__ctx_6.__enter__());
         try {
-            std::cout << inner->n << "\n";
+            std::cout << inner->n << "\n" << ::tpy::check_signals;
             goto __with_exit_6;
         } catch (::tpy::BaseException& __exc_6) {
             __ctx_6.__exit__({}, &__exc_6, {});
@@ -157,7 +157,7 @@ int32_t kept_manager_and_reseat() {
         __with_exit_6:
         __ctx_6.__exit__({}, nullptr, {});
         inner = &*(__slot_2 = inner->next());
-        std::cout << outer.n << "\n";
+        std::cout << outer.n << "\n" << ::tpy::check_signals;
         goto __with_exit_5;
     } catch (::tpy::BaseException& __exc_5) {
         __ctx_5.__exit__({}, &__exc_5, {});
@@ -178,11 +178,11 @@ int32_t kept_manager_and_reseat() {
 //     print(nonvalue_in_branch(1))
 //     print(kept_manager_and_reseat())
 void main() {
-    std::cout << ::tpyapp::main::in_branch(2) << "\n";
+    std::cout << ::tpyapp::main::in_branch(2) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::in_loop();
-    std::cout << ::tpyapp::main::nonvalue_rvalue_reassigned(5) << "\n";
-    std::cout << ::tpyapp::main::nonvalue_in_branch(1) << "\n";
-    std::cout << ::tpyapp::main::kept_manager_and_reseat() << "\n";
+    std::cout << ::tpyapp::main::nonvalue_rvalue_reassigned(5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::nonvalue_in_branch(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::kept_manager_and_reseat() << "\n" << ::tpy::check_signals;
 }
 
 // main()

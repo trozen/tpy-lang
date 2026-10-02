@@ -17,7 +17,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         auto& __ctx_7 = b.guard_m();
         q = __ctx_7.__enter__();
         try {
-            std::cout << "gen" << " " << q << "\n";
+            std::cout << "gen" << " " << q << "\n" << ::tpy::check_signals;
             goto __with_exit_7;
         } catch (::tpy::BaseException& __exc_7) {
             __ctx_7.__exit__({}, &__exc_7, {});

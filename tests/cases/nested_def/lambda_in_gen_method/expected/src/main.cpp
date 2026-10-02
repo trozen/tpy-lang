@@ -84,7 +84,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "peephole" << " " << v << "\n";
+            std::cout << "peephole" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -95,7 +95,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v2 = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "method" << " " << v2 << "\n";
+            std::cout << "method" << " " << v2 << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -105,7 +105,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v3 = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "free" << " " << v3 << "\n";
+            std::cout << "free" << " " << v3 << "\n" << ::tpy::check_signals;
         }
     }
     Registry r = Registry();
@@ -116,10 +116,10 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v4 = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "store" << " " << v4 << "\n";
+            std::cout << "store" << " " << v4 << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "store cb" << " " << r.cb(1) << "\n";
+    std::cout << "store cb" << " " << r.cb(1) << "\n" << ::tpy::check_signals;
     {
         auto __src_8 = ::tpyapp::main::cell();
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
@@ -127,7 +127,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v5 = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "cell" << " " << v5 << "\n";
+            std::cout << "cell" << " " << v5 << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<int32_t> src = {1, 2};
@@ -138,10 +138,10 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v6 = ::tpy::unwrap_ref(*__r_11);
-            std::cout << "ref" << " " << v6 << "\n";
+            std::cout << "ref" << " " << v6 << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "ref after" << " " << ::tpy::ListPrinter(src) << "\n";
+    std::cout << "ref after" << " " << ::tpy::ListPrinter(src) << "\n" << ::tpy::check_signals;
     {
         auto __src_12 = ::tpyapp::main::own_capture(Pt(5));
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
@@ -149,7 +149,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v7 = ::tpy::unwrap_ref(*__r_13);
-            std::cout << "own" << " " << v7 << "\n";
+            std::cout << "own" << " " << v7 << "\n" << ::tpy::check_signals;
         }
     }
 }

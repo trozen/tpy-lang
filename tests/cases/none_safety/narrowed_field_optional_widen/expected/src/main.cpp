@@ -35,16 +35,16 @@ Pod* take(T& t) {
 //     print(t.o.x)                 # tpyc: warning(/Potential None access/)
 void main() {
     T t = T();
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_def(::tpy::optional_to_ptr(t.o))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_def(::tpy::optional_to_ptr(t.o))) << "\n" << ::tpy::check_signals;
     t.o = Pod();
     if (!((t.o.has_value()))) ::tpy::raise_assertion_error();
     (*t.o).x = ::tpy::BigInt(1);
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_def(::tpy::optional_to_ptr(t.o))) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::is_def_gen<Pod>(::tpy::optional_to_ptr(t.o))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_def(::tpy::optional_to_ptr(t.o))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::is_def_gen<Pod>(::tpy::optional_to_ptr(t.o))) << "\n" << ::tpy::check_signals;
     Pod* p = ::tpyapp::main::take(t);
     if (!((p != nullptr))) ::tpy::raise_assertion_error();
     p->x = ::tpy::BigInt(7);
-    std::cout << ::tpy::deref_optional_check(t.o).x << "\n";
+    std::cout << ::tpy::deref_optional_check(t.o).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -29,17 +29,17 @@ namespace tpyapp::main {
 //     print(sep.join(items))
 void main() {
     std::string result = ::tpy::str_join(",", std::array<std::string, 3>{"a", "b", "c"});
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
     std::string together = ::tpy::str_join("", std::array<std::string, 3>{"a", "b", "c"});
-    std::cout << together << "\n";
+    std::cout << together << "\n" << ::tpy::check_signals;
     std::string single = ::tpy::str_join(",", std::array<std::string, 1>{"only"});
-    std::cout << single << "\n";
+    std::cout << single << "\n" << ::tpy::check_signals;
     std::vector<std::string> empty_items = std::vector<std::string>{};
     std::string empty = ::tpy::str_join(",", empty_items);
-    std::cout << "empty:" << " " << ::tpy::__len__(empty) << "\n";
+    std::cout << "empty:" << " " << ::tpy::__len__(empty) << "\n" << ::tpy::check_signals;
     std::string_view sep = " - ";
     std::array<std::string, 3> items = {"one", "two", "three"};
-    std::cout << ::tpy::str_join(sep, items) << "\n";
+    std::cout << ::tpy::str_join(sep, items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

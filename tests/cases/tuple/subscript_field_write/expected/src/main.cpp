@@ -19,7 +19,7 @@ void bump(const std::tuple<int32_t, Leaf*>& t) {
 void main() {
     Leaf leaf = Leaf(1);
     ::tpyapp::main::bump(std::tuple<int32_t, Leaf*>{10, &(leaf)});
-    std::cout << leaf.n << "\n";
+    std::cout << leaf.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

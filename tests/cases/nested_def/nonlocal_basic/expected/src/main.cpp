@@ -21,7 +21,7 @@ void main() {
     accumulate(10);
     accumulate(20);
     accumulate(30);
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -16,7 +16,7 @@ void test_if_not_zero_floordiv() {
     int32_t b = 3;
     if ((b != 0)) {
         int32_t x = (::tpy::div_floor<int32_t>(a, b));
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -32,7 +32,7 @@ void test_if_not_zero_mod() {
     int32_t b = 3;
     if ((b != 0)) {
         int32_t x = (::tpy::mod_floor<int32_t>(a, b));
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -46,7 +46,7 @@ void test_no_elision_unchecked() {
     int32_t a = 10;
     int32_t b = 3;
     int32_t x = (::tpy::div_check<int32_t>(a, b));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_assert_not_zero() -> None:
@@ -64,8 +64,8 @@ void test_assert_not_zero() {
     if (!((b != 0))) ::tpy::raise_assertion_error();
     int32_t x = (::tpy::div_floor<int32_t>(a, b));
     int32_t y = (::tpy::mod_floor<int32_t>(a, b));
-    std::cout << x << "\n";
-    std::cout << y << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_assert_positive() -> None:
@@ -80,7 +80,7 @@ void test_assert_positive() {
     int32_t b = 7;
     if (!((b > 0))) ::tpy::raise_assertion_error();
     int32_t x = (::tpy::div_floor<int32_t>(a, b));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_no_elision_after_reassign() -> None:
@@ -97,7 +97,7 @@ void test_no_elision_after_reassign() {
     if (!((b != 0))) ::tpy::raise_assertion_error();
     b = a;
     int32_t x = (::tpy::div_check<int32_t>(a, b));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_else_of_eq_zero() -> None:
@@ -113,10 +113,10 @@ void test_else_of_eq_zero() {
     int32_t a = 10;
     int32_t b = 3;
     if ((b == 0)) {
-        std::cout << "zero" << "\n";
+        std::cout << "zero" << "\n" << ::tpy::check_signals;
     } else {
         int32_t x = (::tpy::div_floor<int32_t>(a, b));
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -131,8 +131,8 @@ void test_literal_divisor() {
     int32_t a = 10;
     int32_t x = (::tpy::div_floor<int32_t>(a, 3));
     int32_t y = (::tpy::mod_floor<int32_t>(a, 5));
-    std::cout << x << "\n";
-    std::cout << y << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 // def test_literal_named_divisor() -> None:
@@ -145,7 +145,7 @@ void test_literal_named_divisor() {
     int32_t a = 10;
     int32_t b = 3;
     int32_t x = (::tpy::div_floor<int32_t>(a, b));
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // test_if_not_zero_floordiv()

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(Child(5).as_pair())
 void main() {
-    std::cout << Child(5).as_pair() << "\n";
+    std::cout << Child(5).as_pair() << "\n" << ::tpy::check_signals;
 }
 
 // main()

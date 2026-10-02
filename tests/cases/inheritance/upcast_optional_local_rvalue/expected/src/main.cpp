@@ -99,10 +99,10 @@ __coro_coro coro() {
 //     print()
 //     print("async:", asyncio.run(coro()))
 void main() {
-    std::cout << "decl:" << " " << ::tpyapp::main::decl_position() << "\n";
-    std::cout << "method:" << " " << Holder(10).read() << "\n";
-    std::cout << "reseat:" << " " << ::tpyapp::main::reseat_position(true) << " " << ::tpyapp::main::reseat_position(false) << "\n";
-    std::cout << "gen:" << " ";
+    std::cout << "decl:" << " " << ::tpyapp::main::decl_position() << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << Holder(10).read() << "\n" << ::tpy::check_signals;
+    std::cout << "reseat:" << " " << ::tpyapp::main::reseat_position(true) << " " << ::tpyapp::main::reseat_position(false) << "\n" << ::tpy::check_signals;
+    std::cout << "gen:" << " " << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -110,11 +110,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << " ";
+            std::cout << v << " " << ::tpy::check_signals;
         }
     }
-    std::cout << "\n";
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro())) << "\n";
+    std::cout << "\n" << ::tpy::check_signals;
+    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro())) << "\n" << ::tpy::check_signals;
 }
 
 // # A SUBCLASS rvalue at a pointer-repr `Optional[Base]` local: the owning slot

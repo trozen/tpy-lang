@@ -58,10 +58,10 @@ void main() {
     Color a = Color::Red;
     Color b = Color::Red;
     Color c = Color::Blue;
-    std::cout << ::tpy::print_bool((a == b)) << "\n";
-    std::cout << ::tpy::print_bool((a == c)) << "\n";
-    std::cout << ::tpy::print_bool((a != b)) << "\n";
-    std::cout << ::tpy::print_bool((a != c)) << "\n";
+    std::cout << ::tpy::print_bool((a == b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a == c)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a != b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a != c)) << "\n" << ::tpy::check_signals;
 }
 
 // # Enum identity operators (is / is not) lowered to == / !=

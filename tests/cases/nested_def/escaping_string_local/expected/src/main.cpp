@@ -12,7 +12,7 @@ namespace tpyapp::main {
 std::function<void()> make_greeter(std::string_view name) {
     ::tpy::String owned_name = ::tpy::String(name);
     auto greet = [owned_name = std::move(owned_name)]() {
-        std::cout << (::tpy::str_concat("Hello, ", owned_name)) << "\n";
+        std::cout << (::tpy::str_concat("Hello, ", owned_name)) << "\n" << ::tpy::check_signals;
     };
     return greet;
 }

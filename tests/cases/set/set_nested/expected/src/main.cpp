@@ -14,11 +14,11 @@ namespace tpyapp::main {
 //     print(t)
 void main() {
     std::vector<::tpy::ordered_set<int32_t>> sets = {::tpy::ordered_set<int32_t>({1, 2}), ::tpy::ordered_set<int32_t>({3, 4})};
-    std::cout << ::tpy::ListPrinter(sets) << "\n";
+    std::cout << ::tpy::ListPrinter(sets) << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(sets, 0).insert(5);
-    std::cout << ::tpy::ListPrinter(sets) << "\n";
+    std::cout << ::tpy::ListPrinter(sets) << "\n" << ::tpy::check_signals;
     auto t = std::tuple<::tpy::ordered_set<int32_t>, std::string>{::tpy::ordered_set<int32_t>({10, 20}), "hello"};
-    std::cout << ::tpy::TuplePrinter(t) << "\n";
+    std::cout << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;
 }
 
 // main()

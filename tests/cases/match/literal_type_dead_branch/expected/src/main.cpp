@@ -43,11 +43,11 @@ std::string process__lit_rb(std::string_view mode) {
 void dispatch(std::string_view mode) {
     auto& __match_subject_1 = mode;
     if (__match_subject_1 == "r") {
-        std::cout << ::tpyapp::main::process__lit_r(mode) << "\n";
+        std::cout << ::tpyapp::main::process__lit_r(mode) << "\n" << ::tpy::check_signals;
     } else if (__match_subject_1 == "w") {
-        std::cout << ::tpyapp::main::process__lit_w(mode) << "\n";
+        std::cout << ::tpyapp::main::process__lit_w(mode) << "\n" << ::tpy::check_signals;
     } else if (__match_subject_1 == "rb") {
-        std::cout << ::tpyapp::main::process__lit_rb(mode) << "\n";
+        std::cout << ::tpyapp::main::process__lit_rb(mode) << "\n" << ::tpy::check_signals;
     }
 }
 

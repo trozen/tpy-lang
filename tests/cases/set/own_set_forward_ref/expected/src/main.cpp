@@ -15,7 +15,7 @@ void main() {
     h.s.insert(Point(1));
     h.s.insert(Point(2));
     h.s.insert(Point(1));
-    std::cout << ::tpy::__len__(h.s) << "\n";
+    std::cout << ::tpy::__len__(h.s) << "\n" << ::tpy::check_signals;
 }
 
 // main()

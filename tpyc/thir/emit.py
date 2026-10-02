@@ -4692,12 +4692,14 @@ def _print_chain_token(expr, value, state: _EmitState) -> 'str | None':
 
 
 def _print_parts(arg_cpps: 'list[str]', sep_token: 'str | None',
-                 end_token: 'str | None') -> list[str]:
+                 end_token: 'str | None', *, flush: bool = False) -> list[str]:
     """The `<<` chain segments shared by the print statement and the
     void-lambda THIRPrintChain body, so the two renders cannot drift. Args
     arrive already rendered: CPython evaluates the positional arguments
     before the keyword values, and a kwarg temp is created where its
-    expression renders."""
+    expression renders. The chain always ends in the check_signals
+    manipulator (after the flush, when there is one): print is a Ctrl-C
+    check point, and only a chain token can follow the lambda-body form."""
     parts: list[str] = []
     for i, a in enumerate(arg_cpps):
         if i > 0 and sep_token is not None:
@@ -4705,14 +4707,17 @@ def _print_parts(arg_cpps: 'list[str]', sep_token: 'str | None',
         parts.append(a)
     if end_token is not None:
         parts.append(end_token)
+    if flush:
+        parts.append("std::flush")
+    parts.append("::tpy::check_signals")
     return parts
 
 
 def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int,
                 state: _EmitState) -> None:
-    # The cout-sink path: `std::cout << a0 << SEP << a1 << ... << END;`.
-    # Default sep=" " between args, end="\n"; empty print() is just the
-    # newline.
+    # The cout-sink path: `std::cout << a0 << SEP << a1 << ... << END
+    # << ::tpy::check_signals;`. Default sep=" " between args, end="\n";
+    # empty print() is just the newline.
     indent = INDENT * indent_level
     # Render order is evaluation order for the hoisted kwarg temps, and
     # CPython evaluates the positional args first, then the keywords in
@@ -4721,15 +4726,9 @@ def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int,
     arg_cpps = [_emit_print_arg(a, state) for a in stmt.args]
     sep_token = _print_chain_token(stmt.sep_expr, stmt.sep_value, state)
     end_token = _print_chain_token(stmt.end_expr, stmt.end_value, state)
-    parts = _print_parts(arg_cpps, sep_token, end_token)
-    if stmt.flush:
-        parts.append("std::flush")
+    parts = _print_parts(arg_cpps, sep_token, end_token, flush=stmt.flush)
     # Args render first: their hoisted temps flush before the cout line.
     state.temps.flush(out, indent)
-    if not parts:
-        # A fully-suppressed chain emits nothing; lowering rejects the
-        # kwargs-on-empty-print shape, so this is a defensive no-op.
-        return
     sink = ("std::cout" if stmt.sink_expr is None
             else f"::tpy::as_ostream({_emit_expr(stmt.sink_expr, state)})")
     out.write(f"{indent}{sink} << " + " << ".join(parts) + ";\n")

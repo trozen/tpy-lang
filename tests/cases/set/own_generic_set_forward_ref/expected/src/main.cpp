@@ -15,7 +15,7 @@ void main() {
     h.c.item.insert(Point(1));
     h.c.item.insert(Point(2));
     h.c.item.insert(Point(1));
-    std::cout << ::tpy::__len__(h.c.item) << "\n";
+    std::cout << ::tpy::__len__(h.c.item) << "\n" << ::tpy::check_signals;
 }
 
 // main()

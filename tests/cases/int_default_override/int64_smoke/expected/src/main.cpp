@@ -33,17 +33,17 @@ void __tpy_init() {
     initialized = true;
 
     a = ::tpy::pow_check<int64_t>(2, 40);
-    std::cout << a << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
     b = 10;
-    std::cout << (::tpy::add_check<int64_t>(a, b)) << "\n";
+    std::cout << (::tpy::add_check<int64_t>(a, b)) << "\n" << ::tpy::check_signals;
     c = ((::tpy::BigInt(2)).pow(::tpy::BigInt(70)));
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
     for (int64_t i = 0; i < 3; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     static std::vector<int64_t> __global_slot_1 = {10, 20, 30};
     items = &__global_slot_1;
-    std::cout << ::tpy::__getitem__((*items), 0) << "\n";
+    std::cout << ::tpy::__getitem__((*items), 0) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

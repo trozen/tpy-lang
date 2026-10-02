@@ -119,18 +119,18 @@ void handshake_ok() {
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
     if ((!(::tpyapp::main::drive(cli, srv)))) {
-        std::cout << "FAIL: handshake did not converge" << "\n";
+        std::cout << "FAIL: handshake did not converge" << "\n" << ::tpy::check_signals;
         return;
     }
-    std::cout << "handshake:" << " " << ::tpyapp::main::tls_ver(cli.version()) << "\n";
+    std::cout << "handshake:" << " " << ::tpyapp::main::tls_ver(cli.version()) << "\n" << ::tpy::check_signals;
     cli.setblocking(true);
     srv.setblocking(true);
     cli.sendall(::tpy::bytes_literal("hello tls", 9));
-    std::cout << "server got:" << " " << ::tpy::bytes_decode(srv.recv(32)) << "\n";
-    std::cout << "sent:" << " " << cli.send(::tpy::bytes_literal("AB", 2)) << "\n";
-    std::cout << "server got2:" << " " << ::tpy::bytes_decode(srv.recv(32)) << "\n";
+    std::cout << "server got:" << " " << ::tpy::bytes_decode(srv.recv(32)) << "\n" << ::tpy::check_signals;
+    std::cout << "sent:" << " " << cli.send(::tpy::bytes_literal("AB", 2)) << "\n" << ::tpy::check_signals;
+    std::cout << "server got2:" << " " << ::tpy::bytes_decode(srv.recv(32)) << "\n" << ::tpy::check_signals;
     cli.close();
-    std::cout << "server eof:" << " " << ::tpy::print_bool((::tpy::__len__(srv.recv(32)) == 0)) << "\n";
+    std::cout << "server eof:" << " " << ::tpy::print_bool((::tpy::__len__(srv.recv(32)) == 0)) << "\n" << ::tpy::check_signals;
     srv.close();
 }
 
@@ -192,17 +192,17 @@ void hostname_mismatch() {
         {
             try {
                 if (cli.do_handshake()) {
-                    std::cout << "FAIL: expected certificate verify error" << "\n";
+                    std::cout << "FAIL: expected certificate verify error" << "\n" << ::tpy::check_signals;
                     return;
                 }
             } catch (const ::tpystd::ssl::SSLCertVerificationError&) {
-                std::cout << "verify rejected mismatched hostname" << "\n";
+                std::cout << "verify rejected mismatched hostname" << "\n" << ::tpy::check_signals;
                 return;
             }
         }
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "FAIL: no verify decision" << "\n";
+    std::cout << "FAIL: no verify decision" << "\n" << ::tpy::check_signals;
 }
 
 // def cert_none() -> None:
@@ -236,9 +236,9 @@ void cert_none() {
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
     if (::tpyapp::main::drive(cli, srv)) {
-        std::cout << "no-verify handshake:" << " " << ::tpyapp::main::tls_ver(cli.version()) << "\n";
+        std::cout << "no-verify handshake:" << " " << ::tpyapp::main::tls_ver(cli.version()) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "FAIL: no-verify handshake did not converge" << "\n";
+        std::cout << "FAIL: no-verify handshake did not converge" << "\n" << ::tpy::check_signals;
     }
 }
 

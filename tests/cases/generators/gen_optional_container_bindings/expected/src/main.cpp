@@ -61,12 +61,12 @@ __coro_fill fill(::tpy::ordered_map<std::string, int32_t>* d) {
 //     print("async_param", asyncio.run(fill(d)), asyncio.run(fill(None)), len(d))
 void main() {
     ::tpy::ByteArray buf = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
-    std::cout << "gen_param" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::twice(&(buf)))) << " " << ::tpy::__len__(buf) << "\n";
-    std::cout << "gen_param_none" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::twice(nullptr))) << "\n";
+    std::cout << "gen_param" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::twice(&(buf)))) << " " << ::tpy::__len__(buf) << "\n" << ::tpy::check_signals;
+    std::cout << "gen_param_none" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::twice(nullptr))) << "\n" << ::tpy::check_signals;
     R r = R(1);
-    std::cout << "gen_param_rec" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::twice_r(&(r)))) << " " << r.n << "\n";
+    std::cout << "gen_param_rec" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::twice_r(&(r)))) << " " << r.n << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    std::cout << "async_param" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::fill(&(d)))) << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::fill(nullptr))) << " " << ::tpy::__len__(d) << "\n";
+    std::cout << "async_param" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::fill(&(d)))) << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::fill(nullptr))) << " " << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // # An `Optional[container]` PARAMETER of a resumable frame -- a generator or

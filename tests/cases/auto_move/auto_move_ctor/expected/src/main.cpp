@@ -14,7 +14,7 @@ void main() {
     Inner inner = Inner();
     inner.value = 99;
     Outer outer = Outer(std::move(inner));
-    std::cout << outer.get_value() << "\n";
+    std::cout << outer.get_value() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Shape a = Shape::make();
     Square b = Square::make();
-    std::cout << a.sides << " " << b.sides << "\n";
+    std::cout << a.sides << " " << b.sides << "\n" << ::tpy::check_signals;
 }
 
 // main()

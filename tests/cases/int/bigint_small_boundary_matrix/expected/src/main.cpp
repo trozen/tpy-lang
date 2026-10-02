@@ -15,10 +15,10 @@ namespace tpyapp::main {
 //     print(b)
 //     print(a * b)
 void show_mul(std::string_view label, const ::tpy::BigInt& a, const ::tpy::BigInt& b) {
-    std::cout << label << "\n";
-    std::cout << a << "\n";
-    std::cout << b << "\n";
-    std::cout << ((a) * (b)) << "\n";
+    std::cout << label << "\n" << ::tpy::check_signals;
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
+    std::cout << ((a) * (b)) << "\n" << ::tpy::check_signals;
 }
 
 // B: int = 1 << 62
@@ -87,23 +87,23 @@ void __tpy_init() {
     ::tpyapp::main::show_mul("mul_large_small_large", BIG_POS, ::tpy::BigInt(2));
     ::tpyapp::main::show_mul("mul_large_small_back_to_small", BIG_POS, ::tpy::BigInt(-1));
     ::tpyapp::main::show_mul("mul_large_large", BIG_POS, BIG_NEG);
-    std::cout << "add_sub_boundary" << "\n";
-    std::cout << ((SMALL_MAX) + (::tpy::BigInt(1))) << "\n";
-    std::cout << ((BIG_POS) - (::tpy::BigInt(1))) << "\n";
-    std::cout << ((BIG_NEG) + (::tpy::BigInt(1))) << "\n";
-    std::cout << ((SMALL_MIN) - (::tpy::BigInt(1))) << "\n";
-    std::cout << ((BIG_POS) + (BIG_NEG)) << "\n";
-    std::cout << ((BIG_POS) - (BIG_POS)) << "\n";
-    std::cout << "div_mod_boundary" << "\n";
-    std::cout << ((BIG_POS) / (::tpy::BigInt(2))) << "\n";
-    std::cout << ((BIG_POS) % (::tpy::BigInt(2))) << "\n";
-    std::cout << ((((BIG_NEG) + (::tpy::BigInt(1)))) / (::tpy::BigInt(2))) << "\n";
-    std::cout << ((((BIG_NEG) + (::tpy::BigInt(1)))) % (::tpy::BigInt(2))) << "\n";
-    std::cout << "fixed_width_conversions" << "\n";
-    std::cout << (SMALL_MAX).to_fixed_check<int64_t>() << "\n";
-    std::cout << (SMALL_MIN).to_fixed_check<int64_t>() << "\n";
-    std::cout << (((BIG_POS) - (::tpy::BigInt(1)))).to_fixed_check<int64_t>() << "\n";
-    std::cout << (((BIG_NEG) + (::tpy::BigInt(1)))).to_fixed_check<int64_t>() << "\n";
+    std::cout << "add_sub_boundary" << "\n" << ::tpy::check_signals;
+    std::cout << ((SMALL_MAX) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
+    std::cout << ((BIG_POS) - (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
+    std::cout << ((BIG_NEG) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
+    std::cout << ((SMALL_MIN) - (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
+    std::cout << ((BIG_POS) + (BIG_NEG)) << "\n" << ::tpy::check_signals;
+    std::cout << ((BIG_POS) - (BIG_POS)) << "\n" << ::tpy::check_signals;
+    std::cout << "div_mod_boundary" << "\n" << ::tpy::check_signals;
+    std::cout << ((BIG_POS) / (::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ((BIG_POS) % (::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ((((BIG_NEG) + (::tpy::BigInt(1)))) / (::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
+    std::cout << ((((BIG_NEG) + (::tpy::BigInt(1)))) % (::tpy::BigInt(2))) << "\n" << ::tpy::check_signals;
+    std::cout << "fixed_width_conversions" << "\n" << ::tpy::check_signals;
+    std::cout << (SMALL_MAX).to_fixed_check<int64_t>() << "\n" << ::tpy::check_signals;
+    std::cout << (SMALL_MIN).to_fixed_check<int64_t>() << "\n" << ::tpy::check_signals;
+    std::cout << (((BIG_POS) - (::tpy::BigInt(1)))).to_fixed_check<int64_t>() << "\n" << ::tpy::check_signals;
+    std::cout << (((BIG_NEG) + (::tpy::BigInt(1)))).to_fixed_check<int64_t>() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

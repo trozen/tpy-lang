@@ -17,15 +17,15 @@ const ::tpy::BigInt WIDE = ::tpy::BigInt(static_cast<int64_t>(SMALL));
 //     print(FLAG)
 //     print(CH)
 void main() {
-    std::cout << SMALL << "\n";
-    std::cout << BIG << "\n";
-    std::cout << static_cast<int>(BYTE) << "\n";
-    std::cout << ::tpy::print_float(static_cast<double>(HALF)) << "\n";
-    std::cout << NEG << "\n";
-    std::cout << WIDE << "\n";
-    std::cout << ::tpy::print_float(DBL) << "\n";
-    std::cout << ::tpy::print_bool(FLAG) << "\n";
-    std::cout << CH << "\n";
+    std::cout << SMALL << "\n" << ::tpy::check_signals;
+    std::cout << BIG << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(BYTE) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(static_cast<double>(HALF)) << "\n" << ::tpy::check_signals;
+    std::cout << NEG << "\n" << ::tpy::check_signals;
+    std::cout << WIDE << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(DBL) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(FLAG) << "\n" << ::tpy::check_signals;
+    std::cout << CH << "\n" << ::tpy::check_signals;
 }
 
 // main()

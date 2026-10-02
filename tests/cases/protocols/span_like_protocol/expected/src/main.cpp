@@ -27,10 +27,10 @@ int32_t accept_ro(std::span<const int32_t> s) {
 //     print("done")
 void main() {
     auto __tmp_1 = Buffer();
-    std::cout << ::tpyapp::main::sum_span(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::sum_span(__tmp_1) << "\n" << ::tpy::check_signals;
     auto __tmp_2 = Buffer();
-    std::cout << ::tpyapp::main::test_pass_to_ro_span(__tmp_2) << "\n";
-    std::cout << "done" << "\n";
+    std::cout << ::tpyapp::main::test_pass_to_ro_span(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // main()

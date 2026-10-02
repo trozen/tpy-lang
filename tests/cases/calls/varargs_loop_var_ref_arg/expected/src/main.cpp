@@ -48,7 +48,7 @@ void main() {
     std::vector<Box> items = std::vector<Box>{};
     items.push_back(Box(5));
     items.push_back(Box(6));
-    std::cout << ::tpyapp::main::via_loop(items) << "\n";
+    std::cout << ::tpyapp::main::via_loop(items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

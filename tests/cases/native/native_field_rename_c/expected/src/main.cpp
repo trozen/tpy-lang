@@ -13,10 +13,10 @@ namespace tpyapp::main {
 //     print(a.port)
 void main() {
     ::sockaddr_like a = ::sockaddr_like{2, 443};
-    std::cout << a.sin_family << "\n";
-    std::cout << a.sin_port << "\n";
+    std::cout << a.sin_family << "\n" << ::tpy::check_signals;
+    std::cout << a.sin_port << "\n" << ::tpy::check_signals;
     a.sin_port = 8080;
-    std::cout << a.sin_port << "\n";
+    std::cout << a.sin_port << "\n" << ::tpy::check_signals;
 }
 
 // # native_field() on a @native(binding="C") struct -- matches the _bindings/ use

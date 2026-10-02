@@ -36,9 +36,9 @@ void main() {
     {
         try {
             ::tpyapp::main::trigger();
-            std::cout << "no error" << "\n";
+            std::cout << "no error" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OSError&) {
-            std::cout << "caught as OSError" << "\n";
+            std::cout << "caught as OSError" << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -47,11 +47,11 @@ void main() {
                 try {
                     ::tpyapp::main::trigger();
                 } catch (const ::tpy::ValueError&) {
-                    std::cout << "WRONG: caught as ValueError" << "\n";
+                    std::cout << "WRONG: caught as ValueError" << "\n" << ::tpy::check_signals;
                 }
             }
         } catch (const ::tpy::BlockingIOError&) {
-            std::cout << "not ValueError; caught as BlockingIOError" << "\n";
+            std::cout << "not ValueError; caught as BlockingIOError" << "\n" << ::tpy::check_signals;
         }
     }
 }

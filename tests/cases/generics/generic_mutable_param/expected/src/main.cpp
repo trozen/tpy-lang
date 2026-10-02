@@ -31,7 +31,7 @@ void modify_list(std::vector<int32_t>& items) {
 void main() {
     Box<int32_t> box_int = Box<int32_t>(42);
     box_int.set(99);
-    std::cout << box_int.get() << "\n";
+    std::cout << box_int.get() << "\n" << ::tpy::check_signals;
     Box<std::vector<int32_t>> box_list = Box<std::vector<int32_t>>({1, 2, 3});
     std::vector<int32_t> __tmp_1 = {4, 5, 6};
     box_list.set(__tmp_1);
@@ -40,7 +40,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::vector<int32_t> nums = {10, 20};
     ::tpyapp::main::modify_list(nums);
@@ -49,7 +49,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -33,16 +33,16 @@ extern "C" int32_t widget_value(::Widget* w) {
 //     print("array:", p.x, p.y)
 void main() {
     ::Widget* w = find_widget(1);
-    std::cout << "nullable:" << " " << widget_value(w) << "\n";
+    std::cout << "nullable:" << " " << widget_value(w) << "\n" << ::tpy::check_signals;
     ::Widget* missing = find_widget(0);
-    std::cout << "nullable:" << " " << widget_value(missing) << "\n";
+    std::cout << "nullable:" << " " << widget_value(missing) << "\n" << ::tpy::check_signals;
     if ((w != nullptr)) {
         w->n = 99;
     }
     ::Widget* again = find_widget(1);
-    std::cout << "nullable:" << " " << widget_value(again) << "\n";
+    std::cout << "nullable:" << " " << widget_value(again) << "\n" << ::tpy::check_signals;
     ::Point p = ::tpy::deref_check(::g_pts);
-    std::cout << "array:" << " " << p.x << " " << p.y << "\n";
+    std::cout << "array:" << " " << p.x << " " << p.y << "\n" << ::tpy::check_signals;
 }
 
 // # The permitted side of the C-ABI gate for the two shapes that need a C

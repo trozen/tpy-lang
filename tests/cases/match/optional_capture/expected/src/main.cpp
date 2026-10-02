@@ -52,10 +52,10 @@ std::string describe(std::optional<std::string_view> x) {
 //     print(describe(None))
 //     print(describe("hello"))
 void main() {
-    std::cout << ::tpyapp::main::classify(std::nullopt) << "\n";
-    std::cout << ::tpyapp::main::classify(42) << "\n";
-    std::cout << ::tpyapp::main::describe(std::nullopt) << "\n";
-    std::cout << ::tpyapp::main::describe("hello") << "\n";
+    std::cout << ::tpyapp::main::classify(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(42) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe("hello") << "\n" << ::tpy::check_signals;
 }
 
 // main()

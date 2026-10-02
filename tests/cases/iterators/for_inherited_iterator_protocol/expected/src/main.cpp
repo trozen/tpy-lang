@@ -19,12 +19,12 @@ namespace tpyapp::main {
 //     print(len(s))
 void main() {
     auto __tmp_1 = DoubleCounter(3);
-    std::cout << ::tpyapp::main::consume(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::consume(__tmp_1) << "\n" << ::tpy::check_signals;
     auto __tmp_2 = GrandChild(2);
-    std::cout << ::tpyapp::main::consume(__tmp_2) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(DoubleCounter(2))) << "\n";
+    std::cout << ::tpyapp::main::consume(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(DoubleCounter(2))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> s = ::tpy::set_construct<int32_t>(DoubleCounter(2));
-    std::cout << ::tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
 }
 
 // main()

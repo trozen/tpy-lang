@@ -106,7 +106,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -117,13 +117,13 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "first" << " " << v << "\n";
+            std::cout << "first" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     Push __tmp_2 = Push({1, 2, 3, 4});
-    std::cout << "plain" << " " << ::tpyapp::main::plain(::tpy::Union<const Emit*, const Push*>{&__tmp_2}) << "\n";
+    std::cout << "plain" << " " << ::tpyapp::main::plain(::tpy::Union<const Emit*, const Push*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
     Emit __tmp_3 = Emit("z");
-    std::cout << "plain" << " " << ::tpyapp::main::plain(::tpy::Union<const Emit*, const Push*>{&__tmp_3}) << "\n";
+    std::cout << "plain" << " " << ::tpyapp::main::plain(::tpy::Union<const Emit*, const Push*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

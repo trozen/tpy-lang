@@ -13,10 +13,10 @@ namespace tpyapp::main {
 //     print(s.super_lookup(int32(13)))
 void main() {
     Holder<int32_t> h = Holder<int32_t>(7);
-    std::cout << h.lookup(11) << "\n";
-    std::cout << h.identity<std::string>("hello") << "\n";
+    std::cout << h.lookup(11) << "\n" << ::tpy::check_signals;
+    std::cout << h.identity<std::string>("hello") << "\n" << ::tpy::check_signals;
     SubHolder<int32_t> s = SubHolder<int32_t>(9);
-    std::cout << s.super_lookup(13) << "\n";
+    std::cout << s.super_lookup(13) << "\n" << ::tpy::check_signals;
 }
 
 // main()

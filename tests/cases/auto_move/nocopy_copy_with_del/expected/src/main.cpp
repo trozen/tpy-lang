@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     Resource r1 = Resource(1);
     Resource r2 = Resource(r1);
-    std::cout << "r1 =" << " " << r1.id << "\n";
-    std::cout << "r2 =" << " " << r2.id << "\n";
+    std::cout << "r1 =" << " " << r1.id << "\n" << ::tpy::check_signals;
+    std::cout << "r2 =" << " " << r2.id << "\n" << ::tpy::check_signals;
 }
 
 // main()

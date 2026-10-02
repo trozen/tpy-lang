@@ -21,11 +21,11 @@ void __tpy_init() {
 
     x = 3.5;
     y = 2.0;
-    std::cout << ::tpy::print_float(((x) + (y))) << "\n";
-    std::cout << ::tpy::print_float(((x) - (y))) << "\n";
-    std::cout << ::tpy::print_float(((x) * (y))) << "\n";
-    std::cout << ::tpy::print_float((::tpy::truediv(x, y))) << "\n";
-    std::cout << ::tpy::print_float(-(x)) << "\n";
+    std::cout << ::tpy::print_float(((x) + (y))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(((x) - (y))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(((x) * (y))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((::tpy::truediv(x, y))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(-(x)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

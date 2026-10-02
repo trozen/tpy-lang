@@ -18,7 +18,7 @@ namespace tpyapp::main {
     int32_t n;
     for (int32_t i = 0; i < 3; ++i) {
         n = (::tpy::add_check<int32_t>(i, 1));
-        std::cout << n << "\n";
+        std::cout << n << "\n" << ::tpy::check_signals;
     }
     n = 9;
     return ::tpy::BigInt(n);
@@ -37,7 +37,7 @@ namespace tpyapp::main {
     int32_t n;
     while ((c > 0)) {
         n = c;
-        std::cout << n << "\n";
+        std::cout << n << "\n" << ::tpy::check_signals;
         c = ::tpy::sub_check<int32_t>(c, 1);
     }
     n = 9;
@@ -57,7 +57,7 @@ namespace tpyapp::main {
     auto& __match_subject_1 = tag;
     if (__match_subject_1 == 1) {
         int32_t n = 11;
-        std::cout << n << "\n";
+        std::cout << n << "\n" << ::tpy::check_signals;
     } else {
     }
     int32_t n = 9;
@@ -76,7 +76,7 @@ namespace tpyapp::main {
     {
         try {
             ::tpy::BigInt n = ((::tpy::BigInt(::tpy::BigInt(100))) / (d));
-            std::cout << n << "\n";
+            std::cout << n << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError&) {
         }
     }
@@ -97,10 +97,10 @@ namespace tpyapp::main {
 ::tpy::BigInt in_except(const ::tpy::BigInt& d) {
     {
         try {
-            std::cout << ((::tpy::BigInt(::tpy::BigInt(100))) / (d)) << "\n";
+            std::cout << ((::tpy::BigInt(::tpy::BigInt(100))) / (d)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ZeroDivisionError&) {
             int32_t n = -1;
-            std::cout << n << "\n";
+            std::cout << n << "\n" << ::tpy::check_signals;
         }
     }
     int32_t n = 9;
@@ -124,11 +124,11 @@ namespace tpyapp::main {
 ::tpy::BigInt in_for_else() {
     int32_t n;
     for (int32_t i = 0; i < 3; ++i) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
     {
         n = 7;
-        std::cout << n << "\n";
+        std::cout << n << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
     n = 9;
@@ -150,12 +150,12 @@ namespace tpyapp::main {
     int32_t i = 0;
     int32_t n;
     while ((::tpy::BigInt(i) < k)) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     {
         n = 7;
-        std::cout << n << "\n";
+        std::cout << n << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
     n = 9;
@@ -179,7 +179,7 @@ std::string optional_local(bool flag) {
         if (flag) {
             v = ::tpy::fixed_to_str<int32_t>(i);
         }
-        std::cout << ::tpy::print_bool((!v.has_value())) << "\n";
+        std::cout << ::tpy::print_bool((!v.has_value())) << "\n" << ::tpy::check_signals;
     }
     v = "nine";
     return (*v);
@@ -195,7 +195,7 @@ std::string str_local() {
     std::string s;
     for (int32_t i = 0; i < 2; ++i) {
         s = ::tpy::fixed_to_str<int32_t>(i);
-        std::cout << s << "\n";
+        std::cout << s << "\n" << ::tpy::check_signals;
     }
     s = "after";
     return s;
@@ -213,7 +213,7 @@ std::string str_local() {
     std::vector<int32_t>* xs;
     for (int32_t i = 0; i < 2; ++i) {
         xs = &*(__slot_1 = {i, i});
-        std::cout << ::tpy::__getitem__((*xs), 0) << "\n";
+        std::cout << ::tpy::__getitem__((*xs), 0) << "\n" << ::tpy::check_signals;
     }
     xs = &*(__slot_2 = {9, 9});
     return ::tpy::BigInt(::tpy::__getitem__((*xs), 0));
@@ -232,7 +232,7 @@ std::string str_local() {
     if (flag) {
         for (int32_t i = 0; i < 2; ++i) {
             n = (::tpy::add_check<int32_t>(i, 5));
-            std::cout << n << "\n";
+            std::cout << n << "\n" << ::tpy::check_signals;
         }
     }
     n = 9;
@@ -256,21 +256,21 @@ std::string str_local() {
 //     print(nested_blocks(True))
 //     print(nested_blocks(False))
 void main() {
-    std::cout << ::tpyapp::main::in_for() << "\n";
-    std::cout << ::tpyapp::main::in_while() << "\n";
-    std::cout << ::tpyapp::main::in_match(::tpy::BigInt(1)) << "\n";
-    std::cout << ::tpyapp::main::in_match(::tpy::BigInt(2)) << "\n";
-    std::cout << ::tpyapp::main::in_try(::tpy::BigInt(5)) << "\n";
-    std::cout << ::tpyapp::main::in_try(::tpy::BigInt(0)) << "\n";
-    std::cout << ::tpyapp::main::in_except(::tpy::BigInt(0)) << "\n";
-    std::cout << ::tpyapp::main::in_for_else() << "\n";
-    std::cout << ::tpyapp::main::in_while_else(::tpy::BigInt(2)) << "\n";
-    std::cout << ::tpyapp::main::optional_local(true) << "\n";
-    std::cout << ::tpyapp::main::optional_local(false) << "\n";
-    std::cout << ::tpyapp::main::str_local() << "\n";
-    std::cout << ::tpyapp::main::list_local() << "\n";
-    std::cout << ::tpyapp::main::nested_blocks(true) << "\n";
-    std::cout << ::tpyapp::main::nested_blocks(false) << "\n";
+    std::cout << ::tpyapp::main::in_for() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_while() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_match(::tpy::BigInt(1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_match(::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_try(::tpy::BigInt(5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_try(::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_except(::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_for_else() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_while_else(::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::optional_local(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::optional_local(false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::str_local() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::list_local() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::nested_blocks(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::nested_blocks(false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

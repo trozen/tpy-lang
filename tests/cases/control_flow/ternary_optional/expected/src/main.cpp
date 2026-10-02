@@ -66,25 +66,25 @@ std::string truthy_narrowing(std::optional<std::string_view> s) {
 //     s = None
 //     print(s if s else "empty")
 void main() {
-    std::cout << ::tpyapp::main::safe_len("hello") << "\n";
-    std::cout << ::tpyapp::main::safe_len(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::safe_len("hello") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::safe_len(std::nullopt) << "\n" << ::tpy::check_signals;
     std::optional<std::string> r1 = ::tpyapp::main::value_or_none(true);
-    std::cout << ::tpy::print_optional_val(r1) << "\n";
+    std::cout << ::tpy::print_optional_val(r1) << "\n" << ::tpy::check_signals;
     r1 = ::tpyapp::main::value_or_none(false);
-    std::cout << ::tpy::print_optional_val(r1) << "\n";
+    std::cout << ::tpy::print_optional_val(r1) << "\n" << ::tpy::check_signals;
     std::optional<std::string> r2 = ::tpyapp::main::none_or_value(true);
-    std::cout << ::tpy::print_optional_val(r2) << "\n";
+    std::cout << ::tpy::print_optional_val(r2) << "\n" << ::tpy::check_signals;
     r2 = ::tpyapp::main::none_or_value(false);
-    std::cout << ::tpy::print_optional_val(r2) << "\n";
-    std::cout << ::tpyapp::main::with_default("custom") << "\n";
-    std::cout << ::tpyapp::main::with_default(std::nullopt) << "\n";
-    std::cout << ::tpyapp::main::truthy_narrowing("hello") << "\n";
-    std::cout << ::tpyapp::main::truthy_narrowing(std::nullopt) << "\n";
-    std::cout << ::tpyapp::main::truthy_narrowing("") << "\n";
+    std::cout << ::tpy::print_optional_val(r2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_default("custom") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_default(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::truthy_narrowing("hello") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::truthy_narrowing(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::truthy_narrowing("") << "\n" << ::tpy::check_signals;
     std::optional<std::string> s = "world";
-    std::cout << ((::tpy::is_truthy(s)) ? ((*s)) : ("empty")) << "\n";
+    std::cout << ((::tpy::is_truthy(s)) ? ((*s)) : ("empty")) << "\n" << ::tpy::check_signals;
     s = std::nullopt;
-    std::cout << ((::tpy::is_truthy(s)) ? ((*s)) : ("empty")) << "\n";
+    std::cout << ((::tpy::is_truthy(s)) ? ((*s)) : ("empty")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

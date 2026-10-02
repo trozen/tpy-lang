@@ -16,11 +16,11 @@ void show(const std::tuple<const Point*, int32_t>& p) {
     const Point* a = std::get<0>(__tup_1);
     int32_t n = std::get<1>(__tup_1);
     if ((a != nullptr)) {
-        std::cout << a->x << "\n";
+        std::cout << a->x << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "none" << "\n";
+        std::cout << "none" << "\n" << ::tpy::check_signals;
     }
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // def show2(p: tuple[Point | None, Point | None]) -> None:
@@ -38,14 +38,14 @@ void show2(const std::tuple<const Point*, const Point*>& p) {
     const Point* a = std::get<0>(__tup_1);
     const Point* b = std::get<1>(__tup_1);
     if ((a != nullptr)) {
-        std::cout << a->x << "\n";
+        std::cout << a->x << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "none" << "\n";
+        std::cout << "none" << "\n" << ::tpy::check_signals;
     }
     if ((b != nullptr)) {
-        std::cout << b->x << "\n";
+        std::cout << b->x << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "none" << "\n";
+        std::cout << "none" << "\n" << ::tpy::check_signals;
     }
 }
 

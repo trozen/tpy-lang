@@ -18,8 +18,8 @@ int32_t consume(Box&& b) {
 void main() {
     Box b = Box();
     b.value = 42;
-    std::cout << ::tpyapp::main::consume(Box(b)) << "\n";
-    std::cout << b.value << "\n";
+    std::cout << ::tpyapp::main::consume(Box(b)) << "\n" << ::tpy::check_signals;
+    std::cout << b.value << "\n" << ::tpy::check_signals;
 }
 
 // main()

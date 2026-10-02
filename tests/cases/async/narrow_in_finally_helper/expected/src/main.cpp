@@ -69,8 +69,8 @@ namespace tpyapp::main {
 void __coro_a_assert::__finally_0() {
     if (!(std::holds_alternative<Dog*>(a))) ::tpy::raise_assertion_error();
     auto& __a = *std::get<Dog*>(a);
-    std::cout << __a.bark() << "\n";
-    std::cout << __a.bark() << "\n";
+    std::cout << __a.bark() << "\n" << ::tpy::check_signals;
+    std::cout << __a.bark() << "\n" << ::tpy::check_signals;
 }
 
 // async def a_assert(a: Dog | Cat) -> str:
@@ -143,8 +143,8 @@ void __coro_a_post_if::__finally_0() {
         throw ::tpy::ValueError("dog");
     }
     auto& __a = *std::get<Cat*>(a);
-    std::cout << __a.meow() << "\n";
-    std::cout << __a.meow() << "\n";
+    std::cout << __a.meow() << "\n" << ::tpy::check_signals;
+    std::cout << __a.meow() << "\n" << ::tpy::check_signals;
 }
 
 // async def a_post_if(a: Dog | Cat) -> str:
@@ -242,12 +242,12 @@ __coro_a_post_if a_post_if(::tpy::Union<Cat*, Dog*> a) {
 void __coro_a_nested::__finally_0() {
     if (!(std::holds_alternative<Dog*>(b))) ::tpy::raise_assertion_error();
     auto& __b = *std::get<Dog*>(b);
-    std::cout << __b.bark() << "\n";
+    std::cout << __b.bark() << "\n" << ::tpy::check_signals;
 }
 void __coro_a_nested::__finally_1() {
     if (!(std::holds_alternative<Cat*>(a))) ::tpy::raise_assertion_error();
     auto& __a = *std::get<Cat*>(a);
-    std::cout << __a.meow() << "\n";
+    std::cout << __a.meow() << "\n" << ::tpy::check_signals;
 }
 
 // async def a_nested(a: Dog | Cat, b: Dog | Cat) -> str:
@@ -258,7 +258,7 @@ __coro_a_nested a_nested(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> b)
 void __gen_g_assert::__finally_0() {
     if (!(std::holds_alternative<Cat*>(a))) ::tpy::raise_assertion_error();
     auto& __a = *std::get<Cat*>(a);
-    std::cout << __a.meow() << "\n";
+    std::cout << __a.meow() << "\n" << ::tpy::check_signals;
 }
 
 // def g_assert(a: Dog | Cat) -> Iterator[str]:
@@ -272,7 +272,7 @@ void __gen_g_post_if::__finally_0() {
         throw ::tpy::ValueError("cat");
     }
     auto& __a = *std::get<Dog*>(a);
-    std::cout << __a.bark() << "\n";
+    std::cout << __a.bark() << "\n" << ::tpy::check_signals;
 }
 
 // def g_post_if(a: Dog | Cat) -> Iterator[str]:
@@ -307,8 +307,8 @@ __gen_g_post_if g_post_if(::tpy::Union<Cat*, Dog*> a) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << __await_lift_0 << "\n";
-        std::cout << (*d).barks << "\n";
+        std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
+        std::cout << (*d).barks << "\n" << ::tpy::check_signals;
         c.emplace(Cat());
         __sub_1.emplace(::tpy::Union<Cat*, Dog*>{&((*c))});
         __state = S_RESUME_1;
@@ -319,8 +319,8 @@ __gen_g_post_if g_post_if(::tpy::Union<Cat*, Dog*> a) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << __await_lift_1 << "\n";
-        std::cout << (*c).meows << "\n";
+        std::cout << __await_lift_1 << "\n" << ::tpy::check_signals;
+        std::cout << (*c).meows << "\n" << ::tpy::check_signals;
         c2.emplace(Cat());
         d2.emplace(Dog());
         __sub_2.emplace(::tpy::Union<Cat*, Dog*>{&((*c2))}, ::tpy::Union<Cat*, Dog*>{&((*d2))});
@@ -332,8 +332,8 @@ __gen_g_post_if g_post_if(::tpy::Union<Cat*, Dog*> a) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << __await_lift_2 << "\n";
-        std::cout << (*c2).meows << " " << (*d2).barks << "\n";
+        std::cout << __await_lift_2 << "\n" << ::tpy::check_signals;
+        std::cout << (*c2).meows << " " << (*d2).barks << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -369,10 +369,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << c3.meows << "\n";
+    std::cout << c3.meows << "\n" << ::tpy::check_signals;
     Dog d3 = Dog();
     {
         auto __src_2 = ::tpyapp::main::g_post_if(::tpy::Union<Cat*, Dog*>{&(d3)});
@@ -381,10 +381,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << d3.barks << "\n";
+    std::cout << d3.barks << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain()));
 }
 

@@ -24,14 +24,14 @@ void test_not_with_bool_literals() {
     bool a = true;
     bool b = false;
     if ((!(a))) {
-        std::cout << "not True: yes" << "\n";
+        std::cout << "not True: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "not True: no" << "\n";
+        std::cout << "not True: no" << "\n" << ::tpy::check_signals;
     }
     if ((!(b))) {
-        std::cout << "not False: yes" << "\n";
+        std::cout << "not False: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "not False: no" << "\n";
+        std::cout << "not False: no" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -53,13 +53,13 @@ void test_not_with_comparisons() {
     int32_t x = 5;
     int32_t y = 10;
     if ((!((x > y)))) {
-        std::cout << "not (5 > 10): yes" << "\n";
+        std::cout << "not (5 > 10): yes" << "\n" << ::tpy::check_signals;
     }
     if ((!((x == y)))) {
-        std::cout << "not (5 == 10): yes" << "\n";
+        std::cout << "not (5 == 10): yes" << "\n" << ::tpy::check_signals;
     }
     if ((!((x < 0)))) {
-        std::cout << "not (5 < 0): yes" << "\n";
+        std::cout << "not (5 < 0): yes" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -90,20 +90,20 @@ void test_not_in_conditions() {
     bool a = true;
     bool b = false;
     if (((!(a)) && b)) {
-        std::cout << "not True and False: yes" << "\n";
+        std::cout << "not True and False: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "not True and False: no" << "\n";
+        std::cout << "not True and False: no" << "\n" << ::tpy::check_signals;
     }
     if (((!(b)) || a)) {
-        std::cout << "not False or True: yes" << "\n";
+        std::cout << "not False or True: yes" << "\n" << ::tpy::check_signals;
     }
     if ((!((a && b)))) {
-        std::cout << "not (True and False): yes" << "\n";
+        std::cout << "not (True and False): yes" << "\n" << ::tpy::check_signals;
     }
     if ((!((a || b)))) {
-        std::cout << "not (True or False): yes" << "\n";
+        std::cout << "not (True or False): yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "not (True or False): no" << "\n";
+        std::cout << "not (True or False): no" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -121,12 +121,12 @@ void test_not_in_conditions() {
 void test_double_negation() {
     bool flag = true;
     if ((!((!(flag))))) {
-        std::cout << "not not True: yes" << "\n";
+        std::cout << "not not True: yes" << "\n" << ::tpy::check_signals;
     }
     if ((!((!(false))))) {
-        std::cout << "not not False: yes" << "\n";
+        std::cout << "not not False: yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "not not False: no" << "\n";
+        std::cout << "not not False: no" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -148,12 +148,12 @@ bool is_valid(int32_t x) {
 //         print("not is_valid(5): no")
 void test_not_with_function_call() {
     if ((!(::tpyapp::main::is_valid(-5)))) {
-        std::cout << "not is_valid(-5): yes" << "\n";
+        std::cout << "not is_valid(-5): yes" << "\n" << ::tpy::check_signals;
     }
     if ((!(::tpyapp::main::is_valid(5)))) {
-        std::cout << "not is_valid(5): yes" << "\n";
+        std::cout << "not is_valid(5): yes" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "not is_valid(5): no" << "\n";
+        std::cout << "not is_valid(5): no" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -177,7 +177,7 @@ void test_not_in_while() {
             done = true;
         }
     }
-    std::cout << count << "\n";
+    std::cout << count << "\n" << ::tpy::check_signals;
 }
 
 // # Run all tests

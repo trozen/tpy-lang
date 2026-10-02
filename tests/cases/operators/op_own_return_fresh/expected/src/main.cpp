@@ -15,9 +15,9 @@ void test_own_dunder_fresh() {
     Acc a = Acc(3);
     Acc b = Acc(4);
     Acc c = ((a) + (b));
-    std::cout << c.n << "\n";
+    std::cout << c.n << "\n" << ::tpy::check_signals;
     c.n = 100;
-    std::cout << a.n << " " << b.n << "\n";
+    std::cout << a.n << " " << b.n << "\n" << ::tpy::check_signals;
 }
 
 // def test_own_augassign_fallback():
@@ -32,7 +32,7 @@ void test_own_augassign_fallback() {
     Acc a = Acc(1);
     Acc b = Acc(2);
     a = (a) + (b);
-    std::cout << a.n << " " << b.n << "\n";
+    std::cout << a.n << " " << b.n << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_concat_fresh():
@@ -49,10 +49,10 @@ void test_list_concat_fresh() {
     std::vector<int32_t> ys = {3};
     std::vector<int32_t> zs = ::tpy::list_concat(xs, ys);
     zs.push_back(9);
-    std::cout << ::tpy::ListPrinter(zs) << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(zs) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> ws = (::tpy::list_concat(xs, ys));
     ws.push_back(7);
-    std::cout << ::tpy::ListPrinter(ws) << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(ws) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_bytes_concat_fresh():
@@ -67,12 +67,12 @@ void test_list_concat_fresh() {
 void test_bytes_concat_fresh() {
     ::tpy::BytesView p = ::tpy::bytes_literal("ab", 2);
     ::tpy::Bytes q = ::tpy::bytes_concat(p, ::tpy::bytes_literal("cd", 2));
-    std::cout << ::tpy::BytesPrinter(q) << " " << ::tpy::BytesPrinter(p) << "\n";
+    std::cout << ::tpy::BytesPrinter(q) << " " << ::tpy::BytesPrinter(p) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes r = (::tpy::bytes_repeat(p, 2));
-    std::cout << ::tpy::BytesPrinter(r) << "\n";
-    std::cout << ::tpy::BytesPrinter((::tpy::bytes_repeat(p, 2))) << "\n";
+    std::cout << ::tpy::BytesPrinter(r) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter((::tpy::bytes_repeat(p, 2))) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("xy", 2));
-    std::cout << ::tpy::BytesPrinter((::tpy::bytes_concat(p, ba))) << "\n";
+    std::cout << ::tpy::BytesPrinter((::tpy::bytes_concat(p, ba))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_bytearray_fresh():
@@ -90,10 +90,10 @@ void test_bytearray_fresh() {
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     ::tpy::ByteArray bb = (::tpy::bytearray_concat(ba, ::tpy::bytes_literal_owned("cd", 2)));
     bb.push_back(33);
-    std::cout << ::tpy::ByteArrayPrinter(bb) << " " << ::tpy::ByteArrayPrinter(ba) << "\n";
-    std::cout << ::tpy::ByteArrayPrinter((::tpy::bytearray_concat(ba, ba))) << "\n";
-    std::cout << ::tpy::ByteArrayPrinter((::tpy::bytearray_repeat(ba, 2))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::bytes_stepped_slice(ba, ::tpy::Slice{std::nullopt, std::nullopt, 2}) == ::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_bool((::tpy::bytes_stepped_slice(ba, ::tpy::Slice{std::nullopt, std::nullopt, -1}) == ::tpy::bytes_literal("ba", 2))) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter(bb) << " " << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ByteArrayPrinter((::tpy::bytearray_concat(ba, ba))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ByteArrayPrinter((::tpy::bytearray_repeat(ba, 2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::bytes_stepped_slice(ba, ::tpy::Slice{std::nullopt, std::nullopt, 2}) == ::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_bool((::tpy::bytes_stepped_slice(ba, ::tpy::Slice{std::nullopt, std::nullopt, -1}) == ::tpy::bytes_literal("ba", 2))) << "\n" << ::tpy::check_signals;
 }
 
 // def main():

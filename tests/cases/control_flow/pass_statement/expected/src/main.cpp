@@ -76,11 +76,11 @@ int32_t pass_in_elif(int32_t x) {
 void test_class_with_pass() {
     Counter obj = Counter(10);
     obj.do_nothing();
-    std::cout << obj.value << "\n";
+    std::cout << obj.value << "\n" << ::tpy::check_signals;
     obj.maybe_increment(1);
-    std::cout << obj.value << "\n";
+    std::cout << obj.value << "\n" << ::tpy::check_signals;
     obj.maybe_increment(0);
-    std::cout << obj.value << "\n";
+    std::cout << obj.value << "\n" << ::tpy::check_signals;
 }
 
 // # Test empty function
@@ -107,13 +107,13 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::main::empty_function();
-    std::cout << "empty_function called" << "\n";
-    std::cout << ::tpyapp::main::function_with_pass_branch(5) << "\n";
-    std::cout << ::tpyapp::main::function_with_pass_branch(-3) << "\n";
-    std::cout << ::tpyapp::main::pass_in_loop() << "\n";
-    std::cout << ::tpyapp::main::pass_in_elif(-1) << "\n";
-    std::cout << ::tpyapp::main::pass_in_elif(0) << "\n";
-    std::cout << ::tpyapp::main::pass_in_elif(1) << "\n";
+    std::cout << "empty_function called" << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::function_with_pass_branch(5) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::function_with_pass_branch(-3) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pass_in_loop() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pass_in_elif(-1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pass_in_elif(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pass_in_elif(1) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_class_with_pass();
 }
 

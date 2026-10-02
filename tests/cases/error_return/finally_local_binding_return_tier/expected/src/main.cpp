@@ -36,21 +36,21 @@ void run(int32_t x) {
                 if (!__try_tmp_2.has_value()) goto __except_1;
                 y = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
-            std::cout << y << "\n";
+            std::cout << y << "\n" << ::tpy::check_signals;
             goto __after_try_1;
             // except MyErr:
             __except_1:;
-            std::cout << "err" << "\n";
+            std::cout << "err" << "\n" << ::tpy::check_signals;
             __after_try_1:;
         } catch (...) {
             note = (::tpy::str_concat("done", (((x < 0)) ? ("!") : ("."))));
-            std::cout << note << "\n";
+            std::cout << note << "\n" << ::tpy::check_signals;
             throw;
         }
         note = (::tpy::str_concat("done", (((x < 0)) ? ("!") : ("."))));
-        std::cout << note << "\n";
+        std::cout << note << "\n" << ::tpy::check_signals;
     }
-    std::cout << note << "\n";
+    std::cout << note << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

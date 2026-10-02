@@ -528,7 +528,7 @@ std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_nested<T_it>:
                 i = -1;
                 __after_try_5:;
             }
-            std::cout << "nested_inner" << " " << i << "\n";
+            std::cout << "nested_inner" << " " << i << "\n" << ::tpy::check_signals;
             __state = S_JOIN_2;
             continue;
         } catch (const ::tpy::StopIteration&) {

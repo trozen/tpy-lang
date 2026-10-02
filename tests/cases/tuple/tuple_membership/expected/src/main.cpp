@@ -16,13 +16,13 @@ int32_t call_count{};
 void test_int_membership() {
     int32_t x = 17;
     if (((x == 1) || (x == 17) || (x == 42))) {
-        std::cout << "found 17" << "\n";
+        std::cout << "found 17" << "\n" << ::tpy::check_signals;
     }
     if ((!((x == 1) || (x == 2) || (x == 3)))) {
-        std::cout << "17 not in small set" << "\n";
+        std::cout << "17 not in small set" << "\n" << ::tpy::check_signals;
     }
     if ((!((x == 17) || (x == 42)))) {
-        std::cout << "should not print" << "\n";
+        std::cout << "should not print" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -35,10 +35,10 @@ void test_int_membership() {
 void test_str_membership() {
     std::string_view s = "hello";
     if (((s == "hello") || (s == "world"))) {
-        std::cout << "found hello" << "\n";
+        std::cout << "found hello" << "\n" << ::tpy::check_signals;
     }
     if ((!((s == "foo") || (s == "bar")))) {
-        std::cout << "hello not in foo/bar" << "\n";
+        std::cout << "hello not in foo/bar" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -51,10 +51,10 @@ void test_str_membership() {
 void test_single_element() {
     int32_t x = 5;
     if (((x == 5))) {
-        std::cout << "single match" << "\n";
+        std::cout << "single match" << "\n" << ::tpy::check_signals;
     }
     if ((!(x == 3))) {
-        std::cout << "single non-match" << "\n";
+        std::cout << "single non-match" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -76,9 +76,9 @@ int32_t get_val() {
 void test_call_lhs() {
     call_count = 0;
     if (({ auto&& __in_lhs = ::tpyapp::main::get_val(); (__in_lhs == 1) || (__in_lhs == 17) || (__in_lhs == 42); })) {
-        std::cout << "call found" << "\n";
+        std::cout << "call found" << "\n" << ::tpy::check_signals;
     }
-    std::cout << call_count << "\n";
+    std::cout << call_count << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

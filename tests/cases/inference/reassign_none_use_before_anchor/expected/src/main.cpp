@@ -15,10 +15,10 @@ void __tpy_init() {
     initialized = true;
 
     x = nullptr;
-    std::cout << ::tpy::print_optional(x) << "\n";
+    std::cout << ::tpy::print_optional(x) << "\n" << ::tpy::check_signals;
     static Point __global_slot_1 = Point(7);
     x = &__global_slot_1;
-    std::cout << x->x << "\n";
+    std::cout << x->x << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

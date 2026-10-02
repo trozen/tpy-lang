@@ -22,20 +22,20 @@ int32_t nested_return() {
                 try {
                     int32_t __tpy_ret_0 = 10;
                     __fin_ran_2 = true;
-                    std::cout << "inner" << "\n";
+                    std::cout << "inner" << "\n" << ::tpy::check_signals;
                     __fin_ran_1 = true;
-                    std::cout << "outer" << "\n";
+                    std::cout << "outer" << "\n" << ::tpy::check_signals;
                     return __tpy_ret_0;
                 } catch (...) {
                     if (!__fin_ran_2) {
-                        std::cout << "inner" << "\n";
+                        std::cout << "inner" << "\n" << ::tpy::check_signals;
                     }
                     throw;
                 }
             }
         } catch (...) {
             if (!__fin_ran_1) {
-                std::cout << "outer" << "\n";
+                std::cout << "outer" << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -63,17 +63,17 @@ void nested_raise() {
                         try {
                             throw ::tpy::ValueError("deep");
                         } catch (...) {
-                            std::cout << "innermost" << "\n";
+                            std::cout << "innermost" << "\n" << ::tpy::check_signals;
                             throw;
                         }
                     }
                 } catch (...) {
-                    std::cout << "middle" << "\n";
+                    std::cout << "middle" << "\n" << ::tpy::check_signals;
                     throw;
                 }
             }
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught" << "\n";
+            std::cout << "caught" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -82,7 +82,7 @@ void nested_raise() {
 //     print(nested_return())
 //     nested_raise()
 void main() {
-    std::cout << ::tpyapp::main::nested_return() << "\n";
+    std::cout << ::tpyapp::main::nested_return() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::nested_raise();
 }
 

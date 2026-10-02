@@ -34,10 +34,10 @@ std::string label(std::optional<::tpyapp::palette::Color> c) {
 //     print(label(C.BLUE))
 //     print(label(None))
 void main() {
-    std::cout << ::tpyapp::main::label(::tpyapp::palette::Color::RED) << "\n";
-    std::cout << ::tpyapp::main::label(::tpyapp::palette::Color::GREEN) << "\n";
-    std::cout << ::tpyapp::main::label(::tpyapp::palette::Color::BLUE) << "\n";
-    std::cout << ::tpyapp::main::label(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::label(::tpyapp::palette::Color::RED) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::label(::tpyapp::palette::Color::GREEN) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::label(::tpyapp::palette::Color::BLUE) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::label(std::nullopt) << "\n" << ::tpy::check_signals;
 }
 
 // # Regression: an exhaustive match over an Optional alias-imported enum

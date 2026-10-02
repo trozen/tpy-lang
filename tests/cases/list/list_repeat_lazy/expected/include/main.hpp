@@ -37,7 +37,7 @@ void consume(T_items& items) {
         int32_t v = ::tpy::unwrap_ref(*__r_1);
         total = ::tpy::add_check<int32_t>(total, v);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

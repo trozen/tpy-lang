@@ -121,7 +121,7 @@ __coro_bump_await bump_await(Inner& i) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "async_one_hop:" << " " << __await_lift_0 << "\n";
+        std::cout << "async_one_hop:" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -155,11 +155,11 @@ __coro_main_coro main_coro(Inner& i) {
 void main() {
     Outer o = Outer();
     ::tpyapp::main::bump_chain(o);
-    std::cout << "free_fn:" << " " << ::tpy::__getitem__(o.inner.boxes, 0).n << " " << ::tpy::__getitem__(o.inner.boxes, 1).n << "\n";
+    std::cout << "free_fn:" << " " << ::tpy::__getitem__(o.inner.boxes, 0).n << " " << ::tpy::__getitem__(o.inner.boxes, 1).n << "\n" << ::tpy::check_signals;
     o.bump();
-    std::cout << "method:" << " " << ::tpy::__getitem__(o.inner.boxes, 0).n << " " << ::tpy::__getitem__(o.inner.boxes, 1).n << "\n";
+    std::cout << "method:" << " " << ::tpy::__getitem__(o.inner.boxes, 0).n << " " << ::tpy::__getitem__(o.inner.boxes, 1).n << "\n" << ::tpy::check_signals;
     o.inner.bump_own();
-    std::cout << "one_hop:" << " " << ::tpy::__getitem__(o.inner.boxes, 0).n << " " << ::tpy::__getitem__(o.inner.boxes, 1).n << "\n";
+    std::cout << "one_hop:" << " " << ::tpy::__getitem__(o.inner.boxes, 0).n << " " << ::tpy::__getitem__(o.inner.boxes, 1).n << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::bump_one_hop(o.inner);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -167,10 +167,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "frame_one_hop:" << " " << n << "\n";
+            std::cout << "frame_one_hop:" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "after_frame:" << " " << ::tpy::__getitem__(o.inner.boxes, 0).n << " " << ::tpy::__getitem__(o.inner.boxes, 1).n << "\n";
+    std::cout << "after_frame:" << " " << ::tpy::__getitem__(o.inner.boxes, 0).n << " " << ::tpy::__getitem__(o.inner.boxes, 1).n << "\n" << ::tpy::check_signals;
     {
         auto __src_2 = ::tpyapp::main::gen_nosusp(o);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -178,12 +178,12 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t t = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "frame_nosusp:" << " " << t << "\n";
+            std::cout << "frame_nosusp:" << " " << t << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "after_nosusp:" << " " << ::tpy::__getitem__(o.inner.boxes, 0).n << " " << ::tpy::__getitem__(o.inner.boxes, 1).n << "\n";
+    std::cout << "after_nosusp:" << " " << ::tpy::__getitem__(o.inner.boxes, 0).n << " " << ::tpy::__getitem__(o.inner.boxes, 1).n << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro(o.inner)));
-    std::cout << "after_async:" << " " << ::tpy::__getitem__(o.inner.boxes, 0).n << " " << ::tpy::__getitem__(o.inner.boxes, 1).n << "\n";
+    std::cout << "after_async:" << " " << ::tpy::__getitem__(o.inner.boxes, 0).n << " " << ::tpy::__getitem__(o.inner.boxes, 1).n << "\n" << ::tpy::check_signals;
 }
 
 // import asyncio

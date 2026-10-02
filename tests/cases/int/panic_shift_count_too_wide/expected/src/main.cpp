@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     int8_t x = 1;
     int64_t k = 256;
-    std::cout << static_cast<int>((::tpy::lshift_check<int8_t>(x, k))) << "\n";
+    std::cout << static_cast<int>((::tpy::lshift_check<int8_t>(x, k))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

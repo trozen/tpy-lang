@@ -94,7 +94,7 @@ inline void Holder::swap(std::vector<int32_t>& a, std::vector<int32_t>& b) const
     std::vector<int32_t>* x = &(a);
     x = &(b);
     x->push_back(9);
-    std::cout << "method" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << " " << this->total << "\n";
+    std::cout << "method" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << " " << this->total << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

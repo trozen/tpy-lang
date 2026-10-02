@@ -14,8 +14,8 @@ namespace tpyapp::main {
 void main() {
     ::tpystd::tplib::box::Box<int32_t> b = ::tpystd::tplib::box::Box<int32_t>(42);
     int32_t val = std::move(b).take();
-    std::cout << val << "\n";
-    std::cout << ::tpystd::tplib::box::Box<int32_t>(99).take() << "\n";
+    std::cout << val << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::tplib::box::Box<int32_t>(99).take() << "\n" << ::tpy::check_signals;
 }
 
 // # Test Box[T].take() -- consuming method that moves out the value and destroys the box.

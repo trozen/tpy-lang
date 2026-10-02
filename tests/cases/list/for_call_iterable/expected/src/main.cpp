@@ -51,7 +51,7 @@ void own_returns() {
         int32_t k = *__beg_1;
         total = ::tpy::add_check<int32_t>(total, k);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // def bump(cells: list[Cell]) -> None:
@@ -94,9 +94,9 @@ void main() {
     ::tpyapp::main::own_returns();
     std::vector<Cell> cells = {Cell(1), Cell(2)};
     ::tpyapp::main::bump(cells);
-    std::cout << ::tpy::__getitem__(cells, 0).v << " " << ::tpy::__getitem__(cells, 1).v << "\n";
+    std::cout << ::tpy::__getitem__(cells, 0).v << " " << ::tpy::__getitem__(cells, 1).v << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = {7, 8};
-    std::cout << ::tpyapp::main::readonly_sum(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::readonly_sum(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -48,7 +48,7 @@ __coro_setter setter(::tpystd::asyncio::Event& e) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "fast" << " " << ::tpy::print_bool(r) << "\n";
+        std::cout << "fast" << " " << ::tpy::print_bool(r) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -83,7 +83,7 @@ __coro_fast fast() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "slow" << " " << ::tpy::print_bool(r) << "\n";
+        std::cout << "slow" << " " << ::tpy::print_bool(r) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

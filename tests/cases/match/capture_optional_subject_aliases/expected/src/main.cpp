@@ -21,7 +21,7 @@ void main() {
         q->v = ::tpy::BigInt(99);
     }
     if ((b != nullptr)) {
-        std::cout << b->v << "\n";
+        std::cout << b->v << "\n" << ::tpy::check_signals;
     }
 }
 

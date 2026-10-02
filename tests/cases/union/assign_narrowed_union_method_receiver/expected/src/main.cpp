@@ -11,8 +11,8 @@ namespace tpyapp::main {
 void main() {
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(5.0);
     ::tpy::Union<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << ::tpy::print_float((*std::get<Circle*>(c)).area()) << "\n";
-    std::cout << ::tpy::print_float((*std::get<Circle*>(c)).scaled(2)) << "\n";
+    std::cout << ::tpy::print_float((*std::get<Circle*>(c)).area()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float((*std::get<Circle*>(c)).scaled(2)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -65,7 +65,7 @@ Color next_color(Color c) {
 // def print_color(c: Color) -> None:
 //     print(c)
 void print_color(Color c) {
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

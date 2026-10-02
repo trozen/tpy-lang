@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(fmt.format(text="world", width=10))
 void main() {
     Formatter fmt = Formatter();
-    std::cout << fmt.format("hello") << "\n";
-    std::cout << fmt.format("hello", 0, "*") << "\n";
-    std::cout << fmt.format("world", 10) << "\n";
+    std::cout << fmt.format("hello") << "\n" << ::tpy::check_signals;
+    std::cout << fmt.format("hello", 0, "*") << "\n" << ::tpy::check_signals;
+    std::cout << fmt.format("world", 10) << "\n" << ::tpy::check_signals;
 }
 
 // main()

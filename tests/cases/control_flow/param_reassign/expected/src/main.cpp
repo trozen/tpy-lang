@@ -45,9 +45,9 @@ std::string repeat_str(std::string_view s, const ::tpy::BigInt& n) {
 //     print(gcd(100, 75))
 //     print(repeat_str("ab", 3))
 void main() {
-    std::cout << ::tpyapp::main::gcd(::tpy::BigInt(48), ::tpy::BigInt(18)) << "\n";
-    std::cout << ::tpyapp::main::gcd(::tpy::BigInt(100), ::tpy::BigInt(75)) << "\n";
-    std::cout << ::tpyapp::main::repeat_str("ab", ::tpy::BigInt(3)) << "\n";
+    std::cout << ::tpyapp::main::gcd(::tpy::BigInt(48), ::tpy::BigInt(18)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::gcd(::tpy::BigInt(100), ::tpy::BigInt(75)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::repeat_str("ab", ::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

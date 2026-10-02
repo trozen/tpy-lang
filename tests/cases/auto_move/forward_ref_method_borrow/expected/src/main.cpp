@@ -19,7 +19,7 @@ int32_t drop(std::vector<P>&& xs) {
 //     print(p.run())
 void main() {
     Picker p = Picker();
-    std::cout << p.run() << "\n";
+    std::cout << p.run() << "\n" << ::tpy::check_signals;
 }
 
 // main()

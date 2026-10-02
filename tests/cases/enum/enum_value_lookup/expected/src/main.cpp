@@ -66,11 +66,11 @@ Color from_int(const ::tpy::BigInt& v) {
 //     # BigInt (int) coerces to underlying type
 //     print(from_int(2))
 void main() {
-    std::cout << ::tpy::EnumUtil<Color>::from_value(0) << "\n";
-    std::cout << ::tpy::EnumUtil<Color>::from_value(1) << "\n";
-    std::cout << ::tpy::EnumUtil<Color>::from_value(2) << "\n";
-    std::cout << ::tpyapp::main::lookup(1) << "\n";
-    std::cout << ::tpyapp::main::from_int(::tpy::BigInt(2)) << "\n";
+    std::cout << ::tpy::EnumUtil<Color>::from_value(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<Color>::from_value(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<Color>::from_value(2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::lookup(1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::from_int(::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
 }
 
 // # Test enum construction from integer value

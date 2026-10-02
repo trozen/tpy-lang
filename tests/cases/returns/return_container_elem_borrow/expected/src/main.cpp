@@ -39,15 +39,15 @@ void main() {
     Flat f = Flat({{1, 2}, {3, 4}});
     std::vector<int32_t>& row = f.get_data(1);
     ::tpy::__setitem__(row, 0, 99);
-    std::cout << ::tpy::__getitem__(::tpy::__getitem__(f.data, 1), 0) << "\n";
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(f.data, 1), 0) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> rows = {{5, 6}, {7, 8}};
     std::vector<int32_t>& got = ::tpyapp::main::pick(rows, 0);
     ::tpy::__setitem__(got, 1, 60);
-    std::cout << ::tpy::__getitem__(::tpy::__getitem__(rows, 0), 1) << "\n";
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(rows, 0), 1) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<std::vector<int32_t>>> cube = {{{1, 2}}};
     std::vector<int32_t>& inner = ::tpyapp::main::pick_nested(cube, 0, 0);
     ::tpy::__setitem__(inner, 0, 42);
-    std::cout << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(cube, 0), 0), 0) << "\n";
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(cube, 0), 0), 0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

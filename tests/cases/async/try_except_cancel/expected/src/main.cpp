@@ -22,7 +22,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "not reached" << "\n";
+        std::cout << "not reached" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -73,7 +73,7 @@ __coro_worker worker() {
             continue;
         } catch (const ::tpy::CancelledError&) {
             __sub_1 = nullptr;
-            std::cout << "caught" << "\n";
+            std::cout << "caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

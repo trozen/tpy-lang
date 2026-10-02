@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(p.z)
 void main() {
     Point p = Point(3, 4);
-    std::cout << p.z << "\n";
+    std::cout << p.z << "\n" << ::tpy::check_signals;
 }
 
 // main()

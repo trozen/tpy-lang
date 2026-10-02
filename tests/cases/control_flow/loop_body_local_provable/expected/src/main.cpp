@@ -825,7 +825,7 @@ void else_tuple_str(int32_t n) {
         k = std::get<1>(__tup_1);
     }
     __after_else_0:;
-    std::cout << "else_tuple_str" << " " << s << " " << k << "\n";
+    std::cout << "else_tuple_str" << " " << s << " " << k << "\n" << ::tpy::check_signals;
 }
 
 // # else clause, reference type -- mutating the else binding after the loop must
@@ -1052,10 +1052,10 @@ __coro_else_async else_async(bool flag) {
 //     print("else_async", asyncio.run(else_async(False)),
 //           asyncio.run(else_async(True)))
 void main() {
-    std::cout << "free_fn" << " " << ::tpyapp::main::free_fn() << "\n";
+    std::cout << "free_fn" << " " << ::tpyapp::main::free_fn() << "\n" << ::tpy::check_signals;
     Holder h = Holder();
-    std::cout << "constructor" << " " << h.total << "\n";
-    std::cout << "method" << " " << h.bump() << "\n";
+    std::cout << "constructor" << " " << h.total << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << h.bump() << "\n" << ::tpy::check_signals;
     __gen_gen_pos g = ::tpyapp::main::gen_pos();
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -1063,43 +1063,43 @@ void main() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t y = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "generator" << " " << y << "\n";
+        std::cout << "generator" << " " << y << "\n" << ::tpy::check_signals;
     }
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_pos())) << "\n";
-    std::cout << "nested_def" << " " << ::tpyapp::main::nested_def_pos() << "\n";
-    std::cout << "nested_def_in_body" << " " << ::tpyapp::main::nested_def_in_body() << "\n";
-    std::cout << "if_arm" << " " << ::tpyapp::main::if_arm(true) << " " << ::tpyapp::main::if_arm(false) << "\n";
-    std::cout << "nested_loops" << " " << ::tpyapp::main::nested_loops() << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_pos())) << "\n" << ::tpy::check_signals;
+    std::cout << "nested_def" << " " << ::tpyapp::main::nested_def_pos() << "\n" << ::tpy::check_signals;
+    std::cout << "nested_def_in_body" << " " << ::tpyapp::main::nested_def_in_body() << "\n" << ::tpy::check_signals;
+    std::cout << "if_arm" << " " << ::tpyapp::main::if_arm(true) << " " << ::tpyapp::main::if_arm(false) << "\n" << ::tpy::check_signals;
+    std::cout << "nested_loops" << " " << ::tpyapp::main::nested_loops() << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
-    std::cout << "nested_outer_unprovable" << " " << ::tpyapp::main::nested_outer_unprovable(__tmp_1) << "\n";
-    std::cout << "while_parity" << " " << ::tpyapp::main::while_parity() << "\n";
-    std::cout << "literal_local" << " " << ::tpyapp::main::literal_local() << "\n";
-    std::cout << "narrowed_bound" << " " << ::tpyapp::main::narrowed_bound(4) << "\n";
-    std::cout << "literal_head" << " " << ::tpyapp::main::literal_head() << "\n";
-    std::cout << "range_step_pos" << " " << ::tpyapp::main::range_step_pos() << "\n";
-    std::cout << "range_step_neg" << " " << ::tpyapp::main::range_step_neg() << "\n";
+    std::cout << "nested_outer_unprovable" << " " << ::tpyapp::main::nested_outer_unprovable(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "while_parity" << " " << ::tpyapp::main::while_parity() << "\n" << ::tpy::check_signals;
+    std::cout << "literal_local" << " " << ::tpyapp::main::literal_local() << "\n" << ::tpy::check_signals;
+    std::cout << "narrowed_bound" << " " << ::tpyapp::main::narrowed_bound(4) << "\n" << ::tpy::check_signals;
+    std::cout << "literal_head" << " " << ::tpyapp::main::literal_head() << "\n" << ::tpy::check_signals;
+    std::cout << "range_step_pos" << " " << ::tpyapp::main::range_step_pos() << "\n" << ::tpy::check_signals;
+    std::cout << "range_step_neg" << " " << ::tpyapp::main::range_step_neg() << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
-    std::cout << "pre_assigned" << " " << ::tpyapp::main::pre_assigned(__tmp_2) << "\n";
-    std::cout << "loop_var_after" << " " << ::tpyapp::main::loop_var_after() << "\n";
-    std::cout << "with_body" << " " << ::tpyapp::main::with_body() << "\n";
-    std::cout << "try_finally" << " " << ::tpyapp::main::try_finally() << "\n";
-    std::cout << "match_arm" << " " << ::tpyapp::main::match_arm(1) << "\n";
-    std::cout << "break_above_bind" << " " << ::tpyapp::main::break_above_bind(true) << " " << ::tpyapp::main::break_above_bind(false) << "\n";
-    std::cout << "while_true_break" << " " << ::tpyapp::main::while_true_break() << "\n";
-    std::cout << "while_walrus_break" << " " << ::tpyapp::main::while_walrus_break() << "\n";
-    std::cout << "while_walrus_and" << " " << ::tpyapp::main::while_walrus_and(true) << " " << ::tpyapp::main::while_walrus_and(false) << "\n";
-    std::cout << "while_walrus_or" << " " << ::tpyapp::main::while_walrus_or() << "\n";
-    std::cout << "while_walrus_and_subscript" << " " << ::tpyapp::main::while_walrus_and_subscript("aba xa") << "\n";
-    std::cout << "while_walrus_or_else" << " " << ::tpyapp::main::while_walrus_or_else() << "\n";
-    std::cout << "while_not_or_body" << " " << ::tpyapp::main::while_not_or_body() << "\n";
-    std::cout << "while_nested_or_after" << " " << ::tpyapp::main::while_nested_or_after(true) << " " << ::tpyapp::main::while_nested_or_after(false) << "\n";
-    std::cout << "if_head_walrus" << " " << ::tpyapp::main::if_head_walrus(true) << " " << ::tpyapp::main::if_head_walrus(false) << "\n";
+    std::cout << "pre_assigned" << " " << ::tpyapp::main::pre_assigned(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "loop_var_after" << " " << ::tpyapp::main::loop_var_after() << "\n" << ::tpy::check_signals;
+    std::cout << "with_body" << " " << ::tpyapp::main::with_body() << "\n" << ::tpy::check_signals;
+    std::cout << "try_finally" << " " << ::tpyapp::main::try_finally() << "\n" << ::tpy::check_signals;
+    std::cout << "match_arm" << " " << ::tpyapp::main::match_arm(1) << "\n" << ::tpy::check_signals;
+    std::cout << "break_above_bind" << " " << ::tpyapp::main::break_above_bind(true) << " " << ::tpyapp::main::break_above_bind(false) << "\n" << ::tpy::check_signals;
+    std::cout << "while_true_break" << " " << ::tpyapp::main::while_true_break() << "\n" << ::tpy::check_signals;
+    std::cout << "while_walrus_break" << " " << ::tpyapp::main::while_walrus_break() << "\n" << ::tpy::check_signals;
+    std::cout << "while_walrus_and" << " " << ::tpyapp::main::while_walrus_and(true) << " " << ::tpyapp::main::while_walrus_and(false) << "\n" << ::tpy::check_signals;
+    std::cout << "while_walrus_or" << " " << ::tpyapp::main::while_walrus_or() << "\n" << ::tpy::check_signals;
+    std::cout << "while_walrus_and_subscript" << " " << ::tpyapp::main::while_walrus_and_subscript("aba xa") << "\n" << ::tpy::check_signals;
+    std::cout << "while_walrus_or_else" << " " << ::tpyapp::main::while_walrus_or_else() << "\n" << ::tpy::check_signals;
+    std::cout << "while_not_or_body" << " " << ::tpyapp::main::while_not_or_body() << "\n" << ::tpy::check_signals;
+    std::cout << "while_nested_or_after" << " " << ::tpyapp::main::while_nested_or_after(true) << " " << ::tpyapp::main::while_nested_or_after(false) << "\n" << ::tpy::check_signals;
+    std::cout << "if_head_walrus" << " " << ::tpyapp::main::if_head_walrus(true) << " " << ::tpyapp::main::if_head_walrus(false) << "\n" << ::tpy::check_signals;
     std::vector<Cell> cells = {Cell(3), Cell(4)};
-    std::cout << "search" << " " << ::tpyapp::main::search(cells, 4) << " " << ::tpyapp::main::search(cells, 99) << "\n";
+    std::cout << "search" << " " << ::tpyapp::main::search(cells, 4) << " " << ::tpyapp::main::search(cells, 99) << "\n" << ::tpy::check_signals;
     ElseHolder eh = ElseHolder(0);
-    std::cout << "else_constructor" << " " << eh.tag << "\n";
-    std::cout << "else_method" << " " << eh.widen(0) << "\n";
-    std::cout << "else_match_arm" << " " << ::tpyapp::main::else_match_arm(1) << "\n";
+    std::cout << "else_constructor" << " " << eh.tag << "\n" << ::tpy::check_signals;
+    std::cout << "else_method" << " " << eh.widen(0) << "\n" << ::tpy::check_signals;
+    std::cout << "else_match_arm" << " " << ::tpyapp::main::else_match_arm(1) << "\n" << ::tpy::check_signals;
     int32_t er;
     {
         {
@@ -1108,22 +1108,22 @@ void main() {
             er = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // else:
-        std::cout << "else_error_return" << " " << er << "\n";
+        std::cout << "else_error_return" << " " << er << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except NotFound:
         __except_1:;
-        std::cout << "else_error_return" << " " << "not found" << "\n";
+        std::cout << "else_error_return" << " " << "not found" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     ::tpyapp::main::else_tuple_str(0);
-    std::cout << "else_free_fn" << " " << ::tpyapp::main::else_free_fn(0) << " " << ::tpyapp::main::else_free_fn(2) << "\n";
-    std::cout << "else_while" << " " << ::tpyapp::main::else_while(0) << " " << ::tpyapp::main::else_while(2) << "\n";
-    std::cout << "else_enum" << " " << ::tpyapp::main::else_enum() << "\n";
-    std::cout << "else_nested_def" << " " << ::tpyapp::main::else_nested_def(0) << "\n";
-    std::cout << "else_ref" << " " << ::tpyapp::main::else_ref() << "\n";
-    std::cout << "else_join" << " " << ::tpyapp::main::else_join(0) << " " << ::tpyapp::main::else_join(2) << "\n";
-    std::cout << "else_read_in_else" << " " << ::tpyapp::main::else_read_in_else(0) << "\n";
-    std::cout << "else_inner_break" << " " << ::tpyapp::main::else_inner_break() << "\n";
+    std::cout << "else_free_fn" << " " << ::tpyapp::main::else_free_fn(0) << " " << ::tpyapp::main::else_free_fn(2) << "\n" << ::tpy::check_signals;
+    std::cout << "else_while" << " " << ::tpyapp::main::else_while(0) << " " << ::tpyapp::main::else_while(2) << "\n" << ::tpy::check_signals;
+    std::cout << "else_enum" << " " << ::tpyapp::main::else_enum() << "\n" << ::tpy::check_signals;
+    std::cout << "else_nested_def" << " " << ::tpyapp::main::else_nested_def(0) << "\n" << ::tpy::check_signals;
+    std::cout << "else_ref" << " " << ::tpyapp::main::else_ref() << "\n" << ::tpy::check_signals;
+    std::cout << "else_join" << " " << ::tpyapp::main::else_join(0) << " " << ::tpyapp::main::else_join(2) << "\n" << ::tpy::check_signals;
+    std::cout << "else_read_in_else" << " " << ::tpyapp::main::else_read_in_else(0) << "\n" << ::tpy::check_signals;
+    std::cout << "else_inner_break" << " " << ::tpyapp::main::else_inner_break() << "\n" << ::tpy::check_signals;
     {
         auto __src_2 = ::tpyapp::main::else_gen(false);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -1131,7 +1131,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t y = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "else_gen" << " " << y << "\n";
+            std::cout << "else_gen" << " " << y << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -1141,10 +1141,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t y = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "else_gen_broke" << " " << y << "\n";
+            std::cout << "else_gen_broke" << " " << y << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "else_async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::else_async(false))) << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::else_async(true))) << "\n";
+    std::cout << "else_async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::else_async(false))) << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::else_async(true))) << "\n" << ::tpy::check_signals;
 }
 
 // # A name first bound in a loop CLAUSE -- body or `else` -- is assigned after
@@ -1180,7 +1180,7 @@ void __tpy_init() {
     for (int32_t i = 0; i < 2; ++i) {
         m = (::tpy::add_check<int32_t>(i, 40));
     }
-    std::cout << "module_level" << " " << m << "\n";
+    std::cout << "module_level" << " " << m << "\n" << ::tpy::check_signals;
     int32_t mv;
     for (int32_t mi = 0; mi < 2; ++mi) {
     }
@@ -1188,7 +1188,7 @@ void __tpy_init() {
         mv = 41;
     }
     __after_else_1:;
-    std::cout << "module_level_else" << " " << mv << "\n";
+    std::cout << "module_level_else" << " " << mv << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

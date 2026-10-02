@@ -13,7 +13,7 @@ int32_t take_point(Point&& p) {
 // def use_point(p: Point) -> None:
 //     print(p.x)
 void use_point(const Point& p) {
-    std::cout << p.x << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
 }
 
 // def main():
@@ -29,7 +29,7 @@ void main() {
     Point __tmp_1 = p;
     int32_t result = ::tpyapp::main::take_point(std::move(__tmp_1));
     ::tpyapp::main::use_point(p);
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
 }
 
 // main()

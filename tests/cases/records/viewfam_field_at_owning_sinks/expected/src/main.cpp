@@ -35,7 +35,7 @@ void sec_insert() {
     ::tpy::list_insert(accs, 0, std::string(o.inner.sv));
     i.tag = ::tpy::bytes_literal_owned("ZZ", 2);
     i.name = "ZZ";
-    std::cout << "insert" << " " << ::tpy::BytesPrinter(::tpy::__getitem__(accb, 0)) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(accb, 1)) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(accb, 2)) << " " << ::tpy::__getitem__(accs, 0) << " " << ::tpy::__getitem__(accs, 1) << " " << ::tpy::BytesPrinter(i.tag) << " " << i.name << "\n";
+    std::cout << "insert" << " " << ::tpy::BytesPrinter(::tpy::__getitem__(accb, 0)) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(accb, 1)) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(accb, 2)) << " " << ::tpy::__getitem__(accs, 0) << " " << ::tpy::__getitem__(accs, 1) << " " << ::tpy::BytesPrinter(i.tag) << " " << i.name << "\n" << ::tpy::check_signals;
 }
 
 // # free function: the container-literal element, field as dict KEY and as VALUE
@@ -61,7 +61,7 @@ void sec_literals() {
     ::tpy::ordered_map<std::string, ::tpy::Bytes> dv = ::tpy::ordered_map<std::string, ::tpy::Bytes>({{"k", i.tag}});
     i.tag = ::tpy::bytes_literal_owned("ZZ", 2);
     i.name = "ZZ";
-    std::cout << "lit" << " " << ::tpy::BytesPrinter(::tpy::__getitem__(lb, 0)) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(lb, 1)) << " " << ::tpy::__getitem__(ls, 0) << " " << ::tpy::__getitem__(ls, 1) << " " << ::tpy::__len__(st) << " " << ::tpy::__getitem__(dk, "s1") << " " << ::tpy::BytesPrinter(::tpy::__getitem__(dv, "k")) << " " << ::tpy::BytesPrinter(i.tag) << " " << i.name << "\n";
+    std::cout << "lit" << " " << ::tpy::BytesPrinter(::tpy::__getitem__(lb, 0)) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(lb, 1)) << " " << ::tpy::__getitem__(ls, 0) << " " << ::tpy::__getitem__(ls, 1) << " " << ::tpy::__len__(st) << " " << ::tpy::__getitem__(dk, "s1") << " " << ::tpy::BytesPrinter(::tpy::__getitem__(dv, "k")) << " " << ::tpy::BytesPrinter(i.tag) << " " << i.name << "\n" << ::tpy::check_signals;
 }
 
 // # free function: the subscript-assign VALUE and KEY slots
@@ -88,7 +88,7 @@ void sec_setitem() {
     ::tpy::__setitem__(dk, o.inner.sv, 2);
     i.tag = ::tpy::bytes_literal_owned("ZZ", 2);
     i.name = "ZZ";
-    std::cout << "setitem" << " " << ::tpy::BytesPrinter(::tpy::__getitem__(dv, "k")) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(dv, "j")) << " " << ::tpy::__getitem__(dk, "s1") << " " << ::tpy::__getitem__(dk, "v2") << " " << ::tpy::BytesPrinter(i.tag) << " " << i.name << "\n";
+    std::cout << "setitem" << " " << ::tpy::BytesPrinter(::tpy::__getitem__(dv, "k")) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(dv, "j")) << " " << ::tpy::__getitem__(dk, "s1") << " " << ::tpy::__getitem__(dk, "v2") << " " << ::tpy::BytesPrinter(i.tag) << " " << i.name << "\n" << ::tpy::check_signals;
 }
 
 
@@ -206,7 +206,7 @@ void sec_comp(std::vector<Inner>& rows) {
     std::string joined = ::tpy::str_join("-", ::tpyapp::main::__genexpr_sec_comp_1(rows));
     Inner& r0 = ::tpy::__getitem__(rows, 0);
     r0.name = "ZZ";
-    std::cout << "comp" << " " << ::tpy::__getitem__(parts, 0) << " " << ::tpy::__getitem__(parts, 1) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(tags, 0)) << " " << ::tpy::__len__(uniq) << " " << ::tpy::__getitem__(bymap, "s1") << " " << joined << " " << ::tpy::__getitem__(rows, 0).name << "\n";
+    std::cout << "comp" << " " << ::tpy::__getitem__(parts, 0) << " " << ::tpy::__getitem__(parts, 1) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(tags, 0)) << " " << ::tpy::__len__(uniq) << " " << ::tpy::__getitem__(bymap, "s1") << " " << joined << " " << ::tpy::__getitem__(rows, 0).name << "\n" << ::tpy::check_signals;
 }
 
 // # with body / try-finally / match arm / closure
@@ -249,16 +249,16 @@ void sec_blocks(const Outer& o) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << "with" << " " << ::tpy::BytesPrinter(::tpy::__getitem__((*acc), 0)) << " " << g.hits << "\n";
+    std::cout << "with" << " " << ::tpy::BytesPrinter(::tpy::__getitem__((*acc), 0)) << " " << g.hits << "\n" << ::tpy::check_signals;
     std::optional<std::vector<std::string>> ls;
     {
         try {
             ls = {o.inner.name};
         } catch (...) {
-            std::cout << "try" << " " << ::tpy::__getitem__((*ls), 0) << "\n";
+            std::cout << "try" << " " << ::tpy::__getitem__((*ls), 0) << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "try" << " " << ::tpy::__getitem__((*ls), 0) << "\n";
+        std::cout << "try" << " " << ::tpy::__getitem__((*ls), 0) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
     auto& __match_subject_1 = o.inner.n;
@@ -272,12 +272,12 @@ void sec_blocks(const Outer& o) {
         break;
     }
     }
-    std::cout << "match" << " " << ::tpy::__getitem__(d, "s2") << "\n";
+    std::cout << "match" << " " << ::tpy::__getitem__(d, "s2") << "\n" << ::tpy::check_signals;
     auto inner_build = [&o]() -> std::string {
         std::vector<std::string> acc2 = {o.inner.name};
         return ::tpy::__getitem__(acc2, 0);
     };
-    std::cout << "closure" << " " << inner_build() << "\n";
+    std::cout << "closure" << " " << inner_build() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -304,7 +304,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen yield" << " " << v << "\n";
+            std::cout << "gen yield" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     std::vector<Inner> __tmp_2 = {Inner(::tpy::bytes_literal_owned("b1", 2), "s1", "v1", 1), Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2)};

@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(s.lo)
 void main() {
     Split s = Split(::tpy::BigInt(3725), ::tpy::BigInt(10));
-    std::cout << s.hi << "\n";
-    std::cout << s.lo << "\n";
+    std::cout << s.hi << "\n" << ::tpy::check_signals;
+    std::cout << s.lo << "\n" << ::tpy::check_signals;
 }
 
 

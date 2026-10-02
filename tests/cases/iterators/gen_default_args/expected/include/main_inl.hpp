@@ -196,7 +196,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_shapes::__next__()
         return __self.base;
     }
     case S_RESUME_0: {  // after: yield self.base
-        std::cout << "shapes" << " " << tag << " " << ::tpy::print_bool(flag) << " " << ::tpy::print_float(ratio) << " " << ::tpy::print_bool((m == Mode::B)) << " " << (((r == nullptr)) ? (-1) : (r->v)) << " " << w << " " << neg << " " << f << "\n";
+        std::cout << "shapes" << " " << tag << " " << ::tpy::print_bool(flag) << " " << ::tpy::print_float(ratio) << " " << ::tpy::print_bool((m == Mode::B)) << " " << (((r == nullptr)) ? (-1) : (r->v)) << " " << w << " " << neg << " " << f << "\n" << ::tpy::check_signals;
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(__self.base, 1));
     }

@@ -35,14 +35,14 @@ void main() {
     std::array<std::tuple<int32_t, int32_t>, 2> pairs = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
     std::tuple<int32_t, int32_t> k1 = std::tuple<int32_t, int32_t>{1, 2};
     std::tuple<int32_t, int32_t> k2 = std::tuple<int32_t, int32_t>{9, 9};
-    std::cout << ::tpy::print_bool((d.contains(k1))) << " " << ::tpy::print_bool((d.contains(k2))) << "\n";
-    std::cout << ::tpy::print_bool((!(d.contains(k1)))) << " " << ::tpy::print_bool((!(d.contains(k2)))) << "\n";
-    std::cout << ::tpy::print_bool((s.contains(k1))) << " " << ::tpy::print_bool((s.contains(k2))) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::seq_contains(d, std::tuple<int32_t, int32_t>{1, 2})) << " " << ::tpy::print_bool(::tpy::seq_contains(d, std::tuple<int32_t, int32_t>{9, 9})) << "\n";
-    std::cout << ::tpy::__getitem__(d2, std::tuple<int32_t, int32_t>{1, 2}) << "\n";
-    std::cout << std::get<0>(::tpy::__getitem__(pairs, 0)) << " " << std::get<0>(::tpy::__getitem__(pairs, 1)) << "\n";
+    std::cout << ::tpy::print_bool((d.contains(k1))) << " " << ::tpy::print_bool((d.contains(k2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!(d.contains(k1)))) << " " << ::tpy::print_bool((!(d.contains(k2)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((s.contains(k1))) << " " << ::tpy::print_bool((s.contains(k2))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::seq_contains(d, std::tuple<int32_t, int32_t>{1, 2})) << " " << ::tpy::print_bool(::tpy::seq_contains(d, std::tuple<int32_t, int32_t>{9, 9})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d2, std::tuple<int32_t, int32_t>{1, 2}) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<0>(::tpy::__getitem__(pairs, 0)) << " " << std::get<0>(::tpy::__getitem__(pairs, 1)) << "\n" << ::tpy::check_signals;
     int32_t x = 2;
-    std::cout << ::tpy::print_bool(((x == 1) || (x == 2) || (x == 3))) << " " << ::tpy::print_bool(((x == 4) || (x == 5) || (x == 6))) << "\n";
+    std::cout << ::tpy::print_bool(((x == 1) || (x == 2) || (x == 3))) << " " << ::tpy::print_bool(((x == 4) || (x == 5) || (x == 6))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

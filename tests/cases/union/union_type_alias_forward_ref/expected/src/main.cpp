@@ -30,8 +30,8 @@ void main() {
     ::tpy::Union<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
     Shape __slot_2 = Rect(3);
     ::tpy::Union<Circle*, Rect*> r = ::tpy::to_ptr_variant(__slot_2);
-    std::cout << ::tpyapp::main::describe(c.as_const()) << "\n";
-    std::cout << ::tpyapp::main::describe(r.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(c.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(r.as_const()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

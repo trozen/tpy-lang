@@ -33,9 +33,9 @@ void main() {
                 try {
                     stored.__deref__().__raise__();
                 } catch (const ::tpy::FileNotFoundError& f) {
-                    std::cout << "caught clone as FileNotFoundError:" << " " << f.error_number << "\n";
+                    std::cout << "caught clone as FileNotFoundError:" << " " << f.error_number << "\n" << ::tpy::check_signals;
                 } catch (const ::tpy::OSError&) {
-                    std::cout << "WRONG: mapping lost through clone" << "\n";
+                    std::cout << "WRONG: mapping lost through clone" << "\n" << ::tpy::check_signals;
                 }
             }
         }
@@ -46,9 +46,9 @@ void main() {
         try {
             boxed.__deref__().__raise__();
         } catch (const ::tpy::FileExistsError& f) {
-            std::cout << "unraised clone maps at raise:" << " " << f.error_number << "\n";
+            std::cout << "unraised clone maps at raise:" << " " << f.error_number << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OSError&) {
-            std::cout << "WRONG: unraised clone did not map" << "\n";
+            std::cout << "WRONG: unraised clone did not map" << "\n" << ::tpy::check_signals;
         }
     }
 }

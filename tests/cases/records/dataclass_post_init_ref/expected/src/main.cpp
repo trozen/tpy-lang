@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Bag b = Bag(::tpy::BigInt(5));
     b.items.push_back(99);
-    std::cout << ::tpy::ListPrinter(b.items) << "\n";
+    std::cout << ::tpy::ListPrinter(b.items) << "\n" << ::tpy::check_signals;
 }
 
 // # __post_init__ can populate a reference-type (list) field. The list it builds is

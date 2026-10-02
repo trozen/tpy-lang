@@ -82,7 +82,7 @@ inline Base& Base::operator=(Base&& other) noexcept {
 inline Base::~Base() {
     if (!this->__tpy_owned_) return;
     try {
-        std::cout << "base del" << " " << this->_b << "\n";
+        std::cout << "base del" << " " << this->_b << "\n" << ::tpy::check_signals;
         throw ::tpy::ValueError("base cleanup failed");
     } catch (const std::exception& __del_exc) {
         ::tpy::report_del_exception(__del_exc);
@@ -116,7 +116,7 @@ inline Child& Child::operator=(Child&& other) noexcept {
 //     super().__del__()
 inline Child::~Child() {
     if (!this->__tpy_owned_) return;
-    std::cout << "child del" << " " << this->_c << "\n";
+    std::cout << "child del" << " " << this->_c << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

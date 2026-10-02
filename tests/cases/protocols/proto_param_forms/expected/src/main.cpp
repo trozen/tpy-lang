@@ -42,29 +42,29 @@ void main() {
     Impl impl = Impl();
     Rec r = Rec(1);
     int32_t seen = ::tpyapp::main::free_bump(impl, r);
-    std::cout << "rec" << " " << seen << " " << r.n << "\n";
+    std::cout << "rec" << " " << seen << " " << r.n << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = {1, 2};
     int32_t grown = ::tpyapp::main::free_grow(impl, xs);
-    std::cout << "list" << " " << grown << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << "list" << " " << grown << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> ro = {1, 2, 3};
-    std::cout << "ro_list" << " " << ::tpyapp::main::free_total(impl, ro) << " " << ::tpy::__len__(ro) << "\n";
+    std::cout << "ro_list" << " " << ::tpyapp::main::free_total(impl, ro) << " " << ::tpy::__len__(ro) << "\n" << ::tpy::check_signals;
     Rec o = Rec(5);
     int32_t opted = ::tpyapp::main::free_opt(impl, &(o));
-    std::cout << "opt" << " " << opted << " " << o.n << "\n";
+    std::cout << "opt" << " " << opted << " " << o.n << "\n" << ::tpy::check_signals;
     Rec u = Rec(7);
     int32_t united = ::tpyapp::main::free_uni(impl, ::tpy::Union<Other*, Rec*>{&(u)});
-    std::cout << "union" << " " << united << " " << u.n << "\n";
-    std::cout << "value" << " " << impl.label("abc", 2) << "\n";
+    std::cout << "union" << " " << united << " " << u.n << "\n" << ::tpy::check_signals;
+    std::cout << "value" << " " << impl.label("abc", 2) << "\n" << ::tpy::check_signals;
     Caller c = Caller();
     Rec m = Rec(20);
     c.drive(impl, m);
-    std::cout << "method" << " " << c.seen << " " << m.n << "\n";
+    std::cout << "method" << " " << c.seen << " " << m.n << "\n" << ::tpy::check_signals;
     ::tpy::Adapter<Dyn, DynImpl> __slot_1{DynImpl()};
     Dyn* d = &__slot_1;
     Rec dr = Rec(30);
     int32_t bumped = d->bump(dr);
-    std::cout << "dyn" << " " << bumped << " " << dr.n << "\n";
-    std::cout << "dyn_borrow" << " " << d->tag() << "\n";
+    std::cout << "dyn" << " " << bumped << " " << dr.n << "\n" << ::tpy::check_signals;
+    std::cout << "dyn_borrow" << " " << d->tag() << "\n" << ::tpy::check_signals;
 }
 
 // main()

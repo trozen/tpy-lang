@@ -56,7 +56,7 @@ __coro_value value(::tpy::BigInt n) {
     }
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
-            std::cout << "else-ran" << "\n";
+            std::cout << "else-ran" << "\n" << ::tpy::check_signals;
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = std::move(total);
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -80,7 +80,7 @@ __coro_caller caller() {
 // def main() -> None:
 //     print(asyncio.run(caller()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller())) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller())) << "\n" << ::tpy::check_signals;
 }
 
 // # `for ... else:` with `await` in the loop body (not the else

@@ -12,9 +12,9 @@ namespace tpyapp::main {
 void literal_capture() {
     Box b = Box(5);
     std::tuple<int32_t, Box*> t;
-    std::cout << std::get<0>((t = std::tuple<int32_t, Box*>{1, &(b)})) << "\n";
+    std::cout << std::get<0>((t = std::tuple<int32_t, Box*>{1, &(b)})) << "\n" << ::tpy::check_signals;
     std::get<1>(t)->val = 99;
-    std::cout << b.val << "\n";
+    std::cout << b.val << "\n" << ::tpy::check_signals;
 }
 
 // def storage_source() -> None:
@@ -25,9 +25,9 @@ void literal_capture() {
 void storage_source() {
     std::vector<std::tuple<int32_t, Box>> items = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{2, Box(7)})};
     std::tuple<int32_t, Box*> t;
-    std::cout << std::get<0>((t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(items, 0)))) << "\n";
+    std::cout << std::get<0>((t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(items, 0)))) << "\n" << ::tpy::check_signals;
     std::get<1>(t)->val = 42;
-    std::cout << std::get<1>(::tpy::__getitem__(items, 0)).val << "\n";
+    std::cout << std::get<1>(::tpy::__getitem__(items, 0)).val << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

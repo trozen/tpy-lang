@@ -15,7 +15,7 @@ void main() {
     ::tpystd::tpy::thread::JoinHandle<int32_t> h1 = ::tpystd::tpy::thread::spawn<int32_t, Hammer>(Hammer(a.clone(), 1000));
     ::tpystd::tpy::thread::JoinHandle<int32_t> h2 = ::tpystd::tpy::thread::spawn<int32_t, Hammer>(Hammer(a.clone(), 1000));
     ::tpystd::tpy::thread::JoinHandle<int32_t> h3 = ::tpystd::tpy::thread::spawn<int32_t, Hammer>(Hammer(a.clone(), 1000));
-    std::cout << (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(h1.join(), h2.join())), h3.join())) << "\n";
+    std::cout << (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(h1.join(), h2.join())), h3.join())) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.arc import Arc

@@ -21,12 +21,12 @@ void main() {
     Pair<int32_t, int64_t> p1 = Pair<int32_t, int64_t>();
     p1.set_a(10);
     p1.set_b(20);
-    std::cout << p1.get_a() << "\n";
-    std::cout << p1.get_b() << "\n";
+    std::cout << p1.get_a() << "\n" << ::tpy::check_signals;
+    std::cout << p1.get_b() << "\n" << ::tpy::check_signals;
     Pair<int32_t, int64_t> p2 = Pair<int32_t, int64_t>();
     p2.set_both(1, 2);
-    std::cout << p2.get_a() << "\n";
-    std::cout << p2.get_b() << "\n";
+    std::cout << p2.get_a() << "\n" << ::tpy::check_signals;
+    std::cout << p2.get_b() << "\n" << ::tpy::check_signals;
 }
 
 // main()

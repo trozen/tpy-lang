@@ -273,7 +273,7 @@ inline Holder::Holder() : labels(std::vector<std::string>{"a", "b"}) {}
 //     print("method", has_item(xs, k), has_item_str(xs, k))  # tpyc: ok
 inline void Holder::method(std::string_view k) const {
     const std::vector<std::string>& xs = this->labels;
-    std::cout << "method" << " " << ::tpy::print_bool(::tpyapp::main::has_item<std::string>(xs, k)) << " " << ::tpy::print_bool(::tpyapp::main::has_item_str(xs, k)) << "\n";
+    std::cout << "method" << " " << ::tpy::print_bool(::tpyapp::main::has_item<std::string>(xs, k)) << " " << ::tpy::print_bool(::tpyapp::main::has_item_str(xs, k)) << "\n" << ::tpy::check_signals;
 }
 // def has_item[T: Equatable](xs: list[T], v: T) -> bool:
 //     for x in xs:

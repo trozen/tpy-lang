@@ -20,8 +20,8 @@ void main() {
     Point p = Point();
     p.x = 42;
     Point& alias = p;
-    std::cout << alias.x << "\n";
-    std::cout << ::tpyapp::main::consume(std::move(p)) << "\n";
+    std::cout << alias.x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::consume(std::move(p)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

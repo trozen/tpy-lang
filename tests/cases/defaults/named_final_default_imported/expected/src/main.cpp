@@ -14,8 +14,8 @@ int32_t use(uint32_t flags) {
 //     print(use())
 //     print(use(NOFLAG))
 void main() {
-    std::cout << ::tpyapp::main::use() << "\n";
-    std::cout << ::tpyapp::main::use(::tpyapp::consts::NOFLAG) << "\n";
+    std::cout << ::tpyapp::main::use() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use(::tpyapp::consts::NOFLAG) << "\n" << ::tpy::check_signals;
 }
 
 // from consts import NOFLAG, CASELESS

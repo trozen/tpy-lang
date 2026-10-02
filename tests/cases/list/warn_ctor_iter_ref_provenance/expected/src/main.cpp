@@ -31,7 +31,7 @@ std::vector<C> make() {
 //     print("param", a[0].v)
 void param_source(const std::vector<C>& cs) {
     std::vector<C> a = ::tpy::construct<std::vector<C>>(::tpy::builtin_reversed(cs));
-    std::cout << "param" << " " << ::tpy::__getitem__(a, 0).v << "\n";
+    std::cout << "param" << " " << ::tpy::__getitem__(a, 0).v << "\n" << ::tpy::check_signals;
 }
 
 
@@ -69,23 +69,23 @@ void named_adapter() {
     std::array<C, 2> cs = {C(::tpy::BigInt(1)), C(::tpy::BigInt(2))};
     auto z = ::tpy::builtin_zip(ns, cs);
     std::vector<std::tuple<int32_t, C>> a = ::tpy::construct<std::vector<std::tuple<int32_t, C>>>(z);
-    std::cout << "named_zip" << " " << std::get<1>(::tpy::__getitem__(a, 1)).v << "\n";
+    std::cout << "named_zip" << " " << std::get<1>(::tpy::__getitem__(a, 1)).v << "\n" << ::tpy::check_signals;
     auto it = ::tpy::builtin_reversed(cs);
     std::vector<C> r = ::tpy::construct<std::vector<C>>(it);
-    std::cout << "named_reversed" << " " << ::tpy::__getitem__(r, 0).v << "\n";
+    std::cout << "named_reversed" << " " << ::tpy::__getitem__(r, 0).v << "\n" << ::tpy::check_signals;
     auto t = ::tpy::builtin_zip(ns, std::array<C, 2>{C(::tpy::BigInt(5)), C(::tpy::BigInt(6))});
     std::vector<std::tuple<int32_t, C>> q = ::tpy::construct<std::vector<std::tuple<int32_t, C>>>(t);
-    std::cout << "named_zip_temp" << " " << std::get<1>(::tpy::__getitem__(q, 0)).v << "\n";
+    std::cout << "named_zip_temp" << " " << std::get<1>(::tpy::__getitem__(q, 0)).v << "\n" << ::tpy::check_signals;
     auto y = ::tpy::builtin_reversed(cs);
     auto w = y;
     std::vector<C> s = ::tpy::construct<std::vector<C>>(w);
-    std::cout << "named_alias" << " " << ::tpy::__getitem__(s, 0).v << "\n";
+    std::cout << "named_alias" << " " << ::tpy::__getitem__(s, 0).v << "\n" << ::tpy::check_signals;
     auto __unpack_0_0 = ::tpy::builtin_reversed(cs);
     int32_t __unpack_0_1 = 1;
     auto v = __unpack_0_0;
     int32_t n = __unpack_0_1;
     std::vector<C> u = ::tpy::construct<std::vector<C>>(v);
-    std::cout << "named_unpack" << " " << ::tpy::__getitem__(u, 0).v << " " << n << "\n";
+    std::cout << "named_unpack" << " " << ::tpy::__getitem__(u, 0).v << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // def generic() -> None:
@@ -96,7 +96,7 @@ void named_adapter() {
 void generic() {
     std::vector<C> cs = {C(::tpy::BigInt(1)), C(::tpy::BigInt(2))};
     std::vector<int32_t> ns = {3, 4};
-    std::cout << "generic" << " " << ::tpy::__getitem__(::tpyapp::main::generic_reversed<C>(cs), 0).v << " " << ::tpy::__getitem__(::tpyapp::main::generic_pending<C>(cs), 0).v << " " << ::tpy::__getitem__(::tpyapp::main::generic_value_bound<int32_t>(ns), 0) << "\n";
+    std::cout << "generic" << " " << ::tpy::__getitem__(::tpyapp::main::generic_reversed<C>(cs), 0).v << " " << ::tpy::__getitem__(::tpyapp::main::generic_pending<C>(cs), 0).v << " " << ::tpy::__getitem__(::tpyapp::main::generic_value_bound<int32_t>(ns), 0) << "\n" << ::tpy::check_signals;
 }
 
 namespace {
@@ -193,33 +193,33 @@ void warned() {
     ::tpy::ordered_map<int32_t, C> d = ::tpy::ordered_map<int32_t, C>({{1, C(::tpy::BigInt(10))}, {2, C(::tpy::BigInt(20))}});
     Bag b = Bag();
     std::vector<std::tuple<int32_t, C>> a = ::tpy::construct<std::vector<std::tuple<int32_t, C>>>(::tpy::builtin_zip(ns, cs));
-    std::cout << "zip" << " " << std::get<1>(::tpy::__getitem__(a, 1)).v << "\n";
+    std::cout << "zip" << " " << std::get<1>(::tpy::__getitem__(a, 1)).v << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<int32_t, C>> e = ::tpy::construct<std::vector<std::tuple<int32_t, C>>>(::tpy::builtin_enumerate(cs));
-    std::cout << "enumerate" << " " << std::get<1>(::tpy::__getitem__(e, 1)).v << "\n";
+    std::cout << "enumerate" << " " << std::get<1>(::tpy::__getitem__(e, 1)).v << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, C> dz = ::tpy::dict_construct<int32_t, C>(::tpy::builtin_zip(ns, cs));
-    std::cout << "dict_zip" << " " << ::tpy::__getitem__(dz, 2).v << "\n";
+    std::cout << "dict_zip" << " " << ::tpy::__getitem__(dz, 2).v << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, C> de = ::tpy::dict_construct<int32_t, C>(::tpy::builtin_enumerate(cs));
-    std::cout << "dict_enumerate" << " " << ::tpy::__getitem__(de, 0).v << "\n";
+    std::cout << "dict_enumerate" << " " << ::tpy::__getitem__(de, 0).v << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<int32_t, C>> it = ::tpy::construct<std::vector<std::tuple<int32_t, C>>>(::tpy::dict_items(d));
-    std::cout << "items" << " " << std::get<1>(::tpy::__getitem__(it, 0)).v << "\n";
+    std::cout << "items" << " " << std::get<1>(::tpy::__getitem__(it, 0)).v << "\n" << ::tpy::check_signals;
     std::vector<C> vs = ::tpy::construct<std::vector<C>>(::tpy::dict_values(d));
-    std::cout << "values" << " " << ::tpy::__getitem__(vs, 1).v << "\n";
+    std::cout << "values" << " " << ::tpy::__getitem__(vs, 1).v << "\n" << ::tpy::check_signals;
     std::vector<C> f = ::tpy::construct<std::vector<C>>(::tpy::builtin_filter(keep, cs));
-    std::cout << "filter" << " " << ::tpy::__getitem__(f, 0).v << "\n";
+    std::cout << "filter" << " " << ::tpy::__getitem__(f, 0).v << "\n" << ::tpy::check_signals;
     std::vector<C> r = ::tpy::construct<std::vector<C>>(::tpy::builtin_reversed(cs));
-    std::cout << "reversed" << " " << ::tpy::__getitem__(r, 0).v << "\n";
+    std::cout << "reversed" << " " << ::tpy::__getitem__(r, 0).v << "\n" << ::tpy::check_signals;
     std::vector<C> g = ::tpy::construct<std::vector<C>>(::tpyapp::main::later(cs));
-    std::cout << "generator" << " " << ::tpy::__getitem__(g, 0).v << "\n";
+    std::cout << "generator" << " " << ::tpy::__getitem__(g, 0).v << "\n" << ::tpy::check_signals;
     std::vector<C> m = ::tpy::construct<std::vector<C>>(b.each());
-    std::cout << "method_generator" << " " << ::tpy::__getitem__(m, 1).v << "\n";
+    std::cout << "method_generator" << " " << ::tpy::__getitem__(m, 1).v << "\n" << ::tpy::check_signals;
     std::vector<C> x = ::tpy::construct<std::vector<C>>(::tpyapp::main::__genexpr_warned_1(cs));
-    std::cout << "genexpr" << " " << ::tpy::__getitem__(x, 0).v << "\n";
+    std::cout << "genexpr" << " " << ::tpy::__getitem__(x, 0).v << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<int32_t, std::tuple<int32_t, C>>> q = ::tpy::construct<std::vector<std::tuple<int32_t, std::tuple<int32_t, C>>>>(::tpy::builtin_zip(ns, ::tpy::builtin_zip(ns, cs)));
-    std::cout << "nested_zip" << " " << std::get<1>(std::get<1>(::tpy::__getitem__(q, 1))).v << "\n";
+    std::cout << "nested_zip" << " " << std::get<1>(std::get<1>(::tpy::__getitem__(q, 1))).v << "\n" << ::tpy::check_signals;
     std::vector<C> xs = {C(::tpy::BigInt(0))};
     ::tpy::list_extend(xs, ::tpy::builtin_reversed(cs));
     ::tpy::list_set_slice(xs, ::tpy::BasicSlice{0, 1}, ::tpy::builtin_reversed(cs));
-    std::cout << "sinks" << " " << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).v << "\n";
+    std::cout << "sinks" << " " << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).v << "\n" << ::tpy::check_signals;
 }
 
 // def quiet() -> None:
@@ -241,14 +241,14 @@ void quiet() {
     std::array<int32_t, 2> ns = {1, 2};
     std::vector<C> cs = {C(::tpy::BigInt(1)), C(::tpy::BigInt(2))};
     std::vector<std::tuple<int32_t, C>> a = ::tpy::construct<std::vector<std::tuple<int32_t, C>>>(::tpy::builtin_zip(ns, std::array<C, 2>{C(::tpy::BigInt(5)), C(::tpy::BigInt(6))}));
-    std::cout << "zip_temp" << " " << std::get<1>(::tpy::__getitem__(a, 0)).v << "\n";
+    std::cout << "zip_temp" << " " << std::get<1>(::tpy::__getitem__(a, 0)).v << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<int32_t, std::tuple<int32_t, C>>> q = ::tpy::construct<std::vector<std::tuple<int32_t, std::tuple<int32_t, C>>>>(::tpy::builtin_zip(ns, ::tpy::builtin_zip(ns, std::array<C, 2>{C(::tpy::BigInt(5)), C(::tpy::BigInt(6))})));
-    std::cout << "nested_zip_temp" << " " << std::get<1>(std::get<1>(::tpy::__getitem__(q, 1))).v << "\n";
+    std::cout << "nested_zip_temp" << " " << std::get<1>(std::get<1>(::tpy::__getitem__(q, 1))).v << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<int32_t, int32_t>> e = ::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_enumerate(ns));
     std::vector<std::tuple<int32_t, int32_t>> z = ::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip(ns, ns));
-    std::cout << "values_only" << " " << std::get<1>(::tpy::__getitem__(e, 1)) << " " << std::get<0>(::tpy::__getitem__(z, 1)) << "\n";
+    std::cout << "values_only" << " " << std::get<1>(::tpy::__getitem__(e, 1)) << " " << std::get<0>(::tpy::__getitem__(z, 1)) << "\n" << ::tpy::check_signals;
     std::vector<C> o = ::tpy::construct<std::vector<C>>(::tpyapp::main::fresh(cs));
-    std::cout << "owned_generator" << " " << ::tpy::__getitem__(o, 0).v << "\n";
+    std::cout << "owned_generator" << " " << ::tpy::__getitem__(o, 0).v << "\n" << ::tpy::check_signals;
 }
 
 // def acknowledged() -> None:
@@ -287,8 +287,8 @@ void acknowledged() {
     std::vector<C> t = ::tpy::construct<std::vector<C>>(::tpy::copy_iter<C>(::tpyapp::main::make()));
     std::vector<C> u = {C(::tpy::BigInt(0))};
     ::tpy::list_extend(u, ::tpy::copy_iter<C>(::tpyapp::main::make()));
-    std::cout << "copy_iter" << " " << std::get<1>(::tpy::__getitem__(a, 0)).v << " " << std::get<1>(::tpy::__getitem__(e, 1)).v << " " << ::tpy::__getitem__(dz, 1).v << " " << std::get<1>(::tpy::__getitem__(it, 1)).v << " " << ::tpy::__getitem__(vs, 0).v << "\n";
-    std::cout << "copy_iter" << " " << ::tpy::__getitem__(f, 0).v << " " << ::tpy::__getitem__(r, 0).v << " " << ::tpy::__getitem__(g, 1).v << " " << std::get<1>(std::get<1>(::tpy::__getitem__(q, 0))).v << " " << ::tpy::__getitem__(t, 1).v << " " << ::tpy::__getitem__(u, 2).v << "\n";
+    std::cout << "copy_iter" << " " << std::get<1>(::tpy::__getitem__(a, 0)).v << " " << std::get<1>(::tpy::__getitem__(e, 1)).v << " " << ::tpy::__getitem__(dz, 1).v << " " << std::get<1>(::tpy::__getitem__(it, 1)).v << " " << ::tpy::__getitem__(vs, 0).v << "\n" << ::tpy::check_signals;
+    std::cout << "copy_iter" << " " << ::tpy::__getitem__(f, 0).v << " " << ::tpy::__getitem__(r, 0).v << " " << ::tpy::__getitem__(g, 1).v << " " << std::get<1>(std::get<1>(::tpy::__getitem__(q, 0))).v << " " << ::tpy::__getitem__(t, 1).v << " " << ::tpy::__getitem__(u, 2).v << "\n" << ::tpy::check_signals;
 }
 
 
@@ -322,7 +322,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator_body" << " " << v << "\n";
+            std::cout << "generator_body" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpyapp::main::named_adapter();
@@ -345,7 +345,7 @@ void __tpy_init() {
     GS = &__global_slot_1;
     static std::vector<C> __global_slot_2 = ::tpy::construct<std::vector<C>>(::tpy::builtin_reversed((*GS)));
     GR = &__global_slot_2;
-    std::cout << "global" << " " << ::tpy::__getitem__((*GR), 0).v << "\n";
+    std::cout << "global" << " " << ::tpy::__getitem__((*GR), 0).v << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }
 

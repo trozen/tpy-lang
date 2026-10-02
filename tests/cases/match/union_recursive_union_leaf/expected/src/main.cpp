@@ -48,7 +48,7 @@ int32_t leaf_count(const Tree<::tpy::Union<int32_t, std::string>>& t) {
 //     print(leaf_count(leaf))
 void main() {
     Tree<::tpy::Union<int32_t, std::string>> forest = std::vector<Tree<::tpy::Union<int32_t, std::string>>>{1, "a", std::vector<Tree<::tpy::Union<int32_t, std::string>>>{2, "b"}};
-    std::cout << ::tpyapp::main::leaf_count(forest) << "\n";
+    std::cout << ::tpyapp::main::leaf_count(forest) << "\n" << ::tpy::check_signals;
     auto& __match_subject_1 = forest;
     switch (__match_subject_1.value.index()) {
     case 1: {
@@ -57,13 +57,13 @@ void main() {
         break;
     }
     default: {
-        std::cout << "leaf" << "\n";
+        std::cout << "leaf" << "\n" << ::tpy::check_signals;
         break;
     }
     }
-    std::cout << ::tpyapp::main::leaf_count(forest) << "\n";
+    std::cout << ::tpyapp::main::leaf_count(forest) << "\n" << ::tpy::check_signals;
     Tree<::tpy::Union<int32_t, std::string>> leaf = "solo";
-    std::cout << ::tpyapp::main::leaf_count(leaf) << "\n";
+    std::cout << ::tpyapp::main::leaf_count(leaf) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -59,11 +59,11 @@ namespace tpyapp::main {
 //     print(d.value)
 void main() {
     Direction d = Direction::North;
-    std::cout << d << "\n";
-    std::cout << static_cast<int32_t>(d) << "\n";
+    std::cout << d << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(d) << "\n" << ::tpy::check_signals;
     d = Direction::West;
-    std::cout << d << "\n";
-    std::cout << static_cast<int32_t>(d) << "\n";
+    std::cout << d << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(d) << "\n" << ::tpy::check_signals;
 }
 
 // # Enum with auto() values (start at 1, matching CPython)

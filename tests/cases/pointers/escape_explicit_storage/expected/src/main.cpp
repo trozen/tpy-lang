@@ -23,7 +23,7 @@ void copy_is_independent() {
             p.x = 99;
         }
     }
-    std::cout << saved->x << "\n";
+    std::cout << saved->x << "\n" << ::tpy::check_signals;
 }
 
 // def copy_outlives_the_loop() -> None:
@@ -46,7 +46,7 @@ void copy_outlives_the_loop() {
         }
     }
     saved->x = 77;
-    std::cout << saved->x << "\n";
+    std::cout << saved->x << "\n" << ::tpy::check_signals;
 }
 
 // def copy_into_optional_target() -> None:
@@ -71,7 +71,7 @@ void copy_into_optional_target() {
         }
     }
     if ((saved != nullptr)) {
-        std::cout << saved->x << "\n";
+        std::cout << saved->x << "\n" << ::tpy::check_signals;
     }
 }
 

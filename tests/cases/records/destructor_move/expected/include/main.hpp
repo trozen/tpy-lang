@@ -59,7 +59,7 @@ inline Tracker& Tracker::operator=(Tracker&& other) noexcept {
 //     print("drop", self.name)
 inline Tracker::~Tracker() {
     if (!this->__tpy_owned_) return;
-    std::cout << "drop" << " " << this->name << "\n";
+    std::cout << "drop" << " " << this->name << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(r.get().get().name())
 void main() {
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r = Rc<::tpystd::tplib::box::Box<Pet>>::new_<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex"))));
-    std::cout << r.get().get().name() << "\n";
+    std::cout << r.get().get().name() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box, Rc

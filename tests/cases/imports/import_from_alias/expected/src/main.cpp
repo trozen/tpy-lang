@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void main() {
     double t = ::tpy::time_time();
     if ((t > 0.0)) {
-        std::cout << "time alias works" << "\n";
+        std::cout << "time alias works" << "\n" << ::tpy::check_signals;
     }
 }
 

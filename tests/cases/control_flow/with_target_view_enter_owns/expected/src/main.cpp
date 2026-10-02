@@ -49,9 +49,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         return 1;
     }
     case S_RESUME_0: {  // after: yield 1
-        std::cout << s << "\n";
-        std::cout << ::tpy::__len__(s) << "\n";
-        std::cout << static_cast<int>(::tpy::bytes_getitem(b, 0)) << "\n";
+        std::cout << s << "\n" << ::tpy::check_signals;
+        std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
+        std::cout << static_cast<int>(::tpy::bytes_getitem(b, 0)) << "\n" << ::tpy::check_signals;
         __state = S_RESUME_1;
         return 2;
     }
@@ -81,7 +81,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
 }

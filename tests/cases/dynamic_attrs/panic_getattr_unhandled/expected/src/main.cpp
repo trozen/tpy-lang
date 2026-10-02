@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(b.missing)
 void main() {
     Bag b = Bag();
-    std::cout << b.__getattr__("missing") << "\n";
+    std::cout << b.__getattr__("missing") << "\n" << ::tpy::check_signals;
 }
 
 // main()

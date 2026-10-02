@@ -19,9 +19,9 @@ std::optional<std::string> pass_through(std::optional<std::string_view> s) {
 void assign_local(std::optional<std::string_view> s) {
     std::optional<std::string> local = s ? std::make_optional(std::string(*s)) : std::nullopt;
     if ((local.has_value())) {
-        std::cout << ::tpy::print_optional_val(local) << "\n";
+        std::cout << ::tpy::print_optional_val(local) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "none" << "\n";
+        std::cout << "none" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -71,19 +71,19 @@ std::optional<std::string> normalize(std::optional<std::string_view> __param_s) 
 //     print(normalize("hello"))
 //     print(normalize(None))
 void main() {
-    std::cout << ::tpy::print_optional_val(::tpyapp::main::pass_through("hello")) << "\n";
-    std::cout << ::tpy::print_optional_val(::tpyapp::main::pass_through(std::nullopt)) << "\n";
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::pass_through("hello")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::pass_through(std::nullopt)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::assign_local("world");
     ::tpyapp::main::assign_local(std::nullopt);
-    std::cout << ::tpyapp::main::unwrap("value") << "\n";
-    std::cout << ::tpyapp::main::unwrap(std::nullopt) << "\n";
+    std::cout << ::tpyapp::main::unwrap("value") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::unwrap(std::nullopt) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<std::string>> items = std::vector<std::optional<std::string>>{};
     ::tpyapp::main::append_to_list(items, "a");
     ::tpyapp::main::append_to_list(items, std::nullopt);
     ::tpyapp::main::append_to_list(items, "b");
-    std::cout << ::tpy::__len__(items) << "\n";
-    std::cout << ::tpy::print_optional_val(::tpyapp::main::normalize("hello")) << "\n";
-    std::cout << ::tpy::print_optional_val(::tpyapp::main::normalize(std::nullopt)) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::normalize("hello")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(::tpyapp::main::normalize(std::nullopt)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

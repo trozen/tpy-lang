@@ -14,9 +14,9 @@ namespace tpyapp::main {
 void test_setitem_mutation() {
     std::vector<int32_t> items = {1, 2, 3};
     ::tpy::__setitem__(items, 0, 99);
-    std::cout << ::tpy::__getitem__(items, 0) << "\n";
-    std::cout << ::tpy::__getitem__(items, 1) << "\n";
-    std::cout << ::tpy::__getitem__(items, 2) << "\n";
+    std::cout << ::tpy::__getitem__(items, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(items, 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(items, 2) << "\n" << ::tpy::check_signals;
 }
 
 // """Test that __setitem__ marks a pending list as mutated.

@@ -29,7 +29,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& m = ::tpy::unwrap_ref(*__r_1);
-            std::cout << m.group(0) << " " << m.start() << " " << m.end() << "\n";
+            std::cout << m.group(0) << " " << m.start() << " " << m.end() << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::BigInt total = ::tpy::BigInt(0);
@@ -43,7 +43,7 @@ void main() {
             total = (total) + (::tpy::BigInt::from_str(m.group(0)));
         }
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
     int32_t n = 0;
     {
         auto __src_4 = p.finditer("no digits here");
@@ -55,7 +55,7 @@ void main() {
             n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // # re.Pattern.finditer is a lazy generator yielding Match objects. Exercises

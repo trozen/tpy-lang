@@ -19,7 +19,7 @@ void populate(Bag& b) {
 void main() {
     Bag b = Bag();
     ::tpyapp::main::populate(b);
-    std::cout << ::tpy::__len__(b._data) << "\n";
+    std::cout << ::tpy::__len__(b._data) << "\n" << ::tpy::check_signals;
 }
 
 // main()

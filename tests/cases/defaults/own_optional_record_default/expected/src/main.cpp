@@ -25,15 +25,15 @@ Holder store(std::optional<Rec>&& r) {
 //         kept.slot.v = 9  # mutation lands on the moved-in value, not a copy
 //     print(kept.value())
 void main() {
-    std::cout << Holder().value() << "\n";
-    std::cout << Holder(Rec(7)).value() << "\n";
-    std::cout << ::tpyapp::main::store(std::nullopt).value() << "\n";
+    std::cout << Holder().value() << "\n" << ::tpy::check_signals;
+    std::cout << Holder(Rec(7)).value() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::store(std::nullopt).value() << "\n" << ::tpy::check_signals;
     Holder kept = ::tpyapp::main::store(Rec(4));
-    std::cout << kept.value() << "\n";
+    std::cout << kept.value() << "\n" << ::tpy::check_signals;
     if ((kept.slot.has_value())) {
         (*kept.slot).v = 9;
     }
-    std::cout << kept.value() << "\n";
+    std::cout << kept.value() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -19,7 +19,7 @@ Point make_point() {
 // def use_point(p: Point) -> None:
 //     print(p.x)
 void use_point(const Point& p) {
-    std::cout << p.x << "\n";
+    std::cout << p.x << "\n" << ::tpy::check_signals;
 }
 
 // def main():

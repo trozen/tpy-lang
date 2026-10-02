@@ -24,7 +24,7 @@ void main() {
     ::tpyapp::main::put(root, "a", leaf);
     ::tpy::__getitem__(root.kids, "a").val = 20;
     ::tpy::__setitem__(::tpy::__getitem__(root.kids, "a").kids, "b", Node(99));
-    std::cout << root.val << " " << ::tpy::__getitem__(root.kids, "a").val << " " << ::tpy::__len__(root.kids) << " " << ::tpy::__len__(::tpy::__getitem__(root.kids, "a").kids) << "\n";
+    std::cout << root.val << " " << ::tpy::__getitem__(root.kids, "a").val << " " << ::tpy::__len__(root.kids) << " " << ::tpy::__len__(::tpy::__getitem__(root.kids, "a").kids) << "\n" << ::tpy::check_signals;
 }
 
 // main()

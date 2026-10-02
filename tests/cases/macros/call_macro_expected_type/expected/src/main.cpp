@@ -34,15 +34,15 @@ bool returns_bool() {
 //     print((opt if opt is not None else 0) + 1)
 void main() {
     bool b = true;
-    std::cout << ((b) ? (1) : (0)) << "\n";
+    std::cout << ((b) ? (1) : (0)) << "\n" << ::tpy::check_signals;
     int32_t n = 100;
-    std::cout << (::tpy::add_check<int32_t>(n, 1)) << "\n";
-    std::cout << ::tpyapp::main::takes_bool(true) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(n, 1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::takes_bool(true) << "\n" << ::tpy::check_signals;
     std::string s = "hello";
-    std::cout << s << "\n";
-    std::cout << ((::tpyapp::main::returns_bool()) ? (1) : (0)) << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpyapp::main::returns_bool()) ? (1) : (0)) << "\n" << ::tpy::check_signals;
     std::optional<int32_t> opt = 8;
-    std::cout << (::tpy::add_check<int32_t>((((opt.has_value())) ? ((*opt)) : (0)), 1)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>((((opt.has_value())) ? ((*opt)) : (0)), 1)) << "\n" << ::tpy::check_signals;
 }
 
 // # A call macro reads ctx.expected_type to choose the literal kind for the

@@ -26,7 +26,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_val_scalar::__next__()
         continue;
     }
     case S_RESUME_1: {  // after: yield (n := i * 10)       # tpyc: ok
-        std::cout << "scalar resume" << " " << n << "\n";
+        std::cout << "scalar resume" << " " << n << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -66,7 +66,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_val_str::__next_
         continue;
     }
     case S_RESUME_1: {  // after: yield len(s := words[i])  # tpyc: ok
-        std::cout << "str resume" << " " << s << "\n";
+        std::cout << "str resume" << " " << s << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -106,7 +106,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_val_tuple::__next__() 
         continue;
     }
     case S_RESUME_1: {  // after: yield (t := make_pair(i))[0]   # tpyc: ok
-        std::cout << "tuple resume" << " " << std::get<0>(t) << " " << std::get<1>(t) << "\n";
+        std::cout << "tuple resume" << " " << std::get<0>(t) << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -147,7 +147,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_owning::__next__() {
         continue;
     }
     case S_RESUME_1: {  // after: yield len(xs := [i, i + 1])    # tpyc: ok
-        std::cout << "owning resume" << " " << ::tpy::__len__((*xs)) << " " << ::tpy::__getitem__((*xs), 0) << "\n";
+        std::cout << "owning resume" << " " << ::tpy::__len__((*xs)) << " " << ::tpy::__getitem__((*xs), 0) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -191,7 +191,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_borrow_alias::__next__
     }
     case S_RESUME_1: {  // after: yield len(row := rows[i])      # tpyc: ok
         row->push_back(99);
-        std::cout << "borrow resume" << " " << ::tpy::__len__((*row)) << " " << ::tpy::__getitem__((*row), 0) << "\n";
+        std::cout << "borrow resume" << " " << ::tpy::__len__((*row)) << " " << ::tpy::__getitem__((*row), 0) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -238,9 +238,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_opt_ptr::__next__() {
     case S_RESUME_1: {  // after: yield value_of(m := pick(nodes, i))   # tpyc: ok
         if ((m != nullptr)) {
             m->v = ::tpy::add_check<int32_t>(m->v, 100);
-            std::cout << "optptr resume" << " " << m->v << "\n";
+            std::cout << "optptr resume" << " " << m->v << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << "optptr resume none" << "\n";
+            std::cout << "optptr resume none" << "\n" << ::tpy::check_signals;
         }
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
@@ -284,7 +284,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_borrow_tuple::__next__
     }
     case S_RESUME_1: {  // after: yield (bt := borrow_pair(nodes[i]))[0]   # tpyc: ok
         std::get<1>(bt)->v = ::tpy::add_check<int32_t>(std::get<1>(bt)->v, 1000);
-        std::cout << "borrow tuple resume" << " " << std::get<0>(bt) << " " << std::get<1>(bt)->v << "\n";
+        std::cout << "borrow tuple resume" << " " << std::get<0>(bt) << " " << std::get<1>(bt)->v << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -326,7 +326,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_own_tuple::__next__() 
         continue;
     }
     case S_RESUME_1: {  // after: yield (ot := own_pair(i))[0]   # tpyc: ok
-        std::cout << "own tuple resume" << " " << std::get<0>((*ot)) << " " << std::get<1>((*ot)).v << "\n";
+        std::cout << "own tuple resume" << " " << std::get<0>((*ot)) << " " << std::get<1>((*ot)).v << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -365,7 +365,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Src_gen::__next__() {
         continue;
     }
     case S_RESUME_1: {  // after: yield (k := i * 10)   # tpyc: ok
-        std::cout << "method resume" << " " << k << "\n";
+        std::cout << "method resume" << " " << k << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;

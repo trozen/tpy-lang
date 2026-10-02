@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     ::tpy::Any x = ::tpy::make_any(::tpy::BigInt(42));
     ::tpy::BigInt n = ::tpy::any_cast_or_panic<::tpy::BigInt>(x);
-    std::cout << ((n) + (::tpy::BigInt(1))) << "\n";
+    std::cout << ((n) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

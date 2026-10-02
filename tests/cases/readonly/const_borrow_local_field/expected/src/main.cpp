@@ -22,12 +22,12 @@ namespace tpyapp::main {
 //     print(o.peek_x())      # 6 -- the readonly reader aliases the shared object, not a copy
 void main() {
     Outer o = Outer(::tpy::BigInt(5));
-    std::cout << o.peek_x() << "\n";
-    std::cout << ::tpyapp::main::read_only(o) << "\n";
+    std::cout << o.peek_x() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_only(o) << "\n" << ::tpy::check_signals;
     o.tags.push_back(9);
-    std::cout << o.tag_count() << "\n";
+    std::cout << o.tag_count() << "\n" << ::tpy::check_signals;
     o.bump();
-    std::cout << o.peek_x() << "\n";
+    std::cout << o.peek_x() << "\n" << ::tpy::check_signals;
 }
 
 // main()

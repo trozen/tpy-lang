@@ -45,14 +45,14 @@ void main() {
         try {
             g.get();
         } catch (const ::tpy::RuntimeError&) {
-            std::cout << "mutex unlocked-get rejected" << "\n";
+            std::cout << "mutex unlocked-get rejected" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             g.__deref__().push_back(3);
         } catch (const ::tpy::RuntimeError&) {
-            std::cout << "mutex unlocked-append rejected" << "\n";
+            std::cout << "mutex unlocked-append rejected" << "\n" << ::tpy::check_signals;
         }
     }
     auto __ctx_1 = m.lock();
@@ -73,7 +73,7 @@ void main() {
         try {
             h.get();
         } catch (const ::tpy::RuntimeError&) {
-            std::cout << "mutex post-exit rejected" << "\n";
+            std::cout << "mutex post-exit rejected" << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::tpy::sync::RwLock<std::vector<int32_t>> rw = ::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_({0});
@@ -82,7 +82,7 @@ void main() {
         try {
             r.get();
         } catch (const ::tpy::RuntimeError&) {
-            std::cout << "rwlock unlocked-read rejected" << "\n";
+            std::cout << "rwlock unlocked-read rejected" << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::tpy::sync::WriteGuard<std::vector<int32_t>> w = rw.write();
@@ -90,13 +90,13 @@ void main() {
         try {
             w.__deref__().push_back(1);
         } catch (const ::tpy::RuntimeError&) {
-            std::cout << "rwlock unlocked-write rejected" << "\n";
+            std::cout << "rwlock unlocked-write rejected" << "\n" << ::tpy::check_signals;
         }
     }
     auto __ctx_2 = m.lock();
     auto& ok = __ctx_2.__enter__();
     try {
-        std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(ok.get())) << "\n";
+        std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(ok.get())) << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});

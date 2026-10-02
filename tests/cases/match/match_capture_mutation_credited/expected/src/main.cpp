@@ -440,46 +440,46 @@ int32_t local_subject() {
 void main() {
     Cat cat = Cat(5);
     ::tpyapp::main::free_union(::tpy::Union<Cat*, Dog*>{&(cat)});
-    std::cout << "free_union:" << " " << cat.hunger << "\n";
+    std::cout << "free_union:" << " " << cat.hunger << "\n" << ::tpy::check_signals;
     Counter ctr = Counter(1);
     ::tpyapp::main::free_record(ctr);
-    std::cout << "free_record:" << " " << ctr.n << "\n";
+    std::cout << "free_record:" << " " << ctr.n << "\n" << ::tpy::check_signals;
     Dog dog = Dog(2);
     ::tpyapp::main::or_sub_capture(::tpy::Union<Cat*, Dog*>{&(dog)});
-    std::cout << "or_sub_capture:" << " " << ::tpy::__len__(dog.tags) << " " << ::tpy::__getitem__(dog.tags, 0) << "\n";
+    std::cout << "or_sub_capture:" << " " << ::tpy::__len__(dog.tags) << " " << ::tpy::__getitem__(dog.tags, 0) << "\n" << ::tpy::check_signals;
     Counter opt = Counter(10);
     ::tpyapp::main::optional_subject(&(opt));
-    std::cout << "optional_subject:" << " " << opt.n << "\n";
+    std::cout << "optional_subject:" << " " << opt.n << "\n" << ::tpy::check_signals;
     Counter callee = Counter(20);
     ::tpyapp::main::via_callee(::tpy::Union<Cat*, Counter*>{&(callee)});
-    std::cout << "via_callee:" << " " << callee.n << "\n";
+    std::cout << "via_callee:" << " " << callee.n << "\n" << ::tpy::check_signals;
     Bag bag = Bag(30);
     bag.bump();
-    std::cout << "bump:" << " " << bag.value() << "\n";
+    std::cout << "bump:" << " " << bag.value() << "\n" << ::tpy::check_signals;
     Bag left = Bag(40);
     Bag right = Bag(50);
     ::tpyapp::main::reseated(left, right);
-    std::cout << "reseated:" << " " << left.value() << " " << right.value() << "\n";
+    std::cout << "reseated:" << " " << left.value() << " " << right.value() << "\n" << ::tpy::check_signals;
     Bag cl = Bag(40);
     Bag cr = Bag(50);
     ::tpyapp::main::reseated_callee(cl, cr);
-    std::cout << "reseated_callee:" << " " << cl.value() << " " << cr.value() << "\n";
+    std::cout << "reseated_callee:" << " " << cl.value() << " " << cr.value() << "\n" << ::tpy::check_signals;
     Owner own = Owner(1);
     Bag other = Bag(10);
     own.touch(other);
-    std::cout << "self_and_param_reseat:" << " " << own.value() << " " << other.value() << "\n";
+    std::cout << "self_and_param_reseat:" << " " << own.value() << " " << other.value() << "\n" << ::tpy::check_signals;
     std::vector<Counter> xs = {Counter(1), Counter(2)};
     ::tpyapp::main::subscript_subject(xs, 1);
-    std::cout << "subscript_subject:" << " " << ::tpy::__getitem__(xs, 0).n << " " << ::tpy::__getitem__(xs, 1).n << "\n";
+    std::cout << "subscript_subject:" << " " << ::tpy::__getitem__(xs, 0).n << " " << ::tpy::__getitem__(xs, 1).n << "\n" << ::tpy::check_signals;
     Pair pair = Pair(Slot(10), Slot(10));
     ::tpyapp::main::positional_sub_capture(pair);
-    std::cout << "positional_sub_capture:" << " " << pair.left.n << " " << pair.right.n << "\n";
+    std::cout << "positional_sub_capture:" << " " << pair.left.n << " " << pair.right.n << "\n" << ::tpy::check_signals;
     UnionHolder uh = UnionHolder(0);
     uh.bump(42);
-    std::cout << "union_field_method:" << " " << uh.value() << "\n";
+    std::cout << "union_field_method:" << " " << uh.value() << "\n" << ::tpy::check_signals;
     Kitty kitty = Kitty(9);
     ::tpyapp::main::poly_subject(kitty);
-    std::cout << "poly_subject:" << " " << kitty.lives << "\n";
+    std::cout << "poly_subject:" << " " << kitty.lives << "\n" << ::tpy::check_signals;
     Counter gen_ctr = Counter(60);
     {
         auto __src_0 = ::tpyapp::main::gen_body(::tpy::Union<Cat*, Counter*>{&(gen_ctr)});
@@ -488,19 +488,19 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen_body:" << " " << got << "\n";
+            std::cout << "gen_body:" << " " << got << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "gen_body after:" << " " << gen_ctr.n << "\n";
+    std::cout << "gen_body after:" << " " << gen_ctr.n << "\n" << ::tpy::check_signals;
     Counter async_ctr = Counter(70);
-    std::cout << "async_body:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_body(::tpy::Union<Cat*, Counter*>{&(async_ctr)}))) << "\n";
-    std::cout << "async_body after:" << " " << async_ctr.n << "\n";
+    std::cout << "async_body:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_body(::tpy::Union<Cat*, Counter*>{&(async_ctr)}))) << "\n" << ::tpy::check_signals;
+    std::cout << "async_body after:" << " " << async_ctr.n << "\n" << ::tpy::check_signals;
     Counter ro = Counter(80);
-    std::cout << "read_only:" << " " << ::tpyapp::main::read_only(::tpy::Union<const Cat*, const Counter*>{&(ro)}) << " " << ro.n << "\n";
+    std::cout << "read_only:" << " " << ::tpyapp::main::read_only(::tpy::Union<const Cat*, const Counter*>{&(ro)}) << " " << ro.n << "\n" << ::tpy::check_signals;
     Counter rv = Counter(90);
-    std::cout << "rvalue_subject:" << " " << ::tpyapp::main::rvalue_subject(rv) << " " << rv.n << "\n";
-    std::cout << "scalar_capture:" << " " << ::tpyapp::main::scalar_capture(100) << "\n";
-    std::cout << "local_subject:" << " " << ::tpyapp::main::local_subject() << "\n";
+    std::cout << "rvalue_subject:" << " " << ::tpyapp::main::rvalue_subject(rv) << " " << rv.n << "\n" << ::tpy::check_signals;
+    std::cout << "scalar_capture:" << " " << ::tpyapp::main::scalar_capture(100) << "\n" << ::tpy::check_signals;
+    std::cout << "local_subject:" << " " << ::tpyapp::main::local_subject() << "\n" << ::tpy::check_signals;
 }
 
 // # A mutation through a `match`-arm capture is credited to the matched

@@ -145,31 +145,31 @@ int32_t depth(const Tree& t) {
 //     print(json_keys(g_dict))
 void main() {
     Tree x = std::vector<Tree>{Leaf(1), std::vector<Tree>{Leaf(2), Leaf(3)}};
-    std::cout << ::tpyapp::main::depth(x) << "\n";
+    std::cout << ::tpyapp::main::depth(x) << "\n" << ::tpy::check_signals;
     Tree y = std::vector<Tree>{Leaf(1), std::vector<Tree>{Leaf(2), std::vector<Tree>{Leaf(3)}}};
-    std::cout << ::tpyapp::main::depth(y) << "\n";
+    std::cout << ::tpyapp::main::depth(y) << "\n" << ::tpy::check_signals;
     std::vector<Tree> zs = {Leaf(1), std::vector<Tree>{Leaf(2), Leaf(3)}};
-    std::cout << ::tpyapp::main::depth(::tpy::__getitem__(zs, 1)) << "\n";
+    std::cout << ::tpyapp::main::depth(::tpy::__getitem__(zs, 1)) << "\n" << ::tpy::check_signals;
     Tree __tmp_1 = std::vector<Tree>{Leaf(10), std::vector<Tree>{Leaf(20), Leaf(30)}};
-    std::cout << ::tpyapp::main::depth(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::depth(__tmp_1) << "\n" << ::tpy::check_signals;
     Tree __tmp_2 = std::vector<Tree>{Leaf(1), std::vector<Tree>{Leaf(2), std::vector<Tree>{Leaf(3), Leaf(4)}}};
-    std::cout << ::tpyapp::main::depth(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::depth(__tmp_2) << "\n" << ::tpy::check_signals;
     IntTree a = std::vector<IntTree>{1, std::vector<IntTree>{2, 3}};
-    std::cout << ::tpyapp::main::int_depth(a) << "\n";
+    std::cout << ::tpyapp::main::int_depth(a) << "\n" << ::tpy::check_signals;
     IntTree b = std::vector<IntTree>{1, std::vector<IntTree>{2, std::vector<IntTree>{3}}};
-    std::cout << ::tpyapp::main::int_depth(b) << "\n";
+    std::cout << ::tpyapp::main::int_depth(b) << "\n" << ::tpy::check_signals;
     IntTree __tmp_3 = std::vector<IntTree>{10, std::vector<IntTree>{20, 30}};
-    std::cout << ::tpyapp::main::int_depth(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::int_depth(__tmp_3) << "\n" << ::tpy::check_signals;
     JsonValue d = ::tpy::ordered_map<std::string, JsonValue>({{"a", 1}, {"b", ::tpy::ordered_map<std::string, JsonValue>({{"c", 2}, {"d", 3}})}});
-    std::cout << ::tpyapp::main::json_keys(d) << "\n";
+    std::cout << ::tpyapp::main::json_keys(d) << "\n" << ::tpy::check_signals;
     JsonValue __tmp_4 = ::tpy::ordered_map<std::string, JsonValue>({{"x", 1}, {"y", ::tpy::ordered_map<std::string, JsonValue>({{"z", 2}})}});
-    std::cout << ::tpyapp::main::json_keys(__tmp_4) << "\n";
-    std::cout << ::tpy::__str__(x) << "\n";
-    std::cout << ::tpy::__str__(a) << "\n";
-    std::cout << ::tpy::__str__(d) << "\n";
-    std::cout << ::tpyapp::main::depth(g) << "\n";
-    std::cout << ::tpyapp::main::int_depth(g_int) << "\n";
-    std::cout << ::tpyapp::main::json_keys(g_dict) << "\n";
+    std::cout << ::tpyapp::main::json_keys(__tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__str__(x) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__str__(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__str__(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::depth(g) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::int_depth(g_int) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::json_keys(g_dict) << "\n" << ::tpy::check_signals;
 }
 
 // # Annotation-driven literal inference for recursive union types

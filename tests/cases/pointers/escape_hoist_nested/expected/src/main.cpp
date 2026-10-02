@@ -20,7 +20,7 @@ void nested_loop_escape() {
             Point* inner = &*(__slot_2 = Point(j, j));
             outer = inner;
         }
-        std::cout << outer->x << " " << outer->y << "\n";
+        std::cout << outer->x << " " << outer->y << "\n" << ::tpy::check_signals;
     }
 }
 

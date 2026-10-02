@@ -33,22 +33,22 @@ void main() {
     ::tpystd::io::StringIO sink = ::tpystd::io::StringIO();
     std::vector<std::string> __tmp_1 = {"alpha", "beta", "gamma"};
     ::tpyapp::main::emit_text(sink, __tmp_1);
-    std::cout << "sink-text:" << " " << sink.getvalue() << "\n";
+    std::cout << "sink-text:" << " " << sink.getvalue() << "\n" << ::tpy::check_signals;
     ::tpystd::io::StringIO src = ::tpystd::io::StringIO("first\nsecond\n");
-    std::cout << "src-text:" << " " << ::tpyapp::main::consume_text(src) << "\n";
+    std::cout << "src-text:" << " " << ::tpyapp::main::consume_text(src) << "\n" << ::tpy::check_signals;
     ::tpystd::io::BytesIO bsink = ::tpystd::io::BytesIO();
     std::vector<::tpy::Bytes> __tmp_2 = {::tpy::bytes_literal_owned("abc", 3), ::tpy::bytes_literal_owned("def", 3)};
     ::tpyapp::main::emit_bytes(bsink, __tmp_2);
-    std::cout << "bsink-bytes:" << " " << ::tpy::BytesPrinter(bsink.getvalue()) << "\n";
+    std::cout << "bsink-bytes:" << " " << ::tpy::BytesPrinter(bsink.getvalue()) << "\n" << ::tpy::check_signals;
     ::tpystd::io::BytesIO bsrc = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("xyz123", 6));
-    std::cout << "bsrc-bytes:" << " " << ::tpy::BytesPrinter(::tpyapp::main::consume_bytes(bsrc)) << "\n";
+    std::cout << "bsrc-bytes:" << " " << ::tpy::BytesPrinter(::tpyapp::main::consume_bytes(bsrc)) << "\n" << ::tpy::check_signals;
     ::tpystd::io::StringIO s2 = ::tpystd::io::StringIO("seek-test");
     s2.read();
-    std::cout << "rewind-from:" << " " << ::tpyapp::main::rewind_and_close(s2) << "\n";
-    std::cout << "after-rewind read:" << " " << s2.read() << "\n";
+    std::cout << "rewind-from:" << " " << ::tpyapp::main::rewind_and_close(s2) << "\n" << ::tpy::check_signals;
+    std::cout << "after-rewind read:" << " " << s2.read() << "\n" << ::tpy::check_signals;
     ::tpystd::io::StringIO s3 = ::tpystd::io::StringIO("close-me");
     ::tpyapp::main::closer(s3);
-    std::cout << "closed-after-protocol:" << " " << ::tpy::print_bool(s3.closed()) << "\n";
+    std::cout << "closed-after-protocol:" << " " << ::tpy::print_bool(s3.closed()) << "\n" << ::tpy::check_signals;
 }
 
 // # Confirm StringIO/BytesIO conform to the io.Writable / io.Readable

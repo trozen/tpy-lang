@@ -92,45 +92,45 @@ std::string mk() {
 void main() {
     std::string_view v = "x";
     ::tpy::Any a = ::tpy::make_any(std::string(v));
-    std::cout << "local" << " " << ::tpy::any_cast_or_panic<std::string>(a) << "\n";
+    std::cout << "local" << " " << ::tpy::any_cast_or_panic<std::string>(a) << "\n" << ::tpy::check_signals;
     std::string_view w = "y";
     ::tpy::Any b = ::tpy::make_any(std::string(w));
-    std::cout << "annotated" << " " << ::tpy::any_cast_or_panic<std::string>(b) << "\n";
+    std::cout << "annotated" << " " << ::tpy::any_cast_or_panic<std::string>(b) << "\n" << ::tpy::check_signals;
     if ((a.value.has_value() && a.value.type() == typeid(std::string))) {
         const std::string& __a = std::any_cast<const std::string&>(a.value);
-        std::cout << "isinstance" << " " << __a << "\n";
+        std::cout << "isinstance" << " " << __a << "\n" << ::tpy::check_signals;
     }
     std::vector<::tpy::Any> xs = {::tpy::make_any(std::string(v))};
     xs.push_back(::tpy::make_any(std::string(w)));
-    std::cout << "list" << " " << ::tpy::any_cast_or_panic<std::string>(::tpy::__getitem__(xs, 0)) << " " << ::tpy::any_cast_or_panic<std::string>(::tpy::__getitem__(xs, 1)) << "\n";
+    std::cout << "list" << " " << ::tpy::any_cast_or_panic<std::string>(::tpy::__getitem__(xs, 0)) << " " << ::tpy::any_cast_or_panic<std::string>(::tpy::__getitem__(xs, 1)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>({{"k", ::tpy::make_any(std::string(v))}});
     ::tpy::__setitem__(d, "j", ::tpy::make_any(std::string(w)));
-    std::cout << "dict" << " " << ::tpy::any_cast_or_panic<std::string>(::tpy::__getitem__(d, "k")) << " " << ::tpy::any_cast_or_panic<std::string>(::tpy::__getitem__(d, "j")) << "\n";
-    std::cout << "param" << " " << ::tpy::any_cast_or_panic<std::string>(::tpyapp::main::take(::tpy::make_any(std::string(v)))) << "\n";
-    std::cout << "return" << " " << ::tpy::any_cast_or_panic<std::string>(::tpyapp::main::ret_local()) << "\n";
+    std::cout << "dict" << " " << ::tpy::any_cast_or_panic<std::string>(::tpy::__getitem__(d, "k")) << " " << ::tpy::any_cast_or_panic<std::string>(::tpy::__getitem__(d, "j")) << "\n" << ::tpy::check_signals;
+    std::cout << "param" << " " << ::tpy::any_cast_or_panic<std::string>(::tpyapp::main::take(::tpy::make_any(std::string(v)))) << "\n" << ::tpy::check_signals;
+    std::cout << "return" << " " << ::tpy::any_cast_or_panic<std::string>(::tpyapp::main::ret_local()) << "\n" << ::tpy::check_signals;
     H h = H();
     h.slot = ::tpy::make_any(std::string(v));
-    std::cout << "method" << " " << h.local_in_method() << "\n";
+    std::cout << "method" << " " << h.local_in_method() << "\n" << ::tpy::check_signals;
     ::tpy::BytesView bb = ::tpy::bytes_literal("by", 2);
     ::tpy::Any c = ::tpy::make_any(::tpy::Bytes(bb));
-    std::cout << "bytes" << " " << ::tpy::BytesPrinter(::tpy::any_cast_or_panic<::tpy::Bytes>(c)) << "\n";
+    std::cout << "bytes" << " " << ::tpy::BytesPrinter(::tpy::any_cast_or_panic<::tpy::Bytes>(c)) << "\n" << ::tpy::check_signals;
     if ((c.value.has_value() && c.value.type() == typeid(::tpy::Bytes))) {
         const ::tpy::Bytes& __c = std::any_cast<const ::tpy::Bytes&>(c.value);
-        std::cout << "bytes-isinstance" << " " << ::tpy::__len__(__c) << "\n";
+        std::cout << "bytes-isinstance" << " " << ::tpy::__len__(__c) << "\n" << ::tpy::check_signals;
     }
     ::tpy::Any i = ::tpy::make_any(int64_t(1));
     ::tpy::Any u = ::tpy::make_any(uint8_t(3));
     ::tpy::Any f = ::tpy::make_any(float(1.5f));
-    std::cout << "scalars" << " " << ::tpy::any_cast_or_panic<int64_t>(i) << " " << static_cast<int>(::tpy::any_cast_or_panic<uint8_t>(u)) << " " << ::tpy::print_float(static_cast<double>(::tpy::any_cast_or_panic<float>(f))) << "\n";
+    std::cout << "scalars" << " " << ::tpy::any_cast_or_panic<int64_t>(i) << " " << static_cast<int>(::tpy::any_cast_or_panic<uint8_t>(u)) << " " << ::tpy::print_float(static_cast<double>(::tpy::any_cast_or_panic<float>(f))) << "\n" << ::tpy::check_signals;
     ::tpy::Any lit = ::tpy::make_any(std::string("lit"));
-    std::cout << "literal" << " " << ::tpy::any_cast_or_panic<std::string>(lit) << "\n";
-    std::cout << "str-param" << " " << ::tpy::any_cast_or_panic<std::string>(::tpyapp::main::take_str("p")) << "\n";
+    std::cout << "literal" << " " << ::tpy::any_cast_or_panic<std::string>(lit) << "\n" << ::tpy::check_signals;
+    std::cout << "str-param" << " " << ::tpy::any_cast_or_panic<std::string>(::tpyapp::main::take_str("p")) << "\n" << ::tpy::check_signals;
     ::tpy::Any owned = ::tpy::make_any(std::string(::tpy::String("own")));
-    std::cout << "String" << " " << ::tpy::any_cast_or_panic<std::string>(owned) << "\n";
+    std::cout << "String" << " " << ::tpy::any_cast_or_panic<std::string>(owned) << "\n" << ::tpy::check_signals;
     ::tpy::Any sl = ::tpy::make_any(std::string(::tpy::str_slice(v, ::tpy::BasicSlice{0, 1})));
-    std::cout << "slice" << " " << ::tpy::any_cast_or_panic<std::string>(sl) << "\n";
+    std::cout << "slice" << " " << ::tpy::any_cast_or_panic<std::string>(sl) << "\n" << ::tpy::check_signals;
     ::tpy::Any made = ::tpy::make_any(std::string(::tpyapp::main::mk()));
-    std::cout << "call" << " " << ::tpy::any_cast_or_panic<std::string>(made) << "\n";
+    std::cout << "call" << " " << ::tpy::any_cast_or_panic<std::string>(made) << "\n" << ::tpy::check_signals;
 }
 
 // # module-level position
@@ -145,7 +145,7 @@ void __tpy_init() {
 
     gv = "g";
     ga = ::tpy::make_any(std::string(gv));
-    std::cout << "global" << " " << ::tpy::any_cast_or_panic<std::string>(ga) << "\n";
+    std::cout << "global" << " " << ::tpy::any_cast_or_panic<std::string>(ga) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }
 

@@ -20,7 +20,7 @@ void main() {
     Counter c = Counter();
     c.bump(3);
     c.bump(4);
-    std::cout << c.count << "\n";
+    std::cout << c.count << "\n" << ::tpy::check_signals;
 }
 
 // main()

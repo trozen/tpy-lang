@@ -23,10 +23,10 @@ void main() {
     auto __tup_1 = ::tpyapp::main::find(p);
     auto&& pt = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     bool found = std::get<1>(__tup_1);
-    std::cout << pt << "\n";
-    std::cout << ::tpy::print_bool(found) << "\n";
+    std::cout << pt << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(found) << "\n" << ::tpy::check_signals;
     p.x = 99;
-    std::cout << pt << "\n";
+    std::cout << pt << "\n" << ::tpy::check_signals;
 }
 
 // main()

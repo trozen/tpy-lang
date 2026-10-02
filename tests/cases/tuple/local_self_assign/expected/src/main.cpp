@@ -19,12 +19,12 @@ namespace tpyapp::main {
 void main() {
     int32_t x = 7;
     x = x;
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> __slot_1 = {1, 2, 3};
     std::array<int32_t, 3>* xs = &__slot_1;
     xs = xs;
     ::tpy::__setitem__((*xs), 0, 9);
-    std::cout << (::tpy::add_check<int32_t>(::tpy::add_check<int32_t>(::tpy::__getitem__((*xs), 0), ::tpy::__getitem__((*xs), 1)), ::tpy::__getitem__((*xs), 2))) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(::tpy::add_check<int32_t>(::tpy::__getitem__((*xs), 0), ::tpy::__getitem__((*xs), 1)), ::tpy::__getitem__((*xs), 2))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -32,22 +32,22 @@ void main() {
     Store s = Store();
     ::tpy::__setitem__(s, "a", 10);
     ::tpy::__setitem__(s, "b", 20);
-    std::cout << s["a"] << " " << s["b"] << "\n";
+    std::cout << s["a"] << " " << s["b"] << "\n" << ::tpy::check_signals;
     ::tpy::__delitem__(s, "a");
-    std::cout << s["a"] << "\n";
+    std::cout << s["a"] << "\n" << ::tpy::check_signals;
     IntBox k = IntBox();
     ::tpy::__setitem__(k, 3, 4);
-    std::cout << k[0] << "\n";
+    std::cout << k[0] << "\n" << ::tpy::check_signals;
     ::tpy::__delitem__(k, 5);
-    std::cout << k[0] << "\n";
+    std::cout << k[0] << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = {1, 2, 3};
     ::tpy::__setitem__(xs, 1, 99);
     ::tpy::__delitem__(xs, 0);
-    std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
     ::tpy::__setitem__(d, "x", 5);
     ::tpy::__delitem__(d, "x");
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

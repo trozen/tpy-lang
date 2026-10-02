@@ -59,7 +59,7 @@ void reseat_opt(Pic& p) {
     });
     if ((p.opt.has_value())) {
         (*p.opt).push_back(6);
-        std::cout << "optional_reseat" << " " << ::tpy::print_optional_val<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(p.opt) << "\n";
+        std::cout << "optional_reseat" << " " << ::tpy::print_optional_val<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(p.opt) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -93,7 +93,7 @@ void setitems(Pic& p, int32_t n) {
         std::move(__result);
     }));
     ::tpy::__getitem__(rows, 0).push_back(7);
-    std::cout << "setitem_list" << " " << ::tpy::ListPrinter(rows) << "\n";
+    std::cout << "setitem_list" << " " << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
     int32_t __stop_1 = ::tpy::__len__(rows);
     for (int32_t i = 0; i < __stop_1; ++i) {
         rows[static_cast<std::size_t>(i)] = ({
@@ -107,7 +107,7 @@ void setitems(Pic& p, int32_t n) {
         });
         rows[static_cast<std::size_t>(i)].push_back(8);
     }
-    std::cout << "setitem_list_safe" << " " << ::tpy::ListPrinter(rows) << "\n";
+    std::cout << "setitem_list_safe" << " " << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     ::tpy::__setitem__(d, "a", ({
         std::vector<int32_t> __result;
@@ -119,7 +119,7 @@ void setitems(Pic& p, int32_t n) {
         std::move(__result);
     }));
     ::tpy::__getitem__(d, "a").push_back(7);
-    std::cout << "setitem_dict" << " " << ::tpy::DictPrinter(d) << "\n";
+    std::cout << "setitem_dict" << " " << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(p.data, 1, ({
         std::vector<int32_t> __result;
         const int32_t __stop_4 = n;
@@ -130,7 +130,7 @@ void setitems(Pic& p, int32_t n) {
         std::move(__result);
     }));
     ::tpy::__getitem__(p.data, 1).push_back(7);
-    std::cout << "setitem_field" << " " << ::tpy::ListPrinter(::tpy::__getitem__(p.data, 1)) << "\n";
+    std::cout << "setitem_field" << " " << ::tpy::ListPrinter(::tpy::__getitem__(p.data, 1)) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -161,7 +161,7 @@ void closure(Pic& p) {
         p.flat.push_back(1);
         return ::tpy::__len__(p.flat);
     };
-    std::cout << "closure" << " " << inner(4) << " " << ::tpy::ListPrinter(p.flat) << "\n";
+    std::cout << "closure" << " " << inner(4) << " " << ::tpy::ListPrinter(p.flat) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -189,17 +189,17 @@ void main() {
     Pic p = Pic();
     p.fill(3, 2);
     ::tpy::__getitem__(p.data, 1).push_back(7);
-    std::cout << "method" << " " << ::tpy::__len__(p.data) << " " << ::tpy::ListPrinter(::tpy::__getitem__(p.data, 1)) << "\n";
+    std::cout << "method" << " " << ::tpy::__len__(p.data) << " " << ::tpy::ListPrinter(::tpy::__getitem__(p.data, 1)) << "\n" << ::tpy::check_signals;
     Grid g = Grid({3, 2});
     ::tpy::__getitem__(g.data, 2).push_back(8);
-    std::cout << "ctor_body" << " " << ::tpy::ListPrinter(g.data) << "\n";
+    std::cout << "ctor_body" << " " << ::tpy::ListPrinter(g.data) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::fill_free(p, 3);
     ::tpy::__setitem__(p.d, "z", 9);
     p.s.insert(9);
-    std::cout << "free_dict" << " " << ::tpy::__len__(p.d) << " " << "free_set" << " " << ::tpy::__len__(p.s) << "\n";
+    std::cout << "free_dict" << " " << ::tpy::__len__(p.d) << " " << "free_set" << " " << ::tpy::__len__(p.s) << "\n" << ::tpy::check_signals;
     if ((p.opt.has_value())) {
         (*p.opt).push_back(5);
-        std::cout << "optional_field" << " " << ::tpy::print_optional_val<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(p.opt) << "\n";
+        std::cout << "optional_field" << " " << ::tpy::print_optional_val<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(p.opt) << "\n" << ::tpy::check_signals;
     }
     ::tpyapp::main::reseat_opt(p);
     ::tpyapp::main::setitems(p, 3);
@@ -210,10 +210,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << v << "\n";
+            std::cout << "generator" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "generator" << " " << ::tpy::ListPrinter(p.flat) << "\n";
+    std::cout << "generator" << " " << ::tpy::ListPrinter(p.flat) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::closure(p);
 }
 
@@ -242,7 +242,7 @@ void __tpy_init() {
         std::move(__result);
     });
     top->flat.push_back(1);
-    std::cout << "module_level" << " " << ::tpy::ListPrinter(top->flat) << "\n";
+    std::cout << "module_level" << " " << ::tpy::ListPrinter(top->flat) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

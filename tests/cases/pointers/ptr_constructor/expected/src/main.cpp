@@ -8,16 +8,16 @@ namespace tpyapp::main {
 //     print(p.x)
 //     print(p.y)
 void read_via_ptr(Point* p) {
-    std::cout << ::tpy::deref_check(p).x << "\n";
-    std::cout << p->y << "\n";
+    std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << p->y << "\n" << ::tpy::check_signals;
 }
 
 // def read_via_constptr(p: Ptr[readonly[Point]]) -> None:
 //     print(p.x)
 //     print(p.y)
 void read_via_constptr(const Point* p) {
-    std::cout << ::tpy::deref_check(p).x << "\n";
-    std::cout << p->y << "\n";
+    std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << p->y << "\n" << ::tpy::check_signals;
 }
 
 // def test_null_constructors() -> None:
@@ -31,7 +31,7 @@ void test_null_constructors() {
     const void* p2 = static_cast<const void*>(nullptr);
     int32_t* p3 = static_cast<int32_t*>(nullptr);
     const int32_t* p4 = static_cast<const int32_t*>(nullptr);
-    std::cout << "null ok" << "\n";
+    std::cout << "null ok" << "\n" << ::tpy::check_signals;
 }
 
 // def test_ptr_explicit() -> None:
@@ -83,7 +83,7 @@ void test_ptr_write() {
     Point pt = Point(1, 2);
     Point* pp = &pt;
     pp->x = 99;
-    std::cout << pt.x << "\n";
+    std::cout << pt.x << "\n" << ::tpy::check_signals;
 }
 
 // test_null_constructors()

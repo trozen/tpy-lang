@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(n2)
 void main() {
     Node n1 = Node(42);
-    std::cout << n1 << "\n";
+    std::cout << n1 << "\n" << ::tpy::check_signals;
     Node n2 = Node(10, "hello");
-    std::cout << n2 << "\n";
+    std::cout << n2 << "\n" << ::tpy::check_signals;
 }
 
 // # @dataclass with Optional fields and None defaults

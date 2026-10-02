@@ -17,8 +17,8 @@ void main() {
     ::tpy::BigInt r1 = std::move(*w).take();
     (*w) = Wrapper(::tpy::BigInt(99));
     ::tpy::BigInt r2 = std::move(*w).take();
-    std::cout << r1 << "\n";
-    std::cout << r2 << "\n";
+    std::cout << r1 << "\n" << ::tpy::check_signals;
+    std::cout << r2 << "\n" << ::tpy::check_signals;
 }
 
 // main()

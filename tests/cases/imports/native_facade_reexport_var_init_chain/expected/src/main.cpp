@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(COUNTER)
 //     print(COUNTER + int32(1))
 void main() {
-    std::cout << ::repro_init::pkg::state::COUNTER << "\n";
-    std::cout << (::tpy::add_check<int32_t>(::repro_init::pkg::state::COUNTER, 1)) << "\n";
+    std::cout << ::repro_init::pkg::state::COUNTER << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::add_check<int32_t>(::repro_init::pkg::state::COUNTER, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // # Native package init re-exporting a non-Final module-level variable whose

@@ -93,7 +93,7 @@ __coro_take_copy take_copy(Holder& h) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         q.emplace(std::move(__r1).value());
         __sub_1.reset();
-        std::cout << (*p).v << " " << (*q).v << " " << (*h).p.v << "\n";
+        std::cout << (*p).v << " " << (*q).v << " " << (*h).p.v << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

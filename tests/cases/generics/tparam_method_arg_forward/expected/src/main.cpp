@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Outer<int32_t> o = Outer<int32_t>(1);
     o.put(7);
-    std::cout << o._in.v << "\n";
+    std::cout << o._in.v << "\n" << ::tpy::check_signals;
 }
 
 // main()

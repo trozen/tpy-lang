@@ -15,7 +15,7 @@ void main() {
     std::array<int32_t, 3>* a = &__slot_1;
     std::array<int32_t, 3> b = {4, 5, 6};
     a = &(b);
-    std::cout << ::tpy::__len__((*a)) << "\n";
+    std::cout << ::tpy::__len__((*a)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

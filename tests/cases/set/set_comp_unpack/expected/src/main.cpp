@@ -33,10 +33,10 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(names) << "\n";
-    std::cout << ::tpy::print_bool((names.contains("apple"))) << "\n";
-    std::cout << ::tpy::print_bool((names.contains("banana"))) << "\n";
-    std::cout << ::tpy::print_bool((names.contains("cherry"))) << "\n";
+    std::cout << ::tpy::__len__(names) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((names.contains("apple"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((names.contains("banana"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((names.contains("cherry"))) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<std::string, int32_t>> pairs2 = {std::tuple<std::string, int32_t>{"a", 10}, std::tuple<std::string, int32_t>{"b", 20}, std::tuple<std::string, int32_t>{"c", 10}};
     ::tpy::ordered_set<int32_t> vals = ({
         ::tpy::ordered_set<int32_t> __result;
@@ -50,13 +50,13 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(vals) << "\n";
+    std::cout << ::tpy::__len__(vals) << "\n" << ::tpy::check_signals;
     auto& __obj_2 = vals;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         int32_t v = *__beg_2;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
 }
 

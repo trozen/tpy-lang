@@ -25,7 +25,7 @@ std::string caught() {
 // def main() -> None:
 //     print(caught())
 void main() {
-    std::cout << ::tpyapp::main::caught() << "\n";
+    std::cout << ::tpyapp::main::caught() << "\n" << ::tpy::check_signals;
 }
 
 // main()

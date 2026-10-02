@@ -21,12 +21,12 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            std::cout << "waiter not cancelled (unexpected)" << "\n";
+            std::cout << "waiter not cancelled (unexpected)" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::CancelledError&) {
             __sub_0.reset();
-            std::cout << "waiter cancelled" << "\n";
+            std::cout << "waiter cancelled" << "\n" << ::tpy::check_signals;
             throw;
         } catch (...) {
             __sub_0.reset();
@@ -46,7 +46,7 @@ namespace tpyapp::main {
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::CancelledError&) {
-            std::cout << "waiter cancelled" << "\n";
+            std::cout << "waiter cancelled" << "\n" << ::tpy::check_signals;
             throw;
         } catch (...) {
             throw;
@@ -99,12 +99,12 @@ __coro_waiter waiter() {
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r1).value();
             __sub_1 = nullptr;
-            std::cout << "main not cancelled (unexpected)" << "\n";
+            std::cout << "main not cancelled (unexpected)" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::CancelledError&) {
             __sub_1 = nullptr;
-            std::cout << "main caught" << "\n";
+            std::cout << "main caught" << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

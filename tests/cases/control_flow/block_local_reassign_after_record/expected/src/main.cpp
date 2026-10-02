@@ -67,7 +67,7 @@ namespace tpyapp::main {
     if (__match_subject_1 == 1) {
         Point __slot_1 = Point(::tpy::BigInt(1));
         Point* p = &__slot_1;
-        std::cout << p->x << "\n";
+        std::cout << p->x << "\n" << ::tpy::check_signals;
     } else {
     }
     Point __slot_2 = Point(::tpy::BigInt(9));
@@ -88,7 +88,7 @@ namespace tpyapp::main {
         try {
             Point __slot_1 = Point(::tpy::BigInt(1));
             Point* p = &__slot_1;
-            std::cout << p->x << "\n";
+            std::cout << p->x << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
         }
     }
@@ -112,7 +112,7 @@ namespace tpyapp::main {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        std::cout << p.x << "\n";
+        std::cout << p.x << "\n" << ::tpy::check_signals;
     }
     Point __slot_1 = Point(::tpy::BigInt(9));
     Point* p = &__slot_1;
@@ -127,13 +127,13 @@ namespace tpyapp::main {
 //     print(in_try_body())
 //     print(loop_var_rebind([Point(1), Point(2)]))
 void main() {
-    std::cout << ::tpyapp::main::escaped_alias() << "\n";
-    std::cout << ::tpyapp::main::mutate_through_alias() << "\n";
-    std::cout << ::tpyapp::main::in_match_arm(::tpy::BigInt(1)) << "\n";
-    std::cout << ::tpyapp::main::in_match_arm(::tpy::BigInt(2)) << "\n";
-    std::cout << ::tpyapp::main::in_try_body() << "\n";
+    std::cout << ::tpyapp::main::escaped_alias() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::mutate_through_alias() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_match_arm(::tpy::BigInt(1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_match_arm(::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_try_body() << "\n" << ::tpy::check_signals;
     std::vector<Point> __tmp_1 = {Point(::tpy::BigInt(1)), Point(::tpy::BigInt(2))};
-    std::cout << ::tpyapp::main::loop_var_rebind(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::loop_var_rebind(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

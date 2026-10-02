@@ -16,7 +16,7 @@ int32_t run() {
 // def main() -> None:
 //     print(run())
 void main() {
-    std::cout << ::tpyapp::main::run() << "\n";
+    std::cout << ::tpyapp::main::run() << "\n" << ::tpy::check_signals;
 }
 
 // # A function macro mints the bool type via ctx.resolve_type("bool") -- not

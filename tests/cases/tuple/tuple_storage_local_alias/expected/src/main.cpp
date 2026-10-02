@@ -13,7 +13,7 @@ void from_list() {
     std::vector<std::tuple<int32_t, Box>> items = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(5)})};
     auto&& t = ::tpy::__getitem__(items, 0);
     std::get<1>(t).val = 99;
-    std::cout << std::get<1>(::tpy::__getitem__(items, 0)).val << "\n";
+    std::cout << std::get<1>(::tpy::__getitem__(items, 0)).val << "\n" << ::tpy::check_signals;
 }
 
 // def from_field() -> None:
@@ -25,7 +25,7 @@ void from_field() {
     Holder h = Holder(Box(7));
     auto&& t = h.pair;
     std::get<1>(t).val = 42;
-    std::cout << std::get<1>(h.pair).val << "\n";
+    std::cout << std::get<1>(h.pair).val << "\n" << ::tpy::check_signals;
 }
 
 // def chain_alias() -> None:
@@ -39,7 +39,7 @@ void chain_alias() {
     auto&& t = ::tpy::__getitem__(items, 0);
     auto&& u = t;
     std::get<1>(u).val = 11;
-    std::cout << std::get<1>(::tpy::__getitem__(items, 0)).val << "\n";
+    std::cout << std::get<1>(::tpy::__getitem__(items, 0)).val << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

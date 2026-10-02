@@ -24,10 +24,10 @@ void pick(bool flag) {
     } else {
         c = &(-(b));
     }
-    std::cout << c->n << "\n";
+    std::cout << c->n << "\n" << ::tpy::check_signals;
     a.n = 9;
     b.n = 11;
-    std::cout << c->n << "\n";
+    std::cout << c->n << "\n" << ::tpy::check_signals;
 }
 
 // def main():

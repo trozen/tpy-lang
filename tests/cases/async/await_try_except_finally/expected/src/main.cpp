@@ -238,7 +238,7 @@ __coro_fail fail() {
 }
 
 void __coro_go::__finally_0() {
-    std::cout << "cleanup" << "\n";
+    std::cout << "cleanup" << "\n" << ::tpy::check_signals;
 }
 
 // async def go(should_fail: bool) -> int32:
@@ -250,8 +250,8 @@ __coro_go go(bool should_fail) {
 //     print(asyncio.run(go(False)))
 //     print(asyncio.run(go(True)))
 void main() {
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::go(false))) << "\n";
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::go(true))) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::go(false))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::go(true))) << "\n" << ::tpy::check_signals;
 }
 
 // # try/except/finally with awaits in both try and except bodies.

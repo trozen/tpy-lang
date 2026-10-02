@@ -203,7 +203,7 @@ inline void Runner::run() const {
     std::vector<std::string> lit = {this->o.inner.name};
     ::tpy::ordered_map<std::string, ::tpy::Bytes> d = ::tpy::ordered_map<std::string, ::tpy::Bytes>();
     ::tpy::__setitem__(d, this->o.inner.name, this->o.inner.tag);
-    std::cout << "method" << " " << ::tpy::BytesPrinter(::tpy::__getitem__(acc, 0)) << " " << ::tpy::__getitem__(lit, 0) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(d, "s2")) << "\n";
+    std::cout << "method" << " " << ::tpy::BytesPrinter(::tpy::__getitem__(acc, 0)) << " " << ::tpy::__getitem__(lit, 0) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(d, "s2")) << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, o: Outer) -> None:
@@ -217,7 +217,7 @@ inline Snap::Snap(const Outer& o) {
     acc.push_back(o.inner.tag);
     std::vector<std::string> lit = {o.inner.name};
     this->n = ::tpy::__len__(acc);
-    std::cout << "ctor" << " " << ::tpy::BytesPrinter(::tpy::__getitem__(acc, 0)) << " " << ::tpy::__getitem__(lit, 0) << "\n";
+    std::cout << "ctor" << " " << ::tpy::BytesPrinter(::tpy::__getitem__(acc, 0)) << " " << ::tpy::__getitem__(lit, 0) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

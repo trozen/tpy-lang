@@ -20,13 +20,13 @@ namespace tpyapp::main {
 //     print("pair_default", Outer.Pair(1, 2).v, Outer.Pair(5).v)
 void main() {
     Outer o = Outer(1);
-    std::cout << o.x << "\n";
+    std::cout << o.x << "\n" << ::tpy::check_signals;
     Outer::Inner i = Outer::Inner(10);
-    std::cout << i.y << "\n";
-    std::cout << i.doubled() << "\n";
+    std::cout << i.y << "\n" << ::tpy::check_signals;
+    std::cout << i.doubled() << "\n" << ::tpy::check_signals;
     Outer::Inner inner = Outer::Inner(42);
-    std::cout << inner.y << "\n";
-    std::cout << "pair_default" << " " << Outer::Pair(1, 2).v << " " << Outer::Pair(5).v << "\n";
+    std::cout << inner.y << "\n" << ::tpy::check_signals;
+    std::cout << "pair_default" << " " << Outer::Pair(1, 2).v << " " << Outer::Pair(5).v << "\n" << ::tpy::check_signals;
 }
 
 // main()

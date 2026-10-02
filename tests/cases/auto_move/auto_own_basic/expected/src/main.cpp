@@ -17,10 +17,10 @@ namespace tpyapp::main {
 void test_borrowing() {
     Pair<Node> p = Pair<Node>(Node(10), Node(20));
     Node& x = p.first();
-    std::cout << x.val << "\n";
-    std::cout << p.second_val.val << "\n";
+    std::cout << x.val << "\n" << ::tpy::check_signals;
+    std::cout << p.second_val.val << "\n" << ::tpy::check_signals;
     x.val = 99;
-    std::cout << p.first_val.val << "\n";
+    std::cout << p.first_val.val << "\n" << ::tpy::check_signals;
 }
 
 // def test_last_use() -> None:
@@ -30,7 +30,7 @@ void test_borrowing() {
 void test_last_use() {
     Pair<Node> p = Pair<Node>(Node(30), Node(40));
     Node& x = p.first();
-    std::cout << x.val << "\n";
+    std::cout << x.val << "\n" << ::tpy::check_signals;
 }
 
 // test_borrowing()

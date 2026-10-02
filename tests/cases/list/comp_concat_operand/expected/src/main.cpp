@@ -103,7 +103,7 @@ std::vector<::tpy::BigInt> both_comps(const std::vector<::tpy::BigInt>& xs) {
 //     print(head_literal(xs), tail_literal(xs), both_comps(xs), set_ops())
 void main() {
     std::vector<::tpy::BigInt> xs = {0, 3, 5};
-    std::cout << ::tpy::ListPrinter(::tpyapp::main::head_literal(xs)) << " " << ::tpy::ListPrinter(::tpyapp::main::tail_literal(xs)) << " " << ::tpy::ListPrinter(::tpyapp::main::both_comps(xs)) << " " << ::tpyapp::main::set_ops() << "\n";
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::head_literal(xs)) << " " << ::tpy::ListPrinter(::tpyapp::main::tail_literal(xs)) << " " << ::tpy::ListPrinter(::tpyapp::main::both_comps(xs)) << " " << ::tpyapp::main::set_ops() << "\n" << ::tpy::check_signals;
 }
 
 // main()

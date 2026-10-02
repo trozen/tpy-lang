@@ -95,31 +95,31 @@ void classify(day d) {
     auto& __match_subject_1 = d;
     switch (__match_subject_1) {
     case day::mon: {
-        std::cout << "weekday" << "\n";
+        std::cout << "weekday" << "\n" << ::tpy::check_signals;
         break;
     }
     case day::tue: {
-        std::cout << "weekday" << "\n";
+        std::cout << "weekday" << "\n" << ::tpy::check_signals;
         break;
     }
     case day::wed: {
-        std::cout << "weekday" << "\n";
+        std::cout << "weekday" << "\n" << ::tpy::check_signals;
         break;
     }
     case day::thu: {
-        std::cout << "weekday" << "\n";
+        std::cout << "weekday" << "\n" << ::tpy::check_signals;
         break;
     }
     case day::fri: {
-        std::cout << "weekday" << "\n";
+        std::cout << "weekday" << "\n" << ::tpy::check_signals;
         break;
     }
     case day::sat: {
-        std::cout << "weekend" << "\n";
+        std::cout << "weekend" << "\n" << ::tpy::check_signals;
         break;
     }
     case day::sun: {
-        std::cout << "weekend" << "\n";
+        std::cout << "weekend" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -154,31 +154,31 @@ void __tpy_init() {
         n = i;
         auto& __match_subject_1 = n;
         if (__match_subject_1 == 0) {
-            std::cout << "zero" << "\n";
+            std::cout << "zero" << "\n" << ::tpy::check_signals;
             goto __match_end_2;
         }
         {
             if (((1 <= n) && (n <= 3))) {
-                std::cout << "low" << "\n";
+                std::cout << "low" << "\n" << ::tpy::check_signals;
                 goto __match_end_2;
             }
         }
         if (__match_subject_1 == 4) {
-            std::cout << "mid" << "\n";
+            std::cout << "mid" << "\n" << ::tpy::check_signals;
             goto __match_end_2;
         }
         if (__match_subject_1 == 5) {
-            std::cout << "mid" << "\n";
+            std::cout << "mid" << "\n" << ::tpy::check_signals;
             goto __match_end_2;
         }
         {
             if (((6 <= n) && (n <= 9))) {
-                std::cout << "high" << "\n";
+                std::cout << "high" << "\n" << ::tpy::check_signals;
                 goto __match_end_2;
             }
         }
         {
-            std::cout << "out" << "\n";
+            std::cout << "out" << "\n" << ::tpy::check_signals;
             goto __match_end_2;
         }
         __match_end_2:;

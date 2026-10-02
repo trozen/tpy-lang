@@ -124,54 +124,54 @@ __gen_rows rows() {
 void main() {
     ::tpy::ordered_map<std::string, std::vector<int32_t>> plain = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"a", {1, 2}}});
     ::tpy::__getitem__(plain, "a").push_back(3);
-    std::cout << "plain" << " " << ::tpy::DictPrinter(plain) << "\n";
+    std::cout << "plain" << " " << ::tpy::DictPrinter(plain) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::vector<Point>> points = ::tpy::ordered_map<std::string, std::vector<Point>>({{"a", {Point(1)}}});
     ::tpy::__getitem__(::tpy::__getitem__(points, "a"), 0).x = 5;
-    std::cout << "record" << " " << ::tpy::__getitem__(::tpy::__getitem__(points, "a"), 0).x << "\n";
+    std::cout << "record" << " " << ::tpy::__getitem__(::tpy::__getitem__(points, "a"), 0).x << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::vector<std::vector<int32_t>>> deep = ::tpy::ordered_map<std::string, std::vector<std::vector<int32_t>>>({{"a", {{1, 2}}}});
     ::tpy::__getitem__(::tpy::__getitem__(deep, "a"), 0).push_back(3);
-    std::cout << "deep" << " " << ::tpy::DictPrinter(deep) << "\n";
+    std::cout << "deep" << " " << ::tpy::DictPrinter(deep) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>> groups = ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>>({{"a", ::tpy::ordered_set<int32_t>({1, 2})}});
     ::tpy::__getitem__(groups, "a").insert(3);
-    std::cout << "set" << " " << ::tpy::__len__(::tpy::__getitem__(groups, "a")) << "\n";
+    std::cout << "set" << " " << ::tpy::__len__(::tpy::__getitem__(groups, "a")) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::tuple<std::vector<int32_t>, int32_t>> pairs = ::tpy::ordered_map<std::string, std::tuple<std::vector<int32_t>, int32_t>>({{"a", ::tpy::tuple_to_storage<std::tuple<std::vector<int32_t>, int32_t>>(std::tuple<std::vector<int32_t>, int32_t>{{1, 2}, 3})}});
-    std::cout << "tuple" << " " << ::tpy::DictPrinter(pairs) << "\n";
+    std::cout << "tuple" << " " << ::tpy::DictPrinter(pairs) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::array<int32_t, 2>> fixed = ::tpy::ordered_map<std::string, std::array<int32_t, 2>>({{"a", {1, 2}}});
-    std::cout << "array" << " " << ::tpy::__getitem__(::tpy::__getitem__(fixed, "a"), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(fixed, "a"), 1) << "\n";
+    std::cout << "array" << " " << ::tpy::__getitem__(::tpy::__getitem__(fixed, "a"), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(fixed, "a"), 1) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::vector<int32_t>> __slot_1 = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"o", {1, 2}}});
     ::tpy::ordered_map<std::string, std::vector<int32_t>>* maybe = &__slot_1;
     if ((maybe != nullptr)) {
         ::tpy::__getitem__((*maybe), "o").push_back(3);
-        std::cout << "optional" << " " << ::tpy::print_optional<::tpy::DictPrinter<std::string, std::vector<int32_t>>, ::tpy::ordered_map<std::string, std::vector<int32_t>>>(maybe) << "\n";
+        std::cout << "optional" << " " << ::tpy::print_optional<::tpy::DictPrinter<std::string, std::vector<int32_t>>, ::tpy::ordered_map<std::string, std::vector<int32_t>>>(maybe) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, std::vector<int32_t>> jagged = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"a", {1, 2}}, {"b", {3}}});
     ::tpy::__getitem__(jagged, "b").push_back(4);
-    std::cout << "jagged" << " " << ::tpy::DictPrinter(jagged) << "\n";
+    std::cout << "jagged" << " " << ::tpy::DictPrinter(jagged) << "\n" << ::tpy::check_signals;
     Reg r = Reg();
     ::tpy::__getitem__(r.table, "a").push_back(3);
-    std::cout << "field" << " " << ::tpy::DictPrinter(r.table) << " " << r.grow() << "\n";
+    std::cout << "field" << " " << ::tpy::DictPrinter(r.table) << " " << r.grow() << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__((*GLOBAL_ROWS), "g").push_back(2);
-    std::cout << "global" << " " << ::tpy::DictPrinter((*GLOBAL_ROWS)) << "\n";
+    std::cout << "global" << " " << ::tpy::DictPrinter((*GLOBAL_ROWS)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::vector<int32_t>> built = ::tpyapp::main::build();
     ::tpy::__getitem__(built, "r").push_back(3);
-    std::cout << "return" << " " << ::tpy::DictPrinter(built) << "\n";
+    std::cout << "return" << " " << ::tpy::DictPrinter(built) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::vector<int32_t>> __tmp_1 = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"p", {1, 2}}});
-    std::cout << "arg" << " " << ::tpyapp::main::take(__tmp_1) << "\n";
+    std::cout << "arg" << " " << ::tpyapp::main::take(__tmp_1) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::ordered_map<std::string, std::vector<int32_t>>> stack = std::vector<::tpy::ordered_map<std::string, std::vector<int32_t>>>{};
     stack.push_back(::tpy::ordered_map<std::string, std::vector<int32_t>>({{"a", {1, 2}}}));
     ::tpy::__getitem__(::tpy::__getitem__(stack, 0), "a").push_back(3);
-    std::cout << "append" << " " << ::tpy::ListPrinter(stack) << "\n";
+    std::cout << "append" << " " << ::tpy::ListPrinter(stack) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, std::vector<int32_t>>> nested = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, std::vector<int32_t>>>();
     ::tpy::__setitem__(nested, "k", ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"a", {1, 2}}}));
     ::tpy::__getitem__(::tpy::__getitem__(nested, "k"), "a").push_back(3);
-    std::cout << "setitem" << " " << ::tpy::DictPrinter(nested) << "\n";
+    std::cout << "setitem" << " " << ::tpy::DictPrinter(nested) << "\n" << ::tpy::check_signals;
     std::optional<::tpy::ordered_map<std::string, std::vector<int32_t>>> in_with;
     auto __ctx_1 = Guard();
     __ctx_1.__enter__();
     try {
         in_with = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"w", {1}}});
         ::tpy::__getitem__((*in_with), "w").push_back(2);
-        std::cout << "with" << " " << ::tpy::DictPrinter((*in_with)) << "\n";
+        std::cout << "with" << " " << ::tpy::DictPrinter((*in_with)) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -184,7 +184,7 @@ void main() {
     __ctx_1.__exit__({}, nullptr, {});
     Sink sink = Sink(::tpy::ordered_map<std::string, std::vector<int32_t>>({{"s", {1, 2}}}));
     ::tpy::__getitem__(sink.table, "s").push_back(3);
-    std::cout << "ctor arg" << " " << ::tpy::DictPrinter(sink.table) << "\n";
+    std::cout << "ctor arg" << " " << ::tpy::DictPrinter(sink.table) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> comp = ({
         ::tpy::ordered_map<int32_t, std::vector<int32_t>> __result;
         const int32_t __stop_0 = 2;
@@ -194,7 +194,7 @@ void main() {
         std::move(__result);
     });
     ::tpy::__getitem__(comp, 0).push_back(9);
-    std::cout << "comp" << " " << ::tpy::DictPrinter(comp) << "\n";
+    std::cout << "comp" << " " << ::tpy::DictPrinter(comp) << "\n" << ::tpy::check_signals;
     {
         auto __src_1 = ::tpyapp::main::rows();
         auto&& __itr_1 = ::tpy::__iter__(__src_1);
@@ -202,7 +202,7 @@ void main() {
             auto __r_2 = __itr_1.__next__();
             if (!__r_2.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_2);
-            std::cout << "generator" << " " << n << "\n";
+            std::cout << "generator" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     std::optional<::tpy::ordered_map<std::string, std::vector<int32_t>>> in_try;
@@ -210,12 +210,12 @@ void main() {
         try {
             in_try = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"t", {1}}});
             ::tpy::__getitem__((*in_try), "t").push_back(2);
-            std::cout << "try" << " " << ::tpy::DictPrinter((*in_try)) << "\n";
+            std::cout << "try" << " " << ::tpy::DictPrinter((*in_try)) << "\n" << ::tpy::check_signals;
         } catch (...) {
-            std::cout << "finally done" << "\n";
+            std::cout << "finally done" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally done" << "\n";
+        std::cout << "finally done" << "\n" << ::tpy::check_signals;
     }
     int32_t tag = 1;
     auto& __match_subject_1 = tag;
@@ -223,11 +223,11 @@ void main() {
     case 1: {
         ::tpy::ordered_map<std::string, std::vector<int32_t>> in_match = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"c", {1}}});
         ::tpy::__getitem__(in_match, "c").push_back(2);
-        std::cout << "match" << " " << ::tpy::DictPrinter(in_match) << "\n";
+        std::cout << "match" << " " << ::tpy::DictPrinter(in_match) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
-        std::cout << "match other" << "\n";
+        std::cout << "match other" << "\n" << ::tpy::check_signals;
         break;
     }
     }

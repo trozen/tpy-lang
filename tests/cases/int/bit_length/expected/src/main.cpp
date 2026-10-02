@@ -30,22 +30,22 @@ namespace tpyapp::main {
 //     n: int = int(0xDEADBEEF)
 //     print(n.bit_length())  # 32
 void main() {
-    std::cout << (::tpy::BigInt(0)).bit_length() << "\n";
-    std::cout << (::tpy::BigInt(1)).bit_length() << "\n";
-    std::cout << (::tpy::BigInt(2)).bit_length() << "\n";
-    std::cout << (::tpy::BigInt(3)).bit_length() << "\n";
-    std::cout << (::tpy::BigInt(255)).bit_length() << "\n";
-    std::cout << (::tpy::BigInt(256)).bit_length() << "\n";
-    std::cout << (::tpy::BigInt(1023)).bit_length() << "\n";
-    std::cout << (::tpy::BigInt(1024)).bit_length() << "\n";
-    std::cout << (::tpy::BigInt(-1)).bit_length() << "\n";
-    std::cout << (::tpy::BigInt(-128)).bit_length() << "\n";
-    std::cout << (::tpy::BigInt(static_cast<int64_t>(-2147483648LL))).bit_length() << "\n";
-    std::cout << (((::tpy::BigInt(1)) << (::tpy::BigInt(64)))).bit_length() << "\n";
-    std::cout << (((::tpy::BigInt(1)) << (::tpy::BigInt(100)))).bit_length() << "\n";
-    std::cout << (((((::tpy::BigInt(1)) << (::tpy::BigInt(200)))) - (::tpy::BigInt(1)))).bit_length() << "\n";
+    std::cout << (::tpy::BigInt(0)).bit_length() << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::BigInt(1)).bit_length() << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::BigInt(2)).bit_length() << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::BigInt(3)).bit_length() << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::BigInt(255)).bit_length() << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::BigInt(256)).bit_length() << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::BigInt(1023)).bit_length() << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::BigInt(1024)).bit_length() << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::BigInt(-1)).bit_length() << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::BigInt(-128)).bit_length() << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::BigInt(static_cast<int64_t>(-2147483648LL))).bit_length() << "\n" << ::tpy::check_signals;
+    std::cout << (((::tpy::BigInt(1)) << (::tpy::BigInt(64)))).bit_length() << "\n" << ::tpy::check_signals;
+    std::cout << (((::tpy::BigInt(1)) << (::tpy::BigInt(100)))).bit_length() << "\n" << ::tpy::check_signals;
+    std::cout << (((((::tpy::BigInt(1)) << (::tpy::BigInt(200)))) - (::tpy::BigInt(1)))).bit_length() << "\n" << ::tpy::check_signals;
     ::tpy::BigInt n = ::tpy::BigInt(static_cast<int64_t>(3735928559LL));
-    std::cout << (n).bit_length() << "\n";
+    std::cout << (n).bit_length() << "\n" << ::tpy::check_signals;
 }
 
 // main()

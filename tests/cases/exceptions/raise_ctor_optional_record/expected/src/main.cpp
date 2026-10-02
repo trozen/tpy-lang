@@ -18,7 +18,7 @@ void main() {
             throw MyErr(&(n));
         } catch (const MyErr& e) {
             if ((e.node.has_value())) {
-                std::cout << (*e.node).v << "\n";
+                std::cout << (*e.node).v << "\n" << ::tpy::check_signals;
             }
         }
     }

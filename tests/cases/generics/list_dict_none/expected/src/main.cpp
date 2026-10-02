@@ -26,14 +26,14 @@ void main() {
     std::vector<std::monostate> xs = std::vector<std::monostate>{};
     xs.push_back(std::monostate{});
     xs.push_back(std::monostate{});
-    std::cout << "list len:" << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << "list len:" << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::monostate> d = ::tpy::ordered_map<std::string, std::monostate>();
     ::tpy::__setitem__(d, "a", std::monostate{});
     ::tpy::__setitem__(d, "b", std::monostate{});
-    std::cout << "dict size:" << " " << ::tpy::__len__(d) << "\n";
-    std::cout << "has a:" << " " << ::tpy::print_bool((d.contains("a"))) << "\n";
+    std::cout << "dict size:" << " " << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
+    std::cout << "has a:" << " " << ::tpy::print_bool((d.contains("a"))) << "\n" << ::tpy::check_signals;
     std::tuple<std::monostate, ::tpy::BigInt> t = std::tuple<std::monostate, ::tpy::BigInt>{std::monostate{}, ::tpy::BigInt(42)};
-    std::cout << "tuple snd:" << " " << std::get<1>(t) << "\n";
+    std::cout << "tuple snd:" << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
 }
 
 // main()

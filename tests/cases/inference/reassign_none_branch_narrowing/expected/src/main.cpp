@@ -23,7 +23,7 @@ void test_if_branch() {
         b = &*(__slot_1 = ::tpyapp::main::make_box());
     }
     if ((b != nullptr)) {
-        std::cout << b->v << "\n";
+        std::cout << b->v << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -45,7 +45,7 @@ void test_elif_branch() {
         b = &*(__slot_1 = ::tpyapp::main::make_box());
     }
     if ((b != nullptr)) {
-        std::cout << b->v << "\n";
+        std::cout << b->v << "\n" << ::tpy::check_signals;
     }
 }
 

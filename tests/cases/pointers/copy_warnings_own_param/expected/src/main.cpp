@@ -50,7 +50,7 @@ void main() {
     int32_t x = 42;
     nums.push_back(x);
     ::tpy::__setitem__(nums, 0, x);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

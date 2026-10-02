@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(items[::0])
 void main() {
     std::array<int32_t, 3> items = {1, 2, 3};
-    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, 0})) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, 0})) << "\n" << ::tpy::check_signals;
 }
 
 // main()

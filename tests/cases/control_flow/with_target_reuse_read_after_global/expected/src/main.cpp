@@ -45,7 +45,7 @@ void __tpy_init() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    std::cout << view->n << "\n";
+    std::cout << view->n << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

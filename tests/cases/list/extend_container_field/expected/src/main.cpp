@@ -47,22 +47,22 @@ void main() {
     ::tpy::list_extend(out, h.nums);
     h.nums.push_back(3);
     ::tpy::list_extend(out, h.nums);
-    std::cout << ::tpy::ListPrinter(out) << "\n";
-    std::cout << ::tpy::ListPrinter(h.nums) << "\n";
+    std::cout << ::tpy::ListPrinter(out) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(h.nums) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> from_set = std::vector<int32_t>{};
     ::tpy::list_extend(from_set, h.tags);
-    std::cout << ::tpy::ListPrinter(from_set) << "\n";
-    std::cout << ::tpy::str_join(",", h.parts) << "\n";
+    std::cout << ::tpy::ListPrinter(from_set) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_join(",", h.parts) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray buf = ::tpy::ByteArray(::tpy::bytes_literal("z", 1));
     ::tpy::bytes_extend_int_iterable(buf, h.nums);
-    std::cout << ::tpy::__len__(buf) << "\n";
+    std::cout << ::tpy::__len__(buf) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
     ::tpy::dict_update(d, h.ages);
     ::tpy::ordered_set<int32_t> st = ::tpy::ordered_set<int32_t>();
     ::tpy::set_update(st, h.tags);
     ::tpy::__setitem__(h.ages, "b", 2);
     h.tags.insert(8);
-    std::cout << ::tpy::__len__(d) << " " << ::tpy::__len__(st) << " " << ::tpy::__len__(h.ages) << " " << ::tpy::__len__(h.tags) << "\n";
+    std::cout << ::tpy::__len__(d) << " " << ::tpy::__len__(st) << " " << ::tpy::__len__(h.ages) << " " << ::tpy::__len__(h.tags) << "\n" << ::tpy::check_signals;
 }
 
 // main()

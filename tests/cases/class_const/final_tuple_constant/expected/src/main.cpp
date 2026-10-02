@@ -10,21 +10,21 @@ namespace tpyapp::main {
 //     print("whole", v[0], v[1], v[2])
 void whole() {
     std::tuple<int32_t, int32_t, int32_t> v = Version::SEMVER;
-    std::cout << "whole" << " " << std::get<0>(v) << " " << std::get<1>(v) << " " << std::get<2>(v) << "\n";
+    std::cout << "whole" << " " << std::get<0>(v) << " " << std::get<1>(v) << " " << std::get<2>(v) << "\n" << ::tpy::check_signals;
 }
 
 // # free function: the element read in place, no intermediate binding.
 // def direct() -> None:
 //     print("direct", Version.SEMVER[0])  # tpyc: ok
 void direct() {
-    std::cout << "direct" << " " << std::get<0>(Version::SEMVER) << "\n";
+    std::cout << "direct" << " " << std::get<0>(Version::SEMVER) << "\n" << ::tpy::check_signals;
 }
 
 // # free function: a nested-tuple constant read in place.
 // def nested() -> None:
 //     print("nested", Version.NESTED[0][1])  # tpyc: ok
 void nested() {
-    std::cout << "nested" << " " << std::get<1>(std::get<0>(Version::NESTED)) << "\n";
+    std::cout << "nested" << " " << std::get<1>(std::get<0>(Version::NESTED)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -44,14 +44,14 @@ void main() {
     int32_t major = std::get<0>(__tup_1);
     int32_t minor = std::get<1>(__tup_1);
     int32_t patch = std::get<2>(__tup_1);
-    std::cout << major << "\n";
-    std::cout << minor << "\n";
-    std::cout << patch << "\n";
+    std::cout << major << "\n" << ::tpy::check_signals;
+    std::cout << minor << "\n" << ::tpy::check_signals;
+    std::cout << patch << "\n" << ::tpy::check_signals;
     auto __tup_2 = Version::LABEL;
     std::string_view name = std::get<0>(__tup_2);
     bool stable = std::get<1>(__tup_2);
-    std::cout << name << "\n";
-    std::cout << ::tpy::print_bool(stable) << "\n";
+    std::cout << name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(stable) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::whole();
     ::tpyapp::main::direct();
     ::tpyapp::main::nested();

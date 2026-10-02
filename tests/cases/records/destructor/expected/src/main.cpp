@@ -10,7 +10,7 @@ Resource* g{};
 //     print("alive")
 void main() {
     Resource r = Resource("local");
-    std::cout << "alive" << "\n";
+    std::cout << "alive" << "\n" << ::tpy::check_signals;
 }
 
 // g = Resource("global")

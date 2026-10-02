@@ -19,13 +19,13 @@ namespace tpyapp::main {
 void main() {
     int64_t a = ::tpy::add_check<int64_t>(::tpy::lshift_check<int64_t>(1, 60), ::tpy::lshift_check<int64_t>(1, 7));
     int64_t b = 3;
-    std::cout << ::tpy::print_float((::tpy::truediv(a, b))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(a, b))) << "\n" << ::tpy::check_signals;
     uint64_t c = ::tpy::add_check<uint64_t>(::tpy::lshift_check<uint64_t>(1, 63), 1);
     uint64_t d = 1;
-    std::cout << ::tpy::print_float((::tpy::truediv(c, d))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(c, d))) << "\n" << ::tpy::check_signals;
     int64_t small = 100;
     int64_t seven = 7;
-    std::cout << ::tpy::print_float((::tpy::truediv(small, seven))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(small, seven))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

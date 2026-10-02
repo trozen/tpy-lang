@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(data[10])
 void main() {
     ::tpy::BytesView data = ::tpy::bytes_literal("abc", 3);
-    std::cout << static_cast<int>(::tpy::bytes_getitem(data, 10)) << "\n";
+    std::cout << static_cast<int>(::tpy::bytes_getitem(data, 10)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

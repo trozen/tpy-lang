@@ -26,8 +26,8 @@ void main() {
     int32_t x = 5;
     std::vector<int32_t> xs = {1, 2};
     int32_t y = 6;
-    ::tpyapp::main::take_bare([](int32_t n) { std::cout << n << "\n"; });
-    std::cout << x << " " << ::tpy::__len__(xs) << " " << y << "\n";
+    ::tpyapp::main::take_bare([](int32_t n) { std::cout << n << "\n" << ::tpy::check_signals; });
+    std::cout << x << " " << ::tpy::__len__(xs) << " " << y << "\n" << ::tpy::check_signals;
 }
 
 // main()

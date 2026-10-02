@@ -21,13 +21,13 @@ namespace tpyapp::main {
 //     # str.join with inline literal
 //     print(",".join(["a", "b", "c"]))
 void main() {
-    std::cout << ::tpy::print_bool(::tpy::builtin_all(std::array<bool, 3>{true, true, true})) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::builtin_all(std::array<bool, 3>{true, false, true})) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::builtin_any(std::array<bool, 3>{false, false, false})) << "\n";
-    std::cout << ::tpy::print_bool(::tpy::builtin_any(std::array<bool, 3>{false, true, false})) << "\n";
-    std::cout << ::tpy::builtin_sum<int32_t>(std::array<int32_t, 4>{1, 2, 3, 4}) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(std::array<int32_t, 5>{3, 1, 4, 1, 5})) << "\n";
-    std::cout << ::tpy::str_join(",", std::array<std::string, 3>{"a", "b", "c"}) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::builtin_all(std::array<bool, 3>{true, true, true})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::builtin_all(std::array<bool, 3>{true, false, true})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::builtin_any(std::array<bool, 3>{false, false, false})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::builtin_any(std::array<bool, 3>{false, true, false})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_sum<int32_t>(std::array<int32_t, 4>{1, 2, 3, 4}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(std::array<int32_t, 5>{3, 1, 4, 1, 5})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_join(",", std::array<std::string, 3>{"a", "b", "c"}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

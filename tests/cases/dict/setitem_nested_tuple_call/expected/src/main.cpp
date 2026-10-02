@@ -33,12 +33,12 @@ void main() {
     std::tuple<int32_t, std::tuple<int32_t, int32_t>> t = ::tpyapp::main::make();
     ::tpy::__setitem__(d, 3, t);
     ::tpy::__setitem__(d, 4, std::tuple<int32_t, std::tuple<int32_t, int32_t>>{7, std::tuple<int32_t, int32_t>{8, 9}});
-    std::cout << ::tpy::__len__(d) << "\n";
-    std::cout << std::get<0>(::tpy::__getitem__(d, 1)) << " " << std::get<0>(std::get<1>(::tpy::__getitem__(d, 1))) << " " << std::get<1>(std::get<1>(::tpy::__getitem__(d, 1))) << "\n";
-    std::cout << std::get<0>(::tpy::__getitem__(d, 2)) << " " << std::get<0>(std::get<1>(::tpy::__getitem__(d, 2))) << " " << std::get<1>(std::get<1>(::tpy::__getitem__(d, 2))) << "\n";
-    std::cout << std::get<0>(::tpy::__getitem__(d, 3)) << " " << std::get<0>(std::get<1>(::tpy::__getitem__(d, 3))) << " " << std::get<1>(std::get<1>(::tpy::__getitem__(d, 3))) << "\n";
-    std::cout << std::get<0>(t) << " " << std::get<0>(std::get<1>(t)) << " " << std::get<1>(std::get<1>(t)) << "\n";
-    std::cout << std::get<0>(::tpy::__getitem__(d, 4)) << " " << std::get<0>(std::get<1>(::tpy::__getitem__(d, 4))) << " " << std::get<1>(std::get<1>(::tpy::__getitem__(d, 4))) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<0>(::tpy::__getitem__(d, 1)) << " " << std::get<0>(std::get<1>(::tpy::__getitem__(d, 1))) << " " << std::get<1>(std::get<1>(::tpy::__getitem__(d, 1))) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<0>(::tpy::__getitem__(d, 2)) << " " << std::get<0>(std::get<1>(::tpy::__getitem__(d, 2))) << " " << std::get<1>(std::get<1>(::tpy::__getitem__(d, 2))) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<0>(::tpy::__getitem__(d, 3)) << " " << std::get<0>(std::get<1>(::tpy::__getitem__(d, 3))) << " " << std::get<1>(std::get<1>(::tpy::__getitem__(d, 3))) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<0>(t) << " " << std::get<0>(std::get<1>(t)) << " " << std::get<1>(std::get<1>(t)) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<0>(::tpy::__getitem__(d, 4)) << " " << std::get<0>(std::get<1>(::tpy::__getitem__(d, 4))) << " " << std::get<1>(std::get<1>(::tpy::__getitem__(d, 4))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

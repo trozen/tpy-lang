@@ -18,8 +18,8 @@ void main() {
             ::tpy::TextFile f = ::tpy::builtin_open("/nonexistent/path/file.txt");
             f.close();
         } catch (const ::tpy::FileNotFoundError& e) {
-            std::cout << e.message << "\n";
-            std::cout << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << e.message << "\n" << ::tpy::check_signals;
+            std::cout << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

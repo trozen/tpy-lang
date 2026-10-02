@@ -15,7 +15,7 @@ std::tuple<Counter, Counter> make_pair() {
 //     print(c.n)
 void consume(Counter&& c) {
     c.n = ::tpy::add_check<int32_t>(c.n, 10);
-    std::cout << c.n << "\n";
+    std::cout << c.n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

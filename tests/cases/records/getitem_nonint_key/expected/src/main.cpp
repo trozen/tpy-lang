@@ -20,9 +20,9 @@ int32_t lookup(const Scores& s, std::string_view key) {
 //     print(lookup(s, k), lookup(s, "b"))
 void main() {
     Scores s = Scores();
-    std::cout << s["a"] << " " << s["b"] << "\n";
+    std::cout << s["a"] << " " << s["b"] << "\n" << ::tpy::check_signals;
     std::string_view k = "a";
-    std::cout << ::tpyapp::main::lookup(s, k) << " " << ::tpyapp::main::lookup(s, "b") << "\n";
+    std::cout << ::tpyapp::main::lookup(s, k) << " " << ::tpyapp::main::lookup(s, "b") << "\n" << ::tpy::check_signals;
 }
 
 // main()

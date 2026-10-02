@@ -23,11 +23,11 @@ void attempt(std::string_view label, ::tpy::BytesView data) {
     {
         try {
             int32_t n = ::tpy::__len__(::tpystd::gzip::decompress(data));
-            std::cout << label << " " << "ok" << " " << n << "\n";
+            std::cout << label << " " << "ok" << " " << n << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::gzip::BadGzipFile& e) {
-            std::cout << label << " " << "BadGzipFile" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << label << " " << "BadGzipFile" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::EOFError& e) {
-            std::cout << label << " " << "EOFError" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << label << " " << "EOFError" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -88,11 +88,11 @@ void load_attempt(std::string_view label, std::string_view path) {
     {
         try {
             int32_t n = ::tpy::__len__(::tpyapp::main::load(path));
-            std::cout << label << " " << "ok" << " " << n << "\n";
+            std::cout << label << " " << "ok" << " " << n << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::gzip::BadGzipFile& e) {
-            std::cout << label << " " << "BadGzipFile" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << label << " " << "BadGzipFile" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::EOFError& e) {
-            std::cout << label << " " << "EOFError" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << label << " " << "EOFError" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -112,17 +112,17 @@ void load_attempt(std::string_view label, std::string_view path) {
 //     big = bytes(range(256)) * 1500
 //     print("mem big", gzip.decompress(gzip.compress(big, mtime=0)) == big)
 void in_memory() {
-    std::cout << "mem fixture" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(FIXTURE) == RAW)) << "\n";
-    std::cout << "mem mtime0" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpystd::gzip::compress(RAW, 9, static_cast<double>(0))) == RAW)) << "\n";
-    std::cout << "mem mtime" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpystd::gzip::compress(RAW, 1, 12345.0)) == RAW)) << "\n";
-    std::cout << "mem now" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpystd::gzip::compress(RAW, 6, std::nullopt)) == RAW)) << "\n";
-    std::cout << "mem bytearray" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpy::ByteArray(FIXTURE)) == RAW)) << "\n";
-    std::cout << "mem multi" << " " << ::tpy::print_bool((::tpystd::gzip::decompress((::tpy::bytes_concat(FIXTURE, FIXTURE))) == (::tpy::bytes_concat(RAW, RAW)))) << "\n";
-    std::cout << "mem padding" << " " << ::tpy::print_bool((::tpystd::gzip::decompress((::tpy::bytes_concat((::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal_owned("\000\000\000", 3))), FIXTURE))) == (::tpy::bytes_concat(RAW, RAW)))) << "\n";
-    std::cout << "mem empty" << " " << ::tpy::BytesPrinter(::tpystd::gzip::decompress(::tpy::BytesView{})) << "\n";
-    std::cout << "mem header fields" << " " << ::tpy::BytesPrinter(::tpystd::gzip::decompress(HEADER_FIELDS)) << "\n";
+    std::cout << "mem fixture" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(FIXTURE) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "mem mtime0" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpystd::gzip::compress(RAW, 9, static_cast<double>(0))) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "mem mtime" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpystd::gzip::compress(RAW, 1, 12345.0)) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "mem now" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpystd::gzip::compress(RAW, 6, std::nullopt)) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "mem bytearray" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpy::ByteArray(FIXTURE)) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "mem multi" << " " << ::tpy::print_bool((::tpystd::gzip::decompress((::tpy::bytes_concat(FIXTURE, FIXTURE))) == (::tpy::bytes_concat(RAW, RAW)))) << "\n" << ::tpy::check_signals;
+    std::cout << "mem padding" << " " << ::tpy::print_bool((::tpystd::gzip::decompress((::tpy::bytes_concat((::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal_owned("\000\000\000", 3))), FIXTURE))) == (::tpy::bytes_concat(RAW, RAW)))) << "\n" << ::tpy::check_signals;
+    std::cout << "mem empty" << " " << ::tpy::BytesPrinter(::tpystd::gzip::decompress(::tpy::BytesView{})) << "\n" << ::tpy::check_signals;
+    std::cout << "mem header fields" << " " << ::tpy::BytesPrinter(::tpystd::gzip::decompress(HEADER_FIELDS)) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes big = (::tpy::bytes_repeat(::tpy::bytes_from_int_iterable(::tpy::Range<int32_t>(256)), 1500));
-    std::cout << "mem big" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpystd::gzip::compress(big, 9, static_cast<double>(0))) == big)) << "\n";
+    std::cout << "mem big" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpystd::gzip::compress(big, 9, static_cast<double>(0))) == big)) << "\n" << ::tpy::check_signals;
 }
 
 // def in_memory_errors() -> None:
@@ -170,9 +170,9 @@ void in_memory_errors() {
         {
             try {
                 ::tpystd::gzip::compress(RAW, 9, stamp);
-                std::cout << "err mtime" << " " << ::tpy::print_float(stamp) << " " << "ok" << "\n";
+                std::cout << "err mtime" << " " << ::tpy::print_float(stamp) << " " << "ok" << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::Exception&) {
-                std::cout << "err mtime" << " " << ::tpy::print_float(stamp) << " " << "raised" << "\n";
+                std::cout << "err mtime" << " " << ::tpy::print_float(stamp) << " " << "raised" << "\n" << ::tpy::check_signals;
             }
         }
     }
@@ -338,13 +338,13 @@ __gen_lines_of lines_of(std::string_view path) {
 //         print("file pieces", total)
 void files() {
     ::tpyapp::main::write("gzip_basic.gz", FIXTURE);
-    std::cout << "file read" << " " << ::tpy::print_bool((::tpyapp::main::load("gzip_basic.gz") == RAW)) << "\n";
+    std::cout << "file read" << " " << ::tpy::print_bool((::tpyapp::main::load("gzip_basic.gz") == RAW)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::write("gzip_basic_fields.gz", HEADER_FIELDS);
-    std::cout << "file header fields" << " " << ::tpy::BytesPrinter(::tpyapp::main::load("gzip_basic_fields.gz")) << "\n";
+    std::cout << "file header fields" << " " << ::tpy::BytesPrinter(::tpyapp::main::load("gzip_basic_fields.gz")) << "\n" << ::tpy::check_signals;
     auto __ctx_3 = ::tpy::builtin_open_binary("gzip_basic.gz", "rb");
     auto& raw_file = __ctx_3.__enter__();
     try {
-        std::cout << "file decompress" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(raw_file.read()) == RAW)) << "\n";
+        std::cout << "file decompress" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(raw_file.read()) == RAW)) << "\n" << ::tpy::check_signals;
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
@@ -356,7 +356,7 @@ void files() {
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
     Loader loader = Loader("gzip_basic.gz");
-    std::cout << "method head" << " " << ::tpy::BytesPrinter(loader.head()) << " " << ::tpy::BytesPrinter(loader.line()) << " " << loader.f.name << "\n";
+    std::cout << "method head" << " " << ::tpy::BytesPrinter(loader.head()) << " " << ::tpy::BytesPrinter(loader.line()) << " " << loader.f.name << "\n" << ::tpy::check_signals;
     loader.f.close();
     std::cout << "generator" << " " << ::tpy::__len__(({
         std::vector<::tpy::Bytes> __result;
@@ -368,13 +368,13 @@ void files() {
             __result.push_back(line);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     auto __ctx_4 = ::tpystd::gzip::open("gzip_basic.gz");
     ::tpystd::gzip::GzipFile* f = &(__ctx_4.__enter__());
     try {
-        std::cout << "readline size" << " " << ::tpy::BytesPrinter(f->readline(3)) << " " << ::tpy::BytesPrinter(f->readline(-5)) << " " << ::tpy::BytesPrinter(f->read(0)) << "\n";
-        std::cout << "readlines" << " " << ::tpy::__len__(f->readlines()) << "\n";
-        std::cout << "at eof" << " " << ::tpy::BytesPrinter(f->read()) << " " << ::tpy::BytesPrinter(f->readline()) << "\n";
+        std::cout << "readline size" << " " << ::tpy::BytesPrinter(f->readline(3)) << " " << ::tpy::BytesPrinter(f->readline(-5)) << " " << ::tpy::BytesPrinter(f->read(0)) << "\n" << ::tpy::check_signals;
+        std::cout << "readlines" << " " << ::tpy::__len__(f->readlines()) << "\n" << ::tpy::check_signals;
+        std::cout << "at eof" << " " << ::tpy::BytesPrinter(f->read()) << " " << ::tpy::BytesPrinter(f->readline()) << "\n" << ::tpy::check_signals;
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});
@@ -386,30 +386,30 @@ void files() {
     __with_exit_4:
     __ctx_4.__exit__({}, nullptr, {});
     ::tpystd::gzip::GzipFile f2 = ::tpystd::gzip::open("gzip_basic.gz");
-    std::cout << "protocol" << " " << ::tpyapp::main::count_newlines(f2) << "\n";
-    std::cout << "flags" << " " << ::tpy::print_bool(f2.readable()) << " " << ::tpy::print_bool(f2.writable()) << " " << ::tpy::print_bool(f2.closed()) << "\n";
+    std::cout << "protocol" << " " << ::tpyapp::main::count_newlines(f2) << "\n" << ::tpy::check_signals;
+    std::cout << "flags" << " " << ::tpy::print_bool(f2.readable()) << " " << ::tpy::print_bool(f2.writable()) << " " << ::tpy::print_bool(f2.closed()) << "\n" << ::tpy::check_signals;
     f2.close();
     f2.close();
-    std::cout << "closed" << " " << ::tpy::print_bool(f2.closed()) << " " << f2.name << "\n";
+    std::cout << "closed" << " " << ::tpy::print_bool(f2.closed()) << " " << f2.name << "\n" << ::tpy::check_signals;
     {
         try {
             f2.read();
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "closed read" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "closed read" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             f2.readlines();
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "closed readlines" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "closed readlines" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             f2.read(-2);
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "closed first" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "closed first" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::gzip::GzipFile f3 = ::tpystd::gzip::open("gzip_basic.gz");
@@ -417,7 +417,7 @@ void files() {
         try {
             f3.read(-2);
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "read -2" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "read -2" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     f3.close();
@@ -430,11 +430,11 @@ void files() {
                 auto __r_2 = __itr_1.__next__();
                 if (!__r_2.has_value()) break;
                 ::tpy::BytesView line = ::tpy::unwrap_ref(*__r_2);
-                std::cout << "iter line" << " " << ::tpy::BytesPrinter(line) << "\n";
+                std::cout << "iter line" << " " << ::tpy::BytesPrinter(line) << "\n" << ::tpy::check_signals;
                 f4.close();
             }
         } catch (const ::tpy::ValueError& e) {
-            std::cout << "closed mid-iteration" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "closed mid-iteration" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     std::array<::tpy::Bytes, 3> payloads = {(::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 10)), (::tpy::bytes_repeat(::tpy::bytes_literal_owned("b", 1), 100000)), ::tpy::Bytes{}};
@@ -450,12 +450,12 @@ void files() {
             __result.push_back(::tpy::__len__(::tpyapp::main::load(std::format("gzip_basic_{}.gz", i))));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes big = (::tpy::bytes_repeat(::tpy::bytes_from_int_iterable(::tpy::Range<int32_t>(256)), 3000));
     ::tpy::Bytes one = ::tpystd::gzip::compress(big, 1, static_cast<double>(0));
     ::tpyapp::main::write("gzip_basic_big.gz", (::tpy::bytes_concat((::tpy::bytes_concat(one, ::tpy::bytes_literal_owned("\000\000", 2))), one)));
     ::tpy::Bytes got = ::tpyapp::main::load("gzip_basic_big.gz");
-    std::cout << "file big" << " " << ::tpy::__len__(got) << " " << ::tpy::print_bool((got == (::tpy::bytes_concat(big, big)))) << "\n";
+    std::cout << "file big" << " " << ::tpy::__len__(got) << " " << ::tpy::print_bool((got == (::tpy::bytes_concat(big, big)))) << "\n" << ::tpy::check_signals;
     int32_t total;
     auto __ctx_5 = ::tpystd::gzip::open("gzip_basic_big.gz");
     f = &(__ctx_5.__enter__());
@@ -468,7 +468,7 @@ void files() {
             }
             total = ::tpy::add_check<int32_t>(total, ::tpy::__len__(piece));
         }
-        std::cout << "file pieces" << " " << total << "\n";
+        std::cout << "file pieces" << " " << total << "\n" << ::tpy::check_signals;
         goto __with_exit_5;
     } catch (::tpy::BaseException& __exc_5) {
         __ctx_5.__exit__({}, &__exc_5, {});
@@ -522,12 +522,12 @@ void file_errors() {
     ::tpyapp::main::load_attempt("file empty", "gzip_basic_empty.gz");
     ::tpystd::gzip::GzipFile f = ::tpystd::gzip::open("gzip_basic_plain.bin");
     f.close();
-    std::cout << "file lazy" << " " << ::tpy::print_bool(f.closed()) << "\n";
+    std::cout << "file lazy" << " " << ::tpy::print_bool(f.closed()) << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpystd::gzip::open("gzip_basic_missing.gz");
         } catch (const ::tpy::FileNotFoundError& e) {
-            std::cout << "file missing" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "file missing" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::os::mkdir("gzip_basic_dir");
@@ -535,7 +535,7 @@ void file_errors() {
         try {
             ::tpystd::gzip::open("gzip_basic_dir");
         } catch (const ::tpy::IsADirectoryError& e) {
-            std::cout << "file directory" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "file directory" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

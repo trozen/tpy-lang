@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(a.pet.get().name())
 void main() {
     Adopter a = Adopter(std::make_unique<Parrot>(Parrot("Polly")));
-    std::cout << a.pet.get().name() << "\n";
+    std::cout << a.pet.get().name() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box

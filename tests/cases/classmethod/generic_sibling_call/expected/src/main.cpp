@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(Util.larger(3, 7))
 //     print(Util.larger_float(1.5, 0.5))
 void main() {
-    std::cout << Util::larger(3, 7) << "\n";
-    std::cout << ::tpy::print_float(Util::larger_float(1.5, 0.5)) << "\n";
+    std::cout << Util::larger(3, 7) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(Util::larger_float(1.5, 0.5)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

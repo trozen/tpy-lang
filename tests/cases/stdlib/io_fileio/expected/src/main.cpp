@@ -61,19 +61,19 @@ int64_t feed(::tpy::BytesView data) {
 //     big.close()
 void main() {
     ::tpystd::io::FileIO f = ::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("hello world", 11)));
-    std::cout << ::tpy::print_bool((f.fileno() >= 0)) << "\n";
-    std::cout << ::tpy::BytesPrinter(f.read(5)) << "\n";
-    std::cout << ::tpy::BytesPrinter(f.read(0)) << "\n";
-    std::cout << ::tpy::BytesPrinter(f.read(-1)) << "\n";
-    std::cout << ::tpy::BytesPrinter(f.read(-1)) << "\n";
-    std::cout << ::tpy::print_bool(f.readable()) << "\n";
-    std::cout << ::tpy::print_bool(f.closed()) << "\n";
+    std::cout << ::tpy::print_bool((f.fileno() >= 0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(f.read(5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(f.read(0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(f.read(-1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(f.read(-1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(f.readable()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(f.closed()) << "\n" << ::tpy::check_signals;
     f.close();
-    std::cout << ::tpy::print_bool(f.closed()) << "\n";
+    std::cout << ::tpy::print_bool(f.closed()) << "\n" << ::tpy::check_signals;
     auto __ctx_1 = ::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("ctx", 3)));
     auto& cf = __ctx_1.__enter__();
     try {
-        std::cout << ::tpy::BytesPrinter(cf.read(-1)) << "\n";
+        std::cout << ::tpy::BytesPrinter(cf.read(-1)) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -84,25 +84,25 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    std::cout << ::tpy::print_bool(cf.closed()) << "\n";
+    std::cout << ::tpy::print_bool(cf.closed()) << "\n" << ::tpy::check_signals;
     {
         try {
             (void)(::tpystd::io::FileIO(-1));
-            std::cout << "no-raise" << "\n";
+            std::cout << "no-raise" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "negfd-ValueError" << "\n";
+            std::cout << "negfd-ValueError" << "\n" << ::tpy::check_signals;
         }
     }
     int64_t fd = ::tpyapp::main::feed(::tpy::bytes_literal("abc", 3));
     ::tpystd::io::FileIO g = ::tpystd::io::FileIO(fd, false);
-    std::cout << ::tpy::BytesPrinter(g.read(-1)) << "\n";
+    std::cout << ::tpy::BytesPrinter(g.read(-1)) << "\n" << ::tpy::check_signals;
     g.close();
     ::tpystd::os::close(fd);
-    std::cout << "closefd-ok" << "\n";
+    std::cout << "closefd-ok" << "\n" << ::tpy::check_signals;
     ::tpy::Bytes payload = (::tpy::bytes_repeat(::tpy::bytes_from_int_iterable(::tpy::Range<int32_t>(256)), 80));
     ::tpystd::io::FileIO big = ::tpystd::io::FileIO(::tpyapp::main::feed(payload));
     ::tpy::Bytes got = big.read();
-    std::cout << "read-all" << " " << ::tpy::__len__(got) << " " << ::tpy::print_bool((got == payload)) << "\n";
+    std::cout << "read-all" << " " << ::tpy::__len__(got) << " " << ::tpy::print_bool((got == payload)) << "\n" << ::tpy::check_signals;
     big.close();
 }
 

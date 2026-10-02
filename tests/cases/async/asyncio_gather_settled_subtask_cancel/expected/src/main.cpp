@@ -193,7 +193,7 @@ __coro_gather_helper gather_helper() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         results.emplace(std::move(__r0).value());
         __sub_0.reset();
-        std::cout << "count" << " " << ::tpy::__len__((*results)) << "\n";
+        std::cout << "count" << " " << ::tpy::__len__((*results)) << "\n" << ::tpy::check_signals;
         auto& __obj_0 = (*results);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -204,13 +204,13 @@ __coro_gather_helper gather_helper() {
                     try {
                         (*r.exception).__deref__().__raise__();
                     } catch (const ::tpy::CancelledError&) {
-                        std::cout << "entry: cancelled" << "\n";
+                        std::cout << "entry: cancelled" << "\n" << ::tpy::check_signals;
                     } catch (const ::tpy::BaseException& e) {
-                        std::cout << "entry: unexpected" << " " << e.message << "\n";
+                        std::cout << "entry: unexpected" << " " << e.message << "\n" << ::tpy::check_signals;
                     }
                 }
             } else if ((r.value.has_value())) {
-                std::cout << "entry: ok" << " " << (*r.value).get() << "\n";
+                std::cout << "entry: ok" << " " << (*r.value).get() << "\n" << ::tpy::check_signals;
             }
         }
         __state = S_DONE;

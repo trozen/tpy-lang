@@ -27,13 +27,13 @@ namespace tpyapp::main {
 void main() {
     Lim lim = Lim();
     std::vector<int32_t> __tmp_1 = {5, 6, 7};
-    std::cout << ::tpy::builtin_sum<int32_t>(lim.first(__tmp_1, 2)) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(lim.first(__tmp_1, 2)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_2 = {1, 2};
-    std::cout << ::tpy::builtin_sum<int32_t>(lim.ro_pair(__tmp_2)) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(lim.ro_pair(__tmp_2)) << "\n" << ::tpy::check_signals;
     Rec __tmp_3 = Rec(41);
-    std::cout << ::tpy::builtin_sum<int32_t>(lim.rec_val(__tmp_3)) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(lim.rec_val(__tmp_3)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> __tmp_4 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    std::cout << ::tpy::builtin_sum<int32_t>(lim.dvals(__tmp_4)) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(lim.dvals(__tmp_4)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_5 = {10, 20, 30};
     __gen_Lim_first g = lim.first(__tmp_5, 3);
     int32_t total = 0;
@@ -45,7 +45,7 @@ void main() {
         int32_t x = ::tpy::unwrap_ref(*__r_1);
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
     std::vector<int32_t> data = {5, 6};
     std::vector<int32_t> got = std::vector<int32_t>{};
     {
@@ -59,7 +59,7 @@ void main() {
             ::tpy::__setitem__(data, 0, 50);
         }
     }
-    std::cout << ::tpy::__getitem__(got, 0) << " " << ::tpy::__getitem__(got, 1) << "\n";
+    std::cout << ::tpy::__getitem__(got, 0) << " " << ::tpy::__getitem__(got, 1) << "\n" << ::tpy::check_signals;
 }
 
 

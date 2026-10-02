@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print("ok")
 void main() {
     ::tpy::Any a = ::tpy::make_any(std::vector<int32_t>{1, 2, 3});
-    std::cout << "ok" << "\n";
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // main()

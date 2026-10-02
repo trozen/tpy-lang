@@ -17,9 +17,9 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::config::__tpy_init();
-    std::cout << ::tpyapp::config::DEFAULT->width << "\n";
-    std::cout << ::tpyapp::config::DEFAULT->height << "\n";
-    std::cout << ::tpyapp::config::DEFAULT->area() << "\n";
+    std::cout << ::tpyapp::config::DEFAULT->width << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::config::DEFAULT->height << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::config::DEFAULT->area() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

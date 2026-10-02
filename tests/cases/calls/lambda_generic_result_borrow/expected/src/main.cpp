@@ -57,10 +57,10 @@ void main() {
             __result.push_back(y.n);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     Rec& a = ::tpy::__getitem__(rs, 0);
     Rec& b = ::tpy::__getitem__(rs, 1);
-    std::cout << "free_min" << " " << ::tpy::min_key(a, b, [](const Rec& r) -> const Inner& { return r.inner; }).n << "\n";
+    std::cout << "free_min" << " " << ::tpy::min_key(a, b, [](const Rec& r) -> const Inner& { return r.inner; }).n << "\n" << ::tpy::check_signals;
     Team().ranked();
     {
         auto __src_1 = ::tpy::builtin_map<::tpy::val_or_ref<Inner>>([](Rec& r) -> Inner& { return r.inner; }, rs);
@@ -83,7 +83,7 @@ void main() {
             __result.push_back(r.inner.v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     Holder h = Holder();
     {
         auto __src_4 = ::tpy::builtin_map<::tpy::val_or_ref<Inner>>([&h](Rec& r) -> Inner& { return ::tpyapp::main::mk(r).shared(h); }, rs);
@@ -95,7 +95,7 @@ void main() {
             j.v = ::tpy::add_check<int32_t>(j.v, 1);
         }
     }
-    std::cout << "map_arg_rooted" << " " << h.inner.v << "\n";
+    std::cout << "map_arg_rooted" << " " << h.inner.v << "\n" << ::tpy::check_signals;
     std::vector<Rec> zs = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Inner { return Inner(::tpy::neg_check<int32_t>(r.n)); });
     std::cout << "fresh_key" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -108,7 +108,7 @@ void main() {
             __result.push_back(z.n);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::vector<Rec> ws = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> int32_t { return ::tpyapp::main::mk(r).n; });
     std::cout << "temp_scalar_field" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -121,7 +121,7 @@ void main() {
             __result.push_back(w.n);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::vector<Rec> vs = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> int32_t { return ::tpy::neg_check<int32_t>(::tpyapp::main::mk(r).get_inner().v); });
     std::cout << "temp_scalar_via_borrow" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -134,7 +134,7 @@ void main() {
             __result.push_back(v.n);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
 }
 
 // main()

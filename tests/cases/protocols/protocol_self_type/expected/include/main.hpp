@@ -28,7 +28,7 @@ void main();
 template<Addable T_x, Addable T_y>
 void add_values(const T_x& x, const T_y& y) {
     auto result = (x + y);
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

@@ -37,8 +37,8 @@ void main() {
     auto __tup_1 = ::tpyapp::main::pair();
     ::tpy::Union<A*, B*> p = ::tpy::to_ptr_variant(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    std::cout << ::tpyapp::main::borrow(p.as_const()) << "\n";
-    std::cout << n << "\n";
+    std::cout << ::tpyapp::main::borrow(p.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << n << "\n" << ::tpy::check_signals;
 }
 
 // main()

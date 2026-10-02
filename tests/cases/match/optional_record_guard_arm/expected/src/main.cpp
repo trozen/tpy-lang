@@ -85,13 +85,13 @@ std::string value_inner(std::optional<Point> o) {
 void main() {
     Box __tmp_1 = Box(1);
     Box __tmp_2 = Box(1);
-    std::cout << "flagged:" << " " << ::tpyapp::main::flagged(nullptr, true) << " " << ::tpyapp::main::flagged(&(__tmp_1), true) << " " << ::tpyapp::main::flagged(&(__tmp_2), false) << "\n";
+    std::cout << "flagged:" << " " << ::tpyapp::main::flagged(nullptr, true) << " " << ::tpyapp::main::flagged(&(__tmp_1), true) << " " << ::tpyapp::main::flagged(&(__tmp_2), false) << "\n" << ::tpy::check_signals;
     Box shared = Box(1);
     ::tpyapp::main::bump(&(shared), true);
     ::tpyapp::main::bump(&(shared), false);
-    std::cout << "bump:" << " " << shared.val << "\n";
-    std::cout << "value_inner:" << " " << ::tpyapp::main::value_inner(std::nullopt) << " " << ::tpyapp::main::value_inner(Point(1)) << " " << ::tpyapp::main::value_inner(Point(2)) << "\n";
-    std::cout << "method:" << " " << Holder(Box(1)).describe(true) << " " << Holder(Box(1)).describe(false) << "\n";
+    std::cout << "bump:" << " " << shared.val << "\n" << ::tpy::check_signals;
+    std::cout << "value_inner:" << " " << ::tpyapp::main::value_inner(std::nullopt) << " " << ::tpyapp::main::value_inner(Point(1)) << " " << ::tpyapp::main::value_inner(Point(2)) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << Holder(Box(1)).describe(true) << " " << Holder(Box(1)).describe(false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

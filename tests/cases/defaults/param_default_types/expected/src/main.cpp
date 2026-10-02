@@ -120,11 +120,11 @@ int32_t wrapped(int32_t n) {
 //     b = Box()
 //     print(b.n, b.label, b.scale(), b.stepped())
 void main() {
-    std::cout << ::tpyapp::main::widen() << " " << ::tpy::print_float(::tpyapp::main::as_float()) << " " << static_cast<int>(::tpyapp::main::negative()) << " " << ::tpyapp::main::bracket() << "\n";
-    std::cout << ::tpyapp::main::raw() << " " << ::tpyapp::main::view() << " " << ::tpy::print_bool(::tpyapp::main::flagged()) << " " << ::tpyapp::main::optional() << "\n";
-    std::cout << ::tpyapp::main::from_final() << " " << ::tpyapp::main::shade() << " " << ::tpyapp::main::wrapped() << "\n";
+    std::cout << ::tpyapp::main::widen() << " " << ::tpy::print_float(::tpyapp::main::as_float()) << " " << static_cast<int>(::tpyapp::main::negative()) << " " << ::tpyapp::main::bracket() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::raw() << " " << ::tpyapp::main::view() << " " << ::tpy::print_bool(::tpyapp::main::flagged()) << " " << ::tpyapp::main::optional() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::from_final() << " " << ::tpyapp::main::shade() << " " << ::tpyapp::main::wrapped() << "\n" << ::tpy::check_signals;
     Box b = Box();
-    std::cout << b.n << " " << b.label << " " << b.scale() << " " << b.stepped() << "\n";
+    std::cout << b.n << " " << b.label << " " << b.scale() << " " << b.stepped() << "\n" << ::tpy::check_signals;
 }
 
 // from enum import IntEnum

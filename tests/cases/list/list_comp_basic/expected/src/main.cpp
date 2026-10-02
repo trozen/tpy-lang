@@ -49,7 +49,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(squares) << "\n";
+    std::cout << ::tpy::ListPrinter(squares) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> items = {10, 20, 30};
     std::vector<int32_t> copy = ({
         std::vector<int32_t> __result;
@@ -63,7 +63,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(copy) << "\n";
+    std::cout << ::tpy::ListPrinter(copy) << "\n" << ::tpy::check_signals;
     int32_t stop = 7;
     std::vector<int32_t> shifted = ({
         std::vector<int32_t> __result;
@@ -75,7 +75,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(shifted) << "\n";
+    std::cout << ::tpy::ListPrinter(shifted) << "\n" << ::tpy::check_signals;
     std::vector<Point> points = {Point(1, 2), Point(3, 4), Point(5, 6)};
     std::vector<int32_t> xs = ({
         std::vector<int32_t> __result;
@@ -89,11 +89,11 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(::tpy::array_from_index<int32_t, 3>([&](std::size_t __i_5) -> int32_t {
         int32_t x = int32_t(__i_5);
         return (::tpy::add_check<int32_t>(x, 1));
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::vector<std::string> words = {"hello", "world"};
     std::vector<std::string> upper = ({
         std::vector<std::string> __result;
@@ -107,8 +107,8 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(upper) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpyapp::main::make_list(4)) << "\n";
+    std::cout << ::tpy::ListPrinter(upper) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpyapp::main::make_list(4)) << "\n" << ::tpy::check_signals;
     int32_t step = 3;
     std::vector<int32_t> stepped = ({
         std::vector<int32_t> __result;
@@ -121,7 +121,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::ListPrinter(stepped) << "\n";
+    std::cout << ::tpy::ListPrinter(stepped) << "\n" << ::tpy::check_signals;
 }
 
 // def make_list(n: int32) -> Own[list[int32]]:

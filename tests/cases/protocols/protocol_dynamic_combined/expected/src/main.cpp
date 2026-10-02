@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def show_desc(d: Describable) -> None:
 //     print(d.describe())
 void show_desc(Describable& d) {
-    std::cout << d.describe() << "\n";
+    std::cout << d.describe() << "\n" << ::tpy::check_signals;
 }
 
 // def show_noise(n: Noise) -> None:
 //     print(n.make_noise())
 void show_noise(Noise& n) {
-    std::cout << n.make_noise() << "\n";
+    std::cout << n.make_noise() << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

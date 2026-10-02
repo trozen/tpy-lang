@@ -116,9 +116,9 @@ void main() {
             s._items.push_back(99);
         }
     }
-    std::cout << "frame:" << " " << seen << " " << ::tpy::__len__(s._items) << "\n";
+    std::cout << "frame:" << " " << seen << " " << ::tpy::__len__(s._items) << "\n" << ::tpy::check_signals;
     Snap __tmp_1 = Snap();
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::drain(__tmp_1))) << "\n";
+    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::drain(__tmp_1))) << "\n" << ::tpy::check_signals;
     Snap own_src = Snap();
     {
         auto __src_2 = own_src.yield_own();
@@ -128,10 +128,10 @@ void main() {
             if (!__r_3.has_value()) break;
             auto&& snap = ::tpy::unwrap_ref(*__r_3);
             snap.push_back(42);
-            std::cout << "self_yield_own:" << " " << ::tpy::__len__(snap) << "\n";
+            std::cout << "self_yield_own:" << " " << ::tpy::__len__(snap) << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "self_yield_own owner:" << " " << ::tpy::__len__(own_src._items) << "\n";
+    std::cout << "self_yield_own owner:" << " " << ::tpy::__len__(own_src._items) << "\n" << ::tpy::check_signals;
     Holder h = Holder();
     {
         auto __src_4 = h.yield_rec();
@@ -153,7 +153,7 @@ void main() {
             ys.push_back(3);
         }
     }
-    std::cout << "self_yield:" << " " << h.p.x << " " << ::tpy::__len__(h.xs) << " " << ::tpy::__getitem__(h.xs, 2) << "\n";
+    std::cout << "self_yield:" << " " << h.p.x << " " << ::tpy::__len__(h.xs) << " " << ::tpy::__getitem__(h.xs, 2) << "\n" << ::tpy::check_signals;
 }
 
 

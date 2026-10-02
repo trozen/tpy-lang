@@ -13,7 +13,7 @@ void main() {
     Holder h = Holder();
     ::tpy::ordered_set<Key> ks = ::tpy::ordered_set<Key>();
     ks.insert(h.borrow());
-    std::cout << ::tpy::__len__(ks) << "\n";
+    std::cout << ::tpy::__len__(ks) << "\n" << ::tpy::check_signals;
 }
 
 // # `set.add` is an Own-coerced slot like `list.append`, so a borrow-returning

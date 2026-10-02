@@ -31,8 +31,8 @@ void main() {
             const auto& p = ::tpy::unwrap_ref(*__r_1);
         }
     }
-    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(pts, 1).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

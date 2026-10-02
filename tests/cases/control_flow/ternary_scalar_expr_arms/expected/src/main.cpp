@@ -47,11 +47,11 @@ std::string tag(::tpy::Union<const A*, const B*> u) {
 //     print(maybe_call(3, True), maybe_call(3, False))
 //     print(tag(A(1)), tag(B(2)))
 void main() {
-    std::cout << ::tpyapp::main::maybe_sum(1, true) << " " << ::tpyapp::main::maybe_sum(1, false) << "\n";
-    std::cout << ::tpyapp::main::maybe_call(3, true) << " " << ::tpyapp::main::maybe_call(3, false) << "\n";
+    std::cout << ::tpyapp::main::maybe_sum(1, true) << " " << ::tpyapp::main::maybe_sum(1, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::maybe_call(3, true) << " " << ::tpyapp::main::maybe_call(3, false) << "\n" << ::tpy::check_signals;
     A __tmp_1 = A(1);
     B __tmp_2 = B(2);
-    std::cout << ::tpyapp::main::tag(::tpy::Union<const A*, const B*>{&__tmp_1}) << " " << ::tpyapp::main::tag(::tpy::Union<const A*, const B*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::tag(::tpy::Union<const A*, const B*>{&__tmp_1}) << " " << ::tpyapp::main::tag(::tpy::Union<const A*, const B*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

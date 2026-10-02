@@ -27,7 +27,7 @@ void main() {
     Point owned = std::move(std::get<1>(__tup_1));
     ref.x = 5;
     owned.x = 7;
-    std::cout << p.x << " " << ref.x << " " << owned.x << "\n";
+    std::cout << p.x << " " << ref.x << " " << owned.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

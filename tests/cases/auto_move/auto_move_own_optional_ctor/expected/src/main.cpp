@@ -15,7 +15,7 @@ void main() {
     p.x = 1;
     p.y = 2;
     Wrapper w = Wrapper(std::move(p), 42);
-    std::cout << w.tag << "\n";
+    std::cout << w.tag << "\n" << ::tpy::check_signals;
 }
 
 // main()

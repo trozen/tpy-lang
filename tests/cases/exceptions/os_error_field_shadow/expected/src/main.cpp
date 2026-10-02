@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(w.errno)
 void main() {
     Weird w = Weird("boom");
-    std::cout << w.strerror << "\n";
+    std::cout << w.strerror << "\n" << ::tpy::check_signals;
     w.error_number = 3;
-    std::cout << w.error_number << "\n";
+    std::cout << w.error_number << "\n" << ::tpy::check_signals;
 }
 
 // main()

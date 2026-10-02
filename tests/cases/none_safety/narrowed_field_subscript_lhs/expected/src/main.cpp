@@ -21,7 +21,7 @@ void main() {
     b.show();
     Buffer none_buf = Buffer(nullptr, nullptr);
     none_buf.step();
-    std::cout << ::tpy::print_bool((!none_buf.items.has_value())) << " " << ::tpy::print_bool((!none_buf.by_key.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!none_buf.items.has_value())) << " " << ::tpy::print_bool((!none_buf.by_key.has_value())) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -62,15 +62,15 @@ void Buffer::step() {
 //     print(self.by_key["a"], self.by_key["b"])
 void Buffer::show() const {
     if ((!this->items.has_value())) {
-        std::cout << "none items" << "\n";
+        std::cout << "none items" << "\n" << ::tpy::check_signals;
         return;
     }
     if ((!this->by_key.has_value())) {
-        std::cout << "none by_key" << "\n";
+        std::cout << "none by_key" << "\n" << ::tpy::check_signals;
         return;
     }
-    std::cout << ::tpy::__getitem__((*this->items), 0) << " " << ::tpy::__getitem__((*this->items), 1) << " " << ::tpy::__getitem__((*this->items), 2) << "\n";
-    std::cout << ::tpy::__getitem__((*this->by_key), "a") << " " << ::tpy::__getitem__((*this->by_key), "b") << "\n";
+    std::cout << ::tpy::__getitem__((*this->items), 0) << " " << ::tpy::__getitem__((*this->items), 1) << " " << ::tpy::__getitem__((*this->items), 2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*this->by_key), "a") << " " << ::tpy::__getitem__((*this->by_key), "b") << "\n" << ::tpy::check_signals;
 }
 // main()
 void __tpy_init() {

@@ -137,7 +137,7 @@ std::string stub__lit_rb(std::string_view mode) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "async_fn" << " " << __await_lift_0 << " " << __await_lift_1 << "\n";
+        std::cout << "async_fn" << " " << __await_lift_0 << " " << __await_lift_1 << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -169,13 +169,13 @@ __coro_run_async run_async() {
 //     o = Opts()
 //     print("field", o.mode)
 void main() {
-    std::cout << "free_str" << " " << ::tpyapp::main::free_str() << " " << ::tpyapp::main::free_str("r") << "\n";
-    std::cout << "kwonly" << " " << ::tpyapp::main::kwonly(::tpy::BigInt(1), "rb") << " " << ::tpyapp::main::kwonly(::tpy::BigInt(2), "r") << "\n";
-    std::cout << "int_neg" << " " << ::tpyapp::main::int_neg() << " " << ::tpyapp::main::int_neg(9) << "\n";
-    std::cout << "bool_lit" << " " << ::tpy::print_bool(::tpyapp::main::bool_lit()) << " " << ::tpy::print_bool(::tpyapp::main::bool_lit(true)) << "\n";
-    std::cout << "optional" << " " << ::tpyapp::main::optional() << " " << ::tpyapp::main::optional("r") << " " << ::tpyapp::main::optional(std::nullopt) << "\n";
-    std::cout << "keyword_skip" << " " << ::tpyapp::main::keyword_skip("rb", ::tpy::BigInt(2)) << " " << ::tpyapp::main::keyword_skip() << " " << ::tpyapp::main::keyword_skip("r") << "\n";
-    std::cout << "narrowing" << " " << ::tpyapp::main::narrowing() << " " << ::tpyapp::main::narrowing("r") << "\n";
+    std::cout << "free_str" << " " << ::tpyapp::main::free_str() << " " << ::tpyapp::main::free_str("r") << "\n" << ::tpy::check_signals;
+    std::cout << "kwonly" << " " << ::tpyapp::main::kwonly(::tpy::BigInt(1), "rb") << " " << ::tpyapp::main::kwonly(::tpy::BigInt(2), "r") << "\n" << ::tpy::check_signals;
+    std::cout << "int_neg" << " " << ::tpyapp::main::int_neg() << " " << ::tpyapp::main::int_neg(9) << "\n" << ::tpy::check_signals;
+    std::cout << "bool_lit" << " " << ::tpy::print_bool(::tpyapp::main::bool_lit()) << " " << ::tpy::print_bool(::tpyapp::main::bool_lit(true)) << "\n" << ::tpy::check_signals;
+    std::cout << "optional" << " " << ::tpyapp::main::optional() << " " << ::tpyapp::main::optional("r") << " " << ::tpyapp::main::optional(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << "keyword_skip" << " " << ::tpyapp::main::keyword_skip("rb", ::tpy::BigInt(2)) << " " << ::tpyapp::main::keyword_skip() << " " << ::tpyapp::main::keyword_skip("r") << "\n" << ::tpy::check_signals;
+    std::cout << "narrowing" << " " << ::tpyapp::main::narrowing() << " " << ::tpyapp::main::narrowing("r") << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::generator();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -183,7 +183,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view m = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << m << "\n";
+            std::cout << "generator" << " " << m << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -194,13 +194,13 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view m = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "generator" << " " << m << "\n";
+            std::cout << "generator" << " " << m << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::run_async()));
-    std::cout << "stub" << " " << ::tpyapp::main::stub__lit_rb() << " " << ::tpyapp::main::stub__lit_r("r") << " " << ::tpyapp::main::stub__lit_rb("rb") << "\n";
+    std::cout << "stub" << " " << ::tpyapp::main::stub__lit_rb() << " " << ::tpyapp::main::stub__lit_r("r") << " " << ::tpyapp::main::stub__lit_rb("rb") << "\n" << ::tpy::check_signals;
     Opts o = Opts();
-    std::cout << "field" << " " << o.mode << "\n";
+    std::cout << "field" << " " << o.mode << "\n" << ::tpy::check_signals;
 }
 
 // # A `Literal[...]`-typed parameter or field takes a default from its value set,

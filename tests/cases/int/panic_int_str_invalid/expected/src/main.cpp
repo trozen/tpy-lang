@@ -13,7 +13,7 @@ void __tpy_init() {
     initialized = true;
 
     x = ::tpy::BigInt::from_str("abc");
-    std::cout << x << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

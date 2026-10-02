@@ -367,7 +367,7 @@ inline void Runner::run() const {
             break;
         }
     }
-    std::cout << "method_break" << " " << ::tpy::__len__(p.xs) << " " << this->n << "\n";
+    std::cout << "method_break" << " " << ::tpy::__len__(p.xs) << " " << this->n << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

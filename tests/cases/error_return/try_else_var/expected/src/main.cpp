@@ -42,11 +42,11 @@ void main() {
         }
         doubled = (::tpy::mul_check<int32_t>(idx, 2));
         // else:
-        std::cout << doubled << "\n";
+        std::cout << doubled << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except NotFound:
         __except_1:;
-        std::cout << "not found" << "\n";
+        std::cout << "not found" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
 }

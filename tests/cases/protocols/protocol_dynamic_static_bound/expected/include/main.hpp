@@ -79,7 +79,7 @@ inline std::string Dog::make_noise() {
 //     print(animal.make_noise())
 template<__Pet_Concept__ T>
 void speak(::tpy::param_val_or_ref_t<T> animal) {
-    std::cout << animal.make_noise() << "\n";
+    std::cout << animal.make_noise() << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

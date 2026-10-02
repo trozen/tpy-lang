@@ -107,12 +107,12 @@ void double_union(const std::vector<Tagged>& items) {
         auto& __match_subject_1 = t;
         if (__match_subject_1.label == "s" && std::holds_alternative<std::string>(__match_subject_1.inner)) {
             auto& s = std::get<std::string>(__match_subject_1.inner);
-            std::cout << (::tpy::str_concat("string: ", s)) << "\n";
+            std::cout << (::tpy::str_concat("string: ", s)) << "\n" << ::tpy::check_signals;
         } else if (__match_subject_1.label == "n" && std::holds_alternative<int32_t>(__match_subject_1.inner)) {
             auto n = std::get<int32_t>(__match_subject_1.inner);
-            std::cout << (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n))) << "\n";
+            std::cout << (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n))) << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << "other" << "\n";
+            std::cout << "other" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -150,8 +150,8 @@ void main() {
     ::tpy::Union<Box<Box<int32_t>>*, Box<Box<std::string>>*> a1 = ::tpy::to_ptr_variant(__slot_1);
     ::tpy::Union<Box<Box<int32_t>>, Box<Box<std::string>>> __slot_2 = Box<Box<int32_t>>(Box<int32_t>(42));
     ::tpy::Union<Box<Box<int32_t>>*, Box<Box<std::string>>*> a2 = ::tpy::to_ptr_variant(__slot_2);
-    std::cout << ::tpyapp::main::nested_param(a1.as_const()) << "\n";
-    std::cout << ::tpyapp::main::nested_param(a2.as_const()) << "\n";
+    std::cout << ::tpyapp::main::nested_param(a1.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::nested_param(a2.as_const()) << "\n" << ::tpy::check_signals;
     ::tpy::Union<int32_t, std::string> __tmp_1 = "world";
     ::tpy::Union<Container, int32_t> __slot_3 = Container(__tmp_1);
     ::tpy::Union<Container*, int32_t*> b1 = ::tpy::to_ptr_variant(__slot_3);
@@ -160,15 +160,15 @@ void main() {
     ::tpy::Union<Container*, int32_t*> b2 = ::tpy::to_ptr_variant(__slot_4);
     ::tpy::Union<Container, int32_t> __slot_5 = 99;
     ::tpy::Union<Container*, int32_t*> b3 = ::tpy::to_ptr_variant(__slot_5);
-    std::cout << ::tpyapp::main::union_subj_union_field(b1.as_const()) << "\n";
-    std::cout << ::tpyapp::main::union_subj_union_field(b2.as_const()) << "\n";
-    std::cout << ::tpyapp::main::union_subj_union_field(b3.as_const()) << "\n";
+    std::cout << ::tpyapp::main::union_subj_union_field(b1.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::union_subj_union_field(b2.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::union_subj_union_field(b3.as_const()) << "\n" << ::tpy::check_signals;
     Box<std::string> __tmp_3 = Box<std::string>("abc");
     Outer c1 = Outer(::tpy::Union<const Box<int32_t>*, const Box<std::string>*>{&__tmp_3});
     Box<int32_t> __tmp_4 = Box<int32_t>(10);
     Outer c2 = Outer(::tpy::Union<const Box<int32_t>*, const Box<std::string>*>{&__tmp_4});
-    std::cout << ::tpyapp::main::union_field_param(c1) << "\n";
-    std::cout << ::tpyapp::main::union_field_param(c2) << "\n";
+    std::cout << ::tpyapp::main::union_field_param(c1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::union_field_param(c2) << "\n" << ::tpy::check_signals;
     ::tpy::Union<int32_t, std::string> __tmp_5 = "hi";
     ::tpy::Union<int32_t, std::string> __tmp_6 = 5;
     ::tpy::Union<int32_t, std::string> __tmp_7 = "x";

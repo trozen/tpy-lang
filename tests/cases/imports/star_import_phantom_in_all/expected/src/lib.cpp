@@ -7,7 +7,7 @@ namespace tpyapp::lib {
 // def real_fn() -> None:
 //     print("real")
 void real_fn() {
-    std::cout << "real" << "\n";
+    std::cout << "real" << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init() {

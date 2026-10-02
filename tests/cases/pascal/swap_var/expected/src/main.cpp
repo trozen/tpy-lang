@@ -36,8 +36,8 @@ void __tpy_init() {
     x = 1;
     y = 2;
     ::tpyapp::main::swap(&x, &y);
-    std::cout << x << "\n";
-    std::cout << y << "\n";
+    std::cout << x << "\n" << ::tpy::check_signals;
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

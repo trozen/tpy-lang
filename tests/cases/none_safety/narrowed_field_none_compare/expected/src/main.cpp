@@ -25,16 +25,16 @@ void main() {
     if (!((t.o.has_value()))) ::tpy::raise_assertion_error();
     (*t.o).x = ::tpy::BigInt(123);
     if (!((t.o.has_value()))) ::tpy::raise_assertion_error();
-    std::cout << (*t.o).x << "\n";
+    std::cout << (*t.o).x << "\n" << ::tpy::check_signals;
     t.o = std::nullopt;
     if ((!t.o.has_value())) {
-        std::cout << "nil" << "\n";
+        std::cout << "nil" << "\n" << ::tpy::check_signals;
     }
     t.v = 7;
     if (!((t.v.has_value()))) ::tpy::raise_assertion_error();
-    std::cout << (*t.v) << "\n";
+    std::cout << (*t.v) << "\n" << ::tpy::check_signals;
     if (!((t.v.has_value()))) ::tpy::raise_assertion_error();
-    std::cout << (*t.v) << "\n";
+    std::cout << (*t.v) << "\n" << ::tpy::check_signals;
 }
 
 // main()

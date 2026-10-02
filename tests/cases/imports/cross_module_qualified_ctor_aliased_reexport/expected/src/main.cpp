@@ -9,9 +9,9 @@ namespace tpyapp::main {
 //     print(pa_re.Box(5).n)    # re-exported -> pc_def.Box (int field), not pb.Box
 //     print(Box("hi").msg)     # bare -> pb.Box (str field)
 void main() {
-    std::cout << ::tpyapp::pa::Box(::tpy::BigInt(10)).n << "\n";
-    std::cout << ::tpyapp::pc_def::Box(::tpy::BigInt(5)).n << "\n";
-    std::cout << ::tpyapp::pb::Box("hi").msg << "\n";
+    std::cout << ::tpyapp::pa::Box(::tpy::BigInt(10)).n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::pc_def::Box(::tpy::BigInt(5)).n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::pb::Box("hi").msg << "\n" << ::tpy::check_signals;
 }
 
 // # Qualified construction still resolves to the right module through an aliased

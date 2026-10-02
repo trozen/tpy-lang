@@ -23,16 +23,16 @@ namespace tpyapp::main {
 //     print(pow(3.0, 2.0))
 void main() {
     int32_t a = ::tpy::pow_check<int32_t>(2, 10);
-    std::cout << a << "\n";
-    std::cout << ::tpy::pow_check<int32_t>(3, 0) << "\n";
-    std::cout << ::tpy::pow_check<int32_t>(-2, 3) << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::pow_check<int32_t>(3, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::pow_check<int32_t>(-2, 3) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt b = (::tpy::BigInt(2)).pow(::tpy::BigInt(30));
-    std::cout << b << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
     ::tpy::BigInt c = (::tpy::BigInt(10)).pow(::tpy::BigInt(3));
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
     double d = ::std::pow(2.0, 0.5);
-    std::cout << ::tpy::print_float(d) << "\n";
-    std::cout << ::tpy::print_float(::std::pow(3.0, 2.0)) << "\n";
+    std::cout << ::tpy::print_float(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::std::pow(3.0, 2.0)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

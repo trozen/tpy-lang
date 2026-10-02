@@ -19,7 +19,7 @@ void main() {
     p.x = 3;
     p.y = 4;
     c.take(std::move(p));
-    std::cout << c.val << "\n";
+    std::cout << c.val << "\n" << ::tpy::check_signals;
 }
 
 // main()

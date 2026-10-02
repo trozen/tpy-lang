@@ -20,7 +20,7 @@ void pick(::tpy::ordered_map<std::string, ::tpy::ByteArray>& d, bool cond) {
     ::tpy::ByteArray& x = ((cond) ? (::tpy::__getitem__(d, "a")) : (::tpy::__getitem__(d, "b")));
     ::tpy::bytearray_setitem(x, 0, 90);
     ::tpy::ByteArray& y = ((cond) ? (::tpy::__getitem__(d, "a")) : (::tpy::__getitem__(d, "b")));
-    std::cout << ::tpy::__len__(y) << " " << static_cast<int>(::tpy::bytes_getitem(y, 0)) << "\n";
+    std::cout << ::tpy::__len__(y) << " " << static_cast<int>(::tpy::bytes_getitem(y, 0)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

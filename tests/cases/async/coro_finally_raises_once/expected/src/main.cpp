@@ -14,7 +14,7 @@ int32_t _code{};
 //     return _code
 ::tpy::BigInt bump() {
     _code = ::tpy::add_check<int32_t>(_code, 1);
-    std::cout << std::format("side-effect {}", _code) << "\n";
+    std::cout << std::format("side-effect {}", _code) << "\n" << ::tpy::check_signals;
     return ::tpy::BigInt(_code);
 }
 
@@ -228,7 +228,7 @@ __coro_with_exit with_exit() {
             __sub_0.reset();
             bool __fin_ran_8 = false;
             try {
-                std::cout << "caught" << "\n";
+                std::cout << "caught" << "\n" << ::tpy::check_signals;
                 __fin_ran_8 = true;
                 this->__finally_0();
                 __state = S_JOIN_0;
@@ -260,7 +260,7 @@ __coro_with_exit with_exit() {
         } catch (const ::tpy::ValueError&) {
             bool __fin_ran_10 = false;
             try {
-                std::cout << "caught" << "\n";
+                std::cout << "caught" << "\n" << ::tpy::check_signals;
                 __fin_ran_10 = true;
                 this->__finally_0();
                 __state = S_JOIN_0;
@@ -371,10 +371,10 @@ __coro_handler_exit handler_exit() {
 }
 
 void __coro_nested_exit::__finally_0() {
-    std::cout << "outer fin" << "\n";
+    std::cout << "outer fin" << "\n" << ::tpy::check_signals;
 }
 void __coro_nested_exit::__finally_1() {
-    std::cout << "inner fin" << "\n";
+    std::cout << "inner fin" << "\n" << ::tpy::check_signals;
     throw Err(::tpyapp::main::bump());
 }
 
@@ -424,7 +424,7 @@ __coro_nested_exit nested_exit() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         _code = 0;
-        std::cout << "-- normal_exit --" << "\n";
+        std::cout << "-- normal_exit --" << "\n" << ::tpy::check_signals;
         __state = S_JOIN_5;
         continue;
     }
@@ -438,7 +438,7 @@ __coro_nested_exit nested_exit() {
             continue;
         } catch (const Err& e) {
             __sub_0.reset();
-            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
+            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -456,7 +456,7 @@ __coro_nested_exit nested_exit() {
             continue;
         } catch (const Err& e) {
             __sub_1.reset();
-            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
+            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n" << ::tpy::check_signals;
             __state = S_JOIN_1;
             continue;
         } catch (...) {
@@ -474,7 +474,7 @@ __coro_nested_exit nested_exit() {
             continue;
         } catch (const Err& e) {
             __sub_2.reset();
-            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
+            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n" << ::tpy::check_signals;
             __state = S_JOIN_2;
             continue;
         } catch (...) {
@@ -492,7 +492,7 @@ __coro_nested_exit nested_exit() {
             continue;
         } catch (const Err& e) {
             __sub_3.reset();
-            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
+            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n" << ::tpy::check_signals;
             __state = S_JOIN_3;
             continue;
         } catch (...) {
@@ -510,7 +510,7 @@ __coro_nested_exit nested_exit() {
             continue;
         } catch (const Err& e) {
             __sub_4.reset();
-            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
+            std::cout << std::format("caught code={}", (e.code).to_string()) << "\n" << ::tpy::check_signals;
             __state = S_JOIN_4;
             continue;
         } catch (...) {
@@ -520,25 +520,25 @@ __coro_nested_exit nested_exit() {
     }
     case S_JOIN_0: {
         _code = 0;
-        std::cout << "-- return_exit --" << "\n";
+        std::cout << "-- return_exit --" << "\n" << ::tpy::check_signals;
         __state = S_JOIN_6;
         continue;
     }
     case S_JOIN_1: {
         _code = 0;
-        std::cout << "-- with_exit --" << "\n";
+        std::cout << "-- with_exit --" << "\n" << ::tpy::check_signals;
         __state = S_JOIN_7;
         continue;
     }
     case S_JOIN_2: {
         _code = 0;
-        std::cout << "-- handler_exit --" << "\n";
+        std::cout << "-- handler_exit --" << "\n" << ::tpy::check_signals;
         __state = S_JOIN_8;
         continue;
     }
     case S_JOIN_3: {
         _code = 0;
-        std::cout << "-- nested_exit --" << "\n";
+        std::cout << "-- nested_exit --" << "\n" << ::tpy::check_signals;
         __state = S_JOIN_9;
         continue;
     }

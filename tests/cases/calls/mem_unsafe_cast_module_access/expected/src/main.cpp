@@ -23,8 +23,8 @@ void __tpy_init() {
     arr = &__global_slot_1;
     p = (*arr).data();
     q = reinterpret_cast<uint32_t*>(p);
-    std::cout << q[0] << "\n";
-    std::cout << q[1] << "\n";
+    std::cout << q[0] << "\n" << ::tpy::check_signals;
+    std::cout << q[1] << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

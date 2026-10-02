@@ -46,7 +46,7 @@ void free_fn() {
     Coord focus = Coord(1, 2);
     Coord next_focus = ::tpyapp::main::step(focus);
     focus = next_focus;
-    std::cout << "free" << " " << focus.column << " " << next_focus.column << "\n";
+    std::cout << "free" << " " << focus.column << " " << next_focus.column << "\n" << ::tpy::check_signals;
 }
 
 // # loop variable source
@@ -69,7 +69,7 @@ void loop_var(const std::vector<Coord>& candidates) {
             break;
         }
     }
-    std::cout << "loop" << " " << next_focus.column << " " << ::tpy::__getitem__(candidates, 1).column << "\n";
+    std::cout << "loop" << " " << next_focus.column << " " << ::tpy::__getitem__(candidates, 1).column << "\n" << ::tpy::check_signals;
 }
 
 // # subscript source
@@ -80,7 +80,7 @@ void loop_var(const std::vector<Coord>& candidates) {
 void subscript(const std::vector<Coord>& xs) {
     Coord a = Coord(0, 0);
     a = ::tpy::__getitem__(xs, 1);
-    std::cout << "subscript" << " " << a.column << " " << ::tpy::__getitem__(xs, 1).column << "\n";
+    std::cout << "subscript" << " " << a.column << " " << ::tpy::__getitem__(xs, 1).column << "\n" << ::tpy::check_signals;
 }
 
 // # param source
@@ -91,7 +91,7 @@ void subscript(const std::vector<Coord>& xs) {
 void param(Coord p) {
     Coord a = Coord(0, 0);
     a = p;
-    std::cout << "param" << " " << a.column << " " << p.column << "\n";
+    std::cout << "param" << " " << a.column << " " << p.column << "\n" << ::tpy::check_signals;
 }
 
 // # branch reseat
@@ -107,7 +107,7 @@ void branch(bool flag) {
     if (flag) {
         a = b;
     }
-    std::cout << "branch" << " " << a.column << " " << b.column << "\n";
+    std::cout << "branch" << " " << a.column << " " << b.column << "\n" << ::tpy::check_signals;
 }
 
 // # closure-enclosing body: the nested function reads the reseated local
@@ -127,7 +127,7 @@ void closure() {
         return a.column;
     };
     a = b;
-    std::cout << "closure" << " " << g() << " " << b.column << "\n";
+    std::cout << "closure" << " " << g() << " " << b.column << "\n" << ::tpy::check_signals;
 }
 
 // # while body: an explicit-copy first init must not make the while-rebound
@@ -163,10 +163,10 @@ void while_body(Coord spawn) {
             }
         }
         chosen = ::tpy::add_check<int32_t>(chosen, 1);
-        std::cout << "while" << " " << focus.column << " " << focus.row << "\n";
+        std::cout << "while" << " " << focus.column << " " << focus.row << "\n" << ::tpy::check_signals;
         focus = next_focus;
     }
-    std::cout << "while spawn" << " " << spawn.column << "\n";
+    std::cout << "while spawn" << " " << spawn.column << "\n" << ::tpy::check_signals;
 }
 
 // # try/finally body
@@ -182,12 +182,12 @@ void try_finally(Coord p) {
     {
         try {
             a = p;
-            std::cout << "try" << " " << a.column << " " << p.column << "\n";
+            std::cout << "try" << " " << a.column << " " << p.column << "\n" << ::tpy::check_signals;
         } catch (...) {
-            std::cout << "finally" << " " << a.column << " " << p.column << "\n";
+            std::cout << "finally" << " " << a.column << " " << p.column << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally" << " " << a.column << " " << p.column << "\n";
+        std::cout << "finally" << " " << a.column << " " << p.column << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -212,7 +212,7 @@ void match_arm(int32_t tag, Coord p) {
         break;
     }
     }
-    std::cout << "match" << " " << tag << " " << a.column << " " << p.column << "\n";
+    std::cout << "match" << " " << tag << " " << a.column << " " << p.column << "\n" << ::tpy::check_signals;
 }
 
 // # @error_return bind, then an rvalue rebind
@@ -269,16 +269,16 @@ void main() {
     Coord spawn = Coord(0, 0);
     ::tpyapp::main::while_body(spawn);
     Holder holder = Holder({Coord(11, 0), Coord(12, 0)});
-    std::cout << "ctor field" << " " << holder.pos.column << "\n";
+    std::cout << "ctor field" << " " << holder.pos.column << "\n" << ::tpy::check_signals;
     ::tpyapp::main::try_finally(p);
     ::tpyapp::main::match_arm(1, p);
     ::tpyapp::main::match_arm(2, p);
     {
-        std::cout << "err_bind" << " " << ({ auto __er_3 = ::tpyapp::main::err_bind("ab"); if (!__er_3.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_3); }) << "\n";
+        std::cout << "err_bind" << " " << ({ auto __er_3 = ::tpyapp::main::err_bind("ab"); if (!__er_3.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_3); }) << "\n" << ::tpy::check_signals;
         goto __after_try_2;
         // except Err:
         __except_2:;
-        std::cout << "err_bind failed" << "\n";
+        std::cout << "err_bind failed" << "\n" << ::tpy::check_signals;
         __after_try_2:;
     }
 }
@@ -299,7 +299,7 @@ void __tpy_init() {
     g = Coord(0, 0);
     h = Coord(2, 3);
     g = h;
-    std::cout << "module" << " " << g.column << " " << h.column << "\n";
+    std::cout << "module" << " " << g.column << " " << h.column << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

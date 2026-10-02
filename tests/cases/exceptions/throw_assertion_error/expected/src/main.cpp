@@ -20,12 +20,12 @@ namespace tpyapp::main {
 //     except AssertionError as e:
 //         print("caught:", str(e))
 void main() {
-    std::cout << ::tpyapp::main::check(::tpy::BigInt(3)) << "\n";
+    std::cout << ::tpyapp::main::check(::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
     {
         try {
-            std::cout << ::tpyapp::main::check(::tpy::BigInt(-1)) << "\n";
+            std::cout << ::tpyapp::main::check(::tpy::BigInt(-1)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::AssertionError& e) {
-            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

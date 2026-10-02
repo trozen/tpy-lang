@@ -20,7 +20,7 @@ void main() {
             const auto& __tup_1 = __for_tup_0;
             int32_t k = std::get<0>(__tup_1);
             std::string_view v = std::get<1>(__tup_1);
-            std::cout << k << " " << v << "\n";
+            std::cout << k << " " << v << "\n" << ::tpy::check_signals;
         }
     }
 }

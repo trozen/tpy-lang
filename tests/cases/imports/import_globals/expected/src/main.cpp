@@ -9,8 +9,8 @@ namespace tpyapp::main {
 //     print(get_max())
 //     return int32(0)
 int32_t main() {
-    std::cout << ::tpyapp::config::MAX_VALUE << "\n";
-    std::cout << ::tpyapp::config::get_max() << "\n";
+    std::cout << ::tpyapp::config::MAX_VALUE << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::config::get_max() << "\n" << ::tpy::check_signals;
     return 0;
 }
 

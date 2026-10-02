@@ -45,13 +45,13 @@ std::function<int32_t(int32_t)> make_negator() {
 //     print(Handlers[0](5))
 void main() {
     int32_t result = (::tpyapp::main::make_adder(10))(5);
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
     std::vector<std::function<int32_t(int32_t)>> fns = {::tpyapp::main::make_adder(1), ::tpyapp::main::make_adder(2), ::tpyapp::main::make_negator()};
-    std::cout << (::tpy::__getitem__(fns, 0))(100) << "\n";
-    std::cout << (::tpy::__getitem__(fns, 1))(100) << "\n";
-    std::cout << (::tpy::__getitem__(fns, 2))(100) << "\n";
+    std::cout << (::tpy::__getitem__(fns, 0))(100) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::__getitem__(fns, 1))(100) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::__getitem__(fns, 2))(100) << "\n" << ::tpy::check_signals;
     std::vector<std::function<int32_t(int32_t)>> Handlers = {::tpyapp::main::make_adder(100)};
-    std::cout << (::tpy::__getitem__(Handlers, 0))(5) << "\n";
+    std::cout << (::tpy::__getitem__(Handlers, 0))(5) << "\n" << ::tpy::check_signals;
 }
 
 // main()

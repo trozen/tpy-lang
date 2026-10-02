@@ -40,7 +40,7 @@ void free_two_arms() {
         }
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 100);
-    std::cout << "free_two_arms" << " " << f->n << "\n";
+    std::cout << "free_two_arms" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // # Free function: bound once in the body, read after the loop, then rebound;
@@ -63,11 +63,11 @@ void free_rebind_after() {
         p = &*(__slot_1 = Pic(i));
         saved = p;
     }
-    std::cout << "free_rebind_after" << " " << p->n << " " << saved->n << "\n";
+    std::cout << "free_rebind_after" << " " << p->n << " " << saved->n << "\n" << ::tpy::check_signals;
     p = &*(__slot_2 = Pic(9));
     p->n = ::tpy::add_check<int32_t>(p->n, 1);
     saved->n = ::tpy::add_check<int32_t>(saved->n, 1);
-    std::cout << "free_rebind_after" << " " << p->n << " " << saved->n << "\n";
+    std::cout << "free_rebind_after" << " " << p->n << " " << saved->n << "\n" << ::tpy::check_signals;
 }
 
 // # Free function: a mutable alias of the body local, read after the loop (the
@@ -86,7 +86,7 @@ void free_alias_holder() {
         alias = ::tpy::optional_to_ptr(p);
     }
     alias->n = ::tpy::add_check<int32_t>(alias->n, 5);
-    std::cout << "free_alias_holder" << " " << alias->n << " " << p->n << "\n";
+    std::cout << "free_alias_holder" << " " << alias->n << " " << p->n << "\n" << ::tpy::check_signals;
 }
 
 // # ... and an alias that is only read, which still observes a mutation of its
@@ -105,7 +105,7 @@ void free_alias_const() {
         view = ::tpy::optional_to_ptr(p);
     }
     p->n = ::tpy::add_check<int32_t>(p->n, 5);
-    std::cout << "free_alias_const" << " " << view->n << "\n";
+    std::cout << "free_alias_const" << " " << view->n << "\n" << ::tpy::check_signals;
 }
 
 // # Containers take the same pointer flavor.
@@ -126,9 +126,9 @@ void free_list() {
         v->push_back(0);
     }
     v->push_back(1);
-    std::cout << "free_list" << " " << ::tpy::ListPrinter((*v)) << "\n";
+    std::cout << "free_list" << " " << ::tpy::ListPrinter((*v)) << "\n" << ::tpy::check_signals;
     v = &*(__slot_2 = {9});
-    std::cout << "free_list" << " " << ::tpy::ListPrinter((*v)) << "\n";
+    std::cout << "free_list" << " " << ::tpy::ListPrinter((*v)) << "\n" << ::tpy::check_signals;
 }
 
 // def free_dict() -> None:
@@ -151,7 +151,7 @@ void free_dict() {
         }
     }
     ::tpy::__setitem__((*d), 7, 7);
-    std::cout << "free_dict" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::tuple<int32_t, int32_t>>(::tpy::dict_items((*d)))) << "\n";
+    std::cout << "free_dict" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::tuple<int32_t, int32_t>>(::tpy::dict_items((*d)))) << "\n" << ::tpy::check_signals;
 }
 
 // # Pointer-repr Optional bound in the body (None on one path), read after the
@@ -176,11 +176,11 @@ void free_optional() {
             p = nullptr;
         }
     }
-    std::cout << "free_optional" << " " << ::tpy::print_bool((p == nullptr)) << "\n";
+    std::cout << "free_optional" << " " << ::tpy::print_bool((p == nullptr)) << "\n" << ::tpy::check_signals;
     p = &*(__slot_2 = Pic(9));
     if ((p != nullptr)) {
         p->n = ::tpy::add_check<int32_t>(p->n, 1);
-        std::cout << "free_optional" << " " << p->n << "\n";
+        std::cout << "free_optional" << " " << p->n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -203,7 +203,7 @@ void free_box() {
             b = &*(__slot_2 = ::tpystd::tplib::box::Box<Pic>(Pic((::tpy::add_check<int32_t>(i, 10)))));
         }
     }
-    std::cout << "free_box" << " " << b->__deref__().n << "\n";
+    std::cout << "free_box" << " " << b->__deref__().n << "\n" << ::tpy::check_signals;
 }
 
 // # Nested loops: the inner loop hoists into the outer body; a name bound in
@@ -230,7 +230,7 @@ void nested_inner_read() {
             }
         }
         f->n = ::tpy::add_check<int32_t>(f->n, 100);
-        std::cout << "nested_inner_read" << " " << f->n << "\n";
+        std::cout << "nested_inner_read" << " " << f->n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -255,9 +255,9 @@ void nested_outer_read() {
         }
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 100);
-    std::cout << "nested_outer_read" << " " << f->n << " " << saved->n << "\n";
+    std::cout << "nested_outer_read" << " " << f->n << " " << saved->n << "\n" << ::tpy::check_signals;
     f = &*(__slot_2 = Flat(9));
-    std::cout << "nested_outer_read" << " " << f->n << " " << saved->n << "\n";
+    std::cout << "nested_outer_read" << " " << f->n << " " << saved->n << "\n" << ::tpy::check_signals;
 }
 
 // # ... three deep, with a rebind in the middle body.
@@ -282,7 +282,7 @@ void nested_three_deep() {
         }
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 1);
-    std::cout << "nested_three_deep" << " " << f->n << "\n";
+    std::cout << "nested_three_deep" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // # ... bound in the outer body and rebound in the inner loop.
@@ -302,10 +302,10 @@ void nested_outer_bind_inner_rebind() {
         for (int32_t j = 0; j < 2; ++j) {
             (*f) = Flat((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(i, 10)), j)));
         }
-        std::cout << "nested_outer_bind_inner_rebind" << " " << f->n << "\n";
+        std::cout << "nested_outer_bind_inner_rebind" << " " << f->n << "\n" << ::tpy::check_signals;
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 100);
-    std::cout << "nested_outer_bind_inner_rebind" << " " << f->n << "\n";
+    std::cout << "nested_outer_bind_inner_rebind" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // # While loops take the same hoist: two sites in the body, and a body bind
@@ -334,7 +334,7 @@ void while_two_arms() {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 100);
-    std::cout << "while_two_arms" << " " << f->n << "\n";
+    std::cout << "while_two_arms" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // def while_rebind_after() -> None:
@@ -358,10 +358,10 @@ void while_rebind_after() {
         saved = p;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "while_rebind_after" << " " << p->n << " " << saved->n << "\n";
+    std::cout << "while_rebind_after" << " " << p->n << " " << saved->n << "\n" << ::tpy::check_signals;
     p = &*(__slot_2 = Pic(9));
     p->n = ::tpy::add_check<int32_t>(p->n, 1);
-    std::cout << "while_rebind_after" << " " << p->n << " " << saved->n << "\n";
+    std::cout << "while_rebind_after" << " " << p->n << " " << saved->n << "\n" << ::tpy::check_signals;
 }
 
 // # A `while` counts as run when its entry condition is provably true: the
@@ -388,7 +388,7 @@ void while_true_break() {
         }
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 100);
-    std::cout << "while_true_break" << " " << f->n << "\n";
+    std::cout << "while_true_break" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // # ... nested either way round.
@@ -410,7 +410,7 @@ void while_in_for() {
         }
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 100);
-    std::cout << "while_in_for" << " " << f->n << "\n";
+    std::cout << "while_in_for" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // def for_in_while() -> None:
@@ -431,7 +431,7 @@ void for_in_while() {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 100);
-    std::cout << "for_in_while" << " " << f->n << "\n";
+    std::cout << "for_in_while" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // # A tuple-unpack target bound only in the while body, read after the loop
@@ -453,7 +453,7 @@ void while_unpack() {
         kept = std::get<1>(__tup_1);
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "while_unpack" << " " << kept << " " << n << "\n";
+    std::cout << "while_unpack" << " " << kept << " " << n << "\n" << ::tpy::check_signals;
 }
 
 // # A walrus inside a comprehension binds in the enclosing function (PEP 572);
@@ -477,7 +477,7 @@ void comp_walrus_in_loop() {
             std::move(__result);
         });
     }
-    std::cout << "comp_walrus_in_loop" << " " << y << " " << ::tpy::ListPrinter((*ys)) << "\n";
+    std::cout << "comp_walrus_in_loop" << " " << y << " " << ::tpy::ListPrinter((*ys)) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -541,7 +541,7 @@ void nested_def_section() {
             }
         }
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        std::cout << "nested_def" << " " << f->n << "\n";
+        std::cout << "nested_def" << " " << f->n << "\n" << ::tpy::check_signals;
     };
     inner();
 }
@@ -577,7 +577,7 @@ void nested_def_in_loop(std::vector<Pic>& pics) {
     }
     xs->push_back(9);
     held->n = ::tpy::add_check<int32_t>(held->n, 100);
-    std::cout << "nested_def_in_loop" << " " << x << " " << ::tpy::ListPrinter((*xs)) << " " << held->n << " " << ::tpy::__getitem__(pics, 0).n << "\n";
+    std::cout << "nested_def_in_loop" << " " << x << " " << ::tpy::ListPrinter((*xs)) << " " << held->n << " " << ::tpy::__getitem__(pics, 0).n << "\n" << ::tpy::check_signals;
 }
 
 // # ... and a nested `def` between the binding loop and the read.
@@ -599,7 +599,7 @@ void nested_def_after_loop() {
         return (::tpy::add_check<int32_t>(k, 1));
     };
     f->n = bump(f->n);
-    std::cout << "nested_def_after_loop" << " " << f->n << "\n";
+    std::cout << "nested_def_after_loop" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // # Context-manager body: the with hoists the name first; the loop's binds are
@@ -628,7 +628,7 @@ void with_section() {
             }
         }
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        std::cout << "with_body" << " " << f->n << "\n";
+        std::cout << "with_body" << " " << f->n << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -667,12 +667,12 @@ void try_section() {
                 }
             }
             f->n = ::tpy::add_check<int32_t>(f->n, 1);
-            std::cout << "try_finally" << " " << f->n << "\n";
+            std::cout << "try_finally" << " " << f->n << "\n" << ::tpy::check_signals;
         } catch (...) {
-            std::cout << "try_finally done" << "\n";
+            std::cout << "try_finally done" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "try_finally done" << "\n";
+        std::cout << "try_finally done" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -729,11 +729,11 @@ void match_section(int32_t n) {
             }
         }
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        std::cout << "match_arm" << " " << f->n << "\n";
+        std::cout << "match_arm" << " " << f->n << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
-        std::cout << "match_arm other" << "\n";
+        std::cout << "match_arm other" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -753,10 +753,10 @@ void sib_scalar() {
         v = (::tpy::add_check<int32_t>(i, 1));
     }
     for (int32_t k = 0; k < 2; ++k) {
-        std::cout << "sib_scalar" << " " << k << "\n";
+        std::cout << "sib_scalar" << " " << k << "\n" << ::tpy::check_signals;
     }
     v = (::tpy::add_check<int32_t>(v, 1));
-    std::cout << "sib_scalar" << " " << v << "\n";
+    std::cout << "sib_scalar" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // # Free function, @nocopy record mutated through the hoisted name after the
@@ -777,10 +777,10 @@ void sib_record() {
         saved = ::tpy::optional_to_ptr(f);
     }
     for (int32_t k = 0; k < 2; ++k) {
-        std::cout << "sib_record" << " " << k << "\n";
+        std::cout << "sib_record" << " " << k << "\n" << ::tpy::check_signals;
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 100);
-    std::cout << "sib_record" << " " << f->n << " " << saved->n << "\n";
+    std::cout << "sib_record" << " " << f->n << " " << saved->n << "\n" << ::tpy::check_signals;
 }
 
 // # Free function, Ptr[T] taken in the body: the pointer local must not be the
@@ -804,10 +804,10 @@ void sib_ptr() {
         q = ::tpyapp::main::take_ptr(p);
     }
     for (int32_t k = 0; k < 2; ++k) {
-        std::cout << "sib_ptr" << " " << k << "\n";
+        std::cout << "sib_ptr" << " " << k << "\n" << ::tpy::check_signals;
     }
     ::tpy::deref_check(q).bump();
-    std::cout << "sib_ptr" << " " << q->n << " " << ::tpy::__getitem__(pics, 1).n << "\n";
+    std::cout << "sib_ptr" << " " << q->n << " " << ::tpy::__getitem__(pics, 1).n << "\n" << ::tpy::check_signals;
 }
 
 // # Free function, a tuple-unpack target and the tuple itself (int32 elements,
@@ -831,9 +831,9 @@ void sib_unpack() {
         t = std::tuple<int32_t, int32_t>{n, kept};
     }
     for (int32_t k = 0; k < 2; ++k) {
-        std::cout << "sib_unpack" << " " << k << "\n";
+        std::cout << "sib_unpack" << " " << k << "\n" << ::tpy::check_signals;
     }
-    std::cout << "sib_unpack" << " " << kept << " " << n << " " << ::tpy::TuplePrinter(t) << "\n";
+    std::cout << "sib_unpack" << " " << kept << " " << n << " " << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;
 }
 
 // # Free function, Box[T] (@nocopy, so a silent copy would not compile).
@@ -849,9 +849,9 @@ void sib_box() {
         b = ::tpystd::tplib::box::Box<Pic>(Pic(i));
     }
     for (int32_t k = 0; k < 2; ++k) {
-        std::cout << "sib_box" << " " << k << "\n";
+        std::cout << "sib_box" << " " << k << "\n" << ::tpy::check_signals;
     }
-    std::cout << "sib_box" << " " << b->__deref__().n << "\n";
+    std::cout << "sib_box" << " " << b->__deref__().n << "\n" << ::tpy::check_signals;
 }
 
 // # Free function, pointer-repr Optional and value-repr Optional. The pointer
@@ -876,11 +876,11 @@ void sib_optional() {
         m = (::tpy::mul_check<int32_t>(i, 10));
     }
     for (int32_t k = 0; k < 2; ++k) {
-        std::cout << "sib_optional" << " " << k << "\n";
+        std::cout << "sib_optional" << " " << k << "\n" << ::tpy::check_signals;
     }
     if ((p != nullptr)) {
         p->n = ::tpy::add_check<int32_t>(p->n, 1);
-        std::cout << "sib_optional" << " " << p->n << " " << ::tpy::print_optional_val(m) << " " << ::tpy::__getitem__(base, 1).n << "\n";
+        std::cout << "sib_optional" << " " << p->n << " " << ::tpy::print_optional_val(m) << " " << ::tpy::__getitem__(base, 1).n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -905,9 +905,9 @@ void sib_readonly(const Pic& a, const Pic& b) {
         }
     }
     for (int32_t k = 0; k < 2; ++k) {
-        std::cout << "sib_readonly" << " " << k << "\n";
+        std::cout << "sib_readonly" << " " << k << "\n" << ::tpy::check_signals;
     }
-    std::cout << "sib_readonly" << " " << v->n << "\n";
+    std::cout << "sib_readonly" << " " << v->n << "\n" << ::tpy::check_signals;
 }
 
 // # Free function, a container element borrowed in the body and grown after the
@@ -927,10 +927,10 @@ void sib_container_elem() {
         e = &(::tpy::__getitem__(xs, i));
     }
     for (int32_t k = 0; k < 2; ++k) {
-        std::cout << "sib_container_elem" << " " << k << "\n";
+        std::cout << "sib_container_elem" << " " << k << "\n" << ::tpy::check_signals;
     }
     e->push_back(9);
-    std::cout << "sib_container_elem" << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << "sib_container_elem" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // # Flat sibling loops; the second runs zero times on the first call.
@@ -956,7 +956,7 @@ void two_loop_list_sibling(int32_t n) {
         xs = &*(__slot_2 = {i, i});
     }
     xs->push_back(9);
-    std::cout << "two_loop_list_sibling" << " " << ::tpy::ListPrinter((*xs)) << " " << ::tpy::ListPrinter((*held)) << "\n";
+    std::cout << "two_loop_list_sibling" << " " << ::tpy::ListPrinter((*xs)) << " " << ::tpy::ListPrinter((*held)) << "\n" << ::tpy::check_signals;
 }
 
 // # ... the same two-loop shape over str/bytes, where the ONE declaration also
@@ -983,7 +983,7 @@ void two_loop_str_views(std::string_view s, int32_t n) {
     for (int32_t i = 0; i < __stop_1; ++i) {
         t = ::tpy::str_slice(s, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 1)), std::nullopt});
     }
-    std::cout << "two_loop_str_views" << " " << t << "\n";
+    std::cout << "two_loop_str_views" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // def two_loop_str_owned(s: str, n: int32) -> None:
@@ -1001,7 +1001,7 @@ void two_loop_str_owned(std::string_view s, int32_t n) {
     for (int32_t i = 0; i < __stop_1; ++i) {
         t = (::tpy::str_concat(s, ::tpy::fixed_to_str<int32_t>(i)));
     }
-    std::cout << "two_loop_str_owned" << " " << t << "\n";
+    std::cout << "two_loop_str_owned" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // def two_loop_bytes_owned(b: bytes, n: int32) -> None:
@@ -1019,7 +1019,7 @@ void two_loop_bytes_owned(::tpy::BytesView b, int32_t n) {
     for (int32_t i = 0; i < __stop_1; ++i) {
         v = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("0123456789012345678901234567890123456789", 40)));
     }
-    std::cout << "two_loop_bytes_owned" << " " << ::tpy::BytesPrinter(v) << "\n";
+    std::cout << "two_loop_bytes_owned" << " " << ::tpy::BytesPrinter(v) << "\n" << ::tpy::check_signals;
 }
 
 // # ... and the MIXED pair: the first loop's binding is a slice (a view of the
@@ -1041,7 +1041,7 @@ void two_loop_str_view_then_owned(std::string_view s, int32_t n) {
     for (int32_t j = 0; j < __stop_1; ++j) {
         t = (::tpy::str_concat(s, ::tpy::fixed_to_str<int32_t>(j)));
     }
-    std::cout << "two_loop_str_view_then_owned" << " " << t << "\n";
+    std::cout << "two_loop_str_view_then_owned" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // def two_loop_bytes_view_then_owned(b: bytes, n: int32) -> None:
@@ -1059,7 +1059,7 @@ void two_loop_bytes_view_then_owned(::tpy::BytesView b, int32_t n) {
     for (int32_t j = 0; j < __stop_1; ++j) {
         v = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("0123456789012345678901234567890123456789", 40)));
     }
-    std::cout << "two_loop_bytes_view_then_owned" << " " << ::tpy::BytesPrinter(v) << "\n";
+    std::cout << "two_loop_bytes_view_then_owned" << " " << ::tpy::BytesPrinter(v) << "\n" << ::tpy::check_signals;
 }
 
 // # ... and the same join with no loop, at the two faces a rebind into an
@@ -1079,7 +1079,7 @@ void flat_bytes_owned_from_view(::tpy::BytesView b) {
     ::tpy::Bytes v = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("0123456789012345678901234567890123456789", 40)));
     ::tpy::BytesView w = ::tpy::bytes_slice(b, ::tpy::BasicSlice{1, std::nullopt});
     v = ::tpy::Bytes(w);
-    std::cout << "flat_bytes_owned_from_view" << " " << ::tpy::BytesPrinter(t) << " " << ::tpy::BytesPrinter(v) << "\n";
+    std::cout << "flat_bytes_owned_from_view" << " " << ::tpy::BytesPrinter(t) << " " << ::tpy::BytesPrinter(v) << "\n" << ::tpy::check_signals;
 }
 
 // # ... the int-literal join: the second loop's value does not fit the first
@@ -1100,7 +1100,7 @@ void two_loop_int_widths(int32_t n) {
     for (int32_t j = 0; j < __stop_1; ++j) {
         x = ::tpy::BigInt(static_cast<int64_t>(1099511627776LL));
     }
-    std::cout << "two_loop_int_widths" << " " << x << "\n";
+    std::cout << "two_loop_int_widths" << " " << x << "\n" << ::tpy::check_signals;
 }
 
 // # ... the same over a literal and a spelled width: the literal-seeded local
@@ -1120,7 +1120,7 @@ void two_loop_int_widen(int32_t n) {
     for (int32_t j = 0; j < __stop_1; ++j) {
         x = static_cast<int64_t>(1099511627776);
     }
-    std::cout << "two_loop_int_widen" << " " << x << "\n";
+    std::cout << "two_loop_int_widen" << " " << x << "\n" << ::tpy::check_signals;
 }
 
 // # ... an EMPTY list literal in the first loop: the element type comes from the
@@ -1155,7 +1155,7 @@ void two_loop_empty_list(int32_t n) {
         held = xs;
     }
     xs->push_back(9);
-    std::cout << "two_loop_empty_list" << " " << ::tpy::ListPrinter((*xs)) << " " << ::tpy::ListPrinter((*held)) << "\n";
+    std::cout << "two_loop_empty_list" << " " << ::tpy::ListPrinter((*xs)) << " " << ::tpy::ListPrinter((*held)) << "\n" << ::tpy::check_signals;
 }
 
 // # ... the same join with no loop at all: position does not change the answer.
@@ -1169,7 +1169,7 @@ void flat_empty_list() {
     std::vector<int32_t>* xs = &__slot_1;
     (*xs) = {1, 2};
     xs->push_back(9);
-    std::cout << "flat_empty_list" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+    std::cout << "flat_empty_list" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
 // # ... and with the empty binding in an `if` arm, the second at function level.
@@ -1187,7 +1187,7 @@ void arm_empty_list(bool flag) {
     std::vector<int32_t> __slot_2 = {1, 2};
     std::vector<int32_t>* xs = &__slot_2;
     xs->push_back(9);
-    std::cout << "arm_empty_list" << " " << ::tpy::ListPrinter((*xs)) << "\n";
+    std::cout << "arm_empty_list" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
 // # ... `None` then a record: the join is the Optional. The alias taken in the
@@ -1215,7 +1215,7 @@ void two_loop_none_then_record(int32_t n) {
         p = nullptr;
     }
     if ((n < 1)) {
-        std::cout << "two_loop_none_then_record none" << "\n";
+        std::cout << "two_loop_none_then_record none" << "\n" << ::tpy::check_signals;
         return;
     }
     Pic* saved;
@@ -1226,9 +1226,9 @@ void two_loop_none_then_record(int32_t n) {
     }
     if ((p != nullptr)) {
         saved->n = ::tpy::add_check<int32_t>(saved->n, 100);
-        std::cout << "two_loop_none_then_record" << " " << p->n << " " << saved->n << "\n";
+        std::cout << "two_loop_none_then_record" << " " << p->n << " " << saved->n << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "two_loop_none_then_record none" << "\n";
+        std::cout << "two_loop_none_then_record none" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -1257,7 +1257,7 @@ void two_loop_dict_arm(bool flag) {
         }
     }
     ::tpy::__setitem__((*d), 7, 7);
-    std::cout << "two_loop_dict_arm" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::tuple<int32_t, int32_t>>(::tpy::dict_items((*d)))) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::tuple<int32_t, int32_t>>(::tpy::dict_items((*held)))) << "\n";
+    std::cout << "two_loop_dict_arm" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::tuple<int32_t, int32_t>>(::tpy::dict_items((*d)))) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::tuple<int32_t, int32_t>>(::tpy::dict_items((*held)))) << "\n" << ::tpy::check_signals;
 }
 
 // # Generator, sibling loop between the binding loop and the read. The name binds
@@ -1563,7 +1563,7 @@ __coro_async_blk_if async_blk_if(bool flag, std::vector<Pic>& pics) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "async_sibling" << " " << __await_lift_0 << " " << ::tpy::__getitem__((*pics), 1).n << "\n";
+        std::cout << "async_sibling" << " " << __await_lift_0 << " " << ::tpy::__getitem__((*pics), 1).n << "\n" << ::tpy::check_signals;
         pics2.emplace(std::vector<Pic>{Pic(0), Pic(1)});
         __sub_1.emplace(true, (*pics2));
         __state = S_RESUME_1;
@@ -1574,7 +1574,7 @@ __coro_async_blk_if async_blk_if(bool flag, std::vector<Pic>& pics) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "async_blk_if" << " " << __await_lift_1 << " " << ::tpy::__getitem__((*pics2), 1).n << "\n";
+        std::cout << "async_blk_if" << " " << __await_lift_1 << " " << ::tpy::__getitem__((*pics2), 1).n << "\n" << ::tpy::check_signals;
         pics3.emplace(std::vector<Pic>{Pic(0), Pic(1)});
         __sub_2.emplace(false, (*pics3));
         __state = S_RESUME_2;
@@ -1585,7 +1585,7 @@ __coro_async_blk_if async_blk_if(bool flag, std::vector<Pic>& pics) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << "async_blk_if" << " " << __await_lift_2 << " " << ::tpy::__getitem__((*pics3), 1).n << "\n";
+        std::cout << "async_blk_if" << " " << __await_lift_2 << " " << ::tpy::__getitem__((*pics3), 1).n << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -1624,7 +1624,7 @@ void blk_if(bool flag) {
         }
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 1);
-    std::cout << "blk_if" << " " << f->n << "\n";
+    std::cout << "blk_if" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // # ... with the other arm assigning the name directly: the arm's binding is
@@ -1649,7 +1649,7 @@ void blk_if_mixed(bool flag) {
         f = &*(__slot_2 = Flat(99));
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 1);
-    std::cout << "blk_if_mixed" << " " << f->n << "\n";
+    std::cout << "blk_if_mixed" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // # ... the mirror, with the direct assignment in the FIRST arm: the cross-arm
@@ -1674,7 +1674,7 @@ void blk_if_mixed_rev(bool flag) {
         }
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 1);
-    std::cout << "blk_if_mixed_rev" << " " << f->n << "\n";
+    std::cout << "blk_if_mixed_rev" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // # ... and a loop BEFORE the `if` making the name pending, with one arm then
@@ -1698,7 +1698,7 @@ void blk_pre_loop_arm(bool flag) {
         f = &*(__slot_2 = Flat(99));
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 1);
-    std::cout << "blk_pre_loop_arm" << " " << f->n << "\n";
+    std::cout << "blk_pre_loop_arm" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // # ... the binding loop BEFORE the `if`, with the arm rebinding the name from
@@ -1717,7 +1717,7 @@ void blk_loop_then_arm(std::string_view s, bool flag) {
     if (flag) {
         t = (::tpy::str_concat(s, "tail"));
     }
-    std::cout << "blk_loop_then_arm" << " " << t << "\n";
+    std::cout << "blk_loop_then_arm" << " " << t << "\n" << ::tpy::check_signals;
 }
 
 // # ... and READ in both arms of a later `if`: the first arm's read promotes the
@@ -1741,7 +1741,7 @@ void blk_read_in_both_arms(bool flag) {
     } else {
         p->n = ::tpy::add_check<int32_t>(p->n, 2);
     }
-    std::cout << "blk_read_in_both_arms" << " " << p->n << "\n";
+    std::cout << "blk_read_in_both_arms" << " " << p->n << "\n" << ::tpy::check_signals;
 }
 
 // # ... and the sibling of that shape where each arm has its OWN binding loop and
@@ -1775,7 +1775,7 @@ void blk_loop_in_both_arms(bool flag) {
         f->n = ::tpy::add_check<int32_t>(f->n, 2);
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 100);
-    std::cout << "blk_loop_in_both_arms" << " " << f->n << "\n";
+    std::cout << "blk_loop_in_both_arms" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // # ... and a `while` in the arm, which the direct spelling already accepted.
@@ -1799,7 +1799,7 @@ void blk_if_while(bool flag) {
     } else {
         w = 9;
     }
-    std::cout << "blk_if_while" << " " << w << "\n";
+    std::cout << "blk_if_while" << " " << w << "\n" << ::tpy::check_signals;
 }
 
 // # Context-manager body, read after the `with`.
@@ -1828,7 +1828,7 @@ void blk_with() {
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
     f->n = ::tpy::add_check<int32_t>(f->n, 1);
-    std::cout << "blk_with" << " " << f->n << "\n";
+    std::cout << "blk_with" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // # try body and handler, read after the try.
@@ -1857,7 +1857,7 @@ void blk_try(int32_t n) {
         }
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 1);
-    std::cout << "blk_try" << " " << f->n << "\n";
+    std::cout << "blk_try" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
 // # match arms, read after the match. Value local: a non-value hoist at a
@@ -1891,7 +1891,7 @@ void blk_match(int32_t n) {
     }
     }
     v = ::tpy::add_check<int32_t>(v, 1);
-    std::cout << "blk_match" << " " << v << "\n";
+    std::cout << "blk_match" << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // # Closure position, sibling loop.
@@ -1914,7 +1914,7 @@ void sib_closure() {
         for (int32_t k = 0; k < 2; ++k) {
         }
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        std::cout << "sib_closure" << " " << f->n << "\n";
+        std::cout << "sib_closure" << " " << f->n << "\n" << ::tpy::check_signals;
     };
     inner();
 }
@@ -2080,7 +2080,7 @@ void main() {
     ::tpyapp::main::while_unpack();
     ::tpyapp::main::comp_walrus_in_loop();
     Holder().run();
-    std::cout << "ctor" << " " << Built().v << "\n";
+    std::cout << "ctor" << " " << Built().v << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen_section();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -2088,7 +2088,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen" << " " << v << "\n";
+            std::cout << "gen" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -2098,7 +2098,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "gen_while" << " " << v << "\n";
+            std::cout << "gen_while" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -2108,7 +2108,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "gen_for_single" << " " << v << "\n";
+            std::cout << "gen_for_single" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -2118,7 +2118,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             std::string_view t = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "gen_while_single" << " " << t << "\n";
+            std::cout << "gen_while_single" << " " << t << "\n" << ::tpy::check_signals;
         }
     }
     int32_t slice_total = 0;
@@ -2132,7 +2132,7 @@ void main() {
             slice_total = ::tpy::add_check<int32_t>(slice_total, v);
         }
     }
-    std::cout << "gen_slice_view" << " " << slice_total << "\n";
+    std::cout << "gen_slice_view" << " " << slice_total << "\n" << ::tpy::check_signals;
     ::tpyapp::main::nested_def_section();
     std::vector<Pic> __tmp_1 = {Pic(0), Pic(1)};
     ::tpyapp::main::nested_def_in_loop(__tmp_1);
@@ -2140,11 +2140,11 @@ void main() {
     ::tpyapp::main::with_section();
     ::tpyapp::main::try_section();
     {
-        std::cout << "error_return" << " " << ({ auto __er_2 = ::tpyapp::main::er_section(50); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        std::cout << "error_return" << " " << ({ auto __er_2 = ::tpyapp::main::er_section(50); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except MyErr:
         __except_1:;
-        std::cout << "error_return raised" << "\n";
+        std::cout << "error_return raised" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     ::tpyapp::main::match_section(1);
@@ -2192,10 +2192,10 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-            std::cout << "gen_sibling" << " " << v << "\n";
+            std::cout << "gen_sibling" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "gen_sibling" << " " << ::tpy::__getitem__(gen_pics, 1).n << "\n";
+    std::cout << "gen_sibling" << " " << ::tpy::__getitem__(gen_pics, 1).n << "\n" << ::tpy::check_signals;
     std::vector<Pic> if_pics = {Pic(0), Pic(1)};
     {
         auto __src_12 = ::tpyapp::main::gen_blk_if(true, if_pics);
@@ -2204,10 +2204,10 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-            std::cout << "gen_blk_if" << " " << v << "\n";
+            std::cout << "gen_blk_if" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "gen_blk_if" << " " << ::tpy::__getitem__(if_pics, 1).n << "\n";
+    std::cout << "gen_blk_if" << " " << ::tpy::__getitem__(if_pics, 1).n << "\n" << ::tpy::check_signals;
     std::vector<Pic> if_pics2 = {Pic(0), Pic(1)};
     {
         auto __src_14 = ::tpyapp::main::gen_blk_if(false, if_pics2);
@@ -2216,10 +2216,10 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-            std::cout << "gen_blk_if" << " " << v << "\n";
+            std::cout << "gen_blk_if" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "gen_blk_if" << " " << ::tpy::__getitem__(if_pics2, 1).n << "\n";
+    std::cout << "gen_blk_if" << " " << ::tpy::__getitem__(if_pics2, 1).n << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_all()));
     ::tpyapp::main::blk_if(true);
     ::tpyapp::main::blk_if(false);
@@ -2242,14 +2242,14 @@ void main() {
     ::tpyapp::main::blk_match(1);
     ::tpyapp::main::blk_match(2);
     SibHolder().run();
-    std::cout << "sib_ctor" << " " << SibBuilt().v << "\n";
+    std::cout << "sib_ctor" << " " << SibBuilt().v << "\n" << ::tpy::check_signals;
     ::tpyapp::main::sib_closure();
     {
-        std::cout << "sib_error_return" << " " << ({ auto __er_4 = ::tpyapp::main::sib_er(50); if (!__er_4.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_4); }) << "\n";
+        std::cout << "sib_error_return" << " " << ({ auto __er_4 = ::tpyapp::main::sib_er(50); if (!__er_4.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_4); }) << "\n" << ::tpy::check_signals;
         goto __after_try_3;
         // except MyErr:
         __except_3:;
-        std::cout << "sib_error_return raised" << "\n";
+        std::cout << "sib_error_return raised" << "\n" << ::tpy::check_signals;
         __after_try_3:;
     }
 }
@@ -2282,9 +2282,9 @@ void Holder::run() const {
         saved = p;
     }
     p->n = ::tpy::add_check<int32_t>(p->n, 100);
-    std::cout << "method" << " " << p->n << " " << saved->n << "\n";
+    std::cout << "method" << " " << p->n << " " << saved->n << "\n" << ::tpy::check_signals;
     p = &*(__slot_3 = Flat(9));
-    std::cout << "method" << " " << p->n << " " << saved->n << "\n";
+    std::cout << "method" << " " << p->n << " " << saved->n << "\n" << ::tpy::check_signals;
 }
 // from tplib import Box
 // import asyncio
@@ -2314,7 +2314,7 @@ void __tpy_init() {
     for (int32_t mk = 0; mk < 2; ++mk) {
     }
     mf->n = ::tpy::add_check<int32_t>(mf->n, 100);
-    std::cout << "module_sibling" << " " << mf->n << "\n";
+    std::cout << "module_sibling" << " " << mf->n << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

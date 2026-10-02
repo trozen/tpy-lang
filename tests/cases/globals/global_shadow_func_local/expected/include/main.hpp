@@ -80,7 +80,7 @@ inline void Picker::pick(bool cond) const {
     } else {
         p = &*(__slot_2 = Point(0, 0));
     }
-    std::cout << p->x << " " << p->y << "\n";
+    std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

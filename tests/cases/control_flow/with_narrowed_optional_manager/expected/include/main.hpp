@@ -94,7 +94,7 @@ inline int32_t Counter::__enter__() const {
 // def __exit__(self, et, ev, tb) -> None:
 //     print("counter exit", self.n)
 inline void Counter::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    std::cout << "counter exit" << " " << this->n << "\n";
+    std::cout << "counter exit" << " " << this->n << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, v: int32) -> None:
@@ -114,7 +114,7 @@ inline Slot& Holder::__enter__() {
 // def __exit__(self, et, ev, tb) -> None:
 //     print("holder exit", self.s.v)
 inline void Holder::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    std::cout << "holder exit" << " " << this->s.v << "\n";
+    std::cout << "holder exit" << " " << this->s.v << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

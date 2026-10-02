@@ -19,7 +19,7 @@ int32_t get_radius(::tpy::Union<const Circle*, const Rect*> s) {
 void main() {
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(7);
     ::tpy::Union<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << ::tpyapp::main::get_radius(c.as_const()) << "\n";
+    std::cout << ::tpyapp::main::get_radius(c.as_const()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

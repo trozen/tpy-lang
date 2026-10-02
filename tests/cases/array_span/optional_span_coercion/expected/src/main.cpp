@@ -17,9 +17,9 @@ bool has_values(std::optional<std::span<const int32_t>> values) {
 //     print(has_values([42, 99]))
 void main() {
     std::vector<int32_t> arr = {10, 20, 30};
-    std::cout << ::tpy::print_bool(::tpyapp::main::has_values(::tpy::as_span(arr))) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::has_values(std::nullopt)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::has_values(::tpy::as_span(std::array<int32_t, 2>{42, 99}))) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::has_values(::tpy::as_span(arr))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::has_values(std::nullopt)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::has_values(::tpy::as_span(std::array<int32_t, 2>{42, 99}))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

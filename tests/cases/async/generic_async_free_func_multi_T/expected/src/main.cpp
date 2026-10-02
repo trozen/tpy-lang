@@ -23,8 +23,8 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         p = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << std::get<0>(p) << "\n";
-        std::cout << std::get<1>(p) << "\n";
+        std::cout << std::get<0>(p) << "\n" << ::tpy::check_signals;
+        std::cout << std::get<1>(p) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

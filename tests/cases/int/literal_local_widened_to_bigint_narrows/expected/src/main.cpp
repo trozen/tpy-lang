@@ -21,13 +21,13 @@ namespace tpyapp::main {
 //     print(p)
 void subscript_positions(std::string_view data, std::vector<int32_t>& xs) {
     ::tpy::BigInt p = ::tpy::BigInt(0);
-    std::cout << ::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) << "\n";
-    std::cout << ::tpy::__getitem__(xs, p.to_fixed_check<int32_t>()) << "\n";
+    std::cout << ::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(xs, p.to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(xs, p.to_fixed_check<int32_t>(), 9);
     ::tpy::__setitem__(xs, p.to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, p.to_fixed_check<int32_t>()), 1));
-    std::cout << ::tpy::__getitem__(xs, 0) << "\n";
+    std::cout << ::tpy::__getitem__(xs, 0) << "\n" << ::tpy::check_signals;
     p = ::tpyapp::main::widen();
-    std::cout << p << "\n";
+    std::cout << p << "\n" << ::tpy::check_signals;
 }
 
 // def value_positions(data: str) -> None:
@@ -42,14 +42,14 @@ void subscript_positions(std::string_view data, std::vector<int32_t>& xs) {
 //     print(p)
 void value_positions(std::string_view data) {
     ::tpy::BigInt p = ::tpy::BigInt(1);
-    std::cout << ::tpy::str_slice(data, ::tpy::BasicSlice{p.to_fixed_check<int32_t>(), std::nullopt}) << "\n";
-    std::cout << ::tpy::str_slice(data, ::tpy::BasicSlice{std::nullopt, p.to_fixed_check<int32_t>()}) << "\n";
+    std::cout << ::tpy::str_slice(data, ::tpy::BasicSlice{p.to_fixed_check<int32_t>(), std::nullopt}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::str_slice(data, ::tpy::BasicSlice{std::nullopt, p.to_fixed_check<int32_t>()}) << "\n" << ::tpy::check_signals;
     int32_t q = 7;
     q = ::tpy::add_check<int32_t>(q, (p).to_fixed_check<int32_t>());
-    std::cout << q << "\n";
-    std::cout << std::format("{}", (p).to_string()) << "\n";
+    std::cout << q << "\n" << ::tpy::check_signals;
+    std::cout << std::format("{}", (p).to_string()) << "\n" << ::tpy::check_signals;
     p = ::tpyapp::main::widen();
-    std::cout << p << "\n";
+    std::cout << p << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

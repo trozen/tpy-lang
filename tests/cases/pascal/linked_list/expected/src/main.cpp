@@ -56,12 +56,12 @@ void __tpy_init() {
     cur = head;
     sum = 0;
     while ((cur != nullptr)) {
-        std::cout << cur->value << "\n";
+        std::cout << cur->value << "\n" << ::tpy::check_signals;
         sum = (::tpy::add_check<int32_t>(sum, cur->value));
         cur = cur->next;
     }
-    std::cout << "sum: ";
-    std::cout << sum << "\n";
+    std::cout << "sum: " << ::tpy::check_signals;
+    std::cout << sum << "\n" << ::tpy::check_signals;
     cur = head;
     while ((cur != nullptr)) {
         tmp = cur->next;

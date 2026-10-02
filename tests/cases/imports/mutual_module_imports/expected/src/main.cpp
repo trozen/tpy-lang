@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(a.foo())     # a -> b.bar
 //     print(b.relay())   # b -> a.foo -> b.bar
 void main() {
-    std::cout << ::tpyapp::a::foo() << "\n";
-    std::cout << ::tpyapp::b::relay() << "\n";
+    std::cout << ::tpyapp::a::foo() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::b::relay() << "\n" << ::tpy::check_signals;
 }
 
 // # Cycles using whole-module imports (`import a` rather than

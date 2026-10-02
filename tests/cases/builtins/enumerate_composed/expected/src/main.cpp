@@ -46,7 +46,7 @@ void main() {
             auto& __tup_1 = __for_tup_0;
             int32_t i = std::get<0>(__tup_1);
             auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-            std::cout << i << " " << p << "\n";
+            std::cout << i << " " << p << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -59,7 +59,7 @@ void main() {
             const auto& __tup_2 = __for_tup_1;
             int32_t j = std::get<0>(__tup_2);
             int32_t v = std::get<1>(__tup_2);
-            std::cout << j << " " << v << "\n";
+            std::cout << j << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -80,7 +80,7 @@ void main() {
     auto __end_6 = __obj_6.end();
     for (; __beg_6 != __end_6; ++__beg_6) {
         const auto& pt = *__beg_6;
-        std::cout << pt << "\n";
+        std::cout << pt << "\n" << ::tpy::check_signals;
     }
 }
 

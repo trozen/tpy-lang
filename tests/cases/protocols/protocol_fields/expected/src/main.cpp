@@ -28,17 +28,17 @@ namespace tpyapp::main {
 //     print(get_item(ih))
 void main() {
     Point p = Point(42);
-    std::cout << ::tpyapp::main::get_value<Point>(p) << "\n";
+    std::cout << ::tpyapp::main::get_value<Point>(p) << "\n" << ::tpy::check_signals;
     Vec2 v = Vec2(10, 20);
-    std::cout << ::tpyapp::main::sum_xy<Vec2>(v) << "\n";
+    std::cout << ::tpyapp::main::sum_xy<Vec2>(v) << "\n" << ::tpy::check_signals;
     Box b1 = Box(5);
     Box b2 = Box(0);
-    std::cout << ::tpyapp::main::describe<Box>(b1) << "\n";
-    std::cout << ::tpyapp::main::describe<Box>(b2) << "\n";
+    std::cout << ::tpyapp::main::describe<Box>(b1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe<Box>(b2) << "\n" << ::tpy::check_signals;
     Wrapper<Point> w = Wrapper<Point>(Point(100));
-    std::cout << w.get_inner_value() << "\n";
+    std::cout << w.get_inner_value() << "\n" << ::tpy::check_signals;
     IntHolder ih = IntHolder(77);
-    std::cout << ::tpyapp::main::get_item<IntHolder>(ih) << "\n";
+    std::cout << ::tpyapp::main::get_item<IntHolder>(ih) << "\n" << ::tpy::check_signals;
 }
 
 // main()

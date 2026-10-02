@@ -10,8 +10,8 @@ char ch{};
 //     print(n)
 //     print(c)
 void greet(int32_t n, char c) {
-    std::cout << n << "\n";
-    std::cout << c << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
+    std::cout << c << "\n" << ::tpy::check_signals;
 }
 
 // x: I = I(42)

@@ -33,10 +33,10 @@ void main() {
             ::tpyapp::main::boom();
             p = &*(__slot_2 = Point(4));
         } catch (...) {
-            std::cout << ::tpy::deref_check(p).x << "\n";
+            std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << ::tpy::deref_check(p).x << "\n";
+        std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
     }
 }
 

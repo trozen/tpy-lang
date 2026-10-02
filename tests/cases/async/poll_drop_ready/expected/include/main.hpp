@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Probe& obj) {
 //     self.tag = tag
 //     print(f"Probe({tag}) init")
 inline Probe::Probe(const ::tpy::BigInt& tag) : tag(tag) {
-    std::cout << std::format("Probe({}) init", (tag).to_string()) << "\n";
+    std::cout << std::format("Probe({}) init", (tag).to_string()) << "\n" << ::tpy::check_signals;
 }
 
 inline Probe::Probe(Probe&& other) noexcept : tag(std::move(other.tag)) {
@@ -69,7 +69,7 @@ inline Probe& Probe::operator=(Probe&& other) noexcept {
 //     print(f"Probe({self.tag}) drop")
 inline Probe::~Probe() {
     if (!this->__tpy_owned_) return;
-    std::cout << std::format("Probe({}) drop", (this->tag).to_string()) << "\n";
+    std::cout << std::format("Probe({}) drop", (this->tag).to_string()) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

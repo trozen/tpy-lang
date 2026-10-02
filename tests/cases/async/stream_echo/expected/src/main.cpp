@@ -53,7 +53,7 @@ namespace tpyapp::main {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         line = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << (::tpy::str_concat("line: ", ::tpy::bytes_decode(line))) << "\n";
+        std::cout << (::tpy::str_concat("line: ", ::tpy::bytes_decode(line))) << "\n" << ::tpy::check_signals;
         __sub_3.emplace((*reader), 4);
         __state = S_RESUME_3;
         continue;
@@ -63,7 +63,7 @@ namespace tpyapp::main {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         rest = std::move(__r3).value();
         __sub_3.reset();
-        std::cout << (::tpy::str_concat("rest: ", ::tpy::bytes_decode(rest))) << "\n";
+        std::cout << (::tpy::str_concat("rest: ", ::tpy::bytes_decode(rest))) << "\n" << ::tpy::check_signals;
         (*writer).close();
         __sub_4.emplace((*writer));
         __state = S_RESUME_4;

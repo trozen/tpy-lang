@@ -72,26 +72,26 @@ namespace tpyapp::main {
 void test_full() {
     std::string_view json = "{\"name\": \"Alice\", \"age\": 30, \"score\": 9.5, \"precision\": 1.5, \"active\": true, \"big_id\": 999999999999999999, \"role\": \"Admin\", \"address\": {\"street\": \"123 Main\", \"city\": \"NYC\"}, \"tags\": [\"dev\", \"ops\"], \"scores\": [100, 95], \"friends\": [{\"street\": \"456 Oak\", \"city\": \"LA\"}], \"roles\": [\"User\", \"Guest\"], \"metadata\": {\"level\": 5, \"xp\": 1200}, \"nested_map\": {\"a\": [1, 2], \"b\": [3]}, \"coord\": [10, 20, \"north\"], \"backup_role\": \"Guest\", \"alt_address\": {\"street\": \"999 Pine\", \"city\": \"CHI\"}, \"email\": \"a@b.com\"}";
     Profile p = Profile::from_json(json);
-    std::cout << p.name << "\n";
-    std::cout << p.age << "\n";
-    std::cout << ::tpy::print_float(p.score) << "\n";
-    std::cout << ::tpy::print_float(static_cast<double>(p.precision)) << "\n";
-    std::cout << ::tpy::print_bool(p.active) << "\n";
-    std::cout << p.big_id << "\n";
-    std::cout << ::tpy::EnumUtil<Role>::name(p.role) << "\n";
-    std::cout << p.address.city << "\n";
-    std::cout << ::tpy::ListPrinter(p.tags) << "\n";
-    std::cout << ::tpy::ListPrinter(p.scores) << "\n";
-    std::cout << ::tpy::__getitem__(p.friends, 0).city << "\n";
-    std::cout << ::tpy::EnumUtil<Role>::name(::tpy::__getitem__(p.roles, 0)) << "\n";
-    std::cout << ::tpy::EnumUtil<Role>::name(::tpy::__getitem__(p.roles, 1)) << "\n";
-    std::cout << ::tpy::__getitem__(p.metadata, "xp") << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(p.nested_map, "a")) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(p.nested_map, "b")) << "\n";
-    std::cout << ::tpy::TuplePrinter(p.coord) << "\n";
-    std::cout << ::tpy::print_optional_val(p.backup_role) << "\n";
-    std::cout << ::tpy::print_optional_val(p.alt_address) << "\n";
-    std::cout << ::tpy::print_optional_val(p.email) << "\n";
+    std::cout << p.name << "\n" << ::tpy::check_signals;
+    std::cout << p.age << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(p.score) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(static_cast<double>(p.precision)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(p.active) << "\n" << ::tpy::check_signals;
+    std::cout << p.big_id << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<Role>::name(p.role) << "\n" << ::tpy::check_signals;
+    std::cout << p.address.city << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(p.tags) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(p.scores) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(p.friends, 0).city << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<Role>::name(::tpy::__getitem__(p.roles, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<Role>::name(::tpy::__getitem__(p.roles, 1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(p.metadata, "xp") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(p.nested_map, "a")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(p.nested_map, "b")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::TuplePrinter(p.coord) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(p.backup_role) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(p.alt_address) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(p.email) << "\n" << ::tpy::check_signals;
 }
 
 // def test_defaults() -> None:
@@ -104,10 +104,10 @@ void test_full() {
 void test_defaults() {
     std::string_view json = "{\"name\": \"Bob\", \"age\": 25, \"score\": 0.0, \"precision\": 0.0, \"active\": false, \"big_id\": 0, \"role\": \"Guest\", \"address\": {\"street\": \"x\", \"city\": \"y\"}, \"tags\": [], \"scores\": [], \"friends\": [], \"roles\": [], \"metadata\": {}, \"nested_map\": {}, \"coord\": [0, 0, \"\"]}";
     Profile p = Profile::from_json(json);
-    std::cout << p.name << "\n";
-    std::cout << ::tpy::print_optional_val(p.backup_role) << "\n";
-    std::cout << ::tpy::print_optional_val(p.alt_address) << "\n";
-    std::cout << ::tpy::print_optional_val(p.email) << "\n";
+    std::cout << p.name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(p.backup_role) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(p.alt_address) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(p.email) << "\n" << ::tpy::check_signals;
 }
 
 // def test_roundtrip() -> None:
@@ -121,9 +121,9 @@ void test_roundtrip() {
     std::string_view json = "{\"name\": \"Eve\", \"age\": 40, \"score\": 3.14, \"precision\": 2.5, \"active\": true, \"big_id\": 12345678901234567890, \"role\": \"User\", \"address\": {\"street\": \"789 Elm\", \"city\": \"SF\"}, \"tags\": [\"ops\"], \"scores\": [42], \"friends\": [{\"street\": \"1st\", \"city\": \"DC\"}], \"roles\": [\"Admin\"], \"metadata\": {\"rank\": 1}, \"nested_map\": {\"z\": [9]}, \"coord\": [100, 200, \"east\"], \"alt_address\": {\"street\": \"2nd\", \"city\": \"BOS\"}, \"email\": null}";
     Profile p = Profile::from_json(json);
     std::string out = p.to_json();
-    std::cout << out << "\n";
+    std::cout << out << "\n" << ::tpy::check_signals;
     Profile p2 = Profile::from_json(out);
-    std::cout << ::tpy::print_bool(((p) == (p2))) << "\n";
+    std::cout << ::tpy::print_bool(((p) == (p2))) << "\n" << ::tpy::check_signals;
 }
 
 

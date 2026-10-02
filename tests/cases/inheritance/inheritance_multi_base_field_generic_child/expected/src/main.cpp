@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     Container<int32_t> c_int = Container<int32_t>(7, "int");
     Container<std::string> c_str = Container<std::string>(" s", "str");
-    std::cout << c_int.tagged() << "\n";
-    std::cout << c_str.tagged() << "\n";
+    std::cout << c_int.tagged() << "\n" << ::tpy::check_signals;
+    std::cout << c_str.tagged() << "\n" << ::tpy::check_signals;
 }
 
 // main()

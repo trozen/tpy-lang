@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(s._v)
 void main() {
     Sub s = Sub(::tpyapp::other::Key(5), 7);
-    std::cout << s._k.x << "\n";
-    std::cout << s._v << "\n";
+    std::cout << s._k.x << "\n" << ::tpy::check_signals;
+    std::cout << s._v << "\n" << ::tpy::check_signals;
 }
 
 // from other import Key

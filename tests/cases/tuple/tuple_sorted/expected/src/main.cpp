@@ -32,10 +32,10 @@ void main() {
         const auto& __tup_1 = __for_tup_0;
         int32_t p = std::get<0>(__tup_1);
         std::string_view s = std::get<1>(__tup_1);
-        std::cout << p << " " << s << "\n";
+        std::cout << p << " " << s << "\n" << ::tpy::check_signals;
     }
     ::tpy::sort_in_place(pairs);
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     auto& __obj_1 = pairs;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
@@ -44,7 +44,7 @@ void main() {
         const auto& __tup_2 = __for_tup_1;
         int32_t p = std::get<0>(__tup_2);
         std::string_view s = std::get<1>(__tup_2);
-        std::cout << p << " " << s << "\n";
+        std::cout << p << " " << s << "\n" << ::tpy::check_signals;
     }
 }
 

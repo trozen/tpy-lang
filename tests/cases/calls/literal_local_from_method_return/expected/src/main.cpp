@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Config c = Config();
     std::string_view m = c.get_mode();
-    std::cout << m << "\n";
+    std::cout << m << "\n" << ::tpy::check_signals;
 }
 
 // main()

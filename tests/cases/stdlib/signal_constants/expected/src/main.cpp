@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(int(SIGINT))
 //     print(int(SIGTERM))
 void main() {
-    std::cout << ::tpy::BigInt(static_cast<int64_t>(::tpy_const_sigint)) << "\n";
-    std::cout << ::tpy::BigInt(static_cast<int64_t>(::tpy_const_sigterm)) << "\n";
+    std::cout << ::tpy::BigInt(static_cast<int64_t>(::tpy_const_sigint)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BigInt(static_cast<int64_t>(::tpy_const_sigterm)) << "\n" << ::tpy::check_signals;
 }
 
 // # signal.SIGINT / SIGTERM are sourced from <signal.h> via native_global so the

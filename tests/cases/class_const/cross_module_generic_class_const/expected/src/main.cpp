@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(c.CAPACITY)
 void main() {
     ::tpyapp::box::Box<int32_t> b = ::tpyapp::box::Box<int32_t>();
-    std::cout << ::tpyapp::box::Box<int32_t>::CAPACITY << "\n";
+    std::cout << ::tpyapp::box::Box<int32_t>::CAPACITY << "\n" << ::tpy::check_signals;
     ::tpyapp::box::Box<double> c = ::tpyapp::box::Box<double>();
-    std::cout << ::tpyapp::box::Box<double>::CAPACITY << "\n";
+    std::cout << ::tpyapp::box::Box<double>::CAPACITY << "\n" << ::tpy::check_signals;
 }
 
 // # Cross-module: generic class with class constant in `box.py`, accessed via

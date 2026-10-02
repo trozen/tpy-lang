@@ -27,12 +27,12 @@ namespace tpyapp::main {
 void main() {
     Box b = Box();
     ::tpy::__setitem__(b.by_name, "x", ::tpy::BigInt(1));
-    std::cout << ::tpy::__getitem__(b.by_name, "x") << " " << ::tpy::__len__(b.by_pair) << " " << ::tpy::__len__(::tpy::__getitem__(b.by_pair, "first")) << "\n";
+    std::cout << ::tpy::__getitem__(b.by_name, "x") << " " << ::tpy::__len__(b.by_pair) << " " << ::tpy::__len__(::tpy::__getitem__(b.by_pair, "first")) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ::tpy::BigInt> __tmp_1 = ::tpy::ordered_map<std::string, ::tpy::BigInt>();
-    std::cout << ::tpyapp::main::take(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::take(__tmp_1) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ::tpy::BigInt> fresh = ::tpyapp::main::make();
     ::tpy::__setitem__(fresh, "y", ::tpy::BigInt(2));
-    std::cout << ::tpy::__getitem__(fresh, "y") << "\n";
+    std::cout << ::tpy::__getitem__(fresh, "y") << "\n" << ::tpy::check_signals;
 }
 
 // main()

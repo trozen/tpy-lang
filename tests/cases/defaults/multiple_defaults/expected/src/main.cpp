@@ -10,10 +10,10 @@ namespace tpyapp::main {
 //     print(height)
 //     print(visible)
 void create(std::string_view name, int32_t width, int32_t height, bool visible) {
-    std::cout << name << "\n";
-    std::cout << width << "\n";
-    std::cout << height << "\n";
-    std::cout << ::tpy::print_bool(visible) << "\n";
+    std::cout << name << "\n" << ::tpy::check_signals;
+    std::cout << width << "\n" << ::tpy::check_signals;
+    std::cout << height << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(visible) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Point a = Point::make(1);
     Point b = Point::make(1, 2);
-    std::cout << a.x << " " << a.y << " " << b.x << " " << b.y << "\n";
+    std::cout << a.x << " " << a.y << " " << b.x << " " << b.y << "\n" << ::tpy::check_signals;
 }
 
 // main()

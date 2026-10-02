@@ -21,9 +21,9 @@ int32_t read_box(::tpystd::tplib::box::Box<Counter>& c) {
 //     print(read_box(Box(Counter(4))))       # tpyc: ok
 void main() {
     ::tpystd::tplib::rc::Rc<Counter> __tmp_1 = Rc<Counter>::new_<Counter>(Counter(3));
-    std::cout << ::tpyapp::main::read_rc(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::read_rc(__tmp_1) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::box::Box<Counter> __tmp_2 = ::tpystd::tplib::box::Box<Counter>(Counter(4));
-    std::cout << ::tpyapp::main::read_box(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::read_box(__tmp_2) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Rc, Box

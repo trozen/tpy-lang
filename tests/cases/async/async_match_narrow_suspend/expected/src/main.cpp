@@ -73,7 +73,7 @@ __coro_voice voice(::tpy::Union<Cat*, Dog*> a) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << __await_lift_0 << "\n";
+        std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
         __coro_arg_1.emplace(Cat());
         __sub_1.emplace(::tpy::Union<Cat*, Dog*>{&((*__coro_arg_1))});
         __state = S_RESUME_1;
@@ -84,7 +84,7 @@ __coro_voice voice(::tpy::Union<Cat*, Dog*> a) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << __await_lift_1 << "\n";
+        std::cout << __await_lift_1 << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

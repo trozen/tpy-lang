@@ -28,12 +28,12 @@ void main() {
     p->x = 1;
     p->y = 2;
     Point& alias = (*p);
-    std::cout << alias.x << "\n";
+    std::cout << alias.x << "\n" << ::tpy::check_signals;
     p = &*(__slot_2 = Point());
     p->x = 10;
     p->y = 20;
-    std::cout << ::tpyapp::main::consume(std::move((*p))) << "\n";
-    std::cout << alias.x << "\n";
+    std::cout << ::tpyapp::main::consume(std::move((*p))) << "\n" << ::tpy::check_signals;
+    std::cout << alias.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

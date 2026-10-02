@@ -59,53 +59,53 @@ namespace tpyapp::main {
 //     # ulp(-x) == ulp(x) (C++ helper takes fabs internally)
 //     print(math.ulp(-1.0) == math.ulp(1.0))
 void main() {
-    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_expm1(0.0) == 0.0)) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_log1p(0.0) == 0.0)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_expm1(0.0) == 0.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_log1p(0.0) == 0.0)) << "\n" << ::tpy::check_signals;
     double e1 = ::tpy::stdlib::math::checked_expm1(1.0);
-    std::cout << ::tpy::print_bool(((e1 > 1.71) && (e1 < 1.72))) << "\n";
+    std::cout << ::tpy::print_bool(((e1 > 1.71) && (e1 < 1.72))) << "\n" << ::tpy::check_signals;
     double l1 = ::tpy::stdlib::math::checked_log1p(1.0);
-    std::cout << ::tpy::print_bool(((l1 > 0.69) && (l1 < 0.7))) << "\n";
-    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_gamma(5.0)) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_gamma(1.0) == 1.0)) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_lgamma(1.0) == 0.0)) << "\n";
+    std::cout << ::tpy::print_bool(((l1 > 0.69) && (l1 < 0.7))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_gamma(5.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_gamma(1.0) == 1.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_lgamma(1.0) == 0.0)) << "\n" << ::tpy::check_signals;
     double g5 = ::tpy::stdlib::math::checked_lgamma(5.0);
-    std::cout << ::tpy::print_bool(((g5 > 3.17) && (g5 < 3.19))) << "\n";
-    std::cout << ::tpy::print_bool((::std::erf(0.0) == 0.0)) << "\n";
+    std::cout << ::tpy::print_bool(((g5 > 3.17) && (g5 < 3.19))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::std::erf(0.0) == 0.0)) << "\n" << ::tpy::check_signals;
     double e2 = ::std::erf(1.0);
-    std::cout << ::tpy::print_bool(((e2 > 0.84) && (e2 < 0.85))) << "\n";
+    std::cout << ::tpy::print_bool(((e2 > 0.84) && (e2 < 0.85))) << "\n" << ::tpy::check_signals;
     double e3 = ::std::erfc(1.0);
-    std::cout << ::tpy::print_bool(((e3 > 0.15) && (e3 < 0.16))) << "\n";
-    std::cout << ::tpy::print_bool((((::std::erf(1.0)) + (::std::erfc(1.0))) == 1.0)) << "\n";
+    std::cout << ::tpy::print_bool(((e3 > 0.15) && (e3 < 0.16))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((((::std::erf(1.0)) + (::std::erfc(1.0))) == 1.0)) << "\n" << ::tpy::check_signals;
     double na = ::std::nextafter(1.0, 2.0);
-    std::cout << ::tpy::print_bool(((na > 1.0) && (na < 1.0000000001))) << "\n";
-    std::cout << ::tpy::print_bool((::std::nextafter(1.0, 1.0) == 1.0)) << "\n";
-    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_ldexp(1.5, 3)) << "\n";
-    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_ldexp(1.0, -1)) << "\n";
+    std::cout << ::tpy::print_bool(((na > 1.0) && (na < 1.0000000001))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::std::nextafter(1.0, 1.0) == 1.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_ldexp(1.5, 3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_ldexp(1.0, -1)) << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpy::stdlib::math::modf(3.75);
     double frac = std::get<0>(__tup_1);
     double ip = std::get<1>(__tup_1);
-    std::cout << ::tpy::print_float(frac) << " " << ::tpy::print_float(ip) << "\n";
+    std::cout << ::tpy::print_float(frac) << " " << ::tpy::print_float(ip) << "\n" << ::tpy::check_signals;
     auto __tup_2 = ::tpy::stdlib::math::modf(-(3.75));
     double nfrac = std::get<0>(__tup_2);
     double nip = std::get<1>(__tup_2);
-    std::cout << ::tpy::print_float(nfrac) << " " << ::tpy::print_float(nip) << "\n";
+    std::cout << ::tpy::print_float(nfrac) << " " << ::tpy::print_float(nip) << "\n" << ::tpy::check_signals;
     auto __tup_3 = ::tpy::stdlib::math::frexp<int32_t>(12.0);
     double m1 = std::get<0>(__tup_3);
     int32_t ex1 = std::get<1>(__tup_3);
-    std::cout << ::tpy::print_float(m1) << " " << ex1 << "\n";
+    std::cout << ::tpy::print_float(m1) << " " << ex1 << "\n" << ::tpy::check_signals;
     auto __tup_4 = ::tpy::stdlib::math::frexp<int32_t>(0.5);
     double m2 = std::get<0>(__tup_4);
     int32_t ex2 = std::get<1>(__tup_4);
-    std::cout << ::tpy::print_float(m2) << " " << ex2 << "\n";
+    std::cout << ::tpy::print_float(m2) << " " << ex2 << "\n" << ::tpy::check_signals;
     auto __tup_5 = ::tpy::stdlib::math::frexp<int32_t>(0.0);
     double m3 = std::get<0>(__tup_5);
     int32_t ex3 = std::get<1>(__tup_5);
-    std::cout << ::tpy::print_float(m3) << " " << ex3 << "\n";
+    std::cout << ::tpy::print_float(m3) << " " << ex3 << "\n" << ::tpy::check_signals;
     double u1 = ::tpy::stdlib::math::ulp(1.0);
-    std::cout << ::tpy::print_bool(((u1 > 0.0) && (u1 < 1e-15))) << "\n";
+    std::cout << ::tpy::print_bool(((u1 > 0.0) && (u1 < 1e-15))) << "\n" << ::tpy::check_signals;
     double u2 = ::tpy::stdlib::math::ulp(::tpystd::math::inf);
-    std::cout << ::tpy::print_bool(::std::isinf(u2)) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::stdlib::math::ulp(-(1.0)) == ::tpy::stdlib::math::ulp(1.0))) << "\n";
+    std::cout << ::tpy::print_bool(::std::isinf(u2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::ulp(-(1.0)) == ::tpy::stdlib::math::ulp(1.0))) << "\n" << ::tpy::check_signals;
 }
 
 // # math module: special functions (gamma, lgamma, erf, erfc, expm1, log1p),

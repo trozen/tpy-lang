@@ -23,12 +23,12 @@ void __tpy_init() {
     ::tpyapp::helpers::__tpy_init();
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
     nums = &__global_slot_1;
-    std::cout << ::tpyapp::helpers::first<int32_t>((*nums)) << "\n";
-    std::cout << ::tpyapp::helpers::length<int32_t>((*nums)) << "\n";
+    std::cout << ::tpyapp::helpers::first<int32_t>((*nums)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::helpers::length<int32_t>((*nums)) << "\n" << ::tpy::check_signals;
     static std::vector<std::string> __global_slot_2 = {"hello", "world"};
     words = &__global_slot_2;
-    std::cout << ::tpyapp::helpers::first<std::string>((*words)) << "\n";
-    std::cout << ::tpyapp::helpers::length<std::string>((*words)) << "\n";
+    std::cout << ::tpyapp::helpers::first<std::string>((*words)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::helpers::length<std::string>((*words)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

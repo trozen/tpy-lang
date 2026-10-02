@@ -614,7 +614,7 @@ __coro_a_walrus a_walrus() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "for_body:" << " " << __await_lift_0 << "\n";
+        std::cout << "for_body:" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -624,7 +624,7 @@ __coro_a_walrus a_walrus() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "for_else:" << " " << __await_lift_1 << "\n";
+        std::cout << "for_else:" << " " << __await_lift_1 << "\n" << ::tpy::check_signals;
         __sub_2.emplace();
         __state = S_RESUME_2;
         continue;
@@ -634,7 +634,7 @@ __coro_a_walrus a_walrus() {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        std::cout << "while_body:" << " " << __await_lift_2 << "\n";
+        std::cout << "while_body:" << " " << __await_lift_2 << "\n" << ::tpy::check_signals;
         __sub_3.emplace();
         __state = S_RESUME_3;
         continue;
@@ -644,7 +644,7 @@ __coro_a_walrus a_walrus() {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();
         __sub_3.reset();
-        std::cout << "try_except:" << " " << __await_lift_3 << "\n";
+        std::cout << "try_except:" << " " << __await_lift_3 << "\n" << ::tpy::check_signals;
         __sub_4.emplace();
         __state = S_RESUME_4;
         continue;
@@ -654,7 +654,7 @@ __coro_a_walrus a_walrus() {
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_4 = std::move(__r4).value();
         __sub_4.reset();
-        std::cout << "if_arms:" << " " << __await_lift_4 << "\n";
+        std::cout << "if_arms:" << " " << __await_lift_4 << "\n" << ::tpy::check_signals;
         __sub_5.emplace();
         __state = S_RESUME_5;
         continue;
@@ -664,7 +664,7 @@ __coro_a_walrus a_walrus() {
         if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_5 = std::move(__r5).value();
         __sub_5.reset();
-        std::cout << "with_body:" << " " << __await_lift_5 << "\n";
+        std::cout << "with_body:" << " " << __await_lift_5 << "\n" << ::tpy::check_signals;
         __sub_6.emplace();
         __state = S_RESUME_6;
         continue;
@@ -674,7 +674,7 @@ __coro_a_walrus a_walrus() {
         if (__r6.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_6 = std::move(__r6).value();
         __sub_6.reset();
-        std::cout << "with_target:" << " " << __await_lift_6 << "\n";
+        std::cout << "with_target:" << " " << __await_lift_6 << "\n" << ::tpy::check_signals;
         __sub_7.emplace(1);
         __state = S_RESUME_7;
         continue;
@@ -684,7 +684,7 @@ __coro_a_walrus a_walrus() {
         if (__r7.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_7 = std::move(__r7).value();
         __sub_7.reset();
-        std::cout << "match_arm:" << " " << __await_lift_7 << "\n";
+        std::cout << "match_arm:" << " " << __await_lift_7 << "\n" << ::tpy::check_signals;
         src.emplace(Source());
         __sub_8.emplace((*src));
         __state = S_RESUME_8;
@@ -695,7 +695,7 @@ __coro_a_walrus a_walrus() {
         if (__r8.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_8 = std::move(__r8).value();
         __sub_8.reset();
-        std::cout << "method:" << " " << __await_lift_8 << "\n";
+        std::cout << "method:" << " " << __await_lift_8 << "\n" << ::tpy::check_signals;
         c.emplace(Cell(::tpy::BigInt(1)));
         __sub_9.emplace((*c));
         __state = S_RESUME_9;
@@ -706,8 +706,8 @@ __coro_a_walrus a_walrus() {
         if (__r9.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_9 = std::move(__r9).value();
         __sub_9.reset();
-        std::cout << "record:" << " " << __await_lift_9 << "\n";
-        std::cout << "record: caller sees" << " " << (*c).v << "\n";
+        std::cout << "record:" << " " << __await_lift_9 << "\n" << ::tpy::check_signals;
+        std::cout << "record: caller sees" << " " << (*c).v << "\n" << ::tpy::check_signals;
         cm.emplace(Cell(::tpy::BigInt(1)));
         __sub_10.emplace((*cm), 1);
         __state = S_RESUME_10;
@@ -718,8 +718,8 @@ __coro_a_walrus a_walrus() {
         if (__r10.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_10 = std::move(__r10).value();
         __sub_10.reset();
-        std::cout << "record_match:" << " " << __await_lift_10 << "\n";
-        std::cout << "record_match: caller sees" << " " << (*cm).v << "\n";
+        std::cout << "record_match:" << " " << __await_lift_10 << "\n" << ::tpy::check_signals;
+        std::cout << "record_match: caller sees" << " " << (*cm).v << "\n" << ::tpy::check_signals;
         __sub_11.emplace();
         __state = S_RESUME_11;
         continue;
@@ -729,7 +729,7 @@ __coro_a_walrus a_walrus() {
         if (__r11.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_11 = std::move(__r11).value();
         __sub_11.reset();
-        std::cout << "walrus:" << " " << __await_lift_11 << "\n";
+        std::cout << "walrus:" << " " << __await_lift_11 << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

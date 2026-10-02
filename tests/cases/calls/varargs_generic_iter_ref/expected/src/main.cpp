@@ -12,9 +12,9 @@ void main() {
     const Box __tmp_2 = Box(::tpy::BigInt(2));
     const Box __tmp_3 = Box(::tpy::BigInt(3));
     std::array<const Box*, 3> __tmp_4{&__tmp_1, &__tmp_2, &__tmp_3};
-    std::cout << ::tpyapp::main::count_all<Box>(::tpy::varargs<const Box>(__tmp_4)) << "\n";
+    std::cout << ::tpyapp::main::count_all<Box>(::tpy::varargs<const Box>(__tmp_4)) << "\n" << ::tpy::check_signals;
     std::array<const int32_t, 2> __tmp_5{1, 2};
-    std::cout << ::tpyapp::main::count_all<int32_t>(::tpy::varargs<const int32_t>(__tmp_5)) << "\n";
+    std::cout << ::tpyapp::main::count_all<int32_t>(::tpy::varargs<const int32_t>(__tmp_5)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

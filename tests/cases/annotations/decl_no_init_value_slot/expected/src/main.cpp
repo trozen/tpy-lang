@@ -141,9 +141,9 @@ __coro_coro coro() {
 //     print()
 //     print("async:", asyncio.run(coro()))
 void main() {
-    std::cout << "free:" << " " << ::tpyapp::main::free_position(true) << " " << ::tpyapp::main::free_position(false) << "\n";
-    std::cout << "method:" << " " << Reader(9).read() << "\n";
-    std::cout << "gen:" << " ";
+    std::cout << "free:" << " " << ::tpyapp::main::free_position(true) << " " << ::tpyapp::main::free_position(false) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << Reader(9).read() << "\n" << ::tpy::check_signals;
+    std::cout << "gen:" << " " << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -151,11 +151,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << " ";
+            std::cout << v << " " << ::tpy::check_signals;
         }
     }
-    std::cout << "\n";
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro())) << "\n";
+    std::cout << "\n" << ::tpy::check_signals;
+    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro())) << "\n" << ::tpy::check_signals;
 }
 
 // # An annotation-only declaration (`t: tuple[int32, int32]`) default-constructs

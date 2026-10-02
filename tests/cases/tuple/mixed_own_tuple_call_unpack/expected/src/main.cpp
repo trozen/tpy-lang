@@ -31,7 +31,7 @@ void main() {
     int32_t n = std::get<2>(__tup_1);
     std::string_view s = std::get<3>(__tup_1);
     p.x = 9;
-    std::cout << ref.x << " " << owned.x << " " << n << " " << s << "\n";
+    std::cout << ref.x << " " << owned.x << " " << n << " " << s << "\n" << ::tpy::check_signals;
 }
 
 // main()

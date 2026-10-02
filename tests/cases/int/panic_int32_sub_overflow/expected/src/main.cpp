@@ -18,7 +18,7 @@ void __tpy_init() {
 
     x = -2147483648;
     y = (::tpy::sub_check<int32_t>(x, 1));
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

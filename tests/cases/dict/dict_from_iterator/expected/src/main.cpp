@@ -13,11 +13,11 @@ namespace tpyapp::main {
 //     print(d["2"])
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(PairIter(3));
-    std::cout << ::tpy::DictPrinter(d) << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
-    std::cout << ::tpy::__getitem__(d, "0") << "\n";
-    std::cout << ::tpy::__getitem__(d, "1") << "\n";
-    std::cout << ::tpy::__getitem__(d, "2") << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, "0") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, "1") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, "2") << "\n" << ::tpy::check_signals;
 }
 
 // main()

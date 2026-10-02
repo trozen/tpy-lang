@@ -60,13 +60,13 @@ void __tpy_init() {
                 iter = (::tpy::add_check<int32_t>(iter, 1));
             }
             if ((iter == 30)) {
-                std::cout << "#";
+                std::cout << "#" << ::tpy::check_signals;
             } else {
-                std::cout << " ";
+                std::cout << " " << ::tpy::check_signals;
             }
             px = (::tpy::add_check<int32_t>(px, 1));
         }
-        std::cout << "" << "\n";
+        std::cout << "" << "\n" << ::tpy::check_signals;
         py = (::tpy::add_check<int32_t>(py, 1));
     }
 }

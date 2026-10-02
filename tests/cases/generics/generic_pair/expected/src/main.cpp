@@ -16,11 +16,11 @@ namespace tpyapp::main {
 //     print(p2.get_second())
 void main() {
     Pair<int32_t, std::string> p1 = Pair<int32_t, std::string>(42, "hello");
-    std::cout << p1.get_first() << "\n";
-    std::cout << p1.get_second() << "\n";
+    std::cout << p1.get_first() << "\n" << ::tpy::check_signals;
+    std::cout << p1.get_second() << "\n" << ::tpy::check_signals;
     Pair<std::string, int32_t> p2 = Pair<std::string, int32_t>("world", 100);
-    std::cout << p2.get_first() << "\n";
-    std::cout << p2.get_second() << "\n";
+    std::cout << p2.get_first() << "\n" << ::tpy::check_signals;
+    std::cout << p2.get_second() << "\n" << ::tpy::check_signals;
 }
 
 // main()

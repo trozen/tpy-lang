@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print("count empty:", "".count(""))
 //     print("count single:", "x".count(""))
 void test_count_empty() {
-    std::cout << "count hello:" << " " << ::tpy::str_count("hello", "") << "\n";
-    std::cout << "count empty:" << " " << ::tpy::str_count("", "") << "\n";
-    std::cout << "count single:" << " " << ::tpy::str_count("x", "") << "\n";
+    std::cout << "count hello:" << " " << ::tpy::str_count("hello", "") << "\n" << ::tpy::check_signals;
+    std::cout << "count empty:" << " " << ::tpy::str_count("", "") << "\n" << ::tpy::check_signals;
+    std::cout << "count single:" << " " << ::tpy::str_count("x", "") << "\n" << ::tpy::check_signals;
 }
 
 // def test_replace_empty() -> None:
@@ -21,25 +21,25 @@ void test_count_empty() {
 //     print("replace empty:", "".replace("", "-"))
 //     print("replace single:", "x".replace("", "[]"))
 void test_replace_empty() {
-    std::cout << "replace hello:" << " " << ::tpy::str_replace("hello", "", "-") << "\n";
-    std::cout << "replace empty:" << " " << ::tpy::str_replace("", "", "-") << "\n";
-    std::cout << "replace single:" << " " << ::tpy::str_replace("x", "", "[]") << "\n";
+    std::cout << "replace hello:" << " " << ::tpy::str_replace("hello", "", "-") << "\n" << ::tpy::check_signals;
+    std::cout << "replace empty:" << " " << ::tpy::str_replace("", "", "-") << "\n" << ::tpy::check_signals;
+    std::cout << "replace single:" << " " << ::tpy::str_replace("x", "", "[]") << "\n" << ::tpy::check_signals;
 }
 
 // def test_count_nonempty() -> None:
 //     print("count normal:", "banana".count("an"))
 //     print("count miss:", "hello".count("xyz"))
 void test_count_nonempty() {
-    std::cout << "count normal:" << " " << ::tpy::str_count("banana", "an") << "\n";
-    std::cout << "count miss:" << " " << ::tpy::str_count("hello", "xyz") << "\n";
+    std::cout << "count normal:" << " " << ::tpy::str_count("banana", "an") << "\n" << ::tpy::check_signals;
+    std::cout << "count miss:" << " " << ::tpy::str_count("hello", "xyz") << "\n" << ::tpy::check_signals;
 }
 
 // def test_replace_nonempty() -> None:
 //     print("replace normal:", "aabaa".replace("a", "x"))
 //     print("replace miss:", "hello".replace("xyz", "!"))
 void test_replace_nonempty() {
-    std::cout << "replace normal:" << " " << ::tpy::str_replace("aabaa", "a", "x") << "\n";
-    std::cout << "replace miss:" << " " << ::tpy::str_replace("hello", "xyz", "!") << "\n";
+    std::cout << "replace normal:" << " " << ::tpy::str_replace("aabaa", "a", "x") << "\n" << ::tpy::check_signals;
+    std::cout << "replace miss:" << " " << ::tpy::str_replace("hello", "xyz", "!") << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

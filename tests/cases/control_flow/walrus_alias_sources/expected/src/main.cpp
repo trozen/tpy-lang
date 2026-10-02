@@ -81,18 +81,18 @@ Rec* G{};
 //         print(first.n)
 //     print(readonly_recv(Rec(7)))
 void main() {
-    std::cout << ::tpyapp::main::from_global() << " " << G->n << "\n";
+    std::cout << ::tpyapp::main::from_global() << " " << G->n << "\n" << ::tpy::check_signals;
     Holder h = Holder();
-    std::cout << ::tpyapp::main::from_field(h) << " " << h.inner.n << "\n";
-    std::cout << ::tpyapp::main::from_container_field(h) << " " << ::tpy::__len__(h.kid) << "\n";
+    std::cout << ::tpyapp::main::from_field(h) << " " << h.inner.n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::from_container_field(h) << " " << ::tpy::__len__(h.kid) << "\n" << ::tpy::check_signals;
     std::vector<std::optional<Rec>> xs = {Rec(::tpy::BigInt(3))};
-    std::cout << ::tpyapp::main::from_optional_elem(xs) << "\n";
+    std::cout << ::tpyapp::main::from_optional_elem(xs) << "\n" << ::tpy::check_signals;
     Rec* first = ::tpy::optional_to_ptr(::tpy::__getitem__(xs, 0));
     if ((first != nullptr)) {
-        std::cout << first->n << "\n";
+        std::cout << first->n << "\n" << ::tpy::check_signals;
     }
     Rec __tmp_1 = Rec(::tpy::BigInt(7));
-    std::cout << ::tpyapp::main::readonly_recv(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::readonly_recv(__tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // G = Rec(3)

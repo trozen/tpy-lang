@@ -116,8 +116,8 @@ int32_t subscript_slot_twin(std::vector<Cell>& xs, const Cell& v) {
 //     print("ret_own", ret_own(c).n, ret_own_twin(c).n, ret_own(7))
 void free_positions() {
     Cell c = Cell(1);
-    std::cout << "free_slot" << " " << ::tpyapp::main::free_slot<Cell>(c) << " " << ::tpyapp::main::free_slot_twin(c) << " " << ::tpyapp::main::free_slot<int32_t>(7) << "\n";
-    std::cout << "ret_own" << " " << ::tpyapp::main::ret_own<Cell>(c).n << " " << ::tpyapp::main::ret_own_twin(c).n << " " << ::tpyapp::main::ret_own<int32_t>(7) << "\n";
+    std::cout << "free_slot" << " " << ::tpyapp::main::free_slot<Cell>(c) << " " << ::tpyapp::main::free_slot_twin(c) << " " << ::tpyapp::main::free_slot<int32_t>(7) << "\n" << ::tpy::check_signals;
+    std::cout << "ret_own" << " " << ::tpyapp::main::ret_own<Cell>(c).n << " " << ::tpyapp::main::ret_own_twin(c).n << " " << ::tpyapp::main::ret_own<int32_t>(7) << "\n" << ::tpy::check_signals;
 }
 
 // def record_positions() -> None:
@@ -139,9 +139,9 @@ void record_positions() {
     hv.store(6);
     HolderTwin tw = HolderTwin(c);
     tw.store(c);
-    std::cout << "holder" << " " << h.item.n << " " << hv.item << " " << tw.item.n << "\n";
+    std::cout << "holder" << " " << h.item.n << " " << hv.item << " " << tw.item.n << "\n" << ::tpy::check_signals;
     GenLeaf leaf = GenLeaf(c);
-    std::cout << "genleaf" << " " << leaf.item.n << "\n";
+    std::cout << "genleaf" << " " << leaf.item.n << "\n" << ::tpy::check_signals;
 }
 
 // def body_positions() -> None:
@@ -189,12 +189,12 @@ void body_positions() {
             total = ::tpy::add_check<int32_t>(total, v);
         }
     }
-    std::cout << "gen" << " " << total << "\n";
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_driver(c))) << "\n";
-    std::cout << "closure" << " " << ::tpyapp::main::closure_slot<Cell>(c) << " " << ::tpyapp::main::closure_slot<int32_t>(4) << "\n";
-    std::cout << "with" << " " << ::tpyapp::main::with_slot<Cell>(c) << " " << ::tpyapp::main::with_slot<int32_t>(4) << "\n";
-    std::cout << "try" << " " << ::tpyapp::main::try_slot<Cell>(c) << " " << ::tpyapp::main::try_slot<int32_t>(4) << "\n";
-    std::cout << "match" << " " << ::tpyapp::main::match_slot<Cell>(c, 1) << " " << ::tpyapp::main::match_slot<int32_t>(4, 1) << "\n";
+    std::cout << "gen" << " " << total << "\n" << ::tpy::check_signals;
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_driver(c))) << "\n" << ::tpy::check_signals;
+    std::cout << "closure" << " " << ::tpyapp::main::closure_slot<Cell>(c) << " " << ::tpyapp::main::closure_slot<int32_t>(4) << "\n" << ::tpy::check_signals;
+    std::cout << "with" << " " << ::tpyapp::main::with_slot<Cell>(c) << " " << ::tpyapp::main::with_slot<int32_t>(4) << "\n" << ::tpy::check_signals;
+    std::cout << "try" << " " << ::tpyapp::main::try_slot<Cell>(c) << " " << ::tpyapp::main::try_slot<int32_t>(4) << "\n" << ::tpy::check_signals;
+    std::cout << "match" << " " << ::tpyapp::main::match_slot<Cell>(c, 1) << " " << ::tpyapp::main::match_slot<int32_t>(4, 1) << "\n" << ::tpy::check_signals;
     int32_t got;
     {
         {
@@ -221,7 +221,7 @@ void body_positions() {
         got_i = -1;
         __after_try_3:;
     }
-    std::cout << "error_return" << " " << got << " " << got_i << "\n";
+    std::cout << "error_return" << " " << got << " " << got_i << "\n" << ::tpy::check_signals;
 }
 
 // def other_positions() -> None:
@@ -240,17 +240,17 @@ void body_positions() {
 //           hatched(2))
 void other_positions() {
     Cell c = Cell(5);
-    std::cout << "forward" << " " << ::tpyapp::main::outer_fwd<Cell>(c) << " " << ::tpyapp::main::outer_fwd<int32_t>(6) << "\n";
+    std::cout << "forward" << " " << ::tpyapp::main::outer_fwd<Cell>(c) << " " << ::tpyapp::main::outer_fwd<int32_t>(6) << "\n" << ::tpy::check_signals;
     Tag __tmp_1 = Tag(1);
-    std::cout << "two_instantiations" << " " << ::tpyapp::main::two_instantiations<Cell>(c) << " " << ::tpyapp::main::two_instantiations<Tag>(__tmp_1) << " " << ::tpyapp::main::two_instantiations<int32_t>(7) << "\n";
-    std::cout << "cross_module" << " " << ::tpyapp::gencontainer::cross_slot<Cell>(c) << " " << ::tpyapp::gencontainer::cross_slot<int32_t>(8) << "\n";
+    std::cout << "two_instantiations" << " " << ::tpyapp::main::two_instantiations<Cell>(c) << " " << ::tpyapp::main::two_instantiations<Tag>(__tmp_1) << " " << ::tpyapp::main::two_instantiations<int32_t>(7) << "\n" << ::tpy::check_signals;
+    std::cout << "cross_module" << " " << ::tpyapp::gencontainer::cross_slot<Cell>(c) << " " << ::tpyapp::gencontainer::cross_slot<int32_t>(8) << "\n" << ::tpy::check_signals;
     OptHolder<Cell> oh = OptHolder<Cell>();
     oh.store(&(c));
-    std::cout << "optional" << " " << (((oh.item.has_value())) ? ((*oh.item).n) : (0)) << " " << ::tpyapp::main::value_bound<int32_t>(9) << " " << ::tpyapp::main::value_bound_readonly<int32_t>(8) << "\n";
+    std::cout << "optional" << " " << (((oh.item.has_value())) ? ((*oh.item).n) : (0)) << " " << ::tpyapp::main::value_bound<int32_t>(9) << " " << ::tpyapp::main::value_bound_readonly<int32_t>(8) << "\n" << ::tpy::check_signals;
     GBox<int32_t> gb = GBox<int32_t>(1);
     Shadowed<int32_t> sh = Shadowed<int32_t>(7);
-    std::cout << "bound" << " " << ::tpyapp::main::boxed_bound<int32_t>(gb) << " " << ::tpyapp::main::boxed_bound_twin(gb) << " " << sh.keep(5) << "\n";
-    std::cout << "inverse" << " " << ::tpyapp::main::value_only<int32_t>(1) << " " << ::tpyapp::main::bounded_copyable<Cell>(c) << " " << ::tpyapp::main::hatched<Cell>(c) << " " << ::tpyapp::main::hatched<int32_t>(2) << "\n";
+    std::cout << "bound" << " " << ::tpyapp::main::boxed_bound<int32_t>(gb) << " " << ::tpyapp::main::boxed_bound_twin(gb) << " " << sh.keep(5) << "\n" << ::tpy::check_signals;
+    std::cout << "inverse" << " " << ::tpyapp::main::value_only<int32_t>(1) << " " << ::tpyapp::main::bounded_copyable<Cell>(c) << " " << ::tpyapp::main::hatched<Cell>(c) << " " << ::tpyapp::main::hatched<int32_t>(2) << "\n" << ::tpy::check_signals;
 }
 
 // def element_positions() -> None:
@@ -278,18 +278,18 @@ void element_positions() {
     Cell c = Cell(6);
     std::vector<std::tuple<std::string, Cell>> pairs = {::tpy::tuple_to_storage<std::tuple<std::string, Cell>>(std::tuple<std::string, Cell>{"a", Cell(1)})};
     std::vector<std::tuple<std::string, int32_t>> vpairs = {std::tuple<std::string, int32_t>{"a", 1}};
-    std::cout << "elems_ctor" << " " << ::tpyapp::main::elems_ctor<Cell>(pairs) << " " << ::tpyapp::main::elems_ctor_twin(pairs) << " " << ::tpyapp::main::elems_ctor<int32_t>(vpairs) << "\n";
+    std::cout << "elems_ctor" << " " << ::tpyapp::main::elems_ctor<Cell>(pairs) << " " << ::tpyapp::main::elems_ctor_twin(pairs) << " " << ::tpyapp::main::elems_ctor<int32_t>(vpairs) << "\n" << ::tpy::check_signals;
     std::vector<Cell> cells = {Cell(2)};
     std::vector<int32_t> ints = {1};
-    std::cout << "elems_list" << " " << ::tpyapp::main::elems_list<Cell>(cells) << " " << ::tpyapp::main::elems_list<int32_t>(ints) << "\n";
+    std::cout << "elems_list" << " " << ::tpyapp::main::elems_list<Cell>(cells) << " " << ::tpyapp::main::elems_list<int32_t>(ints) << "\n" << ::tpy::check_signals;
     std::vector<Cell> more = {Cell(3)};
     std::vector<int32_t> vmore = {1};
-    std::cout << "elems_iadd" << " " << ::tpyapp::main::elems_iadd<Cell>(cells, more) << " " << ::tpyapp::main::elems_iadd<int32_t>(ints, vmore) << "\n";
+    std::cout << "elems_iadd" << " " << ::tpyapp::main::elems_iadd<Cell>(cells, more) << " " << ::tpyapp::main::elems_iadd<int32_t>(ints, vmore) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, Cell> cmap = ::tpy::ordered_map<std::string, Cell>({{"k", Cell(4)}});
     ::tpy::ordered_map<std::string, int32_t> vmap = ::tpy::ordered_map<std::string, int32_t>({{"k", 1}});
-    std::cout << "elems_update" << " " << ::tpyapp::main::elems_update<Cell>(cmap, cmap) << " " << ::tpyapp::main::elems_update<int32_t>(vmap, vmap) << "\n";
-    std::cout << "comp" << " " << ::tpyapp::main::comp_slot_twin(c) << "\n";
-    std::cout << "subscript" << " " << ::tpyapp::main::subscript_slot<Cell>(cells, c) << " " << ::tpyapp::main::subscript_slot_twin(cells, c) << " " << ::tpyapp::main::subscript_slot<int32_t>(ints, 7) << "\n";
+    std::cout << "elems_update" << " " << ::tpyapp::main::elems_update<Cell>(cmap, cmap) << " " << ::tpyapp::main::elems_update<int32_t>(vmap, vmap) << "\n" << ::tpy::check_signals;
+    std::cout << "comp" << " " << ::tpyapp::main::comp_slot_twin(c) << "\n" << ::tpy::check_signals;
+    std::cout << "subscript" << " " << ::tpyapp::main::subscript_slot<Cell>(cells, c) << " " << ::tpyapp::main::subscript_slot_twin(cells, c) << " " << ::tpyapp::main::subscript_slot<int32_t>(ints, 7) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

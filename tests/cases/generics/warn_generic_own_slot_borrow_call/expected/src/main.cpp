@@ -27,7 +27,7 @@ void sec_own_param() {
     GBox<Cell> b = GBox<Cell>(Cell(1));
     GBox<Cell> d = b.dup();
     b.get().n = 99;
-    std::cout << "own-param:" << " " << b.get().n << " " << d.get().n << "\n";
+    std::cout << "own-param:" << " " << b.get().n << " " << d.get().n << "\n" << ::tpy::check_signals;
 }
 
 // def sec_return() -> None:
@@ -43,11 +43,11 @@ void sec_return() {
     GHolder<Cell> g = GHolder<Cell>(Cell(1));
     Cell d = ::tpyapp::main::dup_return<Cell>(g);
     g.borrow().n = 99;
-    std::cout << "return:" << " " << g.borrow().n << " " << d.n << "\n";
+    std::cout << "return:" << " " << g.borrow().n << " " << d.n << "\n" << ::tpy::check_signals;
     Twin t = Twin(Cell(1));
     Cell dt = ::tpyapp::main::dup_return_twin(t);
     t.borrow().n = 99;
-    std::cout << "return-twin:" << " " << t.borrow().n << " " << dt.n << "\n";
+    std::cout << "return-twin:" << " " << t.borrow().n << " " << dt.n << "\n" << ::tpy::check_signals;
 }
 
 // def sec_generic() -> None:
@@ -61,7 +61,7 @@ void sec_generic() {
     std::vector<Cell> xs = std::vector<Cell>{};
     ::tpyapp::main::collect_generic<Cell>(g, xs);
     g.borrow().n = 99;
-    std::cout << "generic:" << " " << g.borrow().n << " " << ::tpy::__getitem__(xs, 0).n << "\n";
+    std::cout << "generic:" << " " << g.borrow().n << " " << ::tpy::__getitem__(xs, 0).n << "\n" << ::tpy::check_signals;
 }
 
 // def sec_twin() -> None:
@@ -75,7 +75,7 @@ void sec_twin() {
     std::vector<Cell> xs = std::vector<Cell>{};
     ::tpyapp::main::collect_twin(t, xs);
     t.borrow().n = 99;
-    std::cout << "twin:" << " " << t.borrow().n << " " << ::tpy::__getitem__(xs, 0).n << "\n";
+    std::cout << "twin:" << " " << t.borrow().n << " " << ::tpy::__getitem__(xs, 0).n << "\n" << ::tpy::check_signals;
 }
 
 // def sec_method() -> None:
@@ -89,7 +89,7 @@ void sec_method() {
     GRelay<Cell> r = GRelay<Cell>();
     r.take(g);
     g.borrow().n = 99;
-    std::cout << "method:" << " " << g.borrow().n << " " << ::tpy::__getitem__(r.kept, 0).n << "\n";
+    std::cout << "method:" << " " << g.borrow().n << " " << ::tpy::__getitem__(r.kept, 0).n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

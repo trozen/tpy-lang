@@ -30,10 +30,10 @@ std::string join_parts(std::string_view sep, ::tpy::varargs<const std::string> p
 //     print(join_parts(" and ", "x", "y"))
 void main() {
     std::array<const std::string, 3> __tmp_1{"a", "b", "c"};
-    std::cout << ::tpyapp::main::join_parts(", ", ::tpy::varargs<const std::string>(__tmp_1)) << "\n";
-    std::cout << ::tpyapp::main::join_parts("-", ::tpy::varargs<const std::string>()) << "\n";
+    std::cout << ::tpyapp::main::join_parts(", ", ::tpy::varargs<const std::string>(__tmp_1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::join_parts("-", ::tpy::varargs<const std::string>()) << "\n" << ::tpy::check_signals;
     std::array<const std::string, 2> __tmp_2{"x", "y"};
-    std::cout << ::tpyapp::main::join_parts(" and ", ::tpy::varargs<const std::string>(__tmp_2)) << "\n";
+    std::cout << ::tpyapp::main::join_parts(" and ", ::tpy::varargs<const std::string>(__tmp_2)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

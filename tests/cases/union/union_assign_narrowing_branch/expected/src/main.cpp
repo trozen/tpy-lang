@@ -30,15 +30,15 @@ std::string describe(::tpy::Union<const Circle*, const Rect*> s) {
 void main() {
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(5.0);
     ::tpy::Union<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << ::tpy::print_float((*std::get<Circle*>(c)).radius) << "\n";
+    std::cout << ::tpy::print_float((*std::get<Circle*>(c)).radius) << "\n" << ::tpy::check_signals;
     if (true) {
         auto& __c = *std::get<Circle*>(c);
-        std::cout << "yes circle" << "\n";
+        std::cout << "yes circle" << "\n" << ::tpy::check_signals;
     } else {
         auto& __c = *std::get<Rect*>(c);
-        std::cout << "no" << "\n";
+        std::cout << "no" << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpyapp::main::describe(c.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(c.as_const()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -19,9 +19,9 @@ namespace tpyapp::main {
 void main() {
     ::tpyapp::shapes::Vec2 a = ::tpyapp::shapes::Vec2(3, 4);
     ::tpyapp::shapes::Vec2 b = a;
-    std::cout << a.x << "\n";
-    std::cout << b.y << "\n";
-    std::cout << ::tpyapp::main::length_sq(a) << "\n";
+    std::cout << a.x << "\n" << ::tpy::check_signals;
+    std::cout << b.y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::length_sq(a) << "\n" << ::tpy::check_signals;
 }
 
 // # Cross-module ValueType: an imported value-type record constructs and

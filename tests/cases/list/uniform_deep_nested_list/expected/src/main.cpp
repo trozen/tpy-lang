@@ -15,7 +15,7 @@ namespace tpyapp::main {
 //     print(xs)
 void main() {
     std::array<std::array<std::array<int32_t, 2>, 2>, 2> xs = {{{{{1, 2}, {3, 4}}}, {{{5, 6}, {7, 8}}}}};
-    std::cout << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -11,8 +11,8 @@ namespace tpyapp::main {
 //     print(c.drain_sum())   # source drained -> 0
 void main() {
     Consumer c = Consumer(Source(4));
-    std::cout << c.drain_sum() << "\n";
-    std::cout << c.drain_sum() << "\n";
+    std::cout << c.drain_sum() << "\n" << ::tpy::check_signals;
+    std::cout << c.drain_sum() << "\n" << ::tpy::check_signals;
 }
 
 

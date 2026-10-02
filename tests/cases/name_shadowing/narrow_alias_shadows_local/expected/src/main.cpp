@@ -20,7 +20,7 @@ void plain(::tpy::Union<Cat*, Dog*> a) {
     int32_t __a = 7;
     if (std::holds_alternative<Cat*>(a)) {
         auto& __a_narrowed = *std::get<Cat*>(a);
-        std::cout << "plain" << " " << __a_narrowed.sound() << " " << __a << "\n";
+        std::cout << "plain" << " " << __a_narrowed.sound() << " " << __a << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -35,7 +35,7 @@ void bumped_twice(::tpy::Union<Cat*, Dog*> a) {
     int32_t __a_narrowed = 11;
     if (std::holds_alternative<Cat*>(a)) {
         auto& __a_narrowed_2 = *std::get<Cat*>(a);
-        std::cout << "bumped_twice" << " " << __a_narrowed_2.sound() << " " << __a << " " << __a_narrowed << "\n";
+        std::cout << "bumped_twice" << " " << __a_narrowed_2.sound() << " " << __a << " " << __a_narrowed << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -53,7 +53,7 @@ void cross(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> a_narrowed) {
         auto& __a_narrowed = *std::get<Cat*>(a);
         if (std::holds_alternative<Dog*>(a_narrowed)) {
             auto& __a_narrowed_narrowed = *std::get<Dog*>(a_narrowed);
-            std::cout << "cross" << " " << __a_narrowed.sound() << " " << __a_narrowed_narrowed.sound() << " " << __a << "\n";
+            std::cout << "cross" << " " << __a_narrowed.sound() << " " << __a_narrowed_narrowed.sound() << " " << __a << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -69,7 +69,7 @@ void multi_cross(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> a_narrowed
     if ((std::holds_alternative<Cat*>(a) && std::holds_alternative<Dog*>(a_narrowed))) {
         auto& __a_narrowed = *std::get<Cat*>(a);
         auto& __a_narrowed_narrowed = *std::get<Dog*>(a_narrowed);
-        std::cout << "multi_cross" << " " << __a_narrowed.sound() << " " << __a_narrowed_narrowed.sound() << " " << __a << "\n";
+        std::cout << "multi_cross" << " " << __a_narrowed.sound() << " " << __a_narrowed_narrowed.sound() << " " << __a << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -79,7 +79,7 @@ void multi_cross(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> a_narrowed
 void global_read(::tpy::Union<Cat*, Dog*> gsub) {
     if (std::holds_alternative<Cat*>(gsub)) {
         auto& __gsub_narrowed = *std::get<Cat*>(gsub);
-        std::cout << "global_read" << " " << __gsub_narrowed.sound() << " " << __gsub << "\n";
+        std::cout << "global_read" << " " << __gsub_narrowed.sound() << " " << __gsub << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -100,11 +100,11 @@ void match_capture(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<const Cat*, const Do
         case 0: {
             auto& __case_0 = *std::get<0>(__match_subject_1);
             auto& __a = __case_0;
-            std::cout << "match_capture" << " " << __a_narrowed.sound() << " " << __a.n << "\n";
+            std::cout << "match_capture" << " " << __a_narrowed.sound() << " " << __a.n << "\n" << ::tpy::check_signals;
             break;
         }
         default: {
-            std::cout << "match_capture other" << "\n";
+            std::cout << "match_capture other" << "\n" << ::tpy::check_signals;
             break;
         }
         }
@@ -134,7 +134,7 @@ void lambda_param(::tpy::Union<Cat*, Dog*> a) {
         auto& __a_narrowed = *std::get<Cat*>(a);
         Cat __tmp_1 = Cat(100);
         int32_t n = ::tpyapp::main::call_cat([&__a_narrowed](Cat& __a) -> int32_t { return ::tpyapp::main::bump(__a_narrowed, __a.n); }, __tmp_1);
-        std::cout << "lambda_param" << " " << __a_narrowed.sound() << " " << n << " " << __a_narrowed.n << "\n";
+        std::cout << "lambda_param" << " " << __a_narrowed.sound() << " " << n << " " << __a_narrowed.n << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -150,7 +150,7 @@ void multi(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> b) {
     if ((std::holds_alternative<Cat*>(a) && std::holds_alternative<Dog*>(b))) {
         auto& __a_narrowed = *std::get<Cat*>(a);
         auto& __b_narrowed = *std::get<Dog*>(b);
-        std::cout << "multi" << " " << __a_narrowed.sound() << " " << __b_narrowed.sound() << " " << __a << " " << __b << "\n";
+        std::cout << "multi" << " " << __a_narrowed.sound() << " " << __b_narrowed.sound() << " " << __a << " " << __b << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -164,7 +164,7 @@ void asserted(::tpy::Union<Cat*, Dog*> a) {
     int32_t __a = 4;
     if (!(std::holds_alternative<Cat*>(a))) ::tpy::raise_assertion_error();
     auto& __a_narrowed = *std::get<Cat*>(a);
-    std::cout << "asserted" << " " << __a_narrowed.sound() << " " << __a << "\n";
+    std::cout << "asserted" << " " << __a_narrowed.sound() << " " << __a << "\n" << ::tpy::check_signals;
 }
 
 // # persistent alias from the complement of an early-returning `if`
@@ -180,7 +180,7 @@ void complement(::tpy::Union<Cat*, Dog*> a) {
         return;
     }
     auto& __a_narrowed = *std::get<Cat*>(a);
-    std::cout << "complement" << " " << __a_narrowed.sound() << " " << __a << "\n";
+    std::cout << "complement" << " " << __a_narrowed.sound() << " " << __a << "\n" << ::tpy::check_signals;
 }
 
 // # the colliding local is declared INSIDE the branch, after the alias
@@ -192,7 +192,7 @@ void inner_decl(::tpy::Union<Cat*, Dog*> a) {
     if (std::holds_alternative<Cat*>(a)) {
         auto& __a_narrowed = *std::get<Cat*>(a);
         int32_t __a = 6;
-        std::cout << "inner_decl" << " " << __a_narrowed.sound() << " " << __a << "\n";
+        std::cout << "inner_decl" << " " << __a_narrowed.sound() << " " << __a << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -217,7 +217,7 @@ void comprehension(::tpy::Union<Cat*, Dog*> a) {
             }
             std::move(__result);
         });
-        std::cout << "comprehension" << " " << __a_narrowed.sound() << " " << ::tpy::ListPrinter(xs) << "\n";
+        std::cout << "comprehension" << " " << __a_narrowed.sound() << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -233,7 +233,7 @@ void nested(::tpy::Union<Cat*, Dog*> a) {
         auto __a = [](int32_t k) -> int32_t {
             return (::tpy::add_check<int32_t>(k, 1));
         };
-        std::cout << "nested" << " " << __a_narrowed.sound() << " " << __a(4) << "\n";
+        std::cout << "nested" << " " << __a_narrowed.sound() << " " << __a(4) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -248,9 +248,9 @@ void nested(::tpy::Union<Cat*, Dog*> a) {
 void poly(Pet& p) {
     int32_t __p_ptr = 13;
     if (Bird* __p_ptr_2 = dynamic_cast<Bird*>(&p); (__p_ptr_2 != nullptr)) {
-        std::cout << "poly" << " " << (*__p_ptr_2).chirp() << " " << __p_ptr << "\n";
+        std::cout << "poly" << " " << (*__p_ptr_2).chirp() << " " << __p_ptr << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "poly other" << " " << p.name() << " " << __p_ptr << "\n";
+        std::cout << "poly other" << " " << p.name() << " " << __p_ptr << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -318,7 +318,7 @@ __gen_gen_sibling gen_sibling(::tpy::Union<Cat*, Dog*> a, int32_t a_narrowed) {
         __sub_0.reset();
         if (std::holds_alternative<Cat*>(a)) {
             auto& __a_narrowed = *std::get<Cat*>(a);
-            std::cout << "coro" << " " << __a_narrowed.sound() << " " << __a << "\n";
+            std::cout << "coro" << " " << __a_narrowed.sound() << " " << __a << "\n" << ::tpy::check_signals;
         }
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -506,7 +506,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen yield" << " " << v << "\n";
+            std::cout << "gen yield" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -517,7 +517,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "gen_across yield" << " " << v << "\n";
+            std::cout << "gen_across yield" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -529,7 +529,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-            std::cout << "gen_cross yield" << " " << v << "\n";
+            std::cout << "gen_cross yield" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -540,7 +540,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-            std::cout << "gen_assert yield" << " " << v << "\n";
+            std::cout << "gen_assert yield" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -551,7 +551,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-            std::cout << "gen_bumped_frame yield" << " " << v << "\n";
+            std::cout << "gen_bumped_frame yield" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     Cat rc = Cat(2);
@@ -563,10 +563,10 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-            std::cout << "gen_resume_cross yield" << " " << v << "\n";
+            std::cout << "gen_resume_cross yield" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "gen_resume_cross after" << " " << rc.n << "\n";
+    std::cout << "gen_resume_cross after" << " " << rc.n << "\n" << ::tpy::check_signals;
     Cat gs = Cat(4);
     {
         auto __src_12 = ::tpyapp::main::gen_sibling(::tpy::Union<Cat*, Dog*>{&(gs)}, 7);
@@ -575,17 +575,17 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-            std::cout << "gen_sibling yield" << " " << v << "\n";
+            std::cout << "gen_sibling yield" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "gen_sibling after" << " " << gs.n << "\n";
+    std::cout << "gen_sibling after" << " " << gs.n << "\n" << ::tpy::check_signals;
     Cat __tmp_27 = Cat(3);
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::coro(::tpy::Union<Cat*, Dog*>{&__tmp_27})));
     Dog __tmp_28 = Dog(4);
-    std::cout << "coro_complement" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro_complement(::tpy::Union<Cat*, Dog*>{&__tmp_28}))) << "\n";
+    std::cout << "coro_complement" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro_complement(::tpy::Union<Cat*, Dog*>{&__tmp_28}))) << "\n" << ::tpy::check_signals;
     Cat cg = Cat(3);
-    std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro_global(::tpy::Union<Cat*, Dog*>{&(cg)}))) << "\n";
-    std::cout << "coro_global after" << " " << cg.n << "\n";
+    std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro_global(::tpy::Union<Cat*, Dog*>{&(cg)}))) << "\n" << ::tpy::check_signals;
+    std::cout << "coro_global after" << " " << cg.n << "\n" << ::tpy::check_signals;
 }
 
 // # An isinstance narrowing declares an extraction alias spelled `__<var>`. When
@@ -626,7 +626,7 @@ void __tpy_init() {
     __mod_a = 12;
     if (std::holds_alternative<Cat>((*mod_a))) {
         auto& __mod_a_narrowed = std::get<Cat>((*mod_a));
-        std::cout << "module" << " " << __mod_a_narrowed.sound() << " " << __mod_a << "\n";
+        std::cout << "module" << " " << __mod_a_narrowed.sound() << " " << __mod_a << "\n" << ::tpy::check_signals;
     }
     __gsub = 12;
     __acache = 10;

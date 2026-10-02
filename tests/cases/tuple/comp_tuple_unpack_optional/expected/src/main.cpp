@@ -101,10 +101,10 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t r = *__beg_1;
-        std::cout << r << "\n";
+        std::cout << r << "\n" << ::tpy::check_signals;
     }
     int32_t total = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_1(items));
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // main()

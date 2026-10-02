@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //     print(len(b) == 4)            # len() in a comparison context
 void main() {
     Bag b = Bag();
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
     b.add(40);
-    std::cout << ::tpy::__len__(b) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::__len__(b) == 4)) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::__len__(b) == 4)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

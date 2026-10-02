@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(abs(Temp(-5)).v)   # 5
 //     print(abs(Temp(7)).v)    # 7
 void main() {
-    std::cout << (Temp(-5)).__abs__().v << "\n";
-    std::cout << (Temp(7)).__abs__().v << "\n";
+    std::cout << (Temp(-5)).__abs__().v << "\n" << ::tpy::check_signals;
+    std::cout << (Temp(7)).__abs__().v << "\n" << ::tpy::check_signals;
 }
 
 // main()

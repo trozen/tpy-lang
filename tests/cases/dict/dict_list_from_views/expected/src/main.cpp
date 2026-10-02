@@ -20,15 +20,15 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
     std::vector<std::string> keys = ::tpy::construct<std::vector<std::string>>(::tpy::dict_keys(d));
-    std::cout << ::tpy::ListPrinter(keys) << "\n";
+    std::cout << ::tpy::ListPrinter(keys) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> vals = ::tpy::construct<std::vector<int32_t>>(::tpy::dict_values(d));
-    std::cout << ::tpy::ListPrinter(vals) << "\n";
+    std::cout << ::tpy::ListPrinter(vals) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<std::string, int32_t>> items = ::tpy::construct<std::vector<std::tuple<std::string, int32_t>>>(::tpy::dict_items(d));
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpy::__getitem__(items, 0);
     std::string_view k = std::get<0>(__tup_1);
     int32_t v = std::get<1>(__tup_1);
-    std::cout << k << " " << v << "\n";
+    std::cout << k << " " << v << "\n" << ::tpy::check_signals;
 }
 
 // main()

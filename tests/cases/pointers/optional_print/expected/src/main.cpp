@@ -47,14 +47,14 @@ void __tpy_init() {
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     points = &__global_slot_1;
     points->push_back(Point(3, 4));
-    std::cout << ::tpy::print_optional(::tpyapp::main::find((*points), 3)) << "\n";
-    std::cout << ::tpy::print_optional(::tpyapp::main::find((*points), 99)) << "\n";
-    std::cout << "None" << "\n";
+    std::cout << ::tpy::print_optional(::tpyapp::main::find((*points), 3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional(::tpyapp::main::find((*points), 99)) << "\n" << ::tpy::check_signals;
+    std::cout << "None" << "\n" << ::tpy::check_signals;
     p = nullptr;
-    std::cout << ::tpy::print_optional(p) << "\n";
+    std::cout << ::tpy::print_optional(p) << "\n" << ::tpy::check_signals;
     static Point __global_slot_2 = Point(1, 2);
     p = &__global_slot_2;
-    std::cout << ::tpy::print_optional(p) << "\n";
+    std::cout << ::tpy::print_optional(p) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

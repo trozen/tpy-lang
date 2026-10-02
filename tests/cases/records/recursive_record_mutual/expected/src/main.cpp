@@ -32,7 +32,7 @@ void main() {
     ::tpyapp::main::add_a(::tpy::__getitem__(a.bs, 0), __tmp_1);
     ::tpy::__getitem__(a.bs, 0).val = 200;
     ::tpy::__getitem__(::tpy::__getitem__(a.bs, 0).as_, 0).val = 30;
-    std::cout << a.val << " " << ::tpy::__getitem__(a.bs, 0).val << " " << ::tpy::__getitem__(::tpy::__getitem__(a.bs, 0).as_, 0).val << " " << ::tpy::__len__(a.bs) << " " << ::tpy::__len__(::tpy::__getitem__(a.bs, 0).as_) << "\n";
+    std::cout << a.val << " " << ::tpy::__getitem__(a.bs, 0).val << " " << ::tpy::__getitem__(::tpy::__getitem__(a.bs, 0).as_, 0).val << " " << ::tpy::__len__(a.bs) << " " << ::tpy::__len__(::tpy::__getitem__(a.bs, 0).as_) << "\n" << ::tpy::check_signals;
 }
 
 // main()

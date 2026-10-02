@@ -20,13 +20,13 @@ namespace tpyapp::main {
 //     print("p", "q", sep=e)
 void main() {
     std::string_view delim = ", ";
-    std::cout << "a" << delim << "b" << delim << "c" << "\n";
+    std::cout << "a" << delim << "b" << delim << "c" << "\n" << ::tpy::check_signals;
     std::string_view suffix = "!\n";
-    std::cout << "hello" << suffix;
+    std::cout << "hello" << suffix << ::tpy::check_signals;
     std::string_view s = ":";
-    std::cout << "x" << s << "y" << suffix;
+    std::cout << "x" << s << "y" << suffix << ::tpy::check_signals;
     std::string_view e = "";
-    std::cout << "p" << e << "q" << "\n";
+    std::cout << "p" << e << "q" << "\n" << ::tpy::check_signals;
 }
 
 // main()

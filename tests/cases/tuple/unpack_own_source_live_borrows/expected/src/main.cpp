@@ -45,7 +45,7 @@ void live_local() {
     auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t k = std::get<1>(__tup_1);
     x.n = 9;
-    std::cout << "live_local" << " " << std::get<0>(t).n << " " << k << "\n";
+    std::cout << "live_local" << " " << std::get<0>(t).n << " " << k << "\n" << ::tpy::check_signals;
 }
 
 // # free function, last use: the element moves out; nothing is copied.
@@ -58,7 +58,7 @@ void last_use_moves() {
     auto&& __tup_1 = std::move(t);
     Box x = std::move(std::get<0>(__tup_1));
     int32_t k = std::get<1>(__tup_1);
-    std::cout << "last_use_moves" << " " << (::tpy::add_check<int32_t>(::tpyapp::main::sink(std::move(x)).n, k)) << "\n";
+    std::cout << "last_use_moves" << " " << (::tpy::add_check<int32_t>(::tpyapp::main::sink(std::move(x)).n, k)) << "\n" << ::tpy::check_signals;
 }
 
 // # @nocopy element, live source: a borrow, so no copy is asked for and no
@@ -74,7 +74,7 @@ void nocopy_live() {
     auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t k = std::get<1>(__tup_1);
     x.n = 9;
-    std::cout << "nocopy_live" << " " << std::get<0>(t).n << " " << k << "\n";
+    std::cout << "nocopy_live" << " " << std::get<0>(t).n << " " << k << "\n" << ::tpy::check_signals;
 }
 
 // # @nocopy element, last use: consumed by move.
@@ -87,7 +87,7 @@ void nocopy_last_use() {
     auto&& __tup_1 = std::move(t);
     NBox x = std::move(std::get<0>(__tup_1));
     int32_t k = std::get<1>(__tup_1);
-    std::cout << "nocopy_last_use" << " " << (::tpy::add_check<int32_t>(::tpyapp::main::nsink(std::move(x)).n, k)) << "\n";
+    std::cout << "nocopy_last_use" << " " << (::tpy::add_check<int32_t>(::tpyapp::main::nsink(std::move(x)).n, k)) << "\n" << ::tpy::check_signals;
 }
 
 // # two unpacks of one source: both borrow, both see the write.
@@ -106,7 +106,7 @@ void two_unpacks() {
     auto&& y = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
     int32_t j = std::get<1>(__tup_2);
     x.n = 9;
-    std::cout << "two_unpacks" << " " << y.n << " " << std::get<0>(t).n << " " << (::tpy::add_check<int32_t>(k, j)) << "\n";
+    std::cout << "two_unpacks" << " " << y.n << " " << std::get<0>(t).n << " " << (::tpy::add_check<int32_t>(k, j)) << "\n" << ::tpy::check_signals;
 }
 
 // # owned tuple PARAM (`std::tuple<Box, int32_t>&&`), read after the unpack:
@@ -155,7 +155,7 @@ void sink_off_live() {
     Box __tmp_1 = x;
     Box y = ::tpyapp::main::sink(std::move(__tmp_1));
     y.n = 9;
-    std::cout << "sink_off_live" << " " << y.n << " " << k << " " << std::get<1>(t) << "\n";
+    std::cout << "sink_off_live" << " " << y.n << " " << k << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
 }
 
 // # owned tuple param, last use: consumed.
@@ -192,7 +192,7 @@ void relayed_call() {
     int32_t n = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     b.n = 9;
-    std::cout << "relayed_call" << " " << n << " " << b.n << "\n";
+    std::cout << "relayed_call" << " " << n << " " << b.n << "\n" << ::tpy::check_signals;
 }
 
 // def unpack_borrow_global() -> None:
@@ -204,7 +204,7 @@ void unpack_borrow_global() {
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t b = std::get<1>(__tup_1);
     a.n = 9;
-    std::cout << "unpack_borrow_global" << " " << V->n << " " << b << "\n";
+    std::cout << "unpack_borrow_global" << " " << V->n << " " << b << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -222,16 +222,16 @@ void unpack_borrow_global() {
 //     H().live_in_method()
 //     relayed_call()
 void main() {
-    std::cout << "module_level" << " " << std::get<0>(tg).n << " " << gk << "\n";
+    std::cout << "module_level" << " " << std::get<0>(tg).n << " " << gk << "\n" << ::tpy::check_signals;
     ::tpyapp::main::unpack_borrow_global();
     ::tpyapp::main::live_local();
     ::tpyapp::main::last_use_moves();
     ::tpyapp::main::nocopy_live();
     ::tpyapp::main::nocopy_last_use();
     ::tpyapp::main::two_unpacks();
-    std::cout << "param_live" << " " << ::tpyapp::main::param_live(std::tuple<Box, int32_t>{Box(1), 1}) << "\n";
-    std::cout << "param_consumed" << " " << ::tpyapp::main::param_consumed(std::tuple<Box, int32_t>{Box(1), 1}) << "\n";
-    std::cout << "nocopy_param_live" << " " << ::tpyapp::main::nocopy_param_live(std::tuple<NBox, int32_t>{NBox(1), 1}) << "\n";
+    std::cout << "param_live" << " " << ::tpyapp::main::param_live(std::tuple<Box, int32_t>{Box(1), 1}) << "\n" << ::tpy::check_signals;
+    std::cout << "param_consumed" << " " << ::tpyapp::main::param_consumed(std::tuple<Box, int32_t>{Box(1), 1}) << "\n" << ::tpy::check_signals;
+    std::cout << "nocopy_param_live" << " " << ::tpyapp::main::nocopy_param_live(std::tuple<NBox, int32_t>{NBox(1), 1}) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::sink_off_live();
     H().live_in_method();
     ::tpyapp::main::relayed_call();

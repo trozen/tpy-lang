@@ -17,7 +17,7 @@ void main() {
     std::vector<Payload> xs = std::vector<Payload>{};
     xs.push_back(h.borrow());
     ::tpy::list_insert(xs, 0, h.borrow());
-    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).v << " " << ::tpy::__getitem__(xs, 1).v << "\n";
+    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).v << " " << ::tpy::__getitem__(xs, 1).v << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -32,8 +32,8 @@ void main() {
     ::tpyapp::world::Point w = ::tpyapp::world::Point(::tpy::BigInt(20));
     ::tpyapp::main::shift(::tpy::Union<::tpyapp::screen::Point*, ::tpyapp::world::Point*>{&(s)});
     ::tpyapp::main::shift(::tpy::Union<::tpyapp::screen::Point*, ::tpyapp::world::Point*>{&(w)});
-    std::cout << s.x << "\n";
-    std::cout << w.lat << "\n";
+    std::cout << s.x << "\n" << ::tpy::check_signals;
+    std::cout << w.lat << "\n" << ::tpy::check_signals;
 }
 
 // # Regression: two classes both named `Point`, imported from different modules,

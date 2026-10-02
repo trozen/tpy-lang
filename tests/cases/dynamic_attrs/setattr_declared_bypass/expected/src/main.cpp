@@ -15,8 +15,8 @@ void main() {
     Counted c = Counted();
     c.__setattr__("x", ::tpy::make_any(std::string("hello")));
     c.__setattr__("y", ::tpy::make_any(std::string("world")));
-    std::cout << c._counter << "\n";
-    std::cout << ::tpy::any_cast_or_panic<std::string>(c.__getattr__("x")) << "\n";
+    std::cout << c._counter << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::any_cast_or_panic<std::string>(c.__getattr__("x")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -15,11 +15,11 @@ namespace tpyapp::main {
 void test_roundtrip() {
     Event e = Event("deploy", Seconds(3600));
     std::string s = e.to_json();
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
     Event e2 = Event::from_json(s);
-    std::cout << e2.name << "\n";
-    std::cout << e2.when._value << "\n";
-    std::cout << ::tpy::print_bool(((e) == (e2))) << "\n";
+    std::cout << e2.name << "\n" << ::tpy::check_signals;
+    std::cout << e2.when._value << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((e) == (e2))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_nested() -> None:
@@ -36,11 +36,11 @@ void test_roundtrip() {
 void test_nested() {
     Schedule sc = Schedule({Event("a", Seconds(10)), Event("b", Seconds(20))}, Seconds(60));
     std::string s = sc.to_json();
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
     Schedule sc2 = Schedule::from_json(s);
-    std::cout << ::tpy::__len__(sc2.events) << "\n";
-    std::cout << ::tpy::__getitem__(sc2.events, 0).when._value << "\n";
-    std::cout << sc2.default_duration._value << "\n";
+    std::cout << ::tpy::__len__(sc2.events) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(sc2.events, 0).when._value << "\n" << ::tpy::check_signals;
+    std::cout << sc2.default_duration._value << "\n" << ::tpy::check_signals;
 }
 
 // def test_optional() -> None:
@@ -64,17 +64,17 @@ void test_nested() {
 void test_optional() {
     Schedule sc = Schedule({Event("x", Seconds(1))}, Seconds(30), Seconds(99));
     std::string s = sc.to_json();
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
     Schedule sc2 = Schedule::from_json(s);
     Seconds* d = ::tpy::optional_to_ptr(sc2.deadline);
     if ((d != nullptr)) {
-        std::cout << d->_value << "\n";
+        std::cout << d->_value << "\n" << ::tpy::check_signals;
     }
     Schedule sc3 = Schedule({Event("y", Seconds(2))}, Seconds(30));
     std::string s3 = sc3.to_json();
-    std::cout << s3 << "\n";
+    std::cout << s3 << "\n" << ::tpy::check_signals;
     Schedule sc4 = Schedule::from_json(s3);
-    std::cout << ::tpy::print_bool((!sc4.deadline.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!sc4.deadline.has_value())) << "\n" << ::tpy::check_signals;
 }
 
 

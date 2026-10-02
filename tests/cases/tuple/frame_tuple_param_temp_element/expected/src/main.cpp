@@ -90,11 +90,11 @@ void free_call() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "free" << " " << x << "\n";
+            std::cout << "free" << " " << x << "\n" << ::tpy::check_signals;
             r.v = (r.v) + (::tpy::BigInt(10));
         }
     }
-    std::cout << "free r" << " " << r.v << "\n";
+    std::cout << "free r" << " " << r.v << "\n" << ::tpy::check_signals;
 }
 
 // def factory_method() -> None:
@@ -115,11 +115,11 @@ void factory_method() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "method" << " " << x << "\n";
+            std::cout << "method" << " " << x << "\n" << ::tpy::check_signals;
             r.v = (r.v) + (::tpy::BigInt(10));
         }
     }
-    std::cout << "method r" << " " << r.v << "\n";
+    std::cout << "method r" << " " << r.v << "\n" << ::tpy::check_signals;
 }
 
 // def optional_element() -> None:
@@ -138,10 +138,10 @@ void optional_element() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "opt" << " " << x << "\n";
+            std::cout << "opt" << " " << x << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "opt r" << " " << r.v << "\n";
+    std::cout << "opt r" << " " << r.v << "\n" << ::tpy::check_signals;
 }
 
 // def comprehension_iterable() -> None:
@@ -163,7 +163,7 @@ void comprehension_iterable() {
         }
         std::move(__result);
     });
-    std::cout << "comp" << " " << ::tpy::ListPrinter(xs) << " " << r.v << "\n";
+    std::cout << "comp" << " " << ::tpy::ListPrinter(xs) << " " << r.v << "\n" << ::tpy::check_signals;
 }
 
 // def held_handle() -> None:
@@ -190,9 +190,9 @@ void held_handle() {
         auto __r_2 = __itr_1.__next__();
         if (!__r_2.has_value()) break;
         const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_2);
-        std::cout << "held" << " " << x << " " << ::tpy::__len__(junk) << "\n";
+        std::cout << "held" << " " << x << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
     }
-    std::cout << "held r" << " " << r.v << "\n";
+    std::cout << "held r" << " " << r.v << "\n" << ::tpy::check_signals;
 }
 
 
@@ -212,7 +212,7 @@ void generator_body() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen-body" << " " << x << "\n";
+            std::cout << "gen-body" << " " << x << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -304,11 +304,11 @@ __coro_task_caller task_caller() {
 //     # asyncio.run keeps the same hoist
 //     print("run", asyncio.run(co((A(19), r))), r.v)  # tpyc: ok
 void async_positions() {
-    std::cout << "await" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::await_caller())) << "\n";
-    std::cout << "task" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::task_caller())) << "\n";
+    std::cout << "await" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::await_caller())) << "\n" << ::tpy::check_signals;
+    std::cout << "task" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::task_caller())) << "\n" << ::tpy::check_signals;
     A r = A(::tpy::BigInt(5));
     A __tmp_1 = A(::tpy::BigInt(19));
-    std::cout << "run" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::co(std::tuple<A*, A*>{&(__tmp_1), &(r)}))) << " " << r.v << "\n";
+    std::cout << "run" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::co(std::tuple<A*, A*>{&(__tmp_1), &(r)}))) << " " << r.v << "\n" << ::tpy::check_signals;
 }
 
 // def sync_callee() -> None:
@@ -317,7 +317,7 @@ void async_positions() {
 //     print("sync", total((A(7), r)), r.v)  # tpyc: ok
 void sync_callee() {
     A r = A(::tpy::BigInt(5));
-    std::cout << "sync" << " " << ::tpyapp::main::total(::tpy::tuple_value_to_borrow<std::tuple<A*, A*>>(std::tuple<A, A*>{A(::tpy::BigInt(7)), &(r)})) << " " << r.v << "\n";
+    std::cout << "sync" << " " << ::tpyapp::main::total(::tpy::tuple_value_to_borrow<std::tuple<A*, A*>>(std::tuple<A, A*>{A(::tpy::BigInt(7)), &(r)})) << " " << r.v << "\n" << ::tpy::check_signals;
 }
 
 // def ctor_and_closure() -> None:
@@ -329,13 +329,13 @@ void sync_callee() {
 //         return list(pair((A(23), r)))  # tpyc: ok
 //     print("closure", f(), r.v)
 void ctor_and_closure() {
-    std::cout << "ctor" << " " << ::tpy::ListPrinter(H().xs) << "\n";
+    std::cout << "ctor" << " " << ::tpy::ListPrinter(H().xs) << "\n" << ::tpy::check_signals;
     A r = A(::tpy::BigInt(1));
     auto f = [&r]() -> std::vector<::tpy::BigInt> {
         A __tmp_1 = A(::tpy::BigInt(23));
         return ::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_1), &(r)}));
     };
-    std::cout << "closure" << " " << ::tpy::ListPrinter(f()) << " " << r.v << "\n";
+    std::cout << "closure" << " " << ::tpy::ListPrinter(f()) << " " << r.v << "\n" << ::tpy::check_signals;
 }
 
 // def invalidated_element() -> None:
@@ -359,7 +359,7 @@ void invalidated_element() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "invalidate" << " " << x << " " << ::tpy::__len__(xs) << "\n";
+        std::cout << "invalidate" << " " << x << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
         break;
     }
     xs.push_back(A(::tpy::BigInt(9)));
@@ -369,7 +369,7 @@ void invalidated_element() {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "invalidate" << " " << x << " " << r.v << "\n";
+        std::cout << "invalidate" << " " << x << " " << r.v << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -385,7 +385,7 @@ void owned_element() {
     A r = A(::tpy::BigInt(5));
     __gen_pairn it = ::tpyapp::main::pairn(std::tuple<::tpy::BigInt, A*>{::tpy::__getitem__(ns, 0), &(r)});
     ns.push_back(3);
-    std::cout << "owned" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(it)) << " " << ::tpy::__len__(ns) << "\n";
+    std::cout << "owned" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(it)) << " " << ::tpy::__len__(ns) << "\n" << ::tpy::check_signals;
 }
 
 // def edge_free(a: A) -> int:
@@ -420,10 +420,10 @@ __gen_edge_gen edge_gen(A& a) {
 //     print("edge frame", edge_frame(a), a.v)
 void mutation_edge() {
     A a = A(::tpy::BigInt(0));
-    std::cout << "edge free" << " " << ::tpyapp::main::edge_free(a) << " " << a.v << "\n";
-    std::cout << "edge method" << " " << E().edge_method(a) << " " << a.v << "\n";
-    std::cout << "edge gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::edge_gen(a))) << " " << a.v << "\n";
-    std::cout << "edge frame" << " " << ::tpyapp::main::edge_frame(a) << " " << a.v << "\n";
+    std::cout << "edge free" << " " << ::tpyapp::main::edge_free(a) << " " << a.v << "\n" << ::tpy::check_signals;
+    std::cout << "edge method" << " " << E().edge_method(a) << " " << a.v << "\n" << ::tpy::check_signals;
+    std::cout << "edge gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::edge_gen(a))) << " " << a.v << "\n" << ::tpy::check_signals;
+    std::cout << "edge frame" << " " << ::tpyapp::main::edge_frame(a) << " " << a.v << "\n" << ::tpy::check_signals;
 }
 
 
@@ -453,7 +453,7 @@ void loop_var_element() {
         auto&& c = *__beg_0;
         ::tpyapp::main::bump(std::tuple<A*, ::tpy::BigInt>{&(c), ::tpy::BigInt(1)});
     }
-    std::cout << "loop local" << " " << ::tpy::__getitem__(cs, 0).v << " " << ::tpy::__getitem__(cs, 1).v << "\n";
+    std::cout << "loop local" << " " << ::tpy::__getitem__(cs, 0).v << " " << ::tpy::__getitem__(cs, 1).v << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, A> d = ::tpy::ordered_map<int32_t, A>({{1, A(::tpy::BigInt(5))}});
     auto __obj_1 = ::tpy::dict_values(d);
     auto __beg_1 = __obj_1.begin();
@@ -462,8 +462,8 @@ void loop_var_element() {
         auto&& v = *__beg_1;
         ::tpyapp::main::bump(std::tuple<A*, ::tpy::BigInt>{&(v), ::tpy::BigInt(2)});
     }
-    std::cout << "loop dict" << " " << ::tpy::__getitem__(d, 1).v << "\n";
-    std::cout << "loop gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::loop_gen())) << "\n";
+    std::cout << "loop dict" << " " << ::tpy::__getitem__(d, 1).v << "\n" << ::tpy::check_signals;
+    std::cout << "loop gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::loop_gen())) << "\n" << ::tpy::check_signals;
 }
 
 // async def abump(p: tuple[A, int]) -> None:
@@ -546,8 +546,8 @@ __coro_async_callee async_callee(A& a) {
 void callee_kinds() {
     A a = A(::tpy::BigInt(0));
     K __tmp_1 = K();
-    std::cout << "callee method" << " " << ::tpyapp::main::meth_callee(__tmp_1, a) << " " << a.v << "\n";
-    std::cout << "callee async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::async_callee(a))) << " " << a.v << "\n";
+    std::cout << "callee method" << " " << ::tpyapp::main::meth_callee(__tmp_1, a) << " " << a.v << "\n" << ::tpy::check_signals;
+    std::cout << "callee async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::async_callee(a))) << " " << a.v << "\n" << ::tpy::check_signals;
 }
 
 // def generic_accessor() -> None:
@@ -560,7 +560,7 @@ void generic_accessor() {
     Holder<A> h = Holder<A>(A(::tpy::BigInt(1)));
     auto t = h.pair();
     std::get<0>(t)->v = ::tpy::BigInt(42);
-    std::cout << "generic accessor" << " " << h.value.v << "\n";
+    std::cout << "generic accessor" << " " << h.value.v << "\n" << ::tpy::check_signals;
 }
 
 // def bump_ro(p: tuple[A, readonly[B]]) -> None:
@@ -618,16 +618,16 @@ void element_write_grant() {
         ::tpyapp::main::ro_outer(a, b);
     }
     a.v = (a.v) + (::tpy::BigInt(100));
-    std::cout << "ro elem" << " " << a.v << " " << ::tpy::__getitem__(bs, 0).w << "\n";
+    std::cout << "ro elem" << " " << a.v << " " << ::tpy::__getitem__(bs, 0).w << "\n" << ::tpy::check_signals;
     std::array<A, 1> items = {A(::tpy::BigInt(1))};
     std::vector<A*> ps = std::vector<A*>{};
     ps.push_back(&::tpy::__getitem__(items, 0));
     ::tpyapp::main::ptr_elem(ps);
-    std::cout << "ptr elem" << " " << ::tpy::__getitem__(items, 0).v << "\n";
+    std::cout << "ptr elem" << " " << ::tpy::__getitem__(items, 0).v << "\n" << ::tpy::check_signals;
     A g = A(::tpy::BigInt(3));
     ::tpy::BigInt n = ::tpyapp::main::generic_slot(g);
     g.v = (g.v) + (::tpy::BigInt(1));
-    std::cout << "generic slot" << " " << n << " " << g.v << "\n";
+    std::cout << "generic slot" << " " << n << " " << g.v << "\n" << ::tpy::check_signals;
 }
 
 // def sv_first(t: tuple[str, int]) -> StrView:
@@ -673,8 +673,8 @@ void owned_element_view(std::string_view s, const std::tuple<std::string, ::tpy:
         int32_t i = int32_t(__i_0);
         return (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));
     });
-    std::cout << "owned view" << " " << v << " " << w << " " << n << " " << ::tpy::__len__(junk) << "\n";
-    std::cout << "owned view twins" << " " << x << " " << y << " " << z << "\n";
+    std::cout << "owned view" << " " << v << " " << w << " " << n << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
+    std::cout << "owned view twins" << " " << x << " " << y << " " << z << "\n" << ::tpy::check_signals;
 }
 
 
@@ -690,7 +690,7 @@ __gen_owned_view_gen owned_view_gen(std::string_view s) {
 void owned_element_views() {
     std::string_view s = "owned-element-source-long-enough-to-defeat-sso";
     ::tpyapp::main::owned_element_view(s, std::tuple<std::string, ::tpy::BigInt>{"owned-element-param-long-enough-to-defeat-sso", ::tpy::BigInt(6)});
-    std::cout << "owned view gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpyapp::main::owned_view_gen(s))) << "\n";
+    std::cout << "owned view gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpyapp::main::owned_view_gen(s))) << "\n" << ::tpy::check_signals;
 }
 
 // def nm_opt(t: tuple[Named, int | None]) -> StrView:
@@ -721,7 +721,7 @@ void unbacked_local(Named& n, std::string_view s) {
     A a = A(::tpy::BigInt(1));
     A& x = ::tpyapp::main::fst<A>(std::tuple<A*, std::string>{&(a), std::string(s)});
     x.v = (x.v) + (::tpy::BigInt(1));
-    std::cout << "unbacked local" << " " << v << " " << ::tpyapp::main::unbacked_return(n) << " " << a.v << " " << n.reads << "\n";
+    std::cout << "unbacked local" << " " << v << " " << ::tpyapp::main::unbacked_return(n) << " " << a.v << " " << n.reads << "\n" << ::tpy::check_signals;
 }
 
 // def unbacked_elements() -> None:
@@ -732,7 +732,7 @@ void unbacked_elements() {
     Named __tmp_1 = Named("unbacked-name-long-enough-to-defeat-sso");
     ::tpyapp::main::unbacked_local(__tmp_1, "s");
     A a = A(::tpy::BigInt(5));
-    std::cout << "unbacked method" << " " << U().bump(a, "s") << " " << a.v << "\n";
+    std::cout << "unbacked method" << " " << U().bump(a, "s") << " " << a.v << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -806,10 +806,10 @@ void __tpy_init() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& MX = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "module" << " " << MX << "\n";
+            std::cout << "module" << " " << MX << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "module r" << " " << MR->v << "\n";
+    std::cout << "module r" << " " << MR->v << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }
 

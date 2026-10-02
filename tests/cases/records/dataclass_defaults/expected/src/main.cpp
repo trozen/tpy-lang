@@ -13,11 +13,11 @@ namespace tpyapp::main {
 //     print(named)
 void main() {
     Color red = Color(255, 0, 0);
-    std::cout << red << "\n";
+    std::cout << red << "\n" << ::tpy::check_signals;
     Color semi = Color(255, 0, 0, 128);
-    std::cout << semi << "\n";
+    std::cout << semi << "\n" << ::tpy::check_signals;
     Color named = Color(0, 128, 255);
-    std::cout << named << "\n";
+    std::cout << named << "\n" << ::tpy::check_signals;
 }
 
 // # @dataclass with field default values

@@ -19,16 +19,16 @@ namespace tpyapp::main {
 //     print("tail", end=d + "!\n")  # tpyc: ok
 void free_position(std::string_view d) {
     Sep s = Sep();
-    std::cout << "free:" << " ";
+    std::cout << "free:" << " " << ::tpy::check_signals;
     const auto& __tmp_1 = s.tick();
-    std::cout << 1 << __tmp_1 << 2 << __tmp_1 << 3 << "\n";
-    std::cout << "free: evals" << " " << s.calls << "\n";
-    std::cout << "free:" << " ";
+    std::cout << 1 << __tmp_1 << 2 << __tmp_1 << 3 << "\n" << ::tpy::check_signals;
+    std::cout << "free: evals" << " " << s.calls << "\n" << ::tpy::check_signals;
+    std::cout << "free:" << " " << ::tpy::check_signals;
     const auto& __tmp_2 = (::tpy::str_concat(d, "|"));
-    std::cout << "a" << __tmp_2 << "b" << "\n";
-    std::cout << "free:" << " ";
+    std::cout << "a" << __tmp_2 << "b" << "\n" << ::tpy::check_signals;
+    std::cout << "free:" << " " << ::tpy::check_signals;
     const auto& __tmp_3 = (::tpy::str_concat(d, "!\n"));
-    std::cout << "tail" << __tmp_3;
+    std::cout << "tail" << __tmp_3 << ::tpy::check_signals;
 }
 
 
@@ -46,9 +46,9 @@ __gen_gen gen(std::string_view d) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "async:" << " ";
+        std::cout << "async:" << " " << ::tpy::check_signals;
         const auto& __tmp_1 = (::tpy::str_concat(d, "^"));
-        std::cout << "u" << __tmp_1 << "v" << "\n";
+        std::cout << "u" << __tmp_1 << "v" << "\n" << ::tpy::check_signals;
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -81,9 +81,9 @@ __coro_coro coro(std::string_view d) {
 //     show()
 void closure_position(std::string_view d) {
     auto show = [&d]() {
-        std::cout << "closure:" << " ";
+        std::cout << "closure:" << " " << ::tpy::check_signals;
         const auto& __tmp_1 = (::tpy::str_concat(d, "+"));
-        std::cout << "w" << __tmp_1 << "x" << "\n";
+        std::cout << "w" << __tmp_1 << "x" << "\n" << ::tpy::check_signals;
     };
     show();
 }
@@ -98,16 +98,16 @@ void closure_position(std::string_view d) {
 void try_position(std::string_view d) {
     {
         try {
-            std::cout << "try:" << " ";
+            std::cout << "try:" << " " << ::tpy::check_signals;
             const auto& __tmp_1 = (::tpy::str_concat(d, "~"));
-            std::cout << "y" << __tmp_1 << "z" << "\n";
+            std::cout << "y" << __tmp_1 << "z" << "\n" << ::tpy::check_signals;
         } catch (...) {
             const auto& __tmp_2 = (::tpy::str_concat(d, "\n"));
-            std::cout << "try: done" << __tmp_2;
+            std::cout << "try: done" << __tmp_2 << ::tpy::check_signals;
             throw;
         }
         const auto& __tmp_3 = (::tpy::str_concat(d, "\n"));
-        std::cout << "try: done" << __tmp_3;
+        std::cout << "try: done" << __tmp_3 << ::tpy::check_signals;
     }
 }
 
@@ -123,13 +123,13 @@ void match_position(int32_t n, std::string_view d) {
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
     case 1: {
-        std::cout << "match:" << " ";
+        std::cout << "match:" << " " << ::tpy::check_signals;
         const auto& __tmp_1 = (::tpy::str_concat(::tpy::fixed_to_str<int32_t>(n), d));
-        std::cout << "l" << __tmp_1 << "m" << "\n";
+        std::cout << "l" << __tmp_1 << "m" << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
-        std::cout << "match: other" << "\n";
+        std::cout << "match: other" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -156,7 +156,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen: yield" << " " << v << "\n";
+            std::cout << "gen: yield" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::coro(d)));

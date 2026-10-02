@@ -17,9 +17,9 @@ void __tpy_init() {
 
     static LabeledContainer __global_slot_1 = LabeledContainer("count", 42);
     lc = &__global_slot_1;
-    std::cout << lc->label << "\n";
-    std::cout << lc->get() << "\n";
-    std::cout << lc->describe() << "\n";
+    std::cout << lc->label << "\n" << ::tpy::check_signals;
+    std::cout << lc->get() << "\n" << ::tpy::check_signals;
+    std::cout << lc->describe() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

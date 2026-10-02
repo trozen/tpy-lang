@@ -20,7 +20,7 @@ void list_scalar(const std::vector<Cell>& cells) {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def list_tuple_member(src: list[tuple[int32, Cell]]) -> None:
@@ -39,7 +39,7 @@ void list_tuple_member(const std::vector<std::tuple<int32_t, Cell>>& src) {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def dict_value(cells: list[Cell]) -> None:
@@ -57,7 +57,7 @@ void dict_value(const std::vector<Cell>& cells) {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // def exempt_fresh(n: int32) -> None:
@@ -73,7 +73,7 @@ void exempt_fresh(int32_t n) {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def exempt_copy(cells: list[Cell]) -> None:
@@ -92,7 +92,7 @@ void exempt_copy(const std::vector<Cell>& cells) {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def exempt_value(n: int32) -> None:
@@ -108,7 +108,7 @@ void exempt_value(int32_t n) {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

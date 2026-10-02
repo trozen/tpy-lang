@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(c.duplicate())
 void main() {
     Cell<int32_t> c = Cell<int32_t>(42);
-    std::cout << c.duplicate() << "\n";
+    std::cout << c.duplicate() << "\n" << ::tpy::check_signals;
 }
 
 // main()

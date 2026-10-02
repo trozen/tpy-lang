@@ -56,19 +56,19 @@ uint64_t take_pair(uint64_t a, uint32_t b) {
 //     print(c.bump(1))
 //     print(c.bump(2))
 void main() {
-    std::cout << static_cast<int>(::tpyapp::main::take_u8(0)) << "\n";
-    std::cout << ::tpyapp::main::take_u16(0) << "\n";
-    std::cout << ::tpyapp::main::take_u32(0) << "\n";
-    std::cout << ::tpyapp::main::take_u64(0) << "\n";
-    std::cout << static_cast<int>(::tpyapp::main::take_u8(255)) << "\n";
-    std::cout << ::tpyapp::main::take_u16(65535) << "\n";
-    std::cout << ::tpyapp::main::take_u32(static_cast<uint32_t>(4294967295)) << "\n";
-    std::cout << ::tpyapp::main::take_u64(255) << "\n";
-    std::cout << ::tpyapp::main::take_pair(0, 0) << "\n";
-    std::cout << ::tpyapp::main::take_pair(42, 7) << "\n";
+    std::cout << static_cast<int>(::tpyapp::main::take_u8(0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take_u16(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take_u32(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take_u64(0) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int>(::tpyapp::main::take_u8(255)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take_u16(65535) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take_u32(static_cast<uint32_t>(4294967295)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take_u64(255) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take_pair(0, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take_pair(42, 7) << "\n" << ::tpy::check_signals;
     Counter c = Counter();
-    std::cout << c.bump(1) << "\n";
-    std::cout << c.bump(2) << "\n";
+    std::cout << c.bump(1) << "\n" << ::tpy::check_signals;
+    std::cout << c.bump(2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -18,7 +18,7 @@ std::vector<Node> make_nodes() {
 void test_set_ctor_ref_type_warns() {
     std::vector<Node> b = {Node(1)};
     ::tpy::ordered_set<Node> a = ::tpy::set_construct<Node>(b);
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def test_set_ctor_value_type_no_warn() -> None:
@@ -29,7 +29,7 @@ void test_set_ctor_ref_type_warns() {
 void test_set_ctor_value_type_no_warn() {
     std::vector<int32_t> b = {1, 2};
     ::tpy::ordered_set<int32_t> a = ::tpy::set_construct<int32_t>(::tpy::own_iter(std::move(b)));
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }
 
 // def test_set_ctor_copy_no_warn() -> None:
@@ -40,7 +40,7 @@ void test_set_ctor_value_type_no_warn() {
 void test_set_ctor_copy_no_warn() {
     std::vector<Node> b = {Node(1)};
     ::tpy::ordered_set<Node> a = ::tpy::set_construct<Node>(std::vector<Node>(b));
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def test_set_ctor_last_use_no_warn() -> None:
@@ -51,7 +51,7 @@ void test_set_ctor_copy_no_warn() {
 void test_set_ctor_last_use_no_warn() {
     std::vector<Node> b = {Node(1)};
     ::tpy::ordered_set<Node> a = ::tpy::set_construct<Node>(::tpy::own_iter(std::move(b)));
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }
 
 // def test_set_ctor_rvalue_no_warn() -> None:
@@ -62,7 +62,7 @@ void test_set_ctor_last_use_no_warn() {
 void test_set_ctor_rvalue_no_warn() {
     ::tpy::ordered_set<Node> a = ::tpy::set_construct<Node>(::tpyapp::main::make_nodes());
     ::tpy::ordered_set<Node> b = ::tpy::ordered_set<Node>({Node(2)});
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }
 
 // test_set_ctor_ref_type_warns()

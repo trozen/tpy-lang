@@ -25,11 +25,11 @@ namespace tpyapp::main {
 //     for x in filter(None, [0, 1, 0, 2]):
 //         print(x)
 void main() {
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy(std::array<int32_t, 5>{0, 1, 2, 0, 3}))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpy::builtin_filter_truthy(std::array<std::string, 4>{"", "hello", "", "world"}))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<bool>>(::tpy::builtin_filter_truthy(std::array<bool, 4>{true, false, true, false}))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy(std::array<int32_t, 3>{1, 2, 3}))) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy(std::array<int32_t, 3>{0, 0, 0}))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy(std::array<int32_t, 5>{0, 1, 2, 0, 3}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpy::builtin_filter_truthy(std::array<std::string, 4>{"", "hello", "", "world"}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<bool>>(::tpy::builtin_filter_truthy(std::array<bool, 4>{true, false, true, false}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy(std::array<int32_t, 3>{1, 2, 3}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy(std::array<int32_t, 3>{0, 0, 0}))) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpy::builtin_filter_truthy(std::array<int32_t, 4>{0, 1, 0, 2});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -37,7 +37,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         }
     }
 }

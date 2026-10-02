@@ -31,7 +31,7 @@ void free_fn(int64_t n, int32_t k, int32_t b, int64_t a, uint32_t w, uint8_t u8,
     uint8_t small = (::tpy::lshift_check<uint8_t>(1, k64));
     int8_t lk8 = (::tpy::lshift_check<int8_t>(1, k8));
     uint8_t lu8 = (::tpy::lshift_check<uint8_t>(1, u8));
-    std::cout << "free" << " " << r << " " << s << " " << t << " " << v << " " << lit << " " << static_cast<int>(static_cast<uint8_t>(~(small))) << " " << static_cast<int>(lk8) << " " << static_cast<int>(lu8) << "\n";
+    std::cout << "free" << " " << r << " " << s << " " << t << " " << v << " " << lit << " " << static_cast<int>(static_cast<uint8_t>(~(small))) << " " << static_cast<int>(lk8) << " " << static_cast<int>(lu8) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -141,10 +141,10 @@ uint8_t try_finally(uint8_t x, int32_t k) {
         try {
             r = (::tpy::lshift_check<uint8_t>(x, k));
         } catch (...) {
-            std::cout << "try_finally done" << "\n";
+            std::cout << "try_finally done" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "try_finally done" << "\n";
+        std::cout << "try_finally done" << "\n" << ::tpy::check_signals;
     }
     return r;
 }
@@ -180,7 +180,7 @@ int64_t match_arm(int32_t sel, int64_t n, uint32_t w, int8_t k8, int64_t k64) {
     }
     default: {
         uint32_t r = (::tpy::rshift_check<uint32_t>(w, k64));
-        std::cout << "match_arm width" << " " << static_cast<uint32_t>(~(r)) << "\n";
+        std::cout << "match_arm width" << " " << static_cast<uint32_t>(~(r)) << "\n" << ::tpy::check_signals;
         return static_cast<int64_t>(r);
     }
     }
@@ -195,7 +195,7 @@ int64_t match_arm(int32_t sel, int64_t n, uint32_t w, int8_t k8, int64_t k64) {
 void aug_local(int64_t n, int32_t k, uint8_t x, int64_t k64) {
     n = ::tpy::rshift_check<int64_t>(n, k);
     x = ::tpy::lshift_check<uint8_t>(x, k64);
-    std::cout << "aug_local" << " " << n << " " << static_cast<int>(static_cast<uint8_t>(~(x))) << "\n";
+    std::cout << "aug_local" << " " << n << " " << static_cast<int>(static_cast<uint8_t>(~(x))) << "\n" << ::tpy::check_signals;
 }
 
 // # pending locals: a literal-seeded left operand keeps its own type, a
@@ -216,7 +216,7 @@ void pending(int64_t k64, int8_t x8) {
     int8_t s = (::tpy::lshift_check<int8_t>(x8, c));
     c = k64;
     int64_t lit = (::tpy::lshift_check<int64_t>(1, c));
-    std::cout << "pending" << " " << r << " " << static_cast<int>(s) << " " << lit << "\n";
+    std::cout << "pending" << " " << r << " " << static_cast<int>(s) << " " << lit << "\n" << ::tpy::check_signals;
 }
 
 // # a negative count raises ValueError whatever the count's type, on either shift
@@ -235,17 +235,17 @@ void negative(int64_t n, int8_t k) {
     {
         try {
             int64_t r = (::tpy::rshift_check<int64_t>(n, k));
-            std::cout << "negative" << " " << r << "\n";
+            std::cout << "negative" << " " << r << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "negative ValueError" << "\n";
+            std::cout << "negative ValueError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             int64_t r = (::tpy::lshift_check<int64_t>(n, k));
-            std::cout << "negative" << " " << r << "\n";
+            std::cout << "negative" << " " << r << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "negative << ValueError" << "\n";
+            std::cout << "negative << ValueError" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -255,7 +255,7 @@ void negative(int64_t n, int8_t k) {
 // def wrap(y: uint32, k: int64) -> None:
 //     print("wrap", uint32.shl_wrap(y, k), uint32.shr_wrap(y, k))  # tpyc: ok
 void wrap(uint32_t y, int64_t k) {
-    std::cout << "wrap" << " " << static_cast<uint32_t>(static_cast<uint32_t>(y) << (k)) << " " << static_cast<uint32_t>(static_cast<uint32_t>(y) >> (k)) << "\n";
+    std::cout << "wrap" << " " << static_cast<uint32_t>(static_cast<uint32_t>(y) << (k)) << " " << static_cast<uint32_t>(static_cast<uint32_t>(y) >> (k)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -293,18 +293,18 @@ void main() {
     int64_t k64 = 40;
     ::tpyapp::main::free_fn((::tpy::lshift_check<int64_t>(1, k64)), 3, 7, 5, static_cast<uint32_t>(4294967295), 3, (::tpy::sub_check<int64_t>(k64, 37)), 4);
     Bits bits = Bits(15, 4);
-    std::cout << "ctor" << " " << bits.word << "\n";
-    std::cout << "method" << " " << bits.take(4, 8) << " " << bits.word << "\n";
-    std::cout << "module" << " " << gs << "\n";
+    std::cout << "ctor" << " " << bits.word << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << bits.take(4, 8) << " " << bits.word << "\n" << ::tpy::check_signals;
+    std::cout << "module" << " " << gs << "\n" << ::tpy::check_signals;
     std::vector<int8_t> __tmp_1 = {0, 1, 62};
-    std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<uint64_t>>(::tpyapp::main::gen(::tpy::pow_check<uint64_t>(2, 63), __tmp_1))) << "\n";
-    std::cout << "async" << " " << static_cast<int>(::tpystd::asyncio::run<int8_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int8_t>>(::tpyapp::main::async_fn(3, 5)))) << "\n";
+    std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<uint64_t>>(::tpyapp::main::gen(::tpy::pow_check<uint64_t>(2, 63), __tmp_1))) << "\n" << ::tpy::check_signals;
+    std::cout << "async" << " " << static_cast<int>(::tpystd::asyncio::run<int8_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int8_t>>(::tpyapp::main::async_fn(3, 5)))) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> __tmp_2 = {31, 16, 0};
-    std::cout << "comp" << " " << ::tpy::ListPrinter(::tpyapp::main::comp(static_cast<uint32_t>(2147483648), __tmp_2)) << "\n";
-    std::cout << "closure" << " " << ::tpyapp::main::closure(3, 20) << "\n";
-    std::cout << "cm_body" << " " << ::tpyapp::main::cm_body(-1024, 3) << "\n";
+    std::cout << "comp" << " " << ::tpy::ListPrinter(::tpyapp::main::comp(static_cast<uint32_t>(2147483648), __tmp_2)) << "\n" << ::tpy::check_signals;
+    std::cout << "closure" << " " << ::tpyapp::main::closure(3, 20) << "\n" << ::tpy::check_signals;
+    std::cout << "cm_body" << " " << ::tpyapp::main::cm_body(-1024, 3) << "\n" << ::tpy::check_signals;
     uint8_t tf = ::tpyapp::main::try_finally(3, 6);
-    std::cout << "try_finally" << " " << static_cast<int>(tf) << "\n";
+    std::cout << "try_finally" << " " << static_cast<int>(tf) << "\n" << ::tpy::check_signals;
     int32_t e1;
     int32_t e2;
     {
@@ -313,22 +313,22 @@ void main() {
             if (!__try_tmp_2.has_value()) goto __except_1;
             e1 = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        std::cout << "er_body" << " " << e1 << "\n";
+        std::cout << "er_body" << " " << e1 << "\n" << ::tpy::check_signals;
         {
             auto __try_tmp_3 = ::tpyapp::main::er_body(1, 40);
             if (!__try_tmp_3.has_value()) goto __except_1;
             e2 = ::tpy::unwrap_ref_move(*__try_tmp_3);
         }
-        std::cout << "er_body" << " " << e2 << "\n";
+        std::cout << "er_body" << " " << e2 << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Failed:
         __except_1:;
-        std::cout << "er_body failed" << "\n";
+        std::cout << "er_body failed" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
     int64_t m0 = ::tpyapp::main::match_arm(0, 3, 0, 40, 0);
     int64_t m1 = ::tpyapp::main::match_arm(1, 0, static_cast<uint32_t>(4026531840), 0, 28);
-    std::cout << "match_arm" << " " << m0 << " " << m1 << "\n";
+    std::cout << "match_arm" << " " << m0 << " " << m1 << "\n" << ::tpy::check_signals;
     ::tpyapp::main::aug_local((::tpy::lshift_check<int64_t>(1, k64)), 8, 1, 7);
     ::tpyapp::main::pending(3, 3);
     ::tpyapp::main::negative(8, -1);

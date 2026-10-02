@@ -29,7 +29,7 @@ void main() {
             std::optional<int32_t> a = std::get<0>(__tup_1);
             std::optional<int32_t> b = std::get<1>(__tup_1);
             if ((a.has_value())) {
-                std::cout << ::tpy::print_optional_val(a) << "\n";
+                std::cout << ::tpy::print_optional_val(a) << "\n" << ::tpy::check_signals;
             }
         }
     }

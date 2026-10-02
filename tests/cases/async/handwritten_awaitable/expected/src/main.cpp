@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(poll_once(a).value())
 void main() {
     ReadyAwaitable a = ReadyAwaitable(123);
-    std::cout << ::tpystd::coro::poll_once<int32_t>(a).value() << "\n";
+    std::cout << ::tpystd::coro::poll_once<int32_t>(a).value() << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.coro import Poll, Waker, Awaitable, poll_ready, poll_once

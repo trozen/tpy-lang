@@ -13,10 +13,10 @@ namespace tpyapp::main {
 //     print(add(10, 32))
 //     print(round_trip[int32](7))
 void main() {
-    std::cout << static_cast<char>(65) << "\n";
-    std::cout << static_cast<int32_t>(static_cast<unsigned char>('Z')) << "\n";
-    std::cout << 10 + 32 << "\n";
-    std::cout << static_cast<int32_t>(static_cast<int32_t>(7)) << "\n";
+    std::cout << static_cast<char>(65) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(static_cast<unsigned char>('Z')) << "\n" << ::tpy::check_signals;
+    std::cout << 10 + 32 << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(static_cast<int32_t>(7)) << "\n" << ::tpy::check_signals;
 }
 
 // # @cpp_template: inline C++ expression templates in .py source

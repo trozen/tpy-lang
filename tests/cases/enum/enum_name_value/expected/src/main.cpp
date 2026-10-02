@@ -55,11 +55,11 @@ namespace tpyapp::main {
 //     print(c.value)
 void main() {
     Color c = Color::Green;
-    std::cout << ::tpy::EnumUtil<Color>::name(c) << "\n";
-    std::cout << static_cast<int32_t>(c) << "\n";
+    std::cout << ::tpy::EnumUtil<Color>::name(c) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(c) << "\n" << ::tpy::check_signals;
     c = Color::Blue;
-    std::cout << ::tpy::EnumUtil<Color>::name(c) << "\n";
-    std::cout << static_cast<int32_t>(c) << "\n";
+    std::cout << ::tpy::EnumUtil<Color>::name(c) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(c) << "\n" << ::tpy::check_signals;
 }
 
 // # Enum .name and .value properties

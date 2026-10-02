@@ -39,8 +39,8 @@ void main() {
     ::tpy::Union<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     ::tpy::Union<Cat, Dog> __slot_2 = Cat(3);
     ::tpy::Union<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    std::cout << ::tpyapp::main::describe(d.as_const()) << "\n";
-    std::cout << ::tpyapp::main::describe(c.as_const()) << "\n";
+    std::cout << ::tpyapp::main::describe(d.as_const()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(c.as_const()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

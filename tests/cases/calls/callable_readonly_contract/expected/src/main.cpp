@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def total(xs: readonly[list[int32]]) -> None:
 //     print(len(xs))
 void total(const std::vector<int32_t>& xs) {
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def use_callable(f: Callable[[readonly[list[int32]]], None]) -> None:
@@ -18,7 +18,7 @@ void total(const std::vector<int32_t>& xs) {
 void use_callable(const std::function<void(const std::vector<int32_t>&)>& f) {
     std::vector<int32_t> xs = {3, 4};
     int32_t p = ::tpy::__getitem__(xs, 0);
-    std::cout << p << "\n";
+    std::cout << p << "\n" << ::tpy::check_signals;
     f(xs);
 }
 

@@ -36,10 +36,10 @@ namespace tpyapp::main {
 void main() {
     Outer o1 = Outer(Inner(42));
     Outer o2 = Outer(Inner(std::nullopt));
-    std::cout << ::tpyapp::main::get_value(o1) << "\n";
-    std::cout << ::tpyapp::main::get_value(o2) << "\n";
-    std::cout << ::tpyapp::main::get_value_truthy(o1) << "\n";
-    std::cout << ::tpyapp::main::get_value_truthy(o2) << "\n";
+    std::cout << ::tpyapp::main::get_value(o1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::get_value(o2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::get_value_truthy(o1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::get_value_truthy(o2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

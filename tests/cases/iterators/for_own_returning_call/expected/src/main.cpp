@@ -53,24 +53,24 @@ std::vector<int32_t> make_batch(int32_t n) {
 //     for e in f(2):
 //         print(e)
 void main() {
-    std::cout << "--- list ---" << "\n";
+    std::cout << "--- list ---" << "\n" << ::tpy::check_signals;
     auto __obj_0 = ::tpyapp::main::make_batch(3);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t e = *__beg_0;
-        std::cout << e << "\n";
+        std::cout << e << "\n" << ::tpy::check_signals;
     }
-    std::cout << "--- method ---" << "\n";
+    std::cout << "--- method ---" << "\n" << ::tpy::check_signals;
     Maker m = Maker();
     auto __obj_1 = m.make(2);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t e = *__beg_1;
-        std::cout << e << "\n";
+        std::cout << e << "\n" << ::tpy::check_signals;
     }
-    std::cout << "--- dict ---" << "\n";
+    std::cout << "--- dict ---" << "\n" << ::tpy::check_signals;
     int32_t klen = 0;
     auto __obj_2 = ::tpyapp::main::make_pairs();
     auto __beg_2 = __obj_2.begin();
@@ -79,8 +79,8 @@ void main() {
         std::string_view k = *__beg_2;
         klen = (::tpy::add_check<int32_t>(klen, ::tpy::__len__(k)));
     }
-    std::cout << klen << "\n";
-    std::cout << "--- set ---" << "\n";
+    std::cout << klen << "\n" << ::tpy::check_signals;
+    std::cout << "--- set ---" << "\n" << ::tpy::check_signals;
     int32_t ssum = 0;
     auto __obj_3 = ::tpyapp::main::make_uniques();
     auto __beg_3 = __obj_3.begin();
@@ -89,15 +89,15 @@ void main() {
         int32_t v = *__beg_3;
         ssum = (::tpy::add_check<int32_t>(ssum, v));
     }
-    std::cout << ssum << "\n";
-    std::cout << "--- callable var ---" << "\n";
+    std::cout << ssum << "\n" << ::tpy::check_signals;
+    std::cout << "--- callable var ---" << "\n" << ::tpy::check_signals;
     std::function<std::vector<int32_t>(int32_t)> f = make_batch;
     auto __obj_4 = f(2);
     auto __beg_4 = __obj_4.begin();
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
         int32_t e = *__beg_4;
-        std::cout << e << "\n";
+        std::cout << e << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -112,13 +112,13 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::main::main();
-    std::cout << "--- top-level ---" << "\n";
+    std::cout << "--- top-level ---" << "\n" << ::tpy::check_signals;
     auto __obj_0 = ::tpyapp::main::make_batch(2);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t e = *__beg_0;
-        std::cout << (::tpy::add_check<int32_t>(100, e)) << "\n";
+        std::cout << (::tpy::add_check<int32_t>(100, e)) << "\n" << ::tpy::check_signals;
     }
 }
 

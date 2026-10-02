@@ -61,9 +61,9 @@ template<typename __F0>
 void use_fn(__F0&& f) {
     std::vector<P> xs = {P(1), P(2)};
     P& p = ::tpy::__getitem__(xs, 0);
-    std::cout << p.v << "\n";
+    std::cout << p.v << "\n" << ::tpy::check_signals;
     f(xs);
-    std::cout << ::tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

@@ -36,8 +36,8 @@ void main() {
     }
     h1.join();
     h2.join();
-    std::cout << count << "\n";
-    std::cout << total << "\n";
+    std::cout << count << "\n" << ::tpy::check_signals;
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.thread import spawn

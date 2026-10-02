@@ -28,7 +28,7 @@ void collect_scoped() {
             out.push_back(std::move(x));
         }
     }
-    std::cout << ::tpy::ListPrinter(out) << "\n";
+    std::cout << ::tpy::ListPrinter(out) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

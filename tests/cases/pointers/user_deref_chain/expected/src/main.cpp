@@ -14,9 +14,9 @@ namespace tpyapp::main {
 void main() {
     Point pt = Point(10, 20);
     Box b = Box(Ref(pt));
-    std::cout << b.__deref__().__deref__().x << "\n";
-    std::cout << b.__deref__().__deref__().y << "\n";
-    std::cout << b.__deref__().__deref__().sum() << "\n";
+    std::cout << b.__deref__().__deref__().x << "\n" << ::tpy::check_signals;
+    std::cout << b.__deref__().__deref__().y << "\n" << ::tpy::check_signals;
+    std::cout << b.__deref__().__deref__().sum() << "\n" << ::tpy::check_signals;
 }
 
 // main()

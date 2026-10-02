@@ -100,58 +100,58 @@ void main() {
         try {
             ::tpystd::os::mkdir(base);
         } catch (const ::tpy::FileExistsError&) {
-            std::cout << "mkdir-existing: FileExistsError" << "\n";
+            std::cout << "mkdir-existing: FileExistsError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::os::makedirs((::tpy::str_concat(base, "/sub")));
         } catch (const ::tpy::FileExistsError&) {
-            std::cout << "makedirs-existing: FileExistsError" << "\n";
+            std::cout << "makedirs-existing: FileExistsError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::stdlib::os::rmdir((::tpy::str_concat(base, "/f.txt")));
         } catch (const ::tpy::NotADirectoryError&) {
-            std::cout << "rmdir-file: NotADirectoryError" << "\n";
+            std::cout << "rmdir-file: NotADirectoryError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/sub")));
         } catch (const ::tpy::IsADirectoryError&) {
-            std::cout << "remove-dir: rejected" << "\n";
+            std::cout << "remove-dir: rejected" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::PermissionError&) {
-            std::cout << "remove-dir: rejected" << "\n";
+            std::cout << "remove-dir: rejected" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::stdlib::os::rmdir(base);
         } catch (const ::tpy::OSError&) {
-            std::cout << "rmdir-nonempty: OSError" << "\n";
+            std::cout << "rmdir-nonempty: OSError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::stdlib::os::rmdir((::tpy::str_concat(base, "/missing")));
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "rmdir-missing: FileNotFoundError" << "\n";
+            std::cout << "rmdir-missing: FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::stdlib::os::rename((::tpy::str_concat(base, "/missing")), (::tpy::str_concat(base, "/dst")));
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "rename-missing: FileNotFoundError" << "\n";
+            std::cout << "rename-missing: FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::os::replace((::tpy::str_concat(base, "/missing")), (::tpy::str_concat(base, "/dst")));
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "replace-missing: FileNotFoundError" << "\n";
+            std::cout << "replace-missing: FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::os::makedirs((::tpy::str_concat(base, "/d1/d2")));
@@ -170,11 +170,11 @@ void main() {
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
     ::tpystd::os::removedirs((::tpy::str_concat(base, "/d1/d2")));
-    std::cout << "removedirs-stopped:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/d1")))) << "\n";
+    std::cout << "removedirs-stopped:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/d1")))) << "\n" << ::tpy::check_signals;
     ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/d1/keep.txt")));
     ::tpy::stdlib::os::rmdir((::tpy::str_concat(base, "/d1")));
     ::tpyapp::main::teardown(base);
-    std::cout << "cleaned:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists(base)) << "\n";
+    std::cout << "cleaned:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists(base)) << "\n" << ::tpy::check_signals;
 }
 
 // # os mutating-op error mapping: each errno maps to its CPython OSError subclass

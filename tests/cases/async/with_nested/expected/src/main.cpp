@@ -50,7 +50,7 @@ namespace tpyapp::main {
     }
     case S_JOIN_2: {
         try {
-            std::cout << std::format("inner body {}", b) << "\n";
+            std::cout << std::format("inner body {}", b) << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -130,7 +130,7 @@ __coro_inner inner() {
     }
     case S_JOIN_2: {
         try {
-            std::cout << std::format("outer body {}", a) << "\n";
+            std::cout << std::format("outer body {}", a) << "\n" << ::tpy::check_signals;
             __sub_1.emplace();
             __state = S_RESUME_1;
             continue;
@@ -159,7 +159,7 @@ __coro_main_coro main_coro() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << std::format("aenter {}", __self.name) << "\n";
+        std::cout << std::format("aenter {}", __self.name) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         std::string __tpy_async_ret = __self.name;
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -177,7 +177,7 @@ __coro_main_coro main_coro() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << std::format("aexit {}", __self.name) << "\n";
+        std::cout << std::format("aexit {}", __self.name) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

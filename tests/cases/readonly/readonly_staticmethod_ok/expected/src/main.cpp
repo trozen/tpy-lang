@@ -10,7 +10,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << Ops::plus_one(3) << "\n";
+    std::cout << Ops::plus_one(3) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

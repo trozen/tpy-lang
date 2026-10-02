@@ -48,7 +48,7 @@ namespace tpyapp::main {
         continue;
     }
     case S_JOIN_1: {
-        std::cout << (*server).n << "\n";
+        std::cout << (*server).n << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -117,7 +117,7 @@ __coro_main main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "exit" << " " << __self.n << "\n";
+        std::cout << "exit" << " " << __self.n << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

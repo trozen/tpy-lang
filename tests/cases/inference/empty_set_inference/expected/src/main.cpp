@@ -13,7 +13,7 @@ void test_basic() {
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
     s.insert(42);
     s.insert(10);
-    std::cout << ::tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
 }
 
 // def test_str() -> None:
@@ -26,8 +26,8 @@ void test_str() {
     ::tpy::ordered_set<std::string> s = ::tpy::ordered_set<std::string>();
     s.insert("hello");
     s.insert("world");
-    std::cout << ::tpy::__len__(s) << "\n";
-    std::cout << ::tpy::print_bool((s.contains("hello"))) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((s.contains("hello"))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_multiple() -> None:
@@ -41,7 +41,7 @@ void test_multiple() {
     s.insert(1);
     s.insert(2);
     s.insert(3);
-    std::cout << ::tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
 }
 
 // def test_numeric_widen() -> None:
@@ -53,7 +53,7 @@ void test_numeric_widen() {
     ::tpy::ordered_set<int64_t> s = ::tpy::ordered_set<int64_t>();
     s.insert(1);
     s.insert(2);
-    std::cout << ::tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
 }
 
 // def takes_set(s: set[int32]) -> None:
@@ -65,7 +65,7 @@ void takes_set(const ::tpy::ordered_set<int32_t>& s) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -96,7 +96,7 @@ void test_discard_infers() {
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
     s.erase(42);
     s.insert(10);
-    std::cout << ::tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n" << ::tpy::check_signals;
 }
 
 // test_basic()

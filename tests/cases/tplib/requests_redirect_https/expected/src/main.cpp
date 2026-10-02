@@ -137,9 +137,9 @@ void main() {
     h1._tls = std::move(cli);
     s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(std::move(h1)));
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/start");
-    std::cout << r.status_code << " " << r.text() << "\n";
-    std::cout << r.url << "\n";
-    std::cout << ::tpy::__len__(r.history) << "\n";
+    std::cout << r.status_code << " " << r.text() << "\n" << ::tpy::check_signals;
+    std::cout << r.url << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(r.history) << "\n" << ::tpy::check_signals;
     b.close();
     srv.close();
 }

@@ -154,7 +154,7 @@ inline void Team::ranked() const {
             __result.push_back(y.n);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

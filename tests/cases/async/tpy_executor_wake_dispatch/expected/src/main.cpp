@@ -24,13 +24,13 @@ void test_external_wake() {
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
     int32_t sid = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(NeverComplete())));
     e.drain_runnable();
-    std::cout << "parked, runnable_q:" << " " << ::tpy::__len__(e.runnable_q) << "\n";
-    std::cout << "slot done:" << " " << ::tpy::print_bool(e.slot_done(sid)) << "\n";
+    std::cout << "parked, runnable_q:" << " " << ::tpy::__len__(e.runnable_q) << "\n" << ::tpy::check_signals;
+    std::cout << "slot done:" << " " << ::tpy::print_bool(e.slot_done(sid)) << "\n" << ::tpy::check_signals;
     ::tpystd::coro::Waker w = ::tpystd::asyncio::_executor::_make_waker(e, sid, 0);
     w.wake();
-    std::cout << "after wake, runnable_q:" << " " << ::tpy::__len__(e.runnable_q) << "\n";
+    std::cout << "after wake, runnable_q:" << " " << ::tpy::__len__(e.runnable_q) << "\n" << ::tpy::check_signals;
     e.drain_runnable();
-    std::cout << "re-parked, runnable_q:" << " " << ::tpy::__len__(e.runnable_q) << "\n";
+    std::cout << "re-parked, runnable_q:" << " " << ::tpy::__len__(e.runnable_q) << "\n" << ::tpy::check_signals;
 }
 
 // def test_stale_generation_wake() -> None:
@@ -49,7 +49,7 @@ void test_stale_generation_wake() {
     e.drain_runnable();
     ::tpystd::coro::Waker stale = ::tpystd::asyncio::_executor::_make_waker(e, sid, 99);
     stale.wake();
-    std::cout << "stale wake runnable_q:" << " " << ::tpy::__len__(e.runnable_q) << "\n";
+    std::cout << "stale wake runnable_q:" << " " << ::tpy::__len__(e.runnable_q) << "\n" << ::tpy::check_signals;
 }
 
 // def test_timer_drives_to_completion() -> None:
@@ -73,14 +73,14 @@ void test_timer_drives_to_completion() {
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
     int32_t sid = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(CountdownThenReady(3))));
     e.drain_runnable();
-    std::cout << "after first poll, slot done:" << " " << ::tpy::print_bool(e.slot_done(sid)) << "\n";
+    std::cout << "after first poll, slot done:" << " " << ::tpy::print_bool(e.slot_done(sid)) << "\n" << ::tpy::check_signals;
     while ((!(e.slot_done(sid)))) {
         ::tpystd::coro::Waker w = ::tpystd::asyncio::_executor::_make_waker(e, sid, 0);
         e.register_timer(((::tpy::stdlib::time::monotonic()) - (0.5)), w);
         e.wait_for_event();
         e.drain_runnable();
     }
-    std::cout << "countdown finished, slot done:" << " " << ::tpy::print_bool(e.slot_done(sid)) << "\n";
+    std::cout << "countdown finished, slot done:" << " " << ::tpy::print_bool(e.slot_done(sid)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -91,9 +91,9 @@ void test_timer_drives_to_completion() {
 //     test_timer_drives_to_completion()
 void main() {
     ::tpyapp::main::test_external_wake();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_stale_generation_wake();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_timer_drives_to_completion();
 }
 

@@ -26,14 +26,14 @@ void __tpy_init() {
 
     static Holder<int32_t> __global_slot_1 = Holder<int32_t>(42);
     h = &__global_slot_1;
-    std::cout << h->get() << "\n";
+    std::cout << h->get() << "\n" << ::tpy::check_signals;
     h->set(100);
-    std::cout << h->take() << "\n";
+    std::cout << h->take() << "\n" << ::tpy::check_signals;
     static Holder<std::string> __global_slot_2 = Holder<std::string>("hello");
     s = &__global_slot_2;
-    std::cout << s->get() << "\n";
+    std::cout << s->get() << "\n" << ::tpy::check_signals;
     s->set("world");
-    std::cout << s->take() << "\n";
+    std::cout << s->take() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

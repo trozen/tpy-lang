@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(score)
 void main() {
     int32_t score = 42;
-    std::cout << score << "\n";
+    std::cout << score << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native_global

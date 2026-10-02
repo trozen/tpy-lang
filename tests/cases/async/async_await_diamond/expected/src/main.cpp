@@ -121,7 +121,7 @@ __coro_shared shared() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         y = std::move(__r1).value();
         __sub_1.reset();
-        std::cout << (::tpy::add_check<int32_t>(x, y)) << "\n";
+        std::cout << (::tpy::add_check<int32_t>(x, y)) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

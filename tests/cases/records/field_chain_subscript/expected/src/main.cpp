@@ -29,16 +29,16 @@ void put(std::vector<Outer>& nodes) {
 //     print(ns[0].inner.items[0])
 void main() {
     Outer o = Outer(Inner());
-    std::cout << o.at(1) << "\n";
+    std::cout << o.at(1) << "\n" << ::tpy::check_signals;
     int32_t v = ::tpy::__getitem__(o.inner.items, 2);
-    std::cout << v << "\n";
+    std::cout << v << "\n" << ::tpy::check_signals;
     o.bump(0);
-    std::cout << ::tpy::__getitem__(o.inner.items, 0) << " " << o.at(0) << "\n";
+    std::cout << ::tpy::__getitem__(o.inner.items, 0) << " " << o.at(0) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(o.inner.items, 1, 42);
-    std::cout << o.at(1) << "\n";
+    std::cout << o.at(1) << "\n" << ::tpy::check_signals;
     std::vector<Outer> ns = {Outer(Inner())};
     ::tpyapp::main::put(ns);
-    std::cout << ::tpy::__getitem__(::tpy::__getitem__(ns, 0).inner.items, 0) << "\n";
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(ns, 0).inner.items, 0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

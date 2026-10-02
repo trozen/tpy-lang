@@ -34,10 +34,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t k = ::tpy::unwrap_ref(*__r_1);
-            std::cout << k << "\n";
+            std::cout << k << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << ::tpy::__getitem__(d, 1).v << " " << ::tpy::__getitem__(d, 2).v << "\n";
+    std::cout << ::tpy::__getitem__(d, 1).v << " " << ::tpy::__getitem__(d, 2).v << "\n" << ::tpy::check_signals;
     {
         auto __src_2 = ::tpyapp::main::pairs(d);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -45,10 +45,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t k = ::tpy::unwrap_ref(*__r_3);
-            std::cout << k << "\n";
+            std::cout << k << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << ::tpy::__getitem__(d, 1).v << " " << ::tpy::__getitem__(d, 2).v << "\n";
+    std::cout << ::tpy::__getitem__(d, 1).v << " " << ::tpy::__getitem__(d, 2).v << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -21,7 +21,7 @@ void read_basic() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-            std::cout << ::tpy::__len__(row) << " " << ::tpy::str_join("|", row) << "\n";
+            std::cout << ::tpy::__len__(row) << " " << ::tpy::str_join("|", row) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -42,7 +42,7 @@ void read_quoted() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-            std::cout << ::tpy::__len__(row) << " " << ::tpy::str_join("::", row) << "\n";
+            std::cout << ::tpy::__len__(row) << " " << ::tpy::str_join("::", row) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -59,7 +59,7 @@ void read_custom_delim() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-            std::cout << ::tpy::str_join("|", row) << "\n";
+            std::cout << ::tpy::str_join("|", row) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -76,7 +76,7 @@ void read_skipinitialspace() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-            std::cout << ::tpy::str_join("|", row) << "\n";
+            std::cout << ::tpy::str_join("|", row) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -93,7 +93,7 @@ void read_empty_fields() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-            std::cout << ::tpy::__len__(row) << " " << (::tpy::str_concat((::tpy::str_concat("[", ::tpy::str_join("|", row))), "]")) << "\n";
+            std::cout << ::tpy::__len__(row) << " " << (::tpy::str_concat((::tpy::str_concat("[", ::tpy::str_join("|", row))), "]")) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -116,7 +116,7 @@ void read_blank_and_empty() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-            std::cout << ::tpy::__len__(row) << " " << (::tpy::str_concat((::tpy::str_concat("[", ::tpy::str_join("|", row))), "]")) << "\n";
+            std::cout << ::tpy::__len__(row) << " " << (::tpy::str_concat((::tpy::str_concat("[", ::tpy::str_join("|", row))), "]")) << "\n" << ::tpy::check_signals;
         }
     }
     int32_t count = 0;
@@ -131,7 +131,7 @@ void read_blank_and_empty() {
             count = ::tpy::add_check<int32_t>(count, 1);
         }
     }
-    std::cout << "empty-input rows:" << " " << count << "\n";
+    std::cout << "empty-input rows:" << " " << count << "\n" << ::tpy::check_signals;
 }
 
 // def read_then_mutate() -> None:
@@ -158,8 +158,8 @@ void read_then_mutate() {
             rows.push_back(std::move(row));
         }
     }
-    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(rows, 0)) << "\n";
-    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(rows, 1)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(rows, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::ListPrinter(::tpy::__getitem__(rows, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // def write_basic() -> None:
@@ -173,7 +173,7 @@ void write_basic() {
     ::tpystd::csv::_Writer<::tpystd::io::StringIO> w = ::tpystd::csv::writer<::tpystd::io::StringIO>(out, ",", "\"", true, "\r\n");
     w.writerow({"a", "b", "c"});
     w.writerows({{"1", "2", "3"}, {"x", "y", "z"}});
-    std::cout << ::tpy::repr_of(out.getvalue()) << "\n";
+    std::cout << ::tpy::repr_of(out.getvalue()) << "\n" << ::tpy::check_signals;
 }
 
 // def write_quoting() -> None:
@@ -186,7 +186,7 @@ void write_quoting() {
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
     ::tpystd::csv::_Writer<::tpystd::io::StringIO> w = ::tpystd::csv::writer<::tpystd::io::StringIO>(out, ",", "\"", true, "\r\n");
     w.writerow({"plain", "has,comma", "has\"quote", "embed\nnl", "embed\rcr"});
-    std::cout << ::tpy::repr_of(out.getvalue()) << "\n";
+    std::cout << ::tpy::repr_of(out.getvalue()) << "\n" << ::tpy::check_signals;
 }
 
 // def write_custom() -> None:
@@ -200,7 +200,7 @@ void write_custom() {
     ::tpystd::csv::_Writer<::tpystd::io::StringIO> w = ::tpystd::csv::writer<::tpystd::io::StringIO>(out, "\t", "\"", true, "\n");
     w.writerow({"a", "b"});
     w.writerow({"c", "d"});
-    std::cout << ::tpy::repr_of(out.getvalue()) << "\n";
+    std::cout << ::tpy::repr_of(out.getvalue()) << "\n" << ::tpy::check_signals;
 }
 
 // def roundtrip() -> None:
@@ -225,7 +225,7 @@ void roundtrip() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-            std::cout << ::tpy::str_join("|", row) << "\n";
+            std::cout << ::tpy::str_join("|", row) << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -254,25 +254,25 @@ void roundtrip() {
 //     roundtrip()
 void main() {
     ::tpyapp::main::read_basic();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_quoted();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_custom_delim();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_skipinitialspace();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_empty_fields();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_blank_and_empty();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_then_mutate();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::write_basic();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::write_quoting();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::write_custom();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::roundtrip();
 }
 

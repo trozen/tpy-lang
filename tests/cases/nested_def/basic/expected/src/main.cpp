@@ -15,8 +15,8 @@ void main() {
     auto add_x = [&x](int32_t n) -> int32_t {
         return (::tpy::add_check<int32_t>(n, x));
     };
-    std::cout << add_x(5) << "\n";
-    std::cout << add_x(32) << "\n";
+    std::cout << add_x(5) << "\n" << ::tpy::check_signals;
+    std::cout << add_x(32) << "\n" << ::tpy::check_signals;
 }
 
 // main()

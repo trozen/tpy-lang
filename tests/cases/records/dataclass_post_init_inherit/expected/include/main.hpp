@@ -74,7 +74,7 @@ inline Base::Base(int32_t a) : a(a) {
 // def __post_init__(self) -> None:
 //     print("post_init")
 inline void Base::__post_init__() const {
-    std::cout << "post_init" << "\n";
+    std::cout << "post_init" << "\n" << ::tpy::check_signals;
 }
 
 inline bool Base::__eq__(const Base& other) const {

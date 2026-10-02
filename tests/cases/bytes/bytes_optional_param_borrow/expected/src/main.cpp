@@ -80,15 +80,15 @@ __gen_gen gen(std::optional<::tpy::BytesView> b) {
 //         total += v
 //     print(total)
 void main() {
-    std::cout << ::tpy::__len__(::tpyapp::main::first_or_empty(::tpy::bytes_literal_owned("hello", 5))) << "\n";
-    std::cout << ::tpy::__len__(::tpyapp::main::first_or_empty(std::nullopt)) << "\n";
-    std::cout << ::tpyapp::main::collect(::tpy::bytes_literal_owned("xy", 2)) << "\n";
-    std::cout << ::tpyapp::main::reassigned(std::nullopt) << "\n";
-    std::cout << ::tpyapp::main::reassigned_plain(::tpy::bytes_literal("ab", 2), true) << " " << ::tpyapp::main::reassigned_plain(::tpy::bytes_literal("abc", 3), false) << "\n";
-    std::cout << ::tpyapp::main::forward(::tpy::bytes_literal("world", 5)) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::first_or_empty(::tpy::bytes_literal_owned("hello", 5))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(::tpyapp::main::first_or_empty(std::nullopt)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::collect(::tpy::bytes_literal_owned("xy", 2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::reassigned(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::reassigned_plain(::tpy::bytes_literal("ab", 2), true) << " " << ::tpyapp::main::reassigned_plain(::tpy::bytes_literal("abc", 3), false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::forward(::tpy::bytes_literal("world", 5)) << "\n" << ::tpy::check_signals;
     Holder h = Holder();
     h.store(::tpy::bytes_literal_owned("abc", 3));
-    std::cout << ::tpy::__len__(h.data) << "\n";
+    std::cout << ::tpy::__len__(h.data) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt total = ::tpy::BigInt(0);
     {
         ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("Q", 1);
@@ -101,7 +101,7 @@ void main() {
             total = (total) + (v);
         }
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -18,7 +18,7 @@ void main() {
     std::vector<Point> xs = std::vector<Point>{};
     w.collect(5, xs);
     ::tpy::__getitem__(xs, 0).x = 9;
-    std::cout << p.x << " " << ::tpy::__getitem__(xs, 0).x << " " << w.build_copy(3).x << "\n";
+    std::cout << p.x << " " << ::tpy::__getitem__(xs, 0).x << " " << w.build_copy(3).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

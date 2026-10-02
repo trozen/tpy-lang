@@ -22,14 +22,14 @@ namespace tpyapp::main {
 int32_t main() {
     std::vector<std::string> __tmp_1 = {"--mode", "fast", "--level", "2"};
     __tpy_builder_argparse_args_1 args = ::tpyapp::main::__tpy_builder_argparse_parse_1(__tmp_1);
-    std::cout << args.mode << "\n";
-    std::cout << args.severity << "\n";
+    std::cout << args.mode << "\n" << ::tpy::check_signals;
+    std::cout << args.severity << "\n" << ::tpy::check_signals;
     return 0;
 }
 
 // args = parser.parse_args(["--mode", "fast", "--level", "2"])
 void __tpy_builder_argparse_help_1() {
-    std::cout << "usage: prog [-h] --mode MODE [--level SEVERITY]\n\noptions:\n  -h, --help        show this help message and exit\n  --mode MODE       execution mode\n  --level SEVERITY" << "\n";
+    std::cout << "usage: prog [-h] --mode MODE [--level SEVERITY]\n\noptions:\n  -h, --help        show this help message and exit\n  --mode MODE       execution mode\n  --level SEVERITY" << "\n" << ::tpy::check_signals;
     ::tpy::sys_exit(0);
 }
 
@@ -51,12 +51,12 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         std::string_view __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "--mode")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
                 ::tpy::sys_exit(2);
             }
             std::string_view __tpy_argparse_v_mode = ::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1)));
             if ((!((__tpy_argparse_v_mode == "fast") || (__tpy_argparse_v_mode == "slow")))) {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "invalid choice for --mode: ")), std::string(__tpy_argparse_v_mode))) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "invalid choice for --mode: ")), std::string(__tpy_argparse_v_mode))) << "\n" << ::tpy::check_signals;
                 ::tpy::sys_exit(2);
             }
             mode = __tpy_argparse_v_mode;
@@ -64,23 +64,23 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
             __tpy_argparse_seen_mode = true;
         } else if ((__tpy_argparse_tok == "--level")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
                 ::tpy::sys_exit(2);
             }
             ::tpy::BigInt __tpy_argparse_v_severity = ::tpy::BigInt::from_str(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1))));
             if ((!((__tpy_argparse_v_severity == 0) || (__tpy_argparse_v_severity == 1) || (__tpy_argparse_v_severity == 2)))) {
-                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "invalid choice for --level: ")), (__tpy_argparse_v_severity).to_string())) << "\n";
+                ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "invalid choice for --level: ")), (__tpy_argparse_v_severity).to_string())) << "\n" << ::tpy::check_signals;
                 ::tpy::sys_exit(2);
             }
             severity = __tpy_argparse_v_severity;
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
         } else {
-            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n";
+            ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
             ::tpy::sys_exit(2);
         }
     }
     if ((!(__tpy_argparse_seen_mode))) {
-        ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat("prog: error: ", "missing required argument: --mode")) << "\n";
+        ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat("prog: error: ", "missing required argument: --mode")) << "\n" << ::tpy::check_signals;
         ::tpy::sys_exit(2);
     }
     return __tpy_builder_argparse_args_1(mode, severity);

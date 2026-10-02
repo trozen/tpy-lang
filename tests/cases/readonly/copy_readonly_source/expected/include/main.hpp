@@ -256,7 +256,7 @@ inline const Cell& Holder::get() const {
 //     print("method:", self.cell.n, d.n)
 inline void Holder::sec_method() const {
     Cell d = ::tpyapp::main::bump(Cell(this->cell));
-    std::cout << "method:" << " " << this->cell.n << " " << d.n << "\n";
+    std::cout << "method:" << " " << this->cell.n << " " << d.n << "\n" << ::tpy::check_signals;
 }
 
 // # method: the source is an auto_readonly BORROW RETURN, not a field read.
@@ -266,7 +266,7 @@ inline void Holder::sec_method() const {
 //     print("borrow-ret:", self.get().n, d.n)
 inline void Holder::sec_borrow_ret() const {
     Cell d = ::tpyapp::main::bump(Cell(this->get()));
-    std::cout << "borrow-ret:" << " " << this->get().n << " " << d.n << "\n";
+    std::cout << "borrow-ret:" << " " << this->get().n << " " << d.n << "\n" << ::tpy::check_signals;
 }
 
 // def __enter__(self) -> None:

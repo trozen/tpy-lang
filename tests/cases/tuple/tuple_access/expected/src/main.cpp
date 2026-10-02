@@ -24,12 +24,12 @@ void main() {
     int32_t a = std::get<0>(t);
     std::string_view b = std::get<1>(t);
     bool c = std::get<2>(t);
-    std::cout << a << "\n";
-    std::cout << b << "\n";
-    std::cout << ::tpy::print_bool(c) << "\n";
-    std::cout << ::tpy::print_bool(std::get<2>(t)) << "\n";
-    std::cout << std::get<1>(t) << "\n";
-    std::cout << std::get<0>(t) << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(c) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(std::get<2>(t)) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(t) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<0>(t) << "\n" << ::tpy::check_signals;
 }
 
 // main()

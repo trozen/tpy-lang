@@ -35,8 +35,8 @@ int32_t sum_values(const ::tpy::ordered_map<std::string, int32_t>& d) {
 //     print(sum_values(d))
 void main() {
     ::tpy::ordered_map<std::string, int32_t> d = ::tpyapp::main::make_dict();
-    std::cout << ::tpy::DictPrinter(d) << "\n";
-    std::cout << ::tpyapp::main::sum_values(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_values(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

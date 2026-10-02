@@ -17,7 +17,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::b::__tpy_init();
-    std::cout << ::tpyapp::c::LIMIT << "\n";
+    std::cout << ::tpyapp::c::LIMIT << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

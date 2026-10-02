@@ -34,7 +34,7 @@ void main() {
             ::tpy::TextFile f = ::tpy::builtin_open("/nonexistent/path/file.txt");
             f.close();
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "caught FileNotFoundError" << "\n";
+            std::cout << "caught FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -42,7 +42,7 @@ void main() {
             ::tpy::TextFile f2 = ::tpy::builtin_open("/nonexistent/path/file2.txt");
             f2.close();
         } catch (const ::tpy::OSError&) {
-            std::cout << "caught OSError" << "\n";
+            std::cout << "caught OSError" << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -50,10 +50,10 @@ void main() {
             ::tpy::BinaryFile f3 = ::tpy::builtin_open_binary("/nonexistent/path/file3.bin", "rb");
             f3.close();
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "caught binary FileNotFoundError" << "\n";
+            std::cout << "caught binary FileNotFoundError" << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // main()

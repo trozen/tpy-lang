@@ -65,16 +65,16 @@ int32_t view_result(std::string_view s) {
 //     print("mutable_leaf:", s)
 //     print("view_result:", view_result("xyz"))
 void main() {
-    std::cout << "unmarked:" << " " << ::tpy::print_float(::tpyapp::main::unmarked(1.5)) << "\n";
-    std::cout << "unmarked_nullary:" << " " << ::tpy::print_float(::tpyapp::main::unmarked_nullary()) << "\n";
-    std::cout << "text_of_scalar:" << " " << ::tpyapp::main::text_of_scalar(42) << "\n";
+    std::cout << "unmarked:" << " " << ::tpy::print_float(::tpyapp::main::unmarked(1.5)) << "\n" << ::tpy::check_signals;
+    std::cout << "unmarked_nullary:" << " " << ::tpy::print_float(::tpyapp::main::unmarked_nullary()) << "\n" << ::tpy::check_signals;
+    std::cout << "text_of_scalar:" << " " << ::tpyapp::main::text_of_scalar(42) << "\n" << ::tpy::check_signals;
     Rec r = Rec(1);
     ::tpyapp::main::mut_ref(r);
-    std::cout << "mut_ref:" << " " << r.n << "\n";
+    std::cout << "mut_ref:" << " " << r.n << "\n" << ::tpy::check_signals;
     ::tpy::String s = ::tpy::String("ab");
     ::tpyapp::main::mutable_leaf(s);
-    std::cout << "mutable_leaf:" << " " << s << "\n";
-    std::cout << "view_result:" << " " << ::tpyapp::main::view_result("xyz") << "\n";
+    std::cout << "mutable_leaf:" << " " << s << "\n" << ::tpy::check_signals;
+    std::cout << "view_result:" << " " << ::tpyapp::main::view_result("xyz") << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native

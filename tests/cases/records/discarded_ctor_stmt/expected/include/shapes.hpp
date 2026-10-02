@@ -31,7 +31,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tock& obj) {
 //     self.n = n
 //     print("  tock", n)
 inline Tock::Tock(int32_t n) : n(n) {
-    std::cout << "  tock" << " " << n << "\n";
+    std::cout << "  tock" << " " << n << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::shapes

@@ -52,63 +52,63 @@ namespace tpyapp::main {
 //         print("caught negative")
 void main() {
     ::tpystd::datetime::time t = ::tpystd::datetime::time(::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(5));
-    std::cout << t.isoformat() << "\n";
-    std::cout << std::string(::tpy::__str__(t)) << "\n";
-    std::cout << ::tpy::repr_of(t) << "\n";
-    std::cout << t.hour() << " " << t.minute() << " " << t.second() << " " << t.microsecond() << "\n";
-    std::cout << ::tpystd::datetime::time() << "\n";
-    std::cout << ::tpy::repr_of(::tpystd::datetime::time()) << "\n";
-    std::cout << ::tpy::repr_of(::tpystd::datetime::time(::tpy::BigInt(7))) << "\n";
-    std::cout << ::tpy::repr_of(::tpystd::datetime::time(::tpy::BigInt(7), ::tpy::BigInt(8))) << "\n";
-    std::cout << ::tpy::repr_of(::tpystd::datetime::time(::tpy::BigInt(7), ::tpy::BigInt(8), ::tpy::BigInt(0), ::tpy::BigInt(9))) << "\n";
-    std::cout << ::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3), ::tpy::BigInt(400000)) << "\n";
-    std::cout << ::tpystd::datetime::time(::tpy::BigInt(23), ::tpy::BigInt(59), ::tpy::BigInt(59), ::tpy::BigInt(999999)) << "\n";
-    std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2))) < (::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(3))))) << "\n";
-    std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2))) < (::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(0), ::tpy::BigInt(1))))) << "\n";
-    std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(5))) == (::tpystd::datetime::time(::tpy::BigInt(5), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0))))) << "\n";
-    std::cout << ::tpy::print_bool((::tpystd::datetime::time(::tpy::BigInt(5)) != ::tpystd::datetime::time(::tpy::BigInt(5)))) << "\n";
-    std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(9), ::tpy::BigInt(30))) >= (::tpystd::datetime::time(::tpy::BigInt(9), ::tpy::BigInt(29), ::tpy::BigInt(59), ::tpy::BigInt(999999))))) << "\n";
+    std::cout << t.isoformat() << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(t)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(t) << "\n" << ::tpy::check_signals;
+    std::cout << t.hour() << " " << t.minute() << " " << t.second() << " " << t.microsecond() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::time() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(::tpystd::datetime::time()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(::tpystd::datetime::time(::tpy::BigInt(7))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(::tpystd::datetime::time(::tpy::BigInt(7), ::tpy::BigInt(8))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(::tpystd::datetime::time(::tpy::BigInt(7), ::tpy::BigInt(8), ::tpy::BigInt(0), ::tpy::BigInt(9))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3), ::tpy::BigInt(400000)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::datetime::time(::tpy::BigInt(23), ::tpy::BigInt(59), ::tpy::BigInt(59), ::tpy::BigInt(999999)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2))) < (::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(3))))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2))) < (::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(0), ::tpy::BigInt(1))))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(5))) == (::tpystd::datetime::time(::tpy::BigInt(5), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0))))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpystd::datetime::time(::tpy::BigInt(5)) != ::tpystd::datetime::time(::tpy::BigInt(5)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(9), ::tpy::BigInt(30))) >= (::tpystd::datetime::time(::tpy::BigInt(9), ::tpy::BigInt(29), ::tpy::BigInt(59), ::tpy::BigInt(999999))))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<::tpystd::datetime::time, std::string> seen = ::tpy::ordered_map<::tpystd::datetime::time, std::string>({{::tpystd::datetime::time(::tpy::BigInt(14), ::tpy::BigInt(30)), "a"}});
-    std::cout << ::tpy::__getitem__(seen, ::tpystd::datetime::time(::tpy::BigInt(14), ::tpy::BigInt(30))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::ordered_set<::tpystd::datetime::time>({::tpystd::datetime::time(::tpy::BigInt(0)), ::tpystd::datetime::time(::tpy::BigInt(1))}).contains(::tpystd::datetime::time(::tpy::BigInt(0))))) << "\n";
+    std::cout << ::tpy::__getitem__(seen, ::tpystd::datetime::time(::tpy::BigInt(14), ::tpy::BigInt(30))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::ordered_set<::tpystd::datetime::time>({::tpystd::datetime::time(::tpy::BigInt(0)), ::tpystd::datetime::time(::tpy::BigInt(1))}).contains(::tpystd::datetime::time(::tpy::BigInt(0))))) << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpystd::datetime::time bad = ::tpystd::datetime::time(::tpy::BigInt(24));
-            std::cout << "no error" << "\n";
+            std::cout << "no error" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught hour" << "\n";
+            std::cout << "caught hour" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::datetime::time bad2 = ::tpystd::datetime::time(::tpy::BigInt(0), ::tpy::BigInt(60));
-            std::cout << "no error" << "\n";
+            std::cout << "no error" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught minute" << "\n";
+            std::cout << "caught minute" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::datetime::time bad3 = ::tpystd::datetime::time(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(60));
-            std::cout << "no error" << "\n";
+            std::cout << "no error" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught second" << "\n";
+            std::cout << "caught second" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::datetime::time bad4 = ::tpystd::datetime::time(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1000000));
-            std::cout << "no error" << "\n";
+            std::cout << "no error" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught microsecond" << "\n";
+            std::cout << "caught microsecond" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpystd::datetime::time bad5 = ::tpystd::datetime::time(::tpy::BigInt(-1));
-            std::cout << "no error" << "\n";
+            std::cout << "no error" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "caught negative" << "\n";
+            std::cout << "caught negative" << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print("spawned")
 void main() {
     ::tpystd::tpy::thread::JoinHandle<::tpy::BigInt> h = ::tpystd::tpy::thread::spawn<::tpy::BigInt, One>(One());
-    std::cout << "spawned" << "\n";
+    std::cout << "spawned" << "\n" << ::tpy::check_signals;
 }
 
 // # Dropping a JoinHandle without join() or detach() detaches the thread, as

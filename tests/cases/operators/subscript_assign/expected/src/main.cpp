@@ -31,15 +31,15 @@ void __tpy_init() {
     ::tpy::__setitem__((*arr), 0, 100);
     ::tpy::__setitem__((*arr), 1, 200);
     ::tpy::__setitem__((*arr), 2, 300);
-    std::cout << ::tpy::__getitem__((*arr), 0) << "\n";
-    std::cout << ::tpy::__getitem__((*arr), 1) << "\n";
-    std::cout << ::tpy::__getitem__((*arr), 2) << "\n";
+    std::cout << ::tpy::__getitem__((*arr), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*arr), 1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*arr), 2) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_2 = {10, 20};
     items = &__global_slot_2;
     ::tpy::__setitem__((*items), 0, 99);
     ::tpy::__setitem__((*items), 1, 88);
-    std::cout << ::tpy::__getitem__((*items), 0) << "\n";
-    std::cout << ::tpy::__getitem__((*items), 1) << "\n";
+    std::cout << ::tpy::__getitem__((*items), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*items), 1) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

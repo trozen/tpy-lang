@@ -37,9 +37,9 @@ int32_t outer__helper(int32_t n) {
 //   writeln(a, '->', b);
 // end;
 void outer__print_pair(int32_t a, int32_t b) {
-    std::cout << a;
-    std::cout << "->";
-    std::cout << b << "\n";
+    std::cout << a << ::tpy::check_signals;
+    std::cout << "->" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // outer(5);

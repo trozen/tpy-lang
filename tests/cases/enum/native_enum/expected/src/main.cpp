@@ -71,12 +71,12 @@ std::string label(::ns::E e) {
 //     print(e.value)
 void main() {
     ::ns::E e = ::ns::E::A;
-    std::cout << ::tpy::__repr__(e) << "\n";
-    std::cout << ::tpy::__repr__(::ns::E::B) << "\n";
-    std::cout << ::tpyapp::main::label(e) << "\n";
-    std::cout << ::tpyapp::main::label(::ns::E::B) << "\n";
-    std::cout << ::tpy::EnumUtil<::ns::E>::name(e) << "\n";
-    std::cout << static_cast<int32_t>(e) << "\n";
+    std::cout << ::tpy::__repr__(e) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__repr__(::ns::E::B) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::label(e) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::label(::ns::E::B) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::EnumUtil<::ns::E>::name(e) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(e) << "\n" << ::tpy::check_signals;
 }
 
 // # @native binding to an existing C++ enum class; tests print, match, .name, .value.

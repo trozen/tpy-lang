@@ -43,13 +43,13 @@ namespace tpyapp::main {
     {
         try {
             v = ::tpyapp::main::boom(n);
-            std::cout << "ok" << " " << v << "\n";
+            std::cout << "ok" << " " << v << "\n" << ::tpy::check_signals;
             return v;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "value" << "\n";
+            std::cout << "value" << "\n" << ::tpy::check_signals;
             return ::tpy::BigInt(-1);
         } catch (const AppError& e) {
-            std::cout << "app" << " " << e.code << "\n";
+            std::cout << "app" << " " << e.code << "\n" << ::tpy::check_signals;
             return ::tpy::BigInt(-2);
         } catch (const ::tpy::RuntimeError&) {
             return ::tpy::BigInt(-3);
@@ -88,12 +88,12 @@ namespace tpyapp::main {
         try {
             r = ::tpyapp::main::boom(n);
         } catch (const ::tpy::ValueError&) {
-            std::cout << "ve" << "\n";
+            std::cout << "ve" << "\n" << ::tpy::check_signals;
             r = ::tpy::BigInt(-1);
             goto __after_else_1;
         }
         // else:
-        std::cout << "else" << " " << r << "\n";
+        std::cout << "else" << " " << r << "\n" << ::tpy::check_signals;
         __after_else_1:;
     }
     return r;
@@ -113,17 +113,17 @@ namespace tpyapp::main {
             try {
                 ::tpy::BigInt __tpy_ret_0 = ::tpyapp::main::boom(n);
                 __fin_ran_1 = true;
-                std::cout << "fin" << " " << n << "\n";
+                std::cout << "fin" << " " << n << "\n" << ::tpy::check_signals;
                 return __tpy_ret_0;
             } catch (const ::tpy::ValueError&) {
                 ::tpy::BigInt __tpy_ret_1 = ::tpy::BigInt(-1);
                 __fin_ran_1 = true;
-                std::cout << "fin" << " " << n << "\n";
+                std::cout << "fin" << " " << n << "\n" << ::tpy::check_signals;
                 return __tpy_ret_1;
             }
         } catch (...) {
             if (!__fin_ran_1) {
-                std::cout << "fin" << " " << n << "\n";
+                std::cout << "fin" << " " << n << "\n" << ::tpy::check_signals;
             }
             throw;
         }
@@ -166,7 +166,7 @@ namespace tpyapp::main {
                 __fin_ran_2 = true;
                 throw AppError(((n) + (::tpy::BigInt(100))));
             }
-            std::cout << "neg" << " " << n << "\n";
+            std::cout << "neg" << " " << n << "\n" << ::tpy::check_signals;
         } catch (...) {
             if (!__fin_ran_2) {
                 throw AppError(((n) + (::tpy::BigInt(100))));
@@ -198,29 +198,29 @@ namespace tpyapp::main {
 //     except AppError as e:
 //         print("fin-raise", e.code)
 void main() {
-    std::cout << ::tpyapp::main::catch_multi(::tpy::BigInt(4)) << "\n";
-    std::cout << ::tpyapp::main::catch_multi(::tpy::BigInt(-1)) << "\n";
-    std::cout << ::tpyapp::main::catch_multi(::tpy::BigInt(0)) << "\n";
-    std::cout << ::tpyapp::main::catch_multi(::tpy::BigInt(100)) << "\n";
-    std::cout << ::tpyapp::main::catch_bare(::tpy::BigInt(-2)) << "\n";
-    std::cout << ::tpyapp::main::with_else(::tpy::BigInt(5)) << "\n";
-    std::cout << ::tpyapp::main::with_else(::tpy::BigInt(-1)) << "\n";
-    std::cout << ::tpyapp::main::with_finally(::tpy::BigInt(6)) << "\n";
-    std::cout << ::tpyapp::main::with_finally(::tpy::BigInt(-3)) << "\n";
-    std::cout << ::tpyapp::main::reraise(::tpy::BigInt(2)) << "\n";
-    std::cout << ::tpyapp::main::reraise(::tpy::BigInt(-1)) << "\n";
+    std::cout << ::tpyapp::main::catch_multi(::tpy::BigInt(4)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::catch_multi(::tpy::BigInt(-1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::catch_multi(::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::catch_multi(::tpy::BigInt(100)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::catch_bare(::tpy::BigInt(-2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_else(::tpy::BigInt(5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_else(::tpy::BigInt(-1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_finally(::tpy::BigInt(6)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::with_finally(::tpy::BigInt(-3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::reraise(::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::reraise(::tpy::BigInt(-1)) << "\n" << ::tpy::check_signals;
     {
         try {
-            std::cout << ::tpyapp::main::reraise(::tpy::BigInt(-5)) << "\n";
+            std::cout << ::tpyapp::main::reraise(::tpy::BigInt(-5)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
-            std::cout << "outer caught" << "\n";
+            std::cout << "outer caught" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            std::cout << ::tpyapp::main::raising_finally(::tpy::BigInt(1)) << "\n";
+            std::cout << ::tpyapp::main::raising_finally(::tpy::BigInt(1)) << "\n" << ::tpy::check_signals;
         } catch (const AppError& e) {
-            std::cout << "fin-raise" << " " << e.code << "\n";
+            std::cout << "fin-raise" << " " << e.code << "\n" << ::tpy::check_signals;
         }
     }
 }

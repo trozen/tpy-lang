@@ -13,9 +13,9 @@ namespace tpyapp::main {
 void test_list_ptr() {
     std::vector<int32_t> items = {10, 20, 30};
     int32_t* p = items.data();
-    std::cout << p[0] << "\n";
-    std::cout << p[1] << "\n";
-    std::cout << p[2] << "\n";
+    std::cout << p[0] << "\n" << ::tpy::check_signals;
+    std::cout << p[1] << "\n" << ::tpy::check_signals;
+    std::cout << p[2] << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_ptr, unsafe_load

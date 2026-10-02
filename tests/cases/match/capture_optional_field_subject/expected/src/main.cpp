@@ -21,7 +21,7 @@ void main() {
         ::tpy::deref_check(q).v = ::tpy::BigInt(99);
     }
     if ((h.opt.has_value())) {
-        std::cout << (*h.opt).v << "\n";
+        std::cout << (*h.opt).v << "\n" << ::tpy::check_signals;
     }
 }
 

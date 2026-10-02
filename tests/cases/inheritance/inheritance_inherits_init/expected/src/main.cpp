@@ -29,27 +29,27 @@ namespace tpyapp::main {
 //         print("native grandparent:", str(e), e.code)
 void main() {
     IntBox a = IntBox(7);
-    std::cout << a.get() << "\n";
+    std::cout << a.get() << "\n" << ::tpy::check_signals;
     TaggedBox b = TaggedBox(42);
-    std::cout << b.value << "\n";
+    std::cout << b.value << "\n" << ::tpy::check_signals;
     LabeledBox lb = LabeledBox(9);
-    std::cout << "defaulted field:" << " " << lb.value << " " << lb.label << "\n";
+    std::cout << "defaulted field:" << " " << lb.value << " " << lb.label << "\n" << ::tpy::check_signals;
     Doubled d = Doubled(4);
-    std::cout << "through fields:" << " " << d.value << " " << d.label << "\n";
+    std::cout << "through fields:" << " " << d.value << " " << d.label << "\n" << ::tpy::check_signals;
     NamedGrand ng = NamedGrand(10);
-    std::cout << "named grandparent:" << " " << ng.value << " " << ng.label << "\n";
-    std::cout << "named pass class:" << " " << NamedMid(10).value << "\n";
-    std::cout << "through pass:" << " " << OptLeaf().level << " " << OptMid().level << "\n";
+    std::cout << "named grandparent:" << " " << ng.value << " " << ng.label << "\n" << ::tpy::check_signals;
+    std::cout << "named pass class:" << " " << NamedMid(10).value << "\n" << ::tpy::check_signals;
+    std::cout << "through pass:" << " " << OptLeaf().level << " " << OptMid().level << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = {1, 2};
     ViaSuper vs = ViaSuper(__tmp_1);
     std::vector<int32_t> __tmp_2 = {3};
     ViaName vn = ViaName(__tmp_2);
-    std::cout << "generic ancestor:" << " " << ::tpy::ListPrinter(vs.item) << " " << ::tpy::ListPrinter(vn.item) << "\n";
+    std::cout << "generic ancestor:" << " " << ::tpy::ListPrinter(vs.item) << " " << ::tpy::ListPrinter(vn.item) << "\n" << ::tpy::check_signals;
     {
         try {
             throw SubError(3);
         } catch (const SubError& e) {
-            std::cout << "native grandparent:" << " " << std::string(::tpy::__str__(e)) << " " << e.code << "\n";
+            std::cout << "native grandparent:" << " " << std::string(::tpy::__str__(e)) << " " << e.code << "\n" << ::tpy::check_signals;
         }
     }
 }

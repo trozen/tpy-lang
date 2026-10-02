@@ -49,7 +49,7 @@ inline Counter::Counter(std::optional<::tpy::BigInt> big, std::optional<int32_t>
 // def show(self) -> None:
 //     print(self.big, self.small)
 inline void Counter::show() const {
-    std::cout << ::tpy::print_optional_val(this->big) << " " << ::tpy::print_optional_val(this->small) << "\n";
+    std::cout << ::tpy::print_optional_val(this->big) << " " << ::tpy::print_optional_val(this->small) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

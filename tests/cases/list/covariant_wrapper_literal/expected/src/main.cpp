@@ -22,7 +22,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& b = *__beg_0;
-        std::cout << b.get().name() << "\n";
+        std::cout << b.get().name() << "\n" << ::tpy::check_signals;
     }
     std::vector<::tpystd::tplib::rc::Rc<Pet>> shared = ::tpy::make_vector<::tpystd::tplib::rc::Rc<Pet>>(Rc<Pet>::new_<Dog>(Dog()), Rc<Pet>::new_<Cat>(Cat()));
     auto __obj_1 = ::tpy::own_iter(std::move(shared));
@@ -30,7 +30,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& r = *__beg_1;
-        std::cout << r.get().name() << "\n";
+        std::cout << r.get().name() << "\n" << ::tpy::check_signals;
     }
     std::vector<::tpystd::tplib::box::Box<Pet>> comp = ({
         std::vector<::tpystd::tplib::box::Box<Pet>> __result;
@@ -41,7 +41,7 @@ void main() {
         }
         std::move(__result);
     });
-    std::cout << ::tpy::__len__(comp) << "\n";
+    std::cout << ::tpy::__len__(comp) << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.box import Box

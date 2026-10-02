@@ -33,7 +33,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int64_t v = *__beg_1;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_set<::tpy::BigInt> big = ({
         ::tpy::ordered_set<::tpy::BigInt> __result;
@@ -48,7 +48,7 @@ void main() {
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         const ::tpy::BigInt& v = *__beg_3;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
 }
 

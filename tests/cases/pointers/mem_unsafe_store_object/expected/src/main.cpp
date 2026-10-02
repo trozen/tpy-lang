@@ -18,8 +18,8 @@ void main() {
     Point pt = Point(10, 20);
     p[0] = std::move(pt);
     Point loaded = p[0];
-    std::cout << loaded.x << "\n";
-    std::cout << loaded.y << "\n";
+    std::cout << loaded.x << "\n" << ::tpy::check_signals;
+    std::cout << loaded.y << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store

@@ -68,17 +68,17 @@ int32_t through_narrowing(::tpy::Union<A*, B*> v) {
 //     print(through_narrowing(B(7)))
 void main() {
     Holder h = Holder();
-    std::cout << ::tpyapp::main::pass_both(h.a, h.b) << "\n";
-    std::cout << h.b.x << "\n";
-    std::cout << ::tpyapp::main::through_pointer(h, true) << "\n";
-    std::cout << h.b.x << "\n";
-    std::cout << ::tpyapp::main::through_pointer(h, false) << "\n";
-    std::cout << h.a.x << "\n";
+    std::cout << ::tpyapp::main::pass_both(h.a, h.b) << "\n" << ::tpy::check_signals;
+    std::cout << h.b.x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::through_pointer(h, true) << "\n" << ::tpy::check_signals;
+    std::cout << h.b.x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::through_pointer(h, false) << "\n" << ::tpy::check_signals;
+    std::cout << h.a.x << "\n" << ::tpy::check_signals;
     A a = A(5);
-    std::cout << ::tpyapp::main::through_narrowing(::tpy::Union<A*, B*>{&(a)}) << "\n";
-    std::cout << a.x << "\n";
+    std::cout << ::tpyapp::main::through_narrowing(::tpy::Union<A*, B*>{&(a)}) << "\n" << ::tpy::check_signals;
+    std::cout << a.x << "\n" << ::tpy::check_signals;
     B __tmp_1 = B(7);
-    std::cout << ::tpyapp::main::through_narrowing(::tpy::Union<A*, B*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::through_narrowing(::tpy::Union<A*, B*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

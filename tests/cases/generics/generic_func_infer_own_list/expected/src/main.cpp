@@ -29,7 +29,7 @@ namespace tpyapp::main {
 //     print("done")
 void main() {
     std::vector<int32_t> nums = {10, 20, 30};
-    std::cout << ::tpyapp::main::first_val<int32_t>(std::move(nums)) << "\n";
+    std::cout << ::tpyapp::main::first_val<int32_t>(std::move(nums)) << "\n" << ::tpy::check_signals;
     std::vector<Point> pts = std::vector<Point>{};
     Point p1 = Point();
     p1.x = 1;
@@ -43,7 +43,7 @@ void main() {
     p3.x = 7;
     p3.y = 8;
     ::tpyapp::main::consume_both<Point>(std::move(p2), std::move(p3));
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // main()

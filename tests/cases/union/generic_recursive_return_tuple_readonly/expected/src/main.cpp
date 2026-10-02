@@ -49,8 +49,8 @@ void main() {
     auto __tup_1 = ::tpyapp::main::f();
     Tree<int32_t> t = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    std::cout << n << "\n";
-    std::cout << ::tpyapp::main::leaf_count(t) << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::leaf_count(t) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -14,7 +14,7 @@ void __tpy_init() {
 
     static Child __global_slot_1 = Child(::tpy::BigInt(42));
     c = &__global_slot_1;
-    std::cout << c->value << "\n";
+    std::cout << c->value << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

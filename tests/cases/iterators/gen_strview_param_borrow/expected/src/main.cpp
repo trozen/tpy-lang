@@ -34,7 +34,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& n = ::tpy::unwrap_ref(*__r_1);
-            std::cout << n << "\n";
+            std::cout << n << "\n" << ::tpy::check_signals;
         }
     }
     std::string __tmp_1 = ::tpyapp::main::make_tmp();
@@ -45,7 +45,7 @@ void main() {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         const ::tpy::BigInt& n = ::tpy::unwrap_ref(*__r_3);
-        std::cout << n << "\n";
+        std::cout << n << "\n" << ::tpy::check_signals;
     }
 }
 

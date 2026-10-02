@@ -55,7 +55,7 @@ __coro_below below(::tpy::BigInt i, ::tpy::BigInt limit) {
                 __state = S_JOIN_0;
                 continue;
             } else {
-                std::cout << "body" << " " << i << "\n";
+                std::cout << "body" << " " << i << "\n" << ::tpy::check_signals;
                 __state = S_JOIN_0;
                 continue;
             }
@@ -75,7 +75,7 @@ __coro_below below(::tpy::BigInt i, ::tpy::BigInt limit) {
         }
     }
     case S_JOIN_1: {
-        std::cout << "done" << " " << i << "\n";
+        std::cout << "done" << " " << i << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

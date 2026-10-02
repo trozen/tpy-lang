@@ -18,12 +18,12 @@ void fits() {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "fits int32" << "\n";
+        std::cout << "fits int32" << "\n" << ::tpy::check_signals;
         break;
     }
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
-        std::cout << "fits int" << "\n";
+        std::cout << "fits int" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -43,12 +43,12 @@ void overflows() {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "overflows uint8" << "\n";
+        std::cout << "overflows uint8" << "\n" << ::tpy::check_signals;
         break;
     }
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
-        std::cout << "overflows int" << "\n";
+        std::cout << "overflows int" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -69,12 +69,12 @@ void narrow_fits() {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "narrow-fits uint8" << "\n";
+        std::cout << "narrow-fits uint8" << "\n" << ::tpy::check_signals;
         break;
     }
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
-        std::cout << "narrow-fits int" << "\n";
+        std::cout << "narrow-fits int" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -94,12 +94,12 @@ void narrow_signed() {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "narrow-signed int16" << "\n";
+        std::cout << "narrow-signed int16" << "\n" << ::tpy::check_signals;
         break;
     }
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
-        std::cout << "narrow-signed int" << "\n";
+        std::cout << "narrow-signed int" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -119,12 +119,12 @@ void wide_unsigned() {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "wide-unsigned uint32" << "\n";
+        std::cout << "wide-unsigned uint32" << "\n" << ::tpy::check_signals;
         break;
     }
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
-        std::cout << "wide-unsigned int" << "\n";
+        std::cout << "wide-unsigned int" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -144,12 +144,12 @@ void wide_fits() {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "wide-fits int64" << "\n";
+        std::cout << "wide-fits int64" << "\n" << ::tpy::check_signals;
         break;
     }
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
-        std::cout << "wide-fits int" << "\n";
+        std::cout << "wide-fits int" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -167,12 +167,12 @@ void exact_param(const ::tpy::Union<::tpy::BigInt, int32_t>& u) {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "exact-param int32" << "\n";
+        std::cout << "exact-param int32" << "\n" << ::tpy::check_signals;
         break;
     }
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
-        std::cout << "exact-param int" << "\n";
+        std::cout << "exact-param int" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -190,12 +190,12 @@ void widen_param(const ::tpy::Union<::tpy::BigInt, int64_t>& u) {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "widen-param int64" << "\n";
+        std::cout << "widen-param int64" << "\n" << ::tpy::check_signals;
         break;
     }
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
-        std::cout << "widen-param int" << "\n";
+        std::cout << "widen-param int" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -221,12 +221,12 @@ void check_return() {
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "exact-return int32" << "\n";
+        std::cout << "exact-return int32" << "\n" << ::tpy::check_signals;
         break;
     }
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
-        std::cout << "exact-return int" << "\n";
+        std::cout << "exact-return int" << "\n" << ::tpy::check_signals;
         break;
     }
     }
@@ -244,11 +244,11 @@ void field_slot() {
     auto& __match_subject_1 = h.v;
     switch (__match_subject_1.index()) {
     case 1: {
-        std::cout << "field int32" << "\n";
+        std::cout << "field int32" << "\n" << ::tpy::check_signals;
         break;
     }
     case 0: {
-        std::cout << "field int" << "\n";
+        std::cout << "field int" << "\n" << ::tpy::check_signals;
         break;
     }
     }

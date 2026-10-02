@@ -33,7 +33,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_collect::__next__() {
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, src));
         if (!(*__for_r_0).has_value()) {
-            std::cout << "last element value after the loop:" << " " << last << "\n";
+            std::cout << "last element value after the loop:" << " " << last << "\n" << ::tpy::check_signals;
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }

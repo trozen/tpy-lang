@@ -25,7 +25,7 @@ void test_basic() {
     w.key("active");
     w.write_bool(true);
     w.object_end();
-    std::cout << w.finish() << "\n";
+    std::cout << w.finish() << "\n" << ::tpy::check_signals;
 }
 
 // def test_nested() -> None:
@@ -63,7 +63,7 @@ void test_nested() {
     w.key("x");
     w.write_null();
     w.object_end();
-    std::cout << w.finish() << "\n";
+    std::cout << w.finish() << "\n" << ::tpy::check_signals;
 }
 
 // def test_escape() -> None:
@@ -83,7 +83,7 @@ void test_escape() {
     w.key("path");
     w.write_str("c:\\temp");
     w.object_end();
-    std::cout << w.finish() << "\n";
+    std::cout << w.finish() << "\n" << ::tpy::check_signals;
 }
 
 // def test_float() -> None:
@@ -99,7 +99,7 @@ void test_float() {
     w.write_float(3.14);
     w.write_float(-(0.5));
     w.array_end();
-    std::cout << w.finish() << "\n";
+    std::cout << w.finish() << "\n" << ::tpy::check_signals;
 }
 
 // def test_empty() -> None:
@@ -123,7 +123,7 @@ void test_empty() {
     w.array_start();
     w.array_end();
     w.object_end();
-    std::cout << w.finish() << "\n";
+    std::cout << w.finish() << "\n" << ::tpy::check_signals;
 }
 
 // def test_pretty_basic() -> None:
@@ -143,7 +143,7 @@ void test_pretty_basic() {
     w.key("age");
     w.write_int(30);
     w.object_end();
-    std::cout << w.finish() << "\n";
+    std::cout << w.finish() << "\n" << ::tpy::check_signals;
 }
 
 // def test_pretty_nested() -> None:
@@ -177,7 +177,7 @@ void test_pretty_nested() {
     w.write_str("NYC");
     w.object_end();
     w.object_end();
-    std::cout << w.finish() << "\n";
+    std::cout << w.finish() << "\n" << ::tpy::check_signals;
 }
 
 // def test_pretty_empty() -> None:
@@ -201,7 +201,7 @@ void test_pretty_empty() {
     w.array_start();
     w.array_end();
     w.object_end();
-    std::cout << w.finish() << "\n";
+    std::cout << w.finish() << "\n" << ::tpy::check_signals;
 }
 
 // def test_pretty_4space() -> None:
@@ -217,7 +217,7 @@ void test_pretty_4space() {
     w.key("x");
     w.write_int(1);
     w.object_end();
-    std::cout << w.finish() << "\n";
+    std::cout << w.finish() << "\n" << ::tpy::check_signals;
 }
 
 // def test_pretty_array() -> None:
@@ -235,7 +235,7 @@ void test_pretty_array() {
     w.write_str("b");
     w.write_str("c");
     w.array_end();
-    std::cout << w.finish() << "\n";
+    std::cout << w.finish() << "\n" << ::tpy::check_signals;
 }
 
 // # Test JsonWriter: objects, arrays, nesting, escapes, all value types.

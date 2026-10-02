@@ -100,7 +100,7 @@ inline std::tuple<int32_t, int32_t> Pair::__enter__() const {
 // def __exit__(self, et, ev, tb) -> None:
 //     print("pair exit")
 inline void Pair::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    std::cout << "pair exit" << "\n";
+    std::cout << "pair exit" << "\n" << ::tpy::check_signals;
 }
 
 // def __enter__(self) -> bytes:
@@ -112,7 +112,7 @@ inline ::tpy::Bytes Blob::__enter__() const {
 // def __exit__(self, et, ev, tb) -> None:
 //     print("blob exit")
 inline void Blob::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    std::cout << "blob exit" << "\n";
+    std::cout << "blob exit" << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self, n: int32) -> None:
@@ -133,7 +133,7 @@ inline ::tpy::Union<std::string_view, int32_t> Either::__enter__() const {
 // def __exit__(self, et, ev, tb) -> None:
 //     print("either exit")
 inline void Either::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    std::cout << "either exit" << "\n";
+    std::cout << "either exit" << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

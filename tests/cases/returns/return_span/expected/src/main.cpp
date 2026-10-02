@@ -19,8 +19,8 @@ std::span<int32_t> get_span(std::array<int32_t, 4>& arr) {
 void main() {
     std::array<int32_t, 4> nums = {1, 2, 3, 4};
     std::span<int32_t> s = ::tpyapp::main::get_span(nums);
-    std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    std::cout << ::tpy::__getitem__(s, 3) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(s, 3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

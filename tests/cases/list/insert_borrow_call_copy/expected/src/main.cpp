@@ -31,8 +31,8 @@ void main() {
     ::tpy::list_insert(ctrs, 0, std::vector<int32_t>(h.items));
     h.p.v = 7;
     h.items.push_back(3);
-    std::cout << h.p.v << " " << ::tpy::__getitem__(recs, 0).v << " " << ::tpy::__getitem__(recs, 1).v << "\n";
-    std::cout << ::tpy::__len__(h.items) << " " << ::tpy::__len__(::tpy::__getitem__(ctrs, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(ctrs, 1)) << "\n";
+    std::cout << h.p.v << " " << ::tpy::__getitem__(recs, 0).v << " " << ::tpy::__getitem__(recs, 1).v << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(h.items) << " " << ::tpy::__len__(::tpy::__getitem__(ctrs, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(ctrs, 1)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

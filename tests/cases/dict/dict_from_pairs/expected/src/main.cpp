@@ -14,10 +14,10 @@ namespace tpyapp::main {
 void from_list_of_tuples() {
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"c", 3}};
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
-    std::cout << ::tpy::DictPrinter(d) << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
-    std::cout << ::tpy::__getitem__(d, "a") << "\n";
-    std::cout << ::tpy::__getitem__(d, "c") << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, "a") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, "c") << "\n" << ::tpy::check_signals;
 }
 
 // def from_items_view() -> None:
@@ -29,9 +29,9 @@ void from_list_of_tuples() {
 void from_items_view() {
     ::tpy::ordered_map<std::string, int32_t> original = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::dict_items(original));
-    std::cout << ::tpy::DictPrinter(d) << "\n";
-    std::cout << ::tpy::__getitem__(d, "x") << "\n";
-    std::cout << ::tpy::__getitem__(d, "z") << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, "x") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, "z") << "\n" << ::tpy::check_signals;
 }
 
 // def from_empty_list() -> None:
@@ -42,8 +42,8 @@ void from_items_view() {
 void from_empty_list() {
     std::vector<std::tuple<std::string, int32_t>> pairs = std::vector<std::tuple<std::string, int32_t>>{};
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
-    std::cout << ::tpy::DictPrinter(d) << "\n";
-    std::cout << ::tpy::__len__(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 
 // def with_int_keys() -> None:
@@ -54,8 +54,8 @@ void from_empty_list() {
 void with_int_keys() {
     std::vector<std::tuple<int32_t, std::string>> pairs = {std::tuple<int32_t, std::string>{1, "one"}, std::tuple<int32_t, std::string>{2, "two"}};
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::dict_construct<int32_t, std::string>(::tpy::own_iter(std::move(pairs)));
-    std::cout << ::tpy::DictPrinter(d) << "\n";
-    std::cout << ::tpy::__getitem__(d, 1) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, 1) << "\n" << ::tpy::check_signals;
 }
 
 // def with_duplicate_keys() -> None:
@@ -66,8 +66,8 @@ void with_int_keys() {
 void with_duplicate_keys() {
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"a", 99}};
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
-    std::cout << ::tpy::DictPrinter(d) << "\n";
-    std::cout << ::tpy::__getitem__(d, "a") << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(d, "a") << "\n" << ::tpy::check_signals;
 }
 
 // from_list_of_tuples()

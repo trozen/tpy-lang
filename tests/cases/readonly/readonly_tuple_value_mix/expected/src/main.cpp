@@ -25,9 +25,9 @@ int32_t mixed(const std::tuple<int32_t, const Counter*>& p) {
 //     c = Counter(5)
 //     print("mixed:", mixed((10, c)))
 void main() {
-    std::cout << "value_only:" << " " << ::tpyapp::main::value_only(std::tuple<int32_t, int32_t>{3, 4}) << "\n";
+    std::cout << "value_only:" << " " << ::tpyapp::main::value_only(std::tuple<int32_t, int32_t>{3, 4}) << "\n" << ::tpy::check_signals;
     Counter c = Counter(5);
-    std::cout << "mixed:" << " " << ::tpyapp::main::mixed(std::tuple<int32_t, const Counter*>{10, &(c)}) << "\n";
+    std::cout << "mixed:" << " " << ::tpyapp::main::mixed(std::tuple<int32_t, const Counter*>{10, &(c)}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

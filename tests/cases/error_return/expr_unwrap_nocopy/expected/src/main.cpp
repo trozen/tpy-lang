@@ -36,19 +36,19 @@ std::expected<::tpy::BigInt, E> get_value(const ::tpy::BigInt& v) {
 //         print("caught")
 void main() {
     {
-        std::cout << ({ auto __er_3 = ::tpyapp::main::get_value(::tpy::BigInt(42)); if (!__er_3.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_3); }) << "\n";
+        std::cout << ({ auto __er_3 = ::tpyapp::main::get_value(::tpy::BigInt(42)); if (!__er_3.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_3); }) << "\n" << ::tpy::check_signals;
         goto __after_try_2;
         // except E:
         __except_2:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_2:;
     }
     {
-        std::cout << ({ auto __er_5 = ::tpyapp::main::get_value(::tpy::BigInt(-1)); if (!__er_5.has_value()) goto __except_4; ::tpy::unwrap_ref_move(*__er_5); }) << "\n";
+        std::cout << ({ auto __er_5 = ::tpyapp::main::get_value(::tpy::BigInt(-1)); if (!__er_5.has_value()) goto __except_4; ::tpy::unwrap_ref_move(*__er_5); }) << "\n" << ::tpy::check_signals;
         goto __after_try_4;
         // except E:
         __except_4:;
-        std::cout << "caught" << "\n";
+        std::cout << "caught" << "\n" << ::tpy::check_signals;
         __after_try_4:;
     }
 }

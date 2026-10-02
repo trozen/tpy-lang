@@ -18,8 +18,8 @@ void __tpy_init() {
 
     static Pair<int32_t, std::string> __global_slot_1 = Pair<int32_t, std::string>(1, "hello");
     pair = &__global_slot_1;
-    std::cout << pair->first << "\n";
-    std::cout << pair->second << "\n";
+    std::cout << pair->first << "\n" << ::tpy::check_signals;
+    std::cout << pair->second << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

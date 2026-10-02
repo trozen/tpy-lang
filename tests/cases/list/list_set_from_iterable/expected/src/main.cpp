@@ -16,8 +16,8 @@ void main() {
     std::vector<int32_t> xs = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(3));
     std::vector<int32_t> ys = ::tpy::construct<std::vector<int32_t>>(xs);
     ::tpy::ordered_set<int32_t> zs = ::tpy::set_construct<int32_t>(xs);
-    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(ys) << " " << ::tpy::__len__(zs) << "\n";
-    std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(ys, 1) << "\n";
+    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(ys) << " " << ::tpy::__len__(zs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(ys, 1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

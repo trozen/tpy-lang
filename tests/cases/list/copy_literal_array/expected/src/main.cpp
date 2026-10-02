@@ -13,7 +13,7 @@ void literal_array() {
     std::array<int32_t, 2> xs = {1, 2};
     std::array<int32_t, 2> ys = std::array<int32_t, 2>(xs);
     ::tpy::__setitem__(ys, 0, 9);
-    std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(ys, 0) << "\n";
+    std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(ys, 0) << "\n" << ::tpy::check_signals;
 }
 
 // def annotated_array() -> None:
@@ -25,7 +25,7 @@ void annotated_array() {
     std::array<int32_t, 2> xs = std::array<int32_t, 2>({3, 4});
     std::array<int32_t, 2> ys = std::array<int32_t, 2>(xs);
     ::tpy::__setitem__(ys, 1, 9);
-    std::cout << ::tpy::__getitem__(xs, 1) << " " << ::tpy::__getitem__(ys, 1) << "\n";
+    std::cout << ::tpy::__getitem__(xs, 1) << " " << ::tpy::__getitem__(ys, 1) << "\n" << ::tpy::check_signals;
 }
 
 // def nested_array() -> None:
@@ -39,7 +39,7 @@ void nested_array() {
     std::array<std::array<int32_t, 2>, 2> xs = {{{1, 2}, {3, 4}}};
     std::array<std::array<int32_t, 2>, 2> ys = std::array<std::array<int32_t, 2>, 2>(xs);
     ::tpy::__setitem__(::tpy::__getitem__(ys, 0), 0, 9);
-    std::cout << ::tpy::__getitem__(::tpy::__getitem__(xs, 0), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(ys, 0), 0) << "\n";
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(xs, 0), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(ys, 0), 0) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

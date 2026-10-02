@@ -9,7 +9,7 @@ namespace tpyapp::main {
 // def tpy_log(msg: Ptr[readonly[uint8]]) -> None:
 //     print(unsafe_str_from_cstr(msg))
 extern "C" void tpy_log(const uint8_t* msg) {
-    std::cout << std::string(reinterpret_cast<const char*>(msg)) << "\n";
+    std::cout << std::string(reinterpret_cast<const char*>(msg)) << "\n" << ::tpy::check_signals;
 }
 
 // @export(binding="C")
@@ -27,7 +27,7 @@ extern "C" void tpy_log(const uint8_t* msg) {
 extern "C" int32_t greet(const uint8_t* name) {
     std::string who = std::string(reinterpret_cast<const char*>(name));
     if ((who == "world")) {
-        std::cout << "greeting the world" << "\n";
+        std::cout << "greeting the world" << "\n" << ::tpy::check_signals;
     }
     ::tpy::String greeting = ::tpy::String((::tpy::str_concat((::tpy::str_concat("Hello, ", who)), "!")));
     tpy_log(::tpy::cstr(greeting));
@@ -39,7 +39,7 @@ extern "C" int32_t greet(const uint8_t* name) {
 //     print(greet(unsafe_cstr(arg)))
 void main() {
     ::tpy::String arg = ::tpy::String("world");
-    std::cout << greet(::tpy::cstr(arg)) << "\n";
+    std::cout << greet(::tpy::cstr(arg)) << "\n" << ::tpy::check_signals;
 }
 
 // # Moving a string across an extern "C" boundary: `str` has no C spelling, so the

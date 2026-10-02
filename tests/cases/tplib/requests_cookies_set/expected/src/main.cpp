@@ -49,23 +49,23 @@ void main() {
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/login");
     b.close();
-    std::cout << r.status_code << "\n";
-    std::cout << r.cookies["sid"] << "\n";
-    std::cout << r.cookies["pref"] << "\n";
-    std::cout << ::tpy::print_bool((r.cookies.__contains__("sid"))) << "\n";
-    std::cout << ::tpy::print_bool((r.cookies.__contains__("missing"))) << "\n";
-    std::cout << ::tpy::print_optional_val(r.cookies.get("missing", "fallback")) << "\n";
-    std::cout << ::tpy::print_bool((r.cookies.__contains__("evil"))) << "\n";
-    std::cout << ::tpy::__len__(r.cookies) << "\n";
+    std::cout << r.status_code << "\n" << ::tpy::check_signals;
+    std::cout << r.cookies["sid"] << "\n" << ::tpy::check_signals;
+    std::cout << r.cookies["pref"] << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((r.cookies.__contains__("sid"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((r.cookies.__contains__("missing"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(r.cookies.get("missing", "fallback")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((r.cookies.__contains__("evil"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(r.cookies) << "\n" << ::tpy::check_signals;
     auto __obj_0 = r.cookies.items();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& kv = *__beg_0;
-        std::cout << (::tpy::str_concat((::tpy::str_concat(std::get<0>(kv), "=")), std::get<1>(kv))) << "\n";
+        std::cout << (::tpy::str_concat((::tpy::str_concat(std::get<0>(kv), "=")), std::get<1>(kv))) << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::print_bool((s.cookies.__contains__("sid"))) << "\n";
-    std::cout << ::tpy::print_bool((s.cookies.__contains__("evil"))) << "\n";
+    std::cout << ::tpy::print_bool((s.cookies.__contains__("sid"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((s.cookies.__contains__("evil"))) << "\n" << ::tpy::check_signals;
 }
 
 // # A Set-Cookie response header is parsed into Response.cookies (and, on a

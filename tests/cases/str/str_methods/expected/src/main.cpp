@@ -11,18 +11,18 @@ namespace tpyapp::main {
 //     print("rstrip:", "  hello  ".rstrip())
 //     print("strip tabs:", "\t hi \n".strip())
 void test_strip() {
-    std::cout << "strip:" << " " << ::tpy::str_strip("  hello  ") << "\n";
-    std::cout << "lstrip:" << " " << ::tpy::str_lstrip("  hello  ") << "\n";
-    std::cout << "rstrip:" << " " << ::tpy::str_rstrip("  hello  ") << "\n";
-    std::cout << "strip tabs:" << " " << ::tpy::str_strip("\t hi \n") << "\n";
+    std::cout << "strip:" << " " << ::tpy::str_strip("  hello  ") << "\n" << ::tpy::check_signals;
+    std::cout << "lstrip:" << " " << ::tpy::str_lstrip("  hello  ") << "\n" << ::tpy::check_signals;
+    std::cout << "rstrip:" << " " << ::tpy::str_rstrip("  hello  ") << "\n" << ::tpy::check_signals;
+    std::cout << "strip tabs:" << " " << ::tpy::str_strip("\t hi \n") << "\n" << ::tpy::check_signals;
 }
 
 // def test_replace() -> None:
 //     print("replace:", "aabaa".replace("a", "x"))
 //     print("replace once:", "hello world".replace("o", "0"))
 void test_replace() {
-    std::cout << "replace:" << " " << ::tpy::str_replace("aabaa", "a", "x") << "\n";
-    std::cout << "replace once:" << " " << ::tpy::str_replace("hello world", "o", "0") << "\n";
+    std::cout << "replace:" << " " << ::tpy::str_replace("aabaa", "a", "x") << "\n" << ::tpy::check_signals;
+    std::cout << "replace once:" << " " << ::tpy::str_replace("hello world", "o", "0") << "\n" << ::tpy::check_signals;
 }
 
 // def test_find() -> None:
@@ -31,16 +31,16 @@ void test_replace() {
 //     print("rfind:", "abcabc".rfind("abc"))
 //     print("rfind miss:", "hello".rfind("xyz"))
 void test_find() {
-    std::cout << "find:" << " " << ::tpy::str_find("hello", "ll") << "\n";
-    std::cout << "find miss:" << " " << ::tpy::str_find("hello", "xyz") << "\n";
-    std::cout << "rfind:" << " " << ::tpy::str_rfind("abcabc", "abc") << "\n";
-    std::cout << "rfind miss:" << " " << ::tpy::str_rfind("hello", "xyz") << "\n";
+    std::cout << "find:" << " " << ::tpy::str_find("hello", "ll") << "\n" << ::tpy::check_signals;
+    std::cout << "find miss:" << " " << ::tpy::str_find("hello", "xyz") << "\n" << ::tpy::check_signals;
+    std::cout << "rfind:" << " " << ::tpy::str_rfind("abcabc", "abc") << "\n" << ::tpy::check_signals;
+    std::cout << "rfind miss:" << " " << ::tpy::str_rfind("hello", "xyz") << "\n" << ::tpy::check_signals;
 }
 
 // def test_index() -> None:
 //     print("index:", "hello".index("ell"))
 void test_index() {
-    std::cout << "index:" << " " << ::tpy::str_index("hello", "ell") << "\n";
+    std::cout << "index:" << " " << ::tpy::str_index("hello", "ell") << "\n" << ::tpy::check_signals;
 }
 
 // def test_startswith_endswith() -> None:
@@ -53,12 +53,12 @@ void test_index() {
 //     print("empty suffix:", s.endswith(""))
 void test_startswith_endswith() {
     std::string_view s = "hello world";
-    std::cout << "startswith:" << " " << ::tpy::print_bool(::tpy::str_startswith(s, "hello")) << "\n";
-    std::cout << "startswith miss:" << " " << ::tpy::print_bool(::tpy::str_startswith(s, "world")) << "\n";
-    std::cout << "endswith:" << " " << ::tpy::print_bool(::tpy::str_endswith(s, "world")) << "\n";
-    std::cout << "endswith miss:" << " " << ::tpy::print_bool(::tpy::str_endswith(s, "hello")) << "\n";
-    std::cout << "empty prefix:" << " " << ::tpy::print_bool(::tpy::str_startswith(s, "")) << "\n";
-    std::cout << "empty suffix:" << " " << ::tpy::print_bool(::tpy::str_endswith(s, "")) << "\n";
+    std::cout << "startswith:" << " " << ::tpy::print_bool(::tpy::str_startswith(s, "hello")) << "\n" << ::tpy::check_signals;
+    std::cout << "startswith miss:" << " " << ::tpy::print_bool(::tpy::str_startswith(s, "world")) << "\n" << ::tpy::check_signals;
+    std::cout << "endswith:" << " " << ::tpy::print_bool(::tpy::str_endswith(s, "world")) << "\n" << ::tpy::check_signals;
+    std::cout << "endswith miss:" << " " << ::tpy::print_bool(::tpy::str_endswith(s, "hello")) << "\n" << ::tpy::check_signals;
+    std::cout << "empty prefix:" << " " << ::tpy::print_bool(::tpy::str_startswith(s, "")) << "\n" << ::tpy::check_signals;
+    std::cout << "empty suffix:" << " " << ::tpy::print_bool(::tpy::str_endswith(s, "")) << "\n" << ::tpy::check_signals;
 }
 
 // def test_upper_lower() -> None:
@@ -67,10 +67,10 @@ void test_startswith_endswith() {
 //     print("upper empty:", "".upper())
 //     print("lower empty:", "".lower())
 void test_upper_lower() {
-    std::cout << "upper:" << " " << ::tpy::str_upper("Hello World 123") << "\n";
-    std::cout << "lower:" << " " << ::tpy::str_lower("Hello World 123") << "\n";
-    std::cout << "upper empty:" << " " << ::tpy::str_upper("") << "\n";
-    std::cout << "lower empty:" << " " << ::tpy::str_lower("") << "\n";
+    std::cout << "upper:" << " " << ::tpy::str_upper("Hello World 123") << "\n" << ::tpy::check_signals;
+    std::cout << "lower:" << " " << ::tpy::str_lower("Hello World 123") << "\n" << ::tpy::check_signals;
+    std::cout << "upper empty:" << " " << ::tpy::str_upper("") << "\n" << ::tpy::check_signals;
+    std::cout << "lower empty:" << " " << ::tpy::str_lower("") << "\n" << ::tpy::check_signals;
 }
 
 // def test_count() -> None:
@@ -78,9 +78,9 @@ void test_upper_lower() {
 //     print("count miss:", "hello".count("xyz"))
 //     print("count single:", "aaa".count("a"))
 void test_count() {
-    std::cout << "count:" << " " << ::tpy::str_count("banana", "an") << "\n";
-    std::cout << "count miss:" << " " << ::tpy::str_count("hello", "xyz") << "\n";
-    std::cout << "count single:" << " " << ::tpy::str_count("aaa", "a") << "\n";
+    std::cout << "count:" << " " << ::tpy::str_count("banana", "an") << "\n" << ::tpy::check_signals;
+    std::cout << "count miss:" << " " << ::tpy::str_count("hello", "xyz") << "\n" << ::tpy::check_signals;
+    std::cout << "count single:" << " " << ::tpy::str_count("aaa", "a") << "\n" << ::tpy::check_signals;
 }
 
 // def test_is_methods() -> None:
@@ -97,18 +97,18 @@ void test_count() {
 //     print("isspace no:", "  a  ".isspace())
 //     print("isspace empty:", "".isspace())
 void test_is_methods() {
-    std::cout << "isdigit 123:" << " " << ::tpy::print_bool(::tpy::str_isdigit("123")) << "\n";
-    std::cout << "isdigit abc:" << " " << ::tpy::print_bool(::tpy::str_isdigit("abc")) << "\n";
-    std::cout << "isdigit empty:" << " " << ::tpy::print_bool(::tpy::str_isdigit("")) << "\n";
-    std::cout << "isalpha abc:" << " " << ::tpy::print_bool(::tpy::str_isalpha("abc")) << "\n";
-    std::cout << "isalpha 123:" << " " << ::tpy::print_bool(::tpy::str_isalpha("123")) << "\n";
-    std::cout << "isalpha empty:" << " " << ::tpy::print_bool(::tpy::str_isalpha("")) << "\n";
-    std::cout << "isalnum a1:" << " " << ::tpy::print_bool(::tpy::str_isalnum("abc123")) << "\n";
-    std::cout << "isalnum !:" << " " << ::tpy::print_bool(::tpy::str_isalnum("abc!")) << "\n";
-    std::cout << "isalnum empty:" << " " << ::tpy::print_bool(::tpy::str_isalnum("")) << "\n";
-    std::cout << "isspace:" << " " << ::tpy::print_bool(::tpy::str_isspace("  \t\n")) << "\n";
-    std::cout << "isspace no:" << " " << ::tpy::print_bool(::tpy::str_isspace("  a  ")) << "\n";
-    std::cout << "isspace empty:" << " " << ::tpy::print_bool(::tpy::str_isspace("")) << "\n";
+    std::cout << "isdigit 123:" << " " << ::tpy::print_bool(::tpy::str_isdigit("123")) << "\n" << ::tpy::check_signals;
+    std::cout << "isdigit abc:" << " " << ::tpy::print_bool(::tpy::str_isdigit("abc")) << "\n" << ::tpy::check_signals;
+    std::cout << "isdigit empty:" << " " << ::tpy::print_bool(::tpy::str_isdigit("")) << "\n" << ::tpy::check_signals;
+    std::cout << "isalpha abc:" << " " << ::tpy::print_bool(::tpy::str_isalpha("abc")) << "\n" << ::tpy::check_signals;
+    std::cout << "isalpha 123:" << " " << ::tpy::print_bool(::tpy::str_isalpha("123")) << "\n" << ::tpy::check_signals;
+    std::cout << "isalpha empty:" << " " << ::tpy::print_bool(::tpy::str_isalpha("")) << "\n" << ::tpy::check_signals;
+    std::cout << "isalnum a1:" << " " << ::tpy::print_bool(::tpy::str_isalnum("abc123")) << "\n" << ::tpy::check_signals;
+    std::cout << "isalnum !:" << " " << ::tpy::print_bool(::tpy::str_isalnum("abc!")) << "\n" << ::tpy::check_signals;
+    std::cout << "isalnum empty:" << " " << ::tpy::print_bool(::tpy::str_isalnum("")) << "\n" << ::tpy::check_signals;
+    std::cout << "isspace:" << " " << ::tpy::print_bool(::tpy::str_isspace("  \t\n")) << "\n" << ::tpy::check_signals;
+    std::cout << "isspace no:" << " " << ::tpy::print_bool(::tpy::str_isspace("  a  ")) << "\n" << ::tpy::check_signals;
+    std::cout << "isspace empty:" << " " << ::tpy::print_bool(::tpy::str_isspace("")) << "\n" << ::tpy::check_signals;
 }
 
 // def test_isupper_islower() -> None:
@@ -123,16 +123,16 @@ void test_is_methods() {
 //     print("islower 123:", "123".islower())
 //     print("islower empty:", "".islower())
 void test_isupper_islower() {
-    std::cout << "isupper ABC:" << " " << ::tpy::print_bool(::tpy::str_isupper("ABC")) << "\n";
-    std::cout << "isupper abc:" << " " << ::tpy::print_bool(::tpy::str_isupper("abc")) << "\n";
-    std::cout << "isupper ABC123:" << " " << ::tpy::print_bool(::tpy::str_isupper("ABC123")) << "\n";
-    std::cout << "isupper 123:" << " " << ::tpy::print_bool(::tpy::str_isupper("123")) << "\n";
-    std::cout << "isupper empty:" << " " << ::tpy::print_bool(::tpy::str_isupper("")) << "\n";
-    std::cout << "islower abc:" << " " << ::tpy::print_bool(::tpy::str_islower("abc")) << "\n";
-    std::cout << "islower ABC:" << " " << ::tpy::print_bool(::tpy::str_islower("ABC")) << "\n";
-    std::cout << "islower abc123:" << " " << ::tpy::print_bool(::tpy::str_islower("abc123")) << "\n";
-    std::cout << "islower 123:" << " " << ::tpy::print_bool(::tpy::str_islower("123")) << "\n";
-    std::cout << "islower empty:" << " " << ::tpy::print_bool(::tpy::str_islower("")) << "\n";
+    std::cout << "isupper ABC:" << " " << ::tpy::print_bool(::tpy::str_isupper("ABC")) << "\n" << ::tpy::check_signals;
+    std::cout << "isupper abc:" << " " << ::tpy::print_bool(::tpy::str_isupper("abc")) << "\n" << ::tpy::check_signals;
+    std::cout << "isupper ABC123:" << " " << ::tpy::print_bool(::tpy::str_isupper("ABC123")) << "\n" << ::tpy::check_signals;
+    std::cout << "isupper 123:" << " " << ::tpy::print_bool(::tpy::str_isupper("123")) << "\n" << ::tpy::check_signals;
+    std::cout << "isupper empty:" << " " << ::tpy::print_bool(::tpy::str_isupper("")) << "\n" << ::tpy::check_signals;
+    std::cout << "islower abc:" << " " << ::tpy::print_bool(::tpy::str_islower("abc")) << "\n" << ::tpy::check_signals;
+    std::cout << "islower ABC:" << " " << ::tpy::print_bool(::tpy::str_islower("ABC")) << "\n" << ::tpy::check_signals;
+    std::cout << "islower abc123:" << " " << ::tpy::print_bool(::tpy::str_islower("abc123")) << "\n" << ::tpy::check_signals;
+    std::cout << "islower 123:" << " " << ::tpy::print_bool(::tpy::str_islower("123")) << "\n" << ::tpy::check_signals;
+    std::cout << "islower empty:" << " " << ::tpy::print_bool(::tpy::str_islower("")) << "\n" << ::tpy::check_signals;
 }
 
 // def test_capitalize_title_swapcase() -> None:
@@ -144,13 +144,13 @@ void test_isupper_islower() {
 //     print("swapcase:", "Hello World".swapcase())
 //     print("swapcase empty:", "".swapcase())
 void test_capitalize_title_swapcase() {
-    std::cout << "capitalize:" << " " << ::tpy::str_capitalize("hello world") << "\n";
-    std::cout << "capitalize upper:" << " " << ::tpy::str_capitalize("HELLO") << "\n";
-    std::cout << "capitalize empty:" << " " << ::tpy::str_capitalize("") << "\n";
-    std::cout << "title:" << " " << ::tpy::str_title("hello world foo") << "\n";
-    std::cout << "title mixed:" << " " << ::tpy::str_title("they're bill's") << "\n";
-    std::cout << "swapcase:" << " " << ::tpy::str_swapcase("Hello World") << "\n";
-    std::cout << "swapcase empty:" << " " << ::tpy::str_swapcase("") << "\n";
+    std::cout << "capitalize:" << " " << ::tpy::str_capitalize("hello world") << "\n" << ::tpy::check_signals;
+    std::cout << "capitalize upper:" << " " << ::tpy::str_capitalize("HELLO") << "\n" << ::tpy::check_signals;
+    std::cout << "capitalize empty:" << " " << ::tpy::str_capitalize("") << "\n" << ::tpy::check_signals;
+    std::cout << "title:" << " " << ::tpy::str_title("hello world foo") << "\n" << ::tpy::check_signals;
+    std::cout << "title mixed:" << " " << ::tpy::str_title("they're bill's") << "\n" << ::tpy::check_signals;
+    std::cout << "swapcase:" << " " << ::tpy::str_swapcase("Hello World") << "\n" << ::tpy::check_signals;
+    std::cout << "swapcase empty:" << " " << ::tpy::str_swapcase("") << "\n" << ::tpy::check_signals;
 }
 
 // def test_removeprefix_removesuffix() -> None:
@@ -160,17 +160,17 @@ void test_capitalize_title_swapcase() {
 //     print("removesuffix miss:", "TestCase".removesuffix("Foo"))
 //     print("removesuffix empty:", "hello".removesuffix(""))
 void test_removeprefix_removesuffix() {
-    std::cout << "removeprefix:" << " " << ::tpy::str_removeprefix("TestCase", "Test") << "\n";
-    std::cout << "removeprefix miss:" << " " << ::tpy::str_removeprefix("TestCase", "Foo") << "\n";
-    std::cout << "removesuffix:" << " " << ::tpy::str_removesuffix("TestCase", "Case") << "\n";
-    std::cout << "removesuffix miss:" << " " << ::tpy::str_removesuffix("TestCase", "Foo") << "\n";
-    std::cout << "removesuffix empty:" << " " << ::tpy::str_removesuffix("hello", "") << "\n";
+    std::cout << "removeprefix:" << " " << ::tpy::str_removeprefix("TestCase", "Test") << "\n" << ::tpy::check_signals;
+    std::cout << "removeprefix miss:" << " " << ::tpy::str_removeprefix("TestCase", "Foo") << "\n" << ::tpy::check_signals;
+    std::cout << "removesuffix:" << " " << ::tpy::str_removesuffix("TestCase", "Case") << "\n" << ::tpy::check_signals;
+    std::cout << "removesuffix miss:" << " " << ::tpy::str_removesuffix("TestCase", "Foo") << "\n" << ::tpy::check_signals;
+    std::cout << "removesuffix empty:" << " " << ::tpy::str_removesuffix("hello", "") << "\n" << ::tpy::check_signals;
 }
 
 // def test_rindex() -> None:
 //     print("rindex:", "abcabc".rindex("abc"))
 void test_rindex() {
-    std::cout << "rindex:" << " " << ::tpy::str_rindex("abcabc", "abc") << "\n";
+    std::cout << "rindex:" << " " << ::tpy::str_rindex("abcabc", "abc") << "\n" << ::tpy::check_signals;
 }
 
 // def test_splitlines() -> None:
@@ -180,9 +180,9 @@ void test_rindex() {
 //     print("splitlines crlf:", len(lines2), lines2[0], lines2[1], lines2[2])
 void test_splitlines() {
     std::vector<std::string> lines = ::tpy::str_splitlines("one\ntwo\nthree");
-    std::cout << "splitlines:" << " " << ::tpy::__len__(lines) << " " << ::tpy::__getitem__(lines, 0) << " " << ::tpy::__getitem__(lines, 1) << " " << ::tpy::__getitem__(lines, 2) << "\n";
+    std::cout << "splitlines:" << " " << ::tpy::__len__(lines) << " " << ::tpy::__getitem__(lines, 0) << " " << ::tpy::__getitem__(lines, 1) << " " << ::tpy::__getitem__(lines, 2) << "\n" << ::tpy::check_signals;
     std::vector<std::string> lines2 = ::tpy::str_splitlines("a\r\nb\nc");
-    std::cout << "splitlines crlf:" << " " << ::tpy::__len__(lines2) << " " << ::tpy::__getitem__(lines2, 0) << " " << ::tpy::__getitem__(lines2, 1) << " " << ::tpy::__getitem__(lines2, 2) << "\n";
+    std::cout << "splitlines crlf:" << " " << ::tpy::__len__(lines2) << " " << ::tpy::__getitem__(lines2, 0) << " " << ::tpy::__getitem__(lines2, 1) << " " << ::tpy::__getitem__(lines2, 2) << "\n" << ::tpy::check_signals;
 }
 
 // def test_chaining() -> None:
@@ -190,7 +190,7 @@ void test_splitlines() {
 //     print("chain:", result)
 void test_chaining() {
     std::string result = ::tpy::str_replace(::tpy::str_lower(::tpy::str_strip("  Hello, World!  ")), "world", "python");
-    std::cout << "chain:" << " " << result << "\n";
+    std::cout << "chain:" << " " << result << "\n" << ::tpy::check_signals;
 }
 
 // test_strip()

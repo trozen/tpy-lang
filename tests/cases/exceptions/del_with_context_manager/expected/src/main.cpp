@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print("before drop")
 void main() {
     Resource r = Resource(3);
-    std::cout << "before drop" << "\n";
+    std::cout << "before drop" << "\n" << ::tpy::check_signals;
 }
 
 // main()
@@ -20,7 +20,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::main::main();
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

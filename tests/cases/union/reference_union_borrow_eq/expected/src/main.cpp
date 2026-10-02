@@ -108,7 +108,7 @@ void mixed_eq(const std::vector<Mixed>& xs) {
     ::tpy::Union<const Dog*, const double*, const int32_t*> a = ::tpy::to_const_ptr_variant(::tpy::__getitem__(xs, 0));
     ::tpy::Union<const Dog*, const double*, const int32_t*> b = ::tpy::to_const_ptr_variant(::tpy::__getitem__(xs, 1));
     ::tpy::Union<const Dog*, const double*, const int32_t*> c = ::tpy::to_const_ptr_variant(::tpy::__getitem__(xs, 2));
-    std::cout << "value members" << " " << ::tpy::print_bool((a == b)) << " " << ::tpy::print_bool((a == c)) << "\n";
+    std::cout << "value members" << " " << ::tpy::print_bool((a == b)) << " " << ::tpy::print_bool((a == c)) << "\n" << ::tpy::check_signals;
 }
 
 // def elem_eq(xs: list[Pet]) -> bool:  # local lifted out of a container
@@ -284,7 +284,7 @@ void bump(::tpy::Union<Cat*, Dog*> u) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "async" << " " << ::tpy::print_bool(__await_lift_0) << "\n";
+        std::cout << "async" << " " << ::tpy::print_bool(__await_lift_0) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -380,20 +380,20 @@ void main() {
     Dog d2 = Dog(1);
     Dog d3 = Dog(2);
     Cat c1 = Cat(1);
-    std::cout << "free_fn eq" << " " << ::tpy::print_bool(::tpyapp::main::eq(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})) << " " << ::tpy::print_bool(::tpyapp::main::eq(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d3)})) << " " << ::tpy::print_bool(::tpyapp::main::eq(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(c1)})) << "\n";
-    std::cout << "free_fn ne" << " " << ::tpy::print_bool(::tpyapp::main::ne(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})) << " " << ::tpy::print_bool(::tpyapp::main::ne(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(c1)})) << "\n";
-    std::cout << "ordering" << " " << ::tpyapp::main::order(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d3)}) << " " << ::tpyapp::main::order(::tpy::Union<const Cat*, const Dog*>{&(d3)}, ::tpy::Union<const Cat*, const Dog*>{&(d1)}) << " " << ::tpyapp::main::order(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)}) << "\n";
+    std::cout << "free_fn eq" << " " << ::tpy::print_bool(::tpyapp::main::eq(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})) << " " << ::tpy::print_bool(::tpyapp::main::eq(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d3)})) << " " << ::tpy::print_bool(::tpyapp::main::eq(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(c1)})) << "\n" << ::tpy::check_signals;
+    std::cout << "free_fn ne" << " " << ::tpy::print_bool(::tpyapp::main::ne(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})) << " " << ::tpy::print_bool(::tpyapp::main::ne(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(c1)})) << "\n" << ::tpy::check_signals;
+    std::cout << "ordering" << " " << ::tpyapp::main::order(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d3)}) << " " << ::tpyapp::main::order(::tpy::Union<const Cat*, const Dog*>{&(d3)}, ::tpy::Union<const Cat*, const Dog*>{&(d1)}) << " " << ::tpyapp::main::order(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)}) << "\n" << ::tpy::check_signals;
     ::tpy::Union<Cat*, Dog*> pd1{&(d1)};
     ::tpy::Union<Cat*, Dog*> pd2{&(d2)};
     ::tpy::Union<Cat*, Dog*> pc1{&(c1)};
     Shelter s = Shelter(1, pd1.as_const(), pd2.as_const());
-    std::cout << "constructor" << " " << ::tpy::print_bool(s.flag) << " " << ::tpy::print_bool(Shelter(1, pd1.as_const(), pc1.as_const()).flag) << "\n";
-    std::cout << "method" << " " << ::tpy::print_bool(s.same(pd1.as_const(), pd2.as_const())) << " " << ::tpy::print_bool(s.same(pd1.as_const(), pc1.as_const())) << "\n";
-    std::cout << "readonly method" << " " << ::tpy::print_bool(s.same_ro(pd1.as_const(), pd2.as_const())) << " " << ::tpy::print_bool(s.same_ro(pd1.as_const(), pc1.as_const())) << "\n";
+    std::cout << "constructor" << " " << ::tpy::print_bool(s.flag) << " " << ::tpy::print_bool(Shelter(1, pd1.as_const(), pc1.as_const()).flag) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << ::tpy::print_bool(s.same(pd1.as_const(), pd2.as_const())) << " " << ::tpy::print_bool(s.same(pd1.as_const(), pc1.as_const())) << "\n" << ::tpy::check_signals;
+    std::cout << "readonly method" << " " << ::tpy::print_bool(s.same_ro(pd1.as_const(), pd2.as_const())) << " " << ::tpy::print_bool(s.same_ro(pd1.as_const(), pc1.as_const())) << "\n" << ::tpy::check_signals;
     std::vector<Pet> xs = {Dog(1), Dog(1)};
     std::vector<Pet> ys = {Dog(1), Cat(1)};
-    std::cout << "local" << " " << ::tpy::print_bool(::tpyapp::main::elem_eq(xs)) << " " << ::tpy::print_bool(::tpyapp::main::elem_eq(ys)) << "\n";
-    std::cout << "comprehension" << " " << ::tpyapp::main::count_eq(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)}) << "\n";
+    std::cout << "local" << " " << ::tpy::print_bool(::tpyapp::main::elem_eq(xs)) << " " << ::tpy::print_bool(::tpyapp::main::elem_eq(ys)) << "\n" << ::tpy::check_signals;
+    std::cout << "comprehension" << " " << ::tpyapp::main::count_eq(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)}) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen_eq(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -401,48 +401,48 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             bool g = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << ::tpy::print_bool(g) << "\n";
+            std::cout << "generator" << " " << ::tpy::print_bool(g) << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "closure" << " " << ::tpy::print_bool(::tpyapp::main::in_closure(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})) << "\n";
-    std::cout << "with" << " " << ::tpy::print_bool(::tpyapp::main::in_with(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})) << "\n";
-    std::cout << "try" << " " << ::tpy::print_bool(::tpyapp::main::in_try(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})) << "\n";
+    std::cout << "closure" << " " << ::tpy::print_bool(::tpyapp::main::in_closure(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})) << "\n" << ::tpy::check_signals;
+    std::cout << "with" << " " << ::tpy::print_bool(::tpyapp::main::in_with(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})) << "\n" << ::tpy::check_signals;
+    std::cout << "try" << " " << ::tpy::print_bool(::tpyapp::main::in_try(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})) << "\n" << ::tpy::check_signals;
     {
-        std::cout << "error_return" << " " << ::tpy::print_bool(({ auto __er_2 = ::tpyapp::main::in_error_return(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)}); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); })) << "\n";
+        std::cout << "error_return" << " " << ::tpy::print_bool(({ auto __er_2 = ::tpyapp::main::in_error_return(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)}); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); })) << "\n" << ::tpy::check_signals;
         goto __after_try_1;
         // except Boom:
         __except_1:;
-        std::cout << "error_return boom" << "\n";
+        std::cout << "error_return boom" << "\n" << ::tpy::check_signals;
         __after_try_1:;
     }
-    std::cout << "match" << " " << ::tpy::print_bool(::tpyapp::main::in_match(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})) << "\n";
+    std::cout << "match" << " " << ::tpy::print_bool(::tpyapp::main::in_match(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})) << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})));
     Plain p1 = Plain(1);
     Plain p2 = Plain(1);
     Other o1 = Other(1);
-    std::cout << "identity" << " " << ::tpy::print_bool(::tpyapp::main::anon_eq(::tpy::Union<const Other*, const Plain*>{&(p1)}, ::tpy::Union<const Other*, const Plain*>{&(p1)})) << " " << ::tpy::print_bool(::tpyapp::main::anon_eq(::tpy::Union<const Other*, const Plain*>{&(p1)}, ::tpy::Union<const Other*, const Plain*>{&(p2)})) << " " << ::tpy::print_bool(::tpyapp::main::anon_eq(::tpy::Union<const Other*, const Plain*>{&(p1)}, ::tpy::Union<const Other*, const Plain*>{&(o1)})) << "\n";
-    std::cout << "identity ne" << " " << ::tpy::print_bool(::tpyapp::main::anon_ne(::tpy::Union<const Other*, const Plain*>{&(p1)}, ::tpy::Union<const Other*, const Plain*>{&(p1)})) << " " << ::tpy::print_bool(::tpyapp::main::anon_ne(::tpy::Union<const Other*, const Plain*>{&(p1)}, ::tpy::Union<const Other*, const Plain*>{&(p2)})) << "\n";
+    std::cout << "identity" << " " << ::tpy::print_bool(::tpyapp::main::anon_eq(::tpy::Union<const Other*, const Plain*>{&(p1)}, ::tpy::Union<const Other*, const Plain*>{&(p1)})) << " " << ::tpy::print_bool(::tpyapp::main::anon_eq(::tpy::Union<const Other*, const Plain*>{&(p1)}, ::tpy::Union<const Other*, const Plain*>{&(p2)})) << " " << ::tpy::print_bool(::tpyapp::main::anon_eq(::tpy::Union<const Other*, const Plain*>{&(p1)}, ::tpy::Union<const Other*, const Plain*>{&(o1)})) << "\n" << ::tpy::check_signals;
+    std::cout << "identity ne" << " " << ::tpy::print_bool(::tpyapp::main::anon_ne(::tpy::Union<const Other*, const Plain*>{&(p1)}, ::tpy::Union<const Other*, const Plain*>{&(p1)})) << " " << ::tpy::print_bool(::tpyapp::main::anon_ne(::tpy::Union<const Other*, const Plain*>{&(p1)}, ::tpy::Union<const Other*, const Plain*>{&(p2)})) << "\n" << ::tpy::check_signals;
     Tag t1 = Tag(1);
     Tag t2 = Tag(1);
     Tag t3 = Tag(2);
     Mark m1 = Mark(1);
-    std::cout << "custom_ne" << " " << ::tpy::print_bool(::tpyapp::main::dunder_ne(::tpy::Union<const Mark*, const Tag*>{&(t1)}, ::tpy::Union<const Mark*, const Tag*>{&(t2)})) << " " << ::tpy::print_bool(::tpyapp::main::dunder_ne(::tpy::Union<const Mark*, const Tag*>{&(t1)}, ::tpy::Union<const Mark*, const Tag*>{&(t3)})) << " " << ::tpy::print_bool(::tpyapp::main::dunder_ne(::tpy::Union<const Mark*, const Tag*>{&(t1)}, ::tpy::Union<const Mark*, const Tag*>{&(m1)})) << "\n";
+    std::cout << "custom_ne" << " " << ::tpy::print_bool(::tpyapp::main::dunder_ne(::tpy::Union<const Mark*, const Tag*>{&(t1)}, ::tpy::Union<const Mark*, const Tag*>{&(t2)})) << " " << ::tpy::print_bool(::tpyapp::main::dunder_ne(::tpy::Union<const Mark*, const Tag*>{&(t1)}, ::tpy::Union<const Mark*, const Tag*>{&(t3)})) << " " << ::tpy::print_bool(::tpyapp::main::dunder_ne(::tpy::Union<const Mark*, const Tag*>{&(t1)}, ::tpy::Union<const Mark*, const Tag*>{&(m1)})) << "\n" << ::tpy::check_signals;
     OnlyNe n1 = OnlyNe(1);
     OnlyNe n2 = OnlyNe(1);
-    std::cout << "only_ne" << " " << ::tpy::print_bool(::tpyapp::main::only_ne(::tpy::Union<const OnlyNe*, const Other*>{&(n1)}, ::tpy::Union<const OnlyNe*, const Other*>{&(n2)})) << " " << ::tpy::print_bool(::tpyapp::main::only_ne(::tpy::Union<const OnlyNe*, const Other*>{&(n1)}, ::tpy::Union<const OnlyNe*, const Other*>{&(n1)})) << " " << ::tpy::print_bool(::tpyapp::main::only_ne_eq(::tpy::Union<const OnlyNe*, const Other*>{&(n1)}, ::tpy::Union<const OnlyNe*, const Other*>{&(n2)})) << " " << ::tpy::print_bool(::tpyapp::main::only_ne_eq(::tpy::Union<const OnlyNe*, const Other*>{&(n1)}, ::tpy::Union<const OnlyNe*, const Other*>{&(n1)})) << "\n";
-    std::cout << "readonly mixed" << " " << ::tpy::print_bool(::tpyapp::main::readonly_mixed(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})) << " " << ::tpy::print_bool(::tpyapp::main::readonly_mixed(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(c1)})) << "\n";
-    std::cout << "const local" << " " << ::tpy::print_bool(::tpyapp::main::local_vs_param(xs, ::tpy::Union<const Cat*, const Dog*>{&(d1)})) << " " << ::tpy::print_bool(::tpyapp::main::local_vs_param(ys, ::tpy::Union<const Cat*, const Dog*>{&(c1)})) << "\n";
+    std::cout << "only_ne" << " " << ::tpy::print_bool(::tpyapp::main::only_ne(::tpy::Union<const OnlyNe*, const Other*>{&(n1)}, ::tpy::Union<const OnlyNe*, const Other*>{&(n2)})) << " " << ::tpy::print_bool(::tpyapp::main::only_ne(::tpy::Union<const OnlyNe*, const Other*>{&(n1)}, ::tpy::Union<const OnlyNe*, const Other*>{&(n1)})) << " " << ::tpy::print_bool(::tpyapp::main::only_ne_eq(::tpy::Union<const OnlyNe*, const Other*>{&(n1)}, ::tpy::Union<const OnlyNe*, const Other*>{&(n2)})) << " " << ::tpy::print_bool(::tpyapp::main::only_ne_eq(::tpy::Union<const OnlyNe*, const Other*>{&(n1)}, ::tpy::Union<const OnlyNe*, const Other*>{&(n1)})) << "\n" << ::tpy::check_signals;
+    std::cout << "readonly mixed" << " " << ::tpy::print_bool(::tpyapp::main::readonly_mixed(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})) << " " << ::tpy::print_bool(::tpyapp::main::readonly_mixed(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(c1)})) << "\n" << ::tpy::check_signals;
+    std::cout << "const local" << " " << ::tpy::print_bool(::tpyapp::main::local_vs_param(xs, ::tpy::Union<const Cat*, const Dog*>{&(d1)})) << " " << ::tpy::print_bool(::tpyapp::main::local_vs_param(ys, ::tpy::Union<const Cat*, const Dog*>{&(c1)})) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, Cat*, Dog*> op_none = std::monostate{};
     ::tpy::Union<std::monostate, Cat*, Dog*> op_dog{&(d2)};
-    std::cout << "none ne" << " " << ::tpy::print_bool(::tpyapp::main::opt_ne(op_none.as_const(), op_dog.as_const())) << " " << ::tpy::print_bool(::tpyapp::main::opt_ne(op_none.as_const(), op_none.as_const())) << "\n";
+    std::cout << "none ne" << " " << ::tpy::print_bool(::tpyapp::main::opt_ne(op_none.as_const(), op_dog.as_const())) << " " << ::tpy::print_bool(::tpyapp::main::opt_ne(op_none.as_const(), op_none.as_const())) << "\n" << ::tpy::check_signals;
     Locked l1 = Locked(1);
     Locked l2 = Locked(1);
     Sealed sl = Sealed(1);
-    std::cout << "nocopy" << " " << ::tpy::print_bool(::tpyapp::main::held_eq(::tpy::Union<const Locked*, const Sealed*>{&(l1)}, ::tpy::Union<const Locked*, const Sealed*>{&(l2)})) << " " << ::tpy::print_bool(::tpyapp::main::held_eq(::tpy::Union<const Locked*, const Sealed*>{&(l1)}, ::tpy::Union<const Locked*, const Sealed*>{&(sl)})) << "\n";
+    std::cout << "nocopy" << " " << ::tpy::print_bool(::tpyapp::main::held_eq(::tpy::Union<const Locked*, const Sealed*>{&(l1)}, ::tpy::Union<const Locked*, const Sealed*>{&(l2)})) << " " << ::tpy::print_bool(::tpyapp::main::held_eq(::tpy::Union<const Locked*, const Sealed*>{&(l1)}, ::tpy::Union<const Locked*, const Sealed*>{&(sl)})) << "\n" << ::tpy::check_signals;
     std::vector<Mixed> mixed = {1, 1.0, Dog(1)};
     ::tpyapp::main::mixed_eq(mixed);
     ::tpyapp::main::bump(::tpy::Union<Cat*, Dog*>{&(d1)});
-    std::cout << "mutate through borrow" << " " << d1.n << " " << ::tpy::print_bool(::tpyapp::main::eq(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})) << "\n";
+    std::cout << "mutate through borrow" << " " << d1.n << " " << ::tpy::print_bool(::tpyapp::main::eq(::tpy::Union<const Cat*, const Dog*>{&(d1)}, ::tpy::Union<const Cat*, const Dog*>{&(d2)})) << "\n" << ::tpy::check_signals;
 }
 
 // # A REFERENCE union at a BORROW position compares through the POINTEE, as

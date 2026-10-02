@@ -35,9 +35,9 @@ int32_t pick(int32_t which) {
 //     print(pick(1))
 //     print(Registry.code)
 void main() {
-    std::cout << ::tpyapp::main::pick(0) << "\n";
-    std::cout << ::tpyapp::main::pick(1) << "\n";
-    std::cout << Registry::code << "\n";
+    std::cout << ::tpyapp::main::pick(0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick(1) << "\n" << ::tpy::check_signals;
+    std::cout << Registry::code << "\n" << ::tpy::check_signals;
 }
 
 // main()

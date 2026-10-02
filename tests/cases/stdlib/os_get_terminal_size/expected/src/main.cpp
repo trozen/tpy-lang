@@ -15,9 +15,9 @@ void main() {
     {
         try {
             ::tpystd::os::terminal_size ts = ::tpystd::os::get_terminal_size();
-            std::cout << ::tpy::print_bool(((ts.columns > 0) && (ts.lines > 0))) << "\n";
+            std::cout << ::tpy::print_bool(((ts.columns > 0) && (ts.lines > 0))) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OSError&) {
-            std::cout << "not a tty" << "\n";
+            std::cout << "not a tty" << "\n" << ::tpy::check_signals;
         }
     }
 }

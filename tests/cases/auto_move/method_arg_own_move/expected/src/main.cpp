@@ -20,7 +20,7 @@ void main() {
     Sink s = Sink();
     ::tpyapp::main::forward(s, Payload(5));
     ::tpyapp::main::forward(s, Payload(7));
-    std::cout << s.total << "\n";
+    std::cout << s.total << "\n" << ::tpy::check_signals;
 }
 
 // main()

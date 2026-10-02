@@ -21,15 +21,15 @@ void main() {
     Dog d = Dog("rex");
     Cat c = Cat("whiskers");
     Pet p = Pet("plain");
-    std::cout << d.describe() << "\n";
-    std::cout << c.describe() << "\n";
-    std::cout << p.describe() << "\n";
-    std::cout << d.kind() << "\n";
-    std::cout << c.kind() << "\n";
-    std::cout << p.kind() << "\n";
-    std::cout << d.assert_dog() << "\n";
-    std::cout << d.mutate_then_describe("!") << "\n";
-    std::cout << p.mutate_then_describe("?") << "\n";
+    std::cout << d.describe() << "\n" << ::tpy::check_signals;
+    std::cout << c.describe() << "\n" << ::tpy::check_signals;
+    std::cout << p.describe() << "\n" << ::tpy::check_signals;
+    std::cout << d.kind() << "\n" << ::tpy::check_signals;
+    std::cout << c.kind() << "\n" << ::tpy::check_signals;
+    std::cout << p.kind() << "\n" << ::tpy::check_signals;
+    std::cout << d.assert_dog() << "\n" << ::tpy::check_signals;
+    std::cout << d.mutate_then_describe("!") << "\n" << ::tpy::check_signals;
+    std::cout << p.mutate_then_describe("?") << "\n" << ::tpy::check_signals;
 }
 
 // main()

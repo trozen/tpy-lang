@@ -22,7 +22,7 @@ void main() {
     if ((i < ::tpy::__len__(xs))) {
         int32_t j = 0;
         while ((j < 3)) {
-            std::cout << ::tpy::__getitem__(xs, i) << "\n";
+            std::cout << ::tpy::__getitem__(xs, i) << "\n" << ::tpy::check_signals;
             ::tpy::pop_back(xs);
             j = ::tpy::add_check<int32_t>(j, 1);
         }

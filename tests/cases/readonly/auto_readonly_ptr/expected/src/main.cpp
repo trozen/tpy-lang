@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(p.value)
 void read_holder(const NodeHolder& h) {
     const Node* p = h.get_node();
-    std::cout << ::tpy::deref_check(p).value << "\n";
+    std::cout << ::tpy::deref_check(p).value << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -30,7 +30,7 @@ void main() {
     h._node = &n;
     Node* p = h.get_node();
     ::tpy::deref_check(p).value = 99;
-    std::cout << ::tpy::deref_check(h.get_node()).value << "\n";
+    std::cout << ::tpy::deref_check(h.get_node()).value << "\n" << ::tpy::check_signals;
     Node n2 = Node(42);
     h._node = &n2;
     ::tpyapp::main::read_holder(h);

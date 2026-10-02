@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //         print("error: sys.argv is empty")
 void main() {
     if ((::tpy::__len__((*::tpystd::sys::argv)) >= 1)) {
-        std::cout << "ok" << "\n";
+        std::cout << "ok" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "error: sys.argv is empty" << "\n";
+        std::cout << "error: sys.argv is empty" << "\n" << ::tpy::check_signals;
     }
 }
 

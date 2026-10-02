@@ -86,10 +86,10 @@ __coro_local_double local_double(int32_t x) {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v4 = std::move(__r3).value();
         __sub_3.reset();
-        std::cout << v1 << "\n";
-        std::cout << v2 << "\n";
-        std::cout << v3 << "\n";
-        std::cout << v4 << "\n";
+        std::cout << v1 << "\n" << ::tpy::check_signals;
+        std::cout << v2 << "\n" << ::tpy::check_signals;
+        std::cout << v3 << "\n" << ::tpy::check_signals;
+        std::cout << v4 << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

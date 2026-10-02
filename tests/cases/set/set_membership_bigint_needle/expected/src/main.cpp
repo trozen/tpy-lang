@@ -20,16 +20,16 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
     ::tpy::BigInt k = ::tpy::BigInt(2);
-    std::cout << ::tpy::print_bool((s.contains(k))) << "\n";
+    std::cout << ::tpy::print_bool((s.contains(k))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt big = ::tpy::BigInt(static_cast<int64_t>(1099511627776LL));
-    std::cout << ::tpy::print_bool((s.contains(big))) << "\n";
-    std::cout << ::tpy::print_bool((!(s.contains(big)))) << "\n";
+    std::cout << ::tpy::print_bool((s.contains(big))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!(s.contains(big)))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt neg = ::tpy::BigInt(static_cast<int64_t>(-1099511627776LL));
-    std::cout << ::tpy::print_bool((s.contains(neg))) << "\n";
+    std::cout << ::tpy::print_bool((s.contains(neg))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<uint32_t> su = ::tpy::ordered_set<uint32_t>({7});
     ::tpy::BigInt seven = ::tpy::BigInt(7);
-    std::cout << ::tpy::print_bool((su.contains(seven))) << "\n";
-    std::cout << ::tpy::print_bool((su.contains(neg))) << "\n";
+    std::cout << ::tpy::print_bool((su.contains(seven))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((su.contains(neg))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

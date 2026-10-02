@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(SUM, DIFF, PROD)
 //     print(QUOT, FLR, MODR)
 void main() {
-    std::cout << ::tpy::print_float(static_cast<double>(SUM)) << " " << ::tpy::print_float(static_cast<double>(DIFF)) << " " << ::tpy::print_float(static_cast<double>(PROD)) << "\n";
-    std::cout << ::tpy::print_float(static_cast<double>(QUOT)) << " " << ::tpy::print_float(static_cast<double>(FLR)) << " " << ::tpy::print_float(static_cast<double>(MODR)) << "\n";
+    std::cout << ::tpy::print_float(static_cast<double>(SUM)) << " " << ::tpy::print_float(static_cast<double>(DIFF)) << " " << ::tpy::print_float(static_cast<double>(PROD)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(static_cast<double>(QUOT)) << " " << ::tpy::print_float(static_cast<double>(FLR)) << " " << ::tpy::print_float(static_cast<double>(MODR)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

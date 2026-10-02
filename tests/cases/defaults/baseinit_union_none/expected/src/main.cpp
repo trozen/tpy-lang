@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(s.has_pet)
 void main() {
     Sub s = Sub(3);
-    std::cout << s.tag << "\n";
-    std::cout << ::tpy::print_bool(s.has_pet) << "\n";
+    std::cout << s.tag << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(s.has_pet) << "\n" << ::tpy::check_signals;
 }
 
 // main()

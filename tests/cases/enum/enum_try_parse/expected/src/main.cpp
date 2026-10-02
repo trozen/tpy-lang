@@ -55,9 +55,9 @@ namespace tpyapp::main {
 void try_it(std::string_view name) {
     std::optional<Color> c = ::tpy::EnumUtil<Color>::try_parse(name);
     if ((c.has_value())) {
-        std::cout << ::tpy::print_optional_val(c) << "\n";
+        std::cout << ::tpy::print_optional_val(c) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "not found" << "\n";
+        std::cout << "not found" << "\n" << ::tpy::check_signals;
     }
 }
 

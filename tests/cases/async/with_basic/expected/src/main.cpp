@@ -50,7 +50,7 @@ namespace tpyapp::main {
     }
     case S_JOIN_2: {
         try {
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -78,7 +78,7 @@ __coro_main_coro main_coro() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "aenter" << "\n";
+        std::cout << "aenter" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         int32_t __tpy_async_ret = 7;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -96,7 +96,7 @@ __coro_main_coro main_coro() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "aexit" << "\n";
+        std::cout << "aexit" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

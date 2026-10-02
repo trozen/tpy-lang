@@ -24,7 +24,7 @@ void free_alias() {
     Point& alias = (*p);
     p = &*(__slot_2 = Point(50));
     alias.bump();
-    std::cout << "free_alias:" << " " << alias.x << " " << p->x << "\n";
+    std::cout << "free_alias:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # free function, no alias: in place, each superseded object drops at the rebind
@@ -38,9 +38,9 @@ void free_drop() {
     Noisy __slot_1 = Noisy("a");
     Noisy* r = &__slot_1;
     (*r) = Noisy("b");
-    std::cout << "free_drop alive:" << " " << r->name << "\n";
+    std::cout << "free_drop alive:" << " " << r->name << "\n" << ::tpy::check_signals;
     (*r) = Noisy("c");
-    std::cout << "free_drop alive:" << " " << r->name << "\n";
+    std::cout << "free_drop alive:" << " " << r->name << "\n" << ::tpy::check_signals;
 }
 
 // # the alias was taken after a first rebind: it keeps the first rebind's object
@@ -59,7 +59,7 @@ void second_rebind() {
     Point& alias = (*p);
     p = &*(__slot_2 = Point(50));
     alias.bump();
-    std::cout << "second_rebind:" << " " << alias.x << " " << p->x << "\n";
+    std::cout << "second_rebind:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # a loan INTO the object (field chain) keeps the old object alive as well
@@ -76,7 +76,7 @@ void field_chain() {
     Point& inner = h->inner;
     h = &*(__slot_2 = Holder(Point(50)));
     inner.bump();
-    std::cout << "field_chain:" << " " << inner.x << " " << h->inner.x << "\n";
+    std::cout << "field_chain:" << " " << inner.x << " " << h->inner.x << "\n" << ::tpy::check_signals;
 }
 
 // # element loan: the old list lives on, so the element read stays valid
@@ -93,7 +93,7 @@ void element_loan() {
     Point& e = ::tpy::__getitem__((*xs), 0);
     xs = &*(__slot_2 = {Point(50)});
     e.bump();
-    std::cout << "element_loan:" << " " << e.x << " " << ::tpy::__getitem__((*xs), 0).x << "\n";
+    std::cout << "element_loan:" << " " << e.x << " " << ::tpy::__getitem__((*xs), 0).x << "\n" << ::tpy::check_signals;
 }
 
 // # a Ptr loan, copied to a second name: the copy carries the loan
@@ -112,7 +112,7 @@ void ptr_copy() {
     Point* r = q;
     p = &*(__slot_2 = Point(50));
     r->x = ::tpy::add_check<int32_t>(r->x, 100);
-    std::cout << "ptr_copy:" << " " << r->x << " " << p->x << "\n";
+    std::cout << "ptr_copy:" << " " << r->x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # an alias that is never read after the rebind still holds the object, so
@@ -131,9 +131,9 @@ void dead_alias() {
     Noisy __slot_1 = Noisy("d1");
     Noisy* r = &__slot_1;
     Noisy& alias = (*r);
-    std::cout << "dead_alias:" << " " << alias.name << "\n";
+    std::cout << "dead_alias:" << " " << alias.name << "\n" << ::tpy::check_signals;
     r = &*(__slot_2 = Noisy("d2"));
-    std::cout << "dead_alias alive:" << " " << r->name << "\n";
+    std::cout << "dead_alias alive:" << " " << r->name << "\n" << ::tpy::check_signals;
     r->armed = false;
 }
 
@@ -158,7 +158,7 @@ void after_branch(bool c) {
     }
     p = &*(__slot_3 = Point(50));
     alias.bump();
-    std::cout << "after_branch:" << " " << alias.x << " " << p->x << "\n";
+    std::cout << "after_branch:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # a loan the loop body binds is still held after the loop; the post-loop
@@ -185,7 +185,7 @@ void after_loop() {
     }
     p = &*(__slot_4 = Point(50));
     saved->bump();
-    std::cout << "after_loop:" << " " << saved->x << " " << p->x << "\n";
+    std::cout << "after_loop:" << " " << saved->x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # a loan bound before the loop, rebinds inside it: every iteration owns
@@ -209,7 +209,7 @@ void loan_before_loop() {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     alias.bump();
-    std::cout << "loan_before_loop:" << " " << alias.x << " " << p->x << "\n";
+    std::cout << "loan_before_loop:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # a borrow-returning method result is a loan into the object
@@ -226,7 +226,7 @@ void borrow_call() {
     Point& q = h->peek();
     h = &*(__slot_2 = Holder(Point(60)));
     q.bump();
-    std::cout << "borrow_call:" << " " << q.x << " " << h->inner.x << "\n";
+    std::cout << "borrow_call:" << " " << q.x << " " << h->inner.x << "\n" << ::tpy::check_signals;
 }
 
 // # a Ptr passed as a constructor argument leaves through the call: held for
@@ -244,7 +244,7 @@ void ptr_escapes_into_record() {
     Wrap w = Wrap(&(*p));
     p = &*(__slot_2 = Point(50));
     ::tpy::deref_check(w.p).x = ::tpy::add_check<int32_t>(::tpy::deref_check(w.p).x, 100);
-    std::cout << "ptr_escapes:" << " " << w.p->x << " " << p->x << "\n";
+    std::cout << "ptr_escapes:" << " " << w.p->x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # a generator object holds its receiver: the rebind owns, the generator keeps
@@ -267,7 +267,7 @@ void generator_holds_receiver() {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "generator_holds_receiver:" << " " << v << " " << wk->x << "\n";
+        std::cout << "generator_holds_receiver:" << " " << v << " " << wk->x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -341,7 +341,7 @@ void nested_def_section() {
         Point& nalias = (*n);
         n = &*(__slot_2 = Point(50));
         nalias.bump();
-        std::cout << "nested_def:" << " " << nalias.x << " " << n->x << "\n";
+        std::cout << "nested_def:" << " " << nalias.x << " " << n->x << "\n" << ::tpy::check_signals;
     };
     inner();
 }
@@ -365,7 +365,7 @@ void with_body() {
         alias = p;
         p = &*(__slot_2 = Point(50));
         alias->bump();
-        std::cout << "with_body:" << " " << alias->x << " " << p->x << "\n";
+        std::cout << "with_body:" << " " << alias->x << " " << p->x << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -397,11 +397,11 @@ void try_finally() {
             p = &*(__slot_2 = Point(50));
         } catch (...) {
             alias.bump();
-            std::cout << "try_finally:" << " " << alias.x << " " << p->x << "\n";
+            std::cout << "try_finally:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
             throw;
         }
         alias.bump();
-        std::cout << "try_finally:" << " " << alias.x << " " << p->x << "\n";
+        std::cout << "try_finally:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -434,7 +434,7 @@ void match_arm(int32_t n) {
     }
     }
     alias.bump();
-    std::cout << "match_arm:" << " " << alias.x << " " << p->x << "\n";
+    std::cout << "match_arm:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # @error_return body: the unwrap-bound rebind takes the same verdict
@@ -524,7 +524,7 @@ void main() {
     ::tpyapp::main::ptr_escapes_into_record();
     ::tpyapp::main::generator_holds_receiver();
     Built b = Built();
-    std::cout << "constructor:" << " " << b.a << " " << b.b << "\n";
+    std::cout << "constructor:" << " " << b.a << " " << b.b << "\n" << ::tpy::check_signals;
     Runner().run();
     {
         auto __src_0 = ::tpyapp::main::gen_section();
@@ -533,7 +533,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen:" << " " << got << "\n";
+            std::cout << "gen:" << " " << got << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -543,21 +543,21 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "gen_drop:" << " " << got << "\n";
+            std::cout << "gen_drop:" << " " << got << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_section())) << "\n";
+    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_section())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::nested_def_section();
     ::tpyapp::main::with_body();
     ::tpyapp::main::try_finally();
     ::tpyapp::main::match_arm(0);
     ::tpyapp::main::match_arm(1);
     {
-        std::cout << "error_return:" << " " << ({ auto __er_4 = ::tpyapp::main::error_return_body(); if (!__er_4.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_4); }) << "\n";
+        std::cout << "error_return:" << " " << ({ auto __er_4 = ::tpyapp::main::error_return_body(); if (!__er_4.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_4); }) << "\n" << ::tpy::check_signals;
         goto __after_try_3;
         // except Fail:
         __except_3:;
-        std::cout << "error_return: failed" << "\n";
+        std::cout << "error_return: failed" << "\n" << ::tpy::check_signals;
         __after_try_3:;
     }
 }
@@ -597,11 +597,11 @@ void __tpy_init() {
     galias = g;
     g = &*(__global_slot_2 = Point(50));
     galias->bump();
-    std::cout << "module:" << " " << galias->x << " " << g->x << "\n";
+    std::cout << "module:" << " " << galias->x << " " << g->x << "\n" << ::tpy::check_signals;
     static Noisy __global_slot_3 = Noisy("m1");
     gr = &__global_slot_3;
     (*gr) = Noisy("m2");
-    std::cout << "module alive:" << " " << gr->name << "\n";
+    std::cout << "module alive:" << " " << gr->name << "\n" << ::tpy::check_signals;
     gr->armed = false;
 }
 

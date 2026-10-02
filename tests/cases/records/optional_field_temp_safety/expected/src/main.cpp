@@ -25,9 +25,9 @@ void test_init_from_temp() {
     Point p = Point(1, 2);
     std::optional<Point> __slot_1 = ::tpyapp::main::make_holder(p).value;
     Point* v = ::tpy::optional_to_ptr(__slot_1);
-    std::cout << ::tpy::print_bool((v != nullptr)) << "\n";
-    std::cout << ::tpy::deref_check(v).x << "\n";
-    std::cout << ::tpy::deref_check(v).y << "\n";
+    std::cout << ::tpy::print_bool((v != nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::deref_check(v).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::deref_check(v).y << "\n" << ::tpy::check_signals;
 }
 
 // def test_rebind_from_temp() -> None:
@@ -42,8 +42,8 @@ void test_rebind_from_temp() {
     Point* v = nullptr;
     Point p = Point(3, 4);
     v = ::tpy::optional_to_ptr(__slot_1 = ::tpyapp::main::make_holder(p).value);
-    std::cout << ::tpy::print_bool((v != nullptr)) << "\n";
-    std::cout << ::tpy::deref_check(v).x << "\n";
+    std::cout << ::tpy::print_bool((v != nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::deref_check(v).x << "\n" << ::tpy::check_signals;
 }
 
 // def test_rebind_in_block() -> None:
@@ -63,9 +63,9 @@ void test_rebind_in_block() {
     if (true) {
         v = ::tpy::optional_to_ptr(__slot_1 = ::tpyapp::main::make_holder(p).value);
     }
-    std::cout << ::tpy::print_bool((v != nullptr)) << "\n";
-    std::cout << ::tpy::deref_check(v).x << "\n";
-    std::cout << ::tpy::deref_check(v).y << "\n";
+    std::cout << ::tpy::print_bool((v != nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::deref_check(v).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::deref_check(v).y << "\n" << ::tpy::check_signals;
 }
 
 // test_init_from_temp()

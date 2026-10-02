@@ -3837,6 +3837,8 @@ class THIRPrint(THIRStmt):
     slot. An EVALUATED kwarg source (anything but a literal or a plain name)
     rides a THIRArgTemp there, so the chain's repeated sep token reads one
     evaluation, ordered after the args.
+    Every chain ends in the `::tpy::check_signals` manipulator: print is a
+    Ctrl-C check point, raised after the line is written.
     Each arg carries its PrintForm wrap (scalar/str/bytes/enum forms,
     the container/tuple printer wraps, records raw); args outside the wrap
     set reject."""

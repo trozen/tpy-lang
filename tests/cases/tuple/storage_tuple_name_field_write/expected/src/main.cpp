@@ -22,7 +22,7 @@ void main() {
     Holder a = Holder();
     Holder b = Holder();
     ::tpyapp::main::copy_alias(a, b);
-    std::cout << ::tpy::print_bool((::tpy::optional_to_ptr(std::get<0>(a.pair)) == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::optional_to_ptr(std::get<0>(a.pair)) == nullptr)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

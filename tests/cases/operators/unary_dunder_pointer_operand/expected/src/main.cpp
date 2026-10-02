@@ -155,16 +155,16 @@ __coro_coro coro(const Holder& h) {
 //     print("field2", field_operand(h))
 void main() {
     Cell c = Cell(3);
-    std::cout << "optparam" << " " << ::tpyapp::main::opt_param(&(c)) << "\n";
-    std::cout << "optlocal" << " " << ::tpyapp::main::opt_local(true) << " " << ::tpyapp::main::opt_local(false) << "\n";
-    std::cout << "escapehoist" << " " << ::tpyapp::main::escape_hoisted() << "\n";
+    std::cout << "optparam" << " " << ::tpyapp::main::opt_param(&(c)) << "\n" << ::tpy::check_signals;
+    std::cout << "optlocal" << " " << ::tpyapp::main::opt_local(true) << " " << ::tpyapp::main::opt_local(false) << "\n" << ::tpy::check_signals;
+    std::cout << "escapehoist" << " " << ::tpyapp::main::escape_hoisted() << "\n" << ::tpy::check_signals;
     Holder h = Holder(4);
-    std::cout << "field" << " " << ::tpyapp::main::field_operand(h) << "\n";
+    std::cout << "field" << " " << ::tpyapp::main::field_operand(h) << "\n" << ::tpy::check_signals;
     std::vector<Cell> cells = ::tpy::make_vector<Cell>(Cell(1), Cell(2));
-    std::cout << "foreach" << " " << ::tpyapp::main::foreach(cells) << "\n";
-    std::cout << "union" << " " << ::tpyapp::main::union_alt(::tpy::Union<const Cell*, const Holder*>{&(c)}) << "\n";
-    std::cout << "ctor" << " " << Reader(&(c)).v << "\n";
-    std::cout << "method" << " " << Reader(nullptr).read(h) << "\n";
+    std::cout << "foreach" << " " << ::tpyapp::main::foreach(cells) << "\n" << ::tpy::check_signals;
+    std::cout << "union" << " " << ::tpyapp::main::union_alt(::tpy::Union<const Cell*, const Holder*>{&(c)}) << "\n" << ::tpy::check_signals;
+    std::cout << "ctor" << " " << Reader(&(c)).v << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << Reader(nullptr).read(h) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen(&(c));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -172,13 +172,13 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen" << " " << v << "\n";
+            std::cout << "gen" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(h))) << "\n";
-    std::cout << "module" << " " << mod_read << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(h))) << "\n" << ::tpy::check_signals;
+    std::cout << "module" << " " << mod_read << "\n" << ::tpy::check_signals;
     h.c.n = 40;
-    std::cout << "field2" << " " << ::tpyapp::main::field_operand(h) << "\n";
+    std::cout << "field2" << " " << ::tpyapp::main::field_operand(h) << "\n" << ::tpy::check_signals;
 }
 
 // # A unary dunder (`-`, `+`, `~`) reads its operand exactly as a BINARY one

@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 //     self.data = data
 //     self.tag = tag
 inline Holder::Holder(::tpy::BytesView data, std::string_view tag) {
-    std::cout << "constructing" << " " << tag << "\n";
+    std::cout << "constructing" << " " << tag << "\n" << ::tpy::check_signals;
     this->data = ::tpy::Bytes(data);
     this->tag = tag;
 }

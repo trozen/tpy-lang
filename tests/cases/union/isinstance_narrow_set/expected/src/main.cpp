@@ -17,10 +17,10 @@ void f(::tpy::Union<::tpy::BigInt*, ::tpy::ordered_set<::tpy::BigInt>*> x) {
     if (std::holds_alternative<::tpy::ordered_set<::tpy::BigInt>*>(x)) {
         auto& __x = *std::get<::tpy::ordered_set<::tpy::BigInt>*>(x);
         __x.insert(9);
-        std::cout << ::tpy::__len__(__x) << "\n";
+        std::cout << ::tpy::__len__(__x) << "\n" << ::tpy::check_signals;
     } else {
         auto& __x = *std::get<::tpy::BigInt*>(x);
-        std::cout << "int" << "\n";
+        std::cout << "int" << "\n" << ::tpy::check_signals;
     }
 }
 

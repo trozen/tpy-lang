@@ -38,19 +38,19 @@ Container<int32_t> get_box() {
 //     print("done")
 void main() {
     Container<int32_t> b = ::tpyapp::main::make_box<int32_t>();
-    std::cout << b << "\n";
+    std::cout << b << "\n" << ::tpy::check_signals;
     Container<int32_t> c = Container<int32_t>();
-    std::cout << c << "\n";
-    std::cout << ::tpyapp::main::get_box() << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::get_box() << "\n" << ::tpy::check_signals;
     int32_t y = ::tpyapp::main::identity<int32_t>(5);
-    std::cout << y << "\n";
+    std::cout << y << "\n" << ::tpy::check_signals;
     Container<int32_t> __slot_1 = Container<int32_t>();
     Container<int32_t>* r = &__slot_1;
     (*r) = Container<int32_t>();
-    std::cout << (*r) << "\n";
+    std::cout << (*r) << "\n" << ::tpy::check_signals;
     Pair<int32_t, std::string> p = Pair<int32_t, std::string>(42);
-    std::cout << p << "\n";
-    std::cout << "done" << "\n";
+    std::cout << p << "\n" << ::tpy::check_signals;
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 // main()

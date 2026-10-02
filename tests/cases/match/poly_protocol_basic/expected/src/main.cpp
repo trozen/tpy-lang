@@ -32,11 +32,11 @@ std::string describe(Pet& p) {
 //     print(describe(Hamster()))
 void main() {
     Dog __tmp_1{Dog("Rex")};
-    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_1) << "\n" << ::tpy::check_signals;
     Cat __tmp_2{Cat()};
-    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_2) << "\n" << ::tpy::check_signals;
     Hamster __tmp_3{Hamster()};
-    std::cout << ::tpyapp::main::describe(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::describe(__tmp_3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

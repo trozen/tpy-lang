@@ -58,7 +58,7 @@ inline int32_t Wrapper::get_val() const {
 //     print(item.get_val())
 template<Printable T_item>
 void show(T_item& item) {
-    std::cout << item.get_val() << "\n";
+    std::cout << item.get_val() << "\n" << ::tpy::check_signals;
 }
 
 void __tpy_init();

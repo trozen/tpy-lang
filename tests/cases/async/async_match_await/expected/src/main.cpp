@@ -82,8 +82,8 @@ __coro_caller caller(::tpy::BigInt tag) {
 //     print(asyncio.run(caller(0)))
 //     print(asyncio.run(caller(7)))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller(::tpy::BigInt(0)))) << "\n";
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller(::tpy::BigInt(7)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller(::tpy::BigInt(0)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller(::tpy::BigInt(7)))) << "\n" << ::tpy::check_signals;
 }
 
 // # H1: an `await` inside a `match` lowers on the resumable frame -- the same

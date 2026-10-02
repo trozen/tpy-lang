@@ -39,13 +39,13 @@ void main() {
         goto __after_try_3;
         // except E:
         __except_3:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_3:;
     }
     if ((q != nullptr)) {
         q->items.push_back(4);
     }
-    std::cout << ::tpy::__len__(h.src.items) << "\n";
+    std::cout << ::tpy::__len__(h.src.items) << "\n" << ::tpy::check_signals;
     Source __slot_1 = Source();
     Source* v = &__slot_1;
     {
@@ -57,14 +57,14 @@ void main() {
         goto __after_try_5;
         // except E:
         __except_5:;
-        std::cout << "error" << "\n";
+        std::cout << "error" << "\n" << ::tpy::check_signals;
         __after_try_5:;
     }
     v->items.push_back(5);
-    std::cout << ::tpy::__len__(h.src.items) << "\n";
+    std::cout << ::tpy::__len__(h.src.items) << "\n" << ::tpy::check_signals;
     h.grab();
-    std::cout << ::tpy::__len__(h.dest.items) << "\n";
-    std::cout << ::tpy::__len__(h.src.items) << "\n";
+    std::cout << ::tpy::__len__(h.dest.items) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(h.src.items) << "\n" << ::tpy::check_signals;
 }
 
 // main()

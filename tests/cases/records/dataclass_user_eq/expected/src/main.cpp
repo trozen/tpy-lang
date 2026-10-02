@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Point p1 = Point(1, 2);
     Point p2 = Point(1, 3);
-    std::cout << ::tpy::print_bool(((p1) == (p2))) << "\n";
+    std::cout << ::tpy::print_bool(((p1) == (p2))) << "\n" << ::tpy::check_signals;
 }
 
 // # @dataclass with user-defined __eq__ (user wins, no synthesis)

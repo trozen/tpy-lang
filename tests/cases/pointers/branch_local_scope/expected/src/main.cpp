@@ -18,10 +18,10 @@ void branch_rvalue_independent(bool cond) {
     Point* p;
     if (cond) {
         p = &*(__slot_1 = Point(1, 2));
-        std::cout << p->x << " " << p->y << "\n";
+        std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
     } else {
         p = &*(__slot_2 = Point(3, 4));
-        std::cout << p->x << " " << p->y << "\n";
+        std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -43,13 +43,13 @@ void branch_rvalue_three_way(int32_t flag) {
     Point* p;
     if ((flag == 0)) {
         p = &*(__slot_1 = Point(10, 20));
-        std::cout << p->x << " " << p->y << "\n";
+        std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
     } else if ((flag == 1)) {
         p = &*(__slot_2 = Point(30, 40));
-        std::cout << p->x << " " << p->y << "\n";
+        std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
     } else {
         p = &*(__slot_3 = Point(50, 60));
-        std::cout << p->x << " " << p->y << "\n";
+        std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -74,13 +74,13 @@ void branch_mixed_scope(bool cond) {
     if (cond) {
         shared = &*(__slot_1 = Point(1, 2));
         local = &*(__slot_2 = Point(10, 20));
-        std::cout << local->x << " " << local->y << "\n";
+        std::cout << local->x << " " << local->y << "\n" << ::tpy::check_signals;
     } else {
         shared = &*(__slot_3 = Point(3, 4));
         local = &*(__slot_4 = Point(30, 40));
-        std::cout << local->x << " " << local->y << "\n";
+        std::cout << local->x << " " << local->y << "\n" << ::tpy::check_signals;
     }
-    std::cout << shared->x << " " << shared->y << "\n";
+    std::cout << shared->x << " " << shared->y << "\n" << ::tpy::check_signals;
 }
 
 // branch_rvalue_independent(True)

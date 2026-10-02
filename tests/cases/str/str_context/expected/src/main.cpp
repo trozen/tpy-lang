@@ -34,13 +34,13 @@ std::string get_name() {
 //     print(names[0])  # hello
 void main() {
     std::string msg = ::tpyapp::main::greet("world");
-    std::cout << msg << "\n";
+    std::cout << msg << "\n" << ::tpy::check_signals;
     std::string n = ::tpyapp::main::get_name();
-    std::cout << n << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
     Person p = Person("Alice");
-    std::cout << p.name << "\n";
+    std::cout << p.name << "\n" << ::tpy::check_signals;
     std::vector<std::string> names = {"hello", "world"};
-    std::cout << ::tpy::__getitem__(names, 0) << "\n";
+    std::cout << ::tpy::__getitem__(names, 0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

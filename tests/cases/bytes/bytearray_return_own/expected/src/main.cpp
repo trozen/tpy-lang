@@ -21,9 +21,9 @@ namespace tpyapp::main {
 //     ba = bytearray(b"abc")
 //     print(len(first_param(ba)))
 void main() {
-    std::cout << ::tpy::__len__(::tpyapp::main::make()) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::make()) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
-    std::cout << ::tpy::__len__(::tpyapp::main::first_param(ba)) << "\n";
+    std::cout << ::tpy::__len__(::tpyapp::main::first_param(ba)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

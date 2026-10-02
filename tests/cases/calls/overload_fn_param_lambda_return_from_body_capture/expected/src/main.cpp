@@ -15,7 +15,7 @@ namespace tpyapp::main {
 void main() {
     std::vector<int32_t> xs = {1, 2, 3};
     int32_t bias = 10;
-    std::cout << ::tpyapp::main::m<int32_t, int32_t>([&bias](int32_t a) -> int32_t { return (::tpy::add_check<int32_t>(a, bias)); }, xs) << "\n";
+    std::cout << ::tpyapp::main::m<int32_t, int32_t>([&bias](int32_t a) -> int32_t { return (::tpy::add_check<int32_t>(a, bias)); }, xs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

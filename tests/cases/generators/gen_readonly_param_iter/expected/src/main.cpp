@@ -23,7 +23,7 @@ __gen_tail tail(const std::vector<int32_t>& xs) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         data.emplace(std::vector<int32_t>{10, 20});
-        std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::tail((*data))) << "\n";
+        std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::tail((*data))) << "\n" << ::tpy::check_signals;
         h.emplace(Holder());
         __sub_0.emplace((*h));
         __state = S_RESUME_0;
@@ -34,7 +34,7 @@ __gen_tail tail(const std::vector<int32_t>& xs) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << __await_lift_0 << "\n";
+        std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -62,7 +62,7 @@ __coro_amain amain() {
 //     asyncio.run(amain())
 void main() {
     std::vector<int32_t> __tmp_1 = {1, 2};
-    std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::tail(__tmp_1)) << "\n";
+    std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::tail(__tmp_1)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_2 = {3, 4};
     __gen_tail g = ::tpyapp::main::tail(__tmp_2);
     int32_t total = 0;
@@ -74,7 +74,7 @@ void main() {
         int32_t x = ::tpy::unwrap_ref(*__r_1);
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    std::cout << total << "\n";
+    std::cout << total << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain()));
 }
 

@@ -51,11 +51,11 @@ void main() {
     switch (__match_subject_1.value.index()) {
     case 1: {
         auto& t = std::get<1>(__match_subject_1.value);
-        std::cout << ::tpy::__len__(t) << "\n";
+        std::cout << ::tpy::__len__(t) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
-        std::cout << 0 << "\n";
+        std::cout << 0 << "\n" << ::tpy::check_signals;
         break;
     }
     }

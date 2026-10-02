@@ -9,8 +9,8 @@ namespace tpyapp::main {
 //     print(get_name())
 //     return int32(0)
 int32_t main() {
-    std::cout << __name__ << "\n";
-    std::cout << ::tpyapp::utils::get_name() << "\n";
+    std::cout << __name__ << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::utils::get_name() << "\n" << ::tpy::check_signals;
     return 0;
 }
 

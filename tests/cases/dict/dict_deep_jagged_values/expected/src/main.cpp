@@ -16,10 +16,10 @@ namespace tpyapp::main {
 //     print(d)
 void main() {
     ::tpy::ordered_map<int32_t, std::array<std::vector<int32_t>, 2>> d = ::tpy::ordered_map<int32_t, std::array<std::vector<int32_t>, 2>>({{1, {{{1, 2}, {3, 4}}}}, {2, {{{5, 6}, {7, 8, 9}}}}});
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(::tpy::__getitem__(d, 2), 1).push_back(99);
     ::tpy::__getitem__(::tpy::__getitem__(d, 1), 0).push_back(7);
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

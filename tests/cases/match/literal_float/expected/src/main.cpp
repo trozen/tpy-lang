@@ -31,9 +31,9 @@ std::string classify(double x) {
 //     print(classify(1.0))
 //     print(classify(3.14))
 void main() {
-    std::cout << ::tpyapp::main::classify(0.0) << "\n";
-    std::cout << ::tpyapp::main::classify(1.0) << "\n";
-    std::cout << ::tpyapp::main::classify(3.14) << "\n";
+    std::cout << ::tpyapp::main::classify(0.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(1.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify(3.14) << "\n" << ::tpy::check_signals;
 }
 
 // main()

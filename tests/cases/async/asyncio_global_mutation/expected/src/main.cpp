@@ -52,8 +52,8 @@ __coro_bg bg() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "ran =" << " " << ::tpy::print_bool(ran) << "\n";
-        std::cout << "hits =" << " " << hits << "\n";
+        std::cout << "ran =" << " " << ::tpy::print_bool(ran) << "\n" << ::tpy::check_signals;
+        std::cout << "hits =" << " " << hits << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

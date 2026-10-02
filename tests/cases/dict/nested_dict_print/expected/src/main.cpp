@@ -23,15 +23,15 @@ namespace tpyapp::main {
 //     print(t)
 void main() {
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> d = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"a", ::tpy::ordered_map<std::string, int32_t>({{"x", 1}, {"y", 2}})}, {"b", ::tpy::ordered_map<std::string, int32_t>({{"z", 3}})}});
-    std::cout << ::tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>> nested = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"outer", ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"mid", ::tpy::ordered_map<std::string, int32_t>({{"inner", 42}})}})}});
-    std::cout << ::tpy::DictPrinter(nested) << "\n";
+    std::cout << ::tpy::DictPrinter(nested) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>> with_set = ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>>({{"evens", ::tpy::ordered_set<int32_t>({2, 4})}, {"odds", ::tpy::ordered_set<int32_t>({1, 3})}});
-    std::cout << ::tpy::DictPrinter(with_set) << "\n";
+    std::cout << ::tpy::DictPrinter(with_set) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::ordered_map<std::string, int32_t>> rows = {::tpy::ordered_map<std::string, int32_t>({{"a", 1}}), ::tpy::ordered_map<std::string, int32_t>({{"b", 2}})};
-    std::cout << ::tpy::ListPrinter(rows) << "\n";
+    std::cout << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
     auto t = std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>{::tpy::ordered_map<std::string, int32_t>({{"a", 1}}), 42};
-    std::cout << ::tpy::TuplePrinter(t) << "\n";
+    std::cout << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -15,13 +15,13 @@ void poke(std::vector<Item>& xs) {
     {
         auto& t = __match_subject_1.tag;
         if ((::tpy::pop_back(xs).v > 100)) {
-            std::cout << "big tail" << " " << t.n << "\n";
+            std::cout << "big tail" << " " << t.n << "\n" << ::tpy::check_signals;
             goto __match_end_2;
         }
     }
     {
         auto& t2 = __match_subject_1.tag;
-        std::cout << "small" << " " << t2.n << "\n";
+        std::cout << "small" << " " << t2.n << "\n" << ::tpy::check_signals;
         goto __match_end_2;
     }
     __match_end_2:;

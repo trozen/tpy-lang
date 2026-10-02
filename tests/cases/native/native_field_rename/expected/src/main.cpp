@@ -13,11 +13,11 @@ namespace tpyapp::main {
 //     print(v.sum())
 void main() {
     ::Vec2 v = ::Vec2(3, 4);
-    std::cout << v.m_x << "\n";
-    std::cout << v.m_y << "\n";
+    std::cout << v.m_x << "\n" << ::tpy::check_signals;
+    std::cout << v.m_y << "\n" << ::tpy::check_signals;
     v.m_x = 10;
-    std::cout << v.m_x << "\n";
-    std::cout << v.sum() << "\n";
+    std::cout << v.m_x << "\n" << ::tpy::check_signals;
+    std::cout << v.sum() << "\n" << ::tpy::check_signals;
 }
 
 // # native_field() -- per-field C++ rename on @native classes.

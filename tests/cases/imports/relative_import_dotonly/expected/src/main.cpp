@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     return int32(0)
 int32_t main() {
     int32_t result = ::tpyapp::mypackage::consumer::compute();
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
     return 0;
 }
 

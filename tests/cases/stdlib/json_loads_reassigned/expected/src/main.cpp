@@ -15,9 +15,9 @@ namespace tpyapp::main {
 //     print("function", json.dumps(v))
 void in_function() {
     ::tpystd::json::JsonValue v = ::tpystd::json::loads("[1]");
-    std::cout << "function" << " " << ::tpystd::json::dumps(v, 0, false) << "\n";
+    std::cout << "function" << " " << ::tpystd::json::dumps(v, 0, false) << "\n" << ::tpy::check_signals;
     v = ::tpystd::json::loads("[2, 3]");
-    std::cout << "function" << " " << ::tpystd::json::dumps(v, 0, false) << "\n";
+    std::cout << "function" << " " << ::tpystd::json::dumps(v, 0, false) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -38,7 +38,7 @@ __gen_in_generator in_generator() {
         __state = S_DONE;  // until a yield sets where to resume
         v = &*(__ptr_slot_f0 = ::tpystd::json::loads("[1]"));
         v = &*(__ptr_slot_f1 = ::tpystd::json::loads("[7]"));
-        std::cout << "async" << " " << ::tpystd::json::dumps((*v), 0, false) << "\n";
+        std::cout << "async" << " " << ::tpystd::json::dumps((*v), 0, false) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -65,7 +65,7 @@ void in_closure() {
     auto inner = []() {
         ::tpystd::json::JsonValue v = ::tpystd::json::loads("[1]");
         v = ::tpystd::json::loads("[8]");
-        std::cout << "closure" << " " << ::tpystd::json::dumps(v, 0, false) << "\n";
+        std::cout << "closure" << " " << ::tpystd::json::dumps(v, 0, false) << "\n" << ::tpy::check_signals;
     };
     inner();
 }
@@ -89,7 +89,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << s << "\n";
+            std::cout << "generator" << " " << s << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::in_async()));

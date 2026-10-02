@@ -13,7 +13,7 @@ void use_all(::tpy::varargs<const Resource> args) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& r = *__beg_0;
-        std::cout << "use" << " " << r.id << "\n";
+        std::cout << "use" << " " << r.id << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -27,7 +27,7 @@ void main() {
     Resource b = Resource(2);
     std::array<const Resource*, 2> __tmp_1{&a, &b};
     ::tpyapp::main::use_all(::tpy::varargs<const Resource>(__tmp_1));
-    std::cout << "after use_all" << "\n";
+    std::cout << "after use_all" << "\n" << ::tpy::check_signals;
 }
 
 // main()

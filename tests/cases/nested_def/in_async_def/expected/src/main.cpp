@@ -48,7 +48,7 @@ __coro_outer outer() {
 // def main() -> None:
 //     print(asyncio.run(outer()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::outer())) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::outer())) << "\n" << ::tpy::check_signals;
 }
 
 // # A nested def inside an async def is a plain sync function emitted as a

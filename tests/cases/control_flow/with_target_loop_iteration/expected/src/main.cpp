@@ -53,7 +53,7 @@ int32_t run() {
 // def main() -> None:
 //     print(run())
 void main() {
-    std::cout << ::tpyapp::main::run() << "\n";
+    std::cout << ::tpyapp::main::run() << "\n" << ::tpy::check_signals;
 }
 
 // main()

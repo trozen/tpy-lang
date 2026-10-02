@@ -21,11 +21,11 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        std::cout << v << "\n";
+        std::cout << v << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::tpy::__len__(::tpy::dict_values(d)) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::dict_values(d).contains(20))) << "\n";
-    std::cout << ::tpy::print_bool((::tpy::dict_values(d).contains(99))) << "\n";
+    std::cout << ::tpy::__len__(::tpy::dict_values(d)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::dict_values(d).contains(20))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::dict_values(d).contains(99))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

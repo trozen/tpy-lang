@@ -34,9 +34,9 @@ void show(std::string_view tag, const std::vector<std::optional<Pic>>& patches) 
     for (int32_t i = 0; i < __stop_0; ++i) {
         const Pic* p = ::tpy::optional_to_ptr(patches[static_cast<std::size_t>(i)]);
         if ((p != nullptr)) {
-            std::cout << tag << " " << p->n << "\n";
+            std::cout << tag << " " << p->n << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << tag << " " << "none" << "\n";
+            std::cout << tag << " " << "none" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -168,7 +168,7 @@ void other_slots(bool c) {
     if (c) {
         other = &*(__slot_2 = Pic(6));
     }
-    std::cout << "opt_own_spelling" << " " << ::tpyapp::main::take_opt_own(::tpy::ptr_to_optional_move(other)) << "\n";
+    std::cout << "opt_own_spelling" << " " << ::tpyapp::main::take_opt_own(::tpy::ptr_to_optional_move(other)) << "\n" << ::tpy::check_signals;
     Bag b = Bag();
     Pic* third = nullptr;
     if (c) {
@@ -212,7 +212,7 @@ void setdefault_slot(bool c) {
         stored->n = ::tpy::add_check<int32_t>(stored->n, 10);
     }
     Pic* again = ::tpy::optional_to_ptr(::tpy::__getitem__(d, "a"));
-    std::cout << "setdefault_slot" << " " << ::tpy::__len__(d) << " " << (((again == nullptr)) ? (0) : (again->n)) << "\n";
+    std::cout << "setdefault_slot" << " " << ::tpy::__len__(d) << " " << (((again == nullptr)) ? (0) : (again->n)) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -319,7 +319,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << v << "\n";
+            std::cout << "generator" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_body(true)));

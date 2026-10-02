@@ -89,29 +89,29 @@ void main() {
     std::vector<Rec> rs = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     ::tpy::__getitem__(rs, 0).v = ::tpy::add_check<int32_t>(::tpy::__getitem__(rs, 0).v, 100);
-    std::cout << n << " " << ::tpy::__getitem__(rs, 0).v << " " << ::tpy::__getitem__(rs, 1).v << "\n";
+    std::cout << n << " " << ::tpy::__getitem__(rs, 0).v << " " << ::tpy::__getitem__(rs, 1).v << "\n" << ::tpy::check_signals;
     auto __tup_2 = ::tpyapp::main::two_lists();
     std::vector<double> a = std::move(std::get<0>(__tup_2));
     std::vector<int32_t> b = std::move(std::get<1>(__tup_2));
     a.push_back(3.0);
     b.push_back(3);
-    std::cout << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << " " << ::tpy::print_float(::tpy::__getitem__(a, 1)) << " " << ::tpy::__getitem__(b, 1) << "\n";
+    std::cout << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << " " << ::tpy::print_float(::tpy::__getitem__(a, 1)) << " " << ::tpy::__getitem__(b, 1) << "\n" << ::tpy::check_signals;
     auto __tup_3 = ::tpyapp::main::mixed();
     std::vector<double> c = std::move(std::get<0>(__tup_3));
     n = std::get<1>(__tup_3);
     c.push_back(9.0);
-    std::cout << ::tpy::__len__(c) << " " << n << " " << ::tpy::print_float(::tpy::__getitem__(c, 1)) << "\n";
+    std::cout << ::tpy::__len__(c) << " " << n << " " << ::tpy::print_float(::tpy::__getitem__(c, 1)) << "\n" << ::tpy::check_signals;
     auto __tup_4 = ::tpyapp::main::dict_and_set();
     ::tpy::ordered_map<int32_t, int32_t> d = std::move(std::get<0>(__tup_4));
     ::tpy::ordered_set<int32_t> s = std::move(std::get<1>(__tup_4));
     ::tpy::__setitem__(d, 9, 9);
     s.insert(9);
-    std::cout << ::tpy::__len__(d) << " " << ::tpy::__len__(s) << " " << ::tpy::__getitem__(d, 9) << "\n";
+    std::cout << ::tpy::__len__(d) << " " << ::tpy::__len__(s) << " " << ::tpy::__getitem__(d, 9) << "\n" << ::tpy::check_signals;
     auto __tup_5 = ::tpyapp::main::two_recs();
     Rec p = std::move(std::get<0>(__tup_5));
     Rec q = std::move(std::get<1>(__tup_5));
     p.v = 5;
-    std::cout << p.v << " " << q.v << "\n";
+    std::cout << p.v << " " << q.v << "\n" << ::tpy::check_signals;
 }
 
 // main()

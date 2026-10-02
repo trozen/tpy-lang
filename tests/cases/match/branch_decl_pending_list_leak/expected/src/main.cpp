@@ -51,13 +51,13 @@ namespace tpyapp::main {
 //     print(g(Point(4, 5)))
 void main() {
     Point __tmp_1 = Point(::tpy::BigInt(0), ::tpy::BigInt(5));
-    std::cout << ::tpyapp::main::f(__tmp_1) << "\n";
+    std::cout << ::tpyapp::main::f(__tmp_1) << "\n" << ::tpy::check_signals;
     Point __tmp_2 = Point(::tpy::BigInt(4), ::tpy::BigInt(5));
-    std::cout << ::tpyapp::main::f(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::f(__tmp_2) << "\n" << ::tpy::check_signals;
     Point __tmp_3 = Point(::tpy::BigInt(0), ::tpy::BigInt(5));
-    std::cout << ::tpyapp::main::g(__tmp_3) << "\n";
+    std::cout << ::tpyapp::main::g(__tmp_3) << "\n" << ::tpy::check_signals;
     Point __tmp_4 = Point(::tpy::BigInt(4), ::tpy::BigInt(5));
-    std::cout << ::tpyapp::main::g(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::g(__tmp_4) << "\n" << ::tpy::check_signals;
 }
 
 // main()

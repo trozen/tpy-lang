@@ -31,16 +31,16 @@ void main() {
         b = B(i);
         holder = &(b->rec());
     }
-    std::cout << "loop_local:" << " " << holder->x << "\n";
+    std::cout << "loop_local:" << " " << holder->x << "\n" << ::tpy::check_signals;
     holder->x = ::tpy::add_check<int32_t>(holder->x, 100);
-    std::cout << "shared:" << " " << b->m.x << "\n";
+    std::cout << "shared:" << " " << b->m.x << "\n" << ::tpy::check_signals;
     Rec __slot_2 = Rec(0);
     Rec* fld = &__slot_2;
     for (int32_t j = 0; j < 3; ++j) {
         B* c = &*(__slot_3 = B(j));
         fld = &(c->m);
     }
-    std::cout << "field_twin:" << " " << fld->x << "\n";
+    std::cout << "field_twin:" << " " << fld->x << "\n" << ::tpy::check_signals;
 }
 
 // main()

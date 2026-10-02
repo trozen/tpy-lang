@@ -58,9 +58,9 @@ void main() {
     Factory __tmp_1 = Factory(5);
     Point r = ::tpyapp::main::owned_method(__tmp_1);
     p.x = 10;
-    std::cout << p.x << " " << q.x << " " << r.x << "\n";
+    std::cout << p.x << " " << q.x << " " << r.x << "\n" << ::tpy::check_signals;
     Factory __tmp_2 = Factory(5);
-    std::cout << ::tpyapp::main::make_copy(1).x << " " << ::tpyapp::main::owned_copy(1).x << " " << ::tpyapp::main::owned_method_copy(__tmp_2).x << "\n";
+    std::cout << ::tpyapp::main::make_copy(1).x << " " << ::tpyapp::main::owned_copy(1).x << " " << ::tpyapp::main::owned_method_copy(__tmp_2).x << "\n" << ::tpy::check_signals;
 }
 
 // main()

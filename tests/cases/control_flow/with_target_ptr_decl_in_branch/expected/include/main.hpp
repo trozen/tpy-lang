@@ -75,7 +75,7 @@ inline Slot& Res::__enter__() {
 // def __exit__(self, et, ev, tb) -> None:
 //     print("exit", self.s.v)
 inline void Res::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    std::cout << "exit" << " " << this->s.v << "\n";
+    std::cout << "exit" << " " << this->s.v << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

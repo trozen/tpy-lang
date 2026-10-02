@@ -164,7 +164,7 @@ inline HasInitB::HasInitB(int32_t b) : b(b) {}
 //     print("root init", r)
 //     self.r = r
 inline Root::Root(int32_t r) {
-    std::cout << "root init" << " " << r << "\n";
+    std::cout << "root init" << " " << r << "\n" << ::tpy::check_signals;
     this->r = r;
 }
 
@@ -172,7 +172,7 @@ inline Root::Root(int32_t r) {
 //     print("side init", s)
 //     self.s = s
 inline Side::Side(int32_t s) {
-    std::cout << "side init" << " " << s << "\n";
+    std::cout << "side init" << " " << s << "\n" << ::tpy::check_signals;
     this->s = s;
 }
 
@@ -190,7 +190,7 @@ inline Combined::Combined(int32_t a, int32_t b)
 inline ViaSuper::ViaSuper()
     : Lane(1),
       Side(2) {
-    std::cout << "via-super: body" << "\n";
+    std::cout << "via-super: body" << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self) -> None:
@@ -200,7 +200,7 @@ inline ViaSuper::ViaSuper()
 inline ViaLane::ViaLane()
     : Lane(3),
       Side(4) {
-    std::cout << "via-lane: body" << "\n";
+    std::cout << "via-lane: body" << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self) -> None:
@@ -210,7 +210,7 @@ inline ViaLane::ViaLane()
 inline ViaRoot::ViaRoot()
     : Side(5),
       Lane(6) {
-    std::cout << "via-root: body" << "\n";
+    std::cout << "via-root: body" << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

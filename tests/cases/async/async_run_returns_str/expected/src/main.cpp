@@ -42,9 +42,9 @@ __coro_greet greet() {
 //     bound = asyncio.run(greet())
 //     print(bound)
 void main() {
-    std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::greet())) << "\n";
+    std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::greet())) << "\n" << ::tpy::check_signals;
     std::string bound = ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::greet()));
-    std::cout << bound << "\n";
+    std::cout << bound << "\n" << ::tpy::check_signals;
 }
 
 // # Regression: an async returning a short (SSO) str must survive moving through

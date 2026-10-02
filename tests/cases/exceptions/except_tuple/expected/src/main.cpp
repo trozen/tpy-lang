@@ -33,11 +33,11 @@ void with_binding(const ::tpy::BigInt& which) {
         try {
             ::tpyapp::main::boom(which);
         } catch (const AErr& e) {
-            std::cout << "tuple arm, code =" << " " << e.code << "\n";
+            std::cout << "tuple arm, code =" << " " << e.code << "\n" << ::tpy::check_signals;
         } catch (const BErr& e) {
-            std::cout << "tuple arm, code =" << " " << e.code << "\n";
+            std::cout << "tuple arm, code =" << " " << e.code << "\n" << ::tpy::check_signals;
         } catch (const CErr&) {
-            std::cout << "sibling C arm" << "\n";
+            std::cout << "sibling C arm" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -54,11 +54,11 @@ void without_binding(const ::tpy::BigInt& which) {
         try {
             ::tpyapp::main::boom(which);
         } catch (const AErr&) {
-            std::cout << "no binding, caught" << " " << which << "\n";
+            std::cout << "no binding, caught" << " " << which << "\n" << ::tpy::check_signals;
         } catch (const BErr&) {
-            std::cout << "no binding, caught" << " " << which << "\n";
+            std::cout << "no binding, caught" << " " << which << "\n" << ::tpy::check_signals;
         } catch (const CErr&) {
-            std::cout << "no binding, C" << "\n";
+            std::cout << "no binding, C" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -76,9 +76,9 @@ void single_element(const ::tpy::BigInt& which) {
         try {
             ::tpyapp::main::boom(which);
         } catch (const AErr&) {
-            std::cout << "single-element tuple" << "\n";
+            std::cout << "single-element tuple" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::Exception&) {
-            std::cout << "fell through" << "\n";
+            std::cout << "fell through" << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -94,7 +94,7 @@ void repeated() {
         try {
             throw AErr(::tpy::BigInt(1));
         } catch (const AErr&) {
-            std::cout << "repeated element" << "\n";
+            std::cout << "repeated element" << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -39,11 +39,11 @@ std::string describe(::tpy::Union<const Other*, const Wrapper*> w) {
 //     print(describe(Other(1)))
 void main() {
     Wrapper __tmp_1 = Wrapper(std::nullopt);
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_1}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
     Wrapper __tmp_2 = Wrapper("hi");
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_2}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
     Other __tmp_3 = Other(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_3}) << "\n";
+    std::cout << ::tpyapp::main::describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

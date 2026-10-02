@@ -18,7 +18,7 @@ void upcast(Dog& d) {
     if ((p != nullptr)) {
         p->rename("via-base");
     }
-    std::cout << "local" << " " << d.name << "\n";
+    std::cout << "local" << " " << d.name << "\n" << ::tpy::check_signals;
 }
 
 
@@ -37,7 +37,7 @@ void reseat(Dog& d, Cat& c) {
     Pet* p = &(d);
     p = &(c);
     p->rename("reseat-base");
-    std::cout << "reseat" << " " << d.name << " " << c.name << "\n";
+    std::cout << "reseat" << " " << d.name << " " << c.name << "\n" << ::tpy::check_signals;
 }
 
 // # union: the subclass address binds the unique base member
@@ -52,7 +52,7 @@ void union_(Dog& d) {
         auto& __p = *std::get<Pet*>(p);
         __p.rename("union-base");
     }
-    std::cout << "union" << " " << d.name << "\n";
+    std::cout << "union" << " " << d.name << "\n" << ::tpy::check_signals;
 }
 
 // # union with None: same bind, a monostate alternative alongside
@@ -67,7 +67,7 @@ void union_opt(Dog& d) {
         auto& __p = *std::get<Pet*>(p);
         __p.rename("union-opt-base");
     }
-    std::cout << "union_opt" << " " << d.name << "\n";
+    std::cout << "union_opt" << " " << d.name << "\n" << ::tpy::check_signals;
 }
 
 // def take(p: Pet | None) -> None:
@@ -85,7 +85,7 @@ void take(Pet* p) {
 //     print("arg", d.name)
 void arg(Dog& d) {
     ::tpyapp::main::take(&(d));
-    std::cout << "arg" << " " << d.name << "\n";
+    std::cout << "arg" << " " << d.name << "\n" << ::tpy::check_signals;
 }
 
 // def take_union(p: Pet | Cat) -> None:
@@ -116,9 +116,9 @@ void take_union_opt(::tpy::Union<std::monostate, Cat*, Pet*> p) {
 //     print("arg_union", e.name)
 void arg_union(Dog& d, Dog& e) {
     ::tpyapp::main::take_union(::tpy::Union<Cat*, Pet*>{&(d)});
-    std::cout << "arg_union" << " " << d.name << "\n";
+    std::cout << "arg_union" << " " << d.name << "\n" << ::tpy::check_signals;
     ::tpyapp::main::take_union_opt(::tpy::Union<std::monostate, Cat*, Pet*>{&(e)});
-    std::cout << "arg_union" << " " << e.name << "\n";
+    std::cout << "arg_union" << " " << e.name << "\n" << ::tpy::check_signals;
 }
 
 // def give(d: Dog) -> Pet | None:
@@ -138,7 +138,7 @@ void ret(Dog& d) {
     if ((p != nullptr)) {
         p->rename("ret-base");
     }
-    std::cout << "ret" << " " << d.name << "\n";
+    std::cout << "ret" << " " << d.name << "\n" << ::tpy::check_signals;
 }
 
 // def give_union(d: Dog) -> Pet | Cat:
@@ -170,13 +170,13 @@ void ret_union(Dog& d, Dog& e) {
         auto& __p = *std::get<Pet*>(p);
         __p.rename("ret-union-base");
     }
-    std::cout << "ret_union" << " " << d.name << "\n";
+    std::cout << "ret_union" << " " << d.name << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, Cat*, Pet*> q = ::tpyapp::main::give_union_opt(e);
     if (std::holds_alternative<Pet*>(q)) {
         auto& __q = *std::get<Pet*>(q);
         __q.rename("ret-union-opt-base");
     }
-    std::cout << "ret_union" << " " << e.name << "\n";
+    std::cout << "ret_union" << " " << e.name << "\n" << ::tpy::check_signals;
 }
 
 // # async: the lift re-points the coroutine's frame field, and the alias
@@ -229,7 +229,7 @@ void field(const Dog& d) {
     Holder h = Holder(d);
     if ((h.p.has_value())) {
         (*h.p).rename("field-copy");
-        std::cout << "field" << " " << (*h.p).name << "\n";
+        std::cout << "field" << " " << (*h.p).name << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -270,7 +270,7 @@ void same_type(Pet& x, Pet& y) {
         auto& __u = *std::get<Pet*>(u);
         __u.rename("same-union");
     }
-    std::cout << "same" << " " << x.name << " " << y.name << "\n";
+    std::cout << "same" << " " << x.name << " " << y.name << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen_same(x);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -278,7 +278,7 @@ void same_type(Pet& x, Pet& y) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view n = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "same" << " " << n << "\n";
+            std::cout << "same" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -302,7 +302,7 @@ void same_type(Pet& x, Pet& y) {
 void main() {
     Dog d = Dog("rex");
     ::tpyapp::main::upcast(d);
-    std::cout << "local" << " " << d.name << "\n";
+    std::cout << "local" << " " << d.name << "\n" << ::tpy::check_signals;
     {
         Dog __tmp_1 = Dog("gen");
         auto __src_0 = ::tpyapp::main::gen(__tmp_1);
@@ -311,7 +311,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view n = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "frame" << " " << n << "\n";
+            std::cout << "frame" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     Dog __tmp_2 = Dog("rd");
@@ -332,7 +332,7 @@ void main() {
     Dog __tmp_11 = Dog("rue");
     ::tpyapp::main::ret_union(__tmp_10, __tmp_11);
     Dog __tmp_12 = Dog("ac");
-    std::cout << "async" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro(__tmp_12))) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro(__tmp_12))) << "\n" << ::tpy::check_signals;
     Dog __tmp_13 = Dog("fd");
     ::tpyapp::main::field(__tmp_13);
     Pet __tmp_14 = Pet("sx");

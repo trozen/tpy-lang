@@ -28,9 +28,9 @@ std::string describe(::tpyapp::colors::Color c) {
 //     print(default_color())
 void main() {
     ::tpyapp::colors::Color c = ::tpyapp::colors::Color::Green;
-    std::cout << c << "\n";
-    std::cout << ::tpyapp::main::describe(::tpyapp::colors::Color::Red) << "\n";
-    std::cout << ::tpyapp::main::default_color() << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe(::tpyapp::colors::Color::Red) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::default_color() << "\n" << ::tpy::check_signals;
 }
 
 // # Cross-module enum with explicit type annotations in params, returns, and locals

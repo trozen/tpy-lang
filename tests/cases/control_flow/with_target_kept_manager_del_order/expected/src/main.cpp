@@ -50,14 +50,14 @@ int32_t run(bool flag) {
         __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
     }
-    std::cout << "reading:" << " " << it->n << "\n";
+    std::cout << "reading:" << " " << it->n << "\n" << ::tpy::check_signals;
     return it->n;
 }
 
 // def main() -> None:
 //     print(run(True))
 void main() {
-    std::cout << ::tpyapp::main::run(true) << "\n";
+    std::cout << ::tpyapp::main::run(true) << "\n" << ::tpy::check_signals;
 }
 
 // main()

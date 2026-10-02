@@ -109,83 +109,83 @@ void posthoc_plain() {
 //         print("zero-arg plain:", str(exc) == "")
 void main() {
     ::tpy::OSError e = ::tpy::OSError(2, "No such file or directory");
-    std::cout << e << "\n";
-    std::cout << e.error_number << " " << e.strerror_text << "\n";
+    std::cout << e << "\n" << ::tpy::check_signals;
+    std::cout << e.error_number << " " << e.strerror_text << "\n" << ::tpy::check_signals;
     ::tpy::OSError f = ::tpy::OSError(13, "Permission denied", "/etc/shadow");
-    std::cout << f << "\n";
-    std::cout << f.error_number << " " << f.strerror_text << " " << f.filename << "\n";
+    std::cout << f << "\n" << ::tpy::check_signals;
+    std::cout << f.error_number << " " << f.strerror_text << " " << f.filename << "\n" << ::tpy::check_signals;
     ::tpy::OSError g = ::tpy::OSError("plain msg");
-    std::cout << g << " " << ::tpy::print_bool((!(g.error_number))) << "\n";
+    std::cout << g << " " << ::tpy::print_bool((!(g.error_number))) << "\n" << ::tpy::check_signals;
     ::tpy::FileNotFoundError h = ::tpy::FileNotFoundError(2, "No such file or directory", "x.txt");
-    std::cout << h << "\n";
+    std::cout << h << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::refuse();
         } catch (const ::tpy::ConnectionError& exc) {
-            std::cout << exc << "\n";
-            std::cout << exc.error_number << "\n";
+            std::cout << exc << "\n" << ::tpy::check_signals;
+            std::cout << exc.error_number << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw ::tpy::FileExistsError(17, "File exists", "out.txt");
         } catch (const ::tpy::OSError& exc) {
-            std::cout << exc << " " << exc.filename << "\n";
+            std::cout << exc << " " << exc.filename << "\n" << ::tpy::check_signals;
         }
     }
     ::tpy::OSError z = ::tpy::OSError();
-    std::cout << ::tpy::print_bool((std::string(::tpy::__str__(z)) == "")) << " " << ::tpy::print_bool((!(z.error_number))) << "\n";
+    std::cout << ::tpy::print_bool((std::string(::tpy::__str__(z)) == "")) << " " << ::tpy::print_bool((!(z.error_number))) << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpyapp::main::direct_mapped_enoent();
         } catch (const ::tpy::FileNotFoundError& exc) {
-            std::cout << "direct mapped:" << " " << exc << "\n";
+            std::cout << "direct mapped:" << " " << exc << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::bound_mapped();
         } catch (const ::tpy::FileExistsError& exc) {
-            std::cout << "bound mapped:" << " " << exc << "\n";
+            std::cout << "bound mapped:" << " " << exc << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::direct_mapped();
         } catch (const ::tpy::OSError& exc) {
-            std::cout << "unmapped errno stays plain:" << " " << exc << "\n";
+            std::cout << "unmapped errno stays plain:" << " " << exc << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpyapp::main::posthoc_plain();
         } catch (const ::tpy::FileNotFoundError&) {
-            std::cout << "WRONG: post-hoc assignment re-mapped" << "\n";
+            std::cout << "WRONG: post-hoc assignment re-mapped" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OSError& exc) {
-            std::cout << "post-hoc stays plain:" << " " << exc << " " << exc.error_number << "\n";
+            std::cout << "post-hoc stays plain:" << " " << exc << " " << exc.error_number << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             throw ::tpy::FileNotFoundError(1, "Operation not permitted");
         } catch (const ::tpy::PermissionError&) {
-            std::cout << "WRONG: explicit subclass re-mapped" << "\n";
+            std::cout << "WRONG: explicit subclass re-mapped" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::FileNotFoundError& exc) {
-            std::cout << "subclass kept:" << " " << exc << "\n";
+            std::cout << "subclass kept:" << " " << exc << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::OSError(2, "No such file or directory", "cfg.txt").__raise__();
         } catch (const ::tpy::FileNotFoundError& exc) {
-            std::cout << "filename mapped:" << " " << exc << " " << exc.filename << "\n";
+            std::cout << "filename mapped:" << " " << exc << " " << exc.filename << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
             ::tpy::OSError{}.__raise__();
         } catch (const ::tpy::OSError& exc) {
-            std::cout << "zero-arg plain:" << " " << ::tpy::print_bool((std::string(::tpy::__str__(exc)) == "")) << "\n";
+            std::cout << "zero-arg plain:" << " " << ::tpy::print_bool((std::string(::tpy::__str__(exc)) == "")) << "\n" << ::tpy::check_signals;
         }
     }
 }

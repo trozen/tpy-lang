@@ -72,18 +72,18 @@ void __tpy_init() {
     if ((q != nullptr)) {
         q->x = ::tpy::add_check<int32_t>(q->x, 1000);
     }
-    std::cout << ::tpy::__len__(h->xs) << " " << h->inner.x << "\n";
+    std::cout << ::tpy::__len__(h->xs) << " " << h->inner.x << "\n" << ::tpy::check_signals;
     if ((h->value.has_value())) {
-        std::cout << (*h->value).x << "\n";
+        std::cout << (*h->value).x << "\n" << ::tpy::check_signals;
     }
-    std::cout << b->n << "\n";
+    std::cout << b->n << "\n" << ::tpy::check_signals;
     if (std::holds_alternative<Point>((*u))) {
         auto& __u = std::get<Point>((*u));
-        std::cout << __u.x << "\n";
+        std::cout << __u.x << "\n" << ::tpy::check_signals;
     }
     if (std::holds_alternative<std::vector<int32_t>>((*v))) {
         auto& __v = std::get<std::vector<int32_t>>((*v));
-        std::cout << ::tpy::__len__(__v) << "\n";
+        std::cout << ::tpy::__len__(__v) << "\n" << ::tpy::check_signals;
     }
 }
 

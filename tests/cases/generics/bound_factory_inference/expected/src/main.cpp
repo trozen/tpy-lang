@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     PetBox<Pet> a = PetBox<Pet>::make<Parrot>(Parrot("Polly"));
     PetBox<Pet> b = PetBox<Pet>::make<Dog>(Dog("Rex"));
-    std::cout << a.get().name() << "\n";
-    std::cout << b.get().name() << "\n";
+    std::cout << a.get().name() << "\n" << ::tpy::check_signals;
+    std::cout << b.get().name() << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_take, unsafe_release

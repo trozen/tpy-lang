@@ -14,7 +14,7 @@ void prop_moved(const Src& s) {
     std::vector<int32_t> v = s.own();
     std::vector<int32_t> v2 = std::move(v);
     v2.push_back(3);
-    std::cout << "prop_moved" << " " << ::tpy::__len__(v2) << " " << ::tpy::__len__(s.own()) << "\n";
+    std::cout << "prop_moved" << " " << ::tpy::__len__(v2) << " " << ::tpy::__len__(s.own()) << "\n" << ::tpy::check_signals;
 }
 
 // def meth_moved(s: Src) -> None:
@@ -26,7 +26,7 @@ void meth_moved(Src& s) {
     std::vector<int32_t> v = s.own_m();
     std::vector<int32_t> v2 = std::move(v);
     v2.push_back(3);
-    std::cout << "meth_moved" << " " << ::tpy::__len__(v2) << " " << ::tpy::__len__(s.own_m()) << "\n";
+    std::cout << "meth_moved" << " " << ::tpy::__len__(v2) << " " << ::tpy::__len__(s.own_m()) << "\n" << ::tpy::check_signals;
 }
 
 // # `v` is read after the rebind, so `v2` aliases it: the append shows through
@@ -39,7 +39,7 @@ void prop_aliased(const Src& s) {
     std::vector<int32_t> v = s.own();
     std::vector<int32_t>& v2 = v;
     v2.push_back(3);
-    std::cout << "prop_aliased" << " " << ::tpy::__len__(v) << " " << ::tpy::__len__(v2) << "\n";
+    std::cout << "prop_aliased" << " " << ::tpy::__len__(v) << " " << ::tpy::__len__(v2) << "\n" << ::tpy::check_signals;
 }
 
 // def meth_aliased(s: Src) -> None:
@@ -51,7 +51,7 @@ void meth_aliased(Src& s) {
     std::vector<int32_t> v = s.own_m();
     std::vector<int32_t>& v2 = v;
     v2.push_back(3);
-    std::cout << "meth_aliased" << " " << ::tpy::__len__(v) << " " << ::tpy::__len__(v2) << "\n";
+    std::cout << "meth_aliased" << " " << ::tpy::__len__(v) << " " << ::tpy::__len__(v2) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

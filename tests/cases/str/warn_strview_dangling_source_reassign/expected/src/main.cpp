@@ -15,9 +15,9 @@ namespace tpyapp::main {
 void strview_pinned_alias_warns() {
     ::tpy::String s = (::tpy::str_concat("hello", "world"));
     std::string_view view = s;
-    std::cout << view << "\n";
+    std::cout << view << "\n" << ::tpy::check_signals;
     s = "other";
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def bytesview_pinned_alias_warns() -> None:
@@ -29,9 +29,9 @@ void strview_pinned_alias_warns() {
 void bytesview_pinned_alias_warns() {
     ::tpy::Bytes b = (::tpy::bytes_concat(::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal_owned("world", 5)));
     ::tpy::BytesView bv = b;
-    std::cout << ::tpy::__len__(bv) << "\n";
+    std::cout << ::tpy::__len__(bv) << "\n" << ::tpy::check_signals;
     b = ::tpy::bytes_literal_owned("other", 5);
-    std::cout << ::tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def view_rebind_clears_pinned_alias() -> None:
@@ -49,8 +49,8 @@ void view_rebind_clears_pinned_alias() {
     std::string_view view = s1;
     view = s2;
     s1 = "other";
-    std::cout << view << "\n";
-    std::cout << s1 << "\n";
+    std::cout << view << "\n" << ::tpy::check_signals;
+    std::cout << s1 << "\n" << ::tpy::check_signals;
 }
 
 // def multiple_pinned_views_per_source() -> None:
@@ -66,10 +66,10 @@ void multiple_pinned_views_per_source() {
     ::tpy::String s = (::tpy::str_concat("hello", "world"));
     std::string_view alpha = s;
     std::string_view beta = s;
-    std::cout << ::tpy::__len__(alpha) << "\n";
-    std::cout << ::tpy::__len__(beta) << "\n";
+    std::cout << ::tpy::__len__(alpha) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(beta) << "\n" << ::tpy::check_signals;
     s = "other";
-    std::cout << s << "\n";
+    std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // strview_pinned_alias_warns()

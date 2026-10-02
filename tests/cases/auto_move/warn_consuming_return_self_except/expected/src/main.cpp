@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     print(Widget(5).consume().n)
 void main() {
-    std::cout << Widget(5).consume().n << "\n";
+    std::cout << Widget(5).consume().n << "\n" << ::tpy::check_signals;
 }
 
 // main()

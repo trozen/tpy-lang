@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Container<std::string, 42> c = Container<std::string, 42>();
     ::tpy::BigInt size = c.get_size_as_bigint();
-    std::cout << size << "\n";
+    std::cout << size << "\n" << ::tpy::check_signals;
 }
 
 // main()

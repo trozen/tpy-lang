@@ -25,8 +25,8 @@ int32_t boom() {
 //     print(boom())
 //     print(Registry.code)
 void main() {
-    std::cout << ::tpyapp::main::boom() << "\n";
-    std::cout << Registry::code << "\n";
+    std::cout << ::tpyapp::main::boom() << "\n" << ::tpy::check_signals;
+    std::cout << Registry::code << "\n" << ::tpy::check_signals;
 }
 
 // main()

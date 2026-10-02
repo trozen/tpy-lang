@@ -12,10 +12,10 @@ namespace tpyapp::main {
 //     print(c2)
 void main() {
     Config c = Config(true, 3.14, {1, 2}, ::tpy::ordered_map<std::string, int32_t>({{"a", 10}}), std::tuple<int32_t, std::string>{7, "ok"});
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> empty = ::tpy::ordered_map<std::string, int32_t>();
     Config c2 = Config(false, 1.0, std::vector<int32_t>{}, std::move(empty), std::tuple<int32_t, std::string>{0, ""});
-    std::cout << c2 << "\n";
+    std::cout << c2 << "\n" << ::tpy::check_signals;
 }
 
 // from dataclasses import dataclass

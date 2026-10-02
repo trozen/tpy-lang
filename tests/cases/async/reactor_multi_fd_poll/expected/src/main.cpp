@@ -94,8 +94,8 @@ __coro_reader reader(::tpystd::socket::socket& sock) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r2 = std::move(__r2).value();
         __sub_2 = nullptr;
-        std::cout << ::tpy::BytesPrinter(r1) << "\n";
-        std::cout << ::tpy::BytesPrinter(r2) << "\n";
+        std::cout << ::tpy::BytesPrinter(r1) << "\n" << ::tpy::check_signals;
+        std::cout << ::tpy::BytesPrinter(r2) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

@@ -16,7 +16,7 @@ std::string stub(std::string_view val) {
 //     print(r)
 void main() {
     int32_t r = ::tpyapp::main::stub<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); });
-    std::cout << r << "\n";
+    std::cout << r << "\n" << ::tpy::check_signals;
 }
 
 // main()

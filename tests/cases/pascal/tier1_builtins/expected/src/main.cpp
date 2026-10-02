@@ -26,21 +26,21 @@ void __tpy_init() {
 
     i = 5;
     i = (::tpy::add_check<int32_t>(i, 1));
-    std::cout << i << "\n";
+    std::cout << i << "\n" << ::tpy::check_signals;
     i = (::tpy::add_check<int32_t>(i, 3));
-    std::cout << i << "\n";
+    std::cout << i << "\n" << ::tpy::check_signals;
     i = (::tpy::sub_check<int32_t>(i, 2));
-    std::cout << i << "\n";
-    std::cout << (::tpy::mul_check<int32_t>(i, i)) << "\n";
+    std::cout << i << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::mul_check<int32_t>(i, i)) << "\n" << ::tpy::check_signals;
     if (((::tpy::mod_floor<int32_t>(i, 2)) != 0)) {
-        std::cout << "odd" << "\n";
+        std::cout << "odd" << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "even" << "\n";
+        std::cout << "even" << "\n" << ::tpy::check_signals;
     }
-    std::cout << ::std::abs(-42) << "\n";
+    std::cout << ::std::abs(-42) << "\n" << ::tpy::check_signals;
     c = ::tpy::char_from_str("A");
-    std::cout << static_cast<int32_t>(static_cast<unsigned char>(c)) << "\n";
-    std::cout << static_cast<char>(66) << "\n";
+    std::cout << static_cast<int32_t>(static_cast<unsigned char>(c)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<char>(66) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

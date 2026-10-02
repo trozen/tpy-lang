@@ -24,10 +24,10 @@ namespace tpyapp::main {
 void main() {
     ::tpy::Union<bool, std::string> __tmp_1 = true;
     ::tpystd::ssl::SSLContext secure = ::tpystd::tplib::requests::_ssl_context_for(__tmp_1);
-    std::cout << ::tpy::print_bool((secure.verify_mode == ::tpystd::ssl::CERT_REQUIRED)) << " " << ::tpy::print_bool(secure.check_hostname) << "\n";
+    std::cout << ::tpy::print_bool((secure.verify_mode == ::tpystd::ssl::CERT_REQUIRED)) << " " << ::tpy::print_bool(secure.check_hostname) << "\n" << ::tpy::check_signals;
     ::tpy::Union<bool, std::string> __tmp_2 = false;
     ::tpystd::ssl::SSLContext insecure = ::tpystd::tplib::requests::_ssl_context_for(__tmp_2);
-    std::cout << ::tpy::print_bool((insecure.verify_mode == ::tpystd::ssl::CERT_NONE)) << " " << ::tpy::print_bool(insecure.check_hostname) << "\n";
+    std::cout << ::tpy::print_bool((insecure.verify_mode == ::tpystd::ssl::CERT_NONE)) << " " << ::tpy::print_bool(insecure.check_hostname) << "\n" << ::tpy::check_signals;
     auto __ctx_1 = ::tpy::builtin_open_mode(CA_PATH, "w");
     auto& f = __ctx_1.__enter__();
     try {
@@ -43,7 +43,7 @@ void main() {
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
     ::tpystd::ssl::SSLContext custom = ::tpystd::tplib::requests::_ssl_context_for(::tpy::String(CA_PATH));
-    std::cout << ::tpy::print_bool((custom.verify_mode == ::tpystd::ssl::CERT_REQUIRED)) << " " << ::tpy::print_bool(custom.check_hostname) << "\n";
+    std::cout << ::tpy::print_bool((custom.verify_mode == ::tpystd::ssl::CERT_REQUIRED)) << " " << ::tpy::print_bool(custom.check_hostname) << "\n" << ::tpy::check_signals;
 }
 
 // import ssl

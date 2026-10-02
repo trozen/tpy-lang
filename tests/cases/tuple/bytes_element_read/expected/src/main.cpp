@@ -25,7 +25,7 @@ std::tuple<Rec, ::tpy::Bytes> mkb() {
 // def show(tag: str, b: bytes) -> None:
 //     print(tag, b, len(b))
 void show(std::string_view tag, ::tpy::BytesView b) {
-    std::cout << tag << " " << ::tpy::BytesPrinter(b) << " " << ::tpy::__len__(b) << "\n";
+    std::cout << tag << " " << ::tpy::BytesPrinter(b) << " " << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
 // def from_param(t: tuple[bytes, int32]) -> bytes:
@@ -37,12 +37,12 @@ void show(std::string_view tag, ::tpy::BytesView b) {
 //     print("param local", y)
 //     return t[0]  # tpyc: ok
 ::tpy::Bytes from_param(const std::tuple<::tpy::Bytes, int32_t>& t) {
-    std::cout << "param" << " " << ::tpy::BytesPrinter(std::get<0>(t)) << "\n";
-    std::cout << "param len" << " " << ::tpy::__len__(std::get<0>(t)) << "\n";
-    std::cout << "param eq" << " " << ::tpy::print_bool((std::get<0>(t) == ::tpy::bytes_literal("ab", 2))) << "\n";
+    std::cout << "param" << " " << ::tpy::BytesPrinter(std::get<0>(t)) << "\n" << ::tpy::check_signals;
+    std::cout << "param len" << " " << ::tpy::__len__(std::get<0>(t)) << "\n" << ::tpy::check_signals;
+    std::cout << "param eq" << " " << ::tpy::print_bool((std::get<0>(t) == ::tpy::bytes_literal("ab", 2))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("param arg", std::get<0>(t));
     ::tpy::Bytes y = std::get<0>(t);
-    std::cout << "param local" << " " << ::tpy::BytesPrinter(y) << "\n";
+    std::cout << "param local" << " " << ::tpy::BytesPrinter(y) << "\n" << ::tpy::check_signals;
     return std::get<0>(t);
 }
 
@@ -72,7 +72,7 @@ __gen_gen gen(std::tuple<::tpy::Bytes, int32_t> t) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "async" << " " << ::tpy::BytesPrinter(y) << " " << ::tpy::BytesPrinter(std::get<0>(t)) << "\n";
+        std::cout << "async" << " " << ::tpy::BytesPrinter(y) << " " << ::tpy::BytesPrinter(std::get<0>(t)) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpy::__len__(std::get<0>(t));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -95,11 +95,11 @@ __coro_body body(std::tuple<::tpy::Bytes, int32_t> t) {
 //     x, k = G  # tpyc: ok
 //     print("global unpack local", x, k)
 void read_global() {
-    std::cout << "global unpack" << " " << ::tpy::BytesPrinter(gx) << " " << gk << " " << ::tpy::__len__(gx) << "\n";
+    std::cout << "global unpack" << " " << ::tpy::BytesPrinter(gx) << " " << gk << " " << ::tpy::__len__(gx) << "\n" << ::tpy::check_signals;
     const auto& __tup_1 = G;
     ::tpy::BytesView x = std::get<0>(__tup_1);
     int32_t k = std::get<1>(__tup_1);
-    std::cout << "global unpack local" << " " << ::tpy::BytesPrinter(x) << " " << k << "\n";
+    std::cout << "global unpack local" << " " << ::tpy::BytesPrinter(x) << " " << k << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -182,22 +182,22 @@ void read_global() {
 //     print("unpack", q.n, bb)
 void main() {
     ::tpy::Bytes r = ::tpyapp::main::from_param(std::tuple<::tpy::Bytes, int32_t>{::tpy::bytes_literal_owned("ab", 2), 1});
-    std::cout << "param ret" << " " << ::tpy::BytesPrinter(r) << "\n";
+    std::cout << "param ret" << " " << ::tpy::BytesPrinter(r) << "\n" << ::tpy::check_signals;
     std::tuple<::tpy::Bytes, int32_t> t = std::tuple<::tpy::Bytes, int32_t>{::tpy::bytes_literal_owned("lit", 3), 2};
     ::tpy::Bytes y = std::get<0>(t);
     t = std::tuple<::tpy::Bytes, int32_t>{::tpy::bytes_literal_owned("new", 3), 3};
-    std::cout << "literal" << " " << ::tpy::BytesPrinter(y) << " " << ::tpy::BytesPrinter(std::get<0>(t)) << "\n";
+    std::cout << "literal" << " " << ::tpy::BytesPrinter(y) << " " << ::tpy::BytesPrinter(std::get<0>(t)) << "\n" << ::tpy::check_signals;
     std::tuple<::tpy::Bytes, int32_t> c = ::tpyapp::main::mk(4);
-    std::cout << "call" << " " << ::tpy::BytesPrinter(std::get<0>(c)) << " " << ::tpy::__len__(std::get<0>(c)) << " " << ::tpy::print_bool((std::get<0>(c) == ::tpy::bytes_literal("44", 2))) << "\n";
+    std::cout << "call" << " " << ::tpy::BytesPrinter(std::get<0>(c)) << " " << ::tpy::__len__(std::get<0>(c)) << " " << ::tpy::print_bool((std::get<0>(c) == ::tpy::bytes_literal("44", 2))) << "\n" << ::tpy::check_signals;
     Holder h = Holder(::tpyapp::main::mk(5));
-    std::cout << "field" << " " << ::tpy::BytesPrinter(std::get<0>(h.f)) << "\n";
-    std::cout << "method" << " " << ::tpy::BytesPrinter(h.first()) << "\n";
+    std::cout << "field" << " " << ::tpy::BytesPrinter(std::get<0>(h.f)) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << ::tpy::BytesPrinter(h.first()) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<::tpy::Bytes, int32_t>> xs = std::vector<std::tuple<::tpy::Bytes, int32_t>>{};
     xs.push_back(::tpyapp::main::mk(6));
     xs.push_back(::tpyapp::main::mk(7));
     ::tpy::Bytes e = std::get<0>(::tpy::__getitem__(xs, 0));
     xs.clear();
-    std::cout << "elem" << " " << ::tpy::BytesPrinter(e) << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << "elem" << " " << ::tpy::BytesPrinter(e) << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<::tpy::Bytes, int32_t>> ys = std::vector<std::tuple<::tpy::Bytes, int32_t>>{};
     ys.push_back(::tpyapp::main::mk(8));
     ys.push_back(::tpyapp::main::mk(9));
@@ -210,8 +210,8 @@ void main() {
         keep = std::get<0>(p);
     }
     ys.clear();
-    std::cout << "forvar" << " " << ::tpy::BytesPrinter(keep) << " " << ::tpy::__len__(ys) << "\n";
-    std::cout << "global" << " " << ::tpy::BytesPrinter(std::get<0>(G)) << " " << ::tpy::__len__(std::get<0>(G)) << "\n";
+    std::cout << "forvar" << " " << ::tpy::BytesPrinter(keep) << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
+    std::cout << "global" << " " << ::tpy::BytesPrinter(std::get<0>(G)) << " " << ::tpy::__len__(std::get<0>(G)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::read_global();
     {
         std::tuple<::tpy::Bytes, int32_t> __tmp_1 = ::tpyapp::main::mk(3);
@@ -221,11 +221,11 @@ void main() {
             auto __r_2 = __itr_1.__next__();
             if (!__r_2.has_value()) break;
             ::tpy::BytesView b = ::tpy::unwrap_ref(*__r_2);
-            std::cout << "gen" << " " << ::tpy::BytesPrinter(b) << "\n";
+            std::cout << "gen" << " " << ::tpy::BytesPrinter(b) << "\n" << ::tpy::check_signals;
         }
     }
     int32_t n = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::body(std::tuple<::tpy::Bytes, int32_t>{::tpy::bytes_literal_owned("zz", 2), 1})));
-    std::cout << "async ret" << " " << n << "\n";
+    std::cout << "async ret" << " " << n << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<::tpy::Bytes, int32_t>> zs = std::vector<std::tuple<::tpy::Bytes, int32_t>>{};
     zs.push_back(::tpyapp::main::mk(1));
     zs.push_back(::tpyapp::main::mk(2));
@@ -240,16 +240,16 @@ void main() {
             __result.push_back(std::get<0>(q));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::tuple<::tpy::Bytes, int32_t> ct = ::tpyapp::main::mk(7);
     auto clen = [&ct]() -> ::tpy::BigInt {
         return ::tpy::BigInt(::tpy::__len__(std::get<0>(ct)));
     };
-    std::cout << "closure" << " " << clen() << "\n";
+    std::cout << "closure" << " " << clen() << "\n" << ::tpy::check_signals;
     auto& __match_subject_1 = std::get<1>(ct);
     switch (__match_subject_1) {
     case 7: {
-        std::cout << "match" << " " << ::tpy::BytesPrinter(std::get<0>(ct)) << "\n";
+        std::cout << "match" << " " << ::tpy::BytesPrinter(std::get<0>(ct)) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
@@ -258,18 +258,18 @@ void main() {
     }
     {
         try {
-            std::cout << "try" << " " << ::tpy::BytesPrinter(std::get<0>(ct)) << "\n";
+            std::cout << "try" << " " << ::tpy::BytesPrinter(std::get<0>(ct)) << "\n" << ::tpy::check_signals;
         } catch (...) {
-            std::cout << "finally" << " " << ::tpy::BytesPrinter(std::get<0>(ct)) << "\n";
+            std::cout << "finally" << " " << ::tpy::BytesPrinter(std::get<0>(ct)) << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "finally" << " " << ::tpy::BytesPrinter(std::get<0>(ct)) << "\n";
+        std::cout << "finally" << " " << ::tpy::BytesPrinter(std::get<0>(ct)) << "\n" << ::tpy::check_signals;
     }
     auto __tup_1 = ::tpyapp::main::mkb();
     Rec q = std::move(std::get<0>(__tup_1));
     ::tpy::BytesView bb = std::get<1>(__tup_1);
     q.n = 5;
-    std::cout << "unpack" << " " << q.n << " " << ::tpy::BytesPrinter(bb) << "\n";
+    std::cout << "unpack" << " " << q.n << " " << ::tpy::BytesPrinter(bb) << "\n" << ::tpy::check_signals;
 }
 
 // # A `bytes` tuple element read (`t[0]`) compiles at every position, as the

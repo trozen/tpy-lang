@@ -142,32 +142,32 @@ __coro_co co() {
 //     print("float32_dest:", h)
 void main() {
     std::vector<double> __tmp_1 = {1.5, 2.5};
-    std::cout << "free:" << " " << ::tpy::print_float(::tpyapp::main::first_of<double>(__tmp_1)) << "\n";
+    std::cout << "free:" << " " << ::tpy::print_float(::tpyapp::main::first_of<double>(__tmp_1)) << "\n" << ::tpy::check_signals;
     std::vector<double> __tmp_2 = {1.5, 2.5};
     double v = ::tpyapp::main::first_of<double>(__tmp_2);
-    std::cout << "free:" << " " << ::tpy::print_float(v) << "\n";
+    std::cout << "free:" << " " << ::tpy::print_float(v) << "\n" << ::tpy::check_signals;
     std::vector<double> __tmp_3 = {1.5, 2.5};
-    std::cout << "free:" << " " << ::tpy::print_float(((::tpyapp::main::first_of<double>(__tmp_3)) + (1.0))) << "\n";
+    std::cout << "free:" << " " << ::tpy::print_float(((::tpyapp::main::first_of<double>(__tmp_3)) + (1.0))) << "\n" << ::tpy::check_signals;
     std::vector<double> __tmp_4 = {1.5, 2.5};
     ::tpyapp::main::first_of<double>(__tmp_4);
-    std::cout << "free:" << " " << ::tpy::print_float(::tpyapp::main::ident<double>(1.5)) << "\n";
+    std::cout << "free:" << " " << ::tpy::print_float(::tpyapp::main::ident<double>(1.5)) << "\n" << ::tpy::check_signals;
     std::vector<double> xs = {1.5, 2.5};
-    std::cout << "free:" << " " << ::tpy::print_float(::tpyapp::main::first_of<double>(xs)) << "\n";
-    std::cout << "free:" << " " << ::tpy::print_float(::tpyapp::main::pair_first<double, int32_t>(1.5, 2)) << "\n";
-    std::cout << "free:" << " " << ::tpy::print_float(::tpyapp::main::ident<double>(1.5)) << "\n";
+    std::cout << "free:" << " " << ::tpy::print_float(::tpyapp::main::first_of<double>(xs)) << "\n" << ::tpy::check_signals;
+    std::cout << "free:" << " " << ::tpy::print_float(::tpyapp::main::pair_first<double, int32_t>(1.5, 2)) << "\n" << ::tpy::check_signals;
+    std::cout << "free:" << " " << ::tpy::print_float(::tpyapp::main::ident<double>(1.5)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_5 = {1, 2};
     std::vector<std::string> __tmp_6 = {"a", "b"};
-    std::cout << "twin:" << " " << ::tpyapp::main::first_of<int32_t>(__tmp_5) << " " << ::tpyapp::main::first_of<std::string>(__tmp_6) << "\n";
-    std::cout << "tuple_t:" << " " << ::tpy::TuplePrinter(::tpyapp::main::ident<std::tuple<double, int32_t>>(std::tuple<double, int32_t>{1.5, 2})) << "\n";
-    std::cout << "tuple_t:" << " " << ::tpy::TuplePrinter(::tpyapp::main::ident<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{1, 2})) << "\n";
+    std::cout << "twin:" << " " << ::tpyapp::main::first_of<int32_t>(__tmp_5) << " " << ::tpyapp::main::first_of<std::string>(__tmp_6) << "\n" << ::tpy::check_signals;
+    std::cout << "tuple_t:" << " " << ::tpy::TuplePrinter(::tpyapp::main::ident<std::tuple<double, int32_t>>(std::tuple<double, int32_t>{1.5, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << "tuple_t:" << " " << ::tpy::TuplePrinter(::tpyapp::main::ident<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{1, 2})) << "\n" << ::tpy::check_signals;
     C c = C();
     std::vector<double> __tmp_7 = {1.5, 2.5};
-    std::cout << "method:" << " " << ::tpy::print_float(c.pick<double>(__tmp_7)) << " " << ::tpy::print_float(c.body()) << "\n";
+    std::cout << "method:" << " " << ::tpy::print_float(c.pick<double>(__tmp_7)) << " " << ::tpy::print_float(c.body()) << "\n" << ::tpy::check_signals;
     auto inner = []() -> double {
         std::vector<double> __tmp_8 = {1.5, 2.5};
         return ((::tpyapp::main::first_of<double>(__tmp_8)) * (2.0));
     };
-    std::cout << "closure:" << " " << ::tpy::print_float(inner()) << "\n";
+    std::cout << "closure:" << " " << ::tpy::print_float(inner()) << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -175,68 +175,68 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             double g = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator:" << " " << ::tpy::print_float(g) << "\n";
+            std::cout << "generator:" << " " << ::tpy::print_float(g) << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "async:" << " " << ::tpy::print_float(::tpystd::asyncio::run<double>(::tpy::make_adapter<::tpystd::coro::Cancellable<double>>(::tpyapp::main::co()))) << "\n";
+    std::cout << "async:" << " " << ::tpy::print_float(::tpystd::asyncio::run<double>(::tpy::make_adapter<::tpystd::coro::Cancellable<double>>(::tpyapp::main::co()))) << "\n" << ::tpy::check_signals;
     std::cout << "comprehension:" << " " << ::tpy::ListPrinter(::tpy::array_from_index<double, 2>([&](std::size_t __i_2) -> double {
         int32_t _ = int32_t(__i_2);
         std::vector<double> __tmp_9 = {1.5, 2.5};
         return ::tpyapp::main::first_of<double>(__tmp_9);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     {
         try {
             std::vector<double> __tmp_10 = {1.5, 2.5};
-            std::cout << "try_finally:" << " " << ::tpy::print_float(::tpyapp::main::first_of<double>(__tmp_10)) << "\n";
+            std::cout << "try_finally:" << " " << ::tpy::print_float(::tpyapp::main::first_of<double>(__tmp_10)) << "\n" << ::tpy::check_signals;
         } catch (...) {
-            std::cout << "try_finally: done" << "\n";
+            std::cout << "try_finally: done" << "\n" << ::tpy::check_signals;
             throw;
         }
-        std::cout << "try_finally: done" << "\n";
+        std::cout << "try_finally: done" << "\n" << ::tpy::check_signals;
     }
     int32_t n = 1;
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
     case 1: {
         std::vector<double> __tmp_11 = {1.5, 2.5};
-        std::cout << "match_arm:" << " " << ::tpy::print_float(::tpyapp::main::first_of<double>(__tmp_11)) << "\n";
+        std::cout << "match_arm:" << " " << ::tpy::print_float(::tpyapp::main::first_of<double>(__tmp_11)) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {
-        std::cout << "match_arm: other" << "\n";
+        std::cout << "match_arm: other" << "\n" << ::tpy::check_signals;
         break;
     }
     }
-    std::cout << "lambda_fn_slot:" << " " << ::tpy::print_float(::tpyapp::main::apply<double>(1.5, [](double v) -> double { return ((v) * (2.0)); })) << "\n";
-    std::cout << "lambda_fn_slot:" << " " << ::tpy::print_float(::tpyapp::main::apply<double>(1.5, [](double v) -> double { return ((v) * (2.0)); })) << "\n";
-    std::cout << "lambda_fn_slot:" << " " << ::tpy::TuplePrinter(::tpyapp::main::apply<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{1, 2}, [](const std::tuple<int32_t, int32_t>& t) -> std::tuple<int32_t, int32_t> { return t; })) << "\n";
-    std::cout << "lambda_fn_slot:" << " " << ::tpy::TuplePrinter(::tpyapp::main::apply<std::tuple<double, int32_t>>(std::tuple<double, int32_t>{1.5, 2}, [](const std::tuple<double, int32_t>& t) -> std::tuple<double, int32_t> { return t; })) << "\n";
-    std::cout << "lambda_fn_slot:" << " " << ::tpy::TuplePrinter(::tpyapp::main::apply<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{1, 2}, [](const std::tuple<int32_t, int32_t>& t) -> std::tuple<int32_t, int32_t> { return t; })) << "\n";
-    std::cout << "named_fn_slot:" << " " << ::tpy::TuplePrinter(::tpyapp::main::apply<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{1, 2}, swap)) << "\n";
-    std::cout << "named_fn_slot:" << " " << ::tpyapp::main::apply<int32_t>(1, triple) << "\n";
+    std::cout << "lambda_fn_slot:" << " " << ::tpy::print_float(::tpyapp::main::apply<double>(1.5, [](double v) -> double { return ((v) * (2.0)); })) << "\n" << ::tpy::check_signals;
+    std::cout << "lambda_fn_slot:" << " " << ::tpy::print_float(::tpyapp::main::apply<double>(1.5, [](double v) -> double { return ((v) * (2.0)); })) << "\n" << ::tpy::check_signals;
+    std::cout << "lambda_fn_slot:" << " " << ::tpy::TuplePrinter(::tpyapp::main::apply<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{1, 2}, [](const std::tuple<int32_t, int32_t>& t) -> std::tuple<int32_t, int32_t> { return t; })) << "\n" << ::tpy::check_signals;
+    std::cout << "lambda_fn_slot:" << " " << ::tpy::TuplePrinter(::tpyapp::main::apply<std::tuple<double, int32_t>>(std::tuple<double, int32_t>{1.5, 2}, [](const std::tuple<double, int32_t>& t) -> std::tuple<double, int32_t> { return t; })) << "\n" << ::tpy::check_signals;
+    std::cout << "lambda_fn_slot:" << " " << ::tpy::TuplePrinter(::tpyapp::main::apply<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{1, 2}, [](const std::tuple<int32_t, int32_t>& t) -> std::tuple<int32_t, int32_t> { return t; })) << "\n" << ::tpy::check_signals;
+    std::cout << "named_fn_slot:" << " " << ::tpy::TuplePrinter(::tpyapp::main::apply<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{1, 2}, swap)) << "\n" << ::tpy::check_signals;
+    std::cout << "named_fn_slot:" << " " << ::tpyapp::main::apply<int32_t>(1, triple) << "\n" << ::tpy::check_signals;
     Bag<double> b = Bag<double>();
     b.add(1.5);
-    std::cout << "pending_instance:" << " " << ::tpy::print_float(::tpy::__getitem__(b.items, 0)) << "\n";
-    std::cout << "builtins:" << " " << ::tpy::print_float(::tpy::builtin_sum_float(std::array<double, 2>{1.5, 2.5})) << "\n";
-    std::cout << "builtins:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<double>(std::array<double, 2>{2.5, 1.5})) << "\n";
-    std::cout << "builtins:" << " " << ::tpy::SetPrinter(::tpy::ordered_set<double>({1.5})) << "\n";
-    std::cout << "builtins:" << " " << ::tpy::ListPrinter(std::vector<double>({0.5})) << "\n";
+    std::cout << "pending_instance:" << " " << ::tpy::print_float(::tpy::__getitem__(b.items, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "builtins:" << " " << ::tpy::print_float(::tpy::builtin_sum_float(std::array<double, 2>{1.5, 2.5})) << "\n" << ::tpy::check_signals;
+    std::cout << "builtins:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<double>(std::array<double, 2>{2.5, 1.5})) << "\n" << ::tpy::check_signals;
+    std::cout << "builtins:" << " " << ::tpy::SetPrinter(::tpy::ordered_set<double>({1.5})) << "\n" << ::tpy::check_signals;
+    std::cout << "builtins:" << " " << ::tpy::ListPrinter(std::vector<double>({0.5})) << "\n" << ::tpy::check_signals;
     std::array<double, 2> ws = {1.5, 2.5};
-    std::cout << "builtins:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::tuple<int32_t, double>>>(::tpy::builtin_enumerate(ws))) << "\n";
+    std::cout << "builtins:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::tuple<int32_t, double>>>(::tpy::builtin_enumerate(ws))) << "\n" << ::tpy::check_signals;
     auto __obj_3 = std::array<std::array<double, 1>, 1>{{{0.5}}};
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         const auto& row = *__beg_3;
-        std::cout << "builtins:" << " " << ::tpy::ListPrinter(row) << "\n";
+        std::cout << "builtins:" << " " << ::tpy::ListPrinter(row) << "\n" << ::tpy::check_signals;
     }
-    std::cout << "builtins:" << " " << ::tpy::print_float(::tpy::max_key(1.5, 2.5, [](double w) -> double { return -(w); })) << "\n";
-    std::cout << "builtins:" << " " << ::tpy::ListPrinter((::tpy::list_concat(std::vector<double>{1.5}, std::vector<double>{2.5}))) << "\n";
+    std::cout << "builtins:" << " " << ::tpy::print_float(::tpy::max_key(1.5, 2.5, [](double w) -> double { return -(w); })) << "\n" << ::tpy::check_signals;
+    std::cout << "builtins:" << " " << ::tpy::ListPrinter((::tpy::list_concat(std::vector<double>{1.5}, std::vector<double>{2.5}))) << "\n" << ::tpy::check_signals;
     std::vector<float> __tmp_12 = {1.5, 2.5};
     float f = ::tpyapp::main::first_of<float>(__tmp_12);
-    std::cout << "float32_dest:" << " " << ::tpy::print_float(static_cast<double>(f)) << "\n";
+    std::cout << "float32_dest:" << " " << ::tpy::print_float(static_cast<double>(f)) << "\n" << ::tpy::check_signals;
     float h = static_cast<float>(::tpyapp::main::ident<double>(0.25));
-    std::cout << "float32_dest:" << " " << ::tpy::print_float(static_cast<double>(h)) << "\n";
+    std::cout << "float32_dest:" << " " << ::tpy::print_float(static_cast<double>(h)) << "\n" << ::tpy::check_signals;
 }
 
 // def above(i: int) -> bool:
@@ -265,7 +265,7 @@ void __tpy_init() {
     ::tpyapp::main::main();
     static std::vector<double> __global_slot_1 = {0.15, 0.3};
     X = &__global_slot_1;
-    std::cout << "global:" << " " << ::tpy::print_bool(::tpyapp::main::above(::tpy::BigInt(0))) << " " << ::tpy::print_bool(::tpyapp::main::above(::tpy::BigInt(1))) << "\n";
+    std::cout << "global:" << " " << ::tpy::print_bool(::tpyapp::main::above(::tpy::BigInt(0))) << " " << ::tpy::print_bool(::tpyapp::main::above(::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -38,18 +38,18 @@ std::string pointer_arm(::tpy::Union<std::monostate, Cat*, Dog*> pet) {
 void main() {
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_1 = Fixed(60);
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_2 = Zone(2);
-    std::cout << Holder().kind << " " << Holder(__tmp_1).kind << " " << Holder(__tmp_2).kind << "\n";
+    std::cout << Holder().kind << " " << Holder(__tmp_1).kind << " " << Holder(__tmp_2).kind << "\n" << ::tpy::check_signals;
     Holder h = Holder();
-    std::cout << h.describe() << "\n";
+    std::cout << h.describe() << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_3 = Fixed(60);
-    std::cout << h.describe(__tmp_3) << "\n";
+    std::cout << h.describe(__tmp_3) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_4 = Zone(7);
-    std::cout << h.describe(__tmp_4) << "\n";
-    std::cout << h.opt() << "\n";
-    std::cout << h.opt(Fixed(5)) << "\n";
-    std::cout << ::tpyapp::main::pointer_arm() << "\n";
+    std::cout << h.describe(__tmp_4) << "\n" << ::tpy::check_signals;
+    std::cout << h.opt() << "\n" << ::tpy::check_signals;
+    std::cout << h.opt(Fixed(5)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pointer_arm() << "\n" << ::tpy::check_signals;
     Dog d = Dog(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::pointer_arm(::tpy::Union<std::monostate, Cat*, Dog*>{&(d)}) << " " << d.barks << "\n";
+    std::cout << ::tpyapp::main::pointer_arm(::tpy::Union<std::monostate, Cat*, Dog*>{&(d)}) << " " << d.barks << "\n" << ::tpy::check_signals;
 }
 
 // # A `= None` default on a None-including union param must default-construct

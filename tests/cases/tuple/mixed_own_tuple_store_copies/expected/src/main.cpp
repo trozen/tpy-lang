@@ -147,20 +147,20 @@ int32_t via_field(Box& b) {
 void main() {
     Box __tmp_1 = Box(2);
     Box __tmp_2 = Box(2);
-    std::cout << ::tpyapp::main::via_list_literal(__tmp_1) << " " << ::tpyapp::main::via_append(__tmp_2) << "\n";
+    std::cout << ::tpyapp::main::via_list_literal(__tmp_1) << " " << ::tpyapp::main::via_append(__tmp_2) << "\n" << ::tpy::check_signals;
     Box __tmp_3 = Box(2);
     Box __tmp_4 = Box(2);
-    std::cout << ::tpyapp::main::via_dict_literal(__tmp_3) << " " << ::tpyapp::main::via_setitem(__tmp_4) << "\n";
+    std::cout << ::tpyapp::main::via_dict_literal(__tmp_3) << " " << ::tpyapp::main::via_setitem(__tmp_4) << "\n" << ::tpy::check_signals;
     Box __tmp_5 = Box(2);
     Box __tmp_6 = Box(2);
-    std::cout << ::tpyapp::main::via_nested_tuple(__tmp_5) << " " << ::tpyapp::main::via_comprehension(__tmp_6) << "\n";
+    std::cout << ::tpyapp::main::via_nested_tuple(__tmp_5) << " " << ::tpyapp::main::via_comprehension(__tmp_6) << "\n" << ::tpy::check_signals;
     Box __tmp_7 = Box(2);
     Box __tmp_8 = Box(2);
-    std::cout << ::tpyapp::main::via_loop_var(__tmp_7) << " " << ::tpyapp::main::via_field(__tmp_8) << "\n";
+    std::cout << ::tpyapp::main::via_loop_var(__tmp_7) << " " << ::tpyapp::main::via_field(__tmp_8) << "\n" << ::tpy::check_signals;
     Box __tmp_9 = Box(2);
     Box __tmp_10 = Box(2);
     Box __tmp_11 = Box(3);
-    std::cout << ::tpyapp::main::via_dict_comprehension(__tmp_9) << " " << ::tpyapp::main::via_ternary_source(__tmp_10, __tmp_11, true) << "\n";
+    std::cout << ::tpyapp::main::via_dict_comprehension(__tmp_9) << " " << ::tpyapp::main::via_ternary_source(__tmp_10, __tmp_11, true) << "\n" << ::tpy::check_signals;
 }
 
 // main()

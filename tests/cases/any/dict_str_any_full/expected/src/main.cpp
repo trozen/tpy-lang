@@ -38,18 +38,18 @@ void main() {
     if ((debug.value.has_value() && debug.value.type() == typeid(bool))) {
         const bool& __debug = std::any_cast<const bool&>(debug.value);
         if (::tpy::to_bool(__debug)) {
-            std::cout << "debug on" << "\n";
+            std::cout << "debug on" << "\n" << ::tpy::check_signals;
         } else {
-            std::cout << "debug off" << "\n";
+            std::cout << "debug off" << "\n" << ::tpy::check_signals;
         }
     }
     std::string host = ::tpy::any_cast_or_panic<std::string>(::tpy::__getitem__(cfg, "host"));
     ::tpy::BigInt port = ::tpy::any_cast_or_panic<::tpy::BigInt>(::tpy::__getitem__(cfg, "port"));
-    std::cout << host << "\n";
-    std::cout << port << "\n";
+    std::cout << host << "\n" << ::tpy::check_signals;
+    std::cout << port << "\n" << ::tpy::check_signals;
     double timeout = ::tpy::any_cast_or_panic<double>(::tpy::__getitem__(cfg, "timeout"));
-    std::cout << ::tpy::print_float(timeout) << "\n";
-    std::cout << ::tpy::__getitem__(cfg, "host") << "\n";
+    std::cout << ::tpy::print_float(timeout) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__(cfg, "host") << "\n" << ::tpy::check_signals;
 }
 
 // main()

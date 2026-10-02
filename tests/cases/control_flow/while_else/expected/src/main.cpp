@@ -14,11 +14,11 @@ namespace tpyapp::main {
 void no_break() {
     int32_t i = 0;
     while ((i < 3)) {
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     {
-        std::cout << "done" << "\n";
+        std::cout << "done" << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
 }
@@ -36,13 +36,13 @@ void with_break() {
     int32_t i = 0;
     while ((i < 10)) {
         if ((i == 5)) {
-            std::cout << "broke" << "\n";
+            std::cout << "broke" << "\n" << ::tpy::check_signals;
             goto __after_else_0;
         }
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     {
-        std::cout << "completed" << "\n";
+        std::cout << "completed" << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
 }
@@ -69,7 +69,7 @@ void nested_inner_else() {
             j = ::tpy::add_check<int32_t>(j, 1);
         }
         {
-            std::cout << "inner done" << "\n";
+            std::cout << "inner done" << "\n" << ::tpy::check_signals;
         }
         __after_else_0:;
         i = ::tpy::add_check<int32_t>(i, 1);
@@ -101,7 +101,7 @@ void nested_outer_else() {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     {
-        std::cout << "outer done" << "\n";
+        std::cout << "outer done" << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
 }
@@ -117,7 +117,7 @@ void false_condition() {
         goto __after_else_0;
     }
     {
-        std::cout << "false else" << "\n";
+        std::cout << "false else" << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
 }
@@ -142,7 +142,7 @@ void var_decl_in_else() {
     }
     {
         std::string_view msg = "completed";
-        std::cout << msg << "\n";
+        std::cout << msg << "\n" << ::tpy::check_signals;
     }
     __after_else_0:;
 }

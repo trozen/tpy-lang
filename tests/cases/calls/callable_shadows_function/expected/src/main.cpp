@@ -52,10 +52,10 @@ int32_t local_binding(int32_t y) {
 //     print("local", local_binding(5))
 //     print("method", Runner("r").run(double, 6))
 void main() {
-    std::cout << "same" << " " << ::tpyapp::main::same_arity(double_, 4) << " " << ::tpyapp::main::f(4) << "\n";
-    std::cout << "diff" << " " << ::tpyapp::main::diff_arity(double_, 4) << " " << ::tpyapp::main::wide(1, 2) << "\n";
-    std::cout << "local" << " " << ::tpyapp::main::local_binding(5) << "\n";
-    std::cout << "method" << " " << Runner("r").run(double_, 6) << "\n";
+    std::cout << "same" << " " << ::tpyapp::main::same_arity(double_, 4) << " " << ::tpyapp::main::f(4) << "\n" << ::tpy::check_signals;
+    std::cout << "diff" << " " << ::tpyapp::main::diff_arity(double_, 4) << " " << ::tpyapp::main::wide(1, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "local" << " " << ::tpyapp::main::local_binding(5) << "\n" << ::tpy::check_signals;
+    std::cout << "method" << " " << Runner("r").run(double_, 6) << "\n" << ::tpy::check_signals;
 }
 
 // main()

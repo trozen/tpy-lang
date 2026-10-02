@@ -13,7 +13,7 @@ void main() {
     C<int32_t> a = C<int32_t>();
     C<int32_t>::counter = ::tpy::add_check<int32_t>(C<int32_t>::counter, 5);
     C<int32_t>::counter = ::tpy::add_check<int32_t>(C<int32_t>::counter, 7);
-    std::cout << C<int32_t>::counter << "\n";
+    std::cout << C<int32_t>::counter << "\n" << ::tpy::check_signals;
 }
 
 // main()

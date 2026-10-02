@@ -56,32 +56,32 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::from_float_check<int32_t>(3.7) << "\n";
-    std::cout << ::tpy::from_float_check<int32_t>(-(3.7)) << "\n";
-    std::cout << ::tpy::from_float_check<int32_t>(0.0) << "\n";
-    std::cout << ::tpy::from_str_check<int32_t>("42") << "\n";
-    std::cout << ::tpy::from_str_check<int32_t>("-100") << "\n";
-    std::cout << ::tpy::from_str_check<int32_t>(" 7 ") << "\n";
-    std::cout << static_cast<int32_t>(true) << "\n";
-    std::cout << static_cast<int32_t>(false) << "\n";
-    std::cout << ::tpy::BigInt(static_cast<int32_t>(true)) << "\n";
-    std::cout << ::tpy::BigInt(static_cast<int32_t>(false)) << "\n";
-    std::cout << ::tpy::BigInt(static_cast<int32_t>(static_cast<char>(65))) << "\n";
-    std::cout << ::tpy::BigInt(static_cast<int32_t>(static_cast<char>(0))) << "\n";
-    std::cout << ::tpy::print_float(static_cast<double>(true)) << "\n";
-    std::cout << ::tpy::print_float(static_cast<double>(false)) << "\n";
-    std::cout << ::tpy::print_float(::tpy::float_from_str("3.14")) << "\n";
-    std::cout << ::tpy::print_float(::tpy::float_from_str("-0.5")) << "\n";
-    std::cout << ::tpy::print_float(::tpy::float_from_str(" 42 ")) << "\n";
-    std::cout << ::tpy::print_float(::tpy::float_from_str("1e3")) << "\n";
-    std::cout << ::tpy::print_float(std::numeric_limits<double>::infinity()) << "\n";
-    std::cout << ::tpy::print_float(-std::numeric_limits<double>::infinity()) << "\n";
-    std::cout << ::tpy::print_bool((0.0 != 0.0)) << "\n";
-    std::cout << ::tpy::print_bool((1.5 != 0.0)) << "\n";
-    std::cout << ::tpy::print_bool((-(0.1) != 0.0)) << "\n";
-    std::cout << ::tpy::print_bool((std::string_view("").size() != 0)) << "\n";
-    std::cout << ::tpy::print_bool((std::string_view("hello").size() != 0)) << "\n";
-    std::cout << ::tpy::print_bool((std::string_view(" ").size() != 0)) << "\n";
+    std::cout << ::tpy::from_float_check<int32_t>(3.7) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<int32_t>(-(3.7)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_float_check<int32_t>(0.0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_str_check<int32_t>("42") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_str_check<int32_t>("-100") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::from_str_check<int32_t>(" 7 ") << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(true) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int32_t>(false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BigInt(static_cast<int32_t>(true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BigInt(static_cast<int32_t>(false)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BigInt(static_cast<int32_t>(static_cast<char>(65))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BigInt(static_cast<int32_t>(static_cast<char>(0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(static_cast<double>(true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(static_cast<double>(false)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpy::float_from_str("3.14")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpy::float_from_str("-0.5")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpy::float_from_str(" 42 ")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpy::float_from_str("1e3")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(std::numeric_limits<double>::infinity()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(-std::numeric_limits<double>::infinity()) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((0.0 != 0.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((1.5 != 0.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((-(0.1) != 0.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((std::string_view("").size() != 0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((std::string_view("hello").size() != 0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((std::string_view(" ").size() != 0)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

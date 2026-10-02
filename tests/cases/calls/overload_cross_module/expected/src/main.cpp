@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     ::tpyapp::animals::Dog d = ::tpyapp::animals::Dog("Rex");
     ::tpyapp::animals::Cat c = ::tpyapp::animals::Cat(::tpy::BigInt(9));
-    std::cout << ::tpyapp::animals::describe(d) << "\n";
-    std::cout << ::tpyapp::animals::describe(c) << "\n";
+    std::cout << ::tpyapp::animals::describe(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::animals::describe(c) << "\n" << ::tpy::check_signals;
 }
 
 // # Cross-module @overload: import and call overloaded function from another module

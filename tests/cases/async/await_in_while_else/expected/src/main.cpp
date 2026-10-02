@@ -13,7 +13,7 @@ namespace tpyapp::main {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << label << "\n";
+        std::cout << label << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -102,7 +102,7 @@ __coro_drive drive(int32_t brk) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "no break:" << "\n";
+        std::cout << "no break:" << "\n" << ::tpy::check_signals;
         __sub_0.emplace(99);
         __state = S_RESUME_0;
         continue;
@@ -112,7 +112,7 @@ __coro_drive drive(int32_t brk) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "break:" << "\n";
+        std::cout << "break:" << "\n" << ::tpy::check_signals;
         __sub_1.emplace(1);
         __state = S_RESUME_1;
         continue;

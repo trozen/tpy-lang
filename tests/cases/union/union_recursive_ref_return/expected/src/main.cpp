@@ -61,10 +61,10 @@ Expr build() {
 //     print(leaf_count(first_view(seed)))
 //     print(leaf_count(build()))
 void main() {
-    std::cout << ::tpyapp::main::leaf_count(::tpyapp::main::get_global()) << "\n";
+    std::cout << ::tpyapp::main::leaf_count(::tpyapp::main::get_global()) << "\n" << ::tpy::check_signals;
     Expr seed = std::vector<Expr>{7, std::vector<Expr>{8, 9}};
-    std::cout << ::tpyapp::main::leaf_count(::tpyapp::main::first_view(seed)) << "\n";
-    std::cout << ::tpyapp::main::leaf_count(::tpyapp::main::build()) << "\n";
+    std::cout << ::tpyapp::main::leaf_count(::tpyapp::main::first_view(seed)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::leaf_count(::tpyapp::main::build()) << "\n" << ::tpy::check_signals;
 }
 
 // g: Expr = [1, [2, 3], 4]

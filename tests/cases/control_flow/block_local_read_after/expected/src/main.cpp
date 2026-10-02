@@ -121,11 +121,11 @@ namespace tpyapp::main {
     int32_t n;
     for (int32_t i = 0; i < 2; ++i) {
         n = (::tpy::add_check<int32_t>(i, 1));
-        std::cout << n << "\n";
+        std::cout << n << "\n" << ::tpy::check_signals;
     }
     for (int32_t i = 0; i < 2; ++i) {
         n = (::tpy::add_check<int32_t>(i, 10));
-        std::cout << n << "\n";
+        std::cout << n << "\n" << ::tpy::check_signals;
     }
     return ::tpy::BigInt(n);
 }
@@ -139,13 +139,13 @@ namespace tpyapp::main {
 //     print(read_after_while())
 //     print(sibling_loops_reuse_name())
 void main() {
-    std::cout << ::tpyapp::main::read_after() << "\n";
-    std::cout << ::tpyapp::main::read_then_assign() << "\n";
-    std::cout << ::tpyapp::main::augmented_after() << "\n";
-    std::cout << ::tpyapp::main::declared_before() << "\n";
-    std::cout << ::tpyapp::main::read_in_later_block() << "\n";
-    std::cout << ::tpyapp::main::read_after_while() << "\n";
-    std::cout << ::tpyapp::main::sibling_loops_reuse_name() << "\n";
+    std::cout << ::tpyapp::main::read_after() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_then_assign() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::augmented_after() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::declared_before() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_in_later_block() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_after_while() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sibling_loops_reuse_name() << "\n" << ::tpy::check_signals;
 }
 
 // main()

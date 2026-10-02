@@ -16,7 +16,7 @@ void __tpy_init() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t i = *__beg_0;
-        std::cout << i << "\n";
+        std::cout << i << "\n" << ::tpy::check_signals;
     }
 }
 

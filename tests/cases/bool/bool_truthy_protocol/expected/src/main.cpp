@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     Box b1 = Box(::tpy::BigInt(42));
     Box b2 = Box(::tpy::BigInt(0));
-    std::cout << ::tpy::print_bool(::tpyapp::main::check<Box>(b1)) << "\n";
-    std::cout << ::tpy::print_bool(::tpyapp::main::check<Box>(b2)) << "\n";
+    std::cout << ::tpy::print_bool(::tpyapp::main::check<Box>(b1)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::check<Box>(b2)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -33,7 +33,7 @@ __coro_add_one add_one(::tpy::BigInt n) {
 //     print(asyncio.run(c))
 void main() {
     std::optional<__coro_add_one> c = ::tpyapp::main::add_one(::tpy::BigInt(41));
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(std::move(*(c)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(std::move(*(c)))) << "\n" << ::tpy::check_signals;
 }
 
 // # Binding a coroutine in a sync context (plain unique_ptr local, no frame)

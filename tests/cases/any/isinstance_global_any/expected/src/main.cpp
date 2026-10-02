@@ -13,11 +13,11 @@ namespace tpyapp::main {
 void main() {
     if ((g.value.has_value() && g.value.type() == typeid(::tpy::BigInt))) {
         const ::tpy::BigInt& __g = std::any_cast<const ::tpy::BigInt&>(g.value);
-        std::cout << ((__g) + (::tpy::BigInt(1))) << "\n";
+        std::cout << ((__g) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
     }
     if ((g.value.has_value() && g.value.type() == typeid(std::string))) {
         const std::string& __g = std::any_cast<const std::string&>(g.value);
-        std::cout << "never" << "\n";
+        std::cout << "never" << "\n" << ::tpy::check_signals;
     }
 }
 

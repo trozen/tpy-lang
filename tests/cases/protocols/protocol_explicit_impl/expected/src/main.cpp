@@ -17,9 +17,9 @@ void __tpy_init() {
 
     static Person __global_slot_1 = Person("Alice", 30);
     p = &__global_slot_1;
-    std::cout << p->__str__() << "\n";
-    std::cout << p->name << "\n";
-    std::cout << p->age << "\n";
+    std::cout << p->__str__() << "\n" << ::tpy::check_signals;
+    std::cout << p->name << "\n" << ::tpy::check_signals;
+    std::cout << p->age << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

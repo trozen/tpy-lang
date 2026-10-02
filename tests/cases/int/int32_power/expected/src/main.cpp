@@ -35,15 +35,15 @@ void __tpy_init() {
     initialized = true;
 
     x = 2;
-    std::cout << (::tpy::pow_check<int32_t>(x, 10)) << "\n";
+    std::cout << (::tpy::pow_check<int32_t>(x, 10)) << "\n" << ::tpy::check_signals;
     y = 3;
-    std::cout << (::tpy::pow_check<int32_t>(y, 4)) << "\n";
+    std::cout << (::tpy::pow_check<int32_t>(y, 4)) << "\n" << ::tpy::check_signals;
     z = 5;
-    std::cout << (::tpy::pow_check<int32_t>(z, 0)) << "\n";
-    std::cout << (::tpy::pow_check<int32_t>(x, 1)) << "\n";
+    std::cout << (::tpy::pow_check<int32_t>(z, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::pow_check<int32_t>(x, 1)) << "\n" << ::tpy::check_signals;
     n = -2;
-    std::cout << (::tpy::pow_check<int32_t>(n, 3)) << "\n";
-    std::cout << (::tpy::pow_check<int32_t>(n, 4)) << "\n";
+    std::cout << (::tpy::pow_check<int32_t>(n, 3)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::pow_check<int32_t>(n, 4)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

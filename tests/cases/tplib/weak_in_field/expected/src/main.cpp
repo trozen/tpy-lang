@@ -29,11 +29,11 @@ Observer make_observer_with_dead_target() {
 void main() {
     ::tpystd::tplib::rc::Rc<Counter> c = Rc<Counter>::new_<Counter>(Counter(10));
     Observer obs = Observer(c.downgrade());
-    std::cout << obs.read() << "\n";
+    std::cout << obs.read() << "\n" << ::tpy::check_signals;
     c.get().value = 42;
-    std::cout << obs.read() << "\n";
+    std::cout << obs.read() << "\n" << ::tpy::check_signals;
     Observer dead_obs = ::tpyapp::main::make_observer_with_dead_target();
-    std::cout << dead_obs.read() << "\n";
+    std::cout << dead_obs.read() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.rc import Rc, Weak

@@ -185,14 +185,14 @@ __coro_async_body async_body(Bag& b) {
 //     print("stepped_slice", xs)
 void main() {
     Bag b = Bag();
-    std::cout << "builtins" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(b)) << " " << ::tpy::print_bool(::tpy::builtin_any(b)) << " " << ::tpy::print_bool(::tpy::builtin_all(b)) << "\n";
-    std::cout << "sorted_key" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted_key<std::string>(b, [](std::string_view s) -> int32_t { return (((s == "b")) ? (0) : (1)); })) << "\n";
+    std::cout << "builtins" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(b)) << " " << ::tpy::print_bool(::tpy::builtin_any(b)) << " " << ::tpy::print_bool(::tpy::builtin_all(b)) << "\n" << ::tpy::check_signals;
+    std::cout << "sorted_key" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted_key<std::string>(b, [](std::string_view s) -> int32_t { return (((s == "b")) ? (0) : (1)); })) << "\n" << ::tpy::check_signals;
     GBag g = GBag();
-    std::cout << "generator_iter" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(g)) << " " << ::tpy::builtin_sum<int32_t>(g) << "\n";
+    std::cout << "generator_iter" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(g)) << " " << ::tpy::builtin_sum<int32_t>(g) << "\n" << ::tpy::check_signals;
     Cnt c = Cnt(3);
-    std::cout << "self_iter" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(c)) << " " << c.n << " " << ::tpy::builtin_sum<int32_t>(Cnt(4)) << "\n";
-    std::cout << "construct" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(b)) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(::tpy::set_construct<std::string>(b))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpyapp::main::mk())) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(Cnt(2))) << "\n";
-    std::cout << "dict" << " " << ::tpy::DictPrinter(::tpy::dict_construct<std::string, int32_t>(PBag())) << "\n";
+    std::cout << "self_iter" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(c)) << " " << c.n << " " << ::tpy::builtin_sum<int32_t>(Cnt(4)) << "\n" << ::tpy::check_signals;
+    std::cout << "construct" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(b)) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(::tpy::set_construct<std::string>(b))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpyapp::main::mk())) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(Cnt(2))) << "\n" << ::tpy::check_signals;
+    std::cout << "dict" << " " << ::tpy::DictPrinter(::tpy::dict_construct<std::string, int32_t>(PBag())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show(b);
     std::cout << "comp_local" << " " << ::tpy::ListPrinter(({
         std::vector<std::string> __result;
@@ -224,7 +224,7 @@ void main() {
             __result.insert_or_assign(s, ::tpy::__len__(s));
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << "self_iter_comp" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __src_3 = Cnt(3);
@@ -247,7 +247,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << "generator_iter_comp" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto&& __obj_5 = ::tpy::iter_range(g);
@@ -268,7 +268,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     std::cout << "rvalue" << " " << ::tpy::ListPrinter(({
         std::vector<std::string> __result;
         auto __src_7 = ::tpyapp::main::mk();
@@ -291,9 +291,9 @@ void main() {
             __result.insert(s);
         }
         std::move(__result);
-    }))) << "\n";
+    }))) << "\n" << ::tpy::check_signals;
     RBag __tmp_1 = RBag();
-    std::cout << "param" << " " << ::tpy::ListPrinter(::tpyapp::main::param_comp(__tmp_1)) << "\n";
+    std::cout << "param" << " " << ::tpy::ListPrinter(::tpyapp::main::param_comp(__tmp_1)) << "\n" << ::tpy::check_signals;
     RBag rb = RBag();
     std::cout << "mutate" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -315,9 +315,9 @@ void main() {
             __result.push_back(r.v);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     Holder h = Holder();
-    std::cout << "method" << " " << ::tpy::ListPrinter(h.values()) << " " << ::tpy::print_bool(h.any_a()) << " " << ::tpy::ListPrinter(h.listed()) << "\n";
+    std::cout << "method" << " " << ::tpy::ListPrinter(h.values()) << " " << ::tpy::print_bool(h.any_a()) << " " << ::tpy::ListPrinter(h.listed()) << "\n" << ::tpy::check_signals;
     std::cout << "owned_method_source" << " " << ::tpy::ListPrinter(({
         std::vector<std::string> __result;
         auto __src_11 = h.make();
@@ -329,9 +329,9 @@ void main() {
             __result.push_back(s);
         }
         std::move(__result);
-    })) << "\n";
-    std::cout << "self_source" << " " << ::tpy::ListPrinter(Letters({"h", "i"}).upper()) << " " << ::tpy::ListPrinter(Letters({"o", "k"}).listed()) << "\n";
-    std::cout << "readonly" << " " << ::tpy::ListPrinter(::tpyapp::main::ro_comp(b)) << "\n";
+    })) << "\n" << ::tpy::check_signals;
+    std::cout << "self_source" << " " << ::tpy::ListPrinter(Letters({"h", "i"}).upper()) << " " << ::tpy::ListPrinter(Letters({"o", "k"}).listed()) << "\n" << ::tpy::check_signals;
+    std::cout << "readonly" << " " << ::tpy::ListPrinter(::tpyapp::main::ro_comp(b)) << "\n" << ::tpy::check_signals;
     {
         auto __src_12 = ::tpyapp::main::gen_body(b);
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
@@ -339,7 +339,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_13);
-            std::cout << "generator" << " " << n << "\n";
+            std::cout << "generator" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -350,10 +350,10 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_15);
-            std::cout << "generator_protocol" << " " << n << "\n";
+            std::cout << "generator_protocol" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_body(b))) << "\n";
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_body(b))) << "\n" << ::tpy::check_signals;
     auto closure = [&b]() -> std::vector<std::string> {
         return ({
             std::vector<std::string> __result;
@@ -367,7 +367,7 @@ void main() {
             std::move(__result);
         });
     };
-    std::cout << "closure" << " " << ::tpy::ListPrinter(closure()) << "\n";
+    std::cout << "closure" << " " << ::tpy::ListPrinter(closure()) << "\n" << ::tpy::check_signals;
     Box<int32_t> bx = Box<int32_t>({1, 2});
     std::cout << "generic" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -389,14 +389,14 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(bx)) << "\n";
+    })) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(bx)) << "\n" << ::tpy::check_signals;
     auto __tmp_3 = std::array<std::string, 2>{"b", "a"};
     auto __tmp_4 = Bag();
     auto __tmp_5 = ::tpyapp::main::words();
-    std::cout << "protocol" << " " << ::tpy::ListPrinter(::tpyapp::main::ups(__tmp_3)) << " " << ::tpy::ListPrinter(::tpyapp::main::ups(__tmp_4)) << " " << ::tpy::ListPrinter(::tpyapp::main::ups(__tmp_5)) << "\n";
+    std::cout << "protocol" << " " << ::tpy::ListPrinter(::tpyapp::main::ups(__tmp_3)) << " " << ::tpy::ListPrinter(::tpyapp::main::ups(__tmp_4)) << " " << ::tpy::ListPrinter(::tpyapp::main::ups(__tmp_5)) << "\n" << ::tpy::check_signals;
     auto __tmp_6 = ::tpyapp::main::words();
     auto __tmp_7 = ::tpy::__iter__(std::array<std::string, 2>{"m", "n"});
-    std::cout << "iterator_param" << " " << ::tpy::ListPrinter(::tpyapp::main::drain(__tmp_6)) << " " << ::tpy::ListPrinter(::tpyapp::main::drain(__tmp_7)) << "\n";
+    std::cout << "iterator_param" << " " << ::tpy::ListPrinter(::tpyapp::main::drain(__tmp_6)) << " " << ::tpy::ListPrinter(::tpyapp::main::drain(__tmp_7)) << "\n" << ::tpy::check_signals;
     Src s4 = Src();
     std::cout << "member_stmt" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -408,9 +408,9 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << " " << s4.it.n << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(s4)) << " " << ::tpy::builtin_sum<int32_t>(s4) << "\n";
+    })) << " " << s4.it.n << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(s4)) << " " << ::tpy::builtin_sum<int32_t>(s4) << "\n" << ::tpy::check_signals;
     Src s5 = Src();
-    std::cout << "member_proto" << " " << ::tpy::ListPrinter(::tpyapp::main::proto_comp(s5)) << " " << s5.it.n << "\n";
+    std::cout << "member_proto" << " " << ::tpy::ListPrinter(::tpyapp::main::proto_comp(s5)) << " " << s5.it.n << "\n" << ::tpy::check_signals;
     Cnt __slot_1 = Cnt(3);
     Cnt* c2 = &__slot_1;
     std::cout << "reassigned" << " " << ::tpy::ListPrinter(({
@@ -423,7 +423,7 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << " " << c2->n << "\n";
+    })) << " " << c2->n << "\n" << ::tpy::check_signals;
     (*c2) = Cnt(2);
     std::cout << "reassigned" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -445,12 +445,12 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
     (*c2) = Cnt(2);
-    std::cout << "reassigned_set" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(::tpy::set_construct<int32_t>((*c2)))) << " " << c2->n << "\n";
+    std::cout << "reassigned_set" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(::tpy::set_construct<int32_t>((*c2)))) << " " << c2->n << "\n" << ::tpy::check_signals;
     Tx t = Tx();
     t.begin();
-    std::cout << "begin_end_methods" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(t)) << " " << ::tpy::str_join(",", t) << " " << t.started << "\n";
+    std::cout << "begin_end_methods" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(t)) << " " << ::tpy::str_join(",", t) << " " << t.started << "\n" << ::tpy::check_signals;
     Window w = Window();
     std::cout << "begin_end_optional" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(w)) << " " << ::tpy::ListPrinter(({
         std::vector<::tpy::String> __result;
@@ -462,17 +462,17 @@ void main() {
             __result.push_back((::tpy::str_concat(x, "!")));
         }
         std::move(__result);
-    })) << " " << ::tpy::print_optional_val(w.begin()) << "\n";
+    })) << " " << ::tpy::print_optional_val(w.begin()) << "\n" << ::tpy::check_signals;
     Ints ib = Ints();
     ::tpy::ByteArray ba = ::tpy::bytearray_from_int_iterable(ib);
     ::tpy::bytes_extend_int_iterable(ba, ib);
-    std::cout << "bytes" << " " << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(ib)) << " " << ::tpy::ByteArrayPrinter(ba) << "\n";
+    std::cout << "bytes" << " " << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(ib)) << " " << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
     std::vector<std::string> xs = {"x", "y"};
     xs.push_back("z");
     ::tpy::list_set_slice(xs, ::tpy::BasicSlice{0, 1}, b);
-    std::cout << "slice" << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << "slice" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     ::tpy::list_set_stepped_slice(xs, ::tpy::Slice{std::nullopt, std::nullopt, 2}, Bag());
-    std::cout << "stepped_slice" << " " << ::tpy::ListPrinter(xs) << "\n";
+    std::cout << "stepped_slice" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 
@@ -512,7 +512,7 @@ void __tpy_init() {
             __result.insert(s);
         }
         std::move(__result);
-    })) << "\n";
+    })) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -27,7 +27,7 @@ void main() {
     if ((parent_ref != nullptr)) {
         std::optional<::tpystd::tplib::rc::Rc<Node>> upgraded = parent_ref->upgrade();
         if ((upgraded.has_value())) {
-            std::cout << "found parent:" << " " << (*upgraded).get().name << "\n";
+            std::cout << "found parent:" << " " << (*upgraded).get().name << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -44,7 +44,7 @@ void __tpy_init() {
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
     ::tpyapp::main::main();
-    std::cout << "done" << "\n";
+    std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -104,7 +104,7 @@ public:
 
     std::string read(int32_t size = -1) {
         if (!flags_.readable) raise_os_error("read(): file not opened for reading");
-        check_interrupt();
+        check_signals();
         if (size < 0) {
             std::ostringstream ss;
             ss << fs_.rdbuf();
@@ -124,21 +124,21 @@ public:
     int32_t write(std::string_view text) {
         if (!flags_.writable) raise_os_error("write(): file not opened for writing");
         fs_ << text;
-        check_interrupt();
+        check_signals();
         return static_cast<int32_t>(text.size());
     }
 
     void flush() {
         if (!flags_.writable) raise_os_error("flush(): file not opened for writing");
         fs_.flush();
-        check_interrupt();
+        check_signals();
     }
 
     std::ostream& sink() { return fs_; }
 
     std::string readline() {
         if (!flags_.readable) raise_os_error("readline(): file not opened for reading");
-        check_interrupt();
+        check_signals();
         std::string line;
         if (!std::getline(fs_, line)) {
             return "";
@@ -153,7 +153,7 @@ public:
 
     std::vector<std::string> readlines() {
         if (!flags_.readable) raise_os_error("readlines(): file not opened for reading");
-        check_interrupt();
+        check_signals();
         std::vector<std::string> lines;
         std::string line;
         while (std::getline(fs_, line)) {
@@ -204,7 +204,7 @@ public:
 
     Bytes read(int32_t size = -1) {
         if (!flags_.readable) raise_os_error("read(): file not opened for reading");
-        check_interrupt();
+        check_signals();
         if (size < 0) {
             return Bytes(
                 std::istreambuf_iterator<char>(fs_),
@@ -223,7 +223,7 @@ public:
 
     Bytes readline() {
         if (!flags_.readable) raise_os_error("readline(): file not opened for reading");
-        check_interrupt();
+        check_signals();
         std::string line;
         if (!std::getline(fs_, line)) {
             return {};
@@ -237,7 +237,7 @@ public:
 
     std::vector<Bytes> readlines() {
         if (!flags_.readable) raise_os_error("readlines(): file not opened for reading");
-        check_interrupt();
+        check_signals();
         std::vector<Bytes> lines;
         std::string line;
         while (std::getline(fs_, line)) {
@@ -252,7 +252,7 @@ public:
         if (!flags_.writable) raise_os_error("write(): file not opened for writing");
         fs_.write(reinterpret_cast<const char*>(data.data()),
                   static_cast<std::streamsize>(data.size()));
-        check_interrupt();
+        check_signals();
         return static_cast<int32_t>(data.size());
     }
 

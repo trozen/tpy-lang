@@ -23,12 +23,12 @@ std::tuple<int32_t, Point> make_pair(const Point& p) {
 void main() {
     Point p = Point(1, 2);
     auto t = std::tuple<int32_t, Point>{0, std::move(p)};
-    std::cout << std::get<0>(t) << "\n";
-    std::cout << std::get<1>(t) << "\n";
+    std::cout << std::get<0>(t) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(t) << "\n" << ::tpy::check_signals;
     Point __tmp_1 = Point(10, 20);
     std::tuple<int32_t, Point> t2 = ::tpyapp::main::make_pair(__tmp_1);
-    std::cout << std::get<0>(t2) << "\n";
-    std::cout << std::get<1>(t2) << "\n";
+    std::cout << std::get<0>(t2) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(t2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

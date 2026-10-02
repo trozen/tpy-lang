@@ -15,19 +15,19 @@ namespace tpyapp::main {
 void f(const Point* p) {
     auto& __match_subject_1 = p;
     if (__match_subject_1 == nullptr) {
-        std::cout << "none" << "\n";
+        std::cout << "none" << "\n" << ::tpy::check_signals;
         goto __match_end_2;
     }
     if (__match_subject_1 != nullptr) {
         auto n = (*__match_subject_1).x;
         if ((n > 10)) {
-            std::cout << "big" << " " << n << "\n";
+            std::cout << "big" << " " << n << "\n" << ::tpy::check_signals;
             goto __match_end_2;
         }
     }
     if (__match_subject_1 != nullptr) {
         auto n = (*__match_subject_1).x;
-        std::cout << "small" << " " << n << "\n";
+        std::cout << "small" << " " << n << "\n" << ::tpy::check_signals;
         goto __match_end_2;
     }
     __match_end_2:;

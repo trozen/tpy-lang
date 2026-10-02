@@ -19,7 +19,7 @@ void main() {
     const auto& __tup_1 = t;
     int32_t a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
-    std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

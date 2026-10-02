@@ -40,18 +40,18 @@ std::string probe(std::string_view key) {
 //     except KeyError:
 //         print("KeyError-base")
 void main() {
-    std::cout << ::tpyapp::main::probe("Europe/Warsaw") << "\n";
-    std::cout << ::tpyapp::main::probe("Not/AZone") << "\n";
-    std::cout << ::tpyapp::main::probe("") << "\n";
-    std::cout << ::tpyapp::main::probe("../etc/passwd") << "\n";
-    std::cout << ::tpyapp::main::probe("/etc/localtime") << "\n";
-    std::cout << ::tpyapp::main::probe("Europe//Warsaw") << "\n";
+    std::cout << ::tpyapp::main::probe("Europe/Warsaw") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::probe("Not/AZone") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::probe("") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::probe("../etc/passwd") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::probe("/etc/localtime") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::probe("Europe//Warsaw") << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpystd::datetime::ZoneInfo z = ::tpystd::datetime::ZoneInfo("Also/NotAZone");
-            std::cout << "no-raise" << " " << z.key() << "\n";
+            std::cout << "no-raise" << " " << z.key() << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::KeyError&) {
-            std::cout << "KeyError-base" << "\n";
+            std::cout << "KeyError-base" << "\n" << ::tpy::check_signals;
         }
     }
 }

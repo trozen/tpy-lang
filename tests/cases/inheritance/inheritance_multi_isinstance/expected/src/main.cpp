@@ -16,13 +16,13 @@ namespace tpyapp::main {
 void main() {
     Widget w = Widget("x", 1);
     if (true) {
-        std::cout << "isa Named" << "\n";
+        std::cout << "isa Named" << "\n" << ::tpy::check_signals;
     }
     if (true) {
-        std::cout << "isa Counted" << "\n";
+        std::cout << "isa Counted" << "\n" << ::tpy::check_signals;
     }
     if (true) {
-        std::cout << "isa Widget" << "\n";
+        std::cout << "isa Widget" << "\n" << ::tpy::check_signals;
     }
 }
 

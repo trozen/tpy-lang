@@ -13,7 +13,7 @@ namespace tpyapp::main {
 void load_from_stringio() {
     ::tpystd::io::StringIO src = ::tpystd::io::StringIO("{\"name\": \"tpy\", \"nums\": [1, 2, 3], \"ok\": true}");
     ::tpystd::json::JsonValue v = ::tpystd::json::load(src);
-    std::cout << "roundtrip:" << " " << ::tpystd::json::dumps(v, 0, true) << "\n";
+    std::cout << "roundtrip:" << " " << ::tpystd::json::dumps(v, 0, true) << "\n" << ::tpy::check_signals;
 }
 
 // def dump_to_stringio() -> None:
@@ -30,11 +30,11 @@ void dump_to_stringio() {
     ::tpystd::json::JsonValue v = ::tpystd::json::loads("{\"b\": 2, \"a\": 1, \"c\": [3, 4]}");
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
     ::tpystd::json::dump(v, out, 0, true);
-    std::cout << "dumped:" << " " << out.getvalue() << "\n";
+    std::cout << "dumped:" << " " << out.getvalue() << "\n" << ::tpy::check_signals;
     ::tpystd::io::StringIO out2 = ::tpystd::io::StringIO();
     ::tpystd::json::dump(v, out2, 2, true);
-    std::cout << "indented:" << "\n";
-    std::cout << out2.getvalue() << "\n";
+    std::cout << "indented:" << "\n" << ::tpy::check_signals;
+    std::cout << out2.getvalue() << "\n" << ::tpy::check_signals;
 }
 
 // def file_roundtrip() -> None:
@@ -77,7 +77,7 @@ void file_roundtrip() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    std::cout << "file:" << " " << ::tpystd::json::dumps((*v2), 0, true) << "\n";
+    std::cout << "file:" << " " << ::tpystd::json::dumps((*v2), 0, true) << "\n" << ::tpy::check_signals;
 }
 
 // def load_malformed() -> None:
@@ -93,9 +93,9 @@ void load_malformed() {
         try {
             auto __tmp_1 = ::tpystd::io::StringIO("{not valid");
             ::tpystd::json::load(__tmp_1);
-            std::cout << "FAIL: expected JSONDecodeError" << "\n";
+            std::cout << "FAIL: expected JSONDecodeError" << "\n" << ::tpy::check_signals;
         } catch (const ::tpystd::json::JSONDecodeError& e) {
-            std::cout << "decode error at:" << " " << e.lineno << " " << e.colno << "\n";
+            std::cout << "decode error at:" << " " << e.lineno << " " << e.colno << "\n" << ::tpy::check_signals;
         }
     }
 }
@@ -110,11 +110,11 @@ void load_malformed() {
 //     load_malformed()
 void main() {
     ::tpyapp::main::load_from_stringio();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::dump_to_stringio();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::file_roundtrip();
-    std::cout << "---" << "\n";
+    std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::load_malformed();
 }
 

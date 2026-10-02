@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     print(c.first_x())         # 1
 void main() {
     Wrapper w = Wrapper();
-    std::cout << w.get_mutable().x << "\n";
+    std::cout << w.get_mutable().x << "\n" << ::tpy::check_signals;
     Container c = Container();
-    std::cout << c.first_x() << "\n";
+    std::cout << c.first_x() << "\n" << ::tpy::check_signals;
 }
 
 // main()

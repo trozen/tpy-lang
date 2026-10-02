@@ -24,7 +24,7 @@ int32_t read_inner(const Inner* p) {
 void test_field_to_ptr() {
     Outer outer = Outer(42);
     ::tpyapp::main::modify_inner(&outer.inner);
-    std::cout << outer.inner.x << "\n";
+    std::cout << outer.inner.x << "\n" << ::tpy::check_signals;
 }
 
 // def test_field_to_const_ptr() -> None:
@@ -35,7 +35,7 @@ void test_field_to_ptr() {
 void test_field_to_const_ptr() {
     Outer outer = Outer(100);
     int32_t result = ::tpyapp::main::read_inner(&outer.inner);
-    std::cout << result << "\n";
+    std::cout << result << "\n" << ::tpy::check_signals;
 }
 
 // def test_subscript_to_ptr() -> None:
@@ -46,7 +46,7 @@ void test_field_to_const_ptr() {
 void test_subscript_to_ptr() {
     std::array<Inner, 3> arr = {Inner(1), Inner(2), Inner(3)};
     ::tpyapp::main::modify_inner(&::tpy::__getitem__(arr, 1));
-    std::cout << ::tpy::__getitem__(arr, 1).x << "\n";
+    std::cout << ::tpy::__getitem__(arr, 1).x << "\n" << ::tpy::check_signals;
 }
 
 // # Run tests
@@ -61,11 +61,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    std::cout << "=== field to ptr ===" << "\n";
+    std::cout << "=== field to ptr ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_field_to_ptr();
-    std::cout << "=== field to const ptr ===" << "\n";
+    std::cout << "=== field to const ptr ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_field_to_const_ptr();
-    std::cout << "=== subscript to ptr ===" << "\n";
+    std::cout << "=== subscript to ptr ===" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_subscript_to_ptr();
 }
 

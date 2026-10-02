@@ -194,7 +194,7 @@ inline void Holder::run() const {
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& b = *__beg_0;
         b.bump();
-        std::cout << "method" << " " << b.n << "\n";
+        std::cout << "method" << " " << b.n << "\n" << ::tpy::check_signals;
     }
 }
 void __tpy_init();

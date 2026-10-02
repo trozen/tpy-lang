@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void main() {
     std::vector<::tpy::BigInt> nums = {10, 20, 30};
     ::tpyapp::main::describe(nums);
-    std::cout << ::tpyapp::main::get_value(nums) << "\n";
+    std::cout << ::tpyapp::main::get_value(nums) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -30,12 +30,12 @@ int32_t use_owned_point(Point&& p) {
 //     print(pt.x)
 //     print(pt.y)
 void main() {
-    std::cout << ::tpyapp::main::make_point(10, 20).x << "\n";
-    std::cout << ::tpyapp::main::make_point(30, 40).y << "\n";
-    std::cout << ::tpyapp::main::use_owned_point(::tpyapp::main::make_point(50, 60)) << "\n";
+    std::cout << ::tpyapp::main::make_point(10, 20).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::make_point(30, 40).y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::use_owned_point(::tpyapp::main::make_point(50, 60)) << "\n" << ::tpy::check_signals;
     Point pt = ::tpyapp::main::make_point(70, 80);
-    std::cout << pt.x << "\n";
-    std::cout << pt.y << "\n";
+    std::cout << pt.x << "\n" << ::tpy::check_signals;
+    std::cout << pt.y << "\n" << ::tpy::check_signals;
 }
 
 // """Tests field access on Own[T] types.

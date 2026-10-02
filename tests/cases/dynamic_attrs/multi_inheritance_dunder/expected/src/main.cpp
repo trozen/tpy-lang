@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(c.helper())
 void main() {
     Combined c = Combined(::tpy::ordered_map<std::string, std::string>({{"key", "value"}}));
-    std::cout << c.__getattr__("key") << "\n";
-    std::cout << c.helper() << "\n";
+    std::cout << c.__getattr__("key") << "\n" << ::tpy::check_signals;
+    std::cout << c.helper() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -19,7 +19,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "free:" << " " << v << "\n";
+            std::cout << "free:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -30,10 +30,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "method:" << " " << v << "\n";
+            std::cout << "method:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "cycle:" << " " << ::tpyapp::moda::ping(3) << "\n";
+    std::cout << "cycle:" << " " << ::tpyapp::moda::ping(3) << "\n" << ::tpy::check_signals;
 }
 
 // # A SAME-module generator delegation inside a module that participates in an

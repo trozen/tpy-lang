@@ -73,10 +73,10 @@ void method_section() {
         B* b = &*(__slot_2 = B(i));
         holder = &(b->rec_m());
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
-        std::cout << "method in-loop:" << " " << b->m.x << "\n";
+        std::cout << "method in-loop:" << " " << b->m.x << "\n" << ::tpy::check_signals;
     }
     holder->x = ::tpy::add_check<int32_t>(holder->x, 100);
-    std::cout << "method:" << " " << holder->x << "\n";
+    std::cout << "method:" << " " << holder->x << "\n" << ::tpy::check_signals;
 }
 
 // # method taking an argument: still the receiver's storage
@@ -97,10 +97,10 @@ void method_arg_section() {
         B* b = &*(__slot_2 = B(i));
         holder = &(b->at(i));
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
-        std::cout << "method_arg in-loop:" << " " << b->m.x << "\n";
+        std::cout << "method_arg in-loop:" << " " << b->m.x << "\n" << ::tpy::check_signals;
     }
     holder->x = ::tpy::add_check<int32_t>(holder->x, 100);
-    std::cout << "method_arg:" << " " << holder->x << "\n";
+    std::cout << "method_arg:" << " " << holder->x << "\n" << ::tpy::check_signals;
 }
 
 // # free function: the borrowed ARGUMENT is the loop-local
@@ -121,10 +121,10 @@ void free_function_section() {
         B* b = &*(__slot_2 = B(i));
         holder = &(::tpyapp::main::first((*b)));
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
-        std::cout << "free in-loop:" << " " << b->m.x << "\n";
+        std::cout << "free in-loop:" << " " << b->m.x << "\n" << ::tpy::check_signals;
     }
     holder->x = ::tpy::add_check<int32_t>(holder->x, 100);
-    std::cout << "free:" << " " << holder->x << "\n";
+    std::cout << "free:" << " " << holder->x << "\n" << ::tpy::check_signals;
 }
 
 // # chain: a method off a field of the loop-local
@@ -145,10 +145,10 @@ void chain_section() {
         B* b = &*(__slot_2 = B(i));
         holder = &(b->mid.rec_m());
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
-        std::cout << "chain in-loop:" << " " << b->mid.r.x << "\n";
+        std::cout << "chain in-loop:" << " " << b->mid.r.x << "\n" << ::tpy::check_signals;
     }
     holder->x = ::tpy::add_check<int32_t>(holder->x, 100);
-    std::cout << "chain:" << " " << holder->x << "\n";
+    std::cout << "chain:" << " " << holder->x << "\n" << ::tpy::check_signals;
 }
 
 // # the borrowed argument is the SECOND one: only `b` escapes, not `k`
@@ -171,10 +171,10 @@ void second_arg_section() {
         B* b = &*(__slot_2 = B(i));
         holder = &(::tpyapp::main::second_of(k, (*b)));
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
-        std::cout << "second_arg in-loop:" << " " << b->m.x << " " << k.m.x << "\n";
+        std::cout << "second_arg in-loop:" << " " << b->m.x << " " << k.m.x << "\n" << ::tpy::check_signals;
     }
     holder->x = ::tpy::add_check<int32_t>(holder->x, 100);
-    std::cout << "second_arg:" << " " << holder->x << "\n";
+    std::cout << "second_arg:" << " " << holder->x << "\n" << ::tpy::check_signals;
 }
 
 // # a method off a reference-returning method: the root is still `b`. The first
@@ -196,10 +196,10 @@ void chain_of_calls_section() {
         B* b = &*(__slot_2 = B(i));
         holder = &(b->mid_m().rec_m());
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
-        std::cout << "chain_of_calls in-loop:" << " " << b->mid.r.x << "\n";
+        std::cout << "chain_of_calls in-loop:" << " " << b->mid.r.x << "\n" << ::tpy::check_signals;
     }
     holder->x = ::tpy::add_check<int32_t>(holder->x, 100);
-    std::cout << "chain_of_calls:" << " " << holder->x << "\n";
+    std::cout << "chain_of_calls:" << " " << holder->x << "\n" << ::tpy::check_signals;
 }
 
 // # ternary of two calls: only the loop-local arm's root is hoisted
@@ -222,10 +222,10 @@ void ternary_section() {
         B* b = &*(__slot_2 = B(i));
         holder = &((((i > 0)) ? (b->rec_m()) : (k.rec_m())));
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
-        std::cout << "ternary in-loop:" << " " << b->m.x << " " << k.m.x << "\n";
+        std::cout << "ternary in-loop:" << " " << b->m.x << " " << k.m.x << "\n" << ::tpy::check_signals;
     }
     holder->x = ::tpy::add_check<int32_t>(holder->x, 100);
-    std::cout << "ternary:" << " " << holder->x << "\n";
+    std::cout << "ternary:" << " " << holder->x << "\n" << ::tpy::check_signals;
 }
 
 // # Optional return: the pointer form borrows the receiver too
@@ -255,12 +255,12 @@ void optional_section() {
         }
         Rec* o = ::tpy::optional_to_ptr(b->o);
         if ((o != nullptr)) {
-            std::cout << "optional in-loop:" << " " << o->x << "\n";
+            std::cout << "optional in-loop:" << " " << o->x << "\n" << ::tpy::check_signals;
         }
     }
     if ((v != nullptr)) {
         v->x = ::tpy::add_check<int32_t>(v->x, 100);
-        std::cout << "optional:" << " " << v->x << "\n";
+        std::cout << "optional:" << " " << v->x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -289,14 +289,14 @@ void while_nested_section() {
         holder = &(b->rec_m());
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "while:" << " " << holder->x << "\n";
+    std::cout << "while:" << " " << holder->x << "\n" << ::tpy::check_signals;
     for (int32_t j = 0; j < 2; ++j) {
         B* c = &*(__slot_3 = B((::tpy::add_check<int32_t>(j, 20))));
         for (int32_t n = 0; n < 2; ++n) {
             holder = &(::tpyapp::main::first((*c)));
         }
     }
-    std::cout << "nested:" << " " << holder->x << "\n";
+    std::cout << "nested:" << " " << holder->x << "\n" << ::tpy::check_signals;
 }
 
 // # a call lending from TWO loop-locals: each is judged, both are hoisted
@@ -319,9 +319,9 @@ void two_roots_section() {
         B* q = &*(__slot_3 = B((::tpy::add_check<int32_t>(i, 10))));
         holder = &(::tpyapp::main::either((*p), (*q), (i == 1)));
         holder->x = ::tpy::add_check<int32_t>(holder->x, 100);
-        std::cout << "two roots in-loop:" << " " << p->m.x << " " << q->m.x << "\n";
+        std::cout << "two roots in-loop:" << " " << p->m.x << " " << q->m.x << "\n" << ::tpy::check_signals;
     }
-    std::cout << "two roots:" << " " << holder->x << "\n";
+    std::cout << "two roots:" << " " << holder->x << "\n" << ::tpy::check_signals;
 }
 
 // # a @nocopy source has no copy() remedy to name
@@ -341,9 +341,9 @@ void nocopy_section() {
         Sealed* s = &*(__slot_2 = Sealed(i));
         holder = &(s->rec_m());
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
-        std::cout << "nocopy in-loop:" << " " << s->m.x << "\n";
+        std::cout << "nocopy in-loop:" << " " << s->m.x << "\n" << ::tpy::check_signals;
     }
-    std::cout << "nocopy:" << " " << holder->x << "\n";
+    std::cout << "nocopy:" << " " << holder->x << "\n" << ::tpy::check_signals;
 }
 
 // # an alias or a for-each var behind a call is not judged at all: its own scope
@@ -384,13 +384,13 @@ void outliving_storage_section(B& src) {
         holder = &(b.rec_m());
         holder->x = ::tpy::add_check<int32_t>(holder->x, 1);
     }
-    std::cout << "alias of param:" << " " << holder->x << " " << src.m.x << "\n";
+    std::cout << "alias of param:" << " " << holder->x << " " << src.m.x << "\n" << ::tpy::check_signals;
     for (int32_t i = 0; i < 3; ++i) {
         B& r = ::tpy::__getitem__(rows, i);
         holder = &(::tpyapp::main::first(r));
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
     }
-    std::cout << "alias of outer element:" << " " << holder->x << " " << ::tpy::__getitem__(rows, 2).m.x << "\n";
+    std::cout << "alias of outer element:" << " " << holder->x << " " << ::tpy::__getitem__(rows, 2).m.x << "\n" << ::tpy::check_signals;
     auto& __obj_2 = shelf.bs_m();
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
@@ -399,7 +399,7 @@ void outliving_storage_section(B& src) {
         holder = &(it.rec_m());
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
     }
-    std::cout << "for-each over a returned list:" << " " << holder->x << " " << ::tpy::__getitem__(shelf.bs, 2).m.x << "\n";
+    std::cout << "for-each over a returned list:" << " " << holder->x << " " << ::tpy::__getitem__(shelf.bs, 2).m.x << "\n" << ::tpy::check_signals;
     auto __obj_3 = ::tpy::dict_values(by_key);
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
@@ -408,7 +408,7 @@ void outliving_storage_section(B& src) {
         holder = &(v.rec_m());
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
     }
-    std::cout << "for-each over values():" << " " << holder->x << "\n";
+    std::cout << "for-each over values():" << " " << holder->x << "\n" << ::tpy::check_signals;
 }
 
 // # the callee hands its borrow back through a local alias, a re-seated alias
@@ -449,28 +449,28 @@ void callee_shape_section() {
         B* b = &*(__slot_2 = B(i));
         holder = &(b->alias_m());
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
-        std::cout << "callee alias in-loop:" << " " << b->m.x << "\n";
+        std::cout << "callee alias in-loop:" << " " << b->m.x << "\n" << ::tpy::check_signals;
     }
-    std::cout << "callee alias:" << " " << holder->x << "\n";
+    std::cout << "callee alias:" << " " << holder->x << "\n" << ::tpy::check_signals;
     for (int32_t i = 0; i < 3; ++i) {
         B* c = &*(__slot_3 = B(i));
         holder = &(c->mid_rec());
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
-        std::cout << "callee field-call in-loop:" << " " << c->mid.r.x << "\n";
+        std::cout << "callee field-call in-loop:" << " " << c->mid.r.x << "\n" << ::tpy::check_signals;
     }
-    std::cout << "callee field-call:" << " " << holder->x << "\n";
+    std::cout << "callee field-call:" << " " << holder->x << "\n" << ::tpy::check_signals;
     for (int32_t i = 0; i < 3; ++i) {
         B* d = &*(__slot_4 = B(i));
         holder = &(::tpyapp::main::reseated((*d), k, (i > 0)));
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
-        std::cout << "callee reseated in-loop:" << " " << d->m.x << " " << k.m.x << "\n";
+        std::cout << "callee reseated in-loop:" << " " << d->m.x << " " << k.m.x << "\n" << ::tpy::check_signals;
     }
-    std::cout << "callee reseated:" << " " << holder->x << "\n";
+    std::cout << "callee reseated:" << " " << holder->x << "\n" << ::tpy::check_signals;
     for (int32_t i = 0; i < 3; ++i) {
         B e = B(i);
         holder = &(::tpyapp::main::alias_of_other(e, k));
     }
-    std::cout << "callee other:" << " " << holder->x << " " << k.m.x << "\n";
+    std::cout << "callee other:" << " " << holder->x << " " << k.m.x << "\n" << ::tpy::check_signals;
 }
 
 // # nested def: the closure body gives the escaping local its slot too
@@ -494,10 +494,10 @@ void nested_def_section() {
             B* b = &*(__slot_2 = B(i));
             holder = &(b->rec_m());
             holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
-            std::cout << "nested in-loop:" << " " << b->m.x << "\n";
+            std::cout << "nested in-loop:" << " " << b->m.x << "\n" << ::tpy::check_signals;
         }
         holder->x = ::tpy::add_check<int32_t>(holder->x, 100);
-        std::cout << "nested:" << " " << holder->x << "\n";
+        std::cout << "nested:" << " " << holder->x << "\n" << ::tpy::check_signals;
     };
     inner();
 }
@@ -543,7 +543,7 @@ void wrapper_of_later_section() {
         holder = &(::tpyapp::main::wraps_later(k, c));
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
     }
-    std::cout << "wrapper of later:" << " " << holder->x << " " << k.m.x << "\n";
+    std::cout << "wrapper of later:" << " " << holder->x << " " << k.m.x << "\n" << ::tpy::check_signals;
 }
 
 int32_t __gen_gen_host::inner() {
@@ -580,10 +580,10 @@ void copy_section() {
         B b = B(i);
         (*holder) = Rec(b.rec_m());
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
-        std::cout << "copy in-loop:" << " " << b.m.x << "\n";
+        std::cout << "copy in-loop:" << " " << b.m.x << "\n" << ::tpy::check_signals;
     }
     holder->x = ::tpy::add_check<int32_t>(holder->x, 100);
-    std::cout << "copy:" << " " << holder->x << "\n";
+    std::cout << "copy:" << " " << holder->x << "\n" << ::tpy::check_signals;
 }
 
 // # inverse: nothing here lends loop-local storage past the loop
@@ -619,7 +619,7 @@ void inverse_section(B& p) {
         total = ::tpy::add_check<int32_t>(total, inner.x);
     }
     holder->x = ::tpy::add_check<int32_t>(holder->x, 100);
-    std::cout << "inverse:" << " " << holder->x << " " << total << "\n";
+    std::cout << "inverse:" << " " << holder->x << " " << total << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -658,7 +658,7 @@ void main() {
     ::tpyapp::main::while_nested_section();
     Runner r = Runner();
     r.run();
-    std::cout << "runner:" << " " << r.last << "\n";
+    std::cout << "runner:" << " " << r.last << "\n" << ::tpy::check_signals;
     ::tpyapp::main::two_roots_section();
     ::tpyapp::main::nocopy_section();
     B __tmp_1 = B(30);
@@ -674,7 +674,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen-hosted nested def:" << " " << v << "\n";
+            std::cout << "gen-hosted nested def:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
     ::tpyapp::main::copy_section();
@@ -708,15 +708,15 @@ void Forward::run() {
         holder = &(this->own_q((*t)));
         holder->x = ::tpy::add_check<int32_t>(holder->x, 1);
     }
-    std::cout << "forward sibling:" << " " << holder->x << " " << this->q.x << "\n";
+    std::cout << "forward sibling:" << " " << holder->x << " " << this->q.x << "\n" << ::tpy::check_signals;
     for (int32_t i = 0; i < 3; ++i) {
         B* b = &*(__slot_3 = B(i));
         holder = &(::tpyapp::main::later((*b)));
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
-        std::cout << "forward in-loop:" << " " << b->m.x << "\n";
+        std::cout << "forward in-loop:" << " " << b->m.x << "\n" << ::tpy::check_signals;
     }
     holder->x = ::tpy::add_check<int32_t>(holder->x, 100);
-    std::cout << "forward:" << " " << holder->x << "\n";
+    std::cout << "forward:" << " " << holder->x << "\n" << ::tpy::check_signals;
 }
 // # module level: a call source takes the field spelling's verdict here too
 // # (the wording is BUGS.md#module-level-escape-warning-names-a-loop)
@@ -735,7 +735,7 @@ void __tpy_init() {
     TOP = &*(__global_slot_1 = B(60));
     TOP_HOLD = &(TOP->rec_m());
     TOP_HOLD->x = ::tpy::add_check<int32_t>(TOP_HOLD->x, 1);
-    std::cout << "module level:" << " " << TOP_HOLD->x << " " << TOP->m.x << "\n";
+    std::cout << "module level:" << " " << TOP_HOLD->x << " " << TOP->m.x << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }
 

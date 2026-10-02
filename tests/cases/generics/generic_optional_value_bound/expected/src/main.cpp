@@ -23,17 +23,17 @@ void main() {
     Box<int32_t> b = Box<int32_t>(42);
     std::optional<int32_t> v = b.get();
     if ((v.has_value())) {
-        std::cout << "got:" << " " << ::tpy::print_optional_val(v) << "\n";
+        std::cout << "got:" << " " << ::tpy::print_optional_val(v) << "\n" << ::tpy::check_signals;
     }
     b.clear();
     std::optional<int32_t> v2 = b.get();
     if ((!v2.has_value())) {
-        std::cout << "cleared: ok" << "\n";
+        std::cout << "cleared: ok" << "\n" << ::tpy::check_signals;
     }
     Box<bool> b2 = Box<bool>(true);
     std::optional<bool> v3 = b2.get();
     if ((v3.has_value())) {
-        std::cout << "bool:" << " " << ::tpy::print_optional_val<::tpy::print_bool, bool>(v3) << "\n";
+        std::cout << "bool:" << " " << ::tpy::print_optional_val<::tpy::print_bool, bool>(v3) << "\n" << ::tpy::check_signals;
     }
 }
 

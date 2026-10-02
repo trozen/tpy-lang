@@ -67,7 +67,7 @@ void main() {
             r1.push_back(std::move(x));
         }
     }
-    std::cout << ::tpy::ListPrinter(r1) << "\n";
+    std::cout << ::tpy::ListPrinter(r1) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> empty = std::vector<int32_t>{};
     std::vector<int32_t> r2 = std::vector<int32_t>{};
     {
@@ -81,7 +81,7 @@ void main() {
             r2.push_back(std::move(x));
         }
     }
-    std::cout << ::tpy::ListPrinter(r2) << "\n";
+    std::cout << ::tpy::ListPrinter(r2) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> r2b = std::vector<int32_t>{};
     {
         std::array<const std::vector<int32_t>*, 2> __tmp_3{&empty, &empty};
@@ -94,7 +94,7 @@ void main() {
             r2b.push_back(std::move(x));
         }
     }
-    std::cout << ::tpy::ListPrinter(r2b) << "\n";
+    std::cout << ::tpy::ListPrinter(r2b) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> one = {5};
     std::vector<int32_t> r3 = std::vector<int32_t>{};
     {
@@ -108,7 +108,7 @@ void main() {
             r3.push_back(std::move(x));
         }
     }
-    std::cout << ::tpy::ListPrinter(r3) << "\n";
+    std::cout << ::tpy::ListPrinter(r3) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> d1 = {1, 1, 3};
     std::vector<int32_t> d2 = {1, 2};
     std::vector<int32_t> r4 = std::vector<int32_t>{};
@@ -123,9 +123,9 @@ void main() {
             r4.push_back(std::move(x));
         }
     }
-    std::cout << ::tpy::ListPrinter(r4) << "\n";
+    std::cout << ::tpy::ListPrinter(r4) << "\n" << ::tpy::check_signals;
     std::array<const std::vector<int32_t>*, 3> __tmp_6{&a, &b, &c};
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_6)))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_6)))) << "\n" << ::tpy::check_signals;
     std::vector<Item> ia = {Item(1, 10), Item(4, 40)};
     std::vector<Item> ib = {Item(2, 20), Item(3, 30)};
     std::array<const std::vector<Item>*, 2> __tmp_7{&ia, &ib};
@@ -135,7 +135,7 @@ void main() {
     auto __end_10 = __obj_10.end();
     for (; __beg_10 != __end_10; ++__beg_10) {
         const auto& it = *__beg_10;
-        std::cout << it.key << " " << it.tag << "\n";
+        std::cout << it.key << " " << it.tag << "\n" << ::tpy::check_signals;
     }
 }
 

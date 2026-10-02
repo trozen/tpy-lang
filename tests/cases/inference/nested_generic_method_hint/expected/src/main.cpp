@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Wrapper w = Wrapper();
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Greeter>> r = w.wrap<::tpystd::tplib::box::Box<Greeter>>(::tpystd::tplib::box::Box<Greeter>(::tpy::make_adapter<Greeter>(Frog("Kermit"))));
-    std::cout << r.get().get().greet() << "\n";
+    std::cout << r.get().get().greet() << "\n" << ::tpy::check_signals;
 }
 
 // from tplib import Box, Rc

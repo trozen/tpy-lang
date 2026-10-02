@@ -25,8 +25,8 @@ void test_rvalue_const_ref() {
     auto __tup_1 = ::tpyapp::main::get_pair();
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // def test_augassign_no_const_ref() -> None:
@@ -40,8 +40,8 @@ void test_augassign_no_const_ref() {
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     ::tpy::BigInt b = std::get<1>(__tup_1);
     b = (b) + (::tpy::BigInt(1));
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // def test_reassign_no_const_ref() -> None:
@@ -55,8 +55,8 @@ void test_reassign_no_const_ref() {
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     ::tpy::BigInt b = std::get<1>(__tup_1);
     b = ::tpy::BigInt(200);
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // def test_lvalue_const_ref() -> None:
@@ -70,8 +70,8 @@ void test_lvalue_const_ref() {
     const auto& __tup_1 = t;
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // def test_lvalue_reassigned_source() -> None:
@@ -87,8 +87,8 @@ void test_lvalue_reassigned_source() {
     ::tpy::BigInt a = std::get<0>(__tup_1);
     ::tpy::BigInt b = std::get<1>(__tup_1);
     t = std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(30), ::tpy::BigInt(40)};
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // def test_string_const_ref() -> None:
@@ -100,8 +100,8 @@ void test_string_const_ref() {
     auto __tup_1 = ::tpyapp::main::get_string_pair();
     const ::tpy::String& a = std::get<0>(__tup_1);
     const ::tpy::String& b = std::get<1>(__tup_1);
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // def test_augassign_in_branch() -> None:
@@ -118,8 +118,8 @@ void test_augassign_in_branch() {
     if ((a > 0)) {
         b = (b) + (::tpy::BigInt(1));
     }
-    std::cout << a << "\n";
-    std::cout << b << "\n";
+    std::cout << a << "\n" << ::tpy::check_signals;
+    std::cout << b << "\n" << ::tpy::check_signals;
 }
 
 // test_rvalue_const_ref()

@@ -115,7 +115,7 @@ void rebound_borrow(std::vector<int32_t>& other) {
     zs->push_back(7);
     zs = &(other);
     zs->push_back(9);
-    std::cout << "borrow_first" << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::ListPrinter(ys) << "\n";
+    std::cout << "borrow_first" << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
 }
 
 // def rebound_generic_borrow(other: list[int32]) -> None:
@@ -131,7 +131,7 @@ void rebound_generic_borrow(std::vector<int32_t>& other) {
     std::vector<int32_t>* zs = &(::tpyapp::main::identity<std::vector<int32_t>>(src));
     zs = &(other);
     zs->push_back(11);
-    std::cout << "generic_borrow_first" << " " << ::tpy::ListPrinter(src) << "\n";
+    std::cout << "generic_borrow_first" << " " << ::tpy::ListPrinter(src) << "\n" << ::tpy::check_signals;
 }
 
 // def hoisted() -> int32:
@@ -199,8 +199,8 @@ void main() {
     ::tpyapp::main::rebound_array(a);
     ::tpyapp::main::rebound_borrow(xs);
     ::tpyapp::main::rebound_generic_borrow(xs);
-    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(d) << " " << ::tpy::__len__(s) << " " << ::tpy::__len__(b) << " " << ::tpy::__getitem__(a, 0) << "\n";
-    std::cout << ::tpyapp::main::hoisted() << "\n";
+    std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(d) << " " << ::tpy::__len__(s) << " " << ::tpy::__len__(b) << " " << ::tpy::__getitem__(a, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::hoisted() << "\n" << ::tpy::check_signals;
 }
 
 // main()

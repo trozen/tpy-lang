@@ -12,8 +12,8 @@ namespace tpyapp::main {
 void main() {
     DefaultPairFactory factory = DefaultPairFactory();
     SortedPair<int32_t> pair = ::tpyapp::main::create_pair<DefaultPairFactory>(factory, 30, 10);
-    std::cout << pair.first << "\n";
-    std::cout << pair.second << "\n";
+    std::cout << pair.first << "\n" << ::tpy::check_signals;
+    std::cout << pair.second << "\n" << ::tpy::check_signals;
 }
 
 // main()

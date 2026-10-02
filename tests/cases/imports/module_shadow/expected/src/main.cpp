@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Timer time = Timer();
     time.x = 42;
-    std::cout << time.x << "\n";
+    std::cout << time.x << "\n" << ::tpy::check_signals;
 }
 
 // import time

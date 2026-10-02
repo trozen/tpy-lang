@@ -119,7 +119,7 @@ inline void Holder::run() const {
     ::tpy::ordered_map<int32_t, int32_t> ys = ::tpy::ordered_map<int32_t, int32_t>({{1, 2}});
     ::tpy::ordered_map<int32_t, int32_t> xs = std::move(ys);
     ::tpy::__setitem__(xs, 3, 4);
-    std::cout << "method" << " " << ::tpy::__len__(xs) << "\n";
+    std::cout << "method" << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

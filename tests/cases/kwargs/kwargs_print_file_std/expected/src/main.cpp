@@ -10,10 +10,10 @@ namespace tpyapp::main {
 //     print("to stderr", file=sys.stderr)
 //     print("after stderr write")
 void main() {
-    std::cout << "default sink" << "\n";
-    ::tpy::as_ostream((*::tpystd::sys::stdout)) << "explicit stdout" << "\n";
-    ::tpy::as_ostream((*::tpystd::sys::stderr)) << "to stderr" << "\n";
-    std::cout << "after stderr write" << "\n";
+    std::cout << "default sink" << "\n" << ::tpy::check_signals;
+    ::tpy::as_ostream((*::tpystd::sys::stdout)) << "explicit stdout" << "\n" << ::tpy::check_signals;
+    ::tpy::as_ostream((*::tpystd::sys::stderr)) << "to stderr" << "\n" << ::tpy::check_signals;
+    std::cout << "after stderr write" << "\n" << ::tpy::check_signals;
 }
 
 // # print(..., file=sys.stdout/sys.stderr) routes through StdStream wrappers.

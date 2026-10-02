@@ -17,7 +17,7 @@ int32_t dup_bounded_twin(IntHolder& h) {
 void sec_value_bound() {
     VHolder<int32_t> b = VHolder<int32_t>(7);
     IntHolder t = IntHolder(7);
-    std::cout << "value-bound:" << " " << ::tpyapp::main::dup_bounded<int32_t>(b) << " " << ::tpyapp::main::dup_bounded_twin(t) << "\n";
+    std::cout << "value-bound:" << " " << ::tpyapp::main::dup_bounded<int32_t>(b) << " " << ::tpyapp::main::dup_bounded_twin(t) << "\n" << ::tpy::check_signals;
 }
 
 // def sec_callable_value() -> None:
@@ -34,7 +34,7 @@ void sec_callable_value() {
     ::tpyapp::main::apply_generic<int32_t, Cell>(xs, [](int32_t v) -> Cell { return Cell(v); }, g);
     std::vector<Cell> t = std::vector<Cell>{};
     ::tpyapp::main::apply_twin(xs, [](int32_t v) -> Cell { return Cell(v); }, t);
-    std::cout << "callable-value:" << " " << ::tpy::__getitem__(g, 0).n << " " << ::tpy::__getitem__(t, 0).n << " " << ::tpyapp::main::ret_generic<int32_t, Cell>(3, [](int32_t v) -> Cell { return Cell(v); }).n << " " << ::tpyapp::main::ret_twin(3, [](int32_t v) -> Cell { return Cell(v); }).n << "\n";
+    std::cout << "callable-value:" << " " << ::tpy::__getitem__(g, 0).n << " " << ::tpy::__getitem__(t, 0).n << " " << ::tpyapp::main::ret_generic<int32_t, Cell>(3, [](int32_t v) -> Cell { return Cell(v); }).n << " " << ::tpyapp::main::ret_twin(3, [](int32_t v) -> Cell { return Cell(v); }).n << "\n" << ::tpy::check_signals;
 }
 
 // def sec_ack() -> None:
@@ -48,7 +48,7 @@ void sec_ack() {
     std::vector<Cell> xs = std::vector<Cell>{};
     ::tpyapp::main::collect_ack<Cell>(g, xs);
     g.borrow().n = 99;
-    std::cout << "ack:" << " " << g.borrow().n << " " << ::tpy::__getitem__(xs, 0).n << "\n";
+    std::cout << "ack:" << " " << g.borrow().n << " " << ::tpy::__getitem__(xs, 0).n << "\n" << ::tpy::check_signals;
 }
 
 // def sec_moved() -> None:
@@ -60,7 +60,7 @@ void sec_moved() {
     std::vector<Cell> xs = std::vector<Cell>{};
     ::tpyapp::main::relay_owned<Cell>(Cell(1), xs);
     ::tpy::__getitem__(xs, 0).n = 5;
-    std::cout << "moved:" << " " << ::tpy::__getitem__(xs, 0).n << "\n";
+    std::cout << "moved:" << " " << ::tpy::__getitem__(xs, 0).n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

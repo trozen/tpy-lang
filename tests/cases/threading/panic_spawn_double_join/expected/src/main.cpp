@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     print(h.join())   # panic: handle already consumed
 void main() {
     ::tpystd::tpy::thread::JoinHandle<::tpy::BigInt> h = ::tpystd::tpy::thread::spawn<::tpy::BigInt, One>(One());
-    std::cout << h.join() << "\n";
-    std::cout << h.join() << "\n";
+    std::cout << h.join() << "\n" << ::tpy::check_signals;
+    std::cout << h.join() << "\n" << ::tpy::check_signals;
 }
 
 // # Consuming a JoinHandle twice is a runtime panic (the handle is spent after the

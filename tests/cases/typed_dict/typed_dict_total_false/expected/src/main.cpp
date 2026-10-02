@@ -19,12 +19,12 @@ namespace tpyapp::main {
 //     print("ok")
 void main() {
     Info full = Info("Alice", 30);
-    std::cout << ::tpy::typed_dict_field_check(full.name) << "\n";
-    std::cout << ::tpy::typed_dict_field_check(full.age) << "\n";
+    std::cout << ::tpy::typed_dict_field_check(full.name) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::typed_dict_field_check(full.age) << "\n" << ::tpy::check_signals;
     Info partial = Info("Bob");
-    std::cout << ::tpy::typed_dict_field_check(partial.name) << "\n";
+    std::cout << ::tpy::typed_dict_field_check(partial.name) << "\n" << ::tpy::check_signals;
     Info empty = Info();
-    std::cout << "ok" << "\n";
+    std::cout << "ok" << "\n" << ::tpy::check_signals;
 }
 
 // main()

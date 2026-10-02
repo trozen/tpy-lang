@@ -40,16 +40,16 @@ std::array<int32_t, 4>& borrow_arr(std::array<int32_t, 4>& x) {
 void main() {
     Buf b = Buf(1);
     b.load(::tpy::bytes_literal("abc", 3));
-    std::cout << ::tpy::__len__(b.ba) << " " << ::tpy::__getitem__(b.a, 0) << "\n";
+    std::cout << ::tpy::__len__(b.ba) << " " << ::tpy::__getitem__(b.a, 0) << "\n" << ::tpy::check_signals;
     b.own_call();
-    std::cout << ::tpy::__len__(b.ba) << " " << ::tpy::__getitem__(b.a, 0) << "\n";
+    std::cout << ::tpy::__len__(b.ba) << " " << ::tpy::__getitem__(b.a, 0) << "\n" << ::tpy::check_signals;
     b.ba.push_back(33);
-    std::cout << ::tpy::__len__(b.ba) << "\n";
+    std::cout << ::tpy::__len__(b.ba) << "\n" << ::tpy::check_signals;
     b.repeat();
-    std::cout << ::tpy::__getitem__(b.a, 0) << "\n";
+    std::cout << ::tpy::__getitem__(b.a, 0) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 4> q = {5, 5, 5, 5};
     b.alias(q);
-    std::cout << ::tpy::__getitem__(b.a, 0) << "\n";
+    std::cout << ::tpy::__getitem__(b.a, 0) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -58,17 +58,17 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 3}, std::vector<int32_t>{10, 20, 30, 40});
-    std::cout << ::tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 4}, std::vector<int32_t>{});
     auto& __obj_1 = a;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 1}, std::vector<int32_t>{99, 98});
     auto& __obj_2 = a;
@@ -76,7 +76,7 @@ void main() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         int32_t x = *__beg_2;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::vector<int32_t> b = {1, 2, 3, 4, 5};
     ::tpy::list_set_slice(b, ::tpy::BasicSlice{-2, std::nullopt}, std::vector<int32_t>{100, 200});
@@ -85,7 +85,7 @@ void main() {
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         int32_t x = *__beg_3;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::vector<int32_t> c = {1, 2, 3};
     ::tpy::list_set_slice(c, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{10, 20});
@@ -94,7 +94,7 @@ void main() {
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
         int32_t x = *__beg_4;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
     std::vector<int32_t> d = {1, 2, 3, 4, 5};
     ::tpy::list_set_slice(d, ::tpy::BasicSlice{1, 3}, ::tpyapp::main::gen_values());
@@ -103,7 +103,7 @@ void main() {
     auto __end_5 = __obj_5.end();
     for (; __beg_5 != __end_5; ++__beg_5) {
         int32_t x = *__beg_5;
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 

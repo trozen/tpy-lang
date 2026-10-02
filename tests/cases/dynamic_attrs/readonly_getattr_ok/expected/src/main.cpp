@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(cast(str, b.peek()))
 void main() {
     Bag b = Bag();
-    std::cout << ::tpy::any_cast_or_panic<std::string>(b.peek()) << "\n";
+    std::cout << ::tpy::any_cast_or_panic<std::string>(b.peek()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

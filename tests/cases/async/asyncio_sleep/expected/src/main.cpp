@@ -16,7 +16,7 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "first" << "\n";
+        std::cout << "first" << "\n" << ::tpy::check_signals;
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.05)));
         __state = S_RESUME_0;
         continue;
@@ -26,7 +26,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::cout << "second" << "\n";
+        std::cout << "second" << "\n" << ::tpy::check_signals;
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(0.05)));
         __state = S_RESUME_1;
         continue;
@@ -36,7 +36,7 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        std::cout << "third" << "\n";
+        std::cout << "third" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

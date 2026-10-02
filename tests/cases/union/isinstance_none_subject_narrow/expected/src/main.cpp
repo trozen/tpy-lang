@@ -50,16 +50,16 @@ std::string ref_tuple(::tpy::Union<std::monostate, const A*, const B*> v) {
 //     print(ref_tuple(y))
 void main() {
     ::tpy::Union<std::monostate, ::tpy::BigInt, std::string> a = 5;
-    std::cout << ::tpyapp::main::scalar_tuple(a) << "\n";
-    std::cout << ::tpyapp::main::scalar_inline(a) << "\n";
+    std::cout << ::tpyapp::main::scalar_tuple(a) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::scalar_inline(a) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, ::tpy::BigInt, std::string> n = std::monostate{};
-    std::cout << ::tpyapp::main::scalar_tuple(n) << "\n";
-    std::cout << ::tpyapp::main::scalar_inline(n) << "\n";
+    std::cout << ::tpyapp::main::scalar_tuple(n) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::scalar_inline(n) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, A, B> __slot_1 = A();
     ::tpy::Union<std::monostate, A*, B*> x = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << ::tpyapp::main::ref_tuple(x.as_const()) << "\n";
+    std::cout << ::tpyapp::main::ref_tuple(x.as_const()) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, A*, B*> y = std::monostate{};
-    std::cout << ::tpyapp::main::ref_tuple(y.as_const()) << "\n";
+    std::cout << ::tpyapp::main::ref_tuple(y.as_const()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

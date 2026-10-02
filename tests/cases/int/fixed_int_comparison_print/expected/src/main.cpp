@@ -16,12 +16,12 @@ namespace tpyapp::main {
 void test_int32_cmp() {
     int32_t a = 5;
     int32_t b = 3;
-    std::cout << ::tpy::print_bool((a > b)) << "\n";
-    std::cout << ::tpy::print_bool((a < b)) << "\n";
-    std::cout << ::tpy::print_bool((a == b)) << "\n";
-    std::cout << ::tpy::print_bool((a != b)) << "\n";
-    std::cout << ::tpy::print_bool((a >= b)) << "\n";
-    std::cout << ::tpy::print_bool((a <= b)) << "\n";
+    std::cout << ::tpy::print_bool((a > b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a < b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a == b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a != b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a >= b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((a <= b)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_int64_cmp() -> None:
@@ -33,9 +33,9 @@ void test_int32_cmp() {
 void test_int64_cmp() {
     int64_t x = 100;
     int64_t y = 200;
-    std::cout << ::tpy::print_bool((x < y)) << "\n";
-    std::cout << ::tpy::print_bool((x > y)) << "\n";
-    std::cout << ::tpy::print_bool((x == y)) << "\n";
+    std::cout << ::tpy::print_bool((x < y)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((x > y)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((x == y)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_uint32_cmp() -> None:
@@ -47,9 +47,9 @@ void test_int64_cmp() {
 void test_uint32_cmp() {
     uint32_t m = 10;
     uint32_t n = 10;
-    std::cout << ::tpy::print_bool((m == n)) << "\n";
-    std::cout << ::tpy::print_bool((m != n)) << "\n";
-    std::cout << ::tpy::print_bool((m >= n)) << "\n";
+    std::cout << ::tpy::print_bool((m == n)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((m != n)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((m >= n)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

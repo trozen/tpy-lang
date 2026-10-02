@@ -19,9 +19,9 @@ std::function<::tpy::BigInt()> hold(const std::function<::tpy::BigInt()>& f) {
 void lambda_reassigned() {
     int32_t k = 10;
     std::function<::tpy::BigInt()> f = ::tpyapp::main::hold([k]() -> ::tpy::BigInt { return ::tpy::BigInt(k); });
-    std::cout << f() << "\n";
+    std::cout << f() << "\n" << ::tpy::check_signals;
     k = 20;
-    std::cout << k << "\n";
+    std::cout << k << "\n" << ::tpy::check_signals;
 }
 
 // def nested_def_via_local() -> None:
@@ -38,9 +38,9 @@ void nested_def_via_local() {
         return ::tpy::BigInt(k);
     };
     std::function<::tpy::BigInt()> g = inner;
-    std::cout << g() << "\n";
+    std::cout << g() << "\n" << ::tpy::check_signals;
     k = 200;
-    std::cout << k << "\n";
+    std::cout << k << "\n" << ::tpy::check_signals;
 }
 
 // def nested_def_direct_return() -> Callable[[], int]:
@@ -56,7 +56,7 @@ std::function<::tpy::BigInt()> nested_def_direct_return() {
         return ::tpy::BigInt(k);
     };
     k = 6;
-    std::cout << k << "\n";
+    std::cout << k << "\n" << ::tpy::check_signals;
     return inner;
 }
 
@@ -69,9 +69,9 @@ std::function<::tpy::BigInt()> nested_def_direct_return() {
 void aug_assign_counter() {
     int32_t c = 0;
     std::function<::tpy::BigInt()> f = ::tpyapp::main::hold([c]() -> ::tpy::BigInt { return ::tpy::BigInt(c); });
-    std::cout << f() << "\n";
+    std::cout << f() << "\n" << ::tpy::check_signals;
     c = ::tpy::add_check<int32_t>(c, 1);
-    std::cout << c << "\n";
+    std::cout << c << "\n" << ::tpy::check_signals;
 }
 
 // def walrus_reassigned() -> None:
@@ -84,10 +84,10 @@ void aug_assign_counter() {
 void walrus_reassigned() {
     int32_t k = 10;
     std::function<::tpy::BigInt()> f = ::tpyapp::main::hold([k]() -> ::tpy::BigInt { return ::tpy::BigInt(k); });
-    std::cout << f() << "\n";
+    std::cout << f() << "\n" << ::tpy::check_signals;
     int32_t n = (k = 20);
-    std::cout << n << "\n";
-    std::cout << k << "\n";
+    std::cout << n << "\n" << ::tpy::check_signals;
+    std::cout << k << "\n" << ::tpy::check_signals;
 }
 
 // def tuple_unpack_reassigned() -> None:
@@ -100,11 +100,11 @@ void walrus_reassigned() {
 void tuple_unpack_reassigned() {
     int32_t k = 1;
     std::function<::tpy::BigInt()> f = ::tpyapp::main::hold([k]() -> ::tpy::BigInt { return ::tpy::BigInt(k); });
-    std::cout << f() << "\n";
+    std::cout << f() << "\n" << ::tpy::check_signals;
     k = 2;
     int32_t m = 3;
-    std::cout << k << "\n";
-    std::cout << m << "\n";
+    std::cout << k << "\n" << ::tpy::check_signals;
+    std::cout << m << "\n" << ::tpy::check_signals;
 }
 
 // def clean_no_reassign() -> None:
@@ -114,7 +114,7 @@ void tuple_unpack_reassigned() {
 void clean_no_reassign() {
     int32_t k = 7;
     std::function<::tpy::BigInt()> f = ::tpyapp::main::hold([k]() -> ::tpy::BigInt { return ::tpy::BigInt(k); });
-    std::cout << f() << "\n";
+    std::cout << f() << "\n" << ::tpy::check_signals;
 }
 
 // def reassign_before_capture() -> None:
@@ -126,7 +126,7 @@ void reassign_before_capture() {
     int32_t k = 1;
     k = 2;
     std::function<::tpy::BigInt()> f = ::tpyapp::main::hold([k]() -> ::tpy::BigInt { return ::tpy::BigInt(k); });
-    std::cout << f() << "\n";
+    std::cout << f() << "\n" << ::tpy::check_signals;
 }
 
 // def loop_capture_no_warn() -> None:
@@ -139,7 +139,7 @@ void reassign_before_capture() {
 void loop_capture_no_warn() {
     for (int32_t k = 0; k < 3; ++k) {
         std::function<::tpy::BigInt()> f = ::tpyapp::main::hold([k]() -> ::tpy::BigInt { return ::tpy::BigInt(k); });
-        std::cout << f() << "\n";
+        std::cout << f() << "\n" << ::tpy::check_signals;
     }
 }
 

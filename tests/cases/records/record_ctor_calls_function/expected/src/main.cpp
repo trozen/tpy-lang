@@ -16,8 +16,8 @@ int32_t twice(int32_t x) {
 //     print(p.b)
 void main() {
     Pair p = Pair(5);
-    std::cout << p.a << "\n";
-    std::cout << p.b << "\n";
+    std::cout << p.a << "\n" << ::tpy::check_signals;
+    std::cout << p.b << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -77,7 +77,7 @@ void test_non_mutating_no_warn() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
     ::tpyapp::main::sum_points(items);
-    std::cout << v.x << "\n";
+    std::cout << v.x << "\n" << ::tpy::check_signals;
 }
 
 // def test_non_mutating_subscript_read() -> None:
@@ -90,7 +90,7 @@ void test_non_mutating_subscript_read() {
     std::vector<Point> items = {Point(3, 4)};
     Point& v = ::tpy::__getitem__(items, 0);
     ::tpyapp::main::first_x(items);
-    std::cout << v.x << "\n";
+    std::cout << v.x << "\n" << ::tpy::check_signals;
 }
 
 // # --- Test: mutating callee DOES trigger warning ---
@@ -105,7 +105,7 @@ void test_mutating_append_warns() {
     Point& v = ::tpy::__getitem__(items, 0);
     Point __tmp_1 = Point(9, 9);
     ::tpyapp::main::add_point(items, __tmp_1);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_mutating_subscript_write_no_warn() -> None:
@@ -120,7 +120,7 @@ void test_mutating_subscript_write_no_warn() {
     Point& v = ::tpy::__getitem__(items, 0);
     Point __tmp_1 = Point(9, 9);
     ::tpyapp::main::replace_first(items, __tmp_1);
-    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n" << ::tpy::check_signals;
 }
 
 // def test_mutating_del_warns() -> None:
@@ -133,7 +133,7 @@ void test_mutating_del_warns() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     Point& v = ::tpy::__getitem__(items, 0);
     ::tpyapp::main::remove_first(items);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // # --- Test: second param not mutated ---
@@ -149,7 +149,7 @@ void test_second_param_not_mutated() {
     std::vector<Point> others = {Point(5, 6)};
     Point& v = ::tpy::__getitem__(others, 0);
     ::tpyapp::main::add_point(items, v);
-    std::cout << v.x << "\n";
+    std::cout << v.x << "\n" << ::tpy::check_signals;
 }
 
 // # --- Test: no borrow active = no warn regardless ---
@@ -162,7 +162,7 @@ void test_no_borrow_no_warn() {
     std::vector<Point> items = {Point(1, 2)};
     Point __tmp_1 = Point(9, 9);
     ::tpyapp::main::add_point(items, __tmp_1);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // # --- Test: loop variable mutation inference ---
@@ -181,7 +181,7 @@ void test_loop_var_non_mutating_callee() {
         int32_t x = *__beg_0;
         std::vector<Point> __tmp_1 = std::vector<Point>{};
         ::tpyapp::main::sum_points(__tmp_1);
-        std::cout << x << "\n";
+        std::cout << x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -230,7 +230,7 @@ void test_transitive_mutation_warns() {
     Point& v = ::tpy::__getitem__(items, 0);
     Point __tmp_1 = Point(9, 9);
     ::tpyapp::main::add_point_wrapper(items, __tmp_1);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def test_transitive_read_no_warn() -> None:
@@ -243,7 +243,7 @@ void test_transitive_read_no_warn() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
     ::tpyapp::main::read_wrapper(items);
-    std::cout << v.x << "\n";
+    std::cout << v.x << "\n" << ::tpy::check_signals;
 }
 
 // # --- Test: forward call (callee defined after caller) ---
@@ -257,7 +257,7 @@ void test_forward_mutation_warns() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
     ::tpyapp::main::forward_mutator(items);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // def forward_mutator(items: list[Point]) -> None:
@@ -277,7 +277,7 @@ void test_forward_read_no_warn() {
     std::vector<Point> items = {Point(1, 2)};
     Point& v = ::tpy::__getitem__(items, 0);
     ::tpyapp::main::forward_reader(items);
-    std::cout << v.x << "\n";
+    std::cout << v.x << "\n" << ::tpy::check_signals;
 }
 
 // def forward_reader(items: list[Point]) -> int32:
@@ -318,7 +318,7 @@ void test_cycle_mutation_warns() {
     Point& v = ::tpy::__getitem__(items, 0);
     Point __tmp_1 = Point(9, 9);
     ::tpyapp::main::cycle_b(items, __tmp_1);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // # --- Test: multi-hop transitive chain (A -> B -> C) ---
@@ -340,7 +340,7 @@ void test_multi_hop_mutation_warns() {
     Point& v = ::tpy::__getitem__(items, 0);
     Point __tmp_1 = Point(9, 9);
     ::tpyapp::main::deep_wrapper(items, __tmp_1);
-    std::cout << ::tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
 // test_non_mutating_no_warn()

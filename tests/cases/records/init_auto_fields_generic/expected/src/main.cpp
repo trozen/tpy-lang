@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     print(Box(5).v)
 //     print(Box("hi").v)
 void main() {
-    std::cout << Box<int32_t>(5).v << "\n";
-    std::cout << Box<std::string>("hi").v << "\n";
+    std::cout << Box<int32_t>(5).v << "\n" << ::tpy::check_signals;
+    std::cout << Box<std::string>("hi").v << "\n" << ::tpy::check_signals;
 }
 
 // main()

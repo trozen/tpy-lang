@@ -35,22 +35,22 @@ void __tpy_init() {
     static std::optional<Dog> __global_slot_4;
     __global_slot_1.emplace(Dog());
     pet = &*__global_slot_1;
-    std::cout << pet->name() << "\n";
+    std::cout << pet->name() << "\n" << ::tpy::check_signals;
     __global_slot_2.emplace(Cat());
     pet = &*__global_slot_2;
-    std::cout << pet->name() << "\n";
+    std::cout << pet->name() << "\n" << ::tpy::check_signals;
     if (true) {
         __global_slot_3.emplace(Parrot());
         pet = &*__global_slot_3;
     }
-    std::cout << pet->name() << "\n";
+    std::cout << pet->name() << "\n" << ::tpy::check_signals;
     i = 0;
     while ((i < 2)) {
         __global_slot_4.emplace(Dog());
         pet = &*__global_slot_4;
         i = (::tpy::add_check<int32_t>(i, 1));
     }
-    std::cout << pet->name() << "\n";
+    std::cout << pet->name() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

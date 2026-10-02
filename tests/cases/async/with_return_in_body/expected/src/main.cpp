@@ -51,7 +51,7 @@ namespace tpyapp::main {
     }
     case S_JOIN_1: {
         try {
-            std::cout << v << "\n";
+            std::cout << v << "\n" << ::tpy::check_signals;
             this->__finally_ret_0 = ((v) + (::tpy::BigInt(100)));
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
@@ -94,7 +94,7 @@ __coro_inner inner() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r = std::move(__r0).value();
         __sub_0.reset();
-        std::cout << r << "\n";
+        std::cout << r << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -117,7 +117,7 @@ __coro_main_coro main_coro() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "aenter" << "\n";
+        std::cout << "aenter" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 42;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -135,7 +135,7 @@ __coro_main_coro main_coro() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        std::cout << "aexit" << "\n";
+        std::cout << "aexit" << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

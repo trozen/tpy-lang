@@ -22,18 +22,18 @@ void main() {
     {
         try {
             int32_t x = ::tpystd::random::choice<int32_t>(empty);
-            std::cout << x << "\n";
+            std::cout << x << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::IndexError& e) {
-            std::cout << "IndexError:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "IndexError:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
     ::tpystd::random::Random rng = ::tpystd::random::Random();
     {
         try {
             int32_t y = rng.choice<int32_t>(empty);
-            std::cout << y << "\n";
+            std::cout << y << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::IndexError& e) {
-            std::cout << "IndexError:" << " " << std::string(::tpy::__str__(e)) << "\n";
+            std::cout << "IndexError:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
 }

@@ -22,8 +22,8 @@ void main() {
     Point a = Point(10, 20);
     Point b = Point(0, 0);
     ::tpyapp::main::copy_into(a, b);
-    std::cout << b.x << "\n";
-    std::cout << b.y << "\n";
+    std::cout << b.x << "\n" << ::tpy::check_signals;
+    std::cout << b.y << "\n" << ::tpy::check_signals;
 }
 
 // main()

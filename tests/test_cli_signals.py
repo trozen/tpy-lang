@@ -391,6 +391,20 @@ def mode_cpu() -> None:
     print("loop ended (WRONG)", n > 0)
 
 
+def mode_print() -> None:
+    # No ready(): its flush is itself a check point. The loop's own lines are
+    # the handshake, so the one Ctrl-C lands between two prints and the next
+    # print raises it.
+    n = 0
+    try:
+        while n < 5000000:
+            print("line", n)
+            n += 1
+        print("loop ended (WRONG)")
+    except KeyboardInterrupt:
+        print("print: caught", n > 0)
+
+
 def mode_uncaught() -> None:
     ready("ready")
     print("buffered")
@@ -499,6 +513,8 @@ def main() -> None:
         mode_raise_type_msg()
     elif mode == "cpu":
         mode_cpu()
+    elif mode == "print":
+        mode_print()
     elif mode == "uncaught":
         mode_uncaught()
     elif mode == "async_twice":
@@ -736,6 +752,18 @@ def test_uncaught_keyboard_interrupt_report(interrupt_binary: Path) -> None:
     assert (returncode, out) == (1, ""), err
     assert err.startswith("TurboPython panic: uncaught "), err
     assert err.endswith("SubInterrupt: sub\n"), err
+
+
+def test_sigint_raised_by_print(interrupt_binary: Path) -> None:
+    # A loop whose only operation is print() stops on the FIRST Ctrl-C: the
+    # chain's trailing check raises once the line being written is out.
+    child = _Child(interrupt_binary, "print")
+    child.wait_line("line 2000")
+    child.interrupt()
+    returncode, out, err = child.finish()
+    assert (returncode, err) == (0, ""), (returncode, err)
+    assert out.endswith("print: caught True\n"), out[-200:]
+    assert "WRONG" not in out
 
 
 def test_second_sigint_kills_a_cpu_loop(interrupt_binary: Path) -> None:

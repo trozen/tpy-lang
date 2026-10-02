@@ -65,7 +65,7 @@ __coro_serve serve() {
 // def main() -> None:
 //     print(asyncio.run(serve()))
 void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::serve())) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::serve())) << "\n" << ::tpy::check_signals;
 }
 
 // # Regression: when the SIGINT-cancelled root coroutine CATCHES its

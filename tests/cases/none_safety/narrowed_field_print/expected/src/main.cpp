@@ -23,24 +23,24 @@ namespace tpyapp::main {
 //         print("no ratio")
 void show_guarded(const Config& cfg) {
     if ((cfg.port.has_value())) {
-        std::cout << ::tpy::print_optional_val(cfg.port) << "\n";
+        std::cout << ::tpy::print_optional_val(cfg.port) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "no port" << "\n";
+        std::cout << "no port" << "\n" << ::tpy::check_signals;
     }
     if ((cfg.name.has_value())) {
-        std::cout << ::tpy::print_optional_val(cfg.name) << "\n";
+        std::cout << ::tpy::print_optional_val(cfg.name) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "no name" << "\n";
+        std::cout << "no name" << "\n" << ::tpy::check_signals;
     }
     if ((cfg.flag.has_value())) {
-        std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(cfg.flag) << "\n";
+        std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(cfg.flag) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "no flag" << "\n";
+        std::cout << "no flag" << "\n" << ::tpy::check_signals;
     }
     if ((cfg.ratio.has_value())) {
-        std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(cfg.ratio) << "\n";
+        std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(cfg.ratio) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << "no ratio" << "\n";
+        std::cout << "no ratio" << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -51,10 +51,10 @@ void show_guarded(const Config& cfg) {
 //         print(cfg.name)
 void show_truthy(const Config& cfg) {
     if (::tpy::is_truthy(cfg.port)) {
-        std::cout << ::tpy::print_optional_val(cfg.port) << "\n";
+        std::cout << ::tpy::print_optional_val(cfg.port) << "\n" << ::tpy::check_signals;
     }
     if (::tpy::is_truthy(cfg.name)) {
-        std::cout << ::tpy::print_optional_val(cfg.name) << "\n";
+        std::cout << ::tpy::print_optional_val(cfg.name) << "\n" << ::tpy::check_signals;
     }
 }
 

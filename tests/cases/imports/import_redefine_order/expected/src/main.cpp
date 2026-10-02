@@ -27,12 +27,12 @@ void __tpy_init() {
     initialized = true;
 
     ::tpyapp::utils::__tpy_init();
-    std::cout << ::tpyapp::utils::MAX << "\n";
-    std::cout << ::tpyapp::utils::MIN << "\n";
+    std::cout << ::tpyapp::utils::MAX << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::utils::MIN << "\n" << ::tpy::check_signals;
     MAX = 42;
     MIN = ::tpy::BigInt(99);
-    std::cout << MAX << "\n";
-    std::cout << MIN << "\n";
+    std::cout << MAX << "\n" << ::tpy::check_signals;
+    std::cout << MIN << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main
