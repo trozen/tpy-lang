@@ -234,7 +234,7 @@ SSLSocket SSLContext::wrap_socket(::tpystd::socket::socket&& sock, std::string_v
 //                                 uint64(len(sp)))
 void SSLContext::_config_client(::tpy_tls_session* s) const {
     int32_t verify = (((this->verify_mode == CERT_REQUIRED)) ? (1) : (0));
-    std::string_view ca = this->_cafile;
+    std::string ca = this->_cafile;
     int32_t rc = ::tpy_tls_config_client(s, reinterpret_cast<const uint8_t*>(ca.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(ca)), verify);
     if ((rc != 0)) {
         ::tpystd::ssl::_fail(s, ::tpystd::ssl::_errstr(rc));
@@ -245,7 +245,7 @@ void SSLContext::_config_client(::tpy_tls_session* s) const {
         }
     }
     if ((::tpy::__len__(this->_system_cafile) > 0)) {
-        std::string_view sp = this->_system_cafile;
+        std::string sp = this->_system_cafile;
         ::tpy_tls_add_ca_file(s, reinterpret_cast<const uint8_t*>(sp.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(sp)));
     }
 }

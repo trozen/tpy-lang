@@ -41,7 +41,7 @@ void show(std::string_view tag, ::tpy::BytesView b) {
     std::cout << "param len" << " " << ::tpy::__len__(std::get<0>(t)) << "\n" << ::tpy::check_signals;
     std::cout << "param eq" << " " << ::tpy::print_bool((std::get<0>(t) == ::tpy::bytes_literal("ab", 2))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("param arg", std::get<0>(t));
-    ::tpy::Bytes y = std::get<0>(t);
+    ::tpy::BytesView y = std::get<0>(t);
     std::cout << "param local" << " " << ::tpy::BytesPrinter(y) << "\n" << ::tpy::check_signals;
     return std::get<0>(t);
 }
@@ -267,14 +267,15 @@ void main() {
     }
     auto __tup_1 = ::tpyapp::main::mkb();
     Rec q = std::move(std::get<0>(__tup_1));
-    ::tpy::BytesView bb = std::get<1>(__tup_1);
+    ::tpy::Bytes bb = std::move(std::get<1>(__tup_1));
     q.n = 5;
     std::cout << "unpack" << " " << q.n << " " << ::tpy::BytesPrinter(bb) << "\n" << ::tpy::check_signals;
 }
 
 // # A `bytes` tuple element read (`t[0]`) compiles at every position, as the
-// # `str` twin does. Bound to a local it is an OWNED copy (`::tpy::Bytes y =
-// # std::get<0>(t);`), so mutating the tuple's source after the bind cannot reach it.
+// # `str` twin does. Bound to a local off a tuple NAME it is a view
+// # (`::tpy::BytesView y = std::get<0>(t);`), exactly as the `str` element is;
+// # off a container element it is an owned copy (the one view rule).
 // import asyncio
 //
 // G: tuple[bytes, int32] = (b"glob", 1)

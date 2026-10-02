@@ -21,7 +21,7 @@ void use_annotated(const Snap& s);
 // def drain(s: Snap) -> Iterator[int32]:
 __gen_drain drain(const Snap& s);
 // def use_view(h: Holder) -> None:
-void use_view(Holder& h);
+void use_view(const Holder& h);
 // def main() -> None:
 void main();
 

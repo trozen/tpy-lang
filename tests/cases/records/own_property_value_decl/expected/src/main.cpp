@@ -43,8 +43,8 @@ __gen_drain drain(const Snap& s) {
 //         n += 1
 //         print("view_char:", c)
 //     print("view:", n)
-void use_view(Holder& h) {
-    std::string_view v = h.view();
+void use_view(const Holder& h) {
+    std::string v = std::string(h.view());
     int32_t n = 0;
     auto& __obj_0 = v;
     auto __beg_0 = __obj_0.begin();

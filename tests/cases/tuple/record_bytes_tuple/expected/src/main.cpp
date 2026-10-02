@@ -182,7 +182,7 @@ void main() {
     std::cout << "param_after" << " " << r.n << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpyapp::main::pair(r);
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    ::tpy::BytesView s = std::get<1>(__tup_1);
+    ::tpy::Bytes s = std::move(std::get<1>(__tup_1));
     a.n = 3;
     std::cout << "unpack" << " " << r.n << " " << ::tpy::BytesPrinter(s) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes y = std::get<1>(t);
@@ -193,7 +193,7 @@ void main() {
     auto __tup_2 = ::tpyapp::main::mix(r);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
     Rec o = std::move(std::get<1>(__tup_2));
-    ::tpy::BytesView s3 = std::get<2>(__tup_2);
+    ::tpy::Bytes s3 = std::move(std::get<2>(__tup_2));
     b.n = 6;
     o.n = 7;
     std::cout << "mix" << " " << r.n << " " << o.n << " " << ::tpy::BytesPrinter(s3) << "\n" << ::tpy::check_signals;

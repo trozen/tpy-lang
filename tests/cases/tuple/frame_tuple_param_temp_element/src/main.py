@@ -392,8 +392,8 @@ def unbacked_return(n: Named) -> StrView:
 
 
 def unbacked_local(n: Named, s: str) -> None:
-    # the view of the `Named` element's field stays a view
-    v = nm_opt((n, 3))  # tpyc: ok type(StrView)
+    # a view-returning call over a record's field binds an owned copy (the one view rule)
+    v = nm_opt((n, 3))  # tpyc: type(str) ok
     a = A(1)
     # a `str` element cannot hold the `A` the result is: no temporary warning
     x = fst((a, s))  # tpyc: ok

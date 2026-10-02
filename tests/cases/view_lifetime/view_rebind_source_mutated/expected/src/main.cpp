@@ -143,11 +143,13 @@ void bytes_face(const std::vector<::tpy::Bytes>& xs, std::vector<::tpy::Bytes>& 
 }
 
 // def no_mutation(xs: list[str], ys: list[str]) -> None:
-//     v = xs[0]  # tpyc: type(StrView)
-//     v = ys[0]  # nothing writes either source: the local stays a view
+//     v = xs[0]  # tpyc: type(str)
+//     # Nothing writes either source; the local still owns (an element never lends),
+//     # the same form as the mutating sections above.
+//     v = ys[0]
 //     print("no_mutation", v)
 void no_mutation(const std::vector<std::string>& xs, const std::vector<std::string>& ys) {
-    std::string_view v = ::tpy::__getitem__(xs, 0);
+    std::string v = ::tpy::__getitem__(xs, 0);
     v = ::tpy::__getitem__(ys, 0);
     std::cout << "no_mutation" << " " << v << "\n" << ::tpy::check_signals;
 }
@@ -181,8 +183,8 @@ void main() {
     std::vector<std::string> __tmp_11 = {(::tpy::str_repeat("f", 40))};
     ::tpyapp::main::try_handler(1, __tmp_11);
     Holder().method();
-    std::vector<::tpy::Bytes> __tmp_12 = {(::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 40))};
-    std::vector<::tpy::Bytes> __tmp_13 = {(::tpy::bytes_repeat(::tpy::bytes_literal_owned("h", 1), 40))};
+    std::vector<::tpy::Bytes> __tmp_12 = {(::tpy::bytes_repeat(::tpy::bytes_literal("a", 1), 40))};
+    std::vector<::tpy::Bytes> __tmp_13 = {(::tpy::bytes_repeat(::tpy::bytes_literal("h", 1), 40))};
     ::tpyapp::main::bytes_face(__tmp_12, __tmp_13);
     std::vector<std::string> __tmp_14 = {(::tpy::str_repeat("a", 40))};
     std::vector<std::string> __tmp_15 = {(::tpy::str_repeat("i", 40))};

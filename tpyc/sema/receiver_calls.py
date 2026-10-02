@@ -211,6 +211,18 @@ def is_invalidating_method(ctx: SemanticContext, obj_type: TpyType,
                for m in record.get_method_overloads(method_name))
 
 
+def method_writes_receiver(ctx: SemanticContext, obj_type: TpyType,
+                           method_name: str) -> bool:
+    """Whether calling `method_name` on an `obj_type` receiver may write
+    it: some overload of that name is not `@readonly`. A name the type does
+    not define answers True -- the caller is asking a syntactic candidate
+    and cannot prove it harmless."""
+    record = (_builtin_record_of(ctx, obj_type)
+              or ctx.registry.get_record_for_type(obj_type))
+    overloads = record.get_method_overloads(method_name) if record is not None else []
+    return not overloads or any(not m.is_readonly for m in overloads)
+
+
 def callee_invalidates(ctx: SemanticContext, obj_type: TpyType,
                        callee: FunctionInfo) -> bool:
     """`is_invalidating_method` for a callee already resolved (through the

@@ -308,8 +308,8 @@ class ScopeTracker:
                  depth: int, is_foreach: bool = False) -> Iterator[None]:
         """Bind a loop variable in scope/namespace and track its depth."""
         scope.define(name, var_type)
-        old_depth = self.ctx.func.var_scope_depth.get(name)
-        self.ctx.func.var_scope_depth[name] = depth
+        saved_decl = self.ctx.local_decl_of(name)
+        self.ctx.declare_local(name, depth)
         # The enclosing loop / comprehension body already opened the
         # namespace region the variable belongs to.
         if self.ctx.func.current_ns:
@@ -325,10 +325,7 @@ class ScopeTracker:
                 self.ctx.func.loop_vars.discard(name)
             if not was_assigned:
                 self.ctx.func.definitely_assigned.discard(name)
-            if old_depth is not None:
-                self.ctx.func.var_scope_depth[name] = old_depth
-            else:
-                self.ctx.func.var_scope_depth.pop(name, None)
+            self.ctx.restore_local_decl(name, saved_decl)
 
     # --- Escape detection ---
 

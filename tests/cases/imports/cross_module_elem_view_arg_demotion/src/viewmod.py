@@ -1,6 +1,5 @@
-# The imported half of the view-demotion case: one writer, one non-writer that
-# still declares a mutable parameter, and the `readonly` twin. The caller's
-# decision must turn on these SIGNATURES alone.
+# The imported half of the case: one writer, one non-writer that still declares
+# a mutable parameter, and the `readonly` twin.
 from tpy import Own, int32, readonly
 
 

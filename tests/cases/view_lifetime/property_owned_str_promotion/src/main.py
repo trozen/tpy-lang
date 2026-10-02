@@ -1,7 +1,8 @@
 # An owned-string return bound to an inferred local must promote to an owned copy
 # (not a dangling view) -- and this must be identical across a free function, a
 # method, and a @property (the property was the outlier the fix aligned). A getter
-# returning a StrView borrow of a stable field stays a zero-copy view in all forms.
+# returning a StrView borrow of a field owns a copy too: a view-returning call over
+# a record lends nothing to an inferred local under the one view rule.
 from tpy import StrView
 
 
@@ -52,10 +53,10 @@ def main() -> None:
     print(len(t))
     g = b.tagged                      # tpyc: type(str)
     print(g)
-    # borrow returns -- method and property both stay zero-copy views
-    mn = b.m_name()                   # tpyc: type(StrView)
+    # borrow returns -- method and property both copy, as a field read does
+    mn = b.m_name()                   # tpyc: type(str)
     print(mn)
-    n = b.name                        # tpyc: type(StrView)
+    n = b.name                        # tpyc: type(str)
     print(n)
     r = b.raw                         # tpyc: type(bytes)
     print(len(r))

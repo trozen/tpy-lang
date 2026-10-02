@@ -409,7 +409,7 @@ from .predicates import (
     _unwrap_own,
     _owned_str_append_target,
     _btuple_owning_call_init,
-    _owned_str_slot,
+    _owned_viewfam_elem,
     _plain_member_call_markers_ok,
     _plain_method_fi_ok,
     _param_is_const,
@@ -460,6 +460,7 @@ from .predicates import (
     _peel_coerce,
     _subscript_container_recv_type,
     _record_has_delitem,
+    _record_setitem_value,
     _unwrap_lit_coerce,
     _storage_record_tuple,
     _ru_container_literal_ok,
@@ -622,6 +623,8 @@ from .expressions import (
     _lower_generic_tuple_literal,
     _lower_ru_literal,
     _lower_tuple_literal,
+    _rb_bytes_literal_views,
+    _retag_param_bytes_literal,
     _rb_operand_slots,
     _retag_bytes_literal_view,
     _lower_slice_bound,
@@ -692,7 +695,8 @@ def _is_any_type(t: 'TpyType | None') -> bool:
 
 def _any_value_dict(t: 'TpyType | None', analyzer) -> bool:
     """A `dict[K, Any]` whose KEY is in the shared key slice (fixed-int /
-    runtime-BigInt / owned-str -- `_container_elem_family`'s dict keys). The
+    runtime-BigInt / owned str or bytes -- `_container_elem_family`'s dict
+    keys). The
     `Any` VALUE keeps the family out of `_container_scalar_read`, but the
     del-item / setitem-of-Any / return-of-read emits never construct or
     convert the value slot, so the key alone decides byte-parity there."""
@@ -709,7 +713,7 @@ def _any_value_dict(t: 'TpyType | None', analyzer) -> bool:
     # record/Any-KEYED Any-dict writes are not exercised by the corpus, so
     # those keys reject here even though the read-side gates admit them.
     return ((is_fixed_int_type(key) or _runtime_bigint(key, analyzer)
-             or _owned_str_slot(key, analyzer))
+             or _owned_viewfam_elem(key, analyzer))
             and _is_any_type(val))
 
 def _any_dict_subscript_shape_ok(
@@ -871,10 +875,11 @@ def _lower_dyn_setattr_call(call: TpyMethodCall, lc: '_LowerCtx',
 
 def _scalar_or_str_unpack_elem(t: TpyType | None, analyzer) -> bool:
     """A tuple-unpack target / source-tuple element this cell admits: a value
-    scalar, value-form record, callable, or str -- the view-form target
-    `std::string_view name = std::get<i>(tup)` binds a view into the source
-    tuple's element, valid for the tuple's scope (which encloses the
-    targets), exactly as a str loop var / str decl views its source.
+    scalar, value-form record, callable, or str -- a view-form target
+    `std::string_view name = std::get<i>(tup)` binds a view into a source
+    tuple NAME that owns its storage (the one view rule), and an owned
+    target off a disposable holder moves its element out
+    (`std::string name = std::move(std::get<i>(__tup_N));`).
     `render_type(target_types[i])` spells the view, so the lowering needs no
     str arm. A value-opt SCALAR element and a value record bind the same
     plain typed copy (`std::optional<int32_t> a = std::get<0>(tup);`,
@@ -2530,6 +2535,46 @@ def _standalone_unpack_target_binds(
         cref = (i < len(stmt.is_const_ref) and stmt.is_const_ref[i])
         out.append((tt, "cref" if cref else "value"))
     return out
+
+# The holders an unpack statement owns outright: nothing reads them after
+# the targets are bound, so an owned element moves out instead of copying.
+_DISPOSABLE_TUPLE_HOLDERS = frozenset({
+    TupleSourceBind.RVALUE, TupleSourceBind.NAME_MOVE,
+    TupleSourceBind.ONESHOT_DEREF})
+
+
+def _move_owned_buffer_targets(
+        stmt: TpyTupleUnpack, source_bind: TupleSourceBind,
+        binds: 'list[str | None] | tuple[str | None, ...]',
+        declared: dict[str, TpyType], analyzer,
+        wraps_in: 'list[str] | tuple[str, ...] | None' = None
+        ) -> 'tuple[tuple[str | None, ...], tuple[str, ...]]':
+    """The binds (and per-target wraps) of an unpack bound through
+    `source_bind`: when the holder is disposable, an owned str/bytes/String
+    target moves its element out of it -- the "move" arm for a fresh target,
+    a moving "assign" for a reused one or a frame field -- where a copy
+    would duplicate a buffer nothing else reads. Any other holder references
+    live storage, and its binds come back unchanged."""
+    if source_bind not in _DISPOSABLE_TUPLE_HOLDERS:
+        return tuple(binds), tuple(wraps_in) if wraps_in else ()
+    out = list(binds)
+    wraps = list(wraps_in) if wraps_in else [""] * len(binds)
+    for i, (name, bind) in enumerate(zip(stmt.targets, binds)):
+        if name is None or bind not in ("value", "assign", "frame_assign",
+                                        "frame_emplace"):
+            continue
+        t = declared.get(name)
+        t = _resolve_pending_view(t, analyzer) or t
+        t = unwrap_readonly(unwrap_ref_type(t)) if t is not None else None
+        if t is None or not _owned_viewfam_elem(t, analyzer):
+            continue
+        if bind == "value":
+            out[i] = "move"
+            _witness("stmt.tuple_unpack.owned_buffer_move")
+        else:
+            wraps[i] = "move"
+            _witness("stmt.tuple_unpack.owned_buffer_move_assign")
+    return tuple(out), (tuple(wraps) if any(wraps) else ())
 
 def _register_rebound_unpack_target(name: str, lc: '_LowerCtx') -> None:
     """A rebound borrow unpack target is the reassigned scalar alias's
@@ -7750,10 +7795,12 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
         sb = (TupleSourceBind.ONESHOT_DEREF if src_oneshot
               else TupleSourceBind.NAME_REF if src_ref
               else TupleSourceBind.NAME_CREF)
+        os_binds, os_wraps = _move_owned_buffer_targets(
+            stmt, sb, binds, declared, analyzer, wraps)
         return THIRTupleUnpack(
             source=src_name, targets=tuple(stmt.targets),
             target_cpps=(None,) * len(stmt.targets),
-            binds=tuple(binds), wraps=tuple(wraps),
+            binds=os_binds, wraps=os_wraps,
             source_bind=sb,
             source_cpp=(f"(*{escape_cpp_name(src_name)})"
                         if src_ref and src_name in lc.pointers else None),
@@ -7779,13 +7826,16 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
     lvalue_select = _lvalue_tuple_ternary(
         stmt.value, declared, scope.admission_pointers(),
         lc.narrow.narrowed.keys(), lc.analyzer, owning_targets=True)
+    rv_sb = (TupleSourceBind.NAME_CREF if lvalue_select
+             else TupleSourceBind.RVALUE)
+    rv_binds, rv_wraps = _move_owned_buffer_targets(
+        stmt, rv_sb, binds, declared, analyzer, wraps)
     return THIRTupleUnpack(
         source="", targets=tuple(stmt.targets),
         target_cpps=(None,) * len(stmt.targets),
-        binds=tuple(binds), wraps=tuple(wraps),
+        binds=rv_binds, wraps=rv_wraps,
         source_expr=value,
-        source_bind=(TupleSourceBind.NAME_CREF if lvalue_select
-                     else TupleSourceBind.RVALUE), loc=loc)
+        source_bind=rv_sb, loc=loc)
 
 
 def _rebound_tuple_alias_reject(stmt: TpyVarDecl, init: TpySubscript,
@@ -12401,6 +12451,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                 use=_ExprUse(result=_ExprResultUse.STORAGE,
                                              allow_temps=True))),
                 elem_t, lc)
+            # The value lands in `__setitem__`'s PARAM, so a bytes literal
+            # takes the static span there.
+            value = _retag_param_bytes_literal(value, _record_setitem_value(
+                analyzer.get_expr_type(stmt.target.obj), analyzer))
             _witness("setitem.user_record")
             return THIRSetItem(target=target, value=value, loc=loc)
         if isinstance(stmt.target, TpySubscript):
@@ -13170,13 +13224,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                               and stmt.target.typed_dict_field is None)
                              or isinstance(stmt.target, TpyName))
                          else _ExprUse())
+        _, aug_right = _rb_bytes_literal_views(
+            stmt.resolved_binop, left,
+            _slot_literal_retype(
+                _lower_expr(stmt.value, lc, declared, use=aug_value_use),
+                aug_rslot, lc))
         binop = THIRBinOp(
             result_type=tgt_type,
             left=left,
             op=stmt.op,
-            right=_slot_literal_retype(
-                _lower_expr(stmt.value, lc, declared, use=aug_value_use),
-                aug_rslot, lc),
+            right=aug_right,
             right_cast=right_cast,
             resolved=stmt.resolved_binop,
             paren_wrap=False,
@@ -16287,9 +16344,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # makes it own.
                 narrowed_vot_src = _lower_expr(stmt.value, lc, declared)
                 _witness("stmt.tuple_unpack.narrowed_value_opt_source")
+            nm_binds, nm_wraps = _move_owned_buffer_targets(
+                stmt, src_bind, bind_tags, declared, analyzer)
             return THIRTupleUnpack(
                 source=stmt.value.name, targets=tuple(stmt.targets),
-                target_cpps=tuple(target_cpps), binds=tuple(bind_tags),
+                target_cpps=tuple(target_cpps), binds=nm_binds, wraps=nm_wraps,
                 source_expr=narrowed_vot_src,
                 source_cpp=lc.prescan.global_cpp.get(stmt.value.name),
                 source_bind=src_bind,
@@ -16304,11 +16363,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             owning_targets=lc.top_level_scope)
         _witness("stmt.tuple_unpack.lvalue_select_source" if lvalue_select
                  else "stmt.tuple_unpack.rvalue_source")
+        rv_sb = (TupleSourceBind.NAME_CREF if lvalue_select
+                 else TupleSourceBind.RVALUE)
+        rv_binds, rv_wraps = _move_owned_buffer_targets(
+            stmt, rv_sb, bind_tags, declared, analyzer)
         return THIRTupleUnpack(
             source="", targets=tuple(stmt.targets),
-            target_cpps=tuple(target_cpps), binds=tuple(bind_tags),
-            source_bind=(TupleSourceBind.NAME_CREF if lvalue_select
-                         else TupleSourceBind.RVALUE),
+            target_cpps=tuple(target_cpps), binds=rv_binds, wraps=rv_wraps,
+            source_bind=rv_sb,
             source_expr=_flush_witness("flush.unpack_source", _lower_expr(
                 stmt.value, lc, declared,
                 use=_ExprUse(

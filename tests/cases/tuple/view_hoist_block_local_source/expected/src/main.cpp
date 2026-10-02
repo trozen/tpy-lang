@@ -28,8 +28,8 @@ void for_call_unpack() {
     std::string b;
     for (int32_t i = 0; i < 3; ++i) {
         auto __tup_1 = ::tpyapp::main::split2((::tpy::str_concat("iter", ::tpy::fixed_to_str<int32_t>(i))));
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::move(std::get<0>(__tup_1));
+        b = std::move(std::get<1>(__tup_1));
     }
     std::cout << "for_call_unpack" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }
@@ -47,8 +47,8 @@ void while_call_unpack() {
     std::string b;
     while ((i < 2)) {
         auto __tup_1 = ::tpyapp::main::split2((::tpy::str_concat("w", ::tpy::fixed_to_str<int32_t>(i))));
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::move(std::get<0>(__tup_1));
+        b = std::move(std::get<1>(__tup_1));
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     std::cout << "while_call_unpack" << " " << a << " " << b << "\n" << ::tpy::check_signals;
@@ -577,7 +577,7 @@ void moved_alias(bool flag) {
 //     print("kept_alias", i, h.name)
 void kept_alias(bool flag) {
     M h = M("kept-alias-holder-long-enough-to-defeat-sso");
-    std::string_view i;
+    std::string i;
     if (flag) {
         M& r = h;
         i = r.nv();
@@ -915,7 +915,7 @@ void implicit_iter_heads() {
         }
         break;
     }
-    std::string_view u;
+    std::string u;
     while (true) {
         u = "";
         auto& __obj_4 = b.xs;
@@ -940,7 +940,7 @@ void implicit_iter_heads() {
 //         break
 //     print("list_param_head", y)
 void list_param_head(const std::vector<std::string>& words) {
-    std::string_view y;
+    std::string y;
     while (true) {
         y = "";
         auto& __obj_0 = words;
@@ -963,7 +963,7 @@ void list_param_head(const std::vector<std::string>& words) {
 //     print("param_source", a, f)
 void param_source(const std::tuple<std::string, ::tpy::BigInt>& p, const H& h) {
     std::string_view a;
-    std::string_view f;
+    std::string f;
     for (int32_t i = 0; i < 2; ++i) {
         a = std::get<0>(p);
         f = h.name;
@@ -1025,7 +1025,7 @@ void loop_durable_source() {
 //     print("branch_durable_source", f)
 void branch_durable_source(bool flag) {
     H h = H("outer-holder-name-long-enough-to-defeat-sso");
-    std::string_view f;
+    std::string f;
     if (flag) {
         f = h.name;
     } else {

@@ -2523,6 +2523,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # An Own[F1-record] unpack element moved out of a call-rvalue source
     # (lowering): `Rec a = std::move(std::get<i>(__tup_N));`.
     "stmt.tuple_unpack.own_target",
+    # An owned str/bytes target off a holder the unpack owns (an rvalue
+    # capture, or a name at its last use), moved rather than copied
+    # (lowering): `std::string a = std::move(std::get<i>(__tup_N));`, and
+    # the reused-target twin `a = std::move(std::get<i>(__tup_N));`.
+    "stmt.tuple_unpack.owned_buffer_move",
+    "stmt.tuple_unpack.owned_buffer_move_assign",
     # The for-head twin over a STORAGE (own-element) gen-call yield tuple:
     # the owned local moves out of the mutable copy-head.
     "foreach.own_unpack_move",

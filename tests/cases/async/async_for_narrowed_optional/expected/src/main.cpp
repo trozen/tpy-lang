@@ -79,7 +79,7 @@ __coro_count_chars count_chars(std::optional<std::string_view> s) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         total = 0;
-        __coro_arg_0 = (::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)));
+        __coro_arg_0 = (::tpy::bytes_concat(::tpy::bytes_literal("ab", 2), ::tpy::bytes_literal("c", 1)));
         {
             auto __src_0 = ::tpyapp::main::each_byte(__coro_arg_0);
             auto&& __itr_0 = ::tpy::__iter__(__src_0);

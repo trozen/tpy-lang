@@ -184,7 +184,7 @@ void main() {
             std::cout << "srv want-read" << "\n" << ::tpy::check_signals;
         }
     }
-    ::tpy::Bytes chunk = (::tpy::bytes_repeat(::tpy::bytes_literal_owned("x", 1), 16384));
+    ::tpy::Bytes chunk = (::tpy::bytes_repeat(::tpy::bytes_literal("x", 1), 16384));
     int32_t i = 0;
     bool filled = false;
     while (((i < 10000) && (!(filled)))) {

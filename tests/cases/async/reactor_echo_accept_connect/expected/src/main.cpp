@@ -93,7 +93,7 @@ __coro_echo_client echo_client(int32_t port) {
         (*listener).listen(1);
         (*listener).setblocking(false);
         auto __tup_1 = (*listener).getsockname();
-        host = std::get<0>(__tup_1);
+        host = std::move(std::get<0>(__tup_1));
         port = std::get<1>(__tup_1);
         client.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::echo_client(port))));
         __sub_0.emplace(std::move((*loop).sock_accept((*listener))));

@@ -73,7 +73,7 @@ void send_timeout() {
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
     a.settimeout(0.05);
-    ::tpy::Bytes chunk = (::tpy::bytes_repeat(::tpy::bytes_literal_owned("x", 1), 65536));
+    ::tpy::Bytes chunk = (::tpy::bytes_repeat(::tpy::bytes_literal("x", 1), 65536));
     {
         try {
             while (true) {
@@ -101,7 +101,7 @@ void blocking_send() {
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
     ::tpystd::tpy::thread::JoinHandle<int32_t> h = ::tpystd::tpy::thread::spawn<int32_t, Drain>(Drain(std::move(b)));
-    ::tpy::Bytes data = (::tpy::bytes_repeat(::tpy::bytes_literal_owned("x", 1), 2000000));
+    ::tpy::Bytes data = (::tpy::bytes_repeat(::tpy::bytes_literal("x", 1), 2000000));
     int32_t n = a.send(data);
     std::cout << "blocking send: all sent:" << " " << ::tpy::print_bool((n == ::tpy::__len__(data))) << "\n" << ::tpy::check_signals;
     a.close();

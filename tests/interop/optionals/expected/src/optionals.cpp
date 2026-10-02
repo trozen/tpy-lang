@@ -62,7 +62,7 @@ std::optional<::tpy::Bytes> opt_bytes(std::optional<::tpy::BytesView> b) {
     if ((!b.has_value())) {
         return std::nullopt;
     }
-    ::tpy::Bytes out = (::tpy::bytes_concat((*b), ::tpy::bytes_literal_owned("?", 1)));
+    ::tpy::Bytes out = (::tpy::bytes_concat((*b), ::tpy::bytes_literal("?", 1)));
     return out;
 }
 

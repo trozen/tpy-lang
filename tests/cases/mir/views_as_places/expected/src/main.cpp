@@ -131,10 +131,12 @@ int32_t span_param(std::span<int32_t> xs) {
     return ::tpy::__getitem__(xs, 0);
 }
 
-// # free function: a reassigned str parameter owns a local; the view borrows that local
+// # free function: a reassigned str parameter owns a local; the view borrows that
+// # local. Spelled StrView: an inferred local over a name the function rebinds
+// # owns under the one view rule, so only the explicit view reaches the copy.
 // def reassigned_param(s: str) -> int:  # tpyc: mir(covered)
 //     s = s + "x"
-//     v = s[1:]  # tpyc: mir_borrows(v, local(s))
+//     v: StrView = s[1:]  # tpyc: mir_borrows(v, local(s))
 //     return len(v)
 ::tpy::BigInt reassigned_param(std::string_view __param_s) {
     std::string s = std::string(__param_s);
@@ -197,9 +199,9 @@ int32_t span_param(std::span<int32_t> xs) {
 //     t += b"y"  # tpyc: warning(/while borrowed/) mir_write(t)
 //     return len(c)
 ::tpy::BigInt live_conflict_bytes(::tpy::BytesView a) {
-    ::tpy::Bytes t = (::tpy::bytes_concat(a, ::tpy::bytes_literal_owned("x", 1)));
+    ::tpy::Bytes t = (::tpy::bytes_concat(a, ::tpy::bytes_literal("x", 1)));
     ::tpy::BytesView c = t;
-    t = ::tpy::bytes_concat(t, ::tpy::bytes_literal_owned("y", 1));
+    t = ::tpy::bytes_concat(t, ::tpy::bytes_literal("y", 1));
     return ::tpy::BigInt(::tpy::__len__(c));
 }
 
@@ -267,9 +269,10 @@ void append_field(Rec& r, std::string_view s) {
     return ::tpy::BigInt(::tpy::__len__(s));
 }
 
-// # free function: a view local of a field borrows the field place
+// # free function: a view local of a field borrows the field place. Spelled
+// # StrView: an inferred field read owns under the one view rule.
 // def field_view(r: Rec) -> int:  # tpyc: mir(covered)
-//     v = r.name  # tpyc: mir_borrowed(v) mir_borrows(v, r.name)
+//     v: StrView = r.name  # tpyc: mir_borrowed(v) mir_borrows(v, r.name)
 //     return len(v)
 ::tpy::BigInt field_view(const Rec& r) {
     std::string_view v = r.name;
@@ -334,7 +337,7 @@ void forwarded_write(Rec& r, std::string_view s) {
 //     v = r.name_view()
 //     return len(v)
 ::tpy::BigInt method_view(Rec& r) {
-    std::string_view v = r.name_view();
+    std::string v = std::string(r.name_view());
     return ::tpy::BigInt(::tpy::__len__(v));
 }
 

@@ -27,8 +27,8 @@ void main() {
     int32_t acc = 0;
     while ((::tpy::__len__(head) > 1)) {
         auto __tup_1 = ::tpyapp::main::split2(head);
-        head = std::get<0>(__tup_1);
-        std::string_view tail = std::get<1>(__tup_1);
+        head = std::move(std::get<0>(__tup_1));
+        std::string tail = std::move(std::get<1>(__tup_1));
         acc = (::tpy::add_check<int32_t>(acc, ::tpy::__len__(tail)));
     }
     std::cout << acc << "\n" << ::tpy::check_signals;

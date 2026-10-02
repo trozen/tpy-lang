@@ -102,6 +102,20 @@ def _view_return_family(return_type: TpyType) -> tuple[str, str] | None:
     return None
 
 
+def _view_keeping_hint(name: str, display: str, source: str | None) -> str:
+    """The two spellings that keep a view of stored storage: returning the
+    source itself, or a local spelled as a view."""
+    if source is not None:
+        # The explicit `{name}: {display} = {source}` opt-in is not named: a
+        # spelled view local takes no loan today
+        # (BUGS.md#explicit-view-local-source-mutation-unguarded), so the
+        # compiler must not steer a user to it.
+        return (f"'{name}' owns a copy of '{source}'; return {source} "
+                f"directly")
+    return (f"'{name}' owns a copy of its source; return the source "
+            f"directly")
+
+
 def _dangling_view_message(return_type: TpyType) -> str | None:
     """Error message for returning a view that borrows from a local, or None
     if return_type is not a borrowing-view type.
@@ -2908,6 +2922,32 @@ class TypeCompatibility:
                 return False
         return True
 
+    def _stored_copy_return_message(self, expr: TpyExpr,
+                                    bare_src: 'TpyType | None',
+                                    return_type: TpyType) -> str | None:
+        """The dangling-return error for an inferred str/bytes local that
+        owns only because the view rule copies the field or element it was
+        bound to (`y = h.s; return y` under `-> StrView`); None for any other
+        local. Its hint names the spellings that keep a view -- for `str`
+        only: a `BytesView` of a field does not lower yet in either spelling."""
+        if not (isinstance(expr, TpyName) and isinstance(bare_src, PendingViewType)
+                and is_str_view_type(return_type)):
+            return None
+        family = _view_return_family(return_type)
+        entries = self.ctx.func.view_ids_by_name.get(expr.name, ())
+        if family is None or len(entries) != 1:
+            return None
+        fam, var_id = entries[0]
+        info = self.ctx.view_vars(fam).get(var_id)
+        if (info is None or not info.owns_stored_source
+                or info.used_in_augassign or info.passed_to_promote_param
+                or info.reassigned_from_owned or info.source_mutated
+                or info.source_var_ids):
+            return None
+        display = family[0]
+        return (f"Cannot return {display} referencing a local or temporary; "
+                + _view_keeping_hint(expr.name, display, info.stored_source))
+
     def _view_constructor_arg(self, expr: TpyExpr) -> TpyExpr | None:
         """If expr is a borrowing-view constructor call, return the borrowed-from arg.
 
@@ -3759,7 +3799,10 @@ class TypeCompatibility:
                                and _dangling_view_message(effective_src) is not None)
                 if self.is_dangling_return(expr, view_source=not src_is_view,
                                            gen_yield=for_yield):
-                    raise self.ctx.error(view_msg, expr)
+                    raise self.ctx.error(
+                        (None if for_yield else self._stored_copy_return_message(
+                            expr, bare_src, return_type))
+                        or view_msg, expr)
             return
         # A tuple's borrow form (std::tuple<..., T*, ...>) stores each non-value
         # member by pointer. The check sees through a readonly wrap (the slot is

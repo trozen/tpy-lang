@@ -19,7 +19,7 @@ std::tuple<int32_t, std::string, bool> get_triple() {
 //     print(c)
 void main() {
     auto __tup_1 = ::tpyapp::main::get_triple();
-    std::string_view b = std::get<1>(__tup_1);
+    std::string b = std::move(std::get<1>(__tup_1));
     std::cout << b << "\n" << ::tpy::check_signals;
     auto __tup_2 = ::tpyapp::main::get_triple();
     int32_t a = std::get<0>(__tup_2);

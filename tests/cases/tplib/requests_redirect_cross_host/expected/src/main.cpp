@@ -35,7 +35,7 @@ bool second_has_auth(::tpy::BytesView location) {
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
     ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
-    b.sendall((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("HTTP/1.1 302 Found\r\nLocation: ", 30), location)), ::tpy::bytes_literal_owned("\r\nContent-Length: 0\r\n\r\n", 23))));
+    b.sendall((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("HTTP/1.1 302 Found\r\nLocation: ", 30), location)), ::tpy::bytes_literal("\r\nContent-Length: 0\r\n\r\n", 23))));
     d.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
     ::tpystd::http::client::HTTPConnection h0 = ::tpystd::http::client::HTTPConnection("api.test", 80);

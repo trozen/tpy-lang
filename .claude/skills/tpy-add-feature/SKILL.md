@@ -199,6 +199,20 @@ fix, and file the symptoms under it. The language rule a user reads should
 stay one sentence; everything the implementation cannot yet honour goes in
 a "current limitations" list pointing at that unit, never into the rule.
 
+The home of a per-name verdict is named here, not left to the brief: a
+verdict about a name that must hold for the whole function (whether a
+view of it owns, whether the name lends, whether its storage dies with a
+block) is an ORDER-FREE whole-function fact -- the pre-scan today, a MIR
+fact later -- read where the verdict is taken. A design that enumerates
+the statement kinds that can affect the name (the rebind spellings, the
+block exits, the write sites), or that reads tracker state at the event
+site ("the borrowers registered so far", "no loan recorded"), is a list
+with a hole per spelling it did not name, and is rejected at this step:
+name the fact (the names the function rebinds, the block each name is
+declared in, the kind of each binding) and the one site that reads it.
+The str/bytes view rule (2026-10-01) shipped the list form first and
+paid five review rounds, one missed spelling each, to reach the fact.
+
 ## Phase 4: Plan tests and docs
 
 **Tests:**

@@ -5211,20 +5211,21 @@ def _opt_owned_view_elem_tuple(t: TpyType | None,
             return None
     return t if any_opt else None
 
-def _value_tuple_owned_str_elem(e: 'TpyExpr', analyzer) -> bool:
-    """An OWNED-str element read out of a value tuple (`pair[1]` on
-    `tuple[str, str]`): the element is a `std::string` held in the tuple's own
-    storage, so `std::get<N>(pair)` is an owned lvalue that binds a str slot
-    bare -- the view->owned copy a view-form source takes does not fire. The
-    element read's own arm renders it; this only answers the FORM question a
-    str sink has to ask before it decides whether to copy."""
+def _value_tuple_owned_viewfam_elem(e: 'TpyExpr', analyzer) -> bool:
+    """An OWNED str/bytes element read out of a value tuple (`pair[1]` on
+    `tuple[str, str]` / `tuple[bytes, bytes]`): the element is an owned
+    buffer held in the tuple's own storage, so `std::get<N>(pair)` is an
+    owned lvalue that binds a view-family slot bare -- the view->owned copy a
+    view-form source takes does not fire. The element read's own arm renders
+    it; this only answers the FORM question such a sink has to ask before it
+    decides whether to copy."""
     if not isinstance(e, TpySubscript) or isinstance(e.index, TpySlice):
         return False
     if e.needs_optional_runtime_check or e.slice_function_info is not None:
         return False
     if _value_tuple(analyzer.get_expr_type(e.obj), analyzer) is None:
         return False
-    return _owned_str_slot(analyzer.get_expr_type(e), analyzer)
+    return _owned_viewfam_elem(analyzer.get_expr_type(e), analyzer)
 
 def _open_t_tuple_slot(t: TpyType | None, analyzer) -> 'TupleType | None':
     """A tuple carrying an OPEN type-param element inside a generic body
@@ -5654,7 +5655,7 @@ def _decl_tuple_nested(t: TpyType | None, analyzer) -> 'TupleType | None':
                         unwrap_send_sync(e))))
                     and bool(_dt_args := getattr(_dt_b, "type_args", None))
                     and (_eligible_scalar(_dt_args[0])
-                         or _owned_str_slot(_dt_args[0], analyzer)))
+                         or _owned_viewfam_elem(_dt_args[0], analyzer)))
                 or _eligible_value_union(
                     unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e))))
                 is not None
@@ -6005,7 +6006,7 @@ def _open_sibling_value_tuple(t: 'TpyType | None', analyzer) -> bool:
         if isinstance(eu, TypeParamRef):
             saw_open = True
             continue
-        if not (_eligible_scalar(eu) or _owned_str_slot(eu, analyzer)
+        if not (_eligible_scalar(eu) or _owned_viewfam_elem(eu, analyzer)
                 or _value_tuple_nested(eu, analyzer) is not None):
             return False
     return saw_open
@@ -6340,7 +6341,7 @@ def _record_getitem_idx_recv_ok(sub: 'TpySubscript',
     """The record-getitem subscript arm's index/receiver admission, written
     once for the subscript arm and the field-over-getitem gate: a scalar
     index (a runtime-BigInt one against a fixed-int key param carries the
-    `.to_fixed_check` narrow the arm applies) or a str value, off a declared
+    `.to_fixed_check` narrow the arm applies) or a str/bytes value, off a declared
     non-pointer NAME or clean-field receiver
     (pointer-local receivers render `(*p)[...]`, so a caller admits them only
     by opting in -- `ptr_recv_ok` for a module-var slot, `opt_ptr_recv_ok` for
@@ -6361,7 +6362,7 @@ def _record_getitem_idx_recv_ok(sub: 'TpySubscript',
                and _bigint_index_disposition(
                        sub.index, analyzer.get_expr_type(sub.obj),
                        analyzer, locals_) != "reject")
-              or _resolved_str_value(idx_type, analyzer) is not None)
+              or _resolved_viewfam_value(idx_type, analyzer) is not None)
     recv_ok = ((isinstance(sub.obj, TpyName) and sub.obj.name in locals_
                 and (sub.obj.name not in pointers or ptr_recv_ok
                      or opt_ptr_recv_ok))
@@ -6515,7 +6516,7 @@ def _container_scalar_read(t: TpyType | None, analyzer) -> bool:
     not)."""
     return _container_elem_family(
         t, analyzer,
-        lambda a: _eligible_scalar(a) or _owned_str_slot(a, analyzer),
+        lambda a: _eligible_scalar(a) or _owned_viewfam_elem(a, analyzer),
         span_ok=True)
 
 def _container_del_recv(t: 'TpyType | None', analyzer) -> bool:
@@ -6535,7 +6536,7 @@ def _dict_key_shape_ok(key: 'TpyType', analyzer) -> bool:
     namer: fixed-int / runtime-BigInt / owned-str / F1-record / Any keys --
     every render is key-type-neutral (index-position exprs gate their own
     shapes). `_any_value_dict` deliberately keeps the narrower int/BigInt/
-    str trio: record/Any-KEYED Any-dict writes have no witness."""
+    owned-str/bytes keys: record/Any-KEYED Any-dict writes have no witness."""
     kb = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(key)))
     return (is_fixed_int_type(key) or _runtime_bigint(key, analyzer)
             or _owned_str_slot(key, analyzer)
@@ -6659,7 +6660,7 @@ def _container_elem_family(t: 'TpyType | None', analyzer, elem_ok,
         # it in. VIEW-typed str elements stay out (the static-storage pin).
         return (span_ok
                 and (_eligible_scalar(_peel_readonly(elem))
-                     or _owned_str_slot(_peel_readonly(elem), analyzer)))
+                     or _owned_viewfam_elem(_peel_readonly(elem), analyzer)))
     key = _native_getitem_key(t, idx_param, analyzer)
     if key is not None:
         # A caller with a witnessed non-shared key slice (the setitem
@@ -6722,11 +6723,10 @@ def _container_value_leaf_read(t: TpyType | None, analyzer) -> bool:
     def leaf(a: 'TpyType | int') -> bool:
         if not isinstance(a, TpyType):
             return False
-        bt = _resolved_bytes_value(a, analyzer)
         return (_eligible_scalar(a) or _eligible_char(a)
                 or _eligible_enum(a, analyzer) is not None
                 or _eligible_ptr_value(a, analyzer)
-                or _owned_str_slot(a, analyzer)
+                or _owned_viewfam_elem(a, analyzer)
                 # An `Any` value element (`dict[str, Any]`): the subscript
                 # read is a bare `const Any&` lvalue consumed by from_any /
                 # print, landing bare in every value sink.
@@ -6738,8 +6738,7 @@ def _container_value_leaf_read(t: TpyType | None, analyzer) -> bool:
                 or _is_type_param_slot(a)
                 # A `Callable` element (`list[Callable[[int32], int32]]`):
                 # the `std::function` value lands bare like a scalar.
-                or _callable_value(a)
-                or (bt is not None and is_bytes_type(bt)))
+                or _callable_value(a))
 
     return _container_elem_family(t, analyzer, leaf, span_ok=True)
 
@@ -6840,7 +6839,7 @@ def _container_str_elem(t: TpyType | None, analyzer) -> bool:
 
 
 def _set_method_recv(t: TpyType | None, analyzer) -> bool:
-    """A `set[scalar|owned-str]` METHOD-CALL receiver. Deliberately its own
+    """A `set[scalar|owned-str|owned-bytes]` METHOD-CALL receiver. Its own
     predicate, NOT a widening of `_container_scalar_read`: that family feeds
     subscript / decl-storage / for-each consumers where a set is invalid
     (`set` has no `__getitem__`). Method dispatch is fi-driven -- the set
@@ -6854,7 +6853,7 @@ def _set_method_recv(t: TpyType | None, analyzer) -> bool:
         return False
     args = getattr(t, "type_args", None)
     return bool(args) and (_eligible_scalar(args[0])
-                           or _owned_str_slot(args[0], analyzer)
+                           or _owned_viewfam_elem(args[0], analyzer)
                            # An F1-record element (`set[Point]`): inserts
                            # render the bare rvalue / move like a list's;
                            # per-method args and results still gate.
@@ -9357,7 +9356,7 @@ def _storage_call_ret(ret: TpyType | None, analyzer) -> TpyType | None:
             args = getattr(t, "type_args", None)
             if (args and len(args) == 2
                     and (_eligible_scalar(args[0])
-                         or _owned_str_slot(args[0], analyzer))):
+                         or _owned_viewfam_elem(args[0], analyzer))):
                 vin = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     args[1])))
                 if ((is_dict(vin) or is_list(vin))
@@ -9376,7 +9375,7 @@ def _storage_call_ret(ret: TpyType | None, analyzer) -> TpyType | None:
     if is_set(t):
         args = getattr(t, "type_args", None)
         if bool(args) and (_eligible_scalar(args[0])
-                           or _owned_str_slot(args[0], analyzer)
+                           or _owned_viewfam_elem(args[0], analyzer)
                            or isinstance(unwrap_readonly(unwrap_ref_type(
                                unwrap_send_sync(args[0]))), AnyType)):
             return t

@@ -1,6 +1,7 @@
 # A `bytes` tuple element read (`t[0]`) compiles at every position, as the
-# `str` twin does. Bound to a local it is an OWNED copy (`::tpy::Bytes y =
-# std::get<0>(t);`), so mutating the tuple's source after the bind cannot reach it.
+# `str` twin does. Bound to a local off a tuple NAME it is a view
+# (`::tpy::BytesView y = std::get<0>(t);`), exactly as the `str` element is;
+# off a container element it is an owned copy (the one view rule).
 import asyncio
 from typing import Iterator
 from tpy import int32, Own

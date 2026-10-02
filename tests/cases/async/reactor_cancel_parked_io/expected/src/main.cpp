@@ -143,7 +143,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::socket::__tpy_init();
-    _BIG = (::tpy::bytes_repeat(::tpy::bytes_literal_owned("x", 1), ::tpy::mul_check<int32_t>(::tpy::mul_check<int32_t>(4, 1024), 1024)));
+    _BIG = (::tpy::bytes_repeat(::tpy::bytes_literal("x", 1), ::tpy::mul_check<int32_t>(::tpy::mul_check<int32_t>(4, 1024), 1024)));
     ::tpyapp::main::main();
 }
 

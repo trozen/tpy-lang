@@ -5,18 +5,18 @@ namespace tpyapp::main {
 
 
 // def test_dict_value_view() -> None:
-//     """No mutation: string_view for dict value."""
+//     """No mutation: still an owned copy."""
 //     d: dict[str, str] = {"hello": "world"}
-//     v = d["hello"]  # tpyc: type(StrView)
+//     v = d["hello"]  # tpyc: type(str)
 //     print(v)
 void test_dict_value_view() {
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>({{"hello", "world"}});
-    std::string_view v = ::tpy::__getitem__(d, "hello");
+    std::string v = ::tpy::__getitem__(d, "hello");
     std::cout << v << "\n" << ::tpy::check_signals;
 }
 
 // def test_dict_mutation_fallback() -> None:
-//     """Dict mutated after borrow (new key): falls back to std::string."""
+//     """Dict grows after the read (new key): the copy keeps the old value."""
 //     d: dict[str, str] = {"hello": "world"}
 //     v = d["hello"]  # tpyc: type(str)
 //     d["new"] = "entry"
@@ -29,7 +29,7 @@ void test_dict_mutation_fallback() {
 }
 
 // def test_dict_value_update_fallback() -> None:
-//     """In-place value update invalidates the view: falls back to std::string."""
+//     """In-place value update after the read: the copy keeps the old value."""
 //     d: dict[str, str] = {"hello": "world"}
 //     v = d["hello"]  # tpyc: type(str)
 //     d["hello"] = "updated"
@@ -42,13 +42,13 @@ void test_dict_value_update_fallback() {
 }
 
 // def test_dict_int_key_view() -> None:
-//     """Int key: string_view for dict value."""
+//     """Int key: an owned copy too."""
 //     d: dict[int32, str] = {int32(1): "one", int32(2): "two"}
-//     v = d[int32(1)]  # tpyc: type(StrView)
+//     v = d[int32(1)]  # tpyc: type(str)
 //     print(v)
 void test_dict_int_key_view() {
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::ordered_map<int32_t, std::string>({{1, "one"}, {2, "two"}});
-    std::string_view v = ::tpy::__getitem__(d, 1);
+    std::string v = ::tpy::__getitem__(d, 1);
     std::cout << v << "\n" << ::tpy::check_signals;
 }
 

@@ -31,12 +31,12 @@ int32_t main() {
 
 // args = parser.parse_args(["show", "config.toml"])
 __tpy_builder_argparse_show_args_1 __tpy_builder_argparse_show_parse_1(const std::vector<std::string>& argv) {
-    std::string_view filename = "";
+    std::string filename = "";
     std::string_view __tpy_argparse_usage = "usage: prog show filename";
     int32_t __tpy_argparse_i = 0;
     int32_t __tpy_argparse_pi = 0;
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
-        std::string_view __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
+        std::string __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if (true) {
             if ((__tpy_argparse_pi == 0)) {
                 filename = __tpy_argparse_tok;
@@ -61,7 +61,7 @@ __tpy_builder_argparse_set_args_1 __tpy_builder_argparse_set_parse_1(const std::
     std::string_view __tpy_argparse_usage = "usage: prog set [--value VALUE]";
     int32_t __tpy_argparse_i = 0;
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
-        std::string_view __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
+        std::string __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "--value")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
                 ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog set: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
@@ -98,7 +98,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     }
     int32_t __tpy_argparse_i = 0;
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
-        std::string_view __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
+        std::string __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "show")) {
             __tpy_argparse_acc_cmd = "show";
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));

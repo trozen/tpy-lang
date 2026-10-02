@@ -665,6 +665,7 @@ from .checks import (
     copy_call_arg,
     storage_tuple_name_source,
     _owned_str_slot,
+    _owned_viewfam_elem,
     _FSTRING_INELIGIBLE,
     _call_arity_ok,
     _call_ret_reject,
@@ -4800,6 +4801,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                             field_owned_str_ok=isinstance(e.right,
                                                           TpyFieldAccess)),
                 rslot, lc)
+        left, right = _rb_bytes_literal_views(e.resolved_binop, left, right)
         if e.resolved_binop is not None:
             # `_convert_to_fixed_int_arg` at the resolved binop's PARAM slot:
             # a BigInt operand against a declared fixed-int param takes the
@@ -6938,9 +6940,15 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     # A runtime-BigInt key against a FIXED-int key param
                     # narrows here exactly as at a container read
                     # (`p[k]` -> `p[k.to_fixed_check<int64_t>()]`); the
-                    # gate admits every disposition but 'reject'.
+                    # gate admits every disposition but 'reject'. The key
+                    # is the getitem's PARAM, so a bytes literal key takes
+                    # the static span.
                     index=_narrow_bigint_index(
-                        _lower_expr(e.index, lc, declared), e.index,
+                        _retag_param_bytes_literal(
+                            _lower_expr(e.index, lc, declared),
+                            _record_getitem_key(
+                                analyzer.get_expr_type(e.obj), analyzer)),
+                        e.index,
                         analyzer.get_expr_type(e.obj), analyzer, loc,
                         declared),
                     record_getitem=True,
@@ -7189,7 +7197,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     mm = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(m)))
                     mm = resolve_pending_container(mm, analyzer) or mm
                     return (_resolved_scalar(mm, analyzer)
-                            or _owned_str_slot(mm, analyzer)
+                            or _owned_viewfam_elem(mm, analyzer)
                             # Any reference-form member: the whole-element
                             # `T&` read is member-agnostic, so what the
                             # member IS never reaches the render.
@@ -15845,7 +15853,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     if (ow_bytes is not None
             and is_bytes_type(unwrap_readonly(ow_bytes))
             and _bytes_owned_slot_arg(a, ptype, declared,
-                                      lc.prescan.param_names, lc.analyzer)):
+                                      lc.prescan.param_names, lc.analyzer,
+                                      lc.pointers)):
         _witness("arg.own_bytes_slot")
         src_b = a
         if (isinstance(src_b, TpyCoerce)
@@ -16795,6 +16804,16 @@ def _retag_bytes_literal_span(value: THIRExpr) -> THIRExpr:
         return replace(value, form=Form.BORROW)
     return value
 
+def _retag_param_bytes_literal(value: THIRExpr,
+                               ptype: 'TpyType | None') -> THIRExpr:
+    """`_retag_bytes_literal_span` gated on a PARAM slot (`bytes` or
+    `BytesView` -- both view-shaped at a parameter, see
+    `_bytes_literal_view_slot`)."""
+    if _bytes_literal_view_slot(
+            unwrap_readonly(ptype) if ptype is not None else None):
+        return _retag_bytes_literal_span(value)
+    return value
+
 def _retag_bytes_literal_view(value: THIRExpr, target: 'TpyType | None') -> THIRExpr:
     """`_retag_bytes_literal_span` gated on an explicitly VIEW-typed sink (a
     view-resolved binding / a BytesView return / a BytesView container key) --
@@ -16865,6 +16884,12 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
     # resolution -- `to_cpp()` on an unresolved pending type has no spelling.
     st = (resolve_pending_container(st, analyzer)
           or _resolve_pending_view(st, analyzer) or st)
+    # A view source whose copy sema typed OWNED (a loop variable lends no
+    # view) spells the owned family type the result is.
+    r_bare = unwrap_own(unwrap_readonly(rtype)) if rtype is not None else None
+    if (r_bare is not None and (is_str_type(r_bare) or is_bytes_type(r_bare))
+            and is_borrowing_view_type(unwrap_readonly(st))):
+        st = r_bare
     def _open_t_copy(face: str, use: '_ExprUse | None' = None) -> THIRCall:
         """The type-blind `U(<read>)` tail every open-T copy source shares.
 
@@ -18722,6 +18747,27 @@ def _rb_operand_slots(rb) -> 'tuple[TpyType | None, TpyType | None]':
     param = rb.method.params[0].type if rb.method.params else None
     recv = rb.receiver_type
     return (param, recv) if rb.is_reverse else (recv, param)
+
+def _rb_bytes_literal_views(rb, left: THIRExpr,
+                            right: THIRExpr) -> 'tuple[THIRExpr, THIRExpr]':
+    """Retag a bytes-literal operand of a resolved arithmetic binop to its
+    static span where its slot is a C++ PARAMETER of the operator: the
+    dunder's param always is, and so is the receiver of a native FREE
+    function (`::tpy::bytes_concat(BytesView, BytesView)` takes `self` as its
+    first param). A `bytes` param is a view, so the owning render would build
+    a heap vector the operator only reads through -- the str twin's literal
+    is static already."""
+    if rb is None or rb.method is None:
+        return left, right
+    lslot, rslot = _rb_operand_slots(rb)
+    recv_is_param = bool(rb.method.native_function)
+    l_param = rb.is_reverse or recv_is_param
+    r_param = (not rb.is_reverse) or recv_is_param
+    if l_param:
+        left = _retag_param_bytes_literal(left, lslot)
+    if r_param:
+        right = _retag_param_bytes_literal(right, rslot)
+    return left, right
 
 def _field_cpp(e: TpyFieldAccess) -> str:
     """The rendered C++ member name for a field access. A `@native` record

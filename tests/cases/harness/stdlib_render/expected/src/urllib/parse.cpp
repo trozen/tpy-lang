@@ -281,7 +281,7 @@ std::vector<std::tuple<std::string, std::string>> parse_qsl(std::string_view qs,
             }
             continue;
         }
-        std::string_view value = ::tpy::str_slice(pair, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(eq, 1)), std::nullopt});
+        std::string value = std::string(::tpy::str_slice(pair, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(eq, 1)), std::nullopt}));
         if (((::tpy::__len__(value) == 0) && (!(keep_blank_values)))) {
             continue;
         }
@@ -631,8 +631,8 @@ ParseResult urlparse(std::string_view url) {
     std::string path = sr.path;
     if ((::tpystd::urllib::parse::_scheme_uses_params(sr.scheme) && (sr.path.find(";") != std::string::npos))) {
         auto __tup_1 = ::tpystd::urllib::parse::_split_params(sr.path);
-        path = std::get<0>(__tup_1);
-        params = std::get<1>(__tup_1);
+        path = std::move(std::get<0>(__tup_1));
+        params = std::move(std::get<1>(__tup_1));
     }
     return ParseResult(sr.scheme, sr.netloc, path, params, sr.query, sr.fragment);
 }
@@ -775,21 +775,21 @@ std::string urljoin(std::string_view base, std::string_view url) {
     if (((r.scheme != b.scheme) && (::tpy::__len__(r.scheme) > 0))) {
         return std::string(url);
     }
-    std::string_view scheme = b.scheme;
+    std::string scheme = b.scheme;
     if ((!(::tpystd::urllib::parse::_scheme_uses_relative(scheme)))) {
         return std::string(url);
     }
-    std::string_view netloc = r.netloc;
+    std::string netloc = r.netloc;
     if (::tpystd::urllib::parse::_scheme_uses_netloc(scheme)) {
         if ((::tpy::__len__(netloc) > 0)) {
-            return ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), r.path, r.query, r.fragment});
+            return ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{scheme, netloc, r.path, r.query, r.fragment});
         }
         netloc = b.netloc;
     }
     if ((::tpy::__len__(r.path) == 0)) {
-        std::string_view path = b.path;
-        std::string_view query = (((::tpy::__len__(r.query) > 0)) ? (r.query) : (b.query));
-        return ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), std::string(path), std::string(query), r.fragment});
+        std::string path = b.path;
+        std::string query = (((::tpy::__len__(r.query) > 0)) ? (r.query) : (b.query));
+        return ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{scheme, netloc, path, query, r.fragment});
     }
     std::vector<std::string>* segments;
     if (::tpy::str_startswith(r.path, "/")) {
@@ -833,7 +833,7 @@ std::string urljoin(std::string_view base, std::string_view url) {
             resolved.push_back(std::string(seg));
         }
     }
-    std::string_view last = ::tpy::__getitem__((*segments), (::tpy::sub_check<int32_t>(::tpy::__len__((*segments)), 1)));
+    std::string last = ::tpy::__getitem__((*segments), (::tpy::sub_check<int32_t>(::tpy::__len__((*segments)), 1)));
     if (((last == ".") || (last == ".."))) {
         resolved.push_back("");
     }
@@ -841,7 +841,7 @@ std::string urljoin(std::string_view base, std::string_view url) {
     if ((::tpy::__len__(joined) == 0)) {
         joined = "/";
     }
-    return ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), joined, r.query, r.fragment});
+    return ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{scheme, netloc, joined, r.query, r.fragment});
 }
 
 // def url_split_path_only(path: str) -> Own[list[str]]:

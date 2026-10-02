@@ -17,8 +17,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_across_yield::_
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpyapp::main::pair(7);
-        host = std::get<0>(__tup_1);
-        port = std::get<1>(__tup_1);
+        host = std::move(std::get<0>(__tup_1));
+        port = std::move(std::get<1>(__tup_1));
         __state = S_RESUME_0;
         return 1;
     }

@@ -44,8 +44,8 @@ std::string str_elem(::tpy::Union<const int32_t*, const std::vector<std::string>
         return "n";
     }
     auto& __x = *std::get<const std::vector<std::string>*>(x);
-    std::string_view s = ::tpy::__getitem__(__x, 0);
-    return std::string(s);
+    std::string s = ::tpy::__getitem__(__x, 0);
+    return s;
 }
 
 // # free function: a RECORD element is a borrow -- the caller sees the mutation.

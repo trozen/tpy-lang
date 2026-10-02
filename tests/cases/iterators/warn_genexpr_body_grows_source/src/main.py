@@ -160,8 +160,9 @@ class Counted:
 
 
 def view_kept(r: Rec, xs: list[int32]) -> str:
-    lbl = r.name  # tpyc: type(StrView)
-    # the body only reads the captured record: `lbl` stays a view
+    lbl = r.name  # tpyc: type(str)
+    # the body only reads the captured record; `lbl` owns a copy all the same
+    # (a field read never lends), the same form as view_demoted
     n = sum(1 for x in xs if x > r.k)  # tpyc: ok
     return lbl + " " + str(n)
 
@@ -305,7 +306,7 @@ class Tagged:
 
     def view_via_method(self, xs: list[int32]) -> str:
         v = self.tag  # tpyc: type(str)
-        # the body rewrites the viewed field only through `self.retag()`
+        # the body rewrites the read field only through `self.retag()`
         total = sum(self.retag(x) for x in xs)  # tpyc: ok
         return v + " " + str(total)
 
@@ -342,8 +343,8 @@ class Tagged:
         return len(self.items)
 
     def view_other(self, r: Rec) -> str:
-        lbl = r.name  # tpyc: type(StrView)
-        # the body grows self and only reads `r`: the view of `r` stays a view
+        lbl = r.name  # tpyc: type(str)
+        # the body grows self and only reads `r`; `lbl` owns a copy all the same
         n = sum(1 for _ in range(1) if self.push() and r.k >= 0)  # tpyc: ok
         return lbl + " " + str(n)
 

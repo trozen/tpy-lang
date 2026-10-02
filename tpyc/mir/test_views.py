@@ -84,7 +84,7 @@ def stepped(s: str) -> int:
     return len(s[::2])
 def reassigned_param(s: str) -> int:
     s = s + "x"
-    v = s[1:]
+    v: StrView = s[1:]
     return len(v)
 def reassigned_view_param(v: StrView, s: str) -> int:
     v = s

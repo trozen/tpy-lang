@@ -35,7 +35,7 @@ namespace tpyapp::main {
         (*probe).bind(std::tuple<std::string, int32_t>{"127.0.0.1", 0});
         (*probe).listen(1);
         auto __tup_1 = (*probe).getsockname();
-        host = std::get<0>(__tup_1);
+        host = std::move(std::get<0>(__tup_1));
         port = std::get<1>(__tup_1);
         (*probe).close();
         s.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));

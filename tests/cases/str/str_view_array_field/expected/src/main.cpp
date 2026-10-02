@@ -5,18 +5,18 @@ namespace tpyapp::main {
 
 
 // def test_array_subscript_view() -> None:
-//     """Array element access -> string_view (stable storage)."""
+//     """Array element read: an owned copy."""
 //     arr: Array[str, 3] = ["hello", "world", "test"]
-//     s = arr[int32(0)]  # tpyc: type(StrView)
+//     s = arr[int32(0)]  # tpyc: type(str)
 //     print(s)
 void test_array_subscript_view() {
     std::array<std::string, 3> arr = {"hello", "world", "test"};
-    std::string_view s = ::tpy::__getitem__(arr, 0);
+    std::string s = ::tpy::__getitem__(arr, 0);
     std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_array_subscript_mutated() -> None:
-//     """Array element overwrite invalidates view -> falls back to str."""
+//     """Array element overwrite after the read: the copy keeps the old value."""
 //     arr: Array[str, 2] = ["old", "value"]
 //     s = arr[int32(0)]  # tpyc: type(str)
 //     arr[int32(0)] = "new"
@@ -29,18 +29,18 @@ void test_array_subscript_mutated() {
 }
 
 // def test_record_field_view() -> None:
-//     """Record field access -> string_view (stable storage)."""
+//     """Record field read: an owned copy."""
 //     p = Person("Alice", int32(30))
-//     s = p.name  # tpyc: type(StrView)
+//     s = p.name  # tpyc: type(str)
 //     print(s)
 void test_record_field_view() {
     Person p = Person("Alice", 30);
-    std::string_view s = p.name;
+    std::string s = p.name;
     std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_record_field_mutated() -> None:
-//     """Record field reassignment invalidates view -> falls back to str."""
+//     """Record field reassignment after the read: the copy keeps the old value."""
 //     p = Person("Bob", int32(25))
 //     s = p.name  # tpyc: type(str)
 //     p.name = "Charlie"
@@ -53,7 +53,7 @@ void test_record_field_mutated() {
 }
 
 // def test_record_reassigned() -> None:
-//     """Record variable reassignment invalidates view -> falls back to str."""
+//     """Record variable reassignment after the read: the copy keeps the old value."""
 //     p = Person("Dave", int32(40))
 //     s = p.name  # tpyc: type(str)
 //     p = Person("Eve", int32(35))
@@ -67,7 +67,7 @@ void test_record_reassigned() {
 }
 
 // def test_record_method_mutates() -> None:
-//     """Non-readonly method call on source record invalidates view."""
+//     """Non-readonly method call on the source record: the copy keeps the old value."""
 //     p = Person("Frank", int32(50))
 //     s = p.name  # tpyc: type(str)
 //     p.rename("Grace")
@@ -80,20 +80,21 @@ void test_record_method_mutates() {
 }
 
 // def test_readonly_method_preserves_view() -> None:
-//     """Readonly method call does NOT invalidate the view."""
+//     """Readonly method call. The element read owns either way (a container element never lends), so this pins only that a
+//     field read was a view; both now own a copy, so it pins no readonly carve-out."""
 //     p = Person("Helen", int32(60))
-//     s = p.name  # tpyc: type(StrView)
+//     s = p.name  # tpyc: type(str)
 //     g = p.greeting()
 //     print(s)
 void test_readonly_method_preserves_view() {
     Person p = Person("Helen", 60);
-    std::string_view s = p.name;
+    std::string s = p.name;
     std::string g = p.greeting();
     std::cout << s << "\n" << ::tpy::check_signals;
 }
 
 // def test_field_aug_assign_mutates() -> None:
-//     """Field aug-assign invalidates view -> falls back to str."""
+//     """Field aug-assign after the read: the copy keeps the old value."""
 //     p = Person("Iris", int32(70))
 //     s = p.name  # tpyc: type(str)
 //     p.name += "!"
@@ -106,7 +107,7 @@ void test_field_aug_assign_mutates() {
 }
 
 // def test_array_passed_to_func(arr: Array[str, 2]) -> None:
-//     """Array passed to non-readonly func -> falls back to str."""
+//     """Array passed to a non-readonly func: the copy keeps the old value."""
 //     s = arr[int32(0)]  # tpyc: type(str)
 //     mutate_array(arr)
 //     print(s)
@@ -123,7 +124,7 @@ void mutate_array(std::array<std::string, 2>& arr) {
 }
 
 // def test_multiple_views_one_source() -> None:
-//     """Multiple views from same source; one mutation invalidates all."""
+//     """Two copies of one field; one write after both leaves both at the old value."""
 //     p = Person("X", int32(1))
 //     a = p.name  # tpyc: type(str)
 //     b = p.name  # tpyc: type(str)

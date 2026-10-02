@@ -726,7 +726,7 @@ This means `float32` arithmetic stays in single precision without requiring expl
 
 #### String Type Semantics (Working)
 
-`str` is context-dependent, matching Python's actual semantics where parameters are borrowed and returns/fields are owned. Locals are inferred: `std::string_view` when safe (literal, param, narrowed `str | None` param deref, Array element, a ONE-HOP record field read off a name, `list[str]` element, `dict[K, str]` value source, an enum member's `.name`, tuple-unpack target, or a ternary / `and`-`or` compound of any of these), `std::string` when ownership is needed. A view owns once its source storage can go away while it is live: the source local (or the tuple a `str`/`bytes` unpack target reads its element from) is rebound or `del`eted, including by a nested def through `nonlocal` (a sibling closure the reading closure calls counts), or the view is declared outside the block it was bound in -- a local first bound in a loop body, `if`/`elif`/`match` arm, `try` body, `except` handler or loop `else` and read after it -- and some binding reads storage that is not static and not bound in that outer scope (a local of the block, a call result, a view of such storage: `for i in r: a, b = split2(s)` then `print(a)`). A view of storage that outlives it (a param, a local bound before the loop, a `for` target over a live container read after the loop) stays zero-copy. A write to the storage any binding of the view reads -- a straight-line rebind (`v = xs[0]` then `v = ys[0]`, then `ys.clear()`) or the binding of a sibling `if` / `match` arm or `except` handler -- owns the view. The same holds for a rebind late in a loop body whose new source the next iteration writes, and for a rebind a nested def makes through `nonlocal`. In a generator / `async def` body the "safe" set shrinks to static-lifetime sources (literals, `Final` constants, an enum member's `.name` -- it views `EnumUtil`'s static member-name table, pinned by `enum/enum_name_owned_sinks::frame_view`) and explicit-view PARAMS (whose borrow is checked at the call; a local sourced from an explicit-view LOCAL promotes, since that binding's borrow is unchecked against the frame lifetime): any other view local would be hoisted into the resumable frame, which outlives the case-block temps and suspensions the sync judgment assumes the binding shares scope with, so those locals resolve owned instead (the locals side of the owned param capture rule). That param capture -- a bare `str`/`bytes` parameter held as OWNED storage in the frame -- is a filed defect, not the intended design (`BUGS.md#generator-frame-copies-str-param`): the declared type of such a parameter is a view, a record parameter of the same frame is held by reference, and the caller already keeps the argument alive for the frame's whole lifetime. Retiring it should revisit the locals restriction stated just above, since a view local sourced from a param is as safe in a frame as in a sync body once the param is itself a view. An explicit `x: str = ...` annotation on a local names the FAMILY, not the storage -- the same view-vs-owned resolution applies (a never-mutated view-safe source stays a zero-copy view); use `String` for guaranteed owned storage:
+`str` is context-dependent, matching Python's actual semantics where parameters are borrowed and returns/fields are owned. Locals are inferred by one rule, the same for `str` and `bytes`: a local is a view (`std::string_view` / `::tpy::BytesView`) only when every source leaf is static storage (a literal, a `Final` constant, a `Literal[str]` value, an enum member's `.name`), a view-family parameter (a narrowed `str | None` too; a narrowed `bytes | None` owns its buffer), or a slice, an element or a view-returning call over a name the function binds once and never writes in place -- a `str`, `bytes`, `String`, `bytearray` or TUPLE name that holds its own object (a `String`, `bytearray` or tuple local bound from a field or an element is a reference into that storage and lends nothing) (`v = s[1:]`, `w = s.strip()`, `a = t[0]`, `a, b = t`), the call a method or a FREE FUNCTION whose every lent operand lends (`v = first(s)`) -- or a slice of a `str` literal (`"xalpha"[1:]`), or a ternary / `and`-`or` compound of those. A tuple name lends only when it owns its storage: a tuple alias of a field (`tp = h.pair; e = tp[0]`) is a field read. Everything else binds owned storage (`std::string` / `::tpy::Bytes`): a record field read at any depth (`y = h.s`), a container element (`y = names[i]`, `d["k"]`, `xs[0][0]`), a call returning owned storage (moved), and the elements of an rvalue tuple unpack (`host, port = split(url)`, moved out of the holder: `std::string host = std::move(std::get<0>(__tup_1));`). Returning such a local through a `-> StrView` return (`y = h.s; return y`) is an error, since the copy dies at the return; the hint names the two spellings that return a view of the field, `return h.s` and `y: StrView = h.s`. A `for` loop variable is a view of the current element, but it never lends one: `k = n`, `k = n[1:]`, `keep = p[0]` over a loop variable bind owned storage. An explicit annotation (`sv: StrView = names[i]`) keeps its view, and it is unguarded today: a write to its source while it lives prints garbage with no diagnostic (`BUGS.md#explicit-view-local-source-mutation-unguarded`). The write check is order-free: a view over a name the function rebinds (a plain, walrus or augmented assignment, an unpack target, a `match` capture, a parameter rebind, a `nonlocal` rebind in a nested def), `del`etes, or -- for a `String` / `bytearray` -- stores into, calls a writing method on, writes through a name bound from it, or passes to any call ANYWHERE in the function owns at the bind, so `v = s[1:]` then `s = other` owns `v`, and so does `s = a; s = b; v = s[0:]` (a `bytearray` slice then reads CPython's copy wherever the name is written). The block rule is decided at the bind from the two declarations' block depths: a binding whose root is bound deeper than the view's declaration -- a local of a loop body, an `if` / `elif` / `match` arm, a `try` body, an `except` handler, a `with` body or a `for` / `while` `else` -- owns whether or not the view is read after that block, as does a call result or a view of such storage (`for i in r: a, b = split2(s)` then `print(a)`). A view of storage that outlives it (a param, a local bound before the loop, a `for` loop variable over a container bound in an enclosing block, a `for` target over a live container read after the loop) stays zero-copy. In a generator / `async def` body the "safe" set shrinks to static-lifetime sources (literals, `Final` constants, an enum member's `.name` -- it views `EnumUtil`'s static member-name table, pinned by `enum/enum_name_owned_sinks::frame_view`) and explicit-view PARAMS (whose borrow is checked at the call; a local sourced from an explicit-view LOCAL promotes, since that binding's borrow is unchecked against the frame lifetime): any other view local would be hoisted into the resumable frame, which outlives the case-block temps and suspensions the sync judgment assumes the binding shares scope with, so those locals resolve owned instead (the locals side of the owned param capture rule). That param capture -- a bare `str`/`bytes` parameter held as OWNED storage in the frame -- is a filed defect, not the intended design (`BUGS.md#generator-frame-copies-str-param`): the declared type of such a parameter is a view, a record parameter of the same frame is held by reference, and the caller already keeps the argument alive for the frame's whole lifetime. Retiring it should revisit the locals restriction stated just above, since a view local sourced from a param is as safe in a frame as in a sync body once the param is itself a view. An explicit `x: str = ...` annotation on a local names the FAMILY, not the storage -- the same view-vs-owned resolution applies (a never-mutated view-safe source stays a zero-copy view); use `String` for guaranteed owned storage:
 
 ```python
 def greet(name: str) -> str:   # param=string_view, return=std::string
@@ -741,58 +741,35 @@ u = str(42)                    # local = std::string (owned source)
 v = "start"
 v += " end"                    # local = std::string (augmented assignment)
 
-# Array/record/list/dict sources are view-safe unless the source is mutated:
-arr: Array[str, 3] = ["a", "b", "c"]
-x = arr[0]                     # local = std::string_view (stable storage)
+# A slice or view method over a str name stays a view; a rebind of the name
+# anywhere in the function (plain, walrus, `+=`, `del`) owns it from the bind:
+w = name.strip()               # local = std::string_view (param receiver)
+z = u[1:]                      # local = std::string_view (owned local u)
+o = str(7)
+r = o[1:]                      # local = std::string (o is rebound below)
+o = str(8)
+lit = "xalpha"[1:]             # local = std::string_view (literal root)
+
+# Record fields and container elements bind OWNED storage -- nothing tracks
+# a write through them while a view lives:
 p = Config("test")
-y = p.name                     # local = std::string_view (stable storage)
-p.name = "new"                 # source mutated -> y falls back to std::string
-
+y = p.name                     # local = std::string (owned copy)
 names: list[str] = ["alice", "bob"]
-a = names[int32(0)]            # local = std::string_view
-names.append("carol")          # source mutated -> a falls back to std::string
+a = names[0]                   # local = std::string (owned copy)
+for n in names:                # n = std::string_view (the current element)
+    k = n                      # k = std::string (a loop variable never lends)
 
-d: dict[str, str] = {"key": "val"}
-b = d["key"]                   # local = std::string_view
-d["key"] = "new"               # source mutated -> b falls back to std::string
+# A tuple NAME that owns its storage lends its elements; an rvalue tuple's
+# elements are moved out:
+def split(url: str) -> tuple[str, str]: ...
+tp = ("ab", 1)
+e = tp[0]                      # local = std::string_view
+host, port = split(url)        # std::string host = std::move(std::get<0>(__tup_1));
 
-# A FIELD read borrows in one shape only: the ONE-HOP `str` read `p.name`
-# above, off a NAME receiver. A read through two or more hops, off a
-# temporary or through a `@property` (a hop that dispatches to a getter mints
-# a temporary the path does not own), and EVERY `bytes` field read, take an
-# owned copy: their source has no storage key a later write could be resolved
-# to (`bytes` additionally did not compile at all before this rule, so a view
-# there would be a new dangle rather than a preserved one). What keeps the
-# one-hop view correct is the demotion list: a write to that field, a
-# mutating method on the record, an ALIAS bind of it (`m = p` hands out a
-# second write path), and the record reaching a parameter that is not
-# `readonly`. A write to a SIBLING field never demotes. The escape rule reads
-# the callee's SIGNATURE, not its body -- a callee in another module is
-# compiled separately, so "does it actually write" is not a question this
-# decision can ask, and asking a whole-program verdict here would make the
-# local's form depend on where its callee lives. The list is known to be
-# incomplete (BUGS.md#field-view-escape-needs-place): a callee writing the
-# record through a module GLOBAL, a `*args` pack element, a nested-def
-# closure capture and a write through a SECOND name over the same container
-# element (a loop variable, or the element subscript itself) each replace the
-# buffer with no demotion, which is why that entry's design row makes escape
-# a borrow-tracker fact.
-q = o.inner.tag                # local = bytes (owned copy, 2 hops)
-
-# A `bytes` tuple ELEMENT bound to a local by subscript (`y = t[0]`) is an
-# owned copy too, at every source (param, literal or call-bound local, field,
-# container element, loop variable, global), for the same reason; a local
-# unpack target (`y, k = t`) binds a view like the `str` one; reading it in
-# place (print, len, ==, a call argument, a return) copies nothing. The `str` element binds a
-# view under the source-mutation rule above. The two families converge on one
-# sound view rule (TODO.md "`str` and `bytes`: one view rule").
-bt = (b"ab", 1)
-e = bt[0]                      # local = bytes (owned copy)
-
-# Compound sources (ternary / and-or, including nested) follow the same rule,
-# borrowing EVERY arm's storage; mutating any root demotes the local to owned.
-m = names[0] if cond else d["key"]  # std::string_view (borrows names AND d)
-names.append("dave")                # any root mutated -> m falls back to std::string
+# Compound sources (ternary / and-or, including nested) are a view only when
+# every arm is:
+m = name if cond else u[1:]    # std::string_view
+m2 = name if cond else p.name  # std::string (one arm owns)
 
 # A narrowed `str | None` param dereferences to its contained string_view, so
 # a local bound to it (plain or in a compound arm) stays a zero-copy view:
@@ -917,16 +894,18 @@ def peek(data: StrView) -> StrView:    # string_view in, string_view out
 
 A `str` / `bytes` FIELD is READ through every receiver, chained ones included (`o.inner.tag`,
 `rs[0].name`), but is WRITTEN only through a narrower set: a name, `self`, a nested field
-(`o.mid.inner.name = "x"`), an unproven Optional name, an unproven Optional over a field, and a
-loop variable -- each measured to demote a live view of the written field to an owned copy -- at
-module level as well as in a function, method, constructor, generator, `with` body,
-`try`/`finally` and `match` arm. A user `__getitem__` element (`bag[0].name = "x"`) is admitted
-too, but does NOT demote: that dangle predates the receiver work and stays listed as an open
-escape in `BUGS.md#field-view-escape-needs-place`. Five receivers are rejected at the write
-(`assign.field_write_shape`), because a view of the field would survive the write with no
-diagnostic (same entry): a `Ptr` (a parameter or one held in a record field), a tuple element, a
-container element (`rs[0].name = "x"`, `d["k"].name = "x"`, and the `*args` pack subscript), a
-borrow-returning call (`b.get().name = "x"`), and a `@property` getter (`h.val.name = "x"`). The
+(`o.mid.inner.name = "x"`), an unproven Optional name, an unproven Optional over a field, a
+loop variable and a user `__getitem__` element (`bag[0].name = "x"`) -- at module level as well
+as in a function, method, constructor, generator, `with` body, `try`/`finally` and `match` arm.
+Five receivers are rejected at the write (`assign.field_write_shape`): a `Ptr` (a parameter or
+one held in a record field), a tuple element, a container element (`rs[0].name = "x"`,
+`d["k"].name = "x"`, and the `*args` pack subscript), a borrow-returning call
+(`b.get().name = "x"`), and a `@property` getter (`h.val.name = "x"`). They were put in because an
+inferred view of the field would have survived the write with no diagnostic; under the one view
+rule an inferred field read owns a copy, so that reason is gone, and the one view of a field left
+-- the explicit `StrView` opt-in -- is unguarded at the admitted receivers as well
+(`BUGS.md#explicit-view-local-source-mutation-unguarded`). The rejects are kept until they are
+re-measured against the rule (`BUGS.md#field-write-receiver-rejects-outlived-reason`). The
 workaround for all five is to name the record first -- take it by reference instead of `Ptr`, or
 bind the element / call / getter result to a local (`r = rs[0]; r.name = "x"`), which borrows
 it, so the container still sees the write. The `int32` field
@@ -1026,7 +1005,7 @@ log(f"x={x}")
 - **Working**: `bytearray` mutation: `append`, `extend`, `pop`, `clear`, `insert`, `remove`, `__setitem__`
 - **Working**: `hash(b)` for `bytes` and `BytesView` -- enables use as dict keys and set elements
 - **Working**: Iteration over bytes (`for b in data`)
-- **Working**: View deduction: bytes literals and `list[bytes]` subscripts infer `BytesView` when safe, fall back to owned `bytes` when mutated. A `bytes | None` parameter lowers to the borrow form `std::optional<std::span<const uint8_t>>`, matching `str | None` (`std::optional<std::string_view>`) -- both are members of one view-type family, so a real `bytes` value can be passed without a copy. When such a borrow flows into an owned sink (return, field/container store, `dict[k] = v` value), an explicit `::tpy::Bytes(span)` is emitted (unlike `string_view -> string`, `span -> vector` is not an implicit conversion). In an `async def` / generator, a `bytes | None` / `str | None` param is captured OWNED in the resumable frame (the borrow copied into `std::optional<owned>` at frame construction) so it survives suspension, parallel to bare `str`/`bytes` -- and that owned capture is a filed defect rather than the intended design for either shape (`BUGS.md#generator-frame-copies-str-param`)
+- **Working**: View deduction: a `bytes` literal, a `bytes` parameter and a slice of a `bytes` name infer `BytesView`; a `list[bytes]` element or a field read binds an owned `bytes` copy (the one view rule, String Type Semantics), `y: BytesView = items[0]` being the opt-in. A `bytes | None` parameter lowers to the borrow form `std::optional<std::span<const uint8_t>>`, matching `str | None` (`std::optional<std::string_view>`) -- both are members of one view-type family, so a real `bytes` value can be passed without a copy. When such a borrow flows into an owned sink (return, field/container store, `dict[k] = v` value), an explicit `::tpy::Bytes(span)` is emitted (unlike `string_view -> string`, `span -> vector` is not an implicit conversion). In an `async def` / generator, a `bytes | None` / `str | None` param is captured OWNED in the resumable frame (the borrow copied into `std::optional<owned>` at frame construction) so it survives suspension, parallel to bare `str`/`bytes` -- and that owned capture is a filed defect rather than the intended design for either shape (`BUGS.md#generator-frame-copies-str-param`)
 
 #### Bytes Type Semantics (Working)
 
@@ -1112,15 +1091,16 @@ or stores it) builds a fresh `bytes` from the view, and the caller's bytearray
 identity is lost silently
 (`BUGS.md#bytearray-at-bytes-param-owned-silently`).
 
-`BytesView` (`::tpy::BytesView`, over `std::span<const uint8_t>`) is a non-owning view, analogous to `StrView` for strings. Bytes literals use C++ string literal static storage (via `bytes_literal()`), so `BytesView` references to literals never dangle. Local variables inferred from bytes literals or `list[bytes]` subscripts use `BytesView` when safe, and fall back to owned `bytes` when mutated:
+`BytesView` (`::tpy::BytesView`, over `std::span<const uint8_t>`) is a non-owning view, analogous to `StrView` for strings. Bytes literals use C++ string literal static storage (via `bytes_literal()`), so `BytesView` references to literals never dangle. An inferred `bytes` local follows the one view rule of String Type Semantics: a literal, a `bytes` parameter, or a slice / element / view-returning method over a name the function binds once and never writes is a `BytesView`; a container element or a record field is an owned copy, and `BytesView` is the explicit opt-in to borrow one:
 
 ```python
 b = b"hello"           # BytesView (static storage, zero allocation)
-b += b"!"              # mutation -> promotes to owned bytes
+c = b"hi"
+c += b"!"              # c is written in place -> owned bytes from the bind
 
 items: list[bytes] = [b"alice", b"bob"]
-x = items[0]           # BytesView (no mutation follows)
-items.append(b"carol")  # source mutated -> x becomes owned bytes
+x = items[0]           # owned bytes (a container element)
+y: BytesView = items[0]  # the opt-in view; unguarded against a write to items
 ```
 
 As with strings, reassigning an inferred bytes local to an incompatible type
@@ -4234,7 +4214,7 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
   - Class fields and container elements: `std::optional<T>` (storage form). Boundary conversions emitted via `tpy::ptr_to_optional` / `tpy::optional_to_ptr`.
   - `x is None` / `x is not None` for null checks
   - Field/method/subscript access on unproven optional values emits a warning and inserts a runtime null check
-  - An element READ through an unproven `Optional[container]` receiver checks the receiver first: `d[0].x`, `print(d[0].x)`, `d[-1]`, `d[0].rows[0]`, `d[0][0]`, `r = xs[0]` (an Optional element), `xs[0] is None`, `if xs[0]:` (a non-None test only for a record element, BUGS.md#optional-record-elem-truthiness-has-value) and `xs[0].n` render `::tpy::__getitem__(::tpy::deref_check(d), 0)` off a pointer binding (param, local, generator/async frame field, global) and `::tpy::__getitem__(::tpy::deref_optional_check(h.d), 0)` off a storage optional (a field, an `Own[... | None]` param, a comprehension loop variable over `Optional` elements); a None receiver panics (`null pointer dereference` / `null optional dereference`). The index is normalised as for a plain receiver. A `str` / `bytes` element bound to a local (`t = d[0]`) owns a copy where the narrowed receiver binds a view (BUGS.md#checked-optional-elem-decl-copies-str). Element writes, aug-assigns, method calls on the element, element binds of a record element and the other sinks listed in TODO.md ("flag-keyed rejects over an UNPROVEN `Optional` container receiver") still reject until the receiver is narrowed (BUGS.md#unproven-optional-elem-sink-rejects).
+  - An element READ through an unproven `Optional[container]` receiver checks the receiver first: `d[0].x`, `print(d[0].x)`, `d[-1]`, `d[0].rows[0]`, `d[0][0]`, `r = xs[0]` (an Optional element), `xs[0] is None`, `if xs[0]:` (a non-None test only for a record element, BUGS.md#optional-record-elem-truthiness-has-value) and `xs[0].n` render `::tpy::__getitem__(::tpy::deref_check(d), 0)` off a pointer binding (param, local, generator/async frame field, global) and `::tpy::__getitem__(::tpy::deref_optional_check(h.d), 0)` off a storage optional (a field, an `Own[... | None]` param, a comprehension loop variable over `Optional` elements); a None receiver panics (`null pointer dereference` / `null optional dereference`). The index is normalised as for a plain receiver. A `str` / `bytes` element bound to a local (`t = d[0]`) owns a copy, as it does off the narrowed and the plain receiver (a container element is owned under the one view rule, String Type Semantics). Element writes, aug-assigns, method calls on the element, element binds of a record element and the other sinks listed in TODO.md ("flag-keyed rejects over an UNPROVEN `Optional` container receiver") still reject until the receiver is narrowed (BUGS.md#unproven-optional-elem-sink-rejects).
   - Guarded paths (`if x is not None`) and `assert x is not None` narrow `x` to `T`
   - Returning narrowed optional values: `if x is not None: return x` correctly unwraps to `T`
   - Narrowed optional values flow into write sinks unwrapped to `T`: `list.append(x)` / `set.add(x)` and subscript-assign values (`d[k] = x`, `lst[i] = x`)

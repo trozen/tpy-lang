@@ -21,6 +21,7 @@ from .parse import (
     TpyTupleLiteral, TpyFString,
     TpyDelVar, TpyDelAttr, TpyDelItem, TpyNonlocal, TpyGlobal, TpyTry,
     TpyLambda, TpyMatch, TpyWhile, TpyAwait, TpyIf,
+    TpyPattern, TpyCapturePattern, TpyAsPattern, TpyOrPattern,
 )
 from .parse.nodes import (SourceLocation, is_property_getter_read,
                           iter_capture_bindings,
@@ -657,12 +658,205 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                     result.scoped_bind_loc.setdefault(handler.binding, handler.loc)
         if isinstance(stmt, TpyMatch):
             # Arm-scoped, like a handler binding: the capture is a real local
-            # for the arm body only.
+            # for the arm body only -- unless the name is already a local,
+            # which the capture then rebinds, as a for-loop target does.
             for case in stmt.cases:
                 for cap in iter_capture_bindings(case.pattern):
-                    result.scoped_bind_loc.setdefault(cap.name, case.loc)
+                    if cap.name in declared:
+                        result.reassigned.add(cap.name)
+                        result.rvalue_reassigned.add(cap.name)
+                    else:
+                        result.scoped_bind_loc.setdefault(cap.name, case.loc)
         for body in stmt.sub_bodies():
             _scan_stmts(body, declared, result)
+
+
+def _object_leaf_names(e: TpyExpr | None, out: set[str]) -> None:
+    """The names whose object `e` may evaluate to: a bare name, the arms of
+    a ternary or `and` / `or`, both sides of a walrus, through a coercion,
+    and the elements of a tuple literal (a tuple may hold its elements by
+    reference). Anything else -- a call, a subscript, a list literal --
+    yields a new object or an element, not one of these names' objects."""
+    stack = [e] if e is not None else []
+    while stack:
+        node = stack.pop()
+        if isinstance(node, TpyName):
+            out.add(node.name)
+        elif isinstance(node, TpyCoerce):
+            stack.append(node.expr)
+        elif isinstance(node, TpyNamedExpr):
+            out.add(node.target)
+            stack.append(node.value)
+        elif isinstance(node, TpyIfExpr):
+            stack.extend((node.then_expr, node.else_expr))
+        elif isinstance(node, TpyBinOp) and node.op in ("&&", "||"):
+            stack.extend((node.left, node.right))
+        elif isinstance(node, TpyTupleLiteral):
+            stack.extend(node.elements)
+
+
+def _subject_captures(pattern: TpyPattern) -> list[str]:
+    """The names a `match` arm binds to the WHOLE subject (`case x`,
+    `case P() as x`, either side of an or-pattern)."""
+    if isinstance(pattern, (TpyCapturePattern, TpyAsPattern)):
+        return [pattern.name]
+    if isinstance(pattern, TpyOrPattern):
+        return [n for alt in pattern.patterns for n in _subject_captures(alt)]
+    return []
+
+
+@dataclass
+class InPlaceWrites:
+    """Which objects a body may write in place, by syntax alone and
+    independent of statement order.
+
+    `writes` maps each name to how a write OPERAND reaches it: None for a
+    store (a subscript store, `+=` or `del` on an element, `+=` on the
+    name), a method name for a call whose receiver may be the name (the
+    reader resolves it against the name's type to learn whether it
+    writes), "<arg>" for a call argument that may be the name (a callee can
+    write what it receives by reference). An operand may be the name
+    through `_object_leaf_names`, so `(a if c else b).append(x)` reaches
+    both.
+
+    `points_to` maps each name to the names whose objects it may hold:
+    itself plus, closed to a fixpoint, the leaf names of every value ANY
+    binding gives it (assignment, rebind, walrus, unpack, for / with
+    target, whole-subject `match` capture, the locals of nested defs and
+    lambdas). Two names may share an object when their sets meet, so a
+    write through an alias bound anywhere -- before the view, after it,
+    in a closure -- reaches the root."""
+    writes: dict[str, set[str | None]] = field(default_factory=dict)
+    points_to: dict[str, set[str]] = field(default_factory=dict)
+    _cache: dict[str, frozenset[str | None]] = field(default_factory=dict)
+
+    def writes_through(self, name: str) -> frozenset[str | None]:
+        """How the body may write the object `name` holds: the writes of
+        every name that may share it."""
+        hit = self._cache.get(name)
+        if hit is not None:
+            return hit
+        objs = self.points_to.get(name, {name})
+        out: set[str | None] = set()
+        for other, kinds in self.writes.items():
+            if not objs.isdisjoint(self.points_to.get(other, (other,))):
+                out |= kinds
+        result = frozenset(out)
+        self._cache[name] = result
+        return result
+
+
+def collect_in_place_writes(stmts: list[TpyStmt]) -> InPlaceWrites:
+    """The pre-scan's write-through-alias relation (see `InPlaceWrites`).
+    Nested defs and lambdas are walked too: a closure writes a captured
+    object whenever it runs."""
+    writes: dict[str, set[str | None]] = {}
+    # target name -> leaf names of the values bound to it
+    bound_from: dict[str, set[str]] = {}
+
+    def write(operand: TpyExpr | None, kind: str | None) -> None:
+        names: set[str] = set()
+        _object_leaf_names(operand, names)
+        for n in names:
+            writes.setdefault(n, set()).add(kind)
+
+    def bind(target: str | None, value: TpyExpr | None) -> None:
+        if target is None or value is None:
+            return
+        names: set[str] = set()
+        _object_leaf_names(value, names)
+        names.discard(target)
+        if names:
+            bound_from.setdefault(target, set()).update(names)
+
+    def bind_elements(targets: Iterable[str | None], iterable: TpyExpr) -> None:
+        # Only a tuple literal's elements are the named objects themselves;
+        # iterating a name yields its elements, never the name's object.
+        if isinstance(iterable, TpyTupleLiteral):
+            for t in targets:
+                for el in iterable.elements:
+                    bind(t, el)
+
+    def on_expr(e: TpyExpr | None) -> None:
+        stack = [e] if e is not None else []
+        while stack:
+            node = stack.pop()
+            if isinstance(node, TpyNamedExpr):
+                bind(node.target, node.value)
+            if isinstance(node, TpyMethodCall):
+                write(node.obj, node.method)
+            if isinstance(node, (TpyCall, TpyMethodCall)):
+                # The pre-scan knows no signatures, so every argument is a
+                # candidate the reader weighs.
+                for a in getattr(node, 'args', ()) or ():
+                    write(a, "<arg>")
+                for a in (getattr(node, 'kwargs', None) or {}).values():
+                    write(a, "<arg>")
+            if isinstance(node, TpyLambda):
+                stack.append(node.body)
+            gen = getattr(node, 'generator', None)
+            if isinstance(gen, TpyComprehensionGenerator):
+                bind_elements(gen.unpack_vars or [gen.var], gen.iterable)
+            stack.extend(node.children())
+
+    def on_store(t: TpyExpr) -> None:
+        if isinstance(t, TpyName):
+            write(t, None)
+        elif isinstance(t, TpySubscript):
+            write(t.obj, None)
+
+    def walk(body: list[TpyStmt]) -> None:
+        for s in body:
+            if isinstance(s, TpyAssign):
+                if isinstance(s.target, TpySubscript):
+                    on_store(s.target)
+                elif isinstance(s.target, TpyName):
+                    bind(s.target.name, s.value)
+            elif isinstance(s, TpyVarDecl):
+                bind(s.name, s.init)
+            elif isinstance(s, TpyTupleUnpack):
+                for t in s.targets:
+                    bind(t, s.value)
+            elif isinstance(s, TpyAugAssign):
+                on_store(s.target)
+            elif isinstance(s, TpyDelItem):
+                for t in s.targets:
+                    on_store(t)
+            elif isinstance(s, TpyForEach):
+                bind_elements([s.var], s.iterable)
+            elif isinstance(s, TpyWith):
+                for item in s.items:
+                    bind(item.target, item.context_expr)
+            elif isinstance(s, TpyMatch):
+                for case in s.cases:
+                    for n in _subject_captures(case.pattern):
+                        bind(n, s.subject)
+            if isinstance(s, TpyNestedDef):
+                walk(s.func.body)
+                continue
+            for e in s.exprs():
+                on_expr(e)
+            for b in s.sub_bodies():
+                walk(b)
+
+    walk(stmts)
+    points_to: dict[str, set[str]] = {}
+    if bound_from:
+        feeds: dict[str, set[str]] = {}
+        for target, sources in bound_from.items():
+            for src in sources:
+                feeds.setdefault(src, set()).add(target)
+        names = set(bound_from) | set(feeds)
+        points_to = {n: {n} for n in names}
+        work = list(names)
+        while work:
+            src = work.pop()
+            for target in feeds.get(src, ()):
+                before = len(points_to[target])
+                points_to[target] |= points_to[src]
+                if len(points_to[target]) != before:
+                    work.append(target)
+    return InPlaceWrites(writes, points_to)
 
 
 @dataclass

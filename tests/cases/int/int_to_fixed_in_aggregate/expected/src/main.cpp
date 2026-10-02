@@ -50,7 +50,7 @@ void main() {
     std::vector<int32_t> ports = {(::tpyapp::main::port()).to_fixed_check<int32_t>(), (::tpyapp::main::port()).to_fixed_check<int32_t>()};
     std::cout << ::tpy::__getitem__(ports, 0) << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpyapp::main::make_addr();
-    std::string_view host = std::get<0>(__tup_1);
+    std::string host = std::move(std::get<0>(__tup_1));
     int32_t p = std::get<1>(__tup_1);
     std::cout << p << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<std::string, int32_t>> addrs = {std::tuple<std::string, int32_t>{"a", (::tpyapp::main::port()).to_fixed_check<int32_t>()}};

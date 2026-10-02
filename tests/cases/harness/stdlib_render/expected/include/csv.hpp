@@ -306,7 +306,7 @@ struct __gen__parse_rows : public ::tpy::next_iter_mixin<__gen__parse_rows<R>, s
     bool ended;
     int32_t i;
     int32_t n;
-    std::string_view c;
+    std::string c;
     bool in_quotes;
     bool at_field_start;
     ::tpy::frame_slot<std::vector<std::string>> parts;
@@ -463,7 +463,8 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<
                         i = ::tpy::add_check<int32_t>(i, 1);
                         continue;
                     }
-                    (*parts).push_back(std::string(c));
+                    std::string __tmp_1{c};
+                    (*parts).push_back(std::move(__tmp_1));
                     i = ::tpy::add_check<int32_t>(i, 1);
                     continue;
                 }
@@ -492,7 +493,8 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<
                     continue;
                 }
                 at_field_start = false;
-                (*parts).push_back(std::string(c));
+                std::string __tmp_2{c};
+                (*parts).push_back(std::move(__tmp_2));
                 i = ::tpy::add_check<int32_t>(i, 1);
             }
             if ((!(blank))) {
@@ -543,7 +545,7 @@ struct __gen_reader : public ::tpy::next_iter_mixin<__gen_reader<T_fp>, std::vec
     bool ended;
     int32_t i;
     int32_t n;
-    std::string_view c;
+    std::string c;
     bool in_quotes;
     bool at_field_start;
     ::tpy::frame_slot<std::vector<std::string>> parts;
@@ -696,7 +698,8 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>
                         i = ::tpy::add_check<int32_t>(i, 1);
                         continue;
                     }
-                    (*parts).push_back(std::string(c));
+                    std::string __tmp_1{c};
+                    (*parts).push_back(std::move(__tmp_1));
                     i = ::tpy::add_check<int32_t>(i, 1);
                     continue;
                 }
@@ -725,7 +728,8 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>
                     continue;
                 }
                 at_field_start = false;
-                (*parts).push_back(std::string(c));
+                std::string __tmp_2{c};
+                (*parts).push_back(std::move(__tmp_2));
                 i = ::tpy::add_check<int32_t>(i, 1);
             }
             if ((!(blank))) {

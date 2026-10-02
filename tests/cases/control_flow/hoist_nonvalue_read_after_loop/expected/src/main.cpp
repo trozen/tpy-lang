@@ -975,7 +975,7 @@ void two_loop_list_sibling(int32_t n) {
 //         t = s[i + 1:]
 //     print("two_loop_str_views", t)
 void two_loop_str_views(std::string_view s, int32_t n) {
-    std::string t;
+    std::string_view t;
     for (int32_t j = 0; j < 2; ++j) {
         t = ::tpy::str_slice(s, ::tpy::BasicSlice{j, std::nullopt});
     }
@@ -1017,7 +1017,7 @@ void two_loop_bytes_owned(::tpy::BytesView b, int32_t n) {
     }
     int32_t __stop_1 = n;
     for (int32_t i = 0; i < __stop_1; ++i) {
-        v = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("0123456789012345678901234567890123456789", 40)));
+        v = (::tpy::bytes_concat(b, ::tpy::bytes_literal("0123456789012345678901234567890123456789", 40)));
     }
     std::cout << "two_loop_bytes_owned" << " " << ::tpy::BytesPrinter(v) << "\n" << ::tpy::check_signals;
 }
@@ -1057,7 +1057,7 @@ void two_loop_bytes_view_then_owned(::tpy::BytesView b, int32_t n) {
     }
     int32_t __stop_1 = n;
     for (int32_t j = 0; j < __stop_1; ++j) {
-        v = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("0123456789012345678901234567890123456789", 40)));
+        v = (::tpy::bytes_concat(b, ::tpy::bytes_literal("0123456789012345678901234567890123456789", 40)));
     }
     std::cout << "two_loop_bytes_view_then_owned" << " " << ::tpy::BytesPrinter(v) << "\n" << ::tpy::check_signals;
 }
@@ -1074,9 +1074,9 @@ void two_loop_bytes_view_then_owned(::tpy::BytesView b, int32_t n) {
 //     v = w  # tpyc: ok
 //     print("flat_bytes_owned_from_view", t, v)
 void flat_bytes_owned_from_view(::tpy::BytesView b) {
-    ::tpy::Bytes t = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("0123456789012345678901234567890123456789", 40)));
+    ::tpy::Bytes t = (::tpy::bytes_concat(b, ::tpy::bytes_literal("0123456789012345678901234567890123456789", 40)));
     t = ::tpy::Bytes(::tpy::bytes_slice(b, ::tpy::BasicSlice{0, 2}));
-    ::tpy::Bytes v = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("0123456789012345678901234567890123456789", 40)));
+    ::tpy::Bytes v = (::tpy::bytes_concat(b, ::tpy::bytes_literal("0123456789012345678901234567890123456789", 40)));
     ::tpy::BytesView w = ::tpy::bytes_slice(b, ::tpy::BasicSlice{1, std::nullopt});
     v = ::tpy::Bytes(w);
     std::cout << "flat_bytes_owned_from_view" << " " << ::tpy::BytesPrinter(t) << " " << ::tpy::BytesPrinter(v) << "\n" << ::tpy::check_signals;

@@ -30,7 +30,7 @@ __tpy_builder_argparse_a_args_1 __tpy_builder_argparse_a_parse_1(const std::vect
     std::string_view __tpy_argparse_usage = "usage: prog a [--x X]";
     int32_t __tpy_argparse_i = 0;
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
-        std::string_view __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
+        std::string __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "--x")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
                 ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog a: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
@@ -66,7 +66,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     }
     int32_t __tpy_argparse_i = 0;
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
-        std::string_view __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
+        std::string __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "a")) {
             __tpy_argparse_acc_cmd = "a";
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));

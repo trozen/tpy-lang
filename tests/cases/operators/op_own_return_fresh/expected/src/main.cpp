@@ -88,7 +88,7 @@ void test_bytes_concat_fresh() {
 //     print(ba[::2] == b"a", ba[::-1] == b"ba")
 void test_bytearray_fresh() {
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
-    ::tpy::ByteArray bb = (::tpy::bytearray_concat(ba, ::tpy::bytes_literal_owned("cd", 2)));
+    ::tpy::ByteArray bb = (::tpy::bytearray_concat(ba, ::tpy::bytes_literal("cd", 2)));
     bb.push_back(33);
     std::cout << ::tpy::ByteArrayPrinter(bb) << " " << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ByteArrayPrinter((::tpy::bytearray_concat(ba, ba))) << "\n" << ::tpy::check_signals;

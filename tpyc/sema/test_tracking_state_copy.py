@@ -149,6 +149,7 @@ _LEAF_VALUE_NAMES = {
     'NestedMutationMark',  # a name and four flags
     'OwnSlot',          # a param name and an element index
     'ViewTypeFamily',   # a static descriptor of the str / bytes family
+    'InPlaceWrites',    # name -> name sets only
 }
 _CONTAINER_NAMES = {'list', 'dict', 'set', 'frozenset', 'tuple'}
 

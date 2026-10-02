@@ -25,7 +25,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         line = std::move(__r0).value();
         __sub_0.reset();
-        writer.write((::tpy::bytes_concat(::tpy::bytes_from_str(::tpy::str_upper(::tpy::str_strip(::tpy::bytes_decode(line)))), ::tpy::bytes_literal_owned("\n", 1))));
+        writer.write((::tpy::bytes_concat(::tpy::bytes_from_str(::tpy::str_upper(::tpy::str_strip(::tpy::bytes_decode(line)))), ::tpy::bytes_literal("\n", 1))));
         __sub_1.emplace(writer);
         __state = S_RESUME_1;
         continue;
@@ -75,7 +75,7 @@ __coro_handle handle(::tpystd::asyncio::StreamReader reader, ::tpystd::asyncio::
         auto&& __tup_1 = (*__await_lift_0);
         reader.emplace(std::move(std::get<0>(__tup_1)));
         writer.emplace(std::move(std::get<1>(__tup_1)));
-        (*writer).write((::tpy::bytes_concat(::tpy::bytes_from_str(msg), ::tpy::bytes_literal_owned("\n", 1))));
+        (*writer).write((::tpy::bytes_concat(::tpy::bytes_from_str(msg), ::tpy::bytes_literal("\n", 1))));
         __sub_1.emplace((*writer));
         __state = S_RESUME_1;
         continue;

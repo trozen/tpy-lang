@@ -1,0 +1,14 @@
+concat_literal: s!? <s b'b!?' b'<b'
+aug_setitem: ['ab'] [b'ab'] {'k': 'vw'} {b'k': b'vw'}
+set_methods: ['s', 's!'] [b'b', b'b!'] 3 3 True True
+union_elem: {'name': 'n', 'age': 1} {'tag': b't', 'age': 1} 2 2
+owned_slot_arg: ['a', 'q', 'p!'] [b'a', b'q', b'p!'] 3 3
+tuple_decl: 1 1
+open_sibling_tuple: x b'x'
+span_elem: a b'a'
+comprehensions: ['a', 'b'] [b'a', b'b'] ['y'] [b'y'] {'a': 1, 'b': 1} {b'a': 1, b'b': 1}
+items_loop: x y
+items_loop: b'x' b'y'
+any_value_dict: 1 1
+tuple_elem_recv: [('a', [1, 5])] [(b'a', [1, 5])]
+record_subscript: b b'b' {'k': 'v', 'a': 'b', 'c': 'v!'} {b'k': b'v', b'a': b'b', b'c': b'v!'}

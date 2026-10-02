@@ -14,7 +14,7 @@ std::tuple<std::string, ::tpy::BigInt> mk(const ::tpy::BigInt& i) {
 // def mkb(i: int) -> tuple[bytes, int]:
 //     return (b"bytes-payload-long-enough-to-defeat-small-buffers-" + str(i).encode(), i)
 std::tuple<::tpy::Bytes, ::tpy::BigInt> mkb(const ::tpy::BigInt& i) {
-    return std::tuple<::tpy::Bytes, ::tpy::BigInt>{(::tpy::bytes_concat(::tpy::bytes_literal_owned("bytes-payload-long-enough-to-defeat-small-buffers-", 50), ::tpy::bytes_from_str((i).to_string()))), i};
+    return std::tuple<::tpy::Bytes, ::tpy::BigInt>{(::tpy::bytes_concat(::tpy::bytes_literal("bytes-payload-long-enough-to-defeat-small-buffers-", 50), ::tpy::bytes_from_str((i).to_string()))), i};
 }
 
 // def find(i: int) -> tuple[str, int] | None:

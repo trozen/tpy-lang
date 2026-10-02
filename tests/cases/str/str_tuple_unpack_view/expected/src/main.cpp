@@ -23,8 +23,8 @@ std::tuple<std::string, std::string> get_pair() {
 //         print(k, v)
 void main() {
     auto __tup_1 = ::tpyapp::main::get_pair();
-    std::string_view a = std::get<0>(__tup_1);
-    std::string_view b = std::get<1>(__tup_1);
+    std::string a = std::move(std::get<0>(__tup_1));
+    std::string b = std::move(std::get<1>(__tup_1));
     std::cout << a << "\n" << ::tpy::check_signals;
     std::cout << b << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>({{"key1", "val1"}, {"key2", "val2"}});

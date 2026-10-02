@@ -91,7 +91,7 @@ inline void Label::__exit__(std::monostate et, const ::tpy::BaseException* ev, s
 // def __enter__(self) -> bytes:
 //     return b"abc" + b"def"
 inline ::tpy::Bytes Blob::__enter__() const {
-    return (::tpy::bytes_concat(::tpy::bytes_literal_owned("abc", 3), ::tpy::bytes_literal_owned("def", 3)));
+    return (::tpy::bytes_concat(::tpy::bytes_literal("abc", 3), ::tpy::bytes_literal("def", 3)));
 }
 
 // def __exit__(self, et, ev, tb) -> None:

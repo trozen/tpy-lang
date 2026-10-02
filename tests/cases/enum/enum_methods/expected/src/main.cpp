@@ -261,7 +261,7 @@ void main() {
     std::cout << "defaults:" << " " << __enum_Color{c}.repeat(2, "-") << " " << __enum_Color{c}.repeat(3, "+") << " " << __enum_Color{c}.repeat(1) << " " << __enum_Color{c}.repeat(2, ".") << "\n" << ::tpy::check_signals;
     std::cout << "posonly:" << " " << __enum_Color{c}.scaled(3) << " " << __enum_Color{Color::Blue}.scaled(2) << "\n" << ::tpy::check_signals;
     auto __tup_1 = __enum_Color{c}.pair();
-    std::string_view s = std::get<0>(__tup_1);
+    std::string s = std::move(std::get<0>(__tup_1));
     int32_t v = std::get<1>(__tup_1);
     std::cout << "tuple:" << " " << s << " " << v << "\n" << ::tpy::check_signals;
     std::cout << "truthy:" << " " << ::tpy::print_bool(__enum_Color{Color::Red}.truthy()) << " " << ::tpy::print_bool(__enum_Level{Level::Low}.truthy()) << " " << ::tpy::print_bool(__enum_Level{Level::High}.truthy()) << "\n" << ::tpy::check_signals;

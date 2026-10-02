@@ -14,7 +14,7 @@ namespace tpyapp::main {
 void process(::tpy::BytesView data) {
     ::tpy::BytesView b = data;
     std::cout << ::tpy::BytesPrinter(b) << "\n" << ::tpy::check_signals;
-    ::tpy::Bytes c = (::tpy::bytes_concat(data, ::tpy::bytes_literal_owned("!", 1)));
+    ::tpy::Bytes c = (::tpy::bytes_concat(data, ::tpy::bytes_literal("!", 1)));
     std::cout << ::tpy::BytesPrinter(c) << "\n" << ::tpy::check_signals;
 }
 
@@ -24,7 +24,7 @@ void process(::tpy::BytesView data) {
 //     print(b)
 void augassign(::tpy::BytesView data) {
     ::tpy::Bytes b = ::tpy::Bytes(data);
-    b = ::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("!", 1));
+    b = ::tpy::bytes_concat(b, ::tpy::bytes_literal("!", 1));
     std::cout << ::tpy::BytesPrinter(b) << "\n" << ::tpy::check_signals;
 }
 

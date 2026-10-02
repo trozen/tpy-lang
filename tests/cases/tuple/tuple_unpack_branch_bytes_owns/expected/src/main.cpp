@@ -12,7 +12,7 @@ namespace tpyapp::main {
 // def make(tag: bytes) -> tuple[bytes, bytes]:
 //     return (tag + b"-alpha-long-enough-to-heap", tag + b"-beta-long-enough-to-heap")
 std::tuple<::tpy::Bytes, ::tpy::Bytes> make(::tpy::BytesView tag) {
-    return std::tuple<::tpy::Bytes, ::tpy::Bytes>{(::tpy::bytes_concat(tag, ::tpy::bytes_literal_owned("-alpha-long-enough-to-heap", 26))), (::tpy::bytes_concat(tag, ::tpy::bytes_literal_owned("-beta-long-enough-to-heap", 25)))};
+    return std::tuple<::tpy::Bytes, ::tpy::Bytes>{(::tpy::bytes_concat(tag, ::tpy::bytes_literal("-alpha-long-enough-to-heap", 26))), (::tpy::bytes_concat(tag, ::tpy::bytes_literal("-beta-long-enough-to-heap", 25)))};
 }
 
 // def main() -> None:

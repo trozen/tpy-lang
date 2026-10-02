@@ -22,10 +22,10 @@ std::string free_text(::tpy::BytesView b) {
 //     print(len(t))
 //     g = b.tagged                      # tpyc: type(str)
 //     print(g)
-//     # borrow returns -- method and property both stay zero-copy views
-//     mn = b.m_name()                   # tpyc: type(StrView)
+//     # borrow returns -- method and property both copy, as a field read does
+//     mn = b.m_name()                   # tpyc: type(str)
 //     print(mn)
-//     n = b.name                        # tpyc: type(StrView)
+//     n = b.name                        # tpyc: type(str)
 //     print(n)
 //     r = b.raw                         # tpyc: type(bytes)
 //     print(len(r))
@@ -40,9 +40,9 @@ void main() {
     std::cout << ::tpy::__len__(t) << "\n" << ::tpy::check_signals;
     std::string g = b.tagged();
     std::cout << g << "\n" << ::tpy::check_signals;
-    std::string_view mn = b.m_name();
+    std::string mn = std::string(b.m_name());
     std::cout << mn << "\n" << ::tpy::check_signals;
-    std::string_view n = b.name();
+    std::string n = std::string(b.name());
     std::cout << n << "\n" << ::tpy::check_signals;
     ::tpy::Bytes r = b.raw();
     std::cout << ::tpy::__len__(r) << "\n" << ::tpy::check_signals;

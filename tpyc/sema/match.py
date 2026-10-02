@@ -356,7 +356,7 @@ class MatchAnalyzer:
                 for fam, vid in self.ctx.func.view_ids_by_name.get(name, ()):
                     self.stmts.deduction.note_view_binding(fam, vid, stmt.subject)
                 if name not in self.ctx.func.var_scope_depth:
-                    self.ctx.func.var_scope_depth[name] = self.ctx.func.current_scope.depth
+                    self.ctx.declare_local(name, self.ctx.func.current_scope.depth)
                 # Resumable frame (H1): a `match` carrying a suspension
                 # decomposes into per-arm body states, so a pattern binding
                 # read in an arm body must live in the frame rather than as a

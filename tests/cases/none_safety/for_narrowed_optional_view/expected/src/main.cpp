@@ -147,11 +147,11 @@ namespace tpyapp::main {
 //     data: list[int] = [10, 20, 30]
 //     print(sum_list(data), sum_list(None))
 void main() {
-    std::cout << ::tpyapp::main::sum_bytes((::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)))) << " " << ::tpyapp::main::sum_bytes(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sum_bytes((::tpy::bytes_concat(::tpy::bytes_literal("ab", 2), ::tpy::bytes_literal("c", 1)))) << " " << ::tpyapp::main::sum_bytes(std::nullopt) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::sum_chars("hello") << " " << ::tpyapp::main::sum_chars(std::nullopt) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::comp_bytes((::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)))) << " " << ::tpyapp::main::comp_bytes(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::comp_bytes((::tpy::bytes_concat(::tpy::bytes_literal("ab", 2), ::tpy::bytes_literal("c", 1)))) << " " << ::tpyapp::main::comp_bytes(std::nullopt) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::distinct_chars("hello") << " " << ::tpyapp::main::distinct_chars(std::nullopt) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::byte_map((::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)))) << " " << ::tpyapp::main::byte_map(std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::byte_map((::tpy::bytes_concat(::tpy::bytes_literal("ab", 2), ::tpy::bytes_literal("c", 1)))) << " " << ::tpyapp::main::byte_map(std::nullopt) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> data = {10, 20, 30};
     std::cout << ::tpyapp::main::sum_list(&(data)) << " " << ::tpyapp::main::sum_list(nullptr) << "\n" << ::tpy::check_signals;
 }

@@ -33,8 +33,9 @@ release commit (annotated; the build hook bakes `git describe`), then
   everyday rejects of U2, which land with the element-form unit (U5) on
   the lowering's slot contract; U4 and the mixed-param `&&` form are done
 - `str` and `bytes` under one sound view rule, keyed on the view family
-  (plan unit U6 is its tuple part) -- TODO: "`str` and `bytes`: one view
-  rule"
+  (plan unit U6 is its tuple part) -- landed on branch
+  `str-bytes-view-rule`; what remains is MIR's relaxation of its copies --
+  TODO: "`str` / `bytes` views: MIR precision over the one view rule"
 - Iterating a tuple (`for b in (b1, b2):`), the aliasing spelling for
   reference elements; ranks above nested comprehensions -- TODO:
   "Iterating a tuple"

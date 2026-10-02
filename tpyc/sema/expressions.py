@@ -1247,7 +1247,10 @@ class ExpressionAnalyzer:
         # so the name's storage is no longer the loop body's: an alias taken
         # here does not outlive what it binds, and the escape check must not
         # read the binding's original depth and say it does.
-        self.ctx.func.var_scope_depth[name] = self.ctx.func.current_scope.depth
+        self.ctx.declare_local(
+            name, self.ctx.func.current_scope.depth,
+            block_depth=next(i for i, s in enumerate(pending.first_stack)
+                             if s is decl_stmt))
         # Bound by a loop body that provably ran: the name is assigned here,
         # in the spelling the rest of sema reads.
         if name in self.ctx.func.loop_bound_assigned:
@@ -3745,7 +3748,7 @@ class ExpressionAnalyzer:
         self.ctx.func.definitely_assigned.add(name)
         self.ctx.func.rvalue_vars.add(name)
         if name not in self.ctx.func.var_scope_depth:
-            self.ctx.func.var_scope_depth[name] = target_scope.depth
+            self.ctx.declare_local(name, target_scope.depth)
 
         # Mirror the VarDecl tuple facts: a walrus-bound pointer-repr tuple
         # carries the same owns-fresh hazard as `t = (1, Box(5))`, and an

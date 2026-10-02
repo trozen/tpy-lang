@@ -57,7 +57,7 @@ from ..value_category import (
     is_rvalue_source, lent_operands, lent_operand_binds_open_param,
     peel_coerce,
 )
-from ..prescan import bound_names_of, loop_bindings_of, walrus_names_of
+from ..prescan import InPlaceWrites, bound_names_of, loop_bindings_of, walrus_names_of
 from .type_ops import signature_may_return_borrow
 
 # Tuple of all pending container types -- use in isinstance checks so adding
@@ -1951,6 +1951,18 @@ class FunctionTrackingState:
     # Names a `del` in this body unbinds: the value is destroyed there, so
     # like a rebind it ends the storage a view or `const&` of it reads.
     deleted_names: set[str] = field(default_factory=set)
+    # The objects this body may write in place anywhere, through any alias
+    # (`prescan.InPlaceWrites`): for a `String` / `bytearray` that reseats
+    # the buffer a view of it reads.
+    in_place_writes: InPlaceWrites = field(default_factory=InPlaceWrites)
+    # The compound-statement depth of the C++ block each local is declared
+    # in (0: the function body, and every parameter), moved out when a
+    # hoist declares it in front of an enclosing statement; written with
+    # `var_scope_depth` by `declare_local`. A capture or global is absent.
+    # Unlike `var_scope_depth` it counts every block (an `if` arm, a `try`
+    # body, a handler, a `with` body, a `match` arm), since a local of any
+    # of them dies at its closing brace.
+    decl_block_depth: dict[str, int] = field(default_factory=dict)
     # Names a closure of this body captures (`liveness.closure_pinned_names`):
     # never moved, so an owning return of one copies.
     closure_pinned: frozenset[str] = frozenset()
@@ -3320,6 +3332,15 @@ class SemanticContext:
             if typ is not None:
                 self._force_branch_decl_lists(typ)
         table = self.arm_branch_decls if per_arm else self.if_branch_decls
+        if not per_arm:
+            # Declared in front of `stmt`: the block that holds it. A `stmt`
+            # off the open stack (an arm's own statement) keeps the deeper
+            # depth, which only owns a view more often.
+            for i, open_stmt in enumerate(self.func.compound_stack):
+                if open_stmt is stmt:
+                    for name in mapping:
+                        self.func.decl_block_depth[name] = i
+                    break
         existing = table.get(stmt)
         if existing is not None:
             existing.update(mapping)
@@ -3875,6 +3896,35 @@ class SemanticContext:
             return self.str_vars
         return self.bytes_vars
 
+    def declare_local(self, name: str, scope_depth: int, *,
+                      block_depth: int | None = None) -> None:
+        """`name` is declared here: at scope depth `scope_depth`
+        (`var_scope_depth`) and in the block of the innermost open compound
+        statement, or of `block_depth` (`decl_block_depth`). The declaration-site writer of both tables (a hoist moves a
+        depth through `record_branch_decls`, a loop scope restores one
+        through `restore_local_decl`), so no declaration site can leave the
+        block rule reading a missing entry."""
+        self.func.var_scope_depth[name] = scope_depth
+        self.func.decl_block_depth[name] = (
+            len(self.func.compound_stack) if block_depth is None
+            else block_depth)
+
+    def local_decl_of(self, name: str) -> tuple[int | None, int | None]:
+        """`name`'s `declare_local` entry, for `restore_local_decl`."""
+        return (self.func.var_scope_depth.get(name),
+                self.func.decl_block_depth.get(name))
+
+    def restore_local_decl(self, name: str,
+                           saved: tuple[int | None, int | None]) -> None:
+        """Put back what `local_decl_of` saved, at the end of a binding
+        narrower than the body (a loop or comprehension variable)."""
+        for table, value in ((self.func.var_scope_depth, saved[0]),
+                             (self.func.decl_block_depth, saved[1])):
+            if value is None:
+                table.pop(name, None)
+            else:
+                table[name] = value
+
     def is_reseated(self, name: str) -> bool:
         """Whether `name`'s storage can be replaced or destroyed at some point
         of this body whose order against a use is not tracked: a rebind, a
@@ -3949,6 +3999,10 @@ class SemanticContext:
                     or (info.resolved_type is None
                         and self.view_needs_owned(info))):
                 return family.owned_type
+            for src_id in info.source_var_ids:
+                src = registry.get(src_id)
+                if src is not None and not src.lends_to_aliases:
+                    return family.owned_type
             stack.extend(info.source_var_ids)
         return family.view_type
 

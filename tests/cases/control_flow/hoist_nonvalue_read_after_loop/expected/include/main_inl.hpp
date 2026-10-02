@@ -210,7 +210,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_while_single::
             f.emplace(Flat(i));
             auto __tup_1 = ::tpyapp::main::pair(i);
             a = std::get<0>(__tup_1);
-            b = std::get<1>(__tup_1);
+            b = std::move(std::get<1>(__tup_1));
             __state = S_RESUME_0;
             return b;
         } else {

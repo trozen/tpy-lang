@@ -118,7 +118,7 @@ void in_memory() {
     std::cout << "mem now" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpystd::gzip::compress(RAW, 6, std::nullopt)) == RAW)) << "\n" << ::tpy::check_signals;
     std::cout << "mem bytearray" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpy::ByteArray(FIXTURE)) == RAW)) << "\n" << ::tpy::check_signals;
     std::cout << "mem multi" << " " << ::tpy::print_bool((::tpystd::gzip::decompress((::tpy::bytes_concat(FIXTURE, FIXTURE))) == (::tpy::bytes_concat(RAW, RAW)))) << "\n" << ::tpy::check_signals;
-    std::cout << "mem padding" << " " << ::tpy::print_bool((::tpystd::gzip::decompress((::tpy::bytes_concat((::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal_owned("\000\000\000", 3))), FIXTURE))) == (::tpy::bytes_concat(RAW, RAW)))) << "\n" << ::tpy::check_signals;
+    std::cout << "mem padding" << " " << ::tpy::print_bool((::tpystd::gzip::decompress((::tpy::bytes_concat((::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal("\000\000\000", 3))), FIXTURE))) == (::tpy::bytes_concat(RAW, RAW)))) << "\n" << ::tpy::check_signals;
     std::cout << "mem empty" << " " << ::tpy::BytesPrinter(::tpystd::gzip::decompress(::tpy::BytesView{})) << "\n" << ::tpy::check_signals;
     std::cout << "mem header fields" << " " << ::tpy::BytesPrinter(::tpystd::gzip::decompress(HEADER_FIELDS)) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes big = (::tpy::bytes_repeat(::tpy::bytes_from_int_iterable(::tpy::Range<int32_t>(256)), 1500));
@@ -160,8 +160,8 @@ void in_memory_errors() {
     ::tpy::ByteArray bad_len = ::tpy::ByteArray(FIXTURE);
     ::tpy::bytearray_setitem(bad_len, (::tpy::sub_check<int32_t>(::tpy::__len__(bad_len), 1)), static_cast<uint8_t>(::tpy::bytes_getitem(bad_len, (::tpy::sub_check<int32_t>(::tpy::__len__(bad_len), 1))) ^ 1));
     ::tpyapp::main::attempt("err length", ::tpy::Bytes(bad_len));
-    ::tpyapp::main::attempt("err trailing", (::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal_owned("junk", 4))));
-    ::tpyapp::main::attempt("err method", (::tpy::bytes_concat(::tpy::bytes_literal_owned("\x1f\x8b\x07", 3), ::tpy::bytes_slice(FIXTURE, ::tpy::BasicSlice{3, std::nullopt}))));
+    ::tpyapp::main::attempt("err trailing", (::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal("junk", 4))));
+    ::tpyapp::main::attempt("err method", (::tpy::bytes_concat(::tpy::bytes_literal("\x1f\x8b\x07", 3), ::tpy::bytes_slice(FIXTURE, ::tpy::BasicSlice{3, std::nullopt}))));
     auto __obj_0 = {-(1.0), 4294967296.0};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -437,7 +437,7 @@ void files() {
             std::cout << "closed mid-iteration" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
-    std::array<::tpy::Bytes, 3> payloads = {(::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 10)), (::tpy::bytes_repeat(::tpy::bytes_literal_owned("b", 1), 100000)), ::tpy::Bytes{}};
+    std::array<::tpy::Bytes, 3> payloads = {(::tpy::bytes_repeat(::tpy::bytes_literal("a", 1), 10)), (::tpy::bytes_repeat(::tpy::bytes_literal("b", 1), 100000)), ::tpy::Bytes{}};
     int32_t __stop_3 = ::tpy::__len__(payloads);
     for (int32_t i = 0; i < __stop_3; ++i) {
         ::tpyapp::main::write(std::format("gzip_basic_{}.gz", i), ::tpystd::gzip::compress(payloads[static_cast<std::size_t>(i)], 9, static_cast<double>(0)));
@@ -453,7 +453,7 @@ void files() {
     })) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes big = (::tpy::bytes_repeat(::tpy::bytes_from_int_iterable(::tpy::Range<int32_t>(256)), 3000));
     ::tpy::Bytes one = ::tpystd::gzip::compress(big, 1, static_cast<double>(0));
-    ::tpyapp::main::write("gzip_basic_big.gz", (::tpy::bytes_concat((::tpy::bytes_concat(one, ::tpy::bytes_literal_owned("\000\000", 2))), one)));
+    ::tpyapp::main::write("gzip_basic_big.gz", (::tpy::bytes_concat((::tpy::bytes_concat(one, ::tpy::bytes_literal("\000\000", 2))), one)));
     ::tpy::Bytes got = ::tpyapp::main::load("gzip_basic_big.gz");
     std::cout << "file big" << " " << ::tpy::__len__(got) << " " << ::tpy::print_bool((got == (::tpy::bytes_concat(big, big)))) << "\n" << ::tpy::check_signals;
     int32_t total;
@@ -516,7 +516,7 @@ void file_errors() {
     ::tpyapp::main::load_attempt("file crc", "gzip_basic_crc.gz");
     ::tpyapp::main::write("gzip_basic_trunc.gz", ::tpy::Bytes(::tpy::bytes_slice(FIXTURE, ::tpy::BasicSlice{std::nullopt, (::tpy::sub_check<int32_t>(::tpy::__len__(FIXTURE), 3))})));
     ::tpyapp::main::load_attempt("file truncated", "gzip_basic_trunc.gz");
-    ::tpyapp::main::write("gzip_basic_trail.gz", (::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal_owned("junk", 4))));
+    ::tpyapp::main::write("gzip_basic_trail.gz", (::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal("junk", 4))));
     ::tpyapp::main::load_attempt("file trailing", "gzip_basic_trail.gz");
     ::tpyapp::main::write("gzip_basic_empty.gz", ::tpy::BytesView{});
     ::tpyapp::main::load_attempt("file empty", "gzip_basic_empty.gz");
@@ -573,7 +573,7 @@ void __tpy_init() {
 
     ::tpystd::gzip::__tpy_init();
     ::tpystd::os::__tpy_init();
-    RAW = (::tpy::bytes_repeat(::tpy::bytes_literal_owned("hello hello hello hello\n", 24), 3));
+    RAW = (::tpy::bytes_repeat(::tpy::bytes_literal("hello hello hello hello\n", 24), 3));
     FIXTURE = ::tpy::bytes_literal_owned("\x1f\x8b\x08\000\000\000\000\000\x02\x03\xcbH\xcd\xc9\xc9W\xc8@'\xb9" "2H\x14\x07\000J\x0e\xce\x11H\000\000\000", 33);
     HEADER_FIELDS = ::tpy::bytes_literal_owned("\x1f\x8b\x08\x1e\000\000\000\000\x02\xff\x03\000abcname.bmp\000a comment\000\000\000\xcbHMLI-RH\xcbL\xcdI)V\xc8\xcf\xe6\x02\000\xf0\xba\xd1|\x11\000\000\000", 63);
     ::tpyapp::main::main();
