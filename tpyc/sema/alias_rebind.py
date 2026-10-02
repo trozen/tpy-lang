@@ -615,6 +615,7 @@ class _Replay:
             for root in roots:
                 st.loans[_ESCAPED] = st.loans.get(_ESCAPED, frozenset()) | {
                     (root, BorrowKind.OPAQUE, self.origins_of(root, st))}
+        # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
         for child in inner.children():
             self.expr_effects(child, st, stmt)
         if isinstance(inner, TpyAwait):

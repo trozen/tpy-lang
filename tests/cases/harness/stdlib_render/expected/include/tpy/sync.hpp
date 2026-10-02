@@ -63,6 +63,7 @@ struct _MutexCell {
     //     self.storage.reset()
     ~_MutexCell() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         this->storage.reset();
     }
 
@@ -122,6 +123,7 @@ struct _RwLockCell {
     //     self.storage.reset()
     ~_RwLockCell() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         this->storage.reset();
     }
 

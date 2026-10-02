@@ -893,6 +893,7 @@ inline std::ostream& operator<<(std::ostream& os, const datetime& obj) {
 
 template<> struct std::hash<::tpystd::datetime::datetime> {
     size_t operator()(const ::tpystd::datetime::datetime& val) const noexcept {
+        ::tpy::DeferSignals __tpy_defer_signals;
         return static_cast<size_t>(::tpy::__hash__(val));
     }
 };

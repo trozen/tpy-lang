@@ -2195,6 +2195,7 @@ class TypeOperations:
             # it is "no contract", not pure.
             is_pure=method.is_pure,
             is_transient=method.is_transient,
+            checks_signals=method.checks_signals,
             is_inline=method.is_inline,
             is_consuming=method.is_consuming,
             # Accessor identity is invariant under substitution; dropping

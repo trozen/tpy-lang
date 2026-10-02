@@ -128,6 +128,7 @@ struct __gen_numbers : public ::tpy::next_iter_mixin<__gen_numbers, ::tpy::BigIn
 
     __gen_numbers(__gen_numbers&&) = default;
     ~__gen_numbers() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_1:

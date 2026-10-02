@@ -147,6 +147,7 @@ inline Notifier& Notifier::operator=(Notifier&& other) noexcept {
 //     s.cv.notify_all()
 inline Notifier::~Notifier() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     try {
         Shared& s = this->shared.get();
         auto __ctx_1 = s.m.lock();

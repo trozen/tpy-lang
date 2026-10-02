@@ -61,6 +61,7 @@ struct __gen_Source_windowed : public ::tpy::next_iter_mixin<__gen_Source_window
 
     __gen_Source_windowed(__gen_Source_windowed&&) = default;
     ~__gen_Source_windowed() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

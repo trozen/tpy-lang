@@ -1,0 +1,2 @@
+main.py:484: warning: 'raise' in '__del__' cannot propagate: a destructor has no caller to receive the exception, so reaching it terminates the process -- move the raising code out of '__del__'
+main.py:497: warning: 'except KeyboardInterrupt' in '__del__' never runs: a Ctrl-C inside a destructor is deferred to the next check point after it

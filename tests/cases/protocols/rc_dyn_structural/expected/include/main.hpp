@@ -102,6 +102,7 @@ inline Cat& Cat::operator=(Cat&& other) noexcept {
 //     print(f"~Cat({self.label})")
 inline Cat::~Cat() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << std::format("~Cat({})", this->label) << "\n" << ::tpy::check_signals;
 }
 

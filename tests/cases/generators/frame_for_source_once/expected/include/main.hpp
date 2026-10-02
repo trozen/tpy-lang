@@ -1680,6 +1680,7 @@ struct __coro_async_genexpr {
 
     __coro_async_genexpr(__coro_async_genexpr&&) = default;
     ~__coro_async_genexpr() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

@@ -125,6 +125,57 @@ class TestTransientKwarg:
                                   module_name="main")
 
 
+class TestChecksSignalsKwarg:
+    """`checks_signals=True` marks a `@native` / `@cpp_template` binding as a
+    Ctrl-C check point, beside `transient=True`."""
+
+    STUBS = (
+        "from tpy import int32\n"
+        "from tpy.extern import native, cpp_template\n"
+        "@native(\"wait\", checks_signals=True)\ndef wait() -> None: ...\n"
+        "@cpp_template(\"poll({0})\", checks_signals=True)\ndef poll(x: int32) -> int32: ...\n"
+        "@native(\"plain\")\ndef plain() -> None: ...\n"
+        "@native(\"K\")\n"
+        "class K:\n"
+        "    @native(\"k_read\", checks_signals=True)\n    def read(self) -> int32: ...\n"
+        "    @native(\"k_close\")\n    def close(self) -> None: ...\n")
+
+    def test_parsed_on_native_and_template_stubs(self, extern_parser):
+        module = extern_parser().parse(self.STUBS, module_name="main")
+        assert {f.name: f.checks_signals for f in module.functions} == {
+            "wait": True, "poll": True, "plain": False}
+        assert [(f.name, f.checks_signals) for r in module.records for f in r.methods] == [
+            ("read", True), ("close", False)]
+
+    def test_rejected_on_a_method_with_a_body(self, extern_parser):
+        with pytest.raises(ParseError, match=r"@native\(checks_signals=True\) is only valid on a stub: .*'m' has a TPy body"):
+            extern_parser().parse("from tpy import int32\nfrom tpy.extern import native\n"
+                                  "@native(\"K\")\nclass K:\n"
+                                  "    @native(\"k_m\", checks_signals=True)\n"
+                                  "    def m(self) -> int32:\n        return 1\n",
+                                  module_name="main")
+
+    def test_rejected_on_a_free_native_function_with_a_body(self, extern_parser):
+        with pytest.raises(ParseError, match=r"@native\(checks_signals=True\) is only valid on a stub: .*'f' has a TPy body"):
+            extern_parser().parse("from tpy import int32\nfrom tpy.extern import native\n"
+                                  "@native(\"x\", checks_signals=True)\n"
+                                  "def f() -> int32:\n    return 1\n",
+                                  module_name="main")
+
+    def test_rejected_on_a_cpp_template_with_a_body(self, extern_parser):
+        with pytest.raises(ParseError, match=r"@cpp_template\(checks_signals=True\) is only valid on a stub: .*'g' has a TPy body"):
+            extern_parser().parse("from tpy import int32\nfrom tpy.extern import cpp_template\n"
+                                  "@cpp_template(\"g({0})\", checks_signals=True)\n"
+                                  "def g(x: int32) -> int32:\n    return x\n",
+                                  module_name="main")
+
+    def test_rejected_on_a_class(self, extern_parser):
+        with pytest.raises(ParseError, match=r"@native\(checks_signals=\.\.\.\) is only valid on a function or method stub"):
+            extern_parser().parse("from tpy.extern import native\n"
+                                  "@native(\"K\", checks_signals=True)\nclass K:\n    pass\n",
+                                  module_name="main")
+
+
 class TestStarImportResolution:
     """Tests for 'from tpy import *' name resolution."""
 

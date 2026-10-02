@@ -64,6 +64,7 @@ inline Cell& Cell::operator=(Cell&& other) noexcept {
 //     print("payload destruct")
 inline Cell::~Cell() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "payload destruct" << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();

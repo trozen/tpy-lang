@@ -358,6 +358,7 @@ struct __gen_gen_try : public ::tpy::next_iter_mixin<__gen_gen_try, int32_t> {
 
     __gen_gen_try(__gen_gen_try&&) = default;
     ~__gen_gen_try() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

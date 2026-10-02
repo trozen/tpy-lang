@@ -99,6 +99,7 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 //         print("cleanup", t)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     try {
         auto __ctx_1 = Guard(this->_id);
         auto t = __ctx_1.__enter__();

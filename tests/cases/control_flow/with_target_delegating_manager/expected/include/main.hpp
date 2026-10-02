@@ -104,6 +104,7 @@ inline Wrapper& Wrapper::operator=(Wrapper&& other) noexcept {
 //     print("wrapper dropped")
 inline Wrapper::~Wrapper() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "wrapper dropped" << "\n" << ::tpy::check_signals;
 }
 

@@ -70,6 +70,7 @@ inline State& State::operator=(State&& other) noexcept {
 //     print("del", self.label)
 inline State::~State() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "del" << " " << this->label << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();

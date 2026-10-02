@@ -95,6 +95,7 @@ struct __coro_normal_exit {
 
     __coro_normal_exit(__coro_normal_exit&&) = default;
     ~__coro_normal_exit() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -135,6 +136,7 @@ struct __coro_return_exit {
 
     __coro_return_exit(__coro_return_exit&&) = default;
     ~__coro_return_exit() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -177,6 +179,7 @@ struct __coro_with_exit {
 
     __coro_with_exit(__coro_with_exit&&) = default;
     ~__coro_with_exit() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {
@@ -218,6 +221,7 @@ struct __coro_handler_exit {
 
     __coro_handler_exit(__coro_handler_exit&&) = default;
     ~__coro_handler_exit() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -260,6 +264,7 @@ struct __coro_nested_exit {
 
     __coro_nested_exit(__coro_nested_exit&&) = default;
     ~__coro_nested_exit() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

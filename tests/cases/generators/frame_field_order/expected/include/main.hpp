@@ -104,6 +104,7 @@ struct __gen_inner : public ::tpy::next_iter_mixin<__gen_inner, int32_t> {
 
     __gen_inner(__gen_inner&&) = default;
     ~__gen_inner() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -164,6 +165,7 @@ struct __coro_async_rows {
 
     __coro_async_rows(__coro_async_rows&&) = default;
     ~__coro_async_rows() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_1:
@@ -307,6 +309,7 @@ struct __gen_break_outer : public ::tpy::next_iter_mixin<__gen_break_outer, int3
 
     __gen_break_outer(__gen_break_outer&&) = default;
     ~__gen_break_outer() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -352,6 +355,7 @@ struct __gen_return_outer : public ::tpy::next_iter_mixin<__gen_return_outer, in
 
     __gen_return_outer(__gen_return_outer&&) = default;
     ~__gen_return_outer() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -400,6 +404,7 @@ struct __gen_exc_outer : public ::tpy::next_iter_mixin<__gen_exc_outer, int32_t>
 
     __gen_exc_outer(__gen_exc_outer&&) = default;
     ~__gen_exc_outer() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

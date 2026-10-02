@@ -204,6 +204,7 @@ struct Arc {
     //         unsafe_release(self._cell)
     ~Arc() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         if (::tpy::deref_check(this->_cell).release_strong()) {
             ::tpy::heap_release(this->_cell);
         }
@@ -430,6 +431,7 @@ struct Weak {
     //         unsafe_release(self._cell)
     ~Weak() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         if (::tpy::deref_check(this->_cell).release_weak()) {
             ::tpy::heap_release(this->_cell);
         }

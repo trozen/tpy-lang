@@ -81,6 +81,7 @@ inline Base& Base::operator=(Base&& other) noexcept {
 //     raise ValueError("base cleanup failed")  # tpyc: warning(/.raise. in .__del__. cannot propagate/)
 inline Base::~Base() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     try {
         std::cout << "base del" << " " << this->_b << "\n" << ::tpy::check_signals;
         throw ::tpy::ValueError("base cleanup failed");
@@ -116,6 +117,7 @@ inline Child& Child::operator=(Child&& other) noexcept {
 //     super().__del__()
 inline Child::~Child() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "child del" << " " << this->_c << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();

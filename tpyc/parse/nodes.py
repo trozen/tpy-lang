@@ -1564,6 +1564,8 @@ class TpyFunction:
     readonly_opt_out: bool = False
     is_pure: bool = False
     is_transient: bool = False
+    # `checks_signals=True` on the binding -- see FunctionInfo.checks_signals.
+    checks_signals: bool = False
     is_override: bool = False
     hides_parent: bool = False
     # Which overload decorator the def carries, or None for a plain def.
@@ -2116,6 +2118,7 @@ def collect_name_refs(expr: TpyExpr, *, into_lambdas: bool = False) -> set[str]:
         if isinstance(node, TpyName):
             names.add(node.name)
         else:
+            # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
             stack.extend(node.children())
             if into_lambdas and isinstance(node, TpyLambda):
                 stack.append(node.body)
@@ -2147,6 +2150,7 @@ def expr_reads_self_field(expr: TpyExpr, fields: set[str]) -> bool:
         elif isinstance(node, TpyMethodCall):
             if isinstance(node.obj, TpyName) and node.obj.name == "self":
                 return True
+        # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
         stack.extend(node.children())
     return False
 
@@ -2170,6 +2174,7 @@ def expr_contains_self_method_call(expr: TpyExpr) -> bool:
                     and node.obj.name == "self"
                     and not node.is_static_call):
                 return True
+        # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
         stack.extend(node.children())
     return False
 
@@ -2238,6 +2243,7 @@ def stmt_has_any_suspension(stmt: TpyStmt) -> bool:
             return False
         if isinstance(e, TpyAwait):
             return True
+        # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
         for c in (e.children() if hasattr(e, "children") else ()):
             if walk_expr(c):
                 return True
@@ -2280,6 +2286,7 @@ def read_names(e: TpyExpr) -> set[str]:
         n = stack.pop()
         if isinstance(n, TpyName):
             out.add(n.name)
+        # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
         stack.extend(n.children())
     return out
 
@@ -2350,6 +2357,7 @@ def walrus_bindings(stmt: TpyStmt) -> list['TpyNamedExpr']:
             return
         if isinstance(e, TpyNamedExpr):
             found.append(e)
+        # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
         for c in e.children():
             collect(c)
 
@@ -2480,6 +2488,19 @@ def walk_body_stmts(
             on_expr(expr)
         for body in stmt.sub_bodies():
             walk_body_stmts(body, on_expr, on_stmt)
+
+
+def walk_expr_tree(expr: TpyExpr, visit: Callable[[TpyExpr], bool]) -> None:
+    """Pre-order walk of an expression and its `children()`. `visit` answers
+    whether to descend into the node's children, so a visitor can judge a
+    subtree as a whole (a field chain, a call with its callee name, a slice)
+    and skip its parts; the other walks in this module and in sema each
+    carry their own `children()` loop and are to move onto this one."""
+    stack: list[TpyExpr] = [expr]
+    while stack:
+        node = stack.pop()
+        if visit(node):
+            stack.extend(reversed(node.children()))
 
 
 # Non-node records a caller can actually meet, and so has to be told apart

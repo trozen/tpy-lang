@@ -96,6 +96,7 @@ struct __gen_normal_exit : public ::tpy::next_iter_mixin<__gen_normal_exit, ::tp
 
     __gen_normal_exit(__gen_normal_exit&&) = default;
     ~__gen_normal_exit() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -133,6 +134,7 @@ struct __gen_handler_exit : public ::tpy::next_iter_mixin<__gen_handler_exit, ::
 
     __gen_handler_exit(__gen_handler_exit&&) = default;
     ~__gen_handler_exit() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -169,6 +171,7 @@ struct __gen_return_exit : public ::tpy::next_iter_mixin<__gen_return_exit, ::tp
 
     __gen_return_exit(__gen_return_exit&&) = default;
     ~__gen_return_exit() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -207,6 +210,7 @@ struct __gen_with_exit : public ::tpy::next_iter_mixin<__gen_with_exit, ::tpy::B
 
     __gen_with_exit(__gen_with_exit&&) = default;
     ~__gen_with_exit() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {
@@ -245,6 +249,7 @@ struct __gen_nested_exit : public ::tpy::next_iter_mixin<__gen_nested_exit, ::tp
 
     __gen_nested_exit(__gen_nested_exit&&) = default;
     ~__gen_nested_exit() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -289,6 +294,7 @@ struct __gen_break_exit : public ::tpy::next_iter_mixin<__gen_break_exit, ::tpy:
 
     __gen_break_exit(__gen_break_exit&&) = default;
     ~__gen_break_exit() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -329,6 +335,7 @@ struct __gen_continue_exit : public ::tpy::next_iter_mixin<__gen_continue_exit, 
 
     __gen_continue_exit(__gen_continue_exit&&) = default;
     ~__gen_continue_exit() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

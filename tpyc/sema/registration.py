@@ -25,6 +25,7 @@ def _adopt_skeleton(skeleton, full):
         setattr(skeleton, fld.name, getattr(full, fld.name))
     return skeleton
 
+from .may_interrupt import binding_may_interrupt, warn_dead_interrupt_handlers
 from ..typesys import (
     mark_overload_group,
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, InitInheritBlock, InitInheritBlocker, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
@@ -1330,6 +1331,12 @@ class TypeRegistrar:
                     escaping.loc or move_method.loc or record.loc,
                 )
 
+        # A Ctrl-C defers past __del__ / __move__ / __hash__, so a handler
+        # for it written inside one is dead (the sibling of the raise checks
+        # above: lexical, once per source method).
+        for m in record.methods:
+            warn_dead_interrupt_handlers(self.ctx, m)
+
         # Macro phase: apply class macros (@dataclass, @model, ...)
         # then resolve any TypeRefNodes in macro-added method bodies.
         # See `sema/macros.py` for why this runs inside sema.
@@ -1659,6 +1666,8 @@ class TypeRegistrar:
                 is_readonly=resolved_readonly,
                 is_pure=method.is_pure,
                 is_transient=method.is_transient,
+                checks_signals=method.checks_signals,
+                may_interrupt=binding_may_interrupt(method),
                 is_inline=method.is_inline,
                 is_consuming=method.is_consuming,
                 is_method=True,
@@ -3781,6 +3790,8 @@ class TypeRegistrar:
             is_readonly=func.is_readonly or func.is_pure,
             is_pure=func.is_pure,
             is_transient=func.is_transient,
+            checks_signals=func.checks_signals,
+            may_interrupt=binding_may_interrupt(func),
             is_inline=func.is_inline,
             is_async=func.is_async,
             is_generator=func.is_generator,
@@ -3970,6 +3981,8 @@ class TypeRegistrar:
                 is_readonly=func.is_readonly or func.is_pure,
                 is_pure=func.is_pure,
                 is_transient=func.is_transient,
+                checks_signals=func.checks_signals,
+                may_interrupt=binding_may_interrupt(func),
                 linkage=_LINKAGE_MAP[func.linkage.name],
                 native_name=func.native_name,
                 native_cpp_return_type=func.native_cpp_return_type,

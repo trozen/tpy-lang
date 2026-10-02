@@ -385,6 +385,7 @@ inline Holder& Holder::operator=(Holder&& other) noexcept {
 //     print("holder sees", self.f())
 inline Holder::~Holder() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "holder sees" << " " << (*this).f() << "\n" << ::tpy::check_signals;
 }
 

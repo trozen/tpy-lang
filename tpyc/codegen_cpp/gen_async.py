@@ -173,7 +173,7 @@ def _regions_have_pending_cleanup(regions: tuple) -> bool:
 if TYPE_CHECKING:
     from collections.abc import Callable
     from io import TextIO
-    from ..typesys import TpyType
+    from ..typesys import FunctionInfo, TpyType
     from .context import CodeGenContext
     from .types import TypeMapper
     from .functions import FunctionGenerator
@@ -506,6 +506,24 @@ class AsyncCoroCodegen:
             return _mfi.const_borrow_params if _mfi else None
         _fis = self.ctx.analyzer.registry.get_function(func.name)
         return _fis[-1].const_borrow_params if _fis else None
+
+    def _frame_fi(self, func: TpyFunction,
+                  record_name: 'str | None') -> 'FunctionInfo | None':
+        """The registry FunctionInfo of the generator / coroutine `func`, or
+        None when the name does not single it out (a nested def lives in
+        its enclosing body's namespace; an overload set has several)."""
+        if func.is_nested_def:
+            return None
+        if record_name:
+            ri = self.ctx.analyzer.registry.get_record(record_name)
+            fis = ri.get_method_overloads(func.name) if ri else []
+        else:
+            fis = self.ctx.analyzer.registry.get_function(func.name) or []
+        # A single entry under the frame's own name is its own: a nested def
+        # is excluded above, and an overload set answers None. The entry's
+        # `declaration` is not compared -- a frame's is another node than
+        # `func` (TODO.md "One owning-FunctionInfo lookup").
+        return fis[0] if len(fis) == 1 else None
 
     def _frame_capture_const_names(
             self, func: TpyFunction,
@@ -2670,7 +2688,11 @@ class AsyncCoroCodegen:
                       f"{emit_prims.member_init_list(in_place_inits, INDENT)} {{}}\n\n")
 
         if dtor_cases:
-            self._emit_frame_dtor(out, struct_name, dtor_cases)
+            # Keyed on the whole body's fact, a superset of the cleanup
+            # actions the destructor runs (no per-action fact exists).
+            self._emit_frame_dtor(
+                out, struct_name, dtor_cases,
+                emit_prims.defer_signals_cpp(self._frame_fi(func, record_name)))
 
         # Body-method forward declaration + per-shape extra methods.
         out.write(f"{INDENT}{self._resumable_body_method_fwd_decl(func)};\n")
@@ -5574,7 +5596,8 @@ class AsyncCoroCodegen:
         return cases
 
     def _emit_frame_dtor(self, out: "TextIO", struct_name: str,
-                         dtor_cases: list[tuple[str, list]]) -> None:
+                         dtor_cases: list[tuple[str, list]],
+                         defer: str | None) -> None:
         """Emit the abandonment-cleanup destructor plus the defaulted move
         ctor it suppresses (frame_state neuters the moved-from source, so
         memberwise move stays safe without enumerating frame fields).
@@ -5589,6 +5612,8 @@ class AsyncCoroCodegen:
         inner = INDENT * 2
         body = INDENT * 3
         action_ind = INDENT * 4
+        if defer is not None:
+            out.write(f"{inner}{defer}\n")
         # CPython closes a suspended generator by throwing GeneratorExit
         # into it, so __exit__ observes an exceptional exit. Mirror the
         # contract: pass a GeneratorExit as exc_val to every with-region

@@ -68,6 +68,7 @@ inline HeapVal& HeapVal::operator=(HeapVal&& other) noexcept {
 //     unsafe_free(self._ptr)
 inline HeapVal::~HeapVal() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "del" << "\n" << ::tpy::check_signals;
     ::tpy::destroy_at(this->_ptr);
     ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));

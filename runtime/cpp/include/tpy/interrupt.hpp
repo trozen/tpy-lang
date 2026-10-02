@@ -14,6 +14,10 @@
 // and tpy.thread's JoinHandle.join(), whose wait is not on an fd (a thread's
 // end is not one), by re-checking in 100 ms slices.
 //
+// A body that must not throw (a destructor, a noexcept move, a host's C
+// callback) opens a tpy::DeferSignals scope (below): inside it no check point
+// or wait raises, and the Ctrl-C is raised at the first check point after it.
+//
 // Free of system headers so it can sit under every generated TU.
 
 #include <atomic>
@@ -52,7 +56,43 @@ inline std::atomic<int> pending{0};
 // Non-null while the layer is armed.
 inline std::atomic<const Ops*> ops{nullptr};
 
+// Open DeferSignals scopes on this thread. A plain constant-initialized int so
+// no TLS guard or destructor is involved; the SIGINT handler never reads it
+// (thread-local access is not signal-safe), only the layer's check points and
+// waits do.
+inline constinit thread_local int defer_depth = 0;
+
 } // namespace tpy::interrupt_detail
+
+namespace tpy {
+
+// Defers Ctrl-C delivery on this thread for the scope's lifetime. While one is
+// open the SIGINT layer treats the thread as not deliverable: a check point
+// returns instead of throwing KeyboardInterrupt, a wait (time.sleep, input(),
+// blocking socket I/O) runs to completion without watching the wake fd, and an
+// asyncio.run started inside declines SIGINT handling. The Ctrl-C stays
+// pending and is raised at the first check point after the scope closes.
+// Generated code opens one in a body that runs under noexcept or a catch-all
+// (a __del__ destructor, a __move__ constructor, the std::hash wrapper, an
+// abandoned generator frame's cleanup), where a throw would terminate the
+// process, unless the compiler proved the body cannot reach a check point. A host may open one around its own non-throwing
+// contexts (a C callback, a destructor) for the same reason.
+//
+// Scopes nest -- a __del__ that drops a suspended generator opens two -- and
+// stay balanced because only the constructor / destructor pair touches the
+// count. The destructor never delivers: it may itself run in a noexcept body.
+// A second Ctrl-C while the first is still pending terminates the process as
+// it does anywhere else, so a long-running deferred body stays killable.
+struct DeferSignals {
+    DeferSignals() noexcept { ++interrupt_detail::defer_depth; }
+    ~DeferSignals() noexcept { --interrupt_detail::defer_depth; }
+    DeferSignals(const DeferSignals&) = delete;
+    DeferSignals(DeferSignals&&) = delete;
+    DeferSignals& operator=(const DeferSignals&) = delete;
+    DeferSignals& operator=(DeferSignals&&) = delete;
+};
+
+} // namespace tpy
 
 extern "C" {
 // Defined in signal_impl.cpp; referenced only from code that runs when the

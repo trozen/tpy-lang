@@ -51,6 +51,7 @@ A& A::operator=(A&& other) noexcept {
 //     print("A del end", s)
 A::~A() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "A del begin" << " " << this->val << "\n" << ::tpy::check_signals;
     int32_t s = this->val;
     s = ::tpy::add_check<int32_t>(s, 1);

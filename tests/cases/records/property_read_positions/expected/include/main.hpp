@@ -204,6 +204,7 @@ struct __gen_frame_manager : public ::tpy::next_iter_mixin<__gen_frame_manager, 
 
     __gen_frame_manager(__gen_frame_manager&&) = default;
     ~__gen_frame_manager() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {

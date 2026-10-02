@@ -65,6 +65,7 @@ inline Cell& Cell::operator=(Cell&& other) noexcept {
 //     print("Cell.__del__", self.val)
 inline Cell::~Cell() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "Cell.__del__" << " " << this->val << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();

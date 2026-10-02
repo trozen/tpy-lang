@@ -345,6 +345,7 @@ struct __coro_work {
 
     __coro_work(__coro_work&&) = default;
     ~__coro_work() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -423,6 +424,7 @@ struct __gen_items : public ::tpy::next_iter_mixin<__gen_items, int32_t> {
 
     __gen_items(__gen_items&&) = default;
     ~__gen_items() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -497,6 +499,7 @@ struct __gen_mutating : public ::tpy::next_iter_mixin<__gen_mutating, int32_t> {
 
     __gen_mutating(__gen_mutating&&) = default;
     ~__gen_mutating() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -589,6 +592,7 @@ struct __gen_cell_gen : public ::tpy::next_iter_mixin<__gen_cell_gen, int32_t> {
 
     __gen_cell_gen(__gen_cell_gen&&) = default;
     ~__gen_cell_gen() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -666,6 +670,7 @@ struct __gen_watched : public ::tpy::next_iter_mixin<__gen_watched, int32_t> {
 
     __gen_watched(__gen_watched&&) = default;
     ~__gen_watched() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -713,6 +718,7 @@ struct __gen_cell_items : public ::tpy::next_iter_mixin<__gen_cell_items, int32_
 
     __gen_cell_items(__gen_cell_items&&) = default;
     ~__gen_cell_items() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -983,6 +989,7 @@ struct __gen_gen_with_scalar_exit : public ::tpy::next_iter_mixin<__gen_gen_with
 
     __gen_gen_with_scalar_exit(__gen_gen_with_scalar_exit&&) = default;
     ~__gen_gen_with_scalar_exit() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {
@@ -1279,6 +1286,7 @@ inline Noisy& Noisy::operator=(Noisy&& other) noexcept {
 //     print("noisy del", self.tag)
 inline Noisy::~Noisy() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "noisy del" << " " << this->tag << "\n" << ::tpy::check_signals;
 }
 

@@ -108,6 +108,7 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 //     print("drop", self.name)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "drop" << " " << this->name << "\n" << ::tpy::check_signals;
 }
 
@@ -130,6 +131,7 @@ inline Base& Base::operator=(Base&& other) noexcept {
 //     print("~Base", self.tag)
 inline Base::~Base() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "~Base" << " " << this->tag << "\n" << ::tpy::check_signals;
 }
 
@@ -152,6 +154,7 @@ inline Child& Child::operator=(Child&& other) noexcept {
 //     print("~Child", self.tag)
 inline Child::~Child() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "~Child" << " " << this->tag << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();

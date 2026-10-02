@@ -299,6 +299,7 @@ class BuilderTraceExpander:
             self._validate_expr(expr.body, tracked, stmt,
                                 in_control_flow=True)
             return
+        # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
         for child in expr.children():
             self._validate_expr(child, tracked, stmt,
                                 in_control_flow=in_control_flow)

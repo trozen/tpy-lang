@@ -25,10 +25,10 @@ maxunicode: Final[int] = 0x10FFFF
 
 @native("tpy::StdStream")
 class _StdStream:
-    @native("write")
+    @native("write", checks_signals=True)
     def write(self, text: str) -> int32: ...
 
-    @native("flush")
+    @native("flush", checks_signals=True)
     def flush(self) -> None: ...
 
 

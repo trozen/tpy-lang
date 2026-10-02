@@ -766,6 +766,12 @@ Top-level analyzers (one module each):
 `pending_num`, `context`.
 Error classes live in `tpyc/diagnostics.py` (see "Compilation pipeline").
 
+`may_interrupt` decides, per analyzed body and at the end of its Phase-1
+analysis (no fixpoint), whether running the body may reach a Ctrl-C check
+point (`FunctionInfo.may_interrupt`, False only for an inert body: builtin
+operations on types whose `value_ops_run_user_code()` is False and calls to
+unmarked bodyless bindings); the record, hash and frame emitters read it to
+open the `::tpy::DeferSignals` scope of a `noexcept` body.
 `frame_close` decides, per generator or coroutine function, whether closing
 its frame may run user code (`FunctionInfo.frame_close_runs_user_code`, a
 module-end fixpoint); the frame layout and the loop rules read it through

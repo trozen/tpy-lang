@@ -16,7 +16,10 @@
  *   - the disarm / re-arm path (a forked child, so it starts unarmed): the
  *     wake fds survive a disarm, a re-arm drops a request left pending while
  *     disarmed, and install_interrupt_handler() keeps a layer that an
- *     asyncio.run arm would otherwise remove when the run ends.
+ *     asyncio.run arm would otherwise remove when the run ends;
+ *   - a DeferSignals scope (nested too) holds a pending interrupt across check
+ *     points, a sleep and an asyncio.run's begin (armed or not), and the first
+ *     check point after it delivers it once.
  *
  * Exits non-zero on failure; the harness treats output as the assertion.
  */
@@ -69,9 +72,33 @@ bool fd_readable(int fd) {
     return ::poll(&pfd, 1, 0) > 0;
 }
 
+// True when a check point raised KeyboardInterrupt.
+bool delivered() {
+    try {
+        tpy::check_signals();
+    } catch (const tpy::KeyboardInterrupt&) {
+        return true;
+    }
+    return false;
+}
+
+bool interrupt_pending() {
+    return tpy::interrupt_detail::pending.load() != 0;
+}
+
 // Starts from an unarmed layer, as a --no-main host does before its first
 // asyncio.run.
 void check_disarm_rearm() {
+    {
+        tpy::DeferSignals defer;
+        int fd = tpy_interrupt_async_begin();
+        check(fd == -1 && !tpy::interrupt_armed(),
+              "asyncio.run inside a scope does not arm an unarmed layer");
+        if (fd >= 0) {
+            tpy_interrupt_async_end();
+        }
+    }
+
     int fd = tpy_interrupt_async_begin();  // arms for the run only
     check(fd >= 0 && tpy::interrupt_armed(), "asyncio.run arms an unarmed layer");
     tpy_interrupt_async_end();
@@ -169,6 +196,58 @@ int main() {
         print_quiet = false;
     }
     check(print_quiet, "a print chain with nothing pending is a no-op");
+
+    // A deferral scope holds the interrupt; the first check point after it
+    // raises it once.
+    tpy::request_interrupt();
+    {
+        tpy::DeferSignals defer;
+        check(!delivered() && interrupt_pending(), "a scope defers a check point");
+    }
+    check(delivered(), "the check point after the scope delivers");
+    check(!delivered(), "a deferred interrupt is delivered once");
+
+    tpy::request_interrupt();
+    {
+        tpy::DeferSignals outer;
+        {
+            tpy::DeferSignals inner;
+            check(!delivered(), "nested scopes defer");
+        }
+        check(!delivered() && interrupt_pending(), "the outer scope still defers");
+    }
+    check(delivered(), "closing both scopes delivers");
+
+    // asyncio.run inside a scope must not take ownership: its consume would
+    // raise out of the noexcept body the scope guards.
+    tpy::request_interrupt();
+    {
+        tpy::DeferSignals defer;
+        int fd = tpy_interrupt_async_begin();
+        check(fd == -1, "asyncio.run inside a scope declines");
+        check(interrupt_pending(), "a declined asyncio.run leaves the interrupt pending");
+        if (fd >= 0) {
+            tpy_interrupt_async_end();  // hand delivery back so later checks still run
+        }
+    }
+    check(delivered(), "the interrupt survives a declined asyncio.run");
+
+    // A wait inside a scope runs its full length and returns normally.
+    tpy::request_interrupt();
+    {
+        tpy::DeferSignals defer;
+        auto start = std::chrono::steady_clock::now();
+        bool raised = false;
+        try {
+            tpy::time_sleep(0.02);
+        } catch (const tpy::KeyboardInterrupt&) {
+            raised = true;
+        }
+        check(!raised && std::chrono::steady_clock::now() - start
+                             >= std::chrono::milliseconds(20),
+              "a sleep inside a scope runs to completion");
+    }
+    check(delivered(), "the interrupt held across a sleep is delivered after it");
 
     // A later call asking for the handler installs it over the host's.
     host_handler_ran = 0;

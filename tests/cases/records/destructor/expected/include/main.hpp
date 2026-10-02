@@ -58,6 +58,7 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 //     print("destroying", self.name)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "destroying" << " " << this->name << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();

@@ -63,6 +63,7 @@ struct __gen_gen_with_outer_return_in_finally : public ::tpy::next_iter_mixin<__
 
     __gen_gen_with_outer_return_in_finally(__gen_gen_with_outer_return_in_finally&&) = default;
     ~__gen_gen_with_outer_return_in_finally() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {
@@ -109,6 +110,7 @@ struct __gen_gen_nested_with_return_in_finally : public ::tpy::next_iter_mixin<_
 
     __gen_gen_nested_with_return_in_finally(__gen_gen_nested_with_return_in_finally&&) = default;
     ~__gen_gen_nested_with_return_in_finally() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {

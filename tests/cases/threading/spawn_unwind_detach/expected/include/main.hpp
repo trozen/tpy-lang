@@ -145,6 +145,7 @@ inline Cleanup& Cleanup::operator=(Cleanup&& other) noexcept {
 //     self.n = 1
 inline Cleanup::~Cleanup() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     ::tpystd::tpy::thread::JoinHandle<int32_t> h = ::tpystd::tpy::thread::spawn<int32_t, Slow>(Slow());
     this->n = 1;
 }

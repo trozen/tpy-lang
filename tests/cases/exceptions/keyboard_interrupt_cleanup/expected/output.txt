@@ -1,0 +1,54 @@
+del_handler: line printed
+del_handler: after the drop
+del_handler: caught outside
+del_print: del
+del_print: after the drop
+del_print: caught
+del_unwinding: del
+del_unwinding: ValueError caught
+del_unwinding: caught
+del_helper: helper line
+del_helper: after the drop
+del_helper: caught
+del_lambda: lambda line
+del_lambda: after the drop
+del_lambda: caught
+del_sleep: slept the full time True
+del_sleep: after the drop
+del_sleep: caught
+del_inert: fd -1
+hash_print: dict built 1
+hash_print: caught
+hash_inert: size 2
+move_print: relocating 3
+move_print: moved 3
+move_print: caught
+gen_abandoned: finally
+gen_abandoned: after the loop
+gen_abandoned: caught
+nested: finally
+nested: del done
+nested: after the drop
+nested: caught
+gen_inert: total 5
+del_asyncio: coroutine line
+del_asyncio: after the drop
+del_asyncio: caught
+del_write: written
+del_write: after the drop
+del_write: caught
+del_property: getter line
+del_property: after the drop
+del_property: caught
+del_iter: next 2
+del_iter: next 1
+del_iter: after the drop
+del_iter: caught
+coro_abandoned: finally
+coro_abandoned: after the drop
+coro_abandoned: caught
+gen_with: exit, exceptional True
+gen_with: after the loop
+gen_with: caught
+del_inert_mix: total 0
+module: del

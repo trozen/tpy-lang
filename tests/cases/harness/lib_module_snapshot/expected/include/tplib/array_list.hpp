@@ -44,6 +44,7 @@ struct ArrayList {
     ArrayList(ArrayList&& other) noexcept
         : _storage(),
           _size() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         this->_storage.relocate_from(other._storage, other._size);
         this->_size = other._size;
         other.__tpy_owned_ = false;
@@ -60,6 +61,7 @@ struct ArrayList {
     //     self._storage.drop_n(uint32(0), self._size)
     ~ArrayList() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         this->_storage.drop_n(0, this->_size);
     }
 

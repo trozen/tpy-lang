@@ -112,6 +112,7 @@ from ..liveness import (analyze_last_uses, closure_pinned_names,
                         collect_finally_return_candidates)
 from .alias_rebind import decide_rebind_storage, global_write_facts
 from .frame_close import decide_frame_close, stamp_close_materials
+from .may_interrupt import stamp_may_interrupt
 from .loop_frames import resolve_loop_frame_calls
 from ..value_category import is_rvalue_source, wants_move
 from .mutation_propagation import propagate_mutation_facts, infer_method_const
@@ -179,6 +180,7 @@ def _find_value_capture_lambdas(stmt: TpyStmt) -> list[TpyLambda]:
             if e.captures_by_value:
                 found.append(e)
             return  # separate scope
+        # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
         for child in e.children():
             visit(child)
 
@@ -1831,6 +1833,7 @@ class SemanticAnalyzer:
                 and func_info.direct_mutated_params is None
                 and func_info.originating_module == self.ctx.module_name):
             self._stamp_frame_materials(func, func_info)
+            stamp_may_interrupt(self.ctx, func, func_info)
             param_list = [pname for pname, _ in func.params]
             direct = frozenset(
                 i for i, pname in enumerate(param_list)
@@ -3359,6 +3362,7 @@ class SemanticAnalyzer:
                         and method_fi.direct_mutated_params is None
                         and method_fi.originating_module == self.ctx.module_name):
                     self._stamp_frame_materials(method, method_fi)
+                    stamp_may_interrupt(self.ctx, method, method_fi)
                     param_list = [pname for pname, _ in method.params]
                     direct = frozenset(
                         i for i, pname in enumerate(param_list)

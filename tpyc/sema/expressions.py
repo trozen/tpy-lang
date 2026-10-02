@@ -282,6 +282,7 @@ def _expr_has_error_return_call(expr: TpyExpr) -> bool:
     # dyn_getattr_call is a call outside children() but needs no traversal
     # ONLY because registration bans @error_return on dyn-attr dunders;
     # revisit here if that ban is ever relaxed.
+    # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
     for child in (expr.children() if hasattr(expr, "children") else ()):
         if _expr_has_error_return_call(child):
             return True

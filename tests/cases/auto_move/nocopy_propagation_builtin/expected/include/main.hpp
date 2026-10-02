@@ -66,6 +66,7 @@ inline Storage& Storage::operator=(Storage&& other) noexcept {
 //     self.buf.drop0()
 inline Storage::~Storage() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     this->buf.drop0();
 }
 

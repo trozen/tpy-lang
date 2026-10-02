@@ -96,6 +96,7 @@ struct SimpleList {
     //         self._storage.drop(uint32(i))
     ~SimpleList() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         int32_t __stop_0 = this->_size;
         for (int32_t i = 0; i < __stop_0; ++i) {
             this->_storage.drop(static_cast<uint32_t>(i));

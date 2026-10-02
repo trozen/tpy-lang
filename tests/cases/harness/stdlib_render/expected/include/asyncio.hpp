@@ -1038,6 +1038,7 @@ struct Future {
     //         self._result.reset()
     ~Future() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         if (this->_result.has()) {
             this->_result.reset();
         }
@@ -2869,6 +2870,7 @@ inline _SignalScope& _SignalScope::operator=(_SignalScope&& other) noexcept {
 //         posix_signal.async_end()
 inline _SignalScope::~_SignalScope() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     if (this->_armed) {
         ::tpystd::asyncio::_reactor_unregister_fd(this->_fd);
         ::tpy_interrupt_async_end();

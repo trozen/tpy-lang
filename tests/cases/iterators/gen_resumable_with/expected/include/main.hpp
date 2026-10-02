@@ -65,6 +65,7 @@ struct __gen_gen_with_yield : public ::tpy::next_iter_mixin<__gen_gen_with_yield
 
     __gen_gen_with_yield(__gen_gen_with_yield&&) = default;
     ~__gen_gen_with_yield() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {

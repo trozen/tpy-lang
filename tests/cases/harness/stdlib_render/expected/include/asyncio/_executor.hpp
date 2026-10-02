@@ -167,6 +167,7 @@ struct TaskState {
     //         self.result.reset()
     ~TaskState() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         if (this->result.has()) {
             this->result.reset();
         }
@@ -727,6 +728,7 @@ inline EpollReactor& EpollReactor::operator=(EpollReactor&& other) noexcept {
 //     self.close()
 inline EpollReactor::~EpollReactor() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     this->close();
 }
 
@@ -983,6 +985,7 @@ inline _ExecutorScope& _ExecutorScope::operator=(_ExecutorScope&& other) noexcep
 //     _clear_current_executor()
 inline _ExecutorScope::~_ExecutorScope() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     ::tpystd::asyncio::_executor::_clear_current_executor();
 }
 // def task_from_coro[T](coro: Own[Cancellable[T]]) -> Own[Task[T]]:

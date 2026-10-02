@@ -44,6 +44,7 @@ struct __coro_background {
 
     __coro_background(__coro_background&&) = default;
     ~__coro_background() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

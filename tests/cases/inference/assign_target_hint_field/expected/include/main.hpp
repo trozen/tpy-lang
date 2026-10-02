@@ -102,6 +102,7 @@ struct WithHeapStorage {
     //     self._storage.drop0()
     ~WithHeapStorage() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         this->_storage.drop0();
     }
 

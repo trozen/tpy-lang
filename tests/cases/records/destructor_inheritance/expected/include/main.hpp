@@ -73,6 +73,7 @@ inline Base& Base::operator=(Base&& other) noexcept {
 //     print("Base destroyed")
 inline Base::~Base() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "Base destroyed" << "\n" << ::tpy::check_signals;
 }
 
@@ -99,6 +100,7 @@ inline Child& Child::operator=(Child&& other) noexcept {
 //     print("Child destroyed:", self.label)
 inline Child::~Child() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "Child destroyed:" << " " << this->label << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
