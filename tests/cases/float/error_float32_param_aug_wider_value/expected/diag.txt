@@ -1,0 +1,1 @@
+main.py:8: error: 'x' is declared float32 and keeps its declared type, but 'x *= wide' produces float; convert explicitly: x = float32(x * wide)

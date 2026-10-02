@@ -135,10 +135,13 @@ __coro_co co() {
 //     # builtins: list concatenation binds the operator's T from float literals
 //     print("builtins:", [1.5] + [2.5])  # tpyc: ok
 //
-//     # float32_dest: a float32 destination narrows T / converts the result
+//     # float32_dest: a float32 destination narrows the T a list literal binds;
+//     # a bare literal argument binds T to float, so the result must be spelled
+//     # float32 (as `a: int8 = ident(3)` must spell int8;
+//     # BUGS.md#generic-literal-binds-default-not-destination)
 //     f: float32 = first_of([1.5, 2.5])  # tpyc: ok
 //     print("float32_dest:", f)
-//     h: float32 = ident(0.25)  # tpyc: ok
+//     h: float32 = ident(float32(0.25))  # tpyc: ok
 //     print("float32_dest:", h)
 void main() {
     std::vector<double> __tmp_1 = {1.5, 2.5};
@@ -235,7 +238,7 @@ void main() {
     std::vector<float> __tmp_12 = {1.5, 2.5};
     float f = ::tpyapp::main::first_of<float>(__tmp_12);
     std::cout << "float32_dest:" << " " << ::tpy::print_float(static_cast<double>(f)) << "\n" << ::tpy::check_signals;
-    float h = static_cast<float>(::tpyapp::main::ident<double>(0.25));
+    float h = ::tpyapp::main::ident<float>(0.25f);
     std::cout << "float32_dest:" << " " << ::tpy::print_float(static_cast<double>(h)) << "\n" << ::tpy::check_signals;
 }
 
