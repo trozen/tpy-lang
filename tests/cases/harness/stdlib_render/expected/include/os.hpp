@@ -30,6 +30,7 @@ namespace tpy::stdlib::os { extern int64_t kc_f_ok; }
 namespace tpy::stdlib::os { extern int64_t kc_r_ok; }
 namespace tpy::stdlib::os { extern int64_t kc_w_ok; }
 namespace tpy::stdlib::os { extern int64_t kc_x_ok; }
+namespace tpy::stdlib::os { extern int64_t kc_wnohang; }
 
 namespace tpystd::os {
 
@@ -146,6 +147,10 @@ void truncate(std::string_view path, int64_t length);
 void ftruncate(int64_t fd, int64_t length);
 // def fsync(fd: int64) -> None:
 void fsync(int64_t fd);
+// def kill(pid: int64, sig: int64) -> None:
+void kill(int64_t pid, int64_t sig);
+// def waitpid(pid: int64, options: int64) -> tuple[int64, int64]:
+std::tuple<int64_t, int64_t> waitpid(int64_t pid, int64_t options);
 // def get_terminal_size(fd: int64 = 1) -> Own[terminal_size]:
 terminal_size get_terminal_size(int64_t fd = 1);
 // def fspath(path: str) -> str:

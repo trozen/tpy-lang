@@ -84,7 +84,7 @@ std::string user_home(std::string_view name);
 
 // Low-level file descriptor I/O (raw POSIX; each raises raise_errno on -1).
 // read returns up to n bytes (short reads possible, like CPython); write
-// returns the count written.
+// returns the count written. read/write retry EINTR (PEP 475).
 int64_t open_fd(std::string_view path, int64_t flags, int64_t mode);
 void close_fd(int64_t fd);
 ::tpy::Bytes read_fd(int64_t fd, int64_t n);
@@ -161,5 +161,26 @@ void fsync_fd(int64_t fd);
 // os.get_terminal_size: (columns, lines) via TIOCGWINSZ; raise_errno if the fd
 // is not a terminal (matching CPython, which raises OSError).
 std::tuple<int64_t, int64_t> terminal_size_raw(int64_t fd);
+
+// Process control. kill/waitpid range-check their arguments like CPython's
+// pid_t / int converters (OverflowError); waitpid retries EINTR (PEP 475).
+// waitpid returns (pid, status); pid 0 under WNOHANG means "still running".
+void kill_pid(int64_t pid, int64_t sig);
+std::tuple<int64_t, int64_t> waitpid(int64_t pid, int64_t options);
+int64_t waitstatus_to_exitcode(int64_t status);
+extern int64_t kc_wnohang;
+
+// subprocess.Popen backing: posix_spawnp `args` with the current environment.
+// Each *_spec is subprocess's PIPE (-1) / STDOUT (-2, stderr only) /
+// DEVNULL (-3) or a caller fd >= 0; bit i of inherit_mask set means stream i
+// is inherited (None) and its spec is ignored. Returns (pid, stdin write end,
+// stdout read end, stderr read end), -1 for each stream without a pipe; the
+// returned ends are close-on-exec. The child gets exactly the requested fds
+// 0-2 and no other parent fd. On failure every fd this call opened is closed
+// (caller fds never are) and the matching OSError is raised -- for a failed
+// exec with filename args[0], as CPython does.
+std::tuple<int64_t, int64_t, int64_t, int64_t>
+spawn_raw(const std::vector<std::string>& args, int64_t stdin_spec,
+          int64_t stdout_spec, int64_t stderr_spec, int64_t inherit_mask);
 
 } // namespace tpy::stdlib::os

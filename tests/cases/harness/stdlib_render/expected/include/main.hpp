@@ -51,6 +51,7 @@
 #include "tpystd/signal.hpp"
 #include "tpystd/socket.hpp"
 #include "tpystd/ssl.hpp"
+#include "tpystd/subprocess.hpp"
 #include "tpystd/sys.hpp"
 #include "tpystd/termios.hpp"
 #include <tpy/system.hpp>

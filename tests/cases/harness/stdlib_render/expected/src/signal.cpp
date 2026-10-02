@@ -16,11 +16,13 @@ void raise_signal(int32_t sig) {
 }
 
 // # tpy: cpp_namespace("tpystd::signal")
-// """Minimal `signal` module -- `raise_signal` plus the SIGINT / SIGTERM numbers.
+// """Minimal `signal` module -- `raise_signal` plus the SIGINT / SIGTERM / SIGKILL
+// numbers.
 //
 // A thin pure-TPy wrapper over the `posix_signal` binding. Under CPython
 // `import signal` resolves to the real stdlib module (same `raise_signal` /
-// `SIGINT` / `SIGTERM` surface), so the same source compiles and runs both ways.
+// `SIGINT` / `SIGTERM` / `SIGKILL` surface), so the same source compiles and
+// runs both ways.
 //
 // SIGINT behaves as in CPython: a standalone program turns it into
 // `KeyboardInterrupt` on the main thread (at the next interruptible operation,

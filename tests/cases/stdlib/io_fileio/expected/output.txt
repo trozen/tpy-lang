@@ -12,3 +12,49 @@ negfd-ValueError
 b'abc'
 closefd-ok
 read-all 20480 True
+mode: rbb True False
+mode: bw False True
+mode: r+ True True
+mode: x False True
+mode: + Must have exactly one of create/read/write/append mode and at most one plus
+mode: rr Must have exactly one of create/read/write/append mode and at most one plus
+mode: r++ Must have exactly one of create/read/write/append mode and at most one plus
+mode: wx Must have exactly one of create/read/write/append mode and at most one plus
+mode:  Must have exactly one of create/read/write/append mode and at most one plus
+mode: b Must have exactly one of create/read/write/append mode and at most one plus
+mode: rq invalid mode: rq
+mode: qrr invalid mode: qrr
+mode: rrq Must have exactly one of create/read/write/append mode and at most one plus
+mode: negative file descriptor
+mode: a True 1 b'p'
+append: 5
+append: b'helloXY'
+access: True False 2
+access: File not open for reading
+access: File not open for reading
+access: True False b'zz'
+access: File not open for writing
+closed: FileIO readable I/O operation on closed file
+closed: FileIO writable I/O operation on closed file
+closed: BufferedReader readable I/O operation on closed file
+closed: BufferedWriter writable I/O operation on closed file
+closed: StringIO readable I/O operation on closed file
+closed: StringIO writable I/O operation on closed file
+closed: StringIO seekable I/O operation on closed file
+closed: BytesIO readable I/O operation on closed file.
+closed: BytesIO writable I/O operation on closed file.
+closed: BytesIO seekable I/O operation on closed file.
+failclose: 9
+failclose: True
+bufw: 3 True True
+bufw: empty before flush
+bufw: b'abc'
+bufw: 9000 9000
+bufw: True
+bufw: write to closed file
+bufw: flush of closed file
+smallbuf: b'abcde'
+smallbuf: b'fghij'
+smallbuf: 0 buffer size must be strictly positive
+smallbuf: -1 buffer size must be strictly positive
+final: b'tail' b''

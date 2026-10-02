@@ -48,7 +48,7 @@ What it would take for tpyc to compile itself.
 |------|--------------------------------|--------|--------|
 | 8.1  | Write own parser               | M      | TODO   |
 | 8.2  | `pathlib.Path` or equivalent   | S      | TODO   |
-| 8.5  | `subprocess` (spawn processes) | S      | TODO   |
+| 8.5  | `subprocess` (spawn processes) | S      | Partial |
 | 8.6  | `tempfile`/`shutil`/`os` wraps | S      | TODO   |
 
 > **Effort key:** XS = hours, S = a day, M = a few days, L = a week+
@@ -621,10 +621,14 @@ string builder class. No need for full `StringIO`.
 Used to invoke the C++ compiler (`g++`/`clang++`). Essential for the compile-and-run
 workflow.
 
-Needs a way to spawn processes. Maps to `fork`/`exec` or `std::system()` or a
-minimal process API.
+**Status:** `subprocess.Popen` has landed (an argument list, PIPE / DEVNULL /
+STDOUT / fd streams, `wait` / `poll` / `kill`, the context manager; pure TPy in
+`lib/tpy/subprocess.py` over `posix_spawnp`). Still missing for the compiler's
+uses: `communicate()` and `run` / `check_call` / `check_output` (TODO.md
+"subprocess -- the surface past `Popen`").
 
-**Effort:** Small — can start with `std::system()` and improve later.
+**Effort:** Small -- `run` and friends are pure TPy over `Popen` once
+`communicate()` exists.
 
 ### 8.6 `tempfile`, `shutil`, `os` — Compiler feature (minimal)
 

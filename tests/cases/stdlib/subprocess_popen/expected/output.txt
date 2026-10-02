@@ -1,0 +1,45 @@
+cat: 12
+cat: b'hello\n'
+cat: b'world\n'
+cat: 0
+exit: 3 3
+signal: None
+signal: -9
+signal: -15
+cache: 0
+cache: 0 0
+cache: 0
+with: -13 True True
+missing: 2 tpy-no-such-program-xyz
+missing: [Errno 2] No such file or directory: 'tpy-no-such-program-xyz'
+merge: b'out\nerr\n' True
+merge: 0
+devnull: b'err2\n' True
+devnull: 0
+devnull: b'' 0
+epipe: 1
+epipe: flush 32
+epipe: close 32
+epipe: True
+leak: b'' 0
+leak: None
+leak: -9
+swap: b'swapped\n' 0
+badarg: 9 [Errno 9] Bad file descriptor
+badarg: embedded null byte
+badarg: IndexError list index out of range
+osproc: (0, 0)
+osproc: True -9
+osproc: 0
+osproc: ChildProcessError 10
+osproc: ProcessLookupError [Errno 3] No such process
+osproc: 3
+osproc: invalid wait status: 5119
+osproc: process stopped by delivery of signal 10
+osproc: kill OverflowError
+osproc: waitpid OverflowError
+reaped: True 0
+reaped: 0 0
+exitflush: b'ready\n'
+exitflush: BrokenPipeError 32
+exitflush: 0

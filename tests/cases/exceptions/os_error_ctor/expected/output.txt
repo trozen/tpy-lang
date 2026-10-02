@@ -15,3 +15,6 @@ post-hoc stays plain: plain 2
 subclass kept: [Errno 1] Operation not permitted
 filename mapped: [Errno 2] No such file or directory: 'cfg.txt' cfg.txt
 zero-arg plain: True
+mapped InterruptedError: [Errno 4] Interrupted system call
+mapped ChildProcessError: [Errno 10] No child processes
+mapped ProcessLookupError: [Errno 3] No such process

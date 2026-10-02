@@ -1,0 +1,1 @@
+main.py:7: error: Type mismatch in argument 'args': expected list[str], got str

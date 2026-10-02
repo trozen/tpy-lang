@@ -599,7 +599,7 @@ inline ::tpystd::io::BufferedReader socket::makefile(std::string_view mode, int3
         throw ::tpy::ValueError("makefile: unbuffered (buffering=0) not supported");
     }
     int32_t size = (((buffering < 0)) ? (::tpystd::io::DEFAULT_BUFFER_SIZE) : (buffering));
-    return ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpystd::os::dup(::tpy::int_cast_check<int64_t>(this->fd)), true, (this->_timeout > 0.0))), size);
+    return ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpystd::os::dup(::tpy::int_cast_check<int64_t>(this->fd)), "r", true, (this->_timeout > 0.0))), size);
 }
 
 // def __enter__(self) -> socket:

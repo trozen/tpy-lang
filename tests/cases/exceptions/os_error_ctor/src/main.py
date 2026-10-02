@@ -90,6 +90,26 @@ def main() -> None:
         raise OSError()
     except OSError as exc:
         print("zero-arg plain:", str(exc) == "")
+    # The process-control errnos map to their subclasses (same numbers on
+    # Linux and macOS).
+    try:
+        raise OSError(4, "Interrupted system call")
+    except InterruptedError as exc:
+        print("mapped InterruptedError:", exc)
+    except OSError:
+        print("WRONG: EINTR stayed plain")
+    try:
+        raise OSError(10, "No child processes")
+    except ChildProcessError as exc:
+        print("mapped ChildProcessError:", exc)
+    except OSError:
+        print("WRONG: ECHILD stayed plain")
+    try:
+        raise OSError(3, "No such process")
+    except ProcessLookupError as exc:
+        print("mapped ProcessLookupError:", exc)
+    except OSError:
+        print("WRONG: ESRCH stayed plain")
 
 
 main()

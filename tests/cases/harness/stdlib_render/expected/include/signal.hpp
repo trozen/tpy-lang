@@ -14,6 +14,7 @@
 
 extern "C" int32_t tpy_const_sigint;
 extern "C" int32_t tpy_const_sigterm;
+extern "C" int32_t tpy_const_sigkill;
 
 namespace tpystd::signal {
 

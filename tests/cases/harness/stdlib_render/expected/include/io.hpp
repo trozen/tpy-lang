@@ -10,6 +10,7 @@
 #include "tpystd/tpy/sync.hpp"
 #include "tpystd/tpy/thread.hpp"
 #include "tpystd/tpy/version.hpp"
+#include "tpystd/errno_mod.hpp"
 #include "tpystd/os.hpp"
 #include "tpystd/tplib.hpp"
 #include "tpystd/tplib/box.hpp"
@@ -37,9 +38,28 @@ struct RawBinaryIO {
     virtual ~RawBinaryIO() = default;
 };
 
+struct RawBinaryWriter;
+// @dynamic
+// class RawBinaryWriter(Protocol):
+template<typename T>
+concept __RawBinaryWriter_Concept__ = requires(T& t) {
+    { t.write(std::declval<::tpy::Bytes>()) } -> std::convertible_to<int32_t>;
+    { t.close() } -> std::convertible_to<void>;
+    { t.fileno() } -> std::convertible_to<int64_t>;
+};
+
+struct RawBinaryWriter {
+    virtual int32_t write(::tpy::BytesView data) = 0;
+    virtual void close() = 0;
+    virtual int64_t fileno() = 0;
+    virtual ~RawBinaryWriter() = default;
+};
+
 } // namespace tpystd::io
 
 template<> struct tpy::is_dyn_protocol_base<tpystd::io::RawBinaryIO> : std::true_type {};
+
+template<> struct tpy::is_dyn_protocol_base<tpystd::io::RawBinaryWriter> : std::true_type {};
 
 namespace tpystd::io {
 
@@ -47,6 +67,7 @@ struct StringIO;
 struct BytesIO;
 struct FileIO;
 struct BufferedReader;
+struct BufferedWriter;
 
 extern int32_t _SEEK_SET;
 extern int32_t _SEEK_CUR;
@@ -54,10 +75,16 @@ extern int32_t _SEEK_END;
 inline constexpr std::string_view __name__ = "io";
 // DEFAULT_BUFFER_SIZE: Final[int32] = 8192
 inline constexpr int32_t DEFAULT_BUFFER_SIZE = 8192;
+// _BAD_FILEIO_MODE: Final[str] = ("Must have exactly one of create/read/write/"
+//                                 "append mode and at most one plus")
+inline constexpr std::string_view _BAD_FILEIO_MODE = "Must have exactly one of create/read/write/append mode and at most one plus";
 
 struct __gen_StringIO___iter__;
 struct __gen_BytesIO___iter__;
 struct __gen_BufferedReader___iter__;
+
+// def _fileio_mode(mode: str) -> tuple[bool, bool, bool]:
+std::tuple<bool, bool, bool> _fileio_mode(std::string_view mode);
 
 // @nocopy
 // class StringIO(Writable, Readable, Seekable, Closable):
@@ -236,13 +263,17 @@ struct FileIO {
     bool _closefd;
     // _closed: bool
     bool _closed;
+    // _readable: bool
+    bool _readable;
+    // _writable: bool
+    bool _writable;
     // _timeout_mode: bool
     bool _timeout_mode;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, fd: int64, closefd: bool = True,
+    // def __init__(self, fd: int64, mode: str = "r", closefd: bool = True,
     //              timeout_mode: bool = False) -> None:
-    explicit FileIO(int64_t fd, bool closefd = true, bool timeout_mode = false);
+    explicit FileIO(int64_t fd, std::string_view mode = "r", bool closefd = true, bool timeout_mode = false);
     // non-copyable (@nocopy)
     FileIO(const FileIO&) = delete;
     FileIO& operator=(const FileIO&) = delete;
@@ -255,6 +286,12 @@ struct FileIO {
     // def read(self, size: int32 = -1) -> bytes:
     ::tpy::Bytes read(int32_t size = -1) const;
 
+    // def write(self, data: bytes) -> int32:
+    int32_t write(::tpy::BytesView data) const;
+
+    // def flush(self) -> None:
+    void flush() const;
+
     // def _readall(self) -> bytes:
     ::tpy::Bytes _readall() const;
 
@@ -263,6 +300,9 @@ struct FileIO {
 
     // def readable(self) -> bool:
     bool readable() const;
+
+    // def writable(self) -> bool:
+    bool writable() const;
 
     // def fileno(self) -> int64:
     int64_t fileno() const;
@@ -364,6 +404,68 @@ inline std::ostream& operator<<(std::ostream& os, const BufferedReader& obj) {
     return os;
 }
 
+// @nocopy
+// class BufferedWriter(BinaryWritable, Closable):
+struct BufferedWriter {
+    // _raw: Box[RawBinaryWriter]
+    ::tpystd::tplib::box::Box<RawBinaryWriter> _raw;
+    // _parts: list[bytes]
+    std::vector<::tpy::Bytes> _parts;
+    // _pending: int32
+    int32_t _pending;
+    // _buffer_size: int32
+    int32_t _buffer_size;
+    // _closed: bool
+    bool _closed;
+    bool __tpy_owned_ = true;
+
+    // def __init__(self, raw: Own[RawBinaryWriter],
+    //              buffer_size: int32 = DEFAULT_BUFFER_SIZE) -> None:
+    explicit BufferedWriter(std::unique_ptr<RawBinaryWriter> raw, int32_t buffer_size = DEFAULT_BUFFER_SIZE);
+    // non-copyable (@nocopy)
+    BufferedWriter(const BufferedWriter&) = delete;
+    BufferedWriter& operator=(const BufferedWriter&) = delete;
+    BufferedWriter(BufferedWriter&& other) noexcept;
+    BufferedWriter& operator=(BufferedWriter&& other) noexcept;
+
+    // def __del__(self) -> None:
+    ~BufferedWriter();
+
+    // def _flush_buffer(self) -> None:
+    void _flush_buffer();
+
+    // def write(self, data: bytes) -> int32:
+    int32_t write(::tpy::BytesView data);
+
+    // def flush(self) -> None:
+    void flush();
+
+    // def writable(self) -> bool:
+    bool writable() const;
+
+    // def fileno(self) -> int64:
+    int64_t fileno();
+
+    // def close(self) -> None:
+    void close();
+
+    // @property
+    // def closed(self) -> bool:
+    bool closed() const;
+
+    // def __enter__(self) -> "BufferedWriter":
+    BufferedWriter& __enter__();
+
+    // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb);
+    static constexpr std::string_view __tpy_class_name__ = "io.BufferedWriter";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const BufferedWriter& obj) {
+    ::tpy::print_object_default(os, "BufferedWriter", obj);
+    return os;
+}
+
 } // namespace tpystd::io
 
 template<tpystd::io::__RawBinaryIO_Concept__ T>
@@ -381,6 +483,25 @@ struct tpy::RefAdapter<tpystd::io::RawBinaryIO, T> : tpystd::io::RawBinaryIO {
     RefAdapter(T& ref) : inner(ref) {}
     ::tpy::Bytes read(int32_t size) override { return inner.read(size); }
     void close() override { inner.close(); }
+};
+
+template<tpystd::io::__RawBinaryWriter_Concept__ T>
+struct tpy::Adapter<tpystd::io::RawBinaryWriter, T> : tpystd::io::RawBinaryWriter {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    int32_t write(::tpy::BytesView data) override { return inner.write(data); }
+    void close() override { inner.close(); }
+    int64_t fileno() override { return inner.fileno(); }
+};
+
+template<tpystd::io::__RawBinaryWriter_Concept__ T>
+struct tpy::RefAdapter<tpystd::io::RawBinaryWriter, T> : tpystd::io::RawBinaryWriter {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    int32_t write(::tpy::BytesView data) override { return inner.write(data); }
+    void close() override { inner.close(); }
+    int64_t fileno() override { return inner.fileno(); }
 };
 
 namespace tpystd::io {
@@ -564,21 +685,27 @@ inline bool StringIO::closed() const {
 }
 
 // def readable(self) -> bool:
-//     return not self._closed
+//     self._check_open()
+//     return True
 inline bool StringIO::readable() const {
-    return (!(this->_closed));
+    this->_check_open();
+    return true;
 }
 
 // def writable(self) -> bool:
-//     return not self._closed
+//     self._check_open()
+//     return True
 inline bool StringIO::writable() const {
-    return (!(this->_closed));
+    this->_check_open();
+    return true;
 }
 
 // def seekable(self) -> bool:
-//     return not self._closed
+//     self._check_open()
+//     return True
 inline bool StringIO::seekable() const {
-    return (!(this->_closed));
+    this->_check_open();
+    return true;
 }
 
 // def __enter__(self) -> "StringIO":
@@ -712,21 +839,27 @@ inline bool BytesIO::closed() const {
 }
 
 // def readable(self) -> bool:
-//     return not self._closed
+//     self._check_open()
+//     return True
 inline bool BytesIO::readable() const {
-    return (!(this->_closed));
+    this->_check_open();
+    return true;
 }
 
 // def writable(self) -> bool:
-//     return not self._closed
+//     self._check_open()
+//     return True
 inline bool BytesIO::writable() const {
-    return (!(this->_closed));
+    this->_check_open();
+    return true;
 }
 
 // def seekable(self) -> bool:
-//     return not self._closed
+//     self._check_open()
+//     return True
 inline bool BytesIO::seekable() const {
-    return (!(this->_closed));
+    this->_check_open();
+    return true;
 }
 
 // def __enter__(self) -> "BytesIO":
@@ -763,28 +896,12 @@ inline void BytesIO::_check_open() const {
     }
 }
 
-// def __init__(self, fd: int64, closefd: bool = True,
-//              timeout_mode: bool = False) -> None:
-//     if fd < 0:
-//         raise ValueError("negative file descriptor")
-//     self._fd = fd
-//     self._closefd = closefd
-//     self._closed = False
-//     self._timeout_mode = timeout_mode
-inline FileIO::FileIO(int64_t fd, bool closefd, bool timeout_mode) {
-    if ((fd < 0)) {
-        throw ::tpy::ValueError("negative file descriptor");
-    }
-    this->_fd = fd;
-    this->_closefd = closefd;
-    this->_closed = false;
-    this->_timeout_mode = timeout_mode;
-}
-
 inline FileIO::FileIO(FileIO&& other) noexcept
     : _fd(std::move(other._fd)),
       _closefd(std::move(other._closefd)),
       _closed(std::move(other._closed)),
+      _readable(std::move(other._readable)),
+      _writable(std::move(other._writable)),
       _timeout_mode(std::move(other._timeout_mode)) {
     other.__tpy_owned_ = false;
 }
@@ -797,36 +914,45 @@ inline FileIO& FileIO::operator=(FileIO&& other) noexcept {
 }
 
 // def __del__(self) -> None:
-//     if self._closefd and self._fd >= 0:
-//         os.close(self._fd)
-//         self._fd = -1
-//     # Keep _closed and the fd sentinel in agreement after teardown.
-//     self._closed = True
+//     # CPython's finalizer drops a close error; an exception escaping
+//     # __del__ would end the program.
+//     try:
+//         self.close()
+//     except OSError:
+//         pass
 inline FileIO::~FileIO() {
     if (!this->__tpy_owned_) return;
-    if ((this->_closefd && (this->_fd >= 0))) {
-        ::tpystd::os::close(this->_fd);
-        this->_fd = -1;
+    try {
+        {
+            try {
+                this->close();
+            } catch (const ::tpy::OSError&) {
+            }
+        }
+    } catch (const std::exception& __del_exc) {
+        ::tpy::report_del_exception(__del_exc);
+    } catch (...) {
+        ::tpy::report_del_exception();
     }
-    this->_closed = true;
 }
 
-// def read(self, size: int32 = -1) -> bytes:
+// def write(self, data: bytes) -> int32:
 //     self._check_open()
-//     if size < 0:
-//         return self._readall()
-//     if size == 0:
-//         return b""
-//     return self._os_read(int64(size))
-inline ::tpy::Bytes FileIO::read(int32_t size) const {
+//     if not self._writable:
+//         raise OSError("File not open for writing")
+//     return int32(os.write(self._fd, data))
+inline int32_t FileIO::write(::tpy::BytesView data) const {
     this->_check_open();
-    if ((size < 0)) {
-        return this->_readall();
+    if ((!(this->_writable))) {
+        ::tpy::OSError("File not open for writing").__raise__();
     }
-    if ((size == 0)) {
-        return ::tpy::Bytes{};
-    }
-    return this->_os_read(::tpy::int_cast_check<int64_t>(size));
+    return ::tpy::int_cast_check<int32_t>(::tpystd::os::write(this->_fd, data));
+}
+
+// def flush(self) -> None:
+//     self._check_open()
+inline void FileIO::flush() const {
+    this->_check_open();
 }
 
 // def _readall(self) -> bytes:
@@ -874,9 +1000,19 @@ inline ::tpy::Bytes FileIO::_os_read(int64_t n) const {
 }
 
 // def readable(self) -> bool:
-//     return not self._closed
+//     self._check_open()
+//     return self._readable
 inline bool FileIO::readable() const {
-    return (!(this->_closed));
+    this->_check_open();
+    return this->_readable;
+}
+
+// def writable(self) -> bool:
+//     self._check_open()
+//     return self._writable
+inline bool FileIO::writable() const {
+    this->_check_open();
+    return this->_writable;
 }
 
 // def fileno(self) -> int64:
@@ -888,18 +1024,24 @@ inline int64_t FileIO::fileno() const {
 }
 
 // def close(self) -> None:
-//     if not self._closed:
-//         self._closed = True
-//         if self._closefd and self._fd >= 0:
-//             os.close(self._fd)
-//         self._fd = -1
+//     if self._closed:
+//         return
+//     # The fd is given up before os.close, so a failing close leaves the
+//     # object closed and the finalizer cannot close the fd number again.
+//     fd = self._fd
+//     self._fd = -1
+//     self._closed = True
+//     if self._closefd and fd >= 0:
+//         os.close(fd)
 inline void FileIO::close() {
-    if ((!(this->_closed))) {
-        this->_closed = true;
-        if ((this->_closefd && (this->_fd >= 0))) {
-            ::tpystd::os::close(this->_fd);
-        }
-        this->_fd = -1;
+    if (this->_closed) {
+        return;
+    }
+    int64_t fd = this->_fd;
+    this->_fd = -1;
+    this->_closed = true;
+    if ((this->_closefd && (fd >= 0))) {
+        ::tpystd::os::close(fd);
     }
 }
 
@@ -984,9 +1126,15 @@ inline std::vector<::tpy::Bytes> BufferedReader::readlines() {
 }
 
 // def readable(self) -> bool:
-//     return not self._closed
+//     # CPython asks the raw stream, whose closed check has no period.
+//     if self._closed:
+//         raise ValueError("I/O operation on closed file")
+//     return True
 inline bool BufferedReader::readable() const {
-    return (!(this->_closed));
+    if (this->_closed) {
+        throw ::tpy::ValueError("I/O operation on closed file");
+    }
+    return true;
 }
 
 // def close(self) -> None:
@@ -1030,6 +1178,115 @@ inline void BufferedReader::_check_open() const {
     if (this->_closed) {
         throw ::tpy::ValueError("I/O operation on closed file.");
     }
+}
+
+// def __init__(self, raw: Own[RawBinaryWriter],
+//              buffer_size: int32 = DEFAULT_BUFFER_SIZE) -> None:
+//     # `_raw` is non-default-constructible, so it must be assigned before
+//     # any other statement (the buffer_size guard) runs.
+//     self._raw = Box(raw)
+//     self._parts = []
+//     self._pending = 0
+//     self._buffer_size = buffer_size
+//     self._closed = False
+//     if buffer_size <= 0:
+//         raise ValueError("buffer size must be strictly positive")
+inline BufferedWriter::BufferedWriter(std::unique_ptr<RawBinaryWriter> raw, int32_t buffer_size)
+    : _raw(::tpystd::tplib::box::Box<RawBinaryWriter>(std::move(raw))),
+      _parts(std::vector<::tpy::Bytes>{}),
+      _pending(0),
+      _buffer_size(buffer_size),
+      _closed(false) {
+    if ((buffer_size <= 0)) {
+        throw ::tpy::ValueError("buffer size must be strictly positive");
+    }
+}
+
+inline BufferedWriter::BufferedWriter(BufferedWriter&& other) noexcept
+    : _raw(std::move(other._raw)),
+      _parts(std::move(other._parts)),
+      _pending(std::move(other._pending)),
+      _buffer_size(std::move(other._buffer_size)),
+      _closed(std::move(other._closed)) {
+    other.__tpy_owned_ = false;
+}
+inline BufferedWriter& BufferedWriter::operator=(BufferedWriter&& other) noexcept {
+    if (this != &other) {
+        this->~BufferedWriter();
+        new (this) BufferedWriter(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     # CPython's finalizer closes (and so flushes) the writer and drops a
+//     # flush error; an exception escaping __del__ would end the program.
+//     try:
+//         self.close()
+//     except Exception:
+//         pass
+inline BufferedWriter::~BufferedWriter() {
+    if (!this->__tpy_owned_) return;
+    try {
+        {
+            try {
+                this->close();
+            } catch (const ::tpy::Exception&) {
+            }
+        }
+    } catch (const std::exception& __del_exc) {
+        ::tpy::report_del_exception(__del_exc);
+    } catch (...) {
+        ::tpy::report_del_exception();
+    }
+}
+
+// def flush(self) -> None:
+//     if self._closed:
+//         raise ValueError("flush of closed file")
+//     self._flush_buffer()
+inline void BufferedWriter::flush() {
+    if (this->_closed) {
+        throw ::tpy::ValueError("flush of closed file");
+    }
+    this->_flush_buffer();
+}
+
+// def writable(self) -> bool:
+//     # CPython asks the raw stream, whose closed check has no period.
+//     if self._closed:
+//         raise ValueError("I/O operation on closed file")
+//     return True
+inline bool BufferedWriter::writable() const {
+    if (this->_closed) {
+        throw ::tpy::ValueError("I/O operation on closed file");
+    }
+    return true;
+}
+
+// def fileno(self) -> int64:
+//     return self._raw.fileno()
+inline int64_t BufferedWriter::fileno() {
+    return this->_raw.__deref__().fileno();
+}
+
+// @property
+// def closed(self) -> bool:
+//     return self._closed
+inline bool BufferedWriter::closed() const {
+    return this->_closed;
+}
+
+// def __enter__(self) -> "BufferedWriter":
+//     return self
+inline BufferedWriter& BufferedWriter::__enter__() {
+    return (*this);
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     self.close()
+inline void BufferedWriter::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
+    this->close();
 }
 void __tpy_init();
 } // namespace tpystd::io
