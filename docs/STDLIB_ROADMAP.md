@@ -235,7 +235,7 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 | `list` | Done | `std::vector<T>` |
 | `dict` | Done | Insertion-ordered `tpy::ordered_map<K, V>`; items()/values()/setdefault alias (CPython semantics); two-arg get(k, default) copies reference values with a warning (BUGS.md tracks the borrow form) |
 | `set` | Done | Insertion-ordered `tpy::ordered_set<T>` |
-| `tuple` | Partial | `std::tuple<...>`. The `tuple(iterable)` conversion is missing (`tuple(xs)` -> "Unknown function or type: 'tuple'") |
+| `tuple` | Partial | `std::tuple<...>`. `tuple(iterable)` is refused with the reason: a tuple's length is part of its type (`tuple(xs)` -> "tuple(...) cannot build a tuple from a sequence ...") |
 | `range` | Done | `Range[T]` |
 | `slice`, `basic_slice` | Done | Three-arg and two-arg slices |
 | `frozenset` | Missing | Immutable set; would be `tpy::ordered_set<T>` with mutation-free surface |
@@ -249,7 +249,7 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 
 | Item | Status | Notes |
 |---|---|---|
-| `abs`, `min`, `max`, `sum` | Partial | `min`/`max` over ONE iterable (`min(xs)`) find no overload (BUGS.md#max-min-single-iterable); the two-or-more-argument form works |
+| `abs`, `min`, `max`, `sum` | Partial | `min`/`max` take one iterable (`max(xs)`, `min(xs, key=f)`; an empty one raises `ValueError`) or two / three operands. Over an iterable of class instances they are refused: the result would be a copy of the element (BUGS.md#min-max-key-result-copies). `default=` is missing. `sum(xs, start=n)` by keyword is refused (builtin functions take no keywords but `key=` / `reverse=`) |
 | `pow`, `divmod`, `round` | Done | |
 | `bin`, `hex`, `oct` | Done | |
 | `chr`, `ord` | Done | |
@@ -259,8 +259,8 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 
 | Item | Status | Notes |
 |---|---|---|
-| `iter`, `next` | Partial | `next(it, default)` is missing (no overload); `iter(<list literal>)` bound to a local dangles (BUGS.md#comp-iter-rvalue-source) |
-| `all`, `any`, `sorted` | Partial | `sorted(xs, reverse=True)` is missing ("does not support keyword argument 'reverse'"); a builtin function as `key=` (`key=len`) is TODO.md "Builtins as first-class function values" |
+| `iter`, `next` | Partial | `next(it)` and `next(it, default)` (value-type elements; the default has the element's type, so `next(it, None)` is missing). `iter(<list literal>)` bound to a local dangles (BUGS.md#comp-iter-rvalue-source); `next(iter(xs))` in one expression is refused (BUGS.md#sorted-of-iter-call) |
+| `all`, `any`, `sorted` | Partial | `sorted(xs)`, `key=`, `reverse=` (stable, in either keyword order); a builtin function as `key=` (`key=len`) is TODO.md "Builtins as first-class function values"; `key=` over an unannotated list of tuple literals finds no overload (BUGS.md#key-over-pending-tuple-list) |
 | `enumerate`, `filter`, `map`, `reversed`, `zip` | Done | |
 
 **Functions -- introspection / attribute access**
@@ -283,8 +283,8 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 
 | Item | Status | Notes |
 |---|---|---|
-| `print` | Partial | `print(*xs)` is missing (the star argument needs a variadic parameter) |
-| `open`, `open_text`, `open_binary` | Partial | `TextIO` / `BinaryIO` context managers. Iterating a file object (`for line in f` / `for line in open(p)`) is missing -- "Cannot iterate over type TextIO" (TODO.md "Iterating a file object"); `readlines()` works |
+| `print` | Done | `print(*xs)` spreads a list, `Array`, `Span` or `*args` pack; any other iterable is refused and has to be materialized by the caller (`print(*list(g))`); `Optional` elements are refused |
+| `open`, `open_text`, `open_binary` | Partial | `TextIO` / `BinaryIO` context managers. A text file bound to a name iterates its lines (`for line in f`, comprehensions, generator and `async` bodies, `list(f)` / `enumerate(f)` / `zip(f, g)`), each keeping its newline; `for line in open(p)` without a binding, a `TextIO` parameter as a loop source and iterating a `BinaryIO` are missing (TODO.md "Iterating a file object"); keywords (`open(p, mode="r")`) are refused (BUGS.md#builtin-open-keyword-args) |
 | `input` | Done | Both `input()` and `input(prompt)`; EOF raises `EOFError` |
 
 **Descriptors / class utilities**

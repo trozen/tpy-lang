@@ -113,6 +113,17 @@ def _check_type_compatible(self, arg_type: TpyType, param_type: TpyType) -> bool
     # ... other rules
 ```
 
+**Intersection protocols.** A non-generic protocol with no methods or fields of
+its own and no C++ concept is the intersection of its parents: a type conforms
+when it conforms to every parent, each decided by that parent's own rule. This
+is what lets one type-parameter bound ask for two things --
+`class ComparableValue(Comparable, ValueType, Protocol): ...` is "comparable
+and a value type" -- since a marker parent (`ValueType`) and a rule-based one
+(a tuple is `Comparable` when its elements are) are both honoured, where a
+structural walk over the inherited methods would skip them. A protocol that
+declares members of its own keeps the structural check over its own and its
+inherited members.
+
 ## 5. Codegen (C++ concepts or templates)
 
 ### Option A: C++20 Concepts

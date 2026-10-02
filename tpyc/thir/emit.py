@@ -1822,9 +1822,9 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRPrintChain):
         # The void-lambda body chain: the plain-print segments (default
         # sep/end literals), no sink/`;` -- the enclosing lambda adds those.
-        return "std::cout << " + " << ".join(
-            _print_parts([_emit_print_arg(a, state) for a in e.args],
-                         '" "', '"\\n"'))
+        return _print_chain("std::cout", e.args,
+                            [_emit_print_arg(a, state) for a in e.args],
+                            '" "', '"\\n"')
     if isinstance(e, THIROptionalPtrArg):
         if e.value is None:
             return "nullptr"
@@ -4636,6 +4636,13 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
 
 def _emit_print_arg(a: THIRPrintArg, state: _EmitState) -> str:
     inner = _emit_expr(a.expr, state)
+    if a.print_form is PrintForm.EACH:
+        elem = a.star_elem
+        assert elem is not None, "a star print segment carries its element wrap"
+        if elem.print_form is PrintForm.RAW and not elem.deref:
+            return f"::tpy::PrintEach({inner})"
+        return (f"::tpy::PrintEach({inner}, [](std::ostream& __os, "
+                f"const auto& __e) {{ __os << {_emit_print_arg(elem, state)}; }})")
     if a.deref:
         inner = f"(*{inner})"
     if a.print_form is PrintForm.BOOL:
@@ -4695,26 +4702,38 @@ def _print_chain_token(expr, value, state: _EmitState) -> 'str | None':
     return cpp_string_literal_expr(value)
 
 
-def _print_parts(arg_cpps: 'list[str]', sep_token: 'str | None',
-                 end_token: 'str | None', *, flush: bool = False) -> list[str]:
-    """The `<<` chain segments shared by the print statement and the
-    void-lambda THIRPrintChain body, so the two renders cannot drift. Args
-    arrive already rendered: CPython evaluates the positional arguments
-    before the keyword values, and a kwarg temp is created where its
-    expression renders. The chain always ends in the check_signals
-    manipulator (after the flush, when there is one): print is a Ctrl-C
-    check point, and only a chain token can follow the lambda-body form."""
+def _print_chain(sink: str, args: 'tuple[THIRPrintArg, ...]',
+                 arg_cpps: 'list[str]', sep_token: 'str | None',
+                 end_token: 'str | None', *, flush: bool = False) -> str:
+    """The `<<` chain shared by the print statement and the void-lambda
+    THIRPrintChain body, so the two renders cannot drift. Args arrive
+    already rendered: CPython evaluates the positional arguments before the
+    keyword values, and a kwarg temp is created where its expression
+    renders. A chain with a `*xs` segment cannot place its separators
+    statically -- whether one precedes an item depends on whether anything
+    was written before it -- so it streams through `::tpy::PrintJoin`, whose
+    one written-flag spans every segment. The chain always ends in the
+    check_signals manipulator (after the flush, when there is one): print is
+    a Ctrl-C check point, and only a chain token can follow the lambda-body
+    form."""
     parts: list[str] = []
-    for i, a in enumerate(arg_cpps):
-        if i > 0 and sep_token is not None:
-            parts.append(sep_token)
-        parts.append(a)
+    if any(a.print_form is PrintForm.EACH for a in args):
+        sep = sep_token if sep_token is not None else '""'
+        parts.append(f"::tpy::PrintJoin({sink}, {sep})")
+        parts.extend(arg_cpps)
+        parts.append("::tpy::print_join_end")
+    else:
+        parts.append(sink)
+        for i, a in enumerate(arg_cpps):
+            if i > 0 and sep_token is not None:
+                parts.append(sep_token)
+            parts.append(a)
     if end_token is not None:
         parts.append(end_token)
     if flush:
         parts.append("std::flush")
     parts.append("::tpy::check_signals")
-    return parts
+    return " << ".join(parts)
 
 
 def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int,
@@ -4730,12 +4749,13 @@ def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int,
     arg_cpps = [_emit_print_arg(a, state) for a in stmt.args]
     sep_token = _print_chain_token(stmt.sep_expr, stmt.sep_value, state)
     end_token = _print_chain_token(stmt.end_expr, stmt.end_value, state)
-    parts = _print_parts(arg_cpps, sep_token, end_token, flush=stmt.flush)
     # Args render first: their hoisted temps flush before the cout line.
     state.temps.flush(out, indent)
     sink = ("std::cout" if stmt.sink_expr is None
             else f"::tpy::as_ostream({_emit_expr(stmt.sink_expr, state)})")
-    out.write(f"{indent}{sink} << " + " << ".join(parts) + ";\n")
+    chain = _print_chain(sink, stmt.args, arg_cpps, sep_token, end_token,
+                         flush=stmt.flush)
+    out.write(f"{indent}{chain};\n")
 
 
 def _lazy_region(state: _EmitState, anchor: THIRExpr) -> ContextManager[CondRegion]:

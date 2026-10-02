@@ -6,6 +6,7 @@ construct ['b', 'a'] ['a', 'b'] ['b', 'a'] [1, 0]
 dict {'a': 1, 'b': 2}
 show ['b', 'a']
 comp_local ['B', 'A'] ['a', 'b'] {'b': 1, 'a': 1}
+comp_rebound ['b', 'a', 'c'] ['a', 'b', 'c']
 self_iter_comp [2, 1, 0] 6
 generator_iter_comp [6, 2] 4
 rvalue ['b', 'a'] ['a', 'b']

@@ -95,6 +95,12 @@ concept Closable = requires(T& t) {
     { t.close() } -> std::convertible_to<void>;
 };
 
+// class ComparableValue(Comparable, ValueType, Protocol): ...
+template<typename T>
+concept ComparableValue = requires(const T& t) {
+    { t < std::declval<T&>() } -> std::convertible_to<bool>;
+};
+
 } // namespace tpystd::tpy
 
 namespace tpystd::tpy {

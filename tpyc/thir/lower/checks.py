@@ -84,6 +84,8 @@ from ...typesys import (
     is_dyn_protocol,
     is_fn_type,
     is_any_bytes_type,
+    is_any_int_type,
+    is_any_str_type,
     is_float_type,
     is_protocol_type,
     is_readonly_ptr,
@@ -110,6 +112,7 @@ from ...type_def_registry import (
     is_bytearray_type,
     is_bytes_type,
     is_bytes_view_type,
+    is_char_type,
     is_dict,
     is_enum_type,
     is_fixed_int_type,
@@ -14875,6 +14878,41 @@ def _print_arg_form(t: TpyType) -> PrintForm:
     if tr is not None and tr.bits == 8:
         return PrintForm.INT8
     return PrintForm.RAW
+
+def _star_elem_print_form(
+        t: TpyType, analyzer
+) -> 'tuple[PrintForm, str | None, str | None] | None':
+    """The wrap one element of a `print(*xs)` sequence takes, as
+    `(form, opt_inner_cpp, opt_fmt_cpp)` -- the forms a positional arg of
+    the element's type gets, read off the TYPE alone because the element is
+    a sequence slot (its storage form), never a name with a binding of its
+    own. None for an element kind that has no positional print form."""
+    t = unwrap_readonly(t)
+    if isinstance(t, OptionalType):
+        # A sequence holds an Optional in its storage form, `std::optional`,
+        # whatever the binding repr of the same type would be.
+        if is_big_int_type(unwrap_readonly(t.inner)):
+            return None
+        return _print_optval_form(t)
+    if isinstance(t, UnionType):
+        return PrintForm.STR, None, None
+    if isinstance(t, TypeParamRef):
+        return PrintForm.VALUE_GENERIC, None, None
+    if isinstance(t, TupleType):
+        return PrintForm.TUPLE, None, None
+    if is_bytearray_type(t):
+        return PrintForm.BYTEARRAY, None, None
+    if is_dict(t):
+        return PrintForm.DICT, None, None
+    if is_set(t):
+        return PrintForm.SET, None, None
+    if is_list(t) or is_array(t) or is_span(t):
+        return PrintForm.LIST, None, None
+    if (is_bool_type(t) or is_float_type(t) or _is_bytes_family(t)
+            or is_enum_type(t) or is_any_int_type(t) or is_any_str_type(t)
+            or is_char_type(t) or _f1_record(t, analyzer)):
+        return _print_arg_form(t), None, None
+    return None
 
 def _print_optval_opt(a: TpyExpr, analyzer,
                       locals_: dict[str, TpyType]) -> 'OptionalType | None':

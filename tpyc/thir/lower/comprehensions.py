@@ -83,7 +83,6 @@ from .predicates import (
     _value_tuple,
 )
 from .context import (
-    _ONLY_INDIRECT_READ,
     _ExprResultUse,
     _ExprUse,
     _LowerCtx,
@@ -94,6 +93,7 @@ from .expressions import (
     _lower_checked_container_elem,
     _lower_container_elem,
     _lower_expr,
+    _deref_loop_source,
     _lower_field_source,
     _lower_range_object,
     _lower_truthy,
@@ -1366,15 +1366,13 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
         # allow_temps: the source-call's own arg temps (`int32_t __tmp_N =
         # 8;` a generic factory's ref-slot literal) flush BEFORE the comp's
         # enclosing statement.
-        # The `__iter__` family hands on the OBJECT: a reassigned record
-        # local's pointer read derefs (`iter_range(*c)`), as the for
-        # statement's capture does.
-        iterable = _lower_expr(
+        # The loop captures the OBJECT: a reassigned record local's pointer
+        # read derefs (`iter_range(*c)`, `auto& __obj_N = (*f);`), as the
+        # for statement's capture does.
+        iterable = _deref_loop_source(_lower_expr(
             gen.iterable, lc, declared,
             use=_ExprUse(result=_ExprResultUse.ITERABLE,
-                         pos=SinkPos.ITER_SOURCE, allow_temps=True,
-                         forms=(_ONLY_INDIRECT_READ if route.iter_protocol
-                                else None)))
+                         pos=SinkPos.ITER_SOURCE, allow_temps=True)), lc)
     unpack_targets: tuple = ()
     unpack_cpps: tuple = ()
     if route.unpack_types is not None:
@@ -1489,9 +1487,9 @@ def _lower_genexpr_frame(expr: TpyGeneratorExpression, route: '_SourceRoute | No
     elif isinstance(it, TpyFieldAccess):
         iterable = _lower_field_source(it, lc, declared)
     else:
-        iterable = _lower_expr(
+        iterable = _deref_loop_source(_lower_expr(
             it, lc, declared, use=_ExprUse(result=_ExprResultUse.ITERABLE,
-                                           pos=SinkPos.ITER_SOURCE))
+                                           pos=SinkPos.ITER_SOURCE)), lc)
     if owned and route is not None and isinstance(iterable, THIRContainerLiteral):
         # The factory returns the literal, and a bare brace-init would deduce a
         # `std::initializer_list` -- a view of a backing array that dies with

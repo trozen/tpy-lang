@@ -3496,6 +3496,20 @@ class TypeRegistrar:
                     protocol.loc
                 )
 
+    def _qualify_error_return(self, func: TpyFunction, info: FunctionInfo) -> None:
+        """Write the qualified `@error_return(E)` name back to the AST, where
+        codegen reads it, and require E to be a ReturnException type."""
+        if not func.error_return:
+            return
+        orig_name = func.error_return
+        func.error_return = info.error_return_type
+        if not is_return_exception(info.error_return_type):
+            raise SemanticError(
+                f"'{orig_name}' is not a ReturnException type; "
+                f"@error_return requires a ReturnException exception",
+                func.loc
+            )
+
     def _stamp_iterator_retention(self, func: TpyFunction, info: FunctionInfo) -> None:
         """Set `return_borrows_from` at registration for a callee whose result
         keeps its reference arguments: a generator or coroutine (its frame),
@@ -3843,17 +3857,7 @@ class TypeRegistrar:
                 func.loc,
             )
 
-        # Propagate qualified name back to AST so codegen can use it directly
-        if func.error_return:
-            orig_name = func.error_return
-            func.error_return = info.error_return_type
-            # @error_return(E) requires E to be a ReturnException type
-            if not is_return_exception(info.error_return_type):
-                raise SemanticError(
-                    f"'{orig_name}' is not a ReturnException type; "
-                    f"@error_return requires a ReturnException exception",
-                    func.loc
-                )
+        self._qualify_error_return(func, info)
 
         # Check for duplicate extern symbol names
         if fi_linkage != FunctionLinkage.DEFAULT:
@@ -3990,10 +3994,14 @@ class TypeRegistrar:
                 type_params=func.type_params,
                 type_param_bounds=type_param_bounds,
                 type_param_defaults=func.type_param_defaults,
+                error_return_type=(qualify_exception_name(
+                    func.error_return, self.ctx.registry, self.ctx.module_name)
+                    if func.error_return else None),
                 qualified_name=f"{self.ctx.module_name}.{func.name}",
                 originating_module=self.ctx.module_name,
             )
             self._stamp_iterator_retention(func, info)
+            self._qualify_error_return(func, info)
             # Propagate resolved types back to AST (matches register_record behavior)
             func.params = list(resolved_params)
             func.return_type = resolved_return

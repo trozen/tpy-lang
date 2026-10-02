@@ -2774,6 +2774,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # (bytes / tuple / Array / Span inner)
     "print.wrap_arg",               # container / value-tuple / F1-record NAME
                                     # print arg -> its kind-keyed printer wrap
+    "print.star_arg",               # `*xs` print arg -> a PrintEach segment of
+                                    # the PrintJoin chain
     "print.tuple_record_elem",      # std::get<i>(t) record element at a
                                     # print sink; deref iff borrow-form
     "print.tuple_literal_storage_arg",  # all-RVALUE-element tuple literal at

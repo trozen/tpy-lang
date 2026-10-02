@@ -1,0 +1,25 @@
+for: 'alpha\n'
+for: '\n'
+for: 'beta\n'
+for: 'last'
+resume: alpha ['', 'beta', 'last']
+comprehension: [6, 1, 5, 4]
+function: 4
+method: 4
+generator: ['alpha', '', 'beta', 'last']
+async: 16
+list: ['alpha\n', '\n', 'beta\n', 'last']
+enumerate: 0 'alpha\n'
+enumerate: 1 '\n'
+enumerate: 2 'beta\n'
+enumerate: 3 'last'
+genexpr: 16
+zip: [True, True, True, True]
+resume_after_enumerate: '\n'
+zip_same_file: ['alpha\n\n', 'beta\nlast']
+any: True 'beta\n'
+exhausted: 4
+module: alpha
+module: 
+module: beta
+module: last

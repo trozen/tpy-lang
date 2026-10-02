@@ -63,6 +63,7 @@ from ...parse.nodes import (
     TpySetLiteral,
     TpySlice,
     TpyStmt,
+    TpyStarUnpack,
     TpyStrLiteral,
     TpySubscript,
     TpyTry,
@@ -552,6 +553,7 @@ from .checks import (
     _optional_record_field_inner,
     _covariant_record_upcast_ok,
     _print_arg_form,
+    _star_elem_print_form,
     _print_arg_ok,
     _print_tuple_opt_ternary,
     _wrap_print_form,
@@ -588,7 +590,7 @@ from .expressions import (
     _hoists_arg_temp,
     _own_tuple_shape_match,
     _own_tuple_borrow_lift_arg,
-    _ptr_read_derefs,
+    _deref_loop_source,
     _lower_isinstance_cond,
     _narrow_member_cpp,
     _narrow_subject_const,
@@ -16829,14 +16831,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     use=_ExprUse(result=_ExprResultUse.ITERABLE,
                                  pos=SinkPos.ITER_SOURCE,
                                  allow_temps=True))
-            if (isinstance(proto_iterable, THIRName)
-                    and not proto_iterable.deref
-                    and proto_iterable.name in lc.pointers
-                    and _ptr_read_derefs(proto_iterable.name, lc)):
-                # A narrowed ptr-opt dict param captures its deref
-                # (`auto& __src_N = (*d);`) -- the ptr-opt name carve-out
-                # keeps the bare pointer elsewhere, so retag here.
-                proto_iterable = replace(proto_iterable, deref=True)
+            proto_iterable = _deref_loop_source(proto_iterable, lc)
             proto_src_field = _frame_src_slot(stmt, lc)
             if proto_src_field is not None:
                 proto_iterable = self_typed_frame_source(proto_iterable, lc)
@@ -16898,6 +16893,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # threaded here).
             container_threaded=not isinstance(
                 it, (TpyArrayLiteral, TpyStrLiteral)))
+        iterable = _deref_loop_source(iterable, lc)
         if (route.literal_src_type is not None
                 and isinstance(iterable, THIRContainerLiteral)):
             # Self-describe the brace-init with the route's resolved container
@@ -17075,6 +17071,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     _witness("print.file_sink")
             lowered_args = []
             for arg in e.args:
+                star: 'TpyStarUnpack | None' = None
+                if isinstance(arg, TpyStarUnpack):
+                    # The admission below asks about the unpacked SOURCE,
+                    # which `_lower_print_arg` lowers as the positional
+                    # `print(xs)` would.
+                    star, arg = arg, arg.expr
+                    if isinstance(arg, TpyName) and arg.name in narrowed:
+                        note_detail("print.star_narrowed_source")
+                        raise ThirUnsupported(stmt_reject_reason(stmt))
                 if (isinstance(arg, (TpyCall, TpyMethodCall))
                         and isinstance(getattr(arg, "macro_expansion", None),
                                        TpyTupleLiteral)
@@ -17250,7 +17255,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 try:
                     lowered_args.append(
-                        _lower_print_arg(arg, lc, declared, pointers))
+                        _lower_print_arg(star if star is not None else arg,
+                                         lc, declared, pointers))
                 except ThirUnsupported as exc:
                     # The inner reject already names the blocker, but it
                     # travels in the exception -- the detail slot is
@@ -17917,6 +17923,41 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
         loc=loc,
     )
 
+def _lower_print_star(a: TpyStarUnpack, lc: _LowerCtx,
+                      declared: dict[str, TpyType],
+                      pointers: AbstractSet[str], *,
+                      temps_ok: bool) -> THIRPrintArg:
+    """`print(*xs)`: the source lowers exactly as the positional `print(xs)`
+    would -- the read a sequence printer borrows -- and each element takes
+    the wrap a positional arg of the element's type gets."""
+    source = _lower_print_arg(a.expr, lc, declared, pointers,
+                              temps_ok=temps_ok)
+    if (source.print_form not in (PrintForm.LIST, PrintForm.VARARGS)
+            or source.deref):
+        note_detail("print.star_source")
+        raise ThirUnsupported("print.star_source")
+    st = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        lc.analyzer.get_expr_type(a.expr))))
+    st = resolve_pending_container(st, lc.analyzer) or st
+    elem_t = st.get_element_type() if isinstance(st, NominalType) else None
+    if elem_t is None:
+        note_detail("print.star_source")
+        raise ThirUnsupported("print.star_source")
+    elem_t = resolve_int_literals(unwrap_readonly(elem_t),
+                                  lc.analyzer.ctx.default_int_for_literal)
+    elem_form = _star_elem_print_form(elem_t, lc.analyzer)
+    if elem_form is None:
+        note_detail(
+            f"print.star_elem.{_type_family_tag(elem_t, lc.analyzer)}")
+        raise ThirUnsupported("print.star_elem")
+    form, inner_cpp, fmt_cpp = elem_form
+    _witness("print.star_arg")
+    elem = THIRPrintArg(
+        THIRName(name="__e", cpp="__e", result_type=elem_t), form,
+        inner_cpp, opt_fmt_cpp=fmt_cpp)
+    return THIRPrintArg(source.expr, PrintForm.EACH, star_elem=elem)
+
+
 def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
                      declared: dict[str, TpyType],
                      pointers: AbstractSet[str], *,
@@ -17927,6 +17968,8 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
     is False inside a void-lambda body (the print chain is the closure
     body): a hoisted arg temp would flush at the ENCLOSING statement,
     outside the closure -- shapes that need one reject instead."""
+    if isinstance(a, TpyStarUnpack):
+        return _lower_print_star(a, lc, declared, pointers, temps_ok=temps_ok)
     if type(a) in _comprehensions._COMP_KINDS:
         # C3 comp print arg: the stmt-expr render inside its container
         # printer (List/Set/DictPrinter -- the container arms).

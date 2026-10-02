@@ -1,0 +1,1 @@
+main.py:15: error: print() can unpack only a list, Array or Span with '*'; got 'Iterator[int]'. Materialize the values first: print(*list(...))

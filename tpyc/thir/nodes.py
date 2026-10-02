@@ -3789,6 +3789,10 @@ class PrintForm(Enum):
       * `OPT_PTR` -- `::tpy::print_optional(...)` on a bare pointer-repr
         `Optional[F1-record]` NAME (the pointer-repr arm, CTAD form:
         a record inner streams via its own operator<<, no Formatter).
+      * `EACH` -- a `*xs` star segment: `::tpy::PrintEach(...)` over the
+        borrowed sequence, each element written with the arg's `star_elem`
+        wrap. Its length is known only at run time, so a chain holding one
+        renders through `::tpy::PrintJoin`, which owns the separators.
     """
     RAW = auto()
     INT8 = auto()
@@ -3815,6 +3819,7 @@ class PrintForm(Enum):
                           # Formatter; FMT rides `opt_fmt_cpp`
     OPT_PTR = auto()
     OPT_PTR_FMT = auto()  # the pointer-repr twin, `print_optional<FMT, INNER>`
+    EACH = auto()
 
 
 @dataclass(frozen=True)
@@ -3828,12 +3833,17 @@ class THIRPrintArg:
     `deref` streams the referent of a pointer-shaped read (`(*std::get<1>(t))`
     -- a borrow-tuple record element): print is a VALUE position, so the
     pointer the element read hands back has to be dereferenced here rather
-    than by a member access."""
+    than by a member access.
+
+    An `EACH` arg's `star_elem` is the wrap of ONE element: its `expr` is the
+    placeholder the per-element formatter binds (`__e`), so every element
+    form renders through the same arms a positional arg takes."""
     expr: THIRExpr
     print_form: PrintForm
     opt_inner_cpp: str | None = None
     deref: bool = False
     opt_fmt_cpp: str | None = None
+    star_elem: 'THIRPrintArg | None' = None
 
 
 @dataclass(frozen=True)

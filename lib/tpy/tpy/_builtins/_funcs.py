@@ -6,6 +6,7 @@ from .._core._types import (
     int8, int16, int32, int64, uint8, uint16, uint32, uint64,
     char, String, StrView, float32, AnyFixedInt,
     Hashable, Representable, Stringable, NativeIterable, Truthy, Comparable, Equatable,
+    ComparableValue, ValueType,
 )
 from .._bootstrap._extern import native, cpp_template, builtin_type, builtin_function, type_param_default, DefaultInt
 
@@ -130,6 +131,20 @@ def min[T, K: Comparable](a: T, b: T, key: Fn[[T], K]) -> T: ...
 @cpp_template("::tpy::min3_key({0}, {1}, {2}, {3})")
 def min[T, K: Comparable](a: T, b: T, c: T, key: Fn[[T], K]) -> T: ...
 
+@dispatch
+@pure
+@readonly
+@type_param_default(T=DefaultInt)
+@cpp_template("::tpy::builtin_min<{T}>({0})")
+def min[T: ComparableValue](iterable: Iterable[T]) -> T: ...
+
+@dispatch
+@pure
+@readonly
+@type_param_default(T=DefaultInt)
+@cpp_template("::tpy::builtin_min_key<{T}>({0}, {1})")
+def min[T: ValueType, K: Comparable](iterable: Iterable[T], key: Fn[[T], K]) -> T: ...
+
 
 @dispatch
 @pure
@@ -179,67 +194,81 @@ def max[T, K: Comparable](a: T, b: T, key: Fn[[T], K]) -> T: ...
 @cpp_template("::tpy::max3_key({0}, {1}, {2}, {3})")
 def max[T, K: Comparable](a: T, b: T, c: T, key: Fn[[T], K]) -> T: ...
 
+@dispatch
+@pure
+@readonly
+@type_param_default(T=DefaultInt)
+@cpp_template("::tpy::builtin_max<{T}>({0})")
+def max[T: ComparableValue](iterable: Iterable[T]) -> T: ...
+
+@dispatch
+@pure
+@readonly
+@type_param_default(T=DefaultInt)
+@cpp_template("::tpy::builtin_max_key<{T}>({0}, {1})")
+def max[T: ValueType, K: Comparable](iterable: Iterable[T], key: Fn[[T], K]) -> T: ...
+
 
 # pow(x, y) -- checked exponentiation
 @dispatch
 @pure
 @readonly
 @cpp_template("({0}).pow({1})")
-def pow(x: int, y: int) -> int: ...
+def pow(base: int, exp: int) -> int: ...
 
 @dispatch
 @pure
 @readonly
 @native("std::pow")
-def pow(x: float, y: float) -> float: ...
+def pow(base: float, exp: float) -> float: ...
 
 @dispatch
 @pure
 @readonly
 @native("tpy::pow_check<int8_t>")
-def pow(x: int8, y: int8) -> int8: ...
+def pow(base: int8, exp: int8) -> int8: ...
 
 @dispatch
 @pure
 @readonly
 @native("tpy::pow_check<int16_t>")
-def pow(x: int16, y: int16) -> int16: ...
+def pow(base: int16, exp: int16) -> int16: ...
 
 @dispatch
 @pure
 @readonly
 @native("tpy::pow_check<int32_t>")
-def pow(x: int32, y: int32) -> int32: ...
+def pow(base: int32, exp: int32) -> int32: ...
 
 @dispatch
 @pure
 @readonly
 @native("tpy::pow_check<int64_t>")
-def pow(x: int64, y: int64) -> int64: ...
+def pow(base: int64, exp: int64) -> int64: ...
 
 @dispatch
 @pure
 @readonly
 @native("tpy::pow_check<uint8_t>")
-def pow(x: uint8, y: uint8) -> uint8: ...
+def pow(base: uint8, exp: uint8) -> uint8: ...
 
 @dispatch
 @pure
 @readonly
 @native("tpy::pow_check<uint16_t>")
-def pow(x: uint16, y: uint16) -> uint16: ...
+def pow(base: uint16, exp: uint16) -> uint16: ...
 
 @dispatch
 @pure
 @readonly
 @native("tpy::pow_check<uint32_t>")
-def pow(x: uint32, y: uint32) -> uint32: ...
+def pow(base: uint32, exp: uint32) -> uint32: ...
 
 @dispatch
 @pure
 @readonly
 @native("tpy::pow_check<uint64_t>")
-def pow(x: uint64, y: uint64) -> uint64: ...
+def pow(base: uint64, exp: uint64) -> uint64: ...
 
 
 # divmod(a, b) -> tuple[T, T]
@@ -304,9 +333,18 @@ def divmod(a: uint32, b: uint32) -> tuple[uint32, uint32]: ...
 def divmod(a: uint64, b: uint64) -> tuple[uint64, uint64]: ...
 
 
+@dispatch
 @error_return(StopIteration)
 @native("tpy::next")
 def next[T](it: Iterator[T]) -> T: ...
+
+# Value types only for now: a class instance must come back as a reference to
+# the element (or to the default), as next(it) hands it, and a native generic
+# result is still bound by value -- BUGS.md#min-max-key-result-copies. The
+# runtime already returns that reference.
+@dispatch
+@native("tpy::next_or")
+def next[T: ValueType](it: Iterator[T], default: T) -> T: ...
 
 
 # TODO: make non-native once regular functions can return protocol types
@@ -323,112 +361,112 @@ def iter[T](x: Iterable[T]) -> Iterator[T]: ...
 @pure
 @readonly
 @cpp_template("::tpy::round_to<{T}>({0})")
-def round[T](x: float) -> T: ...
+def round[T](number: float) -> T: ...
 
 @dispatch
 @pure
 @readonly
 @native("tpy::round_float")
-def round(x: float, ndigits: int32) -> float: ...
+def round(number: float, ndigits: int32) -> float: ...
 
 @dispatch
 @pure
 @readonly
 @cpp_template("({0})")
-def round(x: int8) -> int8: ...
+def round(number: int8) -> int8: ...
 @dispatch
 @pure
 @readonly
 @native("tpy::round_fixed<int8_t>")
-def round(x: int8, ndigits: int32) -> int8: ...
+def round(number: int8, ndigits: int32) -> int8: ...
 
 @dispatch
 @pure
 @readonly
 @cpp_template("({0})")
-def round(x: int16) -> int16: ...
+def round(number: int16) -> int16: ...
 @dispatch
 @pure
 @readonly
 @native("tpy::round_fixed<int16_t>")
-def round(x: int16, ndigits: int32) -> int16: ...
+def round(number: int16, ndigits: int32) -> int16: ...
 
 @dispatch
 @pure
 @readonly
 @cpp_template("({0})")
-def round(x: int32) -> int32: ...
+def round(number: int32) -> int32: ...
 @dispatch
 @pure
 @readonly
 @native("tpy::round_fixed<int32_t>")
-def round(x: int32, ndigits: int32) -> int32: ...
+def round(number: int32, ndigits: int32) -> int32: ...
 
 @dispatch
 @pure
 @readonly
 @cpp_template("({0})")
-def round(x: int64) -> int64: ...
+def round(number: int64) -> int64: ...
 @dispatch
 @pure
 @readonly
 @native("tpy::round_fixed<int64_t>")
-def round(x: int64, ndigits: int32) -> int64: ...
+def round(number: int64, ndigits: int32) -> int64: ...
 
 @dispatch
 @pure
 @readonly
 @cpp_template("({0})")
-def round(x: uint8) -> uint8: ...
+def round(number: uint8) -> uint8: ...
 @dispatch
 @pure
 @readonly
 @native("tpy::round_fixed<uint8_t>")
-def round(x: uint8, ndigits: int32) -> uint8: ...
+def round(number: uint8, ndigits: int32) -> uint8: ...
 
 @dispatch
 @pure
 @readonly
 @cpp_template("({0})")
-def round(x: uint16) -> uint16: ...
+def round(number: uint16) -> uint16: ...
 @dispatch
 @pure
 @readonly
 @native("tpy::round_fixed<uint16_t>")
-def round(x: uint16, ndigits: int32) -> uint16: ...
+def round(number: uint16, ndigits: int32) -> uint16: ...
 
 @dispatch
 @pure
 @readonly
 @cpp_template("({0})")
-def round(x: uint32) -> uint32: ...
+def round(number: uint32) -> uint32: ...
 @dispatch
 @pure
 @readonly
 @native("tpy::round_fixed<uint32_t>")
-def round(x: uint32, ndigits: int32) -> uint32: ...
+def round(number: uint32, ndigits: int32) -> uint32: ...
 
 @dispatch
 @pure
 @readonly
 @cpp_template("({0})")
-def round(x: uint64) -> uint64: ...
+def round(number: uint64) -> uint64: ...
 @dispatch
 @pure
 @readonly
 @native("tpy::round_fixed<uint64_t>")
-def round(x: uint64, ndigits: int32) -> uint64: ...
+def round(number: uint64, ndigits: int32) -> uint64: ...
 
 @dispatch
 @pure
 @readonly
 @cpp_template("({0})")
-def round(x: int) -> int: ...
+def round(number: int) -> int: ...
 @dispatch
 @pure
 @readonly
 @native("tpy::round_bigint")
-def round(x: int, ndigits: int32) -> int: ...
+def round(number: int, ndigits: int32) -> int: ...
 
 
 # -- all / any --
@@ -523,6 +561,19 @@ def sorted[T: Comparable](iterable: Iterable[T]) -> Own[list[T]]: ...
 @readonly
 @cpp_template("::tpy::builtin_sorted_key<{T}>({0}, {1})")
 def sorted[T, K: Comparable](iterable: Iterable[T], key: Fn[[T], K]) -> Own[list[T]]: ...
+
+@dispatch
+@pure
+@readonly
+@type_param_default(T=DefaultInt)
+@cpp_template("::tpy::builtin_sorted<{T}>({0}, {1})")
+def sorted[T: Comparable](iterable: Iterable[T], reverse: bool) -> Own[list[T]]: ...
+
+@dispatch
+@pure
+@readonly
+@cpp_template("::tpy::builtin_sorted_key<{T}>({0}, {1}, {2})")
+def sorted[T, K: Comparable](iterable: Iterable[T], key: Fn[[T], K], reverse: bool) -> Own[list[T]]: ...
 
 
 # -- bin / hex / oct --

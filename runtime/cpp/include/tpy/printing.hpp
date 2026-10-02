@@ -398,4 +398,67 @@ std::string __repr__(const std::tuple<Ts...>& t) {
     return tuple_to_str(t);
 }
 
+// --- print(*xs): items whose count is known only at run time ---
+
+// The default element writer of a `*xs` segment: the element's own
+// operator<<, as a positional arg of that type streams.
+struct PrintRaw {
+    template <typename T>
+    void operator()(std::ostream& os, const T& elem) const {
+        os << elem;
+    }
+};
+
+// One `*xs` segment of a print chain. The sequence is borrowed, never
+// copied: a temporary source (`print(*list(g))`) lives until the end of the
+// print statement, the full-expression this segment belongs to.
+template <typename R, typename F = PrintRaw>
+struct PrintEach {
+    const R& items;
+    F write;
+    explicit PrintEach(const R& r, F f = F{}) : items(r), write(f) {}
+};
+
+struct PrintJoinEnd {};
+inline constexpr PrintJoinEnd print_join_end{};
+
+// A print chain holding a `*xs` segment: `wrote_` spans every segment, so a
+// separator precedes an item exactly when something was written before it
+// (`print("a", *xs, "b")` with `xs` empty writes `a b`). `print_join_end` hands the stream
+// back for the end string, the flush and the signal check point.
+class PrintJoin {
+    std::ostream& os_;
+    std::string_view sep_;
+    bool wrote_ = false;
+
+    void before_item() {
+        if (wrote_) os_ << sep_;
+        wrote_ = true;
+    }
+
+public:
+    PrintJoin(std::ostream& os, std::string_view sep) : os_(os), sep_(sep) {}
+    // A `file=` sink adapter is a temporary stream; it lives to the end of
+    // the print statement like the join itself.
+    PrintJoin(std::ostream&& os, std::string_view sep) : os_(os), sep_(sep) {}
+
+    template <typename T>
+    PrintJoin& operator<<(const T& item) {
+        before_item();
+        os_ << item;
+        return *this;
+    }
+
+    template <typename R, typename F>
+    PrintJoin& operator<<(const PrintEach<R, F>& seg) {
+        for (const auto& elem : seg.items) {
+            before_item();
+            seg.write(os_, elem);
+        }
+        return *this;
+    }
+
+    std::ostream& operator<<(PrintJoinEnd) { return os_; }
+};
+
 } // namespace tpy

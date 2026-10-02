@@ -1,0 +1,1 @@
+main.py:15: error: Type 'Node' does not satisfy 'ValueType' required by 'next'

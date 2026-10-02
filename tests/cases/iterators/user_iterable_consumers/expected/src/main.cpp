@@ -120,6 +120,11 @@ __coro_async_body async_body(Bag& b) {
 //     # comprehensions over a local
 //     print("comp_local", [s.upper() for s in b], sorted({s for s in b}),  # tpyc: ok
 //           {s: len(s) for s in b})
+//     # comprehension over a re-bound local (a pointer slot): the source is dereferenced
+//     again = Bag()
+//     again = Bag()
+//     again.items.append("c")
+//     print("comp_rebound", [s for s in again], sorted({s for s in again}))  # tpyc: ok
 //     # sum([...]) below stands in for a genexpr: BUGS.md#genexpr-over-user-iterable
 //     print("self_iter_comp", [x for x in Cnt(3)], sum([x for x in Cnt(4)]))
 //     print("generator_iter_comp", [x * 2 for x in g], sum([x for x in g]))
@@ -225,42 +230,46 @@ void main() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    std::cout << "self_iter_comp" << " " << ::tpy::ListPrinter(({
-        std::vector<int32_t> __result;
-        auto __src_3 = Cnt(3);
-        auto&& __obj_3 = ::tpy::iter_range(__src_3);
+    Bag __slot_1 = Bag();
+    Bag* again = &__slot_1;
+    (*again) = Bag();
+    again->items.push_back("c");
+    std::cout << "comp_rebound" << " " << ::tpy::ListPrinter(({
+        std::vector<std::string> __result;
+        auto&& __obj_3 = ::tpy::iter_range((*again));
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
-            int32_t x = *__beg_3;
-            __result.push_back(x);
+            const std::string& s = *__beg_3;
+            __result.push_back(s);
         }
         std::move(__result);
-    })) << " " << ::tpy::builtin_sum<int32_t>(({
-        std::vector<int32_t> __result;
-        auto __src_4 = Cnt(4);
-        auto&& __obj_4 = ::tpy::iter_range(__src_4);
+    })) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(({
+        ::tpy::ordered_set<std::string> __result;
+        auto&& __obj_4 = ::tpy::iter_range((*again));
         auto __beg_4 = __obj_4.begin();
         auto __end_4 = __obj_4.end();
         for (; __beg_4 != __end_4; ++__beg_4) {
-            int32_t x = *__beg_4;
-            __result.push_back(x);
+            const std::string& s = *__beg_4;
+            __result.insert(s);
         }
         std::move(__result);
-    })) << "\n" << ::tpy::check_signals;
-    std::cout << "generator_iter_comp" << " " << ::tpy::ListPrinter(({
+    }))) << "\n" << ::tpy::check_signals;
+    std::cout << "self_iter_comp" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto&& __obj_5 = ::tpy::iter_range(g);
+        auto __src_5 = Cnt(3);
+        auto&& __obj_5 = ::tpy::iter_range(__src_5);
         auto __beg_5 = __obj_5.begin();
         auto __end_5 = __obj_5.end();
         for (; __beg_5 != __end_5; ++__beg_5) {
             int32_t x = *__beg_5;
-            __result.push_back((::tpy::mul_check<int32_t>(x, 2)));
+            __result.push_back(x);
         }
         std::move(__result);
     })) << " " << ::tpy::builtin_sum<int32_t>(({
         std::vector<int32_t> __result;
-        auto&& __obj_6 = ::tpy::iter_range(g);
+        auto __src_6 = Cnt(4);
+        auto&& __obj_6 = ::tpy::iter_range(__src_6);
         auto __beg_6 = __obj_6.begin();
         auto __end_6 = __obj_6.end();
         for (; __beg_6 != __end_6; ++__beg_6) {
@@ -269,25 +278,46 @@ void main() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    std::cout << "rvalue" << " " << ::tpy::ListPrinter(({
-        std::vector<std::string> __result;
-        auto __src_7 = ::tpyapp::main::mk();
-        auto&& __obj_7 = ::tpy::iter_range(__src_7);
+    std::cout << "generator_iter_comp" << " " << ::tpy::ListPrinter(({
+        std::vector<int32_t> __result;
+        auto&& __obj_7 = ::tpy::iter_range(g);
         auto __beg_7 = __obj_7.begin();
         auto __end_7 = __obj_7.end();
         for (; __beg_7 != __end_7; ++__beg_7) {
-            const std::string& s = *__beg_7;
+            int32_t x = *__beg_7;
+            __result.push_back((::tpy::mul_check<int32_t>(x, 2)));
+        }
+        std::move(__result);
+    })) << " " << ::tpy::builtin_sum<int32_t>(({
+        std::vector<int32_t> __result;
+        auto&& __obj_8 = ::tpy::iter_range(g);
+        auto __beg_8 = __obj_8.begin();
+        auto __end_8 = __obj_8.end();
+        for (; __beg_8 != __end_8; ++__beg_8) {
+            int32_t x = *__beg_8;
+            __result.push_back(x);
+        }
+        std::move(__result);
+    })) << "\n" << ::tpy::check_signals;
+    std::cout << "rvalue" << " " << ::tpy::ListPrinter(({
+        std::vector<std::string> __result;
+        auto __src_9 = ::tpyapp::main::mk();
+        auto&& __obj_9 = ::tpy::iter_range(__src_9);
+        auto __beg_9 = __obj_9.begin();
+        auto __end_9 = __obj_9.end();
+        for (; __beg_9 != __end_9; ++__beg_9) {
+            const std::string& s = *__beg_9;
             __result.push_back(s);
         }
         std::move(__result);
     })) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(({
         ::tpy::ordered_set<std::string> __result;
-        auto __src_8 = ::tpyapp::main::mk();
-        auto&& __obj_8 = ::tpy::iter_range(__src_8);
-        auto __beg_8 = __obj_8.begin();
-        auto __end_8 = __obj_8.end();
-        for (; __beg_8 != __end_8; ++__beg_8) {
-            const std::string& s = *__beg_8;
+        auto __src_10 = ::tpyapp::main::mk();
+        auto&& __obj_10 = ::tpy::iter_range(__src_10);
+        auto __beg_10 = __obj_10.begin();
+        auto __end_10 = __obj_10.end();
+        for (; __beg_10 != __end_10; ++__beg_10) {
+            const std::string& s = *__beg_10;
             __result.insert(s);
         }
         std::move(__result);
@@ -297,21 +327,21 @@ void main() {
     RBag rb = RBag();
     std::cout << "mutate" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto&& __obj_9 = ::tpy::iter_range(rb);
-        auto __beg_9 = __obj_9.begin();
-        auto __end_9 = __obj_9.end();
-        for (; __beg_9 != __end_9; ++__beg_9) {
-            auto&& r = *__beg_9;
+        auto&& __obj_11 = ::tpy::iter_range(rb);
+        auto __beg_11 = __obj_11.begin();
+        auto __end_11 = __obj_11.end();
+        for (; __beg_11 != __end_11; ++__beg_11) {
+            auto&& r = *__beg_11;
             __result.push_back(r.bump());
         }
         std::move(__result);
     })) << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto&& __obj_10 = ::tpy::iter_range(rb);
-        auto __beg_10 = __obj_10.begin();
-        auto __end_10 = __obj_10.end();
-        for (; __beg_10 != __end_10; ++__beg_10) {
-            const auto& r = *__beg_10;
+        auto&& __obj_12 = ::tpy::iter_range(rb);
+        auto __beg_12 = __obj_12.begin();
+        auto __end_12 = __obj_12.end();
+        for (; __beg_12 != __end_12; ++__beg_12) {
+            const auto& r = *__beg_12;
             __result.push_back(r.v);
         }
         std::move(__result);
@@ -320,12 +350,12 @@ void main() {
     std::cout << "method" << " " << ::tpy::ListPrinter(h.values()) << " " << ::tpy::print_bool(h.any_a()) << " " << ::tpy::ListPrinter(h.listed()) << "\n" << ::tpy::check_signals;
     std::cout << "owned_method_source" << " " << ::tpy::ListPrinter(({
         std::vector<std::string> __result;
-        auto __src_11 = h.make();
-        auto&& __obj_11 = ::tpy::iter_range(__src_11);
-        auto __beg_11 = __obj_11.begin();
-        auto __end_11 = __obj_11.end();
-        for (; __beg_11 != __end_11; ++__beg_11) {
-            const std::string& s = *__beg_11;
+        auto __src_13 = h.make();
+        auto&& __obj_13 = ::tpy::iter_range(__src_13);
+        auto __beg_13 = __obj_13.begin();
+        auto __end_13 = __obj_13.end();
+        for (; __beg_13 != __end_13; ++__beg_13) {
+            const std::string& s = *__beg_13;
             __result.push_back(s);
         }
         std::move(__result);
@@ -333,23 +363,23 @@ void main() {
     std::cout << "self_source" << " " << ::tpy::ListPrinter(Letters({"h", "i"}).upper()) << " " << ::tpy::ListPrinter(Letters({"o", "k"}).listed()) << "\n" << ::tpy::check_signals;
     std::cout << "readonly" << " " << ::tpy::ListPrinter(::tpyapp::main::ro_comp(b)) << "\n" << ::tpy::check_signals;
     {
-        auto __src_12 = ::tpyapp::main::gen_body(b);
-        auto&& __itr_12 = ::tpy::__iter__(__src_12);
-        for (;;) {
-            auto __r_13 = __itr_12.__next__();
-            if (!__r_13.has_value()) break;
-            int32_t n = ::tpy::unwrap_ref(*__r_13);
-            std::cout << "generator" << " " << n << "\n" << ::tpy::check_signals;
-        }
-    }
-    {
-        auto __tmp_2 = std::array<std::string, 2>{"x", "yy"};
-        auto __src_14 = ::tpyapp::main::gen_protocol(__tmp_2);
+        auto __src_14 = ::tpyapp::main::gen_body(b);
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
         for (;;) {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_15);
+            std::cout << "generator" << " " << n << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        auto __tmp_2 = std::array<std::string, 2>{"x", "yy"};
+        auto __src_16 = ::tpyapp::main::gen_protocol(__tmp_2);
+        auto&& __itr_16 = ::tpy::__iter__(__src_16);
+        for (;;) {
+            auto __r_17 = __itr_16.__next__();
+            if (!__r_17.has_value()) break;
+            int32_t n = ::tpy::unwrap_ref(*__r_17);
             std::cout << "generator_protocol" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
@@ -357,11 +387,11 @@ void main() {
     auto closure = [&b]() -> std::vector<std::string> {
         return ({
             std::vector<std::string> __result;
-            auto&& __obj_16 = ::tpy::iter_range(b);
-            auto __beg_16 = __obj_16.begin();
-            auto __end_16 = __obj_16.end();
-            for (; __beg_16 != __end_16; ++__beg_16) {
-                const std::string& s = *__beg_16;
+            auto&& __obj_18 = ::tpy::iter_range(b);
+            auto __beg_18 = __obj_18.begin();
+            auto __end_18 = __obj_18.end();
+            for (; __beg_18 != __end_18; ++__beg_18) {
+                const std::string& s = *__beg_18;
                 __result.push_back(s);
             }
             std::move(__result);
@@ -371,21 +401,21 @@ void main() {
     Box<int32_t> bx = Box<int32_t>({1, 2});
     std::cout << "generic" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto&& __obj_17 = ::tpy::iter_range(bx);
-        auto __beg_17 = __obj_17.begin();
-        auto __end_17 = __obj_17.end();
-        for (; __beg_17 != __end_17; ++__beg_17) {
-            int32_t x = *__beg_17;
+        auto&& __obj_19 = ::tpy::iter_range(bx);
+        auto __beg_19 = __obj_19.begin();
+        auto __end_19 = __obj_19.end();
+        for (; __beg_19 != __end_19; ++__beg_19) {
+            int32_t x = *__beg_19;
             __result.push_back((::tpy::add_check<int32_t>(x, 1)));
         }
         std::move(__result);
     })) << " " << ::tpy::builtin_sum<int32_t>(({
         std::vector<int32_t> __result;
-        auto&& __obj_18 = ::tpy::iter_range(bx);
-        auto __beg_18 = __obj_18.begin();
-        auto __end_18 = __obj_18.end();
-        for (; __beg_18 != __end_18; ++__beg_18) {
-            int32_t x = *__beg_18;
+        auto&& __obj_20 = ::tpy::iter_range(bx);
+        auto __beg_20 = __obj_20.begin();
+        auto __end_20 = __obj_20.end();
+        for (; __beg_20 != __end_20; ++__beg_20) {
+            int32_t x = *__beg_20;
             __result.push_back(x);
         }
         std::move(__result);
@@ -400,34 +430,7 @@ void main() {
     Src s4 = Src();
     std::cout << "member_stmt" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto&& __obj_19 = ::tpy::iter_range(s4);
-        auto __beg_19 = __obj_19.begin();
-        auto __end_19 = __obj_19.end();
-        for (; __beg_19 != __end_19; ++__beg_19) {
-            int32_t x = *__beg_19;
-            __result.push_back(x);
-        }
-        std::move(__result);
-    })) << " " << s4.it.n << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(s4)) << " " << ::tpy::builtin_sum<int32_t>(s4) << "\n" << ::tpy::check_signals;
-    Src s5 = Src();
-    std::cout << "member_proto" << " " << ::tpy::ListPrinter(::tpyapp::main::proto_comp(s5)) << " " << s5.it.n << "\n" << ::tpy::check_signals;
-    Cnt __slot_1 = Cnt(3);
-    Cnt* c2 = &__slot_1;
-    std::cout << "reassigned" << " " << ::tpy::ListPrinter(({
-        std::vector<int32_t> __result;
-        auto&& __obj_20 = ::tpy::iter_range((*c2));
-        auto __beg_20 = __obj_20.begin();
-        auto __end_20 = __obj_20.end();
-        for (; __beg_20 != __end_20; ++__beg_20) {
-            int32_t x = *__beg_20;
-            __result.push_back(x);
-        }
-        std::move(__result);
-    })) << " " << c2->n << "\n" << ::tpy::check_signals;
-    (*c2) = Cnt(2);
-    std::cout << "reassigned" << " " << ::tpy::ListPrinter(({
-        std::vector<int32_t> __result;
-        auto&& __obj_21 = ::tpy::iter_range((*c2));
+        auto&& __obj_21 = ::tpy::iter_range(s4);
         auto __beg_21 = __obj_21.begin();
         auto __end_21 = __obj_21.end();
         for (; __beg_21 != __end_21; ++__beg_21) {
@@ -435,13 +438,40 @@ void main() {
             __result.push_back(x);
         }
         std::move(__result);
-    })) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(::tpy::set_construct<int32_t>(Cnt(1)))) << " " << ::tpy::builtin_sum<int32_t>(({
+    })) << " " << s4.it.n << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(s4)) << " " << ::tpy::builtin_sum<int32_t>(s4) << "\n" << ::tpy::check_signals;
+    Src s5 = Src();
+    std::cout << "member_proto" << " " << ::tpy::ListPrinter(::tpyapp::main::proto_comp(s5)) << " " << s5.it.n << "\n" << ::tpy::check_signals;
+    Cnt __slot_2 = Cnt(3);
+    Cnt* c2 = &__slot_2;
+    std::cout << "reassigned" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto&& __obj_22 = ::tpy::iter_range((*c2));
         auto __beg_22 = __obj_22.begin();
         auto __end_22 = __obj_22.end();
         for (; __beg_22 != __end_22; ++__beg_22) {
             int32_t x = *__beg_22;
+            __result.push_back(x);
+        }
+        std::move(__result);
+    })) << " " << c2->n << "\n" << ::tpy::check_signals;
+    (*c2) = Cnt(2);
+    std::cout << "reassigned" << " " << ::tpy::ListPrinter(({
+        std::vector<int32_t> __result;
+        auto&& __obj_23 = ::tpy::iter_range((*c2));
+        auto __beg_23 = __obj_23.begin();
+        auto __end_23 = __obj_23.end();
+        for (; __beg_23 != __end_23; ++__beg_23) {
+            int32_t x = *__beg_23;
+            __result.push_back(x);
+        }
+        std::move(__result);
+    })) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(::tpy::set_construct<int32_t>(Cnt(1)))) << " " << ::tpy::builtin_sum<int32_t>(({
+        std::vector<int32_t> __result;
+        auto&& __obj_24 = ::tpy::iter_range((*c2));
+        auto __beg_24 = __obj_24.begin();
+        auto __end_24 = __obj_24.end();
+        for (; __beg_24 != __end_24; ++__beg_24) {
+            int32_t x = *__beg_24;
             __result.push_back(x);
         }
         std::move(__result);
@@ -454,11 +484,11 @@ void main() {
     Window w = Window();
     std::cout << "begin_end_optional" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(w)) << " " << ::tpy::ListPrinter(({
         std::vector<::tpy::String> __result;
-        auto&& __obj_23 = ::tpy::iter_range(w);
-        auto __beg_23 = __obj_23.begin();
-        auto __end_23 = __obj_23.end();
-        for (; __beg_23 != __end_23; ++__beg_23) {
-            const std::string& x = *__beg_23;
+        auto&& __obj_25 = ::tpy::iter_range(w);
+        auto __beg_25 = __obj_25.begin();
+        auto __end_25 = __obj_25.end();
+        for (; __beg_25 != __end_25; ++__beg_25) {
+            const std::string& x = *__beg_25;
             __result.push_back((::tpy::str_concat(x, "!")));
         }
         std::move(__result);

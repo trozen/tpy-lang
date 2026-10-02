@@ -19,7 +19,7 @@
 | `Iterator[Own[T]]` coercion to `Iterator[T]` | **Done** | Strips `Own` on each element |
 | C++ `begin()`/`end()` on iterators | **Done** | `next_iter_mixin` CRTP adds begin/end from `__next__`; builtin containers native |
 | Iterator combinators | **Done** | `enumerate()`, `zip()`, `reversed()`, `map()`, `filter()` |
-| `next()` builtin | **Todo** | `next(it)` and `next(it, default)` |
+| `next()` builtin | **Done** | `next(it)` and `next(it, default)` (value-type elements; `next(it, None)` is not supported) |
 | `iter()` builtin | **Done** | `iter(obj)` calls `__iter__()`; two-arg form (sentinel) TODO |
 | `__reversed__` / `reversed()` user types | **Todo** | `reversed()` builtin works on built-in containers; user `__reversed__` is a roadmap item |
 | `__contains__` / `in` for user types | **Todo** | `in` falls back to `__iter__`+`__next__` for non-builtins; user `__contains__` dispatch is a roadmap item |

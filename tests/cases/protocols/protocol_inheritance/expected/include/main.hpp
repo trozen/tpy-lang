@@ -20,11 +20,29 @@ concept PrintableAndSized = requires(T& t) {
     { ::tpy::__len__(t) } -> std::convertible_to<int32_t>;
 };
 
+// class OrdVal(Comparable, ValueType, Protocol): ...
+template<typename T>
+concept OrdVal = requires(const T& t) {
+    { t < std::declval<T&>() } -> std::convertible_to<bool>;
+};
+
+// class SendSized(Send, Sized, Protocol): ...
+template<typename T>
+concept SendSized = requires(const T& t) {
+    { ::tpy::__len__(t) } -> std::convertible_to<int32_t>;
+};
+
 struct Message;
 template<PrintableAndSized T> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def top[T: OrdVal](xs: list[T]) -> T:  # tpyc: ok
+template<OrdVal T>
+::tpy::val_or_ref_t<T> top(std::vector<T>& xs);
+// def size_of[T: SendSized](x: T) -> int:  # tpyc: ok
+template<SendSized T>
+::tpy::BigInt size_of(::tpy::param_val_or_ref_t<T> x);
 // def main() -> None:
 void main();
 
@@ -99,5 +117,34 @@ inline std::string Message::to_str() const {
 inline int32_t Message::__len__() const {
     return 5;
 }
+// # a member-less protocol is the intersection of its parents: each parent,
+// # a marker included, decides by its own rule
+// def top[T: OrdVal](xs: list[T]) -> T:  # tpyc: ok
+//     best = xs[0]
+//     for x in xs:
+//         if best < x:
+//             best = x
+//     return best
+template<OrdVal T>
+::tpy::val_or_ref_t<T> top(std::vector<T>& xs) {
+    T* best = &(::tpy::__getitem__(xs, 0));
+    auto& __obj_0 = xs;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& x = *__beg_0;
+        if (((*best) < x)) {
+            best = &(x);
+        }
+    }
+    return (*best);
+}
+// def size_of[T: SendSized](x: T) -> int:  # tpyc: ok
+//     return len(x)
+template<SendSized T>
+::tpy::BigInt size_of(::tpy::param_val_or_ref_t<T> x) {
+    return ::tpy::BigInt(::tpy::__len__(x));
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

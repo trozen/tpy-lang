@@ -13,6 +13,8 @@
 #include <cstdint>
 #include <format>
 #include <iostream>
+#include <optional>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -302,18 +304,25 @@ double builtin_sum_start_float(Iter&& iterable, double start) {
 
 // -- sorted --
 
+// `reverse` keeps equal elements in their original order, as CPython's
+// reverse=True does: a stable sort under the flipped comparison.
 template<typename T, typename Iter>
-std::vector<T> builtin_sorted(Iter&& iterable) {
+std::vector<T> builtin_sorted(Iter&& iterable, bool reverse = false) {
     std::vector<T> result;
     for (auto&& elem : ::tpy::iter_range(iterable)) {
         result.emplace_back(std::forward<decltype(elem)>(elem));
     }
-    std::stable_sort(result.begin(), result.end());
+    if (reverse) {
+        std::stable_sort(result.begin(), result.end(),
+            [](const T& a, const T& b) { return b < a; });
+    } else {
+        std::stable_sort(result.begin(), result.end());
+    }
     return result;
 }
 
 template<typename T, typename Iter, typename KeyFn>
-std::vector<T> builtin_sorted_key(Iter&& iterable, KeyFn&& key) {
+std::vector<T> builtin_sorted_key(Iter&& iterable, KeyFn&& key, bool reverse = false) {
     std::vector<T> items;
     for (auto&& elem : ::tpy::iter_range(iterable)) {
         items.emplace_back(std::forward<decltype(elem)>(elem));
@@ -327,13 +336,163 @@ std::vector<T> builtin_sorted_key(Iter&& iterable, KeyFn&& key) {
         decorated.emplace_back(key(items[i]), i);
     }
     std::stable_sort(decorated.begin(), decorated.end(),
-        [](const auto& a, const auto& b) { return a.first < b.first; });
+        [reverse](const auto& a, const auto& b) {
+            return reverse ? b.first < a.first : a.first < b.first;
+        });
     std::vector<T> result;
     result.reserve(items.size());
     for (auto& [k, idx] : decorated) {
         result.emplace_back(std::move(items[idx]));
     }
     return result;
+}
+
+// -- min/max over an iterable --
+
+// A source whose elements stay put for the whole call: a forward range that
+// hands out real references to T (a list, an array, a set, a dict's keys,
+// named or temporary). An input range is not one: an iterator may hand out a
+// reference to a slot it overwrites on the next step.
+template<typename Iter, typename T>
+concept stable_elements =
+    std::ranges::forward_range<std::remove_reference_t<Iter>>
+    && std::is_lvalue_reference_v<
+        std::ranges::range_reference_t<std::remove_reference_t<Iter>>>
+    && std::same_as<
+        std::remove_cvref_t<
+            std::ranges::range_reference_t<std::remove_reference_t<Iter>>>, T>;
+
+// The first of equal elements wins, as in CPython.
+template<typename T, typename Iter, typename Better>
+T builtin_extreme(Iter&& iterable, std::string_view name, Better&& better) {
+    if constexpr (stable_elements<Iter, T>) {
+        const T* best = nullptr;
+        for (const T& elem : iterable) {
+            if (best == nullptr || better(elem, *best)) best = &elem;
+        }
+        if (best == nullptr) raise_value_error("{}() iterable argument is empty", name);
+        return *best;
+    } else {
+        std::optional<T> best;
+        for (auto&& elem : ::tpy::iter_range(iterable)) {
+            const T& cur = elem;
+            if (!best) best.emplace(cur);
+            else if (better(cur, *best)) *best = cur;
+        }
+        if (!best) raise_value_error("{}() iterable argument is empty", name);
+        return std::move(*best);
+    }
+}
+
+template<typename T, typename Iter>
+T builtin_min(Iter&& iterable) {
+    return builtin_extreme<T>(std::forward<Iter>(iterable), "min",
+        [](const T& a, const T& b) { return a < b; });
+}
+
+template<typename T, typename Iter>
+T builtin_max(Iter&& iterable) {
+    return builtin_extreme<T>(std::forward<Iter>(iterable), "max",
+        [](const T& a, const T& b) { return b < a; });
+}
+
+// The key is computed once per element, and may be a view into the element
+// it was computed from -- so it is always taken from an element that outlives
+// the step: the container's own, or a copy held here (two slots, each
+// candidate built in the one the winner does not occupy). The winner itself
+// is always kept by copy: the key is user code, and one that writes the
+// source must not change an element already chosen.
+template<typename T, typename Iter, typename KeyFn, typename Better>
+T builtin_extreme_key(Iter&& iterable, KeyFn&& key, std::string_view name,
+                      Better&& better) {
+    using K = std::decay_t<decltype(key(std::declval<const T&>()))>;
+    std::optional<K> best_key;
+    if constexpr (stable_elements<Iter, T>
+                  && std::ranges::random_access_range<std::remove_reference_t<Iter>>
+                  && std::ranges::sized_range<std::remove_reference_t<Iter>>) {
+        // By index, re-reading the size and the element after the key ran:
+        // a key that appends to the source is walked as Python walks a list,
+        // the new elements included, with no iterator to invalidate.
+        std::optional<T> best;
+        using D = std::ranges::range_difference_t<std::remove_reference_t<Iter>>;
+        for (D i = 0; i < static_cast<D>(std::ranges::size(iterable)); ++i) {
+            K k = key(std::ranges::begin(iterable)[i]);
+            if (!best || better(k, *best_key)) {
+                const T& elem = std::ranges::begin(iterable)[i];
+                if (best) *best = elem;
+                else best.emplace(elem);
+                best_key.emplace(std::move(k));
+            }
+        }
+        if (!best) raise_value_error("{}() iterable argument is empty", name);
+        return std::move(*best);
+    } else if constexpr (stable_elements<Iter, T>) {
+        std::optional<T> best;
+        for (const T& elem : iterable) {
+            K k = key(elem);
+            if (!best || better(k, *best_key)) {
+                if (best) *best = elem;
+                else best.emplace(elem);
+                best_key.emplace(std::move(k));
+            }
+        }
+        if (!best) raise_value_error("{}() iterable argument is empty", name);
+        return std::move(*best);
+    } else {
+        std::optional<T> slots[2];
+        int best = -1;
+        for (auto&& elem : ::tpy::iter_range(iterable)) {
+            const T& cur = elem;
+            const int cand = best == 0 ? 1 : 0;
+            slots[cand].emplace(cur);
+            K k = key(*slots[cand]);
+            if (best < 0 || better(k, *best_key)) {
+                best = cand;
+                best_key.emplace(std::move(k));
+            }
+        }
+        if (best < 0) raise_value_error("{}() iterable argument is empty", name);
+        return std::move(*slots[best]);
+    }
+}
+
+template<typename T, typename Iter, typename KeyFn>
+T builtin_min_key(Iter&& iterable, KeyFn&& key) {
+    return builtin_extreme_key<T>(std::forward<Iter>(iterable), std::forward<KeyFn>(key),
+        "min", [](const auto& a, const auto& b) { return a < b; });
+}
+
+template<typename T, typename Iter, typename KeyFn>
+T builtin_max_key(Iter&& iterable, KeyFn&& key) {
+    return builtin_extreme_key<T>(std::forward<Iter>(iterable), std::forward<KeyFn>(key),
+        "max", [](const auto& a, const auto& b) { return b < a; });
+}
+
+// Whether an iterator's step payload is a reference to an element the source
+// owns (a class instance), rather than a value.
+template<typename S>
+inline constexpr bool steps_reference =
+    requires { typename S::is_val_or_ref_tag; } && requires { requires !S::is_val; };
+
+// next(it, default): the element, or the default once the iterator is
+// exhausted, in the form the iterator steps it -- a value by value, a
+// reference payload as a reference to the element or to the default itself
+// (Python returns the object, never a copy). A temporary default lives as
+// long as the caller's full expression.
+template<typename Iter, typename D>
+decltype(auto) next_or(Iter& it, D&& dflt) {
+    auto step = it.__next__();
+    using S = std::remove_cvref_t<decltype(*step)>;
+    if constexpr (steps_reference<S>) {
+        using R = std::common_reference_t<decltype(step->get()),
+                                          std::remove_reference_t<D>&>;
+        if (step) return static_cast<R>(step->get());
+        return static_cast<R>(dflt);
+    } else {
+        using R = std::remove_cvref_t<decltype(unwrap_ref_move(*step))>;
+        if (step) return R(unwrap_ref_move(*step));
+        return R(std::forward<D>(dflt));
+    }
 }
 
 // -- min/max with key --

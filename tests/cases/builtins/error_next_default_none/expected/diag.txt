@@ -1,0 +1,1 @@
+main.py:8: error: No matching overload for next(Iterator[int32], None): type parameter T inferred as int32 and None

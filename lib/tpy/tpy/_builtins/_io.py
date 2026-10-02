@@ -1,14 +1,17 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
-from .._typing import Literal
+from .._typing import Literal, Iterator, Iterable
 from .._bootstrap._decorators import Own, dispatch
 from .._bootstrap._extern import native, builtin_type
-from .._core._types import int32
+from .._core._types import int32, NativeIterable
 
 
 @builtin_type("builtins.TextIO")
 @native("tpy::TextFile")
-class TextIO:
+class TextIO(NativeIterable[str], Iterable[str]):
+    @native("tpy::__iter__", function=True)
+    def __iter__(self) -> Iterator[str]: ...
+
     @native("read", checks_signals=True)
     def read(self, size: int32 = -1) -> str: ...
 
@@ -63,25 +66,25 @@ class BinaryIO:
 
 @dispatch
 @native("tpy::builtin_open")
-def open(path: str) -> TextIO: ...
+def open(file: str) -> TextIO: ...
 
 @dispatch
 @native("tpy::builtin_open_mode")
-def open(path: str, mode: Literal[
+def open(file: str, mode: Literal[
     "r", "w", "a", "x", "rt", "wt", "at", "xt",
     "r+", "w+", "a+", "x+", "r+t", "w+t", "a+t", "x+t", "rt+", "wt+", "at+", "xt+",
 ]) -> TextIO: ...
 
 @dispatch
 @native("tpy::builtin_open_binary")
-def open(path: str, mode: Literal[
+def open(file: str, mode: Literal[
     "rb", "wb", "ab", "xb",
     "r+b", "w+b", "a+b", "x+b", "rb+", "wb+", "ab+", "xb+",
 ]) -> BinaryIO: ...
 
 @dispatch
 @native("tpy::builtin_open_mode")
-def open(path: str, mode: str) -> TextIO: ...
+def open(file: str, mode: str) -> TextIO: ...
 
 @dispatch
 @native("tpy::builtin_open")

@@ -71,6 +71,7 @@ from .nodes import (
     THIRNarrowedRead,
     THIROptionalPtrArg,
     THIRPrint,
+    THIRPrintArg,
     THIRPrintChain,
     THIRReturn,
     THIRSelf,
@@ -141,6 +142,13 @@ _UNDUMPED: frozenset[type] = frozenset()
 
 def _ty(t: TpyType) -> str:
     return getattr(t, "name", None) or str(t)
+
+
+def _print_arg(a: THIRPrintArg) -> str:
+    if a.star_elem is not None:
+        return (f"*{_expr(a.expr)} [{a.print_form.name.lower()}: "
+                f"{a.star_elem.print_form.name.lower()}]")
+    return f"{_expr(a.expr)} [{a.print_form.name.lower()}]"
 
 
 def _expr(e: THIRExpr) -> str:
@@ -322,8 +330,7 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRDynIsinstanceMulti):
         return f"dyn_isinstance_multi([{', '.join(e.checks_cpp)}])"
     if isinstance(e, THIRPrintChain):
-        args = ", ".join(f"{_expr(a.expr)} [{a.print_form.name.lower()}]"
-                         for a in e.args)
+        args = ", ".join(_print_arg(a) for a in e.args)
         return f"print_chain({args})"
     if isinstance(e, THIRNarrowedRead):
         deref = "*" if e.is_ptr_variant else ""
@@ -589,7 +596,7 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
     if isinstance(stmt, THIRDelItem):
         return [f"{pad}del [{', '.join(_expr(c) for c in stmt.calls)}]"]
     if isinstance(stmt, THIRPrint):
-        args = ", ".join(f"{_expr(a.expr)} [{a.print_form.name.lower()}]" for a in stmt.args)
+        args = ", ".join(_print_arg(a) for a in stmt.args)
         return [f"{pad}print({args})"]
     if isinstance(stmt, THIRExprStmt):
         return [f"{pad}{_expr(stmt.expr)}"]

@@ -1,7 +1,7 @@
 # tpy.dispatch: every same-named variant is its own implementation, resolved
 # by argument types and arity; typing.overload keeps CPython's stubs+impl form.
 from typing import overload
-from tpy import dispatch, int32
+from tpy import dispatch, error_return, int32, ReturnException
 
 
 # free function: variants differ by arity
@@ -77,6 +77,33 @@ def show(x: int | str) -> str:  # tpyc: ok
     return "s=" + x
 
 
+class Empty(Exception, ReturnException):
+    pass
+
+
+# free function: variants that carry @error_return keep the handled check
+# and the unwrap
+@dispatch
+@error_return(Empty)
+def parse(s: str) -> int:  # tpyc: ok
+    if s == "":
+        raise Empty()
+    return len(s)
+
+
+@dispatch
+@error_return(Empty)
+def parse(n: int, scale: int) -> int:
+    if n < 0:
+        raise Empty()
+    return n * scale
+
+
+@error_return(Empty)
+def parse_both() -> int:
+    return parse("ab") + parse(-1, 2)  # tpyc: ok
+
+
 def main() -> None:
     print("free_arity:", area(3), area(2, 5))
     print("free_type:", tag(1), tag("abc"))
@@ -90,6 +117,15 @@ def main() -> None:
     push(xs, 7)
     print("reference:", xs)
     print("overload:", show(7), show("q"))
+    try:
+        print("error_return:", parse("abc"), parse(2, 3))
+        print(parse(""))
+    except Empty:
+        print("error_return: caught")
+    try:
+        parse_both()
+    except Empty:
+        print("error_return: propagated")
 
 
 main()

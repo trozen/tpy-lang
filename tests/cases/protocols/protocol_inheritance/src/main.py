@@ -1,5 +1,5 @@
 from typing import Protocol, Sized
-from tpy import int32
+from tpy import int32, Comparable, Send, ValueType
 
 
 class Printable(Protocol):
@@ -34,10 +34,31 @@ class Container[T: PrintableAndSized]:
         print(len(self.value))
 
 
+class OrdVal(Comparable, ValueType, Protocol): ...
+
+
+class SendSized(Send, Sized, Protocol): ...
+
+
+# a member-less protocol is the intersection of its parents: each parent,
+# a marker included, decides by its own rule
+def top[T: OrdVal](xs: list[T]) -> T:  # tpyc: ok
+    best = xs[0]
+    for x in xs:
+        if best < x:
+            best = x
+    return best
+
+
+def size_of[T: SendSized](x: T) -> int:  # tpyc: ok
+    return len(x)
+
+
 def main() -> None:
     msg = Message("hello")
     c = Container(msg)
     c.describe()
+    print("marker_parents:", top([3, 9, 2]), top(["a", "c"]), size_of([1, 2, 3]))
 
 
 main()

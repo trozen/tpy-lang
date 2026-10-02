@@ -1,0 +1,1 @@
+main.py:18: error: Type 'Player' does not satisfy 'ComparableValue' required by 'max': 'Player' is not a value type

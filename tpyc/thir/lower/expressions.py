@@ -5037,6 +5037,18 @@ def _ptr_read_derefs(name: str, lc: '_LowerCtx') -> bool:
             and name not in lc.narrow.narrowed)
 
 
+def _deref_loop_source(iterable: THIRExpr, lc: '_LowerCtx') -> THIRExpr:
+    """A loop source that is a pointer-local NAME, captured dereferenced
+    (`auto& __obj_N = (*f);`). The name carve-outs keep a ptr-opt container
+    and a record-class local bare elsewhere, their consumers adding the
+    indirection themselves; the loop capture is such a consumer."""
+    if (isinstance(iterable, THIRName) and not iterable.deref
+            and iterable.name in lc.pointers
+            and _ptr_read_derefs(iterable.name, lc)):
+        return replace(iterable, deref=True)
+    return iterable
+
+
 def _name_read_deref(name: str, binding_type: 'TpyType | None',
                      lc: '_LowerCtx', use: _ExprUse,
                      whole_optional: bool = False,

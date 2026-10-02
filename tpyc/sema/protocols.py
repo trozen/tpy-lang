@@ -264,6 +264,22 @@ class ProtocolChecker:
         Returns STRUCTURAL only when the method/field walk at the tail is the
         sole path that succeeded. Returns None when actual does not conform.
         """
+        composite = protocol_info_of(protocol)
+        if (composite is not None and composite.parent_protocols
+                and not composite.methods and not composite.fields
+                and composite.cpp_concept is None and not composite.type_params):
+            # A protocol with no members of its own is the intersection of
+            # its parents, and each parent decides by its own rule (a
+            # marker's, a tuple's elementwise one) -- a structural walk over
+            # the inherited methods would skip those rules.
+            kinds = [self.classify_protocol_conformance(actual, parent)
+                     for parent in composite.parent_protocols]
+            if any(kind is None for kind in kinds):
+                return None
+            return (ProtocolConformanceKind.STRUCTURAL
+                    if ProtocolConformanceKind.STRUCTURAL in kinds
+                    else ProtocolConformanceKind.EXPLICIT)
+
         # Send / Sync conformance is the type's own derived trait. Checked
         # before the qualifier unwrap below: Own[T] / readonly[T] / Send[T]
         # have their own Send/Sync answers distinct from bare T's.
@@ -362,8 +378,12 @@ class ProtocolChecker:
         # STRUCTURAL if any element only structurally conforms, so the
         # weakest link shows through in specificity ranking.
         if isinstance(actual, TupleType):
+            # Elementwise: a tuple has a property when each element has it. A
+            # tuple holding a class instance is no value type for a bound --
+            # copying the tuple would copy the instance.
             if protocol.qualified_name() in (
                 qnames.HASHABLE, qnames.COMPARABLE, qnames.EQUATABLE,
+                qnames.VALUE_TYPE,
             ):
                 kind = ProtocolConformanceKind.EXPLICIT
                 for et in actual.element_types:
