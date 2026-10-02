@@ -27,6 +27,8 @@ from tpy.extern import native, export
 | `@native("factory", function=True)` on `__init__` -- factory-style constructor | **Done** |
 | `@native("MyArena", indirecting=True)` -- attest heap indirection for cycle detection | **Done** |
 | `@native("MyCursor", borrowing_view=True)` -- declare a value type's values borrow handles (lifetime-checked) | **Done** |
+| `@native("MyRing", elements=True)` -- declare a class owns its type arguments' values as elements | **Done** |
+| `@native("put", mutates="elements")` -- declare a native method replaces elements in place and moves none | **Done** |
 | `@native("clock", transient=True)` / `@cpp_template("...", transient=True)` -- declare a binding that touches only its arguments and retains nothing | **Done** |
 | `@native("wait", checks_signals=True)` / `@cpp_template("...", checks_signals=True)` -- declare a binding that is a Ctrl-C check point | **Done** |
 | `native_field("cpp_name")` -- per-field C++ rename on `@native` classes | **Done** |
@@ -314,6 +316,105 @@ every other native template keeps `T` (`Bag[readonly[Node]]` renders
 `my::Bag<Node>`): a storage template owns its elements, and C++ containers
 and allocators reject a const element type. The readonly-ness of a storage
 template's element is enforced by sema alone.
+
+### Declaring element storage: `elements=True` and `mutates="elements"`
+
+A native container -- a class whose values own the values of its type
+arguments in storage of their own -- declares it on the class, and each
+method that replaces elements without moving any declares that on the
+method:
+
+```python
+from typing import Iterator
+from tpy import int32, Own, NativeIterable, readonly, pure
+from tpy.extern import native
+
+@native("my::Ring", elements=True)
+class Ring[T](NativeIterable[T]):
+    @native("tpy::__iter__", function=True)
+    @pure
+    @readonly
+    def __iter__(self) -> Iterator[T]: ...      # the element member: T
+
+    @native("tpy::__getitem__", function=True)
+    @pure
+    @readonly
+    def __getitem__(self, i: int32) -> T: ...   # a positional subscript yields the element
+
+    @native("put", mutates="elements")
+    def put(self, i: int32, v: Own[T]) -> None: ...   # replaces an element in place
+
+    @native("push")
+    def push(self, v: Own[T]) -> None: ...      # undeclared: may move or free every element
+```
+
+`elements=True` says a borrow can point into the type's elements -- a loop
+variable, a reference to a record element -- so the borrow analysis models
+them as storage of their own, apart from the container's structure.
+`mutates="elements"` says the method writes elements in place and moves
+none, so iterators and references to the other elements stay valid (the
+element it overwrites is replaced under any reference to it): sema does not warn
+when it is called on a container being iterated, where `push` above warns
+(`Mutation of 'r' while iterating over it ('push' invalidates the
+iterator)`). A mutating method (neither `@readonly` nor `@pure`) that
+declares nothing may replace elements and also move or free every one of
+them; that is what an undeclared method means, so `mutates="structure"` is
+not a spelling -- `"elements"` is the only value. The declaration is trusted
+on a method of any `@native` class, whether or not the class declares
+`elements=True`: a container whose element is no type parameter (a
+`Bag(NativeIterable[int32])`) cannot declare its elements, and this is its
+only way to say a write keeps iterators valid. Each use is an audit of the
+binding: the stdlib declares
+`elements=True` on `list`, `dict`, `set` and `Array`, and
+`mutates="elements"` on `dict.__setitem__` and `list`'s integer-index
+`__setitem__` (its slice overloads stay undeclared).
+
+**Members.** Which type arguments are elements is read off the stub, never
+off the type's name:
+
+- The ELEMENT is the type parameter the class's readonly `__iter__` yields
+  (`-> Iterator[T]`). A consuming `__iter__` (not `@readonly`) does not count.
+- A `__getitem__` returning the element is a positional subscript (`list`,
+  `Array`, `Span`).
+- A `__getitem__` returning ANOTHER type parameter declares the VALUE member
+  and must be keyed by the element: `dict[K, V]` iterates `K` and declares
+  `def __getitem__(self, key: readonly[K]) -> V`.
+- Members are positions among the type parameters, so `dict[str, str]` has
+  two members of one type.
+
+A `borrowing_view=True` type declares the members it views the same way,
+without `elements=True` (a view owns nothing): `dict_values[K, V]` yields
+`V`, and `dict_items[K, V]`, whose `__iter__` yields `tuple[K, V]`, views
+both members and binds no single-element cursor. `SpanIter`, whose
+`__iter__` returns itself, declares none.
+
+**Rejections.** At parse time: `mutates=` on a class or a free function;
+`elements=` on a method or a free function; a `mutates` value other than
+`"elements"`; `mutates="elements"` beside `@readonly`, `@pure` or
+`@auto_readonly` (in any decorator order), or on a `@staticmethod` or
+`@classmethod` (no receiver); `mutates=` on `@cpp_template`, whose mutating
+methods stay undeclared. When the class is registered, `elements=True` is
+rejected when no readonly `__iter__` yields one of the class's own type
+parameters, together with `borrowing_view=True`, when two readonly `__iter__`
+overloads yield different parameters, when `__getitem__` overloads return
+different parameters, when a positional `__getitem__` returns a parameter
+other than the element, when a `__getitem__` is keyed by a parameter
+`__iter__` does not yield, and when a `__getitem__` sits beside an
+`__iter__` that yields a tuple of two members. A `borrowing_view=True`
+class is not obliged to declare members: one whose declarations disagree
+in any of these ways is accepted and simply declares none, so the analysis
+does not model it.
+
+**Current limit.** On a user `@native` type, an element read into a local or
+a return value (`p = r[0]`, `return r[0]`) and a subscript write
+(`r[0] = v`) are rejected by C++ code generation before any analysis reads
+the facts (THIR reject sites `decl.slot_type`, `subscript.recv_type`,
+`setitem.family`). Today the declarations serve loops over the type, field
+reads through a subscript (`r[0].x`) and method calls. A subscript renders
+through the runtime's `tpy::__getitem__`, which calls a `__getitem__`
+member of the C++ type whatever name the stub declares
+(`BUGS.md#native-getitem-ignores-declared-name`), so the C++ class must
+define one.
 
 ### Declaring a transient binding: `transient=True`
 
@@ -741,7 +842,8 @@ These are orthogonal to the import/export system and remain unchanged:
 | Decorator | Purpose |
 |-----------|---------|
 | `cpp_template("...")` | Inline C++ template expansion; takes `transient=True` and `checks_signals=True` like `@native` (see "Declaring a transient binding", "Declaring a check point") |
-| `pure` (from `tpy`) | No non-local mutation, no I/O, nothing retained after return or raise; implies `readonly`. Read by sema's borrow-argument check, mutation call edges, the with-exit and loop-hold write checks (`sema/loop_frames.py`) and `sema/receiver_calls.call_mutates_receiver`, and published as a stub callee's `PURE` contract for MIR's stub call contract, which admits it only at inert or owned-leaf arguments of builtin TypeDefs (a protocol or callable parameter bound to user code refuses: `@pure` was never audited for "runs no user code") || `native_preserves_refs` | Marks native method as not invalidating iterators |
+| `pure` (from `tpy`) | No non-local mutation, no I/O, nothing retained after return or raise; implies `readonly`. Read by sema's borrow-argument check, mutation call edges, the with-exit and loop-hold write checks (`sema/loop_frames.py`) and `sema/receiver_calls.call_mutates_receiver`, and published as a stub callee's `PURE` contract for MIR's stub call contract, which admits it only at inert or owned-leaf arguments of builtin TypeDefs (a protocol or callable parameter bound to user code refuses: `@pure` was never audited for "runs no user code") |
+| `native(..., mutates="elements")` | Marks a native method as replacing elements in place and moving none, so it invalidates no iterator (see "Declaring element storage") |
 | `copy_returns_warn` | Marks an `Own[V]` accessor that copies where its CPython namesake aliases; sema warns at call sites (silence with `copy()`) |
 | `value_ptr_coercion` | Type coercion annotation |
 | `virtual_raise` | Class marker: its hand-written C++ `__raise__` dispatches (is not `throw *this`), so `raise X(args)` routes through it instead of the fresh-throw peephole. Not inherited. Used by `OSError`'s errno -> subclass mapping |

@@ -1,3 +1,8 @@
+ring_total: 3
+ring_grow: 7
+ring_push_in_loop: 7
+ring_put_in_loop: 7 15
+ring_first: 5
 unmarked: 3.0
 unmarked_nullary: 0.25
 text_of_scalar: 2

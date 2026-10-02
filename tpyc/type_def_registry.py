@@ -189,6 +189,22 @@ class EnumInfo:
         return dict(self.cpp_member_names)
 
 
+@dataclass(frozen=True)
+class NativeMembers:
+    """The storage members a native container or container view declares
+    through its stub, as positions among the type's own type parameters:
+    `element` is the parameter its readonly `__iter__` yields, `value` the
+    other parameter its `__getitem__` returns (None when a subscript yields
+    the element itself or the type has no subscript). `keyed` says a
+    subscript is addressed by a member (a key) rather than by position.
+    `cursor` is False when iteration yields both members at once (a tuple),
+    which no single element binds."""
+    element: int
+    value: Optional[int]
+    keyed: bool
+    cursor: bool
+
+
 @dataclass
 class TypeDef:
     """Per-qname behavior record. All fields describe properties intrinsic
@@ -273,8 +289,13 @@ class TypeDef:
     # A value owns the values of its type arguments as elements in storage
     # of its own (a native container): it holds what they hold, and a
     # compiler-introduced borrow can point into its elements
-    # (`typesys.loan_class`).
+    # (`typesys.loan_class`). Set only from the stub's
+    # `@native(..., elements=True)`.
     owns_elements: bool = False
+    # Which type arguments an element-owning type or a borrowing view stores
+    # or views as members; latched when the stub's record is registered
+    # (`latch_native_members`), None until then and for any other type.
+    native_members: Optional[NativeMembers] = None
     # Copying an owned leaf can throw a C++ exception (a standard
     # container's `bad_alloc`), which a bare `except:` catches. A type whose
     # allocation failure is a panic declares False (docs/EXCEPTION_DESIGN.md
@@ -483,7 +504,7 @@ def attach_dynamic_type_def(
 
 # Facts a native stub declares through `@native(...)` kwargs; the record
 # attribute and the TypeDef field share each name.
-_DECLARED_NATIVE_FLAGS = ("is_borrowing_view", "iter_yields_ref_tuple_proxies")
+_DECLARED_NATIVE_FLAGS = ("is_borrowing_view", "owns_elements", "iter_yields_ref_tuple_proxies")
 
 
 class _ViewTemplateFormatter:
@@ -535,6 +556,33 @@ def latch_declared_native_flags(qname: str, record: object) -> None:
     _dynamic_attached_qnames.add(qname)
 
 
+def latch_native_members(td: TypeDef, members: Optional[NativeMembers]) -> None:
+    """Record the storage members a native stub declares on its TypeDef;
+    a static TypeDef's are reset by `clear_dynamic_type_defs`."""
+    td.native_members = members
+    if td.qname in _type_defs:
+        _dynamic_attached_qnames.add(td.qname)
+
+
+_DECLARED_NATIVE_FACTS = (*_DECLARED_NATIVE_FLAGS, "native_members")
+
+
+def declared_native_facts() -> dict[str, dict[str, object]]:
+    """Every fact the builtin stubs of the last compilation declared, per
+    static qname: for a unit context that models a compilation's bodies
+    without running one (`restore_declared_native_facts`)."""
+    facts = {q: {f: getattr(td, f) for f in _DECLARED_NATIVE_FACTS} for q, td in _type_defs.items()}
+    return {q: declared for q, declared in facts.items() if any(declared.values())}
+
+
+def restore_declared_native_facts(facts: dict[str, dict[str, object]]) -> None:
+    for qname, declared in facts.items():
+        td = _type_defs[qname]
+        for fact, value in declared.items():
+            setattr(td, fact, value)
+        _dynamic_attached_qnames.add(qname)
+
+
 def clear_dynamic_type_defs() -> None:
     """Reset dynamic attachments. Called from `clear_all_compilation_state`
     so per-compilation RECORD/PROTOCOL/ENUM TypeDefs don't bleed across runs."""
@@ -561,6 +609,7 @@ def clear_dynamic_type_defs() -> None:
             td.is_indirecting = False
             for flag in _DECLARED_NATIVE_FLAGS:
                 setattr(td, flag, False)
+            td.native_members = None
     _dynamic_attached_qnames.clear()
 
 
@@ -1348,7 +1397,7 @@ def _populate() -> None:
     # list[T]: is_send from element, is_sync always False (mutable); cpp
     # emits std::vector<T>; subscript_borrows (element view of container).
     register(TypeDef(
-        "builtins.list", TC.LIST, cpp_default_init=_INERT, owns_elements=True,
+        "builtins.list", TC.LIST, cpp_default_init=_INERT,
         subscript_borrows=True,
         is_send=lambda args: args[0].is_send(),
         is_sync=False,
@@ -1360,7 +1409,7 @@ def _populate() -> None:
     # NominalType.get_element_type would return K (first type_arg), so use
     # element_of to override. cpp: ::tpy::ordered_map<K, V>.
     register(TypeDef(
-        "builtins.dict", TC.DICT, cpp_default_init=_INERT, owns_elements=True,
+        "builtins.dict", TC.DICT, cpp_default_init=_INERT,
         subscript_borrows=True,
         is_send=lambda args: args[0].is_send() and args[1].is_send(),
         is_sync=False,
@@ -1372,7 +1421,7 @@ def _populate() -> None:
     # threads only when its element is); is_sync always False (mutable
     # container). C++ name diverges: set[T] -> ::tpy::ordered_set<T>.
     register(TypeDef(
-        "builtins.set", TC.SET, cpp_default_init=_INERT, owns_elements=True,
+        "builtins.set", TC.SET, cpp_default_init=_INERT,
         is_send=lambda args: args[0].is_send(),
         is_sync=False,
         cpp_formatter=lambda args: f"::tpy::ordered_set<{args[0].to_cpp()}>",
@@ -1401,7 +1450,7 @@ def _populate() -> None:
         return f"std::array<{elem.to_cpp()}, {size_str}>"
 
     register(TypeDef(
-        "tpy.Array", TC.ARRAY, owns_elements=True,
+        "tpy.Array", TC.ARRAY,
         subscript_borrows=True,
         is_send=lambda args: args[0].is_send(),
         is_sync=lambda args: args[0].is_sync(),

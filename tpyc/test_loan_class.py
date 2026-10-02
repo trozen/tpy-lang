@@ -18,8 +18,8 @@ from tpyc.typesys import (
     BYTES_FAMILY, STR_FAMILY, view_family_of, view_owned_leaf,
 )
 from tpyc.thir.scalar_leaves import (
-    binds_element, container_members, container_view, modeled_members, native_container_type, owned_constant,
-    owned_leaf, plain_record_element, storage_leaf, view_compatible, view_iteration_index, view_leaf,
+    binds_cursor, binds_element, container_view, declared_members, modeled_members, native_container_type,
+    owned_constant, owned_leaf, plain_record_element, storage_leaf, view_compatible, view_leaf,
 )
 from tpyc.thir.testutil import _compile, _entry
 
@@ -516,14 +516,20 @@ def container_types():
     return compiler, types
 
 
-def test_owns_elements_is_declared_on_exactly_the_native_containers():
+def test_owns_elements_is_declared_by_exactly_the_native_container_stubs(container_types):
     declared = {q for q, td in _type_defs.items() if td.owns_elements}
     assert declared == {"builtins.list", "builtins.dict", "builtins.set", "tpy.Array"}
 
 
+def test_no_type_owns_elements_before_its_stub_declares_it():
+    # The fact is the stub's `@native(..., elements=True)`: the registry holds no list of containers.
+    assert not any(td.owns_elements or td.native_members is not None for td in _type_defs.values())
+    assert not native_container_type(_nominal("builtins.list", INT32))
+
+
 @pytest.mark.parametrize("qname", ["builtins.list", "builtins.set", "tpy.Array"])
 @pytest.mark.parametrize("const", [False, True])
-def test_a_native_container_lends_by_reference(qname, const):
+def test_a_native_container_lends_by_reference(qname, const, container_types):
     # Lendable YES is the reference parameter form the renderer spells.
     args = (INT32, 3) if qname == "tpy.Array" else (INT32,)
     typ = _nominal(qname, *args)
@@ -592,31 +598,44 @@ def test_plain_record_elements_run_no_user_code(container_types):
         assert modeled_members(_nominal("builtins.list", point))
         assert modeled_members(_nominal("tpy.Array", STR, 2))
         assert modeled_members(_nominal("builtins.dict", STR, INT32))
-        # Hashed members are leaves only; nested containers are out.
-        assert not modeled_members(_nominal("builtins.set", point))
+        # A type with a value member holds leaves only; a set element is any
+        # admitted element (sema refuses one with no hash), nested containers are out.
+        assert modeled_members(_nominal("builtins.set", point))
+        assert not modeled_members(_nominal("builtins.set", types["hashed"]))
         assert not modeled_members(_nominal("builtins.dict", STR, point))
         assert not modeled_members(_nominal("builtins.list", _nominal("builtins.list", INT32)))
         assert not modeled_members(_nominal("builtins.list", types["ordered"]))
         assert not modeled_members(INT32) and not modeled_members(STR)
 
 
-def test_container_members_name_the_element_value_and_hashing(container_types):
+def test_declared_members_are_the_stub_type_parameters_at_the_type_arguments(container_types):
     compiler, types = container_types
     with activate_compiler(compiler):
         point = types["point"]
-        assert container_members(_nominal("builtins.list", point)) == (point, None, False)
-        assert container_members(_nominal("builtins.set", INT32)) == (INT32, None, True)
-        assert container_members(_nominal("tpy.Array", STR, 2)) == (STR, None, False)
-        assert container_members(types["rspan"])[0] == ReadonlyType(INT32)
-        # A dict and each of its views store keys (hashed) and values.
-        for name in ("builtins.dict", "builtins.dict_keys", "builtins.dict_values", "builtins.dict_items"):
-            assert container_members(_nominal(name, STR, INT32)) == (STR, INT32, True), name
-        assert container_members(INT32) is None and container_members(STRVIEW) is None
-        # A view iterates the element argument its `__iter__` declares; items yields tuples.
-        assert view_iteration_index(_nominal("builtins.dict_keys", STR, INT32)) == 0
-        assert view_iteration_index(_nominal("builtins.dict_values", STR, INT32)) == 1
-        assert view_iteration_index(_nominal("builtins.dict_items", STR, INT32)) is None
-        assert view_iteration_index(_nominal("builtins.list", INT32)) is None
+        assert declared_members(_nominal("builtins.list", point)) == (point, None, False)
+        assert declared_members(_nominal("builtins.set", INT32)) == (INT32, None, False)
+        assert declared_members(_nominal("tpy.Array", STR, 2)) == (STR, None, False)
+        assert declared_members(types["rspan"]) == (ReadonlyType(INT32), None, False)
+        assert declared_members(_nominal("tpy.varargs", INT32)) == (INT32, None, False)
+        # A dict subscript is keyed by its element (the key) and yields the value.
+        assert declared_members(_nominal("builtins.dict", STR, INT32)) == (STR, INT32, True)
+        # Members are positions, not types: a dict of two equal arguments has two.
+        assert declared_members(_nominal("builtins.dict", STR, STR)) == (STR, STR, True)
+        # A view declares its own members: keys its key, values its value.
+        assert declared_members(_nominal("builtins.dict_keys", STR, INT32)) == (STR, None, False)
+        assert declared_members(_nominal("builtins.dict_values", STR, ReadonlyType(INT32))) \
+            == (ReadonlyType(INT32), None, False)
+        # An items view iterates both members at once: no cursor binds one.
+        assert declared_members(_nominal("builtins.dict_items", STR, INT32)) == (STR, INT32, False)
+        assert not binds_cursor(_nominal("builtins.dict_items", STR, INT32))
+        for typ in (_nominal("builtins.dict", STR, INT32), _nominal("builtins.dict_values", STR, INT32),
+                    _nominal("tpy.varargs", INT32), types["span"]):
+            assert binds_cursor(typ), typ
+        # An Array whose length is unbound names no storage.
+        assert declared_members(_nominal("tpy.Array", INT32, TypeParamRef("N"))) is None
+        # No declared element: a leaf view, a Span iterator, a leaf.
+        for typ in (INT32, STRVIEW, _nominal("tpy.SpanIter", INT32)):
+            assert declared_members(typ) is None and not binds_cursor(typ), typ
 
 
 def test_a_loop_variable_binds_the_element_or_views_it(container_types):

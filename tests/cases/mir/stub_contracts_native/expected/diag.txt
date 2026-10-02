@@ -1,0 +1,1 @@
+main.py:118: warning: Mutation of 'r' while iterating over it ('push' invalidates the iterator)

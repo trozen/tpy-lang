@@ -1911,7 +1911,14 @@ form facts, never on lists of accepted kinds.
   facts, container writes in free-function summaries, and the first
   container conflicts (`replacement`). `tests/cases/mir/containers` pins
   them, each beside a certified safe sibling.
-- **B3, second half: retained loans.** View fields (a record retaining a
+- **B3, second half: retained loans.** Its first item landed: native types
+  declare their storage members and element writes on the stub
+  (`@native(..., elements=True)`, `@native(..., mutates="elements")`), read
+  through `scalar_leaves.declared_members`, with no container kind table.
+  A user `@native` container lowers from the same two facts where THIR
+  lowers the shape (loops, a field read through a subscript, method calls
+  with literal or leaf arguments). Remaining:
+  view fields (a record retaining a
   loan), user method summaries (receiver as parameter 0), `retains` on
   `MIRParameterWrite`, nested container elements. From here on each step
   builds the call-effect contracts it needs -- retention, invalidation,
@@ -2273,7 +2280,9 @@ as the corpus grows).
 ### B3 contract (first half: containers as places)
 
 - **Invariant.** Every container place -- a slot, a field or an element of
-  a native container type (`list`, `set`, `dict`, `Array`) -- is opaque
+  a native container type, one whose stub declares
+  `@native(..., elements=True)` (in the stdlib `list`, `set`, `dict`,
+  `Array`) -- is opaque
   storage with two summary sub-places, `[structure]` (its shape) and
   `[elements]` (every element at once). Element reads, views, slices and
   iterators borrow `[elements]` (an iterator also retains `[structure]`); a
@@ -2282,9 +2291,18 @@ as the corpus grows).
   elements in place, and nothing when it only reads. Element identity is
   never tracked: a write of one element is a write of any.
 - **Container rule.** One layout per type (`MIRDefinitions.container`):
-  `MIRContainerLayout(element, value)`, where `element` is what iteration
-  yields (the list / set / Array element, the dict KEY) and `value` the dict
-  value or None, each a `MIRTupleElement` whose kind is SCALAR (inert leaf),
+  `MIRContainerLayout(element, value)`, built from the members the type's
+  stub declares (`scalar_leaves.declared_members`, reading
+  `TypeDef.native_members`, latched when the stub is registered), by
+  position among its
+  type arguments: `element` is the type parameter the readonly `__iter__`
+  yields (the list / set / Array element, the dict KEY) and `value` the
+  other parameter `__getitem__` returns (the dict value) or None; a
+  subscript is keyed when its index parameter is the element (dict), else
+  positional, and a subscript on a type whose keyedness disagrees with
+  having a value member refuses ("unsupported keyed container").
+  `dict[K, K]` has two members. Each member is a
+  `MIRTupleElement` whose kind is SCALAR (inert leaf),
   OWNED (owned leaf) or BORROWED (a plain record), `readonly` inherited from
   the container. Admission keys on `typesys.loan_class` (a native
   container's `holds` is its element's, it is lendable) and on the
@@ -2295,8 +2313,13 @@ as the corpus grows).
   leaves, and plain records whose fields are leaves or owned leaves (no
   container field inside an element, so no path is deeper than
   `container[elements].F::x`; a top-level record may hold container fields).
-  Set elements and dict keys are inert or owned leaves (hashing runs no
-  user code). An element whose `loan_class.holds` is YES refuses
+  A type with a value member (a dict, an items view) holds leaves in BOTH
+  members: a record-valued dict refuses at the layout ("unsupported native
+  container element"). No rule names hashing: sema refuses a record without
+  `__hash__` / `__eq__` as a set element or dict key, and a record
+  declaring them is no plain record element (`plain_record_element`), so
+  no admitted element runs user code inside a container operation. An
+  element whose `loan_class.holds` is YES refuses
   ("container holds a borrow"); a container element of a container refuses
   ("unsupported native container element"). Holders: an owned container
   (a local `xs = [..]`, a field, an `Own[list[T]]` parameter, a result) is
@@ -2319,19 +2342,21 @@ as the corpus grows).
   MIRRecordWrite(IN_PLACE))`, a WEAK update (never a strong kill in the
   dependency transfer); rebinding an owned container (`xs = [..]`) is the
   owned-leaf own-site replacement.
-- **Stub method rule.** A builtin container method carries
+- **Stub method rule.** A native container method (builtin or user
+  `@native`) carries
   `THIRMethodCall.stub_callee` (a subscript write, `THIRSetItem.stub_callee`,
   from the resolved `__setitem__`): parameter 0 is the INSTANTIATED receiver
   (`signature.param_types[0]`, `CONST_REF` when the stub is readonly, else
   `MUT_REF`), the explicit parameters follow substituted, and the identity
   is `owner.name` plus those types, so `list[int32].pop()`,
   `list[int32].pop(i)` and `list[Point].pop()` are three identities.
-  `THIRStubCallee.preserves_refs` carries `native_preserves_refs`. The
+  `THIRStubCallee.mutates_elements` carries the stub's
+  `@native(..., mutates="elements")`. The
   receiver effect is derived from the declaration, first match wins:
   `@pure` -> reads only (this covers the `@auto_readonly` mutable clones of
   `values()` / `items()`); readonly receiver -> reads only;
-  `preserves_refs` -> writes `(0, (elements,))`; otherwise writes
-  `(0, (structure,))`. A `@pure` stub may read a READONLY receiver through
+  `mutates_elements` -> writes `(0, (elements,))`; otherwise (a mutating
+  method that declares nothing) writes `(0, (structure,))`. A `@pure` stub may read a READONLY receiver through
   a mutable binding: sema resolves the mutable `@auto_readonly` clone of
   `values()` / `items()` on a const dict too, and a pure read cannot write
   it. A mutating method reached through a VIEW (`Span.__setitem__`,
@@ -2365,27 +2390,33 @@ as the corpus grows).
   disjoint; distinct external roots may alias (the B2 rule), so a function
   iterating one container parameter while growing another conflicts
   (`copy_into` in the case). `static` referents are never affected.
-- **View transparency.** A Span or dict view is a `BORROWED` holder typed by
-  its view type (the `StrView` template); `scalar_leaves.view_compatible`
-  holds for `Span[T]` over a container whose element member is `T` (or a
-  `Span[T]`) and for a dict view over its `dict[K, V]`. The holder IS its
+- **View transparency.** A container view -- a `borrowing_view=True` type
+  whose stub declares members: `Span`, `varargs`, the dict views, a user
+  view -- is a `BORROWED` holder typed by its view type (the `StrView`
+  template). The holder IS its
   source's elements region: a container projection applied to a view
   holder resolves to the holder's referents (never `xs[elements][elements]`),
   an iterator over a view depends on the view's referents only, and a write
   through a `Span[T]` (`s[0] = v`) is an elements write of the source.
-  Mutability comes from the element type argument (`Span[readonly[T]]`);
-  dict views are readonly. A dict view's layout IS its dict's layout (the
-  two members); what a cursor over the view yields is the member the view's
-  `__iter__` declares (`scalar_leaves.view_iteration_index`,
-  `definitions.iteration_layout`): keys for `keys()` and for the dict
-  itself, values for `values()`, nothing admitted for `items()` (tuples).
-  `Span.__setitem__` and `Array.__setitem__` do NOT declare
-  `@native_preserves_refs`, although a span or a fixed-size array never
+  Mutability comes from the view's own type arguments
+  (`Span[readonly[T]]`). A view's layout is its OWN declared members
+  (`declared_members` of the view type, readonly from its own type
+  arguments), so a cursor over a view walks the view's layout on the one
+  container path: `keys()` declares the key, `values()` the value.
+  `scalar_leaves.view_compatible(holder, source)` compares the two types'
+  type arguments (readonly stripped), which name the elements both sides
+  store and keep `dict_values[str, int32]` off a `dict[int32, str]`; a
+  mutable view views no readonly elements, and a view of a view has the
+  same type. `dict_items`, whose `__iter__` yields
+  `tuple[K, V]`, declares both members and binds no cursor
+  (`scalar_leaves.binds_cursor`): `len(d.items())` is covered, iterating
+  it refuses. `Span.__setitem__` and `Array.__setitem__` do NOT declare
+  `mutates="elements"`, although a span or a fixed-size array never
   moves its elements: sema reads that fact as "invalidates nothing" and
   would stop warning on the explicit spelling `a.__setitem__(i, v)` under a
   live loop or element borrow (`BUGS.md#setitem-write-under-live-element-borrow`),
-  and this unit changes no diagnostic. A `__setitem__` whose stub does not
-  preserve references lowers as the stub call it is -- a structure write of
+  and this unit changes no diagnostic. A `__setitem__` whose stub declares
+  no `mutates` lowers as the stub call it is -- a structure write of
   the receiver (`arr_write` in the case: `writes={param0[structure]}`), the
   conservative verdict that reaches every holder inside the container; a
   write through a Span stays an element write by the view rule. The
@@ -2497,6 +2528,19 @@ as the corpus grows).
   record fields). Top loan-active blockers after this half: resumable
   bodies 555 (B4), return types 281 (tuples and records by value), module
   init 186, generic bodies 137, `THIRForIterProto` 79.
+- **Measured, declared storage members** (same tool and sample; branch
+  base 961e1e99c0 vs the integrated branch, 10957 test bodies on both):
+  lowered 2013 -> 2019, conflicts 20 -> 20, certified 50 -> 50; no body
+  that lowered on the base refuses. The six new bodies are `*args`
+  functions that mutate their elements or declare them `readonly[...]` (a
+  `varargs` parameter is a view holder like a `Span` parameter). 26 bodies
+  changed first blocker: besides those six, ten `*args` bodies that only
+  read an unannotated element move from "view of container storage" to
+  "container name type mismatch" (sema types the parameter and the name
+  differently), six record-valued
+  dict types from "missing native container fact" to "unsupported native
+  container element" (the refusal moved from the THIR fact to the MIR
+  layout), and four varargs bodies reach a later blocker.
 
 ## Scope matrix and remaining increments
 

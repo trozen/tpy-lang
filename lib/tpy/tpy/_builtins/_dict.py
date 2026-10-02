@@ -3,7 +3,7 @@
 from .._typing import Self, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, Own, auto_readonly, dispatch
 from .._core._types import int32, NativeIterable
-from .._bootstrap._extern import native, cpp_template, native_preserves_refs, builtin_type, copy_returns_warn
+from .._bootstrap._extern import native, cpp_template, builtin_type, copy_returns_warn
 
 
 @builtin_type("builtins.dict_keys")
@@ -65,7 +65,7 @@ class dict_items[K, V](Iterable[tuple[K, V]], NativeIterable[tuple[K, V]]):
 
 
 @builtin_type("builtins.dict")
-@native("tpy::ordered_map", indirecting=True)
+@native("tpy::ordered_map", indirecting=True, elements=True)
 class dict[K, V](Iterable[K], NativeIterable[K]):
     @pure
     @readonly
@@ -94,8 +94,7 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
     @readonly
     def __getitem__(self, key: readonly[K]) -> V: ...
 
-    @native("tpy::__setitem__", function=True)
-    @native_preserves_refs
+    @native("tpy::__setitem__", function=True, mutates="elements")
     def __setitem__(self, key: K, value: Own[V]) -> None: ...
 
     @native("tpy::__delitem__", function=True)

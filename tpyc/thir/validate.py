@@ -60,9 +60,9 @@ from ..typesys import (
     is_inert_leaf, return_representation, is_void_like_type, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from .scalar_leaves import (
-    binds_element, container_members, container_view, holds_elements, leaf_constant, leaf_global,
+    binds_cursor, binds_element, container_view, declared_members, holds_elements, leaf_constant, leaf_global,
     native_container_subject, native_container_type, owned_leaf, plain_record_element, readonly_elements,
-    storage_leaf, view_iteration_index,
+    storage_leaf,
 )
 from .nodes import (
     FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign, THIRCall, THIRChainedCompareStmtExpr,
@@ -100,19 +100,24 @@ class THIRValidationError(Exception):
 
 
 def _check_native_container(owner: str, node: object, fact: THIRNativeContainer, typ: TpyType) -> None:
+    """A container or container view fact names the element its stub
+    declares (`declared_members`), at the access the type and binding give."""
     bare = native_container_subject(typ)
-    members = container_members(bare)
+    members = declared_members(bare)
     if (not isinstance(fact, THIRNativeContainer) or fact.type != bare or members is None
             or type(fact.readonly) is not bool
             or isinstance(unwrap_ref_type(typ), ReadonlyType) and not fact.readonly):
         _fail(owner, node, "invalid native container fact")
     member = fact.element
-    declared, value, hashed = members
+    declared, value, _ = members
     view = container_view(bare)
-    if value is not None and (view or not (storage_leaf(value) or owned_leaf(value))):
+    # A view yielding both members at once binds no single element.
+    if view and not binds_cursor(bare):
+        _fail(owner, node, "invalid native container fact")
+    if value is not None and not (storage_leaf(value) or owned_leaf(value)):
         _fail(owner, node, "invalid native container arguments")
     if view:
-        # A Span's element access is its element argument's.
+        # A view's element access is its element argument's.
         if readonly_elements(bare) and not fact.readonly:
             _fail(owner, node, "invalid native element fact")
         declared = unwrap_readonly(declared)
@@ -121,21 +126,8 @@ def _check_native_container(owner: str, node: object, fact: THIRNativeContainer,
             or not (not isinstance(member, THIRBorrowedRecord)
                     and (storage_leaf(element_type) or owned_leaf(element_type))) and not (
                 isinstance(member, THIRBorrowedRecord) and plain_record_element(member.type)
-                and not hashed and member.readonly is fact.readonly)):
+                and value is None and member.readonly is fact.readonly)):
         _fail(owner, node, "invalid native element fact")
-
-
-def _check_view_iteration(owner: str, node: object, fact: THIRNativeContainer, typ: TpyType) -> None:
-    """A container view a loop iterates: the fact names the view and the
-    leaf element argument its iteration yields."""
-    bare = native_container_subject(typ)
-    index = view_iteration_index(bare)
-    if (not isinstance(fact, THIRNativeContainer) or fact.type != bare or index is None
-            or type(fact.readonly) is not bool
-            or (readonly_elements(bare) or isinstance(unwrap_ref_type(typ), ReadonlyType)) and not fact.readonly
-            or fact.element != unwrap_readonly(bare.type_args[index])
-            or not (storage_leaf(fact.element) or owned_leaf(fact.element))):
-        _fail(owner, node, "invalid native container fact")
 
 
 def _check_tuple(owner: str, node: object, layout: THIRTupleLayout, typ: TpyType) -> None:
@@ -278,7 +270,10 @@ def _stub_callee_problem(fact: THIRStubCallee) -> bool:
             or not (fact.contract is None or isinstance(fact.contract, THIRStubContract))
             or not isinstance(fact.readonly, tuple) or len(fact.readonly) != len(fact.signature.param_types)
             or not all(type(r) is bool for r in fact.readonly)
-            or type(fact.preserves_refs) is not bool or type(fact.receiver) is not bool
+            or type(fact.mutates_elements) is not bool or type(fact.receiver) is not bool
+            # A declared element write on a method that declares no write.
+            or fact.mutates_elements and (not fact.readonly or fact.readonly[0]
+                                          or fact.contract is THIRStubContract.PURE)
             or not isinstance(fact.bound_arguments, tuple)
             or not all(isinstance(t, TpyType) for t in fact.bound_arguments))
 
@@ -296,7 +291,7 @@ def _check_method_stub_callee(owner: str, node: THIRMethodCall | THIRSetItem, fa
 
 
 def _check_stub_callee(owner: str, node: THIRCall, fact: THIRStubCallee) -> None:
-    if _stub_callee_problem(fact) or fact.receiver or fact.preserves_refs or fact.bound_arguments:
+    if _stub_callee_problem(fact) or fact.receiver or fact.mutates_elements or fact.bound_arguments:
         _fail(owner, node, "invalid stub callee")
     # A stub renders through its bound symbol or template, never a TPy
     # callee spelling of its own.
@@ -443,10 +438,12 @@ def _check_node(owner: str, node: THIRNode) -> None:
                 or fact.binding is not loop_binding_kind(node.elem_type, node.const_loop_var,
                                                          hoisted=node.hoist_loop_var)):
             _fail(owner, node, "native iteration fact disagrees with emitted binding")
-        if view:
-            _check_view_iteration(owner, node, fact.source, source.result_type)
-        else:
-            _check_native_container(owner, node, fact.source, node.iterable.result_type)
+        _check_native_container(owner, node, fact.source, node.iterable.result_type)
+        # A stub's result is a place only as a view of its receiver's elements.
+        if view and not container_view(fact.source.type):
+            _fail(owner, node, "native iteration fact disagrees with emitted binding")
+        if not binds_cursor(fact.source.type):
+            _fail(owner, node, "native iteration source binds no element")
         element = fact.source.element
         if not binds_element(node.elem_type, (
                 element.type if isinstance(element, THIRBorrowedRecord) else element)):

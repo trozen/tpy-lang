@@ -53,7 +53,97 @@ int32_t view_result(std::string_view s) {
     return 1;
 }
 
+// # user container: a loop borrows the element its stub declares
+// def ring_total(r: Ring[int32]) -> int32:  # tpyc: mir(covered)
+//     t = 0
+//     for v in r:
+//         t += v
+//     return t
+int32_t ring_total(const ::ProbeRing<int32_t>& r) {
+    int32_t t = 0;
+    auto& __obj_0 = r;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        t = ::tpy::add_check<int32_t>(t, v);
+    }
+    return t;
+}
+
+// # user container: a field read through an element
+// def ring_first(r: Ring[Rec]) -> int32:  # tpyc: mir(covered)
+//     return r[0].n
+int32_t ring_first(const ::ProbeRing<Rec>& r) {
+    return ::tpy::__getitem__(r, 0).n;
+}
+
+// # user container: a mutating method that declares nothing writes the structure
+// def ring_grow(r: Ring[int32]) -> None:  # tpyc: mir(covered) mir_summary(known)
+//     r.push(4)  # tpyc: mir_write(r[structure])
+void ring_grow(::ProbeRing<int32_t>& r) {
+    r.push(4);
+}
+
+// # user container: an undeclared method under a live loop (never taken at runtime)
+// def ring_push_in_loop(r: Ring[int32], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+//     t = 0
+//     for v in r:
+//         if flag:
+//             r.push(9)  # tpyc: warning(/'push' invalidates the iterator/)
+//         t += v
+//     return t
+int32_t ring_push_in_loop(::ProbeRing<int32_t>& r, bool flag) {
+    int32_t t = 0;
+    auto& __obj_0 = r;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        if (flag) {
+            r.push(9);
+        }
+        t = ::tpy::add_check<int32_t>(t, v);
+    }
+    return t;
+}
+
+// # user container: `mutates="elements"` replaces in place, so sema does not warn;
+// # MIR still reports the element write under the cursor (index-blind)
+// def ring_put_in_loop(r: Ring[int32], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+//     t = 0
+//     for v in r:
+//         if flag:
+//             r.put(0, 9)  # tpyc: ok mir_write(r[elements])
+//         t += v
+//     return t
+int32_t ring_put_in_loop(::ProbeRing<int32_t>& r, bool flag) {
+    int32_t t = 0;
+    auto& __obj_0 = r;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
+        if (flag) {
+            r.put(0, 9);
+        }
+        t = ::tpy::add_check<int32_t>(t, v);
+    }
+    return t;
+}
+
 // def main() -> None:
+//     ring = Ring[int32]()
+//     ring.push(1)
+//     ring.push(2)
+//     print("ring_total:", ring_total(ring))
+//     ring_grow(ring)
+//     print("ring_grow:", ring_total(ring))
+//     print("ring_push_in_loop:", ring_push_in_loop(ring, False))
+//     print("ring_put_in_loop:", ring_put_in_loop(ring, True), ring_total(ring))
+//     recs = Ring[Rec]()
+//     recs.push(Rec(5))
+//     print("ring_first:", ring_first(recs))
 //     print("unmarked:", unmarked(1.5))
 //     print("unmarked_nullary:", unmarked_nullary())
 //     print("text_of_scalar:", text_of_scalar(42))
@@ -65,6 +155,17 @@ int32_t view_result(std::string_view s) {
 //     print("mutable_leaf:", s)
 //     print("view_result:", view_result("xyz"))
 void main() {
+    ::ProbeRing<int32_t> ring = ::ProbeRing<int32_t>();
+    ring.push(1);
+    ring.push(2);
+    std::cout << "ring_total:" << " " << ::tpyapp::main::ring_total(ring) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::ring_grow(ring);
+    std::cout << "ring_grow:" << " " << ::tpyapp::main::ring_total(ring) << "\n" << ::tpy::check_signals;
+    std::cout << "ring_push_in_loop:" << " " << ::tpyapp::main::ring_push_in_loop(ring, false) << "\n" << ::tpy::check_signals;
+    std::cout << "ring_put_in_loop:" << " " << ::tpyapp::main::ring_put_in_loop(ring, true) << " " << ::tpyapp::main::ring_total(ring) << "\n" << ::tpy::check_signals;
+    ::ProbeRing<Rec> recs = ::ProbeRing<Rec>();
+    recs.push(Rec(5));
+    std::cout << "ring_first:" << " " << ::tpyapp::main::ring_first(recs) << "\n" << ::tpy::check_signals;
     std::cout << "unmarked:" << " " << ::tpy::print_float(::tpyapp::main::unmarked(1.5)) << "\n" << ::tpy::check_signals;
     std::cout << "unmarked_nullary:" << " " << ::tpy::print_float(::tpyapp::main::unmarked_nullary()) << "\n" << ::tpy::check_signals;
     std::cout << "text_of_scalar:" << " " << ::tpyapp::main::text_of_scalar(42) << "\n" << ::tpy::check_signals;

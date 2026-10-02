@@ -1619,6 +1619,7 @@ class Parser:
         builtin_type_key: str | None = None
         virtual_raise = False
         is_indirecting = False
+        owns_elements = False
         is_borrowing_view = False
         iter_yields_ref_tuple_proxies = False
         send_override: bool | None = None
@@ -1669,8 +1670,15 @@ class Parser:
                             f"@{bare_name(qname)}({call_kw}=...) is only valid on a "
                             f"function or method stub: it declares what a bound C++ "
                             f"call does", dec)
+                if "mutates" in kw:
+                    raise ParseError(
+                        f"@{bare_name(qname)}(mutates=...) is only valid on a "
+                        f"method stub: it declares what a bound C++ method "
+                        f"writes", dec)
                 if kw.get("indirecting"):
                     is_indirecting = True
+                if kw.get("elements"):
+                    owns_elements = True
                 if kw.get("borrowing_view"):
                     is_borrowing_view = True
                 if kw.get("_iter_yields_ref_tuple_proxies"):
@@ -1945,7 +1953,7 @@ class Parser:
         # `clean=False` keeps the raw literal -- that is what CPython puts in
         # `__doc__` (dedenting is `inspect.getdoc`'s job, on both sides).
         docstring = ast.get_docstring(node, clean=False)
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, virtual_raise=virtual_raise, is_indirecting=is_indirecting, is_borrowing_view=is_borrowing_view, iter_yields_ref_tuple_proxies=iter_yields_ref_tuple_proxies, send_override=send_override, sync_override=sync_override, send_override_when=send_override_when, sync_override_when=sync_override_when, move_override=move_override, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, exposed_to_host=exposed_to_host, docstring=docstring, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, virtual_raise=virtual_raise, is_indirecting=is_indirecting, owns_elements=owns_elements, is_borrowing_view=is_borrowing_view, iter_yields_ref_tuple_proxies=iter_yields_ref_tuple_proxies, send_override=send_override, sync_override=sync_override, send_override_when=send_override_when, sync_override_when=sync_override_when, move_override=move_override, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, exposed_to_host=exposed_to_host, docstring=docstring, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,
@@ -2395,7 +2403,7 @@ class Parser:
     @staticmethod
     def _reject_type_fact_kwargs(qname: str, kw: dict[str, object],
                                  dec: ast.expr) -> None:
-        for key in ("borrowing_view", "_iter_yields_ref_tuple_proxies"):
+        for key in ("borrowing_view", "elements", "_iter_yields_ref_tuple_proxies"):
             if key in kw:
                 raise ParseError(
                     f"@{bare_name(qname)}({key}=...) is only valid on a "
@@ -2494,7 +2502,8 @@ class Parser:
         method_linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         native_function: bool = False
-        native_preserves_refs: bool = False
+        native_mutates: str | None = None
+        mutates_dec: ast.expr | None = None
         copy_returns_warn: bool = False
         cpp_template: str | None = None
         is_property_getter = False
@@ -2550,8 +2559,6 @@ class Parser:
                     transient_dec = dec
                 if kw.get("checks_signals"):
                     checks_signals_dec = dec
-            elif qname == qnames.NATIVE_PRESERVES_REFS:
-                native_preserves_refs = True
             elif qname == qnames.COPY_RETURNS_WARN:
                 copy_returns_warn = True
             elif qname in self._SEND_SYNC_DECORATOR_MAP:
@@ -2578,6 +2585,15 @@ class Parser:
                 native_name = pos
                 native_function = kw.get("function", False)
                 self._reject_type_fact_kwargs(qname, kw, dec)
+                if "mutates" in kw:
+                    if kw["mutates"] != "elements":
+                        raise ParseError(
+                            f"@{bare_name(qname)}(mutates=...) only supports "
+                            f"mutates=\"elements\" (a mutating method that "
+                            f"declares nothing may move or free every element)",
+                            dec)
+                    native_mutates = "elements"
+                    mutates_dec = dec
                 if kw.get("transient"):
                     transient_dec = dec
                 if kw.get("checks_signals"):
@@ -2637,6 +2653,17 @@ class Parser:
                 raise ParseError(f"@auto_readonly cannot be combined with @staticmethod on method '{node.name}'", auto_readonly_dec)
             if node.name in ("__init__", "__del__"):
                 raise ParseError(f"@auto_readonly is not valid on '{node.name}'", auto_readonly_dec)
+        if native_mutates is not None:
+            # Checked after every decorator is read, so their order cannot matter.
+            if is_staticmethod or is_classmethod:
+                raise ParseError(
+                    f"@native(mutates=...) on '{node.name}': a method without a "
+                    f"receiver has no elements to write", mutates_dec)
+            if is_readonly or is_pure or auto_readonly:
+                raise ParseError(
+                    f"@native(mutates=...) on '{node.name}': the method declares "
+                    f"that it does not write its receiver (@readonly, @pure or "
+                    f"@auto_readonly)", mutates_dec)
 
         # Extract method-level type parameters (e.g. def foo[T](self, x: T) -> T:)
         method_type_params: list[str] = []
@@ -2871,7 +2898,7 @@ class Parser:
             linkage=method_linkage,
             native_name=native_name,
             native_function=native_function,
-            native_preserves_refs=native_preserves_refs,
+            native_mutates=native_mutates,
             copy_returns_warn=copy_returns_warn,
             native_cpp_return_type=native_cpp_return_type,
             cpp_template=cpp_template,
@@ -3030,6 +3057,11 @@ class Parser:
                         f"before modules that use decorator kwargs)", dec)
                 native_name = pos
                 self._reject_type_fact_kwargs(qname, kw, dec)
+                if "mutates" in kw:
+                    raise ParseError(
+                        f"@{bare_name(qname)}(mutates=...) is only valid on a "
+                        f"method stub: a free function has no receiver whose "
+                        f"elements it writes", dec)
                 if kw.get("transient"):
                     transient_dec = dec
                 if kw.get("checks_signals"):

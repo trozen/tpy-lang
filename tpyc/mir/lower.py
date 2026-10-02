@@ -7,13 +7,13 @@ from types import MappingProxyType
 
 from ..identity_map import IdentityMap, IdentitySet
 from ..codegen_cpp.forms import LoopBinding, loop_binding_kind
-from ..type_def_registry import is_array, is_span
+from ..type_def_registry import is_array
 from ..parse import RebindStorage, SourceLocation
 from ..thir import nodes as th
 from ..thir.temp_plan import if_chain, validate_plan
 from ..thir.scalar_leaves import (
-    container_view, converted_literal, leaf_constant, leaf_global, native_container_subject, native_container_type,
-    owned_constant, owned_leaf,
+    binds_cursor, container_view, converted_literal, declared_members, leaf_constant, leaf_global,
+    native_container_subject, native_container_type, owned_constant, owned_leaf,
     owned_value_type, primitive_leaf, primitive_owned_leaf, readonly_elements, record_type, storage_leaf,
     view_compatible, view_leaf,
 )
@@ -46,7 +46,7 @@ from .coverage import (
 )
 from .definitions import (
     MIRConstructorDefinition, MIRContainerDefinition, MIRDefinitions, MIROwnedLeafDefinition,
-    constructor_initialization, iterated_layout, iteration_layout, owned_parameter, with_access,
+    constructor_initialization, owned_parameter, with_access,
 )
 from .call_contract import (
     BORROWING_PASSINGS, OWNING_PASSINGS, MIRCallSummary, MIRParameterBinding, MIRSummaryResult, MIRSummaryState,
@@ -62,11 +62,12 @@ def _literal(expr: th.THIRExpr) -> bool:
         isinstance(expr, th.THIRCoerce) and isinstance(expr.expr, th.THIRLiteral))
 
 
-def _span_view(typ: TpyType) -> bool:
-    """A view of container storage MIR models: a Span (a dict view's
-    iteration yields per-view members no layout names yet)."""
+def _region_view(typ: TpyType) -> bool:
+    """A container view MIR holds as the elements region it views: one
+    whose stub declares an element a cursor binds (a Span, a dict keys or
+    values view, a varargs pack). An items view is only a call's result."""
     bare = unwrap_readonly(unwrap_ref_type(typ))
-    return isinstance(bare, NominalType) and container_view(bare) and is_span(bare)
+    return isinstance(bare, NominalType) and container_view(bare) and binds_cursor(bare)
 
 
 def _view_holder_fact(typ: TpyType) -> th.THIRBorrowedRecord:
@@ -521,8 +522,8 @@ class _Coverage:
         elif view_leaf(fn.return_type):
             self.result = view_result(fn.return_type)
             _require(fn, self.result is not None, "unsupported return type")
-        elif _span_view(fn.return_type):
-            # A Span result views a region the caller reaches through the
+        elif _region_view(fn.return_type):
+            # A container view result views a region the caller reaches through the
             # arguments: a borrowed result, summarized by its origins.
             self.container_layout(fn, unwrap_readonly(unwrap_ref_type(fn.return_type)))
             self.result = view_result(fn.return_type)
@@ -553,8 +554,8 @@ class _Coverage:
                         "native_container"})
             _require(fn, p.name not in self.bindings, "duplicate binding")
             _require(p, isinstance(p.passing, ParamPassing), "unpublished parameter passing")
-            if _span_view(p.type):
-                # A Span passed by value is the caller's loan of a region, held by the parameter.
+            if _region_view(p.type):
+                # A container view passed by value is the caller's loan of a region, held by the parameter.
                 _require(p, all(f is None for f in (p.borrowed_record, p.optional_layout, p.union_layout,
                                                     p.tuple_layout)), "conflicting parameter facts")
                 _require(p, p.passing is ParamPassing.VALUE, "unsupported view parameter passing")
@@ -747,7 +748,7 @@ class _Coverage:
                 if view_leaf(stmt.resolved_type):
                     self.view_local(stmt)
                     continue
-                if _span_view(stmt.resolved_type):
+                if _region_view(stmt.resolved_type):
                     self.span_local(stmt)
                     continue
                 _require(stmt, not container_view(unwrap_readonly(unwrap_ref_type(stmt.resolved_type))),
@@ -805,6 +806,7 @@ class _Coverage:
                  "container initializer type mismatch")
         layout = self.layouts[typ]
         members = (layout.element,) if layout.value is None else (layout.element, layout.value)
+        # Literal construction: the one place the compiler knows a container's length.
         _require(expr, len(expr.values) == (0 if layout.value is None else len(expr.elements))
                  and (not is_array(typ) or len(expr.elements) == typ.type_args[1]),
                  "container initializer type mismatch")
@@ -859,7 +861,7 @@ class _Coverage:
         self.bindings[stmt.name] = fact.type
 
     def span_local(self, stmt: th.THIRVarDecl) -> None:
-        """A Span local: a holder of the region its source views, readonly
+        """A container view local: a holder of the region its source views, readonly
         when its element is or when that region is."""
         typ = unwrap_readonly(unwrap_ref_type(stmt.resolved_type))
         _require(stmt, stmt.form is th.Form.VALUE and stmt.init is not None, "unsupported local type or form")
@@ -869,7 +871,7 @@ class _Coverage:
         self.bindings[stmt.name] = typ
 
     def span_value(self, expr: th.THIRExpr, holder: NominalType) -> bool:
-        """Check an expression a Span holder takes; returns whether the
+        """Check an expression a container view holder takes; returns whether the
         region it views is readonly. Every Span-producing operation
         transfers referents and never copies: a Span is aliased, an
         unstepped slice borrows its receiver's whole element region after
@@ -885,7 +887,7 @@ class _Coverage:
             case th.THIRCoerce():
                 # A view-target coercion renders a view of its source in place.
                 _plain(expr, {"expr", "coercion_name"})
-                _require(expr, _span_view(expr.result_type) and _span_view(expr.expr.result_type),
+                _require(expr, _region_view(expr.result_type) and _region_view(expr.expr.result_type),
                          "unsupported view source")
                 readonly = self.span_value(expr.expr, unwrap_readonly(unwrap_ref_type(expr.expr.result_type)))
                 writing = self.writes[expr.expr]
@@ -907,7 +909,7 @@ class _Coverage:
             case _:
                 raise MIRUnsupported(expr, "unsupported view source")
         self.writes[expr] = writing
-        return readonly or isinstance(holder.type_args[0], ReadonlyType)
+        return readonly or readonly_elements(holder)
 
     def view_local(self, stmt: th.THIRVarDecl) -> None:
         typ = stmt.resolved_type
@@ -1342,7 +1344,11 @@ class _Coverage:
         a key of the dict's key type (an owned-leaf key is lent, a view of
         it lent as the view)."""
         index = expr.index
-        if place.layout.value is None:
+        _, _, keyed = declared_members(place.type)
+        # A key addresses the value member, a position the element; a type
+        # keyed by its only member, or whose value member no key reaches, is not modeled.
+        _require(index, keyed is (place.layout.value is not None), "unsupported keyed container")
+        if not keyed:
             _require(index, int_traits_of(self.expr(index)) is not None, "element index needs a fixed-width int")
             return
         key = place.layout.element.type
@@ -2186,7 +2192,7 @@ class _Coverage:
                     _require(stmt, isinstance(self.fn.return_type, VoidType), "missing return value")
                 elif self.result is not None and view_leaf(self.result.type):
                     self.full_expression(stmt.value, check=lambda: self.view_value(stmt.value, self.result.type))
-                elif self.result is not None and _span_view(self.result.type):
+                elif self.result is not None and _region_view(self.result.type):
                     readonly = self.full_expression(stmt.value,
                                                     check=lambda: self.span_value(stmt.value, self.result.type))
                     _require(stmt, not readonly or self.result.readonly, "return increases access")
@@ -2272,7 +2278,7 @@ class _Coverage:
     def element_write(self, stmt: th.THIRSetItem) -> None:
         """`xs[i] = v`: replaces an element in place -- a weak update of the
         container's element region -- when the receiver's `__setitem__` stub
-        declares it preserves references into the container (it moves no
+        declares it writes elements (`mutates="elements"`: it moves no
         element) or writes through a view, which cannot change its source's
         shape; otherwise the `__setitem__` call it is, a structure write of
         the receiver derived from the stub like any container method."""
@@ -2282,7 +2288,7 @@ class _Coverage:
         target = stmt.target
         _require(stmt, isinstance(target, th.THIRSubscript) and self.container_receiver(target.receiver),
                  "element write needs a container place")
-        if not (callee.preserves_refs is True or container_view(callee.signature.param_types[0])):
+        if not (callee.mutates_elements is True or container_view(callee.signature.param_types[0])):
             self.full_expression(stmt.value, check=lambda: self.setitem_call(stmt, callee))
             return
 
@@ -2382,9 +2388,9 @@ class _Coverage:
         self.element_places[stmt.iterable] = place
         source = fact.source
         _require(stmt, isinstance(source, th.THIRNativeContainer), "missing or invalid native iteration facts")
-        # The member the loop walks is the one the THIR fact names; the validator re-derives it.
-        walked = iterated_layout(place.type, place.layout, source.element)
-        element = walked.element
+        # A cursor binds the source's declared element, one at a time.
+        _require(stmt, binds_cursor(place.type), "missing or invalid native iteration facts")
+        element = place.layout.element
         _require(stmt, isinstance(source, th.THIRNativeContainer) and source.type == place.type
                  and source.readonly == place.readonly
                  and source.element == (th.THIRBorrowedRecord(element.type, element.readonly)
@@ -2610,11 +2616,8 @@ class _Builder:
                                   readonly=(reference.readonly if reference else
                                             not global_binding.writable if global_binding is not None else
                                             container.readonly if container else alias_source is not None),
-                                  # An iterator walks the member its THIR iteration fact names.
-                                  container_layout=(with_access(iterated_layout(
-                                      container.type, self.layouts[container.type], container.element)
-                                      if iterator else self.layouts[container.type],
-                                      container.readonly) if container else layout),
+                                  container_layout=(with_access(self.layouts[container.type], container.readonly)
+                                                    if container else layout),
                                   tuple_layout=self.layout(tuple_layout) if tuple_layout is not None else None,
                                   optional_layout=self.optional_layout(optional_layout)
                                   if optional_layout is not None else None,
@@ -3463,7 +3466,7 @@ class _Builder:
                         self.write(holder, self.view_rvalue(stmt.value), loc)
                     self.end(MIRReturn(holder, loc))
                 case th.THIRReturn() if (stmt.value is not None and self.borrowed_result is not None
-                                         and _span_view(self.borrowed_result.type)):
+                                         and _region_view(self.borrowed_result.type)):
                     result = self.borrowed_result
                     holder = self.container_view_slot(result.type, result.readonly)
                     with self.full_expression(stmt.value):
@@ -3822,7 +3825,7 @@ class _Builder:
                 self.bindings[p.name] = self.slot(p.type, MIRSlotKind.PARAMETER, p.name, _view_holder_fact(p.type),
                                                   passing=p.passing)
                 continue
-            if _span_view(p.type):
+            if _region_view(p.type):
                 # The caller's loan of a region, held by value.
                 self.bindings[p.name] = self.container_view_slot(unwrap_readonly(unwrap_ref_type(p.type)), False,
                                                          MIRSlotKind.PARAMETER, p.name, p.passing)

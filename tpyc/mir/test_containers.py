@@ -16,11 +16,11 @@ from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import (
-    BOOL, INT32, NominalType, OwnType, TpyType, VoidType, make_list, make_span, return_representation,
+    BOOL, INT32, STR, NominalType, OwnType, TpyType, VoidType, make_list, make_span, return_representation,
     unwrap_readonly, unwrap_ref_type,
 )
 from .call_contract import MIRCallSummary, MIRParameterBinding
-from ..thir.scalar_leaves import container_members, native_container_type
+from ..thir.scalar_leaves import declared_members, native_container_type
 from .collect import call_definitions, dump_codegen_mir
 from .definitions import MIRDefinitions
 from .dump import dump_function
@@ -258,19 +258,19 @@ def _bare(typ: TpyType) -> TpyType:
 
 
 def _element_fact(typ: NominalType, readonly: bool) -> TpyType | th.THIRBorrowedRecord:
-    element = _bare(container_members(typ)[0])
+    element = _bare(declared_members(typ)[0])
     return element if element.name in ("int32", "str", "bool") else th.THIRBorrowedRecord(element, readonly)
 
 
 def _setitem_stub(receiver: NominalType, preserves: bool = True) -> th.THIRStubCallee:
     # The real stub takes the value as `Own[T]`.
-    element = OwnType(container_members(receiver)[0])
+    element = OwnType(declared_members(receiver)[0])
     params = (receiver, INT32, element)
     signature = th.THIRCallableSignature(params, VoidType(), None,
                                          (ParamPassing.MUT_REF, ParamPassing.VALUE, ParamPassing.OWN),
                                          return_representation(VoidType()))
     return th.THIRStubCallee(th.THIRStubIdentity(f"{receiver.qualified_name()}.__setitem__", params), signature,
-                             None, (False, True, False), preserves_refs=preserves, receiver=True)
+                             None, (False, True, False), mutates_elements=preserves, receiver=True)
 
 
 def _rewrite(node, change):
@@ -318,8 +318,8 @@ def _published(fn: th.THIRFunction, *, readonly_iteration: bool = False, preserv
                     return replace(node, stub_callee=None)
                 if node.stub_callee is not None:
                     # The fact THIR published (the real stub's declaration), with
-                    # only the reference-preserving bit toggled when asked.
-                    stub = node.stub_callee if preserves is None else replace(node.stub_callee, preserves_refs=preserves)
+                    # only the element-write bit toggled when asked.
+                    stub = node.stub_callee if preserves is None else replace(node.stub_callee, mutates_elements=preserves)
                     return replace(node, stub_callee=stub)
                 return replace(node, stub_callee=_setitem_stub(_bare(node.target.receiver.result_type), bool(preserves)))
         return node
@@ -327,7 +327,7 @@ def _published(fn: th.THIRFunction, *, readonly_iteration: bool = False, preserv
         _bare(p.type), _element_fact(_bare(p.type), p.passing is ParamPassing.CONST_REF),
         p.passing is ParamPassing.CONST_REF))
         if p.native_container is None and native_container_type(_bare(p.type)) and _bare(p.type).type_args
-        and _bare(container_members(_bare(p.type))[0]).name == "str" else p for p in fn.params)
+        and _bare(declared_members(_bare(p.type))[0]).name == "str" else p for p in fn.params)
     return replace(fn, params=params, body=_rewrite(fn.body, change))
 
 
@@ -749,8 +749,9 @@ def test_validator_rejects_damaged_container_member_init(active) -> None:
 
 def test_a_dict_view_loop_walks_the_member_its_iteration_declares(fresh) -> None:
     lines = _lines(_fn(fresh, "keys_len"))
-    # The view holds the dict's region; its cursor walks the keys, viewed by the loop variable.
-    assert "%3: dict_keys[str, int32] readonly-ref element=str:owned:readonly value=int32:scalar temporary" in lines
+    # The view holds the dict's region, typed by its own declared member (the
+    # key); its cursor walks the keys, viewed by the loop variable.
+    assert "%3: dict_keys[str, int32] readonly-ref element=str:owned:readonly temporary" in lines
     assert "%3 = call stub builtins.dict.keys[dict[str, int32]](%0) [pure, reader, returns={param0}, may-raise]" in lines
     assert "%4: dict_keys[str, int32] native-iterator readonly element=str:owned:readonly temporary" in lines
     assert "%4 = iterator-init %3" in lines and "%6 = iterator-read %4" in lines
@@ -769,9 +770,10 @@ def test_validator_rejects_damaged_view_cursors(fresh) -> None:
     fn = _fn(fresh, "values_total")
     cursor = next(s for s in fn.slots if s.value_kind is MIRValueKind.NATIVE_ITERATOR)
     holder = next(s for s in fn.slots if s.type == cursor.type and s is not cursor)
+    assert cursor.container_layout == holder.container_layout == MIRContainerLayout(MIRTupleElement(INT32))
     # A cursor over a values view walks the value member, never the key.
-    damaged = replace(fn, slots=tuple(replace(s, container_layout=holder.container_layout) if s is cursor else s
-                                      for s in fn.slots))
+    key = MIRContainerLayout(MIRTupleElement(STR, MIRValueKind.OWNED, True))
+    damaged = replace(fn, slots=tuple(replace(s, container_layout=key) if s is cursor else s for s in fn.slots))
     _rejects(damaged, "unsupported native element")
 
 

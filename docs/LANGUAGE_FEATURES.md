@@ -825,7 +825,11 @@ def peek(data: StrView) -> StrView:    # string_view in, string_view out
   lowering has no form for it yet (`BUGS.md#dict-view-return-yield-rejected`).
   A borrowing-view template spells a `readonly[T]` argument `const T`
   (`d.items()` of a readonly dict is `dict_items_view<K, const V>`); every
-  other native template keeps `T`.
+  other native template keeps `T`. A `@native` container declares that it
+  owns its type arguments' values as elements with `elements=True`, and a
+  method that replaces elements without moving any with
+  `mutates="elements"`, which iterator invalidation and the borrow analysis
+  read (see `docs/NATIVE_INTEROP.md` "Declaring element storage").
 - An *explicit* `StrView`/`BytesView` annotation is a promise not to copy, so a
   binding whose source dies at end-of-statement is an error (`v: StrView =
   make()` / `make().strip()`): drop the annotation (the local then owns) or

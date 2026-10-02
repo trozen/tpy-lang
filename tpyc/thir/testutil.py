@@ -8,6 +8,7 @@ import io
 from .. import get_lib_dir
 from ..compilation_context import activate_compiler
 from ..compiler import Compiler
+from ..type_def_registry import declared_native_facts, restore_declared_native_facts
 from .emit import emit_thir_constructor_tail
 from .lower import iter_module_callables, lower_function
 
@@ -19,6 +20,22 @@ def _compile(source: str, extra_lib_dirs=None, default_int: str = "int32"):
     compiler = Compiler.from_source(source, lib_dirs=dirs,
                                     default_int=default_int)
     return compiler, compiler.compile()
+
+
+_builtin_stub_facts: dict[str, dict[str, object]] | None = None
+
+
+def latch_builtin_stub_facts() -> None:
+    """Declare every fact the builtin stubs declare, as a compilation does. A
+    unit test models the bodies of a compilation, which always has the
+    stubs, but many build types and MIR by hand without running one, and
+    the per-test reset clears what a compilation latched. The stubs are
+    compiled once per process."""
+    global _builtin_stub_facts
+    if _builtin_stub_facts is None:
+        _compile("pass\n")
+        _builtin_stub_facts = declared_native_facts()
+    restore_declared_native_facts(_builtin_stub_facts)
 
 
 def _entry(modules):

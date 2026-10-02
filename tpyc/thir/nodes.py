@@ -868,8 +868,10 @@ class THIRStubCallee:
     A method stub (`receiver`) binds the call's INSTANTIATED receiver as
     parameter 0 (`readonly[0]` is the method's `@readonly`), followed by
     the declared parameters substituted at the receiver's type arguments.
-    `preserves_refs` is the method's `@native_preserves_refs`: it replaces
-    elements in place and invalidates no reference into the receiver.
+    `mutates_elements` is the method's `@native(mutates="elements")`: it
+    replaces elements in place and moves none; a mutating method without
+    it may move or free every element. Never set on a method that declares
+    no write.
     `bound_arguments` are the type arguments the method's protocol-bounded
     type parameters bind (`sort[T: Comparable]` on `list[int32]` binds
     int32): the stub's runtime code dispatches the bound's operations on
@@ -878,7 +880,7 @@ class THIRStubCallee:
     signature: THIRCallableSignature
     contract: THIRStubContract | None
     readonly: tuple[bool, ...]
-    preserves_refs: bool = False
+    mutates_elements: bool = False
     receiver: bool = False
     bound_arguments: tuple[TpyType, ...] = ()
 

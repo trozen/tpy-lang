@@ -144,7 +144,7 @@ def test_a_method_stub_binds_the_instantiated_receiver_first(lowered) -> None:
     assert append.identity == th.THIRStubIdentity("builtins.list.append", (xs, OwnType(INT32)))
     assert append.signature.passings == (ParamPassing.MUT_REF, ParamPassing.VALUE)
     assert append.signature.return_type == VoidType() and append.readonly == (False, False)
-    assert append.receiver and not append.preserves_refs and append.contract is None
+    assert append.receiver and not append.mutates_elements and append.contract is None
     assert append.bound_arguments == ()
     # The two `pop` overloads are two identities.
     nullary, indexed = stubs["builtins.list.pop"]
@@ -186,7 +186,7 @@ def test_a_subscript_write_publishes_the_setitem_overload_its_index_selects(lowe
     # An int literal index selects the int32 overload, never the slice ones.
     assert literal.identity == th.THIRStubIdentity("builtins.list.__setitem__",
                                                    (_list(INT32), INT32, OwnType(INT32)))
-    assert literal.preserves_refs and literal.receiver and literal.contract is None
+    assert literal.mutates_elements and literal.receiver and literal.contract is None
     assert augmented == literal
     assert keyed.identity.param_types[1] == STR and keyed.readonly == (False, True, False)
     assert keyed.signature.passings == (ParamPassing.MUT_REF, ParamPassing.VIEW, ParamPassing.VALUE)
@@ -245,7 +245,7 @@ def _damaged_method_stubs(stub: th.THIRStubCallee) -> list[tuple[th.THIRStubCall
     other = (_list(STR), *signature.param_types[1:])
     return [
         (replace(stub, receiver=False), "invalid stub callee"),
-        (replace(stub, preserves_refs=1), "invalid stub callee"),
+        (replace(stub, mutates_elements=1), "invalid stub callee"),
         (replace(stub, bound_arguments=("int32",)), "invalid stub callee"),
         (replace(stub, identity=replace(stub.identity, param_types=other),
                  signature=replace(signature, param_types=other)),
@@ -281,7 +281,7 @@ def test_validator_rejects_inconsistent_method_stubs(lowered) -> None:
 def test_validator_rejects_a_method_stub_on_a_free_call(lowered) -> None:
     fn = lowered["facts"]
     call = next(c for c in nodes(fn, th.THIRCall) if c.stub_callee is not None)
-    for damaged in (replace(call.stub_callee, receiver=True), replace(call.stub_callee, preserves_refs=True),
+    for damaged in (replace(call.stub_callee, receiver=True), replace(call.stub_callee, mutates_elements=True),
                     replace(call.stub_callee, bound_arguments=(INT32,))):
         with pytest.raises(THIRValidationError, match="invalid stub callee"):
             validate_function(_replace_node(fn, call, replace(call, stub_callee=damaged)))
@@ -361,8 +361,9 @@ def test_validator_rejects_an_inconsistent_view_loop(lowered) -> None:
     fn = lowered["methods"]
     loop, = nodes(fn, th.THIRForEach)
     source = loop.iteration.source
-    for damaged in (replace(source, element=STR), replace(source, type=_list(INT32))):
-        with pytest.raises(THIRValidationError, match="invalid native container fact"):
+    for damaged, why in ((replace(source, element=STR), "invalid native element fact"),
+                         (replace(source, type=_list(INT32)), "invalid native container fact")):
+        with pytest.raises(THIRValidationError, match=why):
             validate_function(_replace_node(fn, loop, replace(loop, iteration=replace(loop.iteration, source=damaged))))
     # A view loop needs a stub call to iterate.
     with pytest.raises(THIRValidationError, match="native iteration fact disagrees with emitted binding"):

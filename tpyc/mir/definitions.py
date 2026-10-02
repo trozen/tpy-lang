@@ -8,8 +8,8 @@ from types import MappingProxyType
 from ..parse import SourceLocation
 from ..thir import nodes as th
 from ..thir.scalar_leaves import (
-    container_members, container_view, leaf_constant, native_container_type, owned_constant, owned_leaf,
-    owned_value_type, plain_record_element, record_type, storage_leaf, view_iteration_index,
+    container_view, declared_members, leaf_constant, native_container_type, owned_constant, owned_leaf,
+    owned_value_type, plain_record_element, record_type, storage_leaf,
 )
 from ..type_def_registry import type_def_of
 from ..typesys import (
@@ -103,7 +103,7 @@ def _container_initializer(expr: th.THIRExpr, params: Mapping[str, th.THIRParam]
         case th.THIRContainerLiteral():
             plain(expr, {"elements", "values", "typed_brace_cpp", "make_container", "elem_cpp", "bare_empty"})
             require(expr, expr.result_type == typ, "constructor field type")
-            element, value, _ = container_members(typ)
+            element, value, _ = declared_members(typ)
             operands: list[str] = []
             for i, e in enumerate(expr.elements):
                 operands.append(_literal_element(e, params, unwrap_readonly(element)))
@@ -255,31 +255,6 @@ def with_access(layout: MIRContainerLayout, readonly: bool) -> MIRContainerLayou
     return MIRContainerLayout(member(layout.element), member(layout.value))
 
 
-def iteration_layout(typ: TpyType, layout: MIRContainerLayout) -> MIRContainerLayout | None:
-    """What an iterator over a holder of `typ` with `layout` walks: the
-    layout itself, or for a view of a dict's keys and values the member its
-    iteration declares (`view_iteration_index`: a values view walks the
-    values). None when the view yields no member (an items view's tuples)."""
-    if not container_view(typ) or layout.value is None:
-        return layout
-    index = view_iteration_index(typ)
-    member = None if index is None else (layout.element, layout.value)[index]
-    return None if member is None else MIRContainerLayout(member)
-
-
-def iterated_layout(typ: TpyType, layout: MIRContainerLayout,
-                    element: TpyType | th.THIRBorrowedRecord) -> MIRContainerLayout:
-    """`iteration_layout` for a loop whose THIR iteration fact names the
-    member it yields (`THIRNativeIteration.source.element`): a view of a
-    dict's keys and values walks the layout member of that type."""
-    if not container_view(typ) or layout.value is None:
-        return layout
-    member_type = element.type if isinstance(element, th.THIRBorrowedRecord) else element
-    member = next((m for m in (layout.element, layout.value) if m.type == member_type), None)
-    require(element, member is not None, "native iteration source disagrees with binding")
-    return MIRContainerLayout(member)
-
-
 @dataclass(frozen=True)
 class MIROwnedLeafDefinition:
     """The builtin certificate of an owned leaf's storage (`TypeDef.owned_leaf`):
@@ -320,20 +295,23 @@ class MIRDefinitions:
         return definition
 
     def container(self, node: object, typ: NominalType) -> MIRContainerDefinition:
-        """A native container's layout (a container view's: the region it views), or
-        the refusal of its members."""
-        members = container_members(typ)
+        """A native container's or container view's layout: the members its
+        stub declares (`declared_members`; a view's own, at its own type
+        arguments), or the refusal of its members."""
+        members = declared_members(typ)
         require(node, members is not None, "unsupported native container type")
-        element, value, key = members
+        element, value, _ = members
         records: dict[NominalType, MIRConstructorDefinition] = {}
-        layout = tuple(None if m is None else self.member(node, m, hashed, records)
-                        for m, hashed in ((element, key), (value, False)))
+        # A record is admitted only as the single element of a type; the two
+        # members of a type with a value member are both leaves.
+        leaves_only = value is not None
+        layout = tuple(None if m is None else self.member(node, m, leaves_only, records) for m in (element, value))
         return MIRContainerDefinition(MIRContainerLayout(*layout), tuple(records.values()))
 
-    def member(self, node: object, typ: TpyType, hashed: bool,
+    def member(self, node: object, typ: TpyType, leaves_only: bool,
                records: dict[NominalType, MIRConstructorDefinition]) -> MIRTupleElement:
-        """One container member: an inert leaf, an owned leaf, or (never as
-        a hashed key) a plain record whose fields are leaves."""
+        """One container member: an inert leaf, an owned leaf, or (in a
+        type with no value member) a plain record whose fields are leaves."""
         # A stored borrow outlives the operation that put it there, which
         # needs the retention contracts MIR does not model yet.
         require(node, loan_class(typ).holds is not Loan.YES, "container holds a borrow")
@@ -345,7 +323,7 @@ class MIRDefinitions:
             return MIRTupleElement(bare, MIRValueKind.OWNED, readonly)
         # A nested container or a record holding one has element places
         # beyond one hop.
-        require(node, not hashed and isinstance(bare, NominalType) and plain_record_element(bare),
+        require(node, not leaves_only and isinstance(bare, NominalType) and plain_record_element(bare),
                 "unsupported native container element")
         definition = self.get(node, bare)
         require(node, isinstance(definition, MIRConstructorDefinition) and all(

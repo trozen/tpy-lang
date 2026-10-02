@@ -12,9 +12,8 @@ from ...typesys import (
     UnionType, is_void_like_type, unwrap_readonly, unwrap_ref_type,
 )
 from ..scalar_leaves import (
-    container_members, container_view, holds_elements, leaf_constant, leaf_global, modeled_members,
-    native_container_subject, native_container_type, owned_leaf, readonly_elements,
-    storage_leaf, view_iteration_index,
+    binds_cursor, container_view, declared_members, holds_elements, leaf_constant, leaf_global, modeled_members,
+    native_container_subject, native_container_type, owned_leaf, readonly_elements, storage_leaf,
 )
 from ..nodes import (
     Form, THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldAccess, THIRFieldIdentity, THIRName,
@@ -74,21 +73,20 @@ def borrowed_record(typ: TpyType, readonly: bool,
 
 def native_container(typ: TpyType, readonly: bool,
                      analyzer: 'SemanticAnalyzer') -> THIRNativeContainer | None:
-    """The elements a native container or Span of `typ` stores, when MIR
-    can model them: list / set / Array / Span elements and dict keys and
-    values that are scalar or owned leaves, and plain record elements
-    (`plain_record_element`) of a list, Array or Span. A Span's readonly
-    comes from its element argument."""
+    """The element a native container or container view of `typ` stores or
+    views, as its stub declares it (`declared_members`), when MIR models its
+    members: a scalar or owned leaf, or a plain record element
+    (`plain_record_element`) of a type with no value member. A view's
+    readonly comes from its own element argument; a view whose iteration
+    binds no single element (an items view) has no fact."""
     readonly = readonly or isinstance(unwrap_ref_type(typ), ReadonlyType)
     typ = native_container_subject(typ)
-    members = container_members(typ)
+    members = declared_members(typ)
     if members is None or not modeled_members(typ):
         return None
     element, value, _ = members
     if container_view(typ):
-        # A dict view is an iteration source (`view_iteration_source`), never
-        # a bound container; a Span's element access is its element argument's.
-        if value is not None:
+        if not binds_cursor(typ):
             return None
         readonly = readonly or readonly_elements(typ)
         element = unwrap_readonly(element)
@@ -98,22 +96,6 @@ def native_container(typ: TpyType, readonly: bool,
         return THIRNativeContainer(typ, element, readonly)
     reference = borrowed_record(element, readonly, analyzer)
     return THIRNativeContainer(typ, reference, readonly) if reference is not None else None
-
-
-def view_iteration_source(typ: TpyType, readonly: bool) -> THIRNativeContainer | None:
-    """The fact of a container view a loop iterates: the view and the
-    element argument its iteration yields (`view_iteration_index`), when
-    that is a scalar or owned leaf. Readonly when the view's elements are
-    or when what it views is."""
-    view = native_container_subject(typ)
-    index = view_iteration_index(view)
-    if index is None:
-        return None
-    member = unwrap_readonly(view.type_args[index])
-    if not (storage_leaf(member) or owned_leaf(member)):
-        return None
-    readonly = readonly or readonly_elements(view) or isinstance(unwrap_ref_type(typ), ReadonlyType)
-    return THIRNativeContainer(view, member, readonly)
 
 
 def owned_container_decl(decl: THIRVarDecl) -> bool:

@@ -587,7 +587,10 @@ def test_method_stub_summary_gates(methods) -> None:
          "call parameter passing differs from its type"),
         (replace(append, signature=replace(signature, passings=None)), "stub signature unpublished"),
         (replace(append, contract="pure"), "invalid stub callee"),
-        (replace(append, receiver=False, preserves_refs=True), "invalid stub callee"),
+        (replace(append, receiver=False, mutates_elements=True), "invalid stub callee"),
+        # A declared element write on a method that declares no write.
+        (replace(append, mutates_elements=True, contract=th.THIRStubContract.PURE), "invalid stub callee"),
+        (replace(append, mutates_elements=True, readonly=(True, False)), "invalid stub callee"),
         # A container returned by reference names no holder MIR models.
         (replace(append, signature=replace(signature, return_type=RefType(xs),
                                            return_representation=Representation.REFERENCE)),

@@ -166,7 +166,7 @@ def call_mutates_receiver(fi: FunctionInfo) -> bool:
 def _builtin_overload_invalidates(m: FunctionInfo) -> bool:
     # The mutable clone of an @auto_readonly accessor (values/items) hands
     # out a borrow but does not mutate the receiver.
-    return (not m.is_readonly and not m.native_preserves_refs
+    return (not m.is_readonly and m.native_mutates != "elements"
             and not m.is_auto_readonly_mutable_clone)
 
 
@@ -178,7 +178,8 @@ def _user_overload_invalidates(m: FunctionInfo) -> bool:
     # through same-class method calls is not detected here
     # (BUGS.md#transitive-receiver-growth-unchecked): Phase 2 propagation
     # runs after body analysis.
-    if m.is_readonly:
+    # A stub has no body to infer from: its declaration is the fact.
+    if m.is_readonly or m.native_mutates == "elements":
         return False
     smp = m.root.direct_structural_mutated_params
     return smp is None or -1 in smp
@@ -197,8 +198,9 @@ def is_invalidating_method(ctx: SemanticContext, obj_type: TpyType,
     BUGS.md#explicit-inherited-method-no-loan-warning).
 
     For builtin types (list, dict, set, etc.): a method invalidates if it
-    is non-readonly AND not marked with @native_preserves_refs.
-    For user-defined types: its inferred direct structural mutation.
+    is non-readonly AND does not declare `@native(mutates="elements")`.
+    For user-defined types: its inferred direct structural mutation, or the
+    same declaration on a stub.
     """
     builtin_record = _builtin_record_of(ctx, obj_type)
     if builtin_record is not None:

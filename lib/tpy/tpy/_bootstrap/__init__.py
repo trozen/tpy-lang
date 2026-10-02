@@ -2,7 +2,7 @@
 from ._extern import (
     builtin_decorator, builtin_type,
     native, cpp_template,
-    value_ptr_coercion, native_preserves_refs,
+    value_ptr_coercion,
 )
 from ._decorators import (
     readonly, noalloc, hotpath, nocopy, pure, inline, dispatch, dynamic, error_return,

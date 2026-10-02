@@ -4,11 +4,11 @@ from .._typing import Self, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, Own, dispatch
 from .._core._types import int32, Equatable, Comparable, NativeIterable, NativeRangeConstructible, Spannable
 from .._core._containers import Span
-from .._bootstrap._extern import native, cpp_template, native_preserves_refs, builtin_type
+from .._bootstrap._extern import native, cpp_template, builtin_type
 
 
 @builtin_type("builtins.list")
-@native("std::vector", indirecting=True)
+@native("std::vector", indirecting=True, elements=True)
 class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spannable[T]):
     @pure
     @readonly
@@ -68,8 +68,7 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     def __getitem__(self, index: slice) -> Own[list[T]]: ...
 
     @dispatch
-    @native("tpy::__setitem__", function=True)
-    @native_preserves_refs
+    @native("tpy::__setitem__", function=True, mutates="elements")
     def __setitem__(self, index: int32, value: Own[T]) -> None: ...
 
     @dispatch

@@ -2219,7 +2219,7 @@ class TypeOperations:
             linkage=method.linkage,
             native_name=method.native_name,
             native_function=method.native_function,
-            native_preserves_refs=method.native_preserves_refs,
+            native_mutates=method.native_mutates,
             copy_returns_warn=method.copy_returns_warn,
             cpp_template=method.cpp_template,
             value_ptr_coercion=method.value_ptr_coercion,
