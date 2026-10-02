@@ -17,9 +17,9 @@ def test_widening_assignment() -> None:
     print(b)
 
 def test_narrowing_assignment() -> None:
-    # float -> float32 (implicit narrowing, allowed for convenience)
+    # float -> float32 narrows only when spelled; the implicit store is refused
     a: float = 2.5
-    b: float32 = a  # tpyc: ok
+    b: float32 = float32(a)  # tpyc: ok
     print(b)
 
 def test_param_coercion() -> None:
@@ -28,9 +28,9 @@ def test_param_coercion() -> None:
     r = accepts_float(v)  # tpyc: type(float)
     print(r)
 
-    # Pass float where float32 expected (narrowing)
+    # Pass float where float32 expected: the narrowing is spelled
     w: float = 4.0
-    r2 = accepts_f32(w)  # tpyc: type(float32)
+    r2 = accepts_f32(float32(w))  # tpyc: type(float32)
     print(r2)
 
 def test_return_coercion() -> None:

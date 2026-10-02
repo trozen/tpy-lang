@@ -134,19 +134,13 @@ def widen_numeric_types(a: TpyType, b: TpyType) -> TpyType | None:
     return None
 
 
-def narrows_into(slot: TpyType, value: TpyType) -> bool:
-    """Whether storing `value` into a declared `slot` of its own family
-    would narrow it: the value is wider under the widening relation, ints
-    and floats alike. An `int` into a fixed width is exempt -- that
-    conversion checks the range at run time -- while a float into
-    `float32` would lose precision silently. An int meeting a float is no
-    narrowing but a change of family, which the numeric tower rules."""
-    if is_float_type(slot) != is_float_type(value):
-        return False
-    widened = widen_numeric_types(slot, value)
-    if widened is None or widened == slot:
-        return False
-    return not (is_big_int_type(value) and is_fixed_int_type(slot))
+def same_width_family(a: TpyType, b: TpyType) -> bool:
+    """Whether `a` and `b` are both fixed-width ints or both floats -- the
+    pairs where a wider value stored into a declared slot would narrow it.
+    An `int` (BigInt) is left out: it converts into a fixed width by a
+    range-checked conversion, which is no narrowing."""
+    return ((is_fixed_int_type(a) and is_fixed_int_type(b))
+            or (is_float_type(a) and is_float_type(b)))
 
 
 def join_numeric(types: Iterable[TpyType]) -> TpyType | None:

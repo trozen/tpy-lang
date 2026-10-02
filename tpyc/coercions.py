@@ -363,14 +363,10 @@ COERCIONS: list[Coercion] = [
         context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
-    # float -> float32 (narrowing, but allowed for convenience -- matches C++ behavior)
-    Coercion(
-        name="float_to_float32",
-        from_type=is_float64_type,
-        to_type=is_float32_type,
-        context_free_wrap=True,
-        codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
-    ),
+    # No float -> float32 row: a declared slot never narrows a wider value
+    # of its own family implicitly, as int64 never converts into int32; the
+    # user spells float32(x). Only `int` (BigInt) narrows into a fixed width,
+    # and that row checks the range at run time.
 
     # char -> str at a BORROWING slot. `str`'s param form is a view, so the
     # owning row below would bind the slot to a full-expression temporary and

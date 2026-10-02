@@ -113,8 +113,8 @@ if TYPE_CHECKING:
     from ..diagnostics import Scope
 
 from .alias_rebind import decide_rebind_storage, stamp_bind_kind
+from .numeric_lattice import same_width_family
 from .type_join import operand_spelling, python_type_name, wider_store_message
-from .numeric_lattice import narrows_into
 from .compatibility import TupleSink
 from .context import _is_borrowing_auto_readonly_accessor, _root_name_of_expr, BorrowKind, EphemeralKind, INVALIDATING_BORROW_KINDS, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, element_index_key, element_loan_mutation_warning, loan_mutation_warning, _borrow_storage_root, _borrow_storage_roots, call_lend_sources, iter_borrow_storage, field_chain_storage_key, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf, holds_no_pointer, value_may_point
 from ..value_category import (
@@ -7696,11 +7696,9 @@ class StatementAnalyzer:
         op = op_spelling(op)
         if isinstance(target, TpyName):
             name = target.name
-            if ((is_fixed_int_type(target_type) and is_fixed_int_type(result_type)
+            if (same_width_family(target_type, result_type)
                     and self.deduction.declared_slot_type(name, target_type)
-                    is not None)
-                    or (self.deduction.is_annotated_slot(name)
-                        and narrows_into(target_type, result_type))):
+                    is not None):
                 self._refuse_declared_aug_widening(
                     name, target_type, result_type, op, stmt)
             effective_type = self.deduction.resolve_reassignment_target_type(

@@ -72,7 +72,7 @@ from .type_join import (InferredJoin, JoinOutcome, descend,
                         annotate_first_binding, operand_spelling,
                         python_type_name, rebind_mix_message, usage_mix_message,
                         wider_store_message)
-from .numeric_lattice import narrows_into, numeric_info, widen_numeric_types
+from .numeric_lattice import numeric_info, same_width_family, widen_numeric_types
 from .pending_num import contains_pending_num
 from .alias_rebind import BindKind
 from ..type_def_registry import (
@@ -435,11 +435,9 @@ class LocalTypeDeduction:
         if aug_op is not None and value_expr is None and isinstance(site, TpyAugAssign):
             value_expr = site.value
         if self.is_annotated_slot(name):
-            # A declared slot takes what converts into it without narrowing
-            # (an `int` by a checked conversion), as an annotated one does.
-            narrows = narrows_into(existing_type, value_type)
-            if not narrows and self.compat.is_type_compatible(
-                    value_type, existing_type):
+            # A declared slot takes what converts into it: an `int` by the
+            # range-checked conversion, never a wider value of its own family.
+            if self.compat.is_type_compatible(value_type, existing_type):
                 return
             line = self.annotation_line(name)
             at = f" (line {line})" if line is not None else ""
@@ -447,7 +445,8 @@ class LocalTypeDeduction:
             declare = f"annotate it {wide} there: {name}: {wide} = ..."
             spelled = (operand_spelling(value_expr)
                        if value_expr is not None and aug_op is None
-                       and narrows else None)
+                       and same_width_family(existing_type, value_type)
+                       else None)
             fix = (f"write {python_type_name(existing_type)}({spelled}) to "
                    f"narrow it, or {declare}" if spelled is not None
                    else declare)

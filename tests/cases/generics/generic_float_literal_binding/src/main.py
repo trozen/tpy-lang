@@ -153,10 +153,13 @@ def main():
     # builtins: list concatenation binds the operator's T from float literals
     print("builtins:", [1.5] + [2.5])  # tpyc: ok
 
-    # float32_dest: a float32 destination narrows T / converts the result
+    # float32_dest: a float32 destination narrows the T a list literal binds;
+    # a bare literal argument binds T to float, so the result must be spelled
+    # float32 (as `a: int8 = ident(3)` must spell int8;
+    # BUGS.md#generic-literal-binds-default-not-destination)
     f: float32 = first_of([1.5, 2.5])  # tpyc: ok
     print("float32_dest:", f)
-    h: float32 = ident(0.25)  # tpyc: ok
+    h: float32 = ident(float32(0.25))  # tpyc: ok
     print("float32_dest:", h)
 
 
