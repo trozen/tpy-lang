@@ -123,6 +123,7 @@ struct __coro_caller {
 
     __coro_caller(__coro_caller&&) = default;
     ~__coro_caller() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {

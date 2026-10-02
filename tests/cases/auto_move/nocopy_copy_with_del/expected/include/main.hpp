@@ -70,6 +70,7 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 //     print("free", self.id)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "free" << " " << this->id << "\n" << ::tpy::check_signals;
 }
 

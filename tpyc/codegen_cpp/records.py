@@ -1294,6 +1294,13 @@ class RecordGenerator:
                     out.write(f"\n{inline_prefix}{q}::{cpp_name}({cpp_name}&& {cpp_src}) noexcept{vinit_list} {{\n")
                 else:
                     out.write(f"{INDENT}{cpp_name}({cpp_name}&& {cpp_src}) noexcept{vinit_list} {{\n")
+                # A scope cannot open before the member value-inits above, so
+                # a check point a field's default constructor reaches is not
+                # deferred (BUGS.md#move-member-init-check-point-fatal).
+                defer = emit_prims.defer_signals_cpp(
+                    record_info.get_method("__move__") if record_info else None)
+                if defer is not None:
+                    out.write(f"{bind}{defer}\n")
                 self.functions.gen_body(out, move_method,
                                         indent_level=body_lvl)
                 out.write(f"{bind}{cpp_src}.__tpy_owned_ = false;\n")
@@ -1370,6 +1377,10 @@ class RecordGenerator:
             # destructor stays wrap-free (and a throwing call there aborts at
             # the noexcept boundary just the same).
             wrap = _body_has_literal_throw(body_stmts)
+            defer = emit_prims.defer_signals_cpp(
+                record_info.get_method("__del__") if record_info else None)
+            if defer is not None:
+                out.write(f"{bind}{defer}\n")
             if wrap:
                 out.write(f"{bind}try {{\n")
             self.functions.gen_body(

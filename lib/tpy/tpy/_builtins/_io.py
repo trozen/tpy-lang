@@ -9,21 +9,21 @@ from .._core._types import int32
 @builtin_type("builtins.TextIO")
 @native("tpy::TextFile")
 class TextIO:
-    @native("read")
+    @native("read", checks_signals=True)
     def read(self, size: int32 = -1) -> str: ...
 
-    @native("write")
+    @native("write", checks_signals=True)
     def write(self, text: str) -> int32: ...
 
-    @native("readline")
+    @native("readline", checks_signals=True)
     def readline(self) -> str: ...
 
     # Own: the C++ side materializes a fresh vector; the result does not
     # borrow the file object.
-    @native("readlines")
+    @native("readlines", checks_signals=True)
     def readlines(self) -> Own[list[str]]: ...
 
-    @native("flush")
+    @native("flush", checks_signals=True)
     def flush(self) -> None: ...
 
     @native("close")
@@ -39,16 +39,16 @@ class TextIO:
 @builtin_type("builtins.BinaryIO")
 @native("tpy::BinaryFile")
 class BinaryIO:
-    @native("read")
+    @native("read", checks_signals=True)
     def read(self, size: int32 = -1) -> bytes: ...
 
-    @native("readline")
+    @native("readline", checks_signals=True)
     def readline(self) -> bytes: ...
 
-    @native("readlines")
+    @native("readlines", checks_signals=True)
     def readlines(self) -> Own[list[bytes]]: ...
 
-    @native("write")
+    @native("write", checks_signals=True)
     def write(self, data: bytes) -> int32: ...
 
     @native("close")

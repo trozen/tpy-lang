@@ -38,7 +38,7 @@ def raise_signal(sig: int32) -> int32: ...
 
 # Raises KeyboardInterrupt when a Ctrl-C is pending for the calling thread
 # (tpy/core.hpp).
-@native("::tpy::check_signals")
+@native("::tpy::check_signals", checks_signals=True)
 def check_signals() -> None: ...
 
 # True while the SIGINT layer is armed (tpy/core.hpp).
@@ -54,5 +54,5 @@ def request_interrupt() -> None: ...
 # Wait for `fd` (readable, or writable when `want_write` != 0) with a timeout
 # in seconds (< 0: none), woken by a Ctrl-C on the interrupt target thread.
 # Returns 1 ready, -1 error (errno set), -2 timed out, -3 interrupted.
-@native("::tpy_interrupt_wait")
+@native("::tpy_interrupt_wait", checks_signals=True)
 def wait(fd: int32, want_write: int32, timeout: float) -> int32: ...

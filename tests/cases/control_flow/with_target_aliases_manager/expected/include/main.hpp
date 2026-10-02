@@ -64,6 +64,7 @@ struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
 
     __gen_steps(__gen_steps&&) = default;
     ~__gen_steps() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {

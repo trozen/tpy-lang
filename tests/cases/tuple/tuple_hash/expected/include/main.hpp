@@ -137,6 +137,7 @@ inline std::ostream& operator<<(std::ostream& os, const Edge& obj) {
 
 template<> struct std::hash<::tpyapp::main::Edge> {
     size_t operator()(const ::tpyapp::main::Edge& val) const noexcept {
+        ::tpy::DeferSignals __tpy_defer_signals;
         return static_cast<size_t>(::tpy::__hash__(val));
     }
 };

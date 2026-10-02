@@ -666,6 +666,7 @@ struct __gen_closing : public ::tpy::next_iter_mixin<__gen_closing, int32_t> {
 
     __gen_closing(__gen_closing&&) = default;
     ~__gen_closing() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -735,6 +736,7 @@ struct __gen_reading_fin : public ::tpy::next_iter_mixin<__gen_reading_fin, std:
 
     __gen_reading_fin(__gen_reading_fin&&) = default;
     ~__gen_reading_fin() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

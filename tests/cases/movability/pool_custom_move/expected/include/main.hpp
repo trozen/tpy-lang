@@ -55,6 +55,7 @@ struct Pool {
     Pool(Pool&& other) noexcept
         : _storage(),
           _size() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         uint32_t __stop_0 = other._size;
         for (uint32_t ui = 0; ui < __stop_0; ++ui) {
             this->_storage.init(ui, other._storage.take(ui));
@@ -74,6 +75,7 @@ struct Pool {
     //     self._storage.drop_n(uint32(0), self._size)
     ~Pool() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         this->_storage.drop_n(0, this->_size);
     }
 

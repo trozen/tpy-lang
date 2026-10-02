@@ -146,6 +146,7 @@ struct __gen_with_view_target : public ::tpy::next_iter_mixin<__gen_with_view_ta
 
     __gen_with_view_target(__gen_with_view_target&&) = default;
     ~__gen_with_view_target() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {

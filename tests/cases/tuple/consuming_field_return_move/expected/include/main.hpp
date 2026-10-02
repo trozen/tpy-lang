@@ -400,6 +400,7 @@ struct __gen_H_gen : public ::tpy::next_iter_mixin<__gen_H_gen, int32_t> {
 
     __gen_H_gen(__gen_H_gen&&) = default;
     ~__gen_H_gen() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -471,6 +472,7 @@ inline Guard& Guard::operator=(Guard&& other) noexcept {
 //     print("sibling_loop_guard del", self.p.n())
 inline Guard::~Guard() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "sibling_loop_guard del" << " " << ::tpy::deref_check(this->p).n() << "\n" << ::tpy::check_signals;
 }
 

@@ -405,6 +405,28 @@ def mode_print() -> None:
         print("print: caught", n > 0)
 
 
+class SlowDel:
+    def __del__(self) -> None:
+        # A Ctrl-C landing in here is deferred: the sleep runs out.
+        time.sleep(0.5)
+        print("del: slept")
+
+
+def drop_slow() -> None:
+    ready("ready")
+    s = SlowDel()
+
+
+def mode_del_sleep() -> None:
+    t0 = time.monotonic()
+    try:
+        drop_slow()
+        print("del: after")
+        print("del: not reached (WRONG)")
+    except KeyboardInterrupt:
+        print("del: caught", time.monotonic() - t0 >= 0.5)
+
+
 def mode_uncaught() -> None:
     ready("ready")
     print("buffered")
@@ -515,6 +537,8 @@ def main() -> None:
         mode_cpu()
     elif mode == "print":
         mode_print()
+    elif mode == "del_sleep":
+        mode_del_sleep()
     elif mode == "uncaught":
         mode_uncaught()
     elif mode == "async_twice":
@@ -648,6 +672,9 @@ class _Child:
     ("async_with", ["ready"], "aenter\nready\naexit\nKeyboardInterrupt\n"),
     # a live spawned task is cancelled and cleaned up too
     ("async_spawned", ["ready"], "ready\nbackground cleanup\nKeyboardInterrupt\n"),
+    # a Ctrl-C during a __del__'s sleep is deferred: the sleep and the
+    # destructor complete, and the next print after it raises
+    ("del_sleep", ["ready"], "ready\ndel: slept\ndel: after\ndel: caught True\n"),
 ])
 def test_sigint_raises_keyboard_interrupt(
     interrupt_binary: Path, mode: str, handshakes: list[str], stdout: str,

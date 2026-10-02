@@ -20,7 +20,8 @@ native = _ExternLinkage()
 export = _ExternLinkage()
 
 
-def cpp_template(template: str, transient: bool = False):
+def cpp_template(template: str, transient: bool = False,
+                 checks_signals: bool = False):
     """C++ code template. No-op in CPython."""
     def decorator(func):
         return func

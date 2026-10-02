@@ -191,6 +191,7 @@ struct __coro_async_handler_raise_finally {
 
     __coro_async_handler_raise_finally(__coro_async_handler_raise_finally&&) = default;
     ~__coro_async_handler_raise_finally() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

@@ -18,6 +18,9 @@
 //   * While asyncio.run is active on the target thread, asyncio owns delivery:
 //     synchronous check points never consume the interrupt, the executor's
 //     reactor watches the same wake fd instead.
+//   * While a tpy::DeferSignals scope is open on the target thread, nothing
+//     consumes the interrupt and waits ignore the wake fd; asyncio.run there
+//     declines ownership.
 //   * A second Ctrl-C while the first is still undelivered (a CPU loop with no
 //     check point) terminates the process the way an unhandled SIGINT does.
 //
@@ -195,9 +198,12 @@ bool on_target_thread() {
         && ::pthread_equal(::pthread_self(), g_target) != 0;
 }
 
-// Synchronous code on this thread may be interrupted right now.
+// Synchronous code on this thread may be interrupted right now. Every check
+// point and every wait's choice to watch the wake fd goes through this, so an
+// open tpy::DeferSignals scope leaves `pending` untouched until it closes.
 bool deliverable_here() {
-    return on_target_thread() && g_async_owner.load() == 0;
+    return on_target_thread() && g_async_owner.load() == 0
+        && idet::defer_depth == 0;
 }
 
 // --- monotonic deadlines -------------------------------------------------
@@ -564,9 +570,18 @@ int tpy_interrupt_wait(int fd, int want_write, double timeout) {
 // asyncio.run takes over delivery for its duration. Returns the wake fd to
 // watch in the reactor, or -1 when this run handles no SIGINT: off the
 // interrupt target thread, or in a standalone program that left an inherited
-// SIG_IGN alone. With no process-level layer (--no-main / extension builds)
-// the run arms one itself and tpy_interrupt_async_end() removes it again.
+// SIG_IGN alone, or inside a tpy::DeferSignals scope. With no process-level
+// layer (--no-main / extension builds) the run arms one itself and
+// tpy_interrupt_async_end() removes it again.
 int tpy_interrupt_async_begin() {
+    // tpy_interrupt_async_consume() is gated on ownership, not on
+    // deliverable_here(): a run that took ownership inside a deferred __del__
+    // would consume the Ctrl-C and raise KeyboardInterrupt out of the
+    // noexcept destructor. Declined, the run leaves it pending for the first
+    // check point after the scope.
+    if (idet::defer_depth > 0) {
+        return -1;
+    }
     if (!g_installed) {
         if (g_process_owned || arm(Handler::kAlways) != 0) {
             return -1;

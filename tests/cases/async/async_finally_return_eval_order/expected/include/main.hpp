@@ -39,6 +39,7 @@ struct __coro_f {
 
     __coro_f(__coro_f&&) = default;
     ~__coro_f() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

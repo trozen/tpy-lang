@@ -95,6 +95,7 @@ struct __coro_a_assert {
 
     __coro_a_assert(__coro_a_assert&&) = default;
     ~__coro_a_assert() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -138,6 +139,7 @@ struct __coro_a_post_if {
 
     __coro_a_post_if(__coro_a_post_if&&) = default;
     ~__coro_a_post_if() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -185,6 +187,7 @@ struct __coro_a_nested {
 
     __coro_a_nested(__coro_a_nested&&) = default;
     ~__coro_a_nested() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -262,6 +265,7 @@ struct __gen_g_assert : public ::tpy::next_iter_mixin<__gen_g_assert, std::strin
 
     __gen_g_assert(__gen_g_assert&&) = default;
     ~__gen_g_assert() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -302,6 +306,7 @@ struct __gen_g_post_if : public ::tpy::next_iter_mixin<__gen_g_post_if, std::str
 
     __gen_g_post_if(__gen_g_post_if&&) = default;
     ~__gen_g_post_if() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

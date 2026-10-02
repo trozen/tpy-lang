@@ -420,6 +420,7 @@ def _names_used(stmt: 'TpyStmt') -> set[str]:
     def expr(e) -> None:
         if isinstance(e, TpyName):
             out.add(e.name)
+        # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
         for c in e.children():
             if c is not None:
                 expr(c)

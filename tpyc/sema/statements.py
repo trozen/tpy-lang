@@ -1279,6 +1279,7 @@ class StatementAnalyzer:
                 if not self._return_name_cannot_reach_field(e.name):
                     return frozenset()
                 continue
+            # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
             stack.extend(e.children())
         moves = frozenset(f for f in reads if reads.count(f) == 1)
         # With a second field in the value, one field's storage may be

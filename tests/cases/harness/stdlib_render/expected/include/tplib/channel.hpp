@@ -109,6 +109,7 @@ struct _Buf {
     //         i += 1
     ~_Buf() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         uint32_t i = 0;
         while ((i < this->_count)) {
             this->_buf.take((::tpy::mod_check<uint32_t>((::tpy::add_check<uint32_t>(this->_head, i)), this->_cap)));
@@ -230,6 +231,7 @@ struct Sender {
     //         c._not_empty.notify_all()
     ~Sender() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             _Chan<T>& c = this->_chan.get();
             bool closed_now = false;
@@ -388,6 +390,7 @@ struct Receiver {
     //     c._not_full.notify_all()
     ~Receiver() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             _Chan<T>& c = this->_chan.get();
             auto __ctx_5 = c._buf.lock();

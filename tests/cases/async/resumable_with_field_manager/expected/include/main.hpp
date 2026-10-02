@@ -86,6 +86,7 @@ struct __coro_coro {
 
     __coro_coro(__coro_coro&&) = default;
     ~__coro_coro() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {
@@ -129,6 +130,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
     __gen_gen(__gen_gen&&) = default;
     ~__gen_gen() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {

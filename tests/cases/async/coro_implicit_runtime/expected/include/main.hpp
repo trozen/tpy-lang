@@ -390,6 +390,7 @@ struct __coro_cleanup {
 
     __coro_cleanup(__coro_cleanup&&) = default;
     ~__coro_cleanup() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

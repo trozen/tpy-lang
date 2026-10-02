@@ -42,6 +42,7 @@ struct __gen_zip_pairs : public ::tpy::next_iter_mixin<__gen_zip_pairs<K, V>, st
 
     __gen_zip_pairs(__gen_zip_pairs&&) = default;
     ~__gen_zip_pairs() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

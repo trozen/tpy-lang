@@ -433,6 +433,7 @@ struct __gen_try_body : public ::tpy::next_iter_mixin<__gen_try_body, int32_t> {
 
     __gen_try_body(__gen_try_body&&) = default;
     ~__gen_try_body() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

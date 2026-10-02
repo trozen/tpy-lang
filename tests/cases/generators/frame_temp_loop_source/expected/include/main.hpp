@@ -337,6 +337,7 @@ struct __gen_counted : public ::tpy::next_iter_mixin<__gen_counted, int32_t> {
 
     __gen_counted(__gen_counted&&) = default;
     ~__gen_counted() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

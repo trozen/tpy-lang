@@ -451,6 +451,7 @@ struct __gen_in_finally : public ::tpy::next_iter_mixin<__gen_in_finally, int32_
 
     __gen_in_finally(__gen_in_finally&&) = default;
     ~__gen_in_finally() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -498,6 +499,7 @@ struct __gen_in_with : public ::tpy::next_iter_mixin<__gen_in_with, int32_t> {
 
     __gen_in_with(__gen_in_with&&) = default;
     ~__gen_in_with() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {

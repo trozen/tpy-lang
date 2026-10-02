@@ -405,6 +405,7 @@ struct __gen_each_with : public ::tpy::next_iter_mixin<__gen_each_with, ::tpy::v
 
     __gen_each_with(__gen_each_with&&) = default;
     ~__gen_each_with() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {

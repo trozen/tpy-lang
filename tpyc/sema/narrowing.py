@@ -549,6 +549,7 @@ class NarrowingTracker:
                     or expr.func_name in ("isinstance", "len"))
             if not pure:
                 return True
+        # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
         return any(self._condition_contains_call(c) for c in expr.children())
 
     def _strip_call_unstable(self, pair, condition: TpyExpr):

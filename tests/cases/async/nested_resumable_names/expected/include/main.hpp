@@ -381,6 +381,7 @@ struct __coro_2_5_Outer_5_Inner_7_cleanup {
 
     __coro_2_5_Outer_5_Inner_7_cleanup(__coro_2_5_Outer_5_Inner_7_cleanup&&) = default;
     ~__coro_2_5_Outer_5_Inner_7_cleanup() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -817,6 +818,7 @@ struct __coro_async_sections {
 
     __coro_async_sections(__coro_async_sections&&) = default;
     ~__coro_async_sections() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_8:

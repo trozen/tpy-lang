@@ -85,6 +85,7 @@ inline Base& Base::operator=(Base&& other) noexcept {
 //     unsafe_free(self._ptr)
 inline Base::~Base() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "Base.del" << "\n" << ::tpy::check_signals;
     ::tpy::destroy_at(this->_ptr);
     ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));

@@ -90,6 +90,7 @@ inline A& A::operator=(A&& other) noexcept {
 //     print("del A", self.val)
 inline A::~A() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "del A" << " " << this->val << "\n" << ::tpy::check_signals;
 }
 
@@ -117,6 +118,7 @@ inline B& B::operator=(B&& other) noexcept {
 //     print("del B", self.val)
 inline B::~B() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "del B" << " " << this->val << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();

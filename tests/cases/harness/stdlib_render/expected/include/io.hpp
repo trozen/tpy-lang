@@ -922,6 +922,7 @@ inline FileIO& FileIO::operator=(FileIO&& other) noexcept {
 //         pass
 inline FileIO::~FileIO() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     try {
         {
             try {
@@ -1227,6 +1228,7 @@ inline BufferedWriter& BufferedWriter::operator=(BufferedWriter&& other) noexcep
 //         pass
 inline BufferedWriter::~BufferedWriter() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     try {
         {
             try {

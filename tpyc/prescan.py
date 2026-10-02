@@ -797,6 +797,7 @@ def collect_in_place_writes(stmts: list[TpyStmt]) -> InPlaceWrites:
             gen = getattr(node, 'generator', None)
             if isinstance(gen, TpyComprehensionGenerator):
                 bind_elements(gen.unpack_vars or [gen.var], gen.iterable)
+            # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
             stack.extend(node.children())
 
     def on_store(t: TpyExpr) -> None:
@@ -1184,6 +1185,7 @@ def _expr_effects(e: TpyExpr | None, out: list, sites: list) -> None:
     if isinstance(e, TpyLambda):
         _expr_effects(e.body, out, sites)
         return
+    # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
     for child in e.children():
         _expr_effects(child, out, sites)
 

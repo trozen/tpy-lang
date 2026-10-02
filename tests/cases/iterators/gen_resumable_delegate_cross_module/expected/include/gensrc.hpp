@@ -236,6 +236,7 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, int32_t> {
 
     __gen_guarded(__gen_guarded&&) = default;
     ~__gen_guarded() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

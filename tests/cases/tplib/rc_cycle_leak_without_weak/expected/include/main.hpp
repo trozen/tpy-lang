@@ -76,6 +76,7 @@ inline Node& Node::operator=(Node&& other) noexcept {
 //     print("del", self.name)
 inline Node::~Node() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "del" << " " << this->name << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();

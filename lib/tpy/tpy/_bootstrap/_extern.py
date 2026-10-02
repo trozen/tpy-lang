@@ -26,10 +26,14 @@ def builtin_function(key: str): ...
 # reads or writes only its arguments (as their declared mutability allows),
 # retains nothing after return or raise, reaches no other TPy storage and
 # runs no user code. @pure implies it. Each use is an audit of the binding.
+# Function-level `checks_signals=True` (here and on @cpp_template): the bound
+# C++ is a Ctrl-C check point (it calls `::tpy::check_signals()` or raises
+# KeyboardInterrupt itself), so a cleanup body calling it needs deferral.
 @builtin_decorator("tpy.extern.native")
 def native(name: str = "", function: bool = False, binding: str = "",
            cpp_return_type: type | None = None, indirecting: bool = False,
            borrowing_view: bool = False, transient: bool = False,
+           checks_signals: bool = False,
            _iter_yields_ref_tuple_proxies: bool = False): ...
 
 @builtin_decorator("tpy.extern.export")
@@ -38,7 +42,8 @@ def export(name: str = "", binding: str = ""): ...
 # Prefer @native over @cpp_template -- use only when @native can't express the
 # call (e.g. wrapping in a constructor, type cast, or non-trivial expression).
 @builtin_decorator("tpy.extern.cpp_template")
-def cpp_template(template: str, transient: bool = False): ...
+def cpp_template(template: str, transient: bool = False,
+                 checks_signals: bool = False): ...
 
 @builtin_decorator("tpy.extern.value_ptr_coercion")
 def value_ptr_coercion(): ...

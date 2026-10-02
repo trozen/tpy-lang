@@ -119,6 +119,7 @@ struct _ChanState {
     //         i += 1
     ~_ChanState() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         uint32_t i = 0;
         while ((i < this->_count)) {
             this->_buf.take((::tpy::mod_check<uint32_t>((::tpy::add_check<uint32_t>(this->_head, i)), this->_cap)));
@@ -295,6 +296,7 @@ struct _Send {
     //         self._value.reset()
     ~_Send() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         if (this->_value.has()) {
             this->_value.reset();
         }
@@ -367,6 +369,7 @@ struct Sender {
     //     self._state._close()
     ~Sender() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         this->_state.__deref__()._close();
     }
 
@@ -420,6 +423,7 @@ struct Receiver {
     //     self._state._close()
     ~Receiver() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         this->_state.__deref__()._close();
     }
 

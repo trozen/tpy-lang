@@ -121,11 +121,13 @@ def open_fd(path: str, flags: int64, mode: int64) -> int64: ...
 def close_fd(fd: int64) -> None: ...
 
 
-@native("tpy::stdlib::os::read_fd")
+# The EINTR retry loops re-check signals (checks_signals), although SA_RESTART
+# keeps them from ever seeing EINTR.
+@native("tpy::stdlib::os::read_fd", checks_signals=True)
 def read_fd(fd: int64, n: int64) -> Own[bytes]: ...
 
 
-@native("tpy::stdlib::os::write_fd")
+@native("tpy::stdlib::os::write_fd", checks_signals=True)
 def write_fd(fd: int64, data: bytes) -> int64: ...
 
 
@@ -255,7 +257,7 @@ def terminal_size_raw(fd: int64) -> tuple[int64, int64]: ...
 def kill_pid(pid: int64, sig: int64) -> None: ...
 
 
-@native("tpy::stdlib::os::waitpid")
+@native("tpy::stdlib::os::waitpid", checks_signals=True)
 def waitpid(pid: int64, options: int64) -> tuple[int64, int64]: ...
 
 

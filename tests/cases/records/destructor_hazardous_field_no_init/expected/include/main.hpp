@@ -74,6 +74,7 @@ inline Hazard& Hazard::operator=(Hazard&& other) noexcept {
 //     print("dropping hazard")
 inline Hazard::~Hazard() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "dropping hazard" << "\n" << ::tpy::check_signals;
 }
 
@@ -92,6 +93,7 @@ inline Safe& Safe::operator=(Safe&& other) noexcept {
 //     print("dropping safe:", self.name)
 inline Safe::~Safe() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "dropping safe:" << " " << this->name << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();

@@ -69,6 +69,7 @@ inline Probe& Probe::operator=(Probe&& other) noexcept {
 //     print(f"Probe({self.tag}) drop")
 inline Probe::~Probe() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << std::format("Probe({}) drop", (this->tag).to_string()) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();

@@ -28,6 +28,7 @@ from tpy.extern import native, export
 | `@native("MyArena", indirecting=True)` -- attest heap indirection for cycle detection | **Done** |
 | `@native("MyCursor", borrowing_view=True)` -- declare a value type's values borrow handles (lifetime-checked) | **Done** |
 | `@native("clock", transient=True)` / `@cpp_template("...", transient=True)` -- declare a binding that touches only its arguments and retains nothing | **Done** |
+| `@native("wait", checks_signals=True)` / `@cpp_template("...", checks_signals=True)` -- declare a binding that is a Ctrl-C check point | **Done** |
 | `native_field("cpp_name")` -- per-field C++ rename on `@native` classes | **Done** |
 | `@native` enum -- import C++ `enum class` | **Done** |
 | `native_member("cpp_name")` -- per-member C++ rename on `@native` enums | **Done** |
@@ -333,6 +334,32 @@ the binding. The kwarg is a bool literal; it is rejected on a class-level
 `@native` (it describes a call, not a type's values) and on a binding
 that carries a TPy body.
 
+### Declaring a check point: `checks_signals=True`
+
+A binding whose C++ may raise a pending Ctrl-C -- it calls
+`::tpy::check_signals()` or throws `KeyboardInterrupt` itself -- declares
+it on the binding, `@native` or `@cpp_template`:
+
+```python
+@native("tpy::time_sleep", checks_signals=True)
+def sleep(seconds: float) -> None: ...
+```
+
+The compiler reads it when it decides whether a cleanup body run under
+C++ `noexcept` (`__del__`, `__move__`, `__hash__`, an abandoned frame's
+cleanup) is inert: a call to a marked stub makes the body open a
+`::tpy::DeferSignals` scope, so the check point defers instead of
+terminating the process, while an unmarked stub over inert arguments
+leaves the body scope-free. Every runtime function that calls
+`check_signals()` on its success path must therefore be bound by a marked
+stub; an unmarked one reached from an inert-looking `__del__` terminates on
+a Ctrl-C. The `EINTR` check in `raise_mapped_os_error` makes every
+errno-raising `os` stub a check point on that path; only the retry loops
+(`read_fd`, `write_fd`, `waitpid`) are marked today
+(`BUGS.md#eintr-check-point-in-inert-cleanup-body`). The kwarg is a bool literal,
+rejected on a class-level `@native` and on a binding that carries a TPy
+body, like `transient`.
+
 ### Narrowing C++ returns: `cpp_return_type=T`
 
 `@native` declares an exact-match binding to a C++ symbol -- the TPy signature must match the C++ side. When the C++ side returns a wider type than the TPy declared return (e.g. `std::vector::capacity()` returns `size_t`, but the user wants an `int32` view), use `cpp_return_type=T` to tell codegen the underlying type:
@@ -470,6 +497,30 @@ The interrupt then surfaces as a `tpy::KeyboardInterrupt` C++ exception (a
 at its next interruptible operation. Threads spawned through `tpy.thread` block
 SIGINT so the kernel delivers it to the target thread; host-created threads
 should do the same if they may run while TPy code waits.
+
+A host context that must not throw (a C callback, a destructor) can call TPy
+code inside a deferral scope from `<tpy/core.hpp>`:
+
+```cpp
+{
+    tpy::DeferSignals defer;  // RAII; nests, not copyable or movable
+    tpy_callback();           // no KeyboardInterrupt in here
+}
+```
+
+While a scope is open on the target thread, check points do not raise,
+`time.sleep` / `input()` / blocking sockets run to completion without waking
+for Ctrl-C, and an `asyncio.run` started inside handles no SIGINT. The Ctrl-C
+stays pending and is raised at the first check point after the scope closes,
+in whatever TPy call next reaches one. Generated code opens the same scope in
+a body that runs under `noexcept` (`__del__`, `__move__`, `__hash__`, a
+dropped generator's cleanup) unless the compiler proved the body cannot reach
+a check point. A second Ctrl-C while the first is still pending
+terminates the process, as it does outside a scope. Nothing raises a Ctrl-C
+that is still pending when no further check point runs: a standalone program
+exits normally with it unraised, and in a `--no-main` host it waits for the
+next TPy call that reaches a check point (only the disarm that ends an
+`asyncio.run`-armed layer clears it).
 
 ---
 
@@ -689,7 +740,7 @@ These are orthogonal to the import/export system and remain unchanged:
 
 | Decorator | Purpose |
 |-----------|---------|
-| `cpp_template("...")` | Inline C++ template expansion; takes `transient=True` like `@native` (see "Declaring a transient binding") |
+| `cpp_template("...")` | Inline C++ template expansion; takes `transient=True` and `checks_signals=True` like `@native` (see "Declaring a transient binding", "Declaring a check point") |
 | `pure` (from `tpy`) | No non-local mutation, no I/O, nothing retained after return or raise; implies `readonly`. Read by sema's borrow-argument check, mutation call edges, the with-exit and loop-hold write checks (`sema/loop_frames.py`) and `sema/receiver_calls.call_mutates_receiver`, and published as a stub callee's `PURE` contract for MIR's stub call contract, which admits it only at inert or owned-leaf arguments of builtin TypeDefs (a protocol or callable parameter bound to user code refuses: `@pure` was never audited for "runs no user code") || `native_preserves_refs` | Marks native method as not invalidating iterators |
 | `copy_returns_warn` | Marks an `Own[V]` accessor that copies where its CPython namesake aliases; sema warns at call sites (silence with `copy()`) |
 | `value_ptr_coercion` | Type coercion annotation |

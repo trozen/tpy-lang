@@ -658,11 +658,11 @@ def filter[T](fn: None, iterable: Iterable[T]) -> Iterator[T]: ...
 # the prompt form writes the prompt to stdout without a newline and
 # flushes before reading, and EOF raises EOFError.
 @dispatch
-@native("tpy::input_line")
+@native("tpy::input_line", checks_signals=True)
 def input() -> String: ...
 
 @dispatch
-@native("tpy::input_line")
+@native("tpy::input_line", checks_signals=True)
 def input(prompt: str) -> String: ...
 
 

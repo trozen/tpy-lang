@@ -827,6 +827,7 @@ class MatchAnalyzer:
                         note_offender(expr)
                     else:
                         deferred.append(expr)
+            # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
             for child in expr.children():
                 scan_expr(child)
 

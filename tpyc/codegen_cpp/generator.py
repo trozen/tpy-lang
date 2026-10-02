@@ -27,6 +27,7 @@ from .types import TypeResolver
 from .protocols import ProtocolGenerator
 from .records import RecordGenerator
 from .functions import FunctionGenerator
+from . import emit_prims
 from .type_resolution import resolve_global_binding_type, resolve_stmt_type_cascade
 from .string_dispatch import (
     find_best_discriminator, discriminator_key, case_label,
@@ -1358,6 +1359,9 @@ class CodeGenerator:
         hpp.write(f"}} // namespace {ns}\n\n")
         hpp.write(f"template<> struct std::hash<{cpp_name}> {{\n")
         hpp.write(f"    size_t operator()(const {cpp_name}& val) const noexcept {{\n")
+        defer = emit_prims.defer_signals_cpp(info.get_method("__hash__"))
+        if defer is not None:
+            hpp.write(f"        {defer}\n")
         hpp.write(f"        return static_cast<size_t>(::tpy::__hash__(val));\n")
         hpp.write(f"    }}\n")
         hpp.write(f"}};\n")

@@ -161,6 +161,7 @@ struct __coro_Counter_async_method {
 
     __coro_Counter_async_method(__coro_Counter_async_method&&) = default;
     ~__coro_Counter_async_method() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -207,6 +208,7 @@ struct __coro_async_fn {
 
     __coro_async_fn(__coro_async_fn&&) = default;
     ~__coro_async_fn() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -250,6 +252,7 @@ struct __coro_while_in_finally {
 
     __coro_while_in_finally(__coro_while_in_finally&&) = default;
     ~__coro_while_in_finally() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -288,6 +291,7 @@ struct __gen_gen_fn : public ::tpy::next_iter_mixin<__gen_gen_fn, int32_t> {
 
     __gen_gen_fn(__gen_gen_fn&&) = default;
     ~__gen_gen_fn() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -327,6 +331,7 @@ struct __gen_for_in_finally : public ::tpy::next_iter_mixin<__gen_for_in_finally
 
     __gen_for_in_finally(__gen_for_in_finally&&) = default;
     ~__gen_for_in_finally() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -368,6 +373,7 @@ struct __gen_if_in_finally : public ::tpy::next_iter_mixin<__gen_if_in_finally, 
 
     __gen_if_in_finally(__gen_if_in_finally&&) = default;
     ~__gen_if_in_finally() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -409,6 +415,7 @@ struct __gen_nested_try_finally : public ::tpy::next_iter_mixin<__gen_nested_try
 
     __gen_nested_try_finally(__gen_nested_try_finally&&) = default;
     ~__gen_nested_try_finally() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -450,6 +457,7 @@ struct __gen_read_after_try : public ::tpy::next_iter_mixin<__gen_read_after_try
 
     __gen_read_after_try(__gen_read_after_try&&) = default;
     ~__gen_read_after_try() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -489,6 +497,7 @@ struct __gen_unpack_literal : public ::tpy::next_iter_mixin<__gen_unpack_literal
 
     __gen_unpack_literal(__gen_unpack_literal&&) = default;
     ~__gen_unpack_literal() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -527,6 +536,7 @@ struct __gen_annotated : public ::tpy::next_iter_mixin<__gen_annotated, int32_t>
 
     __gen_annotated(__gen_annotated&&) = default;
     ~__gen_annotated() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -569,6 +579,7 @@ struct __gen_return_path : public ::tpy::next_iter_mixin<__gen_return_path, int3
 
     __gen_return_path(__gen_return_path&&) = default;
     ~__gen_return_path() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -613,6 +624,7 @@ struct __gen_break_path : public ::tpy::next_iter_mixin<__gen_break_path, int32_
 
     __gen_break_path(__gen_break_path&&) = default;
     ~__gen_break_path() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -652,6 +664,7 @@ struct __gen_closed_early : public ::tpy::next_iter_mixin<__gen_closed_early, in
 
     __gen_closed_early(__gen_closed_early&&) = default;
     ~__gen_closed_early() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -690,6 +703,7 @@ struct __gen_exception_path : public ::tpy::next_iter_mixin<__gen_exception_path
 
     __gen_exception_path(__gen_exception_path&&) = default;
     ~__gen_exception_path() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -728,6 +742,7 @@ struct __gen_str_local : public ::tpy::next_iter_mixin<__gen_str_local, std::str
 
     __gen_str_local(__gen_str_local&&) = default;
     ~__gen_str_local() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -766,6 +781,7 @@ struct __gen_list_local : public ::tpy::next_iter_mixin<__gen_list_local, int32_
 
     __gen_list_local(__gen_list_local&&) = default;
     ~__gen_list_local() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -807,6 +823,7 @@ struct __gen_alias : public ::tpy::next_iter_mixin<__gen_alias, int32_t> {
 
     __gen_alias(__gen_alias&&) = default;
     ~__gen_alias() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -848,6 +865,7 @@ struct __gen_optional_ref : public ::tpy::next_iter_mixin<__gen_optional_ref, in
 
     __gen_optional_ref(__gen_optional_ref&&) = default;
     ~__gen_optional_ref() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -886,6 +904,7 @@ struct __gen_with_in_finally : public ::tpy::next_iter_mixin<__gen_with_in_final
 
     __gen_with_in_finally(__gen_with_in_finally&&) = default;
     ~__gen_with_in_finally() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -924,6 +943,7 @@ struct __gen_tuple_local : public ::tpy::next_iter_mixin<__gen_tuple_local, int3
 
     __gen_tuple_local(__gen_tuple_local&&) = default;
     ~__gen_tuple_local() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -965,6 +985,7 @@ struct __gen_Counter_gen_method : public ::tpy::next_iter_mixin<__gen_Counter_ge
 
     __gen_Counter_gen_method(__gen_Counter_gen_method&&) = default;
     ~__gen_Counter_gen_method() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

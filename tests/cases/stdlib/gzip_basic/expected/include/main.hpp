@@ -95,6 +95,7 @@ struct __gen_lines_of : public ::tpy::next_iter_mixin<__gen_lines_of, ::tpy::Byt
 
     __gen_lines_of(__gen_lines_of&&) = default;
     ~__gen_lines_of() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {

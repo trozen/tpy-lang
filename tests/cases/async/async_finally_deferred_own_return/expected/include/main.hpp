@@ -84,6 +84,7 @@ struct __coro_ret_after_await {
 
     __coro_ret_after_await(__coro_ret_after_await&&) = default;
     ~__coro_ret_after_await() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

@@ -617,6 +617,7 @@ struct __gen_in_with : public ::tpy::next_iter_mixin<__gen_in_with<T>, ::tpy::yi
 
     __gen_in_with(__gen_in_with&&) = default;
     ~__gen_in_with() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {
@@ -737,6 +738,7 @@ struct __gen_in_try : public ::tpy::next_iter_mixin<__gen_in_try<T>, ::tpy::yiel
 
     __gen_in_try(__gen_in_try&&) = default;
     ~__gen_in_try() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

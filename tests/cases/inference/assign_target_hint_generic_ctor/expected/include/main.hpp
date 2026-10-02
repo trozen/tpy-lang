@@ -46,6 +46,7 @@ struct Wrapper {
     //     self._storage.drop0()
     ~Wrapper() {
         if (!this->__tpy_owned_) return;
+        ::tpy::DeferSignals __tpy_defer_signals;
         this->_storage.drop0();
     }
 

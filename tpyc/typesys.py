@@ -599,6 +599,24 @@ class TpyType:
         families own no user objects; any other type is unknown here."""
         return not self.is_value_type()
 
+    def value_ops_run_user_code(self) -> bool:
+        """Whether any builtin operation on a value of this type -- a copy, a
+        comparison, a hash, formatting, destruction -- may run user code.
+        The sibling of `drop_runs_user_code` for every operation at once: a
+        class (its dunders), a protocol, a callable or a type parameter may,
+        the scalar and string families and builtin containers of them run
+        only runtime code. Conservative like its sibling: a type not shown
+        to run nothing answers True. Base: a callable may; a wrapper or an
+        aggregate (`Own`, `readonly`, a reference, `Optional`, a union, a
+        tuple) is what it holds; a leaf runs nothing only when it is a
+        value family; any other type is unknown here."""
+        if isinstance(self, CallableType):
+            return True
+        inner = self.inner_types()
+        if inner:
+            return any(t.value_ops_run_user_code() for t in inner)
+        return not self.is_value_type()
+
     def to_cpp_return(self) -> str:
         """Return the C++ representation for function return types.
 
@@ -750,6 +768,10 @@ class TpyType:
 @dataclass(frozen=True)
 class VoidType(TpyType):
     """Void type (for functions returning nothing)."""
+
+    def value_ops_run_user_code(self) -> bool:
+        # Nothing to copy, compare or destroy.
+        return False
 
     def to_cpp(self) -> str:
         return "void"
@@ -1005,6 +1027,9 @@ class TypeParamRef(TpyType):
     def drop_runs_user_code(self) -> bool:
         # Any instantiation, a value-bounded one included, may carry a class
         # with `__del__`; only an INT param is a plain number.
+        return self.kind != TypeParamKind.INT
+
+    def value_ops_run_user_code(self) -> bool:
         return self.kind != TypeParamKind.INT
 
     def value_form(self) -> 'ValueForm':
@@ -1342,6 +1367,30 @@ class NominalType(TpyType):
             return True
         finally:
             _evaluating_movable.discard(self)
+
+    def value_ops_run_user_code(self) -> bool:
+        from tpyc.type_def_registry import TypeCategory, type_def_of
+        td = type_def_of(self)
+        # A class's own dunders, a protocol's implementer, a frame's cleanup,
+        # an unknown builtin: user code, or not shown otherwise. The scalar
+        # families are judged by category: their TypeDef carries a stub
+        # record for their methods, not a user class.
+        if td is None or isinstance(self, ConcreteFrameType):
+            return True
+        if td.category in (TypeCategory.FIXED_INT, TypeCategory.BIG_INT,
+                           TypeCategory.FLOAT, TypeCategory.BOOL,
+                           TypeCategory.CHAR, TypeCategory.STR,
+                           TypeCategory.BYTES, TypeCategory.SLICE,
+                           TypeCategory.VOID, TypeCategory.ENUM):
+            return False
+        if td.category in (TypeCategory.LIST, TypeCategory.DICT,
+                           TypeCategory.DICT_VIEW, TypeCategory.SET,
+                           TypeCategory.ARRAY, TypeCategory.SPAN,
+                           TypeCategory.VARARGS, TypeCategory.RANGE):
+            # A builtin container runs user code only through its elements.
+            return any(a.value_ops_run_user_code()
+                       for a in self.type_args if isinstance(a, TpyType))
+        return True
 
     def drop_runs_user_code(self) -> bool:
         from tpyc.type_def_registry import TypeCategory, type_def_of
@@ -1740,6 +1789,11 @@ class PtrType(TpyType):
         return unwrap_readonly(self.pointee)
 
     def drop_runs_user_code(self) -> bool:
+        return False
+
+    def value_ops_run_user_code(self) -> bool:
+        # Copying or comparing a pointer runs nothing; what a dereference
+        # yields is a value of the pointee's type, judged on its own.
         return False
 
     def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
@@ -7061,6 +7115,10 @@ class FunctionInfo:
     # @pure implies the promise
     # without setting this flag, so a reader of the promise checks both.
     is_transient: bool = False
+    # `checks_signals=True` on the binding: the stub's C++ is a Ctrl-C
+    # check point (it may raise KeyboardInterrupt), so a cleanup body
+    # calling it is not inert (`may_interrupt`).
+    checks_signals: bool = False
     is_inline: bool = False
     is_consuming: bool = False
     is_method: bool = False
@@ -7151,6 +7209,13 @@ class FunctionInfo:
     direct_structural_mutated_params: Optional[frozenset[int]] = None
     direct_elem_mutated_params: Optional[frozenset[int]] = None
     call_edges: Optional[list['MutationCallEdge']] = None
+    # Running this body may reach a Ctrl-C check point (or any code the
+    # compiler cannot see through). False only when the body is INERT:
+    # an allowlist walk (sema/may_interrupt.py) found nothing but builtin
+    # operations on inert types and calls to unmarked bodyless stubs. A
+    # cleanup body (`__del__`, `__move__`, `__hash__`, an abandoned frame)
+    # that may interrupt opens a `::tpy::DeferSignals` scope.
+    may_interrupt: bool = True
     # Method type-params whose `U: T` bound was used representationally in the
     # body (e.g. `Ptr[U] -> Ptr[T]` coercion). Codegen reads this at call sites
     # to decide adapter materialization for structural conformers.

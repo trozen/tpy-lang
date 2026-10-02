@@ -385,6 +385,7 @@ inline Noisy& Noisy::operator=(Noisy&& other) noexcept {
 //         print("drop", self.name)
 inline Noisy::~Noisy() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     if (this->armed) {
         std::cout << "drop" << " " << this->name << "\n" << ::tpy::check_signals;
     }

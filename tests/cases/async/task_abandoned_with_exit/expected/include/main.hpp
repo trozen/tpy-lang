@@ -63,6 +63,7 @@ struct __coro_worker {
 
     __coro_worker(__coro_worker&&) = default;
     ~__coro_worker() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {

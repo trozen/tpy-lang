@@ -60,6 +60,7 @@ inline Logged& Logged::operator=(Logged&& other) noexcept {
 //         print("finally", self._id)
 inline Logged::~Logged() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     try {
         {
             try {

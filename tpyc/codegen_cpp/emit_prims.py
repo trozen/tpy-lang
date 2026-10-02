@@ -62,6 +62,7 @@ from .types import resolve_pending_container
 from .variant_access import VariantAccess
 
 if TYPE_CHECKING:
+    from ..typesys import FunctionInfo
     from .context import CodeGenContext
     from .protocols import ProtocolGenerator
     from .types import TypeResolver
@@ -80,6 +81,18 @@ def member_init_list(inits: 'list[str]', indent: str) -> str:
         return f" : {inits[0]}"
     lead = indent + INDENT
     return f"\n{lead}: " + f",\n{lead}  ".join(inits)
+
+
+def defer_signals_cpp(fi: 'FunctionInfo | None') -> str | None:
+    """The scope statement that opens a body run under `noexcept` or a
+    catch-all (`__del__`, `__move__`, the `std::hash` wrapper, an abandoned
+    frame's destructor): inside it a Ctrl-C check point defers rather than
+    throwing, and the next check point after the body raises it. None when
+    the body is inert (`FunctionInfo.may_interrupt`); an unknown callable
+    gets the scope."""
+    if fi is not None and not fi.root.may_interrupt:
+        return None
+    return "::tpy::DeferSignals __tpy_defer_signals;"
 
 
 def nested_def_signature(types: 'TypeResolver',

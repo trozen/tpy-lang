@@ -1,0 +1,3 @@
+Needs a Ctrl-C left pending by _bindings.posix_signal.request_interrupt, which has no CPython
+equivalent; and CPython reports a KeyboardInterrupt escaping __del__ as "Exception ignored"
+where TPy defers it to the next check point.

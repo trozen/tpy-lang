@@ -59,6 +59,7 @@ inline Maybe& Maybe::operator=(Maybe&& other) noexcept {
 //         raise ValueError("positive on drop")  # tpyc: warning(/.raise. in .__del__. cannot propagate/)
 inline Maybe::~Maybe() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     try {
         std::cout << "del" << " " << this->_n << "\n" << ::tpy::check_signals;
         if ((this->_n > 0)) {

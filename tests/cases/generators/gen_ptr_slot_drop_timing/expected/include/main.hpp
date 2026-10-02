@@ -84,6 +84,7 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 //     print("drop", self.n)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
     std::cout << "drop" << " " << this->n << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();

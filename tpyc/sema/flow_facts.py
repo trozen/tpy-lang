@@ -85,6 +85,7 @@ def _walrus_paths(e: TpyExpr) -> tuple[frozenset[str], frozenset[str]]:
     certain = _NO_TARGETS
     if isinstance(e, TpyNamedExpr):
         certain = frozenset({e.target})
+    # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
     for child in e.children():
         if isinstance(child, TpyExpr):
             certain |= _walrus_certain(child)
@@ -111,6 +112,7 @@ def condition_walrus_targets(cond: TpyExpr) -> frozenset[str]:
             return
         if isinstance(e, TpyNamedExpr):
             found.add(e.target)
+        # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
         for child in e.children():
             if isinstance(child, TpyExpr):
                 walk(child)

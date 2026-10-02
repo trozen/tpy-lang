@@ -134,6 +134,7 @@ struct __coro_async_try_loop {
 
     __coro_async_try_loop(__coro_async_try_loop&&) = default;
     ~__coro_async_try_loop() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -211,6 +212,7 @@ struct __gen_in_try : public ::tpy::next_iter_mixin<__gen_in_try, int32_t> {
 
     __gen_in_try(__gen_in_try&&) = default;
     ~__gen_in_try() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -258,6 +260,7 @@ struct __gen_in_with : public ::tpy::next_iter_mixin<__gen_in_with, int32_t> {
 
     __gen_in_with(__gen_in_with&&) = default;
     ~__gen_in_with() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         ::tpy::GeneratorExit __tpy_ge{};
         try {
             switch (__state) {
@@ -334,6 +337,7 @@ struct __gen_break_continue : public ::tpy::next_iter_mixin<__gen_break_continue
 
     __gen_break_continue(__gen_break_continue&&) = default;
     ~__gen_break_continue() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
@@ -426,6 +430,7 @@ struct __gen_abandoned : public ::tpy::next_iter_mixin<__gen_abandoned, int32_t>
 
     __gen_abandoned(__gen_abandoned&&) = default;
     ~__gen_abandoned() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:

@@ -65,6 +65,7 @@ struct __coro_go {
 
     __coro_go(__coro_go&&) = default;
     ~__coro_go() {
+        ::tpy::DeferSignals __tpy_defer_signals;
         try {
             switch (__state) {
             case S_RESUME_0:
