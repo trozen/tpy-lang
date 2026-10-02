@@ -270,6 +270,11 @@ class TypeDef:
     # moving or destroying it runs no hook and has no effect a program can
     # observe beyond allocation (`typesys.loan_class`).
     owned_leaf: bool = False
+    # A value owns the values of its type arguments as elements in storage
+    # of its own (a native container): it holds what they hold, and a
+    # compiler-introduced borrow can point into its elements
+    # (`typesys.loan_class`).
+    owns_elements: bool = False
     # Copying an owned leaf can throw a C++ exception (a standard
     # container's `bad_alloc`), which a bare `except:` catches. A type whose
     # allocation failure is a panic declares False (docs/EXCEPTION_DESIGN.md
@@ -1343,7 +1348,7 @@ def _populate() -> None:
     # list[T]: is_send from element, is_sync always False (mutable); cpp
     # emits std::vector<T>; subscript_borrows (element view of container).
     register(TypeDef(
-        "builtins.list", TC.LIST, cpp_default_init=_INERT,
+        "builtins.list", TC.LIST, cpp_default_init=_INERT, owns_elements=True,
         subscript_borrows=True,
         is_send=lambda args: args[0].is_send(),
         is_sync=False,
@@ -1355,7 +1360,7 @@ def _populate() -> None:
     # NominalType.get_element_type would return K (first type_arg), so use
     # element_of to override. cpp: ::tpy::ordered_map<K, V>.
     register(TypeDef(
-        "builtins.dict", TC.DICT, cpp_default_init=_INERT,
+        "builtins.dict", TC.DICT, cpp_default_init=_INERT, owns_elements=True,
         subscript_borrows=True,
         is_send=lambda args: args[0].is_send() and args[1].is_send(),
         is_sync=False,
@@ -1367,7 +1372,7 @@ def _populate() -> None:
     # threads only when its element is); is_sync always False (mutable
     # container). C++ name diverges: set[T] -> ::tpy::ordered_set<T>.
     register(TypeDef(
-        "builtins.set", TC.SET, cpp_default_init=_INERT,
+        "builtins.set", TC.SET, cpp_default_init=_INERT, owns_elements=True,
         is_send=lambda args: args[0].is_send(),
         is_sync=False,
         cpp_formatter=lambda args: f"::tpy::ordered_set<{args[0].to_cpp()}>",
@@ -1396,7 +1401,7 @@ def _populate() -> None:
         return f"std::array<{elem.to_cpp()}, {size_str}>"
 
     register(TypeDef(
-        "tpy.Array", TC.ARRAY,
+        "tpy.Array", TC.ARRAY, owns_elements=True,
         subscript_borrows=True,
         is_send=lambda args: args[0].is_send(),
         is_sync=lambda args: args[0].is_sync(),

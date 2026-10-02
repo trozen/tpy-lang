@@ -5,10 +5,10 @@ from ..thir.metadata import unsupported_metadata
 # `view_compatible` is the one predicate between a view holder and what it
 # borrows: a TypeDef family pairing, a leaf fact rather than a MIR rule.
 from ..thir.scalar_leaves import (  # noqa: F401
-    owned_leaf, primitive_leaf, primitive_owned_leaf, storage_leaf, view_compatible, view_leaf,
+    container_view, owned_leaf, primitive_leaf, primitive_owned_leaf, storage_leaf, view_compatible, view_leaf,
 )
 from ..typesys import (
-    FLOAT, INT32, FloatLiteralType, IntLiteralType, Representation, TpyType, passing_representation,
+    FLOAT, INT32, FloatLiteralType, IntLiteralType, NominalType, Representation, TpyType, passing_representation,
     through_view,
 )
 from .nodes import MIROptionalLayout, MIRSlot, MIRSlotKind, MIRTupleElement, MIRTupleLayout, MIRValueKind
@@ -58,6 +58,41 @@ def view_holder(slot: MIRSlot) -> bool:
     (`view_leaf`): its referents are the owned-leaf storage it views."""
     return (slot.value_kind is MIRValueKind.BORROWED and slot.readonly and slot.form is th.Form.BORROW
             and view_leaf(slot.type))
+
+
+def container_view_holder(slot: MIRSlot) -> bool:
+    """A BORROWED holder typed by a container view (`container_view`: a
+    Span, a dict view): it IS the elements region of the container it
+    views, so its referents are `[elements]` places and a container
+    projection applied to it is absorbed."""
+    return (slot.value_kind is MIRValueKind.BORROWED and slot.form is th.Form.BORROW
+            and container_view(slot.type))
+
+
+def owned_container(slot: MIRSlot) -> bool:
+    """An OWNED slot of a native container: storage the body holds by value."""
+    return slot.value_kind is MIRValueKind.OWNED and slot.container_layout is not None
+
+
+def container_holder(slot: MIRSlot) -> bool:
+    """A slot whose value is a whole container object: a borrowed container
+    or owned container storage (an iterator is a cursor, not the object)."""
+    return (slot.value_kind is MIRValueKind.BORROWED_CONTAINER and slot.container_layout is not None
+            or owned_container(slot))
+
+
+def region_holder(slot: MIRSlot) -> bool:
+    """A slot whose `[elements]` region a place reaches directly: owned
+    container storage, a borrowed container, or a view of one."""
+    return (slot.value_kind is MIRValueKind.BORROWED_CONTAINER or owned_container(slot)
+            or container_view_holder(slot))
+
+
+def moved_buffer(slot: MIRSlot) -> bool:
+    """Owned storage a move empties while the slot lives on: an owned leaf's
+    buffer or a container's. A moved record is a whole object handed over,
+    whose holders the record-write rules already track."""
+    return owned_container(slot) or slot.value_kind is MIRValueKind.OWNED and owned_leaf(slot.type)
 
 
 def leaf_borrow(slot: MIRSlot) -> bool:

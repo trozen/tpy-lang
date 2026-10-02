@@ -14,8 +14,14 @@ from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import _iter_children
 from ..type_def_registry import ParamPassing
-from ..typesys import BIGINT, INT32, STR, TupleType, return_representation
-from .call_contract import MIRCallSummary, MIRGlobalId, MIRSummaryState, stub_summary, summary_problem
+from ..typesys import (
+    BIGINT, INT32, STR, RefType, Representation, TupleType, VoidType, return_representation, unwrap_readonly,
+    unwrap_ref_type,
+)
+from .call_contract import (
+    MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRGlobalId, MIRParameterBinding, MIRParameterWrite,
+    MIRSummaryState, parameter_binding_problem, stub_protocol_argument, stub_summary, summary_problem,
+)
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, analyze_dependencies
 from .dump import dump_function
@@ -399,3 +405,298 @@ def test_calls_of_one_identity_must_publish_one_declaration(active) -> None:
     result = lower_function(body, MIRBodyId("stubs", "inconsistent"), definitions=active.definitions,
                             summaries={})
     assert isinstance(result, MIRNotCovered) and result.reason == "inconsistent stub callee facts"
+
+
+# --- native container method stubs -------------------------------------------
+
+METHOD_SOURCE = """\
+from tpy import int32, Own, Span, StrView, readonly
+
+class Point:
+    x: int32
+    def __init__(self, x: int32) -> None:
+        self.x = x
+
+class Ordered:
+    x: int32
+    def __init__(self, x: int32) -> None:
+        self.x = x
+    def __lt__(self, other: Ordered) -> bool:
+        return self.x < other.x
+
+class Bag:
+    items: list[int32]
+    def __init__(self) -> None:
+        self.items = []
+
+def methods(xs: list[int32], d: dict[str, int32], ps: list[Point], os: list[Ordered], ys: list[int32],
+            ss: list[str], sp: Span[int32], vs: list[StrView], v: StrView) -> int32:
+    xs.append(1)
+    a = xs.pop()
+    b = xs.pop(0)
+    xs.sort()
+    os.sort()
+    xs.extend(ys)
+    g = d.get("k", 0)
+    s = d.setdefault("k", 0)
+    n = 0
+    for e in d.values():
+        n += e
+    ps.append(Point(1))
+    ss.append("a")
+    sp.sort()
+    vs.clear()
+    cp = xs.copy()
+    return a + b + g + s + n + len(xs) + len(cp)
+
+def writes(xs: list[int32], d: dict[str, int32], ps: list[Point], k: str, sp: Span[int32]) -> None:
+    xs[0] = 1
+    d[k] = 3
+    ps[0] = Point(2)
+    sp[0] = 4
+
+def shapes(xs: list[int32], r: readonly[list[int32]], own: Own[list[int32]], sp: Span[int32],
+           rsp: Span[readonly[int32]], bag: Bag, ps: list[Point]) -> None:
+    pass
+"""
+
+
+@dataclass(frozen=True)
+class _Methods:
+    thir: dict
+    stubs: dict
+
+
+def _method_stubs(fn: th.THIRFunction) -> dict[str, list[th.THIRStubCallee]]:
+    found: dict[str, list] = {}
+    pending = list(fn.body)
+    while pending:
+        node = pending.pop(0)
+        stub = getattr(node, "stub_callee", None) if isinstance(node, (th.THIRMethodCall, th.THIRSetItem)) else None
+        if stub is not None:
+            found.setdefault(stub.identity.qualified_name.rsplit(".", 1)[-1], []).append(stub)
+        pending.extend(_iter_children(node))
+    return found
+
+
+# Per test: the view facts are the compiled stubs', cleared between tests.
+@pytest.fixture
+def methods():
+    compiler, modules = _compile(METHOD_SOURCE)
+    _, ctx = compiler.generate_code_and_thir(_entry(modules))
+    functions = {fn.name: fn for fn in ctx.thir_functions.values()}
+    with activate_compiler(compiler):
+        yield _Methods(functions, {name: _method_stubs(fn) for name, fn in functions.items()})
+
+
+def _writes(summary: MIRCallSummary) -> set[tuple[int, tuple[str, ...]]]:
+    return {(w.parameter, tuple(type(p).__name__ for p in w.path)) for w in summary.writes}
+
+
+def _summary(stub: th.THIRStubCallee) -> MIRCallSummary:
+    summary = stub_summary(stub)
+    assert isinstance(summary, MIRCallSummary), summary
+    assert summary_problem(summary) is None
+    # Every method may raise and reads every parameter; a stub summary retains nothing.
+    assert summary.normal_return_only is False and summary.reads == frozenset(range(len(summary.parameters)))
+    assert not (summary.invalidates or summary.retains or summary.global_reads)
+    return summary
+
+
+STRUCTURE = ("MIRContainerStructure",)
+ELEMENTS = ("MIRContainerElements",)
+
+
+def test_a_mutating_method_writes_its_receivers_structure(methods) -> None:
+    stubs = methods.stubs["methods"]
+    append = _summary(stubs["append"][0])
+    assert _writes(append) == {(0, STRUCTURE)} and append.returns == frozenset()
+    receiver, value = append.parameters
+    assert (receiver.passing, receiver.readonly, receiver.borrowed_record) == (ParamPassing.MUT_REF, False, None)
+    # The element argument is copied into the container.
+    assert (value.type, value.passing, value.readonly) == (INT32, ParamPassing.VALUE, False)
+    # Either `pop` overload removes an element; its result is the caller's own.
+    for pop in stubs["pop"]:
+        summary = _summary(pop)
+        assert _writes(summary) == {(0, STRUCTURE)} and summary.returns == frozenset()
+        assert summary.borrowed_result is None
+    sort = _summary(stubs["sort"][0])
+    assert sort.callee.bound_arguments == (INT32,) and _writes(sort) == {(0, STRUCTURE)}
+    # A record element is moved in; an owned leaf is copied in.
+    record, owned = (_summary(s) for s in stubs["append"][1:3])
+    assert record.parameters[1].passing is ParamPassing.OWN and not record.parameters[1].readonly
+    assert (owned.parameters[1].type, owned.parameters[1].passing) == (STR, ParamPassing.VALUE)
+
+
+def test_readers_write_nothing_and_view_results_borrow_the_receiver(methods) -> None:
+    stubs = methods.stubs["methods"]
+    get = _summary(stubs["get"][0])
+    assert get.writes == frozenset() and get.returns == frozenset() and get.borrowed_result is None
+    assert [b.readonly for b in get.parameters] == [True, True, False]
+    # The @auto_readonly mutable clone is pure: it reads a receiver it could write.
+    values = _summary(stubs["values"][0])
+    assert values.writes == frozenset() and not values.parameters[0].readonly
+    assert values.returns == frozenset({0})
+    assert values.borrowed_result == th.THIRBorrowedRecord(values.callee.signature.return_type, False)
+    copy = _summary(stubs["copy"][0])
+    assert copy.writes == frozenset() and copy.returns == frozenset() and copy.parameters[0].readonly
+
+
+def test_setdefault_grows_the_dict_and_returns_a_copy(methods) -> None:
+    setdefault = _summary(methods.stubs["methods"]["setdefault"][0])
+    assert _writes(setdefault) == {(0, STRUCTURE)}
+    # An int32 value returns by value; the key is lent as a view.
+    assert setdefault.returns == frozenset() and setdefault.parameters[1].readonly
+
+
+def test_refs_preserving_and_view_writes_replace_elements(methods) -> None:
+    stubs = methods.stubs["writes"]
+    for setitem in stubs["__setitem__"]:
+        assert _writes(_summary(setitem)) == {(0, ELEMENTS)}
+    # A view cannot change its container's shape: every write through it is an element write.
+    sort = _summary(methods.stubs["methods"]["sort"][2])
+    assert sort.parameters[0].passing is ParamPassing.VALUE and _writes(sort) == {(0, ELEMENTS)}
+
+
+def test_kept_method_refusals(methods) -> None:
+    stubs = methods.stubs["methods"]
+    # User comparison code runs inside the sort.
+    assert stub_summary(stubs["sort"][1]) == "stub protocol argument is not a builtin leaf"
+    # An iterable parameter runs code the declaration does not describe.
+    assert stub_summary(stubs["extend"][0]) == "stub declares no contract"
+    assert stub_summary(stubs["clear"][0]) == "container holds a borrow"
+
+
+def test_method_stub_summary_gates(methods) -> None:
+    append = methods.stubs["methods"]["append"][0]
+    signature = append.signature
+    xs, value = signature.param_types
+    nested = replace(xs, type_args=(xs,))
+    damaged_receiver = (STR, value)
+    for damaged, reason in (
+        (replace(append, identity=replace(append.identity, param_types=damaged_receiver),
+                 signature=replace(signature, param_types=damaged_receiver)), "unsupported stub receiver"),
+        (replace(append, identity=replace(append.identity, param_types=(nested, value)),
+                 signature=replace(signature, param_types=(nested, value))), "unsupported native container element"),
+        (replace(append, bound_arguments=(signature.param_types[0],)), "stub protocol argument is not a builtin leaf"),
+        # A container is readonly exactly at CONST_REF, and passes by reference.
+        (replace(append, readonly=(True, False)), "unsupported container call parameter"),
+        (replace(append, signature=replace(signature, passings=(ParamPassing.CONST_REF, ParamPassing.VALUE))),
+         "unsupported container call parameter"),
+        (replace(append, signature=replace(signature, passings=(ParamPassing.VALUE, ParamPassing.VALUE))),
+         "call parameter passing differs from its type"),
+        (replace(append, signature=replace(signature, passings=None)), "stub signature unpublished"),
+        (replace(append, contract="pure"), "invalid stub callee"),
+        (replace(append, receiver=False, preserves_refs=True), "invalid stub callee"),
+        # A container returned by reference names no holder MIR models.
+        (replace(append, signature=replace(signature, return_type=RefType(xs),
+                                           return_representation=Representation.REFERENCE)),
+         "unsupported stub result type"),
+        # An element argument at a borrowing passing could be kept by the container.
+        (replace(append, signature=replace(signature, passings=(ParamPassing.MUT_REF, ParamPassing.CONST_REF))),
+         "stub parameter is not a readonly leaf"),
+    ):
+        assert stub_summary(damaged) == reason, reason
+    # An element handed over to the container is the callee's own: never a readonly borrow.
+    record = _summary(methods.stubs["methods"]["append"][1])
+    element = record.parameters[1]
+    assert parameter_binding_problem(record.callee.signature.param_types[1], element) is None
+    assert parameter_binding_problem(record.callee.signature.param_types[1], replace(element, readonly=True)) == (
+        "unsupported element call parameter")
+    summary = _summary(append)
+    for damaged in (replace(summary, writes=frozenset()),
+                    replace(summary, writes=frozenset({MIRParameterWrite(0, (MIRContainerElements(),))}))):
+        assert summary_problem(damaged) == "stub summary differs from its declaration"
+
+
+def _user_summary(fn: th.THIRFunction, bindings: tuple[MIRParameterBinding, ...], *, writes=frozenset(),
+                  ret=None, borrowed=None, returns=frozenset()) -> MIRCallSummary:
+    types = tuple(p.type for p in fn.params)
+    ret = ret if ret is not None else VoidType()
+    signature = th.THIRCallableSignature(types, ret, borrowed, tuple(b.passing for b in bindings),
+                                         return_representation(ret))
+    return MIRCallSummary(th.THIRResolvedCallee(th.THIRFunctionIdentity("main", fn.name), signature), bindings,
+                          frozenset(range(len(bindings))), frozenset(writes), frozenset(), frozenset(returns),
+                          frozenset(), False)
+
+
+def test_user_summaries_publish_container_writes(methods) -> None:
+    fn = methods.thir["shapes"]
+    params = {p.name: p for p in fn.params}
+    bag = params["bag"].borrowed_record
+    xs = params["xs"].native_container.type
+    items = th.THIRFieldIdentity(bag.type, "items", xs)
+    point_list = params["ps"].native_container.type
+    sp, rsp = (params[n].type for n in ("sp", "rsp"))
+    bindings = (MIRParameterBinding(xs, ParamPassing.MUT_REF, False),
+                MIRParameterBinding(xs, ParamPassing.CONST_REF, True),
+                MIRParameterBinding(xs, ParamPassing.OWN, False),
+                MIRParameterBinding(sp, ParamPassing.VALUE, False),
+                MIRParameterBinding(rsp, ParamPassing.VALUE, True),
+                MIRParameterBinding(bag.type, ParamPassing.MUT_REF, False, replace(bag, readonly=False)),
+                MIRParameterBinding(point_list, ParamPassing.CONST_REF, True))
+    fn = replace(fn, params=tuple(replace(p, passing=b.passing) for p, b in zip(fn.params, bindings)))
+    structure, elements = MIRContainerStructure(), MIRContainerElements()
+    for path in ((0, (structure,)), (0, (elements,)), (2, (structure,)), (3, (elements,)),
+                 (5, (items, structure)), (5, (items, elements))):
+        write = MIRParameterWrite(*path)
+        assert summary_problem(_user_summary(fn, bindings, writes={write})) is None, path
+    for path, reason in (
+        # A readonly parameter is never written; a view never changes its container's shape.
+        ((1, (structure,)), "unsupported call write field or access"),
+        ((4, (elements,)), "unsupported call write field or access"),
+        ((3, (structure,)), "unsupported call write field or access"),
+        # A container field is written only through a projection; a projection ends the path.
+        ((5, (items,)), "unsupported call write field or access"),
+        ((5, (structure, items)), "invalid call write path"),
+        ((0, (elements, elements)), "invalid call write path"),
+        ((5, (items, items, structure)), "invalid call write path"),
+        ((0, ()), "invalid call write path"),
+    ):
+        write = MIRParameterWrite(*path)
+        assert summary_problem(_user_summary(fn, bindings, writes={write})) == reason, path
+    # Bindings: a container is readonly exactly at CONST_REF; a readonly-element view is readonly.
+    for index, damaged in ((0, replace(bindings[0], readonly=True)), (2, replace(bindings[2], readonly=True)),
+                           (4, replace(bindings[4], readonly=False))):
+        broken = bindings[:index] + (damaged,) + bindings[index + 1:]
+        assert summary_problem(_user_summary(fn, broken)) in (
+            "unsupported container call parameter", "unsupported container view call parameter")
+
+
+def test_user_summaries_return_container_views_and_elements_of_parameters(methods) -> None:
+    fn = methods.thir["shapes"]
+    xs, = (p for p in fn.params if p.name == "xs")
+    ps, = (p for p in fn.params if p.name == "ps")
+    fn = replace(fn, params=(xs, ps))
+    bindings = (MIRParameterBinding(xs.native_container.type, ParamPassing.CONST_REF, True),
+                MIRParameterBinding(ps.native_container.type, ParamPassing.CONST_REF, True))
+    rsp = next(p.type for p in methods.thir["shapes"].params if p.name == "rsp")
+    sp = next(p.type for p in methods.thir["shapes"].params if p.name == "sp")
+    assert summary_problem(_user_summary(fn, bindings, ret=rsp, returns={0})) is None
+    # A mutable view of a parameter lent readonly would write what the caller lent.
+    assert summary_problem(_user_summary(fn, bindings, ret=sp, returns={0})) == (
+        "unsupported return origin type or access")
+    # A view of another element type is no view of the parameter.
+    assert summary_problem(_user_summary(fn, bindings, ret=rsp, returns={1})) == (
+        "unsupported return origin type or access")
+    point = ps.native_container.element.type
+    element = th.THIRBorrowedRecord(point, True)
+    assert summary_problem(_user_summary(fn, bindings, ret=RefType(point), borrowed=element, returns={1})) is None
+    assert summary_problem(_user_summary(fn, bindings, ret=RefType(point), borrowed=element, returns={0})) == (
+        "unsupported return origin type or access")
+    mutable = th.THIRBorrowedRecord(point, False)
+    assert summary_problem(_user_summary(fn, bindings, ret=RefType(point), borrowed=mutable, returns={1})) == (
+        "unsupported return origin type or access")
+
+
+def test_a_pure_stub_reads_a_native_container_through_its_protocol_parameter(methods) -> None:
+    fn = methods.thir["methods"]
+    params = {p.name: p for p in fn.params}
+    assert stub_protocol_argument(params["xs"].native_container.type)
+    assert stub_protocol_argument(INT32) and stub_protocol_argument(STR)
+    # A container holding a borrow, or of records running user code, is not the stub's own code.
+    views = unwrap_readonly(unwrap_ref_type(params["vs"].type))
+    ordered = unwrap_readonly(unwrap_ref_type(params["os"].type))
+    assert not stub_protocol_argument(views) and not stub_protocol_argument(ordered)
+    assert not stub_protocol_argument(ps_type := params["ps"].native_container.element.type)
+    assert ps_type.qualified_name() == "__main__.Point"

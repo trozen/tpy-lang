@@ -15,7 +15,9 @@ from .nodes import (
     MIRBodyId, MIRContainerElements, MIRFunction,
     MIRNotCovered, MIRPlace, MIRPoint, MIRReturn, MIRValueKind,
 )
+from .retention import MIRRetention, analyze_retention
 from .scope_lifetime import analyze_scope_ends
+from .storage import analyze_storage
 from .testutil import ContainerValue, Reference, execute
 
 PREFIX = '''from tpy import int32, Array, readonly
@@ -79,6 +81,13 @@ class Runner:
             self.result = temp.value
         return self.result
 '''
+
+
+def _retention(fn: MIRFunction) -> MIRRetention:
+    live = analyze_liveness(fn)
+    result = analyze_retention(fn, live, analyze_dependencies(fn, live), analyze_storage(fn))
+    assert isinstance(result, MIRRetention), result
+    return result
 
 
 def compile_bodies(source: str):
@@ -192,8 +201,25 @@ def test_native_facts_fail_closed(artifacts, damage: str) -> None:
     assert isinstance(result, MIRNotCovered)
 
 
-@pytest.mark.parametrize("typ", ["list[str]", "list[tuple[int32, int32]]", "list[Cell | None]",
-                                  "set[int]", "dict[int32, Cell]", "dict[str, int32]"])
+@pytest.mark.parametrize(("typ", "line"), [
+    # An owned-leaf element or key is walked through a readonly borrow of it.
+    ("list[str]", "%0: list[str] container-ref readonly element=str:owned:readonly parameter xs"),
+    ("dict[str, int32]", "%0: dict[str, int32] container-ref readonly element=str:owned:readonly "
+                         "value=int32:scalar parameter xs"),
+])
+def test_owned_leaf_elements_lower(typ: str, line: str) -> None:
+    _, bodies, _ = compile_bodies(PREFIX + f'''def other(xs: {typ}) -> int32:
+    for item in xs:
+        pass
+    return 0
+''')
+    fn = bodies["other"]
+    assert isinstance(fn, MIRFunction), fn
+    assert line in [l.strip() for l in dump_function(fn).splitlines()]
+
+
+@pytest.mark.parametrize("typ", ["list[tuple[int32, int32]]", "list[Cell | None]", "set[int]",
+                                  "dict[int32, Cell]"])
 def test_other_native_elements_remain_uncovered(typ: str) -> None:
     _, bodies, _ = compile_bodies(PREFIX + f'''def other(xs: {typ}) -> int32:
     for item in xs:
@@ -203,13 +229,18 @@ def test_other_native_elements_remain_uncovered(typ: str) -> None:
     assert isinstance(bodies["other"], MIRNotCovered)
 
 
-def test_source_structural_mutation_and_record_target_hoist_stay_uncovered() -> None:
+def test_source_structural_mutation_lowers_and_record_target_hoist_stays_uncovered() -> None:
     _, bodies, _ = compile_bodies(PREFIX + '''
 def structural(xs: list[int32]) -> int32:
     alias = xs
     for item in xs:
         alias.append(7)
         break
+    return 0
+def growing(xs: list[int32]) -> int32:
+    alias = xs
+    for item in xs:
+        alias.append(item)
     return 0
 def hoisted(xs: list[Cell]) -> int32:
     for cell in xs:
@@ -218,5 +249,17 @@ def hoisted(xs: list[Cell]) -> int32:
         return 0
     return cell.value
 ''')
-    assert isinstance(bodies["structural"], MIRNotCovered)
+    # The growth through the alias publishes a write of the iterated list's shape.
+    structural = bodies["structural"]
+    assert isinstance(structural, MIRFunction), structural
+    assert any("call stub builtins.list.append" in line and "writes={param0[structure]}" in line
+               for line in dump_function(structural).splitlines())
+    # The `break` leaves the iterator dead after the write; without it the
+    # iterator lives on into the next step, and retention reports the write.
+    assert not _retention(structural).conflicts
+    growing = bodies["growing"]
+    assert isinstance(growing, MIRFunction), growing
+    conflicts = _retention(growing).conflicts
+    assert conflicts and all(growing.slots[c.holder.root.index].value_kind is MIRValueKind.NATIVE_ITERATOR
+                             for c in conflicts)
     assert isinstance(bodies["hoisted"], MIRNotCovered)

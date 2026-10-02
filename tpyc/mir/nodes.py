@@ -7,7 +7,7 @@ from ..parse import SourceLocation
 from ..thir.nodes import Form, THIRBorrowedRecord, THIRFunction
 from ..type_def_registry import ParamPassing
 from ..typesys import NominalType, TpyType
-from .call_contract import MIRCallSummary, MIRGlobalId
+from .call_contract import MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRGlobalId
 
 
 @dataclass(frozen=True)
@@ -110,8 +110,19 @@ class MIRTupleElement:
 
 @dataclass(frozen=True)
 class MIRContainerLayout:
-    """The source type and element form of a native iterator, never its C++ type."""
+    """The member forms of a native container's storage, never its C++ type.
+    `element` is what iteration yields (a list / set / Array element, a dict
+    key), `value` a dict's value or None. A member is SCALAR (an inert
+    leaf), OWNED (an owned leaf) or BORROWED (a plain record); its access
+    is the container's. Element identity is never tracked: `[elements]` is
+    one region every subscript, iterator and view of the container reaches."""
     element: MIRTupleElement
+    value: MIRTupleElement | None = None
+
+    @property
+    def subscript(self) -> MIRTupleElement:
+        """The member a subscript yields: a dict's value, else the element."""
+        return self.value if self.value is not None else self.element
 
 
 @dataclass(frozen=True)
@@ -156,16 +167,6 @@ class MIRSlot:
 
 @dataclass(frozen=True)
 class MIRDeref:
-    pass
-
-
-@dataclass(frozen=True)
-class MIRContainerStructure:
-    pass
-
-
-@dataclass(frozen=True)
-class MIRContainerElements:
     pass
 
 
@@ -236,6 +237,9 @@ class MIRCall:
 @dataclass(frozen=True)
 class MIRRead:
     source: MIRPlace
+    # An element access that can exit by exception (an index out of range,
+    # a missing key); only a `[elements]` source can.
+    may_raise: bool = False
 
 
 @dataclass(frozen=True)
@@ -246,6 +250,9 @@ class MIRAlias:
 @dataclass(frozen=True)
 class MIRBorrow:
     source: MIRPlace
+    # As `MIRRead.may_raise`: a subscript borrowing one element may raise,
+    # a slice or view borrowing the whole region does not.
+    may_raise: bool = False
 
 
 @dataclass(frozen=True)
@@ -253,10 +260,12 @@ class MIRConstruct:
     """Build a record from one operand per field: an inert leaf by value, or
     an owned leaf copied out of the storage a borrowed holder lends (the
     constructor's member initializer copies it) or moved out of owned
-    temporary storage the call hands over."""
+    temporary storage the call hands over. Into a container layout it is a
+    literal: one operand per element (a dict's keys and values alternate),
+    each by its member's form."""
     fields: tuple[MIRSlotId, ...]
     # Some owned-leaf member is copied, and that copy can exit by exception
-    # (`TypeDef.copy_may_raise`).
+    # (`TypeDef.copy_may_raise`); a container literal allocates, so always.
     may_raise: bool = False
 
 
@@ -516,8 +525,10 @@ class MIRMemberInitMode(Enum):
 
 @dataclass(frozen=True)
 class MIRMemberInit:
-    """How one member of the receiver is initialized at entry, in layout order."""
-    source: MIRSlotId | MIRConstant
+    """How one member of the receiver is initialized at entry, in layout order.
+    A container member is copied from a container parameter, or MOVEd from
+    the literal its `MIRConstruct` builds over parameters."""
+    source: MIRSlotId | MIRConstant | MIRConstruct
     mode: MIRMemberInitMode = MIRMemberInitMode.SCALAR
     # The initialization can exit by exception (`TypeDef.copy_may_raise` of a COPY).
     may_raise: bool = False

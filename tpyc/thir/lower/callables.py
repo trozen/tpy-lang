@@ -1,19 +1,22 @@
 """Semantic callable facts retained at the selected lowering operation."""
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from ...parse.nodes import TpyFunction
 from ...symbol_binding import SymbolKind
-from ...type_def_registry import ParamPassing
+from ...type_def_registry import ParamPassing, get_type_def
 from ...typesys import (
-    AnyType, FunctionInfo, FunctionLinkage, NominalType, ReadonlyType, RefType, TpyType, contains_pending_leaf,
-    contains_type_param, is_fn_type, is_protocol_type, return_representation, unwrap_readonly, unwrap_ref_type,
+    AnyType, FunctionInfo, FunctionLinkage, IntLiteralType, NominalType, ReadonlyType, RefType, TpyType,
+    contains_pending_leaf, contains_type_param, is_fn_type, is_protocol_type, return_representation, unwrap_readonly,
+    unwrap_ref_type,
     unwrap_send_sync,
 )
 from ..nodes import (
-    THIRCallableSignature, THIRFunctionIdentity, THIRResolvedCallee, THIRStubCallee, THIRStubContract,
-    THIRStubIdentity,
+    THIRCallableSignature, THIRExpr, THIRFunctionIdentity, THIRMethodCall, THIRResolvedCallee, THIRStubCallee,
+    THIRStubContract, THIRStubIdentity, THIRSubscript,
 )
+from ..scalar_leaves import leaf_constant, native_container_subject
 from .storage import borrowed_record
 
 if TYPE_CHECKING:
@@ -120,6 +123,19 @@ def resolved_callee(fi: FunctionInfo | None, analyzer: 'SemanticAnalyzer',
                                                     return_representation(fi.return_type)))
 
 
+def _not_a_stub(fi: FunctionInfo, arity: int) -> bool:
+    """The bindings a stub's declaration does not describe alone: no bound
+    symbol or template, a consuming or resumable callee, a callable value,
+    a wrapper or special form the call adds, variadics and keyword packs."""
+    return any((not (f.is_native_import or f.cpp_template is not None)
+                or f.is_constructor or f.is_callable_value or f.is_async or f.is_generator
+                or f.is_consuming or f.error_return_type is not None or f.special_handling
+                or f.is_builtin_function or f.inline_body is not None or f.kwarg_name is not None
+                or f.frame_captures is not None or f.is_property_getter or f.is_property_setter
+                or any(p.is_variadic or p.is_kwargs for p in f.params))
+               for f in (fi, fi.root)) or arity != len(fi.params) or fi.return_type is None
+
+
 def stub_callee(fi: FunctionInfo | None, result_type: TpyType, *, arity: int) -> THIRStubCallee | None:
     """The declared facts of a call to a `@native` / `@cpp_template` free
     function or builtin-type initializer, or None when the callee is not
@@ -128,14 +144,7 @@ def stub_callee(fi: FunctionInfo | None, result_type: TpyType, *, arity: int) ->
     if fi is None:
         return None
     initializer = fi.is_method and fi.name == "__init__" and not fi.is_staticmethod
-    if (not (fi.is_native_import or fi.cpp_template is not None)
-            or (fi.is_method and not initializer)
-            or fi.is_constructor or fi.is_callable_value or fi.is_async or fi.is_generator
-            or fi.is_consuming or fi.error_return_type is not None or fi.special_handling
-            or fi.is_builtin_function or fi.inline_body is not None or fi.kwarg_name is not None
-            or fi.frame_captures is not None
-            or any(p.is_variadic or p.is_kwargs for p in fi.params)
-            or arity != len(fi.params) or fi.return_type is None):
+    if _not_a_stub(fi, arity) or (fi.is_method and not initializer):
         return None
     if initializer:
         # An initializer returns None; the call yields the type it initializes.
@@ -150,9 +159,83 @@ def stub_callee(fi: FunctionInfo | None, result_type: TpyType, *, arity: int) ->
     if not name or any(_open_stub_type(t) for t in (*types, ret)):
         return None
     consts = _stub_param_consts(fi)
-    contract = (THIRStubContract.PURE if fi.is_pure
-                else THIRStubContract.TRANSIENT if fi.is_transient else None)
     return THIRStubCallee(THIRStubIdentity(name, types),
                           THIRCallableSignature(types, ret, None, signature_passings(types, consts),
                                                 return_representation(ret)),
-                          contract, consts)
+                          _stub_contract(fi), consts)
+
+
+def _stub_contract(fi: FunctionInfo) -> THIRStubContract | None:
+    return (THIRStubContract.PURE if fi.is_pure
+            else THIRStubContract.TRANSIENT if fi.is_transient else None)
+
+
+def method_stub_callee(fi: FunctionInfo | None, receiver: TpyType | None, *,
+                       arity: int) -> THIRStubCallee | None:
+    """The declared facts of a call to a method stub of a native type
+    (`@native` record: list, dict, Span, ...) on `receiver`, the call's
+    instantiated receiver type; None when the callee is no such stub or
+    anything about the binding is open. The receiver binds parameter 0 at
+    the passing its type has under the method's `@readonly` verdict; every
+    method type parameter must be one of the type's own (a bounded one
+    names the receiver's type argument it constrains)."""
+    if (fi is None or receiver is None or _not_a_stub(fi, arity) or not fi.is_method
+            or fi.name == "__init__" or fi.is_staticmethod or fi.is_classmethod or not fi.owning_type_qname):
+        return None
+    bare = unwrap_send_sync(native_container_subject(receiver))
+    td = get_type_def(fi.owning_type_qname)
+    record = td.record if td is not None else None
+    if (record is None or not record.is_native or not isinstance(bare, NominalType)
+            or bare.qualified_name() != fi.owning_type_qname or len(bare.type_args) != len(record.type_params)):
+        return None
+    bound: list[TpyType] = []
+    for name in fi.type_params:
+        if name not in record.type_params:
+            return None
+        if name in fi.type_param_bounds:
+            argument = bare.type_args[record.type_params.index(name)]
+            if not isinstance(argument, TpyType):
+                return None
+            bound.append(argument)
+    types = (bare, *(p.type for p in fi.params))
+    if any(_open_stub_type(t) for t in (*types, fi.return_type, *bound)):
+        return None
+    # A parameter passed as a view (a `str` key) cannot be written through.
+    consts = (fi.is_readonly, *(const or t.param_passing(False) is ParamPassing.VIEW
+                                for const, t in zip(_stub_param_consts(fi), types[1:], strict=True)))
+    return THIRStubCallee(THIRStubIdentity(f"{fi.owning_type_qname}.{fi.name}", types),
+                          THIRCallableSignature(types, fi.return_type, None, signature_passings(types, consts),
+                                                return_representation(fi.return_type)),
+                          _stub_contract(fi), consts, preserves_refs=fi.native_preserves_refs,
+                          receiver=True, bound_arguments=tuple(bound))
+
+
+def with_method_stub(node: THIRMethodCall, fi: FunctionInfo | None) -> THIRMethodCall:
+    """`node` carrying its callee's method stub facts, read against the
+    receiver it lowered (`method_stub_callee`)."""
+    stub = method_stub_callee(fi, node.receiver.result_type, arity=len(node.args))
+    return node if stub is None else replace(node, stub_callee=stub)
+
+
+def setitem_stub_callee(target: THIRExpr, analyzer: 'SemanticAnalyzer') -> THIRStubCallee | None:
+    """The `__setitem__` stub a subscript write `c[k] = v` dispatches to on
+    a native type: the receiver type's overload, substituted at its type
+    arguments, whose index parameter is the written index's type (a
+    subscript write never takes a slice overload). None when the receiver
+    is no native type or no single overload takes the index."""
+    if not isinstance(target, THIRSubscript):
+        return None
+    bare = unwrap_send_sync(native_container_subject(target.receiver.result_type))
+    record = analyzer.registry.get_record_for_type(bare) if isinstance(bare, NominalType) else None
+    if record is None or not record.is_native or len(bare.type_args) != len(record.type_params):
+        return None
+    subst = dict(zip(record.type_params, bare.type_args))
+    key = unwrap_send_sync(unwrap_readonly(unwrap_ref_type(target.index.result_type)))
+    matches = []
+    for overload in record.methods.get("__setitem__", []):
+        method = analyzer.type_ops.substitute_method_type_params(overload, subst) if subst else overload
+        index = unwrap_readonly(unwrap_ref_type(method.params[0].type)) if len(method.params) == 2 else None
+        # An int literal index converts to the fixed-int index parameter that holds it.
+        if index is not None and (index == key or isinstance(key, IntLiteralType) and leaf_constant(index, key.value)):
+            matches.append(method)
+    return method_stub_callee(matches[0], bare, arity=2) if len(matches) == 1 else None

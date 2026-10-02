@@ -858,15 +858,29 @@ class THIRStubIdentity:
 @dataclass(frozen=True)
 class THIRStubCallee:
     """The declared facts of a `@native` / `@cpp_template` callee -- a free
-    function or a builtin type's `__init__` -- read off its FunctionInfo;
-    there is no body to derive anything from. `signature.return_type` is
-    the constructed type for an initializer. `readonly` is the const verdict
-    the stub declares per parameter; `contract` None means the stub
-    declares nothing beyond its signature."""
+    function, a builtin type's `__init__`, or a method of a native builtin
+    type -- read off its FunctionInfo; there is no body to derive anything
+    from. `signature.return_type` is the constructed type for an
+    initializer. `readonly` is the const verdict the stub declares per
+    parameter; `contract` None means the stub declares nothing beyond its
+    signature.
+
+    A method stub (`receiver`) binds the call's INSTANTIATED receiver as
+    parameter 0 (`readonly[0]` is the method's `@readonly`), followed by
+    the declared parameters substituted at the receiver's type arguments.
+    `preserves_refs` is the method's `@native_preserves_refs`: it replaces
+    elements in place and invalidates no reference into the receiver.
+    `bound_arguments` are the type arguments the method's protocol-bounded
+    type parameters bind (`sort[T: Comparable]` on `list[int32]` binds
+    int32): the stub's runtime code dispatches the bound's operations on
+    them."""
     identity: THIRStubIdentity
     signature: THIRCallableSignature
     contract: THIRStubContract | None
     readonly: tuple[bool, ...]
+    preserves_refs: bool = False
+    receiver: bool = False
+    bound_arguments: tuple[TpyType, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1267,6 +1281,10 @@ class THIRMethodCall(THIRExpr):
     # the member and the call (`(*this).on_event.value()(msg)`): the
     # unwrap is unconditional and narrowing-blind.
     callable_value_unwrap: bool = False
+    # The declared facts of a native builtin type's method stub (the
+    # receiver is parameter 0); None for any other callee. Analysis only:
+    # no render reads it.
+    stub_callee: THIRStubCallee | None = None
 
     def __post_init__(self) -> None:
         assert not (self.deref_check and self.is_arrow)
@@ -2400,9 +2418,14 @@ class THIRSetItem(THIRStmt):
     An augmented `c[k] OP= v` lowers to the same node with `value` the
     synthetic `c[k] OP v` binop and `bounds_safe` forced off on BOTH reads
     -- the augmented form never takes the bounds-safe form. `value` is a flushable position (arg temps hoist
-    before the line, like an assign value)."""
+    before the line, like an assign value).
+
+    `stub_callee` is the receiver type's resolved `__setitem__` stub (the
+    overload the index selects) when that type is a native builtin; None
+    otherwise. Analysis only: no render reads it."""
     target: 'THIRSubscript'
     value: THIRExpr
+    stub_callee: THIRStubCallee | None = None
 
 
 @dataclass(frozen=True)

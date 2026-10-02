@@ -17,7 +17,10 @@ from tpyc.typesys import (
     passing_representation, return_representation, unwrap_readonly, unwrap_ref_type,
     BYTES_FAMILY, STR_FAMILY, view_family_of, view_owned_leaf,
 )
-from tpyc.thir.scalar_leaves import owned_constant, owned_leaf, storage_leaf, view_compatible, view_leaf
+from tpyc.thir.scalar_leaves import (
+    binds_element, container_members, container_view, modeled_members, native_container_type, owned_constant,
+    owned_leaf, plain_record_element, storage_leaf, view_compatible, view_iteration_index, view_leaf,
+)
 from tpyc.thir.testutil import _compile, _entry
 
 PRIMITIVES = (*ALL_FIXED_INTS, FLOAT, FLOAT32, BOOL, CHAR)
@@ -429,3 +432,196 @@ def test_views_resolve_to_their_family_and_read_through_it():
         assert certified_primitive_comparison(STRVIEW, STR) and certified_primitive_comparison(BYTESVIEW, BYTES)
         assert not certified_primitive_comparison(STRVIEW, STRING)
         assert not certified_primitive_comparison(STRVIEW, BYTESVIEW)
+
+
+# --- native containers --------------------------------------------------------
+
+_CONTAINER_RECORDS = """\
+from __future__ import annotations
+from tpy import Own, StrView, Span, ValueType, int32, uint64, readonly
+
+class Point:
+    x: int32
+    def __init__(self, x: int32) -> None:
+        self.x = x
+
+class Named:
+    name: str
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+class Ordered:
+    x: int32
+    def __init__(self, x: int32) -> None:
+        self.x = x
+    def __lt__(self, other: Ordered) -> bool:
+        return self.x < other.x
+
+class Same:
+    x: int32
+    def __init__(self, x: int32) -> None:
+        self.x = x
+    def __eq__(self, other: Same) -> bool:
+        return self.x == other.x
+
+class Hashed:
+    x: int32
+    def __init__(self, x: int32) -> None:
+        self.x = x
+    def __hash__(self) -> uint64:
+        return uint64(self.x)
+
+class Copied:
+    x: int32
+    def __init__(self, x: int32) -> None:
+        self.x = x
+    def __copy__(self) -> Own[Copied]:
+        return Copied(self.x)
+
+class Dropped:
+    x: int32
+    def __init__(self, x: int32) -> None:
+        self.x = x
+    def __del__(self) -> None:
+        print("drop")
+
+class Bag:
+    items: list[int32]
+    def __init__(self) -> None:
+        self.items = []
+
+class Pair(ValueType):
+    x: int32
+    def __init__(self, x: int32) -> None:
+        self.x = x
+
+def use(point: Point, named: Named, ordered: Ordered, same: Same, hashed: Hashed, copied: Copied,
+        dropped: Dropped, bag: Bag, pair: Pair, span: Span[int32], rspan: Span[readonly[int32]],
+        d: dict[str, int32]) -> None:
+    print(point.x, named.name, ordered.x, same.x, hashed.x, copied.x, dropped.x, len(bag.items), pair.x,
+          span[0], rspan[0], len(d.keys()), len(d.values()))
+"""
+
+
+def _nominal(qname: str, *args) -> NominalType:
+    return NominalType(qname.rsplit(".", 1)[-1], tuple(args), _module_qname=qname)
+
+
+# Per test: the borrowing-view facts are the compiled stubs', cleared between tests.
+@pytest.fixture
+def container_types():
+    compiler, modules = _compile(_CONTAINER_RECORDS)
+    use = _entry(modules).analyzer.registry.get_function("use")[-1]
+    types = {p.name: unwrap_readonly(unwrap_ref_type(p.type)) for p in use.params}
+    return compiler, types
+
+
+def test_owns_elements_is_declared_on_exactly_the_native_containers():
+    declared = {q for q, td in _type_defs.items() if td.owns_elements}
+    assert declared == {"builtins.list", "builtins.dict", "builtins.set", "tpy.Array"}
+
+
+@pytest.mark.parametrize("qname", ["builtins.list", "builtins.set", "tpy.Array"])
+@pytest.mark.parametrize("const", [False, True])
+def test_a_native_container_lends_by_reference(qname, const):
+    # Lendable YES is the reference parameter form the renderer spells.
+    args = (INT32, 3) if qname == "tpy.Array" else (INT32,)
+    typ = _nominal(qname, *args)
+    assert loan_class(typ) == LoanClass(Loan.NO, Loan.YES)
+    assert typ.param_passing(const) is _rendered_passing(typ, const)
+    assert typ.param_passing(const) is (ParamPassing.CONST_REF if const else ParamPassing.MUT_REF)
+    assert native_container_type(typ) and not is_inert_leaf(typ) and not is_owned_leaf(typ)
+
+
+def test_a_container_holds_what_its_elements_hold(container_types):
+    compiler, types = container_types
+    with activate_compiler(compiler):
+        assert loan_class(_nominal("builtins.dict", STR, INT32)) == LoanClass(Loan.NO, Loan.YES)
+        assert loan_class(_nominal("builtins.list", types["point"])) == LoanClass(Loan.NO, Loan.YES)
+        assert loan_class(_nominal("builtins.list", STRVIEW)) == LoanClass(Loan.YES, Loan.YES)
+        assert loan_class(_nominal("builtins.dict", STR, STRVIEW)).holds is Loan.YES
+        assert loan_class(_nominal("builtins.list", PtrType(INT32))).holds is Loan.YES
+        # A nested container answers through its own elements.
+        assert loan_class(_nominal("builtins.list", _nominal("builtins.list", INT32))) == LoanClass(Loan.NO, Loan.YES)
+        # Unproved elements and an unparameterized container prove nothing.
+        assert loan_class(_nominal("builtins.list", TypeParamRef("T"))).holds is Loan.UNKNOWN
+        assert loan_class(_nominal("builtins.list", BYTEARRAY)).holds is Loan.UNKNOWN
+        assert loan_class(_nominal("builtins.list")) == LoanClass(Loan.UNKNOWN, Loan.UNKNOWN)
+        # A record holds what its container field holds.
+        assert loan_class(types["bag"]) == LoanClass(Loan.NO, Loan.YES)
+        # Views keep the borrow class: they are no storage of their own.
+        for view in (types["span"], types["rspan"]):
+            assert loan_class(view) == LoanClass(Loan.YES, Loan.UNKNOWN)
+            assert container_view(view) and not native_container_type(view)
+
+
+def test_container_views_are_compatible_with_the_containers_they_view(container_types):
+    compiler, types = container_types
+    span, rspan = types["span"], types["rspan"]
+    lst, arr = _nominal("builtins.list", INT32), _nominal("tpy.Array", INT32, 3)
+    d = _nominal("builtins.dict", STR, INT32)
+    with activate_compiler(compiler):
+        keys = _nominal("builtins.dict_keys", STR, INT32)
+        values = _nominal("builtins.dict_values", STR, INT32)
+        assert container_view(keys) and container_view(values)
+        assert not container_view(STRVIEW) and not container_view(lst)
+        for holder in (span, rspan):
+            assert view_compatible(holder, lst) and view_compatible(holder, arr) and view_compatible(holder, span)
+            assert not view_compatible(holder, _nominal("builtins.list", INT64))
+            assert not view_compatible(holder, d) and not view_compatible(holder, STR)
+        # A mutable view never views readonly elements.
+        assert view_compatible(rspan, rspan) and not view_compatible(span, rspan)
+        assert view_compatible(keys, d) and view_compatible(values, d) and view_compatible(keys, keys)
+        assert not view_compatible(keys, values) and not view_compatible(keys, _nominal("builtins.dict", STR, INT64))
+        assert not view_compatible(keys, lst) and not view_compatible(STRVIEW, lst)
+        # The leaf views keep their family rule.
+        assert view_compatible(STRVIEW, STR) and not view_compatible(STRVIEW, span)
+
+
+def test_plain_record_elements_run_no_user_code(container_types):
+    compiler, types = container_types
+    with activate_compiler(compiler):
+        # Scalar and owned-leaf fields, no special member.
+        assert plain_record_element(types["point"]) and plain_record_element(types["named"])
+        # A comparison or hash dunder, custom copy or destructor, a container
+        # field, a value record and a leaf are no plain element.
+        for name in ("ordered", "same", "hashed", "copied", "dropped", "bag", "pair"):
+            assert not plain_record_element(types[name]), name
+        assert not plain_record_element(INT32) and not plain_record_element(STR)
+        point = types["point"]
+        assert modeled_members(_nominal("builtins.list", point))
+        assert modeled_members(_nominal("tpy.Array", STR, 2))
+        assert modeled_members(_nominal("builtins.dict", STR, INT32))
+        # Hashed members are leaves only; nested containers are out.
+        assert not modeled_members(_nominal("builtins.set", point))
+        assert not modeled_members(_nominal("builtins.dict", STR, point))
+        assert not modeled_members(_nominal("builtins.list", _nominal("builtins.list", INT32)))
+        assert not modeled_members(_nominal("builtins.list", types["ordered"]))
+        assert not modeled_members(INT32) and not modeled_members(STR)
+
+
+def test_container_members_name_the_element_value_and_hashing(container_types):
+    compiler, types = container_types
+    with activate_compiler(compiler):
+        point = types["point"]
+        assert container_members(_nominal("builtins.list", point)) == (point, None, False)
+        assert container_members(_nominal("builtins.set", INT32)) == (INT32, None, True)
+        assert container_members(_nominal("tpy.Array", STR, 2)) == (STR, None, False)
+        assert container_members(types["rspan"])[0] == ReadonlyType(INT32)
+        # A dict and each of its views store keys (hashed) and values.
+        for name in ("builtins.dict", "builtins.dict_keys", "builtins.dict_values", "builtins.dict_items"):
+            assert container_members(_nominal(name, STR, INT32)) == (STR, INT32, True), name
+        assert container_members(INT32) is None and container_members(STRVIEW) is None
+        # A view iterates the element argument its `__iter__` declares; items yields tuples.
+        assert view_iteration_index(_nominal("builtins.dict_keys", STR, INT32)) == 0
+        assert view_iteration_index(_nominal("builtins.dict_values", STR, INT32)) == 1
+        assert view_iteration_index(_nominal("builtins.dict_items", STR, INT32)) is None
+        assert view_iteration_index(_nominal("builtins.list", INT32)) is None
+
+
+def test_a_loop_variable_binds_the_element_or_views_it(container_types):
+    compiler, types = container_types
+    with activate_compiler(compiler):
+        assert binds_element(INT32, INT32) and binds_element(ReadonlyType(types["point"]), types["point"])
+        assert binds_element(STRVIEW, STR) and binds_element(STR, STR)
+        assert not binds_element(STRVIEW, INT32) and not binds_element(INT64, INT32)

@@ -6,14 +6,15 @@ from dataclasses import dataclass
 from ..thir.scalar_leaves import owned_leaf, record_type
 from ..typesys import TpyType, unwrap_readonly
 
+from .coverage import container_holder
 from .dependencies import MIRDependencies, MIRReferent, resolve_referents
 from .dump import _location, _place
 from .liveness import MIRLiveness, MIRPoint
 from .nodes import (
-    MIRField, MIRFunction, MIRNotCovered, MIRPlace, MIRRecordWrite, MIRRecordWriteMode, MIRSlot, MIRSlotId,
-    MIRSlotKind,
+    MIRContainerElements, MIRContainerStructure, MIRField, MIRFunction, MIRNotCovered, MIRPlace, MIRRecordWrite,
+    MIRRecordWriteMode, MIRSlot, MIRSlotId,
 )
-from .storage import MIRStorageEvents
+from .storage import MIRStorageEvents, owned_field
 from .presence import MIREngagement
 from .validate import MIRValidationError, _validated_function
 
@@ -38,8 +39,10 @@ class MIRRetention:
 
 
 def _origin(place: MIRPlace) -> MIRPlace:
+    """The object an external referent starts from: its holder leaf, before
+    any field or container region inside it."""
     for index, projection in enumerate(place.projections):
-        if isinstance(projection, MIRField):
+        if isinstance(projection, (MIRField, MIRContainerStructure, MIRContainerElements)):
             return MIRPlace(place.root, place.projections[:index])
     return place
 
@@ -61,6 +64,31 @@ def _replaced_leaf(place: MIRPlace) -> bool:
     return bool(place.projections) and isinstance(field := place.projections[-1], MIRField) and owned_leaf(field.type)
 
 
+def _reach(written: MIRPlace) -> tuple[tuple[object, ...], bool] | None:
+    """For a write that keeps the identity of the object around it, the
+    projection path a holder's referent must lie under, and whether the
+    path itself is reached; None for a write that replaces whole storage.
+    A container's shape write reaches everything inside the container (its
+    iterators, elements, views of them) but not the container object, which
+    every holder of it keeps; an elements write reaches what lies in the
+    elements region. Element identity is never tracked: a write of one
+    element reaches a holder of any element."""
+    match written.projections:
+        case (*base, MIRContainerStructure()):
+            return tuple(base), False
+        case (*_, MIRContainerElements()):
+            return written.projections, True
+        case (*_, MIRField() as field) if owned_field(field):
+            return written.projections, True
+    return None
+
+
+def _whole_container(ref: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
+    """A referent naming a container object itself (a borrowed container
+    parameter's own origin), which no container holds as an element."""
+    return not ref.place.projections and container_holder(slots[ref.place.root])
+
+
 def _referent_type(ref: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot]) -> TpyType | None:
     """The type of the object a referent names, when its path is fields only."""
     typ = slots[ref.place.root].type
@@ -79,22 +107,34 @@ def static_referent(ref: MIRReferent) -> bool:
 def affects(written: MIRReferent, retained: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
     """Whether replacing `written` reaches what a holder of `retained` holds.
     A literal's static storage is never written, so no replacement reaches
-    it. Replacing an owned-leaf field replaces that buffer only: the record
-    around it keeps its identity, so only a holder at or under the field is
-    affected. In private storage, or under one external origin, that is the
-    path; across external origins that may alias, it is any holder that is
-    not of a record, since no record lives inside an opaque buffer."""
+    it. Replacing an owned-leaf or container field replaces that storage
+    only: the record around it keeps its identity, so only a holder at or
+    under the field is affected; a container's shape or elements write
+    reaches what lies inside it (`_reach`). In private storage, or under one
+    external origin, that is the path; across external origins that may
+    alias, it is any holder that could lie inside the written storage: no
+    record or container lives inside an opaque buffer, and no container is
+    an element of another."""
     if static_referent(written) or static_referent(retained):
         return False
-    if not may_overlap(written, retained):
+    if written.external != retained.external:
         return False
-    if not _replaced_leaf(written.place):
-        return True
+    reach = _reach(written.place)
+    if reach is None:
+        return may_overlap(written, retained)
     if not written.external or _origin(written.place) == _origin(retained.place):
-        width = len(written.place.projections)
-        return retained.place.projections[:width] == written.place.projections
+        path, inclusive = reach
+        held = retained.place.projections
+        return (written.place.root == retained.place.root and held[:len(path)] == path
+                and (inclusive or len(held) > len(path)))
+    if not _replaced_leaf(written.place):
+        # Across external origins that may alias, a container's interior may
+        # hold any record or owned leaf a holder retains; a container object
+        # is never an element, so only a shape or elements write spares one.
+        region = isinstance(written.place.projections[-1], (MIRContainerStructure, MIRContainerElements))
+        return not (region and _whole_container(retained, slots))
     typ = _referent_type(retained, slots)
-    return typ is None or not record_type(typ)
+    return typ is None or not (record_type(typ) or _whole_container(retained, slots))
 
 
 def analyze_retention(fn: MIRFunction, liveness: MIRLiveness,
@@ -112,8 +152,9 @@ def analyze_retention(fn: MIRFunction, liveness: MIRLiveness,
             return MIRNotCovered(fn.id, "retention", f"{result.node_kind}: {result.reason}", result.loc)
     slots = {slot.id: slot for slot in fn.slots}
     conflicts: list[MIRRetentionConflict] = []
-    # Replacement events: assignments to whole storage, and the field
-    # buffers a call's summary may write, both at their statement's point.
+    # Replacement events, each at its statement's point: assignments to
+    # owned storage, the places a call's summary may write, and owned
+    # storage a move empties.
     replaced: list[tuple[MIRPoint, MIRPlace, MIRSlotId | None]] = []
     for point, stmt in events.writes.items():
         fact = stmt.storage_write
@@ -129,6 +170,8 @@ def analyze_retention(fn: MIRFunction, liveness: MIRLiveness,
         replaced.append((point, stmt.target, fact.rebind_owner))
     for point, places in events.call_writes.items():
         replaced.extend((point, place, None) for place in places)
+    for point, place in events.moves.items():
+        replaced.append((point, place, None))
     for point, target, rebind_owner in sorted(replaced, key=lambda e: (e[0].block.index, e[0].index, _place(e[1]))):
         incoming = dependencies.referents[point]
         live_after = liveness.points[MIRPoint(point.block, point.index + 1)]

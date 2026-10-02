@@ -8,14 +8,19 @@ from types import MappingProxyType
 from ..parse import SourceLocation
 from ..thir import nodes as th
 from ..thir.scalar_leaves import (
-    leaf_constant, owned_constant, owned_leaf, owned_value_type, record_type, storage_leaf,
+    container_members, container_view, leaf_constant, native_container_type, owned_constant, owned_leaf,
+    owned_value_type, plain_record_element, record_type, storage_leaf, view_iteration_index,
 )
 from ..type_def_registry import type_def_of
-from ..typesys import Loan, NominalType, TpyType, loan_class
+from ..typesys import (
+    Loan, NominalType, ReadonlyType, TpyType, loan_class, unwrap_readonly,
+)
 from .call_contract import BORROWING_PASSINGS, OWNING_PASSINGS
 from .coverage import MIRUnsupported, literal_type, plain, require, scalar_param
-from .nodes import MIRConstant, MIRField, MIRFieldId, MIRMemberInitMode, MIRRecordLayout
-
+from .nodes import (
+    MIRConstant, MIRContainerLayout, MIRField, MIRFieldId, MIRMemberInitMode, MIRRecordLayout, MIRTupleElement,
+    MIRValueKind,
+)
 
 @dataclass(frozen=True)
 class MIRFieldInitializer:
@@ -24,7 +29,9 @@ class MIRFieldInitializer:
     move (an owned leaf). Decided once here; the constructor body and every
     caller read it."""
     field: MIRField
-    source: str | MIRConstant
+    # A container field may also be a literal over parameters, one name per
+    # element (a dict's keys and values alternating), moved in once built.
+    source: str | MIRConstant | tuple[str, ...]
     mode: MIRMemberInitMode
     # The copy (or a constant's materialization) can exit by exception.
     may_raise: bool
@@ -61,9 +68,57 @@ def _scalar_initializer(expr: th.THIRExpr, params: Mapping[str, th.THIRParam], e
     return typ
 
 
+def _literal_element(expr: th.THIRExpr, params: Mapping[str, th.THIRParam], member: TpyType) -> str:
+    """A container literal's element in a member initializer: a parameter
+    whose leaf the element slot copies (a view parameter's through its
+    materialization)."""
+    if isinstance(expr, th.THIRFormConvert):
+        plain(expr, {"value", "is_const"})
+        require(expr, expr.form is th.Form.STORAGE and isinstance(expr.value, th.THIRName)
+                and expr.value.form is th.Form.BORROW, "constructor form conversion")
+        expr = expr.value
+    require(expr, isinstance(expr, th.THIRName), "constructor initializer needs parameter or literal")
+    plain(expr, {"name", "is_last_use", "is_movable"})
+    param = params.get(expr.name)
+    require(expr, param is not None and (
+        storage_leaf(member) and scalar_param(param) and param.type == member
+        or owned_leaf(member) and owned_parameter(param) and owned_value_type(param.type) == member),
+        "constructor initializer needs parameter")
+    return param.name
+
+
+def _container_initializer(expr: th.THIRExpr, params: Mapping[str, th.THIRParam],
+                           field: MIRField) -> MIRFieldInitializer:
+    """A container member is copied from a container parameter, or moved
+    from a literal built over parameters; either allocates."""
+    typ = field.type
+    match expr:
+        case th.THIRName():
+            plain(expr, {"name", "is_last_use", "is_movable"})
+            param = params.get(expr.name)
+            require(expr, param is not None and param.native_container is not None
+                    and param.native_container.type == typ and expr.result_type == typ,
+                    "constructor initializer needs parameter")
+            return MIRFieldInitializer(field, param.name, MIRMemberInitMode.COPY, True, expr.loc)
+        case th.THIRContainerLiteral():
+            plain(expr, {"elements", "values", "typed_brace_cpp", "make_container", "elem_cpp", "bare_empty"})
+            require(expr, expr.result_type == typ, "constructor field type")
+            element, value, _ = container_members(typ)
+            operands: list[str] = []
+            for i, e in enumerate(expr.elements):
+                operands.append(_literal_element(e, params, unwrap_readonly(element)))
+                if value is not None:
+                    operands.append(_literal_element(expr.values[i], params, unwrap_readonly(value)))
+            require(expr, value is None or len(expr.values) == len(expr.elements), "constructor field type")
+            return MIRFieldInitializer(field, tuple(operands), MIRMemberInitMode.MOVE, True, expr.loc)
+    raise MIRUnsupported(expr, "constructor initializer needs parameter or literal")
+
+
 def _initializer(expr: th.THIRExpr, params: Mapping[str, th.THIRParam],
                  member: th.THIRFieldIdentity) -> MIRFieldInitializer:
     field = MIRField(MIRFieldId(member.owner, member.name), member.type)
+    if native_container_type(member.type):
+        return _container_initializer(expr, params, field)
     if not owned_leaf(member.type):
         require(expr, _scalar_initializer(expr, params, member.type) == member.type, "constructor field type")
         literal = expr.expr if isinstance(expr, th.THIRCoerce) else expr
@@ -132,8 +187,8 @@ def constructor_initialization(ctor: th.THIRConstructor) -> MIRConstructorDefini
     # needs the call retention contracts MIR does not model yet.
     require(ctor, not any(loan_class(f.type).holds is Loan.YES for f in layout.fields), "record holds a borrow")
     require(ctor, len(members) == len(layout.fields) and all(
-        f.owner == typ and bool(f.name) and (storage_leaf(f.type) or owned_leaf(f.type)) for f in layout.fields),
-        "unsupported record fields")
+        f.owner == typ and bool(f.name) and (storage_leaf(f.type) or owned_leaf(f.type) or native_container_type(f.type))
+        for f in layout.fields), "unsupported record fields")
     params = {p.name: p for p in ctor.params}
     require(ctor, len(params) == len(ctor.params), "duplicate constructor parameter")
     for p in ctor.params:
@@ -164,7 +219,9 @@ def _verify(ctor: th.THIRConstructor) -> MIRConstructorDefinition:
     for param in ctor.params:
         require(param, scalar_param(param) or owned_parameter(param), "constructor parameter type")
     for init in definition.initializers:
-        if init.mode is MIRMemberInitMode.SCALAR:
+        # A container member's initializer is the constructor body's own;
+        # a caller's construct refuses it (`constructor container field`).
+        if init.mode is MIRMemberInitMode.SCALAR or native_container_type(init.field.type):
             continue
         # A caller's construct has no operand for a constant, nor one both
         # copied and moved.
@@ -175,6 +232,52 @@ def _verify(ctor: th.THIRConstructor) -> MIRConstructorDefinition:
         require(stmt, isinstance(stmt, th.THIRNoOpStmt), "constructor body effects")
         plain(stmt, set())
     return definition
+
+
+@dataclass(frozen=True)
+class MIRContainerDefinition:
+    """The builtin certificate of a native container's storage, from its
+    TypeDef and type arguments: an opaque buffer whose members MIR types
+    but never tracks one by one. `layout` carries mutable members; a holder
+    applies its own access (`with_access`). `records` are the definitions
+    of its record members, which the body's layouts must carry."""
+    layout: MIRContainerLayout
+    records: tuple['MIRConstructorDefinition', ...] = ()
+
+
+def with_access(layout: MIRContainerLayout, readonly: bool) -> MIRContainerLayout:
+    """A holder's layout: a readonly holder reaches readonly storage members
+    (an inert leaf is read by value and carries no access)."""
+    def member(m: MIRTupleElement | None) -> MIRTupleElement | None:
+        if m is None or m.kind is MIRValueKind.SCALAR:
+            return m
+        return MIRTupleElement(m.type, m.kind, m.readonly or readonly)
+    return MIRContainerLayout(member(layout.element), member(layout.value))
+
+
+def iteration_layout(typ: TpyType, layout: MIRContainerLayout) -> MIRContainerLayout | None:
+    """What an iterator over a holder of `typ` with `layout` walks: the
+    layout itself, or for a view of a dict's keys and values the member its
+    iteration declares (`view_iteration_index`: a values view walks the
+    values). None when the view yields no member (an items view's tuples)."""
+    if not container_view(typ) or layout.value is None:
+        return layout
+    index = view_iteration_index(typ)
+    member = None if index is None else (layout.element, layout.value)[index]
+    return None if member is None else MIRContainerLayout(member)
+
+
+def iterated_layout(typ: TpyType, layout: MIRContainerLayout,
+                    element: TpyType | th.THIRBorrowedRecord) -> MIRContainerLayout:
+    """`iteration_layout` for a loop whose THIR iteration fact names the
+    member it yields (`THIRNativeIteration.source.element`): a view of a
+    dict's keys and values walks the layout member of that type."""
+    if not container_view(typ) or layout.value is None:
+        return layout
+    member_type = element.type if isinstance(element, th.THIRBorrowedRecord) else element
+    member = next((m for m in (layout.element, layout.value) if m.type == member_type), None)
+    require(element, member is not None, "native iteration source disagrees with binding")
+    return MIRContainerLayout(member)
 
 
 @dataclass(frozen=True)
@@ -205,10 +308,48 @@ class MIRDefinitions:
                 records[typ] = failure.reason
         object.__setattr__(self, "records", MappingProxyType(records))
 
-    def get(self, node: object, typ: NominalType) -> MIRConstructorDefinition | MIROwnedLeafDefinition:
+    def get(self, node: object, typ: NominalType
+            ) -> MIRConstructorDefinition | MIROwnedLeafDefinition | MIRContainerDefinition:
         if owned_leaf(typ):
             return MIROwnedLeafDefinition(MIRRecordLayout(typ, (), True, True, opaque=True))
+        if native_container_type(typ) or container_view(typ):
+            return self.container(node, typ)
         definition = self.records.get(typ, "missing constructor definition")
         if isinstance(definition, str):
             raise MIRUnsupported(node, definition)
         return definition
+
+    def container(self, node: object, typ: NominalType) -> MIRContainerDefinition:
+        """A native container's layout (a container view's: the region it views), or
+        the refusal of its members."""
+        members = container_members(typ)
+        require(node, members is not None, "unsupported native container type")
+        element, value, key = members
+        records: dict[NominalType, MIRConstructorDefinition] = {}
+        layout = tuple(None if m is None else self.member(node, m, hashed, records)
+                        for m, hashed in ((element, key), (value, False)))
+        return MIRContainerDefinition(MIRContainerLayout(*layout), tuple(records.values()))
+
+    def member(self, node: object, typ: TpyType, hashed: bool,
+               records: dict[NominalType, MIRConstructorDefinition]) -> MIRTupleElement:
+        """One container member: an inert leaf, an owned leaf, or (never as
+        a hashed key) a plain record whose fields are leaves."""
+        # A stored borrow outlives the operation that put it there, which
+        # needs the retention contracts MIR does not model yet.
+        require(node, loan_class(typ).holds is not Loan.YES, "container holds a borrow")
+        readonly = isinstance(typ, ReadonlyType)
+        bare = unwrap_readonly(typ)
+        if storage_leaf(bare):
+            return MIRTupleElement(bare)
+        if owned_leaf(bare):
+            return MIRTupleElement(bare, MIRValueKind.OWNED, readonly)
+        # A nested container or a record holding one has element places
+        # beyond one hop.
+        require(node, not hashed and isinstance(bare, NominalType) and plain_record_element(bare),
+                "unsupported native container element")
+        definition = self.get(node, bare)
+        require(node, isinstance(definition, MIRConstructorDefinition) and all(
+            storage_leaf(f.type) or owned_leaf(f.type) for f in definition.layout.fields),
+            "unsupported native container element")
+        records[bare] = definition
+        return MIRTupleElement(bare, MIRValueKind.BORROWED, readonly)

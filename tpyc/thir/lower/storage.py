@@ -4,20 +4,24 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from ...symbol_binding import SymbolKind
-from ...type_def_registry import is_list, is_array, is_set, is_dict, zero_value_of
+from ...type_def_registry import zero_value_of
 
 from ...parse.nodes import TpyFieldAccess, TpyName, TpySubscript, TupleElemCapture
 from ...typesys import (
     NominalType, OptionalType, ReadonlyType, TupleType, TpyType,
     UnionType, is_void_like_type, unwrap_readonly, unwrap_ref_type,
 )
-from ..scalar_leaves import leaf_constant, leaf_global, owned_leaf, storage_leaf
+from ..scalar_leaves import (
+    container_members, container_view, holds_elements, leaf_constant, leaf_global, modeled_members,
+    native_container_subject, native_container_type, owned_leaf, readonly_elements,
+    storage_leaf, view_iteration_index,
+)
 from ..nodes import (
     Form, THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldAccess, THIRFieldIdentity, THIRName,
     THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout, THIRUnionLayout,
     THIRCoerce, THIRLiteral, THIRSelf, THIRUnionLiteral, THIRGlobalBinding, THIRHoistedBinding,
     THIRWrapperDefault, THIROwnedRecord,
-    THIRNativeContainer, THIRCtorCall,
+    THIRNativeContainer, THIRCtorCall, THIRVarDecl,
 )
 
 if TYPE_CHECKING:
@@ -70,26 +74,58 @@ def borrowed_record(typ: TpyType, readonly: bool,
 
 def native_container(typ: TpyType, readonly: bool,
                      analyzer: 'SemanticAnalyzer') -> THIRNativeContainer | None:
+    """The elements a native container or Span of `typ` stores, when MIR
+    can model them: list / set / Array / Span elements and dict keys and
+    values that are scalar or owned leaves, and plain record elements
+    (`plain_record_element`) of a list, Array or Span. A Span's readonly
+    comes from its element argument."""
     readonly = readonly or isinstance(unwrap_ref_type(typ), ReadonlyType)
-    typ = unwrap_readonly(unwrap_ref_type(typ))
-    if not isinstance(typ, NominalType) or not typ.type_args:
+    typ = native_container_subject(typ)
+    members = container_members(typ)
+    if members is None or not modeled_members(typ):
         return None
-    args = typ.type_args
-    if not ((is_list(typ) or is_set(typ)) and len(args) == 1
-            or is_dict(typ) and len(args) == 2 and all(storage_leaf(a) for a in args)
-            or is_array(typ) and len(args) == 2 and type(args[1]) is int and args[1] >= 0):
+    element, value, _ = members
+    if container_view(typ):
+        # A dict view is an iteration source (`view_iteration_source`), never
+        # a bound container; a Span's element access is its element argument's.
+        if value is not None:
+            return None
+        readonly = readonly or readonly_elements(typ)
+        element = unwrap_readonly(element)
+    elif any(unwrap_readonly(unwrap_ref_type(m)) != m for m in (element, value) if m is not None):
         return None
-    element = args[0]
-    if not storage_leaf(element):
-        if not (is_list(typ) or is_array(typ)) or unwrap_readonly(unwrap_ref_type(element)) != element:
-            return None
-        element = borrowed_record(element, readonly, analyzer)
-        if element is None:
-            return None
-        record = analyzer.registry.get_record_for_type(element.type)
-        if any(not storage_leaf(f.type) for f in record.fields):
-            return None
-    return THIRNativeContainer(typ, element, readonly)
+    if storage_leaf(element) or owned_leaf(element):
+        return THIRNativeContainer(typ, element, readonly)
+    reference = borrowed_record(element, readonly, analyzer)
+    return THIRNativeContainer(typ, reference, readonly) if reference is not None else None
+
+
+def view_iteration_source(typ: TpyType, readonly: bool) -> THIRNativeContainer | None:
+    """The fact of a container view a loop iterates: the view and the
+    element argument its iteration yields (`view_iteration_index`), when
+    that is a scalar or owned leaf. Readonly when the view's elements are
+    or when what it views is."""
+    view = native_container_subject(typ)
+    index = view_iteration_index(view)
+    if index is None:
+        return None
+    member = unwrap_readonly(view.type_args[index])
+    if not (storage_leaf(member) or owned_leaf(member)):
+        return None
+    readonly = readonly or readonly_elements(view) or isinstance(unwrap_ref_type(typ), ReadonlyType)
+    return THIRNativeContainer(view, member, readonly)
+
+
+def owned_container_decl(decl: THIRVarDecl) -> bool:
+    """Whether `decl` binds container storage of its own: an initialized
+    local in a non-borrow form whose initializer yields the declared
+    container, with no other storage fact."""
+    return (decl.native_container is None and decl.init is not None and decl.form is not Form.BORROW
+            and native_container_type(decl.resolved_type)
+            and native_container_subject(decl.init.result_type) == decl.resolved_type
+            and all(f is None for f in (decl.alias_binding, decl.storage_borrow, decl.owned_storage,
+                                        decl.tuple_layout, decl.tuple_storage_alias, decl.optional_layout,
+                                        decl.union_layout)))
 
 
 def hoisted_binding(name: str, typ: TpyType, analyzer: 'SemanticAnalyzer', *,
@@ -296,7 +332,10 @@ def direct_field(expr: TpyFieldAccess,
                       and isinstance(receiver, THIRFieldAccess)
                       and receiver.field_identity is not None)
     temporary_receiver = isinstance(receiver, THIRCtorCall) and receiver.full_expression_storage is not None
-    if ((not isinstance(expr.obj, TpyName) and not tuple_receiver and not field_receiver and not temporary_receiver)
+    element_receiver = (isinstance(expr.obj, TpySubscript) and isinstance(receiver, THIRSubscript)
+                        and receiver.tuple_index is None and holds_elements(receiver.receiver.result_type))
+    if ((not isinstance(expr.obj, TpyName) and not tuple_receiver and not field_receiver and not temporary_receiver
+         and not element_receiver)
             or expr.hidden_call is not None
             or expr.deref_depth or expr.needs_optional_runtime_check
             or expr.unbound_self_parent_type is not None
@@ -310,6 +349,7 @@ def direct_field(expr: TpyFieldAccess,
     info = analyzer.registry.get_record_for_type(reference.type)
     member = next((f for f in info.fields if f.name == expr.field), None)
     if member is None or (not storage_leaf(member.type) and not owned_leaf(member.type)
-                          and borrowed_record(member.type, False, analyzer) is None):
+                          and borrowed_record(member.type, False, analyzer) is None
+                          and not native_container_type(unwrap_readonly(member.type))):
         return None
     return THIRFieldIdentity(reference.type, member.name, member.type)

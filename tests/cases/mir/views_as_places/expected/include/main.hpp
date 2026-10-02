@@ -41,7 +41,7 @@ std::string string_as_str_sink(const ::tpy::String& x);
 ::tpy::BigInt bytes_slice(::tpy::BytesView b);
 // def stepped(s: str) -> int:  # tpyc: mir(uncovered /^stepped slice$/)
 ::tpy::BigInt stepped(std::string_view s);
-// def span_param(xs: Span[int32]) -> int32:  # tpyc: mir(uncovered /^view of container storage$/)
+// def span_param(xs: Span[int32]) -> int32:  # tpyc: mir(covered)
 int32_t span_param(std::span<int32_t> xs);
 // def reassigned_param(s: str) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt reassigned_param(std::string_view __param_s);

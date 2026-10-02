@@ -124,8 +124,8 @@ std::string string_as_str_sink(const ::tpy::String& x) {
     return ::tpy::BigInt(::tpy::__len__(::tpy::str_stepped_slice(s, ::tpy::Slice{std::nullopt, std::nullopt, 2})));
 }
 
-// # free function: a Span views container storage, whose element places MIR does not model
-// def span_param(xs: Span[int32]) -> int32:  # tpyc: mir(uncovered /^view of container storage$/)
+// # free function: a Span parameter views its caller's container elements
+// def span_param(xs: Span[int32]) -> int32:  # tpyc: mir(covered)
 //     return xs[0]
 int32_t span_param(std::span<int32_t> xs) {
     return ::tpy::__getitem__(xs, 0);

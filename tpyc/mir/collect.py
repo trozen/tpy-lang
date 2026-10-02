@@ -18,7 +18,9 @@ from ..typesys import TpyType, unwrap_readonly
 from .call_contract import MIRSummaryResult
 from .call_effects import MIRCallEffects, analyze_call_effects, dump_call_effects
 from .definitions import MIRDefinitions
-from .dependencies import MIRDependencies, MIRReferent, _leaves, analyze_dependencies, dump_dependencies
+from .dependencies import (
+    MIRDependencies, MIRReferent, _leaves, analyze_dependencies, dump_dependencies, resolve_referents,
+)
 from .dump import dump_function
 from .liveness import MIRLiveness, MIRPoint, analyze_liveness, dump_liveness
 from .lower import lower_constructor, lower_function
@@ -410,7 +412,9 @@ class MIRLineFacts:
     lines: frozenset[int]
     # Every write of a named place by a statement on the line, over all blocks.
     writes: Mapping[tuple[int, str], tuple[MIRLineWrite, ...]]
-    # The non-initializing record-write modes on the line, by destination storage.
+    # The replacement events on the line, by destination storage: the
+    # non-initializing record-write modes, `call` for a call's write, `move`
+    # for a move out of owned storage.
     events: Mapping[tuple[int, str], tuple[str, ...]]
     # A holder's referents per block holding a statement on the line.
     borrows: Mapping[tuple[int, str], tuple[MIRLineReferents, ...]]
@@ -454,6 +458,10 @@ def _written_kind(place: MIRPlace, slot: MIRSlot) -> MIRValueKind | None:
         case (*_, MIRDeref()):
             # Whole storage a holder points at: storage_destination's replacement.
             return MIRValueKind.OWNED
+        case (MIRContainerElements(),) if slot.container_layout is not None:
+            # An element is the container's own storage unless it is an inert leaf.
+            scalar = slot.container_layout.subscript.kind is MIRValueKind.SCALAR
+            return MIRValueKind.SCALAR if scalar else MIRValueKind.OWNED
         case (*_, MIRField(type=field_type)):
             typ = unwrap_readonly(field_type)
             if owned_leaf(typ) or record_type(typ):
@@ -501,6 +509,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
     events = analyses.events
     modes = ({} if isinstance(events, MIRNotCovered)
              else {point: stmt.storage_write.mode for point, stmt in events.writes.items()})
+    blocks = {block.id: block for block in fn.blocks}
     lines: set[int] = set()
     last: dict[tuple[int, MIRBlockId], int] = {}
     writes: dict[tuple[int, str], list[MIRLineWrite]] = {}
@@ -522,6 +531,24 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
             mode = modes.get(MIRPoint(block.id, index))
             if mode is not None and mode not in INITIALIZING_WRITES and (spelled := _spell(target, storage)) is not None:
                 replaced.setdefault((line, spelled), []).append(mode.name.lower())
+
+    if not isinstance(events, MIRNotCovered):
+        # A call's writes and a move out of owned storage are write events of
+        # their line too. A call writing through an unnamed argument (a
+        # borrow of `self.items`) is spelled by what that argument borrows.
+        dependencies = analyses.dependencies
+        others = [(point, place, "call") for point, places in events.call_writes.items() for place in places]
+        others += [(point, place, "move") for point, place in events.moves.items()]
+        for point, place, kind in others:
+            loc = blocks[point.block].statements[point.index].loc
+            if loc is None:
+                continue
+            spelled = {_spell(place, storage)} - {None}
+            if not spelled and not isinstance(dependencies, MIRNotCovered) and point in dependencies.referents:
+                spelled = {_spell(ref.place, storage) for ref in
+                           resolve_referents(place, dependencies.referents[point], slots)} - {None}
+            for text in spelled:
+                replaced.setdefault((loc.line, text), []).append(kind)
 
     if fn.receiver_init is not None:
         # The receiver's entry initialization carries no CFG statement; its

@@ -3256,6 +3256,12 @@ def _storage_loan_class(t: TpyType) -> LoanClass:
         return _LOAN_OWNED
     if td.is_borrowing_view:
         return _LOAN_BORROW
+    if td.owns_elements:
+        # Its elements are its own storage: it holds what they hold.
+        elements = [a for a in t.type_args if isinstance(a, TpyType)]
+        if not elements:
+            return _LOAN_UNKNOWN
+        return _aggregate_loan_class(elements)
     rec = td.record
     if rec is None or rec.is_native or t.is_protocol:
         return _LOAN_UNKNOWN

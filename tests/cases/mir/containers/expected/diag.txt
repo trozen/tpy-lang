@@ -1,0 +1,7 @@
+main.py:115: warning: Mutation of 'ps' while borrowed ('append' may invalidate references)
+main.py:124: warning: Mutation of 'ps' while borrowed ('append' may invalidate references)
+main.py:133: warning: Mutation of 'xs' while iterating over it ('append' invalidates the iterator)
+main.py:150: warning: Passing borrowed container 'ps' to non-readonly parameter 'ps' (function may invalidate references)
+main.py:159: warning: Passing borrowed container 'ps' to non-readonly parameter 'ps' (function may invalidate references)
+main.py:523: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
+main.py:534: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
