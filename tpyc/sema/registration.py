@@ -70,7 +70,7 @@ from .send_chain import why_not_send, why_not_sync, render_chain
 from ..type_def_registry import (
     is_fixed_int_type, is_fstr_type, int_traits_of,
     attach_dynamic_type_def, TypeCategory, EnumInfo, enum_info_of, type_def_of,
-    get_type_def,
+    get_type_def, NativeMembers, latch_native_members,
     factory_qnames_in_module, protocol_info_of, return_exception_marker,
     is_str_type, is_borrowing_view_type, is_owned_in_coro_frame,
     is_varargs,
@@ -109,6 +109,59 @@ def _vararg_span_type(elem_type: 'TpyType') -> NominalType:
     expected (no std::span conversion exists).
     """
     return make_varargs(elem_type)
+
+
+_NO_ELEMENT_MEMBER = ("requires a @readonly __iter__ returning Iterator[T] for "
+                      "one of the class's own type parameters: the element the "
+                      "type owns")
+
+
+def _declared_native_members(record: RecordInfo) -> NativeMembers | str | None:
+    """The storage members a native record's stub declares: the type
+    parameter its readonly `__iter__` yields (two for a tuple of
+    parameters, which no cursor binds), and the parameter its `__getitem__`
+    returns when that is another one. None when the stub declares no
+    element, a string when its declarations disagree."""
+    params = record.type_params
+
+    def position(typ: object) -> int | None:
+        typ = unwrap_readonly(typ) if isinstance(typ, TpyType) else typ
+        return params.index(typ.name) if isinstance(typ, TypeParamRef) and typ.name in params else None
+
+    yields: set[tuple[int, ...]] = set()
+    for method in record.get_method_overloads("__iter__"):
+        iterator = method.return_type
+        if (not method.is_readonly or not isinstance(iterator, NominalType)
+                or iterator.qualified_name() != qnames.ITERATOR or len(iterator.type_args) != 1):
+            continue
+        yielded = iterator.type_args[0]
+        parts = yielded.element_types if isinstance(yielded, TupleType) else (yielded,)
+        positions = tuple(position(p) for p in parts)
+        if None not in positions and len(set(positions)) == len(positions) and len(positions) in (1, 2):
+            yields.add(positions)
+    if not yields:
+        return None
+    if len(yields) != 1:
+        return "declares more than one element: its readonly __iter__ overloads yield different type parameters"
+    yielded_positions, = yields
+    subscripts = {(result, position(method.params[0].type))
+                  for method in record.get_method_overloads("__getitem__")
+                  if len(method.params) == 1 and (result := position(method.return_type)) is not None}
+    if len(yielded_positions) == 2:
+        if subscripts:
+            return "iterates two members at once and also declares a subscript member"
+        return NativeMembers(yielded_positions[0], yielded_positions[1], keyed=False, cursor=False)
+    element, = yielded_positions
+    if not subscripts:
+        return NativeMembers(element, None, keyed=False, cursor=True)
+    if len(subscripts) != 1:
+        return "declares more than one subscript member: its __getitem__ overloads return different type parameters"
+    (result, key), = subscripts
+    if key is not None and key != element:
+        return "declares a subscript keyed by a type parameter its __iter__ does not yield"
+    if result != element and key is None:
+        return "declares a subscript returning a member other than its element, which must be keyed by the element"
+    return NativeMembers(element, None if result == element else result, keyed=key is not None, cursor=True)
 
 
 def _is_valid_type_param_bound(t: 'TpyType') -> bool:
@@ -1683,7 +1736,7 @@ class TypeRegistrar:
                 linkage=method.linkage,
                 native_name=method.native_name,
                 native_function=method.native_function,
-                native_preserves_refs=method.native_preserves_refs,
+                native_mutates=method.native_mutates,
                 copy_returns_warn=method.copy_returns_warn,
                 # Only `__enter__` needs it, and only it pays the body walk.
                 returns_self_borrow=(
@@ -2101,6 +2154,7 @@ class TypeRegistrar:
             is_native=is_native,
             is_native_c=is_native_c,
             is_indirecting=record.is_indirecting,
+            owns_elements=record.owns_elements,
             is_borrowing_view=record.is_borrowing_view,
             iter_yields_ref_tuple_proxies=record.iter_yields_ref_tuple_proxies,
             is_nocopy=record.is_nocopy,
@@ -2588,6 +2642,31 @@ class TypeRegistrar:
                     f"marker (class {record.name}(ValueType))",
                     record.loc
                 )
+
+        # The storage members an element-owning type or a view declares are
+        # read off its resolved stub once, here, so no consumer walks the
+        # record again.
+        if record_info.owns_elements or record_info.is_borrowing_view:
+            members = _declared_native_members(record_info)
+            if record_info.owns_elements:
+                if record_info.is_borrowing_view:
+                    raise SemanticError(
+                        f"Class '{record.name}': @native(elements=True) cannot "
+                        f"be combined with borrowing_view=True: a view owns no "
+                        f"elements, it borrows its source's",
+                        record.loc
+                    )
+                if not isinstance(members, NativeMembers):
+                    raise SemanticError(
+                        f"Class '{record.name}': @native(elements=True) "
+                        f"{members or _NO_ELEMENT_MEMBER}",
+                        record.loc
+                    )
+            td = get_type_def(record_info.builtin_type_key
+                              or record_info.qualified_name())
+            if td is not None:
+                latch_native_members(
+                    td, members if isinstance(members, NativeMembers) else None)
 
         # ReturnException marker: register exception type as return-only
         if return_exception_marker(record_info) is not None:

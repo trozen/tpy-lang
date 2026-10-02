@@ -1621,7 +1621,8 @@ class TpyFunction:
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
     native_name: str | None = None
     native_function: bool = False
-    native_preserves_refs: bool = False
+    # @native(mutates="elements"): see FunctionInfo.native_mutates.
+    native_mutates: str | None = None
     # Set when @export is applied inside an `# tpy: ext_module`: the function
     # stays DEFAULT linkage (an ordinary TPy function) but the extension glue
     # generator emits a CPython wrapper + PyMethodDef entry for it.
@@ -1804,6 +1805,9 @@ class TpyRecord:
     # User TPy records with a Ptr[T] field do NOT set this -- the field walk
     # infers indirection structurally.
     is_indirecting: bool = False
+    # @native(elements=True): a value owns the values of its type arguments
+    # as elements in storage of its own (see TypeDef.owns_elements).
+    owns_elements: bool = False
     # @native(borrowing_view=True): every value of this (value) type is a
     # borrow handle into storage it does not own, so returns and yields of
     # it are lifetime-checked.

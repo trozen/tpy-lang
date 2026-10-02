@@ -360,11 +360,12 @@ implemented with the coupled contract in checkpoint 4.
       (`tpyc/parse/parser.py`) maps only `bool`, `str` and `type` today,
       and one unmapped parameter kills the whole schema, so the annotation's cost
       includes a new TUPLE-OF-PARAMETER-NAMES argument kind in `_map_type` and
-      `_validate_decorator_args`. `native_preserves_refs`
-      (`lib/tpy/tpy/_bootstrap/_extern.py`, qname `qnames.NATIVE_PRESERVES_REFS`,
-      parse field `TpyFunction.native_preserves_refs`, copied into `FunctionInfo`
-      in `TypeRegistrar.register_record`) is precedent for the plumbing but is a
-      ZERO-parameter bare decorator, so it is no precedent for the schema.
+      `_validate_decorator_args`. `@native(..., mutates="elements")`
+      (a `native()` kwarg in `lib/tpy/tpy/_bootstrap/_extern.py`, parse field
+      `TpyFunction.native_mutates`, copied into `FunctionInfo` in
+      `TypeRegistrar.register_record`) is precedent for the plumbing but is a
+      plain `str` kwarg the schema already maps, so it is no precedent for the
+      schema.
     - **Parameter validation.** A named parameter must have borrowable storage.
       The predicate already exists: `generator_borrow_param_indices`
       (`tpyc/sema/registration.py`) admits an index only for a
@@ -1097,7 +1098,8 @@ above is satisfied.
 6. **`@native_borrow` plumbing WITHOUT annotating a stub.** The decorator stub
    (`lib/tpy/tpy/_bootstrap/_extern.py`), the qname (`tpyc/qnames.py`), the
    parse field (`TpyFunction` in `tpyc/parse/nodes.py`), the decorator branch in BOTH parser
-   loops (the free loop has no `native_preserves_refs` branch today), the
+   loops (the free loop reads no method-only binding fact today: it rejects
+   `@native(mutates=...)`), the
    tuple-of-names schema kind, and the `FunctionInfo` stamp at
    `TypeRegistrar.register_record` / `TypeRegistrar.register_function` (the
    free-function `FunctionInfo`). Inert until a stub carries it.

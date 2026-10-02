@@ -261,9 +261,11 @@ def stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
             or identity.param_types != signature.param_types or signature.borrowed_result is not None
             or not isinstance(callee.readonly, tuple) or len(callee.readonly) != len(signature.param_types)
             or any(type(r) is not bool for r in callee.readonly)
-            or type(callee.preserves_refs) is not bool or type(callee.receiver) is not bool
+            or type(callee.mutates_elements) is not bool or type(callee.receiver) is not bool
             or not isinstance(callee.bound_arguments, tuple)
-            or not callee.receiver and (callee.preserves_refs or callee.bound_arguments)):
+            or not callee.receiver and (callee.mutates_elements or callee.bound_arguments)
+            or callee.mutates_elements and (not callee.readonly or callee.readonly[0]
+                                            or callee.contract is THIRStubContract.PURE)):
         return "invalid stub callee"
     if callee.receiver:
         return _method_stub_summary(callee)
@@ -346,8 +348,8 @@ def _method_stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
     Parameter 0 is the receiver: a native container by reference or a
     container view by value. The receiver effect is derived from the
     declaration, first match wins: a `@pure` method (an `@auto_readonly`
-    mutable clone included) and a `@readonly` one only read it; a
-    `@native_preserves_refs` method, and any mutating method through a view
+    mutable clone included) and a `@readonly` one only read it; a method
+    declaring `mutates="elements"`, and any mutating method through a view
     (which cannot change a container's shape), write its elements; any
     other method writes its structure. The other parameters follow the
     free-stub rule, plus an `Own[...]` element handed over by value or by
@@ -410,7 +412,7 @@ def _method_stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
         bindings.append(binding)
     writes: frozenset[MIRParameterWrite] = frozenset()
     if callee.contract is not THIRStubContract.PURE and not callee.readonly[0]:
-        projection = (MIRContainerElements() if callee.preserves_refs or view else MIRContainerStructure())
+        projection = (MIRContainerElements() if callee.mutates_elements or view else MIRContainerStructure())
         writes = frozenset({MIRParameterWrite(0, (projection,))})
     result = signature.return_type
     representation = signature.return_representation

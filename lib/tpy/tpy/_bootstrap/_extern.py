@@ -22,6 +22,16 @@ def builtin_function(key: str): ...
 # generator/async frame's for-loop binds the element instead of taking its
 # address. It goes away once the runtime picks that binding from the
 # iterator's reference type (TODO.md: "Remove `_iter_yields_ref_tuple_proxies`").
+# Class-level `elements=True`: a value owns the values of its type arguments
+# as elements in storage of its own. The members are the type parameters its
+# readonly `__iter__` yields and its `__getitem__` returns; a borrow can point
+# into them, and a mutating method may move or free them.
+# Method-level `mutates="elements"`: the method replaces elements in place and
+# moves none, so iterators and references to the other elements stay valid.
+# The default for a mutating method (neither @readonly nor @pure) is the
+# wider claim: it may replace elements AND move or free every one of them
+# (reallocate, erase), so it invalidates everything inside the receiver.
+# Valid on a method of any @native class. Each use is an audit of the binding.
 # Function-level `transient=True` (here and on @cpp_template): the bound C++
 # reads or writes only its arguments (as their declared mutability allows),
 # retains nothing after return or raise, reaches no other TPy storage and
@@ -34,6 +44,7 @@ def native(name: str = "", function: bool = False, binding: str = "",
            cpp_return_type: type | None = None, indirecting: bool = False,
            borrowing_view: bool = False, transient: bool = False,
            checks_signals: bool = False,
+           elements: bool = False, mutates: str = "",
            _iter_yields_ref_tuple_proxies: bool = False): ...
 
 @builtin_decorator("tpy.extern.export")
@@ -47,9 +58,6 @@ def cpp_template(template: str, transient: bool = False,
 
 @builtin_decorator("tpy.extern.value_ptr_coercion")
 def value_ptr_coercion(): ...
-
-@builtin_decorator("tpy.extern.native_preserves_refs")
-def native_preserves_refs(): ...
 
 # Marks an accessor whose Own[V] result is a copy where the method's CPython
 # namesake aliases -- so mutating the result is a silent no-op. sema warns at

@@ -6,7 +6,7 @@ from __future__ import annotations
 import copy
 from enum import Enum, auto
 from collections.abc import Mapping, Set as AbstractSet
-from .storage import alias_binding, borrowed_record, full_expression_record, native_container, owned_container_decl, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal, view_iteration_source
+from .storage import alias_binding, borrowed_record, full_expression_record, native_container, owned_container_decl, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal
 from .callables import setitem_stub_callee, with_method_stub
 from .captures import capture_facts
 from contextlib import contextmanager
@@ -195,7 +195,7 @@ from ..reject import (
     note_detail,
     stmt_reject_reason,
 )
-from ..scalar_leaves import binds_element, storage_leaf
+from ..scalar_leaves import binds_cursor, binds_element, container_view, native_container_subject, storage_leaf
 from ..nodes import (
     HoistDecl,
     THIRStoragePlacement,
@@ -16934,13 +16934,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     or isinstance(iterable.field_identity.type, ReadonlyType), analyzer)
         elif (route.consuming_native_name is None and not route.consuming_name
               and isinstance(iterable, THIRMethodCall) and iterable.stub_callee is not None):
-            # A container view a stub returns (`d.keys()`): it yields the
-            # element argument its iteration declares, when that is a leaf.
-            source_fact = view_iteration_source(
-                iterable.result_type, _iteration_yields_const(stmt.iterable, lc, analyzer))
-        if source_fact is not None and not binds_element(et, (
+            # A container view a stub returns (`d.keys()`) walks its own
+            # declared element; any other result is a fresh value, no place.
+            if container_view(native_container_subject(iterable.result_type)):
+                source_fact = native_container(
+                    iterable.result_type, _iteration_yields_const(stmt.iterable, lc, analyzer), analyzer)
+        if source_fact is not None and (not binds_cursor(source_fact.type) or not binds_element(et, (
                 source_fact.element.type if isinstance(source_fact.element, THIRBorrowedRecord)
-                else source_fact.element)):
+                else source_fact.element))):
             source_fact = None
         iteration = (THIRNativeIteration(source_fact, loop_binding_kind(
             et, stmt.const_loop_var, hoisted=stmt.hoist_loop_var)) if source_fact is not None else None)

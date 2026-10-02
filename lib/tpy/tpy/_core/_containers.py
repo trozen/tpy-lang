@@ -107,7 +107,7 @@ class varargs[T](Iterable[T], NativeIterable[T]):
 
 
 @builtin_type("tpy.Array")
-@native("std::array")
+@native("std::array", elements=True)
 class Array[T, N: int](Iterable[T], NativeIterable[T], Spannable[T]):
     @native("tpy::__iter__", function=True)
     @pure

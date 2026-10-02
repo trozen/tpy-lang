@@ -25,6 +25,16 @@ void mut_ref(Rec& r);
 void mutable_leaf(const ::tpy::String& s);
 // def view_result(s: str) -> int32:  # tpyc: mir(covered)
 int32_t view_result(std::string_view s);
+// def ring_total(r: Ring[int32]) -> int32:  # tpyc: mir(covered)
+int32_t ring_total(const ::ProbeRing<int32_t>& r);
+// def ring_first(r: Ring[Rec]) -> int32:  # tpyc: mir(covered)
+int32_t ring_first(const ::ProbeRing<Rec>& r);
+// def ring_grow(r: Ring[int32]) -> None:  # tpyc: mir(covered) mir_summary(known)
+void ring_grow(::ProbeRing<int32_t>& r);
+// def ring_push_in_loop(r: Ring[int32], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+int32_t ring_push_in_loop(::ProbeRing<int32_t>& r, bool flag);
+// def ring_put_in_loop(r: Ring[int32], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+int32_t ring_put_in_loop(::ProbeRing<int32_t>& r, bool flag);
 // def main() -> None:
 void main();
 

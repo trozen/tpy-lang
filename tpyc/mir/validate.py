@@ -9,8 +9,8 @@ from ..parse import SourceLocation
 from ..thir.nodes import COMPARISON_OPS, Form, THIRBorrowedRecord, THIRStubCallee, THIRStubContract
 from ..type_def_registry import is_array
 from ..thir.scalar_leaves import (
-    container_members, container_view, leaf_constant, native_container_type, owned_constant, owned_leaf,
-    owned_value_type, primitive_leaf, record_type, storage_leaf, view_leaf,
+    binds_cursor, container_view, declared_members, leaf_constant, native_container_type, owned_constant, owned_leaf,
+    owned_value_type, primitive_leaf, readonly_elements, record_type, storage_leaf, view_leaf,
 )
 from ..type_def_registry import ParamPassing, type_def_of, zero_value_of
 from ..typesys import (
@@ -42,14 +42,14 @@ from .coverage import (
 )
 from .region_flow import MIRRegionFlow, outgoing_edges
 from .call_contract import BORROWING_PASSINGS, OWNING_PASSINGS, result_problem, summary_problem
-from .definitions import iteration_layout, with_access
+from .definitions import with_access
 
 
 class MIRValidationError(ValueError):
     """A producer supplied malformed MIR, rather than unsupported source."""
 
 
-def _expected_member(arg: TpyType, hashed: bool, readonly: bool,
+def _expected_member(arg: TpyType, leaves_only: bool, readonly: bool,
                      records: 'Mapping[TpyType, MIRRecordLayout]') -> MIRTupleElement | None:
     bare = unwrap_readonly(arg)
     access = readonly or isinstance(arg, ReadonlyType)
@@ -61,7 +61,7 @@ def _expected_member(arg: TpyType, hashed: bool, readonly: bool,
     # Whether the record dispatches user code (a comparison dunder) is the
     # lowering's admission (`plain_record_element`), decided under the
     # compilation; the shape is re-checked here.
-    if (hashed or record is None or record.opaque
+    if (leaves_only or record is None or record.opaque
             or not all(storage_leaf(f.type) or owned_leaf(f.type) for f in record.fields)):
         return None
     return MIRTupleElement(bare, MIRValueKind.BORROWED, access)
@@ -72,12 +72,12 @@ def expected_container_layout(typ: TpyType, readonly: bool,
     """The layout a holder of `typ` with this access carries, re-derived from
     the type and the body's record layouts; None when `typ` is no admitted
     container or view of one."""
-    members = container_members(typ)
+    members = declared_members(typ)
     if members is None:
         return None
-    element, value, hashed = members
-    first = _expected_member(element, hashed, readonly, records)
-    second = None if value is None else _expected_member(value, False, readonly, records)
+    element, value, _ = members
+    first = _expected_member(element, value is not None, readonly, records)
+    second = None if value is None else _expected_member(value, True, readonly, records)
     if first is None or value is not None and second is None:
         return None
     return MIRContainerLayout(first, second)
@@ -95,7 +95,7 @@ def elements_member_type(place: MIRPlace, slots: 'Mapping[MIRSlotId, MIRSlot]') 
     if len(place.projections) == 1:
         return root.container_layout.subscript.type if root.container_layout is not None else None
     match place.projections[-2]:
-        case MIRField(type=typ) if (members := container_members(unwrap_readonly(typ))) is not None:
+        case MIRField(type=typ) if (members := declared_members(unwrap_readonly(typ))) is not None:
             element, value, _ = members
             return unwrap_readonly(value if value is not None else element)
     return None
@@ -453,9 +453,9 @@ def _validate_structure(fn: MIRFunction) -> None:
                      and (native_container_type(slot.type) or iterator and container_view(slot.type)),
                      "invalid container or iterator layout")
             expected = expected_container_layout(slot.type, slot.readonly, records)
-            # An iterator reads the member its source's iteration yields.
-            _require(expected is not None and slot.container_layout == (
-                iteration_layout(slot.type, expected) if iterator else expected), "unsupported native element")
+            # An iterator walks its source's declared element, one at a time.
+            _require(expected is not None and slot.container_layout == expected
+                     and (not iterator or binds_cursor(slot.type)), "unsupported native element")
             _require(slot.value_kind is not MIRValueKind.NATIVE_ITERATOR
                      or slot.kind is MIRSlotKind.TEMPORARY, "iterator must be an internal temporary")
         elif slot.value_kind is MIRValueKind.UNION:
@@ -544,7 +544,7 @@ def _validate_structure(fn: MIRFunction) -> None:
             # A container view's access is its element's: `Span[readonly[T]]` reads only.
             _require(not container_view_holder(slot) or slot.container_layout == expected_container_layout(
                 slot.type, slot.readonly, records)
-                and (slot.readonly or not isinstance(slot.type.type_args[0], ReadonlyType)),
+                and (slot.readonly or not readonly_elements(slot.type)),
                 "invalid container view holder")
             _require(not container_view_holder(slot) or slot.kind is not MIRSlotKind.PARAMETER
                      or slot.passing is ParamPassing.VALUE, "view parameter needs a by-value passing")
@@ -579,6 +579,7 @@ def _validate_structure(fn: MIRFunction) -> None:
         if not isinstance(value.fields, tuple) or value.may_raise is not True:
             return False
         members = (layout.element,) if layout.value is None else (layout.element, layout.value)
+        # Literal construction: the one place the compiler knows a container's length.
         if len(value.fields) % len(members) or is_array(typ) and len(value.fields) != typ.type_args[1]:
             return False
         for index, src in enumerate(value.fields):
@@ -1186,8 +1187,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                     source = slots[value.source]
                     _require(not stmt.target.projections and target.value_kind is MIRValueKind.NATIVE_ITERATOR
                              and region_holder(source) and target.type == source.type
-                             and target.container_layout == iteration_layout(
-                                 source.type, with_access(source.container_layout, target.readonly))
+                             and target.container_layout == with_access(source.container_layout, target.readonly)
                              and (not source.readonly or target.readonly), "iterator source or access mismatch")
                 case MIRIteratorHasNext() | MIRIteratorRead() | MIRIteratorAdvance():
                     source = slots[value.source]

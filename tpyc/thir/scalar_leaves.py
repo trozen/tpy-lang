@@ -1,8 +1,7 @@
 """The scalar leaves and records THIR storage facts and MIR model."""
 
 from ..type_def_registry import (
-    float_traits_of, int_traits_of, is_array, is_borrowing_view_type, is_dict, is_list, is_set, is_span, type_def_of,
-    zero_value_of,
+    NativeMembers, float_traits_of, int_traits_of, is_borrowing_view_type, type_def_of, zero_value_of,
 )
 from ..typesys import (
     NominalType, OwnType, ReadonlyType, Representation, TpyType, TypeParamRef, is_inert_leaf, is_owned_leaf,
@@ -100,29 +99,6 @@ def native_container_subject(typ: TpyType) -> TpyType:
     return typ
 
 
-def view_iteration_index(typ: object) -> int | None:
-    """Which element argument iterating a container view yields: the type
-    parameter its resolved `__iter__` iterates (a dict keys view its key,
-    a values view its value). None for a view that yields anything else
-    (an items view's tuples) or whose iteration is not declared."""
-    if not container_view(typ):
-        return None
-    td = type_def_of(typ)
-    record = td.record if td is not None else None
-    if record is None or len(record.type_params) != len(typ.type_args):
-        return None
-    overloads = record.get_method_overloads("__iter__")
-    if len(overloads) != 1:
-        return None
-    iterator = overloads[0].return_type
-    if not isinstance(iterator, NominalType) or len(iterator.type_args) != 1:
-        return None
-    element = iterator.type_args[0]
-    if not isinstance(element, TypeParamRef) or element.name not in record.type_params:
-        return None
-    return record.type_params.index(element.name)
-
-
 def holds_elements(typ: TpyType) -> bool:
     """Whether a value of `typ` reaches container elements: a native
     container or a container view (not a tuple, not a string)."""
@@ -140,32 +116,55 @@ def readonly_elements(typ: NominalType) -> bool:
     return any(isinstance(a, ReadonlyType) for a in typ.type_args)
 
 
-def container_members(typ: object) -> tuple[TpyType, TpyType | None, bool] | None:
-    """The members a native container or container view `typ` stores, as
-    its type arguments name them (access wrappers kept): the element (a
-    list, set, Array or Span element, a dict's or dict view's key), the
-    dict value or None, and whether the element is hashed (a set element,
-    a key). None for any other type or arity."""
+def _native_members(typ: object) -> NativeMembers | None:
     if not isinstance(typ, NominalType) or not (native_container_type(typ) or container_view(typ)):
         return None
+    td = type_def_of(typ)
+    members = td.native_members if td is not None else None
     args = typ.type_args
-    if len(args) == 2 and (is_dict(typ) or container_view(typ) and not is_span(typ)):
-        return args[0], args[1], True
-    if is_array(typ):
-        return (args[0], None, False) if len(args) == 2 and type(args[1]) is int and args[1] >= 0 else None
-    return (args[0], None, is_set(typ)) if len(args) == 1 and (is_list(typ) or is_set(typ) or is_span(typ)) else None
+    if (members is None or td.param_kinds and len(args) != len(td.param_kinds)
+            or any(i is not None and (i >= len(args) or not isinstance(args[i], TpyType))
+                   for i in (members.element, members.value))):
+        return None
+    # An argument that is no member is a value of the type (an Array's
+    # length): an unbound parameter or anything but a count names no storage.
+    if any(isinstance(a, TypeParamRef) or not isinstance(a, TpyType) and not (type(a) is int and a >= 0)
+           for i, a in enumerate(args) if i not in (members.element, members.value)):
+        return None
+    return members
+
+
+def declared_members(typ: object) -> tuple[TpyType, TpyType | None, bool] | None:
+    """The members a native container or container view `typ` stores or
+    views, as its stub declares them (`TypeDef.native_members`), at its type
+    arguments (access wrappers kept): the element, the value a subscript
+    yields when that is another member (or None), and whether a subscript is
+    keyed by the element rather than by position. None for any other type,
+    or one whose stub declares no element."""
+    members = _native_members(typ)
+    if members is None:
+        return None
+    args = typ.type_args
+    return args[members.element], None if members.value is None else args[members.value], members.keyed
+
+
+def binds_cursor(typ: object) -> bool:
+    """Whether iterating `typ` binds one element at a time (its declared
+    element member): False for a type that yields both members at once."""
+    members = _native_members(typ)
+    return members is not None and members.cursor
 
 
 def modeled_members(typ: object) -> bool:
-    """Whether MIR models the members of the native container or container
-    view `typ`: every member is a container element (`container_element`),
-    and a hashed element and a dict's (or dict view's) value are scalar or
-    owned leaves, which a hash or comparison reads with no user code."""
-    members = container_members(typ)
+    """Whether MIR models the members the native container or container
+    view `typ` declares (`declared_members`): every member is a container
+    element (`container_element`), and a type with a value member holds
+    scalar or owned leaves only, in both members."""
+    members = declared_members(typ)
     if members is None:
         return False
-    element, value, hashed = members
-    leaves_only = hashed or value is not None
+    element, value, _ = members
+    leaves_only = value is not None
     return all(storage_leaf(m) or owned_leaf(m) or not leaves_only and plain_record_element(m)
                for m in (unwrap_readonly(element), *(() if value is None else (unwrap_readonly(value),))))
 

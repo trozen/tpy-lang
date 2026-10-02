@@ -28,11 +28,6 @@ def cpp_template(template: str, transient: bool = False,
     return decorator
 
 
-def native_preserves_refs(func):
-    """Marks a native method as not invalidating iterators/references. No-op in CPython."""
-    return func
-
-
 def native_global(name: str = "", binding: str = "", array: bool = False):
     """Declare a native C/C++ global variable. No-op in CPython."""
     return None

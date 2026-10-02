@@ -536,7 +536,10 @@ private stub kwarg `_iter_yields_ref_tuple_proxies` and slated for removal), `ne
 value holds no borrow and lends no storage), `owned_leaf` (a value owns an
 opaque buffer a borrow can point into and holds no borrow), `owns_elements`
 (a native container: it owns its type arguments' values as elements, holds
-what they hold, and a borrow can point into its elements), `copy_may_raise`
+what they hold, and a borrow can point into its elements), `native_members`
+(which type arguments an element-owning type or a borrowing view stores or
+views as members: `NativeMembers(element, value, keyed, cursor)`, positions
+among its type parameters), `copy_may_raise`
 (copying it can throw a C++ exception a bare `except:` catches),
 `compares_fixed_ints` (the runtime compares it with every fixed-width int),
 `primitive_ops` (the primitive-operation contract: runtime operators that
@@ -560,8 +563,17 @@ whether a native wrapper type breaks recursive size cycles; structural
 TPy records (with a `Ptr[T]` field) are recognized separately by
 walking `RecordInfo.fields` under type-param substitution in
 `tpyc/cycle_detection.py` and do not need the flag. The two borrow
-facts follow the same path, from `@native(..., borrowing_view=True)` and the
-internal `_iter_yields_ref_tuple_proxies=True` on the stub; a builtin
+facts and `owns_elements` follow the same path, from
+`@native(..., borrowing_view=True)`, the internal
+`_iter_yields_ref_tuple_proxies=True` and `@native(..., elements=True)` on
+the stub (`_DECLARED_NATIVE_FLAGS`); no TypeDef declares `owns_elements`
+statically, so the registry holds no list of containers. `native_members` is
+computed once when the stub's record is registered
+(`sema/registration._declared_native_members`: the type parameter the
+readonly `__iter__` yields, the one `__getitem__` returns, whether that
+subscript is keyed) and latched by `latch_native_members`; consumers read it
+at a type's arguments through `scalar_leaves.declared_members` and
+`scalar_leaves.binds_cursor`. A builtin
 stub's declared facts are also latched onto its static TypeDef when the
 stub is PARSED (`Compiler._pre_populate_decl_exports`), so no module's
 registration order can read the unlatched default. The compiler holds no

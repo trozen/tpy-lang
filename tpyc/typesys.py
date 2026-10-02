@@ -6909,6 +6909,7 @@ class RecordInfo:
     is_native: bool = False       # True for @native or @native_c records
     is_native_c: bool = False     # True for @native_c specifically
     is_indirecting: bool = False  # True for @native(indirecting=True) records that own heap storage of T (cycle-breaking)
+    owns_elements: bool = False  # True for @native(elements=True): values own their type arguments' values as elements
     is_borrowing_view: bool = False  # True for @native(borrowing_view=True): values are borrow handles (lifetime-checked)
     iter_yields_ref_tuple_proxies: bool = False  # True for @native(iter_yields_ref_tuple_proxies=True)
     is_nocopy: bool = False       # True for @nocopy records (copy deleted, move-only)
@@ -7141,7 +7142,11 @@ class FunctionInfo:
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
     native_name: Optional[str] = None
     native_function: bool = False  # @native("func", function=True) -> generates func(self, args)
-    native_preserves_refs: bool = False  # non-readonly but doesn't invalidate iterators/refs
+    # @native(mutates="elements"): the method replaces elements in place and
+    # moves none, so it invalidates no iterator or reference into the
+    # receiver's structure. None on a mutating method: it may move or free
+    # every element.
+    native_mutates: Optional[str] = None
     copy_returns_warn: bool = False  # Own[V] accessor copies where CPython aliases -> warn at call sites
     # `__enter__` only (computed at registration): can what this returns root
     # at `self`? False means it lends storage that is NOT the receiver's, so a

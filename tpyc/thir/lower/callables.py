@@ -206,7 +206,7 @@ def method_stub_callee(fi: FunctionInfo | None, receiver: TpyType | None, *,
     return THIRStubCallee(THIRStubIdentity(f"{fi.owning_type_qname}.{fi.name}", types),
                           THIRCallableSignature(types, fi.return_type, None, signature_passings(types, consts),
                                                 return_representation(fi.return_type)),
-                          _stub_contract(fi), consts, preserves_refs=fi.native_preserves_refs,
+                          _stub_contract(fi), consts, mutates_elements=fi.native_mutates == "elements",
                           receiver=True, bound_arguments=tuple(bound))
 
 
