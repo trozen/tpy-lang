@@ -852,10 +852,10 @@
   "same"
  ],
  "x__read_elem__T": [
-  "stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  "",
-  ""
+  "auto&& probe_loc = ::tpy::__getitem__(xs, 0) | std::get<0>(probe_loc).n = 9",
+  "same"
  ],
  "x__rebind_unpack__S": [
   "ok",

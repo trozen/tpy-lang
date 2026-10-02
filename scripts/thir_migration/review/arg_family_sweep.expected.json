@@ -36495,9 +36495,9 @@
   ""
  ],
  "tup_ri__ro__subscript__fn": [
-  "reject:expr.call:call.arg_shape.tuple",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [form_convert[const borrow](%xs[0] [storage])])"
  ],
  "tup_ri__ro__subscript__gen": [
   "reject:expr.call:call.generic_arg_shape",
@@ -36525,9 +36525,9 @@
   ""
  ],
  "tup_ri__ro__subscript__static": [
-  "reject:expr.call:call.arg_shape.tuple",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [form_convert[const borrow](%xs[0] [storage])])"
  ],
  "tup_ri__ro__temp_accessor__ctor": [
   "reject:expr.call:call.ctor_arg.tuple",

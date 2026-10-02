@@ -26,6 +26,7 @@ struct OptSrc;
 struct PqSrc;
 struct Deep;
 struct Slots;
+struct Paired;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -94,6 +95,8 @@ void store_g(Slots& s, std::optional<P> g);
 void slot_holder(const OptSrc& o, PqSrc& u, std::vector<std::optional<P>>& xs);
 // def slot_writes() -> None:
 void slot_writes();
+// def literal_list_elem() -> None:
+void literal_list_elem();
 // def main() -> None:
 void main();
 
@@ -398,6 +401,21 @@ struct Slots {
 
 inline std::ostream& operator<<(std::ostream& os, const Slots& obj) {
     ::tpy::print_object_default(os, "Slots", obj);
+    return os;
+}
+
+// class Paired:
+struct Paired {
+    // t: tuple[int32, P]
+    std::tuple<int32_t, P> t;
+
+    // def __init__(self) -> None:
+    Paired();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Paired";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Paired& obj) {
+    ::tpy::print_object_default(os, "Paired", obj);
     return os;
 }
 
@@ -706,6 +724,10 @@ inline int32_t Slots::showu_g3() const {
     ::tpy::Union<const P*, const R*> e = ::tpy::to_const_ptr_variant(this->g3);
     return ((std::holds_alternative<const P*>(e)) ? ((*std::get<const P*>(e)).v) : (::tpy::neg_check<int32_t>((*std::get<const R*>(e)).n)));
 }
+
+// def __init__(self) -> None:
+//     self.t = (0, P(0))
+inline Paired::Paired() : t(::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{0, P(0)})) {}
 
 // def __init__(self, it: Own[Item]) -> None:
 //     super().__init__()

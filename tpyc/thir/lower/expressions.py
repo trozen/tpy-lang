@@ -289,7 +289,12 @@ from .predicates import (
     _coerce_disposition,
     _coerce_wrap,
     _container_nocopy_elem,
+    _container_borrow_elem,
+    _container_borrow_tuple_elem,
     _container_record_elem,
+    _container_storage_copy_elem,
+    _container_tuple_source_elem,
+    _container_value_record_elem,
     _container_ref_alias_elem,
     _union_storage_val_cpp,
     _container_scalar_read,
@@ -365,6 +370,7 @@ from .predicates import (
     _unwrap_own,
     _unown_type_args,
     _own_record_tuple,
+    _native_getitem_index_param,
     _open_t_tuple_slot,
     _protocol_auto_slot,
     _is_borrow_form_name,
@@ -7086,8 +7092,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     _crb = unwrap_readonly(_crb.wrapped)
                 call_recv_ok = (
                     _crb is not None
-                    and (is_list(_crb) or is_dict(_crb) or is_array(_crb)
-                         or is_span(_crb))
+                    and _native_getitem_index_param(_crb, analyzer)
+                        is not None
                     and ret_ok and index_ok
                     and bool(_witness("subscript.call_recv")))
             # A container TERNARY receiver (`(a if c else b)[0]`): the same
@@ -7252,31 +7258,16 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                  # unpack half evaluated for its bounds check; the element
                  # lvalue is dropped, no alias escapes).
                  or use.result is _ExprResultUse.DISCARD)
-                and recv_t is not None
-                and (is_list(recv_peeled) or is_array(recv_peeled)
-                     # A dict VALUE element is the same checked
-                     # `__getitem__` lvalue (`print(d[k])`).
-                     or is_dict(recv_peeled))
-                and (record_like(unwrap_readonly(unwrap_ref_type(
-                        unwrap_send_sync(rtype))), analyzer)
-                     # A WRAPPER-union element (`depth(zs[1])` on
-                     # `zs: list[Tree]`): the same checked element lvalue
-                     # binding a same-wrapper borrow slot bare.
-                     or _eligible_wrapper_union(rtype, analyzer) is not None)
+                and _container_borrow_elem(recv_peeled, analyzer)
                 and index_ok
                 and bool(_witness("subscript.record_elem_borrow")))
             # The owning copy sink's other element families: an Optional,
             # union or tuple element is stored self-contained in its
             # container, so the checked element lvalue is storage the assign
             # copies whole (`h.o = ::tpy::__getitem__(opts, 0);`).
-            _se_rb = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
             storage_elem_copy_ok = (
                 use.admits(SinkForm.RECORD_COPY)
-                and recv_t is not None
-                and (is_list(recv_peeled) or is_array(recv_peeled)
-                     or is_dict(recv_peeled))
-                and (isinstance(_se_rb, OptionalType)
-                     or _storage_copy_value(_se_rb, analyzer))
+                and _container_storage_copy_elem(recv_peeled, analyzer)
                 and index_ok
                 and bool(_witness("subscript.storage_elem_copy")))
             # A VALUE-record element read copied into a by-value slot
@@ -7284,15 +7275,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # record has no borrow form, so the checked element lvalue
             # copies straight into the storage slot -- unlike the reference
             # records the BORROW_BIND row above aliases.
-            _vr_rb = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
             value_record_elem_ok = (
                 use.result is _ExprResultUse.STORAGE
-                and recv_t is not None
-                and (is_list(recv_peeled) or is_array(recv_peeled)
-                     or is_dict(recv_peeled))
-                and isinstance(_vr_rb, NominalType) and _vr_rb.is_record
-                and _vr_rb.is_value_type()
-                and record_like(_vr_rb, analyzer)
+                and _container_value_record_elem(recv_peeled, analyzer)
                 and index_ok
                 and bool(_witness("subscript.value_record_elem")))
             # A VALUE-tuple element read consumed whole by the standalone
@@ -7301,30 +7286,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # self-contained `std::tuple<...>`, so the checked read renders
             # bare. Scoped to the tuple-source position -- a value-position
             # tuple element keeps its own rows.
-            _ts_rb = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
             tuple_elem_src_ok = (
                 use.admits(SinkForm.TUPLE_SOURCE)
-                and recv_t is not None
-                and (is_list(recv_peeled) or is_array(recv_peeled)
-                     or is_dict(recv_peeled))
-                and (_value_tuple(_ts_rb, analyzer) is not None
-                     # A ptr-Optional-element STORAGE tuple element reads
-                     # the same bare `__getitem__` (self-contained
-                     # `std::tuple<std::optional<P>, ..>` value) -- the
-                     # whole-element pass into a same-tuple Own slot.
-                     or (isinstance(_ts_rb, TupleType)
-                         and _ts_rb.has_pointer_repr_element()
-                         and (_tuple_elem_slots_ptr_optional(_ts_rb)
-                              # The plain-record F3 sibling (`items[0]` at
-                              # `list[tuple[int32, P]]`): the same bare
-                              # self-contained element value.
-                              or _f1_tuple(_ts_rb, analyzer) is not None))
-                     # ... and the OPEN-T flavor inside a generic body
-                     # (`ranked[i]` at `list[tuple[T, int]]`): the generic
-                     # element has no pointer repr either, so the element is
-                     # the same self-contained storage value.
-                     or (_open_t_tuple_slot(_ts_rb, analyzer) is not None
-                         and _witness("subscript.open_t_tuple_source")))
+                and _container_tuple_source_elem(recv_peeled, analyzer)
                 and index_ok
                 and bool(_witness("subscript.value_tuple_source")))
             # A BORROW-form tuple element read feeding the arg wrap
@@ -7335,22 +7299,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # own rows.
             tuple_elem_borrow_ok = (
                 use.result is _ExprResultUse.BORROW_BIND
-                and recv_t is not None
-                and (is_list(recv_peeled) or is_array(recv_peeled)
-                     or is_dict(recv_peeled))
-                and (_f1_tuple(unwrap_readonly(unwrap_ref_type(
-                        unwrap_send_sync(rtype))), lc.analyzer) is not None
-                     # A VALUE-tuple element read consumed whole by the
-                     # borrow-bind position (`TuplePrinter(__getitem__(
-                     # pairs, 0))`): the same bare element lvalue.
-                     or _value_tuple_nested(unwrap_readonly(unwrap_ref_type(
-                        unwrap_send_sync(rtype))), lc.analyzer) is not None
-                     # ... and the OPEN flavor inside a generic body
-                     # (`copy(src[0])` on `list[tuple[T, int]]`): the
-                     # element is still a self-contained tuple value, and
-                     # its slot spelling stays open until T binds.
-                     or (_open_value_tuple(rtype) is not None
-                         and _witness("subscript.open_tuple_elem")))
+                and _container_borrow_tuple_elem(recv_peeled, analyzer)
                 and index_ok
                 and bool(_witness("subscript.borrow_tuple_elem")))
 
@@ -7375,8 +7324,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     elif _resolved_viewfam_value(
                             bare_recv, analyzer) is not None:
                         detail = "subscript.viewfam_shape"
-                    elif (is_list(bare_recv) or is_array(bare_recv)
-                          or is_span(bare_recv) or is_dict(bare_recv)):
+                    elif _native_getitem_index_param(
+                            bare_recv, analyzer) is not None:
                         detail = "subscript." + _subscript_elem_reject(
                             bare_recv, analyzer)
                     else:

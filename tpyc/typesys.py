@@ -5543,6 +5543,9 @@ class ListLiteralInfo:
     needs_list_type: bool = False  # Used in or/and/ternary with another list -- cannot become Array
     source_literal_id: Optional[int] = None  # Alias tracking: b = a
     resolved_type: Optional[TpyType] = None
+    # The reads that handed out an element before the literal resolved:
+    # (the element type the read was compiled at, the reading node).
+    elem_reads: list = field(default_factory=list)
 
 
 @dataclass(frozen=True)

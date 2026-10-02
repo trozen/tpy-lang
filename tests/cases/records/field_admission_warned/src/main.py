@@ -498,6 +498,23 @@ def slot_writes() -> None:
     slot_holder(o, u, xs)
 
 
+class Paired:
+    t: tuple[int32, P]
+
+    def __init__(self) -> None:
+        self.t = (0, P(0))
+
+
+def literal_list_elem() -> None:
+    # local holder: a tuple element of a list whose element type comes from
+    # its literal copies into the field like its annotated twin.
+    pairs = [(1, P(2))]
+    k = Paired()
+    k.t = pairs[0]  # tpyc: warning(/copies P into field \(tuple element 1\)/)
+    pairs[0][1].v = 9
+    print("holder.literal_tuple_elem", k.t[0], k.t[1].v, pairs[0][1].v)
+
+
 def main() -> None:
     xs = [1]
     h = Holder(xs)
@@ -526,6 +543,7 @@ def main() -> None:
     own_args(xs)
     comp_elems()
     slot_writes()
+    literal_list_elem()
 
 
 main()

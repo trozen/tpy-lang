@@ -130,6 +130,7 @@ from .pending_num import (PendingNums, PendingNumCell, value_family,
 from .slot_hint import SlotHint
 from .local_deduction import (
     collect_pending_source_types, mark_pending_list_mutated,
+    note_elem_binding, note_pending_elem_read,
     temporary_view_bind_message,
     view_slot_source_is_temporary,
     view_source_is_temporary,
@@ -2508,6 +2509,8 @@ class StatementAnalyzer:
                     if bound is not None and is_protocol_type(bound):
                         resolved_for_iter = bound
                 elem_type = self.iterable.get_iterable_element_type(resolved_for_iter, loc=stmt.loc)
+                note_pending_elem_read(self.ctx, inner_iterable_type,
+                                       stmt.iterable)
                 # Elements from a readonly iterable inherit readonly status
                 if is_readonly_iterable and not elem_type.is_value_type():
                     elem_type = ReadonlyType(unwrap_readonly(elem_type))
@@ -5422,6 +5425,7 @@ class StatementAnalyzer:
         self.pend.record_arm_store(cell, value, value_expr, site)
         if literal:
             self.pend.add_literal_store(cell, value, value_expr, site)
+            note_elem_binding(self.ctx, value_expr)
         else:
             self.pend.add_store(cell, value, site)
         var_type = self.pend.cell_type(cell)
@@ -5978,8 +5982,10 @@ class StatementAnalyzer:
                     pending_cell.decls.append(stmt)
                 elif isinstance(init_type, IntLiteralType):
                     var_type = self.ctx.default_int_for_literal(init_type, warn_node=stmt.init)
+                    note_elem_binding(self.ctx, stmt.init)
                 elif isinstance(init_type, FloatLiteralType):
                     var_type = FLOAT  # float literals always default to float64
+                    note_elem_binding(self.ctx, stmt.init)
                 # Preserve OwnType on variables -- Own[T] indicates the variable
                 # owns its storage and can be moved at last use.
                 # Exceptions: union types need the raw type for isinstance/
