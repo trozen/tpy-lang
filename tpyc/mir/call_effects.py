@@ -4,28 +4,47 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
+from ..thir.nodes import THIRFieldIdentity
+from .coverage import container_view_holder
 from .dependencies import MIRDependencies, MIRReferent, MIRReferents, resolve_referents
 from .dump import _place
 from .nodes import (
-    MIRCall, MIRDeref, MIRField, MIRFieldId, MIRFunction,
-    MIRNotCovered, MIRPlace, MIRPoint, MIRSlot, MIRSlotId, statement_call,
+    MIRCall, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRField, MIRFieldId, MIRFunction,
+    MIRNotCovered, MIRPlace, MIRPoint, MIRSlot, MIRSlotId, MIRValueKind, statement_call,
 )
 from .validate import MIRValidationError, validate_function
 
 
-def call_write_places(call: MIRCall) -> tuple[MIRPlace, ...]:
-    """The caller's places a call may write: each summarized field write on
-    a parameter, at the record its argument holder points at."""
-    return tuple(MIRPlace(call.arguments[write.parameter], (MIRDeref(), *(
-        MIRField(MIRFieldId(f.owner, f.name), f.type) for f in write.path)))
-        for write in sorted(call.summary.writes, key=lambda w: (w.parameter, tuple(f.name for f in w.path))))
+def _step(item: object) -> MIRField | MIRContainerStructure | MIRContainerElements:
+    match item:
+        case THIRFieldIdentity(owner=owner, name=name, type=typ):
+            return MIRField(MIRFieldId(owner, name), typ)
+        case MIRContainerStructure() | MIRContainerElements():
+            return item
+    raise MIRValidationError("unknown call write path item")
+
+
+def _path_key(path: tuple[object, ...]) -> tuple[str, ...]:
+    return tuple(item.name if isinstance(item, THIRFieldIdentity) else type(item).__name__ for item in path)
+
+
+def call_write_places(call: MIRCall, slots: Mapping[MIRSlotId, MIRSlot]) -> tuple[MIRPlace, ...]:
+    """The caller's places a call may write: each summarized write on a
+    parameter, at the record a borrowed record argument points at, or
+    directly under a container argument (owned, borrowed, or a view)."""
+    places = []
+    for write in sorted(call.summary.writes, key=lambda w: (w.parameter, _path_key(w.path))):
+        argument = slots[call.arguments[write.parameter]]
+        through = argument.value_kind is MIRValueKind.BORROWED and not container_view_holder(argument)
+        places.append(MIRPlace(argument.id, ((MIRDeref(),) if through else ()) + tuple(map(_step, write.path))))
+    return tuple(places)
 
 
 def resolve_call_writes(call: MIRCall, state: MIRReferents,
                         slots: Mapping[MIRSlotId, MIRSlot]) -> frozenset[MIRReferent] | None:
     """None means an effect has no proven origin, not that the call is harmless."""
     result: set[MIRReferent] = set()
-    for place in call_write_places(call):
+    for place in call_write_places(call, slots):
         origins = resolve_referents(place, state, slots)
         if not origins:
             return None

@@ -23,7 +23,7 @@ from .nodes import (
 )
 from .validate import MIRPrepared, MIRValidationError, _validated_function, successors
 from .region_flow import MIRRegionFlow, outgoing_edges
-from .coverage import owned_tuple, scalar_member, scalar_slot
+from .coverage import container_holder, container_view_holder, owned_tuple, scalar_member, scalar_slot
 
 
 @dataclass(frozen=True)
@@ -124,6 +124,21 @@ def _coverage(fn: MIRFunction) -> str | None:
     return "recursive inline field paths" if count != len(graph) else None
 
 
+def _project(refs: frozenset[MIRReferent], *projections: MIRField | MIRContainerStructure | MIRContainerElements
+             ) -> frozenset[MIRReferent]:
+    return frozenset(MIRReferent(MIRPlace(r.place.root, (*r.place.projections, projection)), r.external)
+                     for r in refs for projection in projections)
+
+
+def external_origin(leaf: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> MIRPlace:
+    """What a parameter or global leaf names outside the body: its own
+    identity, except that a container view (a Span) names the elements
+    region it views, so an element read or a write through it lands there."""
+    if not leaf.projections and container_view_holder(slots[leaf.root]):
+        return MIRPlace(leaf.root, (MIRContainerElements(),))
+    return leaf
+
+
 def resolve_referents(place: MIRPlace, state: MIRReferents,
                       slots: Mapping[MIRSlotId, MIRSlot]) -> frozenset[MIRReferent]:
     """Resolve a validated place against the referents at its program point."""
@@ -132,6 +147,9 @@ def resolve_referents(place: MIRPlace, state: MIRReferents,
     leaf = MIRPlace(place.root)
     refs = (frozenset({MIRReferent(leaf)})
             if slots[place.root].value_kind is MIRValueKind.OWNED else state.get(leaf, empty))
+    # A container view's referents already are an elements region: a container
+    # projection on the view itself names that region, never a region of it.
+    through_view = container_view_holder(slots[place.root])
     for projection in place.projections:
         match projection:
             case MIRTupleIndex():
@@ -144,9 +162,11 @@ def resolve_referents(place: MIRPlace, state: MIRReferents,
                 refs = state.get(leaf, empty)
             case MIRDeref():
                 pass
+            case MIRContainerStructure() | MIRContainerElements() if through_view:
+                pass
             case MIRField() | MIRContainerStructure() | MIRContainerElements():
-                refs = frozenset(MIRReferent(MIRPlace(r.place.root, (*r.place.projections, projection)), r.external)
-                                 for r in refs)
+                through_view = False
+                refs = _project(refs, projection)
             case _:
                 raise MIRValidationError("unknown dependency projection")
     return refs
@@ -156,15 +176,32 @@ def analyze_dependencies(fn: MIRFunction, liveness: MIRLiveness) -> MIRDependenc
     return _dependencies(_validated_function(fn), liveness)
 
 
-def resolve_call_returns(call: MIRCall, state: MIRReferents,
-                         slots: Mapping[MIRSlotId, MIRSlot]) -> frozenset[MIRReferent] | None:
+def resolve_call_returns(call: MIRCall, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],
+                         result: MIRSlot | None = None) -> frozenset[MIRReferent] | None:
+    """The caller's origins of a call's borrowed result. A summary names
+    whole parameters; what a container lends other than itself (an element,
+    a view of it) lies in its elements region, so a `result` holder that is
+    no container takes that region of a container argument."""
     origins: set[MIRReferent] = set()
     for index in call.summary.returns:
-        refs = resolve_referents(MIRPlace(call.arguments[index]), state, slots)
+        argument = slots[call.arguments[index]]
+        refs = resolve_referents(MIRPlace(argument.id), state, slots)
         if not refs:
             return None
+        if result is not None and not container_holder(result) and container_holder(argument):
+            refs = _project(refs, MIRContainerElements())
         origins.update(refs)
     return frozenset(origins)
+
+
+def call_return_problem(call: MIRCall, result: MIRSlot, slots: Mapping[MIRSlotId, MIRSlot]) -> str | None:
+    """A container result borrowed from an argument that is not a container
+    (a record's container field) names no place the caller can project: its
+    elements would resolve under the record, where no write reaches them."""
+    if container_holder(result) and any(not container_holder(slots[call.arguments[i]])
+                                        for i in call.summary.returns):
+        return "container result of a non-container argument"
+    return None
 
 
 def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependencies | MIRNotCovered:
@@ -186,18 +223,20 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
         match value:
             case MIRCall():
                 if value.summary.borrowed_result is not None:
-                    result[target] = resolve_call_returns(value, state, slots) or empty
+                    result[target] = resolve_call_returns(value, state, slots, slots[target.root]) or empty
             case MIRIteratorInit(source=source):
-                result[target] = frozenset(
-                    MIRReferent(MIRPlace(r.place.root, (*r.place.projections, projection)), r.external)
-                    for r in state.get(MIRPlace(source), empty)
-                    for projection in (MIRContainerStructure(), MIRContainerElements()))
+                refs = resolve_referents(MIRPlace(source), state, slots)
+                # A cursor over a view depends on the region the view holds;
+                # over a container, on its shape and its elements.
+                result[target] = (refs if container_view_holder(slots[source])
+                                  else _project(refs, MIRContainerStructure(), MIRContainerElements()))
             case MIRIteratorAdvance(source=source):
                 result[target] = state.get(MIRPlace(source), empty)
             case MIRIteratorRead(source=source):
                 if slots[target.root].value_kind is MIRValueKind.BORROWED:
                     result[target] = frozenset(r for r in state.get(MIRPlace(source), empty)
-                                               if isinstance(r.place.projections[-1], MIRContainerElements))
+                                               if r.place.projections
+                                               and isinstance(r.place.projections[-1], MIRContainerElements))
             case MIRAlias(source=source):
                 result[target] = state.get(MIRPlace(source), empty)
             case MIRBorrow(source=source):
@@ -228,6 +267,8 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
                 pass
             case _:
                 raise MIRValidationError("unknown dependency operation")
+        # A write under a projection (a field, an element of a container) is a
+        # weak update: it never kills what the root's leaves hold.
         if not target.projections:
             for leaf in leaves[target.root]:
                 state.pop(leaf, None)
@@ -236,7 +277,7 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
     # A parameter holder borrows storage outside the body; an owned-leaf
     # global's handle names the global itself (`global:<module>.<name>` by its
     # slot's identity), external and static. External origins may alias.
-    seed = {leaf: frozenset({MIRReferent(leaf, external=True)})
+    seed = {leaf: frozenset({MIRReferent(external_origin(leaf, slots), external=True)})
             for slot in fn.slots if slot.kind in (MIRSlotKind.PARAMETER, MIRSlotKind.GLOBAL)
             for leaf in leaves[slot.id]}
     blocks = {b.id: b for b in fn.blocks}
@@ -279,9 +320,12 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
             points[point] = MappingProxyType(state.copy())
             if index < len(block.statements):
                 stmt = block.statements[index]
-                if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall)
-                        and resolve_call_returns(stmt.value, state, slots) is None):
-                    return MIRNotCovered(fn.id, "dependencies", "missing call return origin", stmt.loc)
+                if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall):
+                    if resolve_call_returns(stmt.value, state, slots) is None:
+                        return MIRNotCovered(fn.id, "dependencies", "missing call return origin", stmt.loc)
+                    if (stmt.value.summary.borrowed_result is not None and (problem := call_return_problem(
+                            stmt.value, slots[stmt.target.root], slots)) is not None):
+                        return MIRNotCovered(fn.id, "dependencies", problem, stmt.loc)
             live = {leaf: refs for leaf, refs in state.items() if leaf.root in liveness.points[point]}
             active[point] = MappingProxyType(live)
             inverse: dict[MIRReferent, set[MIRPlace]] = {}

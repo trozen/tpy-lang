@@ -1,9 +1,12 @@
 """The scalar leaves and records THIR storage facts and MIR model."""
 
-from ..type_def_registry import float_traits_of, int_traits_of, type_def_of, zero_value_of
+from ..type_def_registry import (
+    float_traits_of, int_traits_of, is_array, is_borrowing_view_type, is_dict, is_list, is_set, is_span, type_def_of,
+    zero_value_of,
+)
 from ..typesys import (
-    NominalType, OwnType, Representation, TpyType, is_inert_leaf, is_owned_leaf, is_primitive_owned_leaf,
-    unwrap_readonly, view_family_of, view_owned_leaf,
+    NominalType, OwnType, ReadonlyType, Representation, TpyType, TypeParamRef, is_inert_leaf, is_owned_leaf,
+    is_primitive_owned_leaf, unwrap_readonly, unwrap_ref_type, view_family_of, view_owned_leaf,
 )
 
 
@@ -42,11 +45,165 @@ def view_compatible(holder: object, source: object) -> bool:
     `source` value: `holder` is its family's view type (`view_leaf`) and
     `source` is a member of the same family that is an owned leaf (the
     family's owned type or an owned sibling such as `String`; `bytearray`
-    is a reference type and stays out) or the family's view type itself."""
+    is a reference type and stays out) or the family's view type itself.
+
+    A container view (`container_view`: a Span, a dict view) holds a borrow
+    of a native container's elements or of another view of its own kind
+    over them: keyed on the type arguments, which name the elements both
+    sides store. A mutable view never views readonly elements."""
+    if container_view(holder):
+        if not isinstance(source, NominalType) or _element_arguments(source) != _element_arguments(holder):
+            return False
+        if container_view(source):
+            return (source.qualified_name() == holder.qualified_name()
+                    and (readonly_elements(holder) or not readonly_elements(source)))
+        return native_container_type(source)
     if not view_leaf(holder) or not isinstance(source, NominalType):
         return False
     family = view_family_of(holder)
     return view_family_of(source) is family and (owned_leaf(source) or source == family.view_type)
+
+
+def container_view(typ: object) -> bool:
+    """A borrowing view with no owned-leaf family (`is_borrowing_view`, and
+    no `view_owned_leaf`): a Span or a dict view, whose loan is on a native
+    container's elements rather than on an owned leaf's buffer."""
+    return (isinstance(typ, NominalType) and bool(typ.type_args) and is_borrowing_view_type(typ)
+            and view_owned_leaf(typ) is None)
+
+
+def native_container_type(typ: object) -> bool:
+    """A native container: a nominal type whose TypeDef declares it owns
+    the values of its type arguments as elements (`TypeDef.owns_elements`).
+    Which elements MIR admits is the element rule's (`container_element`)."""
+    if not isinstance(typ, NominalType) or not typ.type_args:
+        return False
+    td = type_def_of(typ)
+    return td is not None and td.owns_elements
+
+
+def binds_element(loop_type: TpyType, element: TpyType) -> bool:
+    """Whether a loop variable of `loop_type` binds a container element of
+    type `element`: the element itself (a scalar copy, a record alias), or
+    a view of an owned-leaf element (a `StrView` key of a `dict[str, V]`)."""
+    loop = unwrap_readonly(unwrap_ref_type(loop_type))
+    return loop == element or owned_leaf(element) and view_compatible(loop, element)
+
+
+def native_container_subject(typ: TpyType) -> TpyType:
+    """The container a value of `typ` is: seen through the reference and
+    access wrappers, and through the ownership wrapper of an owned
+    container (`Own[list[T]]` holds a `list[T]`)."""
+    typ = unwrap_readonly(unwrap_ref_type(typ))
+    while isinstance(typ, OwnType):
+        typ = unwrap_readonly(unwrap_ref_type(typ.wrapped))
+    return typ
+
+
+def view_iteration_index(typ: object) -> int | None:
+    """Which element argument iterating a container view yields: the type
+    parameter its resolved `__iter__` iterates (a dict keys view its key,
+    a values view its value). None for a view that yields anything else
+    (an items view's tuples) or whose iteration is not declared."""
+    if not container_view(typ):
+        return None
+    td = type_def_of(typ)
+    record = td.record if td is not None else None
+    if record is None or len(record.type_params) != len(typ.type_args):
+        return None
+    overloads = record.get_method_overloads("__iter__")
+    if len(overloads) != 1:
+        return None
+    iterator = overloads[0].return_type
+    if not isinstance(iterator, NominalType) or len(iterator.type_args) != 1:
+        return None
+    element = iterator.type_args[0]
+    if not isinstance(element, TypeParamRef) or element.name not in record.type_params:
+        return None
+    return record.type_params.index(element.name)
+
+
+def holds_elements(typ: TpyType) -> bool:
+    """Whether a value of `typ` reaches container elements: a native
+    container or a container view (not a tuple, not a string)."""
+    subject = native_container_subject(typ)
+    return native_container_type(subject) or container_view(subject)
+
+
+def _element_arguments(typ: NominalType) -> tuple[TpyType, ...]:
+    return tuple(unwrap_readonly(a) for a in typ.type_args if isinstance(a, TpyType))
+
+
+def readonly_elements(typ: NominalType) -> bool:
+    """A view whose element argument is readonly (`Span[readonly[T]]`):
+    no write goes through it."""
+    return any(isinstance(a, ReadonlyType) for a in typ.type_args)
+
+
+def container_members(typ: object) -> tuple[TpyType, TpyType | None, bool] | None:
+    """The members a native container or container view `typ` stores, as
+    its type arguments name them (access wrappers kept): the element (a
+    list, set, Array or Span element, a dict's or dict view's key), the
+    dict value or None, and whether the element is hashed (a set element,
+    a key). None for any other type or arity."""
+    if not isinstance(typ, NominalType) or not (native_container_type(typ) or container_view(typ)):
+        return None
+    args = typ.type_args
+    if len(args) == 2 and (is_dict(typ) or container_view(typ) and not is_span(typ)):
+        return args[0], args[1], True
+    if is_array(typ):
+        return (args[0], None, False) if len(args) == 2 and type(args[1]) is int and args[1] >= 0 else None
+    return (args[0], None, is_set(typ)) if len(args) == 1 and (is_list(typ) or is_set(typ) or is_span(typ)) else None
+
+
+def modeled_members(typ: object) -> bool:
+    """Whether MIR models the members of the native container or container
+    view `typ`: every member is a container element (`container_element`),
+    and a hashed element and a dict's (or dict view's) value are scalar or
+    owned leaves, which a hash or comparison reads with no user code."""
+    members = container_members(typ)
+    if members is None:
+        return False
+    element, value, hashed = members
+    leaves_only = hashed or value is not None
+    return all(storage_leaf(m) or owned_leaf(m) or not leaves_only and plain_record_element(m)
+               for m in (unwrap_readonly(element), *(() if value is None else (unwrap_readonly(value),))))
+
+
+# The dunders a native container operation dispatches on its elements
+# (comparison, hashing): a record element declaring one runs user code
+# inside the container's runtime operation.
+_ELEMENT_DISPATCH_DUNDERS = ("__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__", "__hash__")
+
+
+def plain_record_element(typ: object) -> bool:
+    """A record a native container may hold as an element MIR models: a
+    non-generic, non-native reference record with no parents, no custom
+    copy, move or destructor, no comparison or hash dunder (so no container
+    operation can run user code on it), and whose fields are scalar leaves
+    or owned leaves (so an element place is at most one field deep). Asked
+    under the compilation that registered the record."""
+    if not record_type(typ):
+        return False
+    td = type_def_of(typ)
+    if td is None:
+        # As `record_type`: a record with no TypeDef (lowered outside its
+        # compilation) reads as plain rather than failing closed.
+        return True
+    info = td.record
+    if (info is None or info.is_native or info.is_value_type or info.is_typed_dict
+            or info.parents or info.type_params
+            or info.has_copy or info.has_move or info.has_del):
+        return False
+    if any(info.get_method_overloads(name) for name in _ELEMENT_DISPATCH_DUNDERS):
+        return False
+    return all(storage_leaf(f.type) or owned_leaf(f.type) for f in info.fields)
+
+
+def container_element(typ: object) -> bool:
+    """An element type MIR models in a native container: a scalar leaf, an
+    owned leaf, or a plain record (`plain_record_element`)."""
+    return storage_leaf(typ) or owned_leaf(typ) or plain_record_element(typ)
 
 
 def leaf_global(typ: object) -> bool:

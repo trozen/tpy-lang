@@ -5,11 +5,13 @@ call-effect and presence facts over one whole validated body. This is not a
 production certificate for emitted code: an adapter must still bind the exact
 function and roots to the emitted THIR obligations and placement plan.
 
-MIR itself bounds the channels: it has no field/container/global stores of
-references, captures, exceptional edges or opaque calls, and every call carries
-a validated summary without retention on any exit. Record cleanup is not
-representable in MIR, so every body storage record needs a verified hook-free
-definition from the caller.
+MIR itself bounds the channels: a record field or a container element never
+holds a borrow (view fields and borrow-holding elements refuse at admission),
+globals hold no references, and MIR has no captures, exceptional edges or
+opaque calls; every call carries a validated summary without retention on any
+exit. Record cleanup is not representable in MIR, so every body storage record
+(a container's record elements included) needs a verified hook-free definition
+from the caller.
 
 A verdict is normal-path evidence: it follows the CFG's edges to normal
 returns. A body that may exit by exception says so in
@@ -253,7 +255,10 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
             except MIRUnsupported as failure:
                 gap(f"storage record without verified hook-free definition: {failure.reason}")
                 continue
-            if definition.layout not in fn.records:
+            # Owned container storage answers its container layout (whose
+            # record elements its definition verified); records their layout.
+            if (definition.layout != slot.container_layout if slot.container_layout is not None
+                    else definition.layout not in fn.records):
                 gap("storage record layout differs from its definition")
 
     materialized = {stmt.target.root for block in fn.blocks for index, stmt in enumerate(block.statements)

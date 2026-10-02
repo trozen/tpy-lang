@@ -139,7 +139,7 @@ def walk(xs: list[Cell]) -> int32:
     body = out[out.index("::walk@"):].split("\nfn ", 1)[0]
     assert "<MIR not covered:" not in body
     assert "iterator-init" in body and "iterator-read" in body
-    assert ".structure" in body and ".elements" in body
+    assert "[structure]" in body and "[elements]" in body
 
 
 def test_owned_tuple_alias_dump_uses_canonical_backing() -> None:

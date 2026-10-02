@@ -534,7 +534,9 @@ tuples -- drives the resumable-frame borrow-tuple loop binding; set by the
 private stub kwarg `_iter_yields_ref_tuple_proxies` and slated for removal), `needs_explicit_element_target`,
 `param_kinds`, `type_factory`, the loan-model facts `loan_inert` (a
 value holds no borrow and lends no storage), `owned_leaf` (a value owns an
-opaque buffer a borrow can point into and holds no borrow), `copy_may_raise`
+opaque buffer a borrow can point into and holds no borrow), `owns_elements`
+(a native container: it owns its type arguments' values as elements, holds
+what they hold, and a borrow can point into its elements), `copy_may_raise`
 (copying it can throw a C++ exception a bare `except:` catches),
 `compares_fixed_ints` (the runtime compares it with every fixed-width int),
 `primitive_ops` (the primitive-operation contract: runtime operators that
@@ -544,7 +546,9 @@ where the default derivation from `is_value_type` does not spell it),
 category payloads `int_traits`, `float_traits`, `enum: EnumInfo`,
 `record: RecordInfo`, `protocol: ProtocolInfo`). `loan_inert`,
 `owned_leaf` and `param_passing` are read through `typesys.loan_class`,
-`typesys.is_owned_leaf` and `TpyType.param_passing`; `zero_value` is read
+`typesys.is_owned_leaf` and `TpyType.param_passing` (`owns_elements`
+through `typesys.loan_class` and `scalar_leaves.native_container_type`);
+`zero_value` is read
 directly (`zero_value_of`, by `mir/lower.py` and `mir/validate.py`);
 `primitive_ops` and `compares_fixed_ints` through
 `thir/scalar_leaves.primitive_leaf` and the `typesys.certified_primitive_*`

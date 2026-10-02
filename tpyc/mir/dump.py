@@ -10,7 +10,7 @@ from .nodes import (
     MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRTupleInitialization,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
-    MIRContainerStructure, MIRContainerElements,
+    MIRContainerStructure, MIRContainerElements, MIRContainerLayout, MIRTupleElement,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
     MIRRangeAdvance, MIRSlotId,
 )
@@ -24,12 +24,14 @@ def _location(loc: SourceLocation | None) -> str:
 def _call(call: MIRCall) -> str:
     identity = call.summary.callee.identity
     args = ", ".join(f"%{sid.index}" for sid in call.arguments)
-    writes = sorted(f"param{w.parameter}." + ".".join(f.name for f in w.path) for w in call.summary.writes)
+    writes = sorted(f"param{w.parameter}" + "".join(_write_step(step) for step in w.path) for w in call.summary.writes)
     effects = "writes={" + ", ".join(writes) + "}" if writes else "reader"
     if isinstance(call.summary.callee, THIRStubCallee):
         # Overloads share the name; the parameter types tell them apart.
         callee = f"stub {identity.qualified_name}[" + ", ".join(str(t) for t in identity.param_types) + "]"
-        effects = f"{call.summary.callee.contract.value}, {effects}"
+        # A method stub's effects are derived from its receiver facts when it declares no contract.
+        if call.summary.callee.contract is not None:
+            effects = f"{call.summary.callee.contract.value}, {effects}"
     else:
         callee = f"{identity.module}::{identity.name}"
     if call.summary.borrowed_result is not None:
@@ -40,11 +42,29 @@ def _call(call: MIRCall) -> str:
     return f"call {callee}({args}) [{effects}, {'may-raise' if call.may_raise else 'normal-return'}]"
 
 
+def _write_step(step: object) -> str:
+    match step:
+        case MIRContainerStructure():
+            return "[structure]"
+        case MIRContainerElements():
+            return "[elements]"
+    return f".{step.name}"
+
+
+def _layout(layout: MIRContainerLayout) -> str:
+    """A container's members: `element=T:kind`, a dict's `value=` too."""
+    def member(name: str, m: MIRTupleElement) -> str:
+        return f" {name}={m.type}:{m.kind.name.lower()}" + (":readonly" if m.readonly else "")
+    return member("element", layout.element) + ("" if layout.value is None else member("value", layout.value))
+
+
 def _member_init(member: MIRMemberInit, borrowed: set[MIRSlotId]) -> str:
     """One receiver member's entry initialization: a scalar by its value, an
     owned leaf by how its buffer arrives (a copy through a borrowed
     parameter reads the storage it points at)."""
     source = (repr(member.source.value) if isinstance(member.source, MIRConstant)
+              else "construct (" + ", ".join(f"%{s.index}" for s in member.source.fields) + ")"
+              if isinstance(member.source, MIRConstruct)
               else f"(*%{member.source.index})" if member.source in borrowed else f"%{member.source.index}")
     match member.mode:
         case MIRMemberInitMode.SCALAR:
@@ -69,9 +89,9 @@ def _place(place: MIRPlace) -> str:
             case MIRUnionPayload(alternative=alternative):
                 text += f".alternative[{alternative}]"
             case MIRContainerStructure():
-                text += ".structure"
+                text += "[structure]"
             case MIRContainerElements():
-                text += ".elements"
+                text += "[elements]"
             case _:
                 raise ValueError("unknown place projection")
     return text
@@ -93,12 +113,13 @@ def dump_function(fn: MIRFunction) -> str:
             case MIRValueKind.BORROWED_CONTAINER | MIRValueKind.NATIVE_ITERATOR:
                 access = (" native-iterator" if slot.value_kind is MIRValueKind.NATIVE_ITERATOR else " container-ref")
                 access += " readonly" if slot.readonly else " mutable"
-                member = slot.container_layout.element
-                access += f" element={member.type}:{member.kind.name.lower()}"
-                if member.readonly:
-                    access += ":readonly"
+                access += _layout(slot.container_layout)
             case MIRValueKind.BORROWED:
                 access = " readonly-ref" if slot.readonly else " mutable-ref"
+                if slot.container_layout is not None:
+                    access += _layout(slot.container_layout)
+            case MIRValueKind.OWNED if slot.container_layout is not None:
+                access = " owned" + _layout(slot.container_layout)
             case MIRValueKind.OWNED:
                 access = " owned-storage"
             case MIRValueKind.TUPLE:
@@ -163,12 +184,12 @@ def dump_function(fn: MIRFunction) -> str:
                     rhs = f"iterator-advance %{source.index}"
                 case MIRConstant(value=value):
                     rhs = repr(value)
-                case MIRRead(source=source):
-                    rhs = f"read {_place(source)}"
+                case MIRRead(source=source, may_raise=may_raise):
+                    rhs = f"read {_place(source)}" + (" may-raise" if may_raise else "")
                 case MIRAlias(source=source):
                     rhs = f"alias %{source.index}"
-                case MIRBorrow(source=source):
-                    rhs = f"borrow {_place(source)}"
+                case MIRBorrow(source=source, may_raise=may_raise):
+                    rhs = f"borrow {_place(source)}" + (" may-raise" if may_raise else "")
                 case MIRConstruct(fields=fields, may_raise=may_raise):
                     rhs = "construct (" + ", ".join(f"%{s.index}" for s in fields) + ")" + (
                         " may-raise" if may_raise else "")

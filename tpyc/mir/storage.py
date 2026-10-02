@@ -4,13 +4,16 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from ..thir.scalar_leaves import owned_leaf
+from ..thir.scalar_leaves import record_type, storage_leaf
+from ..typesys import unwrap_readonly
 from .call_effects import call_write_places
+from .coverage import moved_buffer
 from .dump import _location, _place
 from .liveness import MIRPoint
 from .nodes import (
-    MIRAssign, MIRConstruct, MIRDeref, MIRField, MIRFunction, MIRNotCovered, MIRSlot, MIRSlotId,
-    MIRRecordWrite, MIRTupleConstruct, MIRTupleIndex, MIRPlace, MIRValueKind, statement_call,
+    MIRAssign, MIRConstruct, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRField, MIRFunction,
+    MIRMove, MIRNotCovered, MIRSlot, MIRSlotId, MIRRecordWrite, MIRTupleConstruct, MIRTupleIndex, MIRPlace,
+    MIRValueKind, statement_call,
 )
 from .validate import successors, validate_function
 
@@ -20,10 +23,13 @@ class MIRStorageEvents:
     function: MIRFunction
     writes: Mapping[MIRPoint, MIRAssign]
     member_initializations: Mapping[MIRPoint, tuple[MIRPlace, ...]]
-    # A call whose summary may write an owned-leaf field of a record it is
-    # lent replaces that field's buffer: one replacement event per written
-    # place, at the call.
+    # A call whose summary may write owned storage it is lent (an owned-leaf
+    # field's buffer, a container's shape or elements) replaces it: one
+    # replacement event per written place, at the call.
     call_writes: Mapping[MIRPoint, tuple[MIRPlace, ...]] = MappingProxyType({})
+    # A move out of owned storage empties the source place: a replacement
+    # event on it, at the move.
+    moves: Mapping[MIRPoint, MIRPlace] = MappingProxyType({})
 
 
 def analyze_storage(fn: MIRFunction) -> MIRStorageEvents | MIRNotCovered:
@@ -40,14 +46,18 @@ def analyze_storage(fn: MIRFunction) -> MIRStorageEvents | MIRNotCovered:
     writes: dict[MIRPoint, MIRAssign] = {}
     members: dict[MIRPoint, tuple[MIRPlace, ...]] = {}
     calls: dict[MIRPoint, tuple[MIRPlace, ...]] = {}
+    moves: dict[MIRPoint, MIRPlace] = {}
     for block in fn.blocks:
         for index, stmt in enumerate(block.statements):
             if (call := statement_call(stmt)) is not None and block.id in reached:
-                replaced = tuple(place for place in call_write_places(call) if storage_destination(place, slots))
+                replaced = tuple(place for place in call_write_places(call, slots)
+                                 if storage_destination(place, slots))
                 if replaced:
                     calls[MIRPoint(block.id, index)] = replaced
             if not isinstance(stmt, MIRAssign):
                 continue
+            if isinstance(stmt.value, MIRMove) and moved_buffer(slots[stmt.value.source]) and block.id in reached:
+                moves[MIRPoint(block.id, index)] = MIRPlace(stmt.value.source)
             if isinstance(stmt.value, MIRTupleConstruct):
                 initialized = tuple(MIRPlace(stmt.target.root, (MIRTupleIndex(i),))
                                     for i, element in enumerate(stmt.value.elements) if isinstance(element, MIRConstruct))
@@ -58,19 +68,29 @@ def analyze_storage(fn: MIRFunction) -> MIRStorageEvents | MIRNotCovered:
                     return MIRNotCovered(fn.id, "storage", "missing record write fact", stmt.loc)
                 if block.id in reached:
                     writes[MIRPoint(block.id, index)] = stmt
-    return MIRStorageEvents(fn, MappingProxyType(writes), MappingProxyType(members), MappingProxyType(calls))
+    return MIRStorageEvents(fn, MappingProxyType(writes), MappingProxyType(members), MappingProxyType(calls),
+                            MappingProxyType(moves))
+
+
+def owned_field(field: MIRField) -> bool:
+    """A field whose storage is owned by its record and replaced in place:
+    an owned leaf's buffer or a container (scalar fields hold no loan, and
+    inline records are never replaced)."""
+    return not (storage_leaf(field.type) or record_type(unwrap_readonly(field.type)))
 
 
 def storage_destination(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
-    """Whether a write to `place` replaces whole storage: an OWNED root, the
-    storage a borrowed holder points at (a trailing dereference), or an
-    owned-leaf field's buffer. The write's event follows its destination,
-    whatever produces the value; a scalar field is overwritten, never a
-    storage a borrow can point into."""
+    """Whether a write to `place` replaces storage a borrow can point into:
+    an OWNED root, the storage a borrowed holder points at (a trailing
+    dereference), an owned-leaf or container field, or a container's shape
+    or elements region. The write's event follows its destination, whatever
+    produces the value; a scalar field is overwritten, never a storage a
+    borrow can point into."""
     if not place.projections:
         return slots[place.root].value_kind is MIRValueKind.OWNED
     last = place.projections[-1]
-    return isinstance(last, MIRDeref) or isinstance(last, MIRField) and owned_leaf(last.type)
+    return (isinstance(last, (MIRDeref, MIRContainerStructure, MIRContainerElements))
+            or isinstance(last, MIRField) and owned_field(last))
 
 
 def dump_storage(result: MIRStorageEvents | MIRNotCovered) -> str:
@@ -91,4 +111,7 @@ def dump_storage(result: MIRStorageEvents | MIRNotCovered) -> str:
         loc = blocks[point.block].statements[point.index].loc
         lines.append(f"  bb{point.block.index} before {point.index}: call-write "
                      + ", ".join(_place(place) for place in places) + _location(loc))
+    for point, place in result.moves.items():
+        loc = blocks[point.block].statements[point.index].loc
+        lines.append(f"  bb{point.block.index} before {point.index}: move-out {_place(place)}{_location(loc)}")
     return "\n".join(lines) + "\n"

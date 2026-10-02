@@ -51,7 +51,7 @@ from ..type_def_registry import (
     ParamPassing,
     is_basic_slice_type, is_bytearray_type, is_bytes_type, is_bytes_view_type,
     is_slice_type, is_span, is_str_type, is_str_view_type, is_string_type,
-    is_list, is_array, is_set, is_dict, zero_value_of,
+    zero_value_of,
 )
 from ..typesys import (
     AnyType, NominalType, OptionalType, OwnType, PtrType, ReadonlyType, Representation, TupleType,
@@ -59,7 +59,11 @@ from ..typesys import (
     TypeParamRef,
     is_inert_leaf, return_representation, is_void_like_type, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
-from .scalar_leaves import leaf_constant, leaf_global, owned_leaf, storage_leaf
+from .scalar_leaves import (
+    binds_element, container_members, container_view, holds_elements, leaf_constant, leaf_global,
+    native_container_subject, native_container_type, owned_leaf, plain_record_element, readonly_elements,
+    storage_leaf, view_iteration_index,
+)
 from .nodes import (
     FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign, THIRCall, THIRChainedCompareStmtExpr,
     THIRCoerce, THIRConstructor, THIRCopy, THIRMove,
@@ -96,27 +100,42 @@ class THIRValidationError(Exception):
 
 
 def _check_native_container(owner: str, node: object, fact: THIRNativeContainer, typ: TpyType) -> None:
-    bare = unwrap_readonly(unwrap_ref_type(typ))
-    if (not isinstance(fact, THIRNativeContainer) or fact.type != bare
-            or not isinstance(bare, NominalType) or not bare.type_args
-            or not (is_list(bare) or is_array(bare) or is_set(bare) or is_dict(bare))
+    bare = native_container_subject(typ)
+    members = container_members(bare)
+    if (not isinstance(fact, THIRNativeContainer) or fact.type != bare or members is None
             or type(fact.readonly) is not bool
             or isinstance(unwrap_ref_type(typ), ReadonlyType) and not fact.readonly):
         _fail(owner, node, "invalid native container fact")
     member = fact.element
-    args = bare.type_args
-    if not ((is_list(bare) or is_set(bare)) and len(args) == 1
-            or is_dict(bare) and len(args) == 2 and all(storage_leaf(a) for a in args)
-            or is_array(bare) and len(args) == 2 and type(args[1]) is int and args[1] >= 0):
+    declared, value, hashed = members
+    view = container_view(bare)
+    if value is not None and (view or not (storage_leaf(value) or owned_leaf(value))):
         _fail(owner, node, "invalid native container arguments")
+    if view:
+        # A Span's element access is its element argument's.
+        if readonly_elements(bare) and not fact.readonly:
+            _fail(owner, node, "invalid native element fact")
+        declared = unwrap_readonly(declared)
     element_type = member.type if isinstance(member, THIRBorrowedRecord) else member
-    if (element_type != bare.type_args[0]
-            or not (not isinstance(member, THIRBorrowedRecord) and storage_leaf(element_type)) and not (
-                isinstance(member, THIRBorrowedRecord) and isinstance(member.type, NominalType)
-                and member.type.qualified_name() is not None and not member.type.type_args
-                and not member.type.is_protocol and not is_inert_leaf(member.type)
-                and (is_list(bare) or is_array(bare)) and member.readonly is fact.readonly)):
+    if (element_type != declared
+            or not (not isinstance(member, THIRBorrowedRecord)
+                    and (storage_leaf(element_type) or owned_leaf(element_type))) and not (
+                isinstance(member, THIRBorrowedRecord) and plain_record_element(member.type)
+                and not hashed and member.readonly is fact.readonly)):
         _fail(owner, node, "invalid native element fact")
+
+
+def _check_view_iteration(owner: str, node: object, fact: THIRNativeContainer, typ: TpyType) -> None:
+    """A container view a loop iterates: the fact names the view and the
+    leaf element argument its iteration yields."""
+    bare = native_container_subject(typ)
+    index = view_iteration_index(bare)
+    if (not isinstance(fact, THIRNativeContainer) or fact.type != bare or index is None
+            or type(fact.readonly) is not bool
+            or (readonly_elements(bare) or isinstance(unwrap_ref_type(typ), ReadonlyType)) and not fact.readonly
+            or fact.element != unwrap_readonly(bare.type_args[index])
+            or not (storage_leaf(fact.element) or owned_leaf(fact.element))):
+        _fail(owner, node, "invalid native container fact")
 
 
 def _check_tuple(owner: str, node: object, layout: THIRTupleLayout, typ: TpyType) -> None:
@@ -249,8 +268,8 @@ def _check_callee(owner: str, node: object, fact: THIRResolvedCallee) -> None:
         _fail(owner, node, "invalid resolved callee")
 
 
-def _check_stub_callee(owner: str, node: THIRCall, fact: THIRStubCallee) -> None:
-    if (not isinstance(fact, THIRStubCallee) or not isinstance(fact.identity, THIRStubIdentity)
+def _stub_callee_problem(fact: THIRStubCallee) -> bool:
+    return (not isinstance(fact, THIRStubCallee) or not isinstance(fact.identity, THIRStubIdentity)
             or not isinstance(fact.identity.qualified_name, str) or not fact.identity.qualified_name
             or _signature_problem(fact.signature)
             or fact.identity.param_types != fact.signature.param_types
@@ -258,7 +277,26 @@ def _check_stub_callee(owner: str, node: THIRCall, fact: THIRStubCallee) -> None
             or fact.signature.borrowed_result is not None
             or not (fact.contract is None or isinstance(fact.contract, THIRStubContract))
             or not isinstance(fact.readonly, tuple) or len(fact.readonly) != len(fact.signature.param_types)
-            or not all(type(r) is bool for r in fact.readonly)):
+            or not all(type(r) is bool for r in fact.readonly)
+            or type(fact.preserves_refs) is not bool or type(fact.receiver) is not bool
+            or not isinstance(fact.bound_arguments, tuple)
+            or not all(isinstance(t, TpyType) for t in fact.bound_arguments))
+
+
+def _check_method_stub_callee(owner: str, node: THIRMethodCall | THIRSetItem, fact: THIRStubCallee,
+                              receiver: TpyType, arity: int) -> None:
+    """A native method stub binds the call's receiver as parameter 0, at
+    the passing its type has under the method's receiver verdict."""
+    if _stub_callee_problem(fact) or not fact.receiver:
+        _fail(owner, node, "invalid stub callee")
+    types = fact.signature.param_types
+    if (len(types) != arity + 1 or types[0] != unwrap_send_sync(native_container_subject(receiver))
+            or fact.signature.passings[0] is not types[0].param_passing(fact.readonly[0])):
+        _fail(owner, node, "method stub callee disagrees with its receiver")
+
+
+def _check_stub_callee(owner: str, node: THIRCall, fact: THIRStubCallee) -> None:
+    if _stub_callee_problem(fact) or fact.receiver or fact.preserves_refs or fact.bound_arguments:
         _fail(owner, node, "invalid stub callee")
     # A stub renders through its bound symbol or template, never a TPy
     # callee spelling of its own.
@@ -362,13 +400,23 @@ def _check_node(owner: str, node: THIRNode) -> None:
             _fail(owner, node, "full-expression storage disagrees with constructor")
     if isinstance(node, THIRVarDecl) and node.native_container is not None:
         _check_native_container(owner, node, node.native_container, node.resolved_type)
-        if (node.form is not Form.BORROW or not isinstance(node.init, THIRName)
-                or node.init.form is not Form.BORROW
+        others = (node.alias_binding, node.storage_borrow, node.owned_storage, node.tuple_layout,
+                  node.tuple_storage_alias, node.optional_layout, node.union_layout, node.storage_placement)
+        if node.form is not Form.BORROW:
+            # Container storage of the local's own, from an initializer
+            # yielding the declared container.
+            if (node.init is None or node.resolved_type != node.native_container.type
+                    or not native_container_type(node.resolved_type)
+                    or native_container_subject(node.init.result_type) != node.native_container.type
+                    or node.is_const is not node.native_container.readonly
+                    or any(f is not None for f in others)):
+                _fail(owner, node, "owned native container disagrees with binding")
+        elif (not (isinstance(node.init, THIRName) and node.init.form is Form.BORROW
+                     or isinstance(node.init, THIRFieldAccess) and node.init.field_identity is not None
+                     and unwrap_readonly(node.init.field_identity.type) == node.native_container.type)
                 or unwrap_readonly(unwrap_ref_type(node.init.result_type)) != node.native_container.type
                 or node.is_const is not node.native_container.readonly
-                or any(f is not None for f in (node.alias_binding, node.storage_borrow, node.owned_storage,
-                    node.tuple_layout, node.tuple_storage_alias, node.optional_layout, node.union_layout,
-                    node.storage_placement))):
+                or any(f is not None for f in others)):
             _fail(owner, node, "native container alias disagrees with binding")
     if isinstance(node, (THIRIf, THIRWhile, THIRForRange, THIRForEach)):
         _check_hoists(owner, node)
@@ -380,15 +428,28 @@ def _check_node(owner: str, node: THIRNode) -> None:
                 _fail(owner, link, "elif link carries a predeclaration")
     if isinstance(node, THIRForEach) and node.iteration is not None:
         fact = node.iteration
-        if (not isinstance(fact, THIRNativeIteration) or not isinstance(node.iterable, THIRName)
-                or not node.iterable_lvalue or node.consuming or node.str_literal_iterable
+        source = node.iterable
+        # A named container, a container field of a named record, or a
+        # container view a method stub returns.
+        view = isinstance(source, THIRMethodCall) and source.stub_callee is not None
+        place = isinstance(source, THIRName) or (
+            isinstance(source, THIRFieldAccess) and source.field_identity is not None
+            and isinstance(source.receiver, (THIRName, THIRSelf))
+            and isinstance(fact, THIRNativeIteration) and isinstance(fact.source, THIRNativeContainer)
+            and unwrap_readonly(source.field_identity.type) == fact.source.type
+            and (not isinstance(source.field_identity.type, ReadonlyType) or fact.source.readonly))
+        if (not isinstance(fact, THIRNativeIteration) or not (place and node.iterable_lvalue or view)
+                or node.consuming or node.str_literal_iterable
                 or fact.binding is not loop_binding_kind(node.elem_type, node.const_loop_var,
                                                          hoisted=node.hoist_loop_var)):
             _fail(owner, node, "native iteration fact disagrees with emitted binding")
-        _check_native_container(owner, node, fact.source, node.iterable.result_type)
+        if view:
+            _check_view_iteration(owner, node, fact.source, source.result_type)
+        else:
+            _check_native_container(owner, node, fact.source, node.iterable.result_type)
         element = fact.source.element
-        if unwrap_readonly(unwrap_ref_type(node.elem_type)) != (
-                element.type if isinstance(element, THIRBorrowedRecord) else element):
+        if not binds_element(node.elem_type, (
+                element.type if isinstance(element, THIRBorrowedRecord) else element)):
             _fail(owner, node, "native iteration element mismatch")
     if isinstance(node, (THIRLambda, THIRNestedDef)):
         _check_captures(owner, node)
@@ -396,6 +457,13 @@ def _check_node(owner: str, node: THIRNode) -> None:
         _fail(owner, node, "call carries both a resolved and a stub callee")
     if isinstance(node, THIRCall) and node.stub_callee is not None:
         _check_stub_callee(owner, node, node.stub_callee)
+    if isinstance(node, THIRMethodCall) and node.stub_callee is not None:
+        _check_method_stub_callee(owner, node, node.stub_callee, node.receiver.result_type, len(node.args))
+    if isinstance(node, THIRSetItem) and node.stub_callee is not None:
+        target = node.target
+        if not isinstance(target, THIRSubscript):
+            _fail(owner, node, "setitem stub callee needs a subscript target")
+        _check_method_stub_callee(owner, node, node.stub_callee, target.receiver.result_type, 2)
     if isinstance(node, THIRCall) and node.resolved_callee is not None:
         _check_callee(owner, node, node.resolved_callee)
         if (len(node.args) != len(node.resolved_callee.signature.param_types)
@@ -583,13 +651,15 @@ def _check_node(owner: str, node: THIRNode) -> None:
         fact = node.field_identity
         direct = isinstance(node.receiver, (THIRName, THIRSelf)) or (
             isinstance(node.receiver, THIRFieldAccess) and node.receiver.field_identity is not None) or (
-            isinstance(node.receiver, THIRSubscript) and node.receiver.tuple_index is not None) or (
+            isinstance(node.receiver, THIRSubscript) and (
+                node.receiver.tuple_index is not None or holds_elements(node.receiver.receiver.result_type))) or (
             isinstance(node.receiver, THIRNarrowedRead) and node.receiver.union_extraction is not None) or (
             isinstance(node.receiver, THIRCtorCall) and node.receiver.full_expression_storage is not None
             and storage_leaf(fact.type) and not node.is_arrow)
         typ = unwrap_readonly(fact.type)
+        # A container member is reached in place like a record member.
         record = (isinstance(typ, NominalType) and not is_inert_leaf(typ)
-                  and not typ.type_args and not typ.is_protocol)
+                  and (not typ.type_args or native_container_type(typ)) and not typ.is_protocol)
         if (not direct or not fact.name
                 or unwrap_readonly(unwrap_ref_type(node.receiver.result_type)) != fact.owner
                 or (not record and (not storage_leaf(fact.type)

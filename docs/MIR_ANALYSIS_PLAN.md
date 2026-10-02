@@ -1902,11 +1902,21 @@ form facts, never on lists of accepted kinds.
   `Own` is not position-transparent (a value type becomes a value, a
   reference type `T&&`); `Ptr` is value-typed; `readonly` limits access,
   not lifetime.
-- **B3: containers.** Holders with element places, element views and
-  iterator loans. From here on each step builds the call-effect contracts it
-  needs -- retention, invalidation, result origins, exceptional behavior --
-  where `call_contract.py` today excludes globals and requires empty
-  invalidation and retention.
+- **B3, first half: containers as places.** Landed as the
+  [B3 contract](#b3-contract-first-half-containers-as-places): owned and
+  borrowed container holders with `[structure]` / `[elements]` places,
+  element reads, Span and dict views as views of `[elements]`, iterator
+  loans over any container place, builtin container methods as reads,
+  element writes or structure writes derived from the stub's receiver
+  facts, container writes in free-function summaries, and the first
+  container conflicts (`replacement`). `tests/cases/mir/containers` pins
+  them, each beside a certified safe sibling.
+- **B3, second half: retained loans.** View fields (a record retaining a
+  loan), user method summaries (receiver as parameter 0), `retains` on
+  `MIRParameterWrite`, nested container elements. From here on each step
+  builds the call-effect contracts it needs -- retention, invalidation,
+  result origins, exceptional behavior -- where `call_contract.py` today
+  excludes globals and requires empty invalidation and retention.
 - **Cleanup:** exceptional exits and destruction.
 - **B4: generator and async frames.** Frame placement and lifecycle facts
   published by THIR (close, cancellation, cleanup), not only suspend/resume
@@ -2259,6 +2269,234 @@ as the corpus grows).
   so a precision item for the advisory checker: distinct external roots are
   assumed to alias). No MIR crash; no body that lowered before stopped
   lowering; no snapshot changed.
+
+### B3 contract (first half: containers as places)
+
+- **Invariant.** Every container place -- a slot, a field or an element of
+  a native container type (`list`, `set`, `dict`, `Array`) -- is opaque
+  storage with two summary sub-places, `[structure]` (its shape) and
+  `[elements]` (every element at once). Element reads, views, slices and
+  iterators borrow `[elements]` (an iterator also retains `[structure]`); a
+  container operation writes `[structure]` when the callee's declared
+  receiver effect is a structural mutation, `[elements]` when it replaces
+  elements in place, and nothing when it only reads. Element identity is
+  never tracked: a write of one element is a write of any.
+- **Container rule.** One layout per type (`MIRDefinitions.container`):
+  `MIRContainerLayout(element, value)`, where `element` is what iteration
+  yields (the list / set / Array element, the dict KEY) and `value` the dict
+  value or None, each a `MIRTupleElement` whose kind is SCALAR (inert leaf),
+  OWNED (owned leaf) or BORROWED (a plain record), `readonly` inherited from
+  the container. Admission keys on `typesys.loan_class` (a native
+  container's `holds` is its element's, it is lendable) and on the
+  `native_container` fact THIR publishes on `THIRParam`, `THIRVarDecl` and
+  `THIRForEach.iteration`, widened to owned-leaf keys, values and elements,
+  `Span[T]` parameters, owned container locals and record elements; no
+  renderer reads the widened fact. Admitted elements: inert leaves, owned
+  leaves, and plain records whose fields are leaves or owned leaves (no
+  container field inside an element, so no path is deeper than
+  `container[elements].F::x`; a top-level record may hold container fields).
+  Set elements and dict keys are inert or owned leaves (hashing runs no
+  user code). An element whose `loan_class.holds` is YES refuses
+  ("container holds a borrow"); a container element of a container refuses
+  ("unsupported native container element"). Holders: an owned container
+  (a local `xs = [..]`, a field, an `Own[list[T]]` parameter, a result) is
+  an `OWNED` slot carrying `container_layout`; a `list[T]` parameter at
+  CONST_REF / MUT_REF is a `BORROWED_CONTAINER` slot with an external
+  referent, readonly from the passing. Places: `MIRContainerElements` (the
+  "any element" place) and `MIRContainerStructure` compose after a slot
+  root, a `MIRDeref` or a `MIRField` of container type
+  (`(*%self).Bag::items[elements]`, `%xs[elements].Point::x`). A dict's
+  `[elements]` is ONE region typed by what the access yields: the value at
+  a subscript, the key at iteration (no key / value projection). Rvalues
+  reuse the existing nodes: a scalar element is `MIRRead(xs[elements])`
+  after its index read, a record element at BORROW form `MIRBorrow`, a str
+  element at a view holder `MIRBorrow` and at an owned sink `MIRCopy`; an
+  unstepped slice is `MIRBorrow(xs[elements])` into a Span holder; `for`
+  runs over any container place (owned local, field, parameter); a literal
+  is `MIRConstruct` with a container-layout target, one operand per element
+  and always `may_raise` (allocation); `len(xs)` lends the container
+  readonly. Writes: `xs[i] = v` is `MIRAssign(xs[elements], v,
+  MIRRecordWrite(IN_PLACE))`, a WEAK update (never a strong kill in the
+  dependency transfer); rebinding an owned container (`xs = [..]`) is the
+  owned-leaf own-site replacement.
+- **Stub method rule.** A builtin container method carries
+  `THIRMethodCall.stub_callee` (a subscript write, `THIRSetItem.stub_callee`,
+  from the resolved `__setitem__`): parameter 0 is the INSTANTIATED receiver
+  (`signature.param_types[0]`, `CONST_REF` when the stub is readonly, else
+  `MUT_REF`), the explicit parameters follow substituted, and the identity
+  is `owner.name` plus those types, so `list[int32].pop()`,
+  `list[int32].pop(i)` and `list[Point].pop()` are three identities.
+  `THIRStubCallee.preserves_refs` carries `native_preserves_refs`. The
+  receiver effect is derived from the declaration, first match wins:
+  `@pure` -> reads only (this covers the `@auto_readonly` mutable clones of
+  `values()` / `items()`); readonly receiver -> reads only;
+  `preserves_refs` -> writes `(0, (elements,))`; otherwise writes
+  `(0, (structure,))`. A `@pure` stub may read a READONLY receiver through
+  a mutable binding: sema resolves the mutable `@auto_readonly` clone of
+  `values()` / `items()` on a const dict too, and a pure read cannot write
+  it. A mutating method reached through a VIEW (`Span.__setitem__`,
+  `Span.sort`) writes `[elements]`, never `[structure]`: a view passed by
+  value cannot change its source's shape. The result follows its published
+  `return_representation`: REFERENCE or VIEW borrows parameter 0 (and every
+  other lent argument), STORAGE or VALUE is fresh (`pop -> Own[T]`, `copy`,
+  `index`). Parameters follow the B2 stub rule (inert leaf by value, owned
+  leaf lent readonly, view by value; an element argument at OWN passing is
+  copied or moved into the container). A protocol, callable or
+  `Iterable[...]` parameter keeps "stub declares no contract", so `extend`
+  refuses; `xs += ys` (a `THIRInplaceContainerOp`) and slice assignment are
+  statements, not method calls, and refuse as "unsupported statement". A
+  method whose type
+  parameter carries a protocol bound (`sort`, `remove`, `index`, `count`)
+  is admitted only when the bound argument is an inert or owned leaf. A
+  record element must be PLAIN -- no custom copy, move or destructor and no
+  `__eq__` / `__ne__` / `__lt__` / `__le__` / `__gt__` / `__ge__` /
+  `__hash__` -- so no container operation dispatches user code on it.
+  Every stub may raise.
+- **Affects rule** (`retention.affects`). A written `[structure]` reaches
+  every holder STRICTLY inside the container (iterators, element borrows,
+  Spans, element views) and not the whole-container holder itself: the
+  object survives an `append` in C++ as in Python, so `xs.append(1);
+  len(xs)` is no conflict. For the same reason a call result borrowed from a
+  container argument resolves to the argument's `[elements]`, not to the
+  whole argument (the summary names the parameter; the caller projects). A
+  written `[elements]` reaches holders at or under `[elements]`, a live
+  iterator included (conservative: `xs[i] = v` and `d[k] = v` under a live
+  loop conflict). Sibling fields and sibling containers under one root stay
+  disjoint; distinct external roots may alias (the B2 rule), so a function
+  iterating one container parameter while growing another conflicts
+  (`copy_into` in the case). `static` referents are never affected.
+- **View transparency.** A Span or dict view is a `BORROWED` holder typed by
+  its view type (the `StrView` template); `scalar_leaves.view_compatible`
+  holds for `Span[T]` over a container whose element member is `T` (or a
+  `Span[T]`) and for a dict view over its `dict[K, V]`. The holder IS its
+  source's elements region: a container projection applied to a view
+  holder resolves to the holder's referents (never `xs[elements][elements]`),
+  an iterator over a view depends on the view's referents only, and a write
+  through a `Span[T]` (`s[0] = v`) is an elements write of the source.
+  Mutability comes from the element type argument (`Span[readonly[T]]`);
+  dict views are readonly. A dict view's layout IS its dict's layout (the
+  two members); what a cursor over the view yields is the member the view's
+  `__iter__` declares (`scalar_leaves.view_iteration_index`,
+  `definitions.iteration_layout`): keys for `keys()` and for the dict
+  itself, values for `values()`, nothing admitted for `items()` (tuples).
+  `Span.__setitem__` and `Array.__setitem__` do NOT declare
+  `@native_preserves_refs`, although a span or a fixed-size array never
+  moves its elements: sema reads that fact as "invalidates nothing" and
+  would stop warning on the explicit spelling `a.__setitem__(i, v)` under a
+  live loop or element borrow (`BUGS.md#setitem-write-under-live-element-borrow`),
+  and this unit changes no diagnostic. A `__setitem__` whose stub does not
+  preserve references lowers as the stub call it is -- a structure write of
+  the receiver (`arr_write` in the case: `writes={param0[structure]}`), the
+  conservative verdict that reaches every holder inside the container; a
+  write through a Span stays an element write by the view rule. The
+  subscript spelling `a[i] = v` never warned for any container; MIR reports
+  it as `replacement` on list, dict, Array and Span alike.
+- **Moves.** A `MIRMove` out of owned storage (an `Own[list[T]]` argument or
+  return, an owned leaf) is a replacement event on the source place: a live
+  holder of its elements conflicts, a dead one does not.
+- **Returns and summaries.** `-> list[T]` returns a C++ reference, so it is
+  a BORROWED result summarized by `returns` like a borrowed record result;
+  `-> Own[list[T]]` is an owned result moved out. `returns` stays
+  `frozenset[int]`: a Span or element result rooted in `param[elements]`
+  publishes the whole parameter (a caller's structure write still reaches
+  it by prefix overlap). `MIRParameterWrite.path` widens to field
+  identities and container projections (`(structure,)`, `(F::items,
+  structure)`, `(elements,)`), so a free function's container writes reach
+  its callers as call-write events (`grow_if` / `forwarded` in the case);
+  `invalidates` and `retains` stay required-empty. Methods still have no
+  summary.
+- **Conflict naming.** No container-specific kind: sema's
+  `iter_invalidation`, `borrow_invalidation` and `borrowed_container_arg`
+  families are all `replacement`. `p = ps[0]; ps[0] = Point(..)` is a
+  `replacement` where sema says ok
+  (`BUGS.md#setitem-write-under-live-element-borrow`: C++ `p` reads the new
+  point where CPython keeps the old). `tests/cases/mir/containers` pins
+  each conflict beside a safe sibling whose holder is dead at the write.
+- **Deferred (not covered), second half or later.** View FIELDS (a record
+  retaining a loan, "record holds a borrow"); user METHOD summaries
+  (receiver as parameter 0), so a method call and a method's borrowed
+  result stay opaque to callers; `retains` on `MIRParameterWrite`; nested
+  container elements beyond one hop ("unsupported native container
+  element"), which also keeps
+  `BUGS.md#elem-index-certainty-ignores-rebinds` and the `rows[0]` face of
+  `BUGS.md#mutating-callee-non-name-arg-unchecked` out of reach; `extend`
+  (an `Iterable` parameter), `xs += ys` and slice assignment ("unsupported
+  statement"); iterating or
+  unpacking `items()` (tuple elements); `in` (`THIRMembership`); protocol
+  `for` over user iterators, comprehensions and generator expressions
+  (frames, B4); call-duration loans (`xs.extend(xs)`, `rename(r, r.name)`);
+  projected return origins (a result rooted in `param[elements]` summarizes
+  as the whole parameter); sibling-element precision (element identity is
+  not tracked, so `xs[i] = v` under a live iterator conflicts); stepped
+  slices; tuple, Optional and union elements; `bytearray`; a dict view
+  bound to a local is a lowering reject today
+  (`BUGS.md#dict-view-local-binding-rejected`); a constructor member-init
+  from a literal of RECORD elements (`self.ps = [Point(1), Point(2)]`:
+  the member initializer takes parameter slots and constants only, and the
+  element records need temporaries before any CFG exists -- "constructor
+  initializer needs parameter or literal"; a literal of leaves or an empty
+  literal initializes); a container returned by reference from a RECORD
+  parameter (`items_of(b) -> list[int32]` returning `b.items`) has a KNOWN
+  summary (origin = the parameter) but no caller lowers its result: binding
+  it refuses as "unsupported reference fact", indexing it as "uncertified
+  element read", and the dependency rule behind them ("container result of
+  a non-container argument": the elements of some field of `b` cannot be
+  named without the field path) is pinned over hand-built MIR only; a
+  record element
+  write through a Span is a THIR reject (`setitem.family`), so that conflict
+  is pinned over hand-built MIR only; a parameter whose container field is
+  grown through a local alias is `BUGS.md#param-field-alias-growth-not-mutation`
+  (ill-formed C++ before any run).
+- **Refusal reasons beside the deferred list.** "container field
+  replacement is unsupported": a container field written whole outside the
+  constructor (`self.items = []` in a method); "constructor container
+  field": a caller constructing a record with a container field
+  (`b = Bag()`; the constructor body builds the member); "owned container
+  parameter reseat": rebinding an `Own[list[T]]` parameter (`xs = [1]`);
+  "container argument needs an owned move": an `Own[list[T]]` argument that
+  is not the last use of an owned container local (a literal `take([1, 2])`
+  or a parameter `take(ys)`); "unsupported record argument": a record
+  handed to an element-taking parameter as anything but a constructor call
+  (`p = Point(1); ps.append(p)`). Four are guards no probed shape reaches:
+  "readonly owned container parameter" (`Own[readonly[list[T]]]` lowers as
+  a mutable owned container), "element binding is reassigned" (a rebound
+  `p = ps[0]; ...; p = ps[1]` refuses earlier, "missing alias binding"),
+  "container declaration needs an initializer" (sema requires one; an
+  `if`-arm binding refuses earlier, "missing or inconsistent hoisted binding
+  facts") and "element index needs a fixed-width int" (a `BigInt` index
+  lowers).
+- **Measured** (`scripts/mir_coverage/`, name-hash sample; the branch base
+  23f4775733 vs the reviewed branch at 41d4bd197d, which also carries
+  master's one-view rule for str and bytes; each figure over its own tree's
+  denominator): lowered test bodies 1756 of 10870 (16.2%) -> 2013 of 10929
+  (18.4%), 19.5% -> 22.2% excluding module init; example bodies 34 -> 34 of
+  166 (the sampled examples hold no container shape this half admits),
+  stdlib 68 -> 72 of 1373. No body that lowered on the base refuses on the
+  branch. Loan-active USER bodies 142 of 2297 (6.2%) -> 234 of 2334
+  (10.0%); by loan kind `borrow:iter` 14 of 890 -> 63 of 912 lowered,
+  `borrow:element` 15 of 295 -> 28 of 301, `provenance:param_derived` 64 ->
+  95, `view_var:str` 41 -> 67 (the one-view rule turned two inferred views
+  into owned copies), `param_returned` 30 -> 50. Certified 49 -> 50 (the
+  certificate still covers THIR materialized backings only), exc-exit
+  bodies 717 -> 949 (element reads that check an index or key are
+  exceptional exits). Conflicts 8 -> 21 bodies, every one `replacement`:
+  the eight of the base unchanged, the twelve conflict sections of
+  `mir/containers`, and one new outside the case,
+  `list/setitem_str_concat_aug::bump` (its shape pinned in the case as
+  `str_elem_aug`): the `str` parameter `k` is live across `ys[0] += "a"`,
+  and a `str` parameter may view the very element the write replaces
+  (`bump(ys, t, ys[0])`) -- the conservative external-alias class of
+  `SSLContext.load_cert_chain`, the filed alias-basis precision item. 1245
+  bodies changed first blocker; the largest moves are local / parameter
+  container types into "unsupported native container element" (nested,
+  177), "stub declares no contract" (70: `extend`, callbacks), "constructor
+  initializer needs parameter or literal" (125: 65 constructor bodies with
+  record-element literals in member-init, the rest callers constructing
+  such records) and `storage: no_proof_required` (207 bodies now lowered to
+  the end, 143 of them from container-typed locals, parameters, returns and
+  record fields). Top loan-active blockers after this half: resumable
+  bodies 555 (B4), return types 281 (tuples and records by value), module
+  init 186, generic bodies 137, `THIRForIterProto` 79.
 
 ## Scope matrix and remaining increments
 

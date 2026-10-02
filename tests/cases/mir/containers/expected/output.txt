@@ -1,0 +1,52 @@
+Bag.push: 2
+Bag.total: 3
+Bag.plus_span: 9
+Bag.view_items: 2
+items_of: 1 3
+Index.bump: 5
+Pts.alias_grow: 1
+Pts.alias_grow_after_use: 4
+first: 5
+grow: 3
+grow_if: 4
+kept: 5
+kept_after_use: 5 5
+forwarded: 5
+forwarded_after_use: 5 6
+replace_elem: 5
+replace_after_use: 5 4
+str_elem_aug: 2 qa
+str_elem_aug_after_use: 2 qaa
+int_elem_aug: 5 5
+dict_write_in_loop: 3
+dict_write_after_loop: 3 2
+total: 6
+alias_iter_grow: 6
+alias_iter_then_grow: 6 4
+iterate_then_grow: 12 5
+grow_ints: 2
+field_iter_callee: 11
+field_callee_after_iter: 11 2
+copy_into: 5 1
+copy_count: 6 2
+last_row: 4
+last_row_read_first: 4 0
+own: 5
+span_write_in_loop: 24
+span_write: 1
+arr_write: 9
+arr_first: 4
+make: 7 2
+count_keys: 3
+keys_view: 3
+values_len: 2
+items_len: 2
+items_iter: 3
+set_total: 6
+iterate_and_grow: 24
+tail: 2
+span_first: 2
+span_sum: 3
+comp: 2
+nested: 8
+extend_it: 6

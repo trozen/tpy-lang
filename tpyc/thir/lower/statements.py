@@ -6,7 +6,8 @@ from __future__ import annotations
 import copy
 from enum import Enum, auto
 from collections.abc import Mapping, Set as AbstractSet
-from .storage import alias_binding, borrowed_record, full_expression_record, native_container, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal
+from .storage import alias_binding, borrowed_record, full_expression_record, native_container, owned_container_decl, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal, view_iteration_source
+from .callables import setitem_stub_callee, with_method_stub
 from .captures import capture_facts
 from contextlib import contextmanager
 from dataclasses import dataclass, fields as dc_fields, replace
@@ -193,7 +194,7 @@ from ..reject import (
     note_detail,
     stmt_reject_reason,
 )
-from ..scalar_leaves import storage_leaf
+from ..scalar_leaves import binds_element, storage_leaf
 from ..nodes import (
     HoistDecl,
     THIRStoragePlacement,
@@ -224,7 +225,7 @@ from ..nodes import (
     THIRExprStmt,
     THIRFieldAccess,
     THIRConsumingIter,
-    THIRForEach, THIRNativeIteration,
+    THIRBorrowedRecord, THIRForEach, THIRNativeIteration,
     THIRForIterProto,
     THIRForRange,
     THIRFormConvert,
@@ -4510,8 +4511,10 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=src,
             alias_binding=alias_binding(src, vtype, is_const, lc.analyzer),
+            # An alias of a named container, or of a container field.
             native_container=(native_container(vtype, is_const, lc.analyzer)
-                              if isinstance(src, THIRName) else None),
+                              if isinstance(src, THIRName) or isinstance(src, THIRFieldAccess)
+                              and src.field_identity is not None else None),
             storage_borrow=storage_borrow(src, vtype, is_const, lc.analyzer),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
@@ -6018,6 +6021,10 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
                     and not value.deref):
                 result = replace(result, **{attr: replace(value, optional_read=replace(
                     value.optional_read, extract=False))})
+    if (isinstance(result, THIRVarDecl) and owned_container_decl(result)
+            and (fact := native_container(result.resolved_type, result.is_const, lc.analyzer)) is not None
+            and fact.readonly is result.is_const):
+        result = replace(result, native_container=fact)
     if isinstance(result, (THIRVarDecl, THIRPtrLocalDecl)):
         placement = None
         if isinstance(result, THIRVarDecl):
@@ -12962,7 +12969,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                      else "setitem.checked")
             if isinstance(stmt.target.obj, TpyFieldAccess):
                 _witness("setitem.field_recv")
-            return THIRSetItem(target=target, value=value, loc=loc)
+            return THIRSetItem(target=target, value=value,
+                               stub_callee=setitem_stub_callee(target, analyzer), loc=loc)
         # Name-target assign: the same self-append peephole as the var-decl
         # reassignment -- it applies at both sites.
         if (isinstance(stmt.target, TpyName)
@@ -13119,7 +13127,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                     result=_ExprResultUse.STORAGE,
                                     allow_temps=True)))
                 return THIRExprStmt(
-                    expr=THIRMethodCall(
+                    expr=with_method_stub(THIRMethodCall(
                         result_type=VoidType(),
                         receiver=recv,
                         method_cpp=_method_member_cpp(_inp_fi, _inp_fi.name),
@@ -13128,7 +13136,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                             if _inp_fi.native_function else None),
                         cpp_template=_inp_fi.cpp_template,
                         args=(val,),
-                        loc=loc),
+                        loc=loc), _inp_fi),
                     loc=loc)
         if not aug_ok:
             raise ThirUnsupported("stmt.aug_assign")
@@ -13246,7 +13254,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             _witness("setitem.aug")
             if isinstance(stmt.target.obj, TpyFieldAccess):
                 _witness("setitem.field_recv")
-            return THIRSetItem(target=target, value=binop, loc=loc)
+            return THIRSetItem(target=target, value=binop,
+                               stub_callee=setitem_stub_callee(target, analyzer), loc=loc)
         return THIRAssign(target=target, value=binop,
                           recv_eval=recv_eval, recv_wrap=recv_wrap, loc=loc)
     if isinstance(stmt, TpyReturn):
@@ -16914,10 +16923,29 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                      else _frame_src_slot(stmt, lc))
         if src_field is not None:
             iterable = self_typed_frame_source(iterable, lc)
-        source_fact = (native_container(iterable.result_type,
-                       _const_borrow_name(iterable.name, lc, const_locals=True), analyzer)
-                       if route.iterable_lvalue and isinstance(iterable, THIRName)
-                       and route.consuming_native_name is None and not route.consuming_name else None)
+        source_fact = None
+        if route.iterable_lvalue and route.consuming_native_name is None and not route.consuming_name:
+            if isinstance(iterable, THIRName):
+                source_fact = native_container(iterable.result_type,
+                                               _const_borrow_name(iterable.name, lc, const_locals=True), analyzer)
+            elif (isinstance(iterable, THIRFieldAccess) and iterable.field_identity is not None
+                  and isinstance(iterable.receiver, (THIRName, THIRSelf))):
+                # A container field of a named record: const when the
+                # receiver lends const (C++ propagates it through the member).
+                source_fact = native_container(
+                    iterable.result_type,
+                    _iteration_yields_const(stmt.iterable, lc, analyzer)
+                    or isinstance(iterable.field_identity.type, ReadonlyType), analyzer)
+        elif (route.consuming_native_name is None and not route.consuming_name
+              and isinstance(iterable, THIRMethodCall) and iterable.stub_callee is not None):
+            # A container view a stub returns (`d.keys()`): it yields the
+            # element argument its iteration declares, when that is a leaf.
+            source_fact = view_iteration_source(
+                iterable.result_type, _iteration_yields_const(stmt.iterable, lc, analyzer))
+        if source_fact is not None and not binds_element(et, (
+                source_fact.element.type if isinstance(source_fact.element, THIRBorrowedRecord)
+                else source_fact.element)):
+            source_fact = None
         iteration = (THIRNativeIteration(source_fact, loop_binding_kind(
             et, stmt.const_loop_var, hoisted=stmt.hoist_loop_var)) if source_fact is not None else None)
         return THIRForEach(

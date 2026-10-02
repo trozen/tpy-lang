@@ -87,8 +87,8 @@ def stepped(s: str) -> int:  # tpyc: mir(uncovered /^stepped slice$/)
     return len(s[::2])
 
 
-# free function: a Span views container storage, whose element places MIR does not model
-def span_param(xs: Span[int32]) -> int32:  # tpyc: mir(uncovered /^view of container storage$/)
+# free function: a Span parameter views its caller's container elements
+def span_param(xs: Span[int32]) -> int32:  # tpyc: mir(covered)
     return xs[0]
 
 

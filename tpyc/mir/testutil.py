@@ -15,11 +15,18 @@ from .nodes import (
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
-    MIRRangeAdvance, MIROp, MIRPrint,
+    MIRRangeAdvance, MIROp, MIRPrint, MIRContainerElements,
 )
 from .region_flow import MIRRegionFlow
+from .coverage import container_view_holder, owned_container, owned_tuple
 from .validate import statement_reads
-from .coverage import owned_tuple
+
+# The structural writes the interpreter runs for a native method stub, by
+# method name: a test oracle for the source meaning, not a contract.
+_CONTAINER_METHODS = {
+    "append": lambda container, value: container.elements.append(value),
+    "clear": lambda container: container.elements.clear(),
+}
 
 
 @dataclass(frozen=True)
@@ -28,9 +35,14 @@ class Reference:
     path: tuple[MIRFieldId | MIRTupleIndex, ...] = ()
 
 
-@dataclass(frozen=True)
+@dataclass(eq=False)
 class ContainerValue:
-    elements: tuple[int | Reference, ...]
+    """One container object, shared by every holder of it: element writes
+    and structural writes (`append`, `clear`) are visible through each."""
+    elements: list[int | Reference]
+
+    def __post_init__(self) -> None:
+        self.elements = list(self.elements)
 
 
 @dataclass(frozen=True)
@@ -97,14 +109,27 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
         reference = values[init.receiver]
         assert isinstance(reference, Reference) and not reference.path
         assert reference.identity not in objects or not objects[reference.identity]
+        def member_value(source: MIRSlotId | MIRConstant | MIRConstruct) -> Value:
+            match source:
+                case MIRConstant():
+                    return source.value
+                case MIRConstruct():
+                    return ContainerValue([values[s] for s in source.fields])
+            value = values[source]
+            # A container member copies its parameter's container.
+            return ContainerValue(value.elements) if isinstance(value, ContainerValue) else value
         objects[reference.identity] = {
-            member.id: value.source.value if isinstance(value.source, MIRConstant) else values[value.source]
+            member.id: member_value(value.source)
             for member, value in zip(records[slots[init.receiver].type].fields, init.fields)
         }
     next_identity = max(objects, default=0) + 1
     bid = fn.entry
     comparisons = {"<": operator.lt, "<=": operator.le, ">": operator.gt,
                    ">=": operator.ge, "==": operator.eq, "!=": operator.ne}
+    # MIR names any element (`[elements]`); the lowering evaluates the index
+    # into a fresh temporary just before the access, which the interpreter
+    # takes as the element the source meant.
+    last_index: list[int] = [0]
 
     def record(reference: Reference) -> Record:
         value = objects[reference.identity]
@@ -139,6 +164,9 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     value = value.elements[projection.index]
                 case MIRDeref():
                     assert isinstance(value, Reference)
+                case MIRContainerElements():
+                    assert isinstance(value, ContainerValue)
+                    value = value.elements[last_index[0]]
                 case _:
                     assert isinstance(projection, MIRField) and isinstance(value, Reference)
                     member = record(value)[projection.id]
@@ -150,7 +178,13 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
         block = blocks[bid]
         for stmt in block.statements:
             if isinstance(stmt, MIRCallStmt):
-                raise AssertionError("calls require callee execution, not summary evaluation")
+                callee = stmt.call.summary.callee
+                method = _CONTAINER_METHODS.get(callee.identity.qualified_name.rsplit(".", 1)[-1])
+                if not getattr(callee, "receiver", False) or method is None:
+                    raise AssertionError("calls require callee execution, not summary evaluation")
+                receiver, *arguments = (values[sid] for sid in stmt.call.arguments)
+                method(receiver, *arguments)
+                continue
             if isinstance(stmt, MIRPrint):
                 printed = tuple(values[sid] for sid in stmt.arguments)
                 if output is not None:
@@ -197,9 +231,13 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                 case MIRAlias():
                     value = values[rhs.source]
                     assert isinstance(value, (Reference, ContainerValue))
+                case MIRBorrow() if container_view_holder(slots[stmt.target.root]):
+                    # A Span views the whole region of its source.
+                    value = read(MIRPlace(rhs.source.root, rhs.source.projections[:-1]))
+                    assert isinstance(value, ContainerValue)
                 case MIRBorrow():
                     value = read(rhs.source)
-                    assert isinstance(value, Reference)
+                    assert isinstance(value, (Reference, ContainerValue))
                 case MIRTupleConstruct():
                     target = slots[stmt.target.root]
                     elements = []
@@ -242,10 +280,13 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                 case MIRUnionExtract():
                     value = (PayloadAlias(rhs.source) if slots[stmt.target.root].value_kind is MIRValueKind.PAYLOAD_ALIAS
                              else read(rhs.source))
+                case MIRConstruct() if owned_container(slots[stmt.target.root]):
+                    value = ContainerValue([values[src] for src in rhs.fields])
                 case MIRConstruct():
                     target = slots[stmt.target.root]
-                    typ = (target.optional_layout.type if stmt.target.projections == (
-                        MIROptionalPayload(), MIRDeref()) else target.type)
+                    typ = (target.optional_layout.type if stmt.target.projections == (MIROptionalPayload(), MIRDeref())
+                           else target.container_layout.subscript.type
+                           if stmt.target.projections == (MIRContainerElements(),) else target.type)
                     layout = records[typ]
                     value = {f.id: values[src] for f, src in zip(layout.fields, rhs.fields)}
                 case MIRCopy() | MIRMove():
@@ -284,6 +325,10 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     destination.update(value)
                 else:
                     objects[reference.identity] = value
+            elif stmt.target.projections and isinstance(stmt.target.projections[-1], MIRContainerElements):
+                container = read(MIRPlace(stmt.target.root, stmt.target.projections[:-1]))
+                assert isinstance(container, ContainerValue)
+                container.elements[last_index[0]] = value
             elif stmt.target.projections:
                 obj, member = field(stmt.target)
                 assert not isinstance(value, Reference)
@@ -297,6 +342,9 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     values[stmt.target.root] = value
                     if slots[stmt.target.root].value_kind in (MIRValueKind.OPTIONAL, MIRValueKind.UNION):
                         physical[stmt.target.root] = value
+                    if (slots[stmt.target.root].kind is MIRSlotKind.TEMPORARY and type(value) is int
+                            and slots[stmt.target.root].value_kind is MIRValueKind.SCALAR):
+                        last_index[0] = value
         term = block.terminator
         match term:
             case MIRReturn(value=result):
