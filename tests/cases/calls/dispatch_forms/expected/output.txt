@@ -4,3 +4,6 @@ free_order: int str
 method: 5
 reference: [0, 7]
 overload: n=7 s=q
+error_return: 3 6
+error_return: caught
+error_return: propagated

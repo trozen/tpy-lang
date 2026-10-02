@@ -1,0 +1,15 @@
+list: 3 1
+types: 1.5 a (2, 'b')
+generator: 16 0
+comprehension: 6 -4
+genexpr: 9 -4 CCC
+genexpr_key: 1 1
+key: 1 a
+key_first_wins: aa aa
+scalars: 2 0.5
+method: 8.75
+in_comprehension: [5, 7] [5, 7]
+generator_body: [5, 7]
+empty: ValueError
+empty_key: ValueError
+module: 3 3

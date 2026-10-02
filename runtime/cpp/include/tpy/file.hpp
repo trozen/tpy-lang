@@ -14,6 +14,7 @@
 #include "buffer_types.hpp"
 #include "core.hpp"
 
+#include <iterator>
 #include <cerrno>
 #include <fstream>
 #include <sstream>
@@ -136,18 +137,26 @@ public:
 
     std::ostream& sink() { return fs_; }
 
-    std::string readline() {
+    // One line into `line`, reusing its capacity; false (and an empty
+    // `line`) at end of file.
+    bool read_line_into(std::string& line) {
         if (!flags_.readable) raise_os_error("readline(): file not opened for reading");
         check_signals();
-        std::string line;
         if (!std::getline(fs_, line)) {
-            return "";
+            line.clear();
+            return false;
         }
         // getline strips the newline delimiter; restore it unless we hit EOF
         // without a trailing newline (Python compat).
         if (!fs_.eof()) {
             line += '\n';
         }
+        return true;
+    }
+
+    std::string readline() {
+        std::string line;
+        read_line_into(line);
         return line;
     }
 
@@ -162,6 +171,55 @@ public:
         }
         return lines;
     }
+
+    // `for line in f`: an input iterator over the file's lines. A line is
+    // read when the consumer asks whether there is one (the comparison with
+    // the end) or reads it -- never when it steps. A loop that stops early,
+    // and a consumer that steps with `*it++`, then leave the file exactly
+    // where Python's `next()` leaves it.
+    class LineIterator {
+        // Mutable: asking whether the iterator is exhausted reads the
+        // stream, which is no change of the iterator's position.
+        mutable TextFile* file_ = nullptr;
+        mutable std::string line_;
+        mutable bool filled_ = false;
+
+        void fill() const {
+            if (file_ == nullptr || filled_) return;
+            if (file_->read_line_into(line_)) filled_ = true;
+            else file_ = nullptr;
+        }
+
+    public:
+        using value_type = std::string;
+        using difference_type = std::ptrdiff_t;
+        using iterator_category = std::input_iterator_tag;
+
+        LineIterator() = default;
+        explicit LineIterator(TextFile* file) : file_(file) {}
+        const std::string& operator*() const { fill(); return line_; }
+        LineIterator& operator++() { fill(); filled_ = false; return *this; }
+        // By value, so `*it++` reads the line the returned copy holds.
+        LineIterator operator++(int) {
+            fill();
+            LineIterator prev = *this;
+            filled_ = false;
+            return prev;
+        }
+        // Begin and end are one type -- a resumable frame's loop slots and
+        // the generic consumers (enumerate, zip, list) hold them alike --
+        // and only exhaustion distinguishes two iterators of one file.
+        bool operator==(const LineIterator& other) const {
+            if (other.file_ == nullptr) fill();
+            else if (file_ == nullptr) other.fill();
+            return file_ == other.file_;
+        }
+    };
+
+    // const because the iterable concept asks over a const receiver; reading
+    // a line advances the stream, which is no part of the file's identity.
+    LineIterator begin() const { return LineIterator(const_cast<TextFile*>(this)); }
+    LineIterator end() const { return LineIterator(); }
 
     void close() {
         if (!closed_) {

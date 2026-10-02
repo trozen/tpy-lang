@@ -261,6 +261,11 @@ def main() -> None:
     # comprehensions over a local
     print("comp_local", [s.upper() for s in b], sorted({s for s in b}),  # tpyc: ok
           {s: len(s) for s in b})
+    # comprehension over a re-bound local (a pointer slot): the source is dereferenced
+    again = Bag()
+    again = Bag()
+    again.items.append("c")
+    print("comp_rebound", [s for s in again], sorted({s for s in again}))  # tpyc: ok
     # sum([...]) below stands in for a genexpr: BUGS.md#genexpr-over-user-iterable
     print("self_iter_comp", [x for x in Cnt(3)], sum([x for x in Cnt(4)]))
     print("generator_iter_comp", [x * 2 for x in g], sum([x for x in g]))

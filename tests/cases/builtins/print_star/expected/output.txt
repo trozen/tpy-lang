@@ -1,0 +1,27 @@
+fn.ints: 3 1 2
+fn.mixed: a, 3, 1, 2, b
+fn.empty: 
+fn.empty_between: a, b
+fn.empty_first: x
+fn.empty_str_item:  3 1 2
+fn.end: 3 1 2!
+fn.sep_end: 3-1-2
+fn.two_stars: 3 1 2 3 1 2
+fn.stars_around_empty: 3|1|2
+fn.str: s t
+fn.bool: True False
+fn.float: 1.0 2.5
+fn.bytes: b'ab' b"c'd"
+fn.record: P<1> P<2>
+fn.nested_list: [1, 2] [3]
+fn.array: 4 5 6
+fn.span: 4 5 6
+fn.temporary: 3 2 1
+method.field: 10 20
+method.varargs: extra,7,8
+method.both: 10 20 7 8
+loop.row: 0 1
+loop.row: 1 2 3
+loop.row: 2
+gen.param: 5 6
+gen.yield [2]

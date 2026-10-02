@@ -1,0 +1,7 @@
+list: 3 1 2 -1 -1
+generator: a b ?
+param: 7 0
+generator_body: [3, 3]
+loop: 30
+raises: 1
+raises: StopIteration

@@ -44,16 +44,10 @@ release commit (annotated; the build hook bakes `git describe`), then
 - `collections.defaultdict` -- TODO: "collections: the rest of the
   module"
 - The 0.6.0 known limitations, silent miscompiles first
-- Builtin gaps the ports and the website audit hit,
-  `docs/STDLIB_ROADMAP.md`: `min` / `max` over an iterable, `tuple(xs)`,
-  `sorted(reverse=)`, `next(it, default)`, `print(*xs)`, iterating a file
 - Rejects the ports filed: `prebound-list-rebound-in-loop-from-comprehension`,
   `tuple-local-ref-element-unpack-rejects`,
   `str-field-write-through-subscript-rejects`, module-qualified class
   names
-- Safe integer widening: same sign, to a wider type; designed at the
-  start -- TODO: "Sub-default-int arithmetic: promote, or keep
-  width-preserving?"
 
 Queue (triage at 0.7 planning; not commitments):
 

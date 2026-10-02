@@ -216,6 +216,22 @@ def _union_like_members(ut: TpyType) -> 'tuple[TpyType, ...]':
     return recursive_union_alternatives(ut) or ()
 
 
+def star_source_element_type(source: TpyType) -> 'TpyType | None':
+    """The element type a `*source` unpack yields, or None when `source` is
+    not a sequence an unpack can borrow in place (a list, Array, Span or a
+    `*args` body). A by-reference container parameter carries a `Ref[...]`
+    wrapper that is only its borrow form, so it unwraps; an owning rvalue
+    (`Own[list[...]]`) does not, because a `*args` pack cannot lower one yet
+    (print, which only reads the sequence, unwraps it before asking)."""
+    inner = unwrap_ref_type(source)
+    if (is_array(inner) or is_span(inner) or is_varargs(inner)
+            or is_list(inner)):
+        return inner.get_element_type()
+    if isinstance(inner, PendingListType):
+        return inner.element_type
+    return None
+
+
 def generic_constructor_factory(expr: TpyExpr) -> 'TypeDef | None':
     """The generic type factory an argument-less constructor call such as
     `list()`, `dict()` or `set()` names, whose type arguments only its
@@ -453,28 +469,19 @@ class ExpressionAnalyzer:
 
         Only directly-iterable lvalue containers (list / span / array) are
         accepted -- the same set the vararg-pack codegen can lower via
-        `as_mut_span`. A reference-type container *parameter* (e.g.
-        `xs: list[T]`) carries a `Ref[...]` wrapper from by-reference passing;
-        that is just the borrow form codegen already emits, so unwrap it.
-        Owning-rvalue (`Own[list[...]]`) and other wrapped shapes are
-        deliberately NOT unwrapped: sema must not accept a shape codegen can't
-        emit (the owning-rvalue unpack gap is tracked in TODO.md).
+        `as_mut_span` (`star_source_element_type`; the owning-rvalue unpack
+        gap is tracked in TODO.md).
         """
         inner_hint = elem_hint.map(make_list) if elem_hint is not None else None
         if inner_hint is not None:
             inner_type = self.analyze_expr_with_hint(node.expr, inner_hint)
         else:
             inner_type = self.analyze_expr(node.expr)
-        inner_type = unwrap_ref_type(inner_type)
-        elem: 'TpyType | None' = None
-        if (is_array(inner_type) or is_span(inner_type) or is_varargs(inner_type)
-                or is_list(inner_type)):
-            elem = inner_type.get_element_type()
-        elif isinstance(inner_type, PendingListType):
-            elem = inner_type.element_type
+        elem = star_source_element_type(inner_type)
         if elem is None:
             raise self.ctx.error(
-                f"Cannot unpack type '{self._user_type_name(inner_type)}' "
+                f"Cannot unpack type "
+                f"'{self._user_type_name(unwrap_ref_type(inner_type))}' "
                 f"into *args", node)
         return elem
 

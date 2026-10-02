@@ -8,6 +8,7 @@
 namespace tpyapp::main {
 
 struct Acc;
+struct Empty;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -41,6 +42,17 @@ std::string show(const ::tpy::BigInt& x);
 // @overload
 // def show(x: str) -> str: ...
 std::string show(std::string_view x);
+// @dispatch
+// @error_return(Empty)
+// def parse(s: str) -> int:  # tpyc: ok
+std::expected<::tpy::BigInt, Empty> parse(std::string_view s);
+// @dispatch
+// @error_return(Empty)
+// def parse(n: int, scale: int) -> int:
+std::expected<::tpy::BigInt, Empty> parse(const ::tpy::BigInt& n, const ::tpy::BigInt& scale);
+// @error_return(Empty)
+// def parse_both() -> int:
+std::expected<::tpy::BigInt, Empty> parse_both();
 // def main() -> None:
 void main();
 
@@ -64,6 +76,17 @@ struct Acc {
 
 inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
     ::tpy::print_object_default(os, "Acc", obj);
+    return os;
+}
+
+// class Empty(Exception, ReturnException):
+struct Empty : ::tpy::ReturnException {
+
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Empty";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Empty& obj) {
+    ::tpy::print_object_default(os, "Empty", obj);
     return os;
 }
 

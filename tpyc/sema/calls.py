@@ -42,6 +42,7 @@ from ..parse import (
     TpyBinOp, TpyTupleLiteral, TpyTypeParamConstruct, TpyCoerce, TpyLambda,
     TpyDictLiteral, TpySetLiteral, lambda_of,
     TpyVarargPack, TpyStarUnpack, TpyFString, TpyFStringValue,
+    TpyGeneratorExpression,
 )
 from ..modules import extract_type_params
 from ..namespace import BindingKind
@@ -65,6 +66,7 @@ from .scope_tracker import lend_roots
 from .compatibility import TupleSink
 from .protocols import dynamic_dispatch_type_conforms
 from .type_ops import ReturnSeed, partial_substitute, seeded_arg_hint
+from .expressions import star_source_element_type
 from .slot_hint import SlotHint
 from .send_chain import why_not_send, why_not_sync, render_chain
 from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo, _is_static_str
@@ -89,7 +91,7 @@ from ..type_def_registry import (
     is_fixed_int_type, is_bool_type, is_char_type, is_fstr_type,
     is_str_type, is_big_int_type,
     int_traits_of,
-    is_enum_type,
+    is_enum_type, protocol_info_of,
     find_factory_by_simple_name, find_factory_in_module,
 )
 
@@ -150,6 +152,19 @@ def materialized_default(p: ParamInfo,
     than the definition.
     """
     return dc_replace(p.default_expr, loc=call_loc) if call_loc is not None else p.default_expr
+
+
+def _tuple_call_message(expr: TpyCall) -> str:
+    """Why `tuple(...)` is refused: a tuple's length is part of its type, so
+    no call can build one from a value whose length is known only at run
+    time."""
+    if not expr.args:
+        return ("tuple() is not supported; write () for an empty tuple")
+    src = expr.args[0].name if isinstance(expr.args[0], TpyName) else "xs"
+    return (
+        f"tuple(...) cannot build a tuple from a sequence: a tuple has a "
+        f"fixed number of elements, known at compile time. Keep a list for "
+        f"variable-length data, or write the tuple out: ({src}[0], {src}[1])")
 
 
 def resolve_kwargs(
@@ -1426,6 +1441,8 @@ class CallAnalyzer:
         # as a function/type -- try as subscript expression callee
         if expr.subscript_callee is not None:
             return self._rewrite_subscript_callee(expr)
+        if expr.func_name == "tuple":
+            raise self.ctx.error(_tuple_call_message(expr), expr)
         raise self.ctx.error(f"Unknown function or type: '{expr.func_name}'", expr)
 
     def _analyze_special_builtin(
@@ -1681,6 +1698,9 @@ class CallAnalyzer:
                     f"(write(str) -> int32, flush() -> None); got '{actual}'",
                     expr)
         for arg in expr.args:
+            if isinstance(arg, TpyStarUnpack):
+                self._analyze_print_star(arg)
+                continue
             # Any int prints the same; its width is decided when the
             # function settles.
             with self.pend.sink(arg):
@@ -1695,6 +1715,28 @@ class CallAnalyzer:
             qualified_name="builtins.print",
         )
         return VOID
+
+    def _analyze_print_star(self, arg: TpyStarUnpack) -> None:
+        """`print(*xs)`: the source must be a sequence print can borrow and
+        walk in place -- the set a `*args` unpack admits. Any other iterable
+        refuses: CPython drains it completely before print writes anything,
+        and walking it while printing would interleave its side effects
+        with the output."""
+        with self.pend.sink(arg.expr):
+            source = self.expr.analyze_expr(arg.expr)
+        # Print only reads the sequence, so an owned source (a fresh
+        # `list(...)`) is borrowed for the statement like any other.
+        source = unwrap_readonly(unwrap_own(unwrap_ref_type(source)))
+        elem = star_source_element_type(source)
+        if elem is None:
+            got = ("a generator expression"
+                   if isinstance(arg.expr, TpyGeneratorExpression)
+                   else f"'{self.expr._user_type_name(source)}'")
+            raise self.ctx.error(
+                f"print() can unpack only a list, Array or Span with '*'; "
+                f"got {got}. "
+                f"Materialize the values first: print(*list(...))", arg)
+        self.ctx.set_expr_type(arg, elem)
 
     def _get_module_function_overloads(self, module_name: str, func_name: str) -> list[FunctionInfo] | None:
         """Look up function overloads in a module using the unified registry."""
@@ -4006,20 +4048,20 @@ class CallAnalyzer:
         return arg_types  # type: ignore[return-value]
 
     def _flatten_key_kwarg(self, expr: TpyCall, name: str) -> TpyExpr | None:
-        """Flatten key= kwarg to positional arg for sorted/min/max; the
+        """Flatten the keywords of sorted/min/max -- `key=`, and `reverse=`
+        for sorted -- into the positional order their stubs declare; the
         key expression it moved, else None."""
         if not expr.kwargs:
             return None
         if name not in ("sorted", "min", "max"):
             return None
-        bad = [k for k in expr.kwargs if k != "key"]
+        allowed = ("key", "reverse") if name == "sorted" else ("key",)
+        bad = [k for k in expr.kwargs if k not in allowed]
         if bad:
             raise self.ctx.error(
                 f"'{name}()' does not support keyword argument '{bad[0]}'", expr)
-        if "key" not in expr.kwargs:
-            return None
-        key_arg = expr.kwargs["key"]
-        expr.args.append(key_arg)
+        key_arg = expr.kwargs.get("key")
+        expr.args.extend(expr.kwargs[k] for k in allowed if k in expr.kwargs)
         expr.kwargs = {}
         return key_arg
 
@@ -4936,6 +4978,43 @@ class CallAnalyzer:
         # No matching overload found - try to give a helpful error
         arg_type_strs = ", ".join(str(unwrap_own(t)) for t in arg_types)
 
+        # Check for bound violations on generic overloads (give specific error).
+        # Skip type args that resolved to UnknownElementType -- the only signal
+        # was an empty container literal with no @type_param_default fallback;
+        # "??? does not satisfy <bound>" misleads, and the downstream
+        # _analyze_single_function_call retry will surface the cleaner
+        # "Cannot infer type arguments" diagnostic.
+        for overload in generic:
+            if not overload.type_param_bounds:
+                continue
+            if not (overload.min_args <= len(arg_types) <= overload.max_args):
+                continue
+            inferred: dict[str, TpyType] = {}
+            if explicit:
+                for tp, ta in zip(overload.type_params, explicit):
+                    inferred[tp] = ta
+            # Only an overload every argument fits in shape is refused FOR its
+            # bound; one the arguments do not fit says nothing about them.
+            if not all(self.type_ops.match_type_with_inference(ptype, arg_t, inferred)
+                       for (_, ptype), arg_t in zip(overload.params, arg_types)):
+                continue
+            if self.ctx.expr_type_hint and not inferred:
+                ret = overload.return_type.wrapped if isinstance(overload.return_type, OwnType) else overload.return_type
+                exp = self.ctx.expr_type_hint.wrapped if isinstance(self.ctx.expr_type_hint, OwnType) else self.ctx.expr_type_hint
+                self.type_ops.match_type_with_inference(ret, exp, inferred)
+            for param_name, type_arg in inferred.items():
+                if param_name in overload.type_param_bounds:
+                    if isinstance(type_arg, UnknownElementType):
+                        continue
+                    bound = overload.type_param_bounds[param_name]
+                    if not protocol_checker(type_arg, bound):
+                        raise self.ctx.error(
+                            f"Type '{type_arg}' does not satisfy '{bound}' "
+                            f"required by '{expr.func_name}'"
+                            f"{self._value_bound_note(type_arg, bound)}",
+                            expr,
+                        )
+
         # For generic overloads, check for conflicting type parameter inference
         for overload in generic:
             if len(arg_types) < overload.min_args or len(arg_types) > overload.max_args:
@@ -4975,37 +5054,6 @@ class CallAnalyzer:
                     raise self.ctx.error(
                         f"{expr.func_name}() requires a mutable pointer, got {arg_t}", expr
                     )
-
-        # Check for bound violations on generic overloads (give specific error).
-        # Skip type args that resolved to UnknownElementType -- the only signal
-        # was an empty container literal with no @type_param_default fallback;
-        # "??? does not satisfy <bound>" misleads, and the downstream
-        # _analyze_single_function_call retry will surface the cleaner
-        # "Cannot infer type arguments" diagnostic.
-        for overload in generic:
-            if not overload.type_param_bounds:
-                continue
-            inferred: dict[str, TpyType] = {}
-            if explicit:
-                for tp, ta in zip(overload.type_params, explicit):
-                    inferred[tp] = ta
-            for (_, ptype), arg_t in zip(overload.params, arg_types):
-                self.type_ops.match_type_with_inference(ptype, arg_t, inferred)
-            if self.ctx.expr_type_hint and not inferred:
-                ret = overload.return_type.wrapped if isinstance(overload.return_type, OwnType) else overload.return_type
-                exp = self.ctx.expr_type_hint.wrapped if isinstance(self.ctx.expr_type_hint, OwnType) else self.ctx.expr_type_hint
-                self.type_ops.match_type_with_inference(ret, exp, inferred)
-            for param_name, type_arg in inferred.items():
-                if param_name in overload.type_param_bounds:
-                    if isinstance(type_arg, UnknownElementType):
-                        continue
-                    bound = overload.type_param_bounds[param_name]
-                    if not protocol_checker(type_arg, bound):
-                        raise self.ctx.error(
-                            f"Type '{type_arg}' does not satisfy '{bound}' "
-                            f"required by '{expr.func_name}'",
-                            expr,
-                        )
 
         raise self.ctx.error(f"No matching overload for {expr.func_name}({arg_type_strs})", expr)
 
@@ -5095,6 +5143,30 @@ class CallAnalyzer:
             raise self.ctx.error(
                 f"No matching overload for {expr.func_name}({arg_type_strs})", expr)
         return self._analyze_single_function_call(expr, func_infos[0])
+
+    def _value_bound_note(self, type_arg: TpyType, bound: TpyType) -> str:
+        """Which half of a bound failed, when the bound asks -- itself or
+        through a parent -- for a value type and that is the half. Why a
+        stub asks for one is the stub's to document, not this message's."""
+        marker = self._value_type_marker(bound)
+        # A bound that IS the marker already says it.
+        if (marker is None or marker is bound
+                or self.protocols.type_conforms_to_protocol(type_arg, marker)):
+            return ""
+        return f": '{type_arg}' is not a value type"
+
+    def _value_type_marker(self, bound: TpyType) -> NominalType | None:
+        """The `ValueType` protocol `bound` is or inherits, else None."""
+        if not isinstance(bound, NominalType):
+            return None
+        if bound.qualified_name() == qnames.VALUE_TYPE:
+            return bound
+        info = protocol_info_of(bound)
+        for parent in (info.parent_protocols if info is not None else ()):
+            found = self._value_type_marker(parent)
+            if found is not None:
+                return found
+        return None
 
     def _ambiguous_overload_error(
         self, expr: TpyCall, func_name: str, err: OverloadAmbiguityError,

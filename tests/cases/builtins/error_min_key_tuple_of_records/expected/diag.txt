@@ -1,0 +1,1 @@
+main.py:15: error: Type 'tuple[Node, int]' does not satisfy 'ValueType' required by 'min'

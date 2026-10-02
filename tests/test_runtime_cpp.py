@@ -42,6 +42,8 @@ _SELFCHECKS = [
      "copy_iter borrows an lvalue source, owns a temporary and copies each element"),
     ("test_interrupt_embedding.cpp",
      "a --no-main host's Ctrl-C reaches TPy code through the embedding API"),
+    ("test_print_join.cpp",
+     "print(*xs) separators span every segment and each source is borrowed"),
 ]
 
 # Runtime impls (runtime/cpp/src/) a self-check links against, and the libs

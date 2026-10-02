@@ -85,6 +85,41 @@ std::string show(std::string_view x) {
 }
 
 
+// # free function: variants that carry @error_return keep the handled check
+// # and the unwrap
+// @dispatch
+// @error_return(Empty)
+// def parse(s: str) -> int:  # tpyc: ok
+//     if s == "":
+//         raise Empty()
+//     return len(s)
+std::expected<::tpy::BigInt, Empty> parse(std::string_view s) {
+    if ((s == "")) {
+        return ::tpy::make_unexpected(Empty{});
+    }
+    return ::tpy::BigInt(::tpy::__len__(s));
+}
+
+// @dispatch
+// @error_return(Empty)
+// def parse(n: int, scale: int) -> int:
+//     if n < 0:
+//         raise Empty()
+//     return n * scale
+std::expected<::tpy::BigInt, Empty> parse(const ::tpy::BigInt& n, const ::tpy::BigInt& scale) {
+    if ((n < 0)) {
+        return ::tpy::make_unexpected(Empty{});
+    }
+    return ((n) * (scale));
+}
+
+// @error_return(Empty)
+// def parse_both() -> int:
+//     return parse("ab") + parse(-1, 2)  # tpyc: ok
+std::expected<::tpy::BigInt, Empty> parse_both() {
+    return ((({ auto __er_1 = ::tpyapp::main::parse(std::string_view("ab")); if (!__er_1.has_value()) return ::tpy::make_unexpected(std::move(__er_1.error())); ::tpy::unwrap_ref_move(*__er_1); })) + (({ auto __er_2 = ::tpyapp::main::parse(::tpy::BigInt(-1), ::tpy::BigInt(2)); if (!__er_2.has_value()) return ::tpy::make_unexpected(std::move(__er_2.error())); ::tpy::unwrap_ref_move(*__er_2); })));
+}
+
 // def main() -> None:
 //     print("free_arity:", area(3), area(2, 5))
 //     print("free_type:", tag(1), tag("abc"))
@@ -98,6 +133,15 @@ std::string show(std::string_view x) {
 //     push(xs, 7)
 //     print("reference:", xs)
 //     print("overload:", show(7), show("q"))
+//     try:
+//         print("error_return:", parse("abc"), parse(2, 3))
+//         print(parse(""))
+//     except Empty:
+//         print("error_return: caught")
+//     try:
+//         parse_both()
+//     except Empty:
+//         print("error_return: propagated")
 void main() {
     std::cout << "free_arity:" << " " << ::tpyapp::main::area(3) << " " << ::tpyapp::main::area(2, 5) << "\n" << ::tpy::check_signals;
     std::cout << "free_type:" << " " << ::tpyapp::main::tag(1) << " " << ::tpyapp::main::tag(std::string_view("abc")) << "\n" << ::tpy::check_signals;
@@ -111,6 +155,26 @@ void main() {
     ::tpyapp::main::push(xs, 7);
     std::cout << "reference:" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     std::cout << "overload:" << " " << ::tpyapp::main::show(::tpy::BigInt(7)) << " " << ::tpyapp::main::show(std::string_view("q")) << "\n" << ::tpy::check_signals;
+    {
+        std::cout << "error_return:" << " " << ({ auto __er_4 = ::tpyapp::main::parse(std::string_view("abc")); if (!__er_4.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_4); }) << " " << ({ auto __er_5 = ::tpyapp::main::parse(::tpy::BigInt(2), ::tpy::BigInt(3)); if (!__er_5.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_5); }) << "\n" << ::tpy::check_signals;
+        std::cout << ({ auto __er_6 = ::tpyapp::main::parse(std::string_view("")); if (!__er_6.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_6); }) << "\n" << ::tpy::check_signals;
+        goto __after_try_3;
+        // except Empty:
+        __except_3:;
+        std::cout << "error_return: caught" << "\n" << ::tpy::check_signals;
+        __after_try_3:;
+    }
+    {
+        {
+            auto __try_tmp_8 = ::tpyapp::main::parse_both();
+            if (!__try_tmp_8.has_value()) goto __except_7;
+        }
+        goto __after_try_7;
+        // except Empty:
+        __except_7:;
+        std::cout << "error_return: propagated" << "\n" << ::tpy::check_signals;
+        __after_try_7:;
+    }
 }
 
 // main()

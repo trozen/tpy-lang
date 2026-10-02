@@ -1,0 +1,1 @@
+main.py:6: error: tuple(...) cannot build a tuple from a sequence: a tuple has a fixed number of elements, known at compile time. Keep a list for variable-length data, or write the tuple out: (xs[0], xs[1])
