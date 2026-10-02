@@ -272,8 +272,8 @@ inline void _Environ::update(const ::tpy::ordered_map<std::string, std::string>&
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        std::string_view value = ::tpy::__getitem__(other, k);
-        ::tpy::__setitem__(this->_data, k, std::string(value));
+        std::string value = ::tpy::__getitem__(other, k);
+        ::tpy::__setitem__(this->_data, k, value);
         ::tpy::stdlib::os::setenv(k, value);
     }
 }

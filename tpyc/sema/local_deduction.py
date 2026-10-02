@@ -14,7 +14,7 @@ from ..coercions import CoercionContext
 from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction, TpyListRepeat, TpyAugAssign
 from ..parse.nodes import (TpyStrLiteral, TpyBytesLiteral, TpySubscript, TpyFieldAccess,
                            TpyBinOp, TpyIfExpr, TpyNamedExpr, TpyArrayLiteral,
-                           TpyVarDecl, TpyNoneLiteral, TpyTupleLiteral)
+                           TpyVarDecl, TpyNoneLiteral, TpyTupleLiteral, TpySlice)
 from ..typesys import (
     recorded_return_borrow_sources,
 
@@ -64,6 +64,7 @@ from .context import (PENDING_CONTAINER_TYPES, MODULE_INIT_CONTEXT,
                       call_borrow_operands, call_lend_sources,
                       contains_pending_leaf)
 from ..namespace import BindingKind
+from .receiver_calls import method_writes_receiver
 from ..diagnostics import SemanticError
 from .type_join import (InferredJoin, JoinOutcome, descend,
                         find_int_float_mix, flipped, join_inferred_value_types,
@@ -73,9 +74,11 @@ from .type_join import (InferredJoin, JoinOutcome, descend,
                         wider_store_message)
 from .numeric_lattice import narrows_into, numeric_info, widen_numeric_types
 from .pending_num import contains_pending_num
+from .alias_rebind import BindKind
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_list, is_fixed_int_type, is_big_int_type,
     is_str_type, is_str_view_type, is_bytes_type, is_bytes_view_type,
+    is_string_type, is_bytearray_type,
     is_enum_type,
     is_borrowing_view_type,
     int_traits_of,
@@ -1305,25 +1308,25 @@ class LocalTypeDeduction:
     # ------------------------------------------------------------------
 
     def is_view_compatible_source(self, init_expr: TpyExpr, init_type: TpyType) -> bool:
-        """Check if init_expr produces a view-safe value (no owned copy needed).
-
-        View-safe sources:
-        - String literal (static lifetime)
-        - A str/bytes parameter (already view type in C++)
-        - Another PendingViewType or view-type local
-        - A Final[str] constant (constexpr string_view)
-        - A function returning a view type
-        - Subscript on lvalue tuple, `str` element only (a `bytes` one owns)
-        - Subscript on a NAME container whose element storage is stable
-        - A one-hop read of a record field off a NAME receiver
-
-        The field read's remaining escapes -- a record handed out where a
-        write can reach it without the view being demoted -- are
-        BUGS.md#field-view-escape-needs-place, which also holds the design
-        for re-admitting the deeper chain this arm still copies.
-
-        Note: bytes literals are NOT view-safe (temporary vectors, unlike string
-        literals which have static storage).
+        """Whether an inferred str/bytes local bound to `init_expr` may be a
+        VIEW (no owned copy). The one rule, the same for both families: every
+        source leaf is
+        - static storage: a str/bytes literal, a `Final` constant, a
+          `Literal[str]` value, an enum member's `.name`, a slice of a `str`
+          literal (a `bytes` literal's slice renders over a temporary span);
+        - a parameter of the view family (a narrowed `str | None` too; a
+          narrowed `bytes | None` OWNS its buffer and is not a source);
+        - another str/bytes local (the alias pass owns it when that local
+          owns, or when it does not lend -- `ViewVarInfo.lends_to_aliases`);
+        - a slice, an element or a view-returning method over a str, bytes,
+          `String`, `bytearray` or tuple NAME this function binds or takes
+          (`name_lends_buffer`);
+        - a view-returning call, free function or method, whose every
+          operand it may point into (`_call_lent_operands`) is itself a
+          lending leaf.
+        A record field, a container element and a loop variable's buffer
+        bind OWNED storage: nothing tracks a write through those while the
+        view lives.
         """
         # LiteralType over str counts as the family for view-safety purposes:
         # all values are compile-time string literals (static lifetime) and Literal
@@ -1338,95 +1341,8 @@ class LocalTypeDeduction:
         if isinstance(init_expr, TpyCoerce):
             init_expr = init_expr.expr
 
-        # String/bytes literal -> static lifetime, always view-safe.
-        # Codegen emits bytes literals as static constexpr uint8_t[] arrays
-        # when the target type is BytesView, giving them static storage.
-        if isinstance(init_expr, (TpyStrLiteral, TpyBytesLiteral)):
-            return True
-
-        # Named variable reference
         if isinstance(init_expr, TpyName):
-            name = init_expr.name
-            # Check if it's a str/bytes parameter (C++ already passes as view).
-            # LiteralType[str] params are also view in C++ (param form delegates to
-            # base.to_cpp_param_type() -> std::string_view).
-            func = self.ctx.func.current_function
-            if isinstance(func, TpyFunction):
-                for pname, ptype in func.params:
-                    if pname == name:
-                        # A narrowed `str | None` param dereferences to the
-                        # contained view: `str | None` lowers to a by-value
-                        # std::optional<std::string_view>, so *a is a string_view
-                        # and a copy into the local is as safe as a plain str
-                        # param. The is_str guard above (on the narrowed
-                        # init_type) only fires at a non-None use site.
-                        # `bytes | None`, by contrast, lowers to
-                        # std::optional<std::vector<uint8_t>> (the param OWNS the
-                        # buffer), so a span into *a would borrow it -- not
-                        # view-safe here; only a plain `bytes` param (std::span)
-                        # qualifies.
-                        str_base = ptype.inner if isinstance(ptype, OptionalType) else ptype
-                        lit_str_param = isinstance(str_base, LiteralType) and str_base.is_str_base()
-                        if is_str and (is_str_type(str_base) or is_str_view_type(str_base) or lit_str_param):
-                            return True
-                        if is_bytes and (is_bytes_type(ptype) or is_bytes_view_type(ptype)):
-                            return True
-
-            # Another pending or view local (must match the same family).
-            # LiteralType[str] locals get view storage end-to-end (see
-            # _resolve_literal_view_storage in codegen).
-            scope_type = self.ctx.func.current_scope.lookup(name) if self.ctx.func.current_scope else None
-            lit_str_scope = isinstance(scope_type, LiteralType) and scope_type.is_str_base()
-            if is_str and (isinstance(scope_type, PendingStrType) or is_str_view_type(scope_type) or lit_str_scope):
-                return True
-            if is_bytes and (isinstance(scope_type, PendingBytesType) or is_bytes_view_type(scope_type)):
-                return True
-
-            # Final[str] global constant
-            if is_str and name in self.ctx.final_globals:
-                return True
-
-        # Function/method call returning a view type (or a `Literal[str]`,
-        # which is emitted as view storage in return position). View-safe only
-        # if the view does not borrow a temporary/unsafe source -- otherwise the
-        # local must own a copy (is_dangling_return roots the provenance through
-        # return_borrows_from, e.g. str.strip borrowing a temporary receiver).
-        if isinstance(init_expr, (TpyCall, TpyMethodCall)):
-            if is_str_view_type(init_type) or is_bytes_view_type(init_type):
-                return not self.compat.is_dangling_return(init_expr)
-            if isinstance(init_type, LiteralType) and init_type.is_str_base():
-                return True
-
-        # Subscript on lvalue container -- source-mutation tracking
-        # (source_mutated flag on ViewVarInfo) falls back to the owned type
-        # if the source is mutated, so view is safe while source is live.
-        # Only single-level access (container[i] where container is a name)
-        # to ensure _borrow_storage_root can track the source.
-        if isinstance(init_expr, TpySubscript) and self.compat.is_lvalue(init_expr):
-            obj_type = self.ctx.get_expr_type(init_expr.obj)
-            if isinstance(obj_type, TupleType):
-                # A bytes element binds an owned copy: the str view admitted
-                # here dangles when the tuple is a container element and the
-                # container is mutated
-                # (BUGS.md#container-tuple-str-element-view-dangles), and
-                # bytes stays sound rather than inherit that.
-                return is_str
-            if obj_type.subscript_borrows() and isinstance(init_expr.obj, TpyName):
-                return True
-
-        # Field access on lvalue record -- field storage is stable unless
-        # the record field is reassigned (tracked by source_mutated).
-        # Only single-level access (obj.field where obj is a name) is safe;
-        # nested chains (p.inner.name) cannot be tracked by _borrow_storage_root.
-        if isinstance(init_expr, TpyFieldAccess) and self.compat.is_lvalue(init_expr):
-            # `str` only. A `bytes` field read did not compile at all before
-            # this batch (a THIR reject), so admitting it as a VIEW would
-            # newly hand out a span that the escapes in
-            # BUGS.md#field-view-escape-needs-place can outlive -- a dangle
-            # class master does not have. The owned `::tpy::Bytes` copy
-            # admits the same programs with no such window.
-            if is_str and isinstance(init_expr.obj, TpyName):
-                return True
+            return self._name_lends_view(init_expr.name, is_str)
 
         # INVARIANT: the compound arms this predicate accepts (and/or, ternary
         # below) must stay the same set `walk_view_source_leaves` recurses into;
@@ -1458,16 +1374,187 @@ class LocalTypeDeduction:
             return (self.is_view_compatible_source(init_expr.then_expr, then_type)
                     and self.is_view_compatible_source(init_expr.else_expr, else_type))
 
-        # Fail closed: a source shape no arm above recognises gets the OWNED
-        # copy. Durability alone (`view_source_is_temporary`, which the
-        # declaration of a view-typed local seeds from) is too weak a question
-        # here -- it calls a name stable without asking what that name's own
-        # binding borrows, and answering it at this site put `urllib.parse`
-        # locals into views over dead storage. A local whose bindings disagree
-        # therefore takes the strictest binding's answer, which is the join a
-        # single storage needs; what it costs is that the JOIN is the strictest
-        # demand rather than one uniform verdict per source shape.
+        return self.leaf_lends_view(init_expr)
+
+    def _name_lends_view(self, name: str, is_str: bool) -> bool:
+        """A bare NAME as an inferred view's source (`v = s`)."""
+        if self.binding_withholds_view(name):
+            return False
+        func = self.ctx.func.current_function
+        if isinstance(func, TpyFunction):
+            for pname, ptype in func.params:
+                if pname == name:
+                    # A narrowed `str | None` param dereferences to the
+                    # contained view: `str | None` lowers to a by-value
+                    # std::optional<std::string_view>, so *a is a string_view.
+                    # `bytes | None`, by contrast, lowers to
+                    # std::optional<std::vector<uint8_t>> (the param OWNS the
+                    # buffer), so a span into *a would borrow it -- only a
+                    # plain `bytes` param (std::span) qualifies.
+                    str_base = ptype.inner if isinstance(ptype, OptionalType) else ptype
+                    lit_str_param = isinstance(str_base, LiteralType) and str_base.is_str_base()
+                    if is_str and (is_str_type(str_base) or is_str_view_type(str_base) or lit_str_param):
+                        return True
+                    if not is_str and (is_bytes_type(ptype) or is_bytes_view_type(ptype)):
+                        return True
+
+        # Another pending or view local (must match the same family).
+        # LiteralType[str] locals get view storage end-to-end (see
+        # _resolve_literal_view_storage in codegen).
+        scope_type = self.ctx.func.current_scope.lookup(name) if self.ctx.func.current_scope else None
+        lit_str_scope = isinstance(scope_type, LiteralType) and scope_type.is_str_base()
+        if is_str and (isinstance(scope_type, PendingStrType) or is_str_view_type(scope_type) or lit_str_scope):
+            return True
+        if not is_str and (isinstance(scope_type, PendingBytesType) or is_bytes_view_type(scope_type)):
+            return True
+        return is_str and name in self.ctx.final_globals
+
+    def binding_withholds_view(self, name: str) -> bool:
+        """`name` is a loop variable, or a binding marked as not lending
+        (`ViewVarInfo.lends_to_aliases`): its storage is reused by the next
+        step of its producer, so a local bound off it must own."""
+        if name in self.ctx.func.loop_vars:
+            return True
+        for fam in VIEW_TYPE_FAMILIES:
+            var_id = self.ctx.view_var_map(fam).get(name)
+            info = self.ctx.view_vars(fam).get(var_id) if var_id is not None else None
+            if info is not None and not info.lends_to_aliases:
+                return True
         return False
+
+    def name_lends_buffer(self, name: str) -> bool:
+        """A NAME a slice, an element read or a view-returning method may
+        lend a view of: a parameter or local of this function holding an
+        str/bytes value (or view), a `String` / `bytearray`, or a tuple.
+        Every other reference type is excluded."""
+        if self.binding_withholds_view(name):
+            return False
+        bound = None
+        from_param = False
+        func = self.ctx.func.current_function
+        if isinstance(func, TpyFunction):
+            for pname, ptype in func.params:
+                if pname == name:
+                    bound = ptype
+                    from_param = True
+                    break
+        if bound is None:
+            if name not in self.ctx.func.var_scope_depth:
+                return name in self.ctx.final_globals
+            bound = (self.ctx.func.current_scope.lookup(name)
+                     if self.ctx.func.current_scope else None)
+        if bound is None:
+            return False
+        bare = unwrap_readonly(unwrap_ref_type(unwrap_own(bound)))
+        if isinstance(bare, OptionalType) and from_param:
+            # A narrowed `str | None` PARAM dereferences to the contained
+            # view, as the bare-name arm says; a `bytes | None` param owns
+            # its buffer and stays out, as there.
+            inner = unwrap_readonly(bare.inner)
+            return is_str_type(inner) or is_str_view_type(inner)
+        if isinstance(bare, TupleType):
+            return from_param or self.name_holds_storage(name)
+        if isinstance(bare, (PendingViewType, LiteralType)):
+            return not isinstance(bare, LiteralType) or bare.is_str_base()
+        # The mutable siblings lend too: a subscript store, a mutating
+        # method or `+=` on the NAME is a write the body sees, and it
+        # demotes the view exactly as a rebind of a str name does.
+        if is_string_type(bare) or is_bytearray_type(bare):
+            return from_param or self.name_holds_storage(name)
+        return (is_str_type(bare) or is_str_view_type(bare)
+                or is_bytes_type(bare) or is_bytes_view_type(bare))
+
+    def name_holds_storage(self, name: str) -> bool:
+        """Whether local `name` holds its own object -- a tuple, a `String`
+        or a `bytearray` -- so a view over it is storage this body binds
+        and every write the body can make to it is visible on the name.
+        A reference-typed local (`bytearray`) holds its object only when its
+        binding's kind is `BindKind.RVALUE` -- a fresh object the name owns
+        (a constructor, an owned-returning call); a borrow of a field, an
+        element, a global or a reference-returning call (`t = h.ba`,
+        `t = gg()`) is LVALUE, and a name bound any other way (an unpack or
+        loop target, a hoisted declaration) has no recorded kind: a write
+        through the other spelling never reaches the name, so a view over
+        it is that storage's read, which owns. A value-typed local (a
+        tuple, a `String`) copies its object unless the binding borrows it
+        (a tuple holding a record element bound off a field, `ub = p.ub`),
+        which the borrow tracker records."""
+        bound = self._local_or_param_type(name)
+        bare = (unwrap_readonly(unwrap_ref_type(unwrap_own(bound)))
+                if bound is not None else None)
+        if bare is not None and not bare.is_value_type():
+            decl = self.ctx.func.var_decl_by_name.get(name)
+            kind = (self.ctx.func.bind_kinds.get(decl)
+                    if decl is not None else None)
+            return kind is BindKind.RVALUE
+        return self.ctx.func.borrow_tracker.borrow_source(name) is None
+
+    def leaf_lends_view(self, e: TpyExpr) -> bool:
+        """One non-compound leaf of an inferred view's source (see
+        `is_view_compatible_source`)."""
+        if isinstance(e, TpyCoerce):
+            return self.leaf_lends_view(e.expr)
+        if isinstance(e, (TpyStrLiteral, TpyBytesLiteral)):
+            return True
+        if is_enum_name_read(e, self.ctx):
+            return True
+        if isinstance(e, TpyName):
+            return self.name_lends_buffer(e.name)
+        if isinstance(e, TpyFieldAccess):
+            # A module or class qualifier: static only for a `Final`
+            # constant (a constexpr view).
+            if isinstance(e.obj, TpyName) and self.ctx.get_expr_type(e.obj) is None:
+                et = self.ctx.get_expr_type(e)
+                return et is not None and is_borrowing_view_type(unwrap_readonly(et))
+            return False
+        if isinstance(e, TpySubscript):
+            if isinstance(e.obj, TpyStrLiteral):
+                # A `str` slice views the literal's static storage, as
+                # `"lit".strip()` does; a `bytes` literal's slice renders
+                # over a temporary span, so it owns.
+                return isinstance(e.index, TpySlice)
+            return isinstance(e.obj, TpyName) and self.name_lends_buffer(e.obj.name)
+        if isinstance(e, (TpyCall, TpyMethodCall)):
+            rt = self.ctx.get_expr_type(e)
+            if isinstance(rt, LiteralType) and rt.is_str_base():
+                return True
+            if rt is None or not is_borrowing_view_type(unwrap_readonly(rt)):
+                return False
+            # The binding question, not the return one: a local root the
+            # view-escape check calls dangling AT A RETURN outlives a local
+            # bound in the same body. A temporary operand (an owned call
+            # result, a concat, an f-string) fails closed through this walk.
+            return all(self.leaf_lends_view(op) for op in self._call_lent_operands(e))
+        return False
+
+    def _call_lent_operands(self, e: 'TpyCall | TpyMethodCall') -> list[TpyExpr]:
+        """The operands a view-returning call's result may point into: the
+        recorded borrow sources, or every operand that can hold a buffer
+        when the callee recorded none. A module or class qualifier lends
+        nothing."""
+        ops = call_borrow_operands(e)
+        if ops is not None:
+            sources = recorded_return_borrow_sources(ops.fi)
+            if sources:
+                return [s.expr for s in call_lend_sources(ops, sources, expr_type=None)]
+        operands: list[TpyExpr] = list(e.args)
+        operands.extend((e.kwargs or {}).values())
+        if isinstance(e, TpyMethodCall) and self.ctx.get_expr_type(e.obj) is not None:
+            operands.append(e.obj)
+        out = []
+        for a in operands:
+            at = self.ctx.get_expr_type(a)
+            bare = unwrap_readonly(unwrap_ref_type(at)) if at is not None else None
+            if not is_bufferless_scalar(bare):
+                out.append(a)
+        return out
+
+    def mark_view_non_lending(self, family: ViewTypeFamily, var_id: int) -> None:
+        """A loop variable or loop-head unpack target: it may stay a view of
+        the current step, but never lends one to a local."""
+        info = self.ctx.view_vars(family).get(var_id)
+        if info is not None:
+            info.lends_to_aliases = False
 
     # --- View-type local tracking (generic across str/bytes families) ---
 
@@ -1538,15 +1625,7 @@ class LocalTypeDeduction:
         name = e.obj.name
         if name in self.ctx.func.loop_vars:
             return False
-        bound = None
-        func = self.ctx.func.current_function
-        if isinstance(func, TpyFunction):
-            for pname, ptype in func.params:
-                if pname == name:
-                    bound = ptype
-                    break
-        if bound is None and self.ctx.func.current_scope is not None:
-            bound = self.ctx.func.current_scope.lookup(name)
+        bound = self._local_or_param_type(name)
         if bound is None:
             return False
         bound = unwrap_readonly(unwrap_ref_type(unwrap_own(bound)))
@@ -1617,16 +1696,56 @@ class LocalTypeDeduction:
                                      storage: str) -> None:
         """Record that view local `var_id` borrows the owned storage `storage`,
         so a reseat or mutation of that storage demotes the view to owned. A
-        storage rooted at a name a nested def rebinds via `nonlocal` counts as
-        reseated already: the closure can run while the view is live."""
+        storage whose root the body reseats ANYWHERE counts as reseated
+        already (`root_reseated_in_body`): which of the write and the view's
+        read runs first is not a source-order question once a loop's back
+        edge or a closure is involved."""
         info = self.ctx.view_vars(family).get(var_id)
         if info is None:
             return
         if storage not in info.source_storages:
             info.source_storages.append(storage)
         self.ctx.view_source_borrows_map(family).setdefault(storage, set()).add(var_id)
-        if storage.split(".", 1)[0] in self.ctx.func.nested_nonlocal_rebinds:
+        root = storage.split(".", 1)[0]
+        if root != info.variable_name and self.root_reseated_in_body(root):
             info.source_mutated = True
+
+    def root_reseated_in_body(self, root: str) -> bool:
+        """Whether this body may replace or rewrite, anywhere, the buffer
+        `root` holds: a rebind of the name (assignment, walrus, unpack, for /
+        with target, match capture, nested def), `+=`, `del`, a nested def's
+        `nonlocal` rebind, or -- for a `String` / `bytearray`, whose methods
+        write -- a store, a writing method call or a call argument whose
+        operand may hold its object, through any alias the body binds
+        anywhere (`prescan.InPlaceWrites`). A write through a field path
+        demotes where it is analyzed instead. A view's own name is not asked: `s = s[1:]` re-views what
+        `s` read."""
+        func = self.ctx.func
+        if self.ctx.is_reseated(root) or root in func.current_aug_assigned_vars:
+            return True
+        writes = func.in_place_writes.writes_through(root)
+        if not writes:
+            return False
+        bound = self._local_or_param_type(root)
+        if bound is None:
+            return False
+        bare = unwrap_readonly(unwrap_ref_type(unwrap_own(bound)))
+        if not (is_string_type(bare) or is_bytearray_type(bare)):
+            return False
+        # "<arg>": the name reached a callee that may write it; the pre-scan
+        # has no signatures, so a mutable sibling passed anywhere owns.
+        return any(m is None or m == "<arg>"
+                   or method_writes_receiver(self.ctx, bare, m)
+                   for m in writes)
+
+    def _local_or_param_type(self, name: str) -> 'TpyType | None':
+        func = self.ctx.func.current_function
+        if isinstance(func, TpyFunction):
+            for pname, ptype in func.params:
+                if pname == name:
+                    return ptype
+        scope = self.ctx.func.current_scope
+        return scope.lookup(name) if scope is not None else None
 
     def register_view_source_storages(self, family: ViewTypeFamily, var_id: int,
                                       expr: TpyExpr) -> None:
@@ -1634,12 +1753,31 @@ class LocalTypeDeduction:
         view `var_id`. A compound source (ternary / and-or) borrows every
         root reachable through its arms."""
         bt = self.ctx.func.borrow_tracker
+        func = self.ctx.func.current_function
+        params = ({p for p, _ in func.params}
+                  if isinstance(func, TpyFunction) else set())
 
-        def _leaf_root(leaf: TpyExpr) -> list[str]:
+        def _key(root: str) -> list[str]:
+            return [canonical_storage_key(bt, bt.effective_storage(root))]
+
+        def _leaf_root(leaf: TpyExpr, operand: bool = False) -> list[str]:
+            if isinstance(leaf, TpyCoerce):
+                return _leaf_root(leaf.expr, operand)
             if isinstance(leaf, (TpySubscript, TpyFieldAccess)):
                 root = _borrow_storage_root(leaf)
                 if root is not None:
-                    return [canonical_storage_key(bt, bt.effective_storage(root))]
+                    return _key(root)
+            if isinstance(leaf, TpyName):
+                # A view of a parameter reads the caller's buffer until the
+                # body rebinds the name, which makes it an owned local; a
+                # call's receiver or argument is the buffer itself.
+                if operand or leaf.name in params:
+                    return _key(leaf.name)
+            if isinstance(leaf, (TpyCall, TpyMethodCall)):
+                rt = self.ctx.get_expr_type(leaf)
+                if rt is not None and is_borrowing_view_type(unwrap_readonly(rt)):
+                    return [k for op in self._call_lent_operands(leaf)
+                            for k in _leaf_root(op, True)]
             return []
         for storage in walk_view_source_leaves(expr, _leaf_root):
             self.register_view_source_storage(family, var_id, storage)
@@ -1691,21 +1829,8 @@ class LocalTypeDeduction:
                 # A view result borrows its receiver or a lending operand;
                 # with none of those it reads nothing this rule can place, so
                 # it owns (it may be a view of a module-level container).
-                operands = list(e.args)
-                if (isinstance(e, TpyMethodCall)
-                        and self.ctx.get_expr_type(e.obj) is not None):
-                    # A module or class qualifier (`util.head(s)`) lends nothing.
-                    operands.append(e.obj)
-                lending = False
-                for a in operands:
-                    at = self.ctx.get_expr_type(a)
-                    bare = unwrap_readonly(unwrap_ref_type(at)) if at is not None else None
-                    if is_bufferless_scalar(bare):
-                        continue
-                    lending = True
-                    if not of(a):
-                        return False
-                return lending
+                operands = self._call_lent_operands(e)
+                return bool(operands) and all(of(a) for a in operands)
             return False
 
         ok = all(walk_view_source_leaves(expr, lambda leaf: [of(leaf)]))
@@ -1772,6 +1897,43 @@ class LocalTypeDeduction:
             info.hoist_unknown = True
         else:
             info.hoist_roots |= roots - {info.variable_name}
+            if self._root_dies_before_view(info.variable_name, roots):
+                info.reassigned_from_owned = True
+
+    def _root_dies_before_view(self, name: str, roots: 'set[str]') -> bool:
+        """A root declared in a block nested inside the one view `name` is
+        declared in dies at that block's closing brace, while the view is
+        still in scope (`decl_block_depth`). A loop variable's roots are its
+        iterable's, declared at the loop's depth or further out, so a loop
+        variable never fails this. A name this function does not bind (a
+        capture, a global) outlives the body; a local of it with no depth on
+        record is unknown, so it owns the view rather than lend it."""
+        func = self.ctx.func
+        depths = func.decl_block_depth
+        view_depth = depths.get(name, 0)
+        for r in roots:
+            if r == name:
+                continue
+            depth = depths.get(r)
+            if depth is None:
+                if self._binds_locally(r):
+                    return True
+            elif depth > view_depth:
+                return True
+        return False
+
+    def _binds_locally(self, name: str) -> bool:
+        """Python's local test: a parameter (the receiver too) or a name the
+        body binds anywhere."""
+        func = self.ctx.func
+        fn = func.current_function
+        if isinstance(fn, TpyFunction):
+            if any(pname == name for pname, _ in fn.params):
+                return True
+            if (name == "self" and fn.is_method
+                    and not fn.is_staticmethod):
+                return True
+        return name in func.body_bound_names
 
     def note_view_rebind(self, name: str, value_expr: TpyExpr,
                          family: ViewTypeFamily) -> None:
@@ -1780,17 +1942,6 @@ class LocalTypeDeduction:
         var_id = self.ctx.view_var_map(family).get(name)
         if var_id is not None:
             self.note_view_binding(family, var_id, value_expr)
-
-    def own_views_borrowing(self, storage: str) -> None:
-        """Make every view local that holds a borrow of `storage` (or of a
-        path under it) own its buffer."""
-        prefix = storage + "."
-        for key, holders in self.ctx.func.borrow_tracker.loans.items():
-            if key != storage and not key.startswith(prefix):
-                continue
-            for borrower in holders:
-                for info in self._view_entries(borrower):
-                    info.source_mutated = True
 
     def _view_entries(self, name: str) -> 'list[ViewVarInfo]':
         out = []
@@ -1914,7 +2065,8 @@ class LocalTypeDeduction:
                     continue
                 for src_id in info.source_var_ids:
                     source = vars_reg.get(src_id)
-                    if source and source.resolved_type == family.owned_type:
+                    if source and (source.resolved_type == family.owned_type
+                                   or not source.lends_to_aliases):
                         info.resolved_type = family.owned_type
                         changed = True
                         break

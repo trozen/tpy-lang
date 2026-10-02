@@ -26,7 +26,7 @@ void main() {
     std::vector<std::tuple<std::string, int32_t>> items = ::tpy::construct<std::vector<std::tuple<std::string, int32_t>>>(::tpy::dict_items(d));
     std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpy::__getitem__(items, 0);
-    std::string_view k = std::get<0>(__tup_1);
+    std::string k = std::move(std::get<0>(__tup_1));
     int32_t v = std::get<1>(__tup_1);
     std::cout << k << " " << v << "\n" << ::tpy::check_signals;
 }

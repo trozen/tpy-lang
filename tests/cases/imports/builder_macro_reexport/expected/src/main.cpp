@@ -25,7 +25,7 @@ void __tpy_builder_argparse_help_1() {
 
 // args = parser.parse_args(["alice"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
-    std::string_view name = "";
+    std::string name = "";
     std::string_view __tpy_argparse_usage = "usage: prog [-h] name";
     int32_t __tpy_argparse_h = 0;
     while ((__tpy_argparse_h < ::tpy::__len__(argv))) {
@@ -37,7 +37,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     int32_t __tpy_argparse_i = 0;
     int32_t __tpy_argparse_pi = 0;
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
-        std::string_view __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
+        std::string __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if (true) {
             if ((__tpy_argparse_pi == 0)) {
                 name = __tpy_argparse_tok;

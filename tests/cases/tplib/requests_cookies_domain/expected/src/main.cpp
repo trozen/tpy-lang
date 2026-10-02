@@ -53,7 +53,7 @@ void redirect_cookie(::tpy::BytesView set_cookies, ::tpy::BytesView location) {
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
     ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
-    b.sendall((::tpy::bytes_concat((::tpy::bytes_concat((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("HTTP/1.1 302 Found\r\nLocation: ", 30), location)), ::tpy::bytes_literal_owned("\r\n", 2))), set_cookies)), ::tpy::bytes_literal_owned("Content-Length: 0\r\n\r\n", 21))));
+    b.sendall((::tpy::bytes_concat((::tpy::bytes_concat((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("HTTP/1.1 302 Found\r\nLocation: ", 30), location)), ::tpy::bytes_literal("\r\n", 2))), set_cookies)), ::tpy::bytes_literal("Content-Length: 0\r\n\r\n", 21))));
     d.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "t"}});

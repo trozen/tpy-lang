@@ -34,7 +34,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view s = *__beg_0;
-        std::string_view u = std::string_view(s);
+        std::string u = std::string(s);
         std::cout << u << "\n" << ::tpy::check_signals;
     }
     ::tpy::BytesView b = ::tpy::bytes_literal("xy", 2);

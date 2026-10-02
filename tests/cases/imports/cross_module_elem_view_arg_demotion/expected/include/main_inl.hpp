@@ -5,7 +5,7 @@
 
 namespace tpyapp::main {
 
-// # generator: the view lives in the frame across the suspension
+// # generator: the copy lives in the frame across the suspension
 // def sec_gen(xs: list[str]) -> Iterator[int32]:
 //     v = xs[0]  # tpyc: type(str)
 //     yield len(v)                                # -> S_RESUME_0

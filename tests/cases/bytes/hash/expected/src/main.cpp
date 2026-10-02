@@ -40,13 +40,13 @@ void test_set_element() {
 
 // def test_bytes_view_hash() -> None:
 //     items: list[bytes] = [b"hello", b"world"]
-//     v = items[int32(0)]  # tpyc: type(BytesView)
+//     v = items[int32(0)]  # tpyc: type(bytes)
 //     h1 = hash(v)
 //     h2 = hash(b"hello")
 //     print(h1 == h2)
 void test_bytes_view_hash() {
     std::vector<::tpy::Bytes> items = {::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal_owned("world", 5)};
-    ::tpy::BytesView v = ::tpy::__getitem__(items, 0);
+    ::tpy::Bytes v = ::tpy::__getitem__(items, 0);
     uint64_t h1 = ::tpy::__hash__(v);
     uint64_t h2 = ::tpy::__hash__(::tpy::bytes_literal_owned("hello", 5));
     std::cout << ::tpy::print_bool((h1 == h2)) << "\n" << ::tpy::check_signals;

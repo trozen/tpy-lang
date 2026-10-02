@@ -1,0 +1,76 @@
+module ayload-long-enough-to-defeat-sso-1 b'ayload-long-enough-to-defeat-sso-1' payload-long-enough-to-defeat-sso-2 b'payload-long-enough-to-defeat-sso-2'
+static literal b'literal' final-greeting-static-storage RED alpha b'bytes'
+param narrowed o b'ob'
+param p b'q'
+slice lice b'lice' ayload-long-enough-to-defeat-sso-3 b'ayload-long-enough-to-defeat-sso-3'
+method-view m b'm' mutable-string-receiver-long-payload
+tuple-name tn b'tn' tn b'tn'
+field payload-long-enough-to-defeat-sso-1 b'payload-long-enough-to-defeat-sso-1'
+field ro payload-long-enough-to-defeat-sso-12 b'payload-long-enough-to-defeat-sso-12'
+method payload-long-enough-to-defeat-sso-2 b'payload-long-enough-to-defeat-sso-2' payload-long-enough-to-defeat-sso-2 b'payload-long-enough-to-defeat-sso-2'
+container payload-long-enough-to-defeat-sso-2 b'payload-long-enough-to-defeat-sso-2'
+container ro payload-long-enough-to-defeat-sso-3 b'payload-long-enough-to-defeat-sso-3'
+nested payload-long-enough-to-defeat-sso-1 b'payload-long-enough-to-defeat-sso-1'
+unpack payload-long -enough-to-defeat-sso-1 b'payload-long' b'-enough-to-defeat-sso-1'
+unpack reused payload-long -enough-to-defeat-sso-2
+unpack sibling 55 55 payload-long-enough-to-defeat-sso-5
+loop-tuple payload-long-enough-to-defeat-sso-1 b'payload-long-enough-to-defeat-sso-1'
+loop-name payload-long-enough-to-defeat-sso-1 ayload-long-enough-to-defeat-sso-1 payload-long-enough-to-defeat-sso-1 b'payload-long-enough-to-defeat-sso-1' payload-long-enough-to-defeat-sso-4 b'payload-long-enough-to-defeat-sso-4'
+walrus new payload-long-enough-to-defeat-sso-2 b'payload-long-enough-to-defeat-sso-2'
+walrus payload-long-enough-to-defeat-sso-1 b'payload-long-enough-to-defeat-sso-1'
+param-rebind ps b'pb' payload-long-enough-to-defeat-sso-4 b'payload-long-enough-to-defeat-sso-4'
+gen gen-start
+gen s
+gen payload-long-enough-to-defeat-sso-7
+gen 35
+async payload-long-enough-to-defeat-sso-8 b'payload-long-enough-to-defeat-sso-8'
+async ret 35
+closure payload-long-enough-to-defeat-sso-3 b'payload-long-enough-to-defeat-sso-3'
+comprehension ['payload-long-enough-to-defeat-sso-1'] [b'payload-long-enough-to-defeat-sso-1']
+with payload-long-enough-to-defeat-sso-4 b'payload-long-enough-to-defeat-sso-4'
+try payload-long-enough-to-defeat-sso-1 b'payload-long-enough-to-defeat-sso-1'
+tuple-field arg payload-long-enough-to-defeat-sso-1 b'payload-long-enough-to-defeat-sso-1'
+tuple-field write payload-long-enough-to-defeat-sso-2 b'payload-long-enough-to-defeat-sso-2'
+tuple-field alias payload-long-enough-to-defeat-sso-4 b'payload-long-enough-to-defeat-sso-4'
+block-local yload-long-enough-to-defeat-sso-1 b'yload-long-enough-to-defeat-sso-1' load-long-enough-to-defeat-sso-1 b'load-long-enough-to-defeat-sso-1'
+match payload-long-enough-to-defeat-sso-6
+mutable-name mutable-string-unwritten-long-payload True True 5 5
+method-local payload-long-enough-to-defeat-sso-1 payload-long-enough-to-defeat-sso-2 payload-long-enough-to-defeat-sso-3 b'payload-long-enough-to-defeat-sso-1' b'payload-long-enough-to-defeat-sso-2' b'payload-long-enough-to-defeat-sso-3'
+ctor tor b'tor' payload-long-enough-to-defeat-sso-9 b'payload-long-enough-to-defeat-sso-9'
+select-rebound payload-long-enough-to-defeat-sso-1 b'payload-long-enough-to-defeat-sso-1'
+loop-order b'x' x
+loop-order b'abcd' PAYL
+loop-order b'abcd' PAYL
+block-clauses payl b'payl' payl payl b'payl'
+rebind-spellings ayload-long-enough-to-defeat-sso-1 b'ayload-long-enough-to-defeat-sso-1' ayload-long-enough-to-defeat-sso-3 -enough-to-defeat-sso-2 b'-enough-to-defeat-sso-2'
+loop-var-block ['a', 'b'] [b'c', b'd']
+tuple-alias-closure payload-long-enough-to-defeat-sso-1 b'payload-long-enough-to-defeat-sso-1' 4
+indirect-writes True True True
+call-write-loop arg b'x'
+call-write-loop arg b'abcd'
+call-write-loop arg b'abcd'
+call-write-loop alias b'y'
+call-write-loop alias b'abcd'
+call-write-loop alias b'abcd'
+field-alias True
+field-alias True
+field-alias True
+field-alias-self True
+field-alias-self True
+field-alias-self True
+global-getter True
+global-getter True
+global-getter True
+tuple-unpack-field payload-long-enough-to-defeat-sso-1 b'payload-long-enough-to-defeat-sso-1'
+tuple-unpack-field rec payload-long-enough-to-defeat-sso-1 b'payload-long-enough-to-defeat-sso-1'
+string-elem-move payload-long-enough-to-defeat-sso-1! payload-long-enough-to-defeat-sso-2
+alias walrus b'x'
+alias walrus b'abcd'
+alias ternary b'x'
+alias ternary b'abcd'
+alias nested-def b'x'
+alias nested-def b'abcd'
+alias ternary-receiver b'x'
+alias ternary-receiver b'abcd'
+alias rebound b'x'
+alias rebound b'abcd'

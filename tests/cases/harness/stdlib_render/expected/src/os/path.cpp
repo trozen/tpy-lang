@@ -31,7 +31,7 @@ std::string basename(std::string_view p) {
 //     return head
 std::string dirname(std::string_view p) {
     int32_t i = (::tpy::add_check<int32_t>(::tpy::str_rfind(p, "/"), 1));
-    std::string head = std::string(::tpy::str_slice(p, ::tpy::BasicSlice{std::nullopt, i}));
+    std::string_view head = ::tpy::str_slice(p, ::tpy::BasicSlice{std::nullopt, i});
     int32_t j = ::tpy::__len__(head);
     while (((j > 0) && (::tpy::__getitem__(head, (::tpy::sub_check<int32_t>(j, 1))) == '/'))) {
         j = ::tpy::sub_check<int32_t>(j, 1);
@@ -39,7 +39,7 @@ std::string dirname(std::string_view p) {
     if ((j > 0)) {
         head = ::tpy::str_slice(head, ::tpy::BasicSlice{std::nullopt, j});
     }
-    return head;
+    return std::string(head);
 }
 
 // def split(p: str) -> tuple[str, str]:
@@ -194,7 +194,7 @@ std::string commonprefix(const std::vector<std::string>& m) {
     if ((::tpy::__len__(m) == 0)) {
         return "";
     }
-    std::string_view first = ::tpy::__getitem__(m, 0);
+    std::string first = ::tpy::__getitem__(m, 0);
     int32_t prefix_len = ::tpy::__len__(first);
     auto& __obj_0 = m;
     auto __beg_0 = __obj_0.begin();
@@ -301,7 +301,7 @@ std::string commonpath(const std::vector<std::string>& paths) {
     std::vector<std::string>& first = ::tpy::__getitem__(split_paths, 0);
     int32_t i = 0;
     while ((i < ::tpy::__len__(first))) {
-        std::string_view comp = first[static_cast<std::size_t>(i)];
+        std::string comp = first[static_cast<std::size_t>(i)];
         bool ok = true;
         auto& __obj_3 = split_paths;
         auto __beg_3 = __obj_3.begin();
@@ -315,7 +315,8 @@ std::string commonpath(const std::vector<std::string>& paths) {
         if ((!(ok))) {
             break;
         }
-        common.push_back(std::string(comp));
+        std::string __tmp_1{comp};
+        common.push_back(std::move(__tmp_1));
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     std::string_view prefix = ((has_abs) ? ("/") : (""));
@@ -484,7 +485,7 @@ std::string expandvars(std::string_view p) {
                 res += ::tpy::str_slice(p, ::tpy::BasicSlice{i, std::nullopt});
                 i = n;
             } else {
-                std::string name = std::string(::tpy::str_slice(p, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 2)), close}));
+                std::string_view name = ::tpy::str_slice(p, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 2)), close});
                 if (((*::tpystd::os::_environ::environ).__contains__(name))) {
                     res += (*::tpystd::os::_environ::environ)[name];
                 } else {

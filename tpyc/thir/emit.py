@@ -4391,7 +4391,11 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 else:
                     out.write(f"{indent}{escape_cpp_name(name)} = {get};\n")
             elif bind == "assign":
-                # Reused target: an already-declared name, so no decl.
+                # Reused target: an already-declared name, so no decl. The
+                # wrap moves an owned element out of a holder the statement
+                # owns.
+                if stmt.wraps and stmt.wraps[i] == "move":
+                    get = f"std::move({get})"
                 out.write(f"{indent}{escape_cpp_name(name)} = {get};\n")
             elif bind == "global_slot":
                 # Pointer-slot global at module init: the moved-out element

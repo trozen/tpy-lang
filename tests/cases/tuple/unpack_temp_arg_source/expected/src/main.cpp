@@ -295,7 +295,7 @@ void main() {
     std::cout << "generic" << " " << g1 << " " << g2 << "\n" << ::tpy::check_signals;
     M __tmp_9 = M();
     auto __tup_9 = ::tpyapp::main::sp(__tmp_9);
-    std::string_view s = std::get<0>(__tup_9);
+    std::string s = std::move(std::get<0>(__tup_9));
     const ::tpy::BigInt& n = std::get<1>(__tup_9);
     std::cout << "str_elem" << " " << s << " " << n << "\n" << ::tpy::check_signals;
     M __tmp_10 = M();

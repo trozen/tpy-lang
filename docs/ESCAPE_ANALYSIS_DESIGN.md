@@ -228,27 +228,29 @@ provenance (caller might pass null).
 ### 3. String View Safety
 
 **Files**: `sema/local_deduction.py` (`is_view_compatible_source`,
-`_resolve_pending_str_types`), `sema/context.py` (`StrVarInfo`)
+`leaf_lends_view`, `name_lends_buffer`, `_resolve_pending_view_types`),
+`typesys.py` (`ViewVarInfo`)
 
-The `PendingStrType` system defers the `str` -> `std::string` vs `std::string_view`
-decision until after usage analysis. `is_view_compatible_source()` determines which
-initialization sources are safe for `string_view` (no risk of dangling):
+The `PendingStrType` / `PendingBytesType` system defers the owned-vs-view decision
+for an inferred `str` / `bytes` local until after usage analysis. One rule, the same
+for both families (`docs/LANGUAGE_FEATURES.md` String Type Semantics), decides which
+sources may lend a view: an allow-list, so a source it does not name owns.
 
-| Source | Safe? | Reason |
+| Source | View? | Reason |
 |--------|-------|--------|
-| String literal `"hello"` | Yes | Static lifetime |
-| `str` parameter | Yes | C++ already passes as `string_view` |
-| Another `PendingStrType` / `StrViewType` local | Yes | Same lifetime tier |
-| `Final[str]` global | Yes | `constexpr string_view` |
-| Function returning `StrView` | Yes | Caller knows it's a view |
-| Tuple subscript `t[0]` (lvalue) | Yes | Immutable, stable storage |
-| Array / list / dict subscript | Until the source is mutated | The view is registered against the container's storage, and a mutation of it falls the view back to the owned type |
-| An enum member's `.name` | Yes | A view of `EnumUtil`'s static member-name table, not of the receiver -- the one source a resumable frame may keep too |
-| Record field `obj.name`, ONE hop off a NAME receiver, `str` only | Until the source is mutated | Same registration, with four write paths to the field: a write to it, a mutating method on the record, an alias bind of the record, and handing the record to a non-`readonly` parameter. The escapes that list still misses -- a callee writing a module global, a `*args` pack element, a nested-def closure capture, and a write through a second name over the same container element -- are `BUGS.md#field-view-escape-needs-place` |
-| Record field through two or more hops, or off a temporary / `@property` receiver | **No** | The source has no storage key a later write could be resolved to, so no demotion could fire |
-| Record field of the `bytes` family, at any depth | **No** | The read did not compile at all before the field arm existed, so a `::tpy::BytesView` here would open a dangle class rather than preserve one; the owned `::tpy::Bytes` copy admits the same programs |
+| A literal, a `Final` constant, a `Literal[str]` value, an enum member's `.name` | Yes | Static storage, which a resumable frame may keep too |
+| A view-family parameter (a narrowed `str \| None` too) | Yes | The caller keeps the argument alive; a narrowed `bytes \| None` owns its buffer and is not a source |
+| A slice, element or view-returning call (method or free function) over a `str`, `bytes`, `String`, `bytearray` or tuple NAME the function binds once and never writes in place | Yes | Every write the body can make to the name -- a rebind in any spelling, `del`, a `nonlocal` rebind, a subscript store or mutating method on a mutable sibling -- is visible to the body, and any one of them owns the view at the bind, wherever it sits in the function; for a `String` / `bytearray` a subscript store, a writing method call, `+=`, a write through a name bound from it, or the name passed to any call, anywhere in the function, owns the view at the bind; a `String` / `bytearray` / tuple local bound from a field or an element is a reference and lends nothing |
+| A slice of a `str` literal | Yes | Static storage |
+| A tuple name that aliases a field or element | **No** | A field read: the tuple does not own its storage |
+| A binding rooted deeper than the view's declaration (a root bound in a block nested inside the view's declaring block, whether or not the view is read after it) | **No** | Decided at the bind from the two declarations' block depths: the root dies at its block's exit |
+| A `for` loop variable as a root (`k = n`, `k = n[1:]`) | **No** | The next step of the loop reuses its storage; the loop variable itself stays a view |
+| A record field at any depth, a container element | **No** | No write through those is visible to the body (a closure, a `*args` pack, a callee writing a global, a second alias); `StrView` / `BytesView` is the explicit opt-in, unguarded today (`BUGS.md#explicit-view-local-source-mutation-unguarded`), and a MIR loan is what may relax the copy later (`BUGS.md#field-view-escape-needs-place`) |
+| An rvalue tuple unpack's element | **No** | Moved out of the disposable holder, not viewed into it |
 
-A two-pass resolution then finalizes types:
+An inferred view local registers no loan: the rule owns it at every write the body
+can see, so a loan would only re-report what the demotion already handled. A two-pass
+resolution then finalizes types:
 1. Direct usage flags (`+=` forces `std::string`, passed-to-string-param forces it, etc.)
 2. Alias promotion: if a variable's source resolved to `std::string`, the alias is
    also promoted (prevents dangling view of a reallocating string).
@@ -617,17 +619,25 @@ print(x)                 # ok: read
 If the borrow checker proves `names` is not mutated between the assignment and the
 last use of `x`, the string can be a `string_view` instead of a copy.
 
-Incremental rollout:
-- **Phase A (Done)**: `Array[T, N]` subscript -- no reallocation risk, only element mutation
-- **Phase B (Done)**: Record field access -- no reallocation risk
-- **Phase C (Done)**: `list[T]` / `dict[K, V]` -- source-mutation tracking falls back to `std::string` if the source is mutated after the borrow (see 6c+)
+Rollout: phases A (`Array[T, N]` subscript), B (record field access) and C
+(`list[T]` / `dict[K, V]`, demoting on a later source mutation) shipped and were
+withdrawn by the one view rule (section 3): the demotion list could not see every
+write path (a closure, a `*args` pack, a callee writing a global, a second alias),
+so a field read and a container element now own a copy. Relaxing that copy back
+to a view is the MIR loan's job (TODO.md "`str` / `bytes` views: MIR precision
+over the one view rule").
 
 **Implementation**: Since `PendingStrType.is_value_type()` returns True, the main borrow
-system does not track string variables. A separate `str_source_borrows` dict on
-`SemanticContext` maps storage variable names to `str_var_id` sets. When the source
-storage is mutated (subscript/field assignment, aug-assign, del, variable reassignment,
-or passed to a non-readonly function), `mark_str_borrowers_mutated()` sets the
-`source_mutated` flag on `StrVarInfo`, causing resolution to fall back to `std::string`.
+system does not track string variables. A separate per-family source-borrows map on
+the function context maps storage variable names to view var ids. A rebind of a
+lent NAME (assignment, walrus, unpack, `del`, `+=`, a `nonlocal` rebind, a `match`
+capture) and, for a `String` / `bytearray`, any in-place write through the name,
+an alias of it or a call it is passed to, are read ORDER-FREE from the function
+pre-scan at the view's binding (`root_reseated_in_body`), which sets
+`source_mutated` on `ViewVarInfo` so resolution owns the local. A write the
+pre-scan cannot place on a name -- a field path, a store through a container
+element, the name passed to a non-readonly parameter -- still demotes where it
+is analyzed (`mark_view_borrowers_mutated()`).
 
 ### 7. `@pure` Annotation
 

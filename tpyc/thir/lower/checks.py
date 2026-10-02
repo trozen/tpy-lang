@@ -296,6 +296,9 @@ from .predicates import (
     _owned_form_bytes_name,
     _owned_str_append_target,
     _owned_str_slot,
+    _owned_bytes_slot,
+    _bytes_elem_container,
+    _owned_viewfam_elem,
     _peel_coerce,
     _plain_member_call_markers_ok,
     _plain_method_fi_ok,
@@ -384,7 +387,7 @@ from .predicates import (
     _tuple_container_elem_read,
     _open_value_tuple,
     _value_tuple,
-    _value_tuple_owned_str_elem,
+    _value_tuple_owned_viewfam_elem,
     _value_tuple_element_ok,
     _value_tuple_nested,
     _opt_ternary_tuple_arm_ok,
@@ -885,7 +888,8 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
         # to_ptr_variant renders) are not admitted.
         if (_eligible_value_union(su) is not None
                 and isinstance(e, (TpyIntLiteral, TpyFloatLiteral,
-                                   TpyBoolLiteral, TpyStrLiteral))):
+                                   TpyBoolLiteral, TpyStrLiteral,
+                                   TpyBytesLiteral))):
             return True
         # A scalar / owned-str FIELD read at a non-wrapper union element
         # slot renders bare the same way the literal rows do (`{{"name",
@@ -897,7 +901,7 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                 and isinstance(e, TpyFieldAccess)
                 and ((_clfe := analyzer.get_expr_type(e)) is not None)
                 and (_resolved_scalar(_clfe, analyzer)
-                     or _owned_str_slot(_clfe, analyzer)
+                     or _owned_viewfam_elem(_clfe, analyzer)
                      # A CONTAINER field read matching a container MEMBER
                      # copies bare into the value variant the same way
                      # (`{"labels", ml.labels}` -- the converting ctor).
@@ -916,7 +920,8 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
         # render (`std::vector<T>{...}` -- the typed member ctor).
         if (isinstance(su, UnionType) and not su.needs_wrapper()
                 and isinstance(e, (TpyIntLiteral, TpyFloatLiteral,
-                                   TpyBoolLiteral, TpyStrLiteral))):
+                                   TpyBoolLiteral, TpyStrLiteral,
+                                   TpyBytesLiteral))):
             return True
         # `None` into a three-way union with a None member renders the
         # monostate alternative (`std::monostate{}` -- the emit's
@@ -1089,7 +1094,7 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             mslot = su.element_types[i]
             mbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(mslot)))
             # Storage-direct is correct only for scalar / owned-str members
-            # (the None family) and F1-record members. Pointer-repr Optional /
+            # (the None family), their owned-bytes twin and F1-record members. Pointer-repr Optional /
             # union / nested-tuple members route through a borrow intermediate
             # (`tuple_value_to_borrow`, `&name`) this arm does not build --
             # they reject, along with any non-value lvalue NAME member.
@@ -1141,7 +1146,7 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                                                   pointers, analyzer)):
                     return (note_detail("container_lit.elem.tuple")
                             if note else False)
-            elif mfam not in (None, "record"):
+            elif mfam not in (None, "record", "bytes"):
                 return note_detail("container_lit.elem.tuple") if note else False
             if (not mbare.is_value_type()
                     and not isinstance(sub, TpyTupleLiteral)
@@ -2342,10 +2347,14 @@ def _viewfam_field_write_receiver_ok(target: TpyExpr,
     """The shared receiver ladder, minus the receivers through which a live
     VIEW of the written `str`/`bytes` field cannot be demoted.
 
-    A one-hop field read of either family binds a view of the field's buffer
-    (`is_view_compatible_source`, `tpyc/sema/local_deduction.py`), and what
-    keeps that view valid is the demotion sema fires when the storage it
-    borrows is written (`_mark_field_write_views`). That demotion resolves a
+    An inferred field read owns its buffer (the one view rule); an EXPLICIT
+    `sv: StrView = h.s` keeps a view that no write demotes
+    (BUGS.md#explicit-view-local-source-mutation-unguarded), so these
+    receiver rejects protect nothing an inferred local reads and are kept
+    only pending re-measurement
+    (BUGS.md#field-write-receiver-rejects-outlived-reason). The demotion
+    `_mark_field_write_views` fires for the inferred views that remain
+    (a tuple name over a field) resolves a
     write to a storage KEY -- a name, or a dotted field path rooted in one --
     so a receiver that reaches the record through anything the tracker cannot
     name keys nothing a view was registered under: the view survives the
@@ -2964,7 +2973,7 @@ def _subscript_elem_reject(t: TpyType, analyzer) -> str:
         key_ok = _dict_key_shape_ok(key, analyzer)
         if key_ok:
             elem = val
-        elif _eligible_scalar(val) or _owned_str_slot(val, analyzer):
+        elif _eligible_scalar(val) or _owned_viewfam_elem(val, analyzer):
             return "elem.dict_key"  # value admitted, key family blocks
         else:
             elem = val  # both blocked; name the value family
@@ -3290,7 +3299,7 @@ def _user_record_setitem_ok(
                and _bigint_index_disposition(
                        sub.index, analyzer.get_expr_type(sub.obj),
                        analyzer, declared) != "reject")
-              or _resolved_str_value(idx_type, analyzer) is not None)
+              or _resolved_viewfam_value(idx_type, analyzer) is not None)
     if not idx_ok:
         return False
     vbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vslot)))
@@ -3337,45 +3346,45 @@ def _user_record_setitem_ok(
             # constant): the coerce IS the owned copy (`std::string(x)`,
             # the view-source-to-owned chokepoint), rendered by the
             # setitem arm's FormConvert.
-            or (_resolved_str_value(vbare, analyzer) is not None
-                and (isinstance(stmt.value, TpyStrLiteral)
-                     # ... and an OWNED-str element read out of a value
-                     # tuple (`self[pair[0]] = pair[1]`): the element is a
-                     # `std::string` inside the tuple storage, so the
+            or (_resolved_viewfam_value(vbare, analyzer) is not None
+                and (isinstance(stmt.value, (TpyStrLiteral, TpyBytesLiteral))
+                     # ... and an OWNED-str/bytes element read out of a
+                     # value tuple (`self[pair[0]] = pair[1]`): the element
+                     # is an owned buffer inside the tuple storage, so the
                      # `std::get<N>` read binds the slot bare, with none of
                      # the view->owned machinery a view-form name needs.
-                     or _value_tuple_owned_str_elem(stmt.value, analyzer)
+                     or _value_tuple_owned_viewfam_elem(stmt.value, analyzer)
                      or ((_svc := _strview_coerce_name(stmt.value))
                          is not None
                          and (_svv := _resolved_str_value(
                              analyzer.get_expr_type(_svc),
                              analyzer)) is not None
                          and is_str_view_type(_svv))
-                     # ... and an OWNED-str RVALUE (a concat, an f-string,
-                     # a call result typed `str`): the owned-copy wrap
-                     # keys on the SOURCE being view-form, and none of these
-                     # is, so the value binds the slot bare. A NAME is
-                     # excluded -- its form is its binding's, which this
-                     # gate does not resolve.
-                     or _owned_str_rvalue_source(stmt.value, analyzer))))
+                     # ... and an OWNED str/bytes RVALUE (a concat, an
+                     # f-string, a call result typed `str` / `bytes`): the
+                     # owned-copy wrap keys on the SOURCE being view-form,
+                     # and none of these is, so the value binds the slot
+                     # bare. A NAME is excluded -- its form is its
+                     # binding's, which this gate does not resolve.
+                     or _owned_viewfam_rvalue_source(stmt.value, analyzer))))
 
-def _owned_str_rvalue_source(e: TpyExpr, analyzer) -> bool:
-    """A str value source the view->owned copy does NOT fire on: an
-    expression that is not
-    a NAME, a str literal or a short-circuit / ternary chain, and whose
-    resolved str family is owned rather than `StrView`. A concat, an
-    f-string and a `str`-returning call all land here and bind the slot
-    bare.
+def _owned_viewfam_rvalue_source(e: TpyExpr, analyzer) -> bool:
+    """A str/bytes value source the view->owned copy does NOT fire on: an
+    expression that is not a NAME, a literal or a short-circuit / ternary
+    chain, and whose resolved view family is owned rather than the view
+    (`StrView` / `BytesView`). A concat, an f-string and a `str`- or
+    `bytes`-returning call all land here and bind the slot bare.
 
     Names and literals are excluded because their form is their binding's,
     not the expression's; the chains because they are decided
     recursively over operands this gate does not walk."""
-    if isinstance(e, (TpyName, TpyStrLiteral, TpyIfExpr)):
+    if isinstance(e, (TpyName, TpyStrLiteral, TpyBytesLiteral, TpyIfExpr)):
         return False
     if isinstance(e, TpyBinOp) and e.op in ("&&", "||"):
         return False
-    rv = _resolved_str_value(analyzer.get_expr_type(e), analyzer)
-    return rv is not None and not is_str_view_type(rv)
+    rv = _resolved_viewfam_value(analyzer.get_expr_type(e), analyzer)
+    return (rv is not None and not is_str_view_type(rv)
+            and not is_bytes_view_type(rv))
 
 def _record_aug_setitem_ok(
         sub: TpySubscript, declared: dict[str, TpyType], pointers: set[str],
@@ -3429,13 +3438,24 @@ def _container_aug_setitem_ok(
     if stmt.resolved_inplace is not None:
         return note_detail("setitem.aug_inplace")
     rb = stmt.resolved_binop
-    if rb is None or not getattr(rb.method, "cpp_template", None):
+    if rb is None:
         return note_detail("setitem.aug_binop")
     et = analyzer.get_expr_type(stmt.target)
-    if _owned_str_slot(et, analyzer):
+    if _owned_viewfam_elem(et, analyzer):
+        # The concat dunder is a template for `str` and a native free
+        # function for `bytes` (`::tpy::bytes_concat(<read>, v)`); the
+        # resolved-binop render spells either.
+        if not (getattr(rb.method, "cpp_template", None)
+                or (rb.method.native_function and rb.method.native_name)):
+            return note_detail("setitem.aug_binop")
         vt = analyzer.get_expr_type(stmt.value)
-        if not (stmt.op == "+" and _str_concat_operand(stmt.value, vt, analyzer)):
+        concat_operand = (_str_concat_operand
+                          if _owned_str_slot(et, analyzer)
+                          else _bytes_concat_operand)
+        if not (stmt.op == "+" and concat_operand(stmt.value, vt, analyzer)):
             return note_detail("setitem.aug_value")
+    elif not getattr(rb.method, "cpp_template", None):
+        return note_detail("setitem.aug_binop")
     elif not _resolved_scalar(et, analyzer):
         return note_detail("setitem.aug_elem")
     return True
@@ -7857,6 +7877,15 @@ def _own_peeled_container_str_elem(t: 'TpyType | None', analyzer) -> bool:
     return _container_str_elem(tu, analyzer)
 
 
+def _own_peeled_container_bytes_elem(t: 'TpyType | None', analyzer) -> bool:
+    """The owned-bytes twin of `_own_peeled_container_str_elem`."""
+    tu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+          if t is not None else None)
+    if isinstance(tu, OwnType):
+        tu = unwrap_readonly(tu.wrapped)
+    return _bytes_elem_container(tu, analyzer)
+
+
 def _str_view_form_source(a: TpyExpr, locals_: dict[str, TpyType],
                           param_names: 'set[str] | frozenset[str]',
                           analyzer) -> bool:
@@ -8024,7 +8053,8 @@ def _str_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
 def _bytes_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
                           locals_: dict[str, TpyType],
                           param_names: 'set[str] | frozenset[str]',
-                          analyzer) -> bool:
+                          analyzer,
+                          pointers: "AbstractSet[str]" = frozenset()) -> bool:
     """The bytes twin of `_str_owned_slot_arg`, VIEW-form sources only (the
     literal face is its own row): a span-form source at an `Own[bytes]`
     container element slot materializes `::tpy::Bytes(x)` via the S6
@@ -8052,7 +8082,25 @@ def _bytes_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
     if isinstance(src, TpySubscript) and isinstance(src.index, TpySlice):
         return _resolved_bytes_value(analyzer.get_expr_type(src),
                                      analyzer) is not None
-    return False
+    if src is not a:
+        return False
+    # The OWNED faces the str twin admits at the same slot, with the same
+    # bare render: a container-element read and a value-tuple element read
+    # are owned lvalues the container copies on insert, and an owned RVALUE
+    # (a concat) binds the slot directly. A CALL rvalue is
+    # `_bytes_owned_call_rvalue_arg`'s row.
+    if isinstance(a, TpySubscript):
+        return bool(
+            _borrow_elem_subscript_shape(a, locals_, analyzer,
+                                         _own_peeled_container_bytes_elem,
+                                         pointers)
+            or (_tuple_subscript_value_read(a, locals_, analyzer) is not None
+                and _owned_bytes_slot(analyzer.get_expr_type(a), analyzer)))
+    at = _resolved_bytes_value(analyzer.get_expr_type(a), analyzer)
+    return bool(at is not None and is_bytes_type(at)
+                and not isinstance(a, (TpyName, TpyFieldAccess, TpyCall,
+                                       TpyMethodCall))
+                and is_rvalue_source(analyzer, a))
 
 def _bytes_owned_lvalue_arg(a: TpyExpr, ptype: TpyType | None,
                             locals_: dict[str, TpyType],
@@ -11055,7 +11103,7 @@ def _r_bytes_view_literal(req: _ArgReq) -> bool:
 
 def _r_bytes_owned_slot(req: _ArgReq) -> bool:
     return _bytes_owned_slot_arg(req.a, req.ptype, req.locals_,
-                                 req.param_names, req.analyzer)
+                                 req.param_names, req.analyzer, req.pointers)
 
 
 def _r_own_enum_elem(req: _ArgReq) -> bool:
@@ -14018,9 +14066,8 @@ def _builtin_container_type(t: 'TpyType | None', analyzer) -> bool:
     template, and bytearray's resolves to `::tpy::bytes_getitem` -- the
     resolved-dunder item, not a family difference. The element / key gates
     the other two legs carry stay: dropping them (the pure reference-axis
-    membership) admits `set[bytes].discard(b"x")`, whose arg row renders a
-    view literal into a `const std::vector<uint8_t>&` slot and fails the C++
-    build. Shared with `_inherited_container_base` so the two cannot
+    membership) would admit set element families whose method arg rows have
+    no render. Shared with `_inherited_container_base` so the two cannot
     drift."""
     u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
          if isinstance(t, TpyType) else None)

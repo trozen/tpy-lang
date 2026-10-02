@@ -108,10 +108,9 @@ int32_t peek_ro_one(const Inner& i) {
 }
 
 // # ESCAPE into a callee: a record at a mutable parameter can have any field
-// # under it replaced, so both one-hop views are demoted to copies at the call
+// # under it replaced; both one-hop reads are copies taken before the call
 // def sec_callee(one: Inner, o: Outer, o2: Outer, o3: Outer) -> None:
 //     v = one.tag  # tpyc: ok
-//     # the demotion is the signature's verdict, not the callee body's
 //     s = one.name  # tpyc: type(str)
 //     zap(one)
 //     print("callee root", v, s, one.tag, one.name)
@@ -137,17 +136,15 @@ void sec_callee(Inner& one, Outer& o, const Outer& o2, const Outer& o3) {
     std::cout << "callee plain" << " " << ::tpyapp::main::peek(o3) << " " << pv << "\n" << ::tpy::check_signals;
 }
 
-// # the shallowest read there is -- one hop off a parameter. The `str` read has
-// # no write path to THAT field in the section and keeps its view; the `bytes`
-// # read beside it is demoted by the write two lines down, per FIELD not per
-// # receiver, so the two families answer differently in one section
+// # the shallowest read there is -- one hop off a parameter. Both families copy;
+// # the `bytes` copy keeps its value across the write two lines down
 // def sec_one_hop(i: Inner) -> None:
-//     s = i.name  # tpyc: type(StrView)
+//     s = i.name  # tpyc: type(str)
 //     t = i.tag  # tpyc: type(bytes)
 //     i.tag = b"Z7"
 //     print("one hop", s, t, i.tag, peek_ro_one(i))
 void sec_one_hop(Inner& i) {
-    std::string_view s = i.name;
+    std::string s = i.name;
     ::tpy::Bytes t = i.tag;
     i.tag = ::tpy::bytes_literal_owned("Z7", 2);
     std::cout << "one hop" << " " << s << " " << ::tpy::BytesPrinter(t) << " " << ::tpy::BytesPrinter(i.tag) << " " << ::tpyapp::main::peek_ro_one(i) << "\n" << ::tpy::check_signals;
@@ -159,11 +156,10 @@ void zapg() {
     GLOB->tag = ::tpy::bytes_literal_owned("Z8", 2);
 }
 
-// # a GLOBAL record read: one hop off the global name, but a `bytes` read, so
-// # the local OWNS its buffer. That is what makes this section printable at all
-// # -- `zapg()` replaces the field through no argument and no alias bind, so no
-// # demotion fires (BUGS.md#field-view-escape-needs-place); a view here would
-// # read freed storage, the copy survives and prints CPython's value
+// # a GLOBAL record read: one hop off the global name, and the local OWNS its
+// # buffer. `zapg()` replaces the field through no argument and no alias bind
+// # (BUGS.md#field-view-escape-needs-place); a view here would read freed
+// # storage, the copy survives and prints CPython's value
 // def sec_global() -> None:
 //     v = GLOB.tag  # tpyc: type(bytes)
 //     zapg()
@@ -207,8 +203,7 @@ void sec_alias_rev(Outer& o) {
 }
 
 // # the one-hop `str` read with a second name bound to the record and the write
-// # spelled through THAT name: the alias bind demotes the view, so the local
-// # holds the pre-write text
+// # spelled through THAT name: the local holds the pre-write text
 // def sec_onehop_alias(i: Inner) -> None:
 //     v = i.name  # tpyc: type(str)
 //     m = i
@@ -221,8 +216,8 @@ void sec_onehop_alias(Inner& i) {
     std::cout << "one hop alias" << " " << v << " " << i.name << "\n" << ::tpy::check_signals;
 }
 
-// # the same buffer reached the other way round: the read is registered under the
-// # alias spelling and the write is spelled through the original
+// # the same buffer reached the other way round: the read is spelled through the
+// # alias and the write through the original
 // def sec_onehop_alias_rev(i: Inner) -> None:
 //     m = i
 //     v = m.name  # tpyc: type(str)
@@ -235,8 +230,7 @@ void sec_onehop_alias_rev(Inner& i) {
     std::cout << "one hop alias rev" << " " << v << " " << i.name << "\n" << ::tpy::check_signals;
 }
 
-// # a mutating METHOD replaces the field's buffer, so the view is demoted and
-// # the copy predates the call
+// # a mutating METHOD replaces the field's buffer; the copy predates the call
 // def sec_onehop_method(i: Inner) -> None:
 //     v = i.name  # tpyc: type(str)
 //     i.rename()
@@ -257,8 +251,8 @@ void sec_hidden_call(const Hidden& h) {
     std::cout << "hidden" << " " << ::tpy::BytesPrinter(v) << "\n" << ::tpy::check_signals;
 }
 
-// # a `readonly` ROOT does not buy a view back: the read is two hops, and depth
-// # is what decides it -- the root's constness never enters the verdict
+// # a `readonly` ROOT does not buy a view back: a field read copies at any
+// # depth, and the root's constness never enters the verdict
 // def sec_readonly_root(o: readonly[Outer]) -> None:
 //     v = o.inner.tag  # tpyc: type(bytes)
 //     s = o.inner.name  # tpyc: type(str)

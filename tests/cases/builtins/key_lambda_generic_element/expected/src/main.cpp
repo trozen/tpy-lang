@@ -39,11 +39,11 @@ void main() {
         std::cout << nm << " " << s << "\n" << ::tpy::check_signals;
     }
     auto __tup_3 = ::tpyapp::main::smaller<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1});
-    std::string_view sk = std::get<0>(__tup_3);
+    std::string sk = std::move(std::get<0>(__tup_3));
     int32_t sn = std::get<1>(__tup_3);
     std::cout << "min:" << " " << sk << " " << sn << "\n" << ::tpy::check_signals;
     auto __tup_4 = ::tpyapp::main::larger<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1});
-    std::string_view lk = std::get<0>(__tup_4);
+    std::string lk = std::move(std::get<0>(__tup_4));
     int32_t ln = std::get<1>(__tup_4);
     std::cout << "max:" << " " << lk << " " << ln << "\n" << ::tpy::check_signals;
 }

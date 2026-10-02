@@ -1,5 +1,6 @@
-# A str/bytes view local owns its buffer once a write can reach a read of any
-# straight-line or sibling-arm binding's source.
+# A str/bytes local rebound from element sources (straight-line, sibling arms, a
+# handler) owns its buffer, so a write to any source keeps CPython's value. Every
+# binding here is a container element, which owns under the one view rule.
 from tpy import int32
 
 PAD = "Z" * 40
@@ -88,8 +89,10 @@ def bytes_face(xs: list[bytes], ys: list[bytes]) -> None:
 
 
 def no_mutation(xs: list[str], ys: list[str]) -> None:
-    v = xs[0]  # tpyc: type(StrView)
-    v = ys[0]  # nothing writes either source: the local stays a view
+    v = xs[0]  # tpyc: type(str)
+    # Nothing writes either source; the local still owns (an element never lends),
+    # the same form as the mutating sections above.
+    v = ys[0]
     print("no_mutation", v)
 
 

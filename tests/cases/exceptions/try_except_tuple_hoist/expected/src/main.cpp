@@ -29,8 +29,8 @@ std::string run(bool fail) {
     {
         try {
             auto __tup_1 = ::tpyapp::main::maybe_pair(fail);
-            a = std::get<0>(__tup_1);
-            b = std::get<1>(__tup_1);
+            a = std::move(std::get<0>(__tup_1));
+            b = std::move(std::get<1>(__tup_1));
         } catch (const ::tpy::OSError&) {
             a = "fb-a-long-enough";
             b = "fb-b-long-enough";

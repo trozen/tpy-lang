@@ -73,7 +73,7 @@ namespace tpystd::urllib::request {
     std::optional<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> __slot_1;
     std::optional<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> __slot_2;
     ::tpystd::urllib::parse::SplitResult parts = ::tpystd::urllib::parse::urlsplit(url);
-    std::string_view scheme = parts.scheme;
+    std::string scheme = parts.scheme;
     if (((scheme != "http") && (scheme != "https"))) {
         throw URLError((::tpy::str_concat((::tpy::str_concat("unsupported URL scheme (expected http or https): '", scheme)), "'")));
     }

@@ -827,7 +827,8 @@ struct __genexpr_view_kept_26_frame : public ::tpy::next_iter_mixin<__genexpr_vi
     }
 };
 
-// # the body only reads the captured record: `lbl` stays a view
+// # the body only reads the captured record; `lbl` owns a copy all the same
+// # (a field read never lends), the same form as view_demoted
 // n = sum(1 for x in xs if x > r.k)  # tpyc: ok  # -> S_RESUME_0
 template <typename F_r>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_view_kept_26_frame<F_r>::__next__() {
@@ -849,12 +850,13 @@ __genexpr_view_kept_26_frame<F_r> __genexpr_view_kept_26(const std::vector<int32
 }  // namespace
 
 // def view_kept(r: Rec, xs: list[int32]) -> str:
-//     lbl = r.name  # tpyc: type(StrView)
-//     # the body only reads the captured record: `lbl` stays a view
+//     lbl = r.name  # tpyc: type(str)
+//     # the body only reads the captured record; `lbl` owns a copy all the same
+//     # (a field read never lends), the same form as view_demoted
 //     n = sum(1 for x in xs if x > r.k)  # tpyc: ok
 //     return lbl + " " + str(n)
 std::string view_kept(const Rec& r, const std::vector<int32_t>& xs) {
-    std::string_view lbl = r.name;
+    std::string lbl = r.name;
     int32_t n = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_view_kept_26(xs, r));
     return (::tpy::str_concat((::tpy::str_concat(lbl, " ")), ::tpy::fixed_to_str<int32_t>(n)));
 }

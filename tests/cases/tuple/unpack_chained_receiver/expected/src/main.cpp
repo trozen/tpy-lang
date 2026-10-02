@@ -293,7 +293,7 @@ void ro_field_loop(const Grid& g) {
 //     print("value_elements", a, b)
 void value_elements(const std::vector<Holder>& hs) {
     auto __tup_1 = ::tpy::__getitem__(hs, 0).label;
-    std::string_view a = std::get<0>(__tup_1);
+    std::string a = std::move(std::get<0>(__tup_1));
     int32_t b = std::get<1>(__tup_1);
     std::cout << "value_elements" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }

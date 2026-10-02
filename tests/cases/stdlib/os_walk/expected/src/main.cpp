@@ -156,7 +156,7 @@ void walk_sorted(std::string_view root) {
             }
             ::tpy::list_set_slice(dirnames, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::move(kept));
             std::vector<std::string> files = ::tpy::builtin_sorted<std::string>(filenames);
-            std::string_view rel = ::tpy::str_slice(dirpath, ::tpy::BasicSlice{::tpy::__len__(root), std::nullopt});
+            std::string rel = std::string(::tpy::str_slice(dirpath, ::tpy::BasicSlice{::tpy::__len__(root), std::nullopt}));
             if ((::tpy::__len__(rel) == 0)) {
                 rel = ".";
             }
@@ -267,7 +267,7 @@ bool order_ok(std::string_view root) {
     }
     int32_t i = 0;
     while ((i < ::tpy::__len__(seen))) {
-        std::string_view cur = seen[static_cast<std::size_t>(i)];
+        std::string cur = seen[static_cast<std::size_t>(i)];
         std::string parent = ::tpystd::os::path::dirname(cur);
         if ((cur != root)) {
             int32_t j = 0;

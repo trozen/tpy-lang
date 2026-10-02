@@ -709,15 +709,15 @@ std::string_view unbacked_return(Named& n) {
 }
 
 // def unbacked_local(n: Named, s: str) -> None:
-//     # the view of the `Named` element's field stays a view
-//     v = nm_opt((n, 3))  # tpyc: ok type(StrView)
+//     # a view-returning call over a record's field binds an owned copy (the one view rule)
+//     v = nm_opt((n, 3))  # tpyc: type(str) ok
 //     a = A(1)
 //     # a `str` element cannot hold the `A` the result is: no temporary warning
 //     x = fst((a, s))  # tpyc: ok
 //     x.v += 1
 //     print("unbacked local", v, unbacked_return(n), a.v, n.reads)
 void unbacked_local(Named& n, std::string_view s) {
-    std::string_view v = ::tpyapp::main::nm_opt(std::tuple<Named*, std::optional<::tpy::BigInt>>{&(n), 3});
+    std::string v = std::string(::tpyapp::main::nm_opt(std::tuple<Named*, std::optional<::tpy::BigInt>>{&(n), 3}));
     A a = A(::tpy::BigInt(1));
     A& x = ::tpyapp::main::fst<A>(std::tuple<A*, std::string>{&(a), std::string(s)});
     x.v = (x.v) + (::tpy::BigInt(1));

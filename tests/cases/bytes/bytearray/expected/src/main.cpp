@@ -47,7 +47,7 @@ void main() {
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(ba) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray grown = ::tpy::ByteArray();
-    grown = ::tpy::bytearray_concat(grown, ::tpy::bytes_literal_owned("xy", 2));
+    grown = ::tpy::bytearray_concat(grown, ::tpy::bytes_literal("xy", 2));
     std::cout << ::tpy::bytes_decode(::tpy::Bytes(grown)) << "\n" << ::tpy::check_signals;
 }
 

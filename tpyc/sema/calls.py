@@ -1856,6 +1856,11 @@ class CallAnalyzer:
         # warnings on readonly payloads with no spelling that silences them.
         # The param keeps the source's qualifier, which is what copy() borrows.
         result_type = unwrap_readonly(arg_type)
+        if (isinstance(result_type, PendingViewType) and isinstance(arg, TpyName)
+                and self.deduction.binding_withholds_view(arg.name)):
+            # A loop variable lends no view: its copy is owned storage, as
+            # the local it is bound to (`u = copy(n)`) will be.
+            result_type = result_type.family.owned_type
         expr.resolved_function_info = FunctionInfo(
             name="copy",
             params=[ParamInfo("x", arg_type)],

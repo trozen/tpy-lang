@@ -23,7 +23,7 @@ void main() {
     while ((::tpy::__len__(pq) > 0)) {
         auto __tup_1 = ::tpystd::heapq::heappop<std::tuple<int32_t, std::string>>(pq);
         int32_t prio = std::get<0>(__tup_1);
-        std::string_view payload = std::get<1>(__tup_1);
+        std::string payload = std::move(std::get<1>(__tup_1));
         std::cout << prio << " " << payload << "\n" << ::tpy::check_signals;
     }
 }

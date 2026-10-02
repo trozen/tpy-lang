@@ -316,7 +316,7 @@ std::string timedelta::__str__() const {
 //     except ValueError:
 //         raise ValueError(f"Invalid isoformat string: '{time_string}'")
 time time::fromisoformat(std::string_view time_string) {
-    std::string s = std::string(time_string);
+    std::string_view s = time_string;
     if (::tpy::str_startswith(s, "T")) {
         s = ::tpy::str_slice(s, ::tpy::BasicSlice{1, std::nullopt});
     }
@@ -584,7 +584,7 @@ std::optional<std::string> datetime::tzname() const {
     const ::tpy::BigInt& us = std::get<6>(__tup_1);
     bool has_tz = std::get<7>(__tup_1);
     const ::tpy::BigInt& off_us = std::get<8>(__tup_1);
-    std::string_view zname = std::get<9>(__tup_1);
+    std::string zname = std::move(std::get<9>(__tup_1));
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tz = std::monostate{};
     if (has_tz) {
         ::tpystd::datetime::timedelta delta = ::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), off_us);

@@ -3043,8 +3043,9 @@ class THIRTupleUnpack(THIRStmt):
     source_expr: 'THIRExpr | None' = None
     binds: tuple[str | None, ...] = ()
     source_cpp: str | None = None
-    # Per-element pre-write wrap for the frame modes: "" / "move" (the only
-    # produced tokens -- ref elements reject at lowering today).
+    # Per-element pre-write wrap for the frame modes and the "assign" arm:
+    # "" / "move" (the only produced tokens -- ref elements reject at
+    # lowering today).
     wraps: tuple[str, ...] = ()
     source_bind: TupleSourceBind = TupleSourceBind.NAME_CREF
     source_wrap_cpp: str | None = None

@@ -33,7 +33,7 @@ int32_t pick_local(::tpy::BytesView a, ::tpy::BytesView b) {
 int32_t pick_rebound(::tpy::BytesView a, ::tpy::BytesView __param_b) {
     ::tpy::Bytes b = ::tpy::Bytes(__param_b);
     b = ::tpy::bytes_from_int_iterable(std::array<int32_t, 2>{113, 114});
-    ::tpy::BytesView v = ((!a.empty()) ? a : b);
+    ::tpy::Bytes v = ::tpy::Bytes(((!a.empty()) ? a : b));
     return ::tpy::__len__(v);
 }
 

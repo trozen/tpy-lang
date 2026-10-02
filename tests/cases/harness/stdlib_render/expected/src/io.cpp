@@ -60,10 +60,10 @@ int32_t StringIO::write(std::string_view s) {
     this->_collapse();
     std::string buf = ::tpy::__getitem__(this->_chunks, 0);
     int32_t end = (::tpy::add_check<int32_t>(this->_pos, n));
-    std::string prefix = std::string(::tpy::str_slice(buf, ::tpy::BasicSlice{std::nullopt, this->_pos}));
+    std::string_view prefix = ::tpy::str_slice(buf, ::tpy::BasicSlice{std::nullopt, this->_pos});
     std::string new_buf;
     if ((end < ::tpy::__len__(buf))) {
-        std::string tail = std::string(::tpy::str_slice(buf, ::tpy::BasicSlice{end, std::nullopt}));
+        std::string_view tail = ::tpy::str_slice(buf, ::tpy::BasicSlice{end, std::nullopt});
         new_buf = (::tpy::str_concat((::tpy::str_concat(prefix, owned)), tail));
     } else {
         new_buf = (::tpy::str_concat(prefix, owned));
@@ -133,9 +133,9 @@ std::string StringIO::readline() {
     }
     this->_collapse();
     std::string buf = ::tpy::__getitem__(this->_chunks, 0);
-    std::string suffix = std::string(::tpy::str_slice(buf, ::tpy::BasicSlice{this->_pos, std::nullopt}));
+    std::string_view suffix = ::tpy::str_slice(buf, ::tpy::BasicSlice{this->_pos, std::nullopt});
     int32_t rel = ::tpy::str_find(suffix, "\n");
-    std::string out;
+    std::string_view out;
     if ((rel < 0)) {
         out = suffix;
         this->_pos = this->_total;
@@ -144,7 +144,7 @@ std::string StringIO::readline() {
         out = ::tpy::str_slice(buf, ::tpy::BasicSlice{this->_pos, stop});
         this->_pos = stop;
     }
-    return out;
+    return std::string(out);
 }
 
 // def seek(self, pos: int32, whence: int32 = 0) -> int32:

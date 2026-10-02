@@ -16,11 +16,11 @@ void test_tuple() {
 
 // def test_list_view() -> None:
 //     items: list[str] = ["alpha", "beta"]
-//     s = items[0]  # tpyc: type(StrView)
+//     s = items[0]  # tpyc: type(str)
 //     print(s)
 void test_list_view() {
     std::vector<std::string> items = {"alpha", "beta"};
-    std::string_view s = ::tpy::__getitem__(items, 0);
+    std::string s = ::tpy::__getitem__(items, 0);
     std::cout << s << "\n" << ::tpy::check_signals;
 }
 

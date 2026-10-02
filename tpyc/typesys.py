@@ -5866,6 +5866,17 @@ class ViewVarInfo:
     # or a source with no root the rule can place -- which owns once hoisted.
     hoist_roots: set[str] = field(default_factory=set)
     hoist_unknown: bool = False
+    # False for a binding whose storage the next step of its producer
+    # reuses (a `for` loop variable, a loop-head unpack target): the
+    # local itself may stay a view, but an inferred local bound off it
+    # (`k = n`, `k = n[1:]`) outlives the step, so it owns.
+    lends_to_aliases: bool = True
+    # The first binding read STORED storage a spelled view may keep (a field
+    # or a container element), which the view rule copies: the source's
+    # spelling (None when it has no short one), for a diagnostic that names
+    # the view-keeping spellings. Unset for a temporary source.
+    stored_source: Optional[str] = None
+    owns_stored_source: bool = False
     resolved_type: Optional[TpyType] = None
 
 

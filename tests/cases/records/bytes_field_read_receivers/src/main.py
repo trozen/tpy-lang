@@ -1,17 +1,12 @@
 # A `bytes` FIELD read off a CHAINED receiver -- `o.inner.tag`, `rows[0].tag`,
 # `d["k"].tag`, `self.o.inner.tag`, three hops -- at every read sink, with the
 # `str` twin (`.name`) read beside each subject line as the control. Storage
-# rule: only a ONE-HOP `str` read off a NAME receiver binds a view; every
-# `bytes` read, and any deeper chain, element hop or property hop, takes an
-# owned copy, because a view of them has no storage key a later write could be
-# resolved to. A one-hop `str` view is demoted back to a copy at every write
-# path the tracker does see -- a write to that field, a mutating method, an
-# alias bind, the record reaching a callee at a mutable parameter -- and each
-# section below prints the pre-mutation value CPython prints. The escapes it
-# does NOT see (a callee writing a global, a `*args` pack, a closure capture,
-# a write through a second name aliasing the same container element) are
-# BUGS.md#field-view-escape-needs-place; they reach only the `str` view, and
-# the sections here that would hit one keep the read on the copying side.
+# rule: a field read of either family, at any depth, takes an owned copy (the
+# one view rule), so each section below prints the pre-mutation value CPython
+# prints across a write to the field, a mutating method, an alias bind, a
+# callee at a mutable parameter, and the write paths no tracker sees (a callee
+# writing a global, a `*args` pack, a closure capture, a second name aliasing
+# the same container element -- BUGS.md#field-view-escape-needs-place).
 from typing import Iterator
 
 from tpy import Own, int32, readonly
@@ -101,10 +96,9 @@ def peek_ro_one(i: readonly[Inner]) -> int32:
 
 
 # ESCAPE into a callee: a record at a mutable parameter can have any field
-# under it replaced, so both one-hop views are demoted to copies at the call
+# under it replaced; both one-hop reads are copies taken before the call
 def sec_callee(one: Inner, o: Outer, o2: Outer, o3: Outer) -> None:
     v = one.tag  # tpyc: ok
-    # the demotion is the signature's verdict, not the callee body's
     s = one.name  # tpyc: type(str)
     zap(one)
     print("callee root", v, s, one.tag, one.name)
@@ -118,12 +112,10 @@ def sec_callee(one: Inner, o: Outer, o2: Outer, o3: Outer) -> None:
     print("callee plain", peek(o3), pv)
 
 
-# the shallowest read there is -- one hop off a parameter. The `str` read has
-# no write path to THAT field in the section and keeps its view; the `bytes`
-# read beside it is demoted by the write two lines down, per FIELD not per
-# receiver, so the two families answer differently in one section
+# the shallowest read there is -- one hop off a parameter. Both families copy;
+# the `bytes` copy keeps its value across the write two lines down
 def sec_one_hop(i: Inner) -> None:
-    s = i.name  # tpyc: type(StrView)
+    s = i.name  # tpyc: type(str)
     t = i.tag  # tpyc: type(bytes)
     i.tag = b"Z7"
     print("one hop", s, t, i.tag, peek_ro_one(i))
@@ -136,11 +128,10 @@ def zapg() -> None:
     GLOB.tag = b"Z8"
 
 
-# a GLOBAL record read: one hop off the global name, but a `bytes` read, so
-# the local OWNS its buffer. That is what makes this section printable at all
-# -- `zapg()` replaces the field through no argument and no alias bind, so no
-# demotion fires (BUGS.md#field-view-escape-needs-place); a view here would
-# read freed storage, the copy survives and prints CPython's value
+# a GLOBAL record read: one hop off the global name, and the local OWNS its
+# buffer. `zapg()` replaces the field through no argument and no alias bind
+# (BUGS.md#field-view-escape-needs-place); a view here would read freed
+# storage, the copy survives and prints CPython's value
 def sec_global() -> None:
     v = GLOB.tag  # tpyc: type(bytes)
     zapg()
@@ -168,8 +159,7 @@ def sec_alias_rev(o: Outer) -> None:
 
 
 # the one-hop `str` read with a second name bound to the record and the write
-# spelled through THAT name: the alias bind demotes the view, so the local
-# holds the pre-write text
+# spelled through THAT name: the local holds the pre-write text
 def sec_onehop_alias(i: Inner) -> None:
     v = i.name  # tpyc: type(str)
     m = i
@@ -177,8 +167,8 @@ def sec_onehop_alias(i: Inner) -> None:
     print("one hop alias", v, i.name)
 
 
-# the same buffer reached the other way round: the read is registered under the
-# alias spelling and the write is spelled through the original
+# the same buffer reached the other way round: the read is spelled through the
+# alias and the write through the original
 def sec_onehop_alias_rev(i: Inner) -> None:
     m = i
     v = m.name  # tpyc: type(str)
@@ -186,8 +176,7 @@ def sec_onehop_alias_rev(i: Inner) -> None:
     print("one hop alias rev", v, i.name)
 
 
-# a mutating METHOD replaces the field's buffer, so the view is demoted and
-# the copy predates the call
+# a mutating METHOD replaces the field's buffer; the copy predates the call
 def sec_onehop_method(i: Inner) -> None:
     v = i.name  # tpyc: type(str)
     i.rename()
@@ -210,8 +199,8 @@ def sec_hidden_call(h: Hidden) -> None:
     print("hidden", v)
 
 
-# a `readonly` ROOT does not buy a view back: the read is two hops, and depth
-# is what decides it -- the root's constness never enters the verdict
+# a `readonly` ROOT does not buy a view back: a field read copies at any
+# depth, and the root's constness never enters the verdict
 def sec_readonly_root(o: readonly[Outer]) -> None:
     v = o.inner.tag  # tpyc: type(bytes)
     s = o.inner.name  # tpyc: type(str)

@@ -93,6 +93,10 @@ You may NOT run any test suite or `tests/update_snapshots.py`.
 - An added function that re-derives a fact decided elsewhere, duplicates an existing helper, or patches one instance of a class is a finding.
 - Check: for a re-derivation name the site that decides the fact; for a duplicate name the existing helper.
 
+**Per-name verdicts are order-free facts** (`/tpy-add-feature` Phase 3 stop rule)
+- A verdict about a name that must hold for the whole function (a view of it owns, the name lends, its storage dies with a block) is read from an order-free whole-function fact -- the pre-scan, or MIR -- at the one site that takes the verdict. A list of the statement kinds that can affect the name (rebind spellings, block exits, write sites) or a read of tracker state at the event site ("borrowers registered so far", "no loan recorded") has a hole per spelling it did not name.
+- Check: for each added or changed per-name verdict in `tpyc/sema/`, name the fact it reads and where that fact is computed; a verdict computed from an enumerated set of statement kinds, from the order statements were analysed, or from "nothing recorded" is a finding, with one spelling outside the list as its probe.
+
 **No hardcoding of builtins** (`CLAUDE.md` "THIR and the codegen boundary")
 - No builtin method names, runtime symbols, container kinds or builtin type names in the compiler -- diagnostics keyed on a builtin type name included. Exceptions: literal construction and pending-literal element-type resolution. A runtime signature refusing the language model's form (a `str` argument is a view) is fixed in the runtime, not with compiler code.
 - Check: grep the diff's added `tpyc/` lines for comparisons, table keys or message text naming a builtin method, runtime symbol, container kind or builtin type (`== "append"`, `in ("list", "dict")`, a `::tpy::` name used as a decision key); outside the two exceptions each is a finding.

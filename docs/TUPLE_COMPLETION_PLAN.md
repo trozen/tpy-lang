@@ -395,9 +395,14 @@ per shape; the mixed tuple global (D2) waits on that entry.
   snapshot churn, and it needs the loan a view inside a tuple takes on its
   source, which is not tracked today. Do it ON U5, not before it: alone it is
   a third per-site form rule. Also closes the `str`-view printed-tuple extra
-  copy. Size: 1-2 weeks. It is the tuple part of TODO.md "`str` and
-  `bytes`: one view rule", and takes that entry's one rule rather than
-  `str`'s current one.
+  copy. Size: 1-2 weeks. It is the tuple part of the one view rule
+  (decided 2026-10-01, branch `str-bytes-view-rule`: a view only from
+  static storage, a parameter, or a name the function binds -- a tuple
+  NAME's element is such a source for both families, an rvalue tuple's
+  element is moved out); what U6 adds is the view FORM of an element
+  inside a tuple parameter or local, which needs the loan a view inside a
+  tuple takes on its source. TODO.md "`str` / `bytes` views: MIR
+  precision over the one view rule" holds the rule's record.
 - [ ] **U7 -- the loud tail.** The remaining loud tuple entries in `BUGS.md`
   (about 85 on 2026-09-21, most LOW or exotic), taken as ordinary batch work
   by user-facing frequency. Size: 2-4 weeks. Two the matrix pins:

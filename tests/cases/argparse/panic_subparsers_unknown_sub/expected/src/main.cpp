@@ -56,7 +56,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     }
     int32_t __tpy_argparse_i = 0;
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
-        std::string_view __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
+        std::string __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "show")) {
             __tpy_argparse_acc_cmd = "show";
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));

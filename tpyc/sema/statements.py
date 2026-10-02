@@ -59,8 +59,8 @@ from ..namespace import BindingKind, NameBinding
 from ..symbol_binding import SymbolKind, lookup_imported
 from ..prescan import (
     bound_names_of, walrus_names_of, scope_bound_names, ScanResult,
-    scan_reassigned_vars,
-    parse_deref_view_key,
+    scan_reassigned_vars, collect_in_place_writes,
+    parse_deref_view_key, storage_spelling,
     FactKills, collect_fact_kills, liveness_alias_sources, is_scan_rvalue,
     collect_nonlocals,
 )
@@ -120,7 +120,7 @@ from .context import _is_borrowing_auto_readonly_accessor, _root_name_of_expr, B
 from ..value_category import (
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
     async_return_form, AsyncReturnForm, iterator_source_callee,
-    peel_value_wrappers, tuple_literal_elems,
+    peel_value_wrappers, tuple_literal_elems, peel_coerce,
 )
 from .expressions import (_nested_def_free_names, _find_list_member,
                           _names_rebound_by, generic_constructor_factory)
@@ -133,6 +133,7 @@ from .local_deduction import (
     temporary_view_bind_message,
     view_slot_source_is_temporary,
     view_source_is_temporary,
+    walk_view_source_leaves,
 )
 from .type_ops import signature_may_return_borrow as _signature_may_return_borrow
 from tpyc import modules as builtin_modules
@@ -2539,9 +2540,6 @@ class StatementAnalyzer:
                     check_iter_receiver_loans(
                         self.ctx, stmt.iterable, inner_iterable_type)
                     self._register_foreach_iter_loans(stmt, iterable_type)
-                    self._note_loop_var_iteration(
-                        stmt.var, elem_type, prior_iter,
-                        placeable=not self._iteration_yields_copies(iterable_type))
                     # A user `__iter__` that mutates its receiver needs a
                     # non-const receiver; record that so an enclosing read-only
                     # method isn't wrongly inferred const (the loop_var_iterable
@@ -2629,6 +2627,11 @@ class StatementAnalyzer:
                     self._check_loop_var_rebind(stmt, elem_type)
                     self._record_for_loop_var_type(stmt, elem_type)
                     with self.scopes.loop_var(inner_scope, stmt.var, elem_type, iter_depth, is_foreach=True):
+                        # Inside the declaration: the block rule reads the
+                        # loop variable's own depth when it notes the binding.
+                        self._note_loop_var_iteration(
+                            stmt.var, elem_type, prior_iter,
+                            placeable=not self._iteration_yields_copies(iterable_type))
                         for s in stmt.body:
                             self.analyze_stmt(s)
                     if track_loop_prov:
@@ -3948,6 +3951,9 @@ class StatementAnalyzer:
 
             # Register the as-variable if present
             if item.target is not None:
+                if self.ctx.func.current_scope.lookup(item.target) is None:
+                    self.ctx.declare_local(
+                        item.target, self.ctx.func.current_scope.depth)
                 resolved = self._infer_new_local_type(
                     item.target, enter_type, None, None,
                     line=(stmt.loc.line if stmt.loc else None),
@@ -4058,7 +4064,7 @@ class StatementAnalyzer:
             param_names.add(pname)
             scope_type = make_ref(ptype)
             scope.define(pname, scope_type)
-            self.ctx.func.var_scope_depth[pname] = scope.depth
+            self.ctx.declare_local(pname, scope.depth, block_depth=0)
             self.ctx.func.definitely_assigned.add(pname)
             if ns:
                 ns.bind_variable(pname, scope_type)
@@ -4103,6 +4109,7 @@ class StatementAnalyzer:
             collect_nested_def_nonlocal_rebinds(func.body, include_del=True)
             | self.ctx.func.enclosing_nonlocal_rebinds)
         self.ctx.func.deleted_names = collect_deleted_names(func.body)
+        self.ctx.func.in_place_writes = collect_in_place_writes(func.body)
         self.ctx.func.current_fresh_ctor_locals = set()
         self.ctx.func.tuple_unpack_view_targets = set()
         self.ctx.func.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
@@ -4912,8 +4919,15 @@ class StatementAnalyzer:
                               if isinstance(t, family.pending_type_class)]
             else:
                 source_ids = [var_type.var_id]
+            # The pending leaves answer through the alias pass; every other
+            # leaf (`x = a or h.s`) answers the view rule here.
+            other_leaf_owns = init_expr is not None and not all(walk_view_source_leaves(
+                init_expr, lambda leaf: [
+                    isinstance(self.ctx.get_expr_type(leaf), PendingViewType)
+                    or self.deduction.leaf_lends_view(leaf)]))
             info = ViewVarInfo(var_id=var_id, variable_name=name,
                                decl_line=line, source_var_ids=source_ids,
+                               initialized_from_owned=other_leaf_owns,
                                frame_unsafe_source=(
                                    init_expr is not None
                                    and self.deduction.has_nonstatic_view_source(init_expr)))
@@ -4922,12 +4936,13 @@ class StatementAnalyzer:
             if init_expr is None:
                 is_owned = False
             elif is_borrowing_view_type(var_type):
-                # The local's own type is already the view, so its source is a
-                # borrow by construction; the only thing forcing an owned copy
-                # is a source whose storage dies at end-of-statement.
-                is_owned = view_source_is_temporary(
+                # The source's type is already the view, but whether the
+                # local may keep it is the same rule an owned-typed source
+                # answers: a view of a field or a container element owns.
+                is_owned = (view_source_is_temporary(
                     init_expr.expr if isinstance(init_expr, TpyCoerce)
                     else init_expr)
+                    or not self.deduction.is_view_compatible_source(init_expr, var_type))
             else:
                 is_owned = not self.deduction.is_view_compatible_source(init_expr, init_type)
             info = ViewVarInfo(var_id=var_id, variable_name=name,
@@ -4935,6 +4950,12 @@ class StatementAnalyzer:
                                frame_unsafe_source=(
                                    not is_owned
                                    and self.deduction.has_nonstatic_view_source(init_expr)))
+            if is_owned and init_expr is not None:
+                src = peel_coerce(init_expr)
+                if (isinstance(src, (TpyFieldAccess, TpySubscript))
+                        and not view_source_is_temporary(src)):
+                    info.owns_stored_source = True
+                    info.stored_source = storage_spelling(src)
 
         vars_reg[var_id] = info
         var_map[name] = var_id
@@ -5048,6 +5069,7 @@ class StatementAnalyzer:
         self.ctx.func.loop_var_iter_roots[var] = roots
         inner = unwrap_own(unwrap_ref_type(unwrap_readonly(elem_type)))
         if isinstance(inner, PendingViewType):
+            self.deduction.mark_view_non_lending(inner.family, inner.var_id)
             resolved: 'set[str] | None' = set()
             for r in roots or ():
                 sub_roots = self.deduction._resolve_hoist_root(r, {var})
@@ -6126,6 +6148,17 @@ class StatementAnalyzer:
         else:
             raise self.ctx.error(f"Variable '{stmt.name}' has no type annotation and no initializer", stmt)
 
+        # Record scope depth for new variables (not reassignments of outer-scope
+        # vars), ahead of the view rule, which reads it at the bind. Uses scope
+        # lookup rather than var_scope_depth existence, so that stale entries
+        # from discarded inner scopes get overwritten correctly.
+        #
+        # Note: when an outer-scoped variable is reassigned with an rvalue inside
+        # an inner scope (e.g. `p = Point()` in a loop body where `p` was declared
+        # outside), the depth stays at the outer scope. This is safe because the
+        # codegen uses a rebind slot at the declaration scope for rvalue rebinds.
+        if existing_type is None:
+            self.ctx.declare_local(stmt.name, self.ctx.func.current_scope.depth)
         # Deferred type inference for new locals (PendingViewType, list alias, etc.)
         if not is_global_declared and existing_type is None:
             var_type = self._infer_new_local_type(
@@ -6185,7 +6218,6 @@ class StatementAnalyzer:
         # (with kind promoted to the most-restrictive in the chain) rather
         # than silently dropped. Required for chains through reassigned vars
         # (e.g. `view = s; s = items[1]`) to keep tracking the source.
-        self.ctx.mark_all_view_borrowers_mutated(stmt.name)
         _handle_pinned_view_rebind(self.ctx, stmt.name, stmt)
         bt = self.ctx.func.borrow_tracker
         stamp_bind_kind(self.ctx, stmt, stmt.name, stmt.init, var_type,
@@ -6284,13 +6316,14 @@ class StatementAnalyzer:
         # local does -- include them so `v = a.strip()` registers the receiver
         # borrow (drives the temp-receiver warning and the mutate-while-borrowed
         # check on a later `a += ...`).
-        # A str/bytes local's storage is the deduction's answer, not this
-        # site's: one that will be a VIEW borrows its source exactly as a
-        # spelled `StrView` does, and one that will OWN copies and borrows
-        # nothing. `view_storage_verdict` is None for every other type, which
-        # then answers for itself.
-        borrow_storage = (self.ctx.view_storage_verdict(unwrap_readonly(var_type))
-                          or var_type) if var_type is not None else None
+        # An INFERRED str/bytes local registers no loan at all: every write
+        # to what it views (a rebind, `+=`, a mutating method, `del`) is a
+        # source-storage event the deduction answers by owning the local,
+        # so a loan here could only warn about a borrow that no longer
+        # exists. A spelled `StrView` / `BytesView` cannot fall back, and
+        # keeps the loan and its mutate-while-borrowed diagnostic.
+        borrow_storage = (None if isinstance(unwrap_readonly(var_type), PendingViewType)
+                          else var_type)
         if (stmt.init is not None
                 and borrow_storage is not None
                 and (not borrow_storage.is_value_type()
@@ -6326,16 +6359,6 @@ class StatementAnalyzer:
                 self.ctx.func.narrowed_types[stmt.name] = init_type
                 facts = {stmt.name: init_type}
                 stmt.then_type_facts = self._filter_union_codegen_facts(facts)
-        # Record scope depth for new variables (not reassignments of outer-scope
-        # vars). Uses scope lookup rather than var_scope_depth existence, so that
-        # stale entries from discarded inner scopes get overwritten correctly.
-        #
-        # Note: when an outer-scoped variable is reassigned with an rvalue inside
-        # an inner scope (e.g. `p = Point()` in a loop body where `p` was declared
-        # outside), the depth stays at the outer scope. This is safe because the
-        # codegen uses a rebind slot at the declaration scope for rvalue rebinds.
-        if existing_type is None:
-            self.ctx.func.var_scope_depth[stmt.name] = self.ctx.func.current_scope.depth
         # Update rvalue status for hoist eligibility (both new vars and reassignments)
         if stmt.init:
             self.ctx.func.own_consume_aliases.pop(stmt.name, None)
@@ -6577,7 +6600,7 @@ class StatementAnalyzer:
                 # Record scope depth so the definite-assignment read-check sees
                 # the target (mirrors the scalar var-decl): a loop-body-only
                 # target used after the loop is rejected, not miscompiled.
-                self.ctx.func.var_scope_depth[name] = self.ctx.func.current_scope.depth
+                self.ctx.declare_local(name, self.ctx.func.current_scope.depth)
                 # Bind into the codegen namespace too (mirrors _analyze_var_decl
                 # and the top-level unpack branch); the resumable-frame hoist
                 # reads `current_ns.all_bindings()`, so a target left only in
@@ -6615,6 +6638,18 @@ class StatementAnalyzer:
             fam = self.deduction.tuple_target_view_family(name)
             tgt_id = self.ctx.view_var_map(fam).get(name) if fam else None
             if fam is not None and tgt_id is not None:
+                if stmt.is_loop_head:
+                    # A view of the current step's element, which the next
+                    # step replaces: it lends no view to a local.
+                    self.deduction.mark_view_non_lending(fam, tgt_id)
+                elif not (isinstance(stmt.value, TpyName)
+                          and self.deduction.name_holds_storage(
+                              stmt.value.name)):
+                    # An element of an rvalue (or a field / container
+                    # element, or a NAME that only borrows one) source: the
+                    # target owns it, moved out of a disposable holder by
+                    # the lowering.
+                    self.deduction.mark_view_reassigned_from_owned(name, fam)
                 # A per-statement capture (call / rvalue source) has no name
                 # the hoist rule can place; a NAME source is that tuple.
                 self.deduction.note_view_binding(
@@ -7161,7 +7196,6 @@ class StatementAnalyzer:
             # Retarget runs before remove_borrower so borrowers of the target
             # get re-pointed to the upstream source (with promoted kind),
             # keeping chains through reassigned vars valid.
-            self.ctx.mark_all_view_borrowers_mutated(stmt.target.name)
             _handle_pinned_view_rebind(self.ctx, stmt.target.name, stmt)
             bt = self.ctx.func.borrow_tracker
             stamp_bind_kind(self.ctx, stmt, stmt.target.name, stmt.value,
@@ -7635,10 +7669,6 @@ class StatementAnalyzer:
             if not is_external and name not in self.ctx.func.definitely_assigned:
                 raise self.ctx.error(
                     f"variable '{name}' may not be assigned at this point", stmt)
-            # The value is destroyed here, so views of its storage own --
-            # including one a call handed back, which holds a borrow of it.
-            self.ctx.mark_all_view_borrowers_mutated(name)
-            self.deduction.own_views_borrowing(name)
             # Remove from definitely_assigned so use-after-del is caught
             self.ctx.func.definitely_assigned.discard(name)
             # Clear narrowing facts

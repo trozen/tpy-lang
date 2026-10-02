@@ -4480,44 +4480,44 @@
   "call(CALLEE, [call(copy [template '::tpy::BytesView({0})'], [%s0])]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "bytes__ro__dict_items_value__ctor": [
-  "reject:stmt.for_each:tuple.iter_shape",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw])"
  ],
  "bytes__ro__dict_items_value__fn": [
-  "reject:stmt.for_each:tuple.iter_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "bytes__ro__dict_items_value__gen": [
-  "reject:stmt.for_each:tuple.iter_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0])"
  ],
  "bytes__ro__dict_items_value__genrec": [
-  "reject:stmt.for_each:tuple.iter_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%s0])"
  ],
  "bytes__ro__dict_items_value__meth": [
-  "reject:stmt.for_each:tuple.iter_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%s0])"
  ],
  "bytes__ro__dict_items_value__nested": [
-  "reject:stmt.for_each:tuple.iter_shape",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
  ],
  "bytes__ro__dict_items_value__proto": [
-  "reject:stmt.for_each:tuple.iter_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%s0])"
  ],
  "bytes__ro__dict_items_value__static": [
-  "reject:stmt.for_each:tuple.iter_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "bytes__ro__dict_subscript__ctor": [
   "ok",

@@ -37,7 +37,7 @@ std::tuple<::tpy::Bytes, bool, bool> run_redirect(::tpy::BytesView status_line) 
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
     ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
-    b.sendall((::tpy::bytes_concat(status_line, ::tpy::bytes_literal_owned("\r\nLocation: /next\r\nContent-Length: 0\r\n\r\n", 40))));
+    b.sendall((::tpy::bytes_concat(status_line, ::tpy::bytes_literal("\r\nLocation: /next\r\nContent-Length: 0\r\n\r\n", 40))));
     d.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
     ::tpystd::http::client::HTTPConnection h0 = ::tpystd::http::client::HTTPConnection("api.test", 80);
@@ -65,7 +65,7 @@ std::tuple<::tpy::Bytes, bool, bool> run_redirect(::tpy::BytesView status_line) 
 //     print(line, has_body, has_ct)
 void report(::tpy::BytesView status_line) {
     auto __tup_1 = ::tpyapp::main::run_redirect(status_line);
-    ::tpy::BytesView line = std::get<0>(__tup_1);
+    ::tpy::Bytes line = std::move(std::get<0>(__tup_1));
     bool has_body = std::get<1>(__tup_1);
     bool has_ct = std::get<2>(__tup_1);
     std::cout << ::tpy::BytesPrinter(line) << " " << ::tpy::print_bool(has_body) << " " << ::tpy::print_bool(has_ct) << "\n" << ::tpy::check_signals;

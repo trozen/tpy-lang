@@ -1,5 +1,5 @@
-# String subscript access on lvalue containers infers string_view;
-# source-mutation tracking falls back to std::string if source is mutated.
+# A str subscript read: an element of a tuple NAME the function binds lends a
+# string_view, while a list element binds an owned std::string.
 from tpy import int32
 
 def test_tuple() -> None:
@@ -9,7 +9,7 @@ def test_tuple() -> None:
 
 def test_list_view() -> None:
     items: list[str] = ["alpha", "beta"]
-    s = items[0]  # tpyc: type(StrView)
+    s = items[0]  # tpyc: type(str)
     print(s)
 
 def test_nested_tuple() -> None:

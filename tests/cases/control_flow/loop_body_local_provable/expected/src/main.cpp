@@ -821,7 +821,7 @@ void else_tuple_str(int32_t n) {
     }
     {
         auto __tup_1 = ::tpyapp::main::pair();
-        s = std::get<0>(__tup_1);
+        s = std::move(std::get<0>(__tup_1));
         k = std::get<1>(__tup_1);
     }
     __after_else_0:;

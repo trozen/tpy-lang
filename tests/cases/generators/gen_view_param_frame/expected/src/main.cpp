@@ -47,7 +47,7 @@ std::string make_str(int32_t n) {
 // def make_bytes(n: int32) -> bytes:
 //     return b"0123456789" * n
 ::tpy::Bytes make_bytes(int32_t n) {
-    return (::tpy::bytes_repeat(::tpy::bytes_literal_owned("0123456789", 10), n));
+    return (::tpy::bytes_repeat(::tpy::bytes_literal("0123456789", 10), n));
 }
 
 

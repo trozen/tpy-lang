@@ -34,7 +34,7 @@ void sec_imported_write(std::vector<std::string>& xs) {
     std::cout << "imported write" << " " << v << " " << ::tpy::__getitem__(xs, 0) << "\n" << ::tpy::check_signals;
 }
 
-// # the imported callee never writes; the mutable parameter alone demotes
+// # the imported callee never writes
 // def sec_imported_nowrite(xs: list[str]) -> None:
 //     v = xs[0]  # tpyc: type(str)
 //     print("imported nowrite", v, touch(xs))
@@ -44,14 +44,12 @@ void sec_imported_nowrite(const std::vector<std::string>& xs) {
 }
 
 // # a `readonly` parameter closes the callee's OWN write path, imported like
-// # local -- not a guarantee that nothing writes: the same callee may append to a
-// # module global aliasing `xs` and reallocate the buffer under `v` with no
-// # diagnostic (BUGS.md#readonly-method-global-write-under-live-borrow)
+// # local; the read owns a copy all the same
 // def sec_imported_readonly(xs: list[str]) -> None:
-//     v = xs[0]  # tpyc: type(StrView)
+//     v = xs[0]  # tpyc: type(str)
 //     print("imported readonly", v, peek(xs))
 void sec_imported_readonly(const std::vector<std::string>& xs) {
-    std::string_view v = ::tpy::__getitem__(xs, 0);
+    std::string v = ::tpy::__getitem__(xs, 0);
     std::cout << "imported readonly" << " " << v << " " << ::tpyapp::viewmod::peek(xs) << "\n" << ::tpy::check_signals;
 }
 
@@ -74,10 +72,10 @@ void sec_local_nowrite(const std::vector<std::string>& xs) {
 }
 
 // def sec_local_readonly(xs: list[str]) -> None:
-//     v = xs[0]  # tpyc: type(StrView)
+//     v = xs[0]  # tpyc: type(str)
 //     print("local readonly", v, peek_local(xs))
 void sec_local_readonly(const std::vector<std::string>& xs) {
-    std::string_view v = ::tpy::__getitem__(xs, 0);
+    std::string v = ::tpy::__getitem__(xs, 0);
     std::cout << "local readonly" << " " << v << " " << ::tpyapp::main::peek_local(xs) << "\n" << ::tpy::check_signals;
 }
 
@@ -87,8 +85,7 @@ __gen_sec_gen sec_gen(std::vector<std::string>& xs) {
     return __gen_sec_gen(xs);
 }
 
-// # no callee at all: binding a second NAME to the container is itself a write
-// # path to every element, so the view demotes on the bind alone
+// # no callee at all: a second NAME bound to the container
 // def sec_alias_bind(xs: list[str]) -> None:
 //     v = xs[0]  # tpyc: type(str)
 //     ys = xs
@@ -99,13 +96,13 @@ void sec_alias_bind(const std::vector<std::string>& xs) {
     std::cout << "alias bind" << " " << v << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
 }
 
-// # the contrast: a one-hop field read keeps its view beside a `readonly`
-// # callee, the same answer the element read gets at a `readonly` parameter
+// # a one-hop field read beside a `readonly` callee: an owned copy, like the
+// # element reads above
 // def sec_field(o: Outer) -> None:
-//     v = o.name  # tpyc: type(StrView)
+//     v = o.name  # tpyc: type(str)
 //     print("field", v, peek_rec(o))
 void sec_field(const ::tpyapp::viewmod::Outer& o) {
-    std::string_view v = o.name;
+    std::string v = o.name;
     std::cout << "field" << " " << v << " " << ::tpyapp::viewmod::peek_rec(o) << "\n" << ::tpy::check_signals;
 }
 

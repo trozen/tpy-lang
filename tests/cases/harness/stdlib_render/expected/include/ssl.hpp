@@ -418,8 +418,8 @@ inline void SSLContext::_config_server(::tpy_tls_session* s) const {
     if ((::tpy::__len__(this->_certfile) == 0)) {
         ::tpystd::ssl::_fail(s, "server_side wrap_socket requires load_cert_chain");
     }
-    std::string_view cf = this->_certfile;
-    std::string_view kf = this->_keyfile;
+    std::string cf = this->_certfile;
+    std::string kf = this->_keyfile;
     int32_t rc = ::tpy_tls_config_server(s, reinterpret_cast<const uint8_t*>(cf.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(cf)), reinterpret_cast<const uint8_t*>(kf.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(kf)));
     if ((rc != 0)) {
         ::tpystd::ssl::_fail(s, ::tpystd::ssl::_errstr(rc));

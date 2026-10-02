@@ -215,9 +215,9 @@ int32_t _hex_val(int32_t c) {
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         std::string_view ln = *__beg_3;
-        data = (::tpy::bytes_concat((::tpy::bytes_concat(data, ::tpy::bytes_from_str(ln))), ::tpy::bytes_literal_owned("\r\n", 2)));
+        data = (::tpy::bytes_concat((::tpy::bytes_concat(data, ::tpy::bytes_from_str(ln))), ::tpy::bytes_literal("\r\n", 2)));
     }
-    data = (::tpy::bytes_concat(data, ::tpy::bytes_literal_owned("\r\n", 2)));
+    data = (::tpy::bytes_concat(data, ::tpy::bytes_literal("\r\n", 2)));
     if ((body.has_value())) {
         data = (::tpy::bytes_concat(data, (*body)));
     }

@@ -22,8 +22,8 @@ std::tuple<std::string, std::string> pair(int32_t n) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpyapp::main::pair(9);
-        host = std::get<0>(__tup_1);
-        port = std::get<1>(__tup_1);
+        host = std::move(std::get<0>(__tup_1));
+        port = std::move(std::get<1>(__tup_1));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;

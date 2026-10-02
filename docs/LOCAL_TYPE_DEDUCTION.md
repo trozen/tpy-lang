@@ -111,7 +111,7 @@ ReturnInfo:
 ```
 
 This replaces the current separate tracking structures (ListLiteralInfo,
-StrVarInfo, write_history, literal_default_vars, etc.).
+ViewVarInfo, write_history, literal_default_vars, etc.).
 
 ### Phase 2: Resolution (after body analysis)
 

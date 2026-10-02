@@ -5,18 +5,18 @@ namespace tpyapp::main {
 
 
 // def test_list_view() -> None:
-//     """No mutation: BytesView."""
+//     """No mutation: still an owned copy."""
 //     items: list[bytes] = [b"alice", b"bob"]
-//     x = items[int32(0)]  # tpyc: type(BytesView)
+//     x = items[int32(0)]  # tpyc: type(bytes)
 //     print(x)
 void test_list_view() {
     std::vector<::tpy::Bytes> items = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
-    ::tpy::BytesView x = ::tpy::__getitem__(items, 0);
+    ::tpy::Bytes x = ::tpy::__getitem__(items, 0);
     std::cout << ::tpy::BytesPrinter(x) << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_mutation_fallback() -> None:
-//     """Source mutated after borrow: falls back to owned bytes."""
+//     """Source grows after the read: the copy keeps the old value."""
 //     items: list[bytes] = [b"alice", b"bob"]
 //     x = items[int32(0)]  # tpyc: type(bytes)
 //     items.append(b"carol")
@@ -29,7 +29,7 @@ void test_list_mutation_fallback() {
 }
 
 // def test_list_reassign_fallback() -> None:
-//     """Source reassigned after borrow: falls back to owned bytes."""
+//     """Source reassigned after the read: the copy keeps the old value."""
 //     items: list[bytes] = [b"alice", b"bob"]
 //     x = items[int32(0)]  # tpyc: type(bytes)
 //     items = [b"dave"]
@@ -43,7 +43,7 @@ void test_list_reassign_fallback() {
 }
 
 // def test_list_subscript_write_fallback() -> None:
-//     """Subscript write on source: falls back to owned bytes."""
+//     """Subscript write on the source: the copy keeps the old value."""
 //     items: list[bytes] = [b"alice", b"bob"]
 //     x = items[int32(0)]  # tpyc: type(bytes)
 //     items[int32(0)] = b"eve"

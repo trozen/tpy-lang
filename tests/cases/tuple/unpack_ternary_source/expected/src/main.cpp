@@ -61,7 +61,7 @@ int32_t local_arms(bool c) {
 //     return s + str(n)
 std::string strings(bool c, const std::tuple<std::string, int32_t>& t1, const std::tuple<std::string, int32_t>& t2) {
     auto __tup_1 = ((c) ? (t1) : (t2));
-    std::string_view s = std::get<0>(__tup_1);
+    std::string s = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     return (::tpy::str_concat(s, ::tpy::fixed_to_str<int32_t>(n)));
 }
@@ -121,7 +121,7 @@ void reseat_view(bool c) {
     std::tuple<std::string, int32_t> t1 = std::tuple<std::string, int32_t>{"aa", 1};
     std::tuple<std::string, int32_t> t2 = std::tuple<std::string, int32_t>{"zz", 9};
     auto __tup_1 = ((c) ? (t1) : (t2));
-    std::string_view s = std::get<0>(__tup_1);
+    std::string s = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     t1 = std::tuple<std::string, int32_t>{"qq", 5};
     std::cout << "reseat_view" << " " << s << " " << n << " " << std::get<0>(t1) << "\n" << ::tpy::check_signals;

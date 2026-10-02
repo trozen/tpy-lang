@@ -92,10 +92,12 @@ def span_param(xs: Span[int32]) -> int32:  # tpyc: mir(uncovered /^view of conta
     return xs[0]
 
 
-# free function: a reassigned str parameter owns a local; the view borrows that local
+# free function: a reassigned str parameter owns a local; the view borrows that
+# local. Spelled StrView: an inferred local over a name the function rebinds
+# owns under the one view rule, so only the explicit view reaches the copy.
 def reassigned_param(s: str) -> int:  # tpyc: mir(covered)
     s = s + "x"
-    v = s[1:]  # tpyc: mir_borrows(v, local(s))
+    v: StrView = s[1:]  # tpyc: mir_borrows(v, local(s))
     return len(v)
 
 
@@ -208,9 +210,10 @@ def write_then_reuse(r: Rec, s: str) -> int:  # tpyc: mir(conflict /^replacement
     return len(s)
 
 
-# free function: a view local of a field borrows the field place
+# free function: a view local of a field borrows the field place. Spelled
+# StrView: an inferred field read owns under the one view rule.
 def field_view(r: Rec) -> int:  # tpyc: mir(covered)
-    v = r.name  # tpyc: mir_borrowed(v) mir_borrows(v, r.name)
+    v: StrView = r.name  # tpyc: mir_borrowed(v) mir_borrows(v, r.name)
     return len(v)
 
 

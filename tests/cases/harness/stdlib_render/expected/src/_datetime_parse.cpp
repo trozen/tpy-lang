@@ -123,7 +123,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt> _match_name(std::string_view data, cons
     ::tpy::BigInt i = start;
     int32_t n = ::tpy::__len__(names);
     while ((i < ::tpy::BigInt(n))) {
-        std::string_view cand = ::tpy::__getitem__(names, i.to_fixed_check<int32_t>());
+        std::string cand = ::tpy::__getitem__(names, i.to_fixed_check<int32_t>());
         int32_t cl = ::tpy::__len__(cand);
         if (((cl > best_len) && (((p) + (::tpy::BigInt(cl))) <= ::tpy::__len__(data)))) {
             if ((::tpy::str_lower(::tpy::str_slice(data, ::tpy::BasicSlice{p.to_fixed_check<int32_t>(), ((p) + (::tpy::BigInt(cl))).to_fixed_check<int32_t>()})) == ::tpy::str_lower(cand))) {
@@ -986,8 +986,8 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
     if (st.has_gmtoff) {
         off_us = ((((st.gmtoff) * (::tpy::BigInt(1000000)))) + (st.gmtoff_fraction));
     }
-    std::string_view zname = (((st.has_zname && st.has_gmtoff)) ? (st.zname) : (""));
-    return std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, bool, ::tpy::BigInt, std::string>{year, month, day, hour, st.minute, st.second, st.fraction, st.has_gmtoff, off_us, std::string(zname)};
+    std::string zname = (((st.has_zname && st.has_gmtoff)) ? (st.zname) : (""));
+    return std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, bool, ::tpy::BigInt, std::string>{year, month, day, hour, st.minute, st.second, st.fraction, st.has_gmtoff, off_us, zname};
 }
 
 // def _int_digits(s: str) -> int:
@@ -1304,7 +1304,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
     if ((tz_pos == 0)) {
         tz_pos = (::tpy::add_check<int32_t>(::tpy::str_find(tstr, "Z"), 1));
     }
-    std::string timestr = std::string(tstr);
+    std::string_view timestr = tstr;
     if ((tz_pos > 0)) {
         timestr = ::tpy::str_slice(tstr, ::tpy::BasicSlice{std::nullopt, (::tpy::sub_check<int32_t>(tz_pos, 1))});
     }

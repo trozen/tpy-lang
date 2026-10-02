@@ -134,10 +134,10 @@ namespace tpystd::tplib::json::parser {
 //     gap = " " if len(after) > 0 else ""
 //     return prefix + before + "^---<" + msg + ">" + gap + after + suffix
 std::string JsonError::describe(std::string_view data) const {
-    std::string_view msg = this->message;
+    std::string msg = this->message;
     if ((this->pos < 0)) {
         if ((::tpy::__len__(msg) > 0)) {
-            return std::string(msg);
+            return msg;
         }
         return "json error";
     }

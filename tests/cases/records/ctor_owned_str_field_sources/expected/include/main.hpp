@@ -178,14 +178,14 @@ inline void Tags::reset(std::string_view a, const ::tpy::BigInt& x, const Owner&
 //     self.copied = bytes(src)  # tpyc: ok
 //     self.from_field = o.data  # tpyc: ok
 inline Blob::Blob(::tpy::BytesView src, const Owner& o)
-    : joined((::tpy::bytes_concat(src, ::tpy::bytes_literal_owned("!", 1)))),
+    : joined((::tpy::bytes_concat(src, ::tpy::bytes_literal("!", 1)))),
       copied(::tpy::Bytes(src)),
       from_field(o.data) {}
 
 // def reset(self, o: Owner) -> None:
 //     self.from_field = o.data + b"?"  # tpyc: ok
 inline void Blob::reset(const Owner& o) {
-    this->from_field = (::tpy::bytes_concat(o.data, ::tpy::bytes_literal_owned("?", 1)));
+    this->from_field = (::tpy::bytes_concat(o.data, ::tpy::bytes_literal("?", 1)));
 }
 
 // def __init__(self, a: str, x: int) -> None:

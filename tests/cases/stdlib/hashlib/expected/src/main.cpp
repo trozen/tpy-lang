@@ -58,7 +58,7 @@ void main() {
     std::cout << h2.hexdigest() << "\n" << ::tpy::check_signals;
     ::tpystd::hashlib::SHA256 h3 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", 56));
     std::cout << h3.hexdigest() << "\n" << ::tpy::check_signals;
-    ::tpystd::hashlib::SHA256 h4 = ::tpystd::hashlib::sha256((::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 1000)));
+    ::tpystd::hashlib::SHA256 h4 = ::tpystd::hashlib::sha256((::tpy::bytes_repeat(::tpy::bytes_literal("a", 1), 1000)));
     std::cout << h4.hexdigest() << "\n" << ::tpy::check_signals;
     ::tpystd::hashlib::SHA256 s = ::tpystd::hashlib::sha256();
     s.update(::tpy::bytes_literal("abc", 3));

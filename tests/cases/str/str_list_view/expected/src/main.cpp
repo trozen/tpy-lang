@@ -5,18 +5,18 @@ namespace tpyapp::main {
 
 
 // def test_list_view() -> None:
-//     """No mutation: string_view."""
+//     """No mutation: still an owned copy."""
 //     names: list[str] = ["alice", "bob"]
-//     x = names[int32(0)]  # tpyc: type(StrView)
+//     x = names[int32(0)]  # tpyc: type(str)
 //     print(x)
 void test_list_view() {
     std::vector<std::string> names = {"alice", "bob"};
-    std::string_view x = ::tpy::__getitem__(names, 0);
+    std::string x = ::tpy::__getitem__(names, 0);
     std::cout << x << "\n" << ::tpy::check_signals;
 }
 
 // def test_list_mutation_fallback() -> None:
-//     """Source mutated after borrow: falls back to std::string."""
+//     """Source grows after the read: the copy keeps the old value."""
 //     names: list[str] = ["alice", "bob"]
 //     x = names[int32(0)]  # tpyc: type(str)
 //     names.append("carol")
@@ -29,7 +29,7 @@ void test_list_mutation_fallback() {
 }
 
 // def test_list_reassign_fallback() -> None:
-//     """Source reassigned after borrow: falls back to std::string."""
+//     """Source reassigned after the read: the copy keeps the old value."""
 //     names: list[str] = ["alice", "bob"]
 //     x = names[int32(0)]  # tpyc: type(str)
 //     names = ["dave"]
@@ -43,7 +43,7 @@ void test_list_reassign_fallback() {
 }
 
 // def test_list_subscript_write_fallback() -> None:
-//     """Subscript write on source: falls back to std::string."""
+//     """Subscript write on the source: the copy keeps the old value."""
 //     names: list[str] = ["alice", "bob"]
 //     x = names[int32(0)]  # tpyc: type(str)
 //     names[int32(0)] = "eve"
@@ -56,7 +56,7 @@ void test_list_subscript_write_fallback() {
 }
 
 // def test_list_pop_fallback() -> None:
-//     """pop() on source: falls back to std::string."""
+//     """pop() on the source: the copy keeps the old value."""
 //     names: list[str] = ["alice", "bob"]
 //     x = names[int32(0)]  # tpyc: type(str)
 //     names.pop(int32(1))

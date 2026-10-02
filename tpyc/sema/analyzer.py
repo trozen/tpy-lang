@@ -106,7 +106,8 @@ from .calls import CallAnalyzer
 from .methods import MethodAnalyzer
 from .statements import StatementAnalyzer
 
-from ..prescan import ScanResult, scan_reassigned_vars, liveness_alias_sources, collect_fact_kills
+from ..prescan import (ScanResult, scan_reassigned_vars, liveness_alias_sources,
+                       collect_fact_kills, collect_in_place_writes)
 from ..liveness import (analyze_last_uses, closure_pinned_names,
                         collect_finally_return_candidates)
 from .alias_rebind import decide_rebind_storage, global_write_facts
@@ -3194,7 +3195,7 @@ class SemanticAnalyzer:
                 self_named = receiver_self_type(record, self.ctx.registry)
                 self_type = self._normalize_param_type(self_named, method.is_readonly)
                 scope.define("self", self_type)
-                self.ctx.func.var_scope_depth["self"] = scope.depth
+                self.ctx.declare_local("self", scope.depth, block_depth=0)
                 self.ctx.func.definitely_assigned.add("self")
                 local_ns.bind_variable("self", self_type)
             elif method.is_classmethod:
@@ -3751,6 +3752,7 @@ class SemanticAnalyzer:
         self.ctx.func.current_alias_sources = dict(self.top_level_scan_result.alias_sources)
         self.ctx.func.current_chain_alias_sources = dict(
             self.top_level_scan_result.chain_alias_sources)
+        self.ctx.func.in_place_writes = collect_in_place_writes(stmts)
 
         for stmt in stmts:
             # A parser-minted comprehension temp is an init-scope local, not a

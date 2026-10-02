@@ -168,9 +168,9 @@ std::string _escape_header_param(std::string_view value) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& kv = *__beg_0;
-            body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("--", 2), bnd)), ::tpy::bytes_literal_owned("\r\n", 2))));
-            body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Content-Disposition: form-data; name=\"", 38), ::tpy::bytes_from_str(::tpystd::tplib::requests::_escape_header_param(std::get<0>(kv))))), ::tpy::bytes_literal_owned("\"\r\n\r\n", 5))));
-            body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat(::tpy::bytes_from_str(std::get<1>(kv)), ::tpy::bytes_literal_owned("\r\n", 2))));
+            body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("--", 2), bnd)), ::tpy::bytes_literal("\r\n", 2))));
+            body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("Content-Disposition: form-data; name=\"", 38), ::tpy::bytes_from_str(::tpystd::tplib::requests::_escape_header_param(std::get<0>(kv))))), ::tpy::bytes_literal("\"\r\n\r\n", 5))));
+            body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat(::tpy::bytes_from_str(std::get<1>(kv)), ::tpy::bytes_literal("\r\n", 2))));
         }
     }
     auto& __obj_1 = files;
@@ -179,12 +179,12 @@ std::string _escape_header_param(std::string_view value) {
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
         const FileField& f = ::tpy::__getitem__(files, k);
-        body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("--", 2), bnd)), ::tpy::bytes_literal_owned("\r\n", 2))));
-        body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Content-Disposition: form-data; name=\"", 38), ::tpy::bytes_from_str(::tpystd::tplib::requests::_escape_header_param(k)))), ::tpy::bytes_literal_owned("\"; filename=\"", 13))), ::tpy::bytes_from_str(::tpystd::tplib::requests::_escape_header_param(f.filename)))), ::tpy::bytes_literal_owned("\"\r\n", 3))));
-        body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Content-Type: ", 14), ::tpy::bytes_from_str(f.content_type))), ::tpy::bytes_literal_owned("\r\n\r\n", 4))));
-        body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat(f.content, ::tpy::bytes_literal_owned("\r\n", 2))));
+        body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("--", 2), bnd)), ::tpy::bytes_literal("\r\n", 2))));
+        body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("Content-Disposition: form-data; name=\"", 38), ::tpy::bytes_from_str(::tpystd::tplib::requests::_escape_header_param(k)))), ::tpy::bytes_literal("\"; filename=\"", 13))), ::tpy::bytes_from_str(::tpystd::tplib::requests::_escape_header_param(f.filename)))), ::tpy::bytes_literal("\"\r\n", 3))));
+        body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("Content-Type: ", 14), ::tpy::bytes_from_str(f.content_type))), ::tpy::bytes_literal("\r\n\r\n", 4))));
+        body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat(f.content, ::tpy::bytes_literal("\r\n", 2))));
     }
-    body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("--", 2), bnd)), ::tpy::bytes_literal_owned("--\r\n", 4))));
+    body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("--", 2), bnd)), ::tpy::bytes_literal("--\r\n", 4))));
     return ::tpy::Bytes(body);
 }
 
@@ -569,7 +569,7 @@ Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connecti
     if ((!host.has_value())) {
         host = "";
     }
-    std::string_view req_path = parts.path;
+    std::string req_path = parts.path;
     if ((req_path == "")) {
         req_path = "/";
     }
@@ -724,7 +724,7 @@ Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connecti
 //     return scheme + "|" + host + "|" + str(port) + "|" + vtok
 std::string _pool_key(std::string_view url, const ::tpy::Union<bool, std::string>& verify) {
     ::tpystd::urllib::parse::SplitResult parts = ::tpystd::urllib::parse::urlsplit(url);
-    std::string_view scheme = parts.scheme;
+    std::string scheme = parts.scheme;
     std::optional<std::string> host = parts.hostname();
     if ((!host.has_value())) {
         host = "";
@@ -1060,7 +1060,7 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_lines::__n
 //     del self._store[lk]
 //     return pair
 std::tuple<std::string, std::string> CaseInsensitiveDict::popitem() {
-    std::string_view lk = "";
+    std::string lk = "";
     bool found = false;
     auto& __obj_0 = this->_store;
     auto __beg_0 = __obj_0.begin();
@@ -1137,7 +1137,7 @@ bool Cookie::matches(std::string_view host, std::string_view path, bool is_https
     if ((!(::tpystd::tplib::requests::_path_match(path, this->path)))) {
         return false;
     }
-    std::string_view d = this->domain;
+    std::string d = this->domain;
     if ((d == "")) {
         return true;
     }
@@ -1242,7 +1242,7 @@ void CookieJar::_ingest(std::string_view raw, std::string_view req_host, std::st
     if ((::tpy::__len__(segs) == 0)) {
         return;
     }
-    std::string_view first = ::tpy::str_strip(::tpy::__getitem__(segs, 0));
+    std::string first = std::string(::tpy::str_strip(::tpy::__getitem__(segs, 0)));
     int32_t eq = ::tpy::str_find(first, "=");
     if ((eq < 0)) {
         return;
@@ -1253,7 +1253,7 @@ void CookieJar::_ingest(std::string_view raw, std::string_view req_host, std::st
     }
     std::string_view value = ::tpy::str_strip(::tpy::str_slice(first, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(eq, 1)), std::nullopt}));
     std::string domain_attr = "";
-    std::string_view path = "/";
+    std::string path = "/";
     bool secure = false;
     bool max_age_set = false;
     ::tpy::BigInt max_age_secs = ::tpy::BigInt(0);
@@ -1262,7 +1262,7 @@ void CookieJar::_ingest(std::string_view raw, std::string_view req_host, std::st
     bool expires_set = false;
     int32_t i = 1;
     while ((i < ::tpy::__len__(segs))) {
-        std::string_view attr = ::tpy::str_strip(segs[static_cast<std::size_t>(i)]);
+        std::string attr = std::string(::tpy::str_strip(segs[static_cast<std::size_t>(i)]));
         i = ::tpy::add_check<int32_t>(i, 1);
         int32_t aeq = ::tpy::str_find(attr, "=");
         if ((aeq < 0)) {
@@ -1274,7 +1274,7 @@ void CookieJar::_ingest(std::string_view raw, std::string_view req_host, std::st
         std::string an = ::tpy::str_lower(::tpy::str_strip(::tpy::str_slice(attr, ::tpy::BasicSlice{std::nullopt, aeq})));
         std::string_view av = ::tpy::str_strip(::tpy::str_slice(attr, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(aeq, 1)), std::nullopt}));
         if ((an == "domain")) {
-            std::string d = std::string(av);
+            std::string_view d = av;
             if (::tpy::str_startswith(d, ".")) {
                 d = ::tpy::str_slice(d, ::tpy::BasicSlice{1, std::nullopt});
             }

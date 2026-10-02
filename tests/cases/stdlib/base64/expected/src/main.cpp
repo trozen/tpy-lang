@@ -152,8 +152,8 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(ba)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes(::tpy::BytesView{})) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes(::tpy::bytes_literal("hello", 5))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes((::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 76)))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes((::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 77)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes((::tpy::bytes_repeat(::tpy::bytes_literal("a", 1), 76)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes((::tpy::bytes_repeat(::tpy::bytes_literal("a", 1), 77)))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::decodebytes(::tpy::bytes_literal("YWFh\n", 5))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::decodebytes(::tpy::bytes_literal("aGVsbG8=\n", 9))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64encode(::tpy::ByteArray(::tpy::bytes_literal("\xfb\xff", 2)))) << "\n" << ::tpy::check_signals;

@@ -64,7 +64,7 @@ std::vector<std::string> walk_rows(std::string_view root, std::optional<std::fun
             std::string_view dirpath = std::get<0>(__tup_1);
             auto&& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
             auto&& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-            std::string_view rel = ::tpy::str_slice(dirpath, ::tpy::BasicSlice{::tpy::__len__(root), std::nullopt});
+            std::string rel = std::string(::tpy::str_slice(dirpath, ::tpy::BasicSlice{::tpy::__len__(root), std::nullopt}));
             if ((::tpy::__len__(rel) == 0)) {
                 rel = ".";
             }

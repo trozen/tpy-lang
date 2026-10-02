@@ -1,0 +1,1 @@
+main.py:18: error: Cannot return StrView referencing a local or temporary; 'y' owns a copy of 'h.s'; return h.s directly

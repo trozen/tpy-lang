@@ -28,13 +28,13 @@ std::tuple<bool, int32_t, std::string> get_triple() {
 void main() {
     auto __tup_1 = ::tpyapp::main::get_pair();
     int32_t a = std::get<0>(__tup_1);
-    std::string_view b = std::get<1>(__tup_1);
+    std::string b = std::move(std::get<1>(__tup_1));
     std::cout << a << "\n" << ::tpy::check_signals;
     std::cout << b << "\n" << ::tpy::check_signals;
     auto __tup_2 = ::tpyapp::main::get_triple();
     bool x = std::get<0>(__tup_2);
     int32_t y = std::get<1>(__tup_2);
-    std::string_view z = std::get<2>(__tup_2);
+    std::string z = std::move(std::get<2>(__tup_2));
     std::cout << ::tpy::print_bool(x) << "\n" << ::tpy::check_signals;
     std::cout << y << "\n" << ::tpy::check_signals;
     std::cout << z << "\n" << ::tpy::check_signals;

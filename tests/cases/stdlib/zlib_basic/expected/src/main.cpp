@@ -52,9 +52,9 @@ void one_shot() {
     std::cout << "free wbits kw" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW, -1, -9), -9) == RAW)) << "\n" << ::tpy::check_signals;
     std::cout << "free bufsize" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(FIXTURE, 15, 1) == RAW)) << " " << ::tpy::print_bool((::tpystd::zlib::decompress(FIXTURE, 15, 0) == RAW)) << "\n" << ::tpy::check_signals;
     std::cout << "free bytearray" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpy::ByteArray(FIXTURE)) == RAW)) << "\n" << ::tpy::check_signals;
-    ::tpy::Bytes padded = (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("??", 2), FIXTURE)), ::tpy::bytes_literal_owned("??", 2)));
+    ::tpy::Bytes padded = (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("??", 2), FIXTURE)), ::tpy::bytes_literal("??", 2)));
     std::cout << "free slice" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpy::Bytes(::tpy::bytes_slice(padded, ::tpy::BasicSlice{2, (::tpy::sub_check<int32_t>(::tpy::__len__(padded), 2))}))) == RAW)) << "\n" << ::tpy::check_signals;
-    std::cout << "free trailing" << " " << ::tpy::print_bool((::tpystd::zlib::decompress((::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal_owned("junk", 4)))) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "free trailing" << " " << ::tpy::print_bool((::tpystd::zlib::decompress((::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal("junk", 4)))) == RAW)) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes big = (::tpy::bytes_repeat(::tpy::bytes_from_int_iterable(::tpy::Range<int32_t>(256)), 2000));
     std::cout << "free big" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(big, 9)) == big)) << "\n" << ::tpy::check_signals;
     std::cout << "free empty" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(::tpy::BytesView{})) == ::tpy::BytesView{})) << "\n" << ::tpy::check_signals;
@@ -68,7 +68,7 @@ void one_shot() {
 //     crc = zlib.crc32(bytearray(b"hello"))
 //     print("crc32 mask", crc & 0xffffffff, hex(crc))
 void checksums() {
-    std::cout << "crc32" << " " << ::tpystd::zlib::crc32(::tpy::bytes_literal("hello", 5)) << " " << ::tpystd::zlib::crc32(::tpy::BytesView{}) << " " << ::tpystd::zlib::crc32((::tpy::bytes_repeat(::tpy::bytes_literal_owned("\xff", 1), 1000))) << "\n" << ::tpy::check_signals;
+    std::cout << "crc32" << " " << ::tpystd::zlib::crc32(::tpy::bytes_literal("hello", 5)) << " " << ::tpystd::zlib::crc32(::tpy::BytesView{}) << " " << ::tpystd::zlib::crc32((::tpy::bytes_repeat(::tpy::bytes_literal("\xff", 1), 1000))) << "\n" << ::tpy::check_signals;
     std::cout << "crc32 chain" << " " << ::tpy::print_bool((::tpystd::zlib::crc32(::tpy::bytes_literal("world", 5), ::tpystd::zlib::crc32(::tpy::bytes_literal("hello ", 6))) == ::tpystd::zlib::crc32(::tpy::bytes_literal("hello world", 11)))) << "\n" << ::tpy::check_signals;
     std::cout << "adler32" << " " << ::tpystd::zlib::adler32(::tpy::bytes_literal("hello", 5)) << " " << ::tpystd::zlib::adler32(::tpy::BytesView{}) << "\n" << ::tpy::check_signals;
     std::cout << "adler32 chain" << " " << ::tpystd::zlib::adler32(::tpy::bytes_literal("world", 5), ::tpystd::zlib::adler32(::tpy::bytes_literal("hello ", 6))) << "\n" << ::tpy::check_signals;
@@ -246,7 +246,7 @@ void method_streaming() {
 //     print("obj tail at end", len(rest5), d5.unconsumed_tail, d5.unused_data, d5.eof)
 void objects() {
     ::tpystd::zlib::_Decompress d = ::tpystd::zlib::decompressobj();
-    ::tpy::Bytes out = d.decompress((::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal_owned("XY", 2))));
+    ::tpy::Bytes out = d.decompress((::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal("XY", 2))));
     std::cout << "obj unused" << " " << ::tpy::print_bool((out == RAW)) << " " << ::tpy::print_bool(d.eof()) << " " << ::tpy::BytesPrinter(d.unused_data()) << " " << ::tpy::BytesPrinter(d.unconsumed_tail()) << "\n" << ::tpy::check_signals;
     std::cout << "obj after eof" << " " << ::tpy::BytesPrinter(d.decompress(::tpy::bytes_literal("more", 4))) << " " << ::tpy::BytesPrinter(d.unused_data()) << "\n" << ::tpy::check_signals;
     ::tpystd::zlib::_Decompress d2 = ::tpystd::zlib::decompressobj();
@@ -343,7 +343,7 @@ void objects() {
         }
     }
     ::tpystd::zlib::_Decompress d5 = ::tpystd::zlib::decompressobj();
-    d5.decompress((::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal_owned("JUNK", 4))), 5);
+    d5.decompress((::tpy::bytes_concat(FIXTURE, ::tpy::bytes_literal("JUNK", 4))), 5);
     ::tpy::Bytes rest5 = d5.decompress(d5.unconsumed_tail());
     std::cout << "obj tail at end" << " " << ::tpy::__len__(rest5) << " " << ::tpy::BytesPrinter(d5.unconsumed_tail()) << " " << ::tpy::BytesPrinter(d5.unused_data()) << " " << ::tpy::print_bool(d5.eof()) << "\n" << ::tpy::check_signals;
 }
@@ -491,7 +491,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::zlib::__tpy_init();
-    RAW = (::tpy::bytes_repeat(::tpy::bytes_literal_owned("hello hello hello hello\n", 24), 3));
+    RAW = (::tpy::bytes_repeat(::tpy::bytes_literal("hello hello hello hello\n", 24), 3));
     FIXTURE = ::tpy::bytes_literal_owned("x\x9c\xcbH\xcd\xc9\xc9W\xc8@'\xb9" "0D\x08\x88\x03\000\xc6\xb7\x1a/", 22);
     ::tpyapp::main::main();
 }

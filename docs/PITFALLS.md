@@ -191,7 +191,11 @@ is the defect.
 
 **Rule.** `str` and `bytes` are value types; the view-vs-owned distinction is an optimization,
 not a semantics. A borrowed use takes a view (`std::string_view`, `::tpy::BytesView`);
-materializing `std::string` or a byte copy where a view would do is a defect. `Own[str]` and
+materializing `std::string` or a byte copy where a view would do is a defect. "Would do" is
+the one view rule (`docs/LANGUAGE_FEATURES.md`, String Type Semantics): a parameter, a
+literal, or a slice / view method / element over a `str`, `bytes` or tuple NAME lends a view;
+a field read, a container element, a loop variable's copy and an rvalue tuple's element own,
+for both families, so a copy there is the rule and a view there is the defect. `Own[str]` and
 `Own[bytes]` transfer nothing, and at a parameter they select the owned form (`std::string` by
 value) over the view, so they are idiomatic only where the callee must own the buffer (a field
 store), and a case that uses them says why.

@@ -172,8 +172,8 @@ def truthy(xs: list[Rec | None] | None) -> int32:
 
 
 def str_elem(d: Optional[list[str]]) -> int32:
-    # str element decl: owns a copy where the plain-list and narrowed twins
-    # bind a view (BUGS.md#checked-optional-elem-decl-copies-str)
+    # str element decl: owns a copy, as the plain-list and narrowed twins do
+    # (a container element never lends a view)
     t = d[0]  # tpyc: warning(/Potential None access/) type(str)
     return len(t)
 

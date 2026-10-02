@@ -23,7 +23,7 @@ void main() {
     std::string decoded = ::tpy::bytes_decode(encoded);
     std::cout << decoded << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((s == decoded)) << "\n" << ::tpy::check_signals;
-    ::tpy::Bytes combined = (::tpy::bytes_concat(::tpy::bytes_literal_owned("prefix:", 7), ::tpy::bytes_from_str(s)));
+    ::tpy::Bytes combined = (::tpy::bytes_concat(::tpy::bytes_literal("prefix:", 7), ::tpy::bytes_from_str(s)));
     std::cout << ::tpy::BytesPrinter(combined) << "\n" << ::tpy::check_signals;
 }
 

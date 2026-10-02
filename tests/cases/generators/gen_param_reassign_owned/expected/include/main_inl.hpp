@@ -48,14 +48,14 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gb::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        b = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("z", 1)));
+        b = (::tpy::bytes_concat(b, ::tpy::bytes_literal("z", 1)));
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {  // after: yield len(b)
-        b = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("z", 1)));
+        b = (::tpy::bytes_concat(b, ::tpy::bytes_literal("z", 1)));
         __state = S_JOIN_0;
         continue;
     }

@@ -863,7 +863,7 @@ void main() {
     std::cout << "container_member" << " " << cb.n << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
     auto __tup_6 = ::tpyapp::main::str_member();
     Box sb = std::move(std::get<0>(__tup_6));
-    std::string_view s = std::get<1>(__tup_6);
+    std::string s = std::move(std::get<1>(__tup_6));
     std::cout << "str_member" << " " << sb.n << " " << s << "\n" << ::tpy::check_signals;
     auto __tup_7 = ::tpyapp::main::outer_own();
     auto&& o = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_7)));

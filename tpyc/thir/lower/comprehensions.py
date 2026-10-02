@@ -38,7 +38,6 @@ from ...typesys import (
 from ...type_def_registry import (
     is_array,
     is_big_int_type,
-    is_bytes_type,
     is_dict,
     is_dict_view,
     is_list,
@@ -77,9 +76,8 @@ from .predicates import (
     _is_range_call,
     _nonvalue_container_ret,
     _optional_ptr_borrow,
-    _owned_str_slot,
+    _owned_viewfam_elem,
     _range_counter_type,
-    _resolved_bytes_value,
     _resolved_str_value,
     _resolved_viewfam_value,
     _value_tuple,
@@ -558,7 +556,7 @@ def _comp_route(init, declared: dict[str, TpyType],
             # the ref binding keyed on const_loop_var alone (`auto& r =` /
             # `const auto& p =` -- the inline tuple unpack spells a ref
             # binding for every non-value target).
-            if not (_eligible_scalar(tt) or _owned_str_slot(tt, analyzer)
+            if not (_eligible_scalar(tt) or _owned_viewfam_elem(tt, analyzer)
                     or record_like(
                         unwrap_readonly(unwrap_send_sync(tt)),
                         analyzer)
@@ -597,13 +595,13 @@ def _comp_route(init, declared: dict[str, TpyType],
 
 def _comp_slot_ok(slot: 'TpyType | None', analyzer) -> bool:
     # The NARROW slot predicate, kept for dict KEYS (the hashable-key axis:
-    # widening keys to enum/bytes/record is the container-literal cell's
-    # separate key-family concern -- a record key isn't hashable, an enum/bytes
-    # key rides a later row). char slots ride the same targeted element render
-    # as scalars (comp elements ARE target-typed, unlike list-literal
+    # widening keys to enum/record is the container-literal cell's separate
+    # key-family concern -- a record key isn't hashable, an enum key rides a
+    # later row). char slots ride the same targeted element render as
+    # scalars (comp elements ARE target-typed, unlike list-literal
     # elements).
     return (_eligible_scalar(slot) or _eligible_char(slot)
-            or _owned_str_slot(slot, analyzer))
+            or _owned_viewfam_elem(slot, analyzer))
 
 def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer, *,
                        allow_container: bool = False) -> bool:
@@ -631,9 +629,6 @@ def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer, *,
     NODE against its own vetted set (see there), mirroring
     `_container_lit_elem_ok`'s `fam == "container"` arm."""
     if _comp_slot_ok(slot, analyzer):
-        return True
-    bt = _resolved_bytes_value(slot, analyzer)
-    if bt is not None and is_bytes_type(bt):
         return True
     if allow_container and _container_family_slot(slot):
         return True

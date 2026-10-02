@@ -42,7 +42,7 @@ void main() {
     }
     std::cout << s << "\n" << ::tpy::check_signals;
     ::tpy::Bytes b = ::tpy::bytes_literal_owned("hi", 2);
-    if ((!(b = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("!", 1)))).empty())) {
+    if ((!(b = (::tpy::bytes_concat(b, ::tpy::bytes_literal("!", 1)))).empty())) {
         std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
     }
     int32_t m = 10;

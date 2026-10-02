@@ -35,7 +35,7 @@ std::vector<std::string> walk_rows(std::string_view root) {
             std::string_view dirpath = std::get<0>(__tup_1);
             auto&& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
             auto&& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-            std::string_view rel = ::tpy::str_slice(dirpath, ::tpy::BasicSlice{::tpy::__len__(root), std::nullopt});
+            std::string rel = std::string(::tpy::str_slice(dirpath, ::tpy::BasicSlice{::tpy::__len__(root), std::nullopt}));
             if ((::tpy::__len__(rel) == 0)) {
                 rel = ".";
             }
@@ -89,7 +89,7 @@ bool order_ok(std::string_view root) {
     }
     int32_t i = 0;
     while ((i < ::tpy::__len__(seen))) {
-        std::string_view cur = seen[static_cast<std::size_t>(i)];
+        std::string cur = seen[static_cast<std::size_t>(i)];
         if ((cur != root)) {
             std::string parent = ::tpystd::os::path::dirname(cur);
             int32_t parent_idx = -1;

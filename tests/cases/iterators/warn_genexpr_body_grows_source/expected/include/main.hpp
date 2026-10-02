@@ -839,7 +839,7 @@ struct __genexpr_view_via_method_10_frame : public ::tpy::next_iter_mixin<__gene
         return os << "<generator __genexpr_view_via_method_10>";
     }
 };
-// # the body rewrites the viewed field only through `self.retag()`
+// # the body rewrites the read field only through `self.retag()`
 // total = sum(self.retag(x) for x in xs)  # tpyc: ok  # -> S_RESUME_0
 template <typename F_self>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_view_via_method_10_frame<F_self>::__next__() {
@@ -1005,7 +1005,7 @@ struct __genexpr_view_other_13_frame : public ::tpy::next_iter_mixin<__genexpr_v
         return os << "<generator __genexpr_view_other_13>";
     }
 };
-// # the body grows self and only reads `r`: the view of `r` stays a view
+// # the body grows self and only reads `r`; `lbl` owns a copy all the same
 // n = sum(1 for _ in range(1) if self.push() and r.k >= 0)  # tpyc: ok  # -> S_RESUME_0
 template <typename F_r, typename F_self>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_view_other_13_frame<F_r, F_self>::__next__() {
@@ -1489,7 +1489,7 @@ inline int32_t Tagged::retag(int32_t x) {
 
 // def view_via_method(self, xs: list[int32]) -> str:
 //     v = self.tag  # tpyc: type(str)
-//     # the body rewrites the viewed field only through `self.retag()`
+//     # the body rewrites the read field only through `self.retag()`
 //     total = sum(self.retag(x) for x in xs)  # tpyc: ok
 //     return v + " " + str(total)
 inline std::string Tagged::view_via_method(const std::vector<int32_t>& xs) {
@@ -1572,12 +1572,12 @@ inline int32_t Tagged::count_direct(Tagged& other) const {
 }
 
 // def view_other(self, r: Rec) -> str:
-//     lbl = r.name  # tpyc: type(StrView)
-//     # the body grows self and only reads `r`: the view of `r` stays a view
+//     lbl = r.name  # tpyc: type(str)
+//     # the body grows self and only reads `r`; `lbl` owns a copy all the same
 //     n = sum(1 for _ in range(1) if self.push() and r.k >= 0)  # tpyc: ok
 //     return lbl + " " + str(n)
 inline std::string Tagged::view_other(const Rec& r) {
-    std::string_view lbl = r.name;
+    std::string lbl = r.name;
     int32_t n = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_view_other_13(1, r, (*this)));
     return (::tpy::str_concat((::tpy::str_concat(lbl, " ")), ::tpy::fixed_to_str<int32_t>(n)));
 }

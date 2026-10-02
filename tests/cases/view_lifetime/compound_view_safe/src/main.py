@@ -1,6 +1,5 @@
-# Inverse of compound_view_root_mutated: the root-tracking fix must NOT
-# over-trigger -- a compound view (ternary / and-or) over params or unmutated
-# elements stays a zero-copy view, while an owning-rvalue arm stays owned.
+# Inverse of compound_view_root_mutated: a compound (ternary / and-or) over params
+# stays a zero-copy view, while an element arm or an owning-rvalue arm owns.
 
 
 def compound_of_params(a: str, b: str, cond: bool) -> None:
@@ -10,8 +9,9 @@ def compound_of_params(a: str, b: str, cond: bool) -> None:
 
 
 def compound_of_unmutated_elems(c: list[str], d: list[str], cond: bool) -> None:
-    # Roots c/d are read but never mutated -> the view is safe and kept.
-    x = c[0] if cond else d[0]  # tpyc: type(StrView)
+    # Container elements never lend under the one view rule, so even unmutated
+    # roots c/d give an owned copy.
+    x = c[0] if cond else d[0]  # tpyc: type(str)
     print(x, c[0], d[0])
 
 

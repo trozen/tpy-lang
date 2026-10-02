@@ -14,10 +14,10 @@ std::string make() {
 //     a = make()
 //     v = a.strip()
 //     print(v)
-//     a += " appended text that forces the std::string buffer to reallocate"  # tpyc: warning(/while borrowed/)
+//     a += " appended text that forces the std::string buffer to reallocate"  # tpyc: ok
 void inferred_view() {
     std::string a = ::tpyapp::main::make();
-    std::string_view v = ::tpy::str_strip(a);
+    std::string v = std::string(::tpy::str_strip(a));
     std::cout << v << "\n" << ::tpy::check_signals;
     a += " appended text that forces the std::string buffer to reallocate";
 }
