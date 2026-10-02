@@ -107,6 +107,26 @@ void posthoc_plain() {
 //         raise OSError()
 //     except OSError as exc:
 //         print("zero-arg plain:", str(exc) == "")
+//     # The process-control errnos map to their subclasses (same numbers on
+//     # Linux and macOS).
+//     try:
+//         raise OSError(4, "Interrupted system call")
+//     except InterruptedError as exc:
+//         print("mapped InterruptedError:", exc)
+//     except OSError:
+//         print("WRONG: EINTR stayed plain")
+//     try:
+//         raise OSError(10, "No child processes")
+//     except ChildProcessError as exc:
+//         print("mapped ChildProcessError:", exc)
+//     except OSError:
+//         print("WRONG: ECHILD stayed plain")
+//     try:
+//         raise OSError(3, "No such process")
+//     except ProcessLookupError as exc:
+//         print("mapped ProcessLookupError:", exc)
+//     except OSError:
+//         print("WRONG: ESRCH stayed plain")
 void main() {
     ::tpy::OSError e = ::tpy::OSError(2, "No such file or directory");
     std::cout << e << "\n" << ::tpy::check_signals;
@@ -186,6 +206,33 @@ void main() {
             ::tpy::OSError{}.__raise__();
         } catch (const ::tpy::OSError& exc) {
             std::cout << "zero-arg plain:" << " " << ::tpy::print_bool((std::string(::tpy::__str__(exc)) == "")) << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        try {
+            ::tpy::OSError(4, "Interrupted system call").__raise__();
+        } catch (const ::tpy::InterruptedError& exc) {
+            std::cout << "mapped InterruptedError:" << " " << exc << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::OSError&) {
+            std::cout << "WRONG: EINTR stayed plain" << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        try {
+            ::tpy::OSError(10, "No child processes").__raise__();
+        } catch (const ::tpy::ChildProcessError& exc) {
+            std::cout << "mapped ChildProcessError:" << " " << exc << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::OSError&) {
+            std::cout << "WRONG: ECHILD stayed plain" << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        try {
+            ::tpy::OSError(3, "No such process").__raise__();
+        } catch (const ::tpy::ProcessLookupError& exc) {
+            std::cout << "mapped ProcessLookupError:" << " " << exc << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::OSError&) {
+            std::cout << "WRONG: ESRCH stayed plain" << "\n" << ::tpy::check_signals;
         }
     }
 }

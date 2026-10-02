@@ -1,0 +1,1 @@
+stdin fixture: keeps fd 0 open for the fd-swap section

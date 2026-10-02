@@ -5,6 +5,7 @@
 # Closable) which both buffer types explicitly conform to. Users can
 # write `def f(fp: io.Writable): ...` etc. SEEK_SET/CUR/END are exposed
 # (bound to the os runtime's seek-constant globals via native_global).
+# Over file descriptors: FileIO (raw), BufferedReader and BufferedWriter.
 #
 # Storage strategies:
 #   - StringIO: list[str] chunks. Fast append-at-end; mid-buffer writes
@@ -30,6 +31,7 @@ from tpy import (
 )
 from tpy.extern import native_global
 from tplib.box import Box
+import errno
 import os
 
 
@@ -47,6 +49,8 @@ SEEK_END: Final[int32] = native_global("tpy::stdlib::os::kc_seek_end32")
 _SEEK_SET: int32 = 0
 _SEEK_CUR: int32 = 1
 _SEEK_END: int32 = 2
+_BAD_FILEIO_MODE: Final[str] = ("Must have exactly one of create/read/write/"
+                                "append mode and at most one plus")
 
 
 @nocopy
@@ -210,13 +214,16 @@ class StringIO(Writable, Readable, Seekable, Closable):
         return self._closed
 
     def readable(self) -> bool:
-        return not self._closed
+        self._check_open()
+        return True
 
     def writable(self) -> bool:
-        return not self._closed
+        self._check_open()
+        return True
 
     def seekable(self) -> bool:
-        return not self._closed
+        self._check_open()
+        return True
 
     def __enter__(self) -> "StringIO":
         return self
@@ -394,13 +401,16 @@ class BytesIO(BinaryWritable, BinaryReadable, Seekable, Closable):
         return self._closed
 
     def readable(self) -> bool:
-        return not self._closed
+        self._check_open()
+        return True
 
     def writable(self) -> bool:
-        return not self._closed
+        self._check_open()
+        return True
 
     def seekable(self) -> bool:
-        return not self._closed
+        self._check_open()
+        return True
 
     def __enter__(self) -> "BytesIO":
         return self
@@ -419,15 +429,52 @@ class BytesIO(BinaryWritable, BinaryReadable, Seekable, Closable):
             raise ValueError("I/O operation on closed file.")
 
 
+def _fileio_mode(mode: str) -> tuple[bool, bool, bool]:
+    """(readable, writable, appending) for a FileIO mode string, scanned like
+    CPython's fileio_init: the first offending character decides the error."""
+    rwxa = False
+    plus = False
+    readable = False
+    writable = False
+    appending = False
+    for c in mode:
+        if c == "r" or c == "w" or c == "x" or c == "a":
+            if rwxa:
+                raise ValueError(_BAD_FILEIO_MODE)
+            rwxa = True
+            if c == "r":
+                readable = True
+            else:
+                writable = True
+                appending = c == "a"
+        elif c == "+":
+            if plus:
+                raise ValueError(_BAD_FILEIO_MODE)
+            plus = True
+        elif c != "b":
+            raise ValueError("invalid mode: " + mode)
+    if not rwxa:
+        raise ValueError(_BAD_FILEIO_MODE)
+    if plus:
+        return (True, True, appending)
+    return (readable, writable, appending)
+
+
 @nocopy
 class FileIO:
     """Raw unbuffered binary I/O over an OS file descriptor.
 
     Adopts an existing fd (from os.pipe / os.dup / socket.fileno) -- the
-    raw layer under BufferedReader, mirroring CPython's io.FileIO. read(size)
+    raw layer under BufferedReader / BufferedWriter, mirroring CPython's
+    io.FileIO. `mode` ("r" default, "w", "a", "x", "+", "b") sets what
+    readable()/writable() report and which of read/write are allowed; the fd
+    is adopted as is (no truncation), except that "a" seeks it to the end, as
+    CPython does (a pipe or socket, which cannot seek, is left alone). read(size)
     issues a single os.read (may return fewer than size bytes, like read(2));
-    read(-1) drains to EOF. With closefd=True (default) close()/__del__ close
-    the fd; pass closefd=False to read from an fd owned elsewhere.
+    read(-1) drains to EOF; write() issues a single os.write and returns the
+    count it took, which may be short. With closefd=True (default)
+    close()/__del__ close the fd; pass closefd=False to use an fd owned
+    elsewhere.
 
     Not declared BinaryReadable: it has read()/close() but no readline (the
     raw layer never line-splits -- BufferedReader does), and BufferedReader
@@ -438,34 +485,60 @@ class FileIO:
     _fd: int64 = -1
     _closefd: bool
     _closed: bool
+    _readable: bool
+    _writable: bool
     # When the fd is a socket in timeout mode, a recv-timeout surfaces as an
     # EAGAIN/BlockingIOError from os.read; map it to TimeoutError so the
     # makefile/BufferedReader read path matches CPython's socket.timeout.
     _timeout_mode: bool
 
-    def __init__(self, fd: int64, closefd: bool = True,
+    def __init__(self, fd: int64, mode: str = "r", closefd: bool = True,
                  timeout_mode: bool = False) -> None:
+        # CPython checks the fd before the mode.
         if fd < 0:
             raise ValueError("negative file descriptor")
+        access = _fileio_mode(mode)
         self._fd = fd
         self._closefd = closefd
         self._closed = False
+        self._readable = access[0]
+        self._writable = access[1]
         self._timeout_mode = timeout_mode
+        if access[2]:
+            try:
+                os.lseek(fd, 0, os.SEEK_END)
+            except OSError as e:
+                if e.errno != errno.ESPIPE:
+                    raise
 
     def __del__(self) -> None:
-        if self._closefd and self._fd >= 0:
-            os.close(self._fd)
-            self._fd = -1
-        # Keep _closed and the fd sentinel in agreement after teardown.
-        self._closed = True
+        # CPython's finalizer drops a close error; an exception escaping
+        # __del__ would end the program.
+        try:
+            self.close()
+        except OSError:
+            pass
 
     def read(self, size: int32 = -1) -> bytes:
         self._check_open()
+        if not self._readable:
+            # CPython raises io.UnsupportedOperation, which TPy does not
+            # define; OSError is one of its two bases.
+            raise OSError("File not open for reading")
         if size < 0:
             return self._readall()
         if size == 0:
             return b""
         return self._os_read(int64(size))
+
+    def write(self, data: bytes) -> int32:
+        self._check_open()
+        if not self._writable:
+            raise OSError("File not open for writing")
+        return int32(os.write(self._fd, data))
+
+    def flush(self) -> None:
+        self._check_open()
 
     def _readall(self) -> bytes:
         # Join once at the end: appending each chunk would copy the whole
@@ -489,18 +562,27 @@ class FileIO:
             raise TimeoutError("timed out")
 
     def readable(self) -> bool:
-        return not self._closed
+        self._check_open()
+        return self._readable
+
+    def writable(self) -> bool:
+        self._check_open()
+        return self._writable
 
     def fileno(self) -> int64:
         self._check_open()
         return self._fd
 
     def close(self) -> None:
-        if not self._closed:
-            self._closed = True
-            if self._closefd and self._fd >= 0:
-                os.close(self._fd)
-            self._fd = -1
+        if self._closed:
+            return
+        # The fd is given up before os.close, so a failing close leaves the
+        # object closed and the finalizer cannot close the fd number again.
+        fd = self._fd
+        self._fd = -1
+        self._closed = True
+        if self._closefd and fd >= 0:
+            os.close(fd)
 
     @property
     def closed(self) -> bool:
@@ -643,7 +725,10 @@ class BufferedReader(BinaryReadable, Closable):
             yield line
 
     def readable(self) -> bool:
-        return not self._closed
+        # CPython asks the raw stream, whose closed check has no period.
+        if self._closed:
+            raise ValueError("I/O operation on closed file")
+        return True
 
     def close(self) -> None:
         if not self._closed:
@@ -665,3 +750,124 @@ class BufferedReader(BinaryReadable, Closable):
     def _check_open(self) -> None:
         if self._closed:
             raise ValueError("I/O operation on closed file.")
+
+
+@dynamic
+class RawBinaryWriter(Protocol):
+    """The raw byte sink under a BufferedWriter: a single `write` that may
+    take fewer bytes than offered, plus `close` and `fileno`. @dynamic for
+    the same reason as RawBinaryIO."""
+    def write(self, data: bytes) -> int32: ...
+    def close(self) -> None: ...
+    def fileno(self) -> int64: ...
+
+
+@nocopy
+class BufferedWriter(BinaryWritable, Closable):
+    """Buffered binary writer over a raw byte sink (CPython io.BufferedWriter).
+
+    write() returns len(data) and holds the bytes until the buffer would
+    overflow, flush(), or close(); a write larger than the buffer goes to the
+    raw sink directly (only a tail of at most `buffer_size` bytes is kept).
+    Raw writes are looped until the sink took everything, so a raw error
+    (BrokenPipeError on a pipe whose reader is gone) surfaces from flush(),
+    close() or the write that triggered the flush -- and the bytes the sink
+    did not take stay buffered. Pending bytes are `_parts`, joined once per
+    flush, so buffering n bytes costs O(n) however they are split.
+    """
+
+    _raw: Box[RawBinaryWriter]
+    _parts: list[bytes]
+    _pending: int32
+    _buffer_size: int32
+    _closed: bool
+
+    def __init__(self, raw: Own[RawBinaryWriter],
+                 buffer_size: int32 = DEFAULT_BUFFER_SIZE) -> None:
+        # `_raw` is non-default-constructible, so it must be assigned before
+        # any other statement (the buffer_size guard) runs.
+        self._raw = Box(raw)
+        self._parts = []
+        self._pending = 0
+        self._buffer_size = buffer_size
+        self._closed = False
+        if buffer_size <= 0:
+            raise ValueError("buffer size must be strictly positive")
+
+    def __del__(self) -> None:
+        # CPython's finalizer closes (and so flushes) the writer and drops a
+        # flush error; an exception escaping __del__ would end the program.
+        try:
+            self.close()
+        except Exception:
+            pass
+
+    def _flush_buffer(self) -> None:
+        if self._pending == 0:
+            return
+        data = b"".join(self._parts)
+        self._parts = []
+        self._pending = 0
+        off = 0
+        try:
+            while off < len(data):
+                off += self._raw.write(data[off:])
+        finally:
+            if off < len(data):
+                self._parts.append(bytes(data[off:]))
+                self._pending = len(data) - off
+
+    def write(self, data: bytes) -> int32:
+        if self._closed:
+            raise ValueError("write to closed file")
+        n = len(data)
+        if self._pending + n <= self._buffer_size:
+            if n > 0:
+                self._parts.append(bytes(data))
+                self._pending += n
+            return n
+        self._flush_buffer()
+        off = 0
+        while n - off > self._buffer_size:
+            off += self._raw.write(data[off:])
+        if off < n:
+            self._parts.append(bytes(data[off:]))
+            self._pending += n - off
+        return n
+
+    def flush(self) -> None:
+        if self._closed:
+            raise ValueError("flush of closed file")
+        self._flush_buffer()
+
+    def writable(self) -> bool:
+        # CPython asks the raw stream, whose closed check has no period.
+        if self._closed:
+            raise ValueError("I/O operation on closed file")
+        return True
+
+    def fileno(self) -> int64:
+        return self._raw.fileno()
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        # The raw sink is closed even when the final flush fails; the flush
+        # error is what propagates, as in CPython.
+        try:
+            self._flush_buffer()
+        finally:
+            self._closed = True
+            self._parts = []
+            self._pending = 0
+            self._raw.close()
+
+    @property
+    def closed(self) -> bool:
+        return self._closed
+
+    def __enter__(self) -> "BufferedWriter":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()

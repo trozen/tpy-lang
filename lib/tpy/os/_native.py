@@ -2,7 +2,8 @@
 # A leaf module (imports nothing from the os package) so both os/__init__ and
 # os/path can share these stubs without os.path -- which has module-level
 # constants and so cannot participate in a cycle -- importing os/__init__.
-# Internal: import via `os` / `os.path`, not directly.
+# Internal: import via `os` / `os.path` (and `subprocess` for spawn_raw), not
+# directly.
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::os")
 # tpy: include("<tpy/stdlib/os.hpp>")
@@ -247,6 +248,28 @@ def fsync_fd(fd: int64) -> None: ...
 
 @native("tpy::stdlib::os::terminal_size_raw")
 def terminal_size_raw(fd: int64) -> tuple[int64, int64]: ...
+
+
+# Process control.
+@native("tpy::stdlib::os::kill_pid")
+def kill_pid(pid: int64, sig: int64) -> None: ...
+
+
+@native("tpy::stdlib::os::waitpid")
+def waitpid(pid: int64, options: int64) -> tuple[int64, int64]: ...
+
+
+@native("tpy::stdlib::os::waitstatus_to_exitcode")
+def waitstatus_to_exitcode(status: int64) -> int64: ...
+
+
+# subprocess.Popen's spawn: (pid, stdin write end, stdout read end, stderr
+# read end), -1 for a stream without a pipe. Stream specs and inherit_mask are
+# documented on the C++ declaration in os.hpp.
+@native("tpy::stdlib::os::spawn_raw")
+def spawn_raw(args: list[str], stdin_spec: int64,
+              stdout_spec: int64, stderr_spec: int64, inherit_mask: int64
+              ) -> tuple[int64, int64, int64, int64]: ...
 
 
 # os.path predicates. The C++ helpers carry a `path_` prefix (to namespace

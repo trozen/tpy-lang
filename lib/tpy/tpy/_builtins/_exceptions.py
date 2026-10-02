@@ -284,6 +284,64 @@ class BlockingIOError(OSError):
     @cpp_template("tpy::BlockingIOError({0}, {1}, {2})")
     def __init__(self, errno: int32, strerror: str, filename: str) -> None: ...
 
+# ECHILD: a wait on a process that is not (or no longer) our child.
+@native("tpy::ChildProcessError")
+class ChildProcessError(OSError):
+    @dispatch
+    @cpp_template("tpy::ChildProcessError()")
+    def __init__(self) -> None: ...
+
+    @dispatch
+    @cpp_template("tpy::ChildProcessError({0})")
+    def __init__(self, message: str) -> None: ...
+
+    @dispatch
+    @cpp_template("tpy::ChildProcessError({0}, {1})")
+    def __init__(self, errno: int32, strerror: str) -> None: ...
+
+    @dispatch
+    @cpp_template("tpy::ChildProcessError({0}, {1}, {2})")
+    def __init__(self, errno: int32, strerror: str, filename: str) -> None: ...
+
+# EINTR. The os/io wrappers retry interrupted calls (PEP 475), so this
+# surfaces only from calls CPython does not retry either.
+@native("tpy::InterruptedError")
+class InterruptedError(OSError):
+    @dispatch
+    @cpp_template("tpy::InterruptedError()")
+    def __init__(self) -> None: ...
+
+    @dispatch
+    @cpp_template("tpy::InterruptedError({0})")
+    def __init__(self, message: str) -> None: ...
+
+    @dispatch
+    @cpp_template("tpy::InterruptedError({0}, {1})")
+    def __init__(self, errno: int32, strerror: str) -> None: ...
+
+    @dispatch
+    @cpp_template("tpy::InterruptedError({0}, {1}, {2})")
+    def __init__(self, errno: int32, strerror: str, filename: str) -> None: ...
+
+# ESRCH: os.kill of a process that does not exist.
+@native("tpy::ProcessLookupError")
+class ProcessLookupError(OSError):
+    @dispatch
+    @cpp_template("tpy::ProcessLookupError()")
+    def __init__(self) -> None: ...
+
+    @dispatch
+    @cpp_template("tpy::ProcessLookupError({0})")
+    def __init__(self, message: str) -> None: ...
+
+    @dispatch
+    @cpp_template("tpy::ProcessLookupError({0}, {1})")
+    def __init__(self, errno: int32, strerror: str) -> None: ...
+
+    @dispatch
+    @cpp_template("tpy::ProcessLookupError({0}, {1}, {2})")
+    def __init__(self, errno: int32, strerror: str, filename: str) -> None: ...
+
 @native("tpy::AttributeError")
 class AttributeError(Exception):
     def __init__(self, message: str = "") -> None: ...

@@ -57,9 +57,10 @@ struct ValueError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUA
 // constructed static type, so the stored kind is applied when the object
 // is RAISED (OSError::__raise__ below throws the mapped subclass).
 enum class OSErrorSubclass : uint8_t {
-    none, blocking_io, broken_pipe, connection_aborted, connection_refused,
-    connection_reset, file_exists, file_not_found, is_a_directory,
-    not_a_directory, permission, timeout,
+    none, blocking_io, broken_pipe, child_process, connection_aborted,
+    connection_refused, connection_reset, file_exists, file_not_found,
+    interrupted, is_a_directory, not_a_directory, permission, process_lookup,
+    timeout,
 };
 
 inline OSErrorSubclass os_error_subclass_for(int32_t err) {
@@ -70,14 +71,17 @@ inline OSErrorSubclass os_error_subclass_for(int32_t err) {
 #endif
             return OSErrorSubclass::blocking_io;
         case EPIPE: case ESHUTDOWN: return OSErrorSubclass::broken_pipe;
+        case ECHILD: return OSErrorSubclass::child_process;
         case ECONNABORTED: return OSErrorSubclass::connection_aborted;
         case ECONNREFUSED: return OSErrorSubclass::connection_refused;
         case ECONNRESET:   return OSErrorSubclass::connection_reset;
         case EEXIST:  return OSErrorSubclass::file_exists;
         case ENOENT:  return OSErrorSubclass::file_not_found;
+        case EINTR:   return OSErrorSubclass::interrupted;
         case EISDIR:  return OSErrorSubclass::is_a_directory;
         case ENOTDIR: return OSErrorSubclass::not_a_directory;
         case EACCES: case EPERM: return OSErrorSubclass::permission;
+        case ESRCH:   return OSErrorSubclass::process_lookup;
         case ETIMEDOUT: return OSErrorSubclass::timeout;
         default: return OSErrorSubclass::none;
     }
@@ -132,6 +136,9 @@ struct BlockingIOError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUAL
 struct FileExistsError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(FileExistsError) };
 struct NotADirectoryError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(NotADirectoryError) };
 struct IsADirectoryError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(IsADirectoryError) };
+struct ChildProcessError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(ChildProcessError) };
+struct InterruptedError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(InterruptedError) };
+struct ProcessLookupError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(ProcessLookupError) };
 struct ConnectionError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(ConnectionError) };
 struct BrokenPipeError : ConnectionError { using ConnectionError::ConnectionError; TPY_THROWABLE_VIRTUALS(BrokenPipeError) };
 struct ConnectionResetError : ConnectionError { using ConnectionError::ConnectionError; TPY_THROWABLE_VIRTUALS(ConnectionResetError) };
@@ -359,6 +366,8 @@ TPY_DEFINE_RAISE_HELPER(raise_eof_error,             EOFError)
             raise<BlockingIOError>(err, strerror_arg, filename_arg, filename2_arg);
         case OSErrorSubclass::broken_pipe:
             raise<BrokenPipeError>(err, strerror_arg, filename_arg, filename2_arg);
+        case OSErrorSubclass::child_process:
+            raise<ChildProcessError>(err, strerror_arg, filename_arg, filename2_arg);
         case OSErrorSubclass::connection_aborted:
             raise<ConnectionAbortedError>(err, strerror_arg, filename_arg, filename2_arg);
         case OSErrorSubclass::connection_refused:
@@ -369,12 +378,16 @@ TPY_DEFINE_RAISE_HELPER(raise_eof_error,             EOFError)
             raise<FileExistsError>(err, strerror_arg, filename_arg, filename2_arg);
         case OSErrorSubclass::file_not_found:
             raise<FileNotFoundError>(err, strerror_arg, filename_arg, filename2_arg);
+        case OSErrorSubclass::interrupted:
+            raise<InterruptedError>(err, strerror_arg, filename_arg, filename2_arg);
         case OSErrorSubclass::is_a_directory:
             raise<IsADirectoryError>(err, strerror_arg, filename_arg, filename2_arg);
         case OSErrorSubclass::not_a_directory:
             raise<NotADirectoryError>(err, strerror_arg, filename_arg, filename2_arg);
         case OSErrorSubclass::permission:
             raise<PermissionError>(err, strerror_arg, filename_arg, filename2_arg);
+        case OSErrorSubclass::process_lookup:
+            raise<ProcessLookupError>(err, strerror_arg, filename_arg, filename2_arg);
         case OSErrorSubclass::timeout:
             raise<TimeoutError>(err, strerror_arg, filename_arg, filename2_arg);
         case OSErrorSubclass::none:
@@ -385,9 +398,7 @@ TPY_DEFINE_RAISE_HELPER(raise_eof_error,             EOFError)
 
 // PEP 3151: map an errno to the OSError subclass CPython's OSError.__new__
 // constructs for it. Shared by the os-module raise sites (os_impl.cpp) and
-// the file.hpp open paths so both stay on one table. Errnos whose CPython
-// class TPy doesn't define (EINTR/ECHILD/ESRCH -> InterruptedError/
-// ChildProcessError/ProcessLookupError) fall through to plain OSError.
+// the file.hpp open paths so both stay on one table.
 [[noreturn]] inline void raise_mapped_os_error(int32_t err, std::string_view strerror_arg,
                                                std::string_view filename_arg = "",
                                                std::string_view filename2_arg = "") {

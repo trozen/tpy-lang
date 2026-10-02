@@ -9,12 +9,36 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::io::BufferedReader;
+using ::tpystd::io::BufferedWriter;
+using ::tpystd::io::BytesIO;
 using ::tpystd::io::FileIO;
+using ::tpystd::io::StringIO;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 // def feed(data: bytes) -> int64:
 int64_t feed(::tpy::BytesView data);
+// def basics() -> None:
+void basics();
+// def modes() -> None:
+void modes();
+// def append() -> None:
+void append();
+// def access() -> None:
+void access();
+// def closed_checks() -> None:
+void closed_checks();
+// def failing_close() -> None:
+void failing_close();
+// def buffered_writer() -> None:
+void buffered_writer();
+// def small_buffer() -> None:
+void small_buffer();
+// def drop_unclosed(w: int64) -> None:
+void drop_unclosed(int64_t w);
+// def finalizer_flush() -> None:
+void finalizer_flush();
 // def main() -> None:
 void main();
 

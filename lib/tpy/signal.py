@@ -1,9 +1,11 @@
 # tpy: cpp_namespace("tpystd::signal")
-"""Minimal `signal` module -- `raise_signal` plus the SIGINT / SIGTERM numbers.
+"""Minimal `signal` module -- `raise_signal` plus the SIGINT / SIGTERM / SIGKILL
+numbers.
 
 A thin pure-TPy wrapper over the `posix_signal` binding. Under CPython
 `import signal` resolves to the real stdlib module (same `raise_signal` /
-`SIGINT` / `SIGTERM` surface), so the same source compiles and runs both ways.
+`SIGINT` / `SIGTERM` / `SIGKILL` surface), so the same source compiles and
+runs both ways.
 
 SIGINT behaves as in CPython: a standalone program turns it into
 `KeyboardInterrupt` on the main thread (at the next interruptible operation,
@@ -25,6 +27,7 @@ from _bindings import posix_signal
 # in every generated TU on macOS) rewrites into a malformed declaration.
 SIGINT: Final[int32] = native_global("tpy_const_sigint", binding="C")
 SIGTERM: Final[int32] = native_global("tpy_const_sigterm", binding="C")
+SIGKILL: Final[int32] = native_global("tpy_const_sigkill", binding="C")
 
 
 def raise_signal(sig: int32) -> None:

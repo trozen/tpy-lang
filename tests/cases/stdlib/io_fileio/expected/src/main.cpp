@@ -20,7 +20,7 @@ int64_t feed(::tpy::BytesView data) {
     return r;
 }
 
-// def main() -> None:
+// def basics() -> None:
 //     f = FileIO(feed(b"hello world"))
 //     print(f.fileno() >= 0)
 //     print(f.read(5))      # b'hello'
@@ -59,7 +59,7 @@ int64_t feed(::tpy::BytesView data) {
 //     got = big.read()
 //     print("read-all", len(got), got == payload)
 //     big.close()
-void main() {
+void basics() {
     ::tpystd::io::FileIO f = ::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("hello world", 11)));
     std::cout << ::tpy::print_bool((f.fileno() >= 0)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BytesPrinter(f.read(5)) << "\n" << ::tpy::check_signals;
@@ -94,7 +94,7 @@ void main() {
         }
     }
     int64_t fd = ::tpyapp::main::feed(::tpy::bytes_literal("abc", 3));
-    ::tpystd::io::FileIO g = ::tpystd::io::FileIO(fd, false);
+    ::tpystd::io::FileIO g = ::tpystd::io::FileIO(fd, "r", false);
     std::cout << ::tpy::BytesPrinter(g.read(-1)) << "\n" << ::tpy::check_signals;
     g.close();
     ::tpystd::os::close(fd);
@@ -106,12 +106,517 @@ void main() {
     big.close();
 }
 
-// # io.FileIO raw layer over a pipe fd: read(size) issues a single os.read,
-// # read(-1) drains to EOF, close()/closed, and closefd=False leaves the fd
-// # open for the caller. FileIO is @nocopy, so a silent copy across the
-// # FileIO(...) -> BufferedReader / local-binding boundary is a compile error.
+// def modes() -> None:
+//     r, w = os.pipe()
+//     # Scanned like CPython: repeated 'b' is fine, a second r/w/x/a or '+' is
+//     # the "exactly one" error, any other character "invalid mode" -- whichever
+//     # comes first.
+//     for m in ["rbb", "bw", "r+", "x", "+", "rr", "r++", "wx", "", "b", "rq",
+//               "qrr", "rrq"]:
+//         try:
+//             f = FileIO(r, m, False)
+//             print("mode:", m, f.readable(), f.writable())
+//         except ValueError as e:
+//             print("mode:", m, str(e))
+//     # The fd is checked before the mode.
+//     try:
+//         FileIO(int64(-1), "q")
+//         print("mode: accepted")
+//     except ValueError as e:
+//         print("mode:", str(e))
+//     # "a" on a pipe: the seek to the end fails with ESPIPE, which is ignored.
+//     a = FileIO(w, "a", False)
+//     print("mode: a", a.writable(), a.write(b"p"), os.read(r, 4))
+//     os.close(r)
+//     os.close(w)
+void modes() {
+    auto __tup_1 = ::tpystd::os::pipe();
+    int64_t r = std::get<0>(__tup_1);
+    int64_t w = std::get<1>(__tup_1);
+    auto __obj_0 = {"rbb", "bw", "r+", "x", "+", "rr", "r++", "wx", "", "b", "rq", "qrr", "rrq"};
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::string_view m = *__beg_0;
+        {
+            try {
+                ::tpystd::io::FileIO f = ::tpystd::io::FileIO(r, m, false);
+                std::cout << "mode:" << " " << m << " " << ::tpy::print_bool(f.readable()) << " " << ::tpy::print_bool(f.writable()) << "\n" << ::tpy::check_signals;
+            } catch (const ::tpy::ValueError& e) {
+                std::cout << "mode:" << " " << m << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+            }
+        }
+    }
+    {
+        try {
+            (void)(::tpystd::io::FileIO(-1, "q"));
+            std::cout << "mode: accepted" << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << "mode:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+        }
+    }
+    ::tpystd::io::FileIO a = ::tpystd::io::FileIO(w, "a", false);
+    std::cout << "mode: a" << " " << ::tpy::print_bool(a.writable()) << " " << a.write(::tpy::bytes_literal("p", 1)) << " " << ::tpy::BytesPrinter(::tpystd::os::read(r, 4)) << "\n" << ::tpy::check_signals;
+    ::tpystd::os::close(r);
+    ::tpystd::os::close(w);
+}
+
+// def append() -> None:
+//     fd = os.open("fileio_append.txt", os.O_RDWR | os.O_CREAT | os.O_TRUNC)
+//     os.write(fd, b"hello")
+//     os.lseek(fd, 0, os.SEEK_SET)
+//     # "a" seeks the adopted fd to the end, so the write does not overwrite.
+//     f = FileIO(fd, "a", False)
+//     print("append:", os.lseek(fd, 0, os.SEEK_CUR))
+//     f.write(b"XY")
+//     f.close()
+//     os.lseek(fd, 0, os.SEEK_SET)
+//     print("append:", os.read(fd, 16))
+//     os.close(fd)
+//     os.unlink("fileio_append.txt")
+void append() {
+    int64_t fd = ::tpystd::os::open("fileio_append.txt", (static_cast<int64_t>((static_cast<int64_t>(::tpy::stdlib::os::kc_o_rdwr | ::tpy::stdlib::os::kc_o_creat)) | ::tpy::stdlib::os::kc_o_trunc)));
+    ::tpystd::os::write(fd, ::tpy::bytes_literal("hello", 5));
+    ::tpystd::os::lseek(fd, 0, ::tpy::stdlib::os::kc_seek_set);
+    ::tpystd::io::FileIO f = ::tpystd::io::FileIO(fd, "a", false);
+    std::cout << "append:" << " " << ::tpystd::os::lseek(fd, 0, ::tpy::stdlib::os::kc_seek_cur) << "\n" << ::tpy::check_signals;
+    f.write(::tpy::bytes_literal("XY", 2));
+    f.close();
+    ::tpystd::os::lseek(fd, 0, ::tpy::stdlib::os::kc_seek_set);
+    std::cout << "append:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(fd, 16)) << "\n" << ::tpy::check_signals;
+    ::tpystd::os::close(fd);
+    ::tpystd::os::unlink("fileio_append.txt");
+}
+
+// def access() -> None:
+//     r, w = os.pipe()
+//     fw = FileIO(w, "w")
+//     print("access:", fw.writable(), fw.readable(), fw.write(b"zz"))
+//     # CPython raises io.UnsupportedOperation, an OSError subclass.
+//     try:
+//         fw.read(1)
+//         print("access: read")
+//     except OSError as e:
+//         print("access:", str(e))
+//     try:
+//         fw.read()
+//         print("access: read")
+//     except OSError as e:
+//         print("access:", str(e))
+//     fw.close()
+//     fr = FileIO(r, "rb")
+//     print("access:", fr.readable(), fr.writable(), fr.read(8))
+//     try:
+//         fr.write(b"no")
+//         print("access: wrote")
+//     except OSError as e:
+//         print("access:", str(e))
+//     fr.close()
+void access() {
+    auto __tup_1 = ::tpystd::os::pipe();
+    int64_t r = std::get<0>(__tup_1);
+    int64_t w = std::get<1>(__tup_1);
+    ::tpystd::io::FileIO fw = ::tpystd::io::FileIO(w, "w");
+    std::cout << "access:" << " " << ::tpy::print_bool(fw.writable()) << " " << ::tpy::print_bool(fw.readable()) << " " << fw.write(::tpy::bytes_literal("zz", 2)) << "\n" << ::tpy::check_signals;
+    {
+        try {
+            fw.read(1);
+            std::cout << "access: read" << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::OSError& e) {
+            std::cout << "access:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        try {
+            fw.read();
+            std::cout << "access: read" << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::OSError& e) {
+            std::cout << "access:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+        }
+    }
+    fw.close();
+    ::tpystd::io::FileIO fr = ::tpystd::io::FileIO(r, "rb");
+    std::cout << "access:" << " " << ::tpy::print_bool(fr.readable()) << " " << ::tpy::print_bool(fr.writable()) << " " << ::tpy::BytesPrinter(fr.read(8)) << "\n" << ::tpy::check_signals;
+    {
+        try {
+            fr.write(::tpy::bytes_literal("no", 2));
+            std::cout << "access: wrote" << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::OSError& e) {
+            std::cout << "access:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+        }
+    }
+    fr.close();
+}
+
+// def closed_checks() -> None:
+//     # readable()/writable() of a closed object raise, as in CPython; BytesIO's
+//     # message is the one with a trailing period. The result is bound before
+//     # the print, which would otherwise emit its label first
+//     # (BUGS.md#print-arg-output-interleaves).
+//     r, w = os.pipe()
+//     f = FileIO(r, "r", False)
+//     f.close()
+//     try:
+//         ok = f.readable()
+//         print("closed: FileIO readable", ok)
+//     except ValueError as e:
+//         print("closed: FileIO readable", str(e))
+//     try:
+//         ok = f.writable()
+//         print("closed: FileIO writable", ok)
+//     except ValueError as e:
+//         print("closed: FileIO writable", str(e))
+//     br = BufferedReader(FileIO(r, "r", False))
+//     br.close()
+//     try:
+//         ok = br.readable()
+//         print("closed: BufferedReader readable", ok)
+//     except ValueError as e:
+//         print("closed: BufferedReader readable", str(e))
+//     bw = BufferedWriter(FileIO(w, "w", False))
+//     bw.close()
+//     try:
+//         ok = bw.writable()
+//         print("closed: BufferedWriter writable", ok)
+//     except ValueError as e:
+//         print("closed: BufferedWriter writable", str(e))
+//     os.close(r)
+//     os.close(w)
+//     s = StringIO()
+//     s.close()
+//     try:
+//         ok = s.readable()
+//         print("closed: StringIO readable", ok)
+//     except ValueError as e:
+//         print("closed: StringIO readable", str(e))
+//     try:
+//         ok = s.writable()
+//         print("closed: StringIO writable", ok)
+//     except ValueError as e:
+//         print("closed: StringIO writable", str(e))
+//     try:
+//         ok = s.seekable()
+//         print("closed: StringIO seekable", ok)
+//     except ValueError as e:
+//         print("closed: StringIO seekable", str(e))
+//     b = BytesIO()
+//     b.close()
+//     try:
+//         ok = b.readable()
+//         print("closed: BytesIO readable", ok)
+//     except ValueError as e:
+//         print("closed: BytesIO readable", str(e))
+//     try:
+//         ok = b.writable()
+//         print("closed: BytesIO writable", ok)
+//     except ValueError as e:
+//         print("closed: BytesIO writable", str(e))
+//     try:
+//         ok = b.seekable()
+//         print("closed: BytesIO seekable", ok)
+//     except ValueError as e:
+//         print("closed: BytesIO seekable", str(e))
+void closed_checks() {
+    auto __tup_1 = ::tpystd::os::pipe();
+    int64_t r = std::get<0>(__tup_1);
+    int64_t w = std::get<1>(__tup_1);
+    ::tpystd::io::FileIO f = ::tpystd::io::FileIO(r, "r", false);
+    f.close();
+    {
+        try {
+            bool ok = f.readable();
+            std::cout << "closed: FileIO readable" << " " << ::tpy::print_bool(ok) << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << "closed: FileIO readable" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        try {
+            bool ok = f.writable();
+            std::cout << "closed: FileIO writable" << " " << ::tpy::print_bool(ok) << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << "closed: FileIO writable" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+        }
+    }
+    ::tpystd::io::BufferedReader br = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(r, "r", false)));
+    br.close();
+    {
+        try {
+            bool ok = br.readable();
+            std::cout << "closed: BufferedReader readable" << " " << ::tpy::print_bool(ok) << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << "closed: BufferedReader readable" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+        }
+    }
+    ::tpystd::io::BufferedWriter bw = ::tpystd::io::BufferedWriter(::tpy::make_adapter<::tpystd::io::RawBinaryWriter>(::tpystd::io::FileIO(w, "w", false)));
+    bw.close();
+    {
+        try {
+            bool ok = bw.writable();
+            std::cout << "closed: BufferedWriter writable" << " " << ::tpy::print_bool(ok) << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << "closed: BufferedWriter writable" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+        }
+    }
+    ::tpystd::os::close(r);
+    ::tpystd::os::close(w);
+    ::tpystd::io::StringIO s = ::tpystd::io::StringIO();
+    s.close();
+    {
+        try {
+            bool ok = s.readable();
+            std::cout << "closed: StringIO readable" << " " << ::tpy::print_bool(ok) << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << "closed: StringIO readable" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        try {
+            bool ok = s.writable();
+            std::cout << "closed: StringIO writable" << " " << ::tpy::print_bool(ok) << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << "closed: StringIO writable" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        try {
+            bool ok = s.seekable();
+            std::cout << "closed: StringIO seekable" << " " << ::tpy::print_bool(ok) << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << "closed: StringIO seekable" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+        }
+    }
+    ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO();
+    b.close();
+    {
+        try {
+            bool ok = b.readable();
+            std::cout << "closed: BytesIO readable" << " " << ::tpy::print_bool(ok) << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << "closed: BytesIO readable" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        try {
+            bool ok = b.writable();
+            std::cout << "closed: BytesIO writable" << " " << ::tpy::print_bool(ok) << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << "closed: BytesIO writable" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        try {
+            bool ok = b.seekable();
+            std::cout << "closed: BytesIO seekable" << " " << ::tpy::print_bool(ok) << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << "closed: BytesIO seekable" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+        }
+    }
+}
+
+// def failing_close() -> None:
+//     r, w = os.pipe()
+//     bw = BufferedWriter(FileIO(w, "wb"))
+//     os.close(w)
+//     # The close error surfaces once; the FileIO gave the fd up before
+//     # os.close, so its finalizer does not close it again.
+//     try:
+//         bw.close()
+//         print("failclose: closed")
+//     except OSError as e:
+//         print("failclose:", e.errno)
+//     print("failclose:", bw.closed)
+//     os.close(r)
+void failing_close() {
+    auto __tup_1 = ::tpystd::os::pipe();
+    int64_t r = std::get<0>(__tup_1);
+    int64_t w = std::get<1>(__tup_1);
+    ::tpystd::io::BufferedWriter bw = ::tpystd::io::BufferedWriter(::tpy::make_adapter<::tpystd::io::RawBinaryWriter>(::tpystd::io::FileIO(w, "wb")));
+    ::tpystd::os::close(w);
+    {
+        try {
+            bw.close();
+            std::cout << "failclose: closed" << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::OSError& e) {
+            std::cout << "failclose:" << " " << e.error_number << "\n" << ::tpy::check_signals;
+        }
+    }
+    std::cout << "failclose:" << " " << ::tpy::print_bool(bw.closed()) << "\n" << ::tpy::check_signals;
+    ::tpystd::os::close(r);
+}
+
+// def buffered_writer() -> None:
+//     r, w = os.pipe()
+//     os.set_blocking(r, False)
+//     bw = BufferedWriter(FileIO(w, "wb"))
+//     print("bufw:", bw.write(b"abc"), bw.writable(), bw.fileno() == w)
+//     # Nothing reaches the pipe before the flush.
+//     try:
+//         os.read(r, 16)
+//         print("bufw: data before flush")
+//     except BlockingIOError:
+//         print("bufw: empty before flush")
+//     bw.flush()
+//     print("bufw:", os.read(r, 16))
+//     # A write larger than the buffer goes to the raw sink at once.
+//     print("bufw:", bw.write(b"z" * 9000), len(os.read(r, 10000)))
+//     bw.close()
+//     print("bufw:", bw.closed)
+//     try:
+//         bw.write(b"late")
+//         print("bufw: wrote after close")
+//     except ValueError as e:
+//         print("bufw:", str(e))
+//     try:
+//         bw.flush()
+//         print("bufw: flushed after close")
+//     except ValueError as e:
+//         print("bufw:", str(e))
+//     os.close(r)
+void buffered_writer() {
+    auto __tup_1 = ::tpystd::os::pipe();
+    int64_t r = std::get<0>(__tup_1);
+    int64_t w = std::get<1>(__tup_1);
+    ::tpystd::os::set_blocking(r, false);
+    ::tpystd::io::BufferedWriter bw = ::tpystd::io::BufferedWriter(::tpy::make_adapter<::tpystd::io::RawBinaryWriter>(::tpystd::io::FileIO(w, "wb")));
+    std::cout << "bufw:" << " " << bw.write(::tpy::bytes_literal("abc", 3)) << " " << ::tpy::print_bool(bw.writable()) << " " << ::tpy::print_bool((bw.fileno() == w)) << "\n" << ::tpy::check_signals;
+    {
+        try {
+            ::tpystd::os::read(r, 16);
+            std::cout << "bufw: data before flush" << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::BlockingIOError&) {
+            std::cout << "bufw: empty before flush" << "\n" << ::tpy::check_signals;
+        }
+    }
+    bw.flush();
+    std::cout << "bufw:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(r, 16)) << "\n" << ::tpy::check_signals;
+    std::cout << "bufw:" << " " << bw.write((::tpy::bytes_repeat(::tpy::bytes_literal("z", 1), 9000))) << " " << ::tpy::__len__(::tpystd::os::read(r, 10000)) << "\n" << ::tpy::check_signals;
+    bw.close();
+    std::cout << "bufw:" << " " << ::tpy::print_bool(bw.closed()) << "\n" << ::tpy::check_signals;
+    {
+        try {
+            bw.write(::tpy::bytes_literal("late", 4));
+            std::cout << "bufw: wrote after close" << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << "bufw:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        try {
+            bw.flush();
+            std::cout << "bufw: flushed after close" << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << "bufw:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+        }
+    }
+    ::tpystd::os::close(r);
+}
+
+// def small_buffer() -> None:
+//     r, w = os.pipe()
+//     os.set_blocking(r, False)
+//     bw = BufferedWriter(FileIO(w, "wb"), 8)
+//     bw.write(b"abcde")
+//     # Overflows the 5 pending bytes: they are flushed, the new 5 fit and stay
+//     # buffered.
+//     bw.write(b"fghij")
+//     print("smallbuf:", os.read(r, 16))
+//     bw.flush()
+//     print("smallbuf:", os.read(r, 16))
+//     bw.close()
+//     os.close(r)
+//     for size in [0, -1]:
+//         r2, w2 = os.pipe()
+//         try:
+//             BufferedWriter(FileIO(w2, "wb"), size)
+//             print("smallbuf: accepted")
+//         except ValueError as e:
+//             print("smallbuf:", size, str(e))
+//         os.close(r2)
+void small_buffer() {
+    auto __tup_1 = ::tpystd::os::pipe();
+    int64_t r = std::get<0>(__tup_1);
+    int64_t w = std::get<1>(__tup_1);
+    ::tpystd::os::set_blocking(r, false);
+    ::tpystd::io::BufferedWriter bw = ::tpystd::io::BufferedWriter(::tpy::make_adapter<::tpystd::io::RawBinaryWriter>(::tpystd::io::FileIO(w, "wb")), 8);
+    bw.write(::tpy::bytes_literal("abcde", 5));
+    bw.write(::tpy::bytes_literal("fghij", 5));
+    std::cout << "smallbuf:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(r, 16)) << "\n" << ::tpy::check_signals;
+    bw.flush();
+    std::cout << "smallbuf:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(r, 16)) << "\n" << ::tpy::check_signals;
+    bw.close();
+    ::tpystd::os::close(r);
+    auto __obj_0 = {0, -1};
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t size = *__beg_0;
+        auto __tup_2 = ::tpystd::os::pipe();
+        int64_t r2 = std::get<0>(__tup_2);
+        int64_t w2 = std::get<1>(__tup_2);
+        {
+            try {
+                (void)(::tpystd::io::BufferedWriter(::tpy::make_adapter<::tpystd::io::RawBinaryWriter>(::tpystd::io::FileIO(w2, "wb")), size));
+                std::cout << "smallbuf: accepted" << "\n" << ::tpy::check_signals;
+            } catch (const ::tpy::ValueError& e) {
+                std::cout << "smallbuf:" << " " << size << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+            }
+        }
+        ::tpystd::os::close(r2);
+    }
+}
+
+// def drop_unclosed(w: int64) -> None:
+//     bw = BufferedWriter(FileIO(w, "wb"))
+//     bw.write(b"tail")
+void drop_unclosed(int64_t w) {
+    ::tpystd::io::BufferedWriter bw = ::tpystd::io::BufferedWriter(::tpy::make_adapter<::tpystd::io::RawBinaryWriter>(::tpystd::io::FileIO(w, "wb")));
+    bw.write(::tpy::bytes_literal("tail", 4));
+}
+
+// def finalizer_flush() -> None:
+//     r, w = os.pipe()
+//     # Dropped without close(): the finalizer flushes and closes the fd, so
+//     # the reader sees the bytes and then EOF.
+//     drop_unclosed(w)
+//     print("final:", os.read(r, 16), os.read(r, 16))
+//     os.close(r)
+void finalizer_flush() {
+    auto __tup_1 = ::tpystd::os::pipe();
+    int64_t r = std::get<0>(__tup_1);
+    int64_t w = std::get<1>(__tup_1);
+    ::tpyapp::main::drop_unclosed(w);
+    std::cout << "final:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(r, 16)) << " " << ::tpy::BytesPrinter(::tpystd::os::read(r, 16)) << "\n" << ::tpy::check_signals;
+    ::tpystd::os::close(r);
+}
+
+// def main() -> None:
+//     basics()
+//     modes()
+//     append()
+//     access()
+//     closed_checks()
+//     failing_close()
+//     buffered_writer()
+//     small_buffer()
+//     finalizer_flush()
+void main() {
+    ::tpyapp::main::basics();
+    ::tpyapp::main::modes();
+    ::tpyapp::main::append();
+    ::tpyapp::main::access();
+    ::tpyapp::main::closed_checks();
+    ::tpyapp::main::failing_close();
+    ::tpyapp::main::buffered_writer();
+    ::tpyapp::main::small_buffer();
+    ::tpyapp::main::finalizer_flush();
+}
+
+// # io.FileIO raw layer and io.BufferedWriter over it: reads, writes, mode
+// # validation, append seeks, closed-object checks, close/finalizer behavior.
+// # FileIO is @nocopy, so a silent copy at a FileIO(...) boundary is an error.
 // import os
-// from io import FileIO
+// from io import BufferedReader, BufferedWriter, BytesIO, FileIO, StringIO
 //
 // main()
 void __tpy_init() {

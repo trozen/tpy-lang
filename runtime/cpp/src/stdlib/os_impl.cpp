@@ -2,12 +2,21 @@
 // header so <filesystem> and <sys/stat.h> are not pulled into every TU that
 // calls into os; failed operations map to the matching TPy exception.
 
+// glibc declares pipe2 and posix_spawn_file_actions_addclosefrom_np only under
+// _GNU_SOURCE, which libc++-based toolchains do not predefine.
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE 1
+#endif
+
 #include <tpy/stdlib/os.hpp>
 
 #include <algorithm>
 #include <cerrno>
+#include <climits>
 #include <cmath>
+#include <csignal>
 #include <cstdint>
+#include <limits>
 #include <cstdlib>
 #include <cstring>
 #include <thread>
@@ -22,8 +31,10 @@
 #include <fcntl.h>
 #include <pwd.h>
 #include <sys/ioctl.h>
+#include <spawn.h>
 #include <sys/random.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 // macOS does not expose `environ` to a shared library / non-main TU; the
@@ -430,18 +441,27 @@ void close_fd(int64_t fd) {
     if (::close(static_cast<int>(fd)) != 0) raise_errno();
 }
 
+// PEP 475: an EINTR from a signal whose handler did not raise is retried;
+// check_signals() is where a pending Ctrl-C surfaces as KeyboardInterrupt.
 ::tpy::Bytes read_fd(int64_t fd, int64_t n) {
     ::tpy::Bytes buf(n > 0 ? static_cast<size_t>(n) : 0);
     if (n <= 0) return buf;
-    ssize_t got = ::read(static_cast<int>(fd), buf.data(),
-                         static_cast<size_t>(n));
+    ssize_t got;
+    while ((got = ::read(static_cast<int>(fd), buf.data(),
+                         static_cast<size_t>(n))) < 0 && errno == EINTR) {
+        ::tpy::check_signals();
+    }
     if (got < 0) raise_errno();
     buf.resize(static_cast<size_t>(got));  // short read -> shrink to actual
     return buf;
 }
 
 int64_t write_fd(int64_t fd, std::span<const uint8_t> data) {
-    ssize_t n = ::write(static_cast<int>(fd), data.data(), data.size());
+    ssize_t n;
+    while ((n = ::write(static_cast<int>(fd), data.data(), data.size())) < 0 &&
+           errno == EINTR) {
+        ::tpy::check_signals();
+    }
     if (n < 0) raise_errno();
     return n;
 }
@@ -648,6 +668,305 @@ bool access_path(std::string_view path, int64_t mode) {
     return buf;
 }
 
+// --- Process control -------------------------------------------------------
+
+namespace {
+
+// CPython's `int` argument converter (os.waitpid options, wait statuses,
+// subprocess fds).
+int to_c_int(int64_t v) {
+    if (v < INT_MIN || v > INT_MAX) {
+        ::tpy::raise_overflow_error("Python int too large to convert to C int");
+    }
+    return static_cast<int>(v);
+}
+
+// CPython's pid_t converter, whose overflow messages differ from the int one.
+::pid_t to_pid(int64_t v) {
+    if (v > std::numeric_limits<::pid_t>::max()) {
+        ::tpy::raise_overflow_error("signed integer is greater than maximum");
+    }
+    if (v < std::numeric_limits<::pid_t>::min()) {
+        ::tpy::raise_overflow_error("signed integer is less than minimum");
+    }
+    return static_cast<::pid_t>(v);
+}
+
+} // namespace
+
+void kill_pid(int64_t pid, int64_t sig) {
+    ::pid_t p = to_pid(pid);
+    // CPython truncates an out-of-range signal number to a C int (2**32 + 9
+    // would send SIGKILL); rejecting it with EINVAL instead is a deliberate
+    // divergence, and -1 gets that verdict from kill() itself.
+    int s = (sig < INT_MIN || sig > INT_MAX) ? -1 : static_cast<int>(sig);
+    if (::kill(p, s) != 0) raise_errno();
+}
+
+std::tuple<int64_t, int64_t> waitpid(int64_t pid, int64_t options) {
+    ::pid_t p = to_pid(pid);
+    int opts = to_c_int(options);
+    int status = 0;
+    ::pid_t r;
+    while ((r = ::waitpid(p, &status, opts)) < 0 && errno == EINTR) {
+        ::tpy::check_signals();
+    }
+    if (r < 0) raise_errno();
+    return {static_cast<int64_t>(r), static_cast<int64_t>(status)};
+}
+
+int64_t waitstatus_to_exitcode(int64_t status) {
+    int s = to_c_int(status);
+    if (WIFEXITED(s)) return WEXITSTATUS(s);
+    if (WIFSIGNALED(s)) return -static_cast<int64_t>(WTERMSIG(s));
+    if (WIFSTOPPED(s)) {
+        ::tpy::raise_value_error("process stopped by delivery of signal {}",
+                                 static_cast<int>(WSTOPSIG(s)));
+    }
+    ::tpy::raise_value_error("invalid wait status: {}", s);
+}
+
+int64_t kc_wnohang = WNOHANG;
+
+// Closing every non-stdio fd in the child needs a closefrom file action
+// (glibc >= 2.34) or Apple's close-on-exec-by-default spawn flag. Without
+// either, a child would inherit every inheritable parent fd, so other libcs
+// refuse to spawn rather than half-work.
+#if defined(__GLIBC__) && defined(__GLIBC_PREREQ)
+#if __GLIBC_PREREQ(2, 34)
+#define TPY_SPAWN_CLOSEFROM 1
+#endif
+#endif
+#if defined(__APPLE__)
+#define TPY_SPAWN_CLOEXEC_DEFAULT 1
+#endif
+
+#if defined(TPY_SPAWN_CLOSEFROM) || defined(TPY_SPAWN_CLOEXEC_DEFAULT)
+namespace {
+
+constexpr int64_t kSpawnPipe = -1;
+constexpr int64_t kSpawnStdout = -2;
+constexpr int64_t kSpawnDevnull = -3;
+
+// posix_spawn* calls return their error number instead of setting errno.
+void check_spawn_rc(int rc) {
+    if (rc != 0) raise_fs_error(std::error_code(rc, std::generic_category()), "");
+}
+
+[[noreturn]] void raise_ebadf() {
+    raise_fs_error(std::error_code(EBADF, std::generic_category()), "");
+}
+
+bool fd_is_open(int fd) {
+    return ::fcntl(fd, F_GETFD) != -1;
+}
+
+// The fds one spawn opened. Every one still held is closed when the guard
+// goes out of scope -- all of them on a failure, the child-side ones after a
+// successful spawn (the parent ends are released first).
+struct SpawnFds {
+    std::vector<int> fds;
+    SpawnFds() = default;
+    SpawnFds(const SpawnFds&) = delete;
+    SpawnFds& operator=(const SpawnFds&) = delete;
+    ~SpawnFds() {
+        for (int fd : fds) ::close(fd);
+    }
+    int adopt(int fd) {
+        fds.push_back(fd);
+        return fd;
+    }
+    void release(int fd) {
+        auto it = std::find(fds.begin(), fds.end(), fd);
+        if (it != fds.end()) fds.erase(it);
+    }
+};
+
+// Both ends close-on-exec from the start, so a concurrent spawn on another
+// thread cannot inherit them.
+void open_cloexec_pipe(SpawnFds& owned, int out[2]) {
+#if defined(__APPLE__)
+    if (::pipe(out) != 0) raise_errno();
+    owned.adopt(out[0]);
+    owned.adopt(out[1]);
+    if (::fcntl(out[0], F_SETFD, FD_CLOEXEC) != 0) raise_errno();
+    if (::fcntl(out[1], F_SETFD, FD_CLOEXEC) != 0) raise_errno();
+#else
+    if (::pipe2(out, O_CLOEXEC) != 0) raise_errno();
+    owned.adopt(out[0]);
+    owned.adopt(out[1]);
+#endif
+}
+
+struct SpawnFileActions {
+    ::posix_spawn_file_actions_t fa;
+    SpawnFileActions() { check_spawn_rc(::posix_spawn_file_actions_init(&fa)); }
+    SpawnFileActions(const SpawnFileActions&) = delete;
+    SpawnFileActions& operator=(const SpawnFileActions&) = delete;
+    ~SpawnFileActions() { ::posix_spawn_file_actions_destroy(&fa); }
+};
+
+struct SpawnAttr {
+    ::posix_spawnattr_t attr;
+    SpawnAttr() { check_spawn_rc(::posix_spawnattr_init(&attr)); }
+    SpawnAttr(const SpawnAttr&) = delete;
+    SpawnAttr& operator=(const SpawnAttr&) = delete;
+    ~SpawnAttr() { ::posix_spawnattr_destroy(&attr); }
+};
+
+} // namespace
+#endif
+
+std::tuple<int64_t, int64_t, int64_t, int64_t>
+spawn_raw(const std::vector<std::string>& args, int64_t stdin_spec,
+          int64_t stdout_spec, int64_t stderr_spec, int64_t inherit_mask) {
+#if !defined(TPY_SPAWN_CLOSEFROM) && !defined(TPY_SPAWN_CLOEXEC_DEFAULT)
+    (void)args; (void)stdin_spec; (void)stdout_spec; (void)stderr_spec;
+    (void)inherit_mask;
+    ::tpy::raise_os_error(ENOSYS,
+                          "subprocess is not supported on this platform "
+                          "(posix_spawn cannot close inherited fds)");
+#else
+    if (args.empty()) ::tpy::raise_index_error("list index out of range");
+    for (const std::string& a : args) {
+        if (a.find('\0') != std::string::npos) {
+            ::tpy::raise_value_error("embedded null byte");
+        }
+    }
+
+    // Validate every stream before opening anything. CPython reports an
+    // unusable stream (a closed fd, STDOUT outside stderr, another negative
+    // number) from the child's dup2 as a filename-less EBADF; checking here
+    // gives the same error and keeps a posix_spawn failure meaning "exec".
+    const int64_t raw_specs[3] = {stdin_spec, stdout_spec, stderr_spec};
+    bool inherit[3];
+    int spec[3] = {0, 0, 0};
+    for (int i = 0; i < 3; ++i) {
+        inherit[i] = ((inherit_mask >> i) & 1) != 0;
+        if (inherit[i]) continue;
+        spec[i] = to_c_int(raw_specs[i]);
+        bool ok = spec[i] == kSpawnPipe || spec[i] == kSpawnDevnull ||
+                  (spec[i] == kSpawnStdout && i == 2) || spec[i] >= 0;
+        if (!ok || (spec[i] >= 0 && !fd_is_open(spec[i]))) raise_ebadf();
+    }
+    // stderr=STDOUT duplicates the child's fd 1, which an inherited stdout
+    // takes from the parent's fd 1.
+    if (!inherit[2] && spec[2] == kSpawnStdout && inherit[1] && !fd_is_open(1)) {
+        raise_ebadf();
+    }
+#if defined(TPY_SPAWN_CLOEXEC_DEFAULT)
+    // Probed before any pipe is created: a new pipe can land on a free fd 0-2,
+    // which must not then pass for an inherited stdio stream.
+    bool inherit_open[3];
+    for (int i = 0; i < 3; ++i) inherit_open[i] = inherit[i] && fd_is_open(i);
+#endif
+
+    SpawnFds owned;
+    int child_src[3] = {-1, -1, -1};   // parent fd the child gets as fd i
+    int parent_end[3] = {-1, -1, -1};  // the pipe end handed back for stream i
+    bool err_to_out = false;
+    int devnull = -1;
+    for (int i = 0; i < 3; ++i) {
+        if (inherit[i]) continue;
+        if (spec[i] == kSpawnPipe) {
+            int p[2];
+            open_cloexec_pipe(owned, p);
+            // stdin: the child reads, the parent writes; stdout/stderr: the
+            // other way round.
+            child_src[i] = i == 0 ? p[0] : p[1];
+            parent_end[i] = i == 0 ? p[1] : p[0];
+        } else if (spec[i] == kSpawnDevnull) {
+            if (devnull < 0) {
+                devnull = ::open("/dev/null", O_RDWR | O_CLOEXEC);
+                if (devnull < 0) raise_errno("/dev/null");
+                owned.adopt(devnull);
+            }
+            child_src[i] = devnull;
+        } else if (spec[i] == kSpawnStdout) {
+            err_to_out = true;
+        } else {
+            child_src[i] = spec[i];
+        }
+    }
+
+    // The child applies the dup2s in order, so a source that is itself fd 0-2
+    // could be overwritten by an earlier one (stdin=1, stdout=0); and
+    // dup2(fd, fd) is a no-op that leaves FD_CLOEXEC set, so the child would
+    // lose the fd at exec. Moving every such source above 2 first fixes both.
+    for (int i = 0; i < 3; ++i) {
+        if (child_src[i] >= 0 && child_src[i] <= 2) {
+            int moved = ::fcntl(child_src[i], F_DUPFD_CLOEXEC, 3);
+            if (moved < 0) raise_errno();
+            child_src[i] = owned.adopt(moved);
+        }
+    }
+
+    SpawnFileActions actions;
+    for (int i = 0; i < 3; ++i) {
+        if (child_src[i] >= 0) {
+            check_spawn_rc(::posix_spawn_file_actions_adddup2(&actions.fa,
+                                                              child_src[i], i));
+        }
+#if defined(TPY_SPAWN_CLOEXEC_DEFAULT)
+        // Under POSIX_SPAWN_CLOEXEC_DEFAULT only fds created by file actions
+        // survive exec, so an inherited stdio stream must be named explicitly.
+        else if (inherit_open[i]) {
+            check_spawn_rc(::posix_spawn_file_actions_addinherit_np(&actions.fa, i));
+        }
+#endif
+    }
+    if (err_to_out) {
+        check_spawn_rc(::posix_spawn_file_actions_adddup2(&actions.fa, 1, 2));
+    }
+#if defined(TPY_SPAWN_CLOSEFROM)
+    check_spawn_rc(::posix_spawn_file_actions_addclosefrom_np(&actions.fa, 3));
+#endif
+
+    SpawnAttr attr;
+    // The runtime ignores SIGPIPE at startup (as CPython does), and an ignored
+    // disposition survives exec; CPython's restore_signals resets SIGPIPE and
+    // SIGXFSZ for the child.
+    sigset_t defaults;
+    sigemptyset(&defaults);
+    sigaddset(&defaults, SIGPIPE);
+    sigaddset(&defaults, SIGXFSZ);
+    check_spawn_rc(::posix_spawnattr_setsigdefault(&attr.attr, &defaults));
+    // A worker thread runs with SIGINT blocked (SpawnSigintBlock), and exec
+    // keeps the mask, so the child would be deaf to Ctrl-C. TPy code cannot
+    // block signals itself, so every blocked signal is the runtime's.
+    // (Caught signals need no reset: exec reverts a handler to SIG_DFL.)
+    sigset_t unblocked;
+    sigemptyset(&unblocked);
+    check_spawn_rc(::posix_spawnattr_setsigmask(&attr.attr, &unblocked));
+    short flags = POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK;
+#if defined(TPY_SPAWN_CLOEXEC_DEFAULT)
+    flags |= POSIX_SPAWN_CLOEXEC_DEFAULT;
+#endif
+    check_spawn_rc(::posix_spawnattr_setflags(&attr.attr, flags));
+
+    std::vector<char*> argv;
+    argv.reserve(args.size() + 1);
+    for (const std::string& a : args) argv.push_back(const_cast<char*>(a.c_str()));
+    argv.push_back(nullptr);
+#if defined(__APPLE__)
+    char** envp = *_NSGetEnviron();
+#else
+    char** envp = ::environ;
+#endif
+    ::pid_t pid = 0;
+    int rc = ::posix_spawnp(&pid, argv[0], &actions.fa, &attr.attr, argv.data(),
+                            envp);
+    if (rc != 0) {
+        raise_fs_error(std::error_code(rc, std::generic_category()), args[0]);
+    }
+    for (int end : parent_end) {
+        if (end >= 0) owned.release(end);
+    }
+    return {static_cast<int64_t>(pid), parent_end[0], parent_end[1],
+            parent_end[2]};
+#endif
+}
+
 } // namespace tpy::stdlib::os
 
 extern "C" {
@@ -667,5 +986,6 @@ std::int32_t tpy_const_ebadf = EBADF;
 std::int32_t tpy_const_etimedout = ETIMEDOUT;
 std::int32_t tpy_const_einval = EINVAL;
 std::int32_t tpy_const_enotty = ENOTTY;
+std::int32_t tpy_const_espipe = ESPIPE;
 
 }  // extern "C"

@@ -28,6 +28,7 @@ extern "C" int32_t tpy_const_ebadf;
 extern "C" int32_t tpy_const_etimedout;
 extern "C" int32_t tpy_const_einval;
 extern "C" int32_t tpy_const_enotty;
+extern "C" int32_t tpy_const_espipe;
 
 namespace tpystd::errno_mod {
 

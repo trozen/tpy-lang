@@ -46,6 +46,7 @@ import re
 import signal
 import socket
 import ssl
+import subprocess
 import sys
 import termios
 import time

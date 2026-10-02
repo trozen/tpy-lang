@@ -81,6 +81,7 @@ int32_t _pin_cycle_copy() {
 // import signal
 // import socket
 // import ssl
+// import subprocess
 // import sys
 // import termios
 // import time
@@ -172,6 +173,7 @@ void __tpy_init() {
     ::tpystd::signal::__tpy_init();
     ::tpystd::socket::__tpy_init();
     ::tpystd::ssl::__tpy_init();
+    ::tpystd::subprocess::__tpy_init();
     ::tpystd::sys::__tpy_init();
     ::tpystd::termios::__tpy_init();
     ::tpystd::tplib::__tpy_init();

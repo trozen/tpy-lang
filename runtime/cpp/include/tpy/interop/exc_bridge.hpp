@@ -46,7 +46,8 @@ namespace tpy::interop {
     X(BrokenPipeError) X(ConnectionResetError) X(ConnectionRefusedError) \
     X(ConnectionAbortedError) X(ConnectionError) X(FileNotFoundError) \
     X(PermissionError) X(BlockingIOError) X(FileExistsError) \
-    X(NotADirectoryError) X(IsADirectoryError) X(TimeoutError) X(OSError) \
+    X(NotADirectoryError) X(IsADirectoryError) X(ChildProcessError) \
+    X(InterruptedError) X(ProcessLookupError) X(TimeoutError) X(OSError) \
     X(IndexError) X(KeyError) X(LookupError) X(ZeroDivisionError) \
     X(OverflowError) X(FloatingPointError) X(ArithmeticError) X(RecursionError) \
     X(RuntimeError) X(ValueError) X(AttributeError) X(AssertionError) \

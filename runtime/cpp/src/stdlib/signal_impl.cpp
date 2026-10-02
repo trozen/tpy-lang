@@ -600,11 +600,13 @@ int tpy_signal_raise(int sig) {
 }
 
 // Signal numbers read from <signal.h> rather than hardcoded facade-side: the
-// SIGINT/SIGTERM macros are in scope in every TPy-generated TU on macOS, so a
-// plain `int32_t SIGINT` constant there would be mangled by the macro. Exposed
+// SIGINT/SIGTERM/SIGKILL macros are in scope in every TPy-generated TU on
+// macOS, so a plain `int32_t SIGINT` constant there would be mangled by the
+// macro. Exposed
 // as extern globals (read via `native_global`), same as socket_impl's tpy_const_*.
 // Non-const so the type matches the `extern int32_t` decl native_global emits.
 std::int32_t tpy_const_sigint = SIGINT;
 std::int32_t tpy_const_sigterm = SIGTERM;
+std::int32_t tpy_const_sigkill = SIGKILL;
 
 }  // extern "C"

@@ -9,6 +9,75 @@ int32_t _SEEK_SET{};
 int32_t _SEEK_CUR{};
 int32_t _SEEK_END{};
 
+// def _fileio_mode(mode: str) -> tuple[bool, bool, bool]:
+//     """(readable, writable, appending) for a FileIO mode string, scanned like
+//     CPython's fileio_init: the first offending character decides the error."""
+//     rwxa = False
+//     plus = False
+//     readable = False
+//     writable = False
+//     appending = False
+//     for c in mode:
+//         if c == "r" or c == "w" or c == "x" or c == "a":
+//             if rwxa:
+//                 raise ValueError(_BAD_FILEIO_MODE)
+//             rwxa = True
+//             if c == "r":
+//                 readable = True
+//             else:
+//                 writable = True
+//                 appending = c == "a"
+//         elif c == "+":
+//             if plus:
+//                 raise ValueError(_BAD_FILEIO_MODE)
+//             plus = True
+//         elif c != "b":
+//             raise ValueError("invalid mode: " + mode)
+//     if not rwxa:
+//         raise ValueError(_BAD_FILEIO_MODE)
+//     if plus:
+//         return (True, True, appending)
+//     return (readable, writable, appending)
+std::tuple<bool, bool, bool> _fileio_mode(std::string_view mode) {
+    bool rwxa = false;
+    bool plus = false;
+    bool readable = false;
+    bool writable = false;
+    bool appending = false;
+    auto& __obj_0 = mode;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        char c = *__beg_0;
+        if (((((c == 'r') || (c == 'w')) || (c == 'x')) || (c == 'a'))) {
+            if (rwxa) {
+                throw ::tpy::ValueError(_BAD_FILEIO_MODE);
+            }
+            rwxa = true;
+            if ((c == 'r')) {
+                readable = true;
+            } else {
+                writable = true;
+                appending = (c == 'a');
+            }
+        } else if ((c == '+')) {
+            if (plus) {
+                throw ::tpy::ValueError(_BAD_FILEIO_MODE);
+            }
+            plus = true;
+        } else if ((c != 'b')) {
+            throw ::tpy::ValueError((::tpy::str_concat("invalid mode: ", mode)));
+        }
+    }
+    if ((!(rwxa))) {
+        throw ::tpy::ValueError(_BAD_FILEIO_MODE);
+    }
+    if (plus) {
+        return std::tuple<bool, bool, bool>{true, true, appending};
+    }
+    return std::tuple<bool, bool, bool>{readable, writable, appending};
+}
+
 
 
 
@@ -421,6 +490,73 @@ int32_t BytesIO::truncate(int32_t size) {
     return n;
 }
 
+// def __init__(self, fd: int64, mode: str = "r", closefd: bool = True,
+//              timeout_mode: bool = False) -> None:
+//     # CPython checks the fd before the mode.
+//     if fd < 0:
+//         raise ValueError("negative file descriptor")
+//     access = _fileio_mode(mode)
+//     self._fd = fd
+//     self._closefd = closefd
+//     self._closed = False
+//     self._readable = access[0]
+//     self._writable = access[1]
+//     self._timeout_mode = timeout_mode
+//     if access[2]:
+//         try:
+//             os.lseek(fd, 0, os.SEEK_END)
+//         except OSError as e:
+//             if e.errno != errno.ESPIPE:
+//                 raise
+FileIO::FileIO(int64_t fd, std::string_view mode, bool closefd, bool timeout_mode) {
+    if ((fd < 0)) {
+        throw ::tpy::ValueError("negative file descriptor");
+    }
+    std::tuple<bool, bool, bool> access = ::tpystd::io::_fileio_mode(mode);
+    this->_fd = fd;
+    this->_closefd = closefd;
+    this->_closed = false;
+    this->_readable = std::get<0>(access);
+    this->_writable = std::get<1>(access);
+    this->_timeout_mode = timeout_mode;
+    if (std::get<2>(access)) {
+        {
+            try {
+                ::tpystd::os::lseek(fd, 0, ::tpy::stdlib::os::kc_seek_end);
+            } catch (const ::tpy::OSError& e) {
+                if ((e.error_number != ::tpy_const_espipe)) {
+                    throw;
+                }
+            }
+        }
+    }
+}
+
+// def read(self, size: int32 = -1) -> bytes:
+//     self._check_open()
+//     if not self._readable:
+//         # CPython raises io.UnsupportedOperation, which TPy does not
+//         # define; OSError is one of its two bases.
+//         raise OSError("File not open for reading")
+//     if size < 0:
+//         return self._readall()
+//     if size == 0:
+//         return b""
+//     return self._os_read(int64(size))
+::tpy::Bytes FileIO::read(int32_t size) const {
+    this->_check_open();
+    if ((!(this->_readable))) {
+        ::tpy::OSError("File not open for reading").__raise__();
+    }
+    if ((size < 0)) {
+        return this->_readall();
+    }
+    if ((size == 0)) {
+        return ::tpy::Bytes{};
+    }
+    return this->_os_read(::tpy::int_cast_check<int64_t>(size));
+}
+
 // def __init__(self, raw: Own[RawBinaryIO],
 //              buffer_size: int32 = DEFAULT_BUFFER_SIZE) -> None:
 //     # `_raw` is non-default-constructible, so it must be assigned before
@@ -544,8 +680,124 @@ void BufferedReader::_fill(int32_t want, bool to_newline) {
     }
     return this->_take(stop);
 }
+
+// def _flush_buffer(self) -> None:
+//     if self._pending == 0:
+//         return
+//     data = b"".join(self._parts)
+//     self._parts = []
+//     self._pending = 0
+//     off = 0
+//     try:
+//         while off < len(data):
+//             off += self._raw.write(data[off:])
+//     finally:
+//         if off < len(data):
+//             self._parts.append(bytes(data[off:]))
+//             self._pending = len(data) - off
+void BufferedWriter::_flush_buffer() {
+    if ((this->_pending == 0)) {
+        return;
+    }
+    ::tpy::Bytes data = ::tpy::bytes_join(::tpy::Bytes{}, this->_parts);
+    this->_parts = std::vector<::tpy::Bytes>{};
+    this->_pending = 0;
+    int32_t off = 0;
+    {
+        try {
+            while ((off < ::tpy::__len__(data))) {
+                off = ::tpy::add_check<int32_t>(off, this->_raw.__deref__().write(::tpy::Bytes(::tpy::bytes_slice(data, ::tpy::BasicSlice{off, std::nullopt}))));
+            }
+        } catch (...) {
+            if ((off < ::tpy::__len__(data))) {
+                this->_parts.push_back(::tpy::Bytes(::tpy::bytes_slice(data, ::tpy::BasicSlice{off, std::nullopt})));
+                this->_pending = (::tpy::sub_check<int32_t>(::tpy::__len__(data), off));
+            }
+            throw;
+        }
+        if ((off < ::tpy::__len__(data))) {
+            this->_parts.push_back(::tpy::Bytes(::tpy::bytes_slice(data, ::tpy::BasicSlice{off, std::nullopt})));
+            this->_pending = (::tpy::sub_check<int32_t>(::tpy::__len__(data), off));
+        }
+    }
+}
+
+// def write(self, data: bytes) -> int32:
+//     if self._closed:
+//         raise ValueError("write to closed file")
+//     n = len(data)
+//     if self._pending + n <= self._buffer_size:
+//         if n > 0:
+//             self._parts.append(bytes(data))
+//             self._pending += n
+//         return n
+//     self._flush_buffer()
+//     off = 0
+//     while n - off > self._buffer_size:
+//         off += self._raw.write(data[off:])
+//     if off < n:
+//         self._parts.append(bytes(data[off:]))
+//         self._pending += n - off
+//     return n
+int32_t BufferedWriter::write(::tpy::BytesView data) {
+    if (this->_closed) {
+        throw ::tpy::ValueError("write to closed file");
+    }
+    int32_t n = ::tpy::__len__(data);
+    if (((::tpy::add_check<int32_t>(this->_pending, n)) <= this->_buffer_size)) {
+        if ((n > 0)) {
+            this->_parts.push_back(::tpy::Bytes(data));
+            this->_pending = ::tpy::add_check<int32_t>(this->_pending, n);
+        }
+        return n;
+    }
+    this->_flush_buffer();
+    int32_t off = 0;
+    while (((::tpy::sub_check<int32_t>(n, off)) > this->_buffer_size)) {
+        off = ::tpy::add_check<int32_t>(off, this->_raw.__deref__().write(::tpy::Bytes(::tpy::bytes_slice(data, ::tpy::BasicSlice{off, std::nullopt}))));
+    }
+    if ((off < n)) {
+        this->_parts.push_back(::tpy::Bytes(::tpy::bytes_slice(data, ::tpy::BasicSlice{off, std::nullopt})));
+        this->_pending = ::tpy::add_check<int32_t>(this->_pending, (::tpy::sub_check<int32_t>(n, off)));
+    }
+    return n;
+}
+
+// def close(self) -> None:
+//     if self._closed:
+//         return
+//     # The raw sink is closed even when the final flush fails; the flush
+//     # error is what propagates, as in CPython.
+//     try:
+//         self._flush_buffer()
+//     finally:
+//         self._closed = True
+//         self._parts = []
+//         self._pending = 0
+//         self._raw.close()
+void BufferedWriter::close() {
+    if (this->_closed) {
+        return;
+    }
+    {
+        try {
+            this->_flush_buffer();
+        } catch (...) {
+            this->_closed = true;
+            this->_parts = std::vector<::tpy::Bytes>{};
+            this->_pending = 0;
+            this->_raw.__deref__().close();
+            throw;
+        }
+        this->_closed = true;
+        this->_parts = std::vector<::tpy::Bytes>{};
+        this->_pending = 0;
+        this->_raw.__deref__().close();
+    }
+}
 // from tpy.extern import native_global
 // from tplib.box import Box
+// import errno
 // import os
 //
 // _SEEK_SET: int32 = 0
@@ -558,6 +810,7 @@ void __tpy_init() {
 
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
+    ::tpystd::errno_mod::__tpy_init();
     ::tpystd::os::__tpy_init();
     _SEEK_SET = 0;
     _SEEK_CUR = 1;
