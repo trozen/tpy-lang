@@ -1198,6 +1198,20 @@ above): `x = [1, 2]; x = ["a"]` is a sema error (`expected list[int32], got
 list[str]`), like the equivalent scalar/str rebind. Numeric element widening
 is still accepted.
 
+An element of an unannotated literal list is compiled at the element type
+the literal has at that point: a bare number is resolved by its consumer,
+and a tuple element takes the default width for its literal members, so
+`xs = [(1, 2)]` followed by `a, b = xs[0]`, `f(xs[0])` or `t = xs[0]` works
+like the annotated list. Current limitation: when another use gives the
+list a different element type -- a `list[int64]` parameter, a wider
+`append` after the read, the same through a second name for the list -- an
+element taken at the default width by an unannotated local, a loop variable
+or a tuple unpack is refused with the annotation to write
+(`ys: list[int64] = [1]`), and `sum` / `sorted` / `enumerate` / arithmetic
+over such a list are still compiled at the default width
+(`BUGS.md#widened-literal-list-read-truncates`). Annotating the list avoids
+both.
+
 Nested list literals apply the rule per level. Sublists of differing length
 (a jagged literal, `[[1, 2], [3, 4, 5]]`) can't share a fixed `Array`, so that
 level resolves to `list[list[T]]`; levels with uniform element counts stay

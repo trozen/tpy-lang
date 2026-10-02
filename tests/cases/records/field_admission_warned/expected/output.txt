@@ -29,3 +29,4 @@ async.opt_pq 3501
 holder.opt_elem 51 52
 holder.pq_call 4
 holder.pq_field -22 -23
+holder.literal_tuple_elem 1 2 9

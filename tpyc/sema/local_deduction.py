@@ -23,6 +23,7 @@ from ..typesys import (
     make_dict,
     FloatLiteralType,
     is_float_type,
+    is_integer_type,
     IntLiteralType,
     ListLiteralInfo,
     make_list,
@@ -245,6 +246,94 @@ def collect_pending_source_types(ctx: 'SemanticContext', expr: 'TpyExpr') -> 'li
             return [t]
         return []
     return walk_view_source_leaves(expr, leaf)
+
+
+def _mentions(t: TpyType, part: TpyType) -> bool:
+    """Whether `part` is `t` or one of its inner types."""
+    return t == part or any(_mentions(i, part) for i in t.inner_types())
+
+
+def _is_number(t: TpyType) -> bool:
+    return is_integer_type(t) or is_float_type(t)
+
+
+def _leaf_mismatch(a: TpyType, b: TpyType, leaf) -> bool:
+    """Whether two element types of one shape differ at a numeric place.
+    `leaf(a, b)` answers a pair it takes for a leaf and returns None to
+    descend. Qualifiers and a nested container's representation are not
+    this check's."""
+    a = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a)))
+    b = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(b)))
+    verdict = leaf(a, b)
+    if verdict is not None:
+        return verdict
+    a_inner, b_inner = a.inner_types(), b.inner_types()
+    if type(a) is not type(b) or len(a_inner) != len(b_inner):
+        return False
+    return any(_leaf_mismatch(x, y, leaf) for x, y in zip(a_inner, b_inner))
+
+
+def _stale_literal_leaf(seen: TpyType, final: TpyType, default_int) -> bool:
+    """Whether a literal member of `seen` settles, at its default width, to
+    another number than `final` holds in its place."""
+    def leaf(s: TpyType, f: TpyType) -> 'bool | None':
+        if isinstance(s, FloatLiteralType):
+            return _is_number(f) and f != FLOAT
+        if isinstance(s, IntLiteralType):
+            return _is_number(f) and f != default_int(s)
+        return None
+    return _leaf_mismatch(seen, final, leaf)
+
+
+def _numeric_leaf_differs(a: TpyType, b: TpyType) -> bool:
+    """Whether two element types hold a different number in the same place."""
+    return _leaf_mismatch(
+        a, b, lambda x, y: x != y if _is_number(x) and _is_number(y) else None)
+
+
+def pending_elem_read(ctx: 'SemanticContext', receiver: 'TpyType | None',
+                      result: TpyType, node: 'TpyExpr') -> TpyType:
+    """The type of a read built from the element of a container literal
+    whose type is not decided yet (`xs[i]`, `xs.pop()`, `xs.copy()`). It is
+    compiled at the element as the literal has it so far: a bare literal
+    stays one, resolved by its consumer (`note_elem_binding` when that is an
+    unannotated binding), and anything composite takes the default width
+    for its literal members, so its consumers see a concrete type -- which
+    the list literal remembers (`note_pending_elem_read`)."""
+    if isinstance(result, (IntLiteralType, FloatLiteralType)):
+        return result
+    if (isinstance(receiver, PendingListType)
+            and _mentions(result, receiver.element_type)):
+        note_pending_elem_read(ctx, receiver, node)
+    return resolve_int_literals(result, ctx.default_int_for_literal)
+
+
+def note_elem_binding(ctx: 'SemanticContext', value: 'TpyExpr | None') -> None:
+    """An unannotated binding takes a literal-typed `value` at its default
+    width. When `value` reads the element of a pending list literal, that
+    is a width the list may not end up with: the literal remembers it."""
+    if isinstance(value, TpyCoerce):
+        value = value.expr
+    if not isinstance(value, (TpySubscript, TpyMethodCall)):
+        return
+    receiver = ctx.expr_types.get(value.obj)
+    if receiver is not None:
+        receiver = unwrap_readonly(unwrap_ref_type(receiver))
+    note_pending_elem_read(ctx, receiver, value)
+
+
+def note_pending_elem_read(ctx: 'SemanticContext', receiver: 'TpyType | None',
+                           node: 'TpyExpr') -> None:
+    """Remember that `node` took an element of the list literal behind
+    `receiver` at the width the literal has so far. Another use may give
+    the list another element type (a typed parameter, a wider append); the
+    read was then compiled at the wrong one, and `_check_elem_reads`
+    refuses it."""
+    if not isinstance(receiver, PendingListType):
+        return
+    info = ctx.list_literals.get(receiver.literal_id)
+    if info is not None:
+        info.elem_reads.append((receiver.element_type, node))
 
 
 def mark_pending_list_mutated(ctx: 'SemanticContext', expr: 'TpyExpr | None',
@@ -1122,6 +1211,8 @@ class LocalTypeDeduction:
                 # Default: Array (stack-allocated, no mutation detected)
                 resolved = make_array(elem_type, info.size)
 
+            if not info.has_explicit_annotation:
+                self._check_elem_reads(info, elem_type)
             self._apply_container_resolution(info, resolved)
 
         # Second pass: bidirectional alias propagation.
@@ -1149,6 +1240,49 @@ class LocalTypeDeduction:
                     source.resolved_type = make_list(source.resolved_type.type_args[0])
                     self._update_resolved_binding(source)
                     changed = True
+
+        # An alias and its source are one list, so they hold one element
+        # type; a use of only one of the names can decide it differently.
+        for literal_id in self.ctx.func.pending_resolutions:
+            info = self.ctx.list_literals.get(literal_id)
+            source = (self.ctx.list_literals.get(info.source_literal_id)
+                      if info is not None and info.source_literal_id is not None
+                      else None)
+            if (source is None or info.resolved_type is None
+                    or source.resolved_type is None):
+                continue
+            mine = info.resolved_type.get_element_type()
+            theirs = source.resolved_type.get_element_type()
+            if (mine is None or theirs is None
+                    or not _numeric_leaf_differs(mine, theirs)):
+                continue
+            decided = mine if info.coerced_element_type is not None else theirs
+            raise self.ctx.error(
+                f"'{info.variable_name}' and '{source.variable_name}' name one "
+                f"list, but it holds {theirs} elements through "
+                f"'{source.variable_name}' and {mine} through "
+                f"'{info.variable_name}'; annotate its first binding: "
+                f"{source.variable_name}: list[{decided}] = ...",
+                info.expr)
+
+    def _check_elem_reads(self, info: 'ListLiteralInfo',
+                          elem_type: TpyType) -> None:
+        """Refuse a read compiled at an element type the list did not
+        resolve to (`pending_elem_read`). A use the read could not see
+        decided the element, so the value would be converted silently."""
+        default_int = self.ctx.default_int_for_literal
+        for seen, node in info.elem_reads:
+            if not _stale_literal_leaf(seen, elem_type, default_int):
+                continue
+            assumed = resolve_int_literals(seen, default_int)
+            name = info.variable_name
+            subject = f"'{name}'" if name else "this list"
+            fix = (f"; annotate its first binding: {name}: list[{elem_type}] = ..."
+                   if name else "")
+            raise self.ctx.error(
+                f"{subject} holds {elem_type} elements, decided by another "
+                f"use of the list, but this read takes one as {assumed}{fix}",
+                node)
 
     def _update_resolved_binding(self, info: 'ListLiteralInfo') -> None:
         """Update scope and var_types after alias propagation changes a resolved type."""

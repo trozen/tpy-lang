@@ -1,0 +1,16 @@
+fn.unpack_value 3 4
+fn.unpack_record 1 9
+fn.argument 3 7
+fn.argument_alias 12
+fn.local 1 7
+fn.float_member 1.5 8
+fn.nested 17 14
+method.read 11 1
+ctor.read 5
+async.read 7
+closure.read 8 6
+comp.read [3, 7] [1, 3]
+match.read 1 7
+gen.reads [1, 9, 5, 9]
+fn.scalar 5000000002
+fn.dict 1 2

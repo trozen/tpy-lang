@@ -6707,6 +6707,88 @@ def _container_value_tuple_elem(t: TpyType | None, analyzer) -> bool:
         t, analyzer, lambda a: _value_tuple(a, analyzer) is not None)
 
 
+def _any_dict_key(_key: TpyType) -> bool:
+    """The element fronts below take a dict receiver whatever its key: the
+    index expression gates its own shape, and the read is key-type-neutral."""
+    return True
+
+
+def _elem_bare(a: 'TpyType | int') -> 'TpyType | None':
+    """The element the type system reports, peeled to the type the element
+    fronts below classify."""
+    if not isinstance(a, TpyType):
+        return None
+    return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a)))
+
+
+def _container_borrow_elem(t: TpyType | None, analyzer) -> bool:
+    """A container whose element is read as a borrow of its storage: a
+    record, or a wrapper union bound to a same-wrapper borrow slot. The
+    checked element lvalue renders bare for every consumer that does not
+    keep it past the statement."""
+    def elem_ok(a: 'TpyType | int') -> bool:
+        return (record_like(_elem_bare(a), analyzer)
+                or _eligible_wrapper_union(a, analyzer) is not None)
+    return _container_elem_family(t, analyzer, elem_ok,
+                                  dict_key_ok=_any_dict_key)
+
+
+def _container_storage_copy_elem(t: TpyType | None, analyzer) -> bool:
+    """A container whose element is stored self-contained (an Optional, a
+    union, a tuple), so an owning copy sink takes the checked element
+    lvalue whole."""
+    def elem_ok(a: 'TpyType | int') -> bool:
+        eb = _elem_bare(a)
+        return (isinstance(eb, OptionalType)
+                or _storage_copy_value(eb, analyzer))
+    return _container_elem_family(t, analyzer, elem_ok,
+                                  dict_key_ok=_any_dict_key)
+
+
+def _container_value_record_elem(t: TpyType | None, analyzer) -> bool:
+    """A container whose element is a ValueType record: it has no borrow
+    form, so the checked element lvalue copies into a by-value slot."""
+    def elem_ok(a: 'TpyType | int') -> bool:
+        eb = _elem_bare(a)
+        return (isinstance(eb, NominalType) and eb.is_record
+                and eb.is_value_type() and record_like(eb, analyzer))
+    return _container_elem_family(t, analyzer, elem_ok,
+                                  dict_key_ok=_any_dict_key)
+
+
+def _container_tuple_source_elem(t: TpyType | None, analyzer) -> bool:
+    """A container whose tuple element is a self-contained storage value an
+    unpack or a same-tuple owning slot consumes whole: a value tuple, a
+    storage tuple of ptr-Optional or plain-record members, or the open-T
+    tuple of a generic body."""
+    def elem_ok(a: 'TpyType | int') -> bool:
+        eb = _elem_bare(a)
+        return (_value_tuple(eb, analyzer) is not None
+                or (isinstance(eb, TupleType)
+                    and eb.has_pointer_repr_element()
+                    and (_tuple_elem_slots_ptr_optional(eb)
+                         or _f1_tuple(eb, analyzer) is not None))
+                or (_open_t_tuple_slot(eb, analyzer) is not None
+                    and bool(_witness("subscript.open_t_tuple_source"))))
+    return _container_elem_family(t, analyzer, elem_ok,
+                                  dict_key_ok=_any_dict_key)
+
+
+def _container_borrow_tuple_elem(t: TpyType | None, analyzer) -> bool:
+    """A container whose tuple element feeds a borrow-bind position bare:
+    the caller's `tuple_to_pointer` supplies the storage->borrow lift, so
+    nothing depends on the element's own form."""
+    def elem_ok(a: 'TpyType | int') -> bool:
+        eb = _elem_bare(a)
+        return (_f1_tuple(eb, analyzer) is not None
+                or _value_tuple_nested(eb, analyzer) is not None
+                or (isinstance(a, TpyType)
+                    and _open_value_tuple(a) is not None
+                    and bool(_witness("subscript.open_tuple_elem"))))
+    return _container_elem_family(t, analyzer, elem_ok,
+                                  dict_key_ok=_any_dict_key)
+
+
 def _container_value_leaf_read(t: TpyType | None, analyzer) -> bool:
     """A container whose element/value subscript READ renders bare in a value
     position -- the compositional replacement for the enumerated

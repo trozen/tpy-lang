@@ -85,7 +85,9 @@ from .type_join import (InferredJoin, JoinOutcome, declared_float_slot,
 from .list_literals import IterableHelper
 from .slot_hint import (SlotHint, callable_return, element,
                         optional_inner, type_arg)
-from .local_deduction import collect_pending_source_types, mark_pending_list_mutated
+from .local_deduction import (collect_pending_source_types,
+                              mark_pending_list_mutated,
+                              note_pending_elem_read, pending_elem_read)
 from .operators import DUNDER_CPP_TEMPLATES, _substitute_type_params
 from .bound_check import raise_if_class_param_bound_violated
 from .overloads import OverloadAmbiguityError, resolve_overload
@@ -4815,6 +4817,7 @@ class ExpressionAnalyzer:
             bound = self.type_ops.get_type_param_bound(inner.name)
             if bound is not None and is_protocol_type(bound):
                 inner = bound
+        note_pending_elem_read(self.ctx, inner, gen.iterable)
         return IterableHelper(self.ctx).get_iterable_element_type(inner, loc=expr.loc)
 
     def _enter_comp_scope(
@@ -5160,6 +5163,8 @@ class ExpressionAnalyzer:
                 info = self.ctx.list_literals.get(actual_type.literal_id)
                 if info and isinstance(info.expr, TpyListRepeat):
                     info.needs_indexing = True
+                elem_type = pending_elem_read(self.ctx, actual_type,
+                                              elem_type, expr)
             if is_readonly_obj and not elem_type.is_value_type():
                 elem_type = ReadonlyType(unwrap_readonly(elem_type))
             return make_ref(elem_type)

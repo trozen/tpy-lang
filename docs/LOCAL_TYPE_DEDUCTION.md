@@ -163,6 +163,14 @@ and the candidate type is pending/ambiguous:
 - String passed to `String` param -> `str` (owned)
 - Int literal passed to `int64` param -> candidate narrows to `int64`
 
+A parameter can give a list literal another NUMBER for its element than
+the literal defaults to (`[1]` at a `list[int64]` parameter). The element
+is decided when the list resolves, but each use was typed from the pending
+literal as it stood, so a use that took an element at the default width --
+an unannotated local, a loop variable, a tuple element -- is recorded on
+the literal and refused when the list resolves to another number
+(`BUGS.md#widened-literal-list-read-truncates`).
+
 **Return type:** If the variable is returned and the function has a
 declared return type, use it to inform deduction (list / dict / set alike):
 - `return xs` where return type is `list[T]` -> xs is `list[T]`
@@ -213,7 +221,9 @@ chains. This is a correctness requirement, not just a style preference:
 `std::vector<T>& b = a` (a reference). This preserves Python's
 shared-mutation semantics -- `b.append(x)` also mutates `a`. If `a`
 stayed `Array`, the assignment would copy and mutations would diverge
-from Python behavior. So if either variable requires `list`, both must
+from Python behavior. The two names are one list, so they must also agree
+on the element: a pair that resolved to different numbers (only one name
+met a wider typed parameter) is refused. So if either variable requires `list`, both must
 be `list`.
 
 **Rules:**

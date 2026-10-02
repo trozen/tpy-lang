@@ -376,6 +376,22 @@ void slot_writes() {
     ::tpyapp::main::slot_holder(o, u, xs);
 }
 
+// def literal_list_elem() -> None:
+//     # local holder: a tuple element of a list whose element type comes from
+//     # its literal copies into the field like its annotated twin.
+//     pairs = [(1, P(2))]
+//     k = Paired()
+//     k.t = pairs[0]  # tpyc: warning(/copies P into field \(tuple element 1\)/)
+//     pairs[0][1].v = 9
+//     print("holder.literal_tuple_elem", k.t[0], k.t[1].v, pairs[0][1].v)
+void literal_list_elem() {
+    std::array<std::tuple<int32_t, P>, 1> pairs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(2)})};
+    Paired k = Paired();
+    k.t = ::tpy::__getitem__(pairs, 0);
+    std::get<1>(::tpy::__getitem__(pairs, 0)).v = 9;
+    std::cout << "holder.literal_tuple_elem" << " " << std::get<0>(k.t) << " " << std::get<1>(k.t).v << " " << std::get<1>(::tpy::__getitem__(pairs, 0)).v << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
 //     xs = [1]
 //     h = Holder(xs)
@@ -404,6 +420,7 @@ void slot_writes() {
 //     own_args(xs)
 //     comp_elems()
 //     slot_writes()
+//     literal_list_elem()
 void main() {
     std::vector<int32_t> xs = {1};
     Holder h = Holder(xs);
@@ -435,6 +452,7 @@ void main() {
     ::tpyapp::main::own_args(xs);
     ::tpyapp::main::comp_elems();
     ::tpyapp::main::slot_writes();
+    ::tpyapp::main::literal_list_elem();
 }
 
 

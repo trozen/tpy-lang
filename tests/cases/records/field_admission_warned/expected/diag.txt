@@ -36,3 +36,4 @@ main.py:162: warning: copies list[int32] into owned storage; use copy() to make 
 main.py:470: warning: copies P | None into field; use copy() to make this explicit
 main.py:473: warning: copies P | R into field; use copy() to make this explicit
 main.py:475: warning: copies P | R into field; use copy() to make this explicit
+main.py:513: warning: copies P into field (tuple element 1); use copy() to make this explicit
