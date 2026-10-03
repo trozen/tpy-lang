@@ -420,9 +420,10 @@ T builtin_extreme_key(Iter&& iterable, KeyFn&& key, std::string_view name,
         for (D i = 0; i < static_cast<D>(std::ranges::size(iterable)); ++i) {
             K k = key(std::ranges::begin(iterable)[i]);
             if (!best || better(k, *best_key)) {
-                const T& elem = std::ranges::begin(iterable)[i];
-                if (best) *best = elem;
-                else best.emplace(elem);
+                // No named reference to the element: GCC 13's
+                // -Wdangling-reference takes the iterator temporary for its referent.
+                if (best) *best = std::ranges::begin(iterable)[i];
+                else best.emplace(std::ranges::begin(iterable)[i]);
                 best_key.emplace(std::move(k));
             }
         }

@@ -169,8 +169,10 @@ def test_no_signals_leaves_the_embedding_api_undeclared(request, tmp_path):
     src = tmp_path / "host.cpp"
     src.write_text('#include "tpy/tpy.hpp"\n'
                    "void host_handler() { tpy::request_interrupt(); }\n")
+    # A plain object compile, not -fsyntax-only: zig's driver fails that with
+    # FileNotFound looking for the output it was never asked to write.
     cmd = [*CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}", "-I", str(RUNTIME_DIR),
-           "-fsyntax-only", str(src)]
+           "-c", str(src), "-o", str(tmp_path / "host.o")]
     armed = subprocess.run(cmd, capture_output=True, text=True)
     assert armed.returncode == 0, armed.stderr
     compiled_out = subprocess.run([*cmd, "-DTPY_NO_SIGNALS"],
