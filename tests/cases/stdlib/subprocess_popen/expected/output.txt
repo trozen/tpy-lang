@@ -40,6 +40,9 @@ osproc: kill OverflowError
 osproc: waitpid OverflowError
 reaped: True 0
 reaped: 0 0
+reapedwait: True 0 0
+nonblock: BlockingIOError
+nonblock: -9
 exitflush: b'ready\n'
 exitflush: BrokenPipeError 32
 exitflush: 0

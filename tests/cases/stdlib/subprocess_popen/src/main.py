@@ -234,6 +234,28 @@ def reaped_externally() -> None:
     print("reaped:", p.poll(), p.returncode)
 
 
+def wait_after_external_reap() -> None:
+    p = Popen(["true"])
+    res = os.waitpid(p.pid, 0)
+    # wait() on a child someone else reaped reports 0 too, without blocking.
+    print("reapedwait:", res[0] == p.pid, p.wait(), p.returncode)
+
+
+def nonblocking_stdin() -> None:
+    # The child never reads, so the pipe fills up.
+    p = Popen(["sleep", "30"], stdin=PIPE)
+    assert p.stdin is not None
+    os.set_blocking(p.stdin.fileno(), False)
+    try:
+        # A pipe switched to non-blocking refuses at once; no wait for room.
+        p.stdin.write(b"x" * 1000000)
+        print("nonblock: wrote all")
+    except BlockingIOError:
+        print("nonblock: BlockingIOError")
+    p.kill()
+    print("nonblock:", p.wait())
+
+
 def exit_flush_fails() -> None:
     # The child closes its stdin and only then reports on stdout, so after
     # the readline the byte written below cannot reach a reader.
@@ -265,6 +287,8 @@ def main() -> None:
     bad_arguments()
     os_process()
     reaped_externally()
+    wait_after_external_reap()
+    nonblocking_stdin()
     exit_flush_fails()
 
 

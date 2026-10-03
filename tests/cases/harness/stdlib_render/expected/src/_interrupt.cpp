@@ -55,6 +55,43 @@ int32_t wait_writable(int32_t fd, double deadline) {
     return ::tpystd::_interrupt::_wait(fd, 1, deadline);
 }
 
+// def deliverable() -> bool:
+//     """Whether a Ctrl-C would be raised on this thread right now (the
+//     interrupt target, outside asyncio.run and a cleanup body). Where it would
+//     not, an interruptible wait buys nothing over the plain blocking call."""
+//     return posix_signal.deliverable()
+bool deliverable() {
+    return ::tpy::signals_deliverable();
+}
+
+// def before_read(fd: int32) -> None:
+//     """Ahead of a read on a blocking fd nobody else reads: wait until the
+//     read would not block, raising KeyboardInterrupt on a Ctrl-C. The read
+//     that follows returns at once, so it needs no interrupting itself. A fd
+//     the wait cannot watch falls through, and the read reports its own
+//     error."""
+//     if posix_signal.deliverable():
+//         _wait(fd, 0, -1.0)
+void before_read(int32_t fd) {
+    if (::tpy::signals_deliverable()) {
+        ::tpystd::_interrupt::_wait(fd, 0, -(1.0));
+    }
+}
+
+// def before_write(fd: int32) -> None:
+//     """`before_read` for a write on a blocking fd. A write larger than the
+//     room the fd has still blocks partway; a Ctrl-C arriving then makes it
+//     return the count written so far, and the caller's next `before_write`
+//     raises. (One that lands between this wait and the write is not seen by
+//     the blocked write: it is raised once that write has completed.)"""
+//     if posix_signal.deliverable():
+//         _wait(fd, 1, -1.0)
+void before_write(int32_t fd) {
+    if (::tpy::signals_deliverable()) {
+        ::tpystd::_interrupt::_wait(fd, 1, -(1.0));
+    }
+}
+
 // def _wait(fd: int32, want_write: int32, deadline: float) -> int32:
 //     rc = posix_signal.wait(fd, want_write, remaining(deadline))
 //     if rc == _INTERRUPTED:
@@ -81,6 +118,13 @@ int32_t _wait(int32_t fd, int32_t want_write, double deadline) {
 // `wait_readable` / `wait_writable` for a wait on an fd that a Ctrl-C also
 // ends. A timeout is one monotonic deadline for the whole operation
 // (`deadline_after`), so each retry waits only for the time left.
+//
+// The wait belongs to whoever owns the blocking resource and knows its mode:
+// `socket` for its fd, `subprocess.Popen` for its pipes and its child. A raw
+// `os.read` / `os.write` / `os.waitpid` stays the plain system call -- the
+// caller's fd may be non-blocking, shared or invalid, and a wait in front of it
+// would change what it does. An owner calls `before_read` / `before_write`
+// ahead of the system call, while its fd is in blocking mode.
 //
 // Internal: not for user import.
 // """

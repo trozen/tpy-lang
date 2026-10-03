@@ -122,7 +122,9 @@ def close_fd(fd: int64) -> None: ...
 
 
 # The EINTR retry loops re-check signals (checks_signals), although SA_RESTART
-# keeps them from ever seeing EINTR.
+# keeps them from ever seeing EINTR: a blocking read / write / waitpid sleeps
+# through a Ctrl-C (BUGS.md#sigint-sa-restart-blocking-calls). An owner of a
+# blocking fd waits through `_interrupt` first.
 @native("tpy::stdlib::os::read_fd", checks_signals=True)
 def read_fd(fd: int64, n: int64) -> Own[bytes]: ...
 
@@ -259,6 +261,12 @@ def kill_pid(pid: int64, sig: int64) -> None: ...
 
 @native("tpy::stdlib::os::waitpid", checks_signals=True)
 def waitpid(pid: int64, options: int64) -> tuple[int64, int64]: ...
+
+
+# An fd that turns readable when process `pid` exits, or -1 where the OS has
+# none (anything but Linux, an old kernel) or the pid is gone.
+@native("tpy::stdlib::os::pidfd_open")
+def pidfd_open(pid: int64) -> int64: ...
 
 
 @native("tpy::stdlib::os::waitstatus_to_exitcode")

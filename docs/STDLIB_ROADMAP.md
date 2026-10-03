@@ -336,7 +336,7 @@ helper-API surface.
 | `ImportError`, `ModuleNotFoundError` | Not applicable | Import failures are compile-time today |
 | `UnicodeError` and subtypes | Missing | TPy has few encoding-panic sites today |
 | `GeneratorExit` | Done | Inherits `BaseException` directly (CPython hierarchy); raisable/catchable, and constructed by the frame destructor as `__exit__`'s exc_val when an abandoned generator/coroutine closes a suspended `with` region |
-| `KeyboardInterrupt` | Done | Inherits `BaseException` directly (CPython hierarchy); raisable/catchable; raised by Ctrl-C on the main thread at the next interruptible operation (`print`, sleep, input, blocking socket I/O, join, `sys.stdout` / file I/O) and by `asyncio.run` after a SIGINT-driven graceful shutdown; uncaught, it prints `KeyboardInterrupt` and dies by SIGINT (status 130) like CPython |
+| `KeyboardInterrupt` | Done | Inherits `BaseException` directly (CPython hierarchy); raisable/catchable; raised by Ctrl-C on the main thread at the next interruptible operation (`print`, sleep, input, blocking socket I/O, join, a `subprocess` wait or pipe, `sys.stdout` / file I/O) and by `asyncio.run` after a SIGINT-driven graceful shutdown; uncaught, it prints `KeyboardInterrupt` and dies by SIGINT (status 130) like CPython |
 | `SystemExit` | Missing | Control-flow exception; needs runtime support |
 | `SystemError` | Missing | Internal-interpreter notion not directly applicable |
 | `EOFError` | Done | Raised by `input()` on EOF; also available for user `raise` |
@@ -1397,10 +1397,10 @@ every fd the call opened is closed; caller fds never are.
 | `PIPE`, `STDOUT`, `DEVNULL` | Done | `-1` / `-2` / `-3`, as CPython |
 | `Popen(args, *, stdin=None, stdout=None, stderr=None)` | Done | `args` a `list[str]`, `args[0]` searched on PATH. Streams keyword-only (CPython's second positional is `bufsize`; a positional stream is not yet rejected -- BUGS.md#ctor-kwonly-marker-ignored). Each stream: `None` (inherit), `PIPE`, `DEVNULL`, an open fd, `STDOUT` for stderr only; anything else raises CPython's filename-less `OSError(EBADF)`, an fd outside C `int` `OverflowError`. `Popen([])` raises `IndexError`, a NUL in an argument `ValueError("embedded null byte")`, a failed exec the errno's `OSError` subclass with `filename=args[0]` (`[Errno 2] No such file or directory: 'prog'`) |
 | `pid`, `returncode` | Done | `returncode` is `None` until reaped, `-N` for death by signal N |
-| `stdin` / `stdout` / `stderr` | Done | `io.BufferedWriter` / `io.BufferedReader` over `FileIO`, or `None`. A method call on one needs it narrowed first (`assert p.stdin is not None`) -- BUGS.md#unproven-optional-field-method-recv-rejects |
-| `wait()`, `poll()` | Done | Cached once reaped; `wait` blocks (EINTR retried), `poll` uses `WNOHANG`; a child reaped elsewhere (`ECHILD`) reports 0 like CPython. No `timeout=` |
+| `stdin` / `stdout` / `stderr` | Done | `io.BufferedWriter` / `io.BufferedReader` over `FileIO`, or `None`. A read or write that blocks on the pipe ends on a Ctrl-C with `KeyboardInterrupt`. A method call on one needs it narrowed first (`assert p.stdin is not None`) -- BUGS.md#unproven-optional-field-method-recv-rejects |
+| `wait()`, `poll()` | Done | Cached once reaped; `wait` blocks and ends on a Ctrl-C with `KeyboardInterrupt` (the child keeps running), `poll` uses `WNOHANG`; a child reaped elsewhere (`ECHILD`) reports 0 like CPython. No `timeout=` |
 | `send_signal`, `terminate`, `kill` | Done | Poll first, no-op once reaped, `ProcessLookupError` suppressed (CPython's race guards) |
-| `__enter__` / `__exit__` | Done | Closes stdout, stderr, then stdin (its flush may raise) and always waits -- CPython's order. The `KeyboardInterrupt` short-wait branch is not mirrored |
+| `__enter__` / `__exit__` | Done | Closes stdout, stderr, then stdin (its flush may raise) and waits -- CPython's order. When a `KeyboardInterrupt` is leaving the block the wait is at most 0.25 s, as in CPython, and a child still running then is left unreaped (a subclass of `KeyboardInterrupt` takes the short wait too, where CPython tests the exact type) |
 | `communicate`, `wait(timeout=)`, `TimeoutExpired` | Missing | TODO.md "subprocess -- the surface past `Popen`" |
 | `run`, `call`, `check_call`, `check_output`, `CompletedProcess`, `CalledProcessError` | Missing | Same |
 | text mode (`text=`, `encoding=`, `errors=`, `universal_newlines=`) | Missing | Needs `io.TextIOWrapper` |

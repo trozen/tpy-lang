@@ -10,9 +10,11 @@
 // the wake fd too, so a Ctrl-C wakes it without EINTR (the handler is installed
 // with SA_RESTART, so no other syscall ever sees one). The stdlib's TPy code
 // composes its blocking operations from check_signals() and
-// tpy_interrupt_wait() (signal_h.hpp): socket through lib/tpy/_interrupt.py,
-// and tpy.thread's JoinHandle.join(), whose wait is not on an fd (a thread's
-// end is not one), by re-checking in 100 ms slices.
+// tpy_interrupt_wait() (signal_h.hpp) through lib/tpy/_interrupt.py: whoever
+// owns a blocking fd waits for it there first (socket; subprocess.Popen for
+// its pipes, and for its child's exit as a pidfd where the OS has one). A wait
+// that is not on an fd re-checks in slices: tpy.thread's JoinHandle.join()
+// every 100 ms, Popen.wait() without a pidfd with a backoff.
 //
 // A body that must not throw (a destructor, a noexcept move, a host's C
 // callback) opens a tpy::DeferSignals scope (below): inside it no check point
@@ -55,6 +57,11 @@ struct Ops {
     // 1 with the next stdin line in `out` (newline stripped), 0 at EOF,
     // kInterrupted when a Ctrl-C arrived while waiting for input.
     int (*read_line)(std::string& out);
+    // 1 when a Ctrl-C can be delivered to the calling thread right now (the
+    // interrupt target, outside asyncio.run and outside a DeferSignals
+    // scope): the threads on which a wait is worth routing through the wake
+    // fd.
+    int (*deliverable)();
 };
 
 // Set by the SIGINT handler (or request_interrupt()) and cleared by whoever
@@ -82,7 +89,8 @@ namespace tpy {
 // Defers Ctrl-C delivery on this thread for the scope's lifetime. While one is
 // open the SIGINT layer treats the thread as not deliverable: a check point
 // returns instead of throwing KeyboardInterrupt, a wait (time.sleep, input(),
-// blocking socket I/O) runs to completion without watching the wake fd, and an
+// blocking socket I/O, a subprocess wait or pipe) runs to completion without
+// watching the wake fd, and an
 // asyncio.run started inside declines SIGINT handling. The Ctrl-C stays
 // pending and is raised at the first check point after the scope closes.
 // Generated code opens one in a body that runs under noexcept or a catch-all

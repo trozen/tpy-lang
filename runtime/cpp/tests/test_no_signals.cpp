@@ -59,6 +59,7 @@ void cleanup_body() noexcept {
 int main() {
     std::signal(SIGINT, host_handler);
     check(!tpy::interrupt_armed(), "the layer is never armed");
+    check(!tpy::signals_deliverable(), "no thread is ever a delivery target");
 
     try {
         check(tpy_signal_raise(SIGINT) == 0, "raise_signal sends the signal");

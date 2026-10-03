@@ -46,6 +46,10 @@ void bad_arguments();
 void os_process();
 // def reaped_externally() -> None:
 void reaped_externally();
+// def wait_after_external_reap() -> None:
+void wait_after_external_reap();
+// def nonblocking_stdin() -> None:
+void nonblocking_stdin();
 // def exit_flush_fails() -> None:
 void exit_flush_fails();
 // def main() -> None:

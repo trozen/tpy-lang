@@ -439,7 +439,11 @@ int read_line_op(std::string& out) {
     return result;
 }
 
-const idet::Ops kOps{&take_op, &sleep_op, &read_line_op};
+int deliverable_op() {
+    return deliverable_here() ? 1 : 0;
+}
+
+const idet::Ops kOps{&take_op, &sleep_op, &read_line_op, &deliverable_op};
 
 enum class Handler {
     kIfDefault,  // leave a non-default disposition (an inherited SIG_IGN) alone

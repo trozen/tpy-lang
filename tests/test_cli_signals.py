@@ -182,11 +182,13 @@ def test_cli_signal_lifecycle(
 # blocked in the operation under test (or spinning, for "cpu").
 INTERRUPT_PROGRAM = """\
 import asyncio
+import os
 import signal
 import socket
+import subprocess
 import sys
 import time
-from tpy import int32
+from tpy import int32, int64
 from tpy.thread import spawn
 
 
@@ -427,6 +429,83 @@ def mode_del_sleep() -> None:
         print("del: caught", time.monotonic() - t0 >= 0.5)
 
 
+# The children's unused streams go to /dev/null: a child left behind by a
+# failing run must not hold the test's own pipes open.
+def mode_popen_wait() -> None:
+    p = subprocess.Popen(["sleep", "30"], stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL)
+    try:
+        ready("ready")
+        p.wait()
+        print("wait returned (WRONG)")
+    except KeyboardInterrupt:
+        print("wait interrupted", p.returncode is None)
+    # Only this process got the signal: the child still runs and is waited
+    # for again.
+    p.kill()
+    print("after kill:", p.wait())
+
+
+def mode_pipe_read() -> None:
+    # The child writes two bytes and then holds its end of the pipe open. Its
+    # byte on stderr comes after them, so once that is read the two are in
+    # the pipe and the read below takes them before it blocks.
+    p = subprocess.Popen(["sh", "-c", "printf ab; printf r >&2; exec sleep 30"],
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    assert p.stdout is not None
+    assert p.stderr is not None
+    p.stderr.read(1)
+    try:
+        ready("ready")
+        p.stdout.read(4)
+        print("read returned (WRONG)")
+    except KeyboardInterrupt:
+        print("read interrupted")
+    # The bytes read before the Ctrl-C were not dropped with it.
+    print("kept:", p.stdout.read(2))
+    p.kill()
+    print("after kill:", p.wait())
+
+
+def mode_pipe_write() -> None:
+    # The child never reads its stdin, so the pipe fills up.
+    p = subprocess.Popen(["sleep", "30"], stdin=subprocess.PIPE,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    assert p.stdin is not None
+    try:
+        ready("ready")
+        p.stdin.write(b"x" * 1000000)
+        print("write returned (WRONG)")
+    except KeyboardInterrupt:
+        print("write interrupted")
+    p.kill()
+    print("after kill:", p.wait())
+
+
+def mode_popen_with() -> None:
+    t0 = time.monotonic()
+    pid: int64 = 0
+    # Bound first: a list literal argument in a `with` item is refused
+    # (BUGS.md#ctor-call-arg-temp-flush-positions).
+    cmd = ["sleep", "30"]
+    try:
+        with subprocess.Popen(cmd, stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL) as p:
+            pid = p.pid
+            ready("ready")
+            p.wait()
+            print("wait returned (WRONG)")
+    except KeyboardInterrupt:
+        # Leaving the block waited a quarter second for the child, not the
+        # 30 it has left.
+        waited = time.monotonic() - t0
+        print("with interrupted", waited >= 0.25, waited < 10.0)
+    # The child outlived the block; it is reaped here.
+    os.kill(pid, signal.SIGKILL)
+    res = os.waitpid(pid, 0)
+    print("reaped:", os.waitstatus_to_exitcode(res[1]))
+
+
 def mode_uncaught() -> None:
     ready("ready")
     print("buffered")
@@ -539,6 +618,14 @@ def main() -> None:
         mode_print()
     elif mode == "del_sleep":
         mode_del_sleep()
+    elif mode == "popen_wait":
+        mode_popen_wait()
+    elif mode == "pipe_read":
+        mode_pipe_read()
+    elif mode == "pipe_write":
+        mode_pipe_write()
+    elif mode == "popen_with":
+        mode_popen_with()
     elif mode == "uncaught":
         mode_uncaught()
     elif mode == "async_twice":
@@ -682,6 +769,18 @@ class _Child:
     # a Ctrl-C during a __del__'s sleep is deferred: the sleep and the
     # destructor complete, and the next print after it raises
     ("del_sleep", ["ready"], "ready\ndel: slept\ndel: after\ndel: caught True\n"),
+    # waiting for a child ends on the Ctrl-C; the child is untouched and the
+    # Popen still waits for it afterwards
+    ("popen_wait", ["ready"],
+     "ready\nwait interrupted True\nafter kill: -9\n"),
+    # a read blocked on a subprocess pipe, keeping what it had read
+    ("pipe_read", ["ready"],
+     "ready\nread interrupted\nkept: b'ab'\nafter kill: -9\n"),
+    # a write blocked on a full subprocess pipe
+    ("pipe_write", ["ready"], "ready\nwrite interrupted\nafter kill: -9\n"),
+    # an interrupted with-block waits a quarter second for the child, then
+    # lets the KeyboardInterrupt out; the child is left running
+    ("popen_with", ["ready"], "ready\nwith interrupted True True\nreaped: -9\n"),
 ])
 def test_sigint_raises_keyboard_interrupt(
     interrupt_binary: Path, mode: str, handshakes: list[str], stdout: str,
@@ -827,6 +926,7 @@ NO_SIGNALS_PROGRAM = """\
 import asyncio
 import signal
 import socket
+import subprocess
 import sys
 import time
 from typing import Iterator
@@ -879,6 +979,14 @@ def mode_run() -> None:
     time.sleep(0)
     line = input("? ")
     print("in", line)
+    # No Ctrl-C can be delivered here: the pipes and wait() are the plain
+    # system calls.
+    p = subprocess.Popen(["cat"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    assert p.stdin is not None
+    assert p.stdout is not None
+    p.stdin.write(b"piped")
+    p.stdin.close()
+    print("cat", p.stdout.read(), p.wait())
     print("done", r.name)
 
 
@@ -966,8 +1074,8 @@ def test_no_signals_program_runs(no_signals_binary: Path) -> None:
     child = _Child(no_signals_binary, "run", stdin_pipe=True)
     returncode, out, err = child.finish(stdin=b"typed\n")
     assert (returncode, out, err) == (
-        0, "1\ngen cleanup\njoin 7\nasync 5\nb'hi'\nw\n? in typed\ndone a\n"
-        "del a\n", "")
+        0, "1\ngen cleanup\njoin 7\nasync 5\nb'hi'\nw\n? in typed\n"
+        "cat b'piped' 0\ndone a\ndel a\n", "")
 
 
 def test_no_signals_reaches_sources_cmake(no_signals_binary: Path) -> None:

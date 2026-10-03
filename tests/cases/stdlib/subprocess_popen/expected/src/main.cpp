@@ -481,6 +481,48 @@ void reaped_externally() {
     std::cout << "reaped:" << " " << ::tpy::print_optional_val(p.poll()) << " " << ::tpy::print_optional_val(p.returncode) << "\n" << ::tpy::check_signals;
 }
 
+// def wait_after_external_reap() -> None:
+//     p = Popen(["true"])
+//     res = os.waitpid(p.pid, 0)
+//     # wait() on a child someone else reaped reports 0 too, without blocking.
+//     print("reapedwait:", res[0] == p.pid, p.wait(), p.returncode)
+void wait_after_external_reap() {
+    std::vector<std::string> __tmp_1 = {"true"};
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1);
+    std::tuple<int64_t, int64_t> res = ::tpystd::os::waitpid(p.pid, 0);
+    std::cout << "reapedwait:" << " " << ::tpy::print_bool((std::get<0>(res) == p.pid)) << " " << p.wait() << " " << ::tpy::print_optional_val(p.returncode) << "\n" << ::tpy::check_signals;
+}
+
+// def nonblocking_stdin() -> None:
+//     # The child never reads, so the pipe fills up.
+//     p = Popen(["sleep", "30"], stdin=PIPE)
+//     assert p.stdin is not None
+//     os.set_blocking(p.stdin.fileno(), False)
+//     try:
+//         # A pipe switched to non-blocking refuses at once; no wait for room.
+//         p.stdin.write(b"x" * 1000000)
+//         print("nonblock: wrote all")
+//     except BlockingIOError:
+//         print("nonblock: BlockingIOError")
+//     p.kill()
+//     print("nonblock:", p.wait())
+void nonblocking_stdin() {
+    std::vector<std::string> __tmp_1 = {"sleep", "30"};
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, ::tpystd::subprocess::PIPE);
+    if (!((p.stdin.has_value()))) ::tpy::raise_assertion_error();
+    ::tpystd::os::set_blocking((*p.stdin).fileno(), false);
+    {
+        try {
+            (*p.stdin).write((::tpy::bytes_repeat(::tpy::bytes_literal("x", 1), 1000000)));
+            std::cout << "nonblock: wrote all" << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::BlockingIOError&) {
+            std::cout << "nonblock: BlockingIOError" << "\n" << ::tpy::check_signals;
+        }
+    }
+    p.kill();
+    std::cout << "nonblock:" << " " << p.wait() << "\n" << ::tpy::check_signals;
+}
+
 // def exit_flush_fails() -> None:
 //     # The child closes its stdin and only then reports on stdout, so after
 //     # the readline the byte written below cannot reach a reader.
@@ -540,6 +582,8 @@ void exit_flush_fails() {
 //     bad_arguments()
 //     os_process()
 //     reaped_externally()
+//     wait_after_external_reap()
+//     nonblocking_stdin()
 //     exit_flush_fails()
 void main() {
     ::tpyapp::main::cat_roundtrip();
@@ -555,6 +599,8 @@ void main() {
     ::tpyapp::main::bad_arguments();
     ::tpyapp::main::os_process();
     ::tpyapp::main::reaped_externally();
+    ::tpyapp::main::wait_after_external_reap();
+    ::tpyapp::main::nonblocking_stdin();
     ::tpyapp::main::exit_flush_fails();
 }
 

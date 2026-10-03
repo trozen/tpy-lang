@@ -46,6 +46,12 @@ def check_signals() -> None: ...
 @native("::tpy::interrupt_armed")
 def interrupt_armed() -> bool: ...
 
+# True where a Ctrl-C would be raised on the calling thread right now: the
+# interrupt target thread, outside asyncio.run and outside a deferral scope
+# (tpy/core.hpp). Never in a `--no-signals` build.
+@native("::tpy::signals_deliverable")
+def deliverable() -> bool: ...
+
 # Marks a Ctrl-C pending without consuming it, as the SIGINT handler does;
 # the next check point raises it (the embedding API's entry point,
 # interrupt.hpp). A `--no-signals` build has no such symbol, so a call there

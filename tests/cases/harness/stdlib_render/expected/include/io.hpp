@@ -10,6 +10,7 @@
 #include "tpystd/tpy/sync.hpp"
 #include "tpystd/tpy/thread.hpp"
 #include "tpystd/tpy/version.hpp"
+#include "tpystd/_interrupt/_interrupt.hpp"
 #include "tpystd/errno_mod.hpp"
 #include "tpystd/os.hpp"
 #include "tpystd/tplib.hpp"
@@ -269,11 +270,14 @@ struct FileIO {
     bool _writable;
     // _timeout_mode: bool
     bool _timeout_mode;
+    // _interruptible: bool
+    bool _interruptible;
     bool __tpy_owned_ = true;
 
     // def __init__(self, fd: int64, mode: str = "r", closefd: bool = True,
-    //              timeout_mode: bool = False) -> None:
-    explicit FileIO(int64_t fd, std::string_view mode = "r", bool closefd = true, bool timeout_mode = false);
+    //              timeout_mode: bool = False,
+    //              interruptible: bool = False) -> None:
+    explicit FileIO(int64_t fd, std::string_view mode = "r", bool closefd = true, bool timeout_mode = false, bool interruptible = false);
     // non-copyable (@nocopy)
     FileIO(const FileIO&) = delete;
     FileIO& operator=(const FileIO&) = delete;
@@ -288,6 +292,9 @@ struct FileIO {
 
     // def write(self, data: bytes) -> int32:
     int32_t write(::tpy::BytesView data) const;
+
+    // def _waits_for_interrupt(self) -> bool:
+    bool _waits_for_interrupt() const;
 
     // def flush(self) -> None:
     void flush() const;
@@ -902,7 +909,8 @@ inline FileIO::FileIO(FileIO&& other) noexcept
       _closed(std::move(other._closed)),
       _readable(std::move(other._readable)),
       _writable(std::move(other._writable)),
-      _timeout_mode(std::move(other._timeout_mode)) {
+      _timeout_mode(std::move(other._timeout_mode)),
+      _interruptible(std::move(other._interruptible)) {
     other.__tpy_owned_ = false;
 }
 inline FileIO& FileIO::operator=(FileIO&& other) noexcept {
@@ -941,13 +949,29 @@ inline FileIO::~FileIO() {
 //     self._check_open()
 //     if not self._writable:
 //         raise OSError("File not open for writing")
+//     if len(data) > 0 and self._waits_for_interrupt():
+//         _interrupt.before_write(int32(self._fd))
 //     return int32(os.write(self._fd, data))
 inline int32_t FileIO::write(::tpy::BytesView data) const {
     this->_check_open();
     if ((!(this->_writable))) {
         ::tpy::OSError("File not open for writing").__raise__();
     }
+    if (((::tpy::__len__(data) > 0) && this->_waits_for_interrupt())) {
+        ::tpystd::_interrupt::before_write(::tpy::int_cast_check<int32_t>(this->_fd));
+    }
     return ::tpy::int_cast_check<int32_t>(::tpystd::os::write(this->_fd, data));
+}
+
+// # The mode is asked of the fd each time: `os.set_blocking` on fileno()
+// # can change it, and a wait in front of a non-blocking call would turn
+// # its BlockingIOError into a hang. `deliverable()` first, so a thread no
+// # Ctrl-C reaches pays nothing.
+// def _waits_for_interrupt(self) -> bool:
+//     return (self._interruptible and _interrupt.deliverable()
+//             and os.get_blocking(self._fd))
+inline bool FileIO::_waits_for_interrupt() const {
+    return ((this->_interruptible && ::tpystd::_interrupt::deliverable()) && ::tpystd::os::get_blocking(this->_fd));
 }
 
 // def flush(self) -> None:
@@ -979,6 +1003,8 @@ inline ::tpy::Bytes FileIO::_readall() const {
 }
 
 // def _os_read(self, n: int64) -> bytes:
+//     if self._waits_for_interrupt():
+//         _interrupt.before_read(int32(self._fd))
 //     if not self._timeout_mode:
 //         return os.read(self._fd, n)
 //     try:
@@ -988,6 +1014,9 @@ inline ::tpy::Bytes FileIO::_readall() const {
 //         # socket.timeout, i.e. TimeoutError("timed out").
 //         raise TimeoutError("timed out")
 inline ::tpy::Bytes FileIO::_os_read(int64_t n) const {
+    if (this->_waits_for_interrupt()) {
+        ::tpystd::_interrupt::before_read(::tpy::int_cast_check<int32_t>(this->_fd));
+    }
     if ((!(this->_timeout_mode))) {
         return ::tpystd::os::read(this->_fd, n);
     }
