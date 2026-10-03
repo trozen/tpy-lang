@@ -5,6 +5,7 @@ Centralizes type narrowing (Optional + Union) and fact invalidation on writes.
 """
 
 from __future__ import annotations
+from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
 from ..typesys import (
@@ -20,7 +21,7 @@ from ..parse import (
     TpySubscript, TpyNoneLiteral, TpyCall, TpyMethodCall,
     TpyIntLiteral, TpyCoerce, TpyNamedExpr, TpyBoolLiteral, TpyChainedCompare,
     TpyForEach, TpyArrayLiteral, TpyTupleLiteral, TpySetLiteral,
-    TpyDictLiteral, TpyStrLiteral, TpyBytesLiteral, TpyIfExpr,
+    TpyDictLiteral, TpyStrLiteral, TpyBytesLiteral, TpyIfExpr, TpyAssign,
 )
 from ..value_category import peel_coerce
 from .literal_utils import (
@@ -29,11 +30,12 @@ from .literal_utils import (
 from .value_range import ValueRange
 from ..prescan import (
     match_is_none, _expr_to_narrowing_key, deref_view_key,
-    parse_deref_view_key, alias_group, storage_spelling,
+    parse_deref_view_key, object_leaves, storage_spelling,
 )
 from ..namespace import BindingKind
 from ..diagnostics import OPTIONAL_VALUE_TRUTHINESS_WARNING
 from ..type_def_registry import protocol_info_of
+from .context import binds_value_copy
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -999,22 +1001,80 @@ class NarrowingTracker:
             return
         self.ctx.func.narrowed_types[name] = self._optional_inner_type(target_type)
 
-    def _alias_group(self, name: str) -> set[str]:
-        """All names statically known to alias ``name`` (simple name-init
-        locals, from prescan's alias map), including ``name`` itself."""
-        return alias_group(self.ctx.func.current_alias_sources, name)
+    def holds_copy(self, name: str) -> bool:
+        """Whether `name` is a local or parameter of a value type, holding
+        its own copy of what it was bound from. A name with no type yet
+        answers False: it may be an alias."""
+        scope = self.ctx.func.current_scope
+        return scope is not None and binds_value_copy(scope.lookup(name))
+
+    def store_keeps(self, target_type: TpyType | None,
+                    rhs_type: TpyType | None,
+                    rhs_expr: TpyExpr | None) -> TpyType | None:
+        """The slot's non-None type when storing `rhs_expr` into a slot of
+        `target_type` cannot write None; None when it may, or when either
+        type is unknown."""
+        if target_type is None or rhs_type is None:
+            return None
+        if not isinstance(unwrap_readonly(target_type), OptionalType):
+            return None
+        if isinstance(rhs_expr, TpyNoneLiteral) or self._may_be_none(rhs_type):
+            return None
+        return self._optional_inner_type(target_type)
+
+    def stores_keep(self, stores: Iterable[TpyAssign | None]) -> TpyType | None:
+        """`store_keeps` over every store to one slot (None: a `del` or an
+        augmented store): the type all of them keep, else None. A store
+        not analysed yet has no expression types, so it yields None
+        (counts as possibly None)."""
+        keeps = None
+        for s in stores:
+            k = (None if s is None else self.store_keeps(
+                self.ctx.get_expr_type(s.target),
+                self.ctx.get_expr_type(peel_coerce(s.value)), s.value))
+            if k is None or (keeps is not None and k != keeps):
+                return None
+            keeps = k
+        return keeps
+
+    def narrowing_kills(self, key: str, keys: Iterable[str], *, own: bool,
+                        keeps: TpyType | None = None) -> set[str]:
+        """The narrowing facts among `keys` a write at `key` falsifies under
+        every spelling of it (`InPlaceWrites.affected_facts`). A store that
+        cannot write None (`keeps`: the slot's non-None type) leaves a fact
+        on the slot saying exactly that, and kills what lay beneath it."""
+        rel = self.ctx.func.in_place_writes
+        hit = rel.affected_facts(key, keys, own=own, is_copy=self.holds_copy)
+        if keeps is None or not hit:
+            return hit
+        beneath = rel.affected_facts(key, hit, own=False,
+                                     is_copy=self.holds_copy)
+        narrowed = self.ctx.func.narrowed_types
+        return {k for k in hit if k in beneath or narrowed.get(k) != keeps}
+
+    def _kill_written(self, key: str, *, own: bool,
+                      keeps: TpyType | None = None) -> None:
+        """Drop the field facts a write at `key` (a name or a field path)
+        reaches (`narrowing_kills`). Deref-view facts are left to the
+        callers that name them."""
+        func = self.ctx.func
+        rel = func.in_place_writes
+        narrowed = [k for k in func.narrowed_types
+                    if parse_deref_view_key(k) is None]
+        for k in self.narrowing_kills(key, narrowed, own=own, keeps=keeps):
+            del func.narrowed_types[k]
+        # A deref earlier in the same statement (`o.p = q if o.p.x else o.p`
+        # reads `o.p`) queues its fact for the statement's end, past this
+        # write.
+        for facts in (func.non_null_ptr_vars, func.pending_non_null_ptr_vars):
+            for k in rel.affected_facts(key, facts, own=own,
+                                        is_copy=self.holds_copy):
+                facts.discard(k)
 
     def _invalidate_field_facts(self, name: str) -> None:
-        """Remove all field narrowing facts rooted at the given variable name
-        or at any name statically aliasing it."""
-        for root in self._alias_group(name):
-            prefix = root + "."
-            stale = [k for k in self.ctx.func.narrowed_types if k.startswith(prefix)]
-            for k in stale:
-                del self.ctx.func.narrowed_types[k]
-            stale_ptr = [k for k in self.ctx.func.non_null_ptr_vars if k.startswith(prefix)]
-            for k in stale_ptr:
-                self.ctx.func.non_null_ptr_vars.discard(k)
+        """Remove the field facts beneath the object `name` (a name or a
+        field path) holds, under every spelling of that object."""
+        self._kill_written(name, own=False)
 
     def invalidate_closure_written_facts(self) -> None:
         """Kill facts a call may falsify: closure-rebindable names and
@@ -1120,58 +1180,59 @@ class NarrowingTracker:
         t = unwrap_ref_type(binding.type) if binding.type else None
         return t is not None and t.is_value_type()
 
-    def invalidate_for_field_write(self, target: TpyExpr) -> None:
-        """Invalidate narrowing facts for sub-paths when a field is written.
-
-        When `obj.inner = ...` is written, clears Optional narrowing facts for
-        deeper paths like `obj.inner.value` (the new object may have different
-        field values). Does NOT clear the Optional fact for the written field
-        itself -- that is managed by the enclosing `is not None` guard.
-        Ptr non-null facts ARE cleared for the written key itself, since a
-        field write always introduces a potentially-null pointer value.
-        """
+    def invalidate_for_field_write(self, target: TpyExpr,
+                                   target_type: TpyType | None,
+                                   rhs_type: TpyType | None,
+                                   rhs_expr: TpyExpr) -> None:
+        """Invalidate the facts a store to the field `target` falsifies,
+        under every spelling of the slot: what lay beneath it, and its own
+        facts except, when the stored value cannot be None, those saying
+        only that. A store never creates a fact the slot did not have; a
+        stronger one at the written key weakens to non-None."""
         full_key = _expr_to_narrowing_key(target)
         if full_key is None or "." not in full_key:
             return
-        root, rest = full_key.split(".", 1)
-        for alias_root in self._alias_group(root):
-            key = f"{alias_root}.{rest}"
-            prefix = key + "."
-            stale = [k for k in self.ctx.func.narrowed_types if k.startswith(prefix)]
-            for k in stale:
-                del self.ctx.func.narrowed_types[k]
-            self.ctx.func.non_null_ptr_vars.discard(key)
-            stale_ptr = [k for k in self.ctx.func.non_null_ptr_vars if k.startswith(prefix)]
-            for k in stale_ptr:
-                self.ctx.func.non_null_ptr_vars.discard(k)
+        held = self.ctx.func.narrowed_types.get(full_key)
+        keeps = self.store_keeps(target_type, rhs_type, rhs_expr)
+        self._kill_written(full_key, own=True, keeps=keeps)
+        if keeps is not None and held is not None and not self._may_be_none(held):
+            self.ctx.func.narrowed_types[full_key] = keeps
+
+    @staticmethod
+    def _may_be_none(typ: TpyType) -> bool:
+        t = unwrap_qualifiers(typ)
+        return (isinstance(t, (NoneType, OptionalType))
+                or (isinstance(t, UnionType) and t.has_none_member()))
 
     def _invalidate_len_ranges(self, name: str) -> None:
-        """Remove range facts whose symbolic bound references len(name)
-        (or the length of any name statically aliasing it)."""
-        group = self._alias_group(name)
+        """Remove range facts whose symbolic bound references the length of
+        an object `name` (a name or a field path) may share."""
+        rel = self.ctx.func.in_place_writes
         stale = [k for k, v in self.ctx.func.value_ranges.items()
-                 if v.hi_len_of in group]
+                 if v.hi_len_of is not None
+                 and (v.hi_len_of == name or rel.may_share(v.hi_len_of, name))]
         for k in stale:
             del self.ctx.func.value_ranges[k]
 
     def invalidate_field_facts_for_call(self, call: TpyCall | TpyMethodCall) -> None:
-        """Invalidate field narrowing facts for name arguments passed by mutable reference.
+        """Invalidate field facts for arguments passed by mutable reference.
 
         When a non-value-type object is passed to a function, the callee receives
         a mutable reference and may modify any field, so field narrowing facts
-        for that object are no longer reliable.
+        for that object are no longer reliable. Every object an argument may
+        evaluate to counts (`clear(a if c else b)`, `clear(a.inner)`).
         """
-        for arg in call.args:
-            if not isinstance(arg, TpyName):
-                continue
-            arg_type = self.ctx.get_expr_type(arg)
-            if arg_type is None:
-                continue
-            inner = unwrap_readonly(arg_type)
-            if inner.is_value_type():
-                continue
-            self._invalidate_field_facts(arg.name)
-            self._invalidate_len_ranges(arg.name)
+        args = list(call.args) + list((getattr(call, 'kwargs', None) or {}).values())
+        for arg in args:
+            for key, leaf in object_leaves(arg):
+                arg_type = self.ctx.get_expr_type(leaf)
+                if arg_type is None:
+                    continue
+                inner = unwrap_readonly(arg_type)
+                if inner.is_value_type():
+                    continue
+                self._invalidate_field_facts(key)
+                self._invalidate_len_ranges(key)
 
     def invalidate_field_facts_for_method_call(self, call: TpyMethodCall) -> None:
         """Invalidate field narrowing facts after a method call.
@@ -1182,13 +1243,9 @@ class NarrowingTracker:
         Also invalidates for any non-value-type arguments.
         """
         if not call.is_static_call:
-            if isinstance(call.obj, TpyName):
-                self._invalidate_field_facts(call.obj.name)
-                self._invalidate_len_ranges(call.obj.name)
-            else:
-                obj_key = _expr_to_narrowing_key(call.obj)
-                if obj_key is not None:
-                    self._invalidate_field_facts(obj_key)
+            for key, _ in object_leaves(call.obj):
+                self._invalidate_field_facts(key)
+                self._invalidate_len_ranges(key)
         self.invalidate_field_facts_for_call(call)
 
 

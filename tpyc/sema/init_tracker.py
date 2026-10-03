@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from .flow_facts import (
     FlowFacts, merge_borrow_triples, merge_binding_provenance,
 )
-from ..prescan import FactKills, alias_group, deref_view_key
+from ..prescan import FactKills, deref_view_key
 
 if TYPE_CHECKING:
     from ..typesys import TpyType
@@ -105,50 +105,53 @@ class InitTracker:
             # die here too, or the restore resurrects it.
             self.narrowing.invalidate_suspension_facts()
 
-        def _sweep(killed_key: str, kill_self: bool) -> None:
-            prefix = killed_key + "."
+        def _sweep(name: str) -> None:
+            prefix = name + "."
             for k in [k for k in f.narrowed_types
-                      if k.startswith(prefix)
-                      or (kill_self and (k == killed_key
-                                         or k == deref_view_key(killed_key)))]:
+                      if k.startswith(prefix) or k in (name, deref_view_key(name))]:
                 del f.narrowed_types[k]
-            if not kill_self:
-                # Contents may change behind the key; the deref-view payload
-                # narrowing reaches through it, so it dies even when the
-                # key's own narrowing survives.
-                f.narrowed_types.pop(deref_view_key(killed_key), None)
             for k in [k for k in f.non_null_ptr_vars
-                      if k.startswith(prefix) or (kill_self and k == killed_key)]:
+                      if k.startswith(prefix) or k == name]:
                 f.non_null_ptr_vars.discard(k)
-            for k in [k for k in f.value_ranges
-                      if k.startswith(prefix) or (kill_self and k == killed_key)]:
-                del f.value_ranges[k]
-            root = killed_key.split(".", 1)[0]
             for k in [k for k, v in f.value_ranges.items()
-                      if v.hi_len_of in (killed_key, root)]:
+                      if k.startswith(prefix) or k == name or v.hi_len_of == name]:
                 del f.value_ranges[k]
 
-        # Rebinds (names) kill only the spelled name's facts -- rebinding one
-        # alias does not touch the others. Mutations (paths, receivers) reach
-        # the shared object, so they kill across the static alias group,
-        # mirroring NarrowingTracker._invalidate_field_facts. Coverage is
-        # deliberately a superset of the live path: _sweep also clears
-        # dotted-key value ranges and deref-view keys under receivers, which
-        # the live invalidation never keys today -- if dotted range facts are
-        # ever added, extend the live path too or it under-invalidates.
-        aliases = f.current_alias_sources
+        rel = f.in_place_writes
+        copy = self.narrowing.holds_copy
+
+        def _kill_written(key: str, own: bool,
+                          keeps: TpyType | None = None) -> None:
+            for k in self.narrowing.narrowing_kills(
+                    key, f.narrowed_types, own=own, keeps=keeps):
+                del f.narrowed_types[k]
+            for k in rel.affected_facts(key, f.non_null_ptr_vars, own=own,
+                                        is_copy=copy):
+                f.non_null_ptr_vars.discard(k)
+            for k in rel.affected_facts(key, f.value_ranges, own=own,
+                                        is_copy=copy):
+                del f.value_ranges[k]
+            root = key.split(".", 1)[0]
+            for k in [k for k, v in f.value_ranges.items()
+                      if v.hi_len_of is not None
+                      and (v.hi_len_of in (key, root)
+                           or rel.may_share(v.hi_len_of, root))]:
+                del f.value_ranges[k]
+
+        # A rebound name loses the facts spelled through that name only (the
+        # live rebind kills through every spelling: TODO.md "One fact-kill
+        # helper"). A field store or a call reaches the written object under
+        # every spelling the may-hold relation gives it, as the live path
+        # does; this sweep also clears deref-view keys and dotted range keys.
         for name in kills.names:
-            _sweep(name, kill_self=True)
-        for path in kills.paths:
-            root, _, rest = path.partition(".")
-            for alias_root in alias_group(aliases, root):
-                _sweep(f"{alias_root}.{rest}" if rest else alias_root,
-                       kill_self=True)
+            _sweep(name)
+        for path, stores in kills.paths.items():
+            # A path is a field store target (`o.f = v`, `o.f += v`,
+            # `del o.f`): it replaces the slot its last field names.
+            _kill_written(path, own=True,
+                          keeps=self.narrowing.stores_keep(stores))
         for recv in kills.receivers:
-            root, _, rest = recv.partition(".")
-            for alias_root in alias_group(aliases, root):
-                _sweep(f"{alias_root}.{rest}" if rest else alias_root,
-                       kill_self=False)
+            _kill_written(recv, own=False)
 
     def apply_loop_entry_facts(
         self,

@@ -6,8 +6,10 @@ Run once in sema; results consumed by both sema and codegen.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections import Counter
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field, fields as dc_fields
+from itertools import chain
 
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
@@ -41,12 +43,9 @@ class ScanResult:
     # alias_name -> source_name for lvalue-initialized, non-reassigned variables
     # with simple TpyName init (T& reference candidates).
     alias_sources: dict[str, str] = field(default_factory=dict)
-    # alias_name -> root_name for field/subscript-chain inits (a = o.inner,
-    # n = xs[0]): the binding references INTO the root's storage, so moving
-    # the root while the alias is live dangles it. Kept separate from
-    # alias_sources because that map also feeds del codegen and flow-fact
-    # kill groups, which expect whole-object name-to-name aliases only;
-    # this map is merged in solely for last-use liveness suppression.
+    # alias_name -> root_name for locals initialized from a field/subscript
+    # chain (a = o.inner, n = xs[0]): the borrowers INTO the root's storage
+    # that last-use liveness models.
     chain_alias_sources: dict[str, str] = field(default_factory=dict)
     # Variables initially aliased from another name (before reassignment cleanup).
     # Used by del codegen to avoid destroying through a pointer that may
@@ -671,21 +670,26 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
             _scan_stmts(body, declared, result)
 
 
-def _object_leaf_names(e: TpyExpr | None, out: set[str]) -> None:
-    """The names whose object `e` may evaluate to: a bare name, the arms of
-    a ternary or `and` / `or`, both sides of a walrus, through a coercion,
-    and the elements of a tuple literal (a tuple may hold its elements by
-    reference). Anything else -- a call, a subscript, a list literal --
-    yields a new object or an element, not one of these names' objects."""
+def object_leaves(e: TpyExpr | None) -> list[tuple[str, TpyExpr]]:
+    """The storage keys whose object `e` may evaluate to, each with the node
+    that spells it: a name or a pure field chain, through ternary and
+    `and` / `or` arms, a walrus, a coercion and tuple-literal elements.
+    A call, a subscript or a list literal yields no such key; a property
+    hop is keyed as the field it is spelled as."""
+    out: list[tuple[str, TpyExpr]] = []
     stack = [e] if e is not None else []
     while stack:
         node = stack.pop()
         if isinstance(node, TpyName):
-            out.add(node.name)
+            out.append((node.name, node))
+        elif isinstance(node, TpyFieldAccess):
+            key = _expr_to_narrowing_key(node)
+            if key is not None:
+                out.append((key, node))
         elif isinstance(node, TpyCoerce):
             stack.append(node.expr)
         elif isinstance(node, TpyNamedExpr):
-            out.add(node.target)
+            out.append((node.target, node))
             stack.append(node.value)
         elif isinstance(node, TpyIfExpr):
             stack.extend((node.then_expr, node.else_expr))
@@ -693,6 +697,11 @@ def _object_leaf_names(e: TpyExpr | None, out: set[str]) -> None:
             stack.extend((node.left, node.right))
         elif isinstance(node, TpyTupleLiteral):
             stack.extend(node.elements)
+    return out
+
+
+def _object_leaf_keys(e: TpyExpr | None, out: set[str]) -> None:
+    out.update(k for k, _ in object_leaves(e))
 
 
 def _subject_captures(pattern: TpyPattern) -> list[str]:
@@ -705,69 +714,416 @@ def _subject_captures(pattern: TpyPattern) -> list[str]:
     return []
 
 
+def _key_root(key: str) -> str:
+    return key.split(".", 1)[0]
+
+
+# The three guards bound the closure's work on layouts the type system
+# should already exclude; a place one refuses leaves its name overflowed
+# for the place's root, which then answers "may alias" for that root.
+
+# Fields in a held place: only an inline-recursive layout (which the type
+# checker rejects) or a binding chain this long builds a deeper one.
+_KEY_DEPTH = 8
+
+# Field-path places one name holds under one root: only a ternary descent
+# over a wide inline layout multiplies places like this.
+_HOLD_BUDGET = 16
+
+# Field-path places one name holds over all its roots: the per-root budget
+# does not bound a fan-out (one name copied from many roots, then projected
+# by many names).
+_NAME_BUDGET = 64
+
+
+def _comparable(a: str, b: str) -> bool:
+    """Whether key `a` equals key `b` or one is a dotted prefix of the
+    other: the one overlap test of two storage keys."""
+    if len(a) > len(b):
+        a, b = b, a
+    return b == a or b.startswith(a + ".")
+
+
+def _beneath(a: str, b: str) -> bool:
+    return a.startswith(b + ".")
+
+
+def _at_or_beneath(a: str, b: str) -> bool:
+    return a == b or a.startswith(b + ".")
+
+
+def _split(key: str) -> tuple[str, str]:
+    """`key`'s root and its field tail (`.f.g`, or empty)."""
+    root, dot, rest = key.partition(".")
+    return root, dot + rest
+
+
+def _path_prefixes(path: str, itself: bool) -> list[str]:
+    """The field-path prefixes of `path` (a root and at least one field),
+    `path` itself first when `itself`."""
+    out = [path] if itself else []
+    first = path.find(".")
+    i = path.rfind(".")
+    while i > first:
+        out.append(path[:i])
+        i = path.rfind(".", 0, i)
+    return out
+
+
+def _scc_order(names: Iterable[str],
+               edges: dict[str, list[str]]) -> list[list[str]]:
+    """Strongly connected components of `edges` (n -> the names n holds),
+    every component after the components it reaches (Tarjan, iterative:
+    a body can bind thousands of names in one chain)."""
+    index: dict[str, int] = {}
+    low: dict[str, int] = {}
+    on_stack: set[str] = set()
+    stack: list[str] = []
+    out: list[list[str]] = []
+    counter = 0
+    for start in names:
+        if start in index:
+            continue
+        work: list[tuple[str, list[str]]] = []
+        index[start] = low[start] = counter
+        counter += 1
+        stack.append(start)
+        on_stack.add(start)
+        work.append((start, list(edges.get(start, ()))))
+        while work:
+            node, succ = work[-1]
+            if succ:
+                nxt = succ.pop()
+                if nxt not in index:
+                    index[nxt] = low[nxt] = counter
+                    counter += 1
+                    stack.append(nxt)
+                    on_stack.add(nxt)
+                    work.append((nxt, list(edges.get(nxt, ()))))
+                elif nxt in on_stack:
+                    low[node] = min(low[node], index[nxt])
+                continue
+            work.pop()
+            if work:
+                parent = work[-1][0]
+                low[parent] = min(low[parent], low[node])
+            if low[node] == index[node]:
+                comp: list[str] = []
+                while True:
+                    top = stack.pop()
+                    on_stack.discard(top)
+                    comp.append(top)
+                    if top == node:
+                        break
+                out.append(comp)
+    return out
+
+
 @dataclass
 class InPlaceWrites:
-    """Which objects a body may write in place, by syntax alone and
-    independent of statement order.
+    """Which objects a body may write in place, and which storage each name
+    may hold, by syntax alone and independent of statement order.
 
-    `writes` maps each name to how a write OPERAND reaches it: None for a
-    store (a subscript store, `+=` or `del` on an element, `+=` on the
-    name), a method name for a call whose receiver may be the name (the
-    reader resolves it against the name's type to learn whether it
-    writes), "<arg>" for a call argument that may be the name (a callee can
-    write what it receives by reference). An operand may be the name
-    through `_object_leaf_names`, so `(a if c else b).append(x)` reaches
-    both.
-
-    `points_to` maps each name to the names whose objects it may hold:
-    itself plus, closed to a fixpoint, the leaf names of every value ANY
-    binding gives it (assignment, rebind, walrus, unpack, for / with
-    target, whole-subject `match` capture, the locals of nested defs and
-    lambdas). Two names may share an object when their sets meet, so a
-    write through an alias bound anywhere -- before the view, after it,
-    in a closure -- reaches the root."""
+    `writes` maps each operand key (a name or a field chain, through
+    `object_leaves`) to how a write reaches it: None for a store, a method
+    name for a call on it, "<arg>" for a call argument. A name holds the
+    exact places (a root name and a field path) whose object any binding
+    of it may give it: after `b = a; t = b.inner`, `t` holds `b.inner` and
+    `a.inner`. Kills are `affected_facts`; the view rule is
+    `writes_through`."""
     writes: dict[str, set[str | None]] = field(default_factory=dict)
-    points_to: dict[str, set[str]] = field(default_factory=dict)
-    _cache: dict[str, frozenset[str | None]] = field(default_factory=dict)
+    # Binding-graph components plus edges and composed places over the
+    # closure: the work it did, which follows the size of the result.
+    close_steps: int = 0
+    # Queries plus the places they looked up, over the relation's lifetime.
+    query_steps: int = 0
+    _names: list[str] = field(default_factory=list)
+    _ids: dict[str, int] = field(default_factory=dict)
+    # name -> mask of the names it may hold, itself included
+    _bare: dict[str, int] = field(default_factory=dict)
+    # name -> the field-path places it may hold
+    _paths: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    # name -> mask of the roots a guard refused one of its places under: it
+    # may hold anything beneath them
+    _overflow: dict[str, int] = field(default_factory=dict)
+    # name -> (`_bare`, that mask plus the roots of its paths and overflow,
+    # its overflow, its paths by root): what a query reads
+    _shapes: dict[str, tuple[int, int, int, dict[str, frozenset[str]]]] = (
+        field(default_factory=dict))
+    _share_cache: dict[str, frozenset[str | None]] = field(
+        default_factory=dict)
+
+    def __deepcopy__(self, memo: dict) -> 'InPlaceWrites':
+        # Shared, not copied: past construction only the memo caches, the
+        # interning of names first seen by a query and the step counter
+        # change, and none of them changes an answer.
+        return self
+
+    @classmethod
+    def from_bindings(cls, writes: dict[str, set[str | None]],
+                      bound: dict[str, set[str]]) -> 'InPlaceWrites':
+        """Close `bound` (target name -> leaf keys of the values bound to
+        it) into the may-hold relation."""
+        rel = cls(writes=writes)
+        rel._close(bound)
+        return rel
+
+    def _bit(self, name: str) -> int:
+        i = self._ids.get(name)
+        if i is None:
+            i = len(self._names)
+            self._names.append(name)
+            self._ids[name] = i
+        return 1 << i
+
+    def _has(self, mask: int, name: str) -> bool:
+        i = self._ids.get(name)
+        return i is not None and bool(mask >> i & 1)
+
+    def _iter_mask_names(self, mask: int) -> Iterable[str]:
+        names = self._names
+        while mask:
+            low = mask & -mask
+            yield names[low.bit_length() - 1]
+            mask ^= low
+
+    def _close(self, bound: dict[str, set[str]]) -> None:
+        """Compute every name's holdings one strongly connected component
+        of the binding graph at a time, each after the components it reads.
+
+        A projection whose root binds its target back (`node = node.next`)
+        would spell unbounded paths, so it is dropped first: a walk holds
+        its start only (BUGS.md#pointer-structure-aliases-unmodelled)."""
+        names: set[str] = set(bound)
+        reads: dict[str, list[str]] = {}
+        for n, ks in bound.items():
+            rs = sorted({_key_root(k) for k in ks})
+            reads[n] = rs
+            names.update(rs)
+        order = sorted(names)
+        cycle: dict[str, int] = {}
+        for i, comp in enumerate(_scc_order(order, reads)):
+            for x in comp:
+                cycle[x] = i
+        kept: dict[str, list[str]] = {}
+        for n, ks in bound.items():
+            kept[n] = sorted(k for k in ks
+                             if "." not in k
+                             or cycle[_key_root(k)] != cycle[n])
+        edges = {n: sorted({_key_root(k) for k in ks})
+                 for n, ks in kept.items()}
+        steps = 0
+        for comp in _scc_order(order, edges):
+            steps += 1
+            members = set(comp)
+            mask = 0
+            for x in comp:
+                mask |= self._bit(x)
+            paths: dict[str, None] = {}
+            per_root: Counter[str] = Counter()
+            overflow = 0
+
+            def admit(place: str) -> bool:
+                """Add `place` unless a budget refuses it; False once the
+                name budget is spent."""
+                nonlocal overflow
+                if len(paths) >= _NAME_BUDGET:
+                    return False
+                root = _key_root(place)
+                if place in paths:
+                    return True
+                if per_root[root] < _HOLD_BUDGET:
+                    paths[place] = None
+                    per_root[root] += 1
+                else:
+                    overflow |= self._bit(root)
+                return True
+
+            for x in comp:
+                for k in kept.get(x, ()):
+                    steps += 1
+                    root, _, suffix = k.partition(".")
+                    if root in members:
+                        continue
+                    # Every component this one reads is closed already.
+                    held = self._bare[root]
+                    overflow |= self._overflow[root]
+                    if not suffix:
+                        mask |= held
+                        for p in self._paths[root]:
+                            steps += 1
+                            if not admit(p):
+                                overflow |= self._shape(root)[1]
+                                break
+                        continue
+                    if suffix.count(".") >= _KEY_DEPTH:
+                        overflow |= self._shape(root)[1]
+                        continue
+                    for q in chain(self._iter_mask_names(held),
+                                   self._paths[root]):
+                        steps += 1
+                        place = q + "." + suffix
+                        if place.count(".") > _KEY_DEPTH:
+                            overflow |= self._bit(_key_root(q))
+                        elif not admit(place):
+                            overflow |= self._shape(root)[1]
+                            break
+            frozen = tuple(paths)
+            for x in comp:
+                self._bare[x] = mask
+                self._paths[x] = frozen
+                self._overflow[x] = overflow
+        self.close_steps = steps
+
+    def _shape(self, name: str
+               ) -> tuple[int, int, int, dict[str, frozenset[str]]]:
+        hit = self._shapes.get(name)
+        if hit is None:
+            bare = self._bare.get(name) or self._bit(name)
+            overflow = self._overflow.get(name, 0)
+            by_root: dict[str, list[str]] = {}
+            for p in self._paths.get(name, ()):
+                by_root.setdefault(_key_root(p), []).append(p)
+            roots = bare | overflow
+            for r in by_root:
+                roots |= self._bit(r)
+            hit = (bare, roots, overflow,
+                   {r: frozenset(ps) for r, ps in by_root.items()})
+            self._shapes[name] = hit
+        return hit
+
+    def holds(self, key: str) -> frozenset[str]:
+        """The exact places whose object `key` (a name or a field path) may
+        hold, `key` itself among them; past a guard there are more (see
+        `overflowed`)."""
+        root, tail = _split(key)
+        bare, _, _, by_root = self._shape(root)
+        return frozenset(q + tail for q in chain(
+            self._iter_mask_names(bare),
+            (p for ps in by_root.values() for p in ps)))
+
+    def overflowed(self, name: str) -> frozenset[str]:
+        """The roots under which a guard refused a place `name` may hold."""
+        return frozenset(self._iter_mask_names(self._shape(name)[2]))
+
+    def _meets(self, a_root: str, a_tail: str, b_root: str, b_tail: str,
+               test: Callable[[str, str], bool]) -> bool:
+        """Whether some place of the object `a_root + a_tail` and some
+        place of the object `b_root + b_tail` pass `test`: a place of a
+        name extended by the tail."""
+        a_bare, a_roots, a_over, a_paths = self._shape(a_root)
+        b_bare, b_roots, b_over, b_paths = self._shape(b_root)
+        self.query_steps += 1
+        if not a_roots & b_roots:
+            return False
+        # An overflowed root stands for every place beneath it.
+        if a_over & b_roots or b_over & a_roots:
+            return True
+        # A bare name both hold: the two places share that name.
+        if a_bare & b_bare and test(a_tail, b_tail):
+            return True
+        if not a_paths and not b_paths:
+            return False
+        for root, ps in b_paths.items():
+            if self._has(a_bare, root):
+                self.query_steps += len(ps)
+                for p in ps:
+                    if test(root + a_tail, p + b_tail):
+                        return True
+        for root, ps in a_paths.items():
+            if self._has(b_bare, root):
+                self.query_steps += len(ps)
+                for p in ps:
+                    if test(p + a_tail, root + b_tail):
+                        return True
+            qs = b_paths.get(root)
+            if qs:
+                # Every test holds only between a key and one of its dotted
+                # prefixes, and two places neither of which is a prefix of
+                # the other stay so under any tails: only the prefixes of
+                # each place need looking up on the other side.
+                self.query_steps += len(ps) + len(qs)
+                for p in ps:
+                    for q in _path_prefixes(p, True):
+                        if q in qs and test(p + a_tail, q + b_tail):
+                            return True
+                for q in qs:
+                    for p in _path_prefixes(q, False):
+                        if p in ps and test(p + a_tail, q + b_tail):
+                            return True
+        return False
+
+    def may_share(self, a: str, b: str) -> bool:
+        """Whether the objects `a` and `b` may hold meet: the same object,
+        or one inside the other."""
+        return self._meets(*_split(a), *_split(b), _comparable)
+
+    def affected_facts(self, key: str, fact_keys: Iterable[str], *,
+                       own: bool,
+                       is_copy: Callable[[str], bool] | None = None
+                       ) -> set[str]:
+        """The fact keys (deref-view keys included) a write at `key`
+        invalidates: those with a place of their object at or beneath a
+        place of `key`.
+
+        `own=True` is a store: the binding AT `key` changes, so a fact on
+        the slot under any spelling dies too. `own=False` (a receiver, a
+        mutable argument) kills only facts strictly beneath. A bare-name
+        fact on a name `is_copy` answers True for is about the name's own
+        copy of a value, which no write elsewhere reaches."""
+        k_root, k_tail = _split(key)
+        test = _at_or_beneath if own else _beneath
+        out: set[str] = set()
+        for fk in fact_keys:
+            if not own and fk == key:
+                continue
+            view_of = parse_deref_view_key(fk)
+            # The deref-view payload sits beneath its receiver.
+            f_root, f_tail = _split(view_of + "." + _DEREF_VIEW_SUFFIX
+                                    if view_of is not None else fk)
+            if not f_tail and (not own or (is_copy is not None
+                                           and is_copy(f_root))):
+                continue
+            if self._meets(f_root, f_tail, k_root, k_tail, test):
+                out.add(fk)
+        return out
 
     def writes_through(self, name: str) -> frozenset[str | None]:
         """How the body may write the object `name` holds: the writes of
-        every name that may share it."""
-        hit = self._cache.get(name)
-        if hit is not None:
-            return hit
-        objs = self.points_to.get(name, {name})
-        out: set[str | None] = set()
-        for other, kinds in self.writes.items():
-            if not objs.isdisjoint(self.points_to.get(other, (other,))):
-                out |= kinds
-        result = frozenset(out)
-        self._cache[name] = result
-        return result
+        every operand that shares it."""
+        hit = self._share_cache.get(name)
+        if hit is None:
+            acc: set[str | None] = set()
+            for other, kinds in self.writes.items():
+                if other == name or self.may_share(name, other):
+                    acc |= kinds
+            hit = frozenset(acc)
+            self._share_cache[name] = hit
+        return hit
 
 
 def collect_in_place_writes(stmts: list[TpyStmt]) -> InPlaceWrites:
-    """The pre-scan's write-through-alias relation (see `InPlaceWrites`).
+    """The pre-scan's may-hold and write relation (see `InPlaceWrites`).
     Nested defs and lambdas are walked too: a closure writes a captured
     object whenever it runs."""
     writes: dict[str, set[str | None]] = {}
-    # target name -> leaf names of the values bound to it
+    # target name -> leaf keys of the values bound to it
     bound_from: dict[str, set[str]] = {}
 
     def write(operand: TpyExpr | None, kind: str | None) -> None:
-        names: set[str] = set()
-        _object_leaf_names(operand, names)
-        for n in names:
-            writes.setdefault(n, set()).add(kind)
+        keys: set[str] = set()
+        _object_leaf_keys(operand, keys)
+        for k in keys:
+            writes.setdefault(k, set()).add(kind)
 
     def bind(target: str | None, value: TpyExpr | None) -> None:
         if target is None or value is None:
             return
-        names: set[str] = set()
-        _object_leaf_names(value, names)
-        names.discard(target)
-        if names:
-            bound_from.setdefault(target, set()).update(names)
+        keys: set[str] = set()
+        _object_leaf_keys(value, keys)
+        keys.discard(target)
+        if keys:
+            bound_from.setdefault(target, set()).update(keys)
 
     def bind_elements(targets: Iterable[str | None], iterable: TpyExpr) -> None:
         # Only a tuple literal's elements are the named objects themselves;
@@ -841,23 +1197,7 @@ def collect_in_place_writes(stmts: list[TpyStmt]) -> InPlaceWrites:
                 walk(b)
 
     walk(stmts)
-    points_to: dict[str, set[str]] = {}
-    if bound_from:
-        feeds: dict[str, set[str]] = {}
-        for target, sources in bound_from.items():
-            for src in sources:
-                feeds.setdefault(src, set()).add(target)
-        names = set(bound_from) | set(feeds)
-        points_to = {n: {n} for n in names}
-        work = list(names)
-        while work:
-            src = work.pop()
-            for target in feeds.get(src, ()):
-                before = len(points_to[target])
-                points_to[target] |= points_to[src]
-                if len(points_to[target]) != before:
-                    work.append(target)
-    return InPlaceWrites(writes, points_to)
+    return InPlaceWrites.from_bindings(writes, bound_from)
 
 
 @dataclass
@@ -872,9 +1212,11 @@ class FactKills:
     # Names that may be rebound: kills the name's own facts, its deref-view
     # fact, all field facts rooted at it, and its value range.
     names: set[str] = field(default_factory=set)
-    # Dotted field paths written directly (obj.field = ...): kills the path's
-    # facts and all deeper paths, but not the root name's own facts.
-    paths: set[str] = field(default_factory=set)
+    # Dotted field paths written directly (obj.field = ...), each with its
+    # stores (None: a `del` or an augmented store): kills the path's facts
+    # and all deeper paths, but not the root name's own facts. Whether every
+    # store keeps the slot non-None is sema's question.
+    paths: dict[str, list[TpyAssign | None]] = field(default_factory=dict)
     # Names/paths whose *contents* may be mutated through a call (method
     # receivers, reference-type call args): kills field facts under the key
     # and len-derived ranges, but not the key's own narrowing.
@@ -892,7 +1234,8 @@ class FactKills:
 
     def update(self, other: 'FactKills') -> None:
         self.names |= other.names
-        self.paths |= other.paths
+        for path, stores in other.paths.items():
+            self.paths.setdefault(path, []).extend(stores)
         self.receivers |= other.receivers
         self.suspends |= other.suspends
 
@@ -903,16 +1246,12 @@ def _kills_in_expr(expr: TpyExpr | None, kills: FactKills) -> None:
     if isinstance(expr, TpyNamedExpr):
         kills.names.add(expr.target)
     elif isinstance(expr, TpyMethodCall):
-        key = _expr_to_narrowing_key(expr.obj)
-        if key is not None:
-            kills.receivers.add(key)
+        _object_leaf_keys(expr.obj, kills.receivers)
     if isinstance(expr, (TpyCall, TpyMethodCall)):
         for arg in expr.args:
-            if isinstance(arg, TpyName):
-                kills.receivers.add(arg.name)
+            _object_leaf_keys(arg, kills.receivers)
         for kw_val in getattr(expr, "kwargs", {}).values():
-            if isinstance(kw_val, TpyName):
-                kills.receivers.add(kw_val.name)
+            _object_leaf_keys(kw_val, kills.receivers)
     for f in dc_fields(expr):
         val = getattr(expr, f.name)
         if isinstance(val, TpyExpr):
@@ -933,13 +1272,14 @@ def _kills_in_expr(expr: TpyExpr | None, kills: FactKills) -> None:
                     _kills_in_expr(v, kills)
 
 
-def _kills_assign_target(target: TpyExpr, kills: FactKills) -> None:
+def _kills_assign_target(target: TpyExpr, kills: FactKills,
+                         store: TpyAssign | None) -> None:
     if isinstance(target, TpyName):
         kills.names.add(target.name)
     elif isinstance(target, TpyFieldAccess):
         key = _expr_to_narrowing_key(target)
         if key is not None:
-            kills.paths.add(key)
+            kills.paths.setdefault(key, []).append(store)
         else:
             root = _expr_root_name(target)
             if root is not None:
@@ -975,30 +1315,6 @@ def chain_root_name(expr: TpyExpr) -> str | None:
            or is_property_getter_read(expr)):
         expr = expr.obj
     return expr.name if isinstance(expr, TpyName) else None
-
-
-def alias_group(aliases: dict[str, str], name: str) -> set[str]:
-    """All names statically known to alias ``name`` (from the prescan
-    alias map, alias -> source), including ``name`` itself.
-
-    A mutation through any member reaches every member -- they are the
-    same object -- so fact invalidation must cover the whole group.
-    Rebinding a member does NOT affect the others (use only for
-    mutation-driven kills, never for rebinds).
-    """
-    group = {name}
-    cur = name
-    while cur in aliases and aliases[cur] not in group:
-        cur = aliases[cur]
-        group.add(cur)
-    changed = True
-    while changed:
-        changed = False
-        for a, s in aliases.items():
-            if s in group and a not in group:
-                group.add(a)
-                changed = True
-    return group
 
 
 def _collect_nested_def_writes(stmts: list[TpyStmt], kills: FactKills) -> None:
@@ -1100,12 +1416,14 @@ def _collect_fact_kills(stmts: list[TpyStmt], kills: FactKills) -> None:
     for stmt in stmts:
         kills.names.update(bound_names_of(stmt))
         if isinstance(stmt, (TpyAssign, TpyAugAssign)):
-            _kills_assign_target(stmt.target, kills)
+            _kills_assign_target(
+                stmt.target, kills,
+                stmt if isinstance(stmt, TpyAssign) else None)
         elif isinstance(stmt, TpyDelAttr):
             for t in stmt.targets:
                 key = _expr_to_narrowing_key(t)
                 if key is not None:
-                    kills.paths.add(key)
+                    kills.paths.setdefault(key, []).append(None)
         elif isinstance(stmt, TpyDelItem):
             for t in stmt.targets:
                 root = _expr_root_name(t.obj)

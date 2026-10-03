@@ -1,5 +1,5 @@
-# Mutating through a static alias kills field facts rooted at every
-# member of the alias group: h2.clear() invalidates h.opt's narrowing.
+# Mutating through an alias kills the field facts of every name the alias
+# may hold (the may-hold relation): h2.clear() invalidates h.opt's narrowing.
 from tpy import int32
 
 
