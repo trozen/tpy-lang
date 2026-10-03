@@ -71,7 +71,7 @@ from .mir_workspace import MIRProgram, analyze_call_workspace
 
 if TYPE_CHECKING:
     from .codegen_cpp.context import CodeGenContext
-    from .parse.nodes import TpyName
+    from .parse.nodes import TpyFunction, TpyName
     from .typesys import ModuleInfo, ModuleVarInfo
 
 
@@ -1047,6 +1047,32 @@ class Compiler:
         more than one."""
         bodies = self.method_bodies.get((owning_type_qname, name)) if owning_type_qname else None
         return bodies[0] if bodies and all(b is bodies[0] for b in bodies) else None
+
+    def callable_body(self, owning_type_qname: str | None, name: str,
+                      accessor: str | None) -> TpyFunction | None:
+        """The source body defining ONE callable of (owning type, name) in
+        the role `accessor` names -- "fget" / "fset" for a property's getter
+        / setter, None for a method: the only body of that role, or the const
+        clone of an `@auto_readonly` pair whose clones bind one signature.
+        None for no body or several: an overload or dispatch group, a pair
+        whose clones' signatures differ, and a method and a property sharing
+        the name (the C++ member call cannot tell them apart)."""
+        bodies = self.method_bodies.get((owning_type_qname, name)) if owning_type_qname else None
+        if not bodies:
+            return None
+        accessors = [b.is_property_getter or b.is_property_setter for b in bodies]
+        if any(accessors) and not all(accessors):
+            return None
+        role = [b for b in bodies
+                if ("fget" if b.is_property_getter else "fset" if b.is_property_setter else None) == accessor]
+        if len(role) == 1:
+            return role[0] if role[0].auto_readonly_polarity is None else None
+        if len(role) != 2:
+            return None
+        strip, apply = sorted(role, key=lambda b: b.auto_readonly_polarity != "strip")
+        return (apply if strip.auto_readonly_polarity == "strip" and apply.auto_readonly_polarity == "apply"
+                and strip.loc == apply.loc and strip.params == apply.params
+                and strip.return_type == apply.return_type else None)
 
     def _finalize_workspace(self) -> None:
         """The post-body workspace passes, shared by both compile paths

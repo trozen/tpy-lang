@@ -49,6 +49,7 @@ from ...modules.defs import BINOP_TO_METHOD, get_dunder_cpp_template
 from ...modules.type_resolution import get_iterable_element_type
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...typesys import (
+    RecordInfo,
     ConcreteFrameType,
     ConcreteGenType,
     return_const_projected,
@@ -8187,11 +8188,24 @@ def _owning_fi(func: TpyFunction, analyzer,
         # method -- another callable's verdicts, by param index.
         return None
     if record_name is not None:
-        ri = analyzer.registry.get_record(record_name)
-        overloads = ri.get_method_overloads(func.name) if ri is not None else None
-    else:
-        overloads = analyzer.registry.get_function(func.name)
+        return record_method_fi(analyzer.registry.get_record(record_name), func.name)
+    overloads = analyzer.registry.get_function(func.name)
     return overloads[-1] if overloads else None
+
+def record_method_fi(record: 'RecordInfo | None', name: str) -> 'FunctionInfo | None':
+    """The FunctionInfo a record method's param verdicts live on: the last
+    registered overload of `name`, codegen's own pick."""
+    overloads = record.get_method_overloads(name) if record is not None else None
+    return overloads[-1] if overloads else None
+
+def param_in_verdict(fi: 'FunctionInfo | None', func: TpyFunction, name: str, attr: str) -> bool:
+    """Whether param `name` of `func` is in `fi`'s `attr` verdict set (a
+    param-index set on the registry FunctionInfo)."""
+    verdict = getattr(fi, attr, None) if fi is not None else None
+    if not verdict:
+        return False
+    idx = next((i for i, (n, _) in enumerate(func.params) if n == name), None)
+    return idx is not None and idx in verdict
 
 def _param_const_verdict(name: str, func: TpyFunction, analyzer,
                          record_name: str | None, attr: str) -> bool:
@@ -8204,12 +8218,7 @@ def _param_const_verdict(name: str, func: TpyFunction, analyzer,
     list (getter + setter); [-1] is safe only because a getter has no
     non-self params (this lookup is never consulted for it) and the setter's
     non-value param is forced Own[...] (routing around const entirely)."""
-    fi = _owning_fi(func, analyzer, record_name)
-    verdict = getattr(fi, attr, None) if fi is not None else None
-    if not verdict:
-        return False
-    idx = next((i for i, (n, _) in enumerate(func.params) if n == name), None)
-    return idx is not None and idx in verdict
+    return param_in_verdict(_owning_fi(func, analyzer, record_name), func, name, attr)
 
 def _const_verdict_func(name: str, lc) -> TpyFunction:
     """The function whose param const verdict decides how `name` is BOUND.

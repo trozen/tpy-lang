@@ -38,9 +38,9 @@ class Bag:
             t += v
         return t
 
-    # method: the field returned as a borrowed result (a method publishes no summary,
-    # so `b.view_items()` is opaque to its callers)
-    def view_items(self) -> list[int32]:  # tpyc: mir(covered)
+    # method: the field returned as a borrowed result; its summary's return origin is the
+    # field itself, param0.items
+    def view_items(self) -> list[int32]:  # tpyc: mir(covered) mir_summary(known)
         return self.items
 
 

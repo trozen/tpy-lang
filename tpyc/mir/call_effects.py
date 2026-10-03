@@ -5,23 +5,10 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 from ..thir.nodes import THIRFieldIdentity
-from .coverage import container_view_holder
-from .dependencies import MIRDependencies, MIRReferent, MIRReferents, resolve_referents
+from .dependencies import MIRDependencies, MIRReferent, MIRReferents, call_place, resolve_referents
 from .dump import _place
-from .nodes import (
-    MIRCall, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRField, MIRFieldId, MIRFunction,
-    MIRNotCovered, MIRPlace, MIRPoint, MIRSlot, MIRSlotId, MIRValueKind, statement_call,
-)
+from .nodes import MIRCall, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRSlot, MIRSlotId, statement_call
 from .validate import MIRValidationError, validate_function
-
-
-def _step(item: object) -> MIRField | MIRContainerStructure | MIRContainerElements:
-    match item:
-        case THIRFieldIdentity(owner=owner, name=name, type=typ):
-            return MIRField(MIRFieldId(owner, name), typ)
-        case MIRContainerStructure() | MIRContainerElements():
-            return item
-    raise MIRValidationError("unknown call write path item")
 
 
 def _path_key(path: tuple[object, ...]) -> tuple[str, ...]:
@@ -29,15 +16,10 @@ def _path_key(path: tuple[object, ...]) -> tuple[str, ...]:
 
 
 def call_write_places(call: MIRCall, slots: Mapping[MIRSlotId, MIRSlot]) -> tuple[MIRPlace, ...]:
-    """The caller's places a call may write: each summarized write on a
-    parameter, at the record a borrowed record argument points at, or
-    directly under a container argument (owned, borrowed, or a view)."""
-    places = []
-    for write in sorted(call.summary.writes, key=lambda w: (w.parameter, _path_key(w.path))):
-        argument = slots[call.arguments[write.parameter]]
-        through = argument.value_kind is MIRValueKind.BORROWED and not container_view_holder(argument)
-        places.append(MIRPlace(argument.id, ((MIRDeref(),) if through else ()) + tuple(map(_step, write.path))))
-    return tuple(places)
+    """The caller's places a call may write: each summarized write's
+    parameter path (`call_place`)."""
+    return tuple(call_place(call, write.parameter, write.path, slots)
+                 for write in sorted(call.summary.writes, key=lambda w: (w.parameter, _path_key(w.path))))
 
 
 def resolve_call_writes(call: MIRCall, state: MIRReferents,

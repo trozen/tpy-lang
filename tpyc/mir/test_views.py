@@ -14,7 +14,7 @@ from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import BIGINT, BYTESVIEW, INT32, STRVIEW
-from .call_contract import MIRSummaryState, stub_summary
+from .call_contract import MIRReturnOrigin, MIRSummaryState, stub_summary
 from .collect import MIRVerdictStatus, analyze_body, enumerate_bodies
 from .dependencies import MIRReferent
 from .dump import dump_function
@@ -243,7 +243,7 @@ def test_view_results_carry_their_parameter_origins_to_the_caller(active) -> Non
     assert fn.borrowed_result == th.THIRBorrowedRecord(STRVIEW, True)
     assert "result borrowed readonly" in _lines(fn) and "%1 = borrow (*%0)" in _lines(fn)
     summary = active.verdicts["view_return"].summary
-    assert summary.state is MIRSummaryState.KNOWN and summary.summary.returns == frozenset({0})
+    assert summary.state is MIRSummaryState.KNOWN and summary.summary.returns == frozenset({MIRReturnOrigin(0)})
     caller = _fn(active, "view_return_caller")
     assert any(line.startswith("%1 = call main::view_return(%2)") and "returns={param0}" in line
                for line in _lines(caller))
@@ -253,7 +253,7 @@ def test_view_results_carry_their_parameter_origins_to_the_caller(active) -> Non
     slot = _slot(explicit, "v")
     assert (slot.kind, slot.value_kind, slot.readonly, slot.passing.name) == (
         MIRSlotKind.PARAMETER, MIRValueKind.BORROWED, True, "VALUE")
-    assert active.verdicts["explicit_view_param"].summary.summary.returns == frozenset({0})
+    assert active.verdicts["explicit_view_param"].summary.summary.returns == frozenset({MIRReturnOrigin(0)})
 
 
 def test_owning_sinks_copy_through_the_view(active) -> None:
@@ -362,7 +362,8 @@ def test_a_view_stub_borrows_what_it_lends_or_refuses(active) -> None:
     lent = next(c for c in _thir_calls(active.thir["stub_lent"]) if c.stub_callee.identity.qualified_name.endswith(
         "probe_view")).stub_callee
     summary = stub_summary(lent)
-    assert summary.returns == frozenset({0}) and summary.borrowed_result == th.THIRBorrowedRecord(STRVIEW, True)
+    assert summary.returns == frozenset({MIRReturnOrigin(0)})
+    assert summary.borrowed_result == th.THIRBorrowedRecord(STRVIEW, True)
     fn = _fn(active, "stub_lent")
     assert _at_return(active, "stub_lent")["v"] == _external(fn, "s")
     nullary = _thir_calls(active.thir["stub_nullary"])[0].stub_callee

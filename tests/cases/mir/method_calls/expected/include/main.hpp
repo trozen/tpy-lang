@@ -96,15 +96,15 @@ int32_t bump_under_iter(Counter& c);
 ::tpy::BigInt view_across_rename(Counter& c, std::string_view s, bool go);
 // def view_before_rename(c: Counter, s: str) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt view_before_rename(Counter& c, std::string_view s);
-// def tag_across_rename(c: Counter, s: str, go: bool) -> int:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+// def tag_across_rename(c: Counter, s: str, go: bool) -> int:  # tpyc: mir(conflict /replacement/)
 ::tpy::BigInt tag_across_rename(Counter& c, std::string_view s, bool go);
 // def call_merge(a: Counter, b: Counter) -> None:  # tpyc: mir(covered)
 void call_merge(Counter& a, const Counter& b);
 // def call_virtual(b: Base) -> None:  # tpyc: mir(uncovered /^unsupported expression type$/)
 void call_virtual(Base& b);
-// def read_prop(t: Temp) -> int32:  # tpyc: mir(uncovered /^unsupported expression$/)
+// def read_prop(t: Temp) -> int32:  # tpyc: mir(covered)
 int32_t read_prop(const Temp& t);
-// def write_prop(t: Temp, v: int32) -> None:  # tpyc: mir(uncovered /^unsupported expression type$/)
+// def write_prop(t: Temp, v: int32) -> None:  # tpyc: mir(covered)
 void write_prop(Temp& t, int32_t v);
 // def call_dunder(p: Pair, q: Pair) -> bool:  # tpyc: mir(uncovered /^unsupported expression$/)
 bool call_dunder(const Pair& p, const Pair& q);
@@ -132,7 +132,7 @@ int32_t static_call(int32_t x);
 void inherited(Dog& d);
 // def call_countdown(c: Counter) -> int32:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
 int32_t call_countdown(Counter& c);
-// def call_all_items(c: Counter) -> int:  # tpyc: mir(uncovered /^unsupported reference fact$/)
+// def call_all_items(c: Counter) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt call_all_items(Counter& c);
 // def main() -> None:
 void main();
@@ -170,7 +170,7 @@ struct Counter {
     // def label(self) -> str:  # tpyc: mir(covered) mir_summary(known)
     std::string label() const;
 
-    // def tag(self) -> StrView:  # tpyc: mir(covered) mir_summary(opaque /^unsupported return origin type or access$/)
+    // def tag(self) -> StrView:  # tpyc: mir(covered) mir_summary(known)
     std::string_view tag() const;
 
     // def absorb(self, other: "Counter") -> None:  # tpyc: mir(covered) mir_summary(known)
@@ -534,9 +534,9 @@ inline std::string Counter::label() const {
     return this->name;
 }
 
-// # kept refusal: a view of a field returned -- a result rooted inside the receiver has no
-// # origin a summary can name
-// def tag(self) -> StrView:  # tpyc: mir(covered) mir_summary(opaque /^unsupported return origin type or access$/)
+// # method body: a view of a field returned -- the summary's return origin is the field
+// # itself, param0.name
+// def tag(self) -> StrView:  # tpyc: mir(covered) mir_summary(known)
 //     return self.name
 inline std::string_view Counter::tag() const {
     return this->name;

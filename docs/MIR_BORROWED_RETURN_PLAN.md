@@ -43,8 +43,10 @@ after writing through the result. Emission uses `Cell&` and `const Cell&`.
 - `THIRResolvedCallee` supplies exact qualified identity and signature; its
   producer excludes method/generic/native/callback/frame callees.
 - `MIRDefinitions` proves the existing supported record layout and hook rules.
-- `MIRCallSummary.returns` already reserves parameter indices. Use it for
-  whole-parameter results; do not overload it with projected or aggregate roots.
+- `MIRCallSummary.returns` carries `MIRReturnOrigin(parameter, path)`: a path
+  into a parameter on the alphabet of `MIRParameterWrite.path` (an empty path
+  is the whole parameter); see
+  [projected return origins](MIR_ANALYSIS_PLAN.md#projected-return-origins).
 - `analyze_dependencies` and `resolve_referents` already propagate aliases
   and conservative branch joins. Return operands already participate in liveness.
 - Workspace scheduling already handles ordinary forward/imported definitions

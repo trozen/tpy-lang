@@ -68,7 +68,16 @@ ordinary instance method publishes the same fact at its definition and at each
 call that statically resolves to it: the identity names the owning record
 (`THIRFunctionIdentity.owner`) and the signature's parameter 0 is the receiver,
 so MIR schedules and summarizes methods beside free functions
-(`MIR_ANALYSIS_PLAN.md`, B3 contract, second half). Structural module keys
+(`MIR_ANALYSIS_PLAN.md`, B3 contract, second half). The body a call runs
+comes from `Compiler.callable_body(owner, name, accessor)`, which selects by
+role (method, property getter `fget`, setter `fset`) and collapses an
+`@auto_readonly` clone pair to its const clone; `single_method_body` keeps
+its one-body-or-None rule for sema's with-exit check. A getter or
+`@auto_readonly` def is one callable whose receiver passes `const_ref` and
+whose borrowed result follows the receiver's access at the call
+(`THIRCallableSignature.result_follows_receiver`); its mutable clone
+publishes the same callee as an access twin, and MIR requires the two
+clones to summarize alike. Structural module keys
 remain independent of rendered C++ namespaces. Selected lambdas and nested defs
 also carry complete capture inventories, distinguishing scalar binding references,
 scalar snapshots, borrowed record referents and receiver aliases. Closure occurrence
@@ -177,7 +186,9 @@ access are checked before these richer summaries can be consumed.
 
 M4.5 adds whole-parameter borrowed-record return evidence
 (`MIR_BORROWED_RETURN_PLAN.md`). The resolved THIR signature retains emitted
-result access; MIR carries that fact into standalone return validation.
+result access (a follows-receiver signature publishes its definition's;
+MIR derives each call's from the receiver it binds); MIR carries that
+fact into standalone return validation.
 Leaf summaries collect origins from pre-return dependency states, preserving
 alias joins independently of read/write effects. M4.6 substitutes those origins
 through actual holders during dependency transfer, before overwriting any

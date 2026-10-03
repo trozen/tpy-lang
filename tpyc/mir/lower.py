@@ -50,7 +50,8 @@ from .definitions import (
 )
 from .call_contract import (
     BORROWING_PASSINGS, OWNING_PASSINGS, MIRCallSummary, MIRParameterBinding, MIRSummaryResult, MIRSummaryState,
-    borrowed_result_of, container_result, stub_protocol_argument, stub_summary, summary_problem, view_result,
+    borrowed_result_of, bound_result, container_result, stub_protocol_argument, stub_summary,
+    summary_problem, view_result,
 )
 from .validate import (MIRDefiniteAssignmentError, MIRPresenceError, MIRRepeatedInitializationError,
                        body_may_raise, reaches_element, statement_reads, successors,
@@ -166,6 +167,8 @@ class _Coverage:
         self.active_temporaries: list[th.THIRExpr] | None = None
         self.summaries = summaries if summaries is not None else {}
         self.calls: IdentityMap[th.THIRCall | th.THIRMethodCall, MIRCallSummary] = IdentityMap()
+        # Each user call's borrowed result, at the access its receiver is bound at.
+        self.call_results: IdentityMap[th.THIRCall | th.THIRMethodCall, th.THIRBorrowedRecord | None] = IdentityMap()
         self.stub_summaries: dict[th.THIRStubIdentity, MIRCallSummary] = {}
         self.borrowed_bindings: IdentityMap[th.THIRStmt, th.THIRBorrowedRecord] = IdentityMap()
         self.argument_temporaries: IdentityMap[th.THIRArgTemp, th.THIRBorrowedRecord] = IdentityMap()
@@ -203,14 +206,17 @@ class _Coverage:
         owned = owned_value_type(callee.signature.return_type)
         if result is not None and view_leaf(result.type):
             pass
+        elif result is not None and native_container_type(result.type):
+            # A container returned by reference: a place of the layout its type derives.
+            self.container_layout(expr, result.type)
         elif result is not None:
             self.reference(expr, result, callee.signature.return_type)
             self.records[result.type] = self.definitions.get(expr, result.type)
         elif owned is not None:
             self.leaf_layout(expr, owned)
-        for write in summary.writes:
+        for path in (*(w.path for w in summary.writes), *(o.path for o in summary.returns)):
             # A container projection ends a path; its fields name record layouts.
-            for field in (step for step in write.path if isinstance(step, th.THIRFieldIdentity)):
+            for field in (step for step in path if isinstance(step, th.THIRFieldIdentity)):
                 definition = self.definitions.get(expr, field.owner)
                 _require(expr, MIRField(MIRFieldId(field.owner, field.name), field.type) in definition.layout.fields,
                          "call write field does not match record layout")
@@ -220,13 +226,19 @@ class _Coverage:
                        else expr.result_type == owned if owned is not None
                        else expr.result_type == callee.signature.return_type)
                  and len(_call_arguments(expr)) == len(summary.parameters), "call signature mismatch")
-        for arg, binding in zip(_call_arguments(expr), summary.parameters):
+        # The access parameter 0 is bound at: a follows-receiver result takes it.
+        receiver_readonly = False
+        for index, (arg, binding) in enumerate(zip(_call_arguments(expr), summary.parameters)):
             ref = binding.borrowed_record
             if ref is None:
                 self.argument(arg, binding)
             else:
                 if isinstance(arg, th.THIRArgTemp):
+                    # A temporary receiver binds readonly (argument_temporary
+                    # requires it), so its follows-receiver result is readonly
+                    # too: narrower than the mutable clone C++ may pick, never wider.
                     self.argument_temporary(arg, ref)
+                    receiver_readonly = receiver_readonly or index == 0
                     continue
                 _require(arg, isinstance(arg, (th.THIRName, th.THIRSelf))
                          and arg.form is th.Form.BORROW, "call needs borrowed record name")
@@ -237,8 +249,10 @@ class _Coverage:
                 actual = self.references[name]
                 _require(arg, actual.type == ref.type and (not actual.readonly or ref.readonly),
                          "call record argument mismatch")
+                receiver_readonly = receiver_readonly or index == 0 and actual.readonly
         self.argument_order_rule(expr, _call_arguments(expr))
         self.calls[expr] = summary
+        self.call_results[expr] = summary.result_at(receiver_readonly)
 
     def stub_call(self, expr: th.THIRCall) -> None:
         """A call to a stub, summarized from its declaration alone
@@ -529,7 +543,11 @@ class _Coverage:
                          "repeated condition select emplacement")
         _require(fn, fn.error_return_cpp is None, "error-return body")
         _require(fn, not fn.layout.hoisted_locals, "hoisted declarations")
-        result = fn.resolved_callee.signature.borrowed_result if fn.resolved_callee is not None else None
+        # A follows-receiver result has the access of the body's own receiver.
+        receiver_readonly = fn.receiver is not None and fn.receiver.readonly
+        signature = fn.resolved_callee.signature if fn.resolved_callee is not None else None
+        result = (bound_result(signature, receiver_readonly)
+                  if signature is not None and signature.borrowed_result is not None else None)
         if result is not None:
             self.reference(fn, result, fn.return_type)
             self.records[result.type] = self.definitions.get(fn, result.type)
@@ -549,7 +567,9 @@ class _Coverage:
             _require(fn, self.result is not None, "unsupported return type")
         elif native_container_type(bare := unwrap_readonly(unwrap_ref_type(fn.return_type))):
             # A container returned by reference is borrowed like a record result.
-            self.result = self.container_result = container_result(fn.return_type)
+            self.result = self.container_result = (
+                bound_result(signature, receiver_readonly) if signature is not None
+                and signature.result_follows_receiver else container_result(fn.return_type))
             _require(fn, self.result is not None, "unsupported return type")
             self.container_layout(fn, bare)
         elif native_container_type(bare := unwrap_own(fn.return_type)):
@@ -663,8 +683,9 @@ class _Coverage:
                                   "cpp_local_representation", "native_container"})
                     fact = stmt.native_container
                     self.container(stmt, fact, stmt.resolved_type)
-                    # The alias holds a container place: a borrowed binding, or a field.
-                    _require(stmt, isinstance(stmt.init, (th.THIRName, th.THIRFieldAccess))
+                    # The alias holds a container place: a borrowed binding, a field, or
+                    # the container a user call returns by reference.
+                    _require(stmt, (isinstance(stmt.init, (th.THIRName, th.THIRFieldAccess)) or _user_call(stmt.init))
                              and self.container_receiver(stmt.init),
                              "container alias needs fixed matching borrowed source")
                     place = self.container_place(stmt.init)
@@ -1327,6 +1348,11 @@ class _Coverage:
             case th.THIRFieldAccess():
                 fact = expr.field_identity
                 return isinstance(fact, th.THIRFieldIdentity) and native_container_type(unwrap_readonly(fact.type))
+            case th.THIRCall() | th.THIRMethodCall() if _user_call(expr):
+                # A user callee's container returned by reference.
+                callee = expr.resolved_callee
+                return (isinstance(callee, th.THIRResolvedCallee)
+                        and container_result(callee.signature.return_type) is not None)
             case th.THIRMethodCall():
                 # A container view a method stub returns views its receiver's region.
                 return expr.stub_callee is not None and container_view(unwrap_readonly(unwrap_ref_type(expr.result_type)))
@@ -1354,9 +1380,27 @@ class _Coverage:
                 fact = self.field(expr)
                 _require(expr, isinstance(fact, th.THIRNativeContainer), "container field needs container storage")
                 return _ContainerPlace(fact.type, with_access(self.layouts[fact.type], fact.readonly), fact.readonly)
+            case th.THIRCall() | th.THIRMethodCall() if _user_call(expr) and self.container_receiver(expr):
+                return self.call_container(expr)
             case th.THIRMethodCall() if self.container_receiver(expr):
                 return self.view_call(expr)
         raise MIRUnsupported(expr, "container source needs a place")
+
+    def call_container(self, expr: th.THIRCall | th.THIRMethodCall) -> _ContainerPlace:
+        """A container a user call returns by reference: a place of the
+        callee's container (its referents are the summary's return
+        origins), at the access the call's result is bound at."""
+        _require(expr, expr.form is th.Form.VALUE, "unsupported expression form")
+        self.call(expr)
+        result = self.call_results[expr]
+        _require(expr, result is not None and native_container_type(result.type)
+                 and unwrap_readonly(unwrap_ref_type(expr.result_type)) == result.type,
+                 "call container result mismatch")
+        # The builder evaluates a place's operands (an index, slice bounds)
+        # before its container, so the call must not write what they read.
+        _require(expr, not self.call_writes(expr), "order-sensitive eager operands")
+        self.writes[expr] = False
+        return _ContainerPlace(result.type, with_access(self.layouts[result.type], result.readonly), result.readonly)
 
     def element_index(self, expr: th.THIRSubscript, place: _ContainerPlace) -> None:
         """Check a subscript's index or key: a fixed-width int position, or
@@ -1418,7 +1462,7 @@ class _Coverage:
                 self.select_temporary(expr, result)
             case th.THIRCall() | th.THIRMethodCall() if _user_call(expr):
                 self.call(expr)
-                actual = self.calls[expr].borrowed_result
+                actual = self.call_results[expr]
                 _require(expr, actual is not None and actual.type == result.type
                          and (not actual.readonly or result.readonly), "call result increases access")
             case th.THIRIfExpr():
@@ -2397,8 +2441,9 @@ class _Coverage:
         _plain(stmt, {"var", "elem_type", "iterable", "body", "const_loop_var", "iterable_lvalue",
                       "orelse", "hoist_loop_var", "hoist_decls", "hoisted_bindings", "iteration"})
         fact = stmt.iteration
-        # A container view a stub returns is a temporary the loop holds.
-        view = isinstance(stmt.iterable, th.THIRMethodCall)
+        # A container view a stub returns, or a container a user call returns
+        # by reference, is a call result the loop holds.
+        view = isinstance(stmt.iterable, (th.THIRCall, th.THIRMethodCall))
         _require(stmt, isinstance(fact, th.THIRNativeIteration) and (stmt.iterable_lvalue is True or view)
                  and type(stmt.const_loop_var) is bool and type(stmt.hoist_loop_var) is bool
                  and isinstance(stmt.var, str) and bool(stmt.var), "missing or invalid native iteration facts")
@@ -2778,7 +2823,7 @@ class _Builder:
         directly), or a container field of a record."""
         if isinstance(expr, th.THIRName):
             return MIRPlace(self.bindings[expr.name])
-        if isinstance(expr, th.THIRMethodCall):
+        if isinstance(expr, (th.THIRCall, th.THIRMethodCall)):
             return MIRPlace(self.container_slot(expr))
         return self.place(expr)
 
@@ -2789,15 +2834,21 @@ class _Builder:
         if isinstance(expr, th.THIRName):
             return self.bindings[expr.name]
         place = self.element_places[expr]
+        element = place.layout.element
+        container = th.THIRNativeContainer(place.type, th.THIRBorrowedRecord(element.type, element.readonly)
+                                           if element.kind is MIRValueKind.BORROWED else element.type, place.readonly)
+        if _user_call(expr):
+            # The container a user call returns by reference: a holder of the call's result.
+            self.initialize_temporaries(expr)
+            holder = self.slot(place.type, container=container)
+            self.write(holder, self.call(expr), expr.loc)
+            return holder
         if isinstance(expr, th.THIRMethodCall):
             self.initialize_temporaries(expr)
             holder = self.container_view_slot(place.type, place.readonly)
             self.write(holder, self.call(expr), expr.loc)
             return holder
-        element = place.layout.element
-        holder = self.slot(place.type, container=th.THIRNativeContainer(
-            place.type, th.THIRBorrowedRecord(element.type, element.readonly)
-            if element.kind is MIRValueKind.BORROWED else element.type, place.readonly))
+        holder = self.slot(place.type, container=container)
         self.write(holder, MIRBorrow(self.place(expr)), expr.loc)
         return holder
 
@@ -3289,8 +3340,14 @@ class _Builder:
                     self.bindings[stmt.name] = dest
                 case th.THIRVarDecl() if stmt.native_container is not None:
                     dest = self.slot(stmt.resolved_type, MIRSlotKind.LOCAL, stmt.name, container=stmt.native_container)
-                    self.write(dest, MIRAlias(self.bindings[stmt.init.name]) if isinstance(stmt.init, th.THIRName)
-                               else MIRBorrow(self.place(stmt.init)), loc)
+                    if _user_call(stmt.init):
+                        # The alias binds the container the call returns by reference.
+                        source = self.container_slot(stmt.init)
+                        self.borrow_operation(stmt)
+                        self.write(dest, MIRAlias(source), loc)
+                    else:
+                        self.write(dest, MIRAlias(self.bindings[stmt.init.name]) if isinstance(stmt.init, th.THIRName)
+                                   else MIRBorrow(self.place(stmt.init)), loc)
                     self.bindings[stmt.name] = dest
                 case th.THIRVarDecl() if stmt in self.element_bindings:
                     fact = self.element_bindings[stmt]

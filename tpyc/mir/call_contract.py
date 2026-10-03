@@ -43,6 +43,10 @@ class MIRContainerElements:
     is never tracked, so a write of one element is a write of any."""
 
 
+# A place under a parameter: at most one field, then at most one container projection.
+MIRParameterPath = tuple[THIRFieldIdentity | MIRContainerStructure | MIRContainerElements, ...]
+
+
 @dataclass(frozen=True)
 class MIRParameterWrite:
     """A write the callee may make through parameter `parameter`: at the
@@ -50,7 +54,19 @@ class MIRParameterWrite:
     (`(structure,)` grows or shrinks the container the parameter is,
     `(F::items, elements)` replaces elements of its field)."""
     parameter: int
-    path: tuple[THIRFieldIdentity | MIRContainerStructure | MIRContainerElements, ...]
+    path: MIRParameterPath
+
+
+@dataclass(frozen=True)
+class MIRReturnOrigin:
+    """What a borrowed result may reach through parameter `parameter`: the
+    place `path` names under it, in the write-path alphabet (`(F::items,)`
+    is a container field of a record parameter, `(F::name,)` an owned-leaf
+    field a view result views). An empty path is the whole parameter,
+    whose caller projects a container argument into its elements region
+    when the result is no container itself."""
+    parameter: int
+    path: MIRParameterPath = ()
 
 
 @dataclass(frozen=True)
@@ -95,7 +111,7 @@ class MIRCallSummary:
     reads: frozenset[int]
     writes: frozenset[MIRParameterWrite]
     invalidates: frozenset[int]
-    returns: frozenset[int]
+    returns: frozenset[MIRReturnOrigin]
     retains: frozenset[int]
     normal_return_only: bool
     global_reads: frozenset[MIRGlobalId] = frozenset()
@@ -115,7 +131,15 @@ class MIRCallSummary:
                 return record
             owned = owned_value_type(self.callee.signature.return_type)
             return THIRBorrowedRecord(owned, True) if owned is not None and self.returns else None
-        return borrowed_result_of(self.callee.signature)
+        return bound_result(self.callee.signature, bool(self.parameters) and self.parameters[0].readonly)
+
+    def result_at(self, receiver_readonly: bool) -> THIRBorrowedRecord | None:
+        """The borrowed result of one call whose receiver argument has
+        access `receiver_readonly`: a follows-receiver result takes it, any
+        other result is the summary's own."""
+        if isinstance(self.callee, THIRResolvedCallee):
+            return bound_result(self.callee.signature, receiver_readonly)
+        return self.borrowed_result
 
 
 def view_result(typ: TpyType) -> THIRBorrowedRecord | None:
@@ -153,6 +177,20 @@ def borrowed_result_of(signature: THIRCallableSignature) -> THIRBorrowedRecord |
     if signature.borrowed_result is not None:
         return signature.borrowed_result
     return view_result(signature.return_type) or container_result(signature.return_type)
+
+
+def bound_result(signature: THIRCallableSignature, receiver_readonly: bool) -> THIRBorrowedRecord | None:
+    """The borrowed result a signature returns with its receiver bound at
+    access `receiver_readonly`. A follows-receiver result (`@auto_readonly`:
+    C++ picks the clone by the receiver's constness) is readonly when its
+    return type says so or the receiver is; any other result is the
+    signature's own (`borrowed_result_of`)."""
+    result = borrowed_result_of(signature)
+    if result is None or not signature.result_follows_receiver or view_leaf(result.type):
+        return result
+    declared = isinstance(unwrap_ref_type(signature.return_type), ReadonlyType) or (
+        container_view(result.type) and readonly_elements(result.type))
+    return THIRBorrowedRecord(result.type, declared or receiver_readonly)
 
 
 def container_result(typ: TpyType) -> THIRBorrowedRecord | None:
@@ -229,7 +267,11 @@ def result_problem(typ: TpyType, ref: THIRBorrowedRecord | None) -> str | None:
     if isinstance(ref, THIRBorrowedRecord) and (view_leaf(ref.type) or container_view(ref.type)):
         return None if view_result(typ) == ref else "invalid borrowed result"
     if isinstance(ref, THIRBorrowedRecord) and native_container_type(ref.type):
-        return None if container_result(typ) == ref else "invalid borrowed result"
+        # As for a record, the holder may be more readonly than the type (a
+        # follows-receiver result bound at a readonly receiver).
+        declared = container_result(typ)
+        return (None if declared is not None and declared.type == ref.type and type(ref.readonly) is bool
+                and (ref.readonly or not declared.readonly) else "invalid borrowed result")
     if (not isinstance(ref, THIRBorrowedRecord) or type(ref.readonly) is not bool
             or not isinstance(typ, (RefType, ReadonlyType))
             or not record_type(ref.type)
@@ -307,7 +349,7 @@ def stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
         bindings.append(binding)
     result = signature.return_type
     representation = signature.return_representation
-    lent = frozenset(i for i, b in enumerate(bindings) if b.readonly)
+    lent = frozenset(MIRReturnOrigin(i) for i, b in enumerate(bindings) if b.readonly)
     if view_result(result) is not None:
         # A view result may borrow every argument the call lends, and only
         # those: with none lent its origin is outside the call.
@@ -416,11 +458,11 @@ def _method_stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
         writes = frozenset({MIRParameterWrite(0, (projection,))})
     result = signature.return_type
     representation = signature.return_representation
-    returns: frozenset[int] = frozenset()
+    returns: frozenset[MIRReturnOrigin] = frozenset()
     if representation in (Representation.VIEW, Representation.REFERENCE) and not isinstance(result, VoidType):
         if view_result(result) is None and method_record_result(callee) is None:
             return "unsupported stub result type"
-        returns = frozenset({0}) | frozenset(i for i, b in enumerate(bindings) if b.readonly)
+        returns = frozenset(MIRReturnOrigin(i) for i, b in enumerate(bindings) if i == 0 or b.readonly)
     elif not isinstance(result, VoidType):
         stored = native_container_subject(result)
         if not (representation is Representation.STORAGE
@@ -434,21 +476,92 @@ def _method_stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
 _CONTAINER_PROJECTIONS = (MIRContainerStructure, MIRContainerElements)
 
 
+def path_parts(parameter: object, path: object, parameters: tuple[MIRParameterBinding, ...]
+               ) -> tuple[tuple[THIRFieldIdentity, ...], MIRContainerStructure | MIRContainerElements | None] | None:
+    """Split a parameter path into its fields and its container projection
+    under the one grammar writes and return origins share: at most one
+    field, then at most one container projection. None when the parameter
+    index or the path is malformed."""
+    if (type(parameter) is not int or not 0 <= parameter < len(parameters)
+            or not isinstance(path, tuple)):
+        return None
+    projection = path[-1] if path and isinstance(path[-1], _CONTAINER_PROJECTIONS) else None
+    fields = path[:-1] if projection is not None else path
+    if len(fields) > 1 or not all(isinstance(f, THIRFieldIdentity) for f in fields):
+        return None
+    return fields, projection
+
+
+def record_field(field: THIRFieldIdentity, ref: THIRBorrowedRecord | None) -> bool:
+    """Whether `field` is a field of the record a borrowed record parameter
+    binds (its membership in the certified layout is checked where the
+    layout is known)."""
+    return ref is not None and field.owner == ref.type and isinstance(field.name, str) and bool(field.name)
+
+
+def return_origin_problem(origin: MIRReturnOrigin, result: THIRBorrowedRecord,
+                          parameters: tuple[MIRParameterBinding, ...]) -> str | None:
+    """Check one published return origin against the borrowed result it
+    reaches (bound at the definition's receiver). A whole parameter: a lent
+    leaf a view result views, a container parameter whose elements or
+    whole self the result is, or a record parameter the record result is.
+    A field of a borrowed record parameter: a container field a container
+    result is, or an owned-leaf field a view result views. Never more
+    access than the source lends."""
+    parts = path_parts(origin.parameter, origin.path, parameters) if isinstance(origin, MIRReturnOrigin) else None
+    if parts is None:
+        return "invalid return parameter"
+    fields, projection = parts
+    binding = parameters[origin.parameter]
+    if projection is not None:
+        return "unsupported return origin type or access"
+    if fields:
+        ref, field = binding.borrowed_record, fields[0]
+        bare = unwrap_readonly(field.type)
+        if not record_field(field, ref):
+            return "unsupported return origin type or access"
+        if view_leaf(result.type):
+            return None if owned_leaf(bare) and view_compatible(result.type, bare) else (
+                "unsupported return origin type or access")
+        if not (native_container_type(bare) and modeled_members(bare) and bare == result.type
+                and (result.readonly or not ref.readonly and not isinstance(field.type, ReadonlyType))):
+            return "unsupported return origin type or access"
+        return None
+    if view_leaf(result.type):
+        # A view result borrows what a lent parameter of its family reaches.
+        if not (binding.readonly and binding.borrowed_record is None
+                and view_compatible(result.type, binding.type)):
+            return "unsupported return origin type or access"
+        return None
+    if binding.borrowed_record is None and (native_container_type(binding.type) or container_view(binding.type)):
+        # A container view or element result rooted in a container
+        # parameter's elements is published as the whole parameter, as
+        # is the container itself.
+        if not ((view_compatible(result.type, binding.type) if container_view(result.type)
+                 else result.type in binding.type.type_args or result.type == binding.type)
+                and (result.readonly or not binding.readonly)):
+            return "unsupported return origin type or access"
+        return None
+    source = binding.borrowed_record
+    # A whole record parameter is a record result of its own type; a
+    # container result of a record parameter names its field.
+    if (container_view(result.type) or source is None or source.type != result.type
+            or source.readonly and not result.readonly):
+        return "unsupported return origin type or access"
+    return None
+
+
 def write_problem(write: MIRParameterWrite, parameters: tuple[MIRParameterBinding, ...]) -> str | None:
     """Check one published parameter write: at most one field of a mutable
     borrowed record, then at most one container projection of a container
     the path reaches -- the parameter itself (a mutable borrowed or owned
     container, or a writable container view, whose shape a view cannot
     change) or a container field. A readonly parameter is never written."""
-    if (not isinstance(write, MIRParameterWrite) or type(write.parameter) is not int
-            or not 0 <= write.parameter < len(parameters)
-            or not isinstance(write.path, tuple) or not write.path):
+    parts = (path_parts(write.parameter, write.path, parameters)
+             if isinstance(write, MIRParameterWrite) and write.path else None)
+    if parts is None:
         return "invalid call write path"
-    path = write.path
-    projection = path[-1] if isinstance(path[-1], _CONTAINER_PROJECTIONS) else None
-    fields = path[:-1] if projection is not None else path
-    if len(fields) > 1 or not all(isinstance(f, THIRFieldIdentity) for f in fields):
-        return "invalid call write path"
+    fields, projection = parts
     binding = parameters[write.parameter]
     if not fields:
         if binding.readonly or binding.borrowed_record is not None:
@@ -461,7 +574,7 @@ def write_problem(write: MIRParameterWrite, parameters: tuple[MIRParameterBindin
         return "unsupported call write field or access"
     ref = binding.borrowed_record
     field = fields[0]
-    if (ref is None or ref.readonly or field.owner != ref.type or not field.name
+    if (not record_field(field, ref) or ref.readonly
             or not (projection is None and (storage_leaf(field.type) or owned_leaf(field.type))
                     or projection is not None and native_container_type(field.type)
                     and modeled_members(field.type))):
@@ -489,8 +602,9 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
             or not isinstance(signature, THIRCallableSignature)
             or not isinstance(signature.param_types, tuple) or not isinstance(summary.parameters, tuple)
             or any(not isinstance(indices, frozenset) or any(type(i) is not int for i in indices)
-                   for indices in (summary.reads, summary.invalidates,
-                                   summary.returns, summary.retains))
+                   for indices in (summary.reads, summary.invalidates, summary.retains))
+            or not isinstance(summary.returns, frozenset)
+            or any(not isinstance(origin, MIRReturnOrigin) for origin in summary.returns)
             or not isinstance(summary.global_reads, frozenset)
             or any(not isinstance(g, MIRGlobalId) or not (isinstance(g.module, str) and g.module
                                                           and isinstance(g.name, str) and g.name)
@@ -512,36 +626,16 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
     if identity.owner is not None and (receiver is None or not isinstance(receiver.type, NominalType)
                                        or receiver.type.qualified_name() != identity.owner):
         return "method summary without its receiver"
-    result = borrowed_result_of(signature)
+    if signature.result_follows_receiver and identity.owner is None:
+        return "unsupported call summary contract"
+    # A follows-receiver result is checked at the definition's own receiver.
+    result = summary.borrowed_result
     if (result is None and summary.returns or result is not None and not summary.returns):
         return "missing or unexpected return origins"
-    for index in summary.returns:
-        if not 0 <= index < len(summary.parameters):
-            return "invalid return parameter"
-        binding = summary.parameters[index]
-        if view_leaf(result.type):
-            # A view result borrows what a lent parameter of its family reaches.
-            if not (binding.readonly and binding.borrowed_record is None
-                    and view_compatible(result.type, binding.type)):
-                return "unsupported return origin type or access"
-            continue
-        if binding.borrowed_record is None and (native_container_type(binding.type) or container_view(binding.type)):
-            # A container view or element result rooted in a container
-            # parameter's elements is published as the whole parameter, as
-            # is the container itself.
-            if not ((view_compatible(result.type, binding.type) if container_view(result.type)
-                     else result.type in binding.type.type_args or result.type == binding.type)
-                    and (result.readonly or not binding.readonly)):
-                return "unsupported return origin type or access"
-            continue
-        source = binding.borrowed_record
-        # A container result of a record parameter is a container field of
-        # it, published as the whole parameter (its caller cannot name the
-        # field, so it refuses to resolve one).
-        if (container_view(result.type) or source is None
-                or source.type != result.type and not native_container_type(result.type)
-                or source.readonly and not result.readonly):
-            return "unsupported return origin type or access"
+    for origin in summary.returns:
+        problem = return_origin_problem(origin, result, summary.parameters)
+        if problem is not None:
+            return problem
     for write in summary.writes:
         problem = write_problem(write, summary.parameters)
         if problem is not None:

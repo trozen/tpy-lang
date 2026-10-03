@@ -38,7 +38,8 @@ def _call(call: MIRCall) -> str:
     else:
         callee = f"{identity.module}::{identity.name}"
     if call.summary.borrowed_result is not None:
-        effects += ", returns={" + ", ".join(f"param{i}" for i in sorted(call.summary.returns)) + "}"
+        effects += ", returns={" + ", ".join(sorted(f"param{o.parameter}" + "".join(_write_step(step) for step in o.path)
+                                                   for o in call.summary.returns)) + "}"
     if call.summary.global_reads:
         effects += ", global-reads={" + ", ".join(sorted(f"{g.module}::{g.name}"
                                                         for g in call.summary.global_reads)) + "}"

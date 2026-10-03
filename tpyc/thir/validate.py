@@ -39,6 +39,8 @@ Every lowered body is validated, whatever its shape: ordinary functions and
 constructors through `validate_function` / `validate_constructor`, and the
 resumable-frame bodies -- whose leaves the skeleton holds apart in seam
 tables rather than one linear body -- through `validate_resumable_body`.
+A module's callee definitions are checked together by
+`validate_definitions` where the call workspace collects them.
 """
 
 from __future__ import annotations
@@ -97,6 +99,13 @@ class THIRValidationError(Exception):
     """A lowered node violates a THIR structural invariant -- a lowering bug,
     never an unsupported shape (those must raise during lowering, not produce
     inconsistent THIR)."""
+
+
+def _user_container_call(node: object, container: TpyType) -> bool:
+    """A user call returning the native container `container` by reference."""
+    return (isinstance(node, (THIRCall, THIRMethodCall)) and node.resolved_callee is not None
+            and node.resolved_callee.signature.return_representation is Representation.REFERENCE
+            and native_container_subject(node.resolved_callee.signature.return_type) == container)
 
 
 def _check_native_container(owner: str, node: object, fact: THIRNativeContainer, typ: TpyType) -> None:
@@ -259,6 +268,23 @@ def _check_callee(owner: str, node: object, fact: THIRResolvedCallee) -> None:
             or not (fact.identity.owner is None or isinstance(fact.identity.owner, str) and fact.identity.owner)
             or _signature_problem(fact.signature)):
         _fail(owner, node, "invalid resolved callee")
+    accessor = fact.identity.accessor
+    signature = fact.signature
+    # A getter binds the receiver alone, a setter the receiver and the value.
+    if (accessor not in (None, "fget", "fset")
+            or accessor is not None and (fact.identity.owner is None
+                                         or len(signature.param_types) != (1 if accessor == "fget" else 2))):
+        _fail(owner, node, "invalid accessor identity")
+    # The body of a follows-receiver callable is certified against a const receiver.
+    if type(signature.result_follows_receiver) is not bool or signature.result_follows_receiver and (
+            fact.identity.owner is None or signature.passings is None
+            or signature.passings[0] is not ParamPassing.CONST_REF):
+        _fail(owner, node, "follows-receiver signature needs a const receiver")
+    # One value at the definition and every call: the result that const
+    # receiver binds. A call derives its own access from its receiver.
+    if (signature.result_follows_receiver and signature.borrowed_result is not None
+            and not signature.borrowed_result.readonly):
+        _fail(owner, node, "follows-receiver signature needs a readonly result")
 
 
 def _check_method_callee(owner: str, node: THIRMethodCall, fact: THIRResolvedCallee) -> None:
@@ -425,7 +451,8 @@ def _check_node(owner: str, node: THIRNode) -> None:
                 _fail(owner, node, "owned native container disagrees with binding")
         elif (not (isinstance(node.init, THIRName) and node.init.form is Form.BORROW
                      or isinstance(node.init, THIRFieldAccess) and node.init.field_identity is not None
-                     and unwrap_readonly(node.init.field_identity.type) == node.native_container.type)
+                     and unwrap_readonly(node.init.field_identity.type) == node.native_container.type
+                     or _user_container_call(node.init, node.native_container.type))
                 or unwrap_readonly(unwrap_ref_type(node.init.result_type)) != node.native_container.type
                 or node.is_const is not node.native_container.readonly
                 or any(f is not None for f in others)):
@@ -444,13 +471,15 @@ def _check_node(owner: str, node: THIRNode) -> None:
         # A named container, a container field of a named record, or a
         # container view a method stub returns.
         view = isinstance(source, THIRMethodCall) and source.stub_callee is not None
+        call = isinstance(fact, THIRNativeIteration) and isinstance(fact.source, THIRNativeContainer) and (
+            _user_container_call(source, fact.source.type))
         place = isinstance(source, THIRName) or (
             isinstance(source, THIRFieldAccess) and source.field_identity is not None
             and isinstance(source.receiver, (THIRName, THIRSelf))
             and isinstance(fact, THIRNativeIteration) and isinstance(fact.source, THIRNativeContainer)
             and unwrap_readonly(source.field_identity.type) == fact.source.type
             and (not isinstance(source.field_identity.type, ReadonlyType) or fact.source.readonly))
-        if (not isinstance(fact, THIRNativeIteration) or not (place and node.iterable_lvalue or view)
+        if (not isinstance(fact, THIRNativeIteration) or not ((place or call) and node.iterable_lvalue or view)
                 or node.consuming or node.str_literal_iterable
                 or fact.binding is not loop_binding_kind(node.elem_type, node.const_loop_var,
                                                          hoisted=node.hoist_loop_var)):
@@ -1222,19 +1251,26 @@ def validate_function(fn: THIRFunction) -> None:
         signature = fn.resolved_callee.signature
         owner = fn.resolved_callee.identity.owner
         params = effective_params(fn)
+        # The access twin binds a mutable receiver where the callable it
+        # publishes binds a const one; every other parameter is the same.
+        skip = 1 if fn.access_twin else 0
         if ((owner is None) != (fn.receiver is None)
                 or fn.receiver is not None and (
                     owner != fn.receiver.type.qualified_name() or signature.passings is None
                     or signature.param_types[:1] != (fn.receiver.type,)
-                    or signature.passings[0] is not params[0].passing)
+                    or not fn.access_twin and signature.passings[0] is not params[0].passing)
                 or fn.error_return_cpp is not None
                 or fn.name != fn.resolved_callee.identity.name
                 or tuple(declared_param_type(p.type) for p in params)
                 != tuple(declared_param_type(t) for t in signature.param_types)
                 or fn.return_type != signature.return_type
                 or (signature.passings is not None and all(p.passing is not None for p in params)
-                    and signature.passings != tuple(p.passing for p in params))):
+                    and signature.passings[skip:] != tuple(p.passing for p in params)[skip:])):
             _fail(fn.name, fn, "resolved callee disagrees with definition")
+    if type(fn.access_twin) is not bool or fn.access_twin and (
+            fn.resolved_callee is None or not fn.resolved_callee.signature.result_follows_receiver
+            or fn.receiver is None or fn.receiver.readonly):
+        _fail(fn.name, fn, "access twin needs a mutable receiver and a follows-receiver callee")
     for stmt in fn.body:
         _walk(fn.name, stmt, fn.return_type)
 
@@ -1297,6 +1333,25 @@ def validate_constructor(ctor: THIRConstructor) -> None:
             _walk(owner, arg)
     for stmt in ctor.body:
         _walk(owner, stmt)
+
+
+def validate_definitions(functions: 'Sequence[THIRFunction]') -> None:
+    """One module's bodies together: each callee identity has one defining
+    body and at most one access twin, which publishes exactly the
+    definition's callee."""
+    defining: dict[THIRFunctionIdentity, THIRFunction] = {}
+    twins: dict[THIRFunctionIdentity, THIRFunction] = {}
+    for fn in functions:
+        if fn.resolved_callee is None:
+            continue
+        table = twins if fn.access_twin else defining
+        if fn.resolved_callee.identity in table:
+            _fail(fn.name, fn, "two bodies define one callee identity")
+        table[fn.resolved_callee.identity] = fn
+    for identity, twin in twins.items():
+        definition = defining.get(identity)
+        if definition is not None and definition.resolved_callee != twin.resolved_callee:
+            _fail(twin.name, twin, "access twin disagrees with its definition")
 
 
 def validate_stmts(owner: str, stmts, return_type=None) -> None:

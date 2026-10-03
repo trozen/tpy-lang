@@ -1788,26 +1788,85 @@ alongside related feature work; only the big-rock deferrals live here.
     an active compiler. Fail closed and activate a compiler in those tests.
   - View FIELDS refuse as "record holds a borrow": storing a view in a
     record is a retention effect, reading one needs the field's loan.
-  - Next unit: property accessors, `@auto_readonly` twins and projected
-    return origins. Getter and setter register under one name and an
-    `@auto_readonly` def emits two bodies, so neither has a callee: a
-    property read refuses as "unsupported expression", a property write and
-    an `@auto_readonly` method call as "unsupported expression type".
-    Calls of an INHERITED method (`sub.base_method()`: the receiver's
-    static type is not the owner) belong here too -- parameter 0 is an
-    upcast of the receiver, the same projection the twins need.
-    Return origins name whole parameters, so a result rooted inside a
-    parameter does not reach its caller: a container field returned from
-    the receiver (`c.all_items()` bound) refuses as "unsupported reference
-    fact", a view of a receiver field (`c.tag()`) has an OPAQUE summary
-    ("unsupported return origin type or access") and its caller refuses
-    ("call needs finalized known summary"), so `tag_across_rename` in the
-    case (that view live across `c.rename(s)`) cannot report its
-    `replacement` yet.
+  - Next unit: inherited records. A method of a base record called on a
+    subclass receiver (`s.bump()` with `bump` on `Base`), a subclass
+    record as a parameter (`def f(s: Sub)`) and a subclass's own methods
+    refuse today: the caller's parameter "unsupported parameter type".
+    Plain inheritance is static and non-virtual, so the call rule is one
+    line (the receiver's static type is the owner OR a subclass with no
+    `@dynamic` base); the record model is the work:
+    1. field identity becomes (DECLARING owner, name), found through
+       `get_all_fields` -- shadowing an inherited field is legal (a
+       warning), so `Sub::k` and `Base::k` can be two storages;
+    2. record layouts span the struct-base ancestors;
+    3. the "field owner == the record type" checks (`mir/definitions.py`,
+       `mir/validate.py`, `mir/lower.py`, `mir/call_contract.py`) become
+       "the declaring owner is the type or a struct-base ancestor";
+    4. the exact-type argument checks become "the argument type is the
+       parameter type or a subclass";
+    5. `THIRBaseInit` (today the base's C++ name and arguments, no identity
+       and no parameter mapping) chains the subclass's definition
+       certificate to the base's;
+    6. `mir/definitions.py` keys constructor members by bare field name, so
+       the (declaring owner, name) identity must reach the constructor
+       bookkeeping too.
+    Measured on master before the accessor unit: 98 call sites to methods
+    of records with parents, in 75 caller bodies over 52 programs; the
+    callers are first blocked elsewhere (`isinstance` arms, local types,
+    module init), so the return is modest until those lift.
+  - Inline-record getter results and nested records: `return self.inner`
+    (a record field returned by reference) refuses at the getter body
+    ("unsupported borrowed expression form") and its caller "call needs
+    finalized known summary" (`mir/accessor_calls` `record_accessors`): a
+    layout with a record field has no definition ("unsupported record
+    fields"), there is no borrowed-field return arm, and a record returned
+    from inside a record is no return origin yet ("summary unsupported
+    return origin").
+  - A `Span` over a field as a return origin (`return self.items[0:]` at
+    `-> Span[int32]`) summarizes OPAQUE ("summary unsupported return origin"): the origin is
+    a region under the field, which the return grammar does not spell.
+  - Accessor FunctionInfos skip const inference and
+    `populate_const_borrow_params` (sema pops them from the method table
+    first): a setter's record parameter is never `const T&` however the
+    body uses it, and the getter FunctionInfo's return type lacks the
+    `Ref` wrapper its body has. THIR reads the body's own passings
+    (`callables._accessor_passings`), so MIR agrees with the emitted C++;
+    the gap is in sema.
+  - Record and container setter parameters: a record setter parameter
+    expands to `Own[R]` and refuses as a free function's `Own[R]`
+    parameter does ("unsupported parameter type", `Holder.part`); a
+    container setter refuses at the field it replaces ("container field
+    replacement is unsupported").
+  - Order-sensitive eager operands: a user call used as a container place
+    refuses whenever the callee writes ("order-sensitive eager operands",
+    `mir/lower.py` `call_container`; `iterate_grab` in
+    `tpyc/mir/test_return_origins.py`), because the builder evaluates a
+    place's index or slice operands before its container. Only a place with
+    such an operand evaluated before the call is at risk: refuse that shape
+    alone and admit a writing call iterated or read whole (`for x in
+    b.grab()`).
+  - Accessor callee path unification (NEXT unit, decided 2026-10-03): the for-loop
+    arm decides a follows-receiver container result's constness by probing
+    the receiver's parse node (`_iteration_yields_const`,
+    `thir/lower/statements.py`) where a per-call access fact on
+    `THIRMethodCall` would carry it; `callables._accessor_callee` is a
+    second callee path beside `method_callee`'s ordinary one (its own
+    `_declares`-like checks and passing source); and accessor passings are
+    read from the registry verdict (`_accessor_passings`) rather than from
+    the defining body's own `THIRParam`s. One callee path reading the
+    defining body would remove all three. Two more facts belong to the same
+    unit: the clone PAIR relation is re-derived twice (`Compiler.callable_body`
+    by polarity, location, params and return type; `callables.method_definition`
+    by polarity and location) where `sema/method_expansion._clone_auto_readonly`
+    decides it and could tag the two `TpyFunction`s once; and
+    `thir/validate.validate_definitions` (one definition and at most one twin
+    per identity) runs from `mir/collect.call_definitions`, its home being a
+    THIR module-level pass that does not exist yet.
   - Method receivers beyond a name or `self` -- a field (`o.inner.bump()`),
     a call result (`pick(g).read()`), a temporary (`Gauge(k).read()`), an
-    element (`gs[0].bump()`) -- refuse as "call needs borrowed record name",
-    the same limit record ARGUMENTS of free functions have; one rule lifts
+    element (`gs[0].bump()`), and a getter read through one
+    (`c.via().count`, `self.c.count`) -- refuse as "call needs borrowed
+    record name", the same limit record ARGUMENTS of free functions have; one rule lifts
     both.
   - Methods with no callee: consuming, generic, inherited, static and class
     methods, `@error_return` methods, and every method of an owner that
@@ -1820,13 +1879,16 @@ alongside related feature work; only the big-rock deferrals live here.
     a record imported through `-L`).
   - "The body a callable runs" has two channels: a free function's
     `FunctionInfo.declaration`, and for a method the per-compilation table
-    `Compiler.method_bodies[(owner, name)]` (`thir/lower/callables._single_body`).
-    The method side does not set `declaration` because its other readers
-    (`sema/calls.py`, `sema/may_interrupt.py`) decide generated Ctrl-C
-    deferral scopes. `sema/loop_frames.py` reads the same table with a
-    looser uniqueness rule (every entry the same body) than `_single_body`
-    (exactly one entry); no path registers a body twice today. One helper
-    should own the rule, and one field the fact.
+    `Compiler.method_bodies[(owner, name)]`. The method side does not set
+    `declaration` because its other readers (`sema/calls.py`,
+    `sema/may_interrupt.py`) decide generated Ctrl-C deferral scopes. Two
+    readers of the table keep two rules on purpose:
+    `Compiler.callable_body` (THIR callees) selects by role and collapses
+    an `@auto_readonly` clone pair to its const clone, while
+    `Compiler.single_method_body` (`sema/loop_frames.py`'s with-exit check)
+    returns a body only when every entry is that one body, so a pair falls
+    back to the declared write facts and no diagnostic moves. One field
+    should own the fact.
   - An explicit `@readonly` callable returning its record PARAMETER
     summarizes OPAQUE ("unsupported record call parameter"): THIR passes
     the parameter const while its record fact is mutable, and the binding
@@ -1864,11 +1926,11 @@ alongside related feature work; only the big-rock deferrals live here.
     `rename(r, r.name)`) need a loan that lives through the call.
   - Iterating or unpacking `d.items()` (tuple elements, with the tuple
     unit); `in` (`THIRMembership`) as an `[elements]` read.
-  - Projected return origins: a Span or element result rooted in
-    `param[elements]` summarizes as the whole parameter (`returns` is
-    `frozenset[int]`); filed with the alias-basis precision item below. The
-    field faces (a view or container field of a record parameter or the
-    receiver) are the next unit above.
+  - Return origins of container parameters: a Span or element result
+    rooted in `param[elements]` summarizes as the whole parameter (an
+    empty-path `MIRReturnOrigin`, which the caller projects into the
+    argument's elements); filed with the alias-basis precision item below.
+    Origins into a record parameter's field keep their path.
   - Sibling-element precision: element identity is not tracked, so
     `xs[i] = v` / `d[k] = v` under a live iterator over the same container
     conflict (conservative; CPython raises only for a dict that grows).

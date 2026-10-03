@@ -733,14 +733,17 @@ def _signature_facts(signature: THIRCallableSignature) -> str:
         for i, t in enumerate(signature.param_types))
     result = ("?" if signature.return_representation is None
               else signature.return_representation.value)
-    return f"({passings}) -> {result}"
+    follows = ", follows receiver" if signature.result_follows_receiver else ""
+    return f"({passings}) -> {result}{follows}"
 
 
 def _callee_name(identity: THIRFunctionIdentity) -> str:
     """A user callee's module-qualified name; a method's names its owning
-    record (`__main__.Counter.bump`)."""
+    record (`__main__.Counter.bump`), a property accessor its role too
+    (`__main__.Counter.count.fget`)."""
     if identity.owner is not None:
-        return f"{identity.owner}.{identity.name}"
+        accessor = "" if identity.accessor is None else f".{identity.accessor}"
+        return f"{identity.owner}.{identity.name}{accessor}"
     return f"{identity.module}.{identity.name}"
 
 
@@ -770,7 +773,9 @@ def _callee_lines(fn: 'THIRFunction') -> list[str]:
     tables fingerprint."""
     lines = []
     if fn.resolved_callee is not None:
-        owner = fn.resolved_callee.identity.owner
+        identity = fn.resolved_callee.identity
+        owner = (identity.owner if identity.accessor is None or identity.owner is None
+                 else _callee_name(identity))
         lines.append(f"  signature{'' if owner is None else ' ' + owner}{_signature_facts(fn.resolved_callee.signature)}")
     facts = [((node.callee or "<computed>") if isinstance(node, THIRCall) else node.method_cpp, fact)
              for stmt in fn.body for node in _walk(stmt)

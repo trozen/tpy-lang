@@ -44,9 +44,9 @@ class Counter:
     def label(self) -> str:  # tpyc: mir(covered) mir_summary(known)
         return self.name  # tpyc: warning(/returns a copy of str field/)
 
-    # kept refusal: a view of a field returned -- a result rooted inside the receiver has no
-    # origin a summary can name
-    def tag(self) -> StrView:  # tpyc: mir(covered) mir_summary(opaque /^unsupported return origin type or access$/)
+    # method body: a view of a field returned -- the summary's return origin is the field
+    # itself, param0.name
+    def tag(self) -> StrView:  # tpyc: mir(covered) mir_summary(known)
         return self.name
 
     # method body: a record parameter read beside the receiver
@@ -307,9 +307,9 @@ def view_before_rename(c: Counter, s: str) -> int:  # tpyc: mir(covered)
     return n
 
 
-# kept refusal: a method's view result live across a method that replaces its source --
-# the conflict needs the result's origin inside the receiver
-def tag_across_rename(c: Counter, s: str, go: bool) -> int:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+# free conflict: a method's view result live across a method that replaces its source, the
+# field the result's origin names
+def tag_across_rename(c: Counter, s: str, go: bool) -> int:  # tpyc: mir(conflict /replacement/)
     v: StrView = c.tag()
     if go:
         c.rename(s)
@@ -364,13 +364,13 @@ class Temp:
         self.deg = v // 2
 
 
-# kept refusal: a property read
-def read_prop(t: Temp) -> int32:  # tpyc: mir(uncovered /^unsupported expression$/)
+# free caller: a property read (the getter is a callable with a summary)
+def read_prop(t: Temp) -> int32:  # tpyc: mir(covered)
     return t.twice
 
 
-# kept refusal: a property write
-def write_prop(t: Temp, v: int32) -> None:  # tpyc: mir(uncovered /^unsupported expression type$/)
+# free caller: a property write (the setter publishes the field write)
+def write_prop(t: Temp, v: int32) -> None:  # tpyc: mir(covered)
     t.twice = v
 
 
@@ -519,8 +519,8 @@ def call_countdown(c: Counter) -> int32:  # tpyc: mir(uncovered /^call needs fin
     return c.countdown(3)
 
 
-# kept refusal: a container field returned from the receiver refuses at the caller's binding
-def call_all_items(c: Counter) -> int:  # tpyc: mir(uncovered /^unsupported reference fact$/)
+# free caller: a container field returned from the receiver, bound and grown through the alias
+def call_all_items(c: Counter) -> int:  # tpyc: mir(covered)
     xs = c.all_items()
     xs.append(9)
     return len(xs)

@@ -184,8 +184,8 @@ def test_return_origins_substitute_only_selected_arguments(artifacts: Artifacts,
                 continue
             before = deps.referents[MIRPoint(block.id, index)]
             actual = deps.referents[MIRPoint(block.id, index + 1)][stmt.target]
-            expected = frozenset(root for arg in stmt.value.summary.returns
-                                 for root in before[MIRPlace(stmt.value.arguments[arg])])
+            expected = frozenset(root for origin in stmt.value.summary.returns
+                                 for root in before[MIRPlace(stmt.value.arguments[origin.parameter])])
             assert actual == expected and actual
             assert all(root.external or root.place.root in backing for root in actual)
             assert any(root.external for root in actual) is (name in ("mixed", "unreturned"))

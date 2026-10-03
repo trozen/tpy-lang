@@ -2,13 +2,12 @@
 
 from ..thir import nodes as th
 from ..thir.scalar_leaves import (
-    native_container_subject, owned_leaf, owned_value_type, record_type, storage_leaf, view_leaf,
+    native_container_subject, native_container_type, owned_leaf, owned_value_type, storage_leaf, view_leaf,
 )
-from ..typesys import TpyType
+from ..typesys import TpyType, unwrap_readonly
 from .call_contract import (
     BORROWING_PASSINGS, OWNING_PASSINGS, MIRCallSummary, MIRGlobalId, MIRParameterBinding, MIRParameterWrite,
-    MIRSummaryResult,
-    MIRSummaryState, borrowed_result_of, summary_problem,
+    MIRReturnOrigin, MIRSummaryResult, MIRSummaryState, bound_result, summary_problem,
 )
 from .call_effects import resolve_call_writes
 from .coverage import (
@@ -69,14 +68,21 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
     at every statement, so a write before a throw is in them, and every
     nested call's writes are promised over its own exits too; nothing the
     body holds survives an exit but its storage, which the body owns. Loops
-    are summarized by the dependency and liveness fixpoints."""
+    are summarized by the dependency and liveness fixpoints.
+
+    An `@auto_readonly` access twin (`THIRFunction.access_twin`) summarizes
+    as if its receiver were bound like its definition's (`CONST_REF`,
+    readonly), so the two summaries compare equal exactly when the twin's
+    effects and origins are its definition's."""
     validate_function(body)
     callee = declaration.resolved_callee
     # A method body binds its receiver as parameter 0, and only a method's callee names an owner.
     method = declaration.receiver is not None
+    twin = declaration.access_twin
     if (callee is None or body.kind is not (MIRBodyKind.METHOD if method else MIRBodyKind.FREE_FUNCTION)
             or (callee.identity.owner is not None) is not method or body.receiver_init is not None
-            or body.borrowed_result != borrowed_result_of(callee.signature)
+            or twin and not (method and callee.signature.result_follows_receiver and callee.signature.passings)
+            or body.borrowed_result != bound_result(callee.signature, method and declaration.receiver.readonly)
             or callee.signature.return_type != body.return_type):
         return MIRSummaryResult.opaque("summary definition or result contract mismatch")
     effective = th.effective_params(declaration)
@@ -107,6 +113,10 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     else slot.readonly if container and slot.value_kind is not MIRValueKind.OWNED
                     else view or owned is not None and param.passing in BORROWING_PASSINGS)
         bindings.append(MIRParameterBinding(slot.type, param.passing, readonly, param.borrowed_record))
+    if twin:
+        receiver = bindings[0]
+        bindings[0] = MIRParameterBinding(receiver.type, callee.signature.passings[0], True,
+                                          th.THIRBorrowedRecord(receiver.borrowed_record.type, True))
     slots = {s.id: s for s in body.slots}
     handed_over = _handed_over(body)
     global_reads: set[MIRGlobalId] = set()
@@ -153,7 +163,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         return MIRSummaryResult.opaque(f"summary dependencies: {dependencies.reason}")
     parameters = {slot.id: i for i, slot in enumerate(params)}
     writes: set[MIRParameterWrite] = set()
-    returns: set[int] = set()
+    returns: set[MIRReturnOrigin] = set()
 
     def include_writes(origins: frozenset[MIRReferent] | None) -> str | None:
         if origins is None:
@@ -188,23 +198,33 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                 if not origins:
                     return MIRSummaryResult.opaque("summary missing return origin")
                 view = view_leaf(body.borrowed_result.type)
-                record = record_type(body.borrowed_result.type)
                 for origin in origins:
                     path = origin.place.projections
-                    if view:
-                        # Return origins name parameters only: a view of a parameter's
-                        # field returns as the parameter, which is a safe over-approximation;
-                        # a global, a static literal or the body's own storage has no index.
-                        if not origin.external or origin.place.root not in parameters:
-                            return MIRSummaryResult.opaque("view result origin outside the parameters")
-                    elif (not origin.external or origin.place.root not in parameters or path and record
-                          and not isinstance(path[0], (MIRContainerStructure, MIRContainerElements))):
+                    if not origin.external or origin.place.root not in parameters:
+                        # A global, a static literal or the body's own storage has no parameter.
+                        return MIRSummaryResult.opaque("view result origin outside the parameters" if view
+                                                       else "summary unsupported return origin")
+                    index = parameters[origin.place.root]
+                    if bindings[index].borrowed_record is None:
                         # A container result, a Span, or a record element of a
                         # container parameter returns as the whole parameter (the
-                        # caller projects a container argument into its elements);
-                        # a record result from inside a record has no such index.
+                        # caller projects a container argument into its elements).
+                        if not all(isinstance(p, (MIRContainerStructure, MIRContainerElements)) for p in path):
+                            return MIRSummaryResult.opaque("summary unsupported return origin")
+                        returns.add(MIRReturnOrigin(index))
+                        continue
+                    # Inside a record parameter: the record itself, or one of its
+                    # fields -- a container a container result is, an owned leaf a
+                    # view result views. A record result from inside a record is
+                    # deferred with nested records.
+                    if len(path) > 1 or path and not (
+                            isinstance(path[0], MIRField) and (view or native_container_type(unwrap_readonly(path[0].type)))):
                         return MIRSummaryResult.opaque("summary unsupported return origin")
-                    returns.add(parameters[origin.place.root])
+                    for field in path:
+                        if field not in definitions.get(declaration, field.id.owner).layout.fields:
+                            return MIRSummaryResult.opaque("summary return field differs from definition")
+                    returns.add(MIRReturnOrigin(index, tuple(
+                        th.THIRFieldIdentity(f.id.owner, f.id.name, f.type) for f in path)))
         for index, stmt in enumerate(block.statements):
             state = dependencies.referents.get(MIRPoint(block.id, index), {})
             if (call := statement_call(stmt)) is not None:

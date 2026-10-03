@@ -394,5 +394,7 @@ def excluded(value: Special) -> int32:
     assert isinstance(ret, th.THIRReturn) and isinstance(ret.value, node_kind)
     if isinstance(ret.value, th.THIRFieldAccess):
         assert ret.value.field_identity is None
-    not_covered(fn, "unsupported" if fn.params[0].borrowed_record is None
+    # A property read is a getter call: no field storage, and no summary here.
+    not_covered(fn, "call needs finalized known summary" if node_kind is th.THIRMethodCall
+                else "unsupported" if fn.params[0].borrowed_record is None
                 or node_kind is not th.THIRFieldAccess else "unsupported metadata")

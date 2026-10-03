@@ -5,13 +5,14 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
 
-from ..thir.scalar_leaves import record_type
+from ..thir.nodes import THIRFieldIdentity
+from ..thir.scalar_leaves import native_container_type, owned_leaf, record_type, view_compatible
 from ..typesys import NominalType, unwrap_readonly
 from .dump import _place
 from .liveness import MIRLiveness, MIRPoint
 from .nodes import (
     MIRAlias, MIRAssign, MIRStatement, MIRBlockId, MIRBorrow, MIRCall, MIRCompare, MIRConstant,
-    MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFunction, MIRIsAlternative,
+    MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRIsAlternative,
     MIRIsPresent, MIRMove, MIRNot, MIRNotCovered, MIROptionalConstruct,
     MIROptionalCopy, MIROptionalPayload, MIRPlace, MIRRead, MIRSlot, MIRSlotId,
     MIRSlotKind, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRUnionConstruct,
@@ -23,7 +24,9 @@ from .nodes import (
 )
 from .validate import MIRPrepared, MIRValidationError, _validated_function, successors
 from .region_flow import MIRRegionFlow, outgoing_edges
-from .coverage import container_holder, container_view_holder, owned_tuple, scalar_member, scalar_slot
+from .coverage import (
+    container_holder, container_view_holder, owned_tuple, scalar_member, scalar_slot, view_holder,
+)
 
 
 @dataclass(frozen=True)
@@ -176,31 +179,78 @@ def analyze_dependencies(fn: MIRFunction, liveness: MIRLiveness) -> MIRDependenc
     return _dependencies(_validated_function(fn), liveness)
 
 
+def path_step(item: object) -> MIRField | MIRContainerStructure | MIRContainerElements:
+    """One item of a summary's parameter path as a MIR projection."""
+    match item:
+        case THIRFieldIdentity(owner=owner, name=name, type=typ):
+            return MIRField(MIRFieldId(owner, name), typ)
+        case MIRContainerStructure() | MIRContainerElements():
+            return item
+    raise MIRValidationError("unknown call path item")
+
+
+def call_place(call: MIRCall, parameter: int, path: tuple[object, ...],
+               slots: Mapping[MIRSlotId, MIRSlot]) -> MIRPlace:
+    """The caller's place a summary's parameter path names: under the
+    record a borrowed record argument points at, or directly under a
+    container argument (owned, borrowed, or a view)."""
+    argument = slots[call.arguments[parameter]]
+    through = argument.value_kind is MIRValueKind.BORROWED and not container_view_holder(argument)
+    return MIRPlace(argument.id, ((MIRDeref(),) if through else ()) + tuple(map(path_step, path)))
+
+
 def resolve_call_returns(call: MIRCall, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],
                          result: MIRSlot | None = None) -> frozenset[MIRReferent] | None:
-    """The caller's origins of a call's borrowed result. A summary names
-    whole parameters; what a container lends other than itself (an element,
-    a view of it) lies in its elements region, so a `result` holder that is
-    no container takes that region of a container argument."""
+    """The caller's origins of a call's borrowed result: each return
+    origin's place (`call_place`), resolved in sequence like a direct
+    borrow of it. A whole-parameter origin is the argument; what a
+    container lends other than itself (an element, a view of it) lies in
+    its elements region, so a `result` holder that is no container takes
+    that region of a container argument. A path is never re-projected."""
     origins: set[MIRReferent] = set()
-    for index in call.summary.returns:
-        argument = slots[call.arguments[index]]
-        refs = resolve_referents(MIRPlace(argument.id), state, slots)
+    for origin in call.summary.returns:
+        argument = slots[call.arguments[origin.parameter]]
+        refs = resolve_referents(call_place(call, origin.parameter, origin.path, slots), state, slots)
         if not refs:
             return None
-        if result is not None and not container_holder(result) and container_holder(argument):
+        if (not origin.path and result is not None and not container_holder(result)
+                and container_holder(argument)):
             refs = _project(refs, MIRContainerElements())
         origins.update(refs)
     return frozenset(origins)
 
 
-def call_return_problem(call: MIRCall, result: MIRSlot, slots: Mapping[MIRSlotId, MIRSlot]) -> str | None:
-    """A container result borrowed from an argument that is not a container
-    (a record's container field) names no place the caller can project: its
-    elements would resolve under the record, where no write reaches them."""
-    if container_holder(result) and any(not container_holder(slots[call.arguments[i]])
-                                        for i in call.summary.returns):
-        return "container result of a non-container argument"
+def call_return_problem(call: MIRCall, result: MIRSlot, state: MIRReferents,
+                        slots: Mapping[MIRSlotId, MIRSlot]) -> str | None:
+    """Type-check each return origin's place against the holder the
+    result fills: a container holder needs a whole container -- a
+    container argument or a container field -- and never one rooted in an
+    elements region (its writes would land under that region, where no
+    write of the container reaches); a view of an owned leaf needs an
+    owned-leaf endpoint; a record holder a record or an elements region."""
+    for origin in call.summary.returns:
+        argument = slots[call.arguments[origin.parameter]]
+        endpoint = origin.path[-1] if origin.path else None
+        if container_holder(result):
+            if endpoint is None and not container_holder(argument):
+                return "container result of a non-container argument"
+            if endpoint is not None and not (isinstance(endpoint, THIRFieldIdentity)
+                                             and native_container_type(unwrap_readonly(endpoint.type))):
+                return "container result of a non-container place"
+            refs = resolve_referents(call_place(call, origin.parameter, origin.path, slots), state, slots)
+            if any(r.place.projections and isinstance(r.place.projections[-1],
+                                                      (MIRContainerStructure, MIRContainerElements))
+                   for r in refs):
+                return "container result rooted in an elements region"
+        elif endpoint is not None:
+            if not isinstance(endpoint, THIRFieldIdentity):
+                return "call result of a container region"
+            bare = unwrap_readonly(endpoint.type)
+            if view_holder(result):
+                if not (owned_leaf(bare) and view_compatible(result.type, bare)):
+                    return "view result of a non-leaf place"
+            elif not (result.value_kind is MIRValueKind.BORROWED and record_type(bare) and bare == result.type):
+                return "call result of a mismatched place"
     return None
 
 
@@ -324,7 +374,7 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
                     if resolve_call_returns(stmt.value, state, slots) is None:
                         return MIRNotCovered(fn.id, "dependencies", "missing call return origin", stmt.loc)
                     if (stmt.value.summary.borrowed_result is not None and (problem := call_return_problem(
-                            stmt.value, slots[stmt.target.root], slots)) is not None):
+                            stmt.value, slots[stmt.target.root], state, slots)) is not None):
                         return MIRNotCovered(fn.id, "dependencies", problem, stmt.loc)
             live = {leaf: refs for leaf, refs in state.items() if leaf.root in liveness.points[point]}
             active[point] = MappingProxyType(live)
