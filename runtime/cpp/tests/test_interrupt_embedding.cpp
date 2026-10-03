@@ -133,7 +133,22 @@ int main() {
 
     // Host keeps its handler; the layer is armed without one.
     std::signal(SIGINT, host_handler);
+    check(!tpy::signals_deliverable(), "nothing is deliverable before the layer is armed");
     check(tpy::install_interrupt_handler(false), "arm without a handler");
+    // Where a Ctrl-C would be raised: the armed thread only, outside a
+    // deferral scope and outside an asyncio.run.
+    check(tpy::signals_deliverable(), "deliverable on the armed thread");
+    {
+        tpy::DeferSignals defer;
+        check(!tpy::signals_deliverable(), "not deliverable inside a deferral scope");
+    }
+    bool worker_deliverable = true;
+    std::thread([&] { worker_deliverable = tpy::signals_deliverable(); }).join();
+    check(!worker_deliverable, "not deliverable off the armed thread");
+    check(tpy_interrupt_async_begin() >= 0, "asyncio.run takes delivery");
+    check(!tpy::signals_deliverable(), "not deliverable while asyncio.run owns delivery");
+    tpy_interrupt_async_end();
+    check(tpy::signals_deliverable(), "deliverable again after the run");
     std::thread([] {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         std::raise(SIGINT);  // runs the host handler on this worker thread

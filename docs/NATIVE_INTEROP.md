@@ -570,8 +570,8 @@ the "Ctrl-C (SIGINT) -> `KeyboardInterrupt`" entry under
 [Error Handling](LANGUAGE_FEATURES.md#error-handling)). A `--no-main` build
 (TPy code linked into a C/C++ host, or a CPython extension module) installs none
 of them: the host owns its signals. Ctrl-C then does whatever the host's
-disposition says, and `time.sleep` / `input()` / blocking sockets in TPy code
-are not interruptible. (`asyncio.run` still installs a SIGINT handler for the
+disposition says, and `time.sleep` / `input()` / blocking sockets /
+`subprocess` waits and pipes in TPy code are not interruptible. (`asyncio.run` still installs a SIGINT handler for the
 duration of the run and restores the host's afterwards.)
 
 A host that wants Ctrl-C delivered into TPy code opts in with one of two calls
@@ -610,8 +610,8 @@ code inside a deferral scope from `<tpy/core.hpp>`:
 ```
 
 While a scope is open on the target thread, check points do not raise,
-`time.sleep` / `input()` / blocking sockets run to completion without waking
-for Ctrl-C, and an `asyncio.run` started inside handles no SIGINT. The Ctrl-C
+`time.sleep` / `input()` / blocking sockets / `subprocess` waits and pipes run
+to completion without waking for Ctrl-C, and an `asyncio.run` started inside handles no SIGINT. The Ctrl-C
 stays pending and is raised at the first check point after the scope closes,
 in whatever TPy call next reaches one. Generated code opens the same scope in
 a body that runs under `noexcept` (`__del__`, `__move__`, `__hash__`, a
@@ -633,8 +633,9 @@ the runtime changes under the define:
   `tpy::DeferSignals` are empty, so `print`, `sys.stdout` / file I/O and
   cleanup bodies carry no check and no thread-local access.
 - `time.sleep` and `input()` are the plain calls, a socket wait polls the
-  socket alone, `JoinHandle.join()` is a plain join, and worker threads are
-  spawned without touching the signal mask.
+  socket alone, `JoinHandle.join()` is a plain join, `subprocess.Popen.wait()`
+  is a plain `waitpid` and its pipes read and write without a wait in front,
+  and worker threads are spawned without touching the signal mask.
 - Nothing installs a SIGINT handler: a generated `main()` leaves SIGINT at its
   inherited disposition (the terminate handler and `SIGPIPE` ignore stay), and
   `asyncio.run` in a host installs none for the run. No signal becomes a

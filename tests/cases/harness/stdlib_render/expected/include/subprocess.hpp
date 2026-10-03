@@ -10,10 +10,13 @@
 #include "tpystd/tpy/sync.hpp"
 #include "tpystd/tpy/thread.hpp"
 #include "tpystd/tpy/version.hpp"
+#include "tpystd/_interrupt/_interrupt.hpp"
 #include "tpystd/io.hpp"
 #include "tpystd/os.hpp"
 #include <tpy/stdlib/os.hpp>
 #include "tpystd/signal.hpp"
+#include <tpy/system.hpp>
+#include <tpy/stdlib/time.hpp>
 
 namespace tpystd::subprocess {
 
@@ -64,6 +67,9 @@ struct Popen {
 
     // def wait(self) -> int64:
     int64_t wait();
+
+    // def _await_exit(self, deadline: float) -> None:
+    void _await_exit(double deadline);
 
     // def send_signal(self, sig: int64) -> None:
     void send_signal(int64_t sig);

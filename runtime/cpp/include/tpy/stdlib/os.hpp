@@ -167,6 +167,10 @@ std::tuple<int64_t, int64_t> terminal_size_raw(int64_t fd);
 // waitpid returns (pid, status); pid 0 under WNOHANG means "still running".
 void kill_pid(int64_t pid, int64_t sig);
 std::tuple<int64_t, int64_t> waitpid(int64_t pid, int64_t options);
+// A close-on-exec fd that turns readable when process `pid` exits (Linux's
+// pidfd), or -1 where there is none: another OS, an old kernel, a pid that is
+// gone, no fd left. Lets a wait for a child share one poll() with other fds.
+int64_t pidfd_open(int64_t pid);
 int64_t waitstatus_to_exitcode(int64_t status);
 extern int64_t kc_wnohang;
 

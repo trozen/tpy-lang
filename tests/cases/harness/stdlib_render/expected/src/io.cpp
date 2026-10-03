@@ -491,7 +491,8 @@ int32_t BytesIO::truncate(int32_t size) {
 }
 
 // def __init__(self, fd: int64, mode: str = "r", closefd: bool = True,
-//              timeout_mode: bool = False) -> None:
+//              timeout_mode: bool = False,
+//              interruptible: bool = False) -> None:
 //     # CPython checks the fd before the mode.
 //     if fd < 0:
 //         raise ValueError("negative file descriptor")
@@ -502,13 +503,14 @@ int32_t BytesIO::truncate(int32_t size) {
 //     self._readable = access[0]
 //     self._writable = access[1]
 //     self._timeout_mode = timeout_mode
+//     self._interruptible = interruptible
 //     if access[2]:
 //         try:
 //             os.lseek(fd, 0, os.SEEK_END)
 //         except OSError as e:
 //             if e.errno != errno.ESPIPE:
 //                 raise
-FileIO::FileIO(int64_t fd, std::string_view mode, bool closefd, bool timeout_mode) {
+FileIO::FileIO(int64_t fd, std::string_view mode, bool closefd, bool timeout_mode, bool interruptible) {
     if ((fd < 0)) {
         throw ::tpy::ValueError("negative file descriptor");
     }
@@ -519,6 +521,7 @@ FileIO::FileIO(int64_t fd, std::string_view mode, bool closefd, bool timeout_mod
     this->_readable = std::get<0>(access);
     this->_writable = std::get<1>(access);
     this->_timeout_mode = timeout_mode;
+    this->_interruptible = interruptible;
     if (std::get<2>(access)) {
         {
             try {
@@ -591,18 +594,22 @@ BufferedReader::BufferedReader(std::unique_ptr<RawBinaryIO> raw, int32_t buffer_
 //     # (BUGS.md#list-literal-owned-elem-initializer-copy).
 //     parts: list[bytes] = []
 //     parts.append(bytes(self._buf[self._pos:]))
-//     while want < 0 or have < want:
-//         chunk = self._raw.read(self._buffer_size)
-//         if len(chunk) == 0:
-//             self._eof = True
-//             break
-//         have += len(chunk)
-//         found = to_newline and chunk.find(b"\n") >= 0
-//         parts.append(chunk)
-//         if found:
-//             break
-//     self._buf = b"".join(parts)
-//     self._pos = 0
+//     # A raw read that raises (a Ctrl-C, a timeout) must not drop the
+//     # chunks read before it: they are gone from the fd.
+//     try:
+//         while want < 0 or have < want:
+//             chunk = self._raw.read(self._buffer_size)
+//             if len(chunk) == 0:
+//                 self._eof = True
+//                 break
+//             have += len(chunk)
+//             found = to_newline and chunk.find(b"\n") >= 0
+//             parts.append(chunk)
+//             if found:
+//                 break
+//     finally:
+//         self._buf = b"".join(parts)
+//         self._pos = 0
 void BufferedReader::_fill(int32_t want, bool to_newline) {
     if (this->_eof) {
         return;
@@ -610,21 +617,29 @@ void BufferedReader::_fill(int32_t want, bool to_newline) {
     int32_t have = this->_available();
     std::vector<::tpy::Bytes> parts = std::vector<::tpy::Bytes>{};
     parts.push_back(::tpy::Bytes(::tpy::bytes_slice(this->_buf, ::tpy::BasicSlice{this->_pos, std::nullopt})));
-    while (((want < 0) || (have < want))) {
-        ::tpy::Bytes chunk = this->_raw.__deref__().read(this->_buffer_size);
-        if ((::tpy::__len__(chunk) == 0)) {
-            this->_eof = true;
-            break;
+    {
+        try {
+            while (((want < 0) || (have < want))) {
+                ::tpy::Bytes chunk = this->_raw.__deref__().read(this->_buffer_size);
+                if ((::tpy::__len__(chunk) == 0)) {
+                    this->_eof = true;
+                    break;
+                }
+                have = ::tpy::add_check<int32_t>(have, ::tpy::__len__(chunk));
+                bool found = (to_newline && (::tpy::bytes_find(chunk, ::tpy::bytes_literal("\n", 1)) >= 0));
+                parts.push_back(chunk);
+                if (found) {
+                    break;
+                }
+            }
+        } catch (...) {
+            this->_buf = ::tpy::bytes_join(::tpy::Bytes{}, parts);
+            this->_pos = 0;
+            throw;
         }
-        have = ::tpy::add_check<int32_t>(have, ::tpy::__len__(chunk));
-        bool found = (to_newline && (::tpy::bytes_find(chunk, ::tpy::bytes_literal("\n", 1)) >= 0));
-        parts.push_back(chunk);
-        if (found) {
-            break;
-        }
+        this->_buf = ::tpy::bytes_join(::tpy::Bytes{}, parts);
+        this->_pos = 0;
     }
-    this->_buf = ::tpy::bytes_join(::tpy::Bytes{}, parts);
-    this->_pos = 0;
 }
 
 // def read(self, size: int32 = -1) -> bytes:
@@ -799,6 +814,7 @@ void BufferedWriter::close() {
 // from tplib.box import Box
 // import errno
 // import os
+// import _interrupt
 //
 // _SEEK_SET: int32 = 0
 // _SEEK_CUR: int32 = 1
@@ -812,6 +828,7 @@ void __tpy_init() {
     ::tpystd::tplib::box::__tpy_init();
     ::tpystd::errno_mod::__tpy_init();
     ::tpystd::os::__tpy_init();
+    ::tpystd::_interrupt::__tpy_init();
     _SEEK_SET = 0;
     _SEEK_CUR = 1;
     _SEEK_END = 2;

@@ -36,6 +36,9 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#if defined(__linux__)
+#include <sys/syscall.h>
+#endif
 
 // macOS does not expose `environ` to a shared library / non-main TU; the
 // supported access is `*_NSGetEnviron()`. Linux/BSD declare it in <unistd.h>.
@@ -713,6 +716,18 @@ std::tuple<int64_t, int64_t> waitpid(int64_t pid, int64_t options) {
     }
     if (r < 0) raise_errno();
     return {static_cast<int64_t>(r), static_cast<int64_t>(status)};
+}
+
+int64_t pidfd_open(int64_t pid) {
+#if defined(__linux__) && defined(SYS_pidfd_open)
+    if (pid <= 0 || pid > std::numeric_limits<::pid_t>::max()) return -1;
+    // Through syscall(): glibc only wraps it since 2.36.
+    long fd = ::syscall(SYS_pidfd_open, static_cast<::pid_t>(pid), 0u);
+    return fd < 0 ? -1 : static_cast<int64_t>(fd);
+#else
+    (void)pid;
+    return -1;
+#endif
 }
 
 int64_t waitstatus_to_exitcode(int64_t status) {

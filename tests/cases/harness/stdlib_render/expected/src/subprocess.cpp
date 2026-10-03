@@ -35,12 +35,17 @@ namespace tpystd::subprocess {
 //     self.stdin = None
 //     self.stdout = None
 //     self.stderr = None
+//     # The pipe ends kept here are nobody else's, so their reads and
+//     # writes can wait for a Ctrl-C too.
 //     if spawned[1] >= 0:
-//         self.stdin = BufferedWriter(FileIO(spawned[1], "wb"))
+//         self.stdin = BufferedWriter(
+//             FileIO(spawned[1], "wb", interruptible=True))
 //     if spawned[2] >= 0:
-//         self.stdout = BufferedReader(FileIO(spawned[2], "rb"))
+//         self.stdout = BufferedReader(
+//             FileIO(spawned[2], "rb", interruptible=True))
 //     if spawned[3] >= 0:
-//         self.stderr = BufferedReader(FileIO(spawned[3], "rb"))
+//         self.stderr = BufferedReader(
+//             FileIO(spawned[3], "rb", interruptible=True))
 Popen::Popen(std::vector<std::string>& args, std::optional<int64_t> stdin, std::optional<int64_t> stdout, std::optional<int64_t> stderr) {
     int64_t inherit = 0;
     int64_t in_spec = 0;
@@ -68,13 +73,13 @@ Popen::Popen(std::vector<std::string>& args, std::optional<int64_t> stdin, std::
     this->stdout = std::nullopt;
     this->stderr = std::nullopt;
     if ((std::get<1>(spawned) >= 0)) {
-        this->stdin = ::tpystd::io::BufferedWriter(::tpy::make_adapter<::tpystd::io::RawBinaryWriter>(::tpystd::io::FileIO(std::get<1>(spawned), "wb")));
+        this->stdin = ::tpystd::io::BufferedWriter(::tpy::make_adapter<::tpystd::io::RawBinaryWriter>(::tpystd::io::FileIO(std::get<1>(spawned), "wb", true, false, true)));
     }
     if ((std::get<2>(spawned) >= 0)) {
-        this->stdout = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(std::get<2>(spawned), "rb")));
+        this->stdout = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(std::get<2>(spawned), "rb", true, false, true)));
     }
     if ((std::get<3>(spawned) >= 0)) {
-        this->stderr = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(std::get<3>(spawned), "rb")));
+        this->stderr = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(std::get<3>(spawned), "rb", true, false, true)));
     }
 }
 
@@ -113,6 +118,9 @@ std::optional<int64_t> Popen::poll() {
 //         rc = self.returncode
 //         if rc is not None:
 //             return rc
+//         if _interrupt.deliverable():
+//             self._await_exit(-1.0)
+//             continue
 //         try:
 //             res = os.waitpid(self.pid, 0)
 //         except ChildProcessError:
@@ -125,6 +133,10 @@ int64_t Popen::wait() {
         std::optional<int64_t> rc = this->returncode;
         if ((rc.has_value())) {
             return (*rc);
+        }
+        if (::tpystd::_interrupt::deliverable()) {
+            this->_await_exit(-(1.0));
+            continue;
         }
         std::tuple<int64_t, int64_t> res;
         {
@@ -141,6 +153,67 @@ int64_t Popen::wait() {
     }
 }
 
+// # Waits for the exit with a Ctrl-C and a deadline in the picture, which
+// # waitpid() cannot do: returns once poll() has the exit code or the
+// # monotonic `deadline` (-1.0: none) has passed, and raises
+// # KeyboardInterrupt on a Ctrl-C (the child keeps running and the
+// # returncode stays None). The exit is awaited as an fd (Linux's pidfd)
+// # through the wait the pipes use; where there is none, by polling
+// # between interruptible sleeps that back off to 50 ms -- CPython's own
+// # loop for wait(timeout=...).
+// def _await_exit(self, deadline: float) -> None:
+//     if self.poll() is not None:
+//         return
+//     pidfd = _pidfd_open(self.pid)
+//     if pidfd >= 0:
+//         try:
+//             _interrupt.wait_readable(int32(pidfd), deadline)
+//         finally:
+//             os.close(pidfd)
+//         if self.poll() is not None:
+//             return
+//     delay = 0.0005
+//     while self.poll() is None:
+//         left = _interrupt.remaining(deadline)
+//         if left == 0.0:
+//             return
+//         if left > 0.0 and left < delay:
+//             delay = left
+//         time.sleep(delay)
+//         delay = min(delay * 2.0, 0.05)
+void Popen::_await_exit(double deadline) {
+    if ((this->poll().has_value())) {
+        return;
+    }
+    int64_t pidfd = ::tpy::stdlib::os::pidfd_open(this->pid);
+    if ((pidfd >= 0)) {
+        {
+            try {
+                ::tpystd::_interrupt::wait_readable(::tpy::int_cast_check<int32_t>(pidfd), deadline);
+            } catch (...) {
+                ::tpystd::os::close(pidfd);
+                throw;
+            }
+            ::tpystd::os::close(pidfd);
+        }
+        if ((this->poll().has_value())) {
+            return;
+        }
+    }
+    double delay = 0.0005;
+    while ((!this->poll().has_value())) {
+        double left = ::tpystd::_interrupt::remaining(deadline);
+        if ((left == 0.0)) {
+            return;
+        }
+        if (((left > 0.0) && (left < delay))) {
+            delay = left;
+        }
+        ::tpy::time_sleep(delay);
+        delay = ::std::fmin(((delay) * (2.0)), 0.05);
+    }
+}
+
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 //     if self.stdout is not None:
 //         self.stdout.close()
@@ -152,7 +225,13 @@ int64_t Popen::wait() {
 //         if self.stdin is not None:
 //             self.stdin.close()
 //     finally:
-//         self.wait()
+//         if isinstance(exc_val, KeyboardInterrupt):
+//             # The interrupt usually reached the child too, so it is about
+//             # to exit; waiting any longer would hold the interrupt up
+//             # for as long as the child runs. CPython's 0.25 s.
+//             self._await_exit(_interrupt.deadline_after(0.25))
+//         else:
+//             self.wait()
 void Popen::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
     if ((this->stdout.has_value())) {
         (*this->stdout).close();
@@ -166,10 +245,18 @@ void Popen::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_va
                 (*this->stdin).close();
             }
         } catch (...) {
-            this->wait();
+            if (const ::tpy::KeyboardInterrupt* __exc_val_ptr = dynamic_cast<const ::tpy::KeyboardInterrupt*>(exc_val); (__exc_val_ptr != nullptr)) {
+                this->_await_exit(::tpystd::_interrupt::deadline_after(0.25));
+            } else {
+                this->wait();
+            }
             throw;
         }
-        this->wait();
+        if (const ::tpy::KeyboardInterrupt* __exc_val_ptr = dynamic_cast<const ::tpy::KeyboardInterrupt*>(exc_val); (__exc_val_ptr != nullptr)) {
+            this->_await_exit(::tpystd::_interrupt::deadline_after(0.25));
+        } else {
+            this->wait();
+        }
     }
 }
 // # subprocess -- spawn child processes and talk to them over pipes.
@@ -185,9 +272,13 @@ void Popen::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_va
 // other descriptor of this process; the pipe ends kept here are close-on-exec.
 //
 // `wait()` blocks and caches the exit code, `poll()` checks without blocking;
-// `returncode` is negative for death by signal. `terminate()` / `kill()` are
+// `returncode` is negative for death by signal. A Ctrl-C ends a `wait()` and a
+// read or write on the pipes with KeyboardInterrupt, as in CPython; the child
+// keeps running and can be waited for again. `terminate()` / `kill()` are
 // no-ops once the child is known to have exited. The context manager closes
-// the pipes and waits, in CPython's order.
+// the pipes and waits, in CPython's order; when a KeyboardInterrupt is leaving
+// the block it waits at most 0.25 s, so the interrupt is not held up by a
+// child that keeps running (the child is then left unreaped, as in CPython).
 //
 // Not supported: communicate(), run() and friends, text mode, cwd/env, shell
 // and str args, pass_fds / close_fds=False, bufsize, and reaping of Popen
@@ -197,7 +288,9 @@ void Popen::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_va
 // from io import BufferedReader, BufferedWriter, FileIO
 // import os
 // import signal
-// from os._native import spawn_raw as _spawn_raw
+// import time
+// import _interrupt
+// from os._native import spawn_raw as _spawn_raw, pidfd_open as _pidfd_open
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -206,6 +299,7 @@ void __tpy_init() {
     ::tpystd::io::__tpy_init();
     ::tpystd::os::__tpy_init();
     ::tpystd::signal::__tpy_init();
+    ::tpystd::_interrupt::__tpy_init();
 }
 
 } // namespace tpystd::subprocess

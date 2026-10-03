@@ -33,6 +33,7 @@ from tpy.extern import native_global
 from tplib.box import Box
 import errno
 import os
+import _interrupt
 
 
 # CPython's io.DEFAULT_BUFFER_SIZE: chunk size for raw reads / the default
@@ -476,6 +477,15 @@ class FileIO:
     close()/__del__ close the fd; pass closefd=False to use an fd owned
     elsewhere.
 
+    `interruptible=True` is for the creator of a fd no other reader or writer
+    shares (a subprocess pipe end): each raw read and write then first waits
+    for the fd together with a Ctrl-C, so a read or write that would block
+    raises KeyboardInterrupt instead of sleeping through it. Only while the
+    fd is in blocking mode: after `os.set_blocking(f.fileno(), False)` the
+    call raises BlockingIOError at once, as before. An adopted fd keeps the
+    plain calls: it may be shared, where such a wait would change what
+    read() and write() do.
+
     Not declared BinaryReadable: it has read()/close() but no readline (the
     raw layer never line-splits -- BufferedReader does), and BufferedReader
     holds it as a concrete field, so no protocol erasure is needed.
@@ -491,9 +501,11 @@ class FileIO:
     # EAGAIN/BlockingIOError from os.read; map it to TimeoutError so the
     # makefile/BufferedReader read path matches CPython's socket.timeout.
     _timeout_mode: bool
+    _interruptible: bool
 
     def __init__(self, fd: int64, mode: str = "r", closefd: bool = True,
-                 timeout_mode: bool = False) -> None:
+                 timeout_mode: bool = False,
+                 interruptible: bool = False) -> None:
         # CPython checks the fd before the mode.
         if fd < 0:
             raise ValueError("negative file descriptor")
@@ -504,6 +516,7 @@ class FileIO:
         self._readable = access[0]
         self._writable = access[1]
         self._timeout_mode = timeout_mode
+        self._interruptible = interruptible
         if access[2]:
             try:
                 os.lseek(fd, 0, os.SEEK_END)
@@ -535,7 +548,17 @@ class FileIO:
         self._check_open()
         if not self._writable:
             raise OSError("File not open for writing")
+        if len(data) > 0 and self._waits_for_interrupt():
+            _interrupt.before_write(int32(self._fd))
         return int32(os.write(self._fd, data))
+
+    # The mode is asked of the fd each time: `os.set_blocking` on fileno()
+    # can change it, and a wait in front of a non-blocking call would turn
+    # its BlockingIOError into a hang. `deliverable()` first, so a thread no
+    # Ctrl-C reaches pays nothing.
+    def _waits_for_interrupt(self) -> bool:
+        return (self._interruptible and _interrupt.deliverable()
+                and os.get_blocking(self._fd))
 
     def flush(self) -> None:
         self._check_open()
@@ -552,6 +575,8 @@ class FileIO:
         return b"".join(chunks)
 
     def _os_read(self, n: int64) -> bytes:
+        if self._waits_for_interrupt():
+            _interrupt.before_read(int32(self._fd))
         if not self._timeout_mode:
             return os.read(self._fd, n)
         try:
@@ -661,18 +686,22 @@ class BufferedReader(BinaryReadable, Closable):
         # (BUGS.md#list-literal-owned-elem-initializer-copy).
         parts: list[bytes] = []
         parts.append(bytes(self._buf[self._pos:]))
-        while want < 0 or have < want:
-            chunk = self._raw.read(self._buffer_size)
-            if len(chunk) == 0:
-                self._eof = True
-                break
-            have += len(chunk)
-            found = to_newline and chunk.find(b"\n") >= 0
-            parts.append(chunk)
-            if found:
-                break
-        self._buf = b"".join(parts)
-        self._pos = 0
+        # A raw read that raises (a Ctrl-C, a timeout) must not drop the
+        # chunks read before it: they are gone from the fd.
+        try:
+            while want < 0 or have < want:
+                chunk = self._raw.read(self._buffer_size)
+                if len(chunk) == 0:
+                    self._eof = True
+                    break
+                have += len(chunk)
+                found = to_newline and chunk.find(b"\n") >= 0
+                parts.append(chunk)
+                if found:
+                    break
+        finally:
+            self._buf = b"".join(parts)
+            self._pos = 0
 
     def _take(self, n: int32) -> bytes:
         head = bytes(self._buf[self._pos:self._pos + n])

@@ -36,6 +36,12 @@ double remaining(double deadline);
 int32_t wait_readable(int32_t fd, double deadline);
 // def wait_writable(fd: int32, deadline: float) -> int32:
 int32_t wait_writable(int32_t fd, double deadline);
+// def deliverable() -> bool:
+bool deliverable();
+// def before_read(fd: int32) -> None:
+void before_read(int32_t fd);
+// def before_write(fd: int32) -> None:
+void before_write(int32_t fd);
 // def _wait(fd: int32, want_write: int32, deadline: float) -> int32:
 int32_t _wait(int32_t fd, int32_t want_write, double deadline);
 

@@ -205,6 +205,15 @@ inline bool interrupt_armed() noexcept {
     return interrupt_detail::ops.load(std::memory_order_acquire) != nullptr;
 }
 
+// True where a blocking wait should also watch for a Ctrl-C: this thread
+// would be raised a KeyboardInterrupt by one. Elsewhere an interruptible wait
+// buys nothing over the plain blocking call.
+inline bool signals_deliverable() noexcept {
+    const interrupt_detail::Ops* ops =
+        interrupt_detail::ops.load(std::memory_order_acquire);
+    return ops != nullptr && ops->deliverable() != 0;
+}
+
 [[gnu::cold, gnu::noinline]] inline void deliver_interrupt() {
     const interrupt_detail::Ops* ops =
         interrupt_detail::ops.load(std::memory_order_acquire);
@@ -255,6 +264,10 @@ inline void request_interrupt() noexcept {
 // embedding API is left undeclared, so a host that tries to arm a layer its
 // build removed fails to compile rather than silently getting no Ctrl-C.
 inline bool interrupt_armed() noexcept {
+    return false;
+}
+
+inline bool signals_deliverable() noexcept {
     return false;
 }
 
