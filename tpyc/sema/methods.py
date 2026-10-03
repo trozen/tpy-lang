@@ -42,6 +42,8 @@ from .calls import (
 )
 from .type_ops import ReturnSeed, seeded_arg_hint
 from .context import PENDING_CONTAINER_TYPES
+from .list_elem import ElemUse, elem_use, list_overloads
+from .pending_num import with_list_elem
 from .receiver_calls import (check_receiver_call_loans, credit_receiver_mutation,
                              receiver_is_readonly)
 
@@ -51,6 +53,7 @@ if TYPE_CHECKING:
     from .protocols import ProtocolChecker
     from .compatibility import TypeCompatibility
     from .local_deduction import LocalTypeDeduction
+    from .pending_num import PendingNumCell
     from .expressions import ExpressionAnalyzer
     from .calls import CallAnalyzer
     from ..typesys import PendingGenericInstanceInfo
@@ -189,20 +192,28 @@ class MethodAnalyzer:
             # unpacked element type instead of hitting the structural
             # analyzer's "Unknown expression type" catch-all; the non-variadic
             # reject gate in _check_args_or_pack_varargs still rejects it.
-            pre_analyzed = [self.expr.analyze_call_arg(arg)
-                            for arg in expr.args]
+            # A value parameter of a receiver whose element is already a
+            # typed container of numbers is a declared slot of that type:
+            # a list literal stored there is decided by the store.
+            elem = obj_type.get_element_type()
+            slot = elem if self.expr.pend.slot_containers(elem) else None
+            values = [elem_use(p.type, type_param_names) is ElemUse.VALUE
+                      for p in overload.params]
+            pre_analyzed = [
+                self.expr.analyze_at_slot(arg, slot, CoercionContext.ARG)
+                if slot is not None and value
+                and not isinstance(arg, TpyStarUnpack)
+                else self.expr.analyze_call_arg(arg)
+                for arg, value in zip(expr.args, values)]
 
-            # Infer element type from params that directly carry a type param
-            # (T or Own[T]). Params with nested type params like Iterable[Own[T]]
-            # are detected by contains_type_param but not handled here --
-            # inference from those would need protocol-level element type extraction.
+            # Infer element type from params that take the element as a
+            # value (T or Own[T]). Params with nested type params like
+            # Iterable[Own[T]] are detected by contains_type_param but not
+            # handled here -- inference from those would need protocol-level
+            # element type extraction.
             for i in inferring_indices:
-                arg_type = pre_analyzed[i]
-                param_type = unwrap_ref_type(overload.params[i].type)
-                if isinstance(param_type, OwnType) and isinstance(param_type.wrapped, TypeParamRef):
-                    infer_fn(expr.obj, arg_type, expr.args[i])
-                elif isinstance(param_type, TypeParamRef):
-                    infer_fn(expr.obj, arg_type, expr.args[i])
+                if values[i]:
+                    infer_fn(expr.obj, pre_analyzed[i], expr.args[i])
 
             # Update obj_type if element type changed
             info = literals_dict.get(literal_id)
@@ -218,6 +229,58 @@ class MethodAnalyzer:
             self.ctx.func.pre_analyzed_method_args[expr] = pre_analyzed
             return obj_type
         return None
+
+    def _elem_cell_method(self, expr: TpyMethodCall, obj_type: TpyType,
+                          cell: 'PendingNumCell') -> TpyType:
+        """A method call on a list literal whose element a cell decides.
+        A method that takes the element only as a whole value (a parameter
+        that is the bare type parameter) and returns it or nothing leaves
+        the element open: the value it takes is one the list holds
+        (`PendingNums.elem_store`), and what it returns follows the cell.
+        Any other method builds types from the element, so the element is
+        decided first. Returns the receiver as the call sees it."""
+        pend = self.expr.pend
+        overloads = list_overloads(self.ctx, expr.method, len(expr.args))
+        fn, uses = overloads[0] if len(overloads) == 1 else (None, None)
+        if (fn is None or uses.builds_types or expr.kwargs
+                or any(isinstance(a, TpyStarUnpack) for a in expr.args)):
+            obj_type = pend.force_list(
+                expr.obj, obj_type, cell, f"a call to '{expr.method}()'")
+            self.ctx.set_expr_type(expr.obj, obj_type)
+            return obj_type
+        pre: list[TpyType] = []
+        for arg, param, use in zip(expr.args, fn.params, uses.params):
+            if use is ElemUse.VALUE:
+                with pend.sink(arg):
+                    arg_type = self.expr.analyze_call_arg(arg)
+                pend.elem_store(cell, arg_type, arg, expr)
+            else:
+                arg_type = self.expr.analyze_arg_at_param(
+                    arg, param.type, param.type)
+            pre.append(arg_type)
+        self.ctx.func.pre_analyzed_method_args[expr] = pre
+        return pend.list_as_known(obj_type, cell)
+
+    def _settle_elem_method_later(self, expr: TpyMethodCall,
+                                  obj_type: TpyType,
+                                  cell: 'PendingNumCell') -> None:
+        """The signature recorded on a call resolved against a list whose
+        element is not decided yet names the element's cell. Once the cell
+        settles, record the signature at the element's type: it is what
+        the lowering reads the call's slots from."""
+        resolved = expr.resolved_function_info
+        if resolved is None:
+            return
+        root = resolved.root
+        pend = self.expr.pend
+
+        def resolve(types: tuple[TpyType, ...]) -> None:
+            subst = self.type_ops.build_type_substitution(
+                with_list_elem(obj_type, types[0]))
+            expr.resolved_function_info = (
+                self.type_ops.substitute_method_type_params(root, subst))
+
+        pend.defer(expr, (pend.elem_leaf(cell),), resolve)
 
     def _check_args_or_pack_varargs(
         self, expr: TpyMethodCall,
@@ -692,7 +755,10 @@ class MethodAnalyzer:
                     return result
 
         if obj_type is None:
-            obj_type = self.expr.analyze_expr(expr.obj)
+            # A method of a list literal's own may leave its element open
+            # (`_elem_cell_method`).
+            with self.expr.pend.list_sink(expr.obj):
+                obj_type = self.expr.analyze_expr(expr.obj)
         callable_type = unwrap_qualifiers(obj_type)
         if expr.method == "__call__" and isinstance(callable_type, CallableType):
             return self.calls.analyze_callable_value_call(
@@ -741,7 +807,10 @@ class MethodAnalyzer:
         # For any method on a pending container, check if params involve the
         # container's type parameters. If so, pre-analyze the args and infer
         # the element type (generalizes append/insert/add/etc.).
-        if isinstance(obj_type, PendingListType) and expr.args:
+        elem_cell = self.expr.pend.list_cell(obj_type)
+        if elem_cell is not None:
+            obj_type = self._elem_cell_method(expr, obj_type, elem_cell)
+        elif isinstance(obj_type, PendingListType) and expr.args:
             obj_type = self._infer_pending_container_element(
                 expr, obj_type, "builtins.list", obj_type.literal_id,
                 self.deduction.infer_empty_list_element_type,
@@ -796,6 +865,9 @@ class MethodAnalyzer:
                 # them.
                 result = pending_elem_read(self.ctx, original_type, result,
                                            expr)
+                if elem_cell is not None and elem_cell.settled is None:
+                    self._settle_elem_method_later(expr, original_type,
+                                                   elem_cell)
             if result is not None:
                 info = expr.resolved_function_info
                 if (info is not None and info.is_callable_value

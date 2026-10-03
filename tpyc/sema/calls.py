@@ -80,7 +80,7 @@ if TYPE_CHECKING:
     from .local_deduction import LocalTypeDeduction
     from .expressions import ExpressionAnalyzer
     from .methods import MethodAnalyzer
-    from .pending_num import PendingNums
+    from .pending_num import PendingNumCell, PendingNums
     from ..parse.nodes import SourceLocation
 
 from tpyc import modules as builtin_modules
@@ -893,7 +893,8 @@ class CallAnalyzer:
                     f"'{func_name}' missing required keyword argument: '{fld.name}'", expr)
         td_call = TpyCall(TpyName(record.name, loc=expr.loc), td_args, loc=expr.loc)
         for i, (arg, fld) in enumerate(zip(td_args, record.fields)):
-            arg_type = self.expr.analyze_expr_with_hint(arg, fld.type)
+            arg_type = self.expr.analyze_at_slot(arg, fld.type,
+                                                 CoercionContext.ARG)
             td_call.args[i] = self.compat.coerce_expr(
                 arg, arg_type, fld.type, f"argument '{fld.name}'",
                 coercion_ctx=CoercionContext.ARG)
@@ -1703,7 +1704,7 @@ class CallAnalyzer:
                 continue
             # Any int prints the same; its width is decided when the
             # function settles.
-            with self.pend.sink(arg):
+            with self.pend.sink(arg), self.pend.list_sink(arg):
                 self.expr.analyze_expr(arg)
         expr.resolved_function_info = FunctionInfo(
             name="print",
@@ -4334,8 +4335,21 @@ class CallAnalyzer:
         # A fill aimed at this call (it is an outer overload's argument) is its
         # LHS too, so its own untyped arguments are filled the same way.
         lhs_hint = self.ctx.slot_hint_at(call)
+        sole = func_infos[0] if len(func_infos) == 1 else None
+
+        def probe(i: int, arg: TpyExpr,
+                  hint: 'SlotHint | TpyType | None' = None) -> TpyType:
+            # The one candidate's parameter may be a protocol that says
+            # nothing about a list's elements (`len`): a list literal
+            # passes there with its element still open.
+            blind = (sole is not None and i < len(sole.params)
+                     and not sole.params[i].is_variadic
+                     and self.expr._element_blind(sole.params[i].type))
+            with self.pend.list_sink(arg if blind else None):
+                return self.expr.analyze_call_arg(arg, hint)
+
         if lhs_hint is None:
-            return [self.expr.analyze_call_arg(arg) for arg in args]
+            return [probe(i, arg) for i, arg in enumerate(args)]
 
         n = len(args)
         candidate_hints = [
@@ -4356,16 +4370,16 @@ class CallAnalyzer:
         matching = [(f, h) for f, h in zip(func_infos, candidate_hints)
                     if h is not None]
         if len(matching) != 1:
-            return [self.expr.analyze_call_arg(arg) for arg in args]
+            return [probe(i, arg) for i, arg in enumerate(args)]
         func, chosen = matching[0]
         if lhs_hint.is_declared or func.type_params:
-            return [self.expr.analyze_call_arg(arg, _probe_arg_hint(arg, chosen[i]))
+            return [probe(i, arg, _probe_arg_hint(arg, chosen[i]))
                     for i, arg in enumerate(args)]
         out: list[TpyType] = []
-        for arg, hint in zip(args, chosen):
+        for i, (arg, hint) in enumerate(zip(args, chosen)):
             with self.ctx.slot_hint_scope(
                     SlotHint.fill(hint.type, arg) if hint is not None else None):
-                out.append(self.expr.analyze_call_arg(arg))
+                out.append(probe(i, arg))
         return out
 
     def _is_function_binding(self, expr: TpyName) -> bool:
@@ -4850,13 +4864,61 @@ class CallAnalyzer:
             lambda_expr.captured_names = saved_captured_names
             lambda_expr.captures_by_value = saved_captures_by_value
 
+    def _viable_candidates(self, expr: TpyCall,
+                           candidates: list[FunctionInfo]) -> list[FunctionInfo]:
+        """The candidates the shape of call `expr`, as written, leaves:
+        its argument count and keyword names."""
+        if len(candidates) == 1:
+            return candidates
+        return [f for f in candidates
+                if self._supplied_fn_slots(expr, f) is not None]
+
+    @contextmanager
+    def _adaptive_list_args(self, expr: TpyCall,
+                            viable: list[FunctionInfo]) -> Iterator[None]:
+        """Analyze call `expr` with its list-literal arguments adaptive, when
+        the call shape leaves ONE candidate (`_viable_candidates`) and it is
+        generic: a list literal whose element is not decided yet then binds
+        no type parameter another argument binds
+        (`PendingNums.adaptive_view`), and the resolved parameter decides
+        its element. With several candidates the element is decided before
+        they are scored, since scoring needs a type. An argument the call
+        left open is decided when the call is."""
+        if len(viable) != 1 or not _has_type_param_ref_in_params(viable[0]):
+            yield
+            return
+        nodes = [*expr.args, *(expr.kwargs or {}).values()]
+        cells: list[PendingNumCell] = []
+        self.ctx.adaptive_list_args.append((nodes, cells))
+        try:
+            yield
+        finally:
+            self.ctx.adaptive_list_args.pop()
+        if self.ctx.trial_depth:
+            return
+        open_cells = {c.cid for c in cells if c.settled is None}
+        if open_cells:
+            self.pend.settle(
+                open_cells, use=expr,
+                what=f"an argument to '{viable[0].name}()'")
+            self.pend.resolve_ready()
+
     def _analyze_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> TpyType:
         """Type-check a call to a builtin function using unified FunctionInfo overloads.
 
         Uses two-pass overload resolution: prefer exact type matches over coercion matches.
         For generic overloads (with type_params), uses type inference.
         """
+        # Counted before the keywords are flattened into positions, where
+        # `key=` and `reverse=` would read as one another.
+        viable = self._viable_candidates(expr, overloads)
         key_arg = self._flatten_key_kwarg(expr, overloads[0].name)
+        with self._adaptive_list_args(expr, viable):
+            return self._builtin_function_overloads(expr, overloads, key_arg)
+
+    def _builtin_function_overloads(self, expr: TpyCall,
+                                    overloads: list[FunctionInfo],
+                                    key_arg: TpyExpr | None) -> TpyType:
         self._reject_kwargs_for_builtin(expr, overloads[0].name)
         protocol_checker = self.protocols.type_conforms_to_protocol
 
@@ -5455,7 +5517,8 @@ class CallAnalyzer:
                         f"that *unpacking cannot apply (call to '{func.name}')",
                         arg)
                 continue
-            arg_type = self.expr.analyze_expr_with_hint(arg, elem_type)
+            arg_type = self.expr.analyze_at_slot(arg, elem_type,
+                                                 CoercionContext.ARG)
             arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
             if isinstance(arg_type, OwnType):
                 arg_type = arg_type.wrapped
@@ -5511,6 +5574,10 @@ class CallAnalyzer:
         cached = self.ctx.get_expr_type(expr)
         if cached is not None:
             return cached
+        with self._adaptive_list_args(expr, [func]):
+            return self._generic_function_call(expr, func)
+
+    def _generic_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
 
         # Check for invalid type arguments (e.g., first[123](x) or first[var](x))
         if expr.type_args_parse_error:
@@ -5640,7 +5707,8 @@ class CallAnalyzer:
                 vpc_active = func.value_ptr_coercion and isinstance(resolved_ptype, PtrType)
                 check_ptype = resolved_ptype.pointee if vpc_active else resolved_ptype
 
-                arg_type = self.expr.analyze_expr_with_hint(arg, check_ptype)
+                arg_type = self.expr.analyze_at_slot(arg, check_ptype,
+                                                     CoercionContext.ARG)
                 self._maybe_coerce_empty_list_to_protocol(arg_type, check_ptype)
                 arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 

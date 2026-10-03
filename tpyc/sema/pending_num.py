@@ -33,26 +33,29 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, Iterator
+from typing import TYPE_CHECKING, Callable, Iterator, Sequence
 
 from ..coercions import Coercion, CoercionContext
 from ..parse import (
-    TpyCoerce, TpyExpr, TpyIntLiteral, TpyName, TpyStmt, TpyUnaryOp,
-    TpyVarDecl,
+    TpyCoerce, TpyExpr, TpyIntLiteral, TpyMethodCall, TpyName, TpyStmt,
+    TpySubscript, TpyUnaryOp, TpyVarDecl,
 )
 from ..parse.nodes import is_parse_node
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, PendingNumType, OwnType,
-    OptionalType, BIGINT, FLOAT, INT64, is_float_type,
-    is_integer_type, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
+    OptionalType, PendingListType, TupleType, UnionType, BIGINT, FLOAT,
+    INT64, is_float_type, is_integer_type, unwrap_readonly, unwrap_ref_type,
+    unwrap_send_sync,
 )
 from ..type_def_registry import (
     is_fixed_int_type, is_big_int_type, is_float64_type, int_traits_of,
+    is_array, is_list, is_span,
 )
 from .numeric_lattice import (join_numeric, smallest_type_holding,
                               widen_numeric_types)
 from .type_join import (annotate_first_binding, operand_spelling,
-                        python_type_name, wider_store_message)
+                        python_type_name, usage_mix_message,
+                        wider_store_message)
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -106,6 +109,21 @@ class PendingNumCell:
     # The use that settled the cell early: (node, what it is, the pending
     # local the use read when it is not this one).
     frozen_by: tuple[TpyExpr | TpyStmt | None, str, str | None] | None = None
+    # The list literal whose element this cell decides (its id); `name` is
+    # then the list's variable, and the cell is no local's.
+    list_literal: int | None = None
+    # The element of a list whose first binding holds typed values: the
+    # join of those values, decided there (`PendingNums.decide_at_birth`),
+    # with no default type to start from and no later widening -- as a
+    # local first bound to a typed value has that value's type.
+    no_base: bool = False
+    # The typed container that decided a list's element: (its type as
+    # the source spells it, the node, what the list is there).
+    context: tuple[TpyType, TpyExpr | TpyStmt | None, str] | None = None
+    # What the evidence joined to (`PendingNums.known_so_far`), and the
+    # epoch that answer is good for.
+    known: TpyType | None = None
+    known_at: int = -1
 
 
 @dataclass
@@ -129,6 +147,50 @@ def strip_int(t: TpyType | None) -> TpyType | None:
 
 def is_pending_num(t: TpyType | None) -> bool:
     return isinstance(strip_int(t), PendingNumType)
+
+
+def pending_list_of(t: TpyType | None) -> PendingListType | None:
+    """The pending list literal type `t` is, under its qualifiers."""
+    seen = None
+    while t is not None and t is not seen:
+        seen = t
+        t = unwrap_send_sync(unwrap_readonly(unwrap_ref_type(t)))
+        if isinstance(t, OwnType):
+            t = t.wrapped
+    return t if isinstance(t, PendingListType) else None
+
+
+def _bare_slot(declared: TpyType | None) -> TpyType | None:
+    """`declared` without its readonly / Ref / Own / Send / Sync wrappers."""
+    t, seen = declared, None
+    while t is not None and t is not seen:
+        seen = t
+        t = unwrap_send_sync(unwrap_readonly(unwrap_ref_type(t)))
+        if isinstance(t, OwnType):
+            t = t.wrapped
+    return t
+
+
+def numeric_container(declared: TpyType | None) -> TpyType | None:
+    """`declared` without its qualifiers when it is a list, a Span or an
+    Array of one numeric type: the container a list literal's element can
+    agree with. A slot is asked through `PendingNums.slot_containers`."""
+    t = _bare_slot(declared)
+    if t is None or not (is_list(t) or is_span(t) or is_array(t)):
+        return None
+    elem = unwrap_readonly(t.type_args[0])
+    if not (is_integer_type(elem) or is_float_type(elem)):
+        return None
+    return t
+
+
+def with_list_elem(t: TpyType, elem: TpyType) -> TpyType:
+    """`t`, a pending list under its qualifiers, with `elem` as element."""
+    if isinstance(t, PendingListType):
+        if t.element_type == elem:
+            return t
+        return PendingListType(elem, t.size, t.literal_id)
+    return t.map_inner_types(lambda i: with_list_elem(i, elem))
 
 
 def is_numeric_slot(t: TpyType | None) -> bool:
@@ -247,6 +309,18 @@ class PendingNums:
         finally:
             self.ctx.pending_ok_node = saved
 
+    @contextmanager
+    def list_sink(self, node: TpyExpr | None) -> Iterator[None]:
+        """Analyze `node` as a consumer that takes a list whose element is
+        not decided yet. A permission of its own: a consumer of a pending
+        number is not thereby one of such a list."""
+        saved = self.ctx.pending_list_ok_node
+        self.ctx.pending_list_ok_node = node
+        try:
+            yield
+        finally:
+            self.ctx.pending_list_ok_node = saved
+
     # ------------------------------------------------------------------
     # Cells
     # ------------------------------------------------------------------
@@ -278,6 +352,146 @@ class PendingNums:
         self.ctx.pending_num_cells[cell.cid] = cell
         self.ctx.func.pending_cell_of[name] = cell.cid
         return cell
+
+    def new_elem_cell(self, name: str | None, literal_id: int,
+                      decl: TpyVarDecl | None, is_float: bool,
+                      no_base: bool) -> PendingNumCell:
+        """The cell that decides the element of list literal `literal_id`,
+        bound to local `name`."""
+        self.ctx.pending_num_counter += 1
+        cell = PendingNumCell(cid=self.ctx.pending_num_counter,
+                              name=name or "this list", first_decl=decl,
+                              is_float=is_float, list_literal=literal_id,
+                              no_base=no_base)
+        self.ctx.pending_num_cells[cell.cid] = cell
+        self.ctx.func.pending_elem_cids.append(cell.cid)
+        return cell
+
+    def list_cell(self, t: TpyType | None) -> PendingNumCell | None:
+        """The element cell of the list literal `t` is the type of."""
+        inner = pending_list_of(t)
+        if inner is None:
+            return None
+        info = self.ctx.list_literals.get(inner.literal_id)
+        if info is None or info.elem_cell is None:
+            return None
+        return self.ctx.pending_num_cells.get(info.elem_cell)
+
+    def open_list(self, t: TpyType | None) -> bool:
+        """Whether `t` is, or holds as a tuple element, a list literal
+        whose element is not decided yet."""
+        cell = self.list_cell(t)
+        if cell is not None:
+            return cell.settled is None
+        bare = _bare_slot(t)
+        return isinstance(bare, TupleType) and any(
+            self.open_list(e) for e in bare.element_types)
+
+    def current_list_type(self, t: TpyType) -> TpyType:
+        """`t` with every list literal in it (itself, a tuple element) at
+        the element its cell has decided so far."""
+        cell = self.list_cell(t)
+        if cell is not None:
+            return self.list_as_known(t, cell)
+        if isinstance(t, TupleType):
+            return TupleType(tuple(self.current_list_type(e)
+                                   for e in t.element_types))
+        return t
+
+    def slot_containers(
+            self, declared: TpyType | None,
+            order: Callable[[tuple[TpyType, ...]], Sequence[TpyType]] | None = None,
+    ) -> tuple[TpyType, ...]:
+        """The typed containers of numbers a list literal can meet at a
+        slot declared `declared`: the slot itself (`numeric_container`),
+        the list an annotated list local was declared as, the member of an
+        optional slot, each such member of a union slot -- in the order
+        `order` ranks the union's members, the one the coercion tries them
+        in (`TypeCompatibility._union_member_order`)."""
+        t = _bare_slot(declared)
+        if isinstance(t, PendingListType):
+            info = self.ctx.list_literals.get(t.literal_id)
+            if (info is None or not info.has_explicit_annotation
+                    or info.elem_cell is not None):
+                return ()
+            return self.slot_containers(info.explicit_type, order)
+        if isinstance(t, OptionalType):
+            return self.slot_containers(t.inner, order)
+        if isinstance(t, UnionType):
+            members = order(t.members) if order is not None else t.members
+            return tuple(c for m in members
+                         for c in self.slot_containers(m, order))
+        container = numeric_container(t)
+        return (container,) if container is not None else ()
+
+    def meets(self, cell: PendingNumCell, declared: TpyType, verb: str,
+              adaptive: bool = False,
+              order: Callable[[tuple[TpyType, ...]], Sequence[TpyType]] | None = None,
+              ) -> tuple[TpyType | None, TpyType | None, str | None]:
+        """How the list of element cell `cell` meets a slot declared
+        `declared`: (container, shown, refusal). The first of the slot's
+        containers (`slot_containers`, a union's members in `order`) that
+        admits the list (`context_refusal`); the refusal of a slot whose
+        one container does not; all None for a slot with no container, or
+        with several that all refuse, which the ordinary check reports.
+        `adaptive` is an argument the enclosing generic call left adaptive,
+        at a parameter that call resolved: there a view of a list
+        (`Iterable[T]`) is a container too, and `shown` is the view the
+        source spells."""
+        if adaptive:
+            container, shown = self.compat.deduction.elem_container(
+                declared, self.elem_leaf(cell))
+            found = [(container, shown)] if container is not None else []
+        else:
+            found = [(c, None) for c in self.slot_containers(declared, order)]
+        refusals = []
+        for container, shown in found:
+            refusal = self.context_refusal(cell, container, verb, shown,
+                                           adaptive)
+            if refusal is None:
+                return container, shown, None
+            refusals.append(refusal)
+        return None, None, refusals[0] if len(refusals) == 1 else None
+
+    @staticmethod
+    def elem_leaf(cell: PendingNumCell) -> PendingNumType:
+        """The type that names element cell `cell`, settled or not: what
+        the list literal's own record holds."""
+        return PendingNumType(frozenset({cell.cid}), None, cell.is_float)
+
+    def list_as_known(self, t: TpyType, cell: PendingNumCell) -> TpyType:
+        """The list type `t` with the element as its cell has it: the
+        settled type, else the pending one."""
+        return with_list_elem(t, self.cell_type(cell))
+
+    def adaptive_view(self, t: TpyType, cell: PendingNumCell) -> TpyType:
+        """The list type `t` as an argument of a generic call sees it while
+        the call's type parameters are inferred: a list that holds only
+        literals so far shows a literal element, which binds a type
+        parameter as an integer or float literal argument does -- to
+        whatever another argument binds it to, else to the default. A list
+        that holds typed values shows the element known so far. Nothing is
+        settled: the resolved parameter decides the element afterwards
+        (`LocalTypeDeduction.mark_container_param_context`)."""
+        elem = self.known_so_far(cell)
+        if not cell.typed and elem == self.default_type(cell.is_float):
+            init = cell.first_decl.init if cell.first_decl is not None else None
+            first = (self.ctx.get_expr_type(init.elements[0])
+                     if getattr(init, "elements", None) else None)
+            literal = FloatLiteralType if cell.is_float else IntLiteralType
+            elem = (first if isinstance(first, literal)
+                    and self.literal_type(first) == elem else literal())
+        return with_list_elem(t, elem)
+
+    def list_so_far(self, t: TpyType, cell: PendingNumCell) -> TpyType:
+        """The list type `t` at the element type known so far; asks nothing
+        to settle. For a reader that only inspects the type."""
+        return with_list_elem(t, self.known_so_far(cell))
+
+    def _cids(self) -> list[int]:
+        """Every cell of the function under analysis."""
+        func = self.ctx.func
+        return [*func.pending_cell_of.values(), *func.pending_elem_cids]
 
     def cell_type(self, cell: PendingNumCell) -> TpyType:
         """What a read of the cell's local is typed."""
@@ -347,10 +561,14 @@ class PendingNums:
             else:
                 self._check_fits(cell, value_type, node)
             return
+        self.ctx.pending_num_epoch += 1
         if (cell.derived and cell.evidence
                 and not any(s is node for s in cell.arm_sites)):
             cell.must_fit.append((value_type, node))
-        else:
+        elif cell.list_literal is None or not any(
+                et == value_type for et, _ in cell.evidence):
+            # A list holds many values of few types; one of each is all
+            # the join reads.
             cell.evidence.append((value_type, node))
 
     def known_type(self, t: TpyType) -> TpyType:
@@ -359,7 +577,8 @@ class PendingNums:
         if not isinstance(t, PendingNumType):
             return t
         known = lub_int([t.floor] + [
-            self.known_so_far(self.ctx.pending_num_cells[c]) for c in t.cells])
+            self.known_so_far(self.ctx.pending_num_cells[c])
+            for c in t.cells])
         return known if isinstance(known, TpyType) else self.default_type(t.is_float)
 
     def known_so_far(self, cell: PendingNumCell) -> TpyType:
@@ -367,8 +586,12 @@ class PendingNums:
         there is none; asks nothing to settle."""
         if cell.settled is not None:
             return cell.settled
-        t = self._value(cell, {}, set())
-        return t if isinstance(t, TpyType) else self.default_type(cell.is_float)
+        if cell.known is None or cell.known_at != self.ctx.pending_num_epoch:
+            t = self._value(cell, {}, set())
+            cell.known = (t if isinstance(t, TpyType)
+                          else self.default_type(cell.is_float))
+            cell.known_at = self.ctx.pending_num_epoch
+        return cell.known
 
     def _value(self, cell: PendingNumCell, cur: dict[int, TpyType | None],
                visiting: set[int]) -> TpyType | None | _NoCommonType:
@@ -395,7 +618,9 @@ class PendingNums:
         return out
 
     def _base(self, cell: PendingNumCell) -> TpyType | None:
-        return None if cell.derived else self.default_type(cell.is_float)
+        if cell.derived or cell.no_base:
+            return None
+        return self.default_type(cell.is_float)
 
     def _eval(self, t: TpyType, cur: dict[int, TpyType | None],
               visiting: set[int]) -> TpyType | None | _NoCommonType:
@@ -451,6 +676,7 @@ class PendingNums:
                     changed = True
         for cell in cells:
             self.check_arm_group(cell, cur)
+        self.ctx.pending_num_epoch += 1
         for cell in cells:
             t = cur[cell.cid]
             cell.settled = t if t is not None else self.default_type(cell.is_float)
@@ -486,6 +712,8 @@ class PendingNums:
             t = self.concrete(t)
         if join_int(cell.settled, t) == cell.settled:
             return
+        if cell.list_literal is not None:
+            raise self.ctx.error(self._wider_store_refusal(cell, t), node)
         fix = annotate_first_binding(cell.name, t, self._first_value(cell))
         if cell.frozen_by is not None:
             use, what, via = cell.frozen_by
@@ -581,12 +809,310 @@ class PendingNums:
         # The unsigned side is the one no default int holds.
         unsigned = t if not int_traits_of(t) or not int_traits_of(t).signed else held
         wide = self._annotation_for(cell, unsigned)
+        if cell.list_literal is not None:
+            raise self.ctx.error(
+                f"'{cell.name}' holds {python_type_name(held)} elements and "
+                f"this value is {python_type_name(t)}, which have no common "
+                f"type; annotate its first binding: {cell.name}: "
+                f"list[{python_type_name(smallest_signed_holding(unsigned))}]"
+                f" = [...]", node)
         raise self.ctx.error(
             f"'{cell.name}' holds {python_type_name(held)} values and this "
             f"value is {python_type_name(t)}, which have no common type; "
             f"annotate its first binding: {cell.name}: "
             f"{python_type_name(wide)} = {self._first_value(cell)}",
             node)
+
+    # ------------------------------------------------------------------
+    # List elements
+    # ------------------------------------------------------------------
+
+    def _elem_holds(self, cell: PendingNumCell) -> str:
+        """What a refusal says the list of element cell `cell` holds, and
+        since which use when one decided it early."""
+        held = python_type_name(self.known_so_far(cell))
+        head = f"'{cell.name}' holds {held} elements"
+        if cell.no_base:
+            line = _line(cell.first_decl)
+            return f"{head} (line {line})" if line is not None else head
+        if cell.frozen_by is None:
+            return head
+        use, what, via = cell.frozen_by
+        line = _line(use)
+        since = f" since line {line}" if line is not None else ""
+        through = f"through '{via}', " if via is not None else ""
+        return f"{head}{since} ({through}{what})"
+
+    def _elem_annotation(self, cell: PendingNumCell, t: TpyType,
+                         spelled: str | None = None) -> str:
+        """The fix a refusal about a list's element names: the annotation
+        of the list's first binding that holds `t` and what it holds now."""
+        if spelled is None:
+            wide = join_int(self.known_so_far(cell), t)
+            # Signed and unsigned values with no fixed type in common fit
+            # an `int`.
+            spelled = (f"list[{python_type_name(wide)}]"
+                       if isinstance(wide, TpyType)
+                       else "list[float]" if cell.is_float else "list[int]")
+        return (f"annotate its first binding: {cell.name}: {spelled} = "
+                f"[...]")
+
+    def _unfit_value(self, cell: PendingNumCell, t: TpyType) -> str | None:
+        """The first value the list was first bound to that an element of
+        type `t` would not hold, as the source spells it; None when `t`
+        holds them all, so an annotation at `t` is a fix to name."""
+        init = cell.first_decl.init if cell.first_decl is not None else None
+        unfit = self.first_unfit(getattr(init, "elements", None), t)
+        return self._spelled_value(unfit) if unfit is not None else None
+
+    def first_unfit(self, elements: list[TpyExpr] | None, t: TpyType,
+                    literals_only: bool = False) -> TpyExpr | None:
+        """The first of a list literal's `elements` that an element of type
+        `t` would not hold; with `literals_only`, the first number literal."""
+        for elem in elements or ():
+            et = strip_int(self.ctx.get_expr_type(elem))
+            if et is None or (literals_only and not isinstance(
+                    et, (IntLiteralType, FloatLiteralType))):
+                continue
+            if not self.compat.is_type_compatible(et, t):
+                return elem
+        return None
+
+    def _elem_family(self, cell: PendingNumCell) -> TpyType:
+        """The element as a mix message names it: a list that holds only
+        literals holds `int` or `float` values, whatever width they will
+        take."""
+        known = self.known_so_far(cell)
+        if not cell.typed and known == self.default_type(cell.is_float):
+            return FloatLiteralType() if cell.is_float else IntLiteralType()
+        return known
+
+    def elem_mix_message(self, cell: PendingNumCell, other: TpyType,
+                         value: TpyExpr | None) -> str:
+        """The refusal of an int meeting a float in the element of a list:
+        a list literal keeps the numeric family its values are written in."""
+        mine = self._elem_family(cell)
+        floats = other if cell.is_float is False else mine
+        mix = self.compat.deduction.int_float_mix(mine, other)
+        if mix is None:
+            return (f"'{cell.name}' holds {python_type_name(mine)} elements "
+                    f"and this value is {python_type_name(other)}")
+        return usage_mix_message(
+            mix, f"list '{cell.name}'",
+            f"{cell.name}: list[{python_type_name(floats)}] = [...]", value)
+
+    def _elem_mix(self, cell: PendingNumCell, other: TpyType,
+                  node: TpyExpr | TpyStmt | None,
+                  value: TpyExpr | None) -> None:
+        raise self.ctx.error(self.elem_mix_message(cell, other, value), node)
+
+    def elem_annotation_hint(self, source: TpyExpr | None,
+                             expected: TpyType,
+                             coercion_ctx: CoercionContext | None = None,
+                             ) -> str:
+        """For a mismatch at a read of a list literal's element whose type
+        is not `expected`: the annotation of the list that makes it one,
+        or -- when the list holds a value that annotation would not -- the
+        type to give the slot the read goes to (`coercion_ctx`)."""
+        while isinstance(source, TpyCoerce):
+            source = source.expr
+        if not isinstance(source, (TpySubscript, TpyMethodCall)):
+            return ""
+        cell = self.list_cell(self.ctx.expr_types.get(source.obj))
+        e = strip_int(expected)
+        if (cell is None or value_family(e) != cell.is_float
+                or isinstance(e, (IntLiteralType, FloatLiteralType,
+                                  PendingNumType))):
+            return ""
+        unfit = self._unfit_value(cell, e)
+        if unfit is not None:
+            held = python_type_name(self.known_so_far(cell))
+            slot = coercion_ctx.slot if coercion_ctx is not None else "the slot"
+            return (f"; '{cell.name}' holds {held} elements, and a "
+                    f"list[{python_type_name(e)}] would not hold {unfit}: "
+                    f"declare {slot} as {held}")
+        return (f"; '{cell.name}' takes its element type from the values "
+                f"stored in it, not from its uses: annotate its first "
+                f"binding: {cell.name}: list[{python_type_name(e)}] = [...]")
+
+    def _wider_store_refusal(self, cell: PendingNumCell, t: TpyType,
+                             literal: TpyExpr | None = None,
+                             literal_type: TpyType | None = None) -> str:
+        """The refusal of a value stored into a list whose element is
+        decided and does not hold it. `literal` is the stored literal, which
+        counts as `t`."""
+        this = (f"the literal {self._spelled_value(literal)} counts as "
+                f"{python_type_name(t)}" if literal is not None
+                else f"this value is {python_type_name(t)}")
+        head = f"{self._elem_holds(cell)}, and {this}"
+        if cell.context is None:
+            return f"{head}; {self._elem_annotation(cell, t)}"
+        # A typed container decided the element: its type is the only
+        # annotation that container accepts.
+        container, _node, verb = cell.context
+        if (literal_type is not None
+                and self.compat.is_type_compatible(literal_type, cell.settled)):
+            return (f"{head}; "
+                    f"{self._elem_annotation(cell, t, self._annotated(container))}")
+        return (f"{head}; the list is {verb} as {container}, so the value "
+                f"must be {python_type_name(cell.settled)}")
+
+    def _annotated(self, container: TpyType) -> str:
+        """The annotation of a list that meets the typed `container`: a
+        view takes a list, so the list is what to annotate."""
+        if is_list(container) or is_array(container):
+            return str(container)
+        return f"list[{python_type_name(self.context_elem(container))}]"
+
+    def elem_store(self, cell: PendingNumCell, value_type: TpyType,
+                   value: TpyExpr | None, site: TpyStmt | TpyExpr) -> bool:
+        """Record a value stored into the list of element cell `cell` (an
+        initializer element, an `append`, `xs[i] = v`). False when the value
+        is no number: the ordinary check at the store reports it."""
+        t = strip_int(value_type)
+        family = value_family(t)
+        if family is None:
+            return False
+        if family != cell.is_float:
+            self._elem_mix(cell, t, value if value is not None else site, value)
+        if not isinstance(t, (IntLiteralType, FloatLiteralType)):
+            self.add_store(cell, t, site)
+            return True
+        if cell.settled is not None:
+            at = value if value is not None else site
+            if cell.no_base:
+                # Beside typed values a literal adapts to their type, as in
+                # the initializer; one that does not fit is refused.
+                if self.compat.is_type_compatible(t, cell.settled):
+                    return True
+                counted = self.literal_type(t)
+                if not is_big_int_type(counted):
+                    raise self.ctx.error(
+                        f"{self._elem_holds(cell)}, and the literal "
+                        f"{self._spelled_value(value)} does not fit "
+                        f"{python_type_name(cell.settled)}; "
+                        f"{self._elem_annotation(cell, counted)}", at)
+            else:
+                # In a list of literals a literal counts as its default
+                # type, which a decided element must hold.
+                counted = self.literal_type(t)
+                if join_int(cell.settled, counted) == cell.settled:
+                    return True
+            raise self.ctx.error(
+                self._wider_store_refusal(cell, counted, value, t), at)
+        self._add(cell, self.literal_type(t, value, bool(cell.evidence)), site)
+        return True
+
+    def decide_at_birth(self, cell: PendingNumCell,
+                        site: TpyStmt | TpyExpr) -> None:
+        """A list whose first binding holds typed values has the element
+        their join gives, decided at that binding (`site`), as a local
+        first bound to a typed value has that value's type: a later store,
+        container or generic context must fit it."""
+        self.settle({cell.cid}, use=site, what="its first binding")
+        self.resolve_ready()
+
+    def force_list(self, expr: TpyExpr | None, t: TpyType,
+                   cell: PendingNumCell, what: str) -> TpyType:
+        """Settle the element of list `t`: `expr` is a use that needs it
+        now. Returns the list with its element decided."""
+        if cell.settled is None:
+            self.settle({cell.cid}, use=expr, what=what)
+            self.resolve_ready()
+        return self.list_as_known(t, cell)
+
+    @staticmethod
+    def context_elem(container: TpyType) -> TpyType:
+        """The element a typed container of numbers holds."""
+        return unwrap_send_sync(unwrap_readonly(container.type_args[0]))
+
+    def context_refusal(self, cell: PendingNumCell, container: TpyType,
+                        verb: str, shown: TpyType | None = None,
+                        resolved: bool = False) -> str | None:
+        """Why the list of element cell `cell` cannot meet the typed
+        `container` (`shown` is the type the source spells there when it is
+        a view of that container), or None when it can: the container
+        confirms the element, or widens it within its family while the
+        element is still open. Asks nothing to settle. `resolved` says the
+        container is a generic call's parameter, resolved from the call's
+        other arguments."""
+        want = self.context_elem(container)
+        if value_family(want) != cell.is_float:
+            return self._family_refusal(cell, container, verb, shown)
+        held = self.known_so_far(cell)
+        if held == want or (cell.settled is None
+                            and join_int(held, want) == want):
+            return None
+        return self.elem_mismatch(cell, container, verb, shown, resolved)
+
+    def elem_context(self, t: TpyType, container: TpyType,
+                     node: TpyExpr | TpyStmt | None, verb: str,
+                     shown: TpyType | None = None,
+                     declared: bool = True) -> TpyType:
+        """The list `t` meets the typed `container`, which `context_refusal`
+        admitted: the container's element is one more the list holds, and
+        the element is decided here. `verb` says what the list is there
+        (`passed`). `declared` is False for a generic parameter the call
+        resolved: an annotation of the list would resolve it otherwise, so
+        it is no fixed type later refusals have to respect. Returns the
+        list as the container sees it."""
+        cell = self.list_cell(t)
+        want = self.context_elem(container)
+        if cell.settled is None:
+            spelled = shown if shown is not None else container
+            cell.typed.append(want)
+            self._add(cell, want, node)
+            self.settle({cell.cid}, use=node, what=f"{verb} as {spelled}")
+            if declared:
+                cell.context = (spelled, node, verb)
+            self.resolve_ready()
+        return self.list_as_known(t, cell)
+
+    def elem_mismatch(self, cell: PendingNumCell, container: TpyType,
+                      verb: str, shown: TpyType | None = None,
+                      resolved: bool = False) -> str:
+        """The refusal of a list whose element is not the one the typed
+        `container` it meets holds; `shown` is the type the source spells
+        there when it is a view of that container, and `resolved` says the
+        call's other arguments gave the container its element."""
+        want = self.context_elem(container)
+        here = shown if shown is not None else container
+        if cell.context is not None:
+            # Two typed containers of different elements: no annotation
+            # satisfies both.
+            first, node, first_verb = cell.context
+            line = _line(node)
+            at = f" at line {line}" if line is not None else ""
+            again = "" if verb == first_verb else f"{verb} "
+            return (f"'{cell.name}' is {first_verb} as {first}{at} and "
+                    f"{again}as {here} here; a list has one element type")
+        head = f"{self._elem_holds(cell)}, and it is {verb} here as {here}"
+        unfit = self._unfit_value(cell, want)
+        if unfit is not None:
+            held = python_type_name(self.known_so_far(cell))
+            fix = (f"; the call's other arguments make the element "
+                   f"{python_type_name(want)}: convert them to {held}"
+                   if resolved else "")
+            return f"{head}, which would not hold {unfit}{fix}"
+        return (f"{head}; "
+                f"{self._elem_annotation(cell, want, self._annotated(container))}")
+
+    def _family_refusal(self, cell: PendingNumCell, container: TpyType,
+                        verb: str, shown: TpyType | None) -> str:
+        """The refusal of a list at a typed container of the other numeric
+        family: a list literal keeps the family its values are written in."""
+        here = shown if shown is not None else container
+        family = self._elem_family(cell)
+        held = ("integer" if isinstance(family, IntLiteralType)
+                else python_type_name(family))
+        head = f"'{cell.name}' holds {held} values, and it is {verb} here as {here}"
+        if cell.is_float or self._unfit_value(
+                cell, self.context_elem(container)) is not None:
+            return head
+        # Written as floats the values print as CPython prints them; the
+        # annotation converts the integers it is given.
+        return (f"{head}; write its values as floats, or convert them: "
+                f"{self._elem_annotation(cell, self.context_elem(container), self._annotated(container))}")
 
     def _literals_fit(self, name: str, t: TpyType) -> bool:
         tr = int_traits_of(t)
@@ -696,6 +1222,15 @@ class PendingNums:
         cids = {cid for n, cid in self.ctx.func.pending_cell_of.items()
                 if n in names
                 and self.ctx.pending_num_cells[cid].settled is None}
+        # A list the body reads has its element decided the same way.
+        for n in names:
+            info = self.ctx.list_literals.get(
+                self.ctx.func.variable_to_literal.get(n, -1))
+            cell = (self.ctx.pending_num_cells.get(info.elem_cell)
+                    if info is not None and info.elem_cell is not None
+                    else None)
+            if cell is not None and cell.settled is None:
+                cids.add(cell.cid)
         for cid in cids:
             self.settle({cid}, use=use, what=what)
         if cids:
@@ -800,9 +1335,9 @@ class PendingNums:
         """Decide every cell of the function, resolve what waited on them,
         and rewrite every type and node that held a pending one."""
         func = self.ctx.func
-        if not func.pending_cell_of:
+        if not self._cids():
             return
-        self.settle(set(func.pending_cell_of.values()))
+        self.settle(set(self._cids()))
         # A cell settled early, inside its first arm, is judged here with
         # every arm seen.
         for cid in func.pending_cell_of.values():
@@ -810,7 +1345,7 @@ class PendingNums:
         self.resolve_ready()
         # The expression types that held a pending leaf are rewritten with
         # the other pending leaves' (`pending_composite_exprs`).
-        for cid in func.pending_cell_of.values():
+        for cid in self._cids():
             cell = self.ctx.pending_num_cells[cid]
             for decl in cell.decls:
                 t = self.ctx.var_types.get(decl)
@@ -831,7 +1366,7 @@ class PendingNums:
         conversion placeholder is left unfilled in the body. An explicit
         raise, so `-O` does not strip it."""
         func = self.ctx.func
-        if not func.pending_cell_of:
+        if not self._cids():
             return
         left = surviving_placeholder(body or [])
         if left is not None:
@@ -840,7 +1375,7 @@ class PendingNums:
                 f"{getattr(left.loc, 'line', None)} was left unresolved "
                 f"after its function settled")
         tables: list[tuple[str, TpyType | None]] = []
-        for cid in func.pending_cell_of.values():
+        for cid in self._cids():
             cell = self.ctx.pending_num_cells[cid]
             tables += [(f"var_types of '{cell.name}'",
                         self.ctx.var_types.get(d)) for d in cell.decls]
@@ -875,9 +1410,10 @@ class PendingNums:
 
     def drop_cells(self) -> None:
         """Forget the function's cells once nothing refers to them."""
-        for cid in self.ctx.func.pending_cell_of.values():
+        for cid in self._cids():
             self.ctx.pending_num_cells.pop(cid, None)
         self.ctx.func.pending_cell_of = {}
+        self.ctx.func.pending_elem_cids = []
 
 
 def _other_arm(cell: PendingNumCell) -> str:

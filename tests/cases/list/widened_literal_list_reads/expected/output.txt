@@ -1,9 +1,43 @@
-fn.annotated 5000000000
-fn.print 5000000000
-fn.compare True
-fn.argument 5000000001
-fn.before 1 1
-fn.before_len 2
-fn.append_first 5000000000
-fn.default_width 1 7
-method.field 5000000000
+fn.print_before 1
+fn.before 1 5000000001
+fn.after 5000000000 5000000000 5000000001 True
+fn.whole 5000000001 5000000001 [1, 5000000000]
+fn.loop 1
+fn.loop 5000000000
+fn.enumerate 0 1
+fn.enumerate 1 5000000000
+fn.pop 5000000000 1
+fn.confirm 1 7 [1, 7]
+fn.insert [5000000000, 1, 2] 1
+fn.rebind [5000000000, 3, 4] 1
+fn.first_binding [5, 7] 7 305 [1.5, 0.25] 0.25 [1, 5] 5
+fn.typed_seeded [5, 100, -128] -128 1500
+fn.seeded_local 1 [1, 5000000000] 1
+fn.union [1, 2, 5000000000] 5000000001
+fn.generic True
+fn.generic [1, 2, 50000000000000000000]
+fn.sorted_key [4, 3, 1] 5000000003 5000000001
+fn.overloaded 3 2
+fn.tuple 5000000003 1
+fn.nested [[1, 2, 5000000000]] 2
+fn.star_args [1, 5000000000, 5000000000, 7] 1
+fn.select [1, 5000000000] 2 5000000001 [2, 5000000000] 2 5000000001
+fn.genexpr 5000000001
+fn.genexpr [1, 5000000000, 5000000000]
+fn.pick [1] [2]
+raise 5000000001 [1, 5000000000] 1
+ctor 5000000000 5000000001
+method [1, 5000000001, 7]
+method.field [1, 2, 3, 5000000000] 1
+gen 1
+gen 5000000000
+gen 5000000001
+gen.lists 4 5000000002 7
+async 5000000003
+comp [5000000002, 3] 5000000001
+closure 8 3
+match 12 12
+try [1.75, 3.0] 4.75
+with 5000000001 1
+with 5000000005 2
+error_return 5000000002

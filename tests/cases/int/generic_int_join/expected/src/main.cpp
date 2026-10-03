@@ -227,7 +227,7 @@ void positions() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            __result.push_back((::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, ::std::max<int64_t>(x, a))), x)));
+            __result.push_back((::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, ::std::max<int64_t>(static_cast<int64_t>(x), a))), static_cast<int64_t>(x))));
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;

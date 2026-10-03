@@ -73,8 +73,10 @@ from .alias_rebind import bind_kind_of
 from .compatibility import TupleSink
 from .narrowing import NarrowingTracker, deref_view_narrowed, truthy_operands
 from .numeric_lattice import widen_numeric_types, join_numeric, smallest_common_int
-from .pending_num import (PendingNums, is_numeric_slot, is_pending_num,
-                          pending_join, strip_int, value_family)
+from .list_elem import protocol_is_elem_blind
+from .pending_num import (PendingNumCell, PendingNums, is_numeric_slot,
+                          is_pending_num, pending_join, strip_int,
+                          value_family)
 from .type_join import (InferredJoin, JoinOutcome, declared_float_slot,
                         peel_value,
                         find_int_float_mix, flipped,
@@ -367,6 +369,8 @@ def _use_as_part_of(parent: TpyExpr, child: TpyExpr) -> str:
         return f"an operand of '{op_spelling(parent.op)}'"
     if isinstance(parent, TpyUnaryOp):
         return f"an operand of '{op_spelling(parent.op)}'"
+    if isinstance(parent, (TpyFString, TpyFStringValue)):
+        return "a formatted value of an f-string"
     return "this use"
 
 
@@ -445,6 +449,24 @@ class ExpressionAnalyzer:
             return self._unpack_star_element_type(arg, SlotHint.of(hint))
         return self.analyze_expr_with_hint(arg, hint)
 
+    def analyze_at_slot(self, value: TpyExpr,
+                        hint: 'SlotHint | TpyType | None',
+                        coercion_ctx: CoercionContext) -> TpyType:
+        """`analyze_expr_with_hint` for a value its caller then COERCES to
+        the declared slot the hint spells (an argument of a resolved callee,
+        a return or yield value, an annotated binding, a store). When the
+        slot is a typed container of numbers, a list literal whose element
+        is not decided yet is handed over undecided: the coercion decides
+        it (`TypeCompatibility._list_at_container`). A hint with no such
+        promise -- an overload probe's -- leaves nothing open. A select
+        or a tuple literal analyzed here hands the promise on to its
+        operands and elements, which are the values the slot receives;
+        `coercion_ctx` is the context that coercion runs under."""
+        slot = SlotHint.of(hint)
+        if slot is None:
+            return self.analyze_expr(value)
+        return self._analyze_expr_under_hint(value, slot, coercion_ctx)
+
     def analyze_arg_at_param(self, arg: TpyExpr, hint: TpyType,
                              declared: TpyType) -> TpyType:
         """`analyze_expr_with_hint` for an argument to one resolved callee.
@@ -455,7 +477,22 @@ class ExpressionAnalyzer:
                 and not contains_type_param(declared)):
             with self.pend.sink(arg):
                 return self.analyze_expr_with_hint(arg, hint)
-        return self.analyze_expr_with_hint(arg, hint)
+        # A protocol that says nothing about a list's elements leaves a
+        # list literal's element open.
+        with self.pend.list_sink(arg if self._element_blind(declared)
+                                 else None):
+            return self.analyze_at_slot(arg, hint, CoercionContext.ARG)
+
+    def _element_blind(self, declared: TpyType | None) -> bool:
+        """Whether `declared` is a protocol a list satisfies through
+        methods that do not touch its element (`Sized`)."""
+        t = unwrap_qualifiers(declared) if declared is not None else None
+        if (t is None or not is_protocol_type(t)
+                or getattr(t, "type_args", None)):
+            return False
+        info = protocol_info_of(t)
+        return (info is not None and not info.fields
+                and protocol_is_elem_blind(self.ctx, info.methods))
 
     def _unpack_star_element_type(
         self, node: TpyStarUnpack, elem_hint: 'SlotHint | None',
@@ -571,19 +608,66 @@ class ExpressionAnalyzer:
             self._expr_stack.pop()
         return self._pending_gate(expr, typ)
 
-    def _pending_gate(self, expr: TpyExpr, typ: TpyType) -> TpyType:
+    def _pending_gate(self, expr: TpyExpr, typ: TpyType,
+                      slot: SlotHint | None = None) -> TpyType:
         """The forcing chokepoint of both expression entry points. The pass
         is keyed on node identity: a consumer that re-analyzes a copy or a
-        rewrite of the node it named loses the pass and settles the local."""
+        rewrite of the node it named loses the pass and settles the local.
+        `slot` is the declared slot the node's value is then coerced to
+        (`analyze_at_slot`), None for any other analysis."""
+        cell = self.pend.list_cell(typ)
+        if cell is not None:
+            return self._pending_list_gate(expr, typ, cell, slot)
         if not is_pending_num(typ):
             return typ
+        # An element read is a reference to its storage, settled or not.
+        wrap = make_ref if isinstance(typ, RefType) else (lambda t: t)
         current = self.pend.current(typ)
         if current is not typ:
+            current = wrap(current)
             self.ctx.set_expr_type(expr, current)
             return current
         if self.ctx.pending_ok_node is expr:
             return typ
-        return self.pend.force(expr, typ)
+        forced = wrap(self.pend.force(expr, typ))
+        self.ctx.set_expr_type(expr, forced)
+        return forced
+
+    def _pending_list_gate(self, expr: TpyExpr, typ: TpyType,
+                           cell: PendingNumCell,
+                           slot: SlotHint | None) -> TpyType:
+        """The gate for a list literal whose element a cell decides: a
+        consumer that named the node (`PendingNums.list_sink`) sees the
+        element undecided, as does a slot declared as a typed container,
+        whose coercion decides it (`TypeCompatibility._list_at_container`);
+        any other gets it settled first, as a use that needs the element
+        type now."""
+        if cell.settled is None and self.ctx.pending_list_ok_node is not expr:
+            scope = (self.ctx.adaptive_list_args[-1]
+                     if self.ctx.adaptive_list_args else None)
+            if scope is not None and any(n is expr for n in scope[0]):
+                # An argument of a generic call: its element stays open
+                # while the call's type parameters are inferred.
+                if not self.ctx.trial_depth:
+                    scope[1].append(cell)
+                return self.pend.adaptive_view(typ, cell)
+            if self._awaits_container(slot):
+                if not self.ctx.trial_depth:
+                    self.ctx.func.awaiting_container.append((cell.cid, expr))
+                return typ
+            self.pend.force_list(expr, typ, cell,
+                                 self.describe_pending_use(expr))
+        known = self.pend.list_as_known(typ, cell)
+        if known is not typ:
+            self.ctx.set_expr_type(expr, known)
+        return known
+
+    def _awaits_container(self, slot: SlotHint | None) -> bool:
+        """Whether `slot`, the declared slot a value is then coerced to,
+        holds a typed container of numbers (`PendingNums.slot_containers`):
+        that coercion decides the element of a list literal."""
+        return (slot is not None and slot.is_declared and not slot.is_fill
+                and bool(self.pend.slot_containers(slot.type)))
 
     def describe_pending_use(self, expr: TpyExpr) -> str:
         """What the consumer of `expr` uses it as, for the diagnostic of a
@@ -838,17 +922,23 @@ class ExpressionAnalyzer:
         """`hint` without its readonly / Own wrappers."""
         return hint.map(lambda t: unwrap_own(unwrap_readonly(t)))
 
-    def _analyze_expr_under_hint(self, expr: TpyExpr,
-                                 slot: SlotHint) -> TpyType:
+    def _analyze_expr_under_hint(self, expr: TpyExpr, slot: SlotHint,
+                                 coercion_ctx: CoercionContext | None = None,
+                                 ) -> TpyType:
+        """`coercion_ctx` is the context the caller coerces the value to
+        the declared slot under (`analyze_at_slot`); None when the hint
+        only types the value."""
         self._expr_stack.append(expr)
         try:
-            typ = self._analyze_expr_under_hint_raw(expr, slot)
+            typ = self._analyze_expr_under_hint_raw(expr, slot, coercion_ctx)
         finally:
             self._expr_stack.pop()
-        return self._pending_gate(expr, typ)
+        return self._pending_gate(
+            expr, typ, slot if coercion_ctx is not None else None)
 
-    def _analyze_expr_under_hint_raw(self, expr: TpyExpr,
-                                     slot: SlotHint) -> TpyType:
+    def _analyze_expr_under_hint_raw(self, expr: TpyExpr, slot: SlotHint,
+                                     coercion_ctx: CoercionContext | None,
+                                     ) -> TpyType:
         slot = slot.map(unwrap_ref_type)
         type_hint = slot.type
 
@@ -896,13 +986,15 @@ class ExpressionAnalyzer:
         # An and/or at a declared slot: its operands are analysed against
         # the declared type first, as a ternary's arms are.
         if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
-            typ = self._analyze_binop(expr, declared_slot=slot)
+            typ = self._analyze_binop(expr, declared_slot=slot,
+                                      coercion_ctx=coercion_ctx)
             self.ctx.set_expr_type(expr, typ)
             return typ
 
         # Ternary expression: propagate hint to both branches
         if isinstance(expr, TpyIfExpr):
-            typ = self._analyze_if_expr(expr, type_hint=slot)
+            typ = self._analyze_if_expr(expr, type_hint=slot,
+                                        coercion_ctx=coercion_ctx)
             self.ctx.set_expr_type(expr, typ)
             return typ
 
@@ -928,7 +1020,8 @@ class ExpressionAnalyzer:
             if len(expr.elements) == len(tuple_hint.element_types):
                 hints = [tuple_slot.map(element(k))
                          for k in range(len(tuple_hint.element_types))]
-                typ = self._analyze_tuple_literal(expr, element_hints=hints)
+                typ = self._analyze_tuple_literal(expr, element_hints=hints,
+                                                  coercion_ctx=coercion_ctx)
                 self.ctx.set_expr_type(expr, typ)
                 return typ
 
@@ -1079,9 +1172,10 @@ class ExpressionAnalyzer:
                 return result
 
         # Fall back to regular analysis, propagating hint through context
-        # for functions that need it (e.g. unsafe_cast)
+        # for functions that need it (e.g. unsafe_cast). The caller's gate
+        # is the node's one gate: it knows the slot.
         with self.ctx.slot_hint_scope(slot):
-            return self.analyze_expr(expr)
+            return self._analyze_expr_raw(expr)
 
     def _analyze_name(self, expr: TpyName) -> TpyType:
         """Analyze a name reference."""
@@ -1369,7 +1463,7 @@ class ExpressionAnalyzer:
     def _select_type_for_message(self, t: TpyType,
                                  python_literals: bool = False) -> str:
         if not (python_literals and isinstance(t, IntLiteralType)):
-            t = self._select_default_type(t)
+            t = self.compat.diag_type(self._select_default_type(t))
         t = resolve_int_literals(t, BIGINT if python_literals
                                  else self.ctx.default_int_for_literal)
         if isinstance(t, NominalType) and any(
@@ -1399,14 +1493,26 @@ class ExpressionAnalyzer:
         return (not verdict.nested and not verdict.through_optional
                 and not self._hint_converts_int(verdict.int_side, slot))
 
-    def _analyze_select_operand(self, e: TpyExpr,
-                                declared: SlotHint) -> TpyType:
-        """Analyze a ternary arm against the declared type of the select's
-        slot, so a literal pins to it before the join sees the arms. A
-        container literal takes the declared type while it is analysed; a
-        tuple literal keeps its literal leaves, so they pin to the declared
-        elements here. A variable keeps its own type: nothing converts it."""
-        t = self.analyze_expr_with_hint(e, declared)
+    def _analyze_select_operand(self, e: TpyExpr, declared: SlotHint,
+                                coercion_ctx: CoercionContext | None = None,
+                                ) -> TpyType:
+        """Analyze a select's operand against the declared type of the
+        select's slot, so a literal pins to it before the join sees the
+        operands. A container literal takes the declared type while it is
+        analysed; a tuple literal keeps its literal leaves, so they pin to
+        the declared elements here. A variable keeps its own type: nothing
+        converts it. `coercion_ctx` says the select's value is coerced to
+        that slot, in that context: the operand is a value the slot
+        receives, so a list literal it hands over undecided meets the
+        slot's container here."""
+        if coercion_ctx is not None:
+            t = self.analyze_at_slot(e, declared, coercion_ctx)
+            if self.pend.open_list(t):
+                t = self.compat.list_at_slot(t, declared.type, e,
+                                             coercion_ctx)
+                self.ctx.set_expr_type(e, t)
+        else:
+            t = self.analyze_expr_with_hint(e, declared)
         slot = declared.map(
             lambda d: unwrap_readonly(unwrap_own(unwrap_ref_type(d))))
         if (isinstance(e, TpyTupleLiteral) and isinstance(t, TupleType)
@@ -1594,10 +1700,17 @@ class ExpressionAnalyzer:
         return result
 
     def _analyze_binop(self, expr: TpyBinOp,
-                       declared_slot: SlotHint | None = None) -> TpyType:
+                       declared_slot: SlotHint | None = None,
+                       coercion_ctx: CoercionContext | None = None,
+                       ) -> TpyType:
         """Analyze a binary operation. `declared_slot` is the declared type
-        an and/or's value goes to; each operand is analysed against it."""
+        an and/or's value goes to; each operand is analysed against it, as
+        a value that slot receives when the and/or is coerced to it (under
+        `coercion_ctx`)."""
         def operand(e: TpyExpr) -> TpyType:
+            if declared_slot is not None and coercion_ctx is not None:
+                return self._analyze_select_operand(e, declared_slot,
+                                                    coercion_ctx)
             if declared_slot is not None:
                 return self.analyze_expr_with_hint(e, declared_slot)
             if expr.op in ("&&", "||"):
@@ -3212,7 +3325,7 @@ class ExpressionAnalyzer:
         expected_elem = expected.type if expected is not None else None
         # Analyze all elements, propagating expected type as hint when available
         if expected is not None:
-            elem_types = [self.analyze_expr_with_hint(e, expected)
+            elem_types = [self.analyze_at_slot(e, expected, CoercionContext.INIT)
                           for e in expr.elements]
         else:
             elem_types = [self.analyze_expr(e) for e in expr.elements]
@@ -3252,10 +3365,15 @@ class ExpressionAnalyzer:
                         f"array literal element {i}",
                         expr.loc,
                         source_expr=expr.elements[i - 1],
+                        coercion_ctx=CoercionContext.INIT,
                         target_is_storage_form=True,
                     )
                 except SemanticError:
-                    exp_s, act_s = disambiguated_pair(expected_elem, elem_type)
+                    if self.pend.list_cell(elem_type) is not None:
+                        # The refusal names the list and its annotation.
+                        raise
+                    exp_s, act_s = disambiguated_pair(
+                        expected_elem, self.compat.diag_type(elem_type))
                     raise self.ctx.error(
                         f"List literal element {i} has type {act_s}, "
                         f"incompatible with annotated element type {exp_s}", expr
@@ -3845,8 +3963,11 @@ class ExpressionAnalyzer:
 
     def _analyze_if_expr(
         self, expr: TpyIfExpr, type_hint: SlotHint | None = None,
+        coercion_ctx: CoercionContext | None = None,
     ) -> TpyType:
-        """Analyze a ternary conditional: then_expr if condition else else_expr."""
+        """Analyze a ternary conditional: then_expr if condition else
+        else_expr. `coercion_ctx` says its value is coerced to the declared
+        `type_hint`, in that context."""
         self.analyze_condition(expr.condition)
         self.narrowing.warn_truthy_value_optionals(expr.condition)
 
@@ -3863,8 +3984,8 @@ class ExpressionAnalyzer:
         self.ctx.cond_operand_depth += 1
         try:
             if type_hint is not None:
-                then_type = self._analyze_select_operand(expr.then_expr,
-                                                         type_hint)
+                then_type = self._analyze_select_operand(
+                    expr.then_expr, type_hint, coercion_ctx)
             else:
                 with self._forward_fill(expr, expr.then_expr):
                     then_type = self.analyze_expr(expr.then_expr)
@@ -3872,8 +3993,8 @@ class ExpressionAnalyzer:
             self.ctx.func.narrowed_types = dict(saved_narrowed)
             self.ctx.func.narrowed_types.update(else_facts)
             if type_hint is not None:
-                else_type = self._analyze_select_operand(expr.else_expr,
-                                                         type_hint)
+                else_type = self._analyze_select_operand(
+                    expr.else_expr, type_hint, coercion_ctx)
             else:
                 with self._forward_fill(expr, expr.else_expr):
                     else_type = self.analyze_expr(expr.else_expr)
@@ -4930,15 +5051,20 @@ class ExpressionAnalyzer:
 
     def _analyze_tuple_literal(
         self, expr: TpyTupleLiteral,
-        element_hints: list[SlotHint | None] | None = None
+        element_hints: list[SlotHint | None] | None = None,
+        coercion_ctx: CoercionContext | None = None,
     ) -> TupleType:
-        """Analyze a tuple literal (expr, expr, ...)."""
+        """Analyze a tuple literal (expr, expr, ...). `coercion_ctx` says
+        the tuple is coerced to the declared type the hints are the
+        elements of, so each element is to its hint, in that context."""
         elem_types = []
         for i, elem in enumerate(expr.elements):
             elem_slot = element_hints[i] if element_hints and i < len(element_hints) else None
             if elem_slot is not None:
                 hint = elem_slot.type
-                analyzed = self.analyze_expr_with_hint(elem, elem_slot)
+                analyzed = (self.analyze_at_slot(elem, elem_slot, coercion_ctx)
+                            if coercion_ctx is not None
+                            else self.analyze_expr_with_hint(elem, elem_slot))
                 # Preserve Own[] from hint when the analyzed type matches
                 if isinstance(hint, OwnType) and not isinstance(analyzed, OwnType):
                     analyzed = OwnType(analyzed)
@@ -5026,7 +5152,11 @@ class ExpressionAnalyzer:
                 return binding.enum_type
 
         if obj_type is None:
-            obj_type = self.analyze_expr(expr.obj)
+            # An element read leaves the element of a list literal as its
+            # cell has it; a slice builds a container from it.
+            with self.pend.list_sink(
+                    None if isinstance(expr.index, TpySlice) else expr.obj):
+                obj_type = self.analyze_expr(expr.obj)
 
         # Unwrap transparent wrappers -- Ref/Own don't affect subscript behavior
         inner_obj_type = unwrap_ref_type(obj_type)
@@ -5637,11 +5767,15 @@ class ExpressionAnalyzer:
                     body_type, fn_type.return_type,
                     "lambda return", loc=expr.loc)
             except SemanticError:
+                if self.pend.list_cell(body_type) is not None:
+                    # The refusal names the list and its annotation.
+                    raise
+                shown = self.compat.diag_type(body_type)
                 err = self.ctx.error(
-                    f"Lambda body type '{body_type}' is not compatible with "
+                    f"Lambda body type '{shown}' is not compatible with "
                     f"expected return type '{fn_type.return_type}'",
                     expr)
-                raise _LambdaResultMismatch(err.message, err.loc, body_type)
+                raise _LambdaResultMismatch(err.message, err.loc, shown)
         self.compat.check_view_return_dangle(expr.body, fn_type.return_type, expr.loc)
         self._queue_lambda_borrow_check(expr, fn_type.return_type)
         if not isinstance(fn_type.return_type, VoidType):

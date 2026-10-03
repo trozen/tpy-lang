@@ -1,0 +1,1 @@
+main.py:13: error: 'ys' holds int32 elements, and it is passed here as list[uint8]; annotate its first binding: ys: list[uint8] = [...]

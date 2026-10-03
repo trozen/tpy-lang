@@ -360,6 +360,7 @@ class SemanticAnalyzer:
 
         # Narrowing tracker (depends on type_ops, protocols)
         self.narrowing = NarrowingTracker(self.ctx, self.type_ops, self.protocols)
+        self.narrowing.pend = self.pend
 
         # Layer 3: Analyzers ordered by dependencies
         # Cycle: expr <-> calls <-> methods. Break by creating calls/methods
@@ -1940,6 +1941,8 @@ class SemanticAnalyzer:
         inner = self.ctx.func
         enclosing.pending_composite_exprs.extend(inner.pending_composite_exprs)
         inner.pending_composite_exprs.clear()
+        enclosing.pending_elem_list_exprs.extend(inner.pending_elem_list_exprs)
+        inner.pending_elem_list_exprs.clear()
         enclosing.pending_elem_type_fields.extend(inner.pending_elem_type_fields)
         inner.pending_elem_type_fields.clear()
 

@@ -1,1 +1,1 @@
-main.py:6: error: Type mismatch in return value: expected None, got PendingDict[???, ???]#0
+main.py:6: error: Type mismatch in return value: expected None, got dict[???, ???]

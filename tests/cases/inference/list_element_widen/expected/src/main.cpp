@@ -4,20 +4,6 @@
 namespace tpyapp::main {
 
 
-// def test_int32_to_int64_append() -> None:
-//     xs = [int32(1), int32(2)]  # tpyc: type(list[int64])
-//     xs.append(int64(3))
-//     v: int64 = xs[0]
-//     print(v)
-//     print(xs)
-void test_int32_to_int64_append() {
-    std::vector<int64_t> xs = {1, 2};
-    xs.push_back(3);
-    int64_t v = ::tpy::__getitem__(xs, 0);
-    std::cout << v << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
-}
-
 // def test_literal_to_int64_append() -> None:
 //     xs = [1, 2]  # tpyc: type(list[int64])
 //     xs.append(int64(3))
@@ -32,12 +18,12 @@ void test_literal_to_int64_append() {
     std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
-// def test_int32_to_int64_insert() -> None:
-//     xs = [int32(1), int32(2)]  # tpyc: type(list[int64])
+// def test_literal_to_int64_insert() -> None:
+//     xs = [1, 2]  # tpyc: type(list[int64])
 //     xs.insert(0, int64(99))
 //     v: int64 = xs[0]
 //     print(v)
-void test_int32_to_int64_insert() {
+void test_literal_to_int64_insert() {
     std::vector<int64_t> xs = {1, 2};
     ::tpy::list_insert(xs, 0, 99);
     int64_t v = ::tpy::__getitem__(xs, 0);
@@ -45,30 +31,33 @@ void test_int32_to_int64_insert() {
 }
 
 // def test_same_type_no_widen() -> None:
+//     # Typed values decide the element at the first binding; a value of the
+//     # same type and a fitting literal store nothing new.
 //     xs = [int32(1), int32(2)]  # tpyc: type(list[int32])
 //     xs.append(int32(3))
+//     xs.append(4)
 //     print(xs)
 void test_same_type_no_widen() {
     std::vector<int32_t> xs = {1, 2};
     xs.push_back(3);
+    xs.push_back(4);
     std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
 // def test_multiple_widens() -> None:
-//     xs = [int32(1)]  # tpyc: type(list[int64])
+//     xs = [1]  # tpyc: type(list[int64])
 //     xs.append(int32(2))
 //     xs.append(int64(3))
 //     print(xs)
 void test_multiple_widens() {
     std::vector<int64_t> xs = {1};
-    xs.push_back(2);
+    xs.push_back(static_cast<int64_t>(2));
     xs.push_back(3);
     std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
-// test_int32_to_int64_append()
 // test_literal_to_int64_append()
-// test_int32_to_int64_insert()
+// test_literal_to_int64_insert()
 // test_same_type_no_widen()
 // test_multiple_widens()
 void __tpy_init() {
@@ -76,9 +65,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::main::test_int32_to_int64_append();
     ::tpyapp::main::test_literal_to_int64_append();
-    ::tpyapp::main::test_int32_to_int64_insert();
+    ::tpyapp::main::test_literal_to_int64_insert();
     ::tpyapp::main::test_same_type_no_widen();
     ::tpyapp::main::test_multiple_widens();
 }

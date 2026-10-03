@@ -4,40 +4,126 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
 
+struct Wide;
 struct Holder;
+struct Maker;
+struct Scope;
+struct Refused;
 
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_gen;
+struct __gen_gen_lists;
+struct __coro_fill;
 
 // def big(v: list[int64]) -> None:
 void big(std::vector<int64_t>& v);
 // def same(v: list[int32]) -> None:
 void same(std::vector<int32_t>& v);
+// def hold8(v: list[int8]) -> None:
+void hold8(std::vector<int8_t>& v);
+// def w64() -> int64:
+int64_t w64();
 // def show(n: int64) -> int64:
 int64_t show(int64_t n);
-// def resolved_by_consumer() -> None:
-void resolved_by_consumer();
-// def read_before() -> None:
-void read_before();
-// def append_first() -> None:
-void append_first();
-// def default_width() -> None:
-void default_width();
+// def neg(x: int64) -> int64:
+int64_t neg(int64_t x);
+// def flag() -> bool:
+bool flag();
+// def take_any(v: list[int8] | list[int64]) -> None:
+void take_any(::tpy::Union<const std::vector<int64_t>*, const std::vector<int8_t>*> v);
+// def grow(*xs: list[int64]) -> None:
+void grow(::tpy::varargs<std::vector<int64_t>> xs);
+// def pair_sum(t: tuple[list[int64], int64]) -> int64:
+int64_t pair_sum(const std::tuple<std::vector<int64_t>*, int64_t>& t);
+// def pick(f: bool) -> Own[list[int64]]:
+std::vector<int64_t> pick(bool f);
+// def has_item[T: Equatable](xs: list[T], v: T) -> bool:
+template<::tpystd::tpy::Equatable T>
+bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+// @dispatch
+// def total(v: Span[int32]) -> int64:
+int64_t total(std::span<int32_t> v);
+// @dispatch
+// def total(v: str) -> int64:
+int64_t total(std::string_view v);
+// def param_widens() -> None:
+void param_widens();
+// def param_confirms() -> None:
+void param_confirms();
+// def stores() -> None:
+void stores();
+// def first_binding() -> None:
+void first_binding();
+// def union_param() -> None:
+void union_param();
+// def seeded_local() -> None:
+void seeded_local();
+// def typed_seeded() -> None:
+void typed_seeded();
+// def generic_call() -> None:
+void generic_call();
+// def typed_slots() -> None:
+void typed_slots();
+// def select_operands() -> None:
+void select_operands();
+// def raise_arg() -> None:
+void raise_arg();
+// def gen() -> Iterator[int]:
+__gen_gen gen();
+// def gen_lists() -> Iterator[Own[list[int64]]]:
+__gen_gen_lists gen_lists();
+// async def fill(n: int32) -> int64:
+__coro_fill fill(int32_t n);
+// def comprehension() -> None:
+void comprehension();
+// def closure() -> None:
+void closure();
+// def match_arm(kind: int32) -> None:
+void match_arm(int32_t kind);
+// def try_finally() -> None:
+void try_finally();
+// def with_body(c: bool) -> None:
+void with_body(bool c);
+// @error_return(Refused)
+// def alias_pair(limit: int64) -> int64:
+std::expected<int64_t, Refused> alias_pair(int64_t limit);
 // def main() -> None:
 void main();
 
+// class Wide(Exception):
+struct Wide : ::tpy::Exception {
+    // total: int64
+    int64_t total;
+
+    // def __init__(self, xs: list[int64]) -> None:
+    Wide() = default;
+    explicit Wide(std::vector<int64_t>& xs);
+
+    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<Wide>(*this); }
+    [[noreturn]] void __raise__() const override { throw *this; }
+    const char* what() const noexcept override { return this->message.c_str(); }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wide";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Wide& obj) {
+    ::tpy::print_object_default(os, "Wide", obj);
+    return os;
+}
+
 // class Holder:
 struct Holder {
-    // n: int64
-    int64_t n;
+    // v: list[int64]
+    std::vector<int64_t> v;
 
     // def __init__(self) -> None:
     Holder();
-
-    // def read(self) -> None:
-    void read();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -46,22 +132,221 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+// class Maker:
+struct Maker {
+    // base: int64
+    int64_t base;
+    // last: int64
+    int64_t last;
+
+    // def __init__(self, base: int64) -> None:
+    Maker() = default;
+    explicit Maker(int64_t base);
+
+    // def make(self) -> Own[list[int64]]:
+    std::vector<int64_t> make() const;
+
+    // def fill(self, h: Holder) -> None:
+    void fill(Holder& h) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Maker";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Maker& obj) {
+    ::tpy::print_object_default(os, "Maker", obj);
+    return os;
+}
+
+// class Scope:
+struct Scope {
+
+
+    // def __enter__(self) -> int32:
+    int32_t __enter__() const;
+
+    // def __exit__(self, et, ev, tb) -> bool:
+    bool __exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Scope";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Scope& obj) {
+    ::tpy::print_object_default(os, "Scope", obj);
+    return os;
+}
+
+// class Refused(Exception, ReturnException):
+struct Refused : ::tpy::ReturnException {
+
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Refused";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Refused& obj) {
+    ::tpy::print_object_default(os, "Refused", obj);
+    return os;
+}
+
+// async def fill(n: int32) -> int64:
+struct __coro_fill {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    int32_t n;
+    ::tpy::frame_slot<std::vector<int64_t>> xs;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_fill(int32_t n_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
+
+    ::tpystd::tpy::Poll<int64_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_fill&) {
+        return os << "<coroutine fill>";
+    }
+};
+
+// def gen() -> Iterator[int]:
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
+    ::tpy::frame_state __state;
+    ::tpy::frame_slot<std::vector<::tpy::BigInt>> ys;
+    ::tpy::BigInt v;
+    using __for_src_0_t = decltype(((*ys)));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen() : __state(S_INITIAL) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {
+        return os << "<generator gen>";
+    }
+};
+
+// def gen_lists() -> Iterator[Own[list[int64]]]:
+struct __gen_gen_lists : public ::tpy::next_iter_mixin<__gen_gen_lists, std::vector<int64_t>> {
+    ::tpy::frame_state __state;
+    ::tpy::frame_slot<std::vector<int64_t>> xs;
+    int64_t n;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_gen_lists() : __state(S_INITIAL) {}
+
+    std::expected<std::vector<int64_t>, ::tpy::StopIteration> __next__();
+    __gen_gen_lists& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_lists&) {
+        return os << "<generator gen_lists>";
+    }
+};
+
+
+// def __init__(self, xs: list[int64]) -> None:
+//     super().__init__()
+//     xs.append(w64())
+//     self.total = xs[0] + xs[-1]
+inline Wide::Wide(std::vector<int64_t>& xs) : ::tpy::Exception() {
+    xs.push_back(::tpyapp::main::w64());
+    this->total = (::tpy::add_check<int64_t>(::tpy::__getitem__(xs, 0), ::tpy::__getitem__(xs, -1)));
+}
 
 // def __init__(self) -> None:
-//     self.n = 0
-inline Holder::Holder() : n(0) {}
+//     self.v = []
+inline Holder::Holder() : v(std::vector<int64_t>{}) {}
 
-// def read(self) -> None:
+// def __init__(self, base: int64) -> None:
 //     ys = [1]
-//     big(ys)
-//     # method: an int64 field gives the read its type.
-//     self.n = ys[1]  # tpyc: ok
-//     print("method.field", self.n)
-inline void Holder::read() {
+//     # constructor: appending a typed value widens the element.
+//     ys.append(base)  # tpyc: ok
+//     self.base = ys[1]  # tpyc: ok
+//     self.last = sum(ys)
+inline Maker::Maker(int64_t base) {
     std::vector<int64_t> ys = {1};
-    ::tpyapp::main::big(ys);
-    this->n = ::tpy::__getitem__(ys, 1);
-    std::cout << "method.field" << " " << this->n << "\n" << ::tpy::check_signals;
+    ys.push_back(base);
+    this->base = ::tpy::__getitem__(ys, 1);
+    this->last = ::tpy::builtin_sum<int64_t>(ys);
 }
+
+// def make(self) -> Own[list[int64]]:
+//     ys = [1]
+//     # method: the declared return type widens the element.
+//     n = ys[0]  # tpyc: type(int64)
+//     ys.append(n + self.base)
+//     return ys
+inline std::vector<int64_t> Maker::make() const {
+    std::vector<int64_t> ys = {1};
+    int64_t n = ::tpy::__getitem__(ys, 0);
+    ys.push_back((::tpy::add_check<int64_t>(n, this->base)));
+    return ys;
+}
+
+// def fill(self, h: Holder) -> None:
+//     ys = [1, 2]
+//     n = ys[0]  # tpyc: type(int64)
+//     ys.append(3)
+//     # method: a typed field is a typed container. The store copies the
+//     # list (warned), so the mutation and the read go through the field.
+//     h.v = ys  # tpyc: warning(/copies/)
+//     h.v.append(self.base)
+//     print("method.field", h.v, n)
+inline void Maker::fill(Holder& h) const {
+    std::vector<int64_t> ys = {1, 2};
+    int64_t n = ::tpy::__getitem__(ys, 0);
+    ys.push_back(3);
+    h.v = ys;
+    h.v.push_back(this->base);
+    std::cout << "method.field" << " " << ::tpy::ListPrinter(h.v) << " " << n << "\n" << ::tpy::check_signals;
+}
+
+// def __enter__(self) -> int32:
+//     return 1
+inline int32_t Scope::__enter__() const {
+    return 1;
+}
+
+// def __exit__(self, et, ev, tb) -> bool:
+//     return False
+inline bool Scope::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
+    return false;
+}
+// def has_item[T: Equatable](xs: list[T], v: T) -> bool:
+//     for x in xs:
+//         if x == v:
+//             return True
+//     return False
+template<::tpystd::tpy::Equatable T>
+bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
+    auto& __obj_0 = xs;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& x = *__beg_0;
+        if (::tpy::eq(x, v)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

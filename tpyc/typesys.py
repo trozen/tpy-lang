@@ -5419,6 +5419,18 @@ class PendingListType(TpyType):
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
+    # An element that is a pending number refers to the literal's element
+    # cell (`tpyc/sema/pending_num.py`), which the settle sweeps reach
+    # through here. Any other element is the literal's own snapshot,
+    # resolved with the literal and not by a type walk.
+    def inner_types(self) -> tuple[TpyType, ...]:
+        if isinstance(self.element_type, PendingNumType):
+            return (self.element_type,)
+        return ()
+
+    def with_inner_types(self, types: tuple[TpyType, ...]) -> 'TpyType':
+        return PendingListType(types[0], self.size, self.literal_id)
+
     def __str__(self) -> str:
         return f"PendingList[{self.element_type}, {self.size}]#{self.literal_id}"
 
@@ -5603,6 +5615,10 @@ class ListLiteralInfo:
     needs_list_type: bool = False  # Used in or/and/ternary with another list -- cannot become Array
     source_literal_id: Optional[int] = None  # Alias tracking: b = a
     resolved_type: Optional[TpyType] = None
+    # The pending-number cell that decides a scalar numeric element (its
+    # id); `element_type` is then the `PendingNumType` naming it, and the
+    # cell, not this record, is where uses add what they store.
+    elem_cell: Optional[int] = None
     # The reads that handed out an element before the literal resolved:
     # (the element type the read was compiled at, the reading node).
     elem_reads: list = field(default_factory=list)

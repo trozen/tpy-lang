@@ -1,0 +1,1 @@
+main.py:9: error: Type mismatch in variable 'n': expected int8, got int32; 'ys' holds int32 elements, and a list[int8] would not hold 300: declare the variable as int32

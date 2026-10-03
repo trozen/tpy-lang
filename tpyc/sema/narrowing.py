@@ -115,9 +115,16 @@ class NarrowingTracker:
         if self.ctx.func.current_ns:
             binding = self.ctx.func.current_ns.lookup(name)
             if binding and binding.kind == BindingKind.VARIABLE:
-                return unwrap_ref_type(binding.type)
+                return self._inspected(unwrap_ref_type(binding.type))
         typ = self.ctx.func.current_scope.lookup(name)
-        return unwrap_ref_type(typ) if typ is not None else None
+        return self._inspected(unwrap_ref_type(typ)) if typ is not None else None
+
+    def _inspected(self, typ: TpyType) -> TpyType:
+        """A binding's type as a reader that only inspects it sees it: a
+        list literal whose element is not decided yet shows the element
+        known so far. This lookup is no use, so it settles nothing."""
+        cell = self.pend.list_cell(typ)
+        return self.pend.list_so_far(typ, cell) if cell is not None else typ
 
     def _resolve_field_path_type(self, key: str) -> TpyType | None:
         """Resolve the declared type for a dotted field path like 'obj.field' or 'obj.a.b'."""

@@ -1,6 +1,5 @@
-# A loop variable takes the elements of an unannotated list literal at the
-# literal's default width; a later typed parameter widens the list, so the
-# loop is refused (BUGS.md#widened-literal-list-read-truncates).
+# A loop decides an unannotated list literal's element on the spot; a later
+# widening use is refused (docs/LANGUAGE_FEATURES.md "List Literal Inference").
 from tpy import int64
 
 
@@ -10,10 +9,10 @@ def big(v: list[int64]) -> None:
 
 def main() -> None:
     ys = [1]
-    # `v` is int32 in this loop; the call below makes the list int64.
-    for v in ys:  # tpyc: error(/'ys' holds int64 elements.*takes one as int32/)
+    for v in ys:
         print(v)
-    big(ys)
+    # The loop ran over int32 elements; this parameter would make them int64.
+    big(ys)  # tpyc: error(/'ys' holds int32 elements since line \d+ \(a loop iterable\), and it is passed here as list\[int64\].*annotate its first binding: ys: list\[int64\]/)
 
 
 main()
