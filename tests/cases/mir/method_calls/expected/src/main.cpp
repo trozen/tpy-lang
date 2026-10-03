@@ -286,9 +286,9 @@ int32_t bump_under_iter(Counter& c) {
     return ::tpy::BigInt(n);
 }
 
-// # kept refusal: a method's view result live across a method that replaces its source --
-// # the conflict needs the result's origin inside the receiver
-// def tag_across_rename(c: Counter, s: str, go: bool) -> int:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+// # free conflict: a method's view result live across a method that replaces its source, the
+// # field the result's origin names
+// def tag_across_rename(c: Counter, s: str, go: bool) -> int:  # tpyc: mir(conflict /replacement/)
 //     v: StrView = c.tag()
 //     if go:
 //         c.rename(s)
@@ -315,15 +315,15 @@ void call_virtual(Base& b) {
     b.grow();
 }
 
-// # kept refusal: a property read
-// def read_prop(t: Temp) -> int32:  # tpyc: mir(uncovered /^unsupported expression$/)
+// # free caller: a property read (the getter is a callable with a summary)
+// def read_prop(t: Temp) -> int32:  # tpyc: mir(covered)
 //     return t.twice
 int32_t read_prop(const Temp& t) {
     return t.twice();
 }
 
-// # kept refusal: a property write
-// def write_prop(t: Temp, v: int32) -> None:  # tpyc: mir(uncovered /^unsupported expression type$/)
+// # free caller: a property write (the setter publishes the field write)
+// def write_prop(t: Temp, v: int32) -> None:  # tpyc: mir(covered)
 //     t.twice = v
 void write_prop(Temp& t, int32_t v) {
     t.set_twice(v);
@@ -423,8 +423,8 @@ int32_t call_countdown(Counter& c) {
     return c.countdown(3);
 }
 
-// # kept refusal: a container field returned from the receiver refuses at the caller's binding
-// def call_all_items(c: Counter) -> int:  # tpyc: mir(uncovered /^unsupported reference fact$/)
+// # free caller: a container field returned from the receiver, bound and grown through the alias
+// def call_all_items(c: Counter) -> int:  # tpyc: mir(covered)
 //     xs = c.all_items()
 //     xs.append(9)
 //     return len(xs)

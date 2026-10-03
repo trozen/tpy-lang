@@ -167,7 +167,7 @@ class Rec:
     def name_len(self) -> int:  # tpyc: mir(covered)
         return len(self.name)
 
-    # method: a view of a field returned -- the origin is the receiver
+    # method: a view of a field returned -- the origin is the field, param0.name
     def name_view(self) -> StrView:  # tpyc: mir(covered)
         return self.name
 
@@ -253,8 +253,8 @@ def local_record(s: str) -> int:  # tpyc: mir(covered)
     return len(r.name)
 
 
-# free function: a method returning a view of a field has no summary, so its call is refused
-def method_view(r: Rec) -> int:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+# free function: a method returning a view of a field; the result's origin is the field
+def method_view(r: Rec) -> int:  # tpyc: mir(covered)
     v = r.name_view()
     return len(v)
 

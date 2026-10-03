@@ -1911,7 +1911,7 @@ form facts, never on lists of accepted kinds.
   facts, container writes in free-function summaries, and the first
   container conflicts (`replacement`). `tests/cases/mir/containers` pins
   them, each beside a certified safe sibling.
-- **B3, second half: retained loans.** Two items landed. Native types
+- **B3, second half: retained loans.** Three items landed. Native types
   declare their storage members and element writes on the stub
   (`@native(..., elements=True)`, `@native(..., mutates="elements")`), read
   through `scalar_leaves.declared_members`, with no container kind table.
@@ -1919,15 +1919,21 @@ form facts, never on lists of accepted kinds.
   lowers the shape (loops, a field read through a subscript, method calls
   with literal or leaf arguments). Calls of user record methods lower
   through per-method summaries whose parameter 0 is the receiver
-  ([B3 contract, second half](#b3-contract-second-half-user-method-calls)).
-  Remaining, in this order: property accessors, `@auto_readonly` twins and
-  projected return origins (a result rooted inside a parameter: a view,
-  record or container field); view fields (a record retaining a loan) with
-  `retains` on `MIRParameterWrite`; nested container elements; record-element
-  literal member-init. From here on each step
-  builds the call-effect contracts it needs -- retention, invalidation,
-  result origins, exceptional behavior -- where `call_contract.py` today
-  excludes globals and requires empty invalidation and retention.
+  ([B3 contract, second half](#b3-contract-second-half-user-method-calls)),
+  and so do property getters and setters and `@auto_readonly` defs, whose
+  results may be rooted inside a parameter (a container field, a view of
+  an owned-leaf field) through projected return origins
+  ([accessor and twin callables](#accessor-and-twin-callables),
+  [projected return origins](#projected-return-origins)).
+  Remaining, in this order: inherited records (a method of a base record
+  called on a subclass receiver; TODO.md, MIR entry); view fields (a
+  record retaining a loan) with `retains` on `MIRParameterWrite`; nested
+  container elements and nested records (an inline record field as a
+  place and as a return origin); record-element literal member-init. From
+  here on each step builds the call-effect contracts it needs --
+  retention, invalidation, exceptional behavior -- where
+  `call_contract.py` today excludes globals and requires empty
+  invalidation and retention.
 - **Cleanup:** exceptional exits and destruction.
 - **B4: generator and async frames.** Frame placement and lifecycle facts
   published by THIR (close, cancellation, cleanup), not only suspend/resume
@@ -2160,9 +2166,10 @@ as the corpus grows).
   (`THIRParamCopy`) and a later view borrows that local. A view RESULT of a
   user callee is a borrowed result (`call_contract.view_result`, one fact
   for body, summary and caller); the caller's holder takes the callee's
-  `summary.returns` referents. `summary.returns` holds parameter indices
-  only: a result rooted in a parameter's field summarizes as that
-  parameter, and a result whose origins include a global, a static literal
+  `summary.returns` referents. A result rooted in a view-family
+  parameter summarizes as that parameter, one viewing an owned-leaf field
+  of a record parameter as that field's path
+  ([projected return origins](#projected-return-origins)), and a result whose origins include a global, a static literal
   or the body's own storage leaves the body lowered and its summary opaque
   ("view result origin outside the parameters"; an empty origin set is
   never read as fresh). A stub view result borrows every lent argument and
@@ -2433,10 +2440,11 @@ as the corpus grows).
   holder of its elements conflicts, a dead one does not.
 - **Returns and summaries.** `-> list[T]` returns a C++ reference, so it is
   a BORROWED result summarized by `returns` like a borrowed record result;
-  `-> Own[list[T]]` is an owned result moved out. `returns` stays
-  `frozenset[int]`: a Span or element result rooted in `param[elements]`
-  publishes the whole parameter (a caller's structure write still reaches
-  it by prefix overlap). `MIRParameterWrite.path` widens to field
+  `-> Own[list[T]]` is an owned result moved out. A Span or element result
+  rooted in `param[elements]` publishes the whole parameter (a caller's
+  structure write still reaches it by prefix overlap); a container field
+  of a record parameter publishes its field path
+  ([projected return origins](#projected-return-origins)). `MIRParameterWrite.path` widens to field
   identities and container projections (`(structure,)`, `(F::items,
   structure)`, `(elements,)`), so a free function's container writes reach
   its callers as call-write events (`grow_if` / `forwarded` in the case);
@@ -2463,8 +2471,8 @@ as the corpus grows).
   unpacking `items()` (tuple elements); `in` (`THIRMembership`); protocol
   `for` over user iterators, comprehensions and generator expressions
   (frames, B4); call-duration loans (`xs.extend(xs)`, `rename(r, r.name)`);
-  projected return origins (a result rooted in `param[elements]` summarizes
-  as the whole parameter); sibling-element precision (element identity is
+  a result rooted in `param[elements]` of a container parameter summarizes
+  as the whole parameter (an empty-path return origin); sibling-element precision (element identity is
   not tracked, so `xs[i] = v` under a live iterator conflicts); stepped
   slices; tuple, Optional and union elements; `bytearray`; a dict view
   bound to a local is a lowering reject today
@@ -2474,13 +2482,10 @@ as the corpus grows).
   element records need temporaries before any CFG exists -- "constructor
   initializer needs parameter or literal"; a literal of leaves or an empty
   literal initializes); a container returned by reference from a RECORD
-  parameter (`items_of(b) -> list[int32]` returning `b.items`) has a KNOWN
-  summary (origin = the parameter) but no caller lowers its result: binding
-  it refuses as "unsupported reference fact", indexing it as "uncertified
-  element read", and the dependency rule behind them ("container result of
-  a non-container argument": the elements of some field of `b` cannot be
-  named without the field path) is pinned over hand-built MIR only; a
-  record element
+  parameter (`items_of(b) -> list[int32]` returning `b.items`) now
+  summarizes with the field path (`returns={param0.items}`) and its caller
+  binds the field place ([projected return origins](#projected-return-origins));
+  a record element
   write through a Span is a THIR reject (`setitem.family`), so that conflict
   is pinned over hand-built MIR only; a parameter whose container field is
   grown through a local alias is `BUGS.md#param-field-alias-growth-not-mutation`
@@ -2584,9 +2589,11 @@ as the corpus grows).
   borrowed for a call (`TpyFunction.is_lifecycle_hook`), a constructor
   body (`TpyFunction.is_initializer`: a second `@dispatch` `__init__`
   reaches the predicate, and its `self` is storage under construction),
-  static and class methods, property getters and setters, consuming,
-  generic, async and generator methods, auto-own clones and both clones of
-  an `@auto_readonly` def. Such a body lowers as a METHOD body, and
+  static and class methods, consuming, generic, async and generator
+  methods and auto-own clones. Property getters and setters and both
+  clones of an `@auto_readonly` def are method bodies too, under the
+  [accessor and twin](#accessor-and-twin-callables) rules. Such a body
+  lowers as a METHOD body, and
   `summarize_function` summarizes it with the receiver bound as
   `MIRParameterBinding(record, passing, readonly, receiver)`; every other
   summary rule is the free function's.
@@ -2596,10 +2603,9 @@ as the corpus grows).
   `p.__eq__(q)` renders `(p) == (q)`, while a template-less `p.__bool__()`
   is an ordinary member call and a call target, `call_bool`) or native
   symbol, and no deref, move or
-  unwrap at the call, exactly one body registered under (owner, name)
-  (`Compiler.method_bodies`; an accessor pair, the clones of an
-  `@auto_readonly` def and an overload or `@dispatch` group register
-  several), a closed signature, a receiver whose static type (readonly and
+  unwrap at the call, exactly one defining body for (owner, name) in the
+  call's role (`Compiler.callable_body`; an overload or `@dispatch` group
+  has none), a closed signature, a receiver whose static type (readonly and
   reference stripped) is exactly the owner record, and an owner that
   inherits no `@dynamic` protocol (its methods are virtual: a base-typed
   receiver may run a subclass override). MIR lowers a resolved method call
@@ -2616,9 +2622,11 @@ as the corpus grows).
   the verdict walk alike (`collect.body_declaration`).
 - **What a caller consumes.** The method's `writes` with their paths
   (`(F::n,)`, `(F::items, structure)`, `(F::items, elements)` of the
-  receiver or of a record parameter), `returns` as whole parameter indices
-  (a method returning `self` publishes 0, one returning a view of a `str`
-  parameter publishes that parameter), nothing invalidated or retained. A
+  receiver or of a record parameter), `returns` as
+  [return origins](#projected-return-origins) (a method returning `self`
+  publishes `param0`, one returning a view of a `str` parameter that
+  parameter, one returning a container field of the receiver
+  `param0.items`), nothing invalidated or retained. A
   borrowed record result is readonly exactly when the emitted C++ result
   is const (`callables._borrowed_result`: the callable's readonly verdict,
   declared or inferred, where `typesys.return_const_projected` projects
@@ -2649,8 +2657,8 @@ as the corpus grows).
   Precision stays the alias-basis item.
 - **Kept refusals**, each pinned in the case with its reason. A virtual
   owner's method call, "unsupported expression type" (its body lowers, with
-  no summary); a property read, "unsupported expression", and write,
-  "unsupported expression type"; an explicit call of a dunder with an
+  no summary), and its property read, "unsupported expression"
+  (`mir/accessor_calls` `call_virtual_getter`); an explicit call of a dunder with an
   injected operator template (`p.__eq__(q)`), "unsupported expression"; a
   constructor tail calling a method on `self` (`Tally.__init__`): the
   record's definition refuses a constructor with body effects, so the
@@ -2659,34 +2667,32 @@ as the corpus grows).
   field, call-result, constructor-temporary or
   element receiver (`o.inner.bump()`, `pick(g).read()`, `Gauge(k).read()`,
   `gs[0].bump()`), "call needs borrowed record name", the limit record
-  arguments of free functions have; a generic record's or an inherited
+  arguments of free functions have -- a getter through a call result
+  (`c.via().count`) is the same refusal (`mir/accessor_calls`
+  `twin_via`); a generic record's or an inherited
   method, where the caller's parameter of that record refuses first
   ("unsupported parameter type"); a generic or a consuming method,
   "unsupported expression"; a staticmethod, "call needs resolved ordinary
   callee"; a recursive method, summary OPAQUE "recursive or
-  recursion-dependent call", caller "call needs finalized known summary";
-  a container field returned from the receiver (`return self.items`), a
-  KNOWN summary whose result the caller's binding refuses ("unsupported
-  reference fact", as its free twin's; the "container result of a
-  non-container argument" guard behind it is unit-pinned for a method
-  summary over hand-built MIR); a view of a receiver field
-  (`return self.name` at `-> StrView`), summary OPAQUE "unsupported return
-  origin type or access", caller "call needs finalized known summary".
+  recursion-dependent call", caller "call needs finalized known summary".
   Probed, not pinned: a classmethod refuses as the staticmethod; an
-  `@auto_readonly` method call "unsupported expression type" (both clone
-  bodies "missing receiver fact"); an operator-dispatched dunder (`p == q`)
-  "uncertified binary operation". Unit-pinned without a callee: an
-  `@error_return` or async method, a `@dispatch` or `@overload` group, an
-  `@auto_readonly` def (neither clone body has a receiver fact), a
-  `Ptr[T]` receiver.
+  operator-dispatched dunder (`p == q`) "uncertified binary operation".
+  Unit-pinned without a callee: an `@error_return` or async method, a
+  `@dispatch` or `@overload` group, a `Ptr[T]` receiver, accessors and
+  twins of a generic, virtual or derived owner, a method and a property
+  sharing one name (`callable_body` finds no body for either role:
+  `test_a_method_and_a_property_sharing_a_name_publish_no_callee`; the
+  language defect behind the shape is
+  `BUGS.md#method-property-name-clash-miscompile`).
 - **Limits.** `--dump-mir` and the snippet harness analyse the modules
   under the entry point's directory only, so a method of a record defined
   in a library module has no summary there ("call needs finalized known
   summary"). The lifecycle hooks (`LIFECYCLE_HOOKS`) and the constructor
   (`INIT_METHOD`) are the names the language defines them by, decided once
   at the parse node and read by the record's accessors and the body
-  predicate alike. Return origins name whole parameters, so a result
-  rooted inside the receiver waits on projected return origins.
+  predicate alike. Receivers beyond a name or `self` (a field, a call
+  result, a temporary, an element) refuse, so a getter reached through
+  `self.c.count` or `c.via().count` refuses where `c.count` lowers.
 - **Measured, user method summaries** (same tool and sample; branch base
   d1fb396703 vs the finished branch; 11046 test bodies on the base, 11140
   on the branch, the 94 more being `mir/method_calls`): lowered 2033 ->
@@ -2717,6 +2723,186 @@ as the corpus grows).
   published borrowed result, and most refuse next at the field expression
   they return ("unsupported borrowed expression form") or at the storage
   certificate ("demanded operation is not a supported record borrow").
+
+#### Accessor and twin callables
+
+`tests/cases/mir/accessor_calls` pins each rule below at its call sites;
+the unit tests are `tpyc/thir/test_method_callees.py` (THIR facts and
+validator) and `tpyc/mir/test_return_origins.py` (MIR).
+
+- **Invariant.** Every callable body a record exposes -- a method, a
+  property getter, a property setter, the clone pair of an
+  `@auto_readonly` def -- is ONE callable with ONE identity and ONE
+  signature, published on its definition and on every call that
+  statically resolves to it.
+- **Identity.** `THIRFunctionIdentity(module, name, owner, accessor)`,
+  `accessor` None for a method and `"fget"` / `"fset"` for a property's
+  getter / setter (Python's own names for the two callables). A setter's
+  `name` is the property name: Python has no differently named setter
+  (`@size.setter def set_size` is "property has no setter" in CPython and
+  a "conflicts with method" error in TPy). The THIR dump spells them
+  `Counter.count.fget` / `Counter.count.fset`.
+- **Twin contract.** An `@auto_readonly` def and every property getter (a
+  getter is an auto-readonly pair; a value-returning getter keeps only its
+  const clone) is access-polymorphic: its signature publishes
+  `passings[0] = CONST_REF` -- what the body is certified against, since a
+  twin body writing `self` does not compile -- and
+  `THIRCallableSignature.result_follows_receiver`, on the definition and on
+  every call (dump: `, follows receiver`). A borrowed result of a
+  follows-receiver call is readonly exactly when the receiver at the call
+  is readonly or the return type is `readonly[...]`: the emitted C++ picks
+  the const or the mutable overload by the receiver's constness. The
+  signature carries ONE result value, at the definition and at every
+  call: the one the const clone binds (readonly; the THIR validator holds
+  every follows-receiver signature to it). The access of one call is
+  derived where it is read (`call_contract.bound_result`): MIR binds the
+  result at the receiver ARGUMENT's binding (`MIRCallSummary.result_at`),
+  so an inferred-const receiver binds a readonly result although its
+  static type is mutable. `twin_mutable` (`d = c.me(); d.count = 7` writes
+  through a mutable result) and `twin_readonly` are certified; a setter
+  is no twin (its receiver passes at the setter's own readonly verdict).
+- **Both clones publish.** Both clone bodies of a pair carry the same
+  `THIRFunction.resolved_callee`, so each lowers for its own verdict with
+  its own receiver fact; the mutable clone also carries
+  `THIRFunction.access_twin`. The THIR validator admits at most one
+  definition and one twin per identity, the twin's callee equal to the
+  definition's, follows-receiver, on a mutable receiver. The call
+  workspace takes the const clone as the definition
+  (`MIRCallWorkspace.definitions`), keeps the twin in
+  `MIRCallWorkspace.twins`, and summarizes the twin too, its receiver
+  normalized to `CONST_REF`: unequal summaries, or a twin that does not
+  lower, make the callable OPAQUE ("twin bodies differ";
+  `test_a_differing_twin_makes_the_summary_opaque`). Inside a clone a call
+  may resolve by the receiver's access, so the equality is checked,
+  never assumed. The two bodies' ids are `Counter.elems@48:4` and
+  `Counter.elems@48:4#2` in the workspace and the verdict walk alike; the
+  twin check's lowering is cached under the twin's own id and served to
+  the twin's verdict, and neither body ever reads the other's MIR
+  (`tpyc/mir/test_collect.py`).
+- **Body lookup.** `Compiler.callable_body(owner, name, accessor)` sits
+  beside `Compiler.single_method_body(owner, name)`, both over
+  `Compiler.method_bodies`. `callable_body` filters the entries by role
+  (method, getter, setter), collapses an actual clone pair (the `strip`
+  and `apply` clones of one def, same location, parameters and return)
+  to its `apply` clone, and returns None for anything else: an overload
+  or `@dispatch` group, a pair whose clones differ, a method and a
+  property sharing the name. `single_method_body` keeps its stricter
+  rule -- one body or None -- because sema's with-exit check
+  (`sema/loop_frames.py`) reads the body it returns and falls back to the
+  call's declared write facts when there are several; collapsing a pair
+  there would change which diagnostics fire.
+- **Setter passings.** Sema pops accessor FunctionInfos from the method
+  table before const inference, so they carry no `const_borrow_params`;
+  the callee publishes each declared parameter by the body's own rule,
+  `param_passing(False)` of its expanded type, and the validator checks
+  the definition's passings against the body's `THIRParam.passing`. An
+  `int32` value passes VALUE, `str` VIEW, `Own[str]` VALUE, a record,
+  `readonly[R]` or a container OWN, each expanded to `Own[...]`
+  (`test_a_setter_passes_its_value_as_its_body_declares`).
+  MIR verdicts: the `int32` and `str` setters summarize KNOWN (writes
+  `param0.n`, `param0.name`); an `Own[str]` setter too (probe); a record
+  setter refuses at its parameter, "unsupported parameter type", as a free
+  function's `Own[R]` parameter does (`Holder.part`); a container setter
+  refuses at the field it replaces, "container field replacement is
+  unsupported" (probe).
+- **What a caller consumes.** A getter read `c.count` is a
+  `THIRMethodCall` to the fget callee and a setter write `c.count = v` a
+  void call statement to the fset callee; both take the existing
+  user-call arms, at every position a resolved method call lowers at. A
+  container getter's result is a borrow of the field place
+  (`xs = c.elems` has referent `c.items`, as the direct alias `xs =
+  c.items` has), also as a write receiver (`c.elems.append(3)` writes
+  `c.items[structure]`); a view getter bound to a `StrView` local views
+  the field (`t: StrView = c.tag` borrows `c.name`), while an unannotated
+  `t = c.tag` owns a copy (the view rule) and no later write reaches it
+  (`copy_then_rename`).
+- **Conflicts.** The existing `replacement` kind, each beside a covered
+  sibling: a container getter's or a twin's result iterated while the
+  field grows through a method (`grow_under_iter`, `twin_items_grow`), a
+  getter's field view live across a method replacing the field
+  (`view_then_rename`). Sema warns on the two iterations and is silent on
+  the view (`BUGS.md#field-loan-whole-record-callee-unchecked`); it warns
+  on the safe `alias_survives_growth` and `view_then_sibling`, which MIR
+  covers with no conflict
+  (`BUGS.md#getter-borrow-whole-record-false-positive`).
+- **Kept refusals.** A getter on a record inheriting a `@dynamic`
+  protocol, "unsupported expression" (`call_virtual_getter`); a getter
+  through a call result or a field, "call needs borrowed record name"
+  (`twin_via`, `self.c.count` probed); an inline record getter result
+  (`return self.inner`), the getter body "unsupported borrowed expression
+  form" and its caller "call needs finalized known summary"
+  (`record_accessors`; deferred to nested records: a layout with a record
+  field has no definition yet); accessors of a generic, virtual or
+  derived owner and a method + property name clash (unit-pinned).
+
+#### Projected return origins
+
+- **Invariant.** A summary's return origin is a PATH into a parameter,
+  `MIRReturnOrigin(parameter, path)` with `MIRCallSummary.returns:
+  frozenset[MIRReturnOrigin]`, and the caller binds the result holder to
+  exactly the referent the direct borrow of that place produces. The path
+  is a `MIRParameterPath`, the alphabet `MIRParameterWrite.path` uses, under
+  one grammar (`call_contract.path_parts`): at most one field, then at most
+  one container projection. The whole parameter is the empty path. The
+  MIR dump spells `returns={param0.items}` / `returns={param0}`.
+- **Body rule** (`summaries.summarize_function`). The field path of a
+  returned referent is kept, never widened to the whole parameter. Into a
+  borrowed record parameter it admits the record itself (a record result
+  of its own type), a container field (a container result:
+  `return self.items` -> `param0.items`) and an owned-leaf field a `str` /
+  `bytes` view result views (`return self.name` at `-> StrView` ->
+  `param0.name`); the field must belong to the record's certified layout
+  ("summary return field differs from definition"). Anything else
+  refuses "summary unsupported return origin": a Span over a field
+  (`test_unspellable_origins_refuse`), a record from inside a record
+  (deferred to nested records). A result rooted in a parameter that is
+  no record (a container, a Span, a leaf) keeps the whole-parameter
+  origin.
+- **Summary check** (`return_origin_problem`, inside `summary_problem`).
+  Origins are validated as writes are: the grammar, a field of the
+  parameter's record, an endpoint typed for the result (a container field
+  equal to a container result, an owned leaf compatible with a view
+  result), and never more access than the source lends, checked with the
+  result bound at the definition's receiver.
+- **Caller** (`dependencies.resolve_call_returns`). Each origin's PLACE
+  is built through `call_place` -- shared with call writes -- and its
+  referents resolved in sequence, like a direct borrow of it; a non-empty
+  path is never re-projected, a whole-parameter origin keeps its
+  elements projection for a result that is no container, and a Span
+  argument is projected once (`test_a_span_argument_is_projected_once`).
+  `call_return_problem` type-checks each origin's place against the
+  holder the result fills: "container result of a non-container
+  argument", "... of a non-container place", "container result rooted in
+  an elements region", "view result of a non-leaf place", "call result of
+  a mismatched place" (`test_call_return_problem_checks_the_endpoint_type`).
+  A user-call container result is a container place wherever a
+  container place is read (a receiver, a subscript, a `for`, an alias
+  declaration); a call that WRITES refuses there, "order-sensitive eager
+  operands", since the emitted C++ may evaluate an index or slice bound
+  before the container (`test_a_writing_call_is_no_container_place`).
+- **Stubs.** Stub summaries keep whole-argument origins and their
+  result-dependent elements projection; the derivation equality between
+  a stub's declaration and its summary is unchanged
+  (`test_stub_summaries_keep_whole_argument_origins`).
+- **Measured, accessor summaries and return origins** (same tool and
+  sample; branch base 23cefb5ab1 vs the integrated tree 545f1ac360; 11142
+  test bodies on the base, 11185 on the branch, the 43 more being
+  `mir/accessor_calls`): lowered 2258 -> 2333, conflicts 28 -> 32,
+  certified 58 -> 60. Over the 11142 bodies both trees hold, 42 more lower
+  -- 34 accessor and twin bodies off "missing receiver fact" (28 in the
+  property position: 1 -> 37 of 71 property bodies lower), 3 callers off
+  "call needs finalized known summary" at a method call, 3 off a property
+  read or write ("unsupported expression", "unsupported expression type"),
+  1 off "unsupported reference fact" (a container call result bound to a
+  local), 1 free caller off a free call whose callee waited on a method
+  summary -- and no body that lowered on the base refuses.
+  The four new conflicts are every one `replacement`: the three conflict
+  sections of the new case and `method_calls::tag_across_rename`, whose
+  view-of-a-field result the previous unit pinned opaque. The two new
+  certified bodies are the twin callers of the new case.
+  The summaries pinned KNOWN on the base (`containers` `items_of` and
+  `tail`, the `method_calls` methods) stay KNOWN; the sample records no
+  per-body summary state, so no wider KNOWN -> OPAQUE count is claimed.
 
 ## Scope matrix and remaining increments
 

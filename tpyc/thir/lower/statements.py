@@ -195,7 +195,9 @@ from ..reject import (
     note_detail,
     stmt_reject_reason,
 )
-from ..scalar_leaves import binds_cursor, binds_element, container_view, native_container_subject, storage_leaf
+from ..scalar_leaves import (
+    binds_cursor, binds_element, container_view, native_container_subject, native_container_type, storage_leaf,
+)
 from ..nodes import (
     HoistDecl,
     THIRStoragePlacement,
@@ -4456,12 +4458,16 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         # Declarations drain argument temporaries before binding the alias:
         # a literal argument hoists to a named temp the borrow then outlives
         # (`std::vector<int32_t>& items = identity(__tmp_1);`).
+        init = _lower_expr(
+            stmt.init, lc, declared,
+            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                         allow_temps=True))
         return THIRVarDecl(
-            name=stmt.name, resolved_type=vtype,
-            init=_lower_expr(
-                stmt.init, lc, declared,
-                use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                             allow_temps=True)),
+            name=stmt.name, resolved_type=vtype, init=init,
+            # The container a user callee returns by reference, aliased in place.
+            native_container=(native_container(vtype, is_const, lc.analyzer)
+                              if isinstance(init, (THIRCall, THIRMethodCall)) and init.resolved_callee is not None
+                              and native_container_type(native_container_subject(vtype)) else None),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
     if binding is LocalBinding.REF_ALIAS:
@@ -16932,6 +16938,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     iterable.result_type,
                     _iteration_yields_const(stmt.iterable, lc, analyzer)
                     or isinstance(iterable.field_identity.type, ReadonlyType), analyzer)
+            elif (isinstance(iterable, (THIRCall, THIRMethodCall)) and iterable.resolved_callee is not None
+                  and native_container_type(native_container_subject(iterable.result_type))):
+                # The container a user callee returns by reference, walked in
+                # place: const when its return type is, or, for a callable whose
+                # result follows its receiver, when the receiver lends const.
+                signature = iterable.resolved_callee.signature
+                receiver = getattr(stmt.iterable, "obj", None)
+                source_fact = native_container(
+                    iterable.result_type,
+                    isinstance(unwrap_ref_type(signature.return_type), ReadonlyType)
+                    or signature.result_follows_receiver and receiver is not None
+                    and _iteration_yields_const(receiver, lc, analyzer), analyzer)
         elif (route.consuming_native_name is None and not route.consuming_name
               and isinstance(iterable, THIRMethodCall) and iterable.stub_callee is not None):
             # A container view a stub returns (`d.keys()`) walks its own

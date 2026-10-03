@@ -1362,7 +1362,9 @@ def _validate_structure(fn: MIRFunction) -> None:
                     _require(not readonly or target.readonly, "borrow increases access")
                 case MIRCall():
                     validate_call(value)
-                    result = value.summary.borrowed_result
+                    # A follows-receiver result has the access of the receiver bound at this call.
+                    result = (value.summary.result_at(slots[value.arguments[0]].readonly) if value.arguments
+                              else value.summary.borrowed_result)
                     _require(not stmt.target.projections, "call needs whole result holder")
                     if result is None:
                         # An `Own[T]` scalar result is a plain T.

@@ -142,7 +142,7 @@ struct Bag {
     // def plus_span(self, s: Span[int32]) -> int32:  # tpyc: mir(covered)
     int32_t plus_span(std::span<int32_t> s) const;
 
-    // def view_items(self) -> list[int32]:  # tpyc: mir(covered)
+    // def view_items(self) -> list[int32]:  # tpyc: mir(covered) mir_summary(known)
     std::vector<int32_t>& view_items();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
@@ -245,9 +245,9 @@ inline int32_t Bag::plus_span(std::span<int32_t> s) const {
     return t;
 }
 
-// # method: the field returned as a borrowed result (a method publishes no summary,
-// # so `b.view_items()` is opaque to its callers)
-// def view_items(self) -> list[int32]:  # tpyc: mir(covered)
+// # method: the field returned as a borrowed result; its summary's return origin is the
+// # field itself, param0.items
+// def view_items(self) -> list[int32]:  # tpyc: mir(covered) mir_summary(known)
 //     return self.items
 inline std::vector<int32_t>& Bag::view_items() {
     return this->items;

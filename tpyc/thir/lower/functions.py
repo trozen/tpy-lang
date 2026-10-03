@@ -980,10 +980,13 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             raise ThirUnsupported("body.hoisted_vars")
         receiver = (method_receiver(func, self_type, analyzer, stub=stub)
                     if self_receiver is not None else None)
+        defined, access_twin = (method_definition(func, receiver, analyzer)
+                                if self_type is not None or stub is not None else (None, False))
         fn = THIRFunction(
             name=func.name,
             resolved_callee=(resolved_definition(func, analyzer) if self_type is None and stub is None
-                             else method_definition(func, receiver, analyzer)),
+                             else defined),
+            access_twin=access_twin,
             params=params,
             return_type=rt,
             body=param_copies + body,
@@ -995,6 +998,9 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         if _rejects_lambda_hoist(fn.body):
             raise ThirUnsupported("nested_def.rebind_slot_hoist")
         plan = prepare_temporaries(fn.body)
+        # The facts bind the signature's result contract by identity (the
+        # adapter re-validates against that very object); a twin body's own
+        # result access is derived where read (call_contract.bound_result).
         fn = replace(fn, temp_plan=plan, storage_facts=collect_storage_facts(
             fn.body, plan, borrowed_result=(fn.resolved_callee.signature.borrowed_result
                                            if fn.resolved_callee is not None else None)))

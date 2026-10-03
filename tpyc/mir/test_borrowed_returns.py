@@ -10,7 +10,9 @@ from ..thir.nodes import THIRBorrowedRecord, THIRCallableSignature, THIRFunction
 from ..type_def_registry import ParamPassing
 from ..typesys import INT32, NominalType, RefType
 from ..mir_workspace import MIRCallWorkspace, analyze_call_workspace
-from .call_contract import MIRCallSummary, MIRParameterBinding, MIRSummaryState, result_problem, summary_problem
+from .call_contract import (
+    MIRCallSummary, MIRParameterBinding, MIRReturnOrigin, MIRSummaryState, result_problem, summary_problem,
+)
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, analyze_dependencies, resolve_call_returns
 from .dump import dump_function
@@ -202,7 +204,7 @@ def test_leaf_return_origins(artifacts: Artifacts, name: str, origins: set[int],
     validate_function(body)
     result = summarize_function(functions[name], body, definitions)
     assert result.state is MIRSummaryState.KNOWN, result.reason
-    assert result.summary.returns == origins
+    assert result.summary.returns == {MIRReturnOrigin(i) for i in origins}
     assert body.borrowed_result.readonly is readonly
     assert result.summary.callee.signature.borrowed_result == body.borrowed_result
     assert bool(result.summary.writes) is (name == "writing")
@@ -241,9 +243,10 @@ def test_result_contract_rejects_missing_or_wrong_origins(artifacts: Artifacts) 
     summary = summarize_function(functions["identity"], bodies["identity"], definitions).summary
     for origins, message in (
         (frozenset(), "missing or unexpected return origins"),
-        (frozenset({-1}), "invalid return parameter"),
-        (frozenset({1}), "invalid return parameter"),
+        (frozenset({MIRReturnOrigin(-1)}), "invalid return parameter"),
+        (frozenset({MIRReturnOrigin(1)}), "invalid return parameter"),
         (frozenset({True}), "invalid call summary identity or facts"),
+        (frozenset({0}), "invalid call summary identity or facts"),
     ):
         assert summary_problem(replace(summary, returns=origins)) == message
     readonly = summarize_function(functions["observe"], bodies["observe"], definitions).summary
@@ -303,7 +306,7 @@ def workspace(artifacts: Artifacts) -> MIRCallWorkspace:
 def test_workspace_return_substitution(workspace: MIRCallWorkspace, name: str, roots: set[int]) -> None:
     result = next(r for key, r in workspace.summaries.items() if key.name == name)
     assert result.state is MIRSummaryState.KNOWN, result.reason
-    assert result.summary.returns == roots
+    assert result.summary.returns == {MIRReturnOrigin(i) for i in roots}
     if name == "forwarded_write":
         assert {w.parameter for w in result.summary.writes} == {0, 1}
 
@@ -378,7 +381,7 @@ def caller(flag: bool, a: Cell, b: Cell) -> Cell:
     result = analyze_call_workspace(tuple(functions), MIRDefinitions(tuple(constructors)))
     summary = next(v for k, v in result.summaries.items() if k.name == "caller")
     assert summary.state is MIRSummaryState.KNOWN, summary.reason
-    assert summary.summary.returns == {2}
+    assert summary.summary.returns == {MIRReturnOrigin(2)}
 
 
 def test_returned_holder_participates_in_storage_analysis(workspace: MIRCallWorkspace) -> None:
@@ -412,7 +415,7 @@ def test_call_result_retains_storage_across_scope_exit() -> None:
     callee = THIRResolvedCallee(THIRFunctionIdentity("retention", "identity"),
                                 THIRCallableSignature((RefType(CELL),), RefType(CELL), ref, (ParamPassing.MUT_REF,)))
     summary = MIRCallSummary(callee, (MIRParameterBinding(CELL, ParamPassing.MUT_REF, False, ref),),
-                             frozenset({0}), frozenset(), frozenset(), frozenset({0}), frozenset(), True)
+                             frozenset({0}), frozenset(), frozenset(), frozenset({MIRReturnOrigin(0)}), frozenset(), True)
     blocks = tuple(replace(block, statements=tuple(
         replace(stmt, value=MIRCall(summary, (stmt.value.source,)))
         if isinstance(stmt, MIRAssign) and stmt.target == MIRPlace(SAVED) and isinstance(stmt.value, MIRAlias)
@@ -461,7 +464,8 @@ def test_missing_actual_origin_is_not_an_empty_result(workspace: MIRCallWorkspac
 def test_scalar_summary_cannot_claim_borrowed_origins(workspace: MIRCallWorkspace) -> None:
     result = next(r for key, r in workspace.summaries.items() if key.name == "readonly_binding")
     assert result.state is MIRSummaryState.KNOWN
-    assert summary_problem(replace(result.summary, returns=frozenset({0}))) == "missing or unexpected return origins"
+    assert summary_problem(replace(result.summary, returns=frozenset({MIRReturnOrigin(0)}))) == (
+        "missing or unexpected return origins")
 
 
 def test_method_and_constructor_callers(workspace: MIRCallWorkspace) -> None:

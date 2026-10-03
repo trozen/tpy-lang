@@ -163,12 +163,18 @@ def test_nested_receiver_place(artifacts: Artifacts) -> None:
     assert execute(fn, Reference(1), heap={1: {inner: {value: 1}}}) == 20
 
 
-@pytest.mark.parametrize("name", ["static", "class_value", "property_value"])
+@pytest.mark.parametrize("name", ["static", "class_value"])
 def test_nonordinary_method_kinds_have_no_receiver_fact(artifacts: Artifacts, name: str) -> None:
     fn = artifacts[0][name]
     assert fn.receiver is None
     # Without the fact the body is not a METHOD, whatever record owns it.
     assert function_body_kind(fn) is MIRBodyKind.FREE_FUNCTION
+
+
+def test_a_property_getter_borrows_its_receiver_readonly(artifacts: Artifacts) -> None:
+    fn = artifacts[0]["property_value"]
+    assert fn.receiver is not None and fn.receiver.readonly
+    assert function_body_kind(fn) is MIRBodyKind.METHOD
 
 
 def test_a_dunder_body_borrows_its_receiver(artifacts: Artifacts) -> None:
@@ -180,8 +186,7 @@ def test_a_dunder_body_borrows_its_receiver(artifacts: Artifacts) -> None:
 
 @pytest.mark.parametrize("flags", [
     {"is_consuming": True}, {"is_auto_own_borrowing_clone": True},
-    {"is_auto_own_consuming_clone": True}, {"auto_readonly_polarity": "strip"},
-    {"auto_readonly_polarity": "apply"}, {"type_params": ["T"]},
+    {"is_auto_own_consuming_clone": True}, {"type_params": ["T"]},
 ])
 def test_specialized_producer_does_not_grant_ordinary_receiver(flags: dict[str, object]) -> None:
     compiler, modules = _compile("""\

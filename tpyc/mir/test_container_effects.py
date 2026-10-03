@@ -16,7 +16,7 @@ from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import BOOL, INT32, STR, NominalType, OwnType, RefType, VoidType, return_representation
 from .call_contract import (
-    MIRCallSummary, MIRParameterBinding, MIRParameterWrite, MIRSummaryState, stub_summary,
+    MIRCallSummary, MIRParameterBinding, MIRParameterWrite, MIRReturnOrigin, MIRSummaryState, stub_summary,
 )
 from .call_effects import call_write_places
 from .collect import MIRBodyVerdict, MIRVerdictStatus, analyze_body, line_facts
@@ -35,7 +35,7 @@ from .retention import MIRRetention, affects, analyze_retention, may_overlap
 from .storage import analyze_storage, storage_destination
 from .storage_evidence import certify_storage_origins
 from .summaries import summarize_function
-from .validate import MIRPresenceError, body_may_raise
+from .validate import MIRPresenceError, MIRValidationError, body_may_raise
 
 B = MIRBodyId("containers", "effects")
 CELL = NominalType("Cell", _module_qname="containers.Cell")
@@ -379,7 +379,7 @@ def element_call(result: MIRSlot, argument: MIRSlot, record: bool = True) -> MIR
     # A record argument is lent as the record it is.
     lent = th.THIRBorrowedRecord(argument.type, False) if argument.value_kind is MIRValueKind.BORROWED else None
     summary = MIRCallSummary(callee, (MIRParameterBinding(argument.type, ParamPassing.MUT_REF, False, lent),),
-                             frozenset({0}), frozenset(), frozenset(), frozenset({0}), frozenset(), True)
+                             frozenset({0}), frozenset(), frozenset(), frozenset({MIRReturnOrigin(0)}), frozenset(), True)
     return body((argument, result, scalar(2)), MIRBlock(bid(0), (assign(1, MIRCall(summary, (sid(0),))),
                                                              assign(2, MIRConstant(0))), MIRReturn(sid(2))))
 
@@ -397,13 +397,14 @@ def test_a_call_result_borrowed_from_a_container_lies_in_its_elements() -> None:
 
 
 def test_a_container_result_of_a_record_argument_stays_uncovered() -> None:
-    # `xs = items_of(bag)`: the container is some field of the record, which
-    # the caller cannot name, so its elements would resolve where no write lands.
+    # `xs = items_of(bag)` with a whole-record origin: the container would be
+    # the record itself, whose elements resolve where no write lands. The
+    # field path a body publishes names the container (test_return_origins).
     result = MIRSlot(sid(1), CELLS, MIRSlotKind.LOCAL, "xs", form=th.Form.BORROW,
                      value_kind=MIRValueKind.BORROWED_CONTAINER, container_layout=CELL_LAYOUT)
     fn = element_call(result, holder(0, BAG, MIRSlotKind.PARAMETER, name="bag"))
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
-    assert isinstance(deps, MIRNotCovered) and deps.reason == "container result of a non-container argument"
+    with pytest.raises(MIRValidationError, match="unsupported return origin type or access"):
+        analyze_dependencies(fn, analyze_liveness(fn))
     # From a container argument it is that container.
     fn = element_call(result, param(0, name="ps"))
     deps = analyze_dependencies(fn, analyze_liveness(fn))
@@ -637,7 +638,7 @@ def test_an_element_result_returns_as_the_whole_parameter(compiled) -> None:
                      borrowed_result=decl.resolved_callee.signature.borrowed_result)
     result = summarize_function(decl, fn, definitions(compiled))
     assert result.state is MIRSummaryState.KNOWN, result.reason
-    assert result.summary.returns == {0} and result.summary.writes == frozenset()
+    assert result.summary.returns == {MIRReturnOrigin(0)} and result.summary.writes == frozenset()
 
 
 def test_an_element_field_write_keeps_the_summary_opaque(compiled) -> None:

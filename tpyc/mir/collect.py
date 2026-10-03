@@ -14,6 +14,7 @@ from ..thir.lower import iter_module_callables, iter_module_constructors
 from ..thir.nodes import THIRConstructor, THIRFunction, THIRFunctionIdentity
 from ..thir.reject import is_bodyless_binding
 from ..thir.scalar_leaves import owned_leaf, record_type, storage_leaf
+from ..thir.validate import validate_definitions
 from ..typesys import TpyType, unwrap_readonly
 from .call_contract import MIRSummaryResult
 from .call_effects import MIRCallEffects, analyze_call_effects, dump_call_effects
@@ -55,8 +56,20 @@ def body_declaration(func: TpyFunction, owner: TpyType | None) -> str:
 
 
 def call_definitions(ctx: CodeGenContext, module_name: str) -> tuple[tuple[MIRBodyId, THIRFunction], ...]:
-    return tuple((MIRBodyId(module_name, body_declaration(node, fn.receiver.type if fn.receiver else None)), fn)
-                 for node, fn in ctx.thir_functions.items() if fn.resolved_callee is not None)
+    """Every body publishing a callee identity -- its definition and an
+    `@auto_readonly` def's access twin -- under the id the verdict walk
+    gives it: the clones of a def share one declaration, so the second
+    lowered body is `#2` as in `enumerate_body_sources`. A cache entry is
+    read back only for the very function it lowered (`MIRCallWorkspace.lowering`)."""
+    validate_definitions(tuple(ctx.thir_functions.values()))
+    seen: dict[str, int] = {}
+    result: list[tuple[MIRBodyId, THIRFunction]] = []
+    for node, fn in ctx.thir_functions.items():
+        name = body_declaration(node, fn.receiver.type if fn.receiver else None)
+        count = seen[name] = seen.get(name, 0) + 1
+        if fn.resolved_callee is not None:
+            result.append((MIRBodyId(module_name, name if count == 1 else f"{name}#{count}"), fn))
+    return tuple(result)
 
 
 # --- the ladder ----------------------------------------------------------------
@@ -320,7 +333,7 @@ def lower_body(source: MIRBodySource, definitions: MIRDefinitions, workspace: MI
     summaries = workspace.summaries if workspace is not None else None
     if isinstance(source.source, THIRConstructor):
         return lower_constructor(source.source, source.body, definitions=definitions, summaries=summaries)
-    cached = workspace.bodies.get(source.body) if workspace is not None and not fresh else None
+    cached = workspace.lowering(source.body, source.source) if workspace is not None and not fresh else None
     if cached is not None:
         return cached
     return lower_function(source.source, source.body, definitions=definitions, summaries=summaries)

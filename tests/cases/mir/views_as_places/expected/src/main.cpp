@@ -332,8 +332,8 @@ void forwarded_write(Rec& r, std::string_view s) {
     return ::tpy::BigInt(::tpy::__len__(r.name));
 }
 
-// # free function: a method returning a view of a field has no summary, so its call is refused
-// def method_view(r: Rec) -> int:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+// # free function: a method returning a view of a field; the result's origin is the field
+// def method_view(r: Rec) -> int:  # tpyc: mir(covered)
 //     v = r.name_view()
 //     return len(v)
 ::tpy::BigInt method_view(Rec& r) {

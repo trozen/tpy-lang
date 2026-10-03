@@ -815,10 +815,13 @@ class THIRIfExpr(THIRExpr):
 class THIRFunctionIdentity:
     """`owner` is the owning record's qualified name for a method, whose
     signature then binds the receiver as parameter 0; None for a free
+    function. `accessor` names which callable of a property `name` is:
+    "fget" (the getter) or "fset" (the setter); None for a method or a free
     function."""
     module: str
     name: str
     owner: str | None = None
+    accessor: str | None = None
 
 
 @dataclass(frozen=True)
@@ -833,6 +836,10 @@ class THIRCallableSignature:
     borrowed_result: THIRBorrowedRecord | None = None
     passings: tuple[ParamPassing, ...] | None = None
     return_representation: Representation | None = None
+    # The borrowed result has the access of the receiver bound at the call
+    # (an `@auto_readonly` callable: its body is certified against a const
+    # receiver, and C++ overload resolution picks the clone by receiver).
+    result_follows_receiver: bool = False
 
 
 @dataclass(frozen=True)
@@ -3970,6 +3977,9 @@ class THIRFunction:
     body_terminates: bool = False
     receiver: THIRBorrowedRecord | None = None
     resolved_callee: THIRResolvedCallee | None = None
+    # The mutable clone of an `@auto_readonly` def: it publishes the
+    # identity its const clone defines, but is not that definition.
+    access_twin: bool = False
     temp_plan: THIRTempPlan | None = None
     # None means unpublished (a hand-built body), never an empty inventory.
     storage_facts: THIRStorageFacts | None = None

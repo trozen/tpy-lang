@@ -342,11 +342,11 @@ def free(value: int32) -> int32:
     return value
 """
 
-# Only a method body that borrows its receiver (an ordinary method or a dunder)
-# carries THIR's receiver fact; an owner record alone (staticmethod, property)
+# Only a body that borrows its receiver (a method, a property accessor or a
+# dunder) carries THIR's receiver fact; an owner record alone (staticmethod)
 # does not make a body a METHOD.
 KINDS = {"read": MIRBodyKind.METHOD, "static": MIRBodyKind.FREE_FUNCTION,
-         "prop": MIRBodyKind.FREE_FUNCTION, "__bool__": MIRBodyKind.METHOD,
+         "prop": MIRBodyKind.METHOD, "__bool__": MIRBodyKind.METHOD,
          "free": MIRBodyKind.FREE_FUNCTION}
 
 
@@ -369,8 +369,7 @@ def test_both_entry_paths_take_the_kind_from_the_receiver_fact() -> None:
     for name in ("Cell.read", "Cell.static", "free"):
         assert re.search(rf"fn .*::{re.escape(name)}@[^\n]+ -> int32", out), out
     assert re.search(r"fn .*::Cell\.__bool__@[^\n]+ -> bool", out), out
-    # A property still lacks the receiver fact its `self` needs.
-    assert re.search(r"Cell\.prop@[^\n]+<MIR not covered: missing receiver fact>", out), out
+    assert re.search(r"fn .*::Cell\.prop@[^\n]+ -> int32", out), out
     for body, _fn in scheduled:
         lowered = workspace.bodies[body]
         assert isinstance(lowered, MIRFunction), lowered
@@ -681,3 +680,59 @@ def test_constructor_member_inits_are_line_facts() -> None:
     assert init.writes[(5, "self.name")] == (MIRLineWrite(0, MIRValueKind.OWNED, True),)
     assert init.writes[(6, "self.n")] == (MIRLineWrite(0, MIRValueKind.SCALAR, False),)
     assert {5, 6} <= init.lines
+
+
+TWINS_SOURCE = """\
+from tpy import int32, auto_readonly
+
+class Cell:
+    value: int32
+    items: list[int32]
+    def __init__(self, value: int32):
+        self.value = value
+        self.items = []
+    @property
+    def count(self) -> int32:
+        return self.value
+    @property
+    def elems(self) -> list[int32]:
+        return self.items
+    @auto_readonly
+    def me(self) -> Cell:
+        return self
+
+def use(c: Cell) -> int32:
+    return c.count + c.me().value + len(c.elems)
+
+print(use(Cell(1)))
+"""
+
+
+@pytest.mark.parametrize("name,pair", [("me", True), ("elems", True), ("count", False)])
+def test_a_twin_pair_keeps_the_walks_ids_and_never_shares_a_lowering(name: str, pair: bool) -> None:
+    compiler, modules = _compile(TWINS_SOURCE)
+    entry = _entry(modules)
+    ctx = compiler.collect_thir(entry, tolerate_reject=True)
+    with compiler.mir_analysis([(entry, ctx)]) as program:
+        workspace = program.workspace
+        sources = [s for s in enumerate_body_sources(entry.ast, entry.analyzer, ctx, entry.name,
+                                                     compiler.thir_reject_by_node) if s.name == name]
+        # The clones share one declaration; the walk numbers the second, the const clone.
+        assert [s.body.declaration.endswith("#2") for s in sources] == ([False, True] if pair else [False])
+        identity = sources[-1].summary_identity
+        assert identity is not None and all(s.summary_identity == identity for s in sources)
+        body, definition = workspace.definitions[identity]
+        assert (body, definition) == (sources[-1].body, sources[-1].source)
+        assert not definition.access_twin and body in workspace.bodies
+        assert workspace.lowering(body, definition) is workspace.bodies[body]
+        if pair:
+            twin_body, twin = workspace.twins[identity]
+            assert (twin_body, twin) == (sources[0].body, sources[0].source) and twin.access_twin
+            # The twin check's lowering is cached under the twin's own id and served to the twin alone.
+            cached = workspace.bodies[twin_body]
+            assert workspace.lowering(twin_body, twin) is cached
+            assert workspace.lowering(body, twin) is None and workspace.lowering(twin_body, definition) is None
+            lowered = verdict_of(sources[0], program.definitions, workspace).function
+            assert lowered is cached and lowered.id == twin_body
+        else:
+            assert identity not in workspace.twins

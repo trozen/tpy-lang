@@ -20,7 +20,7 @@ from ..typesys import (
 )
 from .call_contract import (
     MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRGlobalId, MIRParameterBinding, MIRParameterWrite,
-    MIRSummaryState, parameter_binding_problem, stub_protocol_argument, stub_summary, summary_problem,
+    MIRReturnOrigin, MIRSummaryState, parameter_binding_problem, stub_protocol_argument, stub_summary, summary_problem,
 )
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, analyze_dependencies
@@ -276,7 +276,7 @@ def test_stub_result_may_borrow_every_lent_argument(active) -> None:
     fn = active.bodies["smaller"]
     stmt, = _call_statements(fn)
     summary = stmt.value.summary
-    assert summary.returns == frozenset({0, 1})
+    assert summary.returns == frozenset({MIRReturnOrigin(0), MIRReturnOrigin(1)})
     assert summary.borrowed_result == th.THIRBorrowedRecord(BIGINT, True)
     holder = fn.slots[stmt.target.root.index]
     assert holder.value_kind is MIRValueKind.BORROWED and holder.readonly
@@ -311,7 +311,7 @@ def test_overload_identities_stay_distinct_in_one_body(active) -> None:
     assert big.callee.identity.param_types == (BIGINT, BIGINT)
     assert set(fn.call_summaries) == {small, big} and len(fn.call_summaries) == 2
     # Only the owned-leaf overload's result may borrow its arguments.
-    assert small.returns == frozenset() and big.returns == frozenset({0, 1})
+    assert small.returns == frozenset() and big.returns == frozenset({MIRReturnOrigin(0), MIRReturnOrigin(1)})
 
 
 def test_calls_of_one_stub_share_one_summary(active) -> None:
@@ -334,7 +334,8 @@ def test_refused_stubs_declare_what_the_gates_read(active) -> None:
     assert calls["record_len"].contract is th.THIRStubContract.PURE
     # A view result may borrow every argument the stub lends, from the declaration alone.
     assert calls["view_result"].contract is th.THIRStubContract.PURE
-    assert isinstance(active.view_verdict, MIRCallSummary) and active.view_verdict.returns == frozenset({0})
+    assert isinstance(active.view_verdict, MIRCallSummary)
+    assert active.view_verdict.returns == frozenset({MIRReturnOrigin(0)})
 
 
 def test_stub_summary_admission_gates(active) -> None:
@@ -536,7 +537,7 @@ def test_readers_write_nothing_and_view_results_borrow_the_receiver(methods) -> 
     # The @auto_readonly mutable clone is pure: it reads a receiver it could write.
     values = _summary(stubs["values"][0])
     assert values.writes == frozenset() and not values.parameters[0].readonly
-    assert values.returns == frozenset({0})
+    assert values.returns == frozenset({MIRReturnOrigin(0)})
     assert values.borrowed_result == th.THIRBorrowedRecord(values.callee.signature.return_type, False)
     copy = _summary(stubs["copy"][0])
     assert copy.writes == frozenset() and copy.returns == frozenset() and copy.parameters[0].readonly
@@ -619,8 +620,8 @@ def _user_summary(fn: th.THIRFunction, bindings: tuple[MIRParameterBinding, ...]
     signature = th.THIRCallableSignature(types, ret, borrowed, tuple(b.passing for b in bindings),
                                          return_representation(ret))
     return MIRCallSummary(th.THIRResolvedCallee(th.THIRFunctionIdentity("main", fn.name), signature), bindings,
-                          frozenset(range(len(bindings))), frozenset(writes), frozenset(), frozenset(returns),
-                          frozenset(), False)
+                          frozenset(range(len(bindings))), frozenset(writes), frozenset(),
+                          frozenset(MIRReturnOrigin(r) for r in returns), frozenset(), False)
 
 
 def test_user_summaries_publish_container_writes(methods) -> None:

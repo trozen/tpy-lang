@@ -11,15 +11,16 @@ from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import INT32, NominalType
 from .call_contract import (
-    MIRContainerStructure, MIRParameterBinding, MIRParameterWrite, MIRSummaryResult, MIRSummaryState, summary_problem,
+    MIRContainerStructure, MIRParameterBinding, MIRParameterWrite, MIRReturnOrigin, MIRSummaryResult, MIRSummaryState,
+    summary_problem,
 )
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRDefinitions
-from .dependencies import call_return_problem
+from .dependencies import MIRReferent, call_return_problem
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
-    MIRBodyId, MIRCall, MIRCallStmt, MIRContainerLayout, MIRFunction, MIRNotCovered, MIRSlot, MIRSlotId,
+    MIRBodyId, MIRCall, MIRCallStmt, MIRContainerLayout, MIRFunction, MIRNotCovered, MIRPlace, MIRSlot, MIRSlotId,
     MIRSlotKind, MIRTupleElement, MIRValueKind,
 )
 from .summaries import summarize_function
@@ -262,12 +263,15 @@ def test_an_aliased_record_argument_conflicts_at_the_callee(program: _Program) -
     assert (caller.status, caller.conflicts) == (MIRVerdictStatus.COVERED, ())
 
 
-def test_a_container_returned_from_the_receiver_keeps_the_non_container_origin_guard(program: _Program) -> None:
+def test_a_container_returned_from_the_receiver_names_its_field(program: _Program) -> None:
     summary = _known(program, "Counter.all_items")
-    assert summary.returns == {0}
-    # The caller's container binding refuses before the guard, as its free twin's does.
+    assert summary.returns == {MIRReturnOrigin(0, (_field(program, "Counter", "items", INTS),))}
     caller = program.verdicts["call_all_items"]
-    assert (caller.status, caller.reason) == (MIRVerdictStatus.UNCOVERED, "unsupported reference fact")
+    assert (caller.status, caller.conflicts) == (MIRVerdictStatus.COVERED, ())
+    # A whole-receiver origin names no container: the contract and the caller's type check refuse it.
+    whole = replace(summary, returns=frozenset({MIRReturnOrigin(0)}))
+    assert summary_problem(whole) == "unsupported return origin type or access"
+    summary = whole
     body = MIRBodyId("methods", "guard")
     receiver = MIRSlot(MIRSlotId(body, 0), _record(program, "Counter"), MIRSlotKind.PARAMETER, "self",
                        form=th.Form.BORROW, value_kind=MIRValueKind.BORROWED)
@@ -275,7 +279,8 @@ def test_a_container_returned_from_the_receiver_keeps_the_non_container_origin_g
                      value_kind=MIRValueKind.BORROWED_CONTAINER,
                      container_layout=MIRContainerLayout(MIRTupleElement(INT32)))
     slots = {slot.id: slot for slot in (receiver, result)}
-    problem = call_return_problem(MIRCall(summary, (receiver.id,), True), result, slots)
+    state = {MIRPlace(receiver.id): frozenset({MIRReferent(MIRPlace(receiver.id), external=True)})}
+    problem = call_return_problem(MIRCall(summary, (receiver.id,), True), result, state, slots)
     assert problem == "container result of a non-container argument"
 
 

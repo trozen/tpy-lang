@@ -83,7 +83,7 @@ void forwarded_write(Rec& r, std::string_view s);
 ::tpy::BigInt sibling(const Rec& r);
 // def local_record(s: str) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt local_record(std::string_view s);
-// def method_view(r: Rec) -> int:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+// def method_view(r: Rec) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt method_view(Rec& r);
 // def ctor_from_view(s: str) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt ctor_from_view(std::string_view s);
@@ -155,7 +155,7 @@ inline ::tpy::BigInt Rec::name_len() const {
     return ::tpy::BigInt(::tpy::__len__(this->name));
 }
 
-// # method: a view of a field returned -- the origin is the receiver
+// # method: a view of a field returned -- the origin is the field, param0.name
 // def name_view(self) -> StrView:  # tpyc: mir(covered)
 //     return self.name
 inline std::string_view Rec::name_view() const {

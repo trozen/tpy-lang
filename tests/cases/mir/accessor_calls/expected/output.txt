@@ -1,0 +1,18 @@
+scalar_accessors: 2 2
+leaf_accessors: c renamed
+readonly_getter: 2
+grow_under_iter: 3 2
+alias_survives_growth: 41 41 3
+view_then_rename: 7 zz
+view_then_sibling: 2 4
+copy_then_rename: 2 yy
+twin_mutable: 7 7
+twin_readonly: 7
+twin_via: 7
+twin_items_grow: 48 3
+twin_items_write: 42 42
+Driver.run: 7
+getter_through_field: 7
+write_through_getter: 4 4
+record_accessors: 1112 12
+call_virtual_getter: 1

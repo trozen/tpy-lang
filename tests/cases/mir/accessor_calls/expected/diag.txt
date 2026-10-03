@@ -1,0 +1,8 @@
+main.py:37: warning: returns a copy of str field 'self.name'; use -> StrView for zero-copy access or -> String to silence this warning
+main.py:85: warning: copies Inner into field; use copy() to make this explicit
+main.py:203: warning: copies Counter into field; use copy() to make this explicit
+main.py:124: warning: Mutation of 'c' while iterating over it ('push' invalidates the iterator)
+main.py:134: warning: Mutation of 'c' while borrowed ('push' may invalidate references)
+main.py:151: warning: Mutation of 'c' while borrowed (field assignment may invalidate references)
+main.py:186: warning: Mutation of 'c' while iterating over it ('push' invalidates the iterator)
+main.py:232: warning: Mutation of 'h' while borrowed (field assignment may invalidate references)
