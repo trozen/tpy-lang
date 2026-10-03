@@ -11,7 +11,7 @@ Auto-detection order: g++ -> clang++ -> zig (clang-repl via explicit --cxx only)
 
 from __future__ import annotations
 import abc
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import as_completed
 import difflib
 import hashlib
 import os
@@ -37,7 +37,7 @@ def _fmt_ms(seconds: float) -> str:
 
 
 from . import get_runtime_dir
-from .toolchain import get_or_build_pch, pch_is_current
+from .toolchain import get_or_build_pch, pch_is_current, compile_pool
 
 
 class BackendResult:
@@ -280,7 +280,7 @@ class CompileBackend(REPLBackend):
                 names = [src.name for src, _, _ in jobs]
                 print(f"  [build] compiling {len(jobs)} support files: "
                       f"{', '.join(names)}", file=sys.stderr)
-            with ThreadPoolExecutor(max_workers=self._n_jobs) as pool:
+            with compile_pool(self._n_jobs) as pool:
                 for src, mtime, obj, err in pool.map(build_one, jobs):
                     if err:
                         return [], err
@@ -332,7 +332,7 @@ class CompileBackend(REPLBackend):
 
         failed_stderr = ""
         if len(changed) > 1 and self._n_jobs > 1:
-            with ThreadPoolExecutor(max_workers=self._n_jobs) as pool:
+            with compile_pool(self._n_jobs) as pool:
                 futures = {pool.submit(self._compile_one, p): p for p in changed}
                 for future in as_completed(futures):
                     r = future.result()
