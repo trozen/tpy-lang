@@ -1550,6 +1550,12 @@ def note_owned_local(ctx: 'SemanticContext', name: str,
     ctx.func.ever_owned_locals.add(name)
 
 
+def binds_value_copy(var_type: 'TpyType | None') -> bool:
+    """Whether a local of `var_type` holds its own copy of what it is bound
+    from rather than a borrow of that storage."""
+    return var_type is not None and unwrap_readonly(var_type).is_value_type()
+
+
 def record_stmt_borrow_binding(ctx: 'SemanticContext', name: str,
                                var_type: 'TpyType | None',
                                init_expr: TpyExpr) -> None:
@@ -1558,7 +1564,7 @@ def record_stmt_borrow_binding(ctx: 'SemanticContext', name: str,
     reads the accumulated fact to pick the pointer (alias) form for
     borrow-only names -- materialized here so the form discriminator is
     defined by sema, not re-derived by a codegen body walk."""
-    if var_type is None or unwrap_readonly(var_type).is_value_type():
+    if var_type is None or binds_value_copy(var_type):
         return
     inner = init_expr
     while isinstance(inner, TpyCoerce):
@@ -1955,9 +1961,10 @@ class FunctionTrackingState:
     # Names a `del` in this body unbinds: the value is destroyed there, so
     # like a rebind it ends the storage a view or `const&` of it reads.
     deleted_names: set[str] = field(default_factory=set)
-    # The objects this body may write in place anywhere, through any alias
-    # (`prescan.InPlaceWrites`): for a `String` / `bytearray` that reseats
-    # the buffer a view of it reads.
+    # The objects this body may write in place anywhere, and the storage
+    # each name may hold, through any binding (`prescan.InPlaceWrites`): for
+    # a `String` / `bytearray`, writes that reseat the buffer a view of it
+    # reads; for every flow fact, which spellings a write invalidates.
     in_place_writes: InPlaceWrites = field(default_factory=InPlaceWrites)
     # The compound-statement depth of the C++ block each local is declared
     # in (0: the function body, and every parameter), moved out when a
@@ -2034,14 +2041,12 @@ class FunctionTrackingState:
     tuple_unpack_view_targets: set[str] = field(default_factory=set)
     current_lvalue_reassigned: set[str] = field(default_factory=set)
     current_aug_assigned_vars: set[str] = field(default_factory=set)
-    # alias -> source for simple name-init locals (prescan alias_sources).
-    # Consulted when invalidating field facts: a mutation through one name
-    # of an alias group invalidates facts rooted at every member.
+    # alias -> source for locals initialized from a bare name (prescan
+    # alias_sources): the whole-object borrowers last-use liveness models.
     current_alias_sources: dict[str, str] = field(default_factory=dict)
-    # alias -> root for field/subscript-chain-init locals (prescan
-    # chain_alias_sources). Together with current_alias_sources these are
-    # the borrowers last-use liveness models itself; the auto-move gate
-    # only demotes on borrowers OUTSIDE this set.
+    # alias -> root for locals initialized from a field/subscript chain
+    # (prescan chain_alias_sources): the borrowers into the root's storage
+    # that last-use liveness models.
     current_chain_alias_sources: dict[str, str] = field(default_factory=dict)
 
     # --- Definite-assignment tracking ---

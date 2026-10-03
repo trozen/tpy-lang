@@ -7598,7 +7598,8 @@ class StatementAnalyzer:
             self.init.mark_assigned(stmt.target.name)
             self.narrowing.update_after_write(stmt.target.name, target_type, value_type, stmt.value)
         elif isinstance(stmt.target, TpyFieldAccess):
-            self.narrowing.invalidate_for_field_write(stmt.target)
+            self.narrowing.invalidate_for_field_write(
+                stmt.target, target_type, value_type, stmt.value)
 
     def _analyze_del_item(self, stmt: TpyDelItem) -> None:
         """Analyze del obj[key] statement."""

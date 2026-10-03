@@ -131,9 +131,10 @@ Unproven optional access emits:
 
 - Narrowing applies to local variable names and dotted field paths
   (`obj.field`, `obj.a.b` -- see the field-narrowing tests). Field-path
-  facts are invalidated aggressively: any method call on the receiver (or
-  on a static alias of it), any write to the path or a prefix of it, or
-  passing the object by mutable reference kills the fact. Subscript
+  facts are invalidated aggressively: any method call on the receiver,
+  any write to the path or a prefix of it, or passing the object by
+  mutable reference kills the fact under every spelling of the object
+  (see "Exception-Path and Call-Site Soundness"). Subscript
   access (`items[i]`) gets only limited fact tracking; binding to a local
   first remains the reliable pattern:
   ```python
@@ -150,7 +151,7 @@ Unproven optional access emits:
 - Safety rule: narrow aggressively, invalidate more aggressively.
 - Field-path narrowing exists but is killed by any operation that could
   mutate the object behind the path (method calls, mutable passes, writes,
-  alias-group mutations); when in doubt, bind to a local.
+  mutations through any alias); when in doubt, bind to a local.
 - Keep behavior explicit; emit warnings and keep runtime checks when proof is missing.
 
 ## Implemented Flow-Fact Semantics
@@ -183,8 +184,69 @@ where a fact may have died on some path:
   the statement, minus whatever the finally body itself killed.
 - Call sites: once a nonlocal-writing closure has been defined, every
   subsequent call kills facts for its nonlocal targets (any call may
-  invoke the closure). Field facts are invalidated for the whole static
-  alias group of a mutated receiver/argument, not just the spelled name.
+  invoke the closure).
+- Aliases: a field store, a mutating call and a call argument consult the
+  pre-scan's order-free may-hold relation (`prescan.InPlaceWrites`), which
+  records which names and field paths each name may hold through any
+  binding form -- assignment and rebind, ternary and `and`/`or` arms,
+  walrus, unpack, for / with targets, `match` captures, a nested def's
+  own bindings (they join the outer body's relation), field chains
+  (`t = a.inner`). Two kills do not: the loop / handler sweep for a
+  rebound name kills only facts spelled through that name, and a call
+  inside a condition does not kill the facts that condition derives
+  (`BUGS.md#condition-call-keeps-field-fact`).
+  A mutating call or a call argument kills the facts beneath the object
+  under every spelling it may have. A field store kills what lies beneath
+  the stored slot under every spelling; a store of a value that may be
+  None also kills the slot's own fact under every spelling (`t = a if c
+  else b; t.v = None` leaves `a.v` unproven), while a value that cannot
+  be None keeps it (`t.v = 5` keeps `a.v`). At loop entry the loop
+  body's stores are not typed yet, so a store inside the loop counts as
+  possibly None there (the handler and finally sweeps see the analysed
+  stores). A store never creates a fact. A bare name holding the slot shares it (`u = h.payload;
+  h.payload = None` drops `u`'s narrowing), but a local that copies a
+  value-typed field is not an alias of it: after `x = a.v` with `v: int
+  | None`, `a.v = None` leaves `x`'s narrowing (likewise a `str`, a
+  `Ptr` or a value-type record; what lies beneath a copied pointer is
+  still its pointee's).
+  The relation covers aliases of INLINE storage: a name holds exact
+  places (a root and a field path). Three guards bound the work per
+  name: a place deeper than 8 fields, more than 16 places under one root,
+  more than 64 places in all; past one the relation treats that root as
+  possibly aliased by the name anywhere beneath it (a conservative
+  answer: such facts are killed, not kept).
+  A projection inside a binding cycle is not followed (`node =
+  node.next`, or `a = b.next; b = a.next`), so a walk relates the walk
+  variable to its start only, and anything reached through a
+  pointer-like field is tracked by its spelling: a store or a mutating
+  call through one pointer path does not kill a fact read through
+  another. The view rule (whether a `str` / `bytes` local can stay a
+  view) uses the same exact sharing.
+  Not modelled (each filed): pointer structures -- a ring, a multi-hop
+  chain back to its start, a self-looping field, a doubly linked list, a
+  parent pointer, a second parameter or an `Rc`-shared node reachable
+  through pointers, a pointer into an inline field, a binding cycle mixing
+  an inline and a pointer projection
+  (`BUGS.md#pointer-structure-aliases-unmodelled`), and a local linked
+  into one and mutated through the owner
+  (`BUGS.md#mutating-call-walk-keeps-linked-local-fact`); parameters
+  passed the same object, a pointer-typed root, and a store inside a
+  nested def through an alias bound in the outer body
+  (`BUGS.md#may-hold-relation-unmodelled-shapes`); a call result, a
+  `@property` result, a `with ... as` target, a subscript or an
+  iteration variable as an origin (a name bound from one holds only
+  itself: `BUGS.md#borrowed-origin-not-related-to-source`,
+  `BUGS.md#subscript-element-not-keyed`); a closure mutating a capture
+  (`BUGS.md#closure-capture-mutation-invisible-to-kills`); a property
+  setter, a destructor or a user `__iadd__` run by a store
+  (`BUGS.md#property-setter-sibling-write-invisible-to-loop-kill-set`,
+  `BUGS.md#field-store-destructor-skips-fact-kill`,
+  `BUGS.md#iadd-target-keeps-facts-beneath`); a `Ptr` argument skipped
+  by the call kill (`BUGS.md#ptr-or-tuple-argument-skips-fact-kill`); a
+  mutating call inside a narrowing condition
+  (`BUGS.md#condition-call-keeps-field-fact`); a call that replaces a
+  narrowed `Box` payload through its receiver
+  (`BUGS.md#deref-view-survives-receiver-call`).
 
 ## Planned (Detailed)
 

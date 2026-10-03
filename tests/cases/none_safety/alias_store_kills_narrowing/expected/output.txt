@@ -1,0 +1,63 @@
+ternary: None
+or_alias: 1
+walrus: 1
+walrus: None
+nested: None
+chain: None
+composed: None
+composed_reverse: None
+loop_entry: 1
+loop_entry: None
+handler_finally except: 1
+handler_finally re-narrowed: 2
+handler_finally finally: 1
+handler_finally after: 2
+len_range: 1
+len_range: 2
+len_range_unrelated: 1
+len_range_unrelated: 2
+len_range_unrelated ys: 1
+local_root: None
+direct: None
+store_optional: None
+call_ternary: None
+call_kwarg: None
+call_chain: None
+receiver_ternary: None
+reassigned: None
+reassigned: 2 1
+reassigned_call: None
+reassigned_call: 3 1
+kept_non_none: 6
+kept_non_none_name: 5
+kept_unrelated: 2
+kept_sibling: 2
+self_alias: None
+kept_cyclic: 2 2
+kept_cyclic: 2 2
+queued_deref direct: 0
+queued_deref alias: 0
+plain_bind: 1 1
+everyday_loop: 2
+everyday_loop: 2
+ptr_hop_kept: 2
+walk_rebind_kept: 2
+copy_int: 2 None
+copy_str: HI None
+copy_ptr: 2
+kept_alias_non_none: 14
+sub_object: None
+and_alias: None
+unpack: None 1
+with_target: None
+match_capture: None
+loop_arg_chain: 1
+loop_arg_chain: None
+loop_receiver_ternary: 1
+loop_receiver_ternary: None
+loop_kwarg_alias: 1
+loop_kwarg_alias: None
+kept_call_unrelated: 2 None
+kept_try_unrelated: 2 None
+kept_try_alias_non_none: 3
+no_fact_created: 5
