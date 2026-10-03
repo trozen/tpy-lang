@@ -9,6 +9,8 @@ module's imports light (stdlib only).
 """
 
 from __future__ import annotations
+from concurrent.futures import ThreadPoolExecutor
+import contextlib
 import functools
 import glob
 import hashlib
@@ -17,6 +19,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -773,6 +776,19 @@ def get_or_build_pch(
         stamp_path.write_text(_pch_stamp(config, runtime_include_dir, opt_flags))
         return pch_header
     return None
+
+
+@contextlib.contextmanager
+def compile_pool(n_jobs: int) -> Iterator[ThreadPoolExecutor]:
+    """A thread pool for C++ compiles. A Ctrl-C inside the block drops the
+    compiles still queued and waits only for those running; the pool's own
+    exit would start every queued one first."""
+    with ThreadPoolExecutor(max_workers=n_jobs) as pool:
+        try:
+            yield pool
+        except KeyboardInterrupt:
+            pool.shutdown(cancel_futures=True)
+            raise
 
 
 #: Recommended strict warning set for compiling tpy-generated code.

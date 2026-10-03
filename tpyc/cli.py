@@ -35,8 +35,9 @@ own options can appear in any position (e.g. `tpyc foo.py -o out/ -x`).
 
 from __future__ import annotations
 import argparse
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import as_completed
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -52,14 +53,14 @@ if TYPE_CHECKING:
 # Only light modules at top level: the build cache's warm path (unchanged
 # inputs -> exec the recorded binary) must not pay the compiler machinery's
 # ~250ms import cost. Everything heavy (parse/sema/codegen/compiler,
-# frontend plugins) is imported inside _run_cli after the warm-path check.
+# frontend plugins) is imported inside _run_cli_in after the warm-path check.
 from . import (
     __version__, DEFAULT_INT_CHOICES, get_git_commit, get_runtime_dir,
     get_lib_dir, get_docs_dir,
 )
 from .toolchain import (
     CompilerNotFoundError, ToolchainUnsupportedError, CppCompilerConfig,
-    list_compilers, get_or_build_pch,
+    list_compilers, get_or_build_pch, compile_pool,
 )
 
 
@@ -441,7 +442,34 @@ def _record_build_manifest(cache_key: dict, build_dir: Path, input_path: Path,
         pass
 
 
+class _TempBuildDir:
+    """The build directory of a program given with -c or on stdin, which
+    has no source directory to put `__tpyc__` next to. Removed when the run
+    ends -- successful, failed or interrupted -- unless the run handed out a
+    path into it (`tpyc -b -c ...` prints its binary's)."""
+
+    def __init__(self) -> None:
+        self.path: str | None = None
+        self.keep = False
+
+    def create(self) -> Path:
+        self.path = tempfile.mkdtemp(prefix="tpyc_")
+        return Path(self.path)
+
+    def remove(self) -> None:
+        if self.path is not None and not self.keep:
+            shutil.rmtree(self.path, ignore_errors=True)
+
+
 def _run_cli(is_runner: bool) -> int:
+    temp_build_dir = _TempBuildDir()
+    try:
+        return _run_cli_in(is_runner, temp_build_dir)
+    finally:
+        temp_build_dir.remove()
+
+
+def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
     prog_name = "tpy" if is_runner else "tpyc"
     parser = argparse.ArgumentParser(
         prog=prog_name,
@@ -691,7 +719,6 @@ def _run_cli(is_runner: bool) -> int:
 
     # Handle inline/stdin source
     reading_from_stdin = args.cmd is not None or args.input == "-"
-    temp_dir = None
 
     # Load frontend plugins, if any, before deriving the module name so
     # that plugin-claimed extensions (e.g. `.pas`) are stripped.
@@ -727,11 +754,10 @@ def _run_cli(is_runner: bool) -> int:
     if reading_from_stdin:
         source = args.cmd if args.cmd is not None else sys.stdin.read()
         module_name = "main"
-        temp_dir = tempfile.mkdtemp(prefix="tpyc_")
         if args.output:
             output_dir = Path(args.output)
         else:
-            output_dir = Path(temp_dir)
+            output_dir = temp_build_dir.create()
         input_path = None
     else:
         input_path = Path(args.input).resolve()
@@ -1105,7 +1131,7 @@ def _run_cli(is_runner: bool) -> int:
                     for cmd in compile_steps:
                         print(f"  $ {' '.join(cmd)}", file=sys.stderr)
                 failed_stderr = ""
-                with ThreadPoolExecutor(max_workers=n_jobs) as pool:
+                with compile_pool(n_jobs) as pool:
                     futures = {
                         pool.submit(_timed_run, cmd): cmd
                         for cmd in compile_steps
@@ -1147,6 +1173,7 @@ def _run_cli(is_runner: bool) -> int:
             if not args.exec:
                 label = "Built extension" if ext_module_build else "Built"
                 print(f"{label}: {binary_path}")
+                temp_build_dir.keep = True
 
             # Run if requested
             if args.exec:
@@ -1201,16 +1228,33 @@ def _require_python_floor() -> None:
             f"(running {sys.version.split()[0]})")
 
 
+def _main(is_runner: bool) -> int:
+    _require_python_floor()
+    try:
+        return _run_cli(is_runner=is_runner)
+    except KeyboardInterrupt:
+        # A Ctrl-C during the front end or the C++ build (while the built
+        # program runs, _run_program leaves it to the program). One line
+        # instead of a traceback, then the exit CPython itself takes for an
+        # uncaught KeyboardInterrupt: by SIGINT, so a shell sees status 130
+        # and a script stops, not a plain exit code.
+        prog_name = "tpy" if is_runner else "tpyc"
+        print(f"{prog_name}: interrupted", file=sys.stderr)
+        sys.stdout.flush()
+        sys.stderr.flush()
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        os.kill(os.getpid(), signal.SIGINT)
+        return 130  # only if SIGINT could not end the process
+
+
 def main_tpyc() -> int:
     """Entry point for the `tpyc` command (compiler mode)."""
-    _require_python_floor()
-    return _run_cli(is_runner=False)
+    return _main(is_runner=False)
 
 
 def main_tpy() -> int:
     """Entry point for the `tpy` command (runner mode)."""
-    _require_python_floor()
-    return _run_cli(is_runner=True)
+    return _main(is_runner=True)
 
 
 if __name__ == "__main__":

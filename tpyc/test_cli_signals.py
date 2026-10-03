@@ -79,3 +79,25 @@ def test_run_program_restores_sigint_on_failure(
     with pytest.raises(failure, match="launch failed"):
         cli._run_program(["missing"])
     assert signal.getsignal(signal.SIGINT) == handler
+
+
+@pytest.mark.usefixtures("restore_sigint")
+@pytest.mark.parametrize("entry, prog", [(cli.main_tpyc, "tpyc"), (cli.main_tpy, "tpy")])
+def test_entry_point_reports_an_interrupt(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+    entry, prog: str,
+) -> None:
+    # A KeyboardInterrupt out of the run (the front end, the C++ build, the
+    # link) is reported in one line and the process ends by SIGINT: the
+    # default disposition restored, then the signal sent to itself.
+    def run_cli(is_runner: bool) -> int:
+        raise KeyboardInterrupt
+
+    sent: list[tuple[int, int]] = []
+    monkeypatch.setattr(cli, "_run_cli", run_cli)
+    monkeypatch.setattr(cli.os, "kill", lambda pid, sig: sent.append((pid, sig)))
+    signal.signal(signal.SIGINT, lambda signum, frame: None)
+    assert entry() == 130
+    assert sent == [(cli.os.getpid(), signal.SIGINT)]
+    assert signal.getsignal(signal.SIGINT) == signal.SIG_DFL
+    assert capsys.readouterr().err == f"{prog}: interrupted\n"

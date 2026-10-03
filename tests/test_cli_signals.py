@@ -177,6 +177,64 @@ def test_cli_signal_lifecycle(
     assert "Traceback" not in result.stderr, result.stderr
 
 
+@pytest.mark.skipif(os.name != "posix", reason="requires POSIX signals")
+def test_sigint_during_build(tmp_path: Path, request: pytest.FixtureRequest) -> None:
+    """A Ctrl-C while the C++ compiles run ends the driver the way CPython
+    ends on an uncaught KeyboardInterrupt (by SIGINT, no traceback), starts
+    none of the compiles still queued, and records no build manifest."""
+    if request.config.getoption("--no-exec"):
+        pytest.skip("needs a host build")
+    # Enough modules for a queue, and no ccache: the compiles must still be
+    # running when the signal lands.
+    (tmp_path / "prog.py").write_text(
+        "import asyncio\nimport socket\nimport subprocess\n\n\n"
+        "async def m() -> int:\n    return 1\n\n\n"
+        "def main() -> None:\n    print(asyncio.run(m()))\n\n\nmain()\n")
+    (tmp_path / "launcher.py").write_text(LAUNCHER)
+    argv = [sys.executable, str(tmp_path / "launcher.py"), "tpyc", "default",
+            "-b", "-v", "--no-pch", "--no-ccache", "-j", "2",
+            "--cxx", request.config.getoption("--cxx"), "prog.py", "-o", "out"]
+    proc = subprocess.Popen(argv, cwd=tmp_path, stdout=subprocess.DEVNULL,
+                            stderr=subprocess.PIPE, text=True, bufsize=1,
+                            start_new_session=True)
+    assert proc.stderr is not None
+    lines: list[str] = []
+    deadline = time.monotonic() + 300
+    try:
+        with selectors.DefaultSelector() as selector:
+            selector.register(proc.stderr, selectors.EVENT_READ)
+            while True:
+                left = deadline - time.monotonic()
+                assert left > 0 and selector.select(left), (
+                    "no compile finished in time: " + "".join(lines))
+                line = proc.stderr.readline()
+                assert line, "the build ended before a compile finished: " + "".join(lines)
+                lines.append(line)
+                if line.startswith("  compiled "):
+                    break
+        proc.send_signal(signal.SIGINT)
+        _, rest = proc.communicate(timeout=120)
+    except BaseException:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        proc.wait(timeout=30)
+        raise
+    out = "".join(lines) + rest
+    assert proc.returncode == -signal.SIGINT, out
+    assert "Traceback" not in out, out
+    assert "tpyc: interrupted" in out.splitlines(), out
+    # The premise: many compiles were still queued at the signal.
+    commands = [ln for ln in out.splitlines() if ln.startswith("  $ ")]
+    assert len(commands) >= 6, out
+    # Only the compiles already running finish (the two workers); the rest
+    # were dropped. Without the cancel every queued one writes its object.
+    objects = list((tmp_path / "out").rglob("*.o"))
+    assert len(objects) <= 1 + 2, (objects, out)
+    assert not list((tmp_path / "out").rglob("build-manifest.json"))
+
+
 # Ctrl-C scenarios for the runtime's SIGINT layer. The parent sends a real
 # SIGINT after each readiness line, so the signal lands while the program is
 # blocked in the operation under test (or spinning, for "cpu").

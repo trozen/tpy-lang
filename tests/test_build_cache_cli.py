@@ -200,3 +200,47 @@ def test_build_cache_lifecycle(tmp_path: Path, request: pytest.FixtureRequest) -
     r = run_tpyc(tmp_path, "argy.py", "-x", "--", "second")
     assert not built_cold(r)
     assert "second" in r.stdout
+
+
+def test_inline_program_build_dir_is_removed(
+    tmp_path: Path, request: pytest.FixtureRequest,
+) -> None:
+    """A program given with -c has no source directory for `__tpyc__`, so it
+    builds in a temp dir. The run removes it when it ends -- after running
+    the program, after a compile error, after only printing the C++ -- and
+    keeps it only when it handed out a path into it (`-b` prints the
+    binary's)."""
+    if (exec_is_cross() or request.config.getoption("--build-only")
+            or request.config.getoption("--no-exec")):
+        pytest.skip("needs a host-runnable binary")
+    temp_root = tmp_path / "tmp"
+    temp_root.mkdir()
+
+    def run(*argv: str) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            [sys.executable, "-m", "tpyc", "--no-pch", *argv],
+            cwd=tmp_path, capture_output=True, text=True, timeout=600,
+            env={**os.environ, "TMPDIR": str(temp_root),
+                 "CCACHE_BASEDIR": str(tmp_path)})
+
+    def build_dirs() -> list[Path]:
+        return sorted(temp_root.glob("tpyc_*"))
+
+    r = run("-x", "-c", "print('ran')")
+    assert (r.returncode, r.stdout) == (0, "ran\n"), r.stderr
+    assert build_dirs() == []
+
+    r = run("-x", "-c", "x: int = 'no'")
+    assert r.returncode == 1, r.stderr
+    assert build_dirs() == []
+
+    r = run("--dump-code", "-c", "print(1)")
+    assert r.returncode == 0, r.stderr
+    assert build_dirs() == []
+
+    r = run("-b", "-c", "print('kept')")
+    assert r.returncode == 0, r.stderr
+    binary = Path(r.stdout.removeprefix("Built: ").strip())
+    assert binary.is_relative_to(temp_root), r.stdout
+    assert subprocess.run([str(binary)], capture_output=True,
+                          text=True).stdout == "kept\n"
