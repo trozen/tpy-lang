@@ -48,7 +48,9 @@ parameter or literal, then existing body operations run on that same storage.
 Initialization is separate from record replacement. Constructor-call summaries
 still require an empty tail; body coverage does not imply call-effect coverage.
 Defaults, partial initialization, bases, consuming/generated method variants,
-properties, dunders and resumables retain their separate coverage boundaries.
+properties, the lifecycle hooks (`__del__`, `__copy__`, `__move__`) and
+resumables retain their separate coverage boundaries; other dunder bodies carry
+the receiver fact.
 MIR uses body-scoped reference holders and explicit alias transfers; scalar
 global slots instead carry a qualified module/binding identity and refer to
 caller-supplied shared storage. THIR carries the selected scalar global binding
@@ -61,7 +63,12 @@ an immutable referent. THIR also carries selected ordinary free-function
 declaration identities and semantic signatures at calls and definitions;
 these do not supply call effects or admit general MIR calls. Registration
 retains a unique ordinary declaration for signature/identity checks; overloads,
-redefinitions and stale cycle signatures stay uncovered. Structural module keys
+redefinitions and stale cycle signatures stay uncovered. A plain record's
+ordinary instance method publishes the same fact at its definition and at each
+call that statically resolves to it: the identity names the owning record
+(`THIRFunctionIdentity.owner`) and the signature's parameter 0 is the receiver,
+so MIR schedules and summarizes methods beside free functions
+(`MIR_ANALYSIS_PLAN.md`, B3 contract, second half). Structural module keys
 remain independent of rendered C++ namespaces. Selected lambdas and nested defs
 also carry complete capture inventories, distinguishing scalar binding references,
 scalar snapshots, borrowed record referents and receiver aliases. Closure occurrence

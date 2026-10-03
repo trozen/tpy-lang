@@ -47,8 +47,15 @@ def _declaration_name(name: str, func: TpyFunction | None) -> str:
     return name
 
 
+def body_declaration(func: TpyFunction, owner: TpyType | None) -> str:
+    """The declaration a function body is keyed by -- `Owner.name@line:col`
+    for a method -- in the call workspace and in the verdict walk alike, so
+    the walk reads the lowering the workspace cached."""
+    return _declaration_name(f"{owner.name}.{func.name}" if owner is not None else func.name, func)
+
+
 def call_definitions(ctx: CodeGenContext, module_name: str) -> tuple[tuple[MIRBodyId, THIRFunction], ...]:
-    return tuple((MIRBodyId(module_name, _declaration_name(node.name, node)), fn)
+    return tuple((MIRBodyId(module_name, body_declaration(node, fn.receiver.type if fn.receiver else None)), fn)
                  for node, fn in ctx.thir_functions.items() if fn.resolved_callee is not None)
 
 
@@ -247,8 +254,7 @@ def enumerate_body_sources(module: TpyModule, analyzer: SemanticAnalyzer, ctx: C
     identities the call workspace uses."""
     identities: dict[str, int] = {}
 
-    def identity(name: str, func: TpyFunction | None = None) -> MIRBodyId:
-        name = _declaration_name(name, func)
+    def identity(name: str) -> MIRBodyId:
         count = identities.get(name, 0) + 1
         identities[name] = count
         return MIRBodyId(module_name, name if count == 1 else f"{name}#{count}")
@@ -269,8 +275,7 @@ def enumerate_body_sources(module: TpyModule, analyzer: SemanticAnalyzer, ctx: C
                             None, refusal)
 
     for func, owner in iter_module_callables(module, analyzer):
-        name = f"{owner.name}.{func.name}" if owner is not None else func.name
-        body = identity(name, func)
+        body = identity(body_declaration(func, owner))
         line = func.loc.line if func.loc is not None else None
         fn = ctx.thir_functions.get(func)
         refusal: MIRRefusal | None = None
@@ -292,7 +297,7 @@ def enumerate_body_sources(module: TpyModule, analyzer: SemanticAnalyzer, ctx: C
                             fn if refusal is None else None, refusal)
 
     for record, ctor, owner in iter_module_constructors(module, analyzer):
-        body = identity(f"{record.name}.__init__", ctor)
+        body = identity(_declaration_name(f"{record.name}.__init__", ctor))
         line = ctor.loc.line if ctor.loc is not None else None
         source = ctx.thir_constructors.get(ctor)
         refusal = None

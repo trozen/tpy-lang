@@ -35,6 +35,7 @@ from .nodes import (
     THIREnumWrap,
     THIRExpr,
     THIRFieldAccess,
+    THIRFunctionIdentity,
     THIRForEach,
     THIRForRange,
     THIRFormConvert,
@@ -735,14 +736,22 @@ def _signature_facts(signature: THIRCallableSignature) -> str:
     return f"({passings}) -> {result}"
 
 
-def _callee_facts(e: THIRCall) -> str | None:
-    """The callee fact a call carries: a user callee's identity, or a stub's
-    declared contract (`none` when it declares nothing), each with how its
-    parameters pass and what its result is."""
+def _callee_name(identity: THIRFunctionIdentity) -> str:
+    """A user callee's module-qualified name; a method's names its owning
+    record (`__main__.Counter.bump`)."""
+    if identity.owner is not None:
+        return f"{identity.owner}.{identity.name}"
+    return f"{identity.module}.{identity.name}"
+
+
+def _callee_facts(e: THIRCall | THIRMethodCall) -> str | None:
+    """The callee fact a call carries: a user callee's identity, or a free
+    stub's declared contract (`none` when it declares nothing), each with
+    how its parameters pass and what its result is. A native method stub
+    is not listed."""
     if e.resolved_callee is not None:
-        identity = e.resolved_callee.identity
-        return f"callee {identity.module}.{identity.name}{_signature_facts(e.resolved_callee.signature)}"
-    if e.stub_callee is not None:
+        return f"callee {_callee_name(e.resolved_callee.identity)}{_signature_facts(e.resolved_callee.signature)}"
+    if isinstance(e, THIRCall) and e.stub_callee is not None:
         stub = e.stub_callee
         contract = "none" if stub.contract is None else stub.contract.value
         return f"stub {stub.identity.qualified_name}{_signature_facts(stub.signature)}, {contract}"
@@ -761,9 +770,11 @@ def _callee_lines(fn: 'THIRFunction') -> list[str]:
     tables fingerprint."""
     lines = []
     if fn.resolved_callee is not None:
-        lines.append(f"  signature{_signature_facts(fn.resolved_callee.signature)}")
-    facts = [(node.callee or "<computed>", fact) for stmt in fn.body for node in _walk(stmt)
-             if isinstance(node, THIRCall) and (fact := _callee_facts(node)) is not None]
+        owner = fn.resolved_callee.identity.owner
+        lines.append(f"  signature{'' if owner is None else ' ' + owner}{_signature_facts(fn.resolved_callee.signature)}")
+    facts = [((node.callee or "<computed>") if isinstance(node, THIRCall) else node.method_cpp, fact)
+             for stmt in fn.body for node in _walk(stmt)
+             if isinstance(node, (THIRCall, THIRMethodCall)) and (fact := _callee_facts(node)) is not None]
     if facts:
         lines.append("  callees:")
         lines.extend(f"    [{i}] {name}: {fact}" for i, (name, fact) in enumerate(facts))

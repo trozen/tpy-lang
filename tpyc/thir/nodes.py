@@ -28,7 +28,7 @@ from ..typesys import (
     FloatLiteralType, IntLiteralType, NominalType, Representation, ResolvedBinop, ResolvedUnaryop, TpyType,
     certified_primitive_comparison, certified_primitive_conversion, certified_primitive_op,
     certified_primitive_promotion, certified_primitive_subscript, is_inert_leaf, is_owned_leaf,
-    view_family_of,
+    unwrap_readonly, unwrap_ref_type, view_family_of,
 )
 from .scalar_leaves import view_compatible
 
@@ -813,8 +813,12 @@ class THIRIfExpr(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRFunctionIdentity:
+    """`owner` is the owning record's qualified name for a method, whose
+    signature then binds the receiver as parameter 0; None for a free
+    function."""
     module: str
     name: str
+    owner: str | None = None
 
 
 @dataclass(frozen=True)
@@ -1287,6 +1291,10 @@ class THIRMethodCall(THIRExpr):
     # receiver is parameter 0); None for any other callee. Analysis only:
     # no render reads it.
     stub_callee: THIRStubCallee | None = None
+    # The user record method this call statically runs, the same fact its
+    # definition publishes (the receiver is parameter 0); exclusive with
+    # `stub_callee`. Analysis only: no render reads it.
+    resolved_callee: THIRResolvedCallee | None = None
 
     def __post_init__(self) -> None:
         assert not (self.deref_check and self.is_arrow)
@@ -1306,6 +1314,15 @@ class THIRMethodCall(THIRExpr):
         must arrive already dereferenced there."""
         return (self.is_arrow and self.cpp_template is None
                 and self.native_function_name is None)
+
+    @property
+    def renders_plain_member_call(self) -> bool:
+        """Whether the call renders `receiver.method_cpp(args)` and nothing
+        else: no template, native symbol, explicit template arguments,
+        deref chain or check, receiver move or callable unwrap."""
+        return not (self.cpp_template is not None or self.native_function_name is not None
+                    or self.method_targs_cpp is not None or self.deref_chain or self.deref_check
+                    or self.move_receiver or self.callable_value_unwrap)
 
 
 @dataclass(frozen=True)
@@ -3956,6 +3973,27 @@ class THIRFunction:
     temp_plan: THIRTempPlan | None = None
     # None means unpublished (a hand-built body), never an empty inventory.
     storage_facts: THIRStorageFacts | None = None
+
+
+def declared_param_type(typ: TpyType) -> TpyType:
+    """A parameter's type without its reference and access wrappers. An
+    explicit `@readonly` / `@pure` method body reads its parameters as
+    readonly while the callee signature keeps the declared type; the
+    access is the passing's fact, compared separately."""
+    return unwrap_ref_type(unwrap_readonly(unwrap_ref_type(typ)))
+
+
+def receiver_param(receiver: THIRBorrowedRecord) -> THIRParam:
+    """A method's receiver as the parameter 0 its callee signature binds,
+    passed at the receiver's access."""
+    return THIRParam("self", receiver.type, borrowed_record=receiver,
+                     passing=receiver.type.param_passing(receiver.readonly))
+
+
+def effective_params(fn: THIRFunction) -> tuple[THIRParam, ...]:
+    """The parameters a callee signature of `fn` binds, in order: the
+    receiver of a method body first, then the declared parameters."""
+    return fn.params if fn.receiver is None else (receiver_param(fn.receiver), *fn.params)
 
 
 @dataclass(frozen=True)

@@ -70,7 +70,7 @@ from .nodes import (
     THIRCtorCall, THIRErrorReturnBind, THIRErrorReturnDiscard,
     THIRErrorReturnUnwrap, THIRExprStmt, THIRFieldAccess, THIRFormConvert,
     THIRBinOp, THIRExpr, THIRForIterProto, THIRFunction, THIRIf,
-    THIRIfExpr, THIRMethodCall,
+    THIRIfExpr, THIRMethodCall, declared_param_type, effective_params,
     THIRNode, THIRName, THIRInplaceContainerOp, THIRWhile, THIRModuleVar, THIRWalrus, THIRGlobalBinding,
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
     THIRFinallyDeferredReturn, DeferredPartKind,
@@ -256,8 +256,25 @@ def _check_callee(owner: str, node: object, fact: THIRResolvedCallee) -> None:
             or not isinstance(fact.identity, THIRFunctionIdentity)
             or not isinstance(fact.identity.module, str) or not fact.identity.module
             or not isinstance(fact.identity.name, str) or not fact.identity.name
+            or not (fact.identity.owner is None or isinstance(fact.identity.owner, str) and fact.identity.owner)
             or _signature_problem(fact.signature)):
         _fail(owner, node, "invalid resolved callee")
+
+
+def _check_method_callee(owner: str, node: THIRMethodCall, fact: THIRResolvedCallee) -> None:
+    """A user method binds the call's receiver record as parameter 0, at
+    one of the two accesses that record type is passed at, and renders as
+    the plain member call."""
+    _check_callee(owner, node, fact)
+    types = fact.signature.param_types
+    passings = fact.signature.passings
+    receiver = unwrap_readonly(unwrap_ref_type(node.receiver.result_type))
+    if (fact.identity.owner is None
+            or len(types) != len(node.args) + 1 or types[0] != receiver
+            or not isinstance(receiver, NominalType) or receiver.qualified_name() != fact.identity.owner
+            or passings is None or passings[0] not in (receiver.param_passing(False), receiver.param_passing(True))
+            or not node.renders_plain_member_call):
+        _fail(owner, node, "resolved method callee on incompatible call")
 
 
 def _stub_callee_problem(fact: THIRStubCallee) -> bool:
@@ -450,7 +467,8 @@ def _check_node(owner: str, node: THIRNode) -> None:
             _fail(owner, node, "native iteration element mismatch")
     if isinstance(node, (THIRLambda, THIRNestedDef)):
         _check_captures(owner, node)
-    if isinstance(node, THIRCall) and node.resolved_callee is not None and node.stub_callee is not None:
+    if (isinstance(node, (THIRCall, THIRMethodCall))
+            and node.resolved_callee is not None and node.stub_callee is not None):
         _fail(owner, node, "call carries both a resolved and a stub callee")
     if isinstance(node, THIRCall) and node.stub_callee is not None:
         _check_stub_callee(owner, node, node.stub_callee)
@@ -464,9 +482,12 @@ def _check_node(owner: str, node: THIRNode) -> None:
     if isinstance(node, THIRCall) and node.resolved_callee is not None:
         _check_callee(owner, node, node.resolved_callee)
         if (len(node.args) != len(node.resolved_callee.signature.param_types)
+                or node.resolved_callee.identity.owner is not None
                 or any(value is not None for value in (
                     node.native_name, node.cpp_template, node.callee_expr, node.template_args_cpp))):
             _fail(owner, node, "resolved callee on incompatible call")
+    if isinstance(node, THIRMethodCall) and node.resolved_callee is not None:
+        _check_method_callee(owner, node, node.resolved_callee)
     if isinstance(node, (THIRName, THIRModuleVar, THIRWalrus)) and node.global_binding is not None:
         fact = node.global_binding
         if (not isinstance(fact, THIRGlobalBinding) or not fact.module or not fact.name
@@ -1199,14 +1220,20 @@ def validate_function(fn: THIRFunction) -> None:
     if fn.resolved_callee is not None:
         _check_callee(fn.name, fn, fn.resolved_callee)
         signature = fn.resolved_callee.signature
-        if (fn.receiver is not None or fn.error_return_cpp is not None
+        owner = fn.resolved_callee.identity.owner
+        params = effective_params(fn)
+        if ((owner is None) != (fn.receiver is None)
+                or fn.receiver is not None and (
+                    owner != fn.receiver.type.qualified_name() or signature.passings is None
+                    or signature.param_types[:1] != (fn.receiver.type,)
+                    or signature.passings[0] is not params[0].passing)
+                or fn.error_return_cpp is not None
                 or fn.name != fn.resolved_callee.identity.name
-                # Body normalization adds @readonly access separately from the declaration type.
-                or tuple(unwrap_ref_type(unwrap_readonly(unwrap_ref_type(p.type))) for p in fn.params)
-                != tuple(unwrap_ref_type(unwrap_readonly(unwrap_ref_type(t))) for t in signature.param_types)
+                or tuple(declared_param_type(p.type) for p in params)
+                != tuple(declared_param_type(t) for t in signature.param_types)
                 or fn.return_type != signature.return_type
-                or (signature.passings is not None and all(p.passing is not None for p in fn.params)
-                    and signature.passings != tuple(p.passing for p in fn.params))):
+                or (signature.passings is not None and all(p.passing is not None for p in params)
+                    and signature.passings != tuple(p.passing for p in params))):
             _fail(fn.name, fn, "resolved callee disagrees with definition")
     for stmt in fn.body:
         _walk(fn.name, stmt, fn.return_type)

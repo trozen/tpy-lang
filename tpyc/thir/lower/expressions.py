@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import NoReturn, TypeVar
 from dataclasses import field, fields as dataclass_fields, replace
-from .callables import resolved_callee, stub_callee, with_method_stub
+from .callables import resolved_callee, stub_callee, with_method_callee, with_method_stub
 from .storage import borrowed_record, direct_field, full_expression_record, global_name_binding, module_global_binding, optional_layout, tuple_layout, union_layout
 from .captures import capture_facts
 from ... import qnames
@@ -10767,7 +10767,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     result_type=recv_lowered.result_type, expr=recv_lowered,
                     coercion_name="enum_companion", wrap=enum_wrap,
                     form=recv_lowered.form, loc=getattr(e.obj, "loc", None))
-        method_node = with_method_stub(_self_recv_positioned(THIRMethodCall(
+        method_node = with_method_callee(with_method_stub(_self_recv_positioned(THIRMethodCall(
             result_type=rtype if rtype is not None else VoidType(),
             receiver=recv_lowered,
             method_cpp=member,
@@ -10802,7 +10802,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                            and _witness("method.consuming_move")),
             form=_viewfam_result_form(m_str),
             loc=loc,
-        )), fi)
+        )), fi), fi, analyzer)
         if (fi.native_cpp_return_type is not None
                 and fi.return_type is not None
                 and fi.error_return_type is None):

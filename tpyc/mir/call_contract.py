@@ -14,8 +14,8 @@ from ..thir.scalar_leaves import (
 )
 from ..type_def_registry import ParamPassing, type_def_of
 from ..typesys import (
-    Loan, OwnType, ReadonlyType, RefType, Representation, TpyType, VoidType, is_owned_leaf, is_protocol_type,
-    loan_class,
+    Loan, NominalType, OwnType, ReadonlyType, RefType, Representation, TpyType, VoidType, is_owned_leaf,
+    is_protocol_type, loan_class,
     passing_representation, return_representation, unwrap_readonly, unwrap_ref_type,
 )
 
@@ -485,6 +485,7 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
     identity = summary.callee.identity
     signature = summary.callee.signature
     if (not isinstance(identity, THIRFunctionIdentity) or not identity.module or not identity.name
+            or not (identity.owner is None or isinstance(identity.owner, str) and identity.owner)
             or not isinstance(signature, THIRCallableSignature)
             or not isinstance(signature.param_types, tuple) or not isinstance(summary.parameters, tuple)
             or any(not isinstance(indices, frozenset) or any(type(i) is not int for i in indices)
@@ -506,6 +507,11 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
         problem = parameter_binding_problem(typ, binding)
         if problem is not None:
             return problem
+    # A method's callee binds its receiver first: a borrowed record of the owner.
+    receiver = summary.parameters[0].borrowed_record if summary.parameters else None
+    if identity.owner is not None and (receiver is None or not isinstance(receiver.type, NominalType)
+                                       or receiver.type.qualified_name() != identity.owner):
+        return "method summary without its receiver"
     result = borrowed_result_of(signature)
     if (result is None and summary.returns or result is not None and not summary.returns):
         return "missing or unexpected return origins"

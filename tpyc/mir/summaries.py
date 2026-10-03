@@ -72,17 +72,21 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
     are summarized by the dependency and liveness fixpoints."""
     validate_function(body)
     callee = declaration.resolved_callee
-    if (callee is None or body.kind is not MIRBodyKind.FREE_FUNCTION
-            or declaration.receiver is not None or body.receiver_init is not None
+    # A method body binds its receiver as parameter 0, and only a method's callee names an owner.
+    method = declaration.receiver is not None
+    if (callee is None or body.kind is not (MIRBodyKind.METHOD if method else MIRBodyKind.FREE_FUNCTION)
+            or (callee.identity.owner is not None) is not method or body.receiver_init is not None
             or body.borrowed_result != borrowed_result_of(callee.signature)
             or callee.signature.return_type != body.return_type):
         return MIRSummaryResult.opaque("summary definition or result contract mismatch")
+    effective = th.effective_params(declaration)
     params = tuple(s for s in body.slots if s.kind is MIRSlotKind.PARAMETER)
-    if (len(params) != len(declaration.params)
-            or callee.signature.param_types != tuple(p.type for p in declaration.params)):
+    if (len(params) != len(effective)
+            or tuple(th.declared_param_type(t) for t in callee.signature.param_types)
+            != tuple(th.declared_param_type(p.type) for p in effective)):
         return MIRSummaryResult.opaque("summary definition signature mismatch")
     bindings: list[MIRParameterBinding] = []
-    for slot, param in zip(params, declaration.params):
+    for slot, param in zip(params, effective):
         if param.passing is None:
             return MIRSummaryResult.opaque("summary parameter passing unpublished")
         owned = owned_value_type(param.type)

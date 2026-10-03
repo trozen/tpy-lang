@@ -32,6 +32,9 @@ def _call(call: MIRCall) -> str:
         # A method stub's effects are derived from its receiver facts when it declares no contract.
         if call.summary.callee.contract is not None:
             effects = f"{call.summary.callee.contract.value}, {effects}"
+    elif identity.owner is not None:
+        # A method by its owning record's qualified name, as `--dump-thir` lists it.
+        callee = f"{identity.owner}.{identity.name}"
     else:
         callee = f"{identity.module}::{identity.name}"
     if call.summary.borrowed_result is not None:

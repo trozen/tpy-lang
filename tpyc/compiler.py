@@ -1040,6 +1040,14 @@ class Compiler:
         # Return in dependency order
         return [self.modules[name] for name in self.compile_order]
 
+    def single_method_body(self, owning_type_qname: str | None, name: str):
+        """The one source body registered under (owning type, name), or None
+        when there is none or several: an accessor pair, the clones of an
+        `@auto_readonly` def and every overload or dispatch group register
+        more than one."""
+        bodies = self.method_bodies.get((owning_type_qname, name)) if owning_type_qname else None
+        return bodies[0] if bodies and all(b is bodies[0] for b in bodies) else None
+
     def _finalize_workspace(self) -> None:
         """The post-body workspace passes, shared by both compile paths
         (the file path and `from_source`: `tpyc -c`, piped stdin, the REPL).

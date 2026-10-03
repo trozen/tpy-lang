@@ -1678,7 +1678,9 @@ alongside related feature work; only the big-rock deferrals live here.
   BigInt, str, String and bytes as owned storage and readonly parameter
   borrows, stub contracts, raising and cyclic summaries) and views as
   places (landed), B3 containers as places (first half landed; retained
-  loans next), cleanup, B4 generator/async frames; B5 call summaries alongside; B6 advisory
+  loans in progress: declared storage members and user method summaries
+  landed), cleanup, B4 generator/async frames; B5 call summaries
+  alongside; B6 advisory
   checker and authority transition. Lifetime/loan bugs tagged `deferred: MIR`
   in BUGS.md wait on it. The history below records the landed increments.
   **Snippet-test verdicts** (landed): every case that reaches codegen runs
@@ -1727,7 +1729,19 @@ alongside related feature work; only the big-rock deferrals live here.
   A user `@native` container lowers from the same two facts where THIR
   lowers the shape at all: loops, a field read through a subscript
   (`r[0].x`), method calls with literal or leaf arguments.
-  **B3 second half, retained loans** (next, needs `/tpy-add-feature`):
+  **B3 second half, user method summaries** (landed): a plain record's
+  ordinary instance method and every call that statically resolves to it
+  publish one callee identity (`THIRFunctionIdentity.owner` names the
+  record) and one signature whose parameter 0 is the receiver; the call
+  workspace schedules methods beside free functions, `summarize_function`
+  summarizes method bodies, and a resolved method call lowers wherever a
+  resolved free call does. Dunder bodies other than the lifecycle hooks
+  carry the receiver fact; a call target must also be no dunder, have one
+  body and an owner without a `@dynamic` protocol (`docs/MIR_ANALYSIS_PLAN.md`
+  "B3 contract (second half: user method calls)"); case
+  `tests/cases/mir/method_calls`.
+  **B3 second half, retained loans** (next, needs `/tpy-add-feature`; unit
+  order in `docs/MIR_ANALYSIS_PLAN.md` "Breadth-first order"):
   - `scalar_leaves._ELEMENT_DISPATCH_DUNDERS` (the comparison and hash
     dunders that make a record element non-plain) stays a name list: no
     RecordInfo fact exists and one would relocate the list.
@@ -1774,9 +1788,66 @@ alongside related feature work; only the big-rock deferrals live here.
     an active compiler. Fail closed and activate a compiler in those tests.
   - View FIELDS refuse as "record holds a borrow": storing a view in a
     record is a retention effect, reading one needs the field's loan.
-  - User METHOD summaries (receiver as parameter 0): `r.rename(s)` and a
-    method's borrowed result (`b.view_items()`) stay opaque to callers
-    while the free-function forms publish their writes and origins.
+  - Next unit: property accessors, `@auto_readonly` twins and projected
+    return origins. Getter and setter register under one name and an
+    `@auto_readonly` def emits two bodies, so neither has a callee: a
+    property read refuses as "unsupported expression", a property write and
+    an `@auto_readonly` method call as "unsupported expression type".
+    Calls of an INHERITED method (`sub.base_method()`: the receiver's
+    static type is not the owner) belong here too -- parameter 0 is an
+    upcast of the receiver, the same projection the twins need.
+    Return origins name whole parameters, so a result rooted inside a
+    parameter does not reach its caller: a container field returned from
+    the receiver (`c.all_items()` bound) refuses as "unsupported reference
+    fact", a view of a receiver field (`c.tag()`) has an OPAQUE summary
+    ("unsupported return origin type or access") and its caller refuses
+    ("call needs finalized known summary"), so `tag_across_rename` in the
+    case (that view live across `c.rename(s)`) cannot report its
+    `replacement` yet.
+  - Method receivers beyond a name or `self` -- a field (`o.inner.bump()`),
+    a call result (`pick(g).read()`), a temporary (`Gauge(k).read()`), an
+    element (`gs[0].bump()`) -- refuse as "call needs borrowed record name",
+    the same limit record ARGUMENTS of free functions have; one rule lifts
+    both.
+  - Methods with no callee: consuming, generic, inherited, static and class
+    methods, `@error_return` methods, and every method of an owner that
+    inherits a `@dynamic` protocol (virtual: a summary per override set);
+    operator-dispatched dunder calls (`a == b` refuses as "uncertified
+    binary operation").
+  - `--dump-mir` and the snippet harness analyse only the modules under the
+    entry point's directory, so a method of a record from a library module
+    has no summary there ("call needs finalized known summary"; probed with
+    a record imported through `-L`).
+  - "The body a callable runs" has two channels: a free function's
+    `FunctionInfo.declaration`, and for a method the per-compilation table
+    `Compiler.method_bodies[(owner, name)]` (`thir/lower/callables._single_body`).
+    The method side does not set `declaration` because its other readers
+    (`sema/calls.py`, `sema/may_interrupt.py`) decide generated Ctrl-C
+    deferral scopes. `sema/loop_frames.py` reads the same table with a
+    looser uniqueness rule (every entry the same body) than `_single_body`
+    (exactly one entry); no path registers a body twice today. One helper
+    should own the rule, and one field the fact.
+  - An explicit `@readonly` callable returning its record PARAMETER
+    summarizes OPAQUE ("unsupported record call parameter"): THIR passes
+    the parameter const while its record fact is mutable, and the binding
+    rule refuses the disagreement; a declared `-> readonly[C]` return and a
+    `@readonly` method returning `self` summarize KNOWN.
+  - Callers blocked on an OPAQUE method summary (44 sampled bodies), by the
+    method's reason: a nested call with no known summary, "stub protocol
+    argument is not a builtin leaf", a record whose constructor refuses,
+    "summary storage or value shape", "unsupported statement".
+  - Recursive and mutually recursive callables have no summary (B5; timing by
+    cost and return, decided 2026-10-03): the workspace marks every identity
+    still pending after the leaf-first schedule OPAQUE ("recursive or
+    recursion-dependent call"), and each caller refuses. The shape when it
+    comes: strongly connected components over the call graph the workspace
+    already builds; a component is summarized by iteration from the bottom
+    (no writes, no returns, `normal_return_only`) until nothing changes --
+    the lattice is monotone and bounded by the declared types -- and any
+    member that cannot summarize makes the whole component OPAQUE. Low
+    return today: one opaque method summary in the sample is recursive
+    (`Counter.countdown`); the blockers behind the other 43 are the
+    callee's own body or its record's constructor.
   - `retains` on `MIRParameterWrite` (required empty today).
   - Nested container elements beyond one hop ("unsupported native
     container element"): `xss[0][0]`, `for v in rows[i]:` -- the shapes of
@@ -1795,7 +1866,9 @@ alongside related feature work; only the big-rock deferrals live here.
     unit); `in` (`THIRMembership`) as an `[elements]` read.
   - Projected return origins: a Span or element result rooted in
     `param[elements]` summarizes as the whole parameter (`returns` is
-    `frozenset[int]`); filed with the alias-basis precision item below.
+    `frozenset[int]`); filed with the alias-basis precision item below. The
+    field faces (a view or container field of a record parameter or the
+    receiver) are the next unit above.
   - Sibling-element precision: element identity is not tracked, so
     `xs[i] = v` / `d[k] = v` under a live iterator over the same container
     conflict (conservative; CPython raises only for a dict that grows).
@@ -1843,8 +1916,9 @@ alongside related feature work; only the big-rock deferrals live here.
     with local record storage stays OPAQUE ("summary storage or value
     shape").
   - View-producing if-expressions refuse as "unsupported owned-leaf
-    expression"; a view returned by a method call refuses as "unsupported
-    view source".
+    expression"; a view returned by a method stub (`v: StrView =
+    s.strip()`) refuses as "unsupported view source" (a user method's view
+    result rooted in a parameter lowers as a free function's does).
   - Owned-leaf fields still refuse: constructor-argument temporaries
     outside a declaration, `readonly[str]` fields, BORROW-form field reads;
     a lent holder overlapping the call's own field write

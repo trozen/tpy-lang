@@ -1539,6 +1539,12 @@ class OverloadForm(Enum):
 # The name prefix of every generator expression's function.
 GENEXPR_FUNC_PREFIX = "__genexpr_"
 
+# The record methods generated special members run around: the destructor
+# body (under its drop flag) and the copy / relocating move constructor bodies.
+DEL_HOOK, COPY_HOOK, MOVE_HOOK = "__del__", "__copy__", "__move__"
+LIFECYCLE_HOOKS = frozenset({DEL_HOOK, COPY_HOOK, MOVE_HOOK})
+INIT_METHOD = "__init__"
+
 
 @dataclass
 class TpyFunction:
@@ -1746,6 +1752,19 @@ class TpyFunction:
         return self.overload_form is not None
 
     @property
+    def is_lifecycle_hook(self) -> bool:
+        """A record method the generated special members run around
+        (`TpyRecord.del_method` / `copy_method` / `move_method`): its `self`
+        is not an initialized object borrowed for a call."""
+        return self.is_method and self.name in LIFECYCLE_HOOKS
+
+    @property
+    def is_initializer(self) -> bool:
+        """A record's `__init__` body (`TpyRecord.init_method` or one of its
+        overloads): its `self` is storage under construction."""
+        return self.is_method and self.name == INIT_METHOD
+
+    @property
     def is_extern_c(self) -> bool:
         return self.linkage == FunctionLinkage.EXPORT_C
 
@@ -1859,26 +1878,25 @@ class TpyRecord:
     @property
     def init_method(self) -> Optional[TpyFunction]:
         """Get __init__ method if present."""
-        for m in self.methods:
-            if m.name == "__init__":
-                return m
-        return None
+        return next((m for m in self.methods if m.name == INIT_METHOD), None)
+
+    def _lifecycle_hook(self, name: str) -> Optional[TpyFunction]:
+        return next((m for m in self.methods if m.name == name), None)
 
     @property
     def del_method(self) -> Optional[TpyFunction]:
-        """Get __del__ method if present."""
-        for m in self.methods:
-            if m.name == "__del__":
-                return m
-        return None
+        """Get __del__ method if present (the destructor body, under the drop flag)."""
+        return self._lifecycle_hook(DEL_HOOK)
+
+    @property
+    def copy_method(self) -> Optional[TpyFunction]:
+        """Get __copy__ method if present (custom copy ctor body)."""
+        return self._lifecycle_hook(COPY_HOOK)
 
     @property
     def move_method(self) -> Optional[TpyFunction]:
         """Get __move__ method if present (custom relocating move ctor body)."""
-        for m in self.methods:
-            if m.name == "__move__":
-                return m
-        return None
+        return self._lifecycle_hook(MOVE_HOOK)
 
 
 @dataclass

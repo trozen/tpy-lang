@@ -448,11 +448,14 @@ def test_sibling_fields_and_copies_do_not_conflict(active) -> None:
     assert _retention(fn).conflicts == ()
 
 
-def test_a_method_call_stays_opaque(active) -> None:
-    result = active.bodies["method_write"]
-    assert isinstance(result, MIRNotCovered) and result.reason == "unsupported expression type"
-    # The method body itself lowers; a method has no summary yet.
+def test_a_method_call_lowers_through_its_summary(active) -> None:
     assert "(*%0).__main__.Rec::name = copy (*%1) may-raise [in_place]" in _lines(_body(active, "rename_m"))
+    # The receiver is parameter 0: the method's field write lands on the caller's record.
+    fn = _body(active, "method_write")
+    assert "call __main__.Rec.rename_m(%0, %2) [writes={param0.name}, may-raise]" in _lines(fn)
+    events = analyze_storage(fn)
+    written = MIRPlace(fn.slots[0].id, (MIRDeref(), _name_field(active)))
+    assert events.call_writes == {MIRPoint(fn.blocks[0].id, 1): (written,)}
 
 
 # --- summaries and call writes ------------------------------------------------------

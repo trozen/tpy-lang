@@ -332,8 +332,8 @@ void forwarded_write(Rec& r, std::string_view s) {
     return ::tpy::BigInt(::tpy::__len__(r.name));
 }
 
-// # free function: a method's view result has no summary, so the view's source is refused
-// def method_view(r: Rec) -> int:  # tpyc: mir(uncovered /^unsupported view source$/)
+// # free function: a method returning a view of a field has no summary, so its call is refused
+// def method_view(r: Rec) -> int:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
 //     v = r.name_view()
 //     return len(v)
 ::tpy::BigInt method_view(Rec& r) {
@@ -361,9 +361,9 @@ void forwarded_write(Rec& r, std::string_view s) {
     return ::tpy::BigInt(::tpy::__len__(r.name));
 }
 
-// # free function: a method call has no summary yet, so the body stays opaque
-// def method_write(r: Rec, s: str) -> None:  # tpyc: mir(uncovered /^unsupported expression type$/)
-//     r.rename_m(s)
+// # free function: the method's published field write becomes a call-write event
+// def method_write(r: Rec, s: str) -> None:  # tpyc: mir(covered)
+//     r.rename_m(s)  # tpyc: mir_write(r.name)
 void method_write(Rec& r, std::string_view s) {
     r.rename_m(s);
 }
