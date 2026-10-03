@@ -1911,16 +1911,20 @@ form facts, never on lists of accepted kinds.
   facts, container writes in free-function summaries, and the first
   container conflicts (`replacement`). `tests/cases/mir/containers` pins
   them, each beside a certified safe sibling.
-- **B3, second half: retained loans.** Its first item landed: native types
+- **B3, second half: retained loans.** Two items landed. Native types
   declare their storage members and element writes on the stub
   (`@native(..., elements=True)`, `@native(..., mutates="elements")`), read
   through `scalar_leaves.declared_members`, with no container kind table.
   A user `@native` container lowers from the same two facts where THIR
   lowers the shape (loops, a field read through a subscript, method calls
-  with literal or leaf arguments). Remaining:
-  view fields (a record retaining a
-  loan), user method summaries (receiver as parameter 0), `retains` on
-  `MIRParameterWrite`, nested container elements. From here on each step
+  with literal or leaf arguments). Calls of user record methods lower
+  through per-method summaries whose parameter 0 is the receiver
+  ([B3 contract, second half](#b3-contract-second-half-user-method-calls)).
+  Remaining, in this order: property accessors, `@auto_readonly` twins and
+  projected return origins (a result rooted inside a parameter: a view,
+  record or container field); view fields (a record retaining a loan) with
+  `retains` on `MIRParameterWrite`; nested container elements; record-element
+  literal member-init. From here on each step
   builds the call-effect contracts it needs -- retention, invalidation,
   result origins, exceptional behavior -- where `call_contract.py` today
   excludes globals and requires empty invalidation and retention.
@@ -2167,9 +2171,10 @@ as the corpus grows).
   the sink: a `MIRBorrow` of the `String` place at a borrowing sink (a
   `str` view parameter, a view local), a `MIRCopy` at an owning one. Rule:
   a view source MIR cannot name refuses ("unsupported view source": an
-  if-expression or select producing a view, a method call returning one, a
-  view field, a slice-object index), as does a stepped slice ("stepped
-  slice"), which allocates.
+  if-expression or select producing a view, a method stub's view result
+  (`v: StrView = s.strip()`), a view field, a slice-object index; a user
+  method's view result is a user callee's, above), as does a stepped slice
+  ("stepped slice"), which allocates.
 - **Field rule.** An owned-leaf record field is a place: `MIRField` admits
   owned-leaf field types under the owner's layout (`MIRDefinitions`
   layouts admit `storage_leaf or owned_leaf` fields; projecting INSIDE the
@@ -2186,8 +2191,8 @@ as the corpus grows).
   A record declaration's initializer is a full expression that owns its
   argument temporaries. A callee's field writes are replacement events at
   the call: `MIRStorageEvents.call_writes` lists every place a call may
-  write (`call_effects.call_write_places`, from a free-function callee's
-  summary; a method call has no summary and stays opaque), so
+  write (`call_effects.call_write_places`, from the callee's summary, a free
+  function's or a user method's), so
   `v = r.name; rename(r, s); len(v)` is a conflict when sema has not already
   owned `v`. Retention asks `retention.affects` over an unchanged
   `may_overlap`: replacing an owned-leaf field reaches holders at or under
@@ -2213,8 +2218,9 @@ as the corpus grows).
   a record is a retention effect and reading one needs the field's loan
   (B3, "record holds a borrow"); method calls on owned leaves and views
   (`s.strip()`, `String` in-place methods beyond `+=`, `THIRMethodCall`
-  stub contracts) and method SUMMARIES, so `r.rename(s)` stays opaque
-  (B3/B5); views and owned leaves as container elements, Span and iterator
+  stub contracts; a user method call such as `r.rename(s)` publishes its
+  write through the method's summary, B3 second half); views and owned
+  leaves as container elements, Span and iterator
   loans (B3); tuple / Optional / union members; `bytearray`; owned-leaf
   global writes; f-strings; stepped slices ("stepped slice"); reassigned
   explicit view parameters ("reassigned view parameter"); view-producing
@@ -2434,8 +2440,9 @@ as the corpus grows).
   identities and container projections (`(structure,)`, `(F::items,
   structure)`, `(elements,)`), so a free function's container writes reach
   its callers as call-write events (`grow_if` / `forwarded` in the case);
-  `invalidates` and `retains` stay required-empty. Methods still have no
-  summary.
+  `invalidates` and `retains` stay required-empty. A user method's summary
+  follows the same rules with the receiver as parameter 0
+  ([second half](#b3-contract-second-half-user-method-calls)).
 - **Conflict naming.** No container-specific kind: sema's
   `iter_invalidation`, `borrow_invalidation` and `borrowed_container_arg`
   families are all `replacement`. `p = ps[0]; ps[0] = Point(..)` is a
@@ -2444,9 +2451,9 @@ as the corpus grows).
   point where CPython keeps the old). `tests/cases/mir/containers` pins
   each conflict beside a safe sibling whose holder is dead at the write.
 - **Deferred (not covered), second half or later.** View FIELDS (a record
-  retaining a loan, "record holds a borrow"); user METHOD summaries
-  (receiver as parameter 0), so a method call and a method's borrowed
-  result stay opaque to callers; `retains` on `MIRParameterWrite`; nested
+  retaining a loan, "record holds a borrow"); a method's borrowed result
+  rooted inside its receiver (the second half's own deferred list);
+  `retains` on `MIRParameterWrite`; nested
   container elements beyond one hop ("unsupported native container
   element"), which also keeps
   `BUGS.md#elem-index-certainty-ignores-rebinds` and the `rows[0]` face of
@@ -2541,6 +2548,175 @@ as the corpus grows).
   dict types from "missing native container fact" to "unsupported native
   container element" (the refusal moved from the THIR fact to the MIR
   layout), and four varargs bodies reach a later blocker.
+
+### B3 contract (second half: user method calls)
+
+- **Invariant.** A user record's ordinary instance method and every call
+  that statically resolves to it publish ONE callee identity and ONE
+  signature whose parameter 0 is the receiver.
+  `THIRFunctionIdentity(module, name, owner)` names the owning record's
+  qualified name in `owner` (None for a free function), so two records'
+  same-named methods are two callees. The signature is
+  `(record, *declared)` at passings `(receiver, *declared)`, the receiver
+  `CONST_REF` under the method's readonly verdict (declared or inferred),
+  else `MUT_REF` -- one helper, `thir.nodes.effective_params` /
+  `receiver_param`, feeds the published signature, the THIR validator, the
+  MIR receiver slot's passing and `summarize_function`. Parameter types
+  compare through `thir.nodes.declared_param_type` (reference and access
+  stripped): an explicit `@readonly` / `@pure` body reads its parameters
+  as readonly while the signature keeps the declared types, and the
+  access is the passing's fact, so such a callable taking a record
+  summarizes KNOWN (`Counter.ahead_of`, `count_of`). The definition
+  carries it on `THIRFunction.resolved_callee`, a call on
+  `THIRMethodCall.resolved_callee`, never beside a `stub_callee`;
+  `thir/validate.py` checks each against its receiver and parameters or
+  arguments, and `call_contract.summary_problem` refuses an owner whose
+  parameter 0 is no borrowed record of that owner ("method summary without
+  its receiver"). Analysis only: no render reads the fact.
+- **Body rule** (`thir/lower/callables.method_receiver`). The receiver fact
+  -- `self` a BORROWED parameter 0 at the method's readonly verdict -- is
+  published for an instance method of a plain record (`borrowed_record`:
+  not native, not a value type, no parents, no type parameters; not an
+  enum companion), dunder bodies included (`__eq__`, `__hash__`,
+  `__bool__`, `__getitem__`, `__setitem__` are pinned), except the
+  lifecycle hooks `__del__` / `__copy__` / `__move__`, which the generated
+  special members run around, so their `self` is no initialized object
+  borrowed for a call (`TpyFunction.is_lifecycle_hook`), a constructor
+  body (`TpyFunction.is_initializer`: a second `@dispatch` `__init__`
+  reaches the predicate, and its `self` is storage under construction),
+  static and class methods, property getters and setters, consuming,
+  generic, async and generator methods, auto-own clones and both clones of
+  an `@auto_readonly` def. Such a body lowers as a METHOD body, and
+  `summarize_function` summarizes it with the receiver bound as
+  `MIRParameterBinding(record, passing, readonly, receiver)`; every other
+  summary rule is the free function's.
+- **Call rule** (`method_callee`, `with_method_callee`). A call carries the
+  callee when the target is proven: a body-eligible method with no
+  template (a dunder's injected operator included: an explicit
+  `p.__eq__(q)` renders `(p) == (q)`, while a template-less `p.__bool__()`
+  is an ordinary member call and a call target, `call_bool`) or native
+  symbol, and no deref, move or
+  unwrap at the call, exactly one body registered under (owner, name)
+  (`Compiler.method_bodies`; an accessor pair, the clones of an
+  `@auto_readonly` def and an overload or `@dispatch` group register
+  several), a closed signature, a receiver whose static type (readonly and
+  reference stripped) is exactly the owner record, and an owner that
+  inherits no `@dynamic` protocol (its methods are virtual: a base-typed
+  receiver may run a subclass override). MIR lowers a resolved method call
+  at every position a resolved free call lowers at (statement, scalar,
+  owned-leaf, borrowed record, view and container result, argument),
+  binding `(receiver, *args)` to the summary's parameters
+  (`lower._call_arguments`). The receiver follows the record-argument
+  rule: a borrowed record name or `self`, at no more access than its
+  holder has ("call record argument mismatch"). The call workspace follows
+  `THIRMethodCall.resolved_callee`, so methods are scheduled leaves first
+  beside free functions (a method -> method -> free-function chain
+  forwards the leaf's write through each receiver) and recursion stays
+  OPAQUE; a method body's id is `Owner.name@line:col` in the workspace and
+  the verdict walk alike (`collect.body_declaration`).
+- **What a caller consumes.** The method's `writes` with their paths
+  (`(F::n,)`, `(F::items, structure)`, `(F::items, elements)` of the
+  receiver or of a record parameter), `returns` as whole parameter indices
+  (a method returning `self` publishes 0, one returning a view of a `str`
+  parameter publishes that parameter), nothing invalidated or retained. A
+  borrowed record result is readonly exactly when the emitted C++ result
+  is const (`callables._borrowed_result`: the callable's readonly verdict,
+  declared or inferred, where `typesys.return_const_projected` projects
+  it, or a `readonly[...]` return type), at the definition and at every
+  call: a method that does not write `self` and returns a record
+  parameter hands its caller a mutable borrow (`call_other`), an explicit
+  `@readonly` method returning `self` a readonly one (`call_me_ro`). An
+  explicit `@readonly` callable RETURNING its record parameter stays
+  OPAQUE ("unsupported record call parameter": the parameter's record
+  fact is mutable while its passing is const). A
+  scalar field written through a call is no replacement event (no
+  `mir_write` line fact), as a direct scalar field write is none.
+- **Conflicts.** The existing `replacement` kind:
+  a container field grown through a method under a live iterator over it,
+  in a free function and in a method, and a field view
+  (`v: StrView = c.name`) live across a method that replaces the field.
+  Sema warns on none of them
+  (`BUGS.md#field-loan-whole-record-callee-unchecked`,
+  `BUGS.md#explicit-view-local-source-mutation-unguarded`).
+  `tests/cases/mir/method_calls` pins each beside a safe sibling: a call
+  under the iterator that writes a scalar field only, a view dead before
+  the replacing call.
+- **Aliased arguments.** A body assumes its borrowed parameters may alias,
+  so a method iterating `other.items` while growing `self.items` carries
+  the `replacement` conflict in its own body (`Counter.merge_from`) and its
+  caller passing two records (`a.merge_from(b)`) is covered: call-duration
+  aliasing is reported at the callee, never re-checked at the caller.
+  Precision stays the alias-basis item.
+- **Kept refusals**, each pinned in the case with its reason. A virtual
+  owner's method call, "unsupported expression type" (its body lowers, with
+  no summary); a property read, "unsupported expression", and write,
+  "unsupported expression type"; an explicit call of a dunder with an
+  injected operator template (`p.__eq__(q)`), "unsupported expression"; a
+  constructor tail calling a method on `self` (`Tally.__init__`): the
+  record's definition refuses a constructor with body effects, so the
+  method's summary is OPAQUE ("summary record: constructor body effects")
+  and the constructor refuses ("call needs finalized known summary"); a
+  field, call-result, constructor-temporary or
+  element receiver (`o.inner.bump()`, `pick(g).read()`, `Gauge(k).read()`,
+  `gs[0].bump()`), "call needs borrowed record name", the limit record
+  arguments of free functions have; a generic record's or an inherited
+  method, where the caller's parameter of that record refuses first
+  ("unsupported parameter type"); a generic or a consuming method,
+  "unsupported expression"; a staticmethod, "call needs resolved ordinary
+  callee"; a recursive method, summary OPAQUE "recursive or
+  recursion-dependent call", caller "call needs finalized known summary";
+  a container field returned from the receiver (`return self.items`), a
+  KNOWN summary whose result the caller's binding refuses ("unsupported
+  reference fact", as its free twin's; the "container result of a
+  non-container argument" guard behind it is unit-pinned for a method
+  summary over hand-built MIR); a view of a receiver field
+  (`return self.name` at `-> StrView`), summary OPAQUE "unsupported return
+  origin type or access", caller "call needs finalized known summary".
+  Probed, not pinned: a classmethod refuses as the staticmethod; an
+  `@auto_readonly` method call "unsupported expression type" (both clone
+  bodies "missing receiver fact"); an operator-dispatched dunder (`p == q`)
+  "uncertified binary operation". Unit-pinned without a callee: an
+  `@error_return` or async method, a `@dispatch` or `@overload` group, an
+  `@auto_readonly` def (neither clone body has a receiver fact), a
+  `Ptr[T]` receiver.
+- **Limits.** `--dump-mir` and the snippet harness analyse the modules
+  under the entry point's directory only, so a method of a record defined
+  in a library module has no summary there ("call needs finalized known
+  summary"). The lifecycle hooks (`LIFECYCLE_HOOKS`) and the constructor
+  (`INIT_METHOD`) are the names the language defines them by, decided once
+  at the parse node and read by the record's accessors and the body
+  predicate alike. Return origins name whole parameters, so a result
+  rooted inside the receiver waits on projected return origins.
+- **Measured, user method summaries** (same tool and sample; branch base
+  d1fb396703 vs the finished branch; 11046 test bodies on the base, 11140
+  on the branch, the 94 more being `mir/method_calls`): lowered 2033 ->
+  2258, conflicts 22 -> 28, certified 50 -> 58. Over the 11046 bodies both
+  trees hold, 161 more lower -- 115 dunder bodies off "missing receiver
+  fact", 23 dunder bodies (`__iter__`, `__enter__`, `__iadd__` returning
+  `self`) off "unsupported return type", their record result now a
+  published borrowed result, 17 free functions and 6 methods off a method
+  call -- and no body that lowered on the base refuses; certified 50 -> 54;
+  loan-active user bodies lowered 243 -> 274. The six new conflicts are
+  every one `replacement`: the five conflict sections of the case, and one
+  outside it, `dynamic_attrs/dyn_name_setattr::Headers.__setattr__`, a
+  dunder body that newly lowers and stores two `str` parameters into two
+  fields (the second parameter is live across the first write, and a `str`
+  parameter may view the field that write replaces: the conservative
+  external-alias class of `SSLContext.load_cert_chain`). 268 bodies changed
+  first blocker: besides the 138 dunder bodies, the largest move is
+  callers from a method-call refusal to "call needs finalized known
+  summary" -- 44 bodies sit there now, because the called method's summary
+  is OPAQUE. Over the 32 programs holding them the opaque method summaries
+  give as reasons: a nested call with no known summary (11), "stub protocol
+  argument is not a builtin leaf" (8), a record whose constructor refuses
+  (13 over five reasons, the constructor-tail call among them),
+  "unsupported parameter type" (5), "summary storage or value shape" (5),
+  "unsupported statement" (5), "unsupported return origin type or access"
+  (4), "unsupported owned-leaf expression" (4). Seventy-six bodies leave
+  "unsupported return type": a record returned by reference is now a
+  published borrowed result, and most refuse next at the field expression
+  they return ("unsupported borrowed expression form") or at the storage
+  certificate ("demanded operation is not a supported record borrow").
 
 ## Scope matrix and remaining increments
 

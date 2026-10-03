@@ -163,12 +163,19 @@ def test_nested_receiver_place(artifacts: Artifacts) -> None:
     assert execute(fn, Reference(1), heap={1: {inner: {value: 1}}}) == 20
 
 
-@pytest.mark.parametrize("name", ["static", "class_value", "property_value", "__bool__"])
+@pytest.mark.parametrize("name", ["static", "class_value", "property_value"])
 def test_nonordinary_method_kinds_have_no_receiver_fact(artifacts: Artifacts, name: str) -> None:
     fn = artifacts[0][name]
     assert fn.receiver is None
     # Without the fact the body is not a METHOD, whatever record owns it.
     assert function_body_kind(fn) is MIRBodyKind.FREE_FUNCTION
+
+
+def test_a_dunder_body_borrows_its_receiver(artifacts: Artifacts) -> None:
+    fn = artifacts[0]["__bool__"]
+    assert fn.receiver is not None and fn.receiver.readonly
+    assert function_body_kind(fn) is MIRBodyKind.METHOD
+    assert lower(fn).slots[0].name == "self"
 
 
 @pytest.mark.parametrize("flags", [

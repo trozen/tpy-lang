@@ -83,13 +83,13 @@ void forwarded_write(Rec& r, std::string_view s);
 ::tpy::BigInt sibling(const Rec& r);
 // def local_record(s: str) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt local_record(std::string_view s);
-// def method_view(r: Rec) -> int:  # tpyc: mir(uncovered /^unsupported view source$/)
+// def method_view(r: Rec) -> int:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
 ::tpy::BigInt method_view(Rec& r);
 // def ctor_from_view(s: str) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt ctor_from_view(std::string_view s);
 // def ctor_from_string(x: String) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt ctor_from_string(const ::tpy::String& x);
-// def method_write(r: Rec, s: str) -> None:  # tpyc: mir(uncovered /^unsupported expression type$/)
+// def method_write(r: Rec, s: str) -> None:  # tpyc: mir(covered)
 void method_write(Rec& r, std::string_view s);
 // def lit_then_write(q: Rec) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt lit_then_write(Rec& q);

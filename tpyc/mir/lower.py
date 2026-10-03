@@ -62,6 +62,18 @@ def _literal(expr: th.THIRExpr) -> bool:
         isinstance(expr, th.THIRCoerce) and isinstance(expr.expr, th.THIRLiteral))
 
 
+def _user_call(expr: th.THIRExpr) -> bool:
+    """A call `_Coverage.call` checks: a free-function call, or a method
+    call THIR resolved to a user record method. A method stub's call has
+    arms of its own."""
+    return isinstance(expr, th.THIRCall) or isinstance(expr, th.THIRMethodCall) and expr.resolved_callee is not None
+
+
+def _call_arguments(expr: th.THIRCall | th.THIRMethodCall) -> tuple[th.THIRExpr, ...]:
+    """The arguments a call binds in parameter order: a method's receiver is parameter 0."""
+    return (expr.receiver, *expr.args) if isinstance(expr, th.THIRMethodCall) else expr.args
+
+
 def _region_view(typ: TpyType) -> bool:
     """A container view MIR holds as the elements region it views: one
     whose stub declares an element a cursor binds (a Span, a dict keys or
@@ -153,7 +165,7 @@ class _Coverage:
         # constructor temporaries and owned-leaf temporaries.
         self.active_temporaries: list[th.THIRExpr] | None = None
         self.summaries = summaries if summaries is not None else {}
-        self.calls: IdentityMap[th.THIRCall, MIRCallSummary] = IdentityMap()
+        self.calls: IdentityMap[th.THIRCall | th.THIRMethodCall, MIRCallSummary] = IdentityMap()
         self.stub_summaries: dict[th.THIRStubIdentity, MIRCallSummary] = {}
         self.borrowed_bindings: IdentityMap[th.THIRStmt, th.THIRBorrowedRecord] = IdentityMap()
         self.argument_temporaries: IdentityMap[th.THIRArgTemp, th.THIRBorrowedRecord] = IdentityMap()
@@ -162,11 +174,18 @@ class _Coverage:
         # comes from its context, not its node.
         self.types: IdentityMap[th.THIRExpr, TpyType] = IdentityMap()
 
-    def call(self, expr: th.THIRCall) -> None:
-        if expr.stub_callee is not None:
+    def call(self, expr: th.THIRCall | th.THIRMethodCall) -> None:
+        """A call through its callee's summary, parameter by parameter over
+        `_call_arguments`: a free-function call, or a resolved user method
+        call rendered as the plain member call (a pointer receiver spells
+        its access `->`)."""
+        if isinstance(expr, th.THIRCall) and expr.stub_callee is not None:
             self.stub_call(expr)
             return
-        _plain(expr, {"callee", "args", "callee_cpp", "resolved_callee"})
+        if isinstance(expr, th.THIRMethodCall):
+            _plain(expr, {"receiver", "method_cpp", "args", "is_arrow", "resolved_callee"})
+        else:
+            _plain(expr, {"callee", "args", "callee_cpp", "resolved_callee"})
         callee = expr.resolved_callee
         _require(expr, isinstance(callee, th.THIRResolvedCallee), "call needs resolved ordinary callee")
         entry = self.summaries.get(callee.identity)
@@ -200,8 +219,8 @@ class _Coverage:
         _require(expr, (unwrap_readonly(unwrap_ref_type(expr.result_type)) == result.type if result is not None
                        else expr.result_type == owned if owned is not None
                        else expr.result_type == callee.signature.return_type)
-                 and len(expr.args) == len(summary.parameters), "call signature mismatch")
-        for arg, binding in zip(expr.args, summary.parameters):
+                 and len(_call_arguments(expr)) == len(summary.parameters), "call signature mismatch")
+        for arg, binding in zip(_call_arguments(expr), summary.parameters):
             ref = binding.borrowed_record
             if ref is None:
                 self.argument(arg, binding)
@@ -218,7 +237,7 @@ class _Coverage:
                 actual = self.references[name]
                 _require(arg, actual.type == ref.type and (not actual.readonly or ref.readonly),
                          "call record argument mismatch")
-        self.argument_order_rule(expr, expr.args)
+        self.argument_order_rule(expr, _call_arguments(expr))
         self.calls[expr] = summary
 
     def stub_call(self, expr: th.THIRCall) -> None:
@@ -390,9 +409,9 @@ class _Coverage:
                 _require(node, all(other is operand or _literal(other) for other in operands),
                          "order-sensitive eager operands")
 
-    def call_writes(self, expr: th.THIRCall) -> bool:
+    def call_writes(self, expr: th.THIRCall | th.THIRMethodCall) -> bool:
         """Whether a checked call writes: its summary's parameter writes, or an argument's own."""
-        return bool(self.calls[expr].writes) or any(self.writes.get(arg, False) for arg in expr.args)
+        return bool(self.calls[expr].writes) or any(self.writes.get(arg, False) for arg in _call_arguments(expr))
 
     def owned_argument(self, arg: th.THIRExpr, typ: TpyType, passing: ParamPassing) -> None:
         """An owned-leaf argument: lent for the call at a borrowing passing
@@ -470,9 +489,9 @@ class _Coverage:
                 return expr in self.argument_temporaries
             case th.THIRSlotEmplace():
                 return expr in self.select_temporaries
-            case th.THIRCall():
+            case th.THIRCall() | th.THIRMethodCall() if _user_call(expr):
                 return (expr in self.calls and not self.calls[expr].writes
-                        and all(self.ordered_temporary_expression(arg) for arg in expr.args))
+                        and all(self.ordered_temporary_expression(arg) for arg in _call_arguments(expr)))
             case th.THIRBinOp():
                 return all(self.ordered_temporary_expression(arg) for arg in (expr.left, expr.right))
             case th.THIRValueSelect():
@@ -729,7 +748,7 @@ class _Coverage:
                 if stmt.alias_binding is not None or stmt.storage_borrow is not None:
                     self.borrow_binding(stmt, declaration=True)
                     continue
-                if (isinstance(stmt.init, (th.THIRCall, th.THIRIfExpr))
+                if ((_user_call(stmt.init) or isinstance(stmt.init, th.THIRIfExpr))
                         and (isinstance(stmt, th.THIRPtrLocalDecl) or stmt.form is th.Form.BORROW)):
                     self.borrowed_binding(stmt, declaration=True)
                     continue
@@ -972,7 +991,7 @@ class _Coverage:
                         _require(expr, all(other is operand or _literal(other) or isinstance(other, th.THIRName)
                                            for other in operands), "order-sensitive eager operands")
                 writing = any(self.writes[o] for o in operands)
-            case th.THIRCall():
+            case th.THIRCall() | th.THIRMethodCall() if _user_call(expr):
                 self.call(expr)
                 result = self.calls[expr].borrowed_result
                 _require(expr, result is not None and result.type == typ, "call view result mismatch")
@@ -1114,7 +1133,7 @@ class _Coverage:
                 raise MIRUnsupported(expr, "stepped slice")
             case th.THIRMove():
                 raise MIRUnsupported(expr, "owned-leaf move")
-            case th.THIRCall():
+            case th.THIRCall() | th.THIRMethodCall() if _user_call(expr):
                 # The callee returns an owned leaf by value: fresh storage for the
                 # caller, unless a stub's result may borrow what the call lends --
                 # a borrow of those arguments, copied at an owning sink.
@@ -1391,13 +1410,13 @@ class _Coverage:
             self._borrowed_expression(expr, result)
 
     def _borrowed_expression(self, expr: th.THIRExpr, result: th.THIRBorrowedRecord) -> None:
-        _require(expr, expr.form is (th.Form.VALUE if isinstance(expr, th.THIRCall) else th.Form.BORROW),
+        _require(expr, expr.form is (th.Form.VALUE if _user_call(expr) else th.Form.BORROW),
                  "unsupported borrowed expression form")
         self.reference(expr, result, expr.result_type)
         match expr:
             case th.THIRSlotEmplace():
                 self.select_temporary(expr, result)
-            case th.THIRCall():
+            case th.THIRCall() | th.THIRMethodCall() if _user_call(expr):
                 self.call(expr)
                 actual = self.calls[expr].borrowed_result
                 _require(expr, actual is not None and actual.type == result.type
@@ -1841,7 +1860,7 @@ class _Coverage:
                     typ = check()
                 elif discard and isinstance(expr, th.THIRCtorCall):
                     typ = self.temporary(expr).type
-                elif discard and isinstance(expr, th.THIRCall) and isinstance(expr.result_type, VoidType):
+                elif discard and _user_call(expr) and isinstance(expr.result_type, VoidType):
                     _require(expr, expr.form is th.Form.VALUE, "unsupported expression form")
                     self.call(expr)
                     typ = expr.result_type
@@ -1874,7 +1893,7 @@ class _Coverage:
             case th.THIRCharLiteral():
                 _plain(expr, {"value"})
                 _require(expr, leaf_constant(typ, expr.value), "unsupported literal value")
-            case th.THIRCall():
+            case th.THIRCall() | th.THIRMethodCall() if _user_call(expr):
                 self.call(expr)
                 writing = self.call_writes(expr)
             case th.THIRNarrowedRead():
@@ -2111,7 +2130,7 @@ class _Coverage:
                 self.replacement(stmt)
             case th.THIRAssign() | th.THIRPtrLocalRebind() if stmt.alias_binding is not None or stmt.storage_borrow is not None:
                 self.borrow_binding(stmt)
-            case th.THIRPtrLocalRebind() if isinstance(stmt.value, (th.THIRCall, th.THIRIfExpr)):
+            case th.THIRPtrLocalRebind() if _user_call(stmt.value) or isinstance(stmt.value, th.THIRIfExpr):
                 self.borrowed_binding(stmt)
             case th.THIRNoOpStmt():
                 _plain(stmt, set())
@@ -2841,7 +2860,7 @@ class _Builder:
         match expr:
             case th.THIRSlotEmplace():
                 return self.temp_holders[self.temp_plan.placement(expr).index]
-            case th.THIRCall():
+            case th.THIRCall() | th.THIRMethodCall():
                 dest = self.slot(result.type, reference=result)
                 self.write(dest, self.call(expr), expr.loc)
                 return dest
@@ -2896,8 +2915,8 @@ class _Builder:
     def call(self, expr: th.THIRCall | th.THIRMethodCall) -> MIRCall:
         summary = self.calls[expr]
         # A method's receiver is parameter 0, lent as the holder of its place.
-        args = (expr.receiver, *expr.args) if isinstance(expr, th.THIRMethodCall) else expr.args
-        arguments = tuple(self.argument(arg, binding) for arg, binding in zip(args, summary.parameters))
+        arguments = tuple(self.argument(arg, binding)
+                          for arg, binding in zip(_call_arguments(expr), summary.parameters))
         return MIRCall(summary, arguments, not summary.normal_return_only)
 
     def argument(self, arg: th.THIRExpr, binding: MIRParameterBinding) -> MIRSlotId:
@@ -3071,7 +3090,7 @@ class _Builder:
                         self.expr(bound)
                 return self.view_rvalue(expr.receiver)
             case _:
-                assert isinstance(expr, th.THIRCall)
+                assert _user_call(expr)
                 self.initialize_temporaries(expr)
                 return self.call(expr)
 
@@ -3131,7 +3150,7 @@ class _Builder:
                 return self.owned_holder(typ, MIRBorrow(self.owned_place(expr)), loc)
             case th.THIRStrLiteral() | th.THIRBytesLiteral(form=th.Form.BORROW):
                 return self.owned_holder(typ, MIRConstant(expr.value), loc)
-            case th.THIRCall() if self.calls[expr].borrowed_result is not None:
+            case th.THIRCall() | th.THIRMethodCall() if self.calls[expr].borrowed_result is not None:
                 return self.borrowing_call(expr)
             case th.THIRCoerce() if expr.owned_passthrough:
                 return self.view_slot(expr)
@@ -3159,26 +3178,23 @@ class _Builder:
             case th.THIRSubscript() if expr in self.element_places:
                 # Copying an element also checks its index.
                 return MIRCopy(self.element_place(expr), may_raise=True)
-            case th.THIRMethodCall():
-                self.initialize_temporaries(expr)
-                return self.call(expr)
             case th.THIRStrLiteral() | th.THIRBytesLiteral() | th.THIRLiteral():
                 return MIRConstant(expr.value)
             case th.THIRCoerce() if expr.owned_passthrough:
                 return MIRCopy(self.through(expr.expr), may_raise=type_def_of(typ).copy_may_raise)
             case th.THIRCoerce():
                 return self.conversion(expr)
-            case th.THIRCall() if self.calls[expr].borrowed_result is not None:
+            case th.THIRCall() | th.THIRMethodCall() if self.calls[expr].borrowed_result is not None:
                 # C++ copies the result it was handed by reference into the sink.
                 return MIRCopy(MIRPlace(self.borrowing_call(expr), (MIRDeref(),)),
                                may_raise=type_def_of(typ).copy_may_raise)
-            case th.THIRCall():
+            case th.THIRCall() | th.THIRMethodCall():
                 self.initialize_temporaries(expr)
                 return self.call(expr)
             case _:
                 return self.operation(expr)
 
-    def borrowing_call(self, expr: th.THIRCall) -> MIRSlotId:
+    def borrowing_call(self, expr: th.THIRCall | th.THIRMethodCall) -> MIRSlotId:
         """A call whose owned-leaf result may borrow its lent arguments: a
         readonly holder of the result, whose referents are theirs."""
         self.initialize_temporaries(expr)
@@ -3811,8 +3827,10 @@ class _Builder:
 
     def build(self, initialization: MIRConstructorDefinition | None = None) -> MIRFunction:
         if self.fn.receiver is not None:
+            # A constructor's receiver is the object it builds, passed by no caller.
+            passing = th.receiver_param(self.fn.receiver).passing if initialization is None else None
             self.bindings["self"] = self.slot(self.fn.receiver.type, MIRSlotKind.PARAMETER,
-                                              "self", self.fn.receiver)
+                                              "self", self.fn.receiver, passing=passing)
         for p in self.fn.params:
             if (owned := owned_value_type(p.type)) is not None:
                 self.bindings[p.name] = (

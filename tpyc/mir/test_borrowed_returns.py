@@ -226,7 +226,8 @@ def test_decorated_result_preserves_emitted_access(artifacts: Artifacts) -> None
     assert bodies["decorated"].borrowed_result.readonly
     result = summarize_function(functions["decorated"], bodies["decorated"], definitions)
     assert result.state is MIRSummaryState.OPAQUE
-    assert result.reason == "summary definition signature mismatch"
+    # The returned parameter is passed const while its record fact is mutable.
+    assert result.reason == "unsupported record call parameter"
 
 
 def test_borrowed_call_requires_known_callee(artifacts: Artifacts) -> None:

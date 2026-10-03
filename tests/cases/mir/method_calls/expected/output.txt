@@ -1,0 +1,43 @@
+call_bump/call_push: 1 2
+call_set_at: 7
+call_total: 11
+call_label: 3
+call_in_if/while/for: 2 6
+call_readonly: 26
+call_absorb: 4
+call_ahead: True False
+call_me: 5
+call_me_ro: 5
+call_other: 5 3
+call_first: 1
+call_as_argument: 24
+push_own_total: 7 23
+call_count_of: 6
+two_owners: 6 11
+bump_twice: 8
+poke: 12 4
+Counter.grow_under_iter: 46 7
+Counter.bump_under_iter: 46 19
+grow_under_iter: 46 7
+free_grow_under_iter: 47 8
+bump_under_iter: 47 27
+view_across_rename: 3 ctr
+view_before_rename: 3 renamed
+tag_across_rename: 7 renamed
+call_merge: 9 8
+call_virtual: 1
+read_prop/write_prop: 12 6
+call_dunder: True False
+call_bool: True False
+ctor_call: 2
+field_receiver: 2
+result_receiver: 11
+temp_receiver: 7
+element_receiver: 3
+generic_record: 9
+generic_method: 3
+consuming: 5
+static_call: 10
+inherited: 5
+call_countdown: 27
+call_all_items: 10 10

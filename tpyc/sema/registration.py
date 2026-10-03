@@ -1882,9 +1882,9 @@ class TypeRegistrar:
                             func_info, params=new_params, return_type=new_return)
 
         # Validate __copy__ signature
-        has_copy = "__copy__" in methods
+        has_copy = record.copy_method is not None
         if has_copy:
-            copy_loc = next((m.loc for m in record.methods if m.name == "__copy__"), record.loc)
+            copy_loc = record.copy_method.loc
             if record.is_nocopy:
                 raise SemanticError(
                     f"@nocopy class '{record.name}' cannot define __copy__",

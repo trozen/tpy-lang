@@ -342,10 +342,11 @@ def free(value: int32) -> int32:
     return value
 """
 
-# Only an ordinary method carries THIR's receiver fact; an owner record alone
-# (staticmethod, property, dunder) does not make a body a METHOD.
+# Only a method body that borrows its receiver (an ordinary method or a dunder)
+# carries THIR's receiver fact; an owner record alone (staticmethod, property)
+# does not make a body a METHOD.
 KINDS = {"read": MIRBodyKind.METHOD, "static": MIRBodyKind.FREE_FUNCTION,
-         "prop": MIRBodyKind.FREE_FUNCTION, "__bool__": MIRBodyKind.FREE_FUNCTION,
+         "prop": MIRBodyKind.FREE_FUNCTION, "__bool__": MIRBodyKind.METHOD,
          "free": MIRBodyKind.FREE_FUNCTION}
 
 
@@ -359,17 +360,17 @@ def test_both_entry_paths_take_the_kind_from_the_receiver_fact() -> None:
     with compiler.mir_analysis([(entry, ctx)]) as program:
         out = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, program.definitions,
                                compiler.thir_reject_by_node, program.workspace)
-        # Only free functions carry a resolved callee today; granting one to
-        # every body pins that the scheduler, too, reads the receiver fact.
+        # A static method carries no resolved callee; granting one to every
+        # body pins that the scheduler, too, reads the receiver fact.
         scheduled = tuple((MIRBodyId("kinds", name), replace(fn, resolved_callee=replace(
             callee, identity=th.THIRFunctionIdentity("kinds", name)))) for name, fn in functions.items()
             if name in ("read", "static", "free"))
         workspace = analyze_call_workspace(scheduled, program.definitions)
     for name in ("Cell.read", "Cell.static", "free"):
         assert re.search(rf"fn .*::{re.escape(name)}@[^\n]+ -> int32", out), out
-    # Properties and dunders still lack the receiver fact their `self` needs.
-    for name in ("Cell.prop", "Cell.__bool__"):
-        assert re.search(rf"{re.escape(name)}@[^\n]+<MIR not covered: missing receiver fact>", out), out
+    assert re.search(r"fn .*::Cell\.__bool__@[^\n]+ -> bool", out), out
+    # A property still lacks the receiver fact its `self` needs.
+    assert re.search(r"Cell\.prop@[^\n]+<MIR not covered: missing receiver fact>", out), out
     for body, _fn in scheduled:
         lowered = workspace.bodies[body]
         assert isinstance(lowered, MIRFunction), lowered

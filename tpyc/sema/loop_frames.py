@@ -331,10 +331,7 @@ def _exit_body_write(ctx: 'SemanticContext', fi: 'FunctionInfo',
     if fi.is_pure or fi.is_readonly:
         return None
     compiler = get_current_compiler()
-    bodies = (compiler.method_bodies.get((fi.owning_type_qname, fi.name))
-              if compiler is not None else None)
-    decl = (bodies[0] if bodies and all(b is bodies[0] for b in bodies)
-            else None)
+    decl = compiler.single_method_body(fi.owning_type_qname, fi.name) if compiler is not None else None
     if decl is None or is_bodyless_binding(fi):
         return _exit_call_write(ctx, fi, under, globals_)
     self_name = "self"

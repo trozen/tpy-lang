@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from dataclasses import replace
 from ..storage_facts import collect_storage_facts
 from ..temp_plan import prepare_temporaries
-from .callables import resolved_definition
+from .callables import method_definition, method_receiver, resolved_definition
 from .storage import borrowed_record, native_container, optional_layout, record_layout, tuple_parameter_layout
 from ...identity_map import IdentityMap
 from ...liveness import stmts_terminate
@@ -978,25 +978,19 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         body = _lower_stmts(func.body, lc, declared, top_level=True)
         if lc.unhandled_hoists:
             raise ThirUnsupported("body.hoisted_vars")
+        receiver = (method_receiver(func, self_type, analyzer, stub=stub)
+                    if self_receiver is not None else None)
         fn = THIRFunction(
             name=func.name,
-            resolved_callee=(resolved_definition(func, analyzer)
-                             if self_type is None and stub is None else None),
+            resolved_callee=(resolved_definition(func, analyzer) if self_type is None and stub is None
+                             else method_definition(func, receiver, analyzer)),
             params=params,
             return_type=rt,
             body=param_copies + body,
             layout=THIRFunctionLayout(),
             error_return_cpp=lc.error_return_cpp,
             body_terminates=stmts_terminate(func.body),
-            receiver=(borrowed_record(self_type, func.is_readonly, analyzer)
-                      if self_receiver is not None and not (
-                          func.is_consuming or func.type_params or stub is not None
-                          or func.is_property_getter or func.is_property_setter
-                          or (func.name.startswith("__") and func.name.endswith("__"))
-                          or func.is_async or func.is_generator
-                          or func.is_auto_own_borrowing_clone or func.is_auto_own_consuming_clone
-                          or func.auto_readonly_polarity is not None)
-                      else None),
+            receiver=receiver,
         )
         if _rejects_lambda_hoist(fn.body):
             raise ThirUnsupported("nested_def.rebind_slot_hoist")

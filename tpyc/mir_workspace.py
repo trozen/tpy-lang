@@ -25,7 +25,7 @@ def _dependencies(fn: th.THIRFunction) -> set[th.THIRFunctionIdentity]:
     pending = list(fn.body)
     while pending:
         node = pending.pop()
-        if isinstance(node, th.THIRCall) and node.resolved_callee is not None:
+        if isinstance(node, (th.THIRCall, th.THIRMethodCall)) and node.resolved_callee is not None:
             result.add(node.resolved_callee.identity)
         pending.extend(_iter_children(node))
     return result

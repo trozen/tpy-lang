@@ -7,7 +7,7 @@ import copy
 from enum import Enum, auto
 from collections.abc import Mapping, Set as AbstractSet
 from .storage import alias_binding, borrowed_record, full_expression_record, native_container, owned_container_decl, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal
-from .callables import setitem_stub_callee, with_method_stub
+from .callables import setitem_stub_callee, with_method_callee, with_method_stub
 from .captures import capture_facts
 from contextlib import contextmanager
 from dataclasses import dataclass, fields as dc_fields, replace
@@ -13129,7 +13129,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                     result=_ExprResultUse.STORAGE,
                                     allow_temps=True)))
                 return THIRExprStmt(
-                    expr=with_method_stub(THIRMethodCall(
+                    expr=with_method_callee(with_method_stub(THIRMethodCall(
                         result_type=VoidType(),
                         receiver=recv,
                         method_cpp=_method_member_cpp(_inp_fi, _inp_fi.name),
@@ -13138,7 +13138,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                             if _inp_fi.native_function else None),
                         cpp_template=_inp_fi.cpp_template,
                         args=(val,),
-                        loc=loc), _inp_fi),
+                        loc=loc), _inp_fi), _inp_fi, analyzer),
                     loc=loc)
         if not aug_ok:
             raise ThirUnsupported("stmt.aug_assign")
