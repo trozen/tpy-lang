@@ -231,7 +231,7 @@ __gen_gen_reads gen_reads() {
 //     print("fn.scalar", n + 5000000000)
 void scalar_read() {
     std::array<int32_t, 2> zs = {1, 2};
-    int64_t n = ::tpy::__getitem__(zs, 1);
+    int64_t n = static_cast<int64_t>(::tpy::__getitem__(zs, 1));
     std::cout << "fn.scalar" << " " << (::tpy::add_check<int64_t>(n, static_cast<int64_t>(5000000000))) << "\n" << ::tpy::check_signals;
 }
 

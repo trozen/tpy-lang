@@ -13,8 +13,8 @@ namespace tpyapp::main {
 //     print(xs)
 void test_direct() {
     std::vector<int32_t> xs = {1, 2};
-    ::tpy::list_extend(xs, {3});
-    ::tpy::list_extend(xs, {4, 5});
+    ::tpy::list_extend(xs, std::vector<int32_t>{3});
+    ::tpy::list_extend(xs, std::vector<int32_t>{4, 5});
     std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
@@ -28,7 +28,7 @@ void test_direct() {
 void test_alias() {
     std::vector<int32_t> xs = {1, 2};
     std::vector<int32_t>& ys = xs;
-    ::tpy::list_extend(ys, {3});
+    ::tpy::list_extend(ys, std::vector<int32_t>{3});
     ys.push_back(6);
     std::cout << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
@@ -42,7 +42,7 @@ void test_alias() {
 void test_in_branch(bool flag) {
     std::vector<int32_t> xs = {1, 2};
     if (flag) {
-        ::tpy::list_extend(xs, {9});
+        ::tpy::list_extend(xs, std::vector<int32_t>{9});
     }
     std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }

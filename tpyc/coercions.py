@@ -32,6 +32,25 @@ class CoercionContext(Enum):
     ARG = "arg"
     RETURN = "return"
 
+    @property
+    def verb(self) -> str:
+        """What a value is in this context: `passed` as an argument."""
+        return _CONTEXT_WORDS[self][0]
+
+    @property
+    def slot(self) -> str:
+        """The slot a value goes to in this context, as a diagnostic names
+        it: `the parameter`."""
+        return _CONTEXT_WORDS[self][1]
+
+
+_CONTEXT_WORDS = {
+    CoercionContext.ARG: ("passed", "the parameter"),
+    CoercionContext.RETURN: ("returned", "the return type"),
+    CoercionContext.INIT: ("bound", "the variable"),
+    CoercionContext.ASSIGN: ("stored", "the target"),
+}
+
 
 # A type-side matcher: predicate that identifies the actual/expected side.
 # Used by `Coercion.from_type` / `Coercion.to_type` as a coarse pre-filter;

@@ -887,6 +887,57 @@ ordinary `OperatorResolver` / `check_type_compatible` once their operands
 settle; `LocalTypeDeduction.resolve_all` settles the rest and rewrites every
 recorded type, so nothing after sema sees a pending one.
 
+The element of a list literal is the same kind of fact. A non-empty list
+literal of scalar numbers bound to an unannotated function local owns a cell
+of its own (`PendingNums.new_elem_cell`, recorded as
+`ListLiteralInfo.elem_cell`): the element of its `PendingListType` is the
+`PendingNumType` naming that cell, which `PendingListType.inner_types`
+exposes so the settle sweeps reach it. Every copy of the list's type refers
+to the one cell, so an element read (`ys[i]`, `pop`) is typed by the cell
+and follows whatever decides it; stores are the cell's evidence
+(`PendingNums.elem_store`). A list with an undecided element reaches only a
+consumer that named the node (`PendingNums.list_sink`: a subscript or method
+receiver, `print`, a second name), a declared slot the value is then coerced
+to that holds a typed container of numbers, or, as a literal-element view,
+the arguments of a call whose one candidate is generic
+(`CallAnalyzer._adaptive_list_args`); `_pending_gate` settles the cell for
+every other consumer. That is the single-pass rule numeric locals have
+(this module's docstring: nothing is analyzed twice; a use that needs the
+type decides it and a later wider store names that use), chosen on
+2026-09-29 over re-analysis to a fixed point (TODO.md "Whole-function slot
+and element facts"). The slot is the gate's parameter:
+`ExpressionAnalyzer.analyze_at_slot` is the analysis whose caller coerces
+the value to the hint, and a select or a tuple literal analyzed that way
+hands the promise to its operands and elements, which are the values the
+slot receives. Which slots hold such a container is ONE predicate,
+`PendingNums.slot_containers` (the slot itself, an annotated list local,
+the member of an optional slot, each member of a union slot), read by the
+gate, by the decision and by the diagnostic spelling of the stored list
+(`TypeCompatibility.diag_type`). The typed container decides the element in
+ONE place, the coercion check (`TypeCompatibility._list_at_container` ->
+`PendingNums.meets` / `elem_context`): the container's element is one more
+the list holds, the cell settles, and the two must then be equal, so a
+container confirms or widens and never narrows. That check decides only
+under its `commit` argument, which `check_type_compatible` -- the call that
+produces the coercion -- passes (and `list_at_slot`, for a select operand
+the select's own coercion no longer reaches), and which `_check_compat`
+hands down only where it peels a wrapper off the same value and slot,
+pairs a tuple's elements, or re-checks the union member that admitted the
+value; a query (`is_type_compatible`), a probe inside a producing check
+and a check inside an overload trial get the verdict alone. A list handed
+out undecided that no coercion reached is settled at its statement's end
+from what it holds (`FunctionTrackingState.awaiting_container`, per
+function state so a generator expression's body leaves its statement's
+alone). A list whose first binding holds typed values has no cell to
+widen: it is settled at that binding (`PendingNums.decide_at_birth`), as
+a local first bound to a typed value has that value's type, and every
+later store, container and generic context must fit it.
+How a list method or a protocol uses the element -- not at all, as a
+value in or out, inside another type -- is asked of the stub signature by
+one classifier (`tpyc/sema/list_elem.py`). Lists the cell does not cover
+(empty-seeded, module-level, non-numeric or tuple elements) keep the older
+element record on `ListLiteralInfo` and its read guard.
+
 Who owns what: the prescan decides which locals are pending, before the
 body is analyzed. The `SemanticContext` holds the cells
 (`pending_num_cells`), so a settle made inside an overload trial outlives

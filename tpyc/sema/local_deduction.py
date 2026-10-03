@@ -24,6 +24,8 @@ from ..typesys import (
     FloatLiteralType,
     is_float_type,
     is_integer_type,
+    is_protocol_type,
+    TypeParamRef,
     IntLiteralType,
     ListLiteralInfo,
     make_list,
@@ -74,7 +76,8 @@ from .type_join import (InferredJoin, JoinOutcome, descend,
                         python_type_name, rebind_mix_message, usage_mix_message,
                         wider_store_message)
 from .numeric_lattice import numeric_info, same_width_family, widen_numeric_types
-from .pending_num import contains_pending_num
+from .pending_num import (contains_pending_num, is_pending_num,
+                          numeric_container, pending_list_of)
 from .alias_rebind import BindKind
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_list, is_fixed_int_type, is_big_int_type,
@@ -302,6 +305,10 @@ def pending_elem_read(ctx: 'SemanticContext', receiver: 'TpyType | None',
     the list literal remembers (`note_pending_elem_read`)."""
     if isinstance(result, (IntLiteralType, FloatLiteralType)):
         return result
+    if is_pending_num(result):
+        # The element of a list whose cell decides it: the read follows
+        # the cell.
+        return result
     if (isinstance(receiver, PendingListType)
             and _mentions(result, receiver.element_type)):
         note_pending_elem_read(ctx, receiver, node)
@@ -332,7 +339,8 @@ def note_pending_elem_read(ctx: 'SemanticContext', receiver: 'TpyType | None',
     if not isinstance(receiver, PendingListType):
         return
     info = ctx.list_literals.get(receiver.literal_id)
-    if info is not None:
+    # A list whose element a cell decides has no read to go stale.
+    if info is not None and info.elem_cell is None:
         info.elem_reads.append((receiver.element_type, node))
 
 
@@ -780,6 +788,12 @@ class LocalTypeDeduction:
         """Update element type for a ListLiteralInfo from a use, widening if
         needed; `site` is the use the diagnostic points at, `value` the node
         it adds."""
+        cell = (self.ctx.pending_num_cells.get(info.elem_cell)
+                if info.elem_cell is not None else None)
+        if cell is not None:
+            self.pend.elem_store(cell, value_type, value,
+                                 value or site or info.expr)
+            return
         name = info.variable_name or "xs"
         init = self._initializer_spelling(info.expr, "[]", "[...]")
         result = self._join_observed_type(
@@ -826,12 +840,17 @@ class LocalTypeDeduction:
             literal_id = self.ctx.func.variable_to_literal.get(arg_expr.name)
             if literal_id is not None and literal_id in self.ctx.list_literals:
                 info = self.ctx.list_literals[literal_id]
+                # A cell-decided element met the parameter where the
+                # argument was analyzed (`PendingNums.elem_context`).
+                decides = info.elem_cell is None
                 if is_list(param_type):
                     info.passed_to_list_param = True
-                    info.coerced_element_type = param_type.type_args[0]
+                    if decides:
+                        info.coerced_element_type = param_type.type_args[0]
                 elif is_span(param_type):
                     info.passed_to_span_param = True
-                    info.coerced_element_type = param_type.type_args[0]
+                    if decides:
+                        info.coerced_element_type = param_type.type_args[0]
 
         elif isinstance(arg_type, PendingDictType) and is_dict(param_type):
             literal_id = self.ctx.func.variable_to_dict_literal.get(arg_expr.name)
@@ -853,6 +872,37 @@ class LocalTypeDeduction:
                     result = self._widen_inferred_type(info.element_type, param_type.type_args[0])
                     if result is not None:
                         info.element_type = result
+
+    def elem_container(self, slot_type: TpyType, marker: TpyType,
+                       ) -> tuple[TpyType | None, TpyType | None]:
+        """The typed container a slot is to a list literal: the slot's type
+        itself when it is a list, a Span or an Array of a number, or -- for
+        a protocol whose one type argument is the element a list gives it
+        (`Iterable[int]`) -- the list of that number, with the protocol as
+        the type to show. (None, None) for any other. `marker` stands for
+        the literal's element in the protocol question."""
+        container = numeric_container(slot_type)
+        if container is not None:
+            return container, None
+        view = unwrap_qualifiers(slot_type)
+        args = getattr(view, "type_args", None)
+        if not is_protocol_type(view) or not args or len(args) != 1:
+            return None, None
+        elem = args[0]
+        if isinstance(elem, TpyType):
+            elem = unwrap_readonly(unwrap_own(unwrap_ref_type(elem)))
+        if not (isinstance(elem, TpyType)
+                and (is_integer_type(elem) or is_float_type(elem))):
+            return None, None
+        # Asked of the protocol, not of its name: the element position is
+        # whatever a list binds the type argument to.
+        bound: dict[str, TpyType] = {}
+        pattern = dc_replace(view, type_args=(TypeParamRef("__elem"),))
+        if (self.compat.type_ops._match_protocol_type_args_with_inference(
+                pattern, make_list(marker), bound)
+                and bound.get("__elem") == marker):
+            return make_list(elem), view
+        return None, None
 
     def pin_pending_container(self, pending: TpyType, target: TpyType,
                               commit: bool = True) -> InferredJoin:
@@ -907,6 +957,16 @@ class LocalTypeDeduction:
             if info is None or not (is_list(target) or to_array):
                 return joined
             elem = target.type_args[0]
+            cell = (self.ctx.pending_num_cells.get(info.elem_cell)
+                    if info.elem_cell is not None else None)
+            if cell is not None:
+                # The element is the cell's: the operand was analyzed as a
+                # value, which settled it.
+                held = self.pend.known_so_far(cell)
+                if held == unwrap_readonly(elem):
+                    return joined
+                mix = self.int_float_mix(held, elem)
+                return below(mix, 0) if mix is not None else incompatible
             if info.coerced_element_type is not None:
                 if to_array:
                     return joined
@@ -951,6 +1011,42 @@ class LocalTypeDeduction:
                 info.element_type = verdict.joined
             return joined
         return incompatible
+
+    def rebind_elem_cell(self, existing: TpyType, value_type: TpyType,
+                         site: TpyStmt | TpyExpr) -> bool:
+        """A name whose list literal has an element cell is rebound to a
+        value of `value_type`: one local holds one element type, so another
+        list literal shares what each holds with the other, and a typed
+        list is a container the element must agree with. True when the
+        value is a pending list this settled the element question for."""
+        cell = self.pend.list_cell(existing)
+        if cell is None:
+            return False
+        other = self.pend.list_cell(value_type)
+        if other is cell:
+            return True
+        if other is not None:
+            self.pend.elem_store(cell, self.pend.cell_type(other), None, site)
+            self.pend.elem_store(other, self.pend.cell_type(cell), None, site)
+            return True
+        pending = pending_list_of(value_type)
+        if pending is not None:
+            info = self.ctx.list_literals.get(pending.literal_id)
+            if isinstance(pending.element_type, UnknownElementType):
+                if info is not None:
+                    info.elem_cell = cell.cid
+                    info.element_type = self.pend.elem_leaf(cell)
+                return True
+            container = make_list(pending.element_type)
+        else:
+            container = numeric_container(value_type)
+        if container is None or numeric_container(container) is None:
+            return False
+        refusal = self.pend.context_refusal(cell, container, "rebound")
+        if refusal is not None:
+            raise self.ctx.error(refusal, site)
+        self.pend.elem_context(existing, container, site, "rebound")
+        return pending is not None
 
     def mark_list_different_size(self, literal_id: int) -> None:
         """Mark a pending list literal as needing list (different-size reassignment)."""
@@ -999,7 +1095,8 @@ class LocalTypeDeduction:
         if literal_id is not None and literal_id in self.ctx.list_literals and is_list(return_type):
             info = self.ctx.list_literals[literal_id]
             info.passed_to_list_param = True
-            info.coerced_element_type = return_type.type_args[0]
+            if info.elem_cell is None:
+                info.coerced_element_type = return_type.type_args[0]
             return
 
         dict_id = self.ctx.func.variable_to_dict_literal.get(var_name)
@@ -1035,19 +1132,23 @@ class LocalTypeDeduction:
 
         new_id = self.ctx.literal_counter
         self.ctx.literal_counter += 1
+        # Two names for one list share the cell that decides its element.
+        elem = (source_info.element_type if source_info.elem_cell is not None
+                else init_type.element_type)
         info = ListLiteralInfo(
             literal_id=new_id,
             expr=source_info.expr,
-            element_type=init_type.element_type,
+            element_type=elem,
             size=init_type.size,
             variable_name=var_name,
             decl_line=decl_line,
             source_literal_id=source_literal_id,
+            elem_cell=source_info.elem_cell,
         )
         self.ctx.list_literals[new_id] = info
         self.ctx.func.pending_resolutions.append(new_id)
         self.ctx.func.variable_to_literal[var_name] = new_id
-        return PendingListType(init_type.element_type, init_type.size, new_id)
+        return PendingListType(elem, init_type.size, new_id)
 
     def _resolve_alias_element_type(self, info: ListLiteralInfo) -> TpyType | None:
         """Walk alias chain to find an inferred element type from a linked literal."""
@@ -1137,6 +1238,12 @@ class LocalTypeDeduction:
             # Resolve element type
             # Priority: coerced type from param > inferred from usage > resolved inner PendingListType > default
             elem_type = info.element_type
+            by_cell = info.elem_cell is not None
+            if by_cell:
+                # The cell settled with the function's numbers; every use
+                # of the element was compiled at this type.
+                elem_type = self.pend.finalize(elem_type)
+                info.element_type = elem_type
 
             # Empty list with unknown element type -- check param/return context first
             if isinstance(elem_type, UnknownElementType):
@@ -1172,7 +1279,8 @@ class LocalTypeDeduction:
             elem_type = self._deep_resolve_pending(elem_type)
 
             # Coerced type from param/return context overrides inferred type
-            if info.coerced_element_type is not None and not isinstance(elem_type, UnknownElementType):
+            if (info.coerced_element_type is not None and not by_cell
+                    and not isinstance(elem_type, UnknownElementType)):
                 elem_type = info.coerced_element_type
 
             elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
@@ -1211,7 +1319,7 @@ class LocalTypeDeduction:
                 # Default: Array (stack-allocated, no mutation detected)
                 resolved = make_array(elem_type, info.size)
 
-            if not info.has_explicit_annotation:
+            if not info.has_explicit_annotation and not by_cell:
                 self._check_elem_reads(info, elem_type)
             self._apply_container_resolution(info, resolved)
 
@@ -1249,7 +1357,8 @@ class LocalTypeDeduction:
                       if info is not None and info.source_literal_id is not None
                       else None)
             if (source is None or info.resolved_type is None
-                    or source.resolved_type is None):
+                    or source.resolved_type is None
+                    or info.elem_cell is not None):
                 continue
             mine = info.resolved_type.get_element_type()
             theirs = source.resolved_type.get_element_type()
@@ -2387,6 +2496,20 @@ class LocalTypeDeduction:
                         f"has a Pending* leaf after finalization; a tracked "
                         f"literal element was not resolved before resolve_all"
                     )
+
+        # A read of a list literal whose element a cell decided is recorded
+        # at the literal's resolved type, as a read of an annotated list is
+        # recorded at its annotation: the lowering keys on the node's type
+        # (the member a union slot lifts, for one).
+        for node in self.ctx.func.pending_elem_list_exprs:
+            current = self.ctx.expr_types.get(node)
+            if not isinstance(current, PendingListType):
+                continue
+            info = self.ctx.list_literals.get(current.literal_id)
+            if info is not None and info.resolved_type is not None:
+                self.ctx.expr_types[node] = info.resolved_type
+            elif contains_pending_num(current):
+                self.ctx.expr_types[node] = self.pend.finalize(current)
 
         loop_vars = self.ctx.func.pending_loop_vars
         for name, entry in list(loop_vars.items()):

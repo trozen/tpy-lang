@@ -31,7 +31,7 @@ from ..typesys import (
     INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType, UnionType, TupleType,
     RecursiveAliasInstanceType, recursive_union_alternatives, ConcreteFrameType,
     ConcreteGenType,
-    PendingListType, PendingDictType, PendingSetType,
+    PendingListType, PendingDictType, PendingSetType, PendingNumType,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
     unwrap_readonly, unwrap_ref_type, unwrap_qualifiers,
@@ -1842,6 +1842,10 @@ class FunctionTrackingState:
     # `tuple[Pending,...]`). Recorded at set_expr_type so the finalization pass
     # rewrites only these nodes -- never a sweep over the module-wide cache.
     pending_composite_exprs: list[object] = field(default_factory=list)
+    # Expression nodes typed as a list literal whose element was still a
+    # pending number when they were analyzed; resolve_all gives each the
+    # element its cell settled to.
+    pending_elem_list_exprs: list[object] = field(default_factory=list)
     # Branch-decl snapshot dicts (the `if_branch_decls` values recorded by
     # this function's branch producers). The snapshots capture binding types
     # BEFORE the deferred container resolution, so resolve_all must finalize
@@ -2074,8 +2078,17 @@ class FunctionTrackingState:
     # when an annotation stands past the first binding.
     first_bindings: dict[str, tuple[TpyStmt, ...]] = field(default_factory=dict)
     pending_cell_of: dict[str, int] = field(default_factory=dict)
+    # The element cells of the function's list literals (their ids): the
+    # cells no local name owns, settled and dropped with the others.
+    pending_elem_cids: list[int] = field(default_factory=list)
     # Operations and conversions over pending values, resolved at settle.
     pending_num_deferred: list['DeferredIntOp'] = field(default_factory=list)
+    # The list literals handed out undecided to a slot declared as a typed
+    # container in the statement under analysis, with the node: the slot's
+    # coercion decides each, and the statement's end any it did not reach.
+    # Per function state: a body analyzed inside the statement (a generator
+    # expression's) neither decides nor adds to the statement's own.
+    awaiting_container: list[tuple[int, 'TpyExpr']] = field(default_factory=list)
     # Conversion placeholders that settled to none, spliced out at the end.
     pending_num_splices: list[TpyExpr] = field(default_factory=list)
 
@@ -2478,6 +2491,9 @@ class SemanticContext:
     # must stay made, as the scope it publishes to stays updated.
     pending_num_cells: dict[int, PendingNumCell] = field(default_factory=dict)
     pending_num_counter: int = 0
+    # Bumped whenever a cell gains evidence or settles: what a cell's
+    # evidence joins to so far is cached against it.
+    pending_num_epoch: int = 0
     # How many `trial_scope`s are open. The deferred operations over pending
     # numbers are function state a trial rolls back, so they resolve only
     # outside one: a resolution inside would be replayed after the rollback.
@@ -2485,6 +2501,14 @@ class SemanticContext:
     # The one expression now being analyzed as a consumer a pending number
     # may reach; any other gets the local settled first.
     pending_ok_node: TpyExpr | None = None
+    # The one expression now being analyzed as a consumer a list whose
+    # element is not decided yet may reach; any other gets the element
+    # settled first.
+    pending_list_ok_node: TpyExpr | None = None
+    # Innermost last: for each call under analysis whose one candidate is
+    # generic, its argument nodes and the element cells of the list
+    # literals they showed as adaptive (`PendingNums.adaptive_view`).
+    adaptive_list_args: list[tuple[list[TpyExpr], list[PendingNumCell]]] = field(default_factory=list)
 
     # --- Test annotation facts (persist across functions) ---
     declared_var_types: dict[tuple[int, str], TpyType] = field(default_factory=dict)
@@ -3320,6 +3344,9 @@ class SemanticContext:
         # contains_pending_leaf fast-returns on leaves.
         if not isinstance(typ, PENDING_CONTAINER_TYPES) and contains_pending_leaf(typ):
             self.func.pending_composite_exprs.append(expr)
+        elif (isinstance(typ, PendingListType)
+              and isinstance(typ.element_type, PendingNumType)):
+            self.func.pending_elem_list_exprs.append(expr)
 
     def record_branch_decls(self, stmt: TpyStmt, mapping: dict, *,
                             per_arm: bool = False) -> dict:

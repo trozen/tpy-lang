@@ -164,12 +164,26 @@ and the candidate type is pending/ambiguous:
 - Int literal passed to `int64` param -> candidate narrows to `int64`
 
 A parameter can give a list literal another NUMBER for its element than
-the literal defaults to (`[1]` at a `list[int64]` parameter). The element
-is decided when the list resolves, but each use was typed from the pending
-literal as it stood, so a use that took an element at the default width --
-an unannotated local, a loop variable, a tuple element -- is recorded on
-the literal and refused when the list resolves to another number
-(`BUGS.md#widened-literal-list-read-truncates`).
+the literal defaults to (`[1]` at a `list[int64]` parameter). For a
+non-empty list literal of scalar numbers bound to a function local, the
+element is a pending-number cell the literal owns
+(`tpyc/sema/pending_num.py`, `PendingNums.new_elem_cell`): every copy of the
+pending list type names the cell, so an element read is typed by the cell
+and follows whatever decides it later. The values written and stored are
+the cell's evidence. A typed container the list meets -- a parameter, the
+return type, a typed slot, the resolved parameter of a generic call -- adds
+its element as evidence, settles the cell and must then equal it
+(`PendingNums.elem_context`): it can confirm the element or widen it within
+its family, never narrow it or change the family. A consumer that did not
+ask for the list by node (`PendingNums.list_sink`) gets the cell settled
+first, and a wider use after that is an error naming it.
+
+The lists the cell does not cover yet -- tuple elements, nested literals,
+empty lists, module-level lists -- keep the read guard: each use was typed
+from the pending literal as it stood, so a use that took an element at the
+default width -- an unannotated local, a loop variable, a tuple element --
+is recorded on the literal and refused when the list resolves to another
+number (`BUGS.md#widened-literal-list-read-truncates`).
 
 **Return type:** If the variable is returned and the function has a
 declared return type, use it to inform deduction (list / dict / set alike):
@@ -195,6 +209,9 @@ For list literals (currently PendingListType):
 | Default | `Array[T, N]` |
 
 Element type follows from the write/usage analysis (widened if needed).
+For a list whose element a cell decides it is the settled cell, read when
+the list resolves (the pending numbers settle first); the Array-versus-list
+verdict in the table does not depend on it.
 
 #### Step 4: String-specific rules
 
@@ -221,10 +238,11 @@ chains. This is a correctness requirement, not just a style preference:
 `std::vector<T>& b = a` (a reference). This preserves Python's
 shared-mutation semantics -- `b.append(x)` also mutates `a`. If `a`
 stayed `Array`, the assignment would copy and mutations would diverge
-from Python behavior. The two names are one list, so they must also agree
-on the element: a pair that resolved to different numbers (only one name
-met a wider typed parameter) is refused. So if either variable requires `list`, both must
-be `list`.
+from Python behavior. The two names are one list, so they also hold one
+element type: with an element cell both names refer to the same cell, and
+for the other lists a pair that resolved to different numbers (only one
+name met a wider typed parameter) is refused. So if either variable
+requires `list`, both must be `list`.
 
 **Rules:**
 - If `b = a` and either `a` or `b` is promoted to an owned/heap type,

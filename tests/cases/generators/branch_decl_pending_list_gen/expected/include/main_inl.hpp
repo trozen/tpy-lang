@@ -26,7 +26,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() 
     }
     case S_RESUME_0: {  // after: yield len(xs)
         __state = S_RESUME_1;
-        return ::tpy::__getitem__((*xs), 0);
+        return ::tpy::BigInt(::tpy::__getitem__((*xs), 0));
     }
     case S_RESUME_1: {  // after: yield xs[0]
         __state = S_DONE;

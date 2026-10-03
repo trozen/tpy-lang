@@ -506,11 +506,11 @@ std::tuple<std::vector<int32_t>, int32_t> aug_list() {
         try {
             auto* __tpy_retp_0 = &(xs);
             __fin_ran_20 = true;
-            ::tpy::list_extend(xs, {2});
+            ::tpy::list_extend(xs, std::vector<int32_t>{2});
             return std::tuple<std::vector<int32_t>, int32_t>{std::move(*__tpy_retp_0), 2};
         } catch (...) {
             if (!__fin_ran_20) {
-                ::tpy::list_extend(xs, {2});
+                ::tpy::list_extend(xs, std::vector<int32_t>{2});
             }
             throw;
         }

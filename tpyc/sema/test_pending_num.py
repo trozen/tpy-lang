@@ -1,20 +1,23 @@
 """Pending numeric locals: the prescan's first bindings and pending set, the
-join that settles a local from the values stored in it, and the verdict on
-sibling arms that bind a local together."""
+join that settles a local from the values stored in it, the verdict on
+sibling arms that bind a local together, and the refusals a list literal's
+element cell words."""
 
+import re
 from textwrap import indent
 
 import pytest
 
 from ..diagnostics import Scope, SemanticError
-from ..parse import (Parser, SourceLocation, TpyCoerce, TpyFloatLiteral,
-                     TpyIntLiteral, TpyName, TpyVarDecl)
+from ..parse import (Parser, SourceLocation, TpyArrayLiteral, TpyCoerce,
+                     TpyFloatLiteral, TpyIntLiteral, TpyName, TpyVarDecl)
 from ..prescan import (fold_int_constant, int_constant_too_wide,
                        literal_constant, scan_first_bindings,
                        scan_pending_num_locals)
 from ..typesys import (BIGINT, FLOAT, FLOAT32, INT8, INT16, INT32, INT64,
                        FloatLiteralType, IntLiteralType, PendingNumType,
-                       TypeRegistry, UINT8, UINT32, UINT64)
+                       TypeRegistry, UINT8, UINT32, UINT64, make_list)
+from .compatibility import TypeCompatibility
 from .context import SemanticContext
 from .pending_num import (NO_COMMON, PENDING_NUM_COERCION, PendingNums,
                           _splice_out, lub_int, pending_join)
@@ -260,6 +263,92 @@ def test_typed_arm_group_refuses_a_wider_later_store() -> None:
     pend.add_store(cell, INT64, TpyVarDecl("x", None, None))
     with pytest.raises(SemanticError, match="'x' is int16"):
         pend.settle({cell.cid})
+
+
+def _elem_pend() -> PendingNums:
+    """`_pend` with the compatibility checker an element refusal asks
+    whether a literal fits."""
+    ctx = SemanticContext(registry=TypeRegistry(), global_scope=Scope())
+    compat = TypeCompatibility(ctx)
+    compat.pend = PendingNums(ctx, compat)
+    return compat.pend
+
+
+def _list_decl(pend: PendingNums, *values: int) -> TpyVarDecl:
+    """`ys = [values...]` at line 3, its literals analyzed."""
+    elements = [TpyIntLiteral(v) for v in values]
+    for elem in elements:
+        pend.ctx.set_expr_type(elem, IntLiteralType(elem.value))
+    return TpyVarDecl("ys", None, TpyArrayLiteral(elements),
+                      loc=SourceLocation(3, 0))
+
+
+@pytest.mark.parametrize(
+    ("resolved", "message"),
+    [
+        pytest.param(False,
+                     r"^'ys' holds int32 elements, and it is passed here as "
+                     r"list\[int8\], which would not hold 300$",
+                     id="declared-container"),
+        pytest.param(True,
+                     r"which would not hold 300; the call's other arguments "
+                     r"make the element int8: convert them to int32$",
+                     id="generic-parameter"),
+    ],
+)
+def test_list_at_a_container_that_would_not_hold_a_value(
+        resolved: bool, message: str) -> None:
+    pend = _elem_pend()
+    cell = pend.new_elem_cell("ys", 0, _list_decl(pend, 1, 300), False,
+                              no_base=False)
+    refusal = pend.context_refusal(cell, make_list(INT8), "passed", None,
+                                   resolved)
+    assert re.search(message, refusal)
+
+
+def test_list_at_two_containers_names_both() -> None:
+    pend = _elem_pend()
+    decl = _list_decl(pend, 1)
+    cell = pend.new_elem_cell("ys", 0, decl, False, no_base=False)
+    pend.add_store(cell, INT64, decl)
+    pend.settle({cell.cid}, use=decl, what="passed as list[int64]")
+    cell.context = (make_list(INT64), decl, "passed")
+    assert pend.context_refusal(cell, make_list(INT32), "passed") == (
+        "'ys' is passed as list[int64] at line 3 and as list[int32] here; "
+        "a list has one element type")
+    # A literal the decided element holds still counts as its own type.
+    wide = TpyIntLiteral(6000000000)
+    with pytest.raises(SemanticError, match=(
+            r"'ys' holds int64 elements since line 3 \(passed as "
+            r"list\[int64\]\), and the literal 6000000000 counts as int; "
+            r"annotate its first binding: ys: list\[int64\] = \[\.\.\.\]")):
+        pend.elem_store(cell, IntLiteralType(6000000000), wide, decl)
+
+
+def test_typed_seeded_list_is_decided_at_its_first_binding() -> None:
+    pend = _elem_pend()
+    decl = _list_decl(pend, 1)
+    cell = pend.new_elem_cell("ys", 0, decl, False, no_base=True)
+    pend.add_store(cell, INT8, decl)
+    pend.decide_at_birth(cell, decl)
+    assert cell.settled == INT8
+    # A fitting literal adapts; one that does not is refused on the spot.
+    pend.elem_store(cell, IntLiteralType(7), TpyIntLiteral(7), decl)
+    with pytest.raises(SemanticError, match=(
+            r"^'ys' holds int8 elements \(line 3\), and the literal 300 does "
+            r"not fit int8; annotate its first binding: ys: list\[int32\] = ")):
+        pend.elem_store(cell, IntLiteralType(300), TpyIntLiteral(300), decl)
+    with pytest.raises(SemanticError, match=(
+            r"^'ys' holds int8 elements \(line 3\), and this value is int64; "
+            r"annotate its first binding: ys: list\[int64\] = ")):
+        pend.elem_store(cell, INT64, None, decl)
+
+
+def test_float_list_at_an_int_container_names_no_fix() -> None:
+    pend = _elem_pend()
+    cell = pend.new_elem_cell("fs", 0, None, True, no_base=False)
+    assert pend.context_refusal(cell, make_list(INT64), "passed") == (
+        "'fs' holds float values, and it is passed here as list[int64]")
 
 
 @pytest.mark.parametrize(

@@ -45,6 +45,7 @@ from ..parse import (
     TpyRaise, TpyExceptHandler, TpyTry, TpyWith, TryTier,
     TpyGlobal, TpyNonlocal, TpyNestedDef,
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyCoerce,
+    TpyListRepeat,
     TpySubscript, TpySlice, TpyStrLiteral, TpyName, TpyTupleLiteral,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
     TpyNoneLiteral,
@@ -534,9 +535,20 @@ class StatementAnalyzer:
         # Stores into a local or a numeric field take a pending value; what
         # needs the type is a store into an element or a key.
         if isinstance(stmt, TpyAugAssign):
+            if isinstance(stmt.target, TpyName):
+                return f"the target of '{op_spelling(stmt.op)}='"
             return "the value of an augmented assignment to an element"
         if isinstance(stmt, TpyAssign):
-            return "a value stored into an element"
+            target = storage_spelling(stmt.target)
+            if target is None and isinstance(stmt.target, TpySubscript):
+                obj = storage_spelling(stmt.target.obj)
+                target = f"{obj}[...]" if obj is not None else None
+            return (f"the value stored into '{target}'" if target is not None
+                    else "a value stored into an element")
+        if isinstance(stmt, TpyReturn):
+            return "a returned value"
+        if isinstance(stmt, TpyYield):
+            return "a yielded value"
         if isinstance(stmt, TpyVarDecl):
             return f"the value bound to '{stmt.name}'"
         return "this use"
@@ -1065,7 +1077,7 @@ class StatementAnalyzer:
                 f"cannot be moved into return type {expected}. Remove later "
                 f"uses or restructure the code.", value)
         self.ctx.warning(
-            f"copies {self.compat._copy_diag_type(t)} into owned storage; "
+            f"copies {self.compat.diag_type(t)} into owned storage; "
             f"{self.compat.copy_remedy(value)}", value)
         return True
 
@@ -1081,7 +1093,8 @@ class StatementAnalyzer:
                         else VOID)
             with self.pend.sink(stmt.value if is_numeric_slot(expected)
                                 else None):
-                ret_type = self.expr.analyze_expr_with_hint(stmt.value, expected)
+                ret_type = self.expr.analyze_at_slot(
+                    stmt.value, expected, CoercionContext.RETURN)
             stmt.value_type = ret_type
             if is_pending_num(ret_type):
                 self.pend.defer(stmt, (ret_type,),
@@ -2037,6 +2050,21 @@ class StatementAnalyzer:
                 return enum_type
         return None
 
+    def _decide_awaiting_lists(self) -> None:
+        """A list literal handed out undecided for a typed container slot
+        is decided by the coercion to that slot. One no coercion reached by
+        the end of its statement is decided from what it holds, like any
+        use that needs the element type."""
+        waiting = self.ctx.func.awaiting_container
+        if not waiting or self.ctx.trial_depth:
+            return
+        self.ctx.func.awaiting_container = []
+        for cid, expr in waiting:
+            if self.ctx.pending_num_cells[cid].settled is None:
+                self.pend.settle({cid}, use=expr,
+                                 what=self.expr.describe_pending_use(expr))
+        self.pend.resolve_ready()
+
     def analyze_stmt(self, stmt: TpyStmt) -> None:
         """Analyze a statement."""
         bt = self.ctx.func.borrow_tracker
@@ -2053,6 +2081,7 @@ class StatementAnalyzer:
         try:
             self._analyze_stmt_dispatch(stmt)
             self._check_retained_genexprs(stmt)
+            self._decide_awaiting_lists()
             analyzed = True
         finally:
             self.ctx.stmt_genexprs = enclosing_genexprs
@@ -2945,7 +2974,8 @@ class StatementAnalyzer:
                         stmt)
                 for i, (arg, (pname, ptype, _)) in enumerate(
                         zip(stmt.args, record.init_params)):
-                    arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
+                    arg_type = self.expr.analyze_at_slot(
+                        arg, ptype, CoercionContext.ARG)
                     self.expr.calls.mark_pending_arg_context(arg, arg_type, ptype)
                     stmt.args[i] = self.compat.coerce_expr(
                         arg, arg_type, ptype, f"argument '{pname}'",
@@ -5270,7 +5300,8 @@ class StatementAnalyzer:
             assert elem_type is not None
             with self.pend.sink(stmt.value if is_numeric_slot(elem_type)
                                 else None):
-                yield_type = self.expr.analyze_expr_with_hint(stmt.value, elem_type)
+                yield_type = self.expr.analyze_at_slot(
+                    stmt.value, elem_type, CoercionContext.RETURN)
         stmt.value = self.compat.coerce_expr(
             stmt.value, yield_type, elem_type, "yield value",
             coercion_ctx=CoercionContext.RETURN)
@@ -5435,6 +5466,82 @@ class StatementAnalyzer:
                 value_expr, value, var_type, f"variable '{name}'",
                 coercion_ctx=CoercionContext.ASSIGN)
         return var_type, value_expr
+
+    def _target_elem_cell(self, target: TpyExpr) -> PendingNumCell | None:
+        """The cell a store through `target` writes to: the element cell of
+        the list literal `target` indexes."""
+        if (not isinstance(target, TpySubscript)
+                or isinstance(target.index, TpySlice)):
+            return None
+        return self.pend.list_cell(self.ctx.get_raw_expr_type(target.obj))
+
+    def _bind_list_elem_cell(self, name: str, site: TpyStmt,
+                             value: TpyExpr | None,
+                             value_type: TpyType | None,
+                             existing_type: TpyType | None) -> TpyType | None:
+        """A non-empty list literal of scalar numbers bound to unannotated
+        function local `name`: from here on its element is decided by a
+        cell every use of the list refers to (`PendingNums.new_elem_cell`),
+        and the literal's values are the first it holds. A literal that
+        rebinds a name whose list has such a cell joins that cell: one
+        local, one element type. Returns the value's type, naming the cell."""
+        if (self.ctx.is_top_level or self.ctx.trial_depth
+                or not isinstance(value_type, PendingListType)
+                or not isinstance(value, (TpyArrayLiteral, TpyListRepeat))):
+            return value_type
+        info = self.ctx.list_literals.get(value_type.literal_id)
+        if (info is None or info.elem_cell is not None
+                or info.has_explicit_annotation or info.is_global):
+            return value_type
+        target = (self.pend.list_cell(existing_type)
+                  if existing_type is not None else None)
+        if existing_type is not None and target is None:
+            return value_type
+        if not value.elements and target is None:
+            return value_type
+        types = [strip_int(self.ctx.get_expr_type(e)) for e in value.elements]
+        families = {value_family(t) for t in types}
+        if len(families) != 1 or None in families:
+            return value_type
+        is_float = bool(next(iter(families)))
+        if target is not None and target.is_float != is_float:
+            # An int list rebound to floats: the rebinding refuses it in
+            # its own words.
+            return value_type
+        # A literal, a literal-seeded local (`int_literal_values`: its
+        # first binding is a literal, pending or not) or a pending element
+        # read seeds the list as a literal of its family: a default base
+        # the stores widen. A typed value decides the element here.
+        literal = [isinstance(t, (IntLiteralType, FloatLiteralType,
+                                  PendingNumType))
+                   or (isinstance(e, TpyName)
+                       and e.name in self.ctx.func.int_literal_values)
+                   for e, t in zip(value.elements, types)]
+        born = target is None
+        if born:
+            target = self.pend.new_elem_cell(
+                name, value_type.literal_id,
+                site if isinstance(site, TpyVarDecl) else None, is_float,
+                no_base=not all(literal))
+        stores = list(zip(value.elements, types))
+        if born and target.no_base:
+            # The typed values decide the element here; the literals
+            # beside them adapt to it, as a literal stored later does.
+            stores = ([s for s, lit in zip(stores, literal) if not lit]
+                      + [s for s, lit in zip(stores, literal) if lit])
+            typed = sum(1 for lit in literal if not lit)
+            for elem, t in stores[:typed]:
+                self.pend.elem_store(target, t, elem, site)
+            self.pend.decide_at_birth(target, site)
+            stores = stores[typed:]
+        for elem, t in stores:
+            self.pend.elem_store(target, t, elem, site)
+        info.elem_cell = target.cid
+        info.element_type = self.pend.elem_leaf(target)
+        bound = PendingListType(info.element_type, value_type.size,
+                                value_type.literal_id)
+        self.ctx.set_expr_type(value, bound)
+        return bound
 
     def _analyze_fresh_binding(self, value: TpyExpr) -> TpyType:
         """Analyze the whole value of an unannotated first binding of a
@@ -5828,6 +5935,13 @@ class StatementAnalyzer:
                 # and infers a generic call's T. Only a declared slot also
                 # converts the value's ints into its floats.
                 type_hint = stmt.type if stmt.type else existing_type
+                existing_elem = (self.pend.list_cell(existing_type)
+                                 if stmt.type is None else None)
+                if existing_elem is not None:
+                    # The list's element so far hints the new value, as a
+                    # typed element would; asking it settles nothing.
+                    type_hint = self.pend.list_so_far(existing_type,
+                                                      existing_elem)
                 if pending_cell is not None:
                     # Its type so far seeds a generic and converts nothing,
                     # and asking it settles nothing.
@@ -5848,11 +5962,24 @@ class StatementAnalyzer:
                                or pending_cell is not None
                                or not self.pend.is_excluded(stmt.name)))
                          or is_numeric_slot(stmt.type)))
-                with self.pend.sink(stmt.init if takes_pending else None):
-                    init_type = (
-                        self._analyze_fresh_binding(stmt.init)
-                        if type_hint is None and not is_global_declared
-                        else self.expr.analyze_expr_with_hint(stmt.init, type_hint))
+                # A second name for a list literal leaves its element open.
+                alias = (stmt.init if stmt.type is None
+                         and not is_global_declared
+                         and isinstance(stmt.init, TpyName)
+                         and (existing_type is None
+                              or existing_elem is not None) else None)
+                with self.pend.sink(stmt.init if takes_pending else None), \
+                        self.pend.list_sink(alias):
+                    if type_hint is None and not is_global_declared:
+                        init_type = self._analyze_fresh_binding(stmt.init)
+                    else:
+                        # An annotated binding and a rebinding of a declared
+                        # local coerce the value to that declared type.
+                        init_type = self.expr.analyze_at_slot(
+                            stmt.init, type_hint, CoercionContext.INIT)
+                if stmt.type is None and not is_global_declared:
+                    init_type = self._bind_list_elem_cell(
+                        stmt.name, stmt, stmt.init, init_type, existing_type)
 
             # Unannotated top-level ALL_CAPS: now that the init type is known,
             # the Final-suggestion can name it (the annotated case warned above).
@@ -6936,9 +7063,18 @@ class StatementAnalyzer:
             stmt.target.is_write_target = True
         pending_cell = (self.pend.cell_for(stmt.target.name)
                         if isinstance(stmt.target, TpyName) else None)
-        # The target of a store is no use of a pending local.
-        with self.pend.sink(stmt.target if pending_cell is not None else None):
+        # The target of a store is no use of a pending local, of a list
+        # literal's element, or of the list a name is rebound from.
+        with self.pend.sink(stmt.target if pending_cell is not None
+                            or isinstance(stmt.target, TpySubscript)
+                            else None), \
+                self.pend.list_sink(stmt.target
+                                    if isinstance(stmt.target, TpyName)
+                                    else None):
             target_type = self.expr.analyze_expr(stmt.target)
+        elem_cell = self._target_elem_cell(stmt.target)
+        list_cell = (self.pend.list_cell(target_type)
+                     if isinstance(stmt.target, TpyName) else None)
         self._check_class_constant_write(stmt.target, stmt)
         # D16 dyn-attr write detection: if the read-side analysis resolved the
         # target via __getattr__ (static lookup miss + dyn-readable class),
@@ -6984,13 +7120,32 @@ class StatementAnalyzer:
         # A store into a local, or into a numeric field, is a consumer a
         # pending number reaches.
         numeric_store = (isinstance(stmt.target, TpyName)
+                         or elem_cell is not None
                          or (isinstance(stmt.target, TpyFieldAccess)
                              and is_numeric_slot(target_type)))
-        with self.pend.sink(stmt.value if numeric_store else None):
-            value_type = self.expr.analyze_expr_with_hint(
-                stmt.value,
-                SlotHint.inferred_local(self.pend.known_so_far(pending_cell))
-                if pending_cell is not None else target_type)
+        store_cell = pending_cell if pending_cell is not None else elem_cell
+        if store_cell is not None:
+            value_hint = SlotHint.inferred_local(
+                self.pend.known_so_far(store_cell))
+        elif list_cell is not None:
+            value_hint = SlotHint.inferred_local(
+                self.pend.list_so_far(target_type, list_cell))
+        else:
+            value_hint = target_type
+        with self.pend.sink(stmt.value if numeric_store else None), \
+                self.pend.list_sink(stmt.value if list_cell is not None
+                                    and isinstance(stmt.value, TpyName)
+                                    else None):
+            value_type = (
+                self.expr.analyze_expr_with_hint(stmt.value, value_hint)
+                if store_cell is not None or list_cell is not None
+                else self.expr.analyze_at_slot(stmt.value, value_hint,
+                                               CoercionContext.ASSIGN))
+        if elem_cell is not None:
+            self.pend.elem_store(elem_cell, value_type, stmt.value, stmt)
+        if list_cell is not None:
+            value_type = self._bind_list_elem_cell(
+                stmt.target.name, stmt, stmt.value, value_type, target_type)
         # NOTE: storing an ephemeral borrow into value storage (a field, a
         # container element, a global, or another local) COPIES the value in TPy
         # (the existing "copies into owned storage" path), so it is memory-safe
@@ -7030,7 +7185,10 @@ class StatementAnalyzer:
         copy_warning_fired = False
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             declared_target_type = self.narrowing.declared_type_for_expr(stmt.target)
-            if declared_target_type is not None:
+            # The element of a list literal stays its cell's: the store is
+            # one more value the list holds, and whether a literal fits is
+            # known when the element is, as for `append`.
+            if declared_target_type is not None and elem_cell is None:
                 target_type = declared_target_type
             # A view FIELD keeps pointing into its source after the statement:
             # the local rule, at every position the field is written from.
@@ -7110,8 +7268,8 @@ class StatementAnalyzer:
                     raise self.ctx.error(msg, stmt)
                 if not deferred:
                     self.ctx.warning(
-                        f"copies {inner} into {dest}; "
-                        f"{self.compat.copy_remedy(stmt.value)}",
+                        f"copies {self.compat.diag_type(inner, target_type)} "
+                        f"into {dest}; {self.compat.copy_remedy(stmt.value)}",
                         stmt)
                 copy_warning_fired = True
             # A tuple is a value type, but storing one whose elements are
@@ -7165,6 +7323,14 @@ class StatementAnalyzer:
                     pending_cell, stmt.value, value_type, stmt)
             # PendingListType reassignment: different sizes force list
             elif isinstance(inner_target, PendingListType):
+                if self.pend.list_cell(inner_target) is not None:
+                    self.deduction.refuse_int_float_rebind(
+                        stmt.target.name,
+                        self.pend.list_so_far(
+                            inner_target, self.pend.list_cell(inner_target)),
+                        inner_value, stmt.value, site=stmt)
+                self.deduction.rebind_elem_cell(inner_target, inner_value,
+                                                stmt)
                 if isinstance(inner_value, PendingListType):
                     if inner_target.size != inner_value.size:
                         self.deduction.mark_list_different_size(inner_target.literal_id)
@@ -7271,7 +7437,8 @@ class StatementAnalyzer:
                 isinstance(actual_obj, NominalType) and actual_obj.is_record
                 and stmt.target.typed_dict_field is not None
             )
-            if not (is_dict(actual_obj) or isinstance(actual_obj, PendingDictType)) and not is_typed_dict_target:
+            if (not (is_dict(actual_obj) or isinstance(actual_obj, PendingDictType))
+                    and not is_typed_dict_target and elem_cell is None):
                 elem_type = obj_type.get_element_type()
                 if elem_type is not None:
                     # Span[readonly[T]] always rejects element assignment
@@ -7405,7 +7572,8 @@ class StatementAnalyzer:
                         raise self.ctx.error(msg, stmt)
                     if not deferred:
                         self.ctx.warning(
-                            f"copies {value_type} into {dest}; "
+                            f"copies {self.compat.diag_type(value_type, target_type)} "
+                            f"into {dest}; "
                             f"{self.compat.copy_remedy(stmt.value)}",
                             stmt)
 
@@ -7777,7 +7945,8 @@ class StatementAnalyzer:
         return True
 
     def _pending_aug_assign(self, stmt: TpyAugAssign, target_type: TpyType,
-                            value_type: TpyType) -> None:
+                            value_type: TpyType,
+                            elem_cell: PendingNumCell | None = None) -> None:
         """`x op= v` with a pending number on either side, or into a
         literal-seeded local. That target stores the result as by any store
         (`x = x op v`), which is never a literal store: a literal operand
@@ -7786,7 +7955,7 @@ class StatementAnalyzer:
         op = op_spelling(stmt.op)
         target, value = strip_int(target_type), strip_int(value_type)
         name = stmt.target.name if isinstance(stmt.target, TpyName) else None
-        cell = self.pend.cell_for(name) if name is not None else None
+        cell = self.pend.cell_for(name) if name is not None else elem_cell
         if cell is not None:
             if value_family(value) is None:
                 raise self.ctx.error(
@@ -7800,12 +7969,16 @@ class StatementAnalyzer:
                 raise self.ctx.error(
                     f"Operator '{op}=' is not supported between "
                     f"{self.pend.known_so_far(cell)} and {value}", stmt)
-            if value_family(strip_int(result)) != cell.is_float:
-                self.deduction.refuse_int_float_rebind(
-                    name, self.pend.known_so_far(cell), strip_int(result),
-                    None, aug_op=op, site=stmt)
-            self.pend.add_store(cell, result, stmt)
-            self.ctx.func.value_ranges.pop(name, None)
+            if elem_cell is not None:
+                # The element takes the operation's result, as a store.
+                self.pend.elem_store(cell, result, None, stmt)
+            else:
+                if value_family(strip_int(result)) != cell.is_float:
+                    self.deduction.refuse_int_float_rebind(
+                        name, self.pend.known_so_far(cell), strip_int(result),
+                        None, aug_op=op, site=stmt)
+                self.pend.add_store(cell, result, stmt)
+                self.ctx.func.value_ranges.pop(name, None)
         elif not (is_any_int_type(target) or is_float_type(target)):
             raise self.ctx.error(
                 f"Operator '{op}=' is not supported for {target_type}", stmt)
@@ -7814,12 +7987,14 @@ class StatementAnalyzer:
         pending_target = cell is not None
         self.pend.defer(stmt, (target, value),
                         lambda ts: self._resolve_numeric_aug(
-                            stmt, *ts, seeded_target=pending_target))
+                            stmt, *ts, seeded_target=pending_target,
+                            elem_target=elem_cell is not None))
         if name is not None:
             self._decline_deferred_return(name, stmt)
 
     def _resolve_numeric_aug(self, stmt: TpyAugAssign, target: TpyType,
-                             value: TpyType, seeded_target: bool) -> None:
+                             value: TpyType, seeded_target: bool,
+                             elem_target: bool = False) -> None:
         """The operator of a numeric `x op= v` and its write-back, at the
         analysis or, over a pending side, once it settled. A literal-seeded
         target recorded the result as a store; any other keeps its type."""
@@ -7839,7 +8014,7 @@ class StatementAnalyzer:
         if seeded_target:
             self.pend.check_late_result(stmt, f"'{op_spelling(stmt.op)}='",
                                         result.method.return_type, target)
-        else:
+        if elem_target or not seeded_target:
             self._apply_aug_assign_writeback(
                 stmt.target, target, result.method.return_type, stmt.op, stmt)
 
@@ -7871,11 +8046,14 @@ class StatementAnalyzer:
             # Same pin as the plain assign: the located error below names the
             # property by the field the target still carries.
             stmt.target.is_write_target = True
-        # The target of a store is no use of a pending local.
-        with self.pend.sink(stmt.target if isinstance(stmt.target, TpyName)
+        # The target of a store is no use of a pending local, or of the
+        # element of a list literal.
+        with self.pend.sink(stmt.target
+                            if isinstance(stmt.target, (TpyName, TpySubscript))
                             else None):
             target_type = unwrap_own(unwrap_ref_type(
                 self.expr.analyze_expr(stmt.target)))
+        elem_cell = self._target_elem_cell(stmt.target)
         # Augmented assignment on properties not yet supported
         if isinstance(stmt.target, TpyFieldAccess) and stmt.target.resolved_property_getter is not None:
             raise self.ctx.error(
@@ -7894,10 +8072,12 @@ class StatementAnalyzer:
         # `x op= v` into a local or a numeric field is a store a pending
         # integer reaches; a literal-seeded target is no declared slot to
         # hint the value with.
-        seeded_target = (isinstance(stmt.target, TpyName)
-                         and self.pend.cell_for(stmt.target.name) is not None)
-        numeric_store = (isinstance(stmt.target, (TpyName, TpyFieldAccess))
-                         and (seeded_target or is_numeric_slot(target_type)))
+        seeded_target = elem_cell is not None or (
+            isinstance(stmt.target, TpyName)
+            and self.pend.cell_for(stmt.target.name) is not None)
+        numeric_store = seeded_target or (
+            isinstance(stmt.target, (TpyName, TpyFieldAccess))
+            and is_numeric_slot(target_type))
         with self.pend.sink(stmt.value if numeric_store else None):
             value_type = (self.expr.analyze_expr(stmt.value) if seeded_target
                           else self.expr.analyze_expr_with_hint(stmt.value, target_type))
@@ -7975,7 +8155,7 @@ class StatementAnalyzer:
         # A literal-seeded target, settled or not, takes the result as a
         # store: it widens the local or is checked against its settled type.
         if seeded_target or is_pending_num(value_type):
-            self._pending_aug_assign(stmt, target_type, value_type)
+            self._pending_aug_assign(stmt, target_type, value_type, elem_cell)
             return
         # Target must be numeric, owned string, or a type with registered operators.
         # StrView is excluded -- it's non-owning, so += would dangle.

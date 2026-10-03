@@ -1,0 +1,1 @@
+main.py:21: error: 'ys' holds int32 elements since line 19 (passed as list[int32]), and this value is int64; annotate its first binding: ys: list[int64] = [...]

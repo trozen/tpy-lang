@@ -28,7 +28,7 @@ namespace tpyapp::main {
 //     pairs = ["bb", "aa", "cc", "ab", "ba"]
 //     print(sorted(pairs, key=lambda s: len(s)))
 void main() {
-    std::array<int32_t, 5> a = {3, 1, 4, 1, 5};
+    std::array<::tpy::BigInt, 5> a = {::tpy::BigInt(3), ::tpy::BigInt(1), ::tpy::BigInt(4), ::tpy::BigInt(1), ::tpy::BigInt(5)};
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted_key<::tpy::BigInt>(a, negate)) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 6> b = {-3, 1, -4, 1, 5, -9};
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted_key<int32_t>(b, [](int32_t x) -> int32_t { return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x))); })) << "\n" << ::tpy::check_signals;

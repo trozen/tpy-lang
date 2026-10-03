@@ -1,0 +1,1 @@
+main.py:10: error: 'ys' holds integer values, and it is passed here as list[float]; write its values as floats, or convert them: annotate its first binding: ys: list[float] = [...]

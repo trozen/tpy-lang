@@ -1802,42 +1802,42 @@
  "bigint__ro__loop_var__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [coerce(%s0 -> int)]) print(%k0.tag [raw])"
  ],
  "bigint__ro__loop_var__fn": [
   "ok",
   "",
-  "call(CALLEE, [%s0])"
+  "call(CALLEE, [coerce(%s0 -> int)])"
  ],
  "bigint__ro__loop_var__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), coerce(%s0 -> int)])"
  ],
  "bigint__ro__loop_var__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [%s0])"
+  "method_call(%g, CALLEE, [coerce(%s0 -> int)])"
  ],
  "bigint__ro__loop_var__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [%s0])"
+  "method_call(%t, CALLEE, [coerce(%s0 -> int)])"
  ],
  "bigint__ro__loop_var__nested": [
   "ok",
   "",
-  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [coerce(%s0 -> int)]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, "
  ],
  "bigint__ro__loop_var__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [%s0])"
+  "method_call(%pp, CALLEE, [coerce(%s0 -> int)])"
  ],
  "bigint__ro__loop_var__static": [
   "ok",
   "",
-  "call(CALLEE, [%s0])"
+  "call(CALLEE, [coerce(%s0 -> int)])"
  ],
  "bigint__ro__narrowed_opt__ctor": [
   "ok",
@@ -2162,42 +2162,42 @@
  "bigint__ro__subscript__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [%xs[0]]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [coerce(%xs[0] -> int)]) print(%k0.tag [raw])"
  ],
  "bigint__ro__subscript__fn": [
   "ok",
   "",
-  "call(CALLEE, [%xs[0]])"
+  "call(CALLEE, [coerce(%xs[0] -> int)])"
  ],
  "bigint__ro__subscript__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %xs[0]])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), coerce(%xs[0] -> int)])"
  ],
  "bigint__ro__subscript__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [%xs[0]])"
+  "method_call(%g, CALLEE, [coerce(%xs[0] -> int)])"
  ],
  "bigint__ro__subscript__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [%xs[0]])"
+  "method_call(%t, CALLEE, [coerce(%xs[0] -> int)])"
  ],
  "bigint__ro__subscript__nested": [
   "ok",
   "",
-  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%xs[0]]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), ge"
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [coerce(%xs[0] -> int)]) -> Own[DynP])])]) print(method_call(method_call(method_call(%r"
  ],
  "bigint__ro__subscript__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [%xs[0]])"
+  "method_call(%pp, CALLEE, [coerce(%xs[0] -> int)])"
  ],
  "bigint__ro__subscript__static": [
   "ok",
   "",
-  "call(CALLEE, [%xs[0]])"
+  "call(CALLEE, [coerce(%xs[0] -> int)])"
  ],
  "bigint__ro__temp_accessor__ctor": [
   "ok",
@@ -13402,42 +13402,42 @@
  "i32__ro__loop_var__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [coerce(%s0 -> int32)]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw])"
  ],
  "i32__ro__loop_var__fn": [
   "ok",
   "",
-  "call(CALLEE, [coerce(%s0 -> int32)])"
+  "call(CALLEE, [%s0])"
  ],
  "i32__ro__loop_var__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), coerce(%s0 -> int32)])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0])"
  ],
  "i32__ro__loop_var__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [coerce(%s0 -> int32)])"
+  "method_call(%g, CALLEE, [%s0])"
  ],
  "i32__ro__loop_var__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [coerce(%s0 -> int32)])"
+  "method_call(%t, CALLEE, [%s0])"
  ],
  "i32__ro__loop_var__nested": [
   "ok",
   "",
-  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [coerce(%s0 -> int32)]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc"
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
  ],
  "i32__ro__loop_var__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [coerce(%s0 -> int32)])"
+  "method_call(%pp, CALLEE, [%s0])"
  ],
  "i32__ro__loop_var__static": [
   "ok",
   "",
-  "call(CALLEE, [coerce(%s0 -> int32)])"
+  "call(CALLEE, [%s0])"
  ],
  "i32__ro__narrowed_opt__ctor": [
   "ok",
@@ -13762,42 +13762,42 @@
  "i32__ro__subscript__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [coerce(%xs[0] -> int32)]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%xs[0]]) print(%k0.tag [raw])"
  ],
  "i32__ro__subscript__fn": [
   "ok",
   "",
-  "call(CALLEE, [coerce(%xs[0] -> int32)])"
+  "call(CALLEE, [%xs[0]])"
  ],
  "i32__ro__subscript__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), coerce(%xs[0] -> int32)])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %xs[0]])"
  ],
  "i32__ro__subscript__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [coerce(%xs[0] -> int32)])"
+  "method_call(%g, CALLEE, [%xs[0]])"
  ],
  "i32__ro__subscript__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [coerce(%xs[0] -> int32)])"
+  "method_call(%t, CALLEE, [%xs[0]])"
  ],
  "i32__ro__subscript__nested": [
   "ok",
   "",
-  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [coerce(%xs[0] -> int32)]) -> Own[DynP])])]) print(method_call(method_call(method_call("
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%xs[0]]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), ge"
  ],
  "i32__ro__subscript__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [coerce(%xs[0] -> int32)])"
+  "method_call(%pp, CALLEE, [%xs[0]])"
  ],
  "i32__ro__subscript__static": [
   "ok",
   "",
-  "call(CALLEE, [coerce(%xs[0] -> int32)])"
+  "call(CALLEE, [%xs[0]])"
  ],
  "i32__ro__temp_accessor__ctor": [
   "ok",
@@ -20892,12 +20892,12 @@
  "open_t__ro__loop_var__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), coerce(%s0 -> int32)])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0])"
  ],
  "open_t__ro__loop_var__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [coerce(%s0 -> int32)])"
+  "method_call(%g, CALLEE, [%s0])"
  ],
  "open_t__ro__narrowed_opt__gen": [
   "reject:expr.call:call.generic_arg_shape",
@@ -21007,7 +21007,7 @@
  "open_t__ro__subscript__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [coerce(%xs[0] -> int32)])"
+  "method_call(%g, CALLEE, [%xs[0]])"
  ],
  "open_t__ro__temp_accessor__gen": [
   "ok",
@@ -30449,6 +30449,46 @@
   "",
   ""
  ],
+ "span_i__mut__slice_expr__ctor": [
+  "reject:expr.call:call.ctor_arg.span",
+  "",
+  ""
+ ],
+ "span_i__mut__slice_expr__fn": [
+  "reject:expr.call:call.arg_shape.span",
+  "",
+  ""
+ ],
+ "span_i__mut__slice_expr__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "span_i__mut__slice_expr__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "span_i__mut__slice_expr__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "span_i__mut__slice_expr__nested": [
+  "reject:expr.call:call.ctor_arg.span",
+  "",
+  ""
+ ],
+ "span_i__mut__slice_expr__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "span_i__mut__slice_expr__static": [
+  "reject:expr.call:call.arg_shape.span",
+  "",
+  ""
+ ],
  "span_i__mut__subscript__ctor": [
   "ok",
   "",
@@ -31406,6 +31446,46 @@
  ],
  "span_i__ro__prop_ref__static": [
   "reject:expr.method_call:method.ret_type",
+  "",
+  ""
+ ],
+ "span_i__ro__slice_expr__ctor": [
+  "reject:expr.call:call.ctor_arg.span",
+  "",
+  ""
+ ],
+ "span_i__ro__slice_expr__fn": [
+  "reject:expr.call:call.arg_shape.span",
+  "",
+  ""
+ ],
+ "span_i__ro__slice_expr__gen": [
+  "reject:expr.call:call.generic_arg_shape",
+  "",
+  ""
+ ],
+ "span_i__ro__slice_expr__genrec": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "span_i__ro__slice_expr__meth": [
+  "reject:expr.method_call:method.arg_shape",
+  "",
+  ""
+ ],
+ "span_i__ro__slice_expr__nested": [
+  "reject:expr.call:call.ctor_arg.span",
+  "",
+  ""
+ ],
+ "span_i__ro__slice_expr__proto": [
+  "reject:expr.method_call:method.protocol.arg_shape",
+  "",
+  ""
+ ],
+ "span_i__ro__slice_expr__static": [
+  "reject:expr.call:call.arg_shape.span",
   "",
   ""
  ],
@@ -37972,12 +38052,12 @@
  "uni_vals__ro__loop_var__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [coerce(%s0 -> int32 | str)]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%s0}]) print(%k0.tag [raw])"
  ],
  "uni_vals__ro__loop_var__fn": [
   "ok",
   "",
-  "call(CALLEE, [coerce(%s0 -> int32 | str)])"
+  "call(CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%s0}])"
  ],
  "uni_vals__ro__loop_var__gen": [
   "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
@@ -37987,12 +38067,12 @@
  "uni_vals__ro__loop_var__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [coerce(%s0 -> int32 | str)])"
+  "method_call(%g, CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%s0}])"
  ],
  "uni_vals__ro__loop_var__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [coerce(%s0 -> int32 | str)])"
+  "method_call(%t, CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%s0}])"
  ],
  "uni_vals__ro__loop_var__nested": [
   "reject:expr.call:call.ctor_arg.union",
@@ -38000,14 +38080,14 @@
   ""
  ],
  "uni_vals__ro__loop_var__proto": [
-  "ok",
+  "reject:expr.method_call:method.protocol.arg_shape",
   "",
-  "method_call(%pp, CALLEE, [coerce(%s0 -> int32 | str)])"
+  ""
  ],
  "uni_vals__ro__loop_var__static": [
   "ok",
   "",
-  "call(CALLEE, [coerce(%s0 -> int32 | str)])"
+  "call(CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%s0}])"
  ],
  "uni_vals__ro__narrowed_opt__ctor": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -38332,12 +38412,12 @@
  "uni_vals__ro__subscript__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [coerce(%xs[0] -> int32 | str)]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%xs[0]}]) print(%k0.tag [raw])"
  ],
  "uni_vals__ro__subscript__fn": [
   "ok",
   "",
-  "call(CALLEE, [coerce(%xs[0] -> int32 | str)])"
+  "call(CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%xs[0]}])"
  ],
  "uni_vals__ro__subscript__gen": [
   "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
@@ -38347,12 +38427,12 @@
  "uni_vals__ro__subscript__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [coerce(%xs[0] -> int32 | str)])"
+  "method_call(%g, CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%xs[0]}])"
  ],
  "uni_vals__ro__subscript__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [coerce(%xs[0] -> int32 | str)])"
+  "method_call(%t, CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%xs[0]}])"
  ],
  "uni_vals__ro__subscript__nested": [
   "reject:expr.call:call.ctor_arg.union",
@@ -38360,14 +38440,14 @@
   ""
  ],
  "uni_vals__ro__subscript__proto": [
-  "ok",
+  "reject:expr.method_call:method.protocol.arg_shape",
   "",
-  "method_call(%pp, CALLEE, [coerce(%xs[0] -> int32 | str)])"
+  ""
  ],
  "uni_vals__ro__subscript__static": [
   "ok",
   "",
-  "call(CALLEE, [coerce(%xs[0] -> int32 | str)])"
+  "call(CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%xs[0]}])"
  ],
  "uni_vals__ro__temp_accessor__ctor": [
   "ok",
