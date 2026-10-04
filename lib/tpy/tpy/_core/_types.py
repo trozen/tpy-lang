@@ -139,6 +139,16 @@ class ValueType(Protocol): ...
 class ComparableValue(Comparable, ValueType, Protocol): ...
 
 
+# The mirror of ValueType: a type a function hands back as a reference to the
+# object itself (a class instance, list, dict, set, Array, bytearray) -- what a
+# function returning one of its arguments' elements BY REFERENCE needs.
+@native("tpy::ReferenceType")
+class ReferenceType(Protocol): ...
+
+
+class ComparableRef(Comparable, ReferenceType, Protocol): ...
+
+
 @native("tpy::Copyable")
 class Copyable(Protocol): ...
 

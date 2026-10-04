@@ -31,6 +31,7 @@ from ..typesys import (
     RecursiveAliasInstanceType, recursive_union_alternatives)
 from ..parse.nodes import GENEXPR_FUNC_PREFIX, op_spelling
 from ..parse import (
+    ResultForm,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
     TpyBoolLiteral,
@@ -66,7 +67,7 @@ from ..prescan import (
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
 from .context import PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
-from ..value_category import (is_rvalue_source, async_result_aliases,
+from ..value_category import (frame_factory_callee, is_rvalue_source, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
 from .alias_rebind import bind_kind_of
@@ -94,6 +95,7 @@ from .operators import DUNDER_CPP_TEMPLATES, _substitute_type_params
 from .bound_check import raise_if_class_param_bound_violated
 from .overloads import OverloadAmbiguityError, resolve_overload
 from .type_ops import frame_yield_may_borrow
+from .own_copy import warn_value_call_binding
 from .scope_tracker import lend_roots
 from .receiver_calls import (call_mutates_receiver, check_implicit_readonly_receiver,
                              credit_implicit_receiver_call, record_implicit_call,
@@ -608,6 +610,17 @@ class ExpressionAnalyzer:
             self._expr_stack.pop()
         return self._pending_gate(expr, typ)
 
+    def _warn_frame_held_copies(self, call: 'TpyCall | TpyMethodCall') -> None:
+        """A generator / coroutine factory's frame keeps its arguments past
+        the statement, so an argument that is a borrow-declared call stamped
+        a fresh value is copied into the frame (hoisted into a local it
+        holds): an owning sink, reported as one."""
+        fi = call.resolved_function_info
+        if fi is None or not (fi.is_async or frame_factory_callee(fi)):
+            return
+        for arg in [*call.args, *(call.kwargs or {}).values()]:
+            warn_value_call_binding(self.ctx, arg, f"the frame of '{fi.name}(...)'")
+
     def _pending_gate(self, expr: TpyExpr, typ: TpyType,
                       slot: SlotHint | None = None) -> TpyType:
         """The forcing chokepoint of both expression entry points. The pass
@@ -733,14 +746,25 @@ class ExpressionAnalyzer:
         elif isinstance(expr, TpyUnaryOp):
             typ = self._analyze_unaryop(expr)
         elif isinstance(expr, TpyCall):
+            # Cleared first: a re-analysis that raises must not leave the
+            # previous resolution's verdict on the node.
+            expr.result_form = ResultForm.NOT_DECLARED
             typ = self._concrete_generator_call(
                 expr, self.calls.analyze_call(expr))
+            if self.calls.stamp_result_borrow(expr, typ):
+                # What lends the result is read-only, so the result is too.
+                typ = ReadonlyType(unwrap_readonly(unwrap_ref_type(typ)))
+            self._warn_frame_held_copies(expr)
+            self.calls.defer_argument_copies(expr)
             record_protocol_arg_calls(self.ctx, expr)
             self.narrowing.invalidate_field_facts_for_call(expr)
             self.narrowing.invalidate_closure_written_facts()
         elif isinstance(expr, TpyMethodCall):
             typ = self._concrete_generator_call(
                 expr, self.methods.analyze_method_call(expr))
+            self._warn_frame_held_copies(expr)
+            self.calls.defer_argument_copies(expr)
+            self.calls.defer_copy_receiver_call(expr)
             record_protocol_arg_calls(self.ctx, expr)
             self.narrowing.invalidate_field_facts_for_method_call(expr)
             self.narrowing.invalidate_closure_written_facts()
@@ -3853,6 +3877,7 @@ class ExpressionAnalyzer:
                         self.ctx, name, frame_binding_fact(expr.value, self.ctx), expr)
                 if is_rvalue_source(self.ctx, expr.value):
                     note_owned_local(self.ctx, name, resolved)
+                    warn_value_call_binding(self.ctx, expr.value, f"local '{name}'")
                 else:
                     record_stmt_borrow_binding(self.ctx, name, resolved, expr.value)
                     register_binding_borrow(self.ctx, name, expr.value)

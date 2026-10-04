@@ -142,6 +142,8 @@ class TestNativeSinkShape:
             "native_value_call",
             "native_container_call",
             "native_record_call",
+            "native_record_borrow_call",
+            "record_elem_subscript",
             "protocol_slot",
             "native_protocol_value",
             "native_protocol_open_call",
@@ -1526,6 +1528,7 @@ class TestRecordCtorSinkShape:
             "field_read_ref_ctor",
             "value_record_field",
             "record_elem_subscript",
+            "record_borrow_call",
             "container_comp",
             "container_literal",
             "own_container_literal",
@@ -1569,6 +1572,7 @@ class TestRecordCtorSinkShape:
             "value_record_rvalue",
             "ptr_pass_through",
             "record_elem_subscript",
+            "record_borrow_call",
             "wide_opt_deref_name",
             "shared_pass_through",
             "container_field_pass",
@@ -1765,7 +1769,7 @@ class TestRecordCtorSharedAndNewRows:
             "protocol_slot_ctor",
             "record_rvalue_temp_ctor",
         ]
-        assert len([r for r in rows if r in others]) == 41
+        assert len([r for r in rows if r in others]) == 42
 
     def test_the_shadow_rows_hold_a_different_predicate(self):
         # Each of these SHADOWS a shared row name and had to be given its

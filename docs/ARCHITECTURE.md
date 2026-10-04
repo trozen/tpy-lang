@@ -381,7 +381,14 @@ the recorded roots from mutation facts where the return is const-projected
 borrows a parameter keeps that parameter in the mutated set, so the
 parameter stays mutable and the borrow keeps its declared type. These are
 distinct policies over the same body-analysis facts, not a second
-provenance analysis.
+provenance analysis. A DECLARED borrow (`borrows=` / `element_of=`) is a mutable use
+instead: a call whose result is a mutable reference into its operands marks
+every lending operand mutated at the call
+(`CallAnalyzer._mark_borrow_result_operands_written`), as an argument at an
+open-`T` parameter of a user generic is, climbing an iterator to what it
+walks; a read-only result (a readonly operand or container) marks nothing,
+nor does a call whose C++ result is a copy. Precise const (operands const
+until written through) needs whole-function analysis, not per-reader arms.
 
 Result-representation readers share `typesys.classify_result_representation`.
 An explicit position selects synchronous call classification, async payload
@@ -389,6 +396,29 @@ classification or the erased callable's declared return spelling. The reader
 preserves each position's wrapper handling and exclusions; `value_category`
 adapts its answers and `CallableType` renders the erased result. These are
 representation decisions, not ownership, access-permission or provenance proofs.
+
+A bodyless binding's result borrows are DECLARED (`borrows=` / `element_of=`,
+`FunctionInfo.return_borrows_from` with `element_borrows_from` for the
+element-of parameters, `borrow_declared`), and whether one CALL's result
+binds as a borrow is decided once, in sema (`CallAnalyzer.stamp_result_borrow`:
+`TpyCall.result_form` -- BORROW, REFERENCE_VALUE (a reference into the
+operands for the statement) or COPY (the C++ hands back a copy) -- and
+`copy_observable`, from the allow-list
+`sema.context.proven_lend_roots` -- the one root set the lending verdict, the
+loans the result files and the mutable use it makes of its operands all read
+-- and the element-source classification `sema.iter_loans.iter_element_source`
+the `for` statement shares, keyed on the declared element cursor
+`NativeMembers.cursor`, or a record whose `__iter__` hands out a borrowing
+view). The emitter tells an element-returning helper about a BORROW from
+`THIRCall.result_form` (`<void, ::tpy::elem_verdict::lend>`), and the helper
+asserts it: a `lend` over a source it copies from does not build. Every
+other form spells nothing and leaves the helper unchecked (over a lending
+source it still returns the element, which a holder copies). Readers read the stamp: `is_rvalue_source` for the C++ value
+category,
+`value_category.call_result_holdable` for a holder that outlives the
+statement, `call_result_live_in_statement` for an argument bound in place
+at a const slot and `call_result_is_reference` at a mutable one (a copy
+takes a statement temporary there).
 
 Parsing is mostly syntactic: the parser emits `TypeRefNode` (see
 `parse/nodes.py`) for every annotation site and a dedicated resolve

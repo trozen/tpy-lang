@@ -17,6 +17,7 @@ from ..typesys import (
     ListRepeatType, GenExprType, make_list, TupleType, OptionalType, PtrType, IntLiteralType, FloatLiteralType, AnyType, PendingListType, UnknownElementType, BIGINT, FLOAT,
     impl_proto_matches_name, get_protocol_qname, unwrap_qualifiers,
     del_suppresses_default_ctor, is_void_like_type,
+    unwrap_send_sync, unwrap_ref_type, unwrap_readonly, returns_cpp_reference_shape,
 )
 from ..coercions import is_protocol_safe_coercion, is_protocol_type_arg_widening
 
@@ -306,6 +307,12 @@ class ProtocolChecker:
         # conform to any protocol that T conforms to.
         unwrapped = unwrap_qualifiers(actual)
         if unwrapped is not actual:
+            # Own[T] hands T over by value, so it is no reference type
+            # although T is.
+            if (protocol.qualified_name() == qnames.REFERENCE_TYPE
+                    and isinstance(unwrap_readonly(unwrap_ref_type(
+                        unwrap_send_sync(actual))), OwnType)):
+                return None
             return self.classify_protocol_conformance(unwrapped, protocol)
 
         # IntLiteralType: check if default int type conforms
@@ -445,6 +452,12 @@ class ProtocolChecker:
             # ValueType: any type with value semantics conforms implicitly
             if qname == qnames.VALUE_TYPE and actual.is_value_type():
                 return ProtocolConformanceKind.EXPLICIT
+            # ReferenceType: what a function returns as a C++ reference to
+            # the object itself. Authoritative -- a declared `extends` cannot
+            # make a value type, a tuple or a union one.
+            if qname == qnames.REFERENCE_TYPE:
+                return (ProtocolConformanceKind.EXPLICIT
+                        if returns_cpp_reference_shape(actual) else None)
             # Copyable: any type whose C++ representation is copy-constructible
             # (i.e. not @nocopy, has no __del__, and -- transitively -- has no
             # @nocopy field or parent). Mirrors what the runtime concept checks.

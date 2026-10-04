@@ -19,7 +19,7 @@
 | `Iterator[Own[T]]` coercion to `Iterator[T]` | **Done** | Strips `Own` on each element |
 | C++ `begin()`/`end()` on iterators | **Done** | `next_iter_mixin` CRTP adds begin/end from `__next__`; builtin containers native |
 | Iterator combinators | **Done** | `enumerate()`, `zip()`, `reversed()`, `map()`, `filter()` |
-| `next()` builtin | **Done** | `next(it)` and `next(it, default)` (value-type elements; `next(it, None)` is not supported) |
+| `next()` builtin | **Done** | `next(it)` (value-type elements) and `next(it, default)` (any element; over class instances an in-place use acts on the step's element or the default itself, a binding holds a warned copy -- a step is valid only until the next one); `next(it, None)` is not supported |
 | `iter()` builtin | **Done** | `iter(obj)` calls `__iter__()`; two-arg form (sentinel) TODO |
 | `__reversed__` / `reversed()` user types | **Todo** | `reversed()` builtin works on built-in containers; user `__reversed__` is a roadmap item |
 | `__contains__` / `in` for user types | **Todo** | `in` falls back to `__iter__`+`__next__` for non-builtins; user `__contains__` dispatch is a roadmap item |
@@ -331,7 +331,6 @@ This path is not user-extensible — it requires the C++ type to support `std::r
 
 ## Known Limitations
 
-- **No `next()` builtin**: Direct `obj.__next__()` calls require `try/except StopIteration`. The `next()` builtin function is not yet implemented.
 
 - **`match/case` guard-derived `protocol_narrowings` aren't applied to case bodies.** `_emit_case_body` save/restores the dict around bodies (so persistent narrowings don't leak across cases), but isinstance checks inside a `case` guard expression don't push protocol facts into `protocol_narrowings`, so the case body sees the unrefined type.
 

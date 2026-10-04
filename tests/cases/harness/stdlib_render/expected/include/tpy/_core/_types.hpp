@@ -101,6 +101,12 @@ concept ComparableValue = requires(const T& t) {
     { t < std::declval<T&>() } -> std::convertible_to<bool>;
 };
 
+// class ComparableRef(Comparable, ReferenceType, Protocol): ...
+template<typename T>
+concept ComparableRef = requires(const T& t) {
+    { t < std::declval<T&>() } -> std::convertible_to<bool>;
+};
+
 } // namespace tpystd::tpy
 
 namespace tpystd::tpy {

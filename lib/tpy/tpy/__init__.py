@@ -15,8 +15,10 @@ from ._core import (
     Deref, Spannable, Writable, Readable, BinaryWritable, BinaryReadable,
     Seekable, Closable,
     # Marker protocols
-    NativeIterable, NativeRangeConstructible, ValueType, Copyable, Send, Sync,
+    NativeIterable, NativeRangeConstructible, ValueType, ReferenceType, Copyable, Send, Sync,
     Default, Covariant, ReturnException, Throwable,
+    # Intersection protocols
+    ComparableRef,
     # Fixed-width integer constraint protocols
     AnyFixedInt, AnyFixedSigned, AnyFixedUnsigned,
     # Primitive types
@@ -75,7 +77,9 @@ __all__ = [
     "Seekable", "Closable", "Default",
     # Marker protocols
     "NativeIterable", "NativeRangeConstructible",
-    "ValueType", "Copyable", "Send", "Sync", "Covariant", "ReturnException",
+    "ValueType", "ReferenceType", "Copyable", "Send", "Sync", "Covariant", "ReturnException",
+    # Intersection protocols
+    "ComparableRef",
     # Exception ABI root (Box[Throwable] storage)
     "Throwable",
     # Fixed-width integer constraint protocols

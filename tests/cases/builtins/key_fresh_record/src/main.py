@@ -1,5 +1,5 @@
 # A fresh reference-type key (ctor lambda, class name, Own helper) at sorted and min/max.
-# Results are copies (BUGS.md#min-max-key-result-copies for min/max), so sections only read them.
+# Sections only read the results; write-through is pinned by builtins/borrow_result.
 from __future__ import annotations
 import asyncio
 from typing import Iterator

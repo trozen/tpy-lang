@@ -1001,7 +1001,7 @@ identifiers, and each rule is marked in the document that owns it.
 - **`docs/CALLABLE_CONTRACT_DESIGN.md`** -- the half decidable from types and
   declarations: the def rule and the result descriptor, conversion legality at
   every binding, the erasure renders, the neutral-result slot, overload and
-  `@dispatch` selection, stub returns, `@native_borrow`, and the conservative
+  `@dispatch` selection, stub returns, `borrows=` / `element_of=`, and the conservative
   ADMISSION LAYER that makes it sound without a dataflow analysis. It carries the
   reject table, the implementation plan and the rollout gate.
 - **`docs/CALLABLE_PROVENANCE_REQUIREMENTS.md`** -- environment loans, `self` as a

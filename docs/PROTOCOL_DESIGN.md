@@ -124,6 +124,29 @@ structural walk over the inherited methods would skip them. A protocol that
 declares members of its own keeps the structural check over its own and its
 inherited members.
 
+**Marker protocols.** A member-less protocol with a C++ concept is a marker:
+conformance is a compiler fact, not a method walk. `ValueType` admits the
+types with value semantics (`is_value_type()`), plus records that declare it.
+`ReferenceType` is its mirror: a type a function returns as a C++ reference to
+the object itself -- the `returns_cpp_reference_shape` predicate, after
+`readonly`, `Ref` and `Send` / `Sync` are stripped. Class instances that are
+not value types, `list`, `dict`, `set`, `Array` and `bytearray` conform; value
+types, tuples (even of class instances), `Optional` / unions, `Own[T]`,
+protocol-typed values and callables do not, and a declared `extends` cannot
+change that. An open `T` conforms when its bound does, for both markers. Each
+has its intersection with `Comparable` -- `ComparableValue` and
+`ComparableRef` -- for a function that returns one of its arguments' elements
+by value or by reference. A composite bound that fails only on its marker
+says so (*...: 'X' is not a value type*, *...: 'X' is not a reference type*);
+when the overloads that refused a type asked for both halves -- `min` over
+tuples holding a class instance, where the value and the reference overloads
+both fail -- the note says it is neither: *Type 'tuple[Node, int]' does not
+satisfy 'ValueType' required by 'min': 'tuple[Node, int]' is neither a value
+type nor a reference type*.
+In C++ the `ReferenceType` concept refuses only a value type, answering a
+borrow slot (`val_or_ref<X>`) by its referent; sema has already decided the
+bound.
+
 ## 5. Codegen (C++ concepts or templates)
 
 ### Option A: C++20 Concepts

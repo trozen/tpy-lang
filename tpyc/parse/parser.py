@@ -14,7 +14,7 @@ import textwrap
 from typing import Any, Literal, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
-    FieldInfo, NominalType, OptionalType, RecordInfo, TypeRegistry,
+    FieldInfo, NominalType, OptionalType, RecordInfo, TupleType, TypeRegistry,
     FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, LiteralValue, LiteralTag,
     bare_name, unwrap_own,
 )
@@ -1281,21 +1281,11 @@ class Parser:
             if dec.keywords:
                 # @native("name", function=True) -- positional + keyword args
                 if len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant):
-                    kw_dict: dict[str, object] = {}
-                    for kw in dec.keywords:
-                        if isinstance(kw.value, ast.Constant):
-                            kw_dict[kw.arg] = kw.value.value
-                        elif isinstance(kw.value, ast.Name):
-                            kw_dict[kw.arg] = _NameArg(kw.value.id)
-                    arg_value = (dec.args[0].value, kw_dict)
+                    arg_value = (dec.args[0].value,
+                                 self._decorator_kwarg_values(dec))
                 elif not dec.args:
                     # @type_param_default(T=int) -- kwargs only
-                    kw_dict = {}
-                    for kw in dec.keywords:
-                        if isinstance(kw.value, ast.Constant):
-                            kw_dict[kw.arg] = kw.value.value
-                        elif isinstance(kw.value, ast.Name):
-                            kw_dict[kw.arg] = _NameArg(kw.value.id)
+                    kw_dict = self._decorator_kwarg_values(dec)
                     arg_value = (None, kw_dict) if kw_dict else self._BAD_ARGS
                 else:
                     arg_value = self._BAD_ARGS
@@ -1332,6 +1322,22 @@ class Parser:
             return None
 
         return None
+
+    @staticmethod
+    def _decorator_kwarg_values(dec: ast.Call) -> dict[str, object]:
+        """The literal keyword values of a decorator call: a constant, a
+        name (`_NameArg`), or a tuple of constants. Any other value is left
+        out, and the schema check reports what is then missing."""
+        kw_dict: dict[str, object] = {}
+        for kw in dec.keywords:
+            if isinstance(kw.value, ast.Constant):
+                kw_dict[kw.arg] = kw.value.value
+            elif isinstance(kw.value, ast.Name):
+                kw_dict[kw.arg] = _NameArg(kw.value.id)
+            elif (isinstance(kw.value, ast.Tuple)
+                  and all(isinstance(e, ast.Constant) for e in kw.value.elts)):
+                kw_dict[kw.arg] = tuple(e.value for e in kw.value.elts)
+        return kw_dict
 
     @staticmethod
     def _decorator_local_name(dec: ast.expr) -> str | None:
@@ -1382,6 +1388,30 @@ class Parser:
             result[kw.arg] = self._qualify(resolved)
         return result
 
+    def _parse_borrow_facts(
+            self, qname: str, kw: dict[str, object], dec: ast.expr
+    ) -> 'tuple[tuple[str, ...], tuple[str, ...]] | None':
+        """The parameter names a binding's `borrows=(...)` / `element_of=(...)`
+        keywords declare its result borrows, or None when it declares
+        neither; which parameters they name is checked at registration,
+        against the resolved signature."""
+        if "borrows" not in kw and "element_of" not in kw:
+            return None
+        borrows = kw.get("borrows", ())
+        element_of = kw.get("element_of", ())
+        name = bare_name(qname)
+        if not borrows and not element_of:
+            raise ParseError(
+                f"@{name}(borrows=..., element_of=...) must name at least "
+                f"one parameter the result borrows", dec)
+        both = [n for n in borrows if n in element_of]
+        if both:
+            raise ParseError(
+                f"@{name} names '{both[0]}' in both borrows= and "
+                f"element_of=; the result is either that argument or one of "
+                f"its elements", dec)
+        return tuple(borrows), tuple(element_of)
+
     def _parse_readonly_arg(self, arg: object, dec: ast.expr) -> tuple[bool, bool]:
         """Parse @readonly validated arg -> (is_readonly, readonly_opt_out).
 
@@ -1398,7 +1428,10 @@ class Parser:
         """Derive a _DecoratorArgSchema from a @builtin_decorator stub's signature.
 
         Single param -> positional arg. Additional params with defaults -> kwargs.
-        Type mapping: bool->bool, str->str, type->_NameArg (type name reference).
+        A stub whose parameters are all keyword-only (`def d(*, k: ...)`)
+        takes no positional arg. Type mapping: bool->bool, str->str,
+        type->_NameArg (type name reference), a tuple of str -> a tuple of
+        names (any length).
         """
         if not func.params:
             return _DecoratorArgSchema()  # bare only
@@ -1417,7 +1450,19 @@ class Parser:
             if (isinstance(ptype, NominalType)
                     and ptype.qualified_name() == qnames.TYPE):
                 return (_NameArg, "type name")
+            if (isinstance(ptype, TupleType)
+                    and all(is_str_type(e) for e in ptype.element_types)):
+                return (tuple, "tuple of names")
             return None
+
+        if func.keyword_only_start == 0:
+            kw_only: dict[str, type] = {}
+            for pname, ptype in func.params:
+                match = _map_type(ptype)
+                if match is None:
+                    return None
+                kw_only[pname] = match[0]
+            return _DecoratorArgSchema(kwargs=kw_only)
 
         # First param -> positional
         _, ptype = func.params[0]
@@ -1488,6 +1533,10 @@ class Parser:
                 expected_type = schema.kwargs[key]
                 if not isinstance(val, expected_type):
                     raise ParseError(f"@{dec_name}({key}=...) expects {expected_type.__name__}", dec)
+                if expected_type is tuple and not all(isinstance(e, str) for e in val):
+                    raise ParseError(
+                        f"@{dec_name}({key}=...) expects a tuple of names, "
+                        f"e.g. {key}=(\"a\", \"b\")", dec)
 
         validated_kwargs = raw_kwargs if schema.kwargs else {}
         return (pos_arg, validated_kwargs)
@@ -1664,7 +1713,8 @@ class Parser:
                         f"Class '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
                 linkage = new_linkage
                 native_name = pos
-                for call_kw in ("transient", "checks_signals"):
+                for call_kw in ("transient", "checks_signals", "borrows",
+                                "element_of"):
                     if call_kw in kw:
                         raise ParseError(
                             f"@{bare_name(qname)}({call_kw}=...) is only valid on a "
@@ -2528,6 +2578,12 @@ class Parser:
                     raise ParseError(f"@property deleter is not supported", dec)
             qname, arg = self._require_decorator(dec, f"method '{node.name}'")
             pos, kw = self._validate_decorator_args(qname, arg, dec)
+            if (qname in (qnames.NATIVE, qnames.CPP_TEMPLATE)
+                    and ("borrows" in kw or "element_of" in kw)):
+                raise ParseError(
+                    f"@{bare_name(qname)}(borrows=..., element_of=...) is not "
+                    f"supported on a method yet ('{node.name}'); declare it on "
+                    f"a free function", dec)
             if qname == qnames.STATICMETHOD:
                 is_staticmethod = True
             elif qname == qnames.CLASSMETHOD:
@@ -2952,6 +3008,7 @@ class Parser:
         checks_signals_dec: ast.expr | None = None
         overload_form: OverloadForm | None = None
         value_ptr_coercion = False
+        borrow_facts: tuple[tuple[str, ...], tuple[str, ...]] | None = None
         error_return: str | None = None
         builtin_decorator_key: str | None = None
         builtin_function_key: str | None = None
@@ -3003,6 +3060,8 @@ class Parser:
                     transient_dec = dec
                 if kw.get("checks_signals"):
                     checks_signals_dec = dec
+                borrow_facts = (self._parse_borrow_facts(qname, kw, dec)
+                                or borrow_facts)
             elif qname == qnames.BUILTIN_DECORATOR:
                 builtin_decorator_key = pos
             elif qname == qnames.BUILTIN_FUNCTION:
@@ -3057,6 +3116,8 @@ class Parser:
                         f"before modules that use decorator kwargs)", dec)
                 native_name = pos
                 self._reject_type_fact_kwargs(qname, kw, dec)
+                borrow_facts = (self._parse_borrow_facts(qname, kw, dec)
+                                or borrow_facts)
                 if "mutates" in kw:
                     raise ParseError(
                         f"@{bare_name(qname)}(mutates=...) is only valid on a "
@@ -3287,6 +3348,8 @@ class Parser:
             cpp_template=cpp_template,
             is_stub=is_stub,
             value_ptr_coercion=value_ptr_coercion,
+            declared_borrows=borrow_facts[0] if borrow_facts else None,
+            declared_element_of=borrow_facts[1] if borrow_facts else (),
             type_params=type_params,
             type_param_kinds=type_param_kinds,
             type_param_bounds=type_param_bounds,

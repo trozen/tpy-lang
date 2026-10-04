@@ -238,6 +238,17 @@ source of:
   `d.update(other)`).
 - An argument passed into an `Own[T]` parameter.
 - A global assignment.
+- A LOCAL bound to `min` / `max` / `next(it, d)` (or another
+  `borrows=` / `element_of=` binding) whose result cannot be a borrow -- an operand
+  is a temporary, or the source is an iterator
+  (`m = max(walk(ps), key=f)`): `copies P into local 'm'`. Reading the
+  result in place (`max(walk(ps), key=f).v`) copies nothing and is silent,
+  and so is a TEMPORARY operand passed to a parameter the callee writes:
+  `bump(min(a, P(0), key=f))` writes `a` itself when `a` wins.
+- An ITERATOR source passed to a parameter the callee WRITES
+  (`bump(max(walk(ps), key=f))`): the call hands back a copy and the write
+  lands in it -- `copies P into argument 'p' of 'bump(...)'`. A parameter
+  only read is silent.
 
 It does **not** fire when:
 

@@ -1,1 +1,1 @@
-main.py:5: error: No matching overload for hash(tuple[PendingList[IntLiteral(1), 2]#0])
+main.py:5: error: No matching overload for hash(tuple[list[int]])

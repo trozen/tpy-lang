@@ -1,0 +1,1 @@
+main.py:30: error: the result of 'max(...)' is a copy here (its source is an iterator, or this is a generic body); a write through it is lost -- bind it to a name first (the binding warns), or spell the copy with copy(...)

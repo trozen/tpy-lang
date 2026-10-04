@@ -1094,6 +1094,8 @@ class SemanticAnalyzer:
         self.discharge_own_copy_verdicts()
         self.ctx.apply_own_copy_verdicts(self._own_copy_verdicts)
         self.calls.resolve_pending_borrow_checks()
+        self.calls.resolve_pending_argument_copies()
+        self.calls.resolve_pending_copy_receiver_calls()
         self.compat.resolve_pending_iter_copy_checks()
         self.calls.resolve_pending_match_subject_checks()
         resolve_loop_frame_calls(self.ctx)

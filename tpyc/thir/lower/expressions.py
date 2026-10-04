@@ -13,6 +13,7 @@ from .storage import borrowed_record, direct_field, full_expression_record, glob
 from .captures import capture_facts
 from ... import qnames
 from ...parse.nodes import (
+    ResultForm,
     lambda_of,
     is_property_getter_read,
     FSTRING_CONV_NONE,
@@ -607,6 +608,7 @@ from .checks import (
     _r_container_comp,
     _r_own_container_comp,
     _r_record_elem_subscript,
+    _r_record_borrow_call,
     _own_container_comp_arg,
     _own_container_comp_slot,
     _container_module_var_arg,
@@ -701,6 +703,7 @@ from .checks import (
     _mixed_own_tuple_name_arg,
     _container_comp_arg,
     _record_borrow_call_arg,
+    const_ref_slot,
     _recursive_union_borrow_call_arg,
     _own_opt_ptr_name_arg,
     _record_elem_subscript_arg,
@@ -757,6 +760,7 @@ from .checks import (
     _container_slot_call_rvalue_arg,
     _native_container_call_arg,
     _native_record_call_arg,
+    _native_record_borrow_call_arg,
     _separate_iterator_temp_arg,
     _borrow_ret_record_marker_arg,
     _required_protocol_union_slot,
@@ -1937,6 +1941,9 @@ _CTOR_ARG_SINK = register_sink(_ArgSink(
         # (`Player(things[0])`): the element lvalue binds the slot inline,
         # the free-call family's render.
         _ArgRow("record_elem_subscript", _r_record_elem_subscript),
+        # ... and so does a BORROW-returning call's result
+        # (`Holder(min(a, b, key=f))`): an lvalue into caller storage.
+        _ArgRow("record_borrow_call", _r_record_borrow_call),
         # A comprehension at a container slot hoists the slot-typed ArgTemp
         # the free-call family renders (an lvalue, so a mutated `T&` slot
         # binds it too); flush-gated like every other temp row here.
@@ -2103,6 +2110,7 @@ _CTOR_NESTED_ARG_SINK = register_sink(_ArgSink(
         # A checked container-element read binds the record ref slot inline
         # at a flush-less nested position too: it hoists nothing.
         _ArgRow("record_elem_subscript", _r_record_elem_subscript),
+        _ArgRow("record_borrow_call", _r_record_borrow_call),
         # A narrowed wide ptr-opt NAME at its POINTEE slot: the deref
         # renders in place, so the flush-less position admits it too.
         # AHEAD of the decisive cell, which would otherwise answer the
@@ -2166,6 +2174,8 @@ def _record_ctor_arg_supported(
         temps_ok=use.allow_temps,
         index=index, is_mutated=index in mutated,
         mutation_unknown=mutation_unknown,
+        readonly_target=(fi is not None
+                         and index in (fi.root.const_borrow_params or ())),
         inline_narrowed=lc.inline_narrowed,
         movable_locals=lc.movable_locals,
         pointers=lc.pointers,
@@ -9181,6 +9191,15 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         a, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.BORROW_BIND)))
                     continue
+                if _native_record_borrow_call_arg(a, p.type, analyzer):
+                    # The free-call ladder's record borrow-call row, the
+                    # same mirror (`str(min(a, b, key=f))`): the borrowed
+                    # record binds the template slot in place.
+                    _witness("arg.native_record_borrow_call")
+                    lowered_args.append(_lower_expr(
+                        a, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.BORROW_BIND)))
+                    continue
                 # `str(a)` on a union binding renders `::tpy::__str__(a)` --
                 # the resolved overload's slot consumes the WHOLE union
                 # (a same-union param, or a protocol whose template deduces
@@ -9379,6 +9398,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             cpp_template=cpp_template,
             callee_cpp=callee_cpp,
             constructs=_callee_is_type_initializer(fi),
+            result_form=e.result_form if isinstance(e, TpyCall)
+            else ResultForm.NOT_DECLARED,
             form=form,
             loc=loc,
         ))
@@ -13939,9 +13960,12 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
             loc=getattr(a, "loc", None))
     _ru_borrow_call = (_recursive_union_borrow_call_arg(a, ptype, analyzer)
                        if plain_kind else False)
-    _elem_sub = (_record_elem_subscript_arg(a, ptype, analyzer)
-                 if plain_kind else False)
-    _rec_borrow = plain_kind and _record_borrow_call_arg(a, ptype, analyzer)
+    _elem_sub = _record_elem_subscript_arg(a, ptype, analyzer)
+    _rec_borrow = (_record_borrow_call_arg(
+                       a, ptype, analyzer, frame_capturing=frame_capturing,
+                       const_slot=const_ref_slot(ptype, readonly_target))
+                   if plain_kind
+                   else _native_record_borrow_call_arg(a, ptype, analyzer))
     # ... and a `T&`-returning call of a SUBCLASS record at the base slot,
     # which the exact-type row above does not take; its predicate witnesses
     # its own face.
@@ -13960,7 +13984,8 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
         if not _sub_borrow:
             _witness("arg.recursive_union_borrow_call" if _ru_borrow_call
                      else "arg.record_elem_subscript" if _elem_sub
-                     else "arg.record_borrow_call")
+                     else "arg.record_borrow_call" if plain_kind
+                     else "arg.native_record_borrow_call")
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
                                         allow_temps=temp_args))
@@ -15637,6 +15662,19 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
                                         allow_temps=temp_args))
+    # ... and a BORROW-returning call at the same slot
+    # (`Holder(min(a, b, key=f))`), the free-call arm's render too.
+    if _record_borrow_call_arg(
+            a, ptype, lc.analyzer,
+            const_slot=const_ref_slot(ptype, readonly_target)):
+        _witness("arg.record_borrow_call")
+        # The call's own temporary operands hoist into statement locals,
+        # as on the free path: a callee may hand the reference back
+        # (`m = k.ret(min(a, P(-5), key=f))`), and a temporary dying with
+        # the statement would leave the binding dangling.
+        return _lower_expr(a, lc, declared,
+                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                        allow_temps=temp_args or nested_temps))
     # The VALUE-returning sibling (`leaf_count(build())` -- Own[Expr]):
     # already_union, so the default bare call render IS the arg.
     if _ru_wrapper_value_call_arg(a, ptype, lc.analyzer):

@@ -5920,9 +5920,9 @@
   ""
  ],
  "deref_list__mut__borrow_method__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v_m, [])]) print(%k0.tag [raw])"
  ],
  "deref_list__mut__borrow_method__fn": [
   "ok",
@@ -5945,9 +5945,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v_m, [])])"
  ],
  "deref_list__mut__borrow_method__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v_m, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call"
  ],
  "deref_list__mut__borrow_method__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -6600,9 +6600,9 @@
   "call(CALLEE, [%argtmp(DL){method_call(%b, v_own, [])}])"
  ],
  "deref_list__mut__prop_ref__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v, [])]) print(%k0.tag [raw])"
  ],
  "deref_list__mut__prop_ref__fn": [
   "ok",
@@ -6625,9 +6625,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v, [])])"
  ],
  "deref_list__mut__prop_ref__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call(%"
  ],
  "deref_list__mut__prop_ref__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -6840,9 +6840,9 @@
   ""
  ],
  "deref_list__ro__borrow_method__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v_m, [])]) print(%k0.tag [raw])"
  ],
  "deref_list__ro__borrow_method__fn": [
   "ok",
@@ -6865,9 +6865,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v_m, [])])"
  ],
  "deref_list__ro__borrow_method__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v_m, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call"
  ],
  "deref_list__ro__borrow_method__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -7520,9 +7520,9 @@
   "call(CALLEE, [%argtmp(DL){method_call(%b, v_own, [])}])"
  ],
  "deref_list__ro__prop_ref__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v, [])]) print(%k0.tag [raw])"
  ],
  "deref_list__ro__prop_ref__fn": [
   "ok",
@@ -7545,9 +7545,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v, [])])"
  ],
  "deref_list__ro__prop_ref__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call(%"
  ],
  "deref_list__ro__prop_ref__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -7760,9 +7760,9 @@
   ""
  ],
  "deref_rec__mut__borrow_method__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v_m, [])]) print(%k0.tag [raw])"
  ],
  "deref_rec__mut__borrow_method__fn": [
   "ok",
@@ -7785,9 +7785,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v_m, [])])"
  ],
  "deref_rec__mut__borrow_method__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v_m, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call"
  ],
  "deref_rec__mut__borrow_method__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -8440,9 +8440,9 @@
   "call(CALLEE, [%argtmp(DR){method_call(%b, v_own, [])}])"
  ],
  "deref_rec__mut__prop_ref__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v, [])]) print(%k0.tag [raw])"
  ],
  "deref_rec__mut__prop_ref__fn": [
   "ok",
@@ -8465,9 +8465,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v, [])])"
  ],
  "deref_rec__mut__prop_ref__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call(%"
  ],
  "deref_rec__mut__prop_ref__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -8680,9 +8680,9 @@
   ""
  ],
  "deref_rec__ro__borrow_method__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v_m, [])]) print(%k0.tag [raw])"
  ],
  "deref_rec__ro__borrow_method__fn": [
   "ok",
@@ -8705,9 +8705,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v_m, [])])"
  ],
  "deref_rec__ro__borrow_method__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v_m, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call"
  ],
  "deref_rec__ro__borrow_method__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -9360,9 +9360,9 @@
   "call(CALLEE, [%argtmp(DR){method_call(%b, v_own, [])}])"
  ],
  "deref_rec__ro__prop_ref__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v, [])]) print(%k0.tag [raw])"
  ],
  "deref_rec__ro__prop_ref__fn": [
   "ok",
@@ -9385,9 +9385,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v, [])])"
  ],
  "deref_rec__ro__prop_ref__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call(%"
  ],
  "deref_rec__ro__prop_ref__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -11440,9 +11440,9 @@
   ""
  ],
  "gen_rec__mut__borrow_method__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v_m, [])]) print(%k0.tag [raw])"
  ],
  "gen_rec__mut__borrow_method__fn": [
   "ok",
@@ -11465,9 +11465,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v_m, [])])"
  ],
  "gen_rec__mut__borrow_method__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v_m, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call"
  ],
  "gen_rec__mut__borrow_method__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -12000,9 +12000,9 @@
   "call(CALLEE, [%argtmp(::tpystd::tplib::box::Box<R>){method_call(%b, v_own, [])}])"
  ],
  "gen_rec__mut__prop_ref__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v, [])]) print(%k0.tag [raw])"
  ],
  "gen_rec__mut__prop_ref__fn": [
   "ok",
@@ -12025,9 +12025,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v, [])])"
  ],
  "gen_rec__mut__prop_ref__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call(%"
  ],
  "gen_rec__mut__prop_ref__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -12240,9 +12240,9 @@
   ""
  ],
  "gen_rec__ro__borrow_method__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v_m, [])]) print(%k0.tag [raw])"
  ],
  "gen_rec__ro__borrow_method__fn": [
   "ok",
@@ -12265,9 +12265,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v_m, [])])"
  ],
  "gen_rec__ro__borrow_method__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v_m, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call"
  ],
  "gen_rec__ro__borrow_method__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -12800,9 +12800,9 @@
   "call(CALLEE, [%argtmp(::tpystd::tplib::box::Box<R>){method_call(%b, v_own, [])}])"
  ],
  "gen_rec__ro__prop_ref__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v, [])]) print(%k0.tag [raw])"
  ],
  "gen_rec__ro__prop_ref__fn": [
   "ok",
@@ -12825,9 +12825,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v, [])])"
  ],
  "gen_rec__ro__prop_ref__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call(%"
  ],
  "gen_rec__ro__prop_ref__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -21970,9 +21970,9 @@
   ""
  ],
  "rec__mut__borrow_method__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v_m, [])]) print(%k0.tag [raw])"
  ],
  "rec__mut__borrow_method__fn": [
   "ok",
@@ -21995,9 +21995,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v_m, [])])"
  ],
  "rec__mut__borrow_method__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v_m, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call"
  ],
  "rec__mut__borrow_method__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -22650,9 +22650,9 @@
   "call(CALLEE, [%argtmp(R){method_call(%b, v_own, [])}])"
  ],
  "rec__mut__prop_ref__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v, [])]) print(%k0.tag [raw])"
  ],
  "rec__mut__prop_ref__fn": [
   "ok",
@@ -22675,9 +22675,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v, [])])"
  ],
  "rec__mut__prop_ref__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call(%"
  ],
  "rec__mut__prop_ref__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -22930,9 +22930,9 @@
   ""
  ],
  "rec__ro__borrow_method__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v_m, [])]) print(%k0.tag [raw])"
  ],
  "rec__ro__borrow_method__fn": [
   "ok",
@@ -22955,9 +22955,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v_m, [])])"
  ],
  "rec__ro__borrow_method__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v_m, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call"
  ],
  "rec__ro__borrow_method__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -23610,9 +23610,9 @@
   "call(CALLEE, [%argtmp(R){method_call(%b, v_own, [])}])"
  ],
  "rec__ro__prop_ref__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v, [])]) print(%k0.tag [raw])"
  ],
  "rec__ro__prop_ref__fn": [
   "ok",
@@ -23635,9 +23635,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v, [])])"
  ],
  "rec__ro__prop_ref__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call(%"
  ],
  "rec__ro__prop_ref__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -26530,9 +26530,9 @@
   "call(CALLEE, [%argtmp(R move){ifexpr(call(cond, []) ? %s0 : %s1) [borrow]}])"
  ],
  "rec_ro__ro__borrow_method__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v_m, [])]) print(%k0.tag [raw])"
  ],
  "rec_ro__ro__borrow_method__fn": [
   "ok",
@@ -26555,9 +26555,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v_m, [])])"
  ],
  "rec_ro__ro__borrow_method__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v_m, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call"
  ],
  "rec_ro__ro__borrow_method__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",
@@ -27210,9 +27210,9 @@
   "call(CALLEE, [method_call(%b, v_own, [])])"
  ],
  "rec_ro__ro__prop_ref__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(%b, v, [])]) print(%k0.tag [raw])"
  ],
  "rec_ro__ro__prop_ref__fn": [
   "ok",
@@ -27235,9 +27235,9 @@
   "method_call(%t, CALLEE, [method_call(%b, v, [])])"
  ],
  "rec_ro__ro__prop_ref__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(%b, v, [])]) -> Own[DynP])])]) print(method_call(method_call(method_call(%"
  ],
  "rec_ro__ro__prop_ref__proto": [
   "reject:expr.method_call:method.protocol.arg_shape",

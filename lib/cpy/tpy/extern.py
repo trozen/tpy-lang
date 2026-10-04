@@ -21,7 +21,9 @@ export = _ExternLinkage()
 
 
 def cpp_template(template: str, transient: bool = False,
-                 checks_signals: bool = False):
+                 checks_signals: bool = False, *,
+                 borrows: tuple[str, ...] = (),
+                 element_of: tuple[str, ...] = ()):
     """C++ code template. No-op in CPython."""
     def decorator(func):
         return func

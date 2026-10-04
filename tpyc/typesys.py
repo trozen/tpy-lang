@@ -2700,8 +2700,10 @@ def classify_result_representation(
     if position is ResultPosition.SYNC_CALL:
         if fi is None or fi.is_constructor:
             return ResultRepresentation.STORAGE
-        # Free native declarations do not establish the C++ reference ABI.
-        if fi.is_native_import and not fi.is_method:
+        # Free native declarations do not establish the C++ reference ABI
+        # unless they declare what their result borrows (`borrows=` / `element_of=`).
+        if (fi.is_native_import and not fi.is_method
+                and not fi.root.borrow_declared):
             return ResultRepresentation.STORAGE
         return (ResultRepresentation.CPP_REFERENCE
                 if returns_cpp_reference_shape(ret_type)
@@ -7220,6 +7222,16 @@ class FunctionInfo:
     # Param indices whose storage the return value borrows from (8b).
     # -1 = self (methods only); 0, 1, ... = regular params.
     # None = not yet analyzed; frozenset() = no borrow (value/local return).
+    # `return_borrows_from` was DECLARED (`borrows=` / `element_of=`) rather than
+    # inferred: the result is one of those arguments or an element of one,
+    # so its access is theirs at each call (`@readonly` on the stub says only
+    # that the call itself mutates nothing), and a mutable result is a
+    # mutable use of them (`CallAnalyzer._mark_borrow_result_operands_written`).
+    borrow_declared: bool = False
+    # The part of a DECLARED return_borrows_from the result is an ELEMENT of
+    # (`element_of=(...)` on `@native` / `@cpp_template`): handed out by iterating the
+    # argument, so only a container argument lends it.
+    element_borrows_from: frozenset[int] = frozenset()
     held_whole_params: frozenset[int] = frozenset()
     # The part of return_borrows_from the result holds only as a reference to
     # the whole object: it neither iterates that storage nor hands out a
@@ -7447,6 +7459,21 @@ class FunctionInfo:
         return len(self.params)
 
 
+def param_may_be_written(fi: 'FunctionInfo', idx: int) -> bool:
+    """Whether a call to `fi` may write through its parameter `idx`, read
+    off the callee's FINAL facts: its mutation set where its body was
+    analyzed; otherwise a bodyless `@readonly` / `@pure` declaration writes
+    nothing (the declaration is the whole contract), and anything else --
+    a bodied callee whose facts are missing -- may. A BODIED `@readonly`
+    method's flag speaks for its receiver only, so it is not read here."""
+    root = fi.root
+    if root.mutated_params is not None:
+        return idx in root.mutated_params
+    return not (is_bodyless_binding(fi)
+                and (fi.is_readonly or root.is_readonly or fi.is_pure
+                     or root.is_pure))
+
+
 def is_bodyless_binding(fn) -> bool:
     """A callable with NO body or MIL emit at all, so nothing is lowered
     for it -- a `FunctionInfo` or the `TpyFunction` it was registered from.
@@ -7511,6 +7538,13 @@ def return_const_projected(fi: FunctionInfo) -> bool:
     root = fi.root
     if not (fi.is_readonly or root.is_readonly):
         return False
+    if root.borrow_declared:
+        # `@readonly` says the call mutates nothing; the result's access is
+        # its lent arguments' (the runtime picks the const overload when
+        # one is const), unless the stub declares a readonly result.
+        return (root.return_type is not None
+                and (isinstance(root.return_type, ReadonlyType)
+                     or view_is_inherently_const(root.return_type)))
     if not root.readonly_inferred:
         return True
     if root.return_type is not None and view_is_inherently_const(root.return_type):

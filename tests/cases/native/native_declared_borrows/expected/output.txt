@@ -1,0 +1,3 @@
+declared 10 2
+element 30
+undeclared 1 2 20

@@ -5375,14 +5375,14 @@
   ""
  ],
  "deref_list__ctor__borrow_method__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "%x: DL = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [method_call(%b, v_m, [])])]) [raw])"
  ],
  "deref_list__ctor__borrow_method__decl_reassigned": [
-  "reject:stmt.expr_stmt:call.native_arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: DL = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check]"
  ],
  "deref_list__ctor__borrow_method__field_write": [
   "ok",
@@ -5795,9 +5795,9 @@
   ""
  ],
  "deref_list__ctor__prop_ref__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "%x: DL = method_call(%b, v, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [method_call(%b, v, [])])]) [raw])"
  ],
  "deref_list__ctor__prop_ref__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -5915,14 +5915,14 @@
   ""
  ],
  "deref_list__fn__borrow_method__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "%x: DL = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [method_call(%b, v_m, [])])]) [raw])"
  ],
  "deref_list__fn__borrow_method__decl_reassigned": [
-  "reject:stmt.expr_stmt:call.native_arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: DL = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check]"
  ],
  "deref_list__fn__borrow_method__field_write": [
   "ok",
@@ -6375,9 +6375,9 @@
   ""
  ],
  "deref_list__fn__prop_ref__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "%x: DL = method_call(%b, v, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [method_call(%b, v, [])])]) [raw])"
  ],
  "deref_list__fn__prop_ref__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -6785,14 +6785,14 @@
   ""
  ],
  "deref_list__meth__borrow_method__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "%x: DL = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [method_call(%b, v_m, [])])]) [raw])"
  ],
  "deref_list__meth__borrow_method__decl_reassigned": [
-  "reject:stmt.expr_stmt:call.native_arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: DL = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check]"
  ],
  "deref_list__meth__borrow_method__field_write": [
   "ok",
@@ -7245,9 +7245,9 @@
   ""
  ],
  "deref_list__meth__prop_ref__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "%x: DL = method_call(%b, v, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [method_call(%b, v, [])])]) [raw])"
  ],
  "deref_list__meth__prop_ref__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -7385,14 +7385,14 @@
   ""
  ],
  "deref_list__nested__borrow_method__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "%x: DL = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [method_call(%b, v_m, [])])]) [raw]) call(nested_"
  ],
  "deref_list__nested__borrow_method__decl_reassigned": [
-  "reject:stmt.expr_stmt:call.native_arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "ptr_decl[ptr_addr] %x: DL = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check]"
  ],
  "deref_list__nested__borrow_method__field_write": [
   "ok",
@@ -7815,9 +7815,9 @@
   ""
  ],
  "deref_list__nested__prop_ref__decl_alias": [
-  "reject:stmt.expr_stmt:call.native_arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "%x: DL = method_call(%b, v, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [method_call(%b, v, [])])]) [raw]) call(nested_inne"
  ],
  "deref_list__nested__prop_ref__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",

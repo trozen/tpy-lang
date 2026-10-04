@@ -1,0 +1,1 @@
+main.py:26: error: No matching overload for max(Iterator[Own[P]], Fn[[P], int]): type parameter T inferred as Iterator[Own[P]] and Fn[[P], int]

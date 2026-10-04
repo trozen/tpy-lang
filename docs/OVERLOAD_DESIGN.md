@@ -162,7 +162,12 @@ Rules:
   (`tpyc/sema/registration.py:_reject_same_param_overloads`); method
   overloads that differ only in `is_readonly` / `is_consuming` (auto_readonly
   / auto_own const-qualified clones) are exempt because C++ emits them
-  as `&` / `const &` / `&&` qualified overloads.
+  as `&` / `const &` / `&&` qualified overloads. So are BODYLESS `@dispatch`
+  bindings (`@native`, `@cpp_template`, `...` stubs) that differ only in a
+  type parameter's bound (`max[T: ComparableValue](iterable: Iterable[T])`
+  beside `max[T: ComparableRef](...)`): no C++ declaration is emitted for a
+  binding, so nothing clashes, and the bound picks the candidate. Bodied
+  variants must still differ in a parameter type.
 
 ### Exhaustiveness
 
@@ -390,6 +395,11 @@ a *supplied* (non-default) arg. Three regimes:
   matched `FunctionInfo` plus inferred type args without mutating the
   AST; the matcher's concrete callable type pins return TPRs for
   named refs.
+
+Candidates that differ only in a type parameter's bound or a parameter's
+`readonly` (the value and reference overloads of `max(iterable, key)`) type
+their arguments alike, so the regime choice counts them as ONE Fn-bearing
+candidate; the pool then picks between them by the bound.
 
 Regime C runs the same tier ranking as Regime A/B over the per-candidate
 evidence (via `_classify_overload`), then a coercion-pass fallback

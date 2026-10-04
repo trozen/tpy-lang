@@ -74,6 +74,7 @@ from ..liveness import (analyze_last_uses, closure_pinned_names,
                         while_head_always_true)
 from ..parse.nodes import SourceLocation, VarLinkage, op_spelling
 from .context import (OwnSlot, PendingLocal, addr_taken_roots, call_borrow_operands,
+                      proven_lend_roots,
                       canonical_storage_key,
                       expr_yields_non_null_ptr, LoopClauseEdges,
                       record_borrow_binding, record_stmt_borrow_binding,
@@ -96,11 +97,15 @@ from .receiver_calls import (
     record_implicit_call,
 )
 from .iter_loans import (
+    IterElementSource, iter_element_source,
     _record_iter_receiver_mutation, check_iter_receiver_loans, hold_whole,
     is_dangling_temporary_arg,
     register_iteration_loans, temp_arg_kept_alive,
 )
-from .own_copy import contains_reference_type
+from .own_copy import (contains_reference_type, copy_result_under_write,
+                       declared_borrow_call_under, iterator_advanced_twice,
+                       lost_write_message,
+                       type_has_type_param, warn_value_call_binding)
 from .value_range import ValueRange
 if TYPE_CHECKING:
     from .context import SemanticContext, BorrowTracker
@@ -290,7 +295,10 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
                     expr,
                 )
         else:
-            roots = _borrow_storage_roots(src.expr)
+            # A call operand that itself lends (`max(h.items(), key=f)`) is
+            # rooted where its own lent operands are.
+            roots = (_borrow_storage_roots(src.expr)
+                     or proven_lend_roots(ctx, src.expr) or [])
             for root in roots:
                 bt.add_borrow(root, borrower, kind)
             if (not roots and is_dangling_temporary_arg(src.expr)
@@ -1908,6 +1916,9 @@ class StatementAnalyzer:
                     self._record_field_rebind_outside_init(
                         pinfo, target.field)
         if isinstance(target, (TpyFieldAccess, TpySubscript)):
+            lost = copy_result_under_write(target.obj)
+            if lost is not None:
+                raise self.ctx.error(lost_write_message(lost), target)
             obj_type = self.ctx.get_expr_type(target.obj)
             if obj_type is not None:
                 check_type = obj_type
@@ -2080,6 +2091,14 @@ class StatementAnalyzer:
         analyzed = False
         try:
             self._analyze_stmt_dispatch(stmt)
+            # Stopgap until MIR models the step loan
+            # (BUGS.md#next-step-reference-outlived-by-advance).
+            twice = iterator_advanced_twice(stmt.exprs())
+            if twice is not None:
+                raise self.ctx.error(
+                    f"'{twice[0].func_name}(...)' advances '{twice[1]}' twice "
+                    f"in one expression; bind the first step to a name",
+                    twice[0])
             self._check_retained_genexprs(stmt)
             self._decide_awaiting_lists()
             analyzed = True
@@ -2555,9 +2574,10 @@ class StatementAnalyzer:
                 # Auto-consuming decision is deferred until after body analysis
                 # (see below) so we know whether the loop var is mutated.
 
-                is_direct_next_iter = builtin_modules.get_error_return_next_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
-                is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
-                is_protocol_iter = is_protocol_type(resolved_for_iter) and resolved_for_iter.qualified_name() in ("typing.Iterator", "typing.Iterable")
+                elem_source = iter_element_source(
+                    resolved_for_iter
+                    if is_protocol_type(resolved_for_iter)
+                    else inner_iterable_type, self.ctx.registry)
                 # Decided before the body: the ranges the head is read
                 # against are the pre-loop ones, as on the `while` side.
                 runs_once = self.narrowing.for_head_provably_runs(stmt)
@@ -2580,9 +2600,11 @@ class StatementAnalyzer:
                     _record_iter_receiver_mutation(
                         self.ctx, stmt.iterable, inner_iterable_type,
                         check_loans=False)
-                    if is_direct_next_iter or is_protocol_iter:
+                    if elem_source in (IterElementSource.HANDLE,
+                                       IterElementSource.PROTOCOL):
                         iter_depth = inner_scope.depth
-                    elif is_iter_based:
+                    elif elem_source in (IterElementSource.CONTAINER,
+                                         IterElementSource.FRESH_ITERATOR):
                         # __iter__() either references the container's storage
                         # (NativeIterable types -- builtins like list/dict/str
                         # and span-backed types like SpanIter) or creates a
@@ -2600,10 +2622,7 @@ class StatementAnalyzer:
                         # currently invisible. If it surfaces, recover by
                         # also checking whether `__iter__()` returns a
                         # `SpanIter` here.
-                        references_container = builtin_modules.is_native_iterable(
-                            inner_iterable_type, registry=self.ctx.registry
-                        )
-                        if references_container:
+                        if elem_source is IterElementSource.CONTAINER:
                             if self.compat.is_lvalue(stmt.iterable):
                                 iter_depth = self.scopes.get_expr_scope_depth(stmt.iterable)
                             else:
@@ -6458,12 +6477,22 @@ class StatementAnalyzer:
         # keeps the loan and its mutate-while-borrowed diagnostic.
         borrow_storage = (None if isinstance(unwrap_readonly(var_type), PendingViewType)
                           else var_type)
+        if (stmt.init is not None and borrow_storage is not None
+                and borrow_storage.is_value_type()
+                and type_has_type_param(borrow_storage)):
+            # An open `T` local of a generic body: whether binding a fresh
+            # result copies a reference is the instantiation's question, so
+            # the binding states the hedged copy contract.
+            warn_value_call_binding(
+                self.ctx, stmt.init.expr if isinstance(stmt.init, TpyCoerce)
+                else stmt.init, f"local '{stmt.name}'")
         if (stmt.init is not None
                 and borrow_storage is not None
                 and (not borrow_storage.is_value_type()
                      or is_borrowing_view_type(unwrap_readonly(borrow_storage)))):
             init_unwrapped = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
             _register_call_result_borrow(self.ctx, stmt.name, init_unwrapped)
+            warn_value_call_binding(self.ctx, init_unwrapped, f"local '{stmt.name}'")
             # A non-const local alias of an @auto_readonly accessor result needs a
             # mutable source binding (locals bind non-const references by default).
             # Keep the receiver mutable so `x = o.b.get()` compiles whether x is
@@ -7374,6 +7403,8 @@ class StatementAnalyzer:
             stamp_bind_kind(self.ctx, stmt, stmt.target.name, stmt.value,
                             target_type, rebind=True)
             bt.rebind_borrower(stmt.target.name, stmt.value)
+            warn_value_call_binding(
+                self.ctx, stmt.value, f"local '{stmt.target.name}'")
             # Rebinding a non-value pointer-local generates local = &(source) in C++,
             # requiring source param to be T& (not const T&).
             if not inner_target.is_value_type() and self.compat.is_lvalue(stmt.value):
@@ -8054,6 +8085,11 @@ class StatementAnalyzer:
                             else None):
             target_type = unwrap_own(unwrap_ref_type(
                 self.expr.analyze_expr(stmt.target)))
+        twice = declared_borrow_call_under(stmt.target)
+        if twice is not None:
+            raise self.ctx.error(
+                f"'{twice.func_name}(...)' is evaluated twice by an augmented "
+                f"assignment; bind it to a name first", twice)
         elem_cell = self._target_elem_cell(stmt.target)
         # Augmented assignment on properties not yet supported
         if isinstance(stmt.target, TpyFieldAccess) and stmt.target.resolved_property_getter is not None:

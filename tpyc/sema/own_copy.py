@@ -39,10 +39,18 @@ a diagnostic already in the list. See docs/ARCHITECTURE.md for the
 comparison.
 """
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from ..diagnostics import Diagnostic, DiagnosticLevel, NOCOPY_REMEDIATION_HINT
 from ..identity_map import IdentityMap
-from ..typesys import NominalType, TpyType, TypeParamRef
+from ..parse import (ResultForm, TpyCall, TpyCoerce, TpyExpr, TpyFieldAccess,
+                     TpyLambda, TpyName, TpySubscript, is_property_getter_read)
+from ..parse.nodes import walk_expr_tree
+from ..typesys import (NominalType, TpyType, TypeParamRef, unwrap_readonly,
+                       unwrap_ref_type)
+
+if TYPE_CHECKING:
+    from .context import SemanticContext
 
 # The hedge clause. The body cannot know whether the payload is a value type,
 # and says so; only a non-copyable instantiation replaces the line.
@@ -206,6 +214,59 @@ def slot_message(display: TpyType, target: TpyType, dest: str, kind: str,
             f"copies {display} into {dest}; use copy() to make this explicit")
 
 
+def warn_value_call_binding(ctx: 'SemanticContext', expr: TpyExpr,
+                            dest: str) -> None:
+    """A holder -- a local binding, a frame argument -- as the owning sink
+    of a borrow-declared call sema stamped a fresh value
+    (a fresh `TpyCall.result_form`): it holds a COPY (`P t =
+    ::tpy::min_key(a, __tmp_1, f);`), so where a lent argument is still
+    reached the copy is observable and is warned in the owning slots' words
+    with `dest` named; `copy(...)` is the explicit spelling. A non-copyable
+    type has no copy to make. A transient consumer is not a sink and says
+    nothing."""
+    found = value_call_copy_message(ctx, expr, dest)
+    if found is not None:
+        ctx.warning(found[1], found[0])
+
+
+def value_call_copy_message(ctx: 'SemanticContext', expr: TpyExpr,
+                            dest: str) -> 'tuple[TpyCall, str] | None':
+    """The call and the owning-slot warning for a borrow-declared call
+    stamped a fresh value whose copy into `dest` is observable, or None --
+    the call itself, or a field / element read off it (`k = next(it, d).q`
+    holds a copy of `q` as much as of the whole result). A non-copyable
+    payload is an error here: there is no copy to make."""
+    while isinstance(expr, TpyCoerce):
+        expr = expr.expr
+    held = expr
+    while (isinstance(expr, TpySubscript)
+           or (isinstance(expr, TpyFieldAccess) and expr.hidden_call is None
+               and not is_property_getter_read(expr))):
+        expr = expr.obj
+        while isinstance(expr, TpyCoerce):
+            expr = expr.expr
+    if not (isinstance(expr, TpyCall) and expr.result_form.is_fresh):
+        return None
+    payload = unwrap_readonly(unwrap_ref_type(ctx.get_expr_type(held)))
+    if type_has_type_param(payload):
+        # A generic body decides the verdict before instantiation, so the
+        # copy is the hedged generic contract (the instantiation answers a
+        # non-copyable payload); `list[T]` in place of `Iterable[T]` lends.
+        if expr.copy_observable:
+            ctx.defer_own_copy_verdict(payload, payload, dest, expr)
+        return None
+    if held is not expr and payload.is_value_type():
+        return None
+    non_copyable = ctx.is_type_non_copyable(payload)
+    if not (expr.copy_observable or non_copyable):
+        return None
+    level, message = slot_message(payload, payload, dest,
+                                  KIND_SLOT, "", non_copyable=non_copyable)
+    if level is DiagnosticLevel.ERROR:
+        raise ctx.error(message, expr)
+    return expr, message
+
+
 def hedge_message(display: TpyType, dest: str, kind: str,
                   hint: str) -> str:
     """The declaration-time contract, reported at the body line."""
@@ -307,4 +368,98 @@ def discharge_edge(ctx, type_ops, edge: OwnCopyEdge, seen: set,
     else:
         _discharge_function(ctx, type_ops, edge.callee, subst, seen, verdicts)
 
+
+def copy_result_under_write(receiver: TpyExpr) -> 'TpyCall | None':
+    """The borrow-declared call whose COPY (`ResultForm.COPY`) a write
+    through `receiver` would land in -- the receiver itself, or the object
+    a field / element read off it lives in -- or None."""
+    while True:
+        if isinstance(receiver, TpyCoerce):
+            receiver = receiver.expr
+        elif isinstance(receiver, (TpyFieldAccess, TpySubscript)):
+            receiver = receiver.obj
+        else:
+            break
+    if isinstance(receiver, TpyCall) and receiver.result_form is ResultForm.COPY:
+        return receiver
+    return None
+
+
+def lost_write_message(call: TpyCall) -> str:
+    """A write through a call's COPY result changes nothing the program can
+    see again; CPython writes the element itself."""
+    return (f"the result of '{call.func_name}(...)' is a copy here (its source "
+            f"is an iterator, or this is a generic body); a write through it "
+            f"is lost -- bind it to a name first (the binding warns), or "
+            f"spell the copy with copy(...)")
+
+
+def declared_borrow_call_under(target: TpyExpr) -> 'TpyCall | None':
+    """The first borrow-declared call anywhere in an augmented-assignment
+    TARGET -- its receiver chain (`max(a, b, key=f).v`, a method hop
+    `next(it, d).get_q().v`), an argument of a call on it (`wrap(next(it,
+    d)).v`) or an index (`xs[next(it, d).v]`) -- or None. The render spells
+    the whole target on both sides, which would run the key or advance the
+    iterator twice; a lowering limitation of these calls
+    (BUGS.md#augassign-call-receiver-double-eval), refused until aug-assign
+    binds its target once. A lambda body is not entered: the call holding
+    the lambda still runs twice, so a declared call inside it runs twice once
+    the lambda is called -- the filed double evaluation."""
+    found: list[TpyCall] = []
+
+    def visit(node: TpyExpr) -> bool:
+        if found or isinstance(node, TpyLambda):
+            return False
+        if (isinstance(node, TpyCall)
+                and node.result_form is not ResultForm.NOT_DECLARED):
+            found.append(node)
+            return False
+        return True
+
+    walk_expr_tree(target, visit)
+    return found[0] if found else None
+
+
+def iterator_advanced_twice(exprs: 'list[TpyExpr]') -> 'tuple[TpyCall, str] | None':
+    """The second borrow-declared call in one statement's expressions that
+    hands back a reference to a STEP of an iterator an earlier one in the
+    same statement also advances (`t = (next(g, d).v, next(g, d).v)`), with
+    the iterator's name; or None. A step reference is valid only until the
+    next advance, so the first reference would read the second step.
+
+    A STOPGAP for BUGS.md#next-step-reference-outlived-by-advance, which
+    MIR's step-loan model replaces: it sees only advances spelled in the
+    statement, not a consumer advancing the iterator through a capture or a
+    global. A COPY result holds no reference, a BORROW is a container's
+    element, and a value-type element (`next(it, 0)`) is not
+    borrow-declared, so none of them counts."""
+    seen: set[str] = set()
+    found: list[tuple[TpyCall, str]] = []
+
+    def visit(node: TpyExpr) -> bool:
+        if found or isinstance(node, TpyLambda):
+            return False
+        # Only a REFERENCE_VALUE result points at a step: a BORROW is a
+        # container's element, which a second walk leaves in place.
+        if (isinstance(node, TpyCall)
+                and node.result_form is ResultForm.REFERENCE_VALUE):
+            fi = node.resolved_function_info
+            for idx in sorted(fi.root.element_borrows_from) if fi else ():
+                if not 0 <= idx < len(node.args):
+                    continue
+                root = node.args[idx]
+                while isinstance(root, (TpyCoerce, TpyFieldAccess,
+                                        TpySubscript)):
+                    root = root.expr if isinstance(root, TpyCoerce) else root.obj
+                if not isinstance(root, TpyName):
+                    continue
+                if root.name in seen:
+                    found.append((node, root.name))
+                    return False
+                seen.add(root.name)
+        return True
+
+    for expr in exprs:
+        walk_expr_tree(expr, visit)
+    return found[0] if found else None
 

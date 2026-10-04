@@ -1467,6 +1467,26 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
         ),
         methods=(),
     ),
+    "tpy.ReferenceType": dict(
+        name="ReferenceType", module="tpy",
+        is_dynamic=False, is_marker=True, is_readonly=False,
+        cpp_concept="::tpy::ReferenceType",
+        type_params=(), parent_protocols=(),
+        methods=(),
+    ),
+    "tpy.ComparableRef": dict(
+        name="ComparableRef", module="tpy",
+        is_dynamic=False, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=(),
+        parent_protocols=(
+            ts.NominalType(name="Comparable", is_protocol=True,
+                           _module_qname="tpy.Comparable"),
+            ts.NominalType(name="ReferenceType", is_protocol=True,
+                           _module_qname="tpy.ReferenceType"),
+        ),
+        methods=(),
+    ),
     "tpy.Copyable": dict(
         name="Copyable", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,

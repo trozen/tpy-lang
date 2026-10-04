@@ -469,6 +469,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.qualcall.container_discard",  # discarded marker-call container result
     "method.consuming_move",        # consuming method: std::move(name) receiver wrap
     "call.native_record_arg",       # F1-record call rvalue bare into a native slot
+    "call.native_record_borrow_arg",  # F1-record borrow call bare into a native slot
     "call.native_value_record_arg", # builtin value-record call rvalue (range) bare
     "call.value_record_arg",        # record rvalue bare into a by-value record slot
     "call.value_record_copy_arg",   # `use(copy(a))` -> `use(Coord(a))` at a
@@ -479,6 +480,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # by-value same-record slot
     "call.float_str_fold",          # float("nan"/"inf") -> spelled numeric-limits constant
     "print.record_call",            # F1-record call rvalue streams raw via operator<<
+    "print.record_borrow_call",     # F1-record borrow call (print(min(a, b, key=f))) streams raw
     "print.protocol_call",          # protocol-result call (`print(iter(s))`) streams raw
     "print.protocol_name",          # protocol-typed name streams raw
     "own.union_call_pass",          # same-union Own[A|B]-returning call
@@ -2685,6 +2687,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # bare by an Own[container] slot
     "arg.record_borrow_call",       # T&-returning call bound inline at a
                                     # record ref slot (bump(find_first(..)))
+    "arg.native_record_borrow_call",  # the same borrow call bound inline at a
+                                    # native / template slot (str(min(..)))
     "arg.record_elem_subscript",    # checked element lvalue bound inline at
                                     # a record ref slot, every call family
                                     # (Player(things[0]), add_a(a.bs[0]))

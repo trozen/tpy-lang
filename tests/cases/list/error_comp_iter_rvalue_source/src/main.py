@@ -1,7 +1,7 @@
-# `iter(<rvalue>)` as a comprehension source rejects: `::tpy::__iter__` has no
-# owning overload, so the comp's `auto __obj_N = ::tpy::__iter__(mk());` capture
-# would iterate a destroyed temporary. Every other admitted combinator owns its
-# rvalue argument through a dedicated overload.
+# `iter(<rvalue>)` as a comprehension source rejects: `::tpy::__iter__` owns a
+# temporary list or array but not every family (a set, a dict), so the route
+# refuses every rvalue source until they all own theirs
+# (BUGS.md#comp-iter-rvalue-source).
 from tpy import int32, Own
 
 

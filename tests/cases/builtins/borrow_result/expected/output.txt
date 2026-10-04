@@ -1,0 +1,48 @@
+module 7 2
+free min2 10 2
+free max3 20 2 3
+free arg 20 1002
+free nested 20 1002 5
+free read 1002
+read_only 1
+return 60 2
+peek 2
+ro 60
+ro temp 7
+gen 2
+gen 77
+gen after 60 77
+async 88
+async after 60 88
+closure 33 2
+try 44 2
+branch 55 2
+comp [1, 4]
+comp after [1001, 5] [2, 1004]
+fresh mixed 9 1
+fresh read -9
+fresh all 6
+rows [1, 2, 3, 9] [4, 5]
+consumers P1 P2
+consumers len 3
+values 3 -4
+ctor arg 2 3 3 2
+mixed arg 1003
+copy 5 1003
+with 1 20
+error_return 11 11
+match 30 20
+trio 40 5 50 4
+params 50 1002
+params method 1001 2
+params acc 70 [3, 70, 5]
+temp ctor 2 2
+temp method 102 102
+temp next 103 103
+temp next default 100
+temp method ret -4 102 3
+temp method head 46 3
+unproven 5 4
+frame [1] 1
+ctor 88
+method -1 88

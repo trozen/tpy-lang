@@ -1,0 +1,1 @@
+main.py:27: error: 'next(...)' advances 'g' twice in one expression; bind the first step to a name

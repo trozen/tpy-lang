@@ -1010,6 +1010,16 @@ class ValueType(_Protocol):
     pass
 
 
+class ReferenceType(_Protocol):
+    """Marker for types returned as a reference to the object itself."""
+    pass
+
+
+class ComparableRef(Comparable, ReferenceType, _Protocol):
+    """A comparable reference type."""
+    pass
+
+
 class Copyable(_Protocol):
     """Marker for types whose payload can be copy-constructed."""
     pass

@@ -13,12 +13,15 @@
 #include <cstdint>
 #include <format>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <ranges>
 #include <string>
 #include <string_view>
+#include <concepts>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "next_iter.hpp"
@@ -477,6 +480,196 @@ template<typename S>
 inline constexpr bool steps_reference =
     requires { typename S::is_val_or_ref_tag; } && requires { requires !S::is_val; };
 
+// -- min/max returning the element itself --
+//
+// CPython's min/max return the winning OBJECT. A container whose elements
+// stay put for the call -- a forward range of real references: a list, an
+// array, a span, a set, a dict's keys or values, named or temporary -- lends
+// them, so these hand back a reference to the element in the form the
+// container lends it (`T&` from a mutable one, `const T&` from a const one or
+// a set). A source walked through `__next__` (a generator, a self-iterator, a
+// class whose `__iter__` builds an iterator) may overwrite or drop a step's
+// element on the next step, so its winner comes back BY VALUE, a copy kept
+// while walking: the value helpers' walk.
+
+namespace detail {
+    template<typename Iter>
+    using elem_range_t = std::remove_reference_t<
+        decltype(::tpy::iter_range(std::declval<std::remove_reference_t<Iter>&>()))>;
+
+    template<typename Iter>
+    using elem_ref_t = decltype(*std::declval<elem_range_t<Iter>&>().begin());
+
+    template<typename Iter>
+    concept lending_elem_source =
+        std::ranges::forward_range<elem_range_t<Iter>>
+        && std::is_lvalue_reference_v<elem_ref_t<Iter>>;
+
+    // The element type: `T` when the caller names it, else the source's own.
+    template<typename T, typename Iter>
+    using elem_t = std::conditional_t<std::is_void_v<T>,
+                                      std::remove_cvref_t<elem_ref_t<Iter>>, T>;
+
+    // User code (`__lt__`, a key) may resize the container the walk is in,
+    // or grow it past its capacity and shrink it back: either moves or frees
+    // the elements the walk points at. The source's size, and for a
+    // contiguous source its storage address, are compared after every call
+    // into user code, and either change raises before the walk goes on
+    // (BUGS.md#key-function-mutates-source).
+    template<typename R>
+    struct source_state {
+        std::size_t size = 0;
+        const void* data = nullptr;
+
+        explicit source_state(R& range) {
+            if constexpr (std::ranges::sized_range<R>)
+                size = static_cast<std::size_t>(std::ranges::size(range));
+            if constexpr (std::ranges::contiguous_range<R>)
+                data = std::ranges::data(range);
+        }
+
+        void check(R& range, std::string_view name) const {
+            if (source_state(range).differs(*this))
+                raise_runtime_error("{}() argument was reallocated or changed size during iteration", name);
+        }
+
+    private:
+        bool differs(const source_state& o) const {
+            return size != o.size || data != o.data;
+        }
+    };
+}
+
+// The compiler's verdict for an element-returning min / max, rendered into
+// the call only when it binds the result as a borrow (`lend`), which the
+// runtime must then be able to hand out; every other call -- and a
+// hand-written one -- is `unchecked`.
+enum class elem_verdict { unchecked, lend };
+
+namespace detail {
+    // A `lend` verdict over a source the runtime copies from would bind a
+    // reference to a copy.
+    template<elem_verdict V, typename Iter>
+    constexpr void assert_elem_verdict() {
+        static_assert(V != elem_verdict::lend || lending_elem_source<Iter>,
+                      "min/max: the compiler bound the result as a borrow of a "
+                      "source the runtime hands back a copy from");
+    }
+
+    template<typename Iter>
+    constexpr void assert_copyable_elem() {
+        static_assert(std::is_copy_constructible_v<
+                          std::remove_cvref_t<elem_ref_t<Iter>>>,
+                      "min/max over a source that does not lend its elements "
+                      "copies the result: the element type must be copyable");
+    }
+
+}
+
+// The first of equal elements wins.
+template<typename T, elem_verdict V = elem_verdict::unchecked, typename Iter,
+         typename Better>
+decltype(auto) builtin_extreme_elem(Iter&& iterable, std::string_view name,
+                                    Better&& better) {
+    detail::assert_elem_verdict<V, Iter>();
+    if constexpr (!detail::lending_elem_source<Iter>) {
+        detail::assert_copyable_elem<Iter>();
+        return builtin_extreme<T>(std::forward<Iter>(iterable), name,
+                                  std::forward<Better>(better));
+    } else {
+        using Ref = detail::elem_ref_t<Iter>;
+        auto&& range = ::tpy::iter_range(iterable);
+        using R = std::remove_reference_t<decltype(range)>;
+        const detail::source_state<R> state(range);
+        std::remove_reference_t<Ref>* best = nullptr;
+        for (Ref elem : range) {
+            if (best != nullptr) {
+                const bool wins = better(elem, *best);
+                state.check(range, name);
+                if (wins) best = std::addressof(elem);
+            } else {
+                best = std::addressof(elem);
+            }
+        }
+        if (best == nullptr) raise_value_error("{}() iterable argument is empty", name);
+        return static_cast<Ref>(*best);
+    }
+}
+
+template<typename T = void, elem_verdict V = elem_verdict::unchecked, typename Iter>
+decltype(auto) builtin_min_elem(Iter&& iterable) {
+    using E = detail::elem_t<T, Iter>;
+    return builtin_extreme_elem<E, V>(std::forward<Iter>(iterable), "min",
+        [](const E& a, const E& b) { return a < b; });
+}
+
+template<typename T = void, elem_verdict V = elem_verdict::unchecked, typename Iter>
+decltype(auto) builtin_max_elem(Iter&& iterable) {
+    using E = detail::elem_t<T, Iter>;
+    return builtin_extreme_elem<E, V>(std::forward<Iter>(iterable), "max",
+        [](const E& a, const E& b) { return b < a; });
+}
+
+// The key is called once per element, in order, and the best key is kept by
+// value; over a lending container the element outlives the step, so a key
+// that views into it stays valid without the two-slot copy
+// `builtin_extreme_key` makes for the other sources. The comparison of two
+// keys is user code too (a key type's `__lt__`), so the source is re-checked
+// after it as after the key.
+template<typename T, elem_verdict V = elem_verdict::unchecked, typename Iter,
+         typename KeyFn, typename Better>
+decltype(auto) builtin_extreme_elem_key(Iter&& iterable, KeyFn&& key,
+                                        std::string_view name, Better&& better) {
+    detail::assert_elem_verdict<V, Iter>();
+    if constexpr (!detail::lending_elem_source<Iter>) {
+        detail::assert_copyable_elem<Iter>();
+        return builtin_extreme_key<T>(std::forward<Iter>(iterable),
+                                      std::forward<KeyFn>(key), name,
+                                      std::forward<Better>(better));
+    } else {
+        using Ref = detail::elem_ref_t<Iter>;
+        using K = std::decay_t<decltype(key(std::declval<Ref>()))>;
+        std::optional<K> best_key;
+        auto&& range = ::tpy::iter_range(iterable);
+        using R = std::remove_reference_t<decltype(range)>;
+        const detail::source_state<R> state(range);
+        std::remove_reference_t<Ref>* best = nullptr;
+        for (Ref elem : range) {
+            K k = key(elem);
+            state.check(range, name);
+            bool wins = best == nullptr;
+            if (!wins) {
+                wins = better(k, *best_key);
+                state.check(range, name);
+            }
+            if (wins) {
+                best = std::addressof(elem);
+                best_key.emplace(std::move(k));
+            }
+        }
+        if (best == nullptr) raise_value_error("{}() iterable argument is empty", name);
+        return static_cast<Ref>(*best);
+    }
+}
+
+template<typename T = void, elem_verdict V = elem_verdict::unchecked, typename Iter,
+         typename KeyFn>
+decltype(auto) builtin_min_elem_key(Iter&& iterable, KeyFn&& key) {
+    return builtin_extreme_elem_key<detail::elem_t<T, Iter>, V>(
+        std::forward<Iter>(iterable),
+        std::forward<KeyFn>(key), "min",
+        [](const auto& a, const auto& b) { return a < b; });
+}
+
+template<typename T = void, elem_verdict V = elem_verdict::unchecked, typename Iter,
+         typename KeyFn>
+decltype(auto) builtin_max_elem_key(Iter&& iterable, KeyFn&& key) {
+    return builtin_extreme_elem_key<detail::elem_t<T, Iter>, V>(
+        std::forward<Iter>(iterable),
+        std::forward<KeyFn>(key), "max",
+        [](const auto& a, const auto& b) { return b < a; });
+}
+
 // next(it, default): the element, or the default once the iterator is
 // exhausted, in the form the iterator steps it -- a value by value, a
 // reference payload as a reference to the element or to the default itself
@@ -499,11 +692,36 @@ decltype(auto) next_or(Iter& it, D&& dflt) {
 }
 
 // -- min/max with key --
+// The result IS one of the operands, as in Python. Each helper has a const
+// overload and a mutable one: operands none of which is const -- lvalues,
+// or temporaries, which live to the end of the caller's full expression --
+// select `T&`, so the caller may write through the result within its
+// statement (a temporary operand's result is never held past it: sema
+// copies it into any holder). A const operand selects `const T&`. Ties keep
+// the first operand.
+
+namespace detail {
+    template<typename... Ops>
+    concept mutable_operands =
+        (... && !std::is_const_v<std::remove_reference_t<Ops>>)
+        && (... && std::same_as<std::remove_cvref_t<Ops>,
+                                std::remove_cvref_t<
+                                    std::tuple_element_t<0, std::tuple<Ops...>>>>);
+
+}
 
 template<typename T, typename KeyFn>
 const T& min_key(const T& a, const T& b, KeyFn&& key) {
     auto ka = key(a), kb = key(b);
     return kb < ka ? b : a;
+}
+
+template<typename A, typename B, typename KeyFn>
+    requires detail::mutable_operands<A, B>
+std::remove_cvref_t<A>& min_key(A&& a, B&& b, KeyFn&& key) {
+    using T = std::remove_cvref_t<A>;
+    return const_cast<T&>(min_key(std::as_const(a),
+                                 std::as_const(b), key));
 }
 
 template<typename T, typename KeyFn>
@@ -515,10 +733,27 @@ const T& min3_key(const T& a, const T& b, const T& c, KeyFn&& key) {
     return kc < ka ? c : a;
 }
 
+template<typename A, typename B, typename C, typename KeyFn>
+    requires detail::mutable_operands<A, B, C>
+std::remove_cvref_t<A>& min3_key(A&& a, B&& b, C&& c, KeyFn&& key) {
+    using T = std::remove_cvref_t<A>;
+    return const_cast<T&>(min3_key(std::as_const(a),
+                                  std::as_const(b),
+                                  std::as_const(c), key));
+}
+
 template<typename T, typename KeyFn>
 const T& max_key(const T& a, const T& b, KeyFn&& key) {
     auto ka = key(a), kb = key(b);
     return ka < kb ? b : a;
+}
+
+template<typename A, typename B, typename KeyFn>
+    requires detail::mutable_operands<A, B>
+std::remove_cvref_t<A>& max_key(A&& a, B&& b, KeyFn&& key) {
+    using T = std::remove_cvref_t<A>;
+    return const_cast<T&>(max_key(std::as_const(a),
+                                 std::as_const(b), key));
 }
 
 template<typename T, typename KeyFn>
@@ -528,6 +763,15 @@ const T& max3_key(const T& a, const T& b, const T& c, KeyFn&& key) {
         return kb < kc ? c : b;
     }
     return ka < kc ? c : a;
+}
+
+template<typename A, typename B, typename C, typename KeyFn>
+    requires detail::mutable_operands<A, B, C>
+std::remove_cvref_t<A>& max3_key(A&& a, B&& b, C&& c, KeyFn&& key) {
+    using T = std::remove_cvref_t<A>;
+    return const_cast<T&>(max3_key(std::as_const(a),
+                                  std::as_const(b),
+                                  std::as_const(c), key));
 }
 
 // -- bin / hex / oct --

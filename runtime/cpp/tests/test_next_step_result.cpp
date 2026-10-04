@@ -2,7 +2,7 @@
  * Iterator step-result self-check.
  *
  * `__next__` returns `std::expected<T, StopIteration>`, and the range-for
- * adapter (`NextIterator`) holds that step result directly. Four guarantees
+ * adapter (`NextIterator`) holds that step result directly. Six guarantees
  * are invisible from generated code -- a wrong one is a slowdown, a corrupted
  * source container or a double destroy, never a diagnostic:
  *
@@ -19,6 +19,9 @@
  *   5. `next_or` (the two-argument `next`) hands the element on in the form
  *      the iterator steps it: a value by value, a reference payload as a
  *      reference to the ELEMENT or to the DEFAULT itself, never a copy.
+ *   6. `__iter__` of a TEMPORARY container owns it (a Python iterator keeps
+ *      its list alive): the steps read live storage after the full
+ *      expression that built the container ended, and survive a move.
  *
  * Exits non-zero on failure; the harness treats output as the assertion.
  */
@@ -159,9 +162,27 @@ void next_or_keeps_the_step_form() {
     check(&tpy::next_or(ci, fallback) == &nodes[0], "the const element itself");
 }
 
+void temporary_container_is_owned() {
+    auto vi = tpy::__iter__(std::vector<int>{3, 4});
+    std::vector<int> junk(64, 7);
+    check(tpy::next_or(vi, 0) == 3, "owned vector: first element");
+    auto moved = std::move(vi);
+    check(tpy::next_or(moved, 0) == 4, "owned vector: survives a move");
+    check(tpy::next_or(moved, 0) == 0, "owned vector: exhausted");
+
+    auto ai = tpy::__iter__(std::array<Node, 1>{Node(5)});
+    Node fallback(0);
+    static_assert(std::is_same_v<decltype(tpy::next_or(ai, fallback)), Node&>,
+                  "an owned container lends its elements mutably");
+    tpy::next_or(ai, fallback).v = 9;
+    check(&tpy::next_or(ai, fallback) == &fallback, "owned array: then the default");
+    (void)junk;
+}
+
 }  // namespace
 
 int main() {
+    temporary_container_is_owned();
     bare_return_exception_has_empty_str();
     next_or_keeps_the_step_form();
     references_are_not_written_through();

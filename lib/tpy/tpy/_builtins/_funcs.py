@@ -6,7 +6,7 @@ from .._core._types import (
     int8, int16, int32, int64, uint8, uint16, uint32, uint64,
     char, String, StrView, float32, AnyFixedInt,
     Hashable, Representable, Stringable, NativeIterable, Truthy, Comparable, Equatable,
-    ComparableValue, ValueType,
+    ComparableValue, ValueType, ComparableRef, ReferenceType,
 )
 from .._bootstrap._extern import native, cpp_template, builtin_type, builtin_function, type_param_default, DefaultInt
 
@@ -122,13 +122,13 @@ def min(a: float, b: float, c: float) -> float: ...
 @dispatch
 @pure
 @readonly
-@cpp_template("::tpy::min_key({0}, {1}, {2})")
+@cpp_template("::tpy::min_key({0}, {1}, {2})", borrows=("a", "b"))
 def min[T, K: Comparable](a: T, b: T, key: Fn[[T], K]) -> T: ...
 
 @dispatch
 @pure
 @readonly
-@cpp_template("::tpy::min3_key({0}, {1}, {2}, {3})")
+@cpp_template("::tpy::min3_key({0}, {1}, {2}, {3})", borrows=("a", "b", "c"))
 def min[T, K: Comparable](a: T, b: T, c: T, key: Fn[[T], K]) -> T: ...
 
 @dispatch
@@ -144,6 +144,24 @@ def min[T: ComparableValue](iterable: Iterable[T]) -> T: ...
 @type_param_default(T=DefaultInt)
 @cpp_template("::tpy::builtin_min_key<{T}>({0}, {1})")
 def min[T: ValueType, K: Comparable](iterable: Iterable[T], key: Fn[[T], K]) -> T: ...
+
+# A class instance (or list, dict, ...) comes back as the element itself,
+# borrowed from a container source, as Python returns the object; over any
+# other source it is a copy. The emitter fills `{lend}` from the call's
+# verdict: a borrow spells `<void, ::tpy::elem_verdict::lend>`, which the
+# helper refuses to build over a source it can only copy from; any other form
+# spells nothing.
+@dispatch
+@pure
+@readonly
+@cpp_template("::tpy::builtin_min_elem{lend}({0})", element_of=("iterable",))
+def min[T: ComparableRef](iterable: readonly[Iterable[T]]) -> T: ...
+
+@dispatch
+@pure
+@readonly
+@cpp_template("::tpy::builtin_min_elem_key{lend}({0}, {1})", element_of=("iterable",))
+def min[T: ReferenceType, K: Comparable](iterable: readonly[Iterable[T]], key: Fn[[T], K]) -> T: ...
 
 
 @dispatch
@@ -185,13 +203,13 @@ def max(a: float, b: float, c: float) -> float: ...
 @dispatch
 @pure
 @readonly
-@cpp_template("::tpy::max_key({0}, {1}, {2})")
+@cpp_template("::tpy::max_key({0}, {1}, {2})", borrows=("a", "b"))
 def max[T, K: Comparable](a: T, b: T, key: Fn[[T], K]) -> T: ...
 
 @dispatch
 @pure
 @readonly
-@cpp_template("::tpy::max3_key({0}, {1}, {2}, {3})")
+@cpp_template("::tpy::max3_key({0}, {1}, {2}, {3})", borrows=("a", "b", "c"))
 def max[T, K: Comparable](a: T, b: T, c: T, key: Fn[[T], K]) -> T: ...
 
 @dispatch
@@ -207,6 +225,24 @@ def max[T: ComparableValue](iterable: Iterable[T]) -> T: ...
 @type_param_default(T=DefaultInt)
 @cpp_template("::tpy::builtin_max_key<{T}>({0}, {1})")
 def max[T: ValueType, K: Comparable](iterable: Iterable[T], key: Fn[[T], K]) -> T: ...
+
+# A class instance (or list, dict, ...) comes back as the element itself,
+# borrowed from a container source, as Python returns the object; over any
+# other source it is a copy. The emitter fills `{lend}` from the call's
+# verdict: a borrow spells `<void, ::tpy::elem_verdict::lend>`, which the
+# helper refuses to build over a source it can only copy from; any other form
+# spells nothing.
+@dispatch
+@pure
+@readonly
+@cpp_template("::tpy::builtin_max_elem{lend}({0})", element_of=("iterable",))
+def max[T: ComparableRef](iterable: readonly[Iterable[T]]) -> T: ...
+
+@dispatch
+@pure
+@readonly
+@cpp_template("::tpy::builtin_max_elem_key{lend}({0}, {1})", element_of=("iterable",))
+def max[T: ReferenceType, K: Comparable](iterable: readonly[Iterable[T]], key: Fn[[T], K]) -> T: ...
 
 
 # pow(x, y) -- checked exponentiation
@@ -338,13 +374,17 @@ def divmod(a: uint64, b: uint64) -> tuple[uint64, uint64]: ...
 @native("tpy::next")
 def next[T](it: Iterator[T]) -> T: ...
 
-# Value types only for now: a class instance must come back as a reference to
-# the element (or to the default), as next(it) hands it, and a native generic
-# result is still bound by value -- BUGS.md#min-max-key-result-copies. The
-# runtime already returns that reference.
 @dispatch
 @native("tpy::next_or")
 def next[T: ValueType](it: Iterator[T], default: T) -> T: ...
+
+# A class instance comes back as the step's element or as the default
+# itself, as Python returns the object. The iterator never lends: a step is
+# valid only until the next one, so a result that may come from it is a value
+# wherever it is held (`element_of`), and lives only through an in-place use.
+@dispatch
+@native("tpy::next_or", borrows=("default",), element_of=("it",))
+def next[T: ReferenceType](it: Iterator[T], default: T) -> T: ...
 
 
 # TODO: make non-native once regular functions can return protocol types

@@ -1,0 +1,41 @@
+list [30, -1, 2]
+list arg [1030, -1, 2]
+list read -1 1030
+list read after [1030, 999, 2]
+lowest 4
+lowest after [5, 4, 6]
+return [5, 4, 66]
+ro 66
+span [5, -5, 66]
+iter named 9
+iter inline 9
+iter genexpr 3
+iter read 9
+iter list 9
+rebind 9 9 3 8
+self iterator 3
+rebind next 10 20 30
+bag 6
+bag method [4, 60, 5]
+fresh 3
+rows [[1], [1, 2, 3, 0], [1, 2]]
+next arg 1001 2
+next bound 2
+next default 1000
+next fresh 7
+next param [1001, 2]
+explicit copy 1009 [3, 9, 2]
+arg copy 9 1009
+values -1
+projected 90 30
+generic 8 6
+next method [1001, 2]
+next closure 1004 1000
+own 8
+gen -5
+gen 77
+gen after [5, 77, 66]
+async 88
+async after [5, 88, 66]
+empty ValueError
+values 3 a 5 0
