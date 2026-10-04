@@ -180,16 +180,13 @@ def test_cli_signal_lifecycle(
 @pytest.mark.skipif(os.name != "posix", reason="requires POSIX signals")
 def test_sigint_during_build(tmp_path: Path, request: pytest.FixtureRequest) -> None:
     """A Ctrl-C while the C++ compiles run ends the driver the way CPython
-    ends on an uncaught KeyboardInterrupt (by SIGINT, no traceback), starts
-    none of the compiles still queued, and records no build manifest."""
+    ends on an uncaught KeyboardInterrupt (by SIGINT, no traceback) and
+    records no build manifest. That queued compiles are dropped is pinned
+    without a toolchain in tpyc/test_cli_signals.py."""
     if request.config.getoption("--no-exec"):
         pytest.skip("needs a host build")
-    # Enough modules for a queue, and no ccache: the compiles must still be
-    # running when the signal lands.
-    (tmp_path / "prog.py").write_text(
-        "import asyncio\nimport socket\nimport subprocess\n\n\n"
-        "async def m() -> int:\n    return 1\n\n\n"
-        "def main() -> None:\n    print(asyncio.run(m()))\n\n\nmain()\n")
+    # No ccache: the compiles must still be running when the signal lands.
+    (tmp_path / "prog.py").write_text("print(1)\n")
     (tmp_path / "launcher.py").write_text(LAUNCHER)
     argv = [sys.executable, str(tmp_path / "launcher.py"), "tpyc", "default",
             "-b", "-v", "--no-pch", "--no-ccache", "-j", "2",
@@ -225,13 +222,16 @@ def test_sigint_during_build(tmp_path: Path, request: pytest.FixtureRequest) -> 
     assert proc.returncode == -signal.SIGINT, out
     assert "Traceback" not in out, out
     assert "tpyc: interrupted" in out.splitlines(), out
-    # The premise: many compiles were still queued at the signal.
+    # The premise: the parallel pool ran, and the signal landed before the link.
+    compiles = [ln for ln in out.splitlines() if ln.startswith("  $ ") and " -c " in ln]
     commands = [ln for ln in out.splitlines() if ln.startswith("  $ ")]
-    assert len(commands) >= 6, out
-    # Only the compiles already running finish (the two workers); the rest
-    # were dropped. Without the cancel every queued one writes its object.
+    assert len(compiles) >= 3 and len(commands) == len(compiles), out
+    # The CLI goes through the cancelling pool: a plain pool's exit would start
+    # every queued compile. Exact counts race (tpyc/test_cli_signals.py pins
+    # the cancel), but dropping none needs the whole queue to finish between
+    # the first report and the signal.
     objects = list((tmp_path / "out").rglob("*.o"))
-    assert len(objects) <= 1 + 2, (objects, out)
+    assert len(objects) < len(compiles), (objects, out)
     assert not list((tmp_path / "out").rglob("build-manifest.json"))
 
 
