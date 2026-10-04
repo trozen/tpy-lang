@@ -1,13 +1,17 @@
-"""The waiting launcher absorbs SIGINT without changing the child's outcome."""
+"""The waiting launcher absorbs SIGINT without changing the child's outcome;
+an interrupted build drops its queued C++ compiles."""
 
 import signal
 import subprocess
+import threading
+import time
 from collections.abc import Iterator
+from concurrent.futures import Future
 from types import FrameType
 
 import pytest
 
-from . import cli
+from . import cli, toolchain
 
 
 @pytest.fixture
@@ -101,3 +105,39 @@ def test_entry_point_reports_an_interrupt(
     assert sent == [(cli.os.getpid(), signal.SIGINT)]
     assert signal.getsignal(signal.SIGINT) == signal.SIG_DFL
     assert capsys.readouterr().err == f"{prog}: interrupted\n"
+
+
+def test_compile_pool_interrupt_drops_queued_jobs() -> None:
+    started: list[int] = []
+    release = threading.Event()
+    futures: list[Future[None]] = []
+
+    def job(index: int) -> None:
+        started.append(index)
+        assert release.wait(30)
+
+    def release_once_queue_cancelled() -> None:
+        # The running jobs may finish only after the cancel, or a freed worker
+        # would take a queued job before it.
+        deadline = time.monotonic() + 10
+        while not all(f.cancelled() for f in futures[2:]) and time.monotonic() < deadline:
+            time.sleep(0.01)
+        release.set()
+
+    releaser = threading.Thread(target=release_once_queue_cancelled)
+    with pytest.raises(KeyboardInterrupt):
+        with toolchain.compile_pool(2) as pool:
+            futures.extend(pool.submit(job, index) for index in range(6))
+            deadline = time.monotonic() + 30
+            while len(started) < 2:
+                if time.monotonic() >= deadline:
+                    # Released first: the pool's exit waits for every job.
+                    release.set()
+                    pytest.fail(f"the pool started only {started}")
+                time.sleep(0.01)
+            releaser.start()
+            raise KeyboardInterrupt
+    releaser.join()
+    assert sorted(started) == [0, 1]
+    assert all(f.done() and not f.cancelled() for f in futures[:2])
+    assert all(f.cancelled() for f in futures[2:])
