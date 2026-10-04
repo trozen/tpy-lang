@@ -322,6 +322,27 @@ class TpyStarUnpack(TpyExpr):
         return [self.expr]
 
 
+class ResultForm(Enum):
+    """What one call to a borrow-declared binding hands back
+    (`TpyCall.result_form`)."""
+    # Not a borrow-declared call: the callee's own convention answers.
+    NOT_DECLARED = "not_declared"
+    # A borrow of storage that outlives the call: holdable by reference.
+    BORROW = "borrow"
+    # A reference into the operands valid for the statement only (one of
+    # them is a temporary, or the step of the caller's iterator): written in
+    # place, held only as a copy.
+    REFERENCE_VALUE = "reference_value"
+    # The C++ hands back a copy (the callee walked a source that is not a
+    # container with an iterator of its own, gone at the return).
+    COPY = "copy"
+
+    @property
+    def is_fresh(self) -> bool:
+        """The result is a fresh value to every holder."""
+        return self in (ResultForm.REFERENCE_VALUE, ResultForm.COPY)
+
+
 @dataclass
 class TpyCall(TpyExpr):
     """Function or constructor call.
@@ -372,6 +393,18 @@ class TpyCall(TpyExpr):
     # arg `U -> Adapter<T_sub, U_sub>`. None when the call doesn't need any
     # substitution. Empty frozenset is never written -- absence is None.
     representational_subst_params: frozenset[str] | None = None
+    # Set by sema on a call to a bodyless binding that declares which
+    # arguments its result borrows (`borrows=` / `element_of=`); NOT_DECLARED for every
+    # other call. Recomputed on each analysis of the node, never re-derived
+    # downstream.
+    result_form: ResultForm = ResultForm.NOT_DECLARED
+    # With a fresh form (REFERENCE_VALUE / COPY): some lent argument is still
+    # reached by the program (a named object, a handle or view into such
+    # storage), so a sink that HOLDS the fresh value copies an object CPython
+    # would alias -- the owning sinks and the local binding warn. False when
+    # every lent argument is a fresh owner, where nothing can tell the copy
+    # apart.
+    copy_observable: bool = False
 
     @property
     def func_name(self) -> str:
@@ -1627,6 +1660,11 @@ class TpyFunction:
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
     native_name: str | None = None
     native_function: bool = False
+    # @native / @cpp_template(borrows=(...), element_of=(...)): the parameter
+    # names a bodyless binding's result IS / is an element of, validated and
+    # stamped into FunctionInfo at registration. None = neither keyword.
+    declared_borrows: tuple[str, ...] | None = None
+    declared_element_of: tuple[str, ...] = ()
     # @native(mutates="elements"): see FunctionInfo.native_mutates.
     native_mutates: str | None = None
     # Set when @export is applied inside an `# tpy: ext_module`: the function

@@ -50,6 +50,11 @@ the raw grid.
   or a whole-tuple return warns its borrowed elements and then rejects
   (loud); the call source copies and warns like the scalar. The all-borrow
   row took the scalar's warning in U3 D1.
+  The return of an ELEMENT of a list of such tuples has no borrow-form arm
+  yet: the concrete function is refused
+  (`BUGS.md#tuple-elem-return-borrow-form-rejects`) and its generic twin is
+  ill-formed C++ (`BUGS.md#generic-tuple-elem-return-ill-formed`); a `min` /
+  `max` / `next` result over them is the same gap.
 - **D2** `BUGS.md#global-tuple-ref-storage-form` -- the MIXED tuple global
   (an owned element beside a borrowed one, from a call) copies its borrowed
   element SILENTLY; the all-borrow tuple global is a tuple of pointer slots

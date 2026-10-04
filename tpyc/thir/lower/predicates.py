@@ -141,6 +141,7 @@ from ...type_def_registry import (
 from ...coercions import BIGINT_NARROW, CoercionContext, context_free_wrap_template
 from ...value_category import (
     CONTAINER_LITERAL_NODES,
+    call_result_is_reference,
     call_returns_cpp_ref,
     FrameTempElem,
     frame_temp_elem_plan,
@@ -10337,6 +10338,11 @@ def _record_rvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         return None
     if not is_rvalue_source(analyzer, a):
         return None
+    if call_result_is_reference(analyzer, a) and not frame_capturing:
+        # A reference live for the whole statement (a borrow-declared call
+        # stamped a fresh value): a sync callee binds it in place
+        # (`record_borrow_call`), and only a sink that holds it copies.
+        return None
     at = analyzer.get_expr_type(a)
     if at == pt:
         return pt
@@ -11412,7 +11418,8 @@ def _positional_only_template(tmpl: str, n_args: int) -> bool:
     the subset `expand_cpp_template` can render with no receiver and no
     substitution context. A surviving named field (`{cpp}`, `{self}`, a type
     param) means sema's substitution did not fully resolve the template, so
-    the call rejects."""
+    the call rejects -- except `{lend}`, which the emitter fills from the
+    call's own `result_form`."""
     i, n = 0, len(tmpl)
     while i < n:
         c = tmpl[i]
@@ -11422,7 +11429,8 @@ def _positional_only_template(tmpl: str, n_args: int) -> bool:
                 continue
             close = tmpl.find("}", i + 1)
             field = tmpl[i + 1:close] if close != -1 else ""
-            if not field.isdigit() or int(field) >= n_args:
+            if field != "lend" and (not field.isdigit()
+                                    or int(field) >= n_args):
                 return False
             i = close + 1
         elif c == "}":

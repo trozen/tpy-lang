@@ -1,0 +1,1 @@
+main.py:27: error: Cannot return local or temporary as reference. Reference type 'P' is returned by reference. Use Own[P] to return by value.

@@ -139,6 +139,7 @@ from ...type_def_registry import (
 )
 from ...modules.type_resolution import is_native_iterable
 from ...codegen_cpp.gen_async import sub_struct_qualname
+from ...sema.context import expr_lends_storage
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    literal_value_from_expr,
                                    numeric_literal_truth)
@@ -181,7 +182,8 @@ from ...liveness import (
     try_terminates_ignoring_finally, tuple_literal_leaves,
 )
 from ...value_category import (
-    call_returns_cpp_ref, for_source_is_rvalue, is_rvalue_source, wants_move,
+    call_result_holdable, call_returns_cpp_ref, for_source_is_rvalue,
+    is_rvalue_source, wants_move,
     property_access_returns_cpp_ref,
     async_return_form, AsyncReturnForm,
 )
@@ -7956,6 +7958,14 @@ def _rebind_can_follow(body: list[TpyStmt], at: TpyStmt, name: str) -> bool:
                for after, loops in writes)
 
 
+def _alias_call_source_ok(init: TpyExpr, analyzer) -> bool:
+    """A free call whose result is a borrow of storage that outlives the
+    statement: a borrow-declared call by sema's stamp, any other one by the
+    same allow-list (`expr_lends_storage`) -- a temporary or merely-lvalue
+    argument fails closed, since the result could be that temporary."""
+    return isinstance(init, TpyCall) and expr_lends_storage(analyzer, init)
+
+
 def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
                       declared: dict[str, TpyType]) -> THIRStmt:
     """Pointer-alias frame bind (`a = items[0]` -> `a = &(<lvalue>);`):
@@ -8030,6 +8040,13 @@ def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
         # the subscript arm.
         src = _lower_expr(init, lc, declared,
                           use=_ExprUse(pos=SinkPos.ALIAS_BIND))
+    elif _alias_call_source_ok(init, analyzer):
+        # A BORROW-returning call (`m = min(a, b, key=f)`, `m = pick(a, b)`):
+        # the result is one of its lent arguments, all existing storage, so
+        # the alias takes that operand's address and stays live across the
+        # suspension exactly as a name or field source does.
+        src = _lower_expr(init, lc, declared,
+                          use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
     else:
         note_detail("alias.bind_source")
         raise ThirUnsupported("res.alias_bind")
@@ -10896,8 +10913,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
                     value=source, loc=loc)
             elif (isinstance(stmt.init, (TpyCall, TpyMethodCall))
-                  and call_returns_cpp_ref(
-                      analyzer, stmt.init.resolved_function_info)
+                  and call_result_holdable(analyzer, stmt.init)
                   and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                       analyzer.get_expr_type(stmt.init) or vtype)))
                   == unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
@@ -10970,8 +10986,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     value=_lower_expr(stmt.init, lc, declared), loc=loc)
             elif (isinstance(stmt.init, TpyIfExpr)
                   and all(isinstance(arm, (TpyCall, TpyMethodCall))
-                          and call_returns_cpp_ref(
-                              analyzer, arm.resolved_function_info)
+                          and call_result_holdable(analyzer, arm)
                           and unwrap_readonly(unwrap_ref_type(
                               unwrap_send_sync(
                                   analyzer.get_expr_type(arm) or vtype)))
@@ -18215,15 +18230,17 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
         use = _ExprUse(allow_temps=temps_ok,
                        result=_ExprResultUse.BORROW_BIND,
                        pos=SinkPos.PRINT_ARG, forms=_LEND_OK)
-    elif isinstance(a, (TpyFieldAccess, TpySubscript)):
+    elif isinstance(a, (TpyFieldAccess, TpySubscript, TpyCall,
+                        TpyMethodCall)):
         at = lc.analyzer.get_expr_type(a)
         atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
                if at is not None else None)
         if record_like(atu, lc.analyzer):
-            # The record-FIELD / record-ELEMENT print arg
-            # (print.record_field / print.record_subscript): the bare
-            # member or checked-getitem read streams RAW, so it lowers
-            # under BORROW_BIND like the record-call row.
+            # The record-FIELD / record-ELEMENT / record BORROW-call print
+            # arg (print.record_field / print.record_subscript /
+            # print.record_borrow_call): the bare member read, checked
+            # getitem or borrowed result streams RAW, so it lowers under
+            # BORROW_BIND like the record-call row.
             use = _ExprUse(allow_temps=temps_ok,
                            result=_ExprResultUse.BORROW_BIND)
     return THIRPrintArg(

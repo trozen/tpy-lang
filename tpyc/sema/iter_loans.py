@@ -14,16 +14,25 @@ with the call-result binding (`_register_call_result_borrow` in
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import TYPE_CHECKING, Iterable, NamedTuple, Union
 
+from tpyc import modules as builtin_modules
+from .. import qnames
+
 from ..parse import (
+    ResultForm,
     TpyCall, TpyCoerce, TpyExpr, TpyFieldAccess, TpyFString, TpyBinOp,
     TpyGeneratorExpression, TpyIfExpr, TpyMethodCall, TpyName, TpySubscript,
     is_property_getter_read,
 )
-from ..type_def_registry import is_borrowing_view_type, iter_yields_owned_elements
+from ..type_def_registry import (get_type_def, is_borrowing_view_type,
+                                 iter_yields_owned_elements)
 from ..typesys import (
-    FunctionInfo, TpyType, TupleType, TypeParamRef, held_whole_borrow_sources,
+    FunctionInfo, NominalType, PendingDictType, PendingListType,
+    PendingSetType, TpyType, TupleType, TypeParamRef, make_dict, make_list,
+    make_set,
+    held_whole_borrow_sources,
     is_protocol_type, recorded_return_borrow_sources, type_param_names,
     unwrap_own, unwrap_readonly, unwrap_ref_type,
 )
@@ -44,6 +53,74 @@ from .scope_tracker import lend_roots
 
 if TYPE_CHECKING:
     from .context import BorrowTracker, SemanticContext
+    from ..typesys import TypeRegistry
+
+
+class IterElementSource(Enum):
+    """What the elements an iteration of a value hands out live in -- the
+    one classification the `for` statement (its loop variable's lifetime)
+    and a borrow-declared callee's element-of parameter (whether its result
+    can outlive the call) both read.
+
+    `HANDLE`: the value IS an iterator (a `__next__` record, a generator
+    frame, the `Iterator` protocol): what it hands out lives as long as the
+    handle and what the handle borrows. `CONTAINER`: a native iterable whose
+    iterator points into its storage. `FRESH_ITERATOR`: a user class whose
+    `__iter__` builds a separate iterator, which may own what it hands out.
+    `PROTOCOL`: the `Iterable` protocol, whose concrete type decides.
+    `OTHER`: anything else."""
+    HANDLE = "handle"
+    CONTAINER = "container"
+    FRESH_ITERATOR = "fresh_iterator"
+    PROTOCOL = "protocol"
+    OTHER = "other"
+
+
+def _declares_element_cursor(t: 'TpyType', registry: 'TypeRegistry') -> bool:
+    """The type's stub declares a storage member iteration steps through one
+    element at a time (`NativeMembers.cursor`): an element-owning container
+    or a view over one, whose elements outlive any one step -- or a record
+    whose readonly `__iter__` hands out a borrowing VIEW of its own storage
+    (`ArrayList`'s `SpanIter`). A literal whose storage is not decided yet
+    is the container the source wrote."""
+    if isinstance(t, PendingListType):
+        t = make_list(t.element_type)
+    elif isinstance(t, PendingSetType):
+        t = make_set(t.element_type)
+    elif isinstance(t, PendingDictType):
+        t = make_dict(t.key_type, t.value_type)
+    if not isinstance(t, NominalType):
+        return False
+    td = get_type_def(t.qualified_name())
+    members = td.native_members if td is not None else None
+    if members is not None:
+        return members.cursor
+    record = registry.get_record_for_type(t)
+    return record is not None and any(
+        m.is_readonly and m.return_type is not None
+        and is_borrowing_view_type(unwrap_readonly(m.return_type))
+        for m in record.get_method_overloads("__iter__"))
+
+
+def iter_element_source(iterable_type: 'TpyType | None',
+                        registry: 'TypeRegistry') -> IterElementSource:
+    """Classify what an iteration of a value of `iterable_type` hands out
+    (see `IterElementSource`)."""
+    if iterable_type is None:
+        return IterElementSource.OTHER
+    t = unwrap_readonly(unwrap_ref_type(iterable_type))
+    if (builtin_modules.get_error_return_next_element_type(
+            t, registry=registry) is not None
+            or (is_protocol_type(t)
+                and t.qualified_name() == qnames.ITERATOR)):
+        return IterElementSource.HANDLE
+    if is_protocol_type(t) and t.qualified_name() == qnames.ITERABLE:
+        return IterElementSource.PROTOCOL
+    if builtin_modules.get_iter_element_type(t, registry=registry) is not None:
+        return (IterElementSource.CONTAINER
+                if _declares_element_cursor(t, registry)
+                else IterElementSource.FRESH_ITERATOR)
+    return IterElementSource.OTHER
 
 
 def _yield_elem_sources(fi: FunctionInfo,
@@ -197,6 +274,9 @@ def is_dangling_temporary_arg(expr: TpyExpr) -> bool:
     if isinstance(expr, TpyCall) and expr.call_type is not None:
         if is_borrowing_view_type(expr.call_type) or expr.call_type.is_pointer():
             return bool(expr.args) and is_dangling_temporary_arg(expr.args[0])
+    if isinstance(expr, TpyCall) and expr.result_form is ResultForm.BORROW:
+        # Sema proved every argument it lends is existing storage.
+        return False
     if isinstance(expr, (TpyCall, TpyMethodCall, TpyBinOp, TpyFString)):
         return True
     if isinstance(expr, TpyIfExpr):

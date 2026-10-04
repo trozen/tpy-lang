@@ -117,7 +117,7 @@ All methods on a `@native` class must be stubs (`...` body). Non-native methods 
 - `-> V` means the C++ method returns `V&` (a reference into the receiver or other stable storage). A call result bound to a local *aliases* that storage -- `p = obj.get()` binds `V*`/`V&`, and mutations through `p` reach the original (matching `dict.setdefault`, container `__getitem__`).
 - `-> Own[V]` means the C++ method returns a fresh `V` by value (a factory / a moved-out value). The result is owned; binding it copies/moves, no aliasing.
 
-This is the same contract user-defined methods follow, so there is no native special case. The consequence is a hard requirement on the binding author: a method whose C++ returns by value (e.g. a `static Vec2 zero()` factory) **must** be declared `-> Own[V]`. Declaring it bare `-> V` makes codegen bind a reference to a destroyed temporary -- a dangling pointer (or, for a `@nocopy` `V`, a C++ build error). There is currently no compiler check that a bare `-> V` native method actually returns `V&`; it is the author's contract to honor. (Free `@native` *functions* are presently the exception -- they always take value semantics regardless of the annotation; see BUGS.md.)
+This is the same contract user-defined methods follow, so there is no native special case. The consequence is a hard requirement on the binding author: a method whose C++ returns by value (e.g. a `static Vec2 zero()` factory) **must** be declared `-> Own[V]`. Declaring it bare `-> V` makes codegen bind a reference to a destroyed temporary -- a dangling pointer (or, for a `@nocopy` `V`, a C++ build error). There is currently no compiler check that a bare `-> V` native method actually returns `V&`; it is the author's contract to honor. (Free `@native` *functions* are the exception: without a declaration they take value semantics regardless of the annotation; `borrows=` / `element_of=` (below) declare what the result borrows.)
 
 **Construction:**
 - C++ classes: constructor call syntax -- `Vec2(1.0, 2.0)` -> `b2::Vec2(1.0, 2.0)`
@@ -297,7 +297,8 @@ source -- a container, a view, a record or an iterator (`copy_iter(make())`,
 `copy_iter(map(f, xs))`) -- so as a borrowing view it would reject or warn
 about the owning form. That borrow depends on the argument's
 value category and belongs to the producing call -- the callable-level borrow
-annotation in TODO.md ("Callable-level borrow annotation for native stubs").
+annotation below (`borrows=` / `element_of=`), which `copy_iter()` does not use yet
+(TODO.md, "Callable-level borrow annotation for native stubs").
 
 The obligation is the stub author's: an unannotated native value type is
 treated as OWNING its data, so forgetting the kwarg on a handle type means its
@@ -316,6 +317,95 @@ every other native template keeps `T` (`Bag[readonly[Node]]` renders
 `my::Bag<Node>`): a storage template owns its elements, and C++ containers
 and allocators reject a const element type. The readonly-ness of a storage
 template's element is enforced by sema alone.
+
+### Declaring what a result borrows: `borrows=` / `element_of=`
+
+A binding without a body has no `return` for the compiler to read, so it
+cannot tell on its own whether the C++ hands back one of its arguments. A
+free binding that does says so by naming the parameters its result may come
+from (read as a union -- the result is one of them), with keywords of its
+own `@native` or `@cpp_template`:
+
+```python
+from tpy.extern import native, cpp_template
+
+@native(borrows=("a", "b"))
+def pick(a: Node, b: Node) -> Node: ...      # C++: Node& pick(Node&, Node&)
+
+@native(element_of=("items",))
+def first(items: Iterable[Node]) -> Node: ...  # C++: a reference to an element
+
+@cpp_template("::lib::pick({0}, {1})", borrows=("a", "b"))
+def pick2(a: Node, b: Node) -> Node: ...
+```
+
+`borrows=` names parameters the result IS (or lives inside the storage of);
+`element_of=` names parameters the result is handed out by ITERATING. A
+given keyword must name at least one parameter, and a name may appear in
+only one. (These keywords replaced a separate decorator --
+the facts belong to the binding they describe. `@cpp_template` is to fold
+into `@native` the same way: TODO.md, "`@cpp_template` folds into
+`@native`".)
+
+The call then behaves as the bodied twin `def pick(a, b): return a` does
+wherever every named argument LENDS: `n = pick(x, y)` binds `Node& n =
+pick(x, y);`, a write through `n` reaches the argument, and a readonly
+argument gives a readonly result. The operands become mutable whenever the
+result is, as a generic returning its parameter does (even `m = pick(a, b);
+return m.v` takes `Node& a, Node& b`); declare them readonly to keep them
+const. A `borrows=` argument lends when its form
+proves it outlives the call -- a name, a field or subscript of one, a call
+that itself lends, a view a call hands back (`d.values()`); a temporary
+(`pick(x, Node())`) or a method read off a temporary does not, and a
+conditional operand is refused
+(`BUGS.md#borrow-call-walrus-conditional-operand-rejects`). An `element_of=` argument lends only when it is
+a CONTAINER (a list, a dict's values, a `Span`): an iterator never lends --
+its step is valid only until the next one, a generator may rebind the object
+it yielded -- and neither does a class whose `__iter__` builds an iterator.
+
+Where an argument does not lend, the result is a fresh value: read in place
+(`pick(x, Node()).v`, an argument) it copies nothing -- except where the
+C++ hands back a copy (an `element_of=` parameter declared `Iterable`,
+given an iterator or a generator: the callee walks it with an iterator of its
+own, gone at the return). Passed to a parameter the callee writes, that copy
+is what the callee writes, and it says so (`copies Node into argument 'p'
+of 'f(...)'; use copy() to make this explicit`); a parameter only read takes
+it silently. A binding, an
+owning slot or a generator / coroutine frame that holds it copies, which
+that sink reports -- `copies Node into local 'n'; use copy() to make this
+explicit` at a local, `... into the frame of 'f(...)'` for a frame, the
+field / `Own` slot's own words elsewhere (`copy(...)` makes the copy
+explicit; a non-copyable type is an error). When every named argument is a
+fresh owner nothing can see the copy, and nothing is said. Returning such a
+value through a borrowing `-> Node` is the dangling-return error. A
+value-type result (`int`, `str`, a tuple) is a value at every call.
+
+Two refusals key on the declaration, so they hold for EVERY binding that
+declares `borrows=` / `element_of=`, not only the builtin `min` / `max` / `next`: an augmented
+assignment whose target holds the call (`pick(x, y).v += 1`) is refused --
+the render would run the call twice -- and where the C++ hands back a copy,
+a write through it in place is the lost-write error.
+
+The C++ must match: a reference into a `borrows=` argument (with a const
+overload for const arguments), and for `element_of=` a reference into a
+container's element; for a source walked through `__next__`, a value when
+the parameter is an `Iterable` (the builtin `min` / `max` helpers) and a
+reference valid until the caller's next step when it is the caller's
+`Iterator` (`next`), which only an in-place use reads. A free function without the
+declaration keeps a by-value result, even when its C++ returns a reference
+(`BUGS.md`, "An UNDECLARED free `@native` function"). The decorator is not
+supported on methods yet (TODO.md, "Callable-level borrow annotation").
+
+Each name must be a parameter of the binding whose argument can hold storage
+the result borrows (a reference type, an open `T`, a view, a `str`, a callable
+whose environment may hold references); an unknown name, a duplicate, a
+scalar parameter, or the decorator on a function with a body is an error. The
+builtin `min` / `max` (`borrows=` for two or three operands, `element_of=` for
+one iterable) and `next(it, default)` (`borrows=("default",)`,
+`element_of=("it",)`) are declared this way. The declaration says what the
+result borrows, not that the borrow is sound: as with every native
+signature, the stub author answers for the C++ actually returning one of the
+named arguments.
 
 ### Declaring element storage: `elements=True` and `mutates="elements"`
 

@@ -91,9 +91,23 @@ template<typename T> struct is_value_type<val_or_ref<T>> : std::true_type {};
 template<typename T>
 inline constexpr bool is_value_type_v = is_value_type<T>::value;
 
+// A generic argument may arrive in its borrow slot (`val_or_ref<X>`, itself a
+// value), so the two marker concepts answer by the slot's referent -- which
+// keeps them mutually exclusive.
+namespace detail {
+    template<typename T> struct slot_referent { using type = T; };
+    template<typename T> struct slot_referent<val_or_ref<T>> { using type = T; };
+}
+
 // C++ concept for the ValueType marker protocol
 template<typename T>
-concept ValueType = is_value_type_v<T>;
+concept ValueType =
+    is_value_type_v<typename detail::slot_referent<std::remove_cv_t<T>>::type>;
+
+// C++ concept for the ReferenceType marker protocol. Sema decides which types
+// conform; this refuses only a value type.
+template<typename T>
+concept ReferenceType = !ValueType<T>;
 
 // C++ concept for the Copyable marker protocol. Maps to copy-constructibility,
 // which is the operation a generic method like Box[T].clone() actually needs.

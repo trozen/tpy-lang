@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from .slot_hint import SlotHint
 
 from ..typesys import (
-    TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
+    TpyType, recorded_return_borrow_sources, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
     INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType, UnionType, TupleType,
     RecursiveAliasInstanceType, recursive_union_alternatives, ConcreteFrameType,
     ConcreteGenType,
@@ -43,6 +43,7 @@ from ..namespace import BindingKind, NameBinding, Namespace
 from ..type_def_registry import (int_traits_of, is_borrowing_view_type,
                                  is_bytes_type, is_str_type, type_def_of)
 from ..parse import (
+    ResultForm,
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
     TpyCall, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp,
     TpyUnaryOp, TpyIfExpr, TpyVarargPack, TpyStarUnpack,
@@ -53,7 +54,7 @@ from ..parse import (
 )
 from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
 from ..value_category import (
-    ExprTypeOf, call_returns_cpp_ref, frame_factory_callee,
+    ExprTypeOf, ValueCategoryAnalyzer, call_returns_cpp_ref, frame_factory_callee,
     is_rvalue_source, lent_operands, lent_operand_binds_open_param,
     peel_coerce,
 )
@@ -613,9 +614,76 @@ def call_lend_sources(ops: CallOperands,
     return out
 
 
+def proven_lend_roots(analyzer: 'ValueCategoryAnalyzer',
+                      expr: TpyExpr) -> 'list[str] | None':
+    """The names whose storage `expr` hands out a reference into, when its
+    FORM proves that storage outlives the statement it is read in; None
+    when it does not. An allow-list, recursive: a name; a plain field read
+    or a container subscript of such an expression; a call sema stamped a
+    borrow (`ResultForm.BORROW`); a call whose result is a C++ reference
+    and whose every lent argument and receiver (its recorded
+    `return_borrows_from`) itself lends; a coercion that renders its inner
+    through. Anything else -- a conditional, `and` / `or`, a walrus, a
+    property getter, an `await`, a call rooted in a temporary, a call whose
+    borrow facts are unknown -- proves nothing. The one root set the
+    lending verdict, the loans a borrow-declared result files and the
+    mutable use it makes of its operands all read.
+    `is_rvalue_source` is not this question: it answers the C++ value
+    category, and a method read off a temporary is an lvalue there."""
+    if isinstance(expr, TpyCoerce):
+        return (None if expr.coercion.builds_fresh_value
+                else proven_lend_roots(analyzer, expr.expr))
+    if isinstance(expr, TpyName):
+        return [expr.name]
+    if isinstance(expr, TpyFieldAccess):
+        if expr.hidden_call is not None or is_property_getter_read(expr):
+            return None
+        return proven_lend_roots(analyzer, expr.obj)
+    if isinstance(expr, TpySubscript):
+        if (expr.getitem_function_info is not None
+                or expr.slice_function_info is not None
+                or getattr(expr, "needs_optional_runtime_check", False)):
+            return None
+        return proven_lend_roots(analyzer, expr.obj)
+    if isinstance(expr, TpyCall) and expr.result_form is not ResultForm.NOT_DECLARED:
+        if expr.result_form is not ResultForm.BORROW:
+            return None
+    elif not isinstance(expr, (TpyCall, TpyMethodCall)) or is_property_getter_read(expr):
+        return None
+    else:
+        fi = expr.resolved_function_info
+        # A view handed back by value (`d.values()`) still points into what
+        # the call lends, as a reference result does.
+        if (fi is None or fi.is_constructor
+                or fi.root.return_borrows_from is None
+                or not (call_returns_cpp_ref(analyzer, fi)
+                        or is_borrowing_view_type(fi.return_type))):
+            return None
+    ops = call_borrow_operands(expr)
+    if ops is None:
+        return None
+    roots: list[str] = []
+    for src in call_lend_sources(ops, recorded_return_borrow_sources(ops.fi),
+                                 expr_type=None):
+        sub = proven_lend_roots(analyzer, src.expr)
+        if sub is None:
+            return None
+        roots.extend(r for r in sub if r not in roots)
+    return roots
+
+
+def expr_lends_storage(analyzer: 'ValueCategoryAnalyzer',
+                       expr: TpyExpr) -> bool:
+    """Whether `expr` names storage PROVEN to outlive the statement it is
+    read in (`proven_lend_roots`)."""
+    return proven_lend_roots(analyzer, expr) is not None
+
+
 def call_borrow_operands(expr: TpyExpr) -> CallOperands | None:
     """The operands a call-shaped `expr`'s `return_borrows_from` indexes, or
-    None when `expr` is not a resolved call.
+    None when `expr` is not a resolved call -- or is one whose result sema
+    decided is a fresh value (`ResultForm.is_fresh`: a declared
+    borrow with a temporary lent argument), which borrows nothing.
 
     Operator dispatch is a method call in disguise -- a borrow-returning
     dunder hands out a borrow of an operand -- and answers with the CANONICAL
@@ -624,6 +692,8 @@ def call_borrow_operands(expr: TpyExpr) -> CallOperands | None:
     """
     kwargs: dict[str, TpyExpr] = {}
     if isinstance(expr, TpyCall):
+        if expr.result_form.is_fresh:
+            return None
         fi, obj, args = expr.resolved_function_info, None, expr.args
         kwargs = expr.kwargs or {}
     elif isinstance(expr, TpyMethodCall):

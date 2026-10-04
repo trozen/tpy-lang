@@ -1,0 +1,2 @@
+main.py:30: warning: Result borrows from temporary argument 'p'; the temporary is destroyed at end-of-statement
+main.py:30: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.reseat_source)

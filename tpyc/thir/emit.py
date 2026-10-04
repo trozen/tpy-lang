@@ -18,7 +18,7 @@ from dataclasses import dataclass, field, fields as dc_fields, is_dataclass
 from typing import Callable, ContextManager, Iterator, Mapping, TextIO
 
 from ..temp_schedule import TempQueue
-from ..parse.nodes import RebindStorage, TryTier
+from ..parse.nodes import RebindStorage, ResultForm, TryTier
 from ..codegen_cpp.context import (
     INDENT, CondRegion,
     any_isinstance_check, cpp_bytes_literal_owned, cpp_bytes_literal_span,
@@ -751,7 +751,14 @@ def _emit_call(e: THIRCall, state: _EmitState) -> str:
     if e.cpp_template is not None:
         # A scalar type-constructor call: expand the (sema-substituted,
         # positional-only) __init__ template over the args with no receiver.
-        return expand_cpp_template(e.cpp_template, None,
+        template = e.cpp_template
+        if "{lend}" in template:
+            # Only a BORROW is told to the helper (it asserts the source can
+            # lend); any other form leaves the helper unchecked.
+            template = template.replace(
+                "{lend}", "<void, ::tpy::elem_verdict::lend>"
+                if e.result_form is ResultForm.BORROW else "")
+        return expand_cpp_template(template, None,
                                    *[_emit_expr(a, state) for a in e.args])
     args = ", ".join(_emit_expr(a, state) for a in e.args)
     if e.callee_expr is not None:

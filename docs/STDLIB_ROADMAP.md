@@ -249,7 +249,7 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 
 | Item | Status | Notes |
 |---|---|---|
-| `abs`, `min`, `max`, `sum` | Partial | `min`/`max` take one iterable (`max(xs)`, `min(xs, key=f)`; an empty one raises `ValueError`) or two / three operands. Over an iterable of class instances they are refused: the result would be a copy of the element (BUGS.md#min-max-key-result-copies). `default=` is missing. `sum(xs, start=n)` by keyword is refused (builtin functions take no keywords but `key=` / `reverse=`) |
+| `abs`, `min`, `max`, `sum` | Partial | `min`/`max` take one iterable (`max(xs)`, `min(xs, key=f)`; an empty one raises `ValueError`) or two / three operands. Over class instances the result is the element or operand itself where named operands or a container lend it; over an iterator it is a value (a binding warns); tuples holding one are refused (BUGS.md#min-max-key-result-copies). `default=` is missing. `sum(xs, start=n)` by keyword is refused (builtin functions take no keywords but `key=` / `reverse=`) |
 | `pow`, `divmod`, `round` | Done | |
 | `bin`, `hex`, `oct` | Done | |
 | `chr`, `ord` | Done | |
@@ -259,7 +259,7 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 
 | Item | Status | Notes |
 |---|---|---|
-| `iter`, `next` | Partial | `next(it)` and `next(it, default)` (value-type elements; the default has the element's type, so `next(it, None)` is missing). `iter(<list literal>)` bound to a local dangles (BUGS.md#comp-iter-rvalue-source); `next(iter(xs))` in one expression is refused (BUGS.md#sorted-of-iter-call) |
+| `iter`, `next` | Partial | `next(it)` (value-type elements) and `next(it, default)` (any element type -- over class instances an in-place use acts on the element or the default itself, a binding holds a warned copy; the default has the element's type, so `next(it, None)` is missing). `iter(<set / dict literal>)` bound to a local dangles (BUGS.md#iter-local-over-literal-dangles; a temporary list or array is owned by the iterator); `next(iter(xs))` in one expression is refused (BUGS.md#sorted-of-iter-call) |
 | `all`, `any`, `sorted` | Partial | `sorted(xs)`, `key=`, `reverse=` (stable, in either keyword order); a builtin function as `key=` (`key=len`) is TODO.md "Builtins as first-class function values"; `key=` over an unannotated list of tuple literals finds no overload (BUGS.md#key-over-pending-tuple-list) |
 | `enumerate`, `filter`, `map`, `reversed`, `zip` | Done | |
 

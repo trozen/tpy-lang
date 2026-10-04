@@ -28,11 +28,11 @@ int32_t helper(const Rec& r);
 // def ns(rs: list[Rec]) -> Own[list[int32]]:
 std::vector<int32_t> ns(const std::vector<Rec>& rs);
 // def free(rs: list[Rec]) -> None:
-void free(const std::vector<Rec>& rs);
+void free(std::vector<Rec>& rs);
 // def gen(rs: list[Rec]) -> Iterator[int32]:
 __gen_gen gen(const std::vector<Rec>& rs);
 // async def co(rs: list[Rec]) -> int32:
-__coro_co co(const std::vector<Rec>& rs);
+__coro_co co(std::vector<Rec>& rs);
 // def comp(rss: list[list[Rec]]) -> None:
 void comp(const std::vector<std::vector<Rec>>& rss);
 // def main() -> None:
@@ -96,7 +96,7 @@ struct Holder {
     Holder();
 
     // def show(self) -> None:
-    void show() const;
+    void show();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -109,19 +109,19 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 struct __coro_co {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    const std::vector<Rec>& rs;
-    const Rec* a = nullptr;
-    const Rec* b = nullptr;
+    std::vector<Rec>& rs;
+    Rec* a = nullptr;
+    Rec* b = nullptr;
     ::tpy::frame_slot<std::vector<Rec>> s;
     ::tpy::frame_slot<std::vector<Rec>> t;
-    ::tpy::frame_slot<Rec> m;
+    Rec* m = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_DONE = 1,
     };
 
-    __coro_co(const std::vector<Rec>& rs)
+    __coro_co(std::vector<Rec>& rs)
         : __state(S_INITIAL),
           __cancel_pending(false),
           rs(rs) {}
@@ -208,9 +208,9 @@ inline Holder::Holder() : rs(std::vector<Rec>{Rec(1), Rec(3), Rec(2)}) {}
 //     print("method sorted_lam", ns(sorted(self.rs, key=lambda r: Key(r))))  # tpyc: ok
 //     print("method sorted_cls", ns(sorted(self.rs, key=Key)))  # tpyc: ok
 //     print("method min_cls", min(a, b, key=Key).n)  # tpyc: ok
-inline void Holder::show() const {
-    const Rec& a = ::tpy::__getitem__(this->rs, 0);
-    const Rec& b = ::tpy::__getitem__(this->rs, 1);
+inline void Holder::show() {
+    Rec& a = ::tpy::__getitem__(this->rs, 0);
+    Rec& b = ::tpy::__getitem__(this->rs, 1);
     std::vector<Rec> __tmp_1 = ::tpy::builtin_sorted_key<Rec>(this->rs, [](const Rec& r) -> Key { return Key(r); });
     std::cout << "method sorted_lam" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_1)) << "\n" << ::tpy::check_signals;
     std::vector<Rec> __tmp_2 = ::tpy::builtin_sorted_key<Rec>(this->rs, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); });

@@ -39,13 +39,24 @@ def builtin_function(key: str): ...
 # Function-level `checks_signals=True` (here and on @cpp_template): the bound
 # C++ is a Ctrl-C check point (it calls `::tpy::check_signals()` or raises
 # KeyboardInterrupt itself), so a cleanup body calling it needs deferral.
+# Function-level `borrows=(...)` / `element_of=(...)` (here and on
+# @cpp_template): what a bodyless free binding's result borrows, by
+# parameter NAME, read as a union. `borrows=` names parameters the result IS
+# (or lives inside the storage of); `element_of=` names parameters the
+# result is handed out by ITERATING -- a container argument lends its
+# elements, an iterator never does (its step is valid only until the next).
+# The call's result binds as a borrow only where every named argument lends;
+# elsewhere it is a value, and a binding that holds it warns. Without them a
+# free function's result is a fresh value. Not supported on methods yet. Each
+# tuple takes any length; `tuple[str]` is how the schema spells "names".
 @builtin_decorator("tpy.extern.native")
 def native(name: str = "", function: bool = False, binding: str = "",
            cpp_return_type: type | None = None, indirecting: bool = False,
            borrowing_view: bool = False, transient: bool = False,
            checks_signals: bool = False,
            elements: bool = False, mutates: str = "",
-           _iter_yields_ref_tuple_proxies: bool = False): ...
+           _iter_yields_ref_tuple_proxies: bool = False, *,
+           borrows: tuple[str], element_of: tuple[str]): ...
 
 @builtin_decorator("tpy.extern.export")
 def export(name: str = "", binding: str = ""): ...
@@ -54,7 +65,8 @@ def export(name: str = "", binding: str = ""): ...
 # call (e.g. wrapping in a constructor, type cast, or non-trivial expression).
 @builtin_decorator("tpy.extern.cpp_template")
 def cpp_template(template: str, transient: bool = False,
-                 checks_signals: bool = False): ...
+                 checks_signals: bool = False, *,
+                 borrows: tuple[str], element_of: tuple[str]): ...
 
 @builtin_decorator("tpy.extern.value_ptr_coercion")
 def value_ptr_coercion(): ...

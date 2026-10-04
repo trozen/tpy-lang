@@ -61,10 +61,10 @@ std::vector<int32_t> ns(const std::vector<Rec>& rs) {
 //     print("free min_id", min(a, b, key=lambda r: r).n)  # tpyc: ok
 //     print("free min_method", min(a, b, key=lambda r: r.score()).n)  # tpyc: ok
 //     print("free max_helper", max(a, b, key=lambda r: helper(r)).n)  # tpyc: ok
-void free(const std::vector<Rec>& rs) {
-    const Rec& a = ::tpy::__getitem__(rs, 0);
-    const Rec& b = ::tpy::__getitem__(rs, 1);
-    const Rec& c = ::tpy::__getitem__(rs, 2);
+void free(std::vector<Rec>& rs) {
+    Rec& a = ::tpy::__getitem__(rs, 0);
+    Rec& b = ::tpy::__getitem__(rs, 1);
+    Rec& c = ::tpy::__getitem__(rs, 2);
     std::vector<Rec> __tmp_1 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Key { return Key(r); });
     std::cout << "free sorted_lam" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_1)) << "\n" << ::tpy::check_signals;
     std::vector<Rec> __tmp_2 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); });
@@ -109,9 +109,9 @@ __gen_gen gen(const std::vector<Rec>& rs) {
         b = &(::tpy::__getitem__(rs, 1));
         s.emplace(::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); }));
         t.emplace(::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Key { return Key(r); }));
-        m.emplace(::tpy::min_key((*a), (*b), [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); }));
+        m = &(::tpy::min_key((*a), (*b), [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); }));
         __state = S_DONE;
-        int32_t __tpy_async_ret = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpy::__getitem__((*s), 0).n, 100)), (::tpy::mul_check<int32_t>(::tpy::__getitem__((*t), 1).n, 10)))), (*m).n));
+        int32_t __tpy_async_ret = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpy::__getitem__((*s), 0).n, 100)), (::tpy::mul_check<int32_t>(::tpy::__getitem__((*t), 1).n, 10)))), m->n));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -121,7 +121,7 @@ __gen_gen gen(const std::vector<Rec>& rs) {
 
 
 // async def co(rs: list[Rec]) -> int32:
-__coro_co co(const std::vector<Rec>& rs) {
+__coro_co co(std::vector<Rec>& rs) {
     return __coro_co(rs);
 }
 

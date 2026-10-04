@@ -782,10 +782,10 @@ Three known gaps that none of the rules above closes.
   and a `docs/LANGUAGE_FEATURES.md` note are the whole answer.
 - **Native results borrowing C++ static storage.** A `@native` accessor over a
   registry singleton (`ns::get_current()`) has no parameter to name and no TPy
-  module global to loan, so `@native_borrow(returns=(...))` cannot express it and
+  module global to loan, so `borrows=(...)` (a keyword of `@native` / `@cpp_template`) cannot express it and
   `-> Own[R]` changes the semantics to the copy that silently happens today.
   Singleton and registry accessors are a standard native binding shape, so this
-  needs either a `returns=()` form with a stated admissibility rule or a genuine
+  needs either a `borrows=()` form with a stated admissibility rule or a genuine
   static-storage root; neither is designed.
 - **Loop-variable capture.** A closure capturing a loop variable snapshots it per
   iteration, so a list of such closures prints `0 1 2` where CPython prints

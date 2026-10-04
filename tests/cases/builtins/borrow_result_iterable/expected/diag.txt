@@ -1,0 +1,21 @@
+main.py:128: warning: copies P into local 'm'; use copy() to make this explicit
+main.py:130: warning: copies P into local 'g'; use copy() to make this explicit
+main.py:132: warning: copies P into local 'h'; use copy() to make this explicit
+main.py:138: warning: copies P into local 'q'; use copy() to make this explicit
+main.py:144: warning: copies P into local 'a'; use copy() to make this explicit
+main.py:145: warning: copies P into local 'b'; use copy() to make this explicit
+main.py:146: warning: copies P into local 'c'; use copy() to make this explicit
+main.py:148: warning: copies P into local 'd'; use copy() to make this explicit
+main.py:150: warning: copies P into local 'e'; use copy() to make this explicit
+main.py:154: warning: copies P into local 'x'; use copy() to make this explicit
+main.py:155: warning: copies P into local 'y'; use copy() to make this explicit
+main.py:156: warning: copies P into local 'z'; use copy() to make this explicit
+main.py:163: warning: copies P into local 'm'; use copy() to make this explicit
+main.py:194: warning: copies P into local 'x'; use copy() to make this explicit
+main.py:198: warning: copies P into local 'w'; use copy() to make this explicit
+main.py:243: warning: copies P into owned storage; use copy() to make this explicit
+main.py:298: warning: copies P into local 'm'; use copy() to make this explicit
+main.py:301: warning: copies P into local 'k'; use copy() to make this explicit
+main.py:310: warning: may copy T into local 'm' if not a value type; use copy() to make this explicit
+main.py:317: warning: may copy T into local 'm' if not a value type; use copy() to make this explicit
+main.py:229: warning: copies P into argument 'p' of 'bump_ret(...)'; use copy() to make this explicit

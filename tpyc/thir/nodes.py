@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from ..identity_map import IdentityMap, IdentitySet
 from ..temp_schedule import banks_in_region
-from ..parse import RebindStorage, SourceLocation, TryTier
+from ..parse import ResultForm, RebindStorage, SourceLocation, TryTier
 from ..coercions import coercion_rule
 from ..type_def_registry import ParamPassing
 from ..typesys import (
@@ -957,6 +957,11 @@ class THIRCall(THIRExpr):
     # node rather than a THIRCtorCall, so the arm that resolved the callee
     # records it -- nothing downstream can tell from the render.
     constructs: bool = False
+    # A borrow-declared call's verdict (`TpyCall.result_form`): the emitter
+    # fills an element-returning helper's `{lend}` placeholder with the
+    # `lend` verdict for a BORROW (which the helper asserts is a source it
+    # can lend from) and with nothing otherwise.
+    result_form: ResultForm = ResultForm.NOT_DECLARED
 
 
 @dataclass(frozen=True)

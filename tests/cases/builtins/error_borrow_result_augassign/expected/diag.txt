@@ -1,0 +1,1 @@
+main.py:21: error: 'max(...)' is evaluated twice by an augmented assignment; bind it to a name first

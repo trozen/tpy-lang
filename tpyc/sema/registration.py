@@ -54,6 +54,7 @@ from ..typesys import (
     contains_type_kind_param,
     unwrap_readonly,
     unwrap_ref_type,
+    CallableType, is_bodyless_binding,
 )
 from ..compilation_context import get_current_compiler
 from ..module_names import public_module_name
@@ -72,7 +73,7 @@ from ..type_def_registry import (
     attach_dynamic_type_def, TypeCategory, EnumInfo, enum_info_of, type_def_of,
     get_type_def, NativeMembers, latch_native_members,
     factory_qnames_in_module, protocol_info_of, return_exception_marker,
-    is_str_type, is_borrowing_view_type, is_owned_in_coro_frame,
+    is_str_type, is_bytes_type, is_borrowing_view_type, is_owned_in_coro_frame,
     is_varargs,
 )
 from ..diagnostics import SemanticError
@@ -511,6 +512,21 @@ def skipped_base_inits(registry: 'TypeRegistry', child_info: RecordInfo,
         if rec is not None and rec not in called:
             skipped.append((p, duty))
     return skipped
+
+
+def param_type_can_lend(ptype: TpyType, *, callables: bool = True) -> bool:
+    """Whether an argument at a parameter of this type can be storage a
+    callee's result borrows: a reference type or open `T` (passed by
+    reference), a view, a `str` / `bytes` view parameter, a `*args` pack, a
+    tuple with a borrowing element -- and, unless `callables` is off, a
+    callable, whose environment may hold references. The one predicate the
+    `borrows=` / `element_of=` validation and the generator frame's captures
+    read."""
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+    return (not t.is_value_type() or is_str_type(t) or is_bytes_type(t)
+            or is_borrowing_view_type(t) or is_varargs(t)
+            or (isinstance(t, TupleType) and t.has_borrowing_element())
+            or (callables and (isinstance(t, CallableType) or is_fn_type(t))))
 
 
 class TypeRegistrar:
@@ -3589,6 +3605,57 @@ class TypeRegistrar:
                 func.loc
             )
 
+    def _stamp_result_borrows(self, func: TpyFunction, info: FunctionInfo) -> None:
+        """The registration-time `return_borrows_from` of a free function:
+        what `borrows=` / `element_of=` declare, else the frame / combinator
+        retention."""
+        if func.declared_borrows is not None:
+            self._stamp_declared_borrow(func, info)
+        else:
+            self._stamp_iterator_retention(func, info)
+
+    def _stamp_declared_borrow(self, func: TpyFunction, info: FunctionInfo) -> None:
+        """Stamp a binding's `borrows=(...)` / `element_of=(...)` keywords:
+        `return_borrows_from` holds every named parameter -- the fact a def
+        body returning one of them records, so every provenance consumer
+        reads one field whether the callee has a body or not -- and
+        `element_borrows_from` the ones the result is an ELEMENT of, which
+        lend only as a container does (`CallAnalyzer._lent_operand_verdict`).
+
+        Indices are positions in `info.params` (the call's argument list)."""
+        where = f"'{func.name}'"
+        if not is_bodyless_binding(func):
+            raise SemanticError(
+                f"borrows= / element_of= are for a function without a body; {where} "
+                f"has one, and what it returns already says what the result "
+                f"borrows", func.loc)
+
+        def indices_of(names: tuple[str, ...]) -> set[int]:
+            out: set[int] = set()
+            for name in names:
+                idx = next((i for i, p in enumerate(info.params)
+                            if p.name == name), None)
+                if idx is None:
+                    raise SemanticError(
+                        f"borrows= / element_of= name '{name}', which is not a "
+                        f"parameter of {where}", func.loc)
+                if not param_type_can_lend(info.params[idx].type):
+                    raise SemanticError(
+                        f"borrows= / element_of= name '{name}', whose type "
+                        f"'{info.params[idx].type}' holds no storage the "
+                        f"result could borrow", func.loc)
+                if idx in out:
+                    raise SemanticError(
+                        f"borrows= / element_of= name '{name}' twice", func.loc)
+                out.add(idx)
+            return out
+
+        returns = indices_of(func.declared_borrows or ())
+        elements = indices_of(func.declared_element_of)
+        info.return_borrows_from = frozenset(returns | elements)
+        info.element_borrows_from = frozenset(elements)
+        info.borrow_declared = True
+
     def _stamp_iterator_retention(self, func: TpyFunction, info: FunctionInfo) -> None:
         """Set `return_borrows_from` at registration for a callee whose result
         keeps its reference arguments: a generator or coroutine (its frame),
@@ -3617,30 +3684,17 @@ class TypeRegistrar:
     def generator_borrow_param_indices(
             param_types: 'list[TpyType]') -> frozenset[int]:
         """Param indices a generator's or coroutine's returned frame borrows:
-        the frame
-        stores non-value params as T& references and explicit view params
-        (StrView/Span) as views, so the generator object borrows those
-        arguments. `str` / `bytes` params are NOT borrowed -- they are captured
-        OWNED in the frame (is_owned_in_coro_frame; codegen routes them to
-        _CoroParamKind.OWNED_COPY), so excluding them here keeps this sema fact
-        in step with codegen's frame storage. Signature-derived, so it is exact
-        at registration time -- callers analyzed before the generator's body
-        still see the right facts.
-
-        A `*args` pack is value-typed but views the caller's argument array,
-        so the frame borrows it exactly the way a Span param is borrowed. A
-        tuple is held by value, yet a borrowing element is the same borrow
-        its scalar twin param is.
-        """
-        def borrows_tuple(t: TpyType) -> bool:
-            t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-            return isinstance(t, TupleType) and t.has_borrowing_element()
-
+        the frame stores the params that can lend (`param_type_can_lend`) by
+        reference or as views, so the generator object borrows those
+        arguments -- except `str` / `bytes`, which the frame captures OWNED
+        (is_owned_in_coro_frame; codegen routes them to
+        _CoroParamKind.OWNED_COPY), and a callable, which the frame holds by
+        value. Signature-derived, so it is exact at registration time --
+        callers analyzed before the generator's body still see the right
+        facts."""
         return frozenset(
             i for i, ptype in enumerate(param_types)
-            if (not ptype.is_value_type() or is_str_type(ptype)
-                or is_borrowing_view_type(ptype) or is_varargs(ptype)
-                or borrows_tuple(ptype))
+            if param_type_can_lend(ptype, callables=False)
             and not is_owned_in_coro_frame(ptype)
         )
 
@@ -3913,7 +3967,7 @@ class TypeRegistrar:
             originating_module=(None if func.builtin_function_key
                                 else self.ctx.module_name),
         )
-        self._stamp_iterator_retention(func, info)
+        self._stamp_result_borrows(func, info)
         # @inline: store body for call-site inlining
         if func.is_inline and not func.is_stub:
             non_doc = [s for s in func.body
@@ -4079,7 +4133,7 @@ class TypeRegistrar:
                 qualified_name=f"{self.ctx.module_name}.{func.name}",
                 originating_module=self.ctx.module_name,
             )
-            self._stamp_iterator_retention(func, info)
+            self._stamp_result_borrows(func, info)
             self._qualify_error_return(func, info)
             # Propagate resolved types back to AST (matches register_record behavior)
             func.params = list(resolved_params)
@@ -4146,6 +4200,13 @@ class TypeRegistrar:
             if is_method:
                 key_parts.append(info.is_readonly)
                 key_parts.append(info.is_consuming)
+            if is_bodyless_binding(info):
+                # No C++ declaration is emitted for a binding, so two that
+                # differ only in a type parameter's bound (`T: ComparableValue`
+                # vs `T: ComparableRef`) cannot clash; the bound picks one.
+                key_parts.append(tuple(sorted(
+                    (name, str(bound))
+                    for name, bound in (info.type_param_bounds or {}).items())))
             key = tuple(key_parts)
             prev = seen.get(key)
             if prev is not None:

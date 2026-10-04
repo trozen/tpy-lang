@@ -170,10 +170,11 @@ def _comp_synth_begin_end(it_type: TpyType, analyzer) -> bool:
     return True
 
 def _iter_rvalue_source(it, analyzer) -> bool:
-    """`iter(<rvalue>)`: `::tpy::__iter__` has no owning overload, so the
-    `auto __obj_N = ::tpy::__iter__(mk());` capture iterates a destroyed
-    temporary. The other combinators own their rvalue argument through a
-    dedicated overload."""
+    """`iter(<rvalue>)`: `::tpy::__iter__` owns only a temporary
+    `std::vector` / `std::array`; over any other family (a set, a dict, a
+    `bytearray`) the `auto __obj_N = ::tpy::__iter__(mk());` capture
+    iterates a destroyed temporary, so the route refuses every rvalue source
+    until those families own theirs (BUGS.md#comp-iter-rvalue-source)."""
     fi = getattr(it, "resolved_function_info", None)
     if fi is None or fi.native_name != "tpy::__iter__" or len(it.args) != 1:
         return False

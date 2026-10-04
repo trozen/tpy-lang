@@ -1,0 +1,1 @@
+main.py:12: error: borrows= / element_of= name 'nope', which is not a parameter of 'pick'

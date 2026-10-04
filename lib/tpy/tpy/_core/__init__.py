@@ -5,8 +5,10 @@ from ._types import (
     Deref, Spannable, Writable, Readable, BinaryWritable, BinaryReadable,
     Seekable, Closable,
     # Marker protocols
-    NativeIterable, NativeRangeConstructible, ValueType, Copyable, Send, Sync,
+    NativeIterable, NativeRangeConstructible, ValueType, ReferenceType, Copyable, Send, Sync,
     Default, Covariant, ReturnException, Throwable,
+    # Intersection protocols
+    ComparableRef,
     # Fixed-width integer constraint protocols
     AnyFixedInt, AnyFixedSigned, AnyFixedUnsigned,
     # Primitive types

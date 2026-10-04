@@ -1,1 +1,1 @@
-main.py:3: error: No matching overload for ord(IntLiteral(42))
+main.py:3: error: No matching overload for ord(int)

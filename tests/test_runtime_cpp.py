@@ -32,7 +32,7 @@ _SELFCHECKS = [
     ("test_yield_slot_forms.cpp",
      "the generic yield slot's spelling, const-ness and copy count"),
     ("test_next_step_result.cpp",
-     "the iterator step result's size and the range-for adapter's stepping"),
+     "the iterator step result's size, the range-for adapter's stepping, next_or's step form, and an iterator owning a temporary container"),
     ("test_owning_combinator_move.cpp",
      "owning combinators stay movable until their first pull"),
     ("test_combinator_elem_form.cpp",
@@ -47,6 +47,10 @@ _SELFCHECKS = [
      "TPY_NO_SIGNALS compiles the Ctrl-C layer out of every check point"),
     ("test_print_join.cpp",
      "print(*xs) separators span every segment and each source is borrowed"),
+    ("test_extreme_element.cpp",
+     "element-returning min/max hand back a lending source's own element, a copy otherwise; a one-way lend verdict check; size and storage checks"),
+    ("test_min_max_key_forms.cpp",
+     "min/max with key return the operand: T& off non-const operands, const T& off a const one"),
 ]
 
 # Runtime impls (runtime/cpp/src/) a self-check links against, and the libs

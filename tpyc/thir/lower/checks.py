@@ -10,6 +10,7 @@ from collections.abc import Sequence, Set as AbstractSet
 from dataclasses import field, replace
 from typing import Callable, NamedTuple
 from ...parse.nodes import (
+    ResultForm,
     lambda_of,
     is_property_getter_read,
     FSTRING_CONV_REPR,
@@ -50,6 +51,7 @@ from ...parse.nodes import (
     TpyVarDecl,
 )
 from ...typesys import (
+    param_may_be_written,
     ConcreteFrameType, ConcreteGenType,
     holds_borrowing_view, lands_in_view_member,
     collapse_tuple_own_elements,
@@ -134,7 +136,10 @@ from ...codegen_cpp.forms import (LocalBinding, classify_local_binding,
 from ...codegen_cpp.protocols import (classify_dyn_own_arg, dyn_forward_ok,
                                       resolve_own_source_type)
 from ...value_category import (
-    call_returns_cpp_ref, is_rvalue_source, property_getter_of,
+    call_result_holdable, call_result_is_reference,
+    call_result_live_in_statement, call_returns_cpp_ref,
+    is_rvalue_source,
+    property_getter_of,
 )
 from ...codegen_cpp.context import (
     escape_cpp_name,
@@ -1914,8 +1919,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
             # The reassigned flavor reseats via `&(call)`: admitted for a
             # borrow-returning call (`Point* first = &(get_first(data));`
             # -- the PTR_ADDR emit over the bare borrow-call render).
-            fi = getattr(stmt.init, "resolved_function_info", None)
-            if fi is not None and call_returns_cpp_ref(analyzer, fi):
+            if call_result_holdable(analyzer, stmt.init):
                 return binding
             note_detail("decl.record_call_reassigned")
         return None
@@ -4787,7 +4791,8 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
 
 
 def _record_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
-                            analyzer) -> bool:
+                            analyzer, *, frame_capturing: bool = False,
+                            const_slot: bool = False) -> bool:
     """A borrow-returning call arg at a record ref slot
     (`bump(find_first(pts))` / `bump(holder.get())` -- the T&-returning
     call binds the ref param directly, no temp): the call's F1-record
@@ -4803,7 +4808,16 @@ def _record_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
     at = analyzer.get_expr_type(a)
     atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
            if at is not None else None)
-    return (atu == slot and not is_rvalue_source(analyzer, a))
+    # A result live for the whole statement binds in place too -- but not
+    # in a frame, which keeps the argument past the statement and so is an
+    # owning sink (`record_rvalue_temp_factory` hoists the copy), and a
+    # copy the callee hands back only at a CONST slot: a mutable one takes
+    # the statement temporary of the rvalue rows.
+    live = (call_result_live_in_statement(analyzer, a) if const_slot
+            else call_result_is_reference(analyzer, a))
+    return (atu == slot
+            and (not is_rvalue_source(analyzer, a)
+                 or (not frame_capturing and live)))
 
 
 def _recursive_union_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -5767,6 +5781,31 @@ def _native_record_call_arg(a: TpyExpr, ptype: 'TpyType | None',
         return False
     return (_record_call_rvalue_shape_ok(a, analyzer)
             and _witness("call.native_record_arg"))
+
+def _native_record_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                   analyzer) -> bool:
+    """The BORROW sibling of `_native_record_call_arg`: an F1-record call
+    whose result is an lvalue into caller storage (`str(min(a, b, key=f))`
+    -> `::tpy::to_str(::tpy::min_key(a, b, f))`, `min(min(a, b, ..), c,
+    ..)`) binds the native/template slot in place -- a reference into live
+    storage binds wherever the rvalue's temporary does. The inner call's own
+    lowering re-validates its callee and args. Own / Optional / Union slots
+    keep their lift arms (excluded)."""
+    if not isinstance(a, (TpyCall, TpyMethodCall)):
+        return False
+    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if ptype is not None else None)
+    if pt is None or isinstance(pt, (OwnType, OptionalType, UnionType)):
+        return False
+    rt = analyzer.get_expr_type(a)
+    rtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+           if rt is not None else None)
+    # A borrow-declared call stamped a fresh value is a reference live for
+    # the statement too (`str(min(a, P(0), key=f))`).
+    return (_f1_record(rtu, analyzer)
+            and (not is_rvalue_source(analyzer, a)
+                 or call_result_live_in_statement(analyzer, a))
+            and bool(_witness("call.native_record_borrow_arg")))
 
 def _native_value_call_arg(a: TpyExpr, ptype: 'TpyType | None',
                            analyzer) -> bool:
@@ -9496,8 +9535,9 @@ def _borrow_ret_record_marker_arg(a: TpyExpr, ptype: 'TpyType | None',
     are Optional / union slots with their lifts)."""
     if not isinstance(a, (TpyCall, TpyMethodCall)):
         return False
-    fi = a.resolved_function_info
-    if fi is None or not call_returns_cpp_ref(analyzer, fi):
+    # The callee's convention, not this call's stamp: a fresh-value stamp is
+    # still a reference into its operands for the whole statement.
+    if not call_returns_cpp_ref(analyzer, a.resolved_function_info):
         return False
     pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
           if isinstance(ptype, TpyType) else None)
@@ -11028,6 +11068,10 @@ def _r_native_record_call(req: _ArgReq) -> bool:
     return _native_record_call_arg(req.a, req.ptype, req.analyzer)
 
 
+def _r_native_record_borrow_call(req: _ArgReq) -> bool:
+    return _native_record_borrow_call_arg(req.a, req.ptype, req.analyzer)
+
+
 def _r_protocol_slot(req: _ArgReq) -> bool:
     return _protocol_slot_arg(req.a, req.ptype, req.locals_, req.analyzer,
                               temps_ok=req.temps_ok)
@@ -11441,8 +11485,28 @@ def _r_value_tuple_field_pass(req: _ArgReq) -> bool:
                                        req.analyzer)
 
 
+def _fresh_value_at_written_slot(req: _ArgReq) -> bool:
+    """A borrow-declared call whose C++ result is a COPY at a slot the
+    callee WRITES (a constructor's or method's mutated parameter, or one
+    whose mutation facts are unknown): the copy cannot bind the mutable
+    reference, and hoisted, the write would land in it where CPython writes
+    the element -- the argument is refused. A reference into the operands
+    (`ResultForm.REFERENCE_VALUE`) binds in place, its temporary operands
+    hoisted."""
+    if not (isinstance(req.a, TpyCall)
+            and req.a.result_form is ResultForm.COPY):
+        return False
+    if req.mutated_slots:
+        return True
+    fi = req.overload
+    if fi is None:
+        return False
+    return param_may_be_written(fi, req.index)
+
+
 def _r_borrow_ret_record_marker(req: _ArgReq) -> bool:
-    return _borrow_ret_record_marker_arg(req.a, req.ptype, req.analyzer)
+    return (_borrow_ret_record_marker_arg(req.a, req.ptype, req.analyzer)
+            and not _fresh_value_at_written_slot(req))
 
 
 # --- the plain free-call family's own rows -----------------------------
@@ -11566,8 +11630,19 @@ def _r_wrapper_ref_tuple_elem(req: _ArgReq) -> bool:
                                        req.analyzer)
 
 
+def const_ref_slot(ptype: 'TpyType | None', readonly_target: bool) -> bool:
+    """The callee's parameter renders a CONST reference: declared readonly,
+    or inferred const (the caller's `readonly_target`, its
+    `const_borrow_params` verdict)."""
+    return readonly_target or isinstance(ptype, ReadonlyType)
+
+
 def _r_record_borrow_call(req: _ArgReq) -> bool:
-    return _record_borrow_call_arg(req.a, req.ptype, req.analyzer)
+    return (_record_borrow_call_arg(req.a, req.ptype, req.analyzer,
+                                    frame_capturing=req.frame_capturing,
+                                    const_slot=const_ref_slot(
+                                        req.ptype, req.readonly_target))
+            and not (req.mutated_slots and _fresh_value_at_written_slot(req)))
 
 
 def _r_own_optional_record_rvalue(req: _ArgReq) -> bool:
@@ -12438,6 +12513,11 @@ _NATIVE_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("native_value_call", _r_native_value_call),
         _ArgRow("native_container_call", _r_native_container_call),
         _ArgRow("native_record_call", _r_native_record_call),
+        _ArgRow("native_record_borrow_call", _r_native_record_borrow_call),
+        # A checked record-element read at a record slot of a template
+        # callee (`min(xs[i], ys[i], key=f)`): the element lvalue binds the
+        # slot bare, as at a plain callee.
+        _ArgRow("record_elem_subscript", _r_record_elem_subscript),
         # A bare-name conformer into a monomorphized protocol slot of a
         # native/template callee (`repr(p)` -> `::tpy::repr_of(p)`): the
         # native arg loop renders it bare (`protocol_slots=False`), no
@@ -15587,9 +15667,12 @@ def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
                if at is not None else None)
         if isinstance(atu, OwnType):
             atu = unwrap_readonly(atu.wrapped)
-        if (_f1_record(atu, analyzer)
-                and is_rvalue_source(analyzer, a)):
-            return _witness("print.record_call")
+        if _f1_record(atu, analyzer):
+            # A borrow result (`print(min(a, b, key=f))`) streams the same
+            # way: the reference lives through the full expression.
+            return _witness("print.record_call"
+                            if is_rvalue_source(analyzer, a)
+                            else "print.record_borrow_call")
         if _protocol_auto_slot(atu):
             # A structural-protocol-result call (`print(iter(s))`): the
             # native render streams RAW via the concrete type's operator<<

@@ -717,6 +717,49 @@ struct native_iterator
 // tpy::__iter__
 // =============================================
 
+// A TEMPORARY container (`iter([P(1)])`): the iterator owns it, as a Python
+// iterator keeps its list alive, and hands out its own elements mutably.
+// Steps index the owned storage, so the iterator stays valid when it moves
+// (into a frame field, out of a factory).
+template<typename C>
+struct owning_native_iterator
+    : next_iter_mixin<owning_native_iterator<C>,
+                      val_or_ref<typename C::value_type>> {
+    using next_type = val_or_ref<typename C::value_type>;
+
+    C items_;
+    std::size_t pos_ = 0;
+
+    explicit owning_native_iterator(C&& items) : items_(std::move(items)) {}
+    // Move-only like the other owning iterators: a copy would duplicate the
+    // whole container behind the caller's back.
+    owning_native_iterator(const owning_native_iterator&) = delete;
+    owning_native_iterator& operator=(const owning_native_iterator&) = delete;
+    owning_native_iterator(owning_native_iterator&&) = default;
+    owning_native_iterator& operator=(owning_native_iterator&&) = default;
+
+    std::expected<next_type, StopIteration> __next__() {
+        if (pos_ == items_.size()) return tpy::make_unexpected(StopIteration{});
+        return next_type(items_[pos_++]);
+    }
+
+    owning_native_iterator& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const owning_native_iterator&) {
+        return os << "<iterator>";
+    }
+};
+
+template<typename T>
+auto __iter__(std::vector<T>&& x) {
+    return owning_native_iterator<std::vector<T>>(std::move(x));
+}
+
+template<typename T, std::size_t N>
+auto __iter__(std::array<T, N>&& x) {
+    return owning_native_iterator<std::array<T, N>>(std::move(x));
+}
+
 // Overload: std::vector (mutable -- preserves element references)
 template<typename T>
 auto __iter__(std::vector<T>& x) {

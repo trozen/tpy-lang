@@ -1,8 +1,8 @@
-# min() / max() with key= over tuples that hold a class instance are refused
-# like bare class instances: a tuple is a value type only when each element
-# is, and copying the tuple would copy the instance
-# (docs/LANGUAGE_FEATURES.md, the builtins section;
-# BUGS.md#min-max-key-result-copies).
+# min() / max() with key= over tuples that hold a class instance are refused:
+# the tuple is a value type, but the value overload would copy the instance
+# it holds, and the reference overload takes no tuple -- so neither takes it
+# until the result can be the tuple's borrow form (docs/LANGUAGE_FEATURES.md,
+# the builtins section; BUGS.md#min-max-key-result-copies).
 class Node:
     v: int
 

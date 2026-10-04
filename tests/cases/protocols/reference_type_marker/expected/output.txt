@@ -1,0 +1,8 @@
+instance: 5
+list: [1, 2, 3]
+dict: {'a': 1, 'b': 2}
+set: 2
+bytearray: 3
+relay: 7
+method: 40
+comparable_ref: 3 9

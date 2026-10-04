@@ -317,7 +317,8 @@ implemented with the coupled contract in checkpoint 4.
     it too** (*implemented-now*): `min`/`max`'s own `-> T`
     (`lib/tpy/tpy/_builtins/_funcs.py:125`, `:174`) is FORM-NEUTRAL, so
     `best = max(a, b, key=...)` binds through rule 26's slot instead of copying
-    the winner into a value local as it does today. And because the C++ key
+    the winner into a value local (it now binds as a borrow through rule 37's
+    annotation). And because the C++ key
     helpers STORE the key result -- `builtin_sorted_key`'s
     `decorated.emplace_back(key(items[i]), i)` over `using K = std::decay_t<...>`
     (`runtime/cpp/include/tpy/builtins.hpp:304`, `:300`) and `min_key` / `max_key`'s
@@ -336,41 +337,64 @@ implemented with the coupled contract in checkpoint 4.
 
 **(l) Stub provenance.**
 
-37. **`@native_borrow(returns=(...))` states what a bodyless stub's result
-    borrows** (*designed, not implemented*: no `@native_borrow` decorator exists
-    in the code; bodyless native methods get only the signature inference
-    below, and free functions get nothing -- TODO.md, "Callable-level borrow
-    annotation for native stubs"). The argument is a tuple of PARAMETER NAMES,
-    with `"self"` admitted for a method receiver:
-    `@native_borrow(returns=("a", "b"))` on
+37. **`borrows=(...)` / `element_of=(...)` state what a bodyless stub's
+    result borrows** (*implemented* as keywords of the binding's own
+    `@native` / `@cpp_template` -- `@native("tpy::next_or", borrows=("default",),
+    element_of=("it",))` -- which replaced a separate decorator at
+    the user's decision (2026-10-04), stamped by
+    `TypeRegistrar._stamp_declared_borrow`; its users are `min` / `max`
+    (two or three operands, one iterable with and without `key=`) and
+    `next(it, default)`, the remaining ones are in TODO.md,
+    "Callable-level borrow annotation for native stubs". It is the one
+    spelling: the `@native(..., return_borrows=[...])` and the
+    `("self", "default")` decorator sketches are gone). At each call sema
+    decides whether the result binds as a borrow (every lent argument lends
+    storage that outlives the call -- for a parameter the result is an
+    ELEMENT of (`element_of=`), a container, never an iterator) or is a
+    fresh value, whether holding that value copies something the program
+    still reaches, and whether the C++ hands back a copy rather than a
+    reference; it stamps them on the call (`TpyCall.result_form`:
+    BORROW / REFERENCE_VALUE / COPY, with `copy_observable`), and the binding or
+    owning slot that holds such a value warns -- an in-place read copies
+    nothing and says nothing; a written parameter given a copy warns. A
+    result that is a mutable reference is a mutable use of every operand
+    that lends it, as an argument at a generic's open `T` is: the operands
+    become mutable whenever the result is, and stay const only when
+    declared readonly. The argument is a tuple of PARAMETER NAMES (the
+    keywords are rejected on methods for now, so `"self"` is not used yet):
+    `@cpp_template(..., borrows=("a", "b"))` on
     `def max[T, K](a: T, b: T, key: Fn[[T], Own[K]]) -> T: ...` says the result is
     a borrow rooted in either argument, read as a union. It stamps
     `return_borrows_from` exactly as a def body does, so every consumer reads one
-    field whether the callee has a body or not. It is READ AT REGISTRATION, beside
-    the existing native-method receiver stamp: a bodyless native METHOD whose
+    field whether the callee has a body or not. It is READ AT REGISTRATION. (FUTURE,
+    for methods -- the decorator is rejected on a method today: it would sit beside
+    the existing native-method receiver stamp, where a bodyless native METHOD whose
     `signature_may_return_borrow` holds already derives `frozenset({-1})` from its
     signature (`TypeRegistrar.register_record` in `tpyc/sema/registration.py`;
     the generator stamp beside it is a different inference), and that is true for an open
-    type-param return, i.e. precisely `max`-shaped stubs. Five points settle how
+    type-param return, i.e. precisely `max`-shaped stubs.) Five points settle how
     the two interact and what the annotation may say.
-    - **Precedence.** The annotation SUPPRESSES the signature inference for that
-      stub. An omitted `"self"` is therefore a positive denial of a receiver
-      borrow, not an oversight the inference fills in.
+    - **Precedence (future, methods).** The annotation SUPPRESSES the signature
+      inference for that stub. An omitted `"self"` is therefore a positive denial
+      of a receiver borrow, not an oversight the inference fills in.
     - **Schema.** `Parser._schema_from_stub._map_type`
-      (`tpyc/parse/parser.py`) maps only `bool`, `str` and `type` today,
-      and one unmapped parameter kills the whole schema, so the annotation's cost
-      includes a new TUPLE-OF-PARAMETER-NAMES argument kind in `_map_type` and
-      `_validate_decorator_args`. `@native(..., mutates="elements")`
+      (`tpyc/parse/parser.py`) maps `bool`, `str`, `type` and -- for this
+      decorator -- a TUPLE-OF-NAMES kind (a `tuple[str]` stub annotation, any
+      length), checked in `_validate_decorator_args`; a stub whose parameters
+      are all keyword-only takes no positional argument. `@native(..., mutates="elements")`
       (a `native()` kwarg in `lib/tpy/tpy/_bootstrap/_extern.py`, parse field
       `TpyFunction.native_mutates`, copied into `FunctionInfo` in
       `TypeRegistrar.register_record`) is precedent for the plumbing but is a
       plain `str` kwarg the schema already maps, so it is no precedent for the
       schema.
     - **Parameter validation.** A named parameter must have borrowable storage.
-      The predicate already exists: `generator_borrow_param_indices`
-      (`tpyc/sema/registration.py`) admits an index only for a
-      non-value, `str`, borrowing-view or varargs parameter and excludes
-      `is_owned_in_coro_frame`. `returns=(...)` is validated against it at
+      As implemented the predicate is `TypeRegistrar._can_lend_result`, not
+      `generator_borrow_param_indices`: it admits the same non-value, `str`,
+      borrowing-view, varargs and borrowing-tuple parameters but drops the
+      frame's `is_owned_in_coro_frame` exclusion (a `str` parameter is a view
+      at a plain call; only a frame owns it), and it admits a callable
+      parameter, whose environment may hold references (the stub author
+      decides). `borrows=(...)` is validated against it at
       registration, and naming a scalar parameter is an error naming that
       parameter.
     - **The stub's own render.** A bodyless native stub whose declared return is a
@@ -390,8 +414,14 @@ implemented with the coupled contract in checkpoint 4.
       DECLARE a C++ rvalue-reference result, there being no TPy spelling for
       `T&&`: that makes "the declared return is what it is" a stub-author
       obligation, not a compiler verdict.
-    `min`, `max` and `sorted` are its first users, and it is what makes rule 32's
-    `-> T` decidable.
+    `min`, `max` and `next(it, default)` are its first users (`sorted` returns a
+    fresh `-> Own[list[T]]` and needs none), and it is what makes rule 32's
+    `-> T` decidable. As implemented the declaration has two keywords:
+    `borrows=` (the result IS the argument) and `element_of=` (the result is
+    handed out by iterating the argument -- only a container lends then; an
+    iterator's step is valid only until the next one), and it is refused on
+    methods for now (the method call path does not take the call-site
+    decision).
 
 ## The admission layer
 
@@ -525,7 +555,7 @@ that the shape is not supported yet instead of prescribing an unverified rewrite
 | Unresolved recursive provenance | Analysis | `'rec' calls itself through 'f', so what its result refers to cannot be determined here; declare the result 'Own[U]' so every call hands back a fresh value.` | delayed validation with a conservative provenance bound |
 | An escaping temporary root (a temporary receiver whose method returns a `self`-capturing callback included) | Lifetime | `'Sel()' is a temporary and the callback borrows it, but the callback is used after this statement. Binding the receiver to a local removes this temporary-lifetime violation, but returning a callback with a borrowed environment is still unsupported (A2).` | permanent |
 | A borrow-bearing AGGREGATE result (pointer-repr `tuple`, a record with a borrowing field) | Analysis | `this callback returns tuple[Node, int32] whose first element is a reference into its argument; tuples of references returned through a callable are not supported yet. Return 'tuple[Own[Node], int32]' (the Node is copied), or return only the scalar fields you compare.` | requirements rule 2 |
-| A `@native` / `@cpp_template` borrow-returning callee with no `@native_borrow` | Analysis | `'native_get' is a @native binding with no TPy body, so what its reference points into cannot be determined; annotate it '@native_borrow(returns=("src",))' to say which parameter the result borrows, or declare it '-> Own[Node]'.` | -- (rule 37 ships the annotation) |
+| A `@native` / `@cpp_template` borrow-returning callee with no `borrows=` / `element_of=` | Analysis | `'native_get' is a @native binding with no TPy body, so what its reference points into cannot be determined; annotate it '@native(borrows=("src",))' to say which parameter the result borrows, or declare it '-> Own[Node]'.` | -- (rule 37 ships the annotation) |
 | A `@native` result borrowing C++ static storage (no parameter to name) | Representation | `'get_current' hands back a reference into storage that no argument names, so TPy cannot say what it points into; declare it '-> Own[Node]' -- the caller then owns a copy, which is what the current binding already does.` | a spelling for static-storage roots (requirements residue) |
 | A FORM-NEUTRAL result in an owning slot (rule 27) | Contract | `'collect(lambda t: t.left, ...)' passes a callback that hands back a reference, and 'collect' stores its result in a list (main.py:21); TPy has no container of references. Pass 'lambda t: copy(t.left)', or declare the parameter 'Fn[[T], Own[K]]' -- both make the stored element a duplicate.` | D1 |
 | A zero-argument borrow contract with no admissible root | Analysis | `'get_current' is bound to 'Callable[[], Node]', which returns a reference, but it takes no argument to take one from; declare 'Callable[[], Own[Node]]' so every call hands back a fresh value.` | requirements rules 23, 28 (a capture or global root becomes admissible) |
@@ -555,7 +585,7 @@ is a stub-author obligation (rule 37).
 | Phase | Fact | Where |
 |-------|------|-------|
 | typesys / value_category | the result descriptor (transfer form + permission + contained-borrows) and its reader in `typesys`, so `value_category` and `CallableType._std_function_sig` both consume ONE decider | `CallableType._std_function_sig` (`tpyc/typesys.py`) is the render consumer and `tpyc/value_category.py:18` is why it cannot live the other way round; `call_returns_cpp_ref` (`value_category.py:127`) and `async_return_form` (`:55`) become consumers |
-| sema (stub) | `return_borrows_from` stamped from `@native_borrow(returns=(...))` at registration, suppressing the signature inference | `TypeRegistrar.register_record` (`tpyc/sema/registration.py`) |
+| sema (stub) | `return_borrows_from` stamped from `borrows=(...)` (a keyword of `@native` / `@cpp_template`) at registration, suppressing the signature inference | `TypeRegistrar.register_record` (`tpyc/sema/registration.py`) |
 | sema (call site) | the resolved descriptor on a PARSE-NODE field of the call, the `await_result_is_borrow` carrier (`tpyc/parse/nodes.py:731`, stamped at `tpyc/sema/expressions.py:2412`) -- its sema readers run before THIR exists: `returns_borrow` (`tpyc/value_category.py:398`) and the callable arms of `is_rvalue_source` | stamped at `tpyc/sema/calls.py:6009` |
 | THIR | the descriptor COPIED onto `THIRCall` (`tpyc/thir/nodes.py:570`, `@dataclass(frozen=True)` at `:569`, hence hashable -- a frozen dataclass of tuples, never a set or a dict) by BOTH arms: the free-call arm for a bare-name callable value (`tpyc/thir/lower/checks.py:3825-3836`, called at `tpyc/thir/lower/expressions.py:8749`) and the computed-callee arm (`:7684`) | codegen reads ONLY this copy, unlike `gen_async.py`'s direct parse-node read of `await_result_is_borrow` |
 | runtime / codegen | `result_slot_t` / `to_result_slot` (two rows, each with a `const&` `get()`) and `result_neutral`, inside a `frame_slot` in a resumable frame (`runtime/cpp/include/tpy/frame_slot.hpp:68`); the per-form `requires` render and the erased `std::function` spelling | `runtime/cpp/include/tpy/type_traits.hpp:214-220`; `tpyc/codegen_cpp/functions.py:334`, `:357`; `CallableType._std_function_sig` (`tpyc/typesys.py`) |
@@ -702,7 +732,7 @@ an answer that needs no place model.
    `__call__` conformance loop gain FORM-AWARE equality, because rule 30 requires
    the form to SELECT; the other four keep stripping, and the post-selection check
    re-reads the unstripped types from the source.
-10. **`@native_borrow`'s schema.** `_map_type` gains a tuple-of-parameter-names
+10. **The `borrows=` / `element_of=` schema.** `_map_type` gains a tuple-of-parameter-names
     kind. A varargs or comma-joined respelling is rejected: the names are a list,
     and the schema is the place that validates them.
 11. **`writes_globals` and the topo sort.** Not applicable: the global-write fact
@@ -774,16 +804,16 @@ untouched.
   @dispatch
   @pure
   @readonly
-  @native_borrow(returns=("a", "b"))
-  @cpp_template("::tpy::max_key({0}, {1}, {2})")
+  @cpp_template("::tpy::max_key({0}, {1}, {2})", borrows=("a", "b"))
   def max[T, K: Comparable](a: T, b: T, key: Fn[[T], Own[K]]) -> T: ...
   ```
 
-  The three-argument siblings take `returns=("a", "b", "c")`; `sorted`'s
-  `-> Own[list[T]]` is FRESH and carries no annotation. Today the winner is copied
-  silently (`5 99` against CPython's `99 99`, measured on this tree), which rule 32
-  closes by binding through the slot and correcting `tpy::max_key` / `min_key` from
-  `const T&` to `T&` (`runtime/cpp/include/tpy/builtins.hpp:319`, `:334`).
+  The three-argument siblings take `borrows=("a", "b", "c")`; `sorted`'s
+  `-> Own[list[T]]` is FRESH and carries no annotation. The annotation and the
+  `T&` overloads of `tpy::max_key` / `min_key` have landed: the winner binds as
+  a borrow of the operand, and a binding that must copy says so. What rule 32
+  still needs is the key's `Fn[[T], Own[K]]` respelling (the helpers store
+  the key result), which has not been made.
 - `map` (`:620`) keeps `Fn[[T...], U]` with `U` neutral; the call-site inference
   that instantiates `map_iter`'s payload at the borrow form is what rule 26
   preserves. `filter` (`:648`) and `takewhile` / `dropwhile` / `filterfalse`
@@ -1095,7 +1125,8 @@ above is satisfied.
    byte-identical snapshots. The full `ResultForm` / `ResultDescriptor`, including
    permission and contained-borrow analysis, is designed at checkpoint 3 and
    implemented with the coupled branch after that gate passes.
-6. **`@native_borrow` plumbing WITHOUT annotating a stub.** The decorator stub
+6. **Borrow-declaration plumbing WITHOUT annotating a stub** (then a separate
+   decorator; now the `borrows=` / `element_of=` keywords). The decorator stub
    (`lib/tpy/tpy/_bootstrap/_extern.py`), the qname (`tpyc/qnames.py`), the
    parse field (`TpyFunction` in `tpyc/parse/nodes.py`), the decorator branch in BOTH parser
    loops (the free loop reads no method-only binding fact today: it rejects
@@ -1140,9 +1171,9 @@ above is satisfied.
     at a neutral one, in `tpyc/thir/emit.py`.
 12. **The reject rows.** One `error_` case each, messages verbatim from the tables
     above.
-13. **Stubs.** `lib/tpy/tpy/_builtins/_funcs.py:125` (`min`), `:174` (`max`), `:525`
-    (`sorted`): key respelled `Fn[[T], Own[K]]`, `@native_borrow` added;
-    `runtime/cpp/include/tpy/builtins.hpp:319`, `:334` `const T&` -> `T&`.
+13. **Stubs.** `lib/tpy/tpy/_builtins/_funcs.py` (`min`, `max`, `sorted`): key
+    respelled `Fn[[T], Own[K]]` (not done yet); `borrows=` / `element_of=` and the `T&`
+    runtime overloads (done).
 14. **Tests and docs.** A condensed happy case per position, the migration
     respellings, and the `docs/LANGUAGE_FEATURES.md` result-form section with the
     divergence table, the "result borrows only argument 0" spelling gap and the
@@ -1151,7 +1182,7 @@ above is satisfied.
 **Estimate (incomplete subtotal, not a release estimate).** The contract-half
 rows of the implementation dry run's table sum to
 **49 engineer-days** (P0.1 1, P0.2 2, P0.3 4, classifier 4, runtime traits 1.5,
-reader unification 3, `@native_borrow` 3, conversion legality 7, codegen/THIR 8,
+reader unification 3, `borrows=` / `element_of=` 3, conversion legality 7, codegen/THIR 8,
 rejects 6, stubs 2.5, tests+docs 7). That number EXCLUDES the four dataflow steps
 of the original 79 -- places and summaries, environment loans, effects, and the
 lambda stamp's provenance half, 30 days between them -- which move to the

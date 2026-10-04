@@ -37,6 +37,7 @@ from .frame_traits import frame_traits_of_function, frame_type_of_function
 from .send_chain import why_not_send, why_not_sync, why_not_frame, render_chain
 from .move_chain import why_not_movable, render_move_chain
 from ..parse import (
+    ResultForm,
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
     TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -3539,6 +3540,10 @@ class TypeCompatibility:
 
         # Constructor call - creates temporary
         if isinstance(expr, TpyCall):
+            # A borrow-declared call sema stamped a fresh value: its reference
+            # may point into a temporary operand or an iterator's step.
+            if expr.result_form.is_fresh:
+                return True
             # Pointer constructors: dangling depends on the argument, not the pointer itself
             if isinstance(expr.call_type, PtrType):
                 if not expr.args:
@@ -3727,6 +3732,8 @@ class TypeCompatibility:
                 isinstance(expr, TpyCall) and isinstance(expr.func, TpyName)
                 and expr.func_name in self.ctx.registry.records):
             return True
+        if isinstance(expr, TpyCall) and expr.result_form is not ResultForm.NOT_DECLARED:
+            return expr.result_form is not ResultForm.BORROW
         ret = unwrap_readonly(fi.return_type) if fi.return_type else None
         if isinstance(ret, OwnType):
             return True
@@ -3773,6 +3780,8 @@ class TypeCompatibility:
             if (isinstance(expr.call_type, PtrType)
                     or is_borrowing_view_type(expr.call_type)):
                 return None
+            return expr
+        if isinstance(expr, TpyCall) and expr.result_form.is_fresh:
             return expr
         ops = call_borrow_operands(expr)
         if ops is None:

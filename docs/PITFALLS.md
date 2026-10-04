@@ -154,7 +154,9 @@ the type at all. That is on purpose: a library author has no instantiation to co
 is TPy's default, so the declaration is the only place the contract can be stated. `copy()` and a
 `T: ValueType` bound silence it; a non-copyable instantiation (`@nocopy`, or a record with
 `__del__`) promotes the same line to the twin's error. Do not "fix" this drift back toward
-the twin -- see `docs/LANGUAGE_FEATURES.md`, "the copy contract of a generic body".
+the twin -- see `docs/LANGUAGE_FEATURES.md`, "the copy contract of a generic body". The same
+contract covers `max` / `min` / `next` over a protocol-typed source in a generic body (`xs:
+Iterable[T]` holds a hedged copy; `xs: list[T]` is the container spelling).
 (open: `BUGS.md#generic-own-slot-borrow-call-unwarned`,
 `BUGS.md#generic-optional-return-committed-to-pointer`,
 `BUGS.md#generic-yield-fn-result-copies`)
@@ -178,7 +180,10 @@ unless its source was PROVEN block-local. Each review round found another source
 not name -- an alias of a view, a nested subscript, a call result, an `elif` or `except` site, a
 `match` capture -- each a view into storage dead after the block. Right: the hoisted slot stays
 a view only when every root is proven durable, and owns a `std::string` otherwise; a wrong entry
-then costs a copy, not memory safety.
+then costs a copy, not memory safety. An earlier hit: `min` / `max` first returned the operand
+itself whenever an operand was an lvalue -- a method read off a temporary, a conditional, a
+generator's step all passed -- until the lending verdict became an allow-list of forms that
+prove the storage outlives the call (`proven_lend_roots`).
 
 **Check.** For a rule the change adds or narrows, list what it treats as durable and the fact
 behind each entry. Then probe a source outside every list (an alias, a call result, a nested

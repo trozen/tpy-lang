@@ -25,7 +25,7 @@ from .typesys import (
     unwrap_send_sync,
 )
 from .parse import (
-    TpyExpr, TpyForEach,
+    TpyExpr, TpyForEach, ResultForm,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
     TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat, TpyListComprehension,
     TpyDictLiteral, TpySetLiteral, TpyDictComprehension, TpySetComprehension,
@@ -130,16 +130,85 @@ def call_returns_cpp_ref(analyzer: ValueCategoryAnalyzer, fi: 'FunctionInfo | No
     binding declares its C++ return convention through the same `-> V` vs
     `-> Own[V]` contract, so no per-native special case is needed.
 
-    Free `@native` functions still take value semantics -- the same `-> V`
-    reference-return asymmetry exists for them but is not yet closed (see
-    BUGS.md). Native record METHODS, by contrast, honor the contract and
-    fall through to the shape check (so dict.setdefault / items aliasing
-    holds).
+    A free `@native` function takes value semantics unless it declares what
+    its result borrows (`borrows=` / `element_of=`), which admits it to the shape
+    check (an undeclared one: BUGS.md, "An UNDECLARED free `@native`
+    function"). Native record METHODS honor the contract and fall through
+    to the shape check (so dict.setdefault / items aliasing holds). This is
+    the CALLEE's convention; whether one call's result may be HELD by
+    reference is `call_result_holdable`.
     """
     return classify_result_representation(
         fi.return_type if fi is not None else None,
         position=ResultPosition.SYNC_CALL, fi=fi,
     ) is ResultRepresentation.CPP_REFERENCE
+
+
+def call_result_holdable(analyzer: ValueCategoryAnalyzer,
+                         expr: TpyExpr) -> bool:
+    """Whether a holder that OUTLIVES the statement (a reseated pointer
+    local, a reference binding) may keep this call's result by reference:
+    the callee returns a C++ reference, and a borrow-declared call was not
+    stamped a fresh value (`ResultForm.is_fresh`), whose reference may
+    point into a temporary operand."""
+    if isinstance(expr, TpyCall) and expr.result_form.is_fresh:
+        return False
+    if lends_a_fresh_result(expr):
+        return False
+    return call_returns_cpp_ref(
+        analyzer, getattr(expr, "resolved_function_info", None))
+
+
+def lends_a_fresh_result(expr: TpyExpr) -> bool:
+    """Whether a call hands back a reference that may point into a fresh
+    result of a borrow-declared call among what it lends
+    (`k.ret(min(a, P(-8), key=f))`: the reference may be the temporary
+    `P(-8)`). Read through the callee's recorded `return_borrows_from`,
+    recursively; a hoisted temporary lives only to the end of its block, so
+    a holder declared outside it must not keep the reference."""
+    while isinstance(expr, TpyCoerce):
+        expr = expr.expr
+    if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+        return lends_a_fresh_result(expr.obj)
+    if not isinstance(expr, (TpyCall, TpyMethodCall)):
+        return False
+    if isinstance(expr, TpyCall) and expr.result_form.is_fresh:
+        return True
+    fi = expr.resolved_function_info
+    sources = fi.root.return_borrows_from if fi is not None else None
+    for idx in sources or ():
+        operand = (expr.obj if idx == -1 and isinstance(expr, TpyMethodCall)
+                   else expr.args[idx] if 0 <= idx < len(expr.args) else None)
+        if operand is not None and lends_a_fresh_result(operand):
+            return True
+    return False
+
+
+def call_result_live_in_statement(analyzer: ValueCategoryAnalyzer,
+                                  expr: TpyExpr) -> bool:
+    """Whether this call's C++ result is valid for the whole statement, so
+    a CONST argument slot binds it in place: an lvalue result, or a
+    borrow-declared call stamped a fresh value -- a reference into its
+    operands, or a copy the callee hands back (`ResultForm.COPY`),
+    each living until the statement ends. A mutable slot asks
+    `call_result_is_reference` instead. Not an ownership verdict: a holder
+    that outlives the statement asks `call_result_holdable`. (The return
+    SHAPE alone does not answer it: a container constructor's `-> list[T]`
+    is a reference shape and an rvalue.)"""
+    if isinstance(expr, TpyCall) and expr.result_form.is_fresh:
+        return True
+    return (isinstance(expr, (TpyCall, TpyMethodCall))
+            and not is_rvalue_source(analyzer, expr))
+
+
+def call_result_is_reference(analyzer: ValueCategoryAnalyzer,
+                             expr: TpyExpr) -> bool:
+    """`call_result_live_in_statement` where the slot may be a MUTABLE
+    reference: a copy the callee hands back (`ResultForm.COPY`) cannot bind
+    one, and goes through a statement temporary instead."""
+    return (call_result_live_in_statement(analyzer, expr)
+            and not (isinstance(expr, TpyCall)
+                     and expr.result_form is ResultForm.COPY))
 
 
 def return_type_is_cpp_ref(rt: 'TpyType | None') -> bool:
@@ -398,6 +467,10 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
         # Expression callees -> rvalue
         if not isinstance(expr.func, TpyName):
             return True
+        # A declared-borrow binding's call: sema decided, from its lent
+        # arguments, whether it hands back one of them or a fresh value.
+        if expr.result_form is not ResultForm.NOT_DECLARED:
+            return expr.result_form is not ResultForm.BORROW
         # Record constructors -> rvalue
         if analyzer.registry.get_record(expr.func_name):
             return True
@@ -824,6 +897,10 @@ def returns_borrow(analyzer: 'ValueCategoryAnalyzer', expr: TpyExpr) -> bool:
                 or returns_borrow(analyzer, inner.else_expr))
     if isinstance(inner, TpyAwait):
         return inner.await_result_is_borrow
+    # A borrow-declared call sema stamped a fresh value is a borrowed source
+    # exactly when holding it copies an object the program still reaches.
+    if isinstance(inner, TpyCall) and inner.result_form.is_fresh:
+        return inner.copy_observable
     link = _borrow_link(inner)
     if link is None:
         return False

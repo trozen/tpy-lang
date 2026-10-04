@@ -217,7 +217,14 @@ def python_type_name(t: TpyType | None) -> str:
     settle on; a typed value keeps its own type."""
     if t is None:
         return "None"
-    return str(resolve_int_literals(_as_container(unwrap_readonly(t)), BIGINT))
+    return user_type_name(unwrap_readonly(t))
+
+
+def user_type_name(t: TpyType) -> str:
+    """How a diagnostic names a type the user may see half-inferred: an
+    unresolved int literal is the Python `int`, a literal container not
+    decided yet the container the source wrote; qualifiers stay."""
+    return str(resolve_int_literals(_as_container(t), BIGINT))
 
 
 def _as_container(t: TpyType) -> TpyType:

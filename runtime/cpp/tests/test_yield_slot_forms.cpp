@@ -13,6 +13,8 @@
  *      generator allocate exactly what the monomorphic twin allocates.
  *   3. `val_or_ref<const V>` never lends a mutable `V&`, although its value
  *      storage drops the const.
+ *   4. The `ReferenceType` concept answers a slot by its referent, so a bound
+ *      instantiated at the slot spelling is not refused for the wrapper.
  *
  * Exits non-zero on failure; the harness treats output as the assertion.
  */
@@ -87,6 +89,21 @@ void slot_spelling() {
                                  tpy::val_or_ref<const Point>>,
                   "const rides INSIDE the single wrapper");
 }
+
+// A `T: ReferenceType` bound may be instantiated at the slot spelling (a
+// readonly instance argument arrives as `val_or_ref<const X>`), and the slot
+// is itself a value type: the concept answers by the referent.
+static_assert(tpy::ReferenceType<Point>);
+static_assert(tpy::ReferenceType<const Point>);
+static_assert(tpy::ReferenceType<std::vector<int>>);
+static_assert(tpy::ReferenceType<tpy::val_or_ref<const Point>>);
+static_assert(!tpy::ReferenceType<int>);
+static_assert(!tpy::ReferenceType<std::string>);
+static_assert(!tpy::ReferenceType<tpy::val_or_ref<int>>);
+// ... and ValueType is its mirror through the same slot unwrapping.
+static_assert(tpy::ValueType<tpy::val_or_ref<int>>);
+static_assert(!tpy::ValueType<tpy::val_or_ref<Point>>);
+static_assert(tpy::ValueType<const int>);
 
 void accessor_constness() {
     std::string owned = "x";

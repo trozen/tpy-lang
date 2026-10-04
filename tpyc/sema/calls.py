@@ -8,12 +8,13 @@ from __future__ import annotations
 import copy
 from contextlib import contextmanager
 from dataclasses import dataclass, replace as dc_replace
-from typing import Callable, Iterator, NoReturn, TYPE_CHECKING
+from typing import Callable, Iterator, NamedTuple, NoReturn, TYPE_CHECKING
 
 from ..identity_map import IdentitySet
 from ..compilation_context import require_current_compiler
 
 from ..typesys import (
+    param_may_be_written,
     any_default_suppressed,
     default_emittable_at,
     TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, own_tuple_target, param_takes_ownership, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
@@ -35,8 +36,11 @@ from ..typesys import (
     is_callable_type, is_float_type, is_readonly_span, varargs_is_readonly, unwrap_qualifiers,
     unwrap_send_sync,
     param_has_mutable_borrow_surface, contains_type_param,
-    del_suppresses_default_ctor, owned_tuple_storage_type)
+    del_suppresses_default_ctor, owned_tuple_storage_type,
+    is_bodyless_binding, recorded_return_borrow_sources,
+    returns_cpp_reference_shape)
 from ..parse import (
+    ResultForm,
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
     TpyBinOp, TpyTupleLiteral, TpyTypeParamConstruct, TpyCoerce, TpyLambda,
@@ -51,6 +55,12 @@ from ..symbol_binding import SymbolKind, is_kind, walk_attribute_chain
 from .context import PENDING_CONTAINER_TYPES, field_chain_storage_key
 from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError
+from ..value_category import (frame_factory_callee, is_iterator_protocol,
+                              is_rvalue_source, peel_coerce)
+from .own_copy import (KIND_SLOT, contains_reference_type, copy_result_under_write,
+                       lost_write_message,
+                       slot_message, value_call_copy_message)
+from .iter_loans import IterElementSource, iter_element_source
 from .overloads import (
     type_matches_numeric, type_matches_with_coercion,
     resolve_overload, OverloadAmbiguityError,
@@ -58,7 +68,9 @@ from .overloads import (
     _scalar_widening_cost,
 )
 from .context import (
-    CallOperands, _is_self_call_deferred, _root_name_of_expr, call_lend_sources,
+    CallOperands, LendSource, _is_self_call_deferred, _root_name_of_expr,
+    call_lend_sources,
+    call_borrow_operands, expr_lends_storage, proven_lend_roots,
 )
 from .receiver_calls import receiver_leaves, record_truth_calls
 from .narrowing import truthy_operands
@@ -68,6 +80,7 @@ from .protocols import dynamic_dispatch_type_conforms
 from .type_ops import ReturnSeed, partial_substitute, seeded_arg_hint
 from .expressions import star_source_element_type
 from .slot_hint import SlotHint
+from .type_join import user_type_name
 from .send_chain import why_not_send, why_not_sync, render_chain
 from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo, _is_static_str
 from ..macro_loader import expand_call_macro
@@ -600,6 +613,14 @@ def _send_sync_bound_detail(bound: TpyType, type_arg: TpyType) -> str:
     return f"\n{render_chain(chain, send)}" if chain is not None else ""
 
 
+# The marker protocols a composite bound's failure note names, and what each
+# asks of the type.
+_MARKER_NOUNS = {
+    qnames.VALUE_TYPE: "a value type",
+    qnames.REFERENCE_TYPE: "a reference type",
+}
+
+
 _REPR_TEMPLATE = "::tpy::repr_of({0})"
 
 
@@ -648,6 +669,15 @@ def _edges_reach_param(fi: FunctionInfo, idx: int) -> bool:
     the direct facts do not."""
     return any(idx in edge.param_map.values() or edge.receiver_idx == idx
                for edge in fi.call_edges or ())
+
+
+class _LentVerdict(NamedTuple):
+    """What one lent argument of a borrow-declared call makes of its result
+    (`CallAnalyzer._lent_operand_verdict`)."""
+    lends: bool
+    fresh: bool
+    read_only: bool
+    copies: bool
 
 
 def _borrowed_container_passed_warning(storage: str, fi: FunctionInfo,
@@ -706,6 +736,14 @@ class CallAnalyzer:
         self.pend: PendingNums
         # Pending borrow checks deferred until Phase 2 resolves mutated_params
         self.pending_borrow_checks: list[tuple[FunctionInfo, int, str, SourceLocation | None]] = []
+        # A borrow-declared call whose C++ result is a copy, passed to a
+        # mutable-borrow parameter: the copy is observable only if the callee
+        # writes the parameter, which Phase 2 settles.
+        # Entry: (callee, param index, message, location).
+        self.pending_argument_copies: list[tuple[FunctionInfo, int, str, SourceLocation | None]] = []
+        # A method called on a call's COPY result: an error once Phase 2
+        # says the method writes its receiver. Entry: (callee, copy call, site).
+        self.pending_copy_receiver_calls: list = []
         # Deferred match-arm subject-mutation checks: a method call on the
         # subject root/prefix whose readonly verdict (and thus whether it may
         # reassign the borrowed subject storage) only settles in Phase 2.
@@ -745,6 +783,79 @@ class CallAnalyzer:
                 loc,
             )
         self.pending_borrow_checks.clear()
+
+    def defer_argument_copies(self, call: TpyCall | TpyMethodCall) -> None:
+        """An argument that is a borrow-declared call whose C++ result is a
+        copy (`ResultForm.COPY`: `bump(max(walk(ps), key=f))`) is
+        hoisted into a temporary, so a callee that writes the parameter
+        writes the copy where CPython writes the element. Whether it writes
+        is final only after Phase 2; a readonly parameter cannot. A frame
+        callee reports its own copy (`_warn_frame_held_copies`)."""
+        fi = call.resolved_function_info
+        # `copy(...)` is the explicit spelling of that copy.
+        if (fi is None or fi.is_async or frame_factory_callee(fi)
+                or fi.qualified_name == qnames.COPY):
+            return
+        params = fi.params
+        by_name = {p.name: i for i, p in enumerate(params)}
+        slots = list(enumerate(call.args)) + [
+            (by_name.get(k, -1), a) for k, a in (call.kwargs or {}).items()]
+        for idx, arg in slots:
+            inner = peel_coerce(arg)
+            if not (isinstance(inner, TpyCall)
+                    and inner.result_form is ResultForm.COPY):
+                continue
+            if not 0 <= idx < len(params):
+                continue
+            ptype = params[idx].type
+            if (isinstance(ptype, ReadonlyType)
+                    or not param_has_mutable_borrow_surface(ptype)):
+                continue
+            # A callable value's parameters have synthesized names; the
+            # position is what the user wrote.
+            callee = (call.func.name if isinstance(call, TpyCall)
+                      and isinstance(call.func, TpyName) else fi.name)
+            dest = (f"argument {idx + 1} of '{callee}(...)'"
+                    if fi.is_callable_value
+                    else f"argument '{params[idx].name}' of '{callee}(...)'")
+            found = value_call_copy_message(self.ctx, inner, dest)
+            if found is not None:
+                self.pending_argument_copies.append(
+                    (fi, idx, found[1], getattr(inner, 'loc', None)))
+
+    def defer_copy_receiver_call(self, call: TpyMethodCall) -> None:
+        """A method called on a call's COPY result (`max(it, key=f).inc()`)
+        writes the copy if it writes its receiver, where CPython writes the
+        element; whether it does is final after Phase 2."""
+        fi = call.resolved_function_info
+        if fi is None or call.is_callable_field:
+            return
+        lost = copy_result_under_write(call.obj)
+        if lost is not None:
+            self.pending_copy_receiver_calls.append((fi, lost, call))
+
+    def resolve_pending_copy_receiver_calls(self) -> None:
+        pending = self.pending_copy_receiver_calls[:]
+        self.pending_copy_receiver_calls.clear()
+        for fi, lost, site in pending:
+            root = fi.root
+            if (fi.is_readonly or root.is_readonly) and not root.const_withheld:
+                continue
+            if root.direct_self_mutated is not None and not root.self_mutated:
+                continue
+            raise self.ctx.error(lost_write_message(lost), site)
+
+    def resolve_pending_argument_copies(self) -> None:
+        """Warn the deferred argument copies whose parameter the callee
+        writes (or may: no facts)."""
+        pending = sorted(
+            self.pending_argument_copies,
+            key=lambda e: ((e[3].line, e[3].column) if e[3] is not None
+                           else (0, 0)))
+        for fi, idx, message, loc in pending:
+            if param_may_be_written(fi, idx):
+                self.ctx.warning_from_loc(message, loc)
+        self.pending_argument_copies.clear()
 
     def resolve_pending_match_subject_checks(self) -> None:
         """Emit the deferred match-arm dangle warning for a non-readonly method
@@ -1024,6 +1135,130 @@ class CallAnalyzer:
             if authoritative is not None:
                 return authoritative
         return rec
+
+    def stamp_result_borrow(self, expr: TpyCall, result_type: TpyType) -> bool:
+        """Decide, once per analysis, whether a call to a binding that
+        DECLARES its result's borrow sources (`borrows=` / `element_of=`) binds as a
+        borrow of its arguments or is a fresh value, and record it on the
+        node (`TpyCall.result_form`, `copy_observable`). Every
+        reader of the call reads the stamp. Returns whether the result is
+        READ-ONLY because what lends it is.
+
+        The result IS a `borrows=` argument, or is handed out by iterating
+        an `element_of=` one. It is a borrow exactly when every lent
+        argument lends storage that outlives the call
+        (`_lent_operand_verdict`); otherwise the C++ reference could dangle
+        past the statement and the result is a value. Whether a sink holding
+        that value copies something the program still reaches is recorded
+        beside it: the sinks warn, the call does not, because a transient
+        consumer (`min(a, P(0), key=f).v`) copies nothing. A value-shaped
+        result (a number, a `str`, a tuple, an Optional) is a value at every
+        call.
+
+        Unless the C++ result is a copy (`ResultForm.COPY`), it is a
+        reference into the operands for the statement at least, so a result
+        that is not read-only is a mutable use of them."""
+        expr.result_form = ResultForm.NOT_DECLARED
+        expr.copy_observable = False
+        fi = expr.resolved_function_info
+        if fi is None or not is_bodyless_binding(fi):
+            return False
+        sources = recorded_return_borrow_sources(fi)
+        # An open `T` result (a generic body's call) is decided here too: a
+        # hedged copy (the instantiation may be a reference type).
+        if not sources or not (
+                returns_cpp_reference_shape(fi.return_type)
+                or isinstance(unwrap_qualifiers(result_type), TypeParamRef)):
+            return False
+        ops = call_borrow_operands(expr)
+        if ops is None:
+            return False
+        lent = call_lend_sources(ops, sources, expr_type=None)
+        verdicts = [self._lent_operand_verdict(fi, s.idx, s.expr) for s in lent]
+        if isinstance(unwrap_qualifiers(result_type), TypeParamRef):
+            # A generic body decides before instantiation, and a borrow of an
+            # open `T` has no slot yet: the result is a COPY, held in the
+            # hedged generic copy contract (TODO.md, "Per-instantiation
+            # result form for a generic body").
+            expr.result_form = ResultForm.COPY
+        elif bool(lent) and all(v.lends for v in verdicts):
+            expr.result_form = ResultForm.BORROW
+        elif any(v.copies for v in verdicts):
+            expr.result_form = ResultForm.COPY
+        else:
+            expr.result_form = ResultForm.REFERENCE_VALUE
+        expr.copy_observable = (expr.result_form.is_fresh
+                                and not all(v.fresh for v in verdicts))
+        if expr.result_form is ResultForm.COPY:
+            # The call itself makes the copy: there is none of a
+            # non-copyable element to make.
+            payload = unwrap_readonly(unwrap_ref_type(result_type))
+            if self.ctx.is_type_non_copyable(payload):
+                _, message = slot_message(
+                    payload, payload, f"the result of '{expr.func_name}(...)'",
+                    KIND_SLOT, "", non_copyable=True)
+                raise self.ctx.error(message, expr)
+        read_only = any(v.read_only for v in verdicts)
+        if not read_only and expr.result_form is not ResultForm.COPY:
+            self._mark_borrow_result_operands_written(fi, lent)
+        return expr.result_form is not ResultForm.COPY and read_only
+
+    def _mark_borrow_result_operands_written(
+            self, fi: FunctionInfo, lent: list[LendSource]) -> None:
+        """A MUTABLE borrow result may be written through, so the call is a
+        mutable use of every argument that lends it -- as passing them to an
+        open-`T` parameter of a user generic is (`pick(a, b)` makes its
+        caller take `P& a, P& b`). The operands stay const only when they are
+        declared readonly, which makes the result read-only. Through an
+        `element_of=` argument the write lands in an element it hands out,
+        so the mark climbs an iterator to the container it walks
+        (`it = iter(ps)` marks `ps`)."""
+        for src in lent:
+            via_element = src.idx in fi.root.element_borrows_from
+            roots = proven_lend_roots(self.ctx, src.expr)
+            if roots is None:
+                roots = [r.name for r in lend_roots(self.ctx, src.expr)
+                         if not r.held_whole]
+            for name in roots:
+                # A field-path root (`h.ps` behind `it = iter(h.ps)`) is a
+                # write into its owner, as a write through a field is.
+                self.ctx.mark_param_mutated(name, through_field=True,
+                                            via_element=via_element)
+                self.ctx.mark_loop_var_mutated(name)
+
+    def _lent_operand_verdict(self, fi: FunctionInfo, idx: int,
+                              operand: TpyExpr) -> '_LentVerdict':
+        """One lent argument of a borrow-declared call. At a `borrows=`
+        parameter the argument lends when its form proves it outlives the
+        call (`expr_lends_storage`). At an `element_of=` parameter it lends
+        only when it is also a CONTAINER (`iter_element_source`): an
+        iterator's step is valid only until the next step, and a class whose
+        `__iter__` builds an iterator may own what it hands out. A fresh
+        owner is a temporary nothing else reaches: not a handle or view into
+        other storage, nor an expression that may be an existing object (a
+        conditional); for an element source, an owning container. Read-only:
+        the argument, or the container whose element is the result, is
+        readonly-typed. Copies: an element source that is not a container,
+        walked by the callee with an iterator of its own -- the parameter is
+        an `Iterable`, where the caller's `Iterator` (`next`) keeps its step
+        alive past the call -- so the element comes back by value."""
+        rt = self.ctx.get_expr_type(operand)
+        lends = expr_lends_storage(self.ctx, operand)
+        handle_or_view = rt is not None and (is_iterator_protocol(rt)
+                                             or is_borrowing_view_type(rt))
+        fresh = (not lends and is_rvalue_source(self.ctx, operand)
+                 and not handle_or_view)
+        read_only = isinstance(rt, ReadonlyType)
+        if idx not in fi.root.element_borrows_from:
+            return _LentVerdict(lends, fresh, read_only, copies=False)
+        container = (iter_element_source(rt, self.ctx.registry)
+                     is IterElementSource.CONTAINER)
+        params = fi.root.params
+        declared = params[idx].type if 0 <= idx < len(params) else None
+        own_iterator = (declared is not None and not is_iterator_protocol(
+            unwrap_qualifiers(declared)))
+        return _LentVerdict(lends and container, fresh and container,
+                            read_only, copies=own_iterator and not container)
 
     def analyze_call(self, expr: TpyCall) -> TpyType:
         """Analyze a function or constructor call."""
@@ -4204,6 +4439,17 @@ class CallAnalyzer:
                 if slots:  # non-None and non-empty
                     fn_bearing_supplied.append((f, slots))
 
+        # Candidates that differ only in a type parameter's bound (a value
+        # and a reference overload of one signature) or a parameter's
+        # `readonly` type their arguments alike, so they count as ONE shape
+        # in the regime choice; every candidate still competes, and the
+        # bound picks among them.
+        shapes: list[list[tuple[str, TpyType]]] = []
+        for f, _slots in fn_bearing_supplied:
+            shape = [(p.name, unwrap_readonly(p.type)) for p in f.params]
+            if shape not in shapes:
+                shapes.append(shape)
+
         # Route to Regime C when there are 2+ Fn-bearing-by-supplied
         # candidates, or when any candidate has a kwarg-supplied Fn slot
         # (Regime B's `_infer_arg_types` is positional-only and would
@@ -4213,7 +4459,7 @@ class CallAnalyzer:
             for _, slots in fn_bearing_supplied
             for s in slots
         )
-        if len(fn_bearing_supplied) >= 2 or (
+        if len(shapes) >= 2 or (
             fn_bearing_supplied and any_kwarg_fn_slot
         ):
             return self._resolve_regime_c(
@@ -4382,23 +4628,31 @@ class CallAnalyzer:
                 out.append(probe(i, arg))
         return out
 
-    def _is_function_binding(self, expr: TpyName) -> bool:
-        """True iff ``expr`` resolves to a function (local FUNCTION binding,
-        imported function, or registry function), as opposed to a
-        variable, record, module, etc. Used by Regime C to decide which
-        TpyName args need the per-candidate dry matcher vs. unhinted
-        pre-analysis.
-
-        Falls through to the registry only when the namespace lookup
-        misses entirely; an existing non-FUNCTION binding (RECORD, ENUM,
-        MODULE, IMPORTED_NAME, BUILTIN) shadows the registry.
-        """
+    def _named_function_overloads(
+            self, expr: TpyName) -> 'list[FunctionInfo] | None':
+        """The overloads a NAME resolves to when it names a function -- a
+        local FUNCTION binding, a function imported from a module (a builtin
+        like `len` included), or a registry function -- else None (a
+        variable, record, module, ...). Falls through to the registry only
+        when the namespace lookup misses entirely; an existing non-function
+        binding shadows the registry."""
         if self.ctx.func.current_ns:
             binding = self.ctx.func.current_ns.lookup(expr.name)
             if binding:
-                return (binding.kind == BindingKind.FUNCTION
-                        and bool(binding.func_infos))
-        return self.ctx.registry.get_function(expr.name) is not None
+                if binding.kind == BindingKind.FUNCTION:
+                    return binding.func_infos or None
+                if (binding.kind == BindingKind.IMPORTED_NAME
+                        and binding.import_source):
+                    return self._get_module_function_overloads(
+                        *binding.import_source)
+                return None
+        return self.ctx.registry.get_function(expr.name) or None
+
+    def _is_function_binding(self, expr: TpyName) -> bool:
+        """True iff ``expr`` names a function (`_named_function_overloads`).
+        Used by Regime C to decide which TpyName args need the
+        per-candidate dry matcher vs. unhinted pre-analysis."""
+        return self._named_function_overloads(expr) is not None
 
     def _is_contextual_fn_arg(self, arg: TpyExpr) -> bool:
         """True iff ``arg`` is contextual evidence for callable typing:
@@ -4745,14 +4999,7 @@ class CallAnalyzer:
                     hint, as_class=arg.name)
             elif isinstance(arg, TpyName) and self._is_function_binding(arg):
                 # Pure dry matcher: returns matched data, raises on ambiguity.
-                if self.ctx.func.current_ns:
-                    binding = self.ctx.func.current_ns.lookup(arg.name)
-                    if binding and binding.kind == BindingKind.FUNCTION and binding.func_infos:
-                        func_infos = binding.func_infos
-                    else:
-                        func_infos = self.ctx.registry.get_function(arg.name)
-                else:
-                    func_infos = self.ctx.registry.get_function(arg.name)
+                func_infos = self._named_function_overloads(arg)
                 if not func_infos:
                     return None
                 matched_data = self.expr._match_function_to_hint_data(
@@ -5037,53 +5284,87 @@ class CallAnalyzer:
                     )
                     return ret
 
-        # No matching overload found - try to give a helpful error
-        arg_type_strs = ", ".join(str(unwrap_own(t)) for t in arg_types)
+        # No matching overload found - try to give a helpful error.
+        # A callable argument the per-candidate trial typed for itself and
+        # no candidate took has only a placeholder type here: it is named by
+        # its spelling, and a candidate whose slot there takes no callable
+        # cannot be what the call meant, so it says nothing about the others.
+        placeholder = ({i for i, a in enumerate(expr.args)
+                        if self._is_contextual_fn_arg(a)
+                        and i < len(arg_types) and isinstance(arg_types[i], AnyType)}
+                       if result.contextual_callable_used else set())
+        arg_type_strs = ", ".join(
+            (expr.args[i].name if isinstance(expr.args[i], TpyName) else "lambda")
+            if i in placeholder else user_type_name(unwrap_own(t))
+            for i, t in enumerate(arg_types))
+
+        def shape_candidates() -> Iterator[FunctionInfo]:
+            for overload in generic:
+                if not (overload.min_args <= len(arg_types) <= overload.max_args):
+                    continue
+                if any(i < len(overload.params)
+                       and not _is_fn_slot_param(overload.params[i].type)
+                       for i in placeholder):
+                    continue
+                yield overload
 
         # Check for bound violations on generic overloads (give specific error).
         # Skip type args that resolved to UnknownElementType -- the only signal
         # was an empty container literal with no @type_param_default fallback;
         # "??? does not satisfy <bound>" misleads, and the downstream
         # _analyze_single_function_call retry will surface the cleaner
-        # "Cannot infer type arguments" diagnostic.
-        for overload in generic:
-            if not overload.type_param_bounds:
-                continue
-            if not (overload.min_args <= len(arg_types) <= overload.max_args):
-                continue
+        # "Cannot infer type arguments" diagnostic. A bound is the reason
+        # only when EVERY candidate the arguments fit was refused for one.
+        bound_failures: list[tuple[TpyType, TpyType]] = []
+        bound_free_fit = False
+        for overload in shape_candidates():
             inferred: dict[str, TpyType] = {}
             if explicit:
                 for tp, ta in zip(overload.type_params, explicit):
                     inferred[tp] = ta
             # Only an overload every argument fits in shape is refused FOR its
             # bound; one the arguments do not fit says nothing about them.
-            if not all(self.type_ops.match_type_with_inference(ptype, arg_t, inferred)
-                       for (_, ptype), arg_t in zip(overload.params, arg_types)):
+            if not all(i in placeholder
+                       or self.type_ops.match_type_with_inference(ptype, arg_t, inferred)
+                       for i, ((_, ptype), arg_t)
+                       in enumerate(zip(overload.params, arg_types))):
                 continue
             if self.ctx.expr_type_hint and not inferred:
                 ret = overload.return_type.wrapped if isinstance(overload.return_type, OwnType) else overload.return_type
                 exp = self.ctx.expr_type_hint.wrapped if isinstance(self.ctx.expr_type_hint, OwnType) else self.ctx.expr_type_hint
                 self.type_ops.match_type_with_inference(ret, exp, inferred)
-            for param_name, type_arg in inferred.items():
-                if param_name in overload.type_param_bounds:
-                    if isinstance(type_arg, UnknownElementType):
-                        continue
-                    bound = overload.type_param_bounds[param_name]
-                    if not protocol_checker(type_arg, bound):
-                        raise self.ctx.error(
-                            f"Type '{type_arg}' does not satisfy '{bound}' "
-                            f"required by '{expr.func_name}'"
-                            f"{self._value_bound_note(type_arg, bound)}",
-                            expr,
-                        )
+            failed = [
+                (type_arg, overload.type_param_bounds[name])
+                for name, type_arg in inferred.items()
+                if name in (overload.type_param_bounds or {})
+                and not isinstance(type_arg, UnknownElementType)
+                and not protocol_checker(type_arg, overload.type_param_bounds[name])]
+            bound_failures.extend(failed)
+            bound_free_fit = bound_free_fit or not failed
+        if bound_failures and not bound_free_fit:
+            # The failure the type's own kind does not explain is the honest
+            # one: a class with no `__lt__` misses `ComparableRef`'s
+            # comparison, not `ComparableValue`'s value half.
+            type_arg, bound = next(
+                ((t, b) for t, b in bound_failures
+                 if (m := self._bound_marker(b)) is None
+                 or self.protocols.type_conforms_to_protocol(t, m)),
+                bound_failures[0])
+            raise self.ctx.error(
+                f"Type '{user_type_name(type_arg)}' does not satisfy "
+                f"'{bound}' required by '{expr.func_name}'"
+                f"{self._marker_bound_note(type_arg, bound, bound_failures)}",
+                expr,
+            )
 
         # For generic overloads, check for conflicting type parameter inference
-        for overload in generic:
-            if len(arg_types) < overload.min_args or len(arg_types) > overload.max_args:
-                continue
+        for overload in shape_candidates():
             partial: dict[str, TpyType] = {}
             conflict_param = None
-            for (pname, ptype), arg_t in zip(overload.params, arg_types):
+            for i, ((pname, ptype), arg_t) in enumerate(
+                    zip(overload.params, arg_types)):
+                if i in placeholder:
+                    continue
                 before = dict(partial)
                 if not self.type_ops.match_type_with_inference(ptype, arg_t, partial):
                     # Find which type param conflicted
@@ -5101,7 +5382,8 @@ class CallAnalyzer:
                 tp_name, first_t, second_t, param_name = conflict_param
                 raise self.ctx.error(
                     f"No matching overload for {expr.func_name}({arg_type_strs}): "
-                    f"type parameter {tp_name} inferred as {first_t} and {second_t}",
+                    f"type parameter {tp_name} inferred as "
+                    f"{user_type_name(first_t)} and {user_type_name(second_t)}",
                     expr
                 )
 
@@ -5206,26 +5488,45 @@ class CallAnalyzer:
                 f"No matching overload for {expr.func_name}({arg_type_strs})", expr)
         return self._analyze_single_function_call(expr, func_infos[0])
 
-    def _value_bound_note(self, type_arg: TpyType, bound: TpyType) -> str:
+    def _marker_bound_note(
+            self, type_arg: TpyType, bound: TpyType,
+            failures: 'list[tuple[TpyType, TpyType]]' = ()) -> str:
         """Which half of a bound failed, when the bound asks -- itself or
-        through a parent -- for a value type and that is the half. Why a
-        stub asks for one is the stub's to document, not this message's."""
-        marker = self._value_type_marker(bound)
+        through a parent -- for a value or a reference type and that is the
+        half. Why a stub asks for one is the stub's to document, not this
+        message's. When the overloads that refused `type_arg` (`failures`)
+        asked for BOTH halves, the type is neither, and saying only one half
+        would point at the wrong fix."""
+        missing = {
+            m.qualified_name() for t, b in failures if t == type_arg
+            for m in (self._bound_marker(b),)
+            if m is not None
+            and not self.protocols.type_conforms_to_protocol(t, m)}
+        if len(missing) > 1:
+            # A tuple / Optional / union IS a value type; what neither
+            # overload admits is the class instance it holds, which the
+            # value overload would copy.
+            if contains_reference_type(type_arg):
+                return (f": '{type_arg}' holds a class instance, which this "
+                        f"call would copy; not supported yet")
+            return f": '{type_arg}' is neither a value type nor a reference type"
+        marker = self._bound_marker(bound)
         # A bound that IS the marker already says it.
         if (marker is None or marker is bound
                 or self.protocols.type_conforms_to_protocol(type_arg, marker)):
             return ""
-        return f": '{type_arg}' is not a value type"
+        return f": '{type_arg}' is not {_MARKER_NOUNS[marker.qualified_name()]}"
 
-    def _value_type_marker(self, bound: TpyType) -> NominalType | None:
-        """The `ValueType` protocol `bound` is or inherits, else None."""
+    def _bound_marker(self, bound: TpyType) -> NominalType | None:
+        """The value / reference marker protocol `bound` is or inherits,
+        else None."""
         if not isinstance(bound, NominalType):
             return None
-        if bound.qualified_name() == qnames.VALUE_TYPE:
+        if bound.qualified_name() in _MARKER_NOUNS:
             return bound
         info = protocol_info_of(bound)
         for parent in (info.parent_protocols if info is not None else ()):
-            found = self._value_type_marker(parent)
+            found = self._bound_marker(parent)
             if found is not None:
                 return found
         return None
