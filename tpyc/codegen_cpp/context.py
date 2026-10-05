@@ -1427,6 +1427,9 @@ class CodeGenContext:
     # THIRConstructor; the signature comes from the record skeleton.
     # Keyed by the source __init__ TpyFunction; consumed in gen_record_decl.
     thir_constructors: IdentityMap = field(default_factory=IdentityMap)
+    # The THIRInheritedConstructor of each record that constructs through
+    # `using Base::Base;`, keyed by the source TpyRecord; read by MIR only.
+    thir_inherited_constructors: IdentityMap = field(default_factory=IdentityMap)
     # Attempt-once cache of async-body leaf lowerings, keyed by the
     # source TpyFunction. Populated lazily at first frame
     # emission (the CFG needs live codegen ctx), unlike the seeding-loop maps.

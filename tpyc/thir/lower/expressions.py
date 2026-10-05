@@ -9,8 +9,9 @@ from collections.abc import Callable
 from typing import NoReturn, TypeVar
 from dataclasses import field, fields as dataclass_fields, replace
 from .callables import resolved_callee, stub_callee, with_method_callee, with_method_stub
-from .storage import borrowed_record, direct_field, full_expression_record, global_name_binding, module_global_binding, optional_layout, tuple_layout, union_layout
+from .storage import borrowed_record, direct_field, field_identity, full_expression_record, global_name_binding, module_global_binding, optional_layout, tuple_layout, union_layout
 from .captures import capture_facts
+from ..scalar_leaves import record_owner
 from ... import qnames
 from ...parse.nodes import (
     ResultForm,
@@ -178,6 +179,7 @@ from ..nodes import (
     Form,
     TruthinessMode,
     THIRArgTemp,
+    THIRFieldIdentity,
     THIRNode,
     THIRBinOp,
     THIRChainedCompareStmtExpr,
@@ -18800,7 +18802,24 @@ def _unbound_self_field_access(e: TpyFieldAccess, lc: '_LowerCtx',
         is_arrow=True,
         form=form,
         loc=loc,
+        field_identity=_unbound_self_field_identity(e, lc),
     )
+
+
+def _unbound_self_field_identity(e: TpyFieldAccess, lc: '_LowerCtx') -> THIRFieldIdentity | None:
+    """The member an explicit `Ancestor.field` names from a modeled
+    record's body: found by the walk STARTING at the named ancestor (sema
+    resolves through its own ancestry, and so does `this->Ancestor::field`),
+    keyed by the record that declares it."""
+    registry = lc.analyzer.registry
+    info = registry.get_record(lc.record_name) if lc.record_name is not None else None
+    named = e.unbound_self_parent_type
+    if info is None or not isinstance(named, NominalType) or named.type_args:
+        return None
+    receiver = record_owner(info)
+    if borrowed_record(receiver, False, lc.analyzer) is None:
+        return None
+    return field_identity(receiver, e.field, lc.analyzer, start=named)
 
 
 def _reject_optional_receiver_link(e: 'TpyFieldAccess | TpySubscript',

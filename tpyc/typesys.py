@@ -8205,6 +8205,45 @@ class TypeRegistry:
             return list(record.fields)
         return self.get_all_fields(parent) + list(record.fields)
 
+    def declaring_record(self, record: RecordInfo, name: str, *,
+                         start: RecordInfo | None = None) -> tuple[RecordInfo, FieldInfo] | None:
+        """The record that declares field `name` as seen from `record`, with
+        the declaration: `start` (default `record`) first, then `start`'s
+        struct-base ancestors in MRO order -- bare `self.name` from `record`,
+        or the explicit `Start.name`, which resolves through the named
+        ancestor's own ancestry. `start` must be `record` or one of its
+        struct-base ancestors, else None. No generic substitution: the
+        declared field type is returned as written."""
+        ancestors = list(self.iter_field_ancestors(record))
+        if start is None:
+            start = record
+        elif not any(a is start for a in ancestors):
+            return None
+        for owner in (start, *self.iter_field_ancestors(start)):
+            if owner is not start and not any(a is owner for a in ancestors):
+                continue
+            member = next((f for f in owner.fields if f.name == name), None)
+            if member is not None:
+                return owner, member
+        return None
+
+    def construction_order_fields(self, record: RecordInfo) -> list[tuple[RecordInfo, FieldInfo]]:
+        """Every field `record`'s C++ struct contains, with its declaring
+        record, in the order C++ constructs them: each struct base in
+        `parents` order (recursively), then the record's own fields in
+        emitted member order. Differs from `get_all_fields` for a
+        multi-base record, whose reversed-MRO walk lists the last base's
+        fields first."""
+        result: list[tuple[RecordInfo, FieldInfo]] = []
+        for parent in record.parents:
+            if not isinstance(parent, NominalType):
+                continue
+            base = self.get_record_for_type(parent)
+            if base is not None and self.is_struct_base(record, base):
+                result.extend(self.construction_order_fields(base))
+        result.extend((record, f) for f in record.fields)
+        return result
+
     def user_declared_fields(self, record: RecordInfo) -> list[FieldInfo]:
         """Fields declared on a record and its NON-native ancestor records,
         base-first. Unlike get_all_fields, this skips native-base fields -- for a
@@ -8626,3 +8665,11 @@ class TypeRegistry:
             if td is not None and td.type_factory is not None:
                 return True
         return False
+
+
+def record_owner(info: RecordInfo) -> NominalType:
+    """The one spelling of a record's type in an identity (a field's
+    declaring owner, a base, a callee's receiver, a body's `self`), so the
+    facts a base's own bodies publish and the ones a subclass publishes for
+    the same member compare equal."""
+    return NominalType(info.name, _module_qname=info.qualified_name())

@@ -1,0 +1,1 @@
+A shadowed field is two storages in TPy and one attribute in CPython (a warned divergence), and the explicit Base.n spelling is TPy-only.

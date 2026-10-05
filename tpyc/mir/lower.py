@@ -32,7 +32,7 @@ from .nodes import (
     MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRRecordStorageInit, MIRRecordStorageKind,
     MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode,
-    MIRRegion, MIRRegionId, function_body_kind,
+    MIRRecordLayout, MIRRegion, MIRRegionId, function_body_kind,
     MIRRangeAdvance, MIROp, MIRPrint,
     MIRContainerElements, MIRContainerLayout, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout, MIRTupleInitialization,
@@ -50,7 +50,7 @@ from .definitions import (
 )
 from .call_contract import (
     BORROWING_PASSINGS, OWNING_PASSINGS, MIRCallSummary, MIRParameterBinding, MIRSummaryResult, MIRSummaryState,
-    borrowed_result_of, bound_result, container_result, stub_protocol_argument, stub_summary,
+    binds_at, borrowed_result_of, bound_result, container_result, stub_protocol_argument, stub_summary,
     summary_problem, view_result,
 )
 from .validate import (MIRDefiniteAssignmentError, MIRPresenceError, MIRRepeatedInitializationError,
@@ -214,13 +214,17 @@ class _Coverage:
             self.records[result.type] = self.definitions.get(expr, result.type)
         elif owned is not None:
             self.leaf_layout(expr, owned)
-        for path in (*(w.path for w in summary.writes), *(o.path for o in summary.returns)):
-            # A container projection ends a path; its fields name record layouts.
+        arguments = _call_arguments(expr)
+        for parameter, path in (*((w.parameter, w.path) for w in summary.writes),
+                                *((o.parameter, o.path) for o in summary.returns)):
+            # A container projection ends a path; its fields are members of
+            # the record storage the argument binds (a declaring owner's
+            # field is a member of every descendant's layout).
             for field in (step for step in path if isinstance(step, th.THIRFieldIdentity)):
-                definition = self.definitions.get(expr, field.owner)
-                _require(expr, MIRField(MIRFieldId(field.owner, field.name), field.type) in definition.layout.fields,
+                storage = self.bound_record(arguments[parameter]) if parameter < len(arguments) else None
+                layout = self.record_layout(expr, storage if storage is not None else field.owner)
+                _require(expr, MIRField(MIRFieldId(field.owner, field.name), field.type) in layout.fields,
                          "call write field does not match record layout")
-                self.records[field.owner] = definition
         # An `Own[T]` return hands the caller a plain T.
         _require(expr, (unwrap_readonly(unwrap_ref_type(expr.result_type)) == result.type if result is not None
                        else expr.result_type == owned if owned is not None
@@ -247,7 +251,7 @@ class _Coverage:
                          "call needs unwrapped record binding")
                 name = self.reference_name(arg)
                 actual = self.references[name]
-                _require(arg, actual.type == ref.type and (not actual.readonly or ref.readonly),
+                _require(arg, self.binds_at(arg, actual.type, ref.type) and (not actual.readonly or ref.readonly),
                          "call record argument mismatch")
                 # The binding's access must be the one C++ picks the overload
                 # by; a follows-receiver result is bound at it.
@@ -1055,6 +1059,28 @@ class _Coverage:
     def leaf_layout(self, node: object, typ: NominalType) -> None:
         self.records[typ] = self.definitions.get(node, typ)
 
+    def record_layout(self, node: object, typ: NominalType) -> MIRRecordLayout:
+        """The layout of a record the body's storage has, its definition
+        registered with the body's layouts; a refused definition refuses."""
+        definition = self.records.get(typ)
+        if definition is None:
+            definition = self.records[typ] = self.definitions.get(node, typ)
+        return definition.layout
+
+    def binds_at(self, node: object, storage: NominalType, slot: NominalType) -> bool:
+        if slot == storage:
+            return True
+        return binds_at({storage: self.record_layout(node, storage)}, storage, slot)
+
+    def bound_record(self, arg: th.THIRExpr) -> NominalType | None:
+        """The record type of the storage a call argument names, before the
+        argument itself is checked; None when it names none."""
+        if isinstance(arg, th.THIRArgTemp):
+            return unwrap_readonly(unwrap_ref_type(arg.result_type))
+        name = arg.name if isinstance(arg, th.THIRName) else "self" if isinstance(arg, th.THIRSelf) else None
+        reference = self.references.get(name) if name is not None else None
+        return reference.type if isinstance(reference, th.THIRBorrowedRecord) else None
+
     def close_layouts(self) -> None:
         """Every owned-leaf field of a record the body models is a place of
         that leaf's opaque storage, so its layout comes along."""
@@ -1436,7 +1462,10 @@ class _Coverage:
         self.element_places[expr] = place
         return place.layout.subscript
 
-    def reference_name(self, expr: th.THIRExpr) -> str:
+    def reference_name(self, expr: th.THIRExpr, *, qualified: bool = False) -> str:
+        """The binding a record reference names. With `qualified`, the
+        receiver of an explicit ancestor field (`Base.n` in a method) may be
+        spelled at an ancestor of the receiver's type."""
         match expr:
             case th.THIRName():
                 _plain(expr, {"name", "is_last_use", "is_movable", "deref", "indirect"})
@@ -1451,7 +1480,13 @@ class _Coverage:
             case _:
                 raise MIRUnsupported(expr, "reference needs local name")
         _require(expr, name in self.references, "unknown reference source")
-        self.reference(expr, self.references[name], expr.result_type)
+        reference = self.references[name]
+        named = unwrap_readonly(unwrap_ref_type(expr.result_type))
+        if qualified and isinstance(expr, th.THIRSelf) and named != reference.type:
+            _require(expr, isinstance(named, NominalType) and self.binds_at(expr, reference.type, named),
+                     "reference type mismatch")
+            return name
+        self.reference(expr, reference, expr.result_type)
         return name
 
     def borrowed_expression(self, expr: th.THIRExpr, result: th.THIRBorrowedRecord) -> None:
@@ -1849,11 +1884,21 @@ class _Coverage:
                 _require(expr, isinstance(reference, (th.THIRBorrowedRecord, th.THIROwnedRecord)),
                          "field needs tuple reference")
             case _:
-                reference = self.references[self.reference_name(expr.receiver)]
+                reference = self.references[self.reference_name(expr.receiver, qualified=True)]
         fact = expr.field_identity
         _require(expr, isinstance(fact, th.THIRFieldIdentity), "missing field identity")
-        _require(expr, fact.owner == reference.type and bool(fact.name),
-                 "field owner mismatch")
+        # A field of a derived record is a member of its layout, keyed by its
+        # declaring owner; the layout comes along so a shadowed name is seen
+        # under both owners. A flat record's own field needs no layout, and a
+        # derived record's own field only when its definition verified (an
+        # inherited field of an unverified one refuses with its reason).
+        definition = self.definitions.records.get(reference.type)
+        derived = isinstance(definition, MIRConstructorDefinition) and bool(definition.layout.ancestors)
+        layout = (self.record_layout(expr, reference.type)
+                  if derived or fact.owner != reference.type else None)
+        _require(expr, isinstance(fact.owner, NominalType) and bool(fact.name) and (
+            fact.owner == reference.type if layout is None
+            else MIRField(MIRFieldId(fact.owner, fact.name), fact.type) in layout.fields), "field owner mismatch")
         readonly = reference.readonly or isinstance(fact.type, ReadonlyType)
         _require(expr, not (write and readonly), "readonly field store")
         if native_container_type(unwrap_readonly(fact.type)):
@@ -4061,13 +4106,16 @@ def lower_constructor_storage(ctor: th.THIRConstructor, body: MIRBodyId, *,
                               summaries: Mapping[th.THIRFunctionIdentity, MIRSummaryResult] | None = None
                               ) -> MIRLoweredStorage | MIRNotCovered:
     try:
-        initialization = constructor_initialization(ctor)
+        definitions = definitions if definitions is not None else MIRDefinitions()
+        initialization = constructor_initialization(ctor, definitions.records)
         fn = th.THIRFunction(
             f"{ctor.record_name}.__init__", ctor.params, VoidType(), ctor.body, th.THIRFunctionLayout(),
             receiver=th.THIRBorrowedRecord(initialization.layout.type, False), temp_plan=ctor.temp_plan)
-        coverage = _Coverage(fn, definitions if definitions is not None else MIRDefinitions(), summaries)
-        coverage.check()
+        coverage = _Coverage(fn, definitions, summaries)
+        # The receiver under construction has the body-side layout, whose
+        # definition a caller may not construct through.
         coverage.records[initialization.layout.type] = initialization
+        coverage.check()
         for member in initialization.layout.fields:
             if native_container_type(member.type):
                 # The receiver's entry initialization builds every container member.

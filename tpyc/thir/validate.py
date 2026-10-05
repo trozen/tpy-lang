@@ -64,8 +64,8 @@ from ..typesys import (
 )
 from .scalar_leaves import (
     binds_cursor, binds_element, container_view, declared_members, holds_elements, leaf_constant, leaf_global,
-    native_container_subject, native_container_type, owned_leaf, plain_record_element, readonly_elements,
-    storage_leaf,
+    modeled_ancestors, native_container_subject, native_container_type, owned_leaf, plain_record_element,
+    readonly_elements, storage_leaf,
 )
 from .nodes import (
     FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign, THIRCall, THIRChainedCompareStmtExpr,
@@ -296,10 +296,14 @@ def _check_method_callee(owner: str, node: THIRMethodCall, fact: THIRResolvedCal
     types = fact.signature.param_types
     passings = fact.signature.passings
     receiver = unwrap_readonly(unwrap_ref_type(node.receiver.result_type))
+    # Parameter 0 is the declaring record: the receiver's or a struct-base ancestor's.
+    declaring = types[0] if types else None
+    ancestors = modeled_ancestors(receiver) if declaring != receiver else ()
     if (fact.identity.owner is None
-            or len(types) != len(node.args) + 1 or types[0] != receiver
-            or not isinstance(receiver, NominalType) or receiver.qualified_name() != fact.identity.owner
-            or passings is None or passings[0] not in (receiver.param_passing(False), receiver.param_passing(True))
+            or len(types) != len(node.args) + 1 or ancestors is None
+            or declaring != receiver and declaring not in ancestors
+            or not isinstance(declaring, NominalType) or declaring.qualified_name() != fact.identity.owner
+            or passings is None or passings[0] not in (declaring.param_passing(False), declaring.param_passing(True))
             or not node.renders_plain_member_call):
         _fail(owner, node, "resolved method callee on incompatible call")
     # The receiver's emitted access: never wider than its type lends.
@@ -715,8 +719,10 @@ def _check_node(owner: str, node: THIRNode) -> None:
         # A container member is reached in place like a record member.
         record = (isinstance(typ, NominalType) and not is_inert_leaf(typ)
                   and (not typ.type_args or native_container_type(typ)) and not typ.is_protocol)
+        receiver = unwrap_readonly(unwrap_ref_type(node.receiver.result_type))
+        # The declaring owner: the receiver's record or one of its struct-base ancestors.
         if (not direct or not fact.name
-                or unwrap_readonly(unwrap_ref_type(node.receiver.result_type)) != fact.owner
+                or receiver != fact.owner and fact.owner not in (modeled_ancestors(receiver) or ())
                 or (not record and (not storage_leaf(fact.type)
                                     or node.result_type != fact.type or node.form is not Form.VALUE))
                 or (record and unwrap_readonly(unwrap_ref_type(node.result_type)) != typ)):

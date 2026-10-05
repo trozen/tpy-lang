@@ -508,9 +508,9 @@ class Dog(Animal):
         super().__init__(4)
 
 
-# kept refusal: an inherited method (the owner has a parent); the parameter of a record
-# with a parent refuses first
-def inherited(d: Dog) -> None:  # tpyc: mir(uncovered /^unsupported parameter type$/)
+# free caller: a method inherited from the base; its summary's write projects onto
+# the subclass receiver's inherited field
+def inherited(d: Dog) -> None:  # tpyc: mir(covered) mir_summary(known)
     d.add_leg()
 
 

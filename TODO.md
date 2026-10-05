@@ -1792,32 +1792,59 @@ alongside related feature work; only the big-rock deferrals live here.
     an active compiler. Fail closed and activate a compiler in those tests.
   - View FIELDS refuse as "record holds a borrow": storing a view in a
     record is a retention effect, reading one needs the field's loan.
-  - Next unit: inherited records. A method of a base record called on a
-    subclass receiver (`s.bump()` with `bump` on `Base`), a subclass
-    record as a parameter (`def f(s: Sub)`) and a subclass's own methods
-    refuse today: the caller's parameter "unsupported parameter type".
-    Plain inheritance is static and non-virtual, so the call rule is one
-    line (the receiver's static type is the owner OR a subclass with no
-    `@dynamic` base); the record model is the work:
-    1. field identity becomes (DECLARING owner, name), found through
-       `get_all_fields` -- shadowing an inherited field is legal (a
-       warning), so `Sub::k` and `Base::k` can be two storages;
-    2. record layouts span the struct-base ancestors;
-    3. the "field owner == the record type" checks (`mir/definitions.py`,
-       `mir/validate.py`, `mir/lower.py`, `mir/call_contract.py`) become
-       "the declaring owner is the type or a struct-base ancestor";
-    4. the exact-type argument checks become "the argument type is the
-       parameter type or a subclass";
-    5. `THIRBaseInit` (today the base's C++ name and arguments, no identity
-       and no parameter mapping) chains the subclass's definition
-       certificate to the base's;
-    6. `mir/definitions.py` keys constructor members by bare field name, so
-       the (declaring owner, name) identity must reach the constructor
-       bookkeeping too.
-    Measured on master before the accessor unit: 98 call sites to methods
-    of records with parents, in 75 caller bodies over 52 programs; the
-    callers are first blocked elsewhere (`isinstance` arms, local types,
-    module init), so the return is modest until those lift.
+  - Inherited records, what the model leaves out
+    (`docs/MIR_ANALYSIS_PLAN.md` "Inherited records" has the rules):
+    - `super().m()` / `Base.m(self)` inside a subclass body refuse ("call
+      needs resolved ordinary callee"): the call is a THIRCall whose
+      receiver is implicit in its C++ spelling (`this->A::m()`). MIR needs
+      the call to carry its receiver (`self`, bound at `A`) and the
+      declaring record's callee, a THIR change of its own.
+    - One field lookup: `TypeRegistry.declaring_record` (THIR's, returns the
+      declaring record, no generic substitution) and sema's
+      `ProtocolAnalyzer.lookup_record_field` (generic substitution, no owner)
+      walk the same ancestry; one should absorb the other once generic
+      bases are in MIR's slice.
+    - One struct-ancestor walk: `scalar_leaves.modeled_hierarchy` walks
+      `mro_ancestors` through TypeDefs where the registry's
+      `iter_field_ancestors` already answers, and `record_layout` pairs its
+      chain with `iter_field_ancestors` and `construction_order_fields`.
+      Deferred because `scalar_leaves` holds no registry handle (its
+      predicates are asked from the validator and from MIR, under the
+      active compiler) and the generic-base refusal reads `type_args` off
+      the raw MRO entries, which the registry walk drops.
+    - Layouts from a layout index, not the constructor definition index:
+      MIR fetches a derived record's layout from `MIRDefinitions.records`,
+      so an inherited-field read of a subclass whose `__init__` fails to
+      verify (a body effect, an expression initializer) refuses with the
+      constructor's reason although the layout is a type fact THIR
+      publishes without any constructor (`THIRRecordLayout`). A layout
+      index keyed by record type, filled from every `record_layout`,
+      would decouple the two; the constructor index then answers only
+      constructs.
+    - Derived-to-base outside call arguments: a local alias (`b: Base = s`),
+      an Optional or union payload (`cur: Base | None = s`), a container
+      element (a `list[Base]` holding a `Sub`) and a temporary record
+      argument stay exact-typed. Each is the same `call_contract.binds_at`
+      rule applied at `mir/validate.py`'s storage-borrow, payload and
+      element sites and at the temporary-argument arm of `mir/lower.py`;
+      a VALUE binding at the base type slices and stays refused.
+    - Inherited constructors beyond one struct base with no own fields and
+      no own special members: a multi-base `pass` class (the other bases
+      default-construct) and a subclass whose own fields all have defaults
+      publish no `THIRInheritedConstructor`, so a caller's construct
+      refuses. Both need the definitions chain to compose a default-
+      constructed base and default member inits.
+    - Generic bases (`Sub(Base[int32])`): the eligibility
+      (`scalar_leaves.modeled_hierarchy`) refuses a hierarchy reached
+      through a type argument; the layout and the declaring-owner walk need
+      the base's substitution.
+    - Records with an exception or a native ancestor stay refused by the
+      same eligibility.
+    - A bare name forwarded to an owning base parameter
+      (`super().__init__(xs)` into `Own[list[int32]]`) refuses ("base
+      argument needs matching parameter or literal"): MIR refuses the
+      shape rather than models it until BUGS.md#base-init-args-separate-lowering
+      gives the base-init argument a passing.
   - Inline-record getter results and nested records: `return self.inner`
     (a record field returned by reference) refuses at the getter body
     ("unsupported borrowed expression form") and its caller "call needs
@@ -1825,7 +1852,8 @@ alongside related feature work; only the big-rock deferrals live here.
     layout with a record field has no definition ("unsupported record
     fields"), there is no borrowed-field return arm, and a record returned
     from inside a record is no return origin yet ("summary unsupported
-    return origin").
+    return origin"). A record field of a subclass type rides this item:
+    its layout is the subclass's, inherited fields included.
   - A `Span` over a field as a return origin (`return self.items[0:]` at
     `-> Span[int32]`) summarizes OPAQUE ("summary unsupported return origin"): the origin is
     a region under the field, which the return grammar does not spell.

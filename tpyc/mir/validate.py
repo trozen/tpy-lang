@@ -41,7 +41,7 @@ from .coverage import (
     view_holder,
 )
 from .region_flow import MIRRegionFlow, outgoing_edges
-from .call_contract import BORROWING_PASSINGS, OWNING_PASSINGS, result_problem, summary_problem
+from .call_contract import BORROWING_PASSINGS, OWNING_PASSINGS, binds_at, result_problem, summary_problem
 from .definitions import with_access
 
 
@@ -395,10 +395,15 @@ def _validate_structure(fn: MIRFunction) -> None:
             _require(record_type(record.type), "unsupported record layout identity")
         _require(type(record.copyable) is bool and type(record.movable) is bool,
                  "invalid record eligibility")
+        _require(isinstance(record.ancestors, tuple) and len(set(record.ancestors)) == len(record.ancestors)
+                 and not (record.opaque and record.ancestors)
+                 and all(isinstance(a, NominalType) and record_type(a) and a != record.type
+                         for a in record.ancestors), "invalid record layout ancestors")
+        owners = (record.type, *record.ancestors)
         seen: set[MIRFieldId] = set()
         for member in record.fields:
             _require(isinstance(member, MIRField) and isinstance(member.id, MIRFieldId)
-                     and member.id.owner == record.type and bool(member.id.name)
+                     and member.id.owner in owners and bool(member.id.name)
                      and member.id not in seen
                      and (storage_leaf(member.type) or owned_leaf(member.type) or native_container_type(member.type)),
                      "invalid record layout field")
@@ -406,7 +411,10 @@ def _validate_structure(fn: MIRFunction) -> None:
             _require(not owned_leaf(member.type) or member.type in records and records[member.type].opaque,
                      "owned-leaf field needs its opaque layout")
             seen.add(member.id)
-            field_types[member.id] = member.type
+            # A field is one storage of one type in every layout carrying it
+            # (its declaring owner's and each descendant's).
+            _require(field_types.setdefault(member.id, member.type) == member.type,
+                     "inconsistent field type")
     for summary in fn.call_summaries:
         for write in summary.writes:
             for field in write.path:
@@ -667,8 +675,12 @@ def _validate_structure(fn: MIRFunction) -> None:
                              "invalid receiver initializer constant")
                 case _:
                     raise MIRValidationError("invalid receiver initializer")
+            # A move into a base's own copy that the base copies on raises
+            # like the copy (`definitions._compose`).
             _require(init_member.may_raise is (mode is MIRMemberInitMode.COPY
-                                               and bool(type_def_of(member.type).copy_may_raise)),
+                                               and bool(type_def_of(member.type).copy_may_raise))
+                     or mode is MIRMemberInitMode.MOVE and init_member.may_raise is True
+                     and bool(type_def_of(member.type).copy_may_raise),
                      "receiver initializer exit fact mismatch")
 
     def slot_type(slot: MIRSlotId) -> TpyType:
@@ -741,8 +753,12 @@ def _validate_structure(fn: MIRFunction) -> None:
                              "field projection under an opaque layout")
                     tuple_member = False
                     _require(not (write and readonly), "store through readonly storage")
-                    _require(isinstance(projection.id, MIRFieldId) and projection.id.owner == typ
-                             and bool(projection.id.name), "field owner mismatch")
+                    # A field is keyed by its declaring owner: the storage's
+                    # type, or an ancestor whose field its layout carries.
+                    _require(isinstance(projection.id, MIRFieldId) and bool(projection.id.name) and (
+                        projection.id.owner == typ
+                        or typ in records and MIRField(projection.id, projection.type) in records[typ].fields),
+                        "field owner mismatch")
                     member_type = unwrap_readonly(projection.type)
                     inline_record = record_type(member_type)
                     leaf_storage = owned_leaf(projection.type)
@@ -836,12 +852,15 @@ def _validate_structure(fn: MIRFunction) -> None:
                 # A view of the parameter's family is lent as the view it already is.
                 _require(view_compatible(source.type, owned), "call owned-leaf argument mismatch")
                 continue
-            _require(source.type == binding.type, "call argument type mismatch")
+            # Record storage binds at its own type or a struct-base ancestor's;
+            # every other binding is exact.
+            _require(source.type == binding.type or ref is not None and ref.type == binding.type
+                     and binds_at(records, source.type, binding.type), "call argument type mismatch")
             if view_leaf(binding.type):
                 _require(view_holder(source) and binding.readonly, "call view argument mismatch")
             elif ref is not None:
-                _require(source.type == ref.type and source.value_kind is MIRValueKind.BORROWED
-                         and (not source.readonly or ref.readonly), "call record argument mismatch")
+                _require(source.value_kind is MIRValueKind.BORROWED and (not source.readonly or ref.readonly),
+                         "call record argument mismatch")
             elif owned is not None:
                 # Lent for the call at a borrowing passing, else the callee's own copy.
                 _require(source.type == owned and (

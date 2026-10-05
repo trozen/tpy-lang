@@ -47,7 +47,12 @@ initialization before the CFG: every scalar-leaf field comes from a scalar
 parameter or literal, then existing body operations run on that same storage.
 Initialization is separate from record replacement. Constructor-call summaries
 still require an empty tail; body coverage does not imply call-effect coverage.
-Defaults, partial initialization, bases, consuming/generated method variants,
+A record with plain struct bases is the same model: a field is keyed by its
+DECLARING record (`THIRFieldIdentity.owner`), a layout spans the inherited
+fields in C++ construction order and lists the struct-base ancestors, and a
+subclass constructor's definition composes its base's
+(`MIR_ANALYSIS_PLAN.md`, inherited records).
+Defaults, partial initialization, consuming/generated method variants,
 properties, the lifecycle hooks (`__del__`, `__copy__`, `__move__`) and
 resumables retain their separate coverage boundaries; other dunder bodies carry
 the receiver fact.
@@ -65,8 +70,9 @@ these do not supply call effects or admit general MIR calls. Registration
 retains a unique ordinary declaration for signature/identity checks; overloads,
 redefinitions and stale cycle signatures stay uncovered. A plain record's
 ordinary instance method publishes the same fact at its definition and at each
-call that statically resolves to it: the identity names the owning record
-(`THIRFunctionIdentity.owner`) and the signature's parameter 0 is the receiver,
+call that statically resolves to it: the identity names the declaring record
+(`THIRFunctionIdentity.owner`; a subclass receiver binds at it) and the
+signature's parameter 0 is the receiver,
 so MIR schedules and summarizes methods beside free functions
 (`MIR_ANALYSIS_PLAN.md`, B3 contract, second half). The body a call runs
 comes from `Compiler.callable_body(owner, name, accessor)`, which selects by
@@ -100,7 +106,7 @@ records payload ownership at the constructor-backed declaration producer;
 MIR consumes the effective replacement verdict and retains presence checks.
 Their layouts contain only scalar-leaf fields and have no custom special members; construction
 requires a complete, pure constructor definition. `MIRDefinitions` indexes and
-checks the emitted `THIRConstructor` artifacts and their logical layout/member
+checks the emitted `THIRConstructor` and `THIRInheritedConstructor` artifacts and their logical layout/member
 facts, without reaching back into sema. Each OWN replacement site has distinct
 storage; repeated execution reuses that site's body-hoisted backing. IN_PLACE
 replacements preserve referent identity. Positive MIR record-write facts

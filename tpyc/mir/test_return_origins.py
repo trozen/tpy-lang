@@ -12,7 +12,8 @@ from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import INT32, STR, NominalType, ReadonlyType, RefType
 from .call_contract import (
-    MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRParameterBinding, MIRReturnOrigin, MIRSummaryState, bound_result,
+    MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRParameterBinding, MIRReturnOrigin, MIRSummaryResult,
+    MIRSummaryState, bound_result,
     result_problem, stub_summary, summary_problem,
 )
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
@@ -316,12 +317,23 @@ def test_unspellable_origins_refuse(program: _Program) -> None:
         "unsupported return origin type or access")
 
 
-def test_a_return_path_names_a_field_of_the_parameter_record(program: _Program) -> None:
+def test_a_return_path_names_a_field_of_the_bound_storage(program: _Program) -> None:
+    # A path names its field by the declaring owner, so a summary checks it
+    # structurally; membership is checked against the layout of the storage
+    # each call binds (an ancestor's field is a member of a descendant's).
     elems = _known(program, "Bag.elems")
     stranger = NominalType("Other", _module_qname="main.Other")
     foreign = th.THIRFieldIdentity(stranger, "items", INTS)
-    assert summary_problem(replace(elems, returns=frozenset({MIRReturnOrigin(0, (foreign,))}))) == (
+    damaged = replace(elems, returns=frozenset({MIRReturnOrigin(0, (foreign,))}))
+    assert summary_problem(damaged) is None
+    assert summary_problem(replace(elems, returns=frozenset({
+        MIRReturnOrigin(0, (th.THIRFieldIdentity(INT32, "items", INTS),))}))) == (
         "unsupported return origin type or access")
+    summaries = dict(program.workspace.summaries)
+    summaries[elems.callee.identity] = MIRSummaryResult(MIRSummaryState.KNOWN, damaged)
+    result = lower_function(_free(program, "via_getter"), MIRBodyId("main", "via_getter"),
+                            definitions=program.definitions, summaries=summaries)
+    assert isinstance(result, MIRNotCovered) and result.reason == "call write field does not match record layout"
 
 
 # --- the caller side: the origin's place, resolved like a direct borrow -------------

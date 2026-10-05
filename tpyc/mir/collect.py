@@ -5,6 +5,7 @@ codegen left behind. Every emitted body of a module has exactly one
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from enum import Enum, auto
+from types import MappingProxyType
 
 from ..codegen_cpp.context import CodeGenContext
 from ..identity_map import IdentityMap
@@ -26,7 +27,7 @@ from .liveness import MIRLiveness, MIRPoint, analyze_liveness, dump_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRContainerElements, MIRContainerStructure,
-    MIRCopy, MIRDeref, MIRField, MIRFunction, MIRMemberInitMode, MIRNotCovered, MIROptionalPayload, MIRPlace,
+    MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRMemberInitMode, MIRNotCovered, MIROptionalPayload, MIRPlace,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleIndex, MIRUnionPayload, MIRValueKind,
     function_body_kind, statement_target,
 )
@@ -412,6 +413,9 @@ class MIRLineFacts:
 
     A spelling is a source name plus field and member projections
     (`self.name`, `t[0]`, `xs[elements]`); dereferences are not spelled. A
+    field whose name the record's layout carries under two owners (a
+    shadowed inherited field) is spelled with its declaring owner
+    (`self.Base.n`), and the bare spelling is listed in `ambiguous`. A
     name whose slots sit under two selectors (a reassigned `str` parameter
     owns a LOCAL slot beside its PARAMETER one) is spelled `param(s)` /
     `local(s)`. A referent is spelled by its root's name -- a borrowed
@@ -437,30 +441,72 @@ class MIRLineFacts:
     # The analysis gap that leaves `borrows` / `events` unknown, else None.
     borrows_gap: str | None = None
     events_gap: str | None = None
+    # A bare field spelling that names fields of two owners, to the
+    # owner-qualified spellings it could mean.
+    ambiguous: Mapping[str, tuple[str, ...]] = MappingProxyType({})
 
 
-def _spell(place: MIRPlace, roots: Mapping[MIRSlotId, str]) -> str | None:
-    root = roots.get(place.root)
-    if root is None:
-        return None
-    text = root
-    for projection in place.projections:
-        match projection:
-            case MIRField(id=field):
-                text += f".{field.name}"
-            case MIRTupleIndex(index=index):
-                text += f"[{index}]"
-            case MIROptionalPayload():
-                text += "[payload]"
-            case MIRUnionPayload(alternative=alternative):
-                text += f"[alt{alternative}]"
-            case MIRContainerStructure():
-                text += "[structure]"
-            case MIRContainerElements():
-                text += "[elements]"
-            case MIRDeref():
-                pass
-    return text
+class _Spelling:
+    """Spells places of one body. A field is spelled by its name unless the
+    layout of the record holding it carries that name under two owners;
+    then by `Owner.name`, and the bare spelling is recorded as ambiguous
+    with every owner's spelling."""
+
+    def __init__(self, fn: MIRFunction) -> None:
+        self.slots = {slot.id: slot for slot in fn.slots}
+        # Per record layout: each field name two owners declare, to its owners.
+        self.shadowed: dict[TpyType, dict[str, tuple[str, ...]]] = {}
+        for record in fn.records:
+            owners: dict[str, list[str]] = {}
+            for f in record.fields:
+                owners.setdefault(f.id.name, []).append(f.id.owner.name)
+            self.shadowed[record.type] = {n: tuple(o) for n, o in owners.items() if len(o) > 1}
+        self.ambiguous: dict[str, set[str]] = {}
+
+    def owners(self, holder: TpyType | None, field: MIRFieldId) -> tuple[str, ...]:
+        if holder is not None:
+            return self.shadowed.get(holder, {}).get(field.name, ())
+        # A record reached through a wrapper member: any layout carrying the field decides.
+        return next((names[field.name] for names in self.shadowed.values()
+                     if field.owner.name in names.get(field.name, ())), ())
+
+    def __call__(self, place: MIRPlace, roots: Mapping[MIRSlotId, str]) -> str | None:
+        root = roots.get(place.root)
+        if root is None:
+            return None
+        text = bare = root
+        alternatives = [root]
+        slot = self.slots.get(place.root)
+        holder: TpyType | None = slot.type if slot is not None else None
+        for projection in place.projections:
+            match projection:
+                case MIRField(id=field):
+                    owners = self.owners(holder, field)
+                    text += f".{field.owner.name}.{field.name}" if owners else f".{field.name}"
+                    bare += f".{field.name}"
+                    alternatives = [f"{a}.{o}.{field.name}" for a in alternatives for o in owners] if owners else [
+                        f"{a}.{field.name}" for a in alternatives]
+                    holder = unwrap_readonly(projection.type)
+                    continue
+                case MIRTupleIndex(index=index):
+                    step = f"[{index}]"
+                case MIROptionalPayload():
+                    step = "[payload]"
+                case MIRUnionPayload(alternative=alternative):
+                    step = f"[alt{alternative}]"
+                case MIRContainerStructure():
+                    step = "[structure]"
+                case MIRContainerElements():
+                    step = "[elements]"
+                case _:
+                    continue  # a dereference stays on the record it points at
+            text += step
+            bare += step
+            alternatives = [a + step for a in alternatives]
+            holder = None
+        if text != bare:
+            self.ambiguous.setdefault(bare, set()).update(alternatives)
+        return text
 
 
 def _written_kind(place: MIRPlace, slot: MIRSlot) -> MIRValueKind | None:
@@ -494,6 +540,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
     if fn is None or analyses is None:
         return None
     slots = {slot.id: slot for slot in fn.slots}
+    _spell = _Spelling(fn)
     by_name: dict[str, dict[str, list[MIRSlotId]]] = {}
     for slot in fn.slots:
         selector = _SELECTORS.get(slot.kind)
@@ -576,7 +623,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
                 if member.loc is None:
                     continue
                 lines.add(member.loc.line)
-                spelled = f"{named[receiver.id]}.{field.id.name}"
+                spelled = _spell(MIRPlace(receiver.id, (MIRDeref(), field)), named)
                 kind = MIRValueKind.SCALAR if member.mode is MIRMemberInitMode.SCALAR else MIRValueKind.OWNED
                 writes.setdefault((member.loc.line, spelled), []).append(
                     MIRLineWrite(fn.entry.index, kind, member.mode is MIRMemberInitMode.COPY))
@@ -605,7 +652,8 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
         {key: tuple(found) for key, found in replaced.items()},
         {key: tuple(found) for key, found in borrows.items()},
         borrows_gap=dependencies.reason if isinstance(dependencies, MIRNotCovered) else None,
-        events_gap=events.reason if isinstance(events, MIRNotCovered) else None)
+        events_gap=events.reason if isinstance(events, MIRNotCovered) else None,
+        ambiguous=MappingProxyType({bare: tuple(sorted(found)) for bare, found in _spell.ambiguous.items()}))
 
 
 # --- the dump ---------------------------------------------------------------------

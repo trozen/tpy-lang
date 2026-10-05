@@ -485,6 +485,7 @@ class CodeGenerator:
         # the live module). Running it earlier would mis-qualify those types.
         from ..thir.lower import (
             iter_module_callables as _thir_callables,
+            iter_inherited_constructors as _thir_inherited_ctors,
             iter_module_constructors as _thir_ctors,
             lower_constructor as _thir_lower_ctor,
             lower_function as _thir_lower,
@@ -595,6 +596,9 @@ class CodeGenerator:
                 continue
             self.ctx.thir_constructors[init] = tc
             commit_attempt()
+        self.ctx.thir_inherited_constructors = IdentityMap()
+        for rec, inherited in _thir_inherited_ctors(module, self.analyzer):
+            self.ctx.thir_inherited_constructors[rec] = inherited
         raise_deferred_rejects()
 
         hpp = io.StringIO()

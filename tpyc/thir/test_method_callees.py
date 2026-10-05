@@ -761,11 +761,25 @@ def kept() -> Program:
     return Program(KEPT)
 
 
-@pytest.mark.parametrize("record,name", [("Box", "value"), ("Box", "get"), ("Base", "size"), ("Child", "size")])
-def test_generic_virtual_and_derived_owners_keep_accessors_unresolved(kept: Program, record: str, name: str) -> None:
+def _calls_on(program: Program, record: str, name: str) -> list[th.THIRMethodCall]:
+    return [c for c in nodes(program.fn(None, "use"), th.THIRMethodCall)
+            if c.method_cpp == name and unwrap_ref_type(c.receiver.result_type).name == record]
+
+
+@pytest.mark.parametrize("record,name", [("Box", "value"), ("Box", "get"), ("Base", "size")])
+def test_generic_and_virtual_owners_keep_accessors_unresolved(kept: Program, record: str, name: str) -> None:
     assert all(fn.resolved_callee is None for fn in kept.functions.get((record, name), []))
-    calls = [c for c in nodes(kept.fn(None, "use"), th.THIRMethodCall) if c.method_cpp == name]
+    calls = _calls_on(kept, record, name)
     assert calls and all(c.resolved_callee is None for c in calls)
+
+
+def test_a_derived_owner_resolves_its_own_accessor(kept: Program) -> None:
+    # A record with a plain parent is modeled: its own getter is a callee.
+    call, = _calls_on(kept, "Child", "size")
+    callee = call.resolved_callee
+    assert callee is not None and callee.identity.owner == "__main__.Child" and callee.identity.accessor == "fget"
+    assert callee.signature.param_types[0].name == "Child" and call.receiver_access.type.name == "Child"
+    assert kept.fn("Child", "size").resolved_callee == callee
 
 
 def test_class_generator_and_auto_own_methods_keep_no_callee(kept: Program) -> None:
@@ -864,7 +878,6 @@ def test_sema_links_each_mutable_clone_to_its_const_clone(accessors: Program) ->
     ("Plain", "generic", "generic"),    # generic method
     ("Plain", "put", "put"),            # a @dispatch group has two bodies
     ("Box", "get", "get"),              # generic record
-    ("Child", "extra", "extra"),        # record with a parent
 ])
 def test_an_unproven_call_target_has_no_callee_at_either_side(negatives: Program, record: str, name: str,
                                                               member: str | None) -> None:

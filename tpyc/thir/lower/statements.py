@@ -198,7 +198,8 @@ from ..reject import (
     stmt_reject_reason,
 )
 from ..scalar_leaves import (
-    binds_cursor, binds_element, container_view, native_container_subject, native_container_type, storage_leaf,
+    binds_cursor, binds_element, container_view, native_container_subject, native_container_type, record_owner,
+    storage_leaf,
 )
 from ..nodes import (
     HoistDecl,
@@ -4036,7 +4037,7 @@ def _handler_binding_type(h: TpyExceptHandler, analyzer) -> 'NominalType | None'
     rec = analyzer.registry.find_record_by_qname(h.exception_type)
     if rec is None:
         return None
-    return NominalType(rec.name, _module_qname=rec.qualified_name())
+    return record_owner(rec)
 
 def _error_return_stmt_fi(expr: TpyExpr, analyzer):
     """The FunctionInfo when `expr` is an @error_return call handled at

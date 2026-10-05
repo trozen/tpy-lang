@@ -8,6 +8,7 @@ from dataclasses import replace
 from ..storage_facts import collect_storage_facts
 from ..temp_plan import prepare_temporaries
 from .callables import method_definition, method_receiver, resolved_definition
+from ..scalar_leaves import record_owner
 from .storage import borrowed_record, native_container, optional_layout, record_layout, tuple_parameter_layout
 from ...identity_map import IdentityMap
 from ...liveness import stmts_terminate
@@ -93,6 +94,7 @@ from ..faces import witness as _witness
 from ..validate import _iter_children, validate_constructor, validate_function
 from ..nodes import (
     THIRBaseInit,
+    THIRInheritedConstructor,
     THIRConstructor,
     THIRExpr,
     THIRFunction,
@@ -1118,7 +1120,9 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
             note("ctor.base_init")
             return None
         layout = record_layout(self_type, analyzer)
-        identities = {f.name: f for f in layout.fields} if layout else {}
+        # Own fields only: an `__init__` assignment initializes the record's own
+        # member, while a shadowed ancestor field of the same name is the base's.
+        identities = {f.name: f for f in layout.fields if f.owner == layout.type} if layout else {}
         field_inits: list[THIRMilInit] = []
         field_init_names: list[str] = []  # parallel to field_inits
         mil_done_fields: set[str] = set()  # own fields already hoisted
@@ -1460,7 +1464,7 @@ def _lower_base_inits(init_method: TpyFunction, ri, declared: dict[str, TpyType]
             continue
         entries.append((parent_order[p_info],
                         THIRBaseInit(base_cpp=record_base_cpp(ri, base_type),
-                                     args=())))
+                                     args=(), base=record_owner(p_info))))
     entries.sort(key=lambda e: e[0])
     return [bi for _, bi in entries]
 
@@ -1690,8 +1694,12 @@ def _lower_base_init(stmt: TpyStmt, ri: RecordInfo, declared: dict[str, TpyType]
         if not _eligible_scalar(analyzer.get_expr_type(a)):
             _witness("baseinit.nonscalar_arg")
         args.append(_lower_base_init_arg(a, lc, declared, none_cpp=none_cpp))
+    base_info = analyzer.registry.get_record_for_type(base_type)
+    if base_info is None:
+        return None
     return (THIRBaseInit(base_cpp=record_base_cpp(ri, base_type),
-                         args=tuple(args)),
+                         args=tuple(args),
+                         base=record_owner(base_info)),
             base_type)
 
 def _method_self_type(record, analyzer) -> 'TpyType | None':
@@ -1713,7 +1721,7 @@ def _method_self_type(record, analyzer) -> 'TpyType | None':
             for i, p in enumerate(record.type_params))
         return NominalType(record.name, type_args=args,
                            _module_qname=ri.qualified_name())
-    return NominalType(record.name, _module_qname=ri.qualified_name())
+    return record_owner(ri)
 
 def method_self_type_by_name(record_name: str, analyzer) -> 'TpyType | None':
     """`_method_self_type` from the record NAME (the resumable entry has the
@@ -1730,7 +1738,7 @@ def method_self_type_by_name(record_name: str, analyzer) -> 'TpyType | None':
             for i, p in enumerate(ri.type_params))
         return NominalType(record_name, type_args=args,
                            _module_qname=ri.qualified_name())
-    return NominalType(record_name, _module_qname=ri.qualified_name())
+    return record_owner(ri)
 
 def unemitted_overload_clones(module: TpyModule, analyzer) -> set[int]:
     """ids of the auto_readonly / auto_own CLONE of an @overload impl whose
@@ -1803,6 +1811,27 @@ def iter_module_constructors(module: TpyModule, analyzer):
         if self_type is None:
             continue
         yield record, init, self_type
+
+def iter_inherited_constructors(module: TpyModule, analyzer):
+    """Yield `(record, THIRInheritedConstructor)` for every record of
+    `module` that emits `using Base::Base;` (`inherits_init_from`) with one
+    direct base, no own fields and no own special members. Every other
+    inherited-constructor shape (a mixin's default-constructed second base,
+    an own field with a default, own copy / move / destructor) publishes
+    nothing."""
+    for record in module.all_records():
+        info = analyzer.registry.get_record(record.name)
+        if (info is None or record.init_method is not None or info.inherits_init_from is None
+                or len(info.parents) != 1 or info.fields
+                or info.has_copy or info.has_move or info.has_del or info.is_nocopy):
+            continue
+        base = analyzer.registry.get_record_for_type(info.inherits_init_from)
+        if base is None or analyzer.registry.get_record_for_type(info.parents[0]) is not base:
+            continue
+        self_type = _method_self_type(record, analyzer)
+        layout = record_layout(self_type, analyzer) if self_type is not None else None
+        if layout is not None:
+            yield record, THIRInheritedConstructor(layout, record_owner(base))
 
 def module_native_globals(module: TpyModule) -> dict[str, str]:
     """Module-level vars with non-DEFAULT linkage, name -> C/C++ symbol:

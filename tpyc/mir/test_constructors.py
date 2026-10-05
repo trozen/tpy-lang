@@ -8,7 +8,7 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
-from ..typesys import BOOL, INT32
+from ..typesys import BOOL, INT32, NominalType
 from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
@@ -129,7 +129,8 @@ def test_body_coverage_does_not_relax_constructor_call_summary(artifacts: Artifa
     (lambda c: replace(c, mil_inits=(replace(c.mil_inits[0], field_identity=None),)), "field identity"),
     (lambda c: replace(c, record_layout=None), "missing record layout"),
     (lambda c: replace(c, params=(replace(c.params[0], type=BOOL),)), "needs parameter"),
-    (lambda c: replace(c, base_inits=(th.THIRBaseInit("Base", ()),)), "base_inits"),
+    (lambda c: replace(c, base_inits=(th.THIRBaseInit("Base", (), NominalType("Base")),)),
+     "base constructor identity"),
 ])
 def test_incomplete_or_unsupported_initialization_fails_closed(
     artifacts: Artifacts, change: Callable[[th.THIRConstructor], th.THIRConstructor], reason: str,

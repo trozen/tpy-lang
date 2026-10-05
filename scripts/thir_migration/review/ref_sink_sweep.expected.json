@@ -21927,7 +21927,7 @@
  "rec__ctor__subclass_local__decl_alias": [
   "ok",
   "",
-  "%x: Sub = %s0 %x.x = binop(%x.x, +, lit(1)) print(%s0.x [raw])"
+  "%x: Sub = %s0 %x.x <R::x> = binop(%x.x <R::x>, +, lit(1)) print(%s0.x <R::x> [raw])"
  ],
  "rec__ctor__subclass_local__decl_reassigned": [
   "sema:Type mismatch in reassignment to 'x': expected Sub, got R",
@@ -21937,22 +21937,22 @@
  "rec__ctor__subclass_local__field_write": [
   "ok",
   "copies Sub into field; use copy() to make this explicit",
-  "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) print(%s0.x [raw])"
+  "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) print(%s0.x <R::x> [raw])"
  ],
  "rec__ctor__subclass_local__match_capture": [
   "ok",
   "",
-  "hoist %v: Sub* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
+  "hoist %v: Sub* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x <R::x> = binop(%v->x <R::x>, +, lit(1)) print(%s0.x <R::x> [raw])"
  ],
  "rec__ctor__subclass_local__recv_mut": [
   "ok",
   "",
-  "%s0.x = binop(%s0.x, +, lit(1)) print(%s0.x [raw])"
+  "%s0.x <R::x> = binop(%s0.x <R::x>, +, lit(1)) print(%s0.x <R::x> [raw])"
  ],
  "rec__ctor__subclass_local__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Sub, int32] = borrow_tuple<std::tuple<Sub*, int32_t>>(&%s0, lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%s0.x [raw])"
+  "%t: tuple[Sub, int32] = borrow_tuple<std::tuple<Sub*, int32_t>>(&%s0, lit(1)) %t[0] [borrow]->x <R::x> = binop(%t[0] [borrow]->x <R::x>, +, lit(1)) print(%s0.x <R::x> [raw])"
  ],
  "rec__ctor__subscript__decl_alias": [
   "ok",
@@ -22542,7 +22542,7 @@
  "rec__fn__subclass_local__decl_alias": [
   "ok",
   "",
-  "%x: Sub = %s0 %x.x = binop(%x.x, +, lit(1)) print(%s0.x [raw])"
+  "%x: Sub = %s0 %x.x <R::x> = binop(%x.x <R::x>, +, lit(1)) print(%s0.x <R::x> [raw])"
  ],
  "rec__fn__subclass_local__decl_reassigned": [
   "sema:Type mismatch in reassignment to 'x': expected Sub, got R",
@@ -22552,22 +22552,22 @@
  "rec__fn__subclass_local__field_write": [
   "ok",
   "copies Sub into field; use copy() to make this explicit",
-  "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) print(%s0.x [raw])"
+  "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) print(%s0.x <R::x> [raw])"
  ],
  "rec__fn__subclass_local__match_capture": [
   "ok",
   "",
-  "hoist %v: Sub* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
+  "hoist %v: Sub* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x <R::x> = binop(%v->x <R::x>, +, lit(1)) print(%s0.x <R::x> [raw])"
  ],
  "rec__fn__subclass_local__recv_mut": [
   "ok",
   "",
-  "%s0.x = binop(%s0.x, +, lit(1)) print(%s0.x [raw])"
+  "%s0.x <R::x> = binop(%s0.x <R::x>, +, lit(1)) print(%s0.x <R::x> [raw])"
  ],
  "rec__fn__subclass_local__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Sub, int32] = borrow_tuple<std::tuple<Sub*, int32_t>>(&%s0, lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%s0.x [raw])"
+  "%t: tuple[Sub, int32] = borrow_tuple<std::tuple<Sub*, int32_t>>(&%s0, lit(1)) %t[0] [borrow]->x <R::x> = binop(%t[0] [borrow]->x <R::x>, +, lit(1)) print(%s0.x <R::x> [raw])"
  ],
  "rec__fn__subscript__decl_alias": [
   "ok",
@@ -23442,7 +23442,7 @@
  "rec__meth__subclass_local__decl_alias": [
   "ok",
   "",
-  "%x: Sub = %s0 %x.x = binop(%x.x, +, lit(1)) print(%s0.x [raw])"
+  "%x: Sub = %s0 %x.x <R::x> = binop(%x.x <R::x>, +, lit(1)) print(%s0.x <R::x> [raw])"
  ],
  "rec__meth__subclass_local__decl_reassigned": [
   "sema:Type mismatch in reassignment to 'x': expected Sub, got R",
@@ -23452,22 +23452,22 @@
  "rec__meth__subclass_local__field_write": [
   "ok",
   "copies Sub into field; use copy() to make this explicit",
-  "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) print(%s0.x [raw])"
+  "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) print(%s0.x <R::x> [raw])"
  ],
  "rec__meth__subclass_local__match_capture": [
   "ok",
   "",
-  "hoist %v: Sub* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
+  "hoist %v: Sub* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x <R::x> = binop(%v->x <R::x>, +, lit(1)) print(%s0.x <R::x> [raw])"
  ],
  "rec__meth__subclass_local__recv_mut": [
   "ok",
   "",
-  "%s0.x = binop(%s0.x, +, lit(1)) print(%s0.x [raw])"
+  "%s0.x <R::x> = binop(%s0.x <R::x>, +, lit(1)) print(%s0.x <R::x> [raw])"
  ],
  "rec__meth__subclass_local__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Sub, int32] = borrow_tuple<std::tuple<Sub*, int32_t>>(&%s0, lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%s0.x [raw])"
+  "%t: tuple[Sub, int32] = borrow_tuple<std::tuple<Sub*, int32_t>>(&%s0, lit(1)) %t[0] [borrow]->x <R::x> = binop(%t[0] [borrow]->x <R::x>, +, lit(1)) print(%s0.x <R::x> [raw])"
  ],
  "rec__meth__subscript__decl_alias": [
   "ok",
@@ -24042,7 +24042,7 @@
  "rec__nested__subclass_local__decl_alias": [
   "ok",
   "",
-  "%x: Sub = %s0 %x.x = binop(%x.x, +, lit(1)) print(%s0.x [raw]) call(nested_inner, [])"
+  "%x: Sub = %s0 %x.x <R::x> = binop(%x.x <R::x>, +, lit(1)) print(%s0.x <R::x> [raw]) call(nested_inner, [])"
  ],
  "rec__nested__subclass_local__decl_reassigned": [
   "sema:Type mismatch in reassignment to 'x': expected Sub, got R",
@@ -24052,7 +24052,7 @@
  "rec__nested__subclass_local__field_write": [
   "ok",
   "copies Sub into field; use copy() to make this explicit",
-  "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) print(%s0.x [raw]) call(nested_inner, [])"
+  "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) print(%s0.x <R::x> [raw]) call(nested_inner, [])"
  ],
  "rec__nested__subclass_local__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -24062,12 +24062,12 @@
  "rec__nested__subclass_local__recv_mut": [
   "ok",
   "",
-  "%s0.x = binop(%s0.x, +, lit(1)) print(%s0.x [raw]) call(nested_inner, [])"
+  "%s0.x <R::x> = binop(%s0.x <R::x>, +, lit(1)) print(%s0.x <R::x> [raw]) call(nested_inner, [])"
  ],
  "rec__nested__subclass_local__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Sub, int32] = borrow_tuple<std::tuple<Sub*, int32_t>>(&%s0, lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%s0.x [raw]) call(nested_inner, [])"
+  "%t: tuple[Sub, int32] = borrow_tuple<std::tuple<Sub*, int32_t>>(&%s0, lit(1)) %t[0] [borrow]->x <R::x> = binop(%t[0] [borrow]->x <R::x>, +, lit(1)) print(%s0.x <R::x> [raw]) call(nested_inner, [])"
  ],
  "rec__nested__subscript__decl_alias": [
   "ok",

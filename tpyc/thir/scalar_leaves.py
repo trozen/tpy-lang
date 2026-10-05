@@ -4,8 +4,9 @@ from ..type_def_registry import (
     NativeMembers, float_traits_of, int_traits_of, is_borrowing_view_type, type_def_of, zero_value_of,
 )
 from ..typesys import (
-    NominalType, OwnType, ReadonlyType, Representation, TpyType, TypeParamRef, is_inert_leaf, is_owned_leaf,
-    is_primitive_owned_leaf, unwrap_readonly, unwrap_ref_type, view_family_of, view_owned_leaf,
+    NominalType, OwnType, ReadonlyType, RecordInfo, Representation, TpyType, TypeParamRef, TypeRegistry,
+    is_inert_leaf, is_owned_leaf, is_primitive_owned_leaf, record_owner, unwrap_readonly, unwrap_ref_type,
+    view_family_of, view_owned_leaf,
 )
 
 
@@ -175,13 +176,47 @@ def modeled_members(typ: object) -> bool:
 _ELEMENT_DISPATCH_DUNDERS = ("__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__", "__hash__")
 
 
+def modeled_hierarchy(info: RecordInfo) -> tuple[RecordInfo, ...] | None:
+    """`info` and its struct-base ancestors (`TypeRegistry.is_struct_base`),
+    in MRO order, nearest first, when MIR models every one of them as a
+    plain user record: not native, not a value type, not a typed dict, not
+    generic (nor reached through a generic base), and no exception -- a
+    return exception's `Exception` base builds no struct, so the ancestor
+    walk alone would not refuse it. None otherwise, or when an ancestor does
+    not resolve. Asked under the compilation that registered the records."""
+    chain = [info]
+    for ancestor in info.mro_ancestors:
+        if not isinstance(ancestor, NominalType) or ancestor.type_args:
+            return None
+        td = type_def_of(ancestor)
+        record = td.record if td is not None else None
+        if record is None:
+            return None
+        if TypeRegistry.is_struct_base(info, record):
+            chain.append(record)
+    if any(r.is_native or r.is_value_type or r.is_typed_dict or r.type_params
+           or r.is_return_exception or r.implements_throwable for r in chain):
+        return None
+    return tuple(chain)
+
+
+def modeled_ancestors(typ: object) -> tuple[NominalType, ...] | None:
+    """The struct-base ancestors of a modeled record `typ`
+    (`modeled_hierarchy`), MRO order, nearest first, each spelled as an
+    identity (`record_owner`); None for any other type."""
+    td = type_def_of(typ) if record_type(typ) else None
+    chain = modeled_hierarchy(td.record) if td is not None and td.record is not None else None
+    return None if chain is None else tuple(record_owner(r) for r in chain[1:])
+
+
 def plain_record_element(typ: object) -> bool:
     """A record a native container may hold as an element MIR models: a
-    non-generic, non-native reference record with no parents, no custom
-    copy, move or destructor, no comparison or hash dunder (so no container
-    operation can run user code on it), and whose fields are scalar leaves
-    or owned leaves (so an element place is at most one field deep). Asked
-    under the compilation that registered the record."""
+    record whose struct hierarchy MIR models (`modeled_hierarchy`) where no
+    record declares a custom copy, move or destructor or a comparison or
+    hash dunder (so no container operation can run user code on it), and
+    whose fields -- inherited ones included -- are scalar leaves or owned
+    leaves (so an element place is at most one field deep). Asked under the
+    compilation that registered the record."""
     if not record_type(typ):
         return False
     td = type_def_of(typ)
@@ -189,14 +224,12 @@ def plain_record_element(typ: object) -> bool:
         # As `record_type`: a record with no TypeDef (lowered outside its
         # compilation) reads as plain rather than failing closed.
         return True
-    info = td.record
-    if (info is None or info.is_native or info.is_value_type or info.is_typed_dict
-            or info.parents or info.type_params
-            or info.has_copy or info.has_move or info.has_del):
+    chain = modeled_hierarchy(td.record) if td.record is not None else None
+    if chain is None or any(r.has_copy or r.has_move or r.has_del for r in chain):
         return False
-    if any(info.get_method_overloads(name) for name in _ELEMENT_DISPATCH_DUNDERS):
+    if any(r.get_method_overloads(name) for r in chain for name in _ELEMENT_DISPATCH_DUNDERS):
         return False
-    return all(storage_leaf(f.type) or owned_leaf(f.type) for f in info.fields)
+    return all(storage_leaf(f.type) or owned_leaf(f.type) for r in chain for f in r.fields)
 
 
 def container_element(typ: object) -> bool:
