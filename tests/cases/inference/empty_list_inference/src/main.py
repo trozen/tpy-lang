@@ -24,8 +24,10 @@ def test_multiple_append() -> None:
     print(xs)
 
 def test_numeric_widen() -> None:
+    # A literal first store starts the element at the default int, and a
+    # wider typed store widens it, as for `xs = [1]`.
     xs = []  # tpyc: type(list[int64])
-    xs.append(int32(1))
+    xs.append(1)
     xs.append(int64(2))
     print(xs)
 
@@ -44,8 +46,11 @@ def test_param_context() -> None:
     takes_list(xs)
 
 def test_param_overrides_inferred() -> None:
+    # A literal first store leaves the element open, so the parameter
+    # widens it (a typed `int32` first store would decide it, as `[int32(1)]`
+    # does, and the parameter would be refused).
     xs = []  # tpyc: type(list[int])
-    xs.append(int32(1))
+    xs.append(1)
     takes_list(xs)
 
 def test_alias_inference() -> None:

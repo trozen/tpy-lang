@@ -974,10 +974,44 @@ widen: it is settled at that binding (`PendingNums.decide_at_birth`), as
 a local first bound to a typed value has that value's type, and every
 later store, container and generic context must fit it.
 How a list method or a protocol uses the element -- not at all, as a
-value in or out, inside another type -- is asked of the stub signature by
-one classifier (`tpyc/sema/list_elem.py`). Lists the cell does not cover
-(empty-seeded, module-level, non-numeric or tuple elements) keep the older
-element record on `ListLiteralInfo` and its read guard.
+value in or out, inside another type, as values the list then holds
+(`extend`, `__iadd__`: each is a store, `PendingNums.store_elements`) -- is
+asked of the stub signature by one classifier (`tpyc/sema/list_elem.py`).
+
+An empty list (`[]`, `list()`) bound to an unannotated function local has
+no family until something gives it one, so its cell is born at the first
+evidence. `PendingNums.cell_list` answers "a cell list, born or not" -- the
+cell, or the record of an empty list that may still take one
+(`seedable`) -- and every store and context site switches on it once. One
+birth helper (`PendingNums.new_list_cell`) serves the literal binding
+(`StatementAnalyzer._bind_list_elem_cell`) and the lazy birth alike: a
+literal starts a default-based cell, a typed value decides it there, so an
+empty list behaves as the literal its first value would have written. The
+evidence is a number stored into it (`seed_by_store` / `seed_by_stores`,
+reached from the element store chokepoint
+`LocalTypeDeduction.update_list_element_type`, a subscript store through
+`store_value`, and `store_elements` for `extend` / `+=`), a typed container
+it meets under `commit` (`seed_by_context`, from
+`TypeCompatibility._empty_list_at_container`, which also takes a declared
+numeric view, and from the select pin), or a list literal it is rebound to
+(`share_cell`). A value the sink let through pending because the list was
+seedable, which then seeded nothing, is forced in one place
+(`PendingNums.unseeded`). The alias and rebinding edges
+(`ListLiteralInfo.source_literal_id`) point one way and are no rooted tree,
+so birth sets the cell on every record connected to the seeded one
+(`PendingNums._connected`, cycle-safe), and names the cell after the first
+binding's record. A type taken before the birth -- a name read, or a
+binding a loop scope restored -- still shows the unknown element; nothing
+patches it in place: `list_cell` keys on the record, so any reader that
+asks for the cell finds it, the cell-reading helpers (`list_as_known`,
+`list_so_far`) replace the element, and finalization rewrites such a node
+to the record's resolved type (`SemanticContext.set_expr_type` records it,
+`LocalTypeDeduction._finalize_pending_in_bindings`). Lists the cell does
+not cover (module-level, non-numeric, tuple or nested elements, and an
+empty list a nested body stores into first,
+`BUGS.md#empty-list-nested-first-store-rejected`) keep the older element
+record on `ListLiteralInfo` and its read guard; no function-local list of
+scalar numbers reaches that path.
 
 Who owns what: the prescan decides which locals are pending, before the
 body is analyzed. The `SemanticContext` holds the cells

@@ -38,7 +38,7 @@ int_float_or_condition
 int_widen_ternary: 3
 float_ternary: 1.5
 int_float_declared_list: 1.5
-int_widen_usage: 3 5000000000
+int_widen_usage: 1 5000000000
 int_float_return: 1.5 1.5
 int_float_arg_ternary: 1.5
 int_float_arg_or: 1.5
@@ -54,7 +54,7 @@ int_float_or_condition
 int_widen_ternary: 5000000000
 float_ternary: 2.5
 int_float_declared_list: 0.0
-int_widen_usage: 0 5000000000
+int_widen_usage: 1 5000000000
 int_float_return: 1.25 1.25
 int_float_arg_ternary: 1.25
 int_float_arg_or: 1.25

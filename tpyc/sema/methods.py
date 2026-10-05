@@ -199,11 +199,14 @@ class MethodAnalyzer:
             slot = elem if self.expr.pend.slot_containers(elem) else None
             values = [elem_use(p.type, type_param_names) is ElemUse.VALUE
                       for p in overload.params]
+            # A value stored into an empty list that a number seeds is one
+            # more value of the literal it could have been written as.
+            seedable = self.expr.pend.seedable(obj_type) is not None
             pre_analyzed = [
                 self.expr.analyze_at_slot(arg, slot, CoercionContext.ARG)
                 if slot is not None and value
                 and not isinstance(arg, TpyStarUnpack)
-                else self.expr.analyze_call_arg(arg)
+                else self._analyze_stored_arg(arg, seedable and value)
                 for arg, value in zip(expr.args, values)]
 
             # Infer element type from params that take the element as a
@@ -214,6 +217,10 @@ class MethodAnalyzer:
             for i in inferring_indices:
                 if values[i]:
                     infer_fn(expr.obj, pre_analyzed[i], expr.args[i])
+            if seedable:
+                pre_analyzed = [
+                    self.expr.pend.unseeded(obj_type, arg, t)
+                    for arg, t in zip(expr.args, pre_analyzed)]
 
             # Update obj_type if element type changed
             info = literals_dict.get(literal_id)
@@ -229,6 +236,39 @@ class MethodAnalyzer:
             self.ctx.func.pre_analyzed_method_args[expr] = pre_analyzed
             return obj_type
         return None
+
+    def _analyze_stored_arg(self, arg: TpyExpr, pending_ok: bool) -> TpyType:
+        """An argument of a method of a pending container; `pending_ok`
+        says it is a value the list may take with a pending type."""
+        with self.expr.pend.sink(arg if pending_ok else None):
+            return self.expr.analyze_call_arg(arg)
+
+    def _elements_store_call(
+            self, expr: TpyMethodCall, obj_type: TpyType,
+    ) -> 'tuple[TpyType, PendingNumCell | None] | None':
+        """A method whose one argument is values the list then holds
+        (`extend`; `ElemSignature.stores_elements`), on a list literal whose
+        element a cell decides or an empty list a number seeds: each value
+        is a store (`PendingNums.store_elements`), so the element widens
+        or is checked as for `append`, and the call is resolved at the
+        element known so far and re-resolved once it settles. An argument
+        that says nothing about its elements' types decides the element
+        first. Returns the receiver as the call sees it and the cell; None
+        for any other call."""
+        pend = self.expr.pend
+        if pend.cell_list(obj_type) is None:
+            return None
+        if (expr.kwargs or len(expr.args) != 1
+                or isinstance(expr.args[0], TpyStarUnpack)):
+            return None
+        overloads = list_overloads(self.ctx, expr.method, 1)
+        if len(overloads) != 1 or not overloads[0][1].stores_elements:
+            return None
+        arg = expr.args[0]
+        arg_type = self.expr.analyze_call_arg(arg)
+        self.ctx.func.pre_analyzed_method_args[expr] = [arg_type]
+        return pend.store_elements_at(expr.obj, obj_type, arg, arg_type,
+                                      expr, f"a call to '{expr.method}()'")
 
     def _elem_cell_method(self, expr: TpyMethodCall, obj_type: TpyType,
                           cell: 'PendingNumCell') -> TpyType:
@@ -808,7 +848,10 @@ class MethodAnalyzer:
         # container's type parameters. If so, pre-analyze the args and infer
         # the element type (generalizes append/insert/add/etc.).
         elem_cell = self.expr.pend.list_cell(obj_type)
-        if elem_cell is not None:
+        stored = self._elements_store_call(expr, obj_type)
+        if stored is not None:
+            obj_type, elem_cell = stored
+        elif elem_cell is not None:
             obj_type = self._elem_cell_method(expr, obj_type, elem_cell)
         elif isinstance(obj_type, PendingListType) and expr.args:
             obj_type = self._infer_pending_container_element(
@@ -817,6 +860,11 @@ class MethodAnalyzer:
                 lambda elem, lid: PendingListType(elem, obj_type.size, lid),
                 self.ctx.list_literals,
             ) or obj_type
+            # A number the call stored into an empty list seeded its cell;
+            # the call is resolved at the element as the cell has it.
+            elem_cell = self.expr.pend.list_cell(obj_type)
+            if elem_cell is not None:
+                obj_type = self.expr.pend.list_as_known(obj_type, elem_cell)
         elif isinstance(obj_type, PendingSetType) and expr.args:
             obj_type = self._infer_pending_container_element(
                 expr, obj_type, "builtins.set", obj_type.literal_id,

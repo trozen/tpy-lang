@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Iterator, NamedTuple
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, OwnType, ReadonlyType,
-    FinalType, PendingNumType,
+    FinalType,
     PendingListType, PendingDictType, make_list, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType,
     is_c_abi_allowed, is_c_abi_element_allowed, c_abi_type_hint,
@@ -132,7 +132,8 @@ from .expressions import (_nested_def_free_names, _find_list_member,
                           _names_rebound_by, generic_constructor_factory)
 from .pending_num import (PendingNums, PendingNumCell, value_family,
                           is_numeric_slot, is_pending_num,
-                          strip_int)
+                          strip_int, with_list_elem)
+from .list_elem import list_overloads
 from .slot_hint import SlotHint
 from .local_deduction import (
     collect_pending_source_types, mark_pending_list_mutated,
@@ -5486,13 +5487,25 @@ class StatementAnalyzer:
                 coercion_ctx=CoercionContext.ASSIGN)
         return var_type, value_expr
 
-    def _target_elem_cell(self, target: TpyExpr) -> PendingNumCell | None:
-        """The cell a store through `target` writes to: the element cell of
-        the list literal `target` indexes."""
+    def _indexed_list(self, target: TpyExpr) -> TpyType | None:
+        """The list a store through `target` writes one element of."""
         if (not isinstance(target, TpySubscript)
                 or isinstance(target.index, TpySlice)):
             return None
-        return self.pend.list_cell(self.ctx.get_raw_expr_type(target.obj))
+        return self.ctx.get_raw_expr_type(target.obj)
+
+    def _target_cell_list(
+            self, target: TpyExpr,
+    ) -> PendingNumCell | ListLiteralInfo | None:
+        """What decides the element a store through `target` writes, when
+        `target` indexes a cell list, born or not
+        (`PendingNums.cell_list`)."""
+        return self.pend.cell_list(self._indexed_list(target))
+
+    def _target_elem_cell(self, target: TpyExpr) -> PendingNumCell | None:
+        """The cell a store through `target` writes to: the element cell of
+        the list literal `target` indexes."""
+        return self.pend.list_cell(self._indexed_list(target))
 
     def _bind_list_elem_cell(self, name: str, site: TpyStmt,
                              value: TpyExpr | None,
@@ -5501,9 +5514,9 @@ class StatementAnalyzer:
         """A non-empty list literal of scalar numbers bound to unannotated
         function local `name`: from here on its element is decided by a
         cell every use of the list refers to (`PendingNums.new_elem_cell`),
-        and the literal's values are the first it holds. A literal that
-        rebinds a name whose list has such a cell joins that cell: one
-        local, one element type. Returns the value's type, naming the cell."""
+        and the literal's values are the first it holds; a literal that
+        rebinds a cell list joins its cell (`PendingNums.bind_list`).
+        Returns the value's type, naming the cell."""
         if (self.ctx.is_top_level or self.ctx.trial_depth
                 or not isinstance(value_type, PendingListType)
                 or not isinstance(value, (TpyArrayLiteral, TpyListRepeat))):
@@ -5512,51 +5525,21 @@ class StatementAnalyzer:
         if (info is None or info.elem_cell is not None
                 or info.has_explicit_annotation or info.is_global):
             return value_type
-        target = (self.pend.list_cell(existing_type)
-                  if existing_type is not None else None)
-        if existing_type is not None and target is None:
-            return value_type
-        if not value.elements and target is None:
+        existing = (self.pend.cell_list(existing_type)
+                    if existing_type is not None else None)
+        if existing_type is not None and existing is None:
             return value_type
         types = [strip_int(self.ctx.get_expr_type(e)) for e in value.elements]
         families = {value_family(t) for t in types}
         if len(families) != 1 or None in families:
             return value_type
-        is_float = bool(next(iter(families)))
-        if target is not None and target.is_float != is_float:
-            # An int list rebound to floats: the rebinding refuses it in
-            # its own words.
+        cell = self.pend.bind_list(
+            existing, info, name,
+            site if isinstance(site, TpyVarDecl) else None,
+            bool(next(iter(families))), list(zip(types, value.elements)),
+            site)
+        if cell is None:
             return value_type
-        # A literal, a literal-seeded local (`int_literal_values`: its
-        # first binding is a literal, pending or not) or a pending element
-        # read seeds the list as a literal of its family: a default base
-        # the stores widen. A typed value decides the element here.
-        literal = [isinstance(t, (IntLiteralType, FloatLiteralType,
-                                  PendingNumType))
-                   or (isinstance(e, TpyName)
-                       and e.name in self.ctx.func.int_literal_values)
-                   for e, t in zip(value.elements, types)]
-        born = target is None
-        if born:
-            target = self.pend.new_elem_cell(
-                name, value_type.literal_id,
-                site if isinstance(site, TpyVarDecl) else None, is_float,
-                no_base=not all(literal))
-        stores = list(zip(value.elements, types))
-        if born and target.no_base:
-            # The typed values decide the element here; the literals
-            # beside them adapt to it, as a literal stored later does.
-            stores = ([s for s, lit in zip(stores, literal) if not lit]
-                      + [s for s, lit in zip(stores, literal) if lit])
-            typed = sum(1 for lit in literal if not lit)
-            for elem, t in stores[:typed]:
-                self.pend.elem_store(target, t, elem, site)
-            self.pend.decide_at_birth(target, site)
-            stores = stores[typed:]
-        for elem, t in stores:
-            self.pend.elem_store(target, t, elem, site)
-        info.elem_cell = target.cid
-        info.element_type = self.pend.elem_leaf(target)
         bound = PendingListType(info.element_type, value_type.size,
                                 value_type.literal_id)
         self.ctx.set_expr_type(value, bound)
@@ -7101,7 +7084,10 @@ class StatementAnalyzer:
                                     if isinstance(stmt.target, TpyName)
                                     else None):
             target_type = self.expr.analyze_expr(stmt.target)
+        into = self._target_cell_list(stmt.target)
         elem_cell = self._target_elem_cell(stmt.target)
+        name_list = (self.pend.cell_list(target_type)
+                     if isinstance(stmt.target, TpyName) else None)
         list_cell = (self.pend.list_cell(target_type)
                      if isinstance(stmt.target, TpyName) else None)
         self._check_class_constant_write(stmt.target, stmt)
@@ -7149,7 +7135,7 @@ class StatementAnalyzer:
         # A store into a local, or into a numeric field, is a consumer a
         # pending number reaches.
         numeric_store = (isinstance(stmt.target, TpyName)
-                         or elem_cell is not None
+                         or into is not None
                          or (isinstance(stmt.target, TpyFieldAccess)
                              and is_numeric_slot(target_type)))
         store_cell = pending_cell if pending_cell is not None else elem_cell
@@ -7159,6 +7145,9 @@ class StatementAnalyzer:
         elif list_cell is not None:
             value_hint = SlotHint.inferred_local(
                 self.pend.list_so_far(target_type, list_cell))
+        elif into is not None:
+            # The element is not known yet: the value seeds it.
+            value_hint = None
         else:
             value_hint = target_type
         with self.pend.sink(stmt.value if numeric_store else None), \
@@ -7168,11 +7157,14 @@ class StatementAnalyzer:
             value_type = (
                 self.expr.analyze_expr_with_hint(stmt.value, value_hint)
                 if store_cell is not None or list_cell is not None
+                or into is not None
                 else self.expr.analyze_at_slot(stmt.value, value_hint,
                                                CoercionContext.ASSIGN))
-        if elem_cell is not None:
-            self.pend.elem_store(elem_cell, value_type, stmt.value, stmt)
-        if list_cell is not None:
+        if into is not None:
+            elem_cell, value_type = self.pend.store_value(
+                self.ctx.get_raw_expr_type(stmt.target.obj), value_type,
+                stmt.value, stmt)
+        if name_list is not None:
             value_type = self._bind_list_elem_cell(
                 stmt.target.name, stmt, stmt.value, value_type, target_type)
         # NOTE: storing an ephemeral borrow into value storage (a field, a
@@ -7976,6 +7968,43 @@ class StatementAnalyzer:
             return False
         return True
 
+    def _list_aug_target(
+            self, stmt: TpyAugAssign, target_type: TpyType,
+            value_type: TpyType,
+    ) -> tuple[TpyType, PendingNumCell | None]:
+        """`xs op= v` on a list whose element a cell decides, or on an
+        empty list a number seeds. An in-place operator whose one argument
+        is values the list then holds (`+=`;
+        `ElemSignature.stores_elements`) stores each of them
+        (`PendingNums.store_elements`): the operator is resolved at the
+        element known so far, and re-resolved once it settles. Any other
+        decides the element first, as a use that needs it. Returns the
+        target as the operator sees it and the cell of a store."""
+        imethod = builtin_modules.AUGOP_TO_IMETHOD.get(stmt.op)
+        overloads = list_overloads(self.ctx, imethod, 1) if imethod else []
+        stores = len(overloads) == 1 and overloads[0][1].stores_elements
+        return self.pend.store_elements_at(
+            stmt.target, target_type, stmt.value if stores else None,
+            value_type, stmt, self.expr.describe_pending_use(stmt.target))
+
+    def _resolve_inplace_later(self, stmt: TpyAugAssign, target_type: TpyType,
+                               value_type: TpyType,
+                               cell: PendingNumCell) -> None:
+        """The in-place operator of a `+=` resolved against a list whose
+        element is not decided yet names the element known then. Once the
+        cell settles, resolve it at the element's type: it is what the
+        lowering reads the operator's slots from."""
+        operators = self.expr.operators
+
+        def resolve(types: tuple[TpyType, ...]) -> None:
+            result = operators.resolve_aug_inplace(
+                with_list_elem(target_type, types[0]), stmt.op, value_type,
+                loc_node=stmt)
+            if result is not None:
+                stmt.resolved_inplace = result
+
+        self.pend.defer(stmt, (self.pend.elem_leaf(cell),), resolve)
+
     def _pending_aug_assign(self, stmt: TpyAugAssign, target_type: TpyType,
                             value_type: TpyType,
                             elem_cell: PendingNumCell | None = None) -> None:
@@ -8079,10 +8108,13 @@ class StatementAnalyzer:
             # property by the field the target still carries.
             stmt.target.is_write_target = True
         # The target of a store is no use of a pending local, or of the
-        # element of a list literal.
+        # element of a list literal; a list's own `+=` may be a store into it.
         with self.pend.sink(stmt.target
                             if isinstance(stmt.target, (TpyName, TpySubscript))
-                            else None):
+                            else None), \
+                self.pend.list_sink(stmt.target
+                                    if isinstance(stmt.target, TpyName)
+                                    else None):
             target_type = unwrap_own(unwrap_ref_type(
                 self.expr.analyze_expr(stmt.target)))
         twice = declared_borrow_call_under(stmt.target)
@@ -8090,6 +8122,8 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 f"'{twice.func_name}(...)' is evaluated twice by an augmented "
                 f"assignment; bind it to a name first", twice)
+        list_target = (isinstance(stmt.target, TpyName)
+                       and self.pend.cell_list(target_type) is not None)
         elem_cell = self._target_elem_cell(stmt.target)
         # Augmented assignment on properties not yet supported
         if isinstance(stmt.target, TpyFieldAccess) and stmt.target.resolved_property_getter is not None:
@@ -8116,8 +8150,13 @@ class StatementAnalyzer:
             isinstance(stmt.target, (TpyName, TpyFieldAccess))
             and is_numeric_slot(target_type))
         with self.pend.sink(stmt.value if numeric_store else None):
-            value_type = (self.expr.analyze_expr(stmt.value) if seeded_target
+            value_type = (self.expr.analyze_expr(stmt.value)
+                          if seeded_target or list_target
                           else self.expr.analyze_expr_with_hint(stmt.value, target_type))
+        inplace_cell: PendingNumCell | None = None
+        if list_target:
+            target_type, inplace_cell = self._list_aug_target(
+                stmt, target_type, value_type)
         # Track mutation of for-each loop variables and parameters
         aug_root = _root_name_of_expr(stmt.target)
         if aug_root is not None:
@@ -8226,6 +8265,9 @@ class StatementAnalyzer:
                 target_type, stmt.op, value_type, loc_node=stmt,
             ):
                 stmt.resolved_inplace = result
+                if inplace_cell is not None and inplace_cell.settled is None:
+                    self._resolve_inplace_later(stmt, target_type,
+                                                value_type, inplace_cell)
                 if result.method.params:
                     _, param_type = result.method.params[0]
                     self.compat.check_type_compatible(

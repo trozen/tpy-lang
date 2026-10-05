@@ -1,2 +1,2 @@
-main.py:43: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
-main.py:63: warning: copies Counter into owned storage; use copy() to make this explicit
+main.py:44: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:64: warning: copies Counter into owned storage; use copy() to make this explicit

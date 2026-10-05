@@ -10,7 +10,7 @@
 | 2c | Cross-variable list reassignment (`a = [1,2,3]; b = [4,5]; a = b` -- both should become list). | Done |
 | 3 | Narrowing integration: deduced `Optional[T]` variables work with `if x is not None` narrowing. | Done |
 | 4 | String deduction test coverage: dedicated tests for StrView-vs-str resolution and string alias propagation. | Done |
-| 5a | Empty list inference: `xs = []; xs.append(v)` and `xs = list(); xs.append(v)` infer element type from `.append()`/`.insert()` usage, widening across integer widths (an int meeting a float is refused with a `float(...)` hint), and alias propagation. | Done |
+| 5a | Empty list inference: `xs = []; xs.append(v)` and `xs = list(); xs.append(v)` take the element from the first store or typed container, as if that value had been written in the literal (a literal starts at the default int and widens with typed stores; a typed value decides the element), an int meeting a float is refused with a `float(...)` hint, and every name for the list shares it. | Done |
 | 5b | Empty dict inference: `d = {}; d[k] = v` and `d = dict()` infer key/value types from subsequent subscript assignment. | Done |
 | 5c | Empty set inference: `s = set(); s.add(v)` infers element type from subsequent `.add()` calls. | Done |
 | 5d | Unify empty container inference: extract shared helpers for list/dict/set (PENDING_CONTAINER_TYPES constant, unified container lookup, shared resolution epilogue, merged param context tracking). Single code paths prevent forgetting one container type. | Done |
@@ -176,10 +176,13 @@ its element as evidence, settles the cell and must then equal it
 (`PendingNums.elem_context`): it can confirm the element or widen it within
 its family, never narrow it or change the family. A consumer that did not
 ask for the list by node (`PendingNums.list_sink`) gets the cell settled
-first, and a wider use after that is an error naming it.
+first, and a wider use after that is an error naming it. An empty list
+bound to a function local gets its cell at its first numeric store or
+typed container, as if that value had been written in the literal
+(`PendingNums.seed_by_store` / `seed_by_context`).
 
 The lists the cell does not cover yet -- tuple elements, nested literals,
-empty lists, module-level lists -- keep the read guard: each use was typed
+module-level lists -- keep the read guard: each use was typed
 from the pending literal as it stood, so a use that took an element at the
 default width -- an unannotated local, a loop variable, a tuple element --
 is recorded on the literal and refused when the list resolves to another

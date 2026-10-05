@@ -80,6 +80,7 @@ from .protocols import dynamic_dispatch_type_conforms
 from .type_ops import ReturnSeed, partial_substitute, seeded_arg_hint
 from .expressions import star_source_element_type
 from .slot_hint import SlotHint
+from .pending_num import value_family
 from .type_join import user_type_name
 from .send_chain import why_not_send, why_not_sync, render_chain
 from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo, _is_static_str
@@ -5677,6 +5678,11 @@ class CallAnalyzer:
         # ("UnknownElementType should be resolved"). Let the pending-list
         # resolver produce its clearer user-facing error instead.
         if isinstance(elem_type, (TypeParamRef, UnknownElementType)):
+            return
+        if (self.pend.seedable(arg_type) is not None
+                and value_family(unwrap_readonly(elem_type)) is not None):
+            # The coercion to the view seeds the list's element cell
+            # (`PendingNums.meets_list`).
             return
         info = self.ctx.list_literals.get(arg_type.literal_id)
         if info is not None and info.coerced_element_type is None:

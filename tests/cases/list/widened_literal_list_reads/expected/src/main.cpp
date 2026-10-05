@@ -193,8 +193,15 @@ void param_confirms() {
 //     k = zs[0]  # tpyc: type(int)
 //     # function: a rebinding to a wider literal is one more value held.
 //     zs = [5000000000, 3, 4]  # tpyc: warning(/outside default int32 range/)
+//     vs = [1]  # tpyc: type(list[int])
+//     m = vs[0]  # tpyc: type(int)
+//     # function: a literal that extend or += adds is one more value held.
+//     vs.extend([5000000000])  # tpyc: warning(/outside default int32 range/)
+//     ws = [1]  # tpyc: type(list[int])
+//     ws += [5000000000]  # tpyc: warning(/outside default int32 range/)
 //     print("fn.insert", ys, n)
 //     print("fn.rebind", zs, k)
+//     print("fn.extend", vs, m, ws, ws[1] + 1)
 void stores() {
     std::vector<int64_t> ys = {1, 2};
     int64_t n = ::tpy::__getitem__(ys, 0);
@@ -203,8 +210,14 @@ void stores() {
     std::vector<::tpy::BigInt>* zs = &__slot_1;
     ::tpy::BigInt k = ::tpy::__getitem__((*zs), 0);
     (*zs) = {static_cast<int64_t>(5000000000), 3, 4};
+    std::vector<::tpy::BigInt> vs = {1};
+    ::tpy::BigInt m = ::tpy::__getitem__(vs, 0);
+    ::tpy::list_extend(vs, std::array<::tpy::BigInt, 1>{static_cast<int64_t>(5000000000)});
+    std::vector<::tpy::BigInt> ws = {1};
+    ::tpy::list_extend(ws, std::vector<::tpy::BigInt>{::tpy::BigInt(static_cast<int64_t>(5000000000LL))});
     std::cout << "fn.insert" << " " << ::tpy::ListPrinter(ys) << " " << n << "\n" << ::tpy::check_signals;
     std::cout << "fn.rebind" << " " << ::tpy::ListPrinter((*zs)) << " " << k << "\n" << ::tpy::check_signals;
+    std::cout << "fn.extend" << " " << ::tpy::ListPrinter(vs) << " " << m << " " << ::tpy::ListPrinter(ws) << " " << ((::tpy::__getitem__(ws, 1)) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;
 }
 
 // def first_binding() -> None:

@@ -257,12 +257,12 @@ void float_or(double f) {
 //     g = f if c else 2.5  # tpyc: ok type(float)
 //     print("float_ternary:", g)
 //     # An annotated empty list converts an int element; an unannotated one
-//     # still widens across integer elements.
+//     # first stored a literal still widens across integer elements.
 //     fs: list[float] = []
 //     fs.append(a)  # tpyc: ok
 //     print("int_float_declared_list:", fs[0] / 2)
 //     ws = []  # tpyc: type(list[int64])
-//     ws.append(a)
+//     ws.append(1)
 //     ws.append(big)
 //     print("int_widen_usage:", ws[0], ws[1])
 void int_float_select(int32_t a, int64_t big, double f, bool c) {
@@ -283,7 +283,7 @@ void int_float_select(int32_t a, int64_t big, double f, bool c) {
     fs.push_back(static_cast<double>(a));
     std::cout << "int_float_declared_list:" << " " << ::tpy::print_float((::tpy::truediv(::tpy::__getitem__(fs, 0), 2))) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> ws = std::vector<int64_t>{};
-    ws.push_back(a);
+    ws.push_back(1);
     ws.push_back(big);
     std::cout << "int_widen_usage:" << " " << ::tpy::__getitem__(ws, 0) << " " << ::tpy::__getitem__(ws, 1) << "\n" << ::tpy::check_signals;
 }
