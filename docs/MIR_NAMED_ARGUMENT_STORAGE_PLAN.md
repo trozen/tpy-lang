@@ -114,8 +114,8 @@ Keep the scalar call result in a surviving region where required.
 The existing while builder needs an iteration region enclosing both the
 condition and body when that is the emitted shape. Synthetic elif scopes
 must likewise come from the shared plan. A function with these owned temps
-can be analyzed as a caller but remains opaque as a callee under M4.1's
-current no-owned-storage summary contract.
+keeps them to its end: they are private storage, absent from its summary
+as a callee (`summaries._private_records`).
 
 ## Producer and consumer
 

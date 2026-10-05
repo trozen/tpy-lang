@@ -91,14 +91,14 @@ def reseat_return(n: int32) -> Own[Point]:  # tpyc: mir(uncovered /^reassigned l
 
 
 # free function: an owned local initialized by the call, borrowed afterwards
-def use_result(n: int32) -> int32:  # tpyc: mir(covered)
+def use_result(n: int32) -> int32:  # tpyc: mir(covered) mir_summary(known)
     p = make(n)  # tpyc: mir_borrowed(p) mir_borrows(p, p)
     p.bump()
     return p.total()
 
 
 # free function: the result as a temporary receiver
-def use_temp(n: int32) -> int32:  # tpyc: mir(certified)
+def use_temp(n: int32) -> int32:  # tpyc: mir(certified) mir_summary(known)
     return make(n).x
 
 
@@ -108,7 +108,7 @@ def spawn_temp(pool: Pool) -> int32:  # tpyc: mir(certified)
 
 
 # free function: a reseat of a local by a second call
-def reseat(n: int32) -> int32:  # tpyc: mir(covered)
+def reseat(n: int32) -> int32:  # tpyc: mir(covered) mir_summary(known)
     p = make(n)
     p = make(n + 1)  # tpyc: mir_owned(p) mir_write(p)
     return p.x
@@ -149,7 +149,7 @@ def read(p: Point) -> int32:  # tpyc: mir(covered) mir_summary(known)
 
 
 # free function: the result lent as a borrowed argument temporary
-def lend_temp(n: int32) -> int32:  # tpyc: mir(certified)
+def lend_temp(n: int32) -> int32:  # tpyc: mir(certified) mir_summary(known)
     return read(make(n))
 
 

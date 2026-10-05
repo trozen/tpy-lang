@@ -3185,25 +3185,51 @@ call on a call result.
   or non-movable record would be copied in C++, not moved, and a holder
   (BORROWED) is no owned result. Pinned over hand-built MIR.
 - **Summaries: private owned-record storage** (`summaries._private_records`).
-  An OWNED record slot is private to the
-  body when its storage leaves it only by a TRANSFER -- a return (the
-  caller owns it), a move out, or an argument at an owning passing -- with
-  no borrow of it live at that transfer (the dependency facts' holders at
-  the transfer point), and the body reads it otherwise only through the
-  borrow its holder takes. Borrows that complete before the transfer are
-  harmless. The summary's operation filter admits a record holder's
-  `MIRBorrow` of private storage and a `MIRCopy` into it, and whoever
-  destroys private storage runs no hook, so its definition must be
-  hook-free. `returns` stays empty. Storage the body KEEPS to its end
-  (`p = make(n); p.bump(); return p.x`) is not private: such a body
-  summarizes OPAQUE "summary storage or value shape" (`use_result`,
-  `reseat`, `named_caller`, `spawned` in the case), as a constructed local
-  kept to the end did before. Making kept storage private would flip
-  eighteen existing unit pins and is filed as its own decision (TODO MIR
-  entry). `collect` (a call result handed to `append`) and every covered
-  factory of the case summarize KNOWN; the refused ones (`reassigned`,
-  `reseat_return`, `make_pinned`, `make_tok`, `make_box`) summarize
-  OPAQUE by their refusal.
+  An OWNED record slot is private to the body in two cases, and private
+  storage publishes nothing: `returns` stays empty, and a write into it is
+  no parameter write.
+  - HANDED OVER: its storage leaves the body only by a TRANSFER -- a
+    return (the caller owns it), a move out, or an argument at an owning
+    passing -- with no borrow of it live at that transfer (the dependency
+    facts' holders at the transfer point), and the body reads it otherwise
+    only through the borrow its holder takes. Borrows that complete before
+    the transfer are harmless.
+  - KEPT: its storage never leaves the body (`p = make(n); p.bump();
+    return p.x`), and every use of it is the body's own -- the holder's
+    borrow of the whole storage, a read, copy or borrow of one of its
+    fields, a field write into it, a whole copy out of it, or a loan at a
+    borrowing passing (`CONST_REF`, `VIEW`, `MUT_REF`, `POINTER`; a
+    `TRAIT` passing may copy or bind and is no loan). A consumed callee
+    summary retains nothing (`summary_problem` refuses `retains`), and its
+    writes reach the kept storage through the dependency facts, where a
+    write into the body's own storage is not published.
+
+  A holder of private storage reaching the caller is refused by the
+  summary's own origin checks: a returned borrow has no parameter origin
+  ("summary unsupported return origin", pinned over THIR damage in
+  `test_owned_results`; sema refuses the source with "Cannot return local
+  or temporary as reference"), and a write origin outside the parameters
+  refuses. The stores that would leave such a holder in caller storage are
+  refused at admission: a record field store ("record field replacement is
+  unsupported"), a view field store and a view appended to a parameter's
+  list (THIR rejects both), a borrowed record handed to an owning stub
+  parameter ("unsupported record argument"). The summary's operation
+  filter admits what a private slot's body does: a record holder's
+  `MIRBorrow` of it, a `MIRCopy` into it, a scalar field read of it, a
+  whole-record write through a holder whose every referent is private
+  storage (a reseat: an `IN_PLACE` `MIRCall`, `MIRConstruct`, `MIRCopy` or
+  `MIRMove`), and the empty backing of a lazily built temporary
+  (`MIRRecordStorageInit`). Whoever destroys private storage -- the body
+  at scope end, a callee or container it is handed to, the caller it is
+  returned to -- runs no hook, so its definition must be hook-free. Every
+  covered caller of the case summarizes KNOWN (`use_result`, `use_temp`,
+  `spawn_temp`, `reseat`, `collect`, `named_caller`, `spawned`,
+  `lend_temp`), as does every covered factory; the refused ones
+  (`reassigned`, `reseat_return`, `make_pinned`, `make_tok`, `make_box`)
+  summarize OPAQUE by their refusal. A record temporary a list literal
+  takes as an element (`[Point(0, 0)]`) is read by the literal's
+  `MIRConstruct`, neither a transfer nor an own use, so such a body stays
+  OPAQUE "summary storage or value shape".
 - **Callers** (`lower.record_value(..., call=True)`). A resolved user call
   (`THIRCall` / `THIRMethodCall`) is a record value of type `R` when its
   summary is finalized KNOWN ("call needs finalized known summary"), its

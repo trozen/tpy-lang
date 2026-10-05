@@ -140,6 +140,11 @@ def optional_record_argument(cell: Cell | None) -> int32:
     if cell is not None:
         return read(cell)
     return 0
+
+def noisy(cell: Cell) -> int32:
+    before = read(cell)
+    print(before)
+    return read(cell)
 '''
 
 Artifacts = tuple[dict[str, th.THIRFunction], MIRCallWorkspace, MIRDefinitions, str, str]
@@ -196,7 +201,9 @@ def test_call_arguments_are_live_and_result_has_no_borrow(artifacts: Artifacts) 
                        for holder in dependencies.referents[MIRPoint(point.block, point.index + 1)])
     # @nocopy plus a reference parameter pins the boundary that read-only output cannot.
     assert "int32_t read(const Cell& cell)" in cpp
-    assert workspace.summaries[th.THIRFunctionIdentity("main", "observe")].state is MIRSummaryState.OPAQUE
+    # `cell` is storage `observe` keeps to its end: its field write is the body's own.
+    result = workspace.summaries[th.THIRFunctionIdentity("main", "observe")]
+    assert result.state is MIRSummaryState.KNOWN and not result.summary.writes and not result.summary.returns
 
 
 @pytest.mark.parametrize("name", ["unknown_result", "direct_condition"])
@@ -225,9 +232,13 @@ def test_conditional_call_is_only_on_selected_arm(artifacts: Artifacts) -> None:
 
 def test_covered_caller_need_not_have_usable_summary(artifacts: Artifacts) -> None:
     _, workspace, _, _, _ = artifacts
-    # Private record storage keeps `observe` opaque although its body lowers.
-    assert len(calls(body_named(workspace, "observe"))) == 2
-    assert workspace.summaries[th.THIRFunctionIdentity("main", "observe")].state is MIRSummaryState.OPAQUE
+    # An output effect keeps `noisy` opaque although its body and its calls lower.
+    assert len(calls(body_named(workspace, "noisy"))) == 2
+    result = workspace.summaries[th.THIRFunctionIdentity("main", "noisy")]
+    assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary output effect"
+    # A record temporary lent to `read` is the caller's private storage, not an unproven effect.
+    result = workspace.summaries[th.THIRFunctionIdentity("main", "temporary")]
+    assert result.state is MIRSummaryState.KNOWN and not result.summary.writes and not result.summary.returns
     # A loop is no obstacle: the dependency and liveness fixpoints summarize it.
     assert len(calls(body_named(workspace, "loop"))) == 2
     assert workspace.summaries[th.THIRFunctionIdentity("main", "loop")].state is MIRSummaryState.KNOWN
@@ -237,7 +248,6 @@ def test_covered_caller_need_not_have_usable_summary(artifacts: Artifacts) -> No
     ("recurse_a", "recursive or recursion-dependent call"),
     ("recurse_b", "recursive or recursion-dependent call"),
     ("recurse_user", "recursive or recursion-dependent call"),
-    ("temporary", "summary storage or value shape"),
 ])
 def test_unproven_calls_never_acquire_empty_effects(artifacts: Artifacts, name: str, reason: str) -> None:
     result = artifacts[1].summaries[th.THIRFunctionIdentity("main", name)]
