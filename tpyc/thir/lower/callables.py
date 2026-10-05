@@ -17,7 +17,7 @@ from ..nodes import (
     THIRBorrowedRecord, THIRCallableSignature, THIRExpr, THIRFunctionIdentity, THIRMethodCall, THIRResolvedCallee,
     THIRStubCallee, THIRStubContract, THIRStubIdentity, THIRSubscript, declared_param_type, receiver_param,
 )
-from ..scalar_leaves import leaf_constant, native_container_subject
+from ..scalar_leaves import leaf_constant, native_container_subject, record_owner
 from .predicates import param_passing, record_method_fi
 from .storage import borrowed_record
 
@@ -215,11 +215,13 @@ def method_callee(fi: FunctionInfo | None, receiver: TpyType | None, analyzer: '
     receiver type) runs -- an ordinary instance method, a property getter
     or setter, or an `@auto_readonly` def -- as one identity and one
     signature whose parameter 0 is the receiver: the value its defining
-    body publishes (`method_definition`). None unless the target is proven:
-    a body-eligible callable (`method_receiver`) of exactly the receiver's
-    plain record, whose methods nothing overrides virtually (no `@dynamic`
-    protocol), with one defining body in its role (`Compiler.callable_body`),
-    that body the one `fi` binds, no rendering of its own (a template -- a
+    body publishes (`method_definition`): the record that declares the
+    body -- the receiver's own or a struct-base ancestor's, which the
+    receiver binds at. None unless the target is proven: a body-eligible
+    callable (`method_receiver`) of the receiver's plain record or one of
+    its ancestors, whose methods nothing overrides virtually (no `@dynamic`
+    protocol in the receiver's hierarchy), with one defining body in its
+    role (`Compiler.callable_body`), that body the one `fi` binds, no rendering of its own (a template -- a
     dunder's injected operator included -- or a native symbol) and a closed
     signature. The defining body of a getter and of an `@auto_readonly` def
     is the const clone of the pair: its receiver passes const and its
@@ -233,16 +235,23 @@ def method_callee(fi: FunctionInfo | None, receiver: TpyType | None, analyzer: '
     if (not root.is_method or root.is_consuming or root.native_function
             or not _bound_by_body(fi, root, arity) or not _closed_signature(fi)):
         return None
-    owner = borrowed_record(receiver, root.is_readonly, analyzer)
+    actual = borrowed_record(receiver, root.is_readonly, analyzer)
     registry = analyzer.registry
-    info = registry.get_record_for_type(owner.type) if owner is not None else None
-    if (info is None or owner.type.qualified_name() != root.owning_type_qname
-            # One canonical spelling, so the definition and every call publish one value.
-            or owner.type != NominalType(info.name, _module_qname=info.qualified_name())
+    info = registry.get_record_for_type(actual.type) if actual is not None else None
+    # One canonical spelling, so the definition and every call publish one value.
+    if (info is None or actual.type != record_owner(info)
+            # Asked of the receiver's record: the walk covers its ancestors.
             or next(registry.iter_dynamic_protocols(info), None) is not None):
         return None
+    # The record whose body runs: the receiver's own, or the struct-base
+    # ancestor that declares the method sema resolved.
+    declaring = next((r for r in (info, *registry.iter_field_ancestors(info))
+                      if r.qualified_name() == root.owning_type_qname), None)
+    if declaring is None:
+        return None
+    owner = THIRBorrowedRecord(record_owner(declaring), actual.readonly)
     role = accessor_role(root)
-    if not any(f.root is root for f in _role_fis(info, root.name, role)):
+    if not any(f.root is root for f in _role_fis(declaring, root.name, role)):
         return None
     body = _callable_body(root.owning_type_qname, root.name, role)
     defined = method_receiver(body, owner.type, analyzer) if body is not None else None
@@ -260,7 +269,7 @@ def method_callee(fi: FunctionInfo | None, receiver: TpyType | None, analyzer: '
         THIRFunctionIdentity(_identity_module(root, analyzer), root.name, root.owning_type_qname, role),
         THIRCallableSignature(types, ret, _borrowed_result(fi, body, analyzer, twin, return_type=ret),
                               (receiver_param(defined).passing,
-                               *_body_passings(body, record_method_fi(info, body.name))),
+                               *_body_passings(body, record_method_fi(declaring, body.name))),
                               return_representation(ret), result_follows_receiver=twin))
 
 
@@ -391,8 +400,9 @@ def with_method_callee(node: THIRMethodCall, fi: FunctionInfo | None, analyzer: 
     callee = method_callee(fi, node.receiver.result_type, analyzer, arity=len(node.args))
     if callee is None:
         return node
-    return replace(node, resolved_callee=callee,
-                   receiver_access=THIRBorrowedRecord(callee.signature.param_types[0], receiver_readonly()))
+    # The access is the actual receiver's; parameter 0 may be an ancestor it binds at.
+    receiver = unwrap_readonly(unwrap_ref_type(node.receiver.result_type))
+    return replace(node, resolved_callee=callee, receiver_access=THIRBorrowedRecord(receiver, receiver_readonly()))
 
 
 def setitem_stub_callee(target: THIRExpr, analyzer: 'SemanticAnalyzer') -> THIRStubCallee | None:

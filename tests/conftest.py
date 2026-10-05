@@ -3230,11 +3230,17 @@ def _resolve_mir_name(token: str, facts: MIRLineFacts) -> tuple[str | None, str 
     if selector is not None:
         if selector not in spellings:
             return None, f"no {'parameter' if selector == 'param' else 'local'} named '{name}'"
-        return spellings[selector] + path, None
-    if len(spellings) > 1:
+        resolved = spellings[selector] + path
+    elif len(spellings) > 1:
         both = " and ".join(sorted(spellings.values()))
         return None, f"'{name}' names {both} (ambiguous: use {' or '.join(sorted(spellings.values()))})"
-    return next(iter(spellings.values())) + path, None
+    else:
+        resolved = next(iter(spellings.values())) + path
+    # A field name two owners declare (a shadowed inherited field) is spelled with its owner.
+    owners = facts.ambiguous.get(resolved)
+    if owners:
+        return None, f"'{token}' names {' and '.join(owners)} (ambiguous: use {' or '.join(owners)})"
+    return resolved, None
 
 
 def _mir_fact_problem(ann: MirFactAnnotation, facts: MIRLineFacts) -> str | None:

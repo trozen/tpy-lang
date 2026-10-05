@@ -22692,12 +22692,12 @@
  "rec__mut__subclass_local__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw]) print(%s0.x [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw]) print(%s0.x <R::x> [raw])"
  ],
  "rec__mut__subclass_local__fn": [
   "ok",
   "",
-  "call(CALLEE, [%s0]) print(%s0.x [raw])"
+  "call(CALLEE, [%s0]) print(%s0.x <R::x> [raw])"
  ],
  "rec__mut__subclass_local__gen": [
   "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
@@ -22707,12 +22707,12 @@
  "rec__mut__subclass_local__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [%s0]) print(%s0.x [raw])"
+  "method_call(%g, CALLEE, [%s0]) print(%s0.x <R::x> [raw])"
  ],
  "rec__mut__subclass_local__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [%s0]) print(%s0.x [raw])"
+  "method_call(%t, CALLEE, [%s0]) print(%s0.x <R::x> [raw])"
  ],
  "rec__mut__subclass_local__nested": [
   "ok",
@@ -22722,12 +22722,12 @@
  "rec__mut__subclass_local__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [%s0]) print(%s0.x [raw])"
+  "method_call(%pp, CALLEE, [%s0]) print(%s0.x <R::x> [raw])"
  ],
  "rec__mut__subclass_local__static": [
   "ok",
   "",
-  "call(CALLEE, [%s0]) print(%s0.x [raw])"
+  "call(CALLEE, [%s0]) print(%s0.x <R::x> [raw])"
  ],
  "rec__mut__subscript__ctor": [
   "ok",
@@ -23652,12 +23652,12 @@
  "rec__ro__subclass_local__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw]) print(%s0.x [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw]) print(%s0.x <R::x> [raw])"
  ],
  "rec__ro__subclass_local__fn": [
   "ok",
   "",
-  "call(CALLEE, [%s0]) print(%s0.x [raw])"
+  "call(CALLEE, [%s0]) print(%s0.x <R::x> [raw])"
  ],
  "rec__ro__subclass_local__gen": [
   "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
@@ -23667,12 +23667,12 @@
  "rec__ro__subclass_local__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [%s0]) print(%s0.x [raw])"
+  "method_call(%g, CALLEE, [%s0]) print(%s0.x <R::x> [raw])"
  ],
  "rec__ro__subclass_local__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [%s0]) print(%s0.x [raw])"
+  "method_call(%t, CALLEE, [%s0]) print(%s0.x <R::x> [raw])"
  ],
  "rec__ro__subclass_local__nested": [
   "ok",
@@ -23682,12 +23682,12 @@
  "rec__ro__subclass_local__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [%s0]) print(%s0.x [raw])"
+  "method_call(%pp, CALLEE, [%s0]) print(%s0.x <R::x> [raw])"
  ],
  "rec__ro__subclass_local__static": [
   "ok",
   "",
-  "call(CALLEE, [%s0]) print(%s0.x [raw])"
+  "call(CALLEE, [%s0]) print(%s0.x <R::x> [raw])"
  ],
  "rec__ro__subscript__ctor": [
   "ok",
@@ -27252,12 +27252,12 @@
  "rec_ro__ro__subclass_local__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw]) print(%s0.x [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw]) print(%s0.x <R::x> [raw])"
  ],
  "rec_ro__ro__subclass_local__fn": [
   "ok",
   "",
-  "call(CALLEE, [%s0]) print(%s0.x [raw])"
+  "call(CALLEE, [%s0]) print(%s0.x <R::x> [raw])"
  ],
  "rec_ro__ro__subclass_local__gen": [
   "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
@@ -27267,12 +27267,12 @@
  "rec_ro__ro__subclass_local__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [%s0]) print(%s0.x [raw])"
+  "method_call(%g, CALLEE, [%s0]) print(%s0.x <R::x> [raw])"
  ],
  "rec_ro__ro__subclass_local__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [%s0]) print(%s0.x [raw])"
+  "method_call(%t, CALLEE, [%s0]) print(%s0.x <R::x> [raw])"
  ],
  "rec_ro__ro__subclass_local__nested": [
   "ok",
@@ -27282,12 +27282,12 @@
  "rec_ro__ro__subclass_local__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [%s0]) print(%s0.x [raw])"
+  "method_call(%pp, CALLEE, [%s0]) print(%s0.x <R::x> [raw])"
  ],
  "rec_ro__ro__subclass_local__static": [
   "ok",
   "",
-  "call(CALLEE, [%s0]) print(%s0.x [raw])"
+  "call(CALLEE, [%s0]) print(%s0.x <R::x> [raw])"
  ],
  "rec_ro__ro__subscript__ctor": [
   "ok",

@@ -15,7 +15,7 @@ import pytest
 
 from ..codegen_cpp.context import CodeGenOptions
 from ..compilation_context import activate_compiler
-from ..typesys import BOOL, INT32, VoidType
+from ..typesys import BOOL, INT32, NominalType, VoidType
 from .nodes import (
     Form, HoistDecl, THIRArgTemp, THIRBaseInit, THIRBinOp, THIRCall,
     THIRCoerce, THIRComprehension, THIRConstructor, THIRExprStmt,
@@ -430,7 +430,8 @@ class TestValidator:
         ctor = THIRConstructor(
             record_name="R", params=(), mil_inits=(),
             base_inits=(THIRBaseInit(base_cpp="B",
-                                     args=(self._call_with_temp(),)),))
+                                     args=(self._call_with_temp(),),
+                                     base=NominalType("B")),))
         with pytest.raises(THIRValidationError,
                            match="statement temp in a member-init"):
             validate_constructor(ctor)

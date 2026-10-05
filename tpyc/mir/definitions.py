@@ -2,7 +2,7 @@
 and the builtin certificates of owned leaves' opaque storage."""
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from types import MappingProxyType
 
 from ..parse import SourceLocation
@@ -170,24 +170,164 @@ class MIRConstructorDefinition:
     initializers: tuple[MIRFieldInitializer, ...]
 
 
-def constructor_initialization(ctor: th.THIRConstructor) -> MIRConstructorDefinition:
-    plain(ctor, {"record_name", "params", "mil_inits", "body", "record_layout", "temp_plan", "storage_facts"})
+# A record's verified definition, or why it has none, by record type.
+Bases = Mapping[NominalType, 'MIRConstructorDefinition | str']
+
+_NO_BASES: Bases = MappingProxyType({})
+
+
+@dataclass(frozen=True)
+class _BaseLeg:
+    """One base-constructor argument, as the base's initializers see its
+    parameter: a child parameter lent or passed as the same scalar, a child
+    parameter moved into the base's own copy, or a constant."""
+    source: str | MIRConstant
+    move: bool
+    # The base parameter owns what it receives (its storage is built or
+    # moved for the call), so an argument nothing consumes is an effect.
+    owning: bool
+    loc: SourceLocation | None
+
+
+def _base_leg(arg: th.THIRExpr, target: th.THIRParam, params: Mapping[str, th.THIRParam]) -> _BaseLeg:
+    """A base-init argument renders bare (`Base(name)`, with no parameter in
+    view: `BUGS.md#base-init-args-separate-lowering`), so it binds the base
+    parameter exactly as written: a scalar parameter of its type, an
+    owned-leaf parameter at the base parameter's own borrowing passing (a
+    lend, no buffer operation), a move of an owning parameter into an owning
+    base parameter, or a literal. A bare name into an owning base parameter
+    is a copy the leg does not model."""
+    mismatch = "base argument needs matching parameter or literal"
+    owning = target.passing in OWNING_PASSINGS
+    if scalar_param(target):
+        match arg:
+            case th.THIRName():
+                plain(arg, {"name", "is_last_use", "is_movable"})
+                child = params.get(arg.name)
+                require(arg, child is not None and scalar_param(child) and child.type == target.type
+                        and arg.result_type == target.type, mismatch)
+                return _BaseLeg(child.name, False, False, arg.loc)
+            case th.THIRLiteral() | th.THIRCoerce():
+                require(arg, _scalar_initializer(arg, {}, target.type) == target.type, mismatch)
+                literal = arg.expr if isinstance(arg, th.THIRCoerce) else arg
+                return _BaseLeg(MIRConstant(literal.value), False, False, arg.loc)
+        raise MIRUnsupported(arg, mismatch)
+    require(arg, owned_parameter(target), mismatch)
+    owned = owned_value_type(target.type)
+    match arg:
+        case th.THIRName():
+            plain(arg, {"name", "is_last_use", "is_movable"})
+            child = params.get(arg.name)
+            require(arg, child is not None and owned_parameter(child) and owned_value_type(child.type) == owned
+                    and target.passing in BORROWING_PASSINGS and child.passing is target.passing, mismatch)
+            return _BaseLeg(child.name, False, False, arg.loc)
+        case th.THIRMove():
+            plain(arg, {"value"})
+            name = arg.value
+            require(arg, isinstance(name, th.THIRName), mismatch)
+            plain(name, {"name", "is_last_use", "is_movable"})
+            child = params.get(name.name)
+            require(arg, child is not None and owned_parameter(child) and owned_value_type(child.type) == owned
+                    and owning and child.passing in OWNING_PASSINGS, mismatch)
+            return _BaseLeg(child.name, True, True, arg.loc)
+        case th.THIRStrLiteral() | th.THIRBytesLiteral() | th.THIRLiteral():
+            plain(arg, {"value", "int_cpp"} if isinstance(arg, th.THIRLiteral) else {"value"})
+            require(arg, arg.result_type == owned and owned_constant(owned, arg.value), mismatch)
+            return _BaseLeg(MIRConstant(arg.value), False, owning, arg.loc)
+    raise MIRUnsupported(arg, mismatch)
+
+
+def _compose(init: MIRFieldInitializer, legs: Mapping[str, _BaseLeg]) -> MIRFieldInitializer:
+    """A base initializer seen from the derived constructor: its parameter
+    source replaced by the leg that fed it. A lend or scalar keeps the base's
+    mode; a move hands the member the child's storage (moved on, or copied
+    from the base's own copy, which may raise); a constant is materialized
+    (an owned leaf's by a copy, which may raise)."""
+    # A member the base builds on its own has no line in the derived body.
+    match init.source:
+        case MIRConstant():
+            return replace(init, loc=None)
+        case tuple():
+            # A container literal over base parameters copies each element
+            # from what the leg lends.
+            require(init.field, all(isinstance(legs[n].source, str) and not legs[n].move for n in init.source),
+                    "base argument effect not modeled")
+            return replace(init, source=tuple(legs[n].source for n in init.source), loc=None)
+    leg = legs[init.source]
+    if isinstance(leg.source, MIRConstant):
+        if init.mode is MIRMemberInitMode.SCALAR:
+            return replace(init, source=leg.source, loc=leg.loc)
+        require(init.field, owned_leaf(init.field.type), "base argument effect not modeled")
+        return MIRFieldInitializer(init.field, leg.source, MIRMemberInitMode.COPY,
+                                   bool(type_def_of(init.field.type).copy_may_raise), leg.loc)
+    if leg.move:
+        return MIRFieldInitializer(init.field, leg.source, MIRMemberInitMode.MOVE,
+                                   init.mode is not MIRMemberInitMode.MOVE, leg.loc)
+    return replace(init, source=leg.source, loc=leg.loc)
+
+
+def _base_initializers(ctor: th.THIRConstructor, layout: th.THIRRecordLayout,
+                       params: Mapping[str, th.THIRParam], bases: Bases) -> list[MIRFieldInitializer]:
+    """The initializers of every ancestor field: each base constructor's
+    verified definition composed with its arguments. Every struct-base
+    ancestor is built by exactly one base initializer (directly, or through
+    the base it is an ancestor of)."""
+    built: set[NominalType] = set()
+    composed: list[MIRFieldInitializer] = []
+    for bi in ctor.base_inits:
+        plain(bi, {"base_cpp", "base", "args"})
+        require(ctor, isinstance(bi.base, NominalType) and bi.base in layout.ancestors, "base constructor identity")
+        base = bases.get(bi.base, "missing constructor definition")
+        if isinstance(base, str):
+            raise MIRUnsupported(ctor, f"base definition: {base}")
+        reached = {bi.base, *base.layout.ancestors}
+        require(ctor, not reached & built, "base constructor called twice")
+        built |= reached
+        targets = base.constructor.params
+        if len(bi.args) != len(targets):
+            # A skipped base is spelled `Base()`: value-initialized, its
+            # constructor never runs, so only a base with no fields is built.
+            require(ctor, not bi.args and not base.layout.fields, "base constructor not called")
+            continue
+        legs = {target.name: _base_leg(arg, target, params) for arg, target in zip(bi.args, targets)}
+        fed: set[str] = set()
+        for init in base.initializers:
+            fed.update((init.source,) if isinstance(init.source, str)
+                       else init.source if isinstance(init.source, tuple) else ())
+            composed.append(_compose(init, legs))
+        require(ctor, all(not leg.owning or name in fed for name, leg in legs.items()),
+                "base argument effect not modeled")
+    require(ctor, built == set(layout.ancestors), "base constructor not called")
+    return composed
+
+
+def constructor_initialization(ctor: th.THIRConstructor, bases: Bases = _NO_BASES) -> MIRConstructorDefinition:
+    """The verified initialization of a constructor: its member initializers
+    and, for a derived record, each base constructor's definition (from
+    `bases`) composed with its arguments, all in layout order."""
+    plain(ctor, {"record_name", "params", "mil_inits", "base_inits", "body", "record_layout", "temp_plan",
+                 "storage_facts"})
     layout = ctor.record_layout
     require(ctor, isinstance(layout, th.THIRRecordLayout), "missing record layout")
     typ = layout.type
     require(ctor, record_type(typ), "unsupported record identity")
+    require(ctor, isinstance(layout.ancestors, tuple) and len(set(layout.ancestors)) == len(layout.ancestors)
+            and all(isinstance(a, NominalType) and record_type(a) and a != typ for a in layout.ancestors),
+            "unsupported record identity")
     require(ctor, all(type(v) is bool for v in (
         layout.unique_constructor, layout.custom_copy, layout.custom_move,
         layout.custom_destructor, layout.copyable, layout.movable)), "invalid record eligibility")
     require(ctor, layout.unique_constructor, "constructor must be unique")
     require(ctor, not (layout.custom_copy or layout.custom_move or layout.custom_destructor),
             "custom record special member")
-    members = {f.name: f for f in layout.fields}
+    owners = (typ, *layout.ancestors)
+    members = {MIRFieldId(f.owner, f.name): f for f in layout.fields}
     # A stored view retains its source's loan past the constructor, which
     # needs the call retention contracts MIR does not model yet.
     require(ctor, not any(loan_class(f.type).holds is Loan.YES for f in layout.fields), "record holds a borrow")
     require(ctor, len(members) == len(layout.fields) and all(
-        f.owner == typ and bool(f.name) and (storage_leaf(f.type) or owned_leaf(f.type) or native_container_type(f.type))
+        f.owner in owners and bool(f.name)
+        and (storage_leaf(f.type) or owned_leaf(f.type) or native_container_type(f.type))
         for f in layout.fields), "unsupported record fields")
     params = {p.name: p for p in ctor.params}
     require(ctor, len(params) == len(ctor.params), "duplicate constructor parameter")
@@ -196,25 +336,33 @@ def constructor_initialization(ctor: th.THIRConstructor) -> MIRConstructorDefini
         require(p, p.passing is not None, "unpublished parameter passing")
         require(p, scalar_param(p) or owned_parameter(p) or p.native_container is not None,
                 "constructor parameter type")
-    initializers: dict[str, MIRFieldInitializer] = {}
+    initializers: dict[MIRFieldId, MIRFieldInitializer] = {}
     for mil in ctor.mil_inits:
         plain(mil, {"field_cpp", "field_identity", "value"})
         fact = mil.field_identity
-        require(ctor, isinstance(fact, th.THIRFieldIdentity)
-                and members.get(fact.name) == fact, "constructor field identity")
-        require(ctor, fact.name not in initializers, "duplicate constructor field")
-        initializers[fact.name] = _initializer(mil.value, params, fact)
+        # The member-init list builds only the record's own fields; the
+        # ancestors' are its bases'.
+        require(ctor, isinstance(fact, th.THIRFieldIdentity) and fact.owner == typ
+                and members.get(MIRFieldId(fact.owner, fact.name)) == fact, "constructor field identity")
+        key = MIRFieldId(fact.owner, fact.name)
+        require(ctor, key not in initializers, "duplicate constructor field")
+        initializers[key] = _initializer(mil.value, params, fact)
+    for init in _base_initializers(ctor, layout, params, bases):
+        require(ctor, init.field.id not in initializers, "duplicate constructor field")
+        initializers[init.field.id] = init
+    fields = tuple(MIRField(MIRFieldId(f.owner, f.name), f.type) for f in layout.fields)
     require(ctor, set(initializers) == set(members), "incomplete constructor initialization")
+    require(ctor, all(initializers[f.id].field == f for f in fields), "constructor field identity")
     return MIRConstructorDefinition(ctor, MIRRecordLayout(
-        typ, tuple(MIRField(MIRFieldId(f.owner, f.name), f.type) for f in layout.fields),
-        layout.copyable, layout.movable), tuple(initializers[f.name] for f in layout.fields))
+        typ, fields, layout.copyable, layout.movable, ancestors=layout.ancestors),
+        tuple(initializers[f.id] for f in fields))
 
 
-def _verify(ctor: th.THIRConstructor) -> MIRConstructorDefinition:
+def _verify(ctor: th.THIRConstructor, bases: Bases = _NO_BASES) -> MIRConstructorDefinition:
     """A definition a CALLER may construct through: pure initialization from
     its arguments. A caller's construct lends an owned-leaf argument the
     member copies, or hands over the temporary a member moves from."""
-    definition = constructor_initialization(ctor)
+    definition = constructor_initialization(ctor, bases)
     params = {p.name: p for p in ctor.params}
     for param in ctor.params:
         require(param, scalar_param(param) or owned_parameter(param), "constructor parameter type")
@@ -228,10 +376,33 @@ def _verify(ctor: th.THIRConstructor) -> MIRConstructorDefinition:
         require(ctor, isinstance(init.source, str), "constructor owned-leaf constant")
         require(ctor, init.mode is MIRMemberInitMode.MOVE or params[init.source].passing in BORROWING_PASSINGS,
                 "constructor copies an owned parameter")
+        # A move into a base's copy: the caller's operand is moved, and the
+        # base copies its own copy.
+        require(ctor, not (init.mode is MIRMemberInitMode.MOVE and init.may_raise),
+                "constructor copies an owned parameter")
     for stmt in ctor.body:
         require(stmt, isinstance(stmt, th.THIRNoOpStmt), "constructor body effects")
         plain(stmt, set())
     return definition
+
+
+def _inherited(inherited: th.THIRInheritedConstructor, base: MIRConstructorDefinition) -> MIRConstructorDefinition:
+    """A record constructing through its one struct base's constructor
+    (`using Base::Base;`): the base's definition at the record's type. It
+    must add nothing the base's constructor does not build -- no own field,
+    no other base, no own special member."""
+    plain(inherited, {"record_layout", "base"})
+    layout = inherited.record_layout
+    require(inherited, isinstance(layout, th.THIRRecordLayout) and record_type(layout.type),
+            "missing record layout")
+    fields = tuple(MIRField(MIRFieldId(f.owner, f.name), f.type) for f in layout.fields)
+    require(inherited, layout.ancestors == (inherited.base, *base.layout.ancestors)
+            and fields == base.layout.fields
+            and not (layout.custom_copy or layout.custom_move or layout.custom_destructor)
+            and layout.copyable is base.layout.copyable and layout.movable is base.layout.movable,
+            "inherited constructor shape")
+    return MIRConstructorDefinition(base.constructor, MIRRecordLayout(
+        layout.type, fields, layout.copyable, layout.movable, ancestors=layout.ancestors), base.initializers)
 
 
 @dataclass(frozen=True)
@@ -268,19 +439,44 @@ class MIRDefinitions:
     """Index and check each actual emitted definition once, including failures."""
     records: Mapping[NominalType, MIRConstructorDefinition | str]
 
-    def __init__(self, constructors: tuple[th.THIRConstructor, ...] = ()) -> None:
+    def __init__(self, constructors: tuple[th.THIRConstructor, ...] = (), *,
+                 inherited: tuple[th.THIRInheritedConstructor, ...] = ()) -> None:
+        sources: dict[NominalType, th.THIRConstructor | th.THIRInheritedConstructor | str] = {}
+        for source in (*constructors, *inherited):
+            if source.record_layout is None:
+                continue
+            typ = source.record_layout.type
+            sources[typ] = "duplicate constructor definition" if typ in sources else source
         records: dict[NominalType, MIRConstructorDefinition | str] = {}
-        for ctor in constructors:
-            if ctor.record_layout is None:
-                continue
-            typ = ctor.record_layout.type
+
+        def verify(typ: NominalType) -> MIRConstructorDefinition | str:
+            # Base-first: a derived definition composes its bases' verified
+            # ones. Inheritance is acyclic and diamond-free (sema), so the
+            # recursion ends; the placeholder only guards malformed input.
             if typ in records:
-                records[typ] = "duplicate constructor definition"
-                continue
+                return records[typ]
+            source = sources.get(typ)
+            if source is None:
+                return "missing constructor definition"
+            if isinstance(source, str):
+                records[typ] = source
+                return source
+            records[typ] = "cyclic base definition"
             try:
-                records[typ] = _verify(ctor)
+                if isinstance(source, th.THIRInheritedConstructor):
+                    base = verify(source.base) if isinstance(source.base, NominalType) else "missing base"
+                    if isinstance(base, str):
+                        raise MIRUnsupported(source, f"base definition: {base}")
+                    records[typ] = _inherited(source, base)
+                else:
+                    bases = {bi.base: verify(bi.base) for bi in source.base_inits if isinstance(bi.base, NominalType)}
+                    records[typ] = _verify(source, bases)
             except MIRUnsupported as failure:
                 records[typ] = failure.reason
+            return records[typ]
+
+        for typ in sources:
+            verify(typ)
         object.__setattr__(self, "records", MappingProxyType(records))
 
     def get(self, node: object, typ: NominalType

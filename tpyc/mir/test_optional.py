@@ -4,10 +4,12 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _assert_rejects_at, _compile, _entry, _strict_reject
 from ..typesys import BOOL, INT32_MAX, INT32_MIN, VoidType
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
+from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
@@ -226,7 +228,7 @@ class Other:
 
 @pytest.mark.parametrize("annotation", [
     "Own[Cell | None]", "tuple[int32] | None", "str | None", "list[Cell] | None",
-    "GenericCell[int32] | None", "Child | None", "int32 | str",
+    "GenericCell[int32] | None", "int32 | str",
 ])
 def test_deferred_payload_families_are_uncovered(annotation: str) -> None:
     source = SOURCE + """\
@@ -241,6 +243,28 @@ class Child(Cell):
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "excluded")
     assert fn.params[0].optional_layout is None
     assert isinstance(lower_function(fn, MIRBodyId("optionals", "excluded")), MIRNotCovered)
+
+
+def test_a_derived_record_payload_is_borrowed() -> None:
+    source = SOURCE + """\
+class Child(Cell):
+    pass
+
+def admitted(a: Child | None) -> int32:
+    if a is not None:
+        return a.value
+    return 0
+"""
+    compiler, modules = _compile(source)
+    _, ctx = compiler.generate_code_and_thir(_entry(modules))
+    fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "admitted")
+    child = fn.params[0].optional_layout.payload
+    assert child == th.THIRBorrowedRecord(child.type, True) and child.type.name == "Child"
+    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()),
+                                 inherited=tuple(ctx.thir_inherited_constructors.values()))
+    with activate_compiler(compiler):
+        result = lower_function(fn, MIRBodyId("optionals", fn.name), definitions=definitions)
+    assert isinstance(result, MIRFunction), result
 
 
 @pytest.mark.parametrize("change", ["type", "access", "form", "checked"])

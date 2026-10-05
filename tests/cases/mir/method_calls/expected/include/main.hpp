@@ -128,7 +128,7 @@ int32_t generic_method(Scaler& s);
 int32_t consuming(int32_t k);
 // def static_call(x: int32) -> int32:  # tpyc: mir(uncovered /^call needs resolved ordinary callee$/)
 int32_t static_call(int32_t x);
-// def inherited(d: Dog) -> None:  # tpyc: mir(uncovered /^unsupported parameter type$/)
+// def inherited(d: Dog) -> None:  # tpyc: mir(covered) mir_summary(known)
 void inherited(Dog& d);
 // def call_countdown(c: Counter) -> int32:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
 int32_t call_countdown(Counter& c);

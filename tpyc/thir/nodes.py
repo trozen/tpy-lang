@@ -175,7 +175,13 @@ class THIRFieldIdentity:
 
 @dataclass(frozen=True)
 class THIRRecordLayout:
-    """Logical storage and special-member facts from the emitted record."""
+    """Logical storage and special-member facts from the emitted record.
+
+    `fields` are every member the C++ struct contains, inherited ones
+    included, in construction order, each keyed by its DECLARING owner:
+    `type` or one of `ancestors`, the struct-base ancestors in MRO order,
+    nearest first. The special-member facts are the struct's: a custom one
+    anywhere in the hierarchy runs inside the implicit one."""
     type: NominalType
     fields: tuple[THIRFieldIdentity, ...]
     unique_constructor: bool
@@ -184,6 +190,7 @@ class THIRRecordLayout:
     custom_destructor: bool
     copyable: bool
     movable: bool
+    ancestors: tuple[NominalType, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -4039,9 +4046,11 @@ class THIRBaseInit:
     `Base(args)`, emitted before the field inits (M3d). `base_cpp` is the base's
     rendered C++ name (`super_parent_type.to_cpp()`); `args` are the lowered
     `super().__init__(...)` argument
-    expressions, rendered at emit (M3d-1 admits eligible-scalar args only)."""
+    expressions, rendered at emit (M3d-1 admits eligible-scalar args only).
+    `base` is the base's identity, spelled as a layout's ancestors are."""
     base_cpp: str
     args: tuple[THIRExpr, ...]
+    base: NominalType
 
 
 @dataclass(frozen=True)
@@ -4066,6 +4075,17 @@ class THIRConstructor:
     record_layout: THIRRecordLayout | None = None
     temp_plan: THIRTempPlan | None = None
     storage_facts: THIRStorageFacts | None = None
+
+
+@dataclass(frozen=True)
+class THIRInheritedConstructor:
+    """A record with no `__init__` of its own that constructs through its
+    one direct struct base's constructors (`using Base::Base;`): the
+    record's layout and the base whose constructor runs. Published only for
+    a record that adds nothing the base's constructor does not build -- no
+    own fields and no own special members."""
+    record_layout: THIRRecordLayout
+    base: NominalType
 
 
 @dataclass(frozen=True)

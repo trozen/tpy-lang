@@ -1924,9 +1924,12 @@ form facts, never on lists of accepted kinds.
   results may be rooted inside a parameter (a container field, a view of
   an owned-leaf field) through projected return origins
   ([accessor and twin callables](#accessor-and-twin-callables),
-  [projected return origins](#projected-return-origins)).
-  Remaining, in this order: inherited records (a method of a base record
-  called on a subclass receiver; TODO.md, MIR entry); view fields (a
+  [projected return origins](#projected-return-origins)). Records with
+  plain struct bases are records of the same model: a field is keyed by
+  its declaring record, a layout spans the inherited fields, a subclass
+  binds at its base at a call argument, and a subclass constructor's
+  definition chains to its base's ([inherited records](#inherited-records)).
+  Remaining, in this order: view fields (a
   record retaining a loan) with `retains` on `MIRParameterWrite`; nested
   container elements and nested records (an inline record field as a
   place and as a return origin); record-element literal member-init. From
@@ -2584,7 +2587,9 @@ as the corpus grows).
 - **Body rule** (`thir/lower/callables.method_receiver`). The receiver fact
   -- `self` a BORROWED parameter 0 at the method's readonly verdict -- is
   published for an instance method of a plain record (`borrowed_record`:
-  not native, not a value type, no parents, no type parameters; not an
+  not native, not a value type, no type parameters, every struct-base
+  ancestor plain as well -- `scalar_leaves.modeled_hierarchy`, the
+  [inherited records](#inherited-records) eligibility; not an
   enum companion), dunder bodies included (`__eq__`, `__hash__`,
   `__bool__`, `__getitem__`, `__setitem__` are pinned), except the
   lifecycle hooks `__del__` / `__copy__` / `__move__`, which the generated
@@ -2609,9 +2614,10 @@ as the corpus grows).
   unwrap at the call, exactly one defining body for (owner, name) in the
   call's role (`Compiler.callable_body`; an overload or `@dispatch` group
   has none), a closed signature, a receiver whose static type (readonly and
-  reference stripped) is exactly the owner record, and an owner that
-  inherits no `@dynamic` protocol (its methods are virtual: a base-typed
-  receiver may run a subclass override). MIR lowers a resolved method call
+  reference stripped) is the declaring record or has it among its
+  struct-base ancestors ([inherited records](#inherited-records)), and a
+  receiver hierarchy that inherits no `@dynamic` protocol (its methods are
+  virtual: a base-typed receiver may run a subclass override). MIR lowers a resolved method call
   at every position a resolved free call lowers at (statement, scalar,
   owned-leaf, borrowed record, view and container result, argument),
   binding `(receiver, *args)` to the summary's parameters
@@ -2672,7 +2678,7 @@ as the corpus grows).
   `gs[0].bump()`), "call needs borrowed record name", the limit record
   arguments of free functions have -- a getter through a call result
   (`c.via().count`) is the same refusal (`mir/accessor_calls`
-  `twin_via`); a generic record's or an inherited
+  `twin_via`); a generic record's
   method, where the caller's parameter of that record refuses first
   ("unsupported parameter type"); a generic or a consuming method,
   "unsupported expression"; a staticmethod, "call needs resolved ordinary
@@ -2682,7 +2688,8 @@ as the corpus grows).
   operator-dispatched dunder (`p == q`) "uncertified binary operation".
   Unit-pinned without a callee: an `@error_return` or async method, a
   `@dispatch` or `@overload` group, a `Ptr[T]` receiver, accessors and
-  twins of a generic, virtual or derived owner, a method and a property
+  twins of a generic or virtual owner (a derived owner's accessor resolves:
+  `test_a_derived_owner_resolves_its_own_accessor`), a method and a property
   sharing one name (`callable_body` finds no body for either role:
   `test_a_method_and_a_property_sharing_a_name_publish_no_callee`; the
   language defect behind the shape is
@@ -2852,8 +2859,8 @@ validator) and `tpyc/mir/test_return_origins.py` (MIR).
   (`return self.inner`), the getter body "unsupported borrowed expression
   form" and its caller "call needs finalized known summary"
   (`record_accessors`; deferred to nested records: a layout with a record
-  field has no definition yet); accessors of a generic, virtual or
-  derived owner and a method + property name clash (unit-pinned).
+  field has no definition yet); accessors of a generic or virtual owner
+  and a method + property name clash (unit-pinned).
 
 #### Projected return origins
 
@@ -2923,6 +2930,180 @@ validator) and `tpyc/mir/test_return_origins.py` (MIR).
   The summaries pinned KNOWN on the base (`containers` `items_of` and
   `tail`, the `method_calls` methods) stay KNOWN; the sample records no
   per-body summary state, so no wider KNOWN -> OPAQUE count is claimed.
+
+#### Inherited records
+
+`tests/cases/mir/inherited_records` (exec and cpy) and
+`tests/cases/mir/inherited_shadow` (a shadowed field is two storages where
+CPython has one attribute, a warned divergence, so no cpy phase) pin each
+rule below; the unit tests are `tpyc/thir/test_inherited_records.py` (THIR
+facts) and `tpyc/mir/test_inherited_records.py` (MIR).
+
+- **Invariant.** Field identity is (declaring owner, name); a record's
+  layout is every field its C++ struct contains -- its own and its
+  struct-base ancestors' -- and storage of type `S` binds at type `T`
+  exactly when `T` is `S` or a struct-base ancestor of `S`. Plain
+  inheritance is static and non-virtual in the emitted C++
+  (`struct Sub : Base`, `use_base(Base& b)` called as `use_base(s)` with
+  `Sub& s`), and a diamond is a sema error, so every field of a hierarchy
+  is one storage at one place.
+- **Eligibility** (`scalar_leaves.modeled_hierarchy`). A record is modeled
+  when it and every struct-base ancestor (`TypeRegistry.is_struct_base`)
+  is a plain user record: not native, not a value type, not a typed dict,
+  not generic nor reached through a generic base, and no exception
+  (`is_return_exception`, `implements_throwable`: a return exception's
+  `Exception` base builds no struct, so the ancestor walk alone would not
+  refuse it). `borrowed_record`, `modeled_record` and
+  `plain_record_element` ask it. `plain_record_element` also checks the
+  custom copy / move / destructor flags and the comparison and hash
+  dunders on every record of the hierarchy -- an inherited `__eq__` would
+  run user code inside a modeled container operation -- and requires
+  every field, inherited ones included, to be a leaf.
+- **Field identity.** `THIRFieldIdentity.owner` is the DECLARING record,
+  spelled by `scalar_leaves.record_owner` (the one spelling of a record
+  type in an identity, so a base's own bodies and a subclass's publish
+  equal facts for one member), and found by
+  `TypeRegistry.declaring_record(record, name, start=None)`: bare `self.n`
+  walks from the receiver's record, nearest first. The explicit ancestor
+  form `B.n` walks from the named ancestor: sema resolves it through `B`'s
+  own ancestry and the C++ `this->B::n` is `A::n` when `A` declares `n`,
+  so the owner is found by the walk starting at `B`, never `B` itself. Its
+  receiver, `THIRSelf(result_type=B)`, is admitted when `B` is among the
+  body receiver's layout ancestors. The walk is THIR's own registry helper
+  beside `get_all_fields`; sema's `lookup_record_field` stays separate (it
+  carries per-edge generic substitution MIR never sees).
+- **Shadowing** (legal; sema warns). A subclass redeclaring an inherited
+  field holds two storages: `Shadow::n` and `Base::n` are two fields of
+  `Shadow`'s layout. `self.n` in a `Shadow` body names `Shadow::n`,
+  `Base.n` names `Base::n`, and a call of the inherited `Base.bump` on a
+  `Shadow` writes `Base::n` -- exactly what `Base::bump` writes in C++.
+- **Layout** (`storage.record_layout`). The fields in C++ construction
+  order (`TypeRegistry.construction_order_fields`: each struct base in
+  `parents` order, recursively, then the record's own fields), each keyed
+  by its declaring owner; `THIRRecordLayout.ancestors` and
+  `MIRRecordLayout.ancestors` list the struct-base ancestors in MRO order,
+  nearest first (`TypeRegistry.struct_ancestors`). The order is not
+  `get_all_fields`', whose reversed-MRO walk lists `B`'s fields before
+  `A`'s for `C(A, B)` while C++ builds `A` first. The special-member facts
+  are the struct's: a custom copy, move or destructor anywhere in the
+  hierarchy runs inside the implicit one. A layout field's owner is the
+  type or one of its ancestors (`constructor_initialization` and the
+  validator check it), and one `MIRFieldId` appearing in two layouts
+  (`Base`'s own and `Sub`'s) carries one type in both.
+- **Field membership.** A field place
+  `MIRField(MIRFieldId(owner, name), type)` must be a member of the layout
+  of its storage's record type ("field owner mismatch"); no check compares
+  the owner with the storage's type. MIR lowering fetches a derived
+  record's layout from the definitions index where one of its fields is
+  reached (a field access, a summary path applied to an argument, a
+  binding at an ancestor's type), never at the bare borrow, so a body
+  that only holds a derived record whose definition refuses still lowers;
+  an inherited-field access of such a record refuses with the
+  definition's reason. A summary's published write
+  keeps its declaring owner (`Sub.bump_twice` writes
+  `param0.Base::n, param0.Sub::k`), `call_contract.record_field` checks it
+  structurally, and the membership check runs at the call against the
+  layout of the argument bound to the write's own parameter (a free
+  function's record argument as much as a method's receiver).
+- **Binding rule** (`call_contract.binds_at(records, storage, slot)`:
+  `slot == storage or slot in records[storage].ancestors`). Applied at
+  call arguments: parameter 0 of an inherited method (`s.bump()` binds a
+  `Sub` at `Base`) and a record argument (`use_base(s)`), both in lowering
+  ("call record argument mismatch", whose access rule stays: no more
+  access than the holder has) and in the validator's borrowed-record
+  argument binding. Owned, value and scalar bindings stay exact, and so
+  does every other site: an alias local (`b: Base = s`), an Optional or
+  union payload, a container element, a temporary record argument, a
+  whole-record return origin, and the declared signature itself
+  (parameter binding and the summary's own receiver check, where the
+  types are equal).
+- **Callee rule** (`callables.method_callee`). A call resolves when the
+  receiver's record is the declaring record or has it among its
+  struct-base ancestors, and no `@dynamic` protocol sits anywhere in the
+  receiver's hierarchy (`iter_dynamic_protocols` walks the ancestors).
+  The identity and the signature are the declaring record's: an inherited
+  method's FunctionInfo is the base's own (`owning_type_qname` names the
+  declaring record) and parameter 0 is the declaring record's type, so the
+  base's one summary serves every subclass caller unchanged.
+  `THIRMethodCall.receiver_access` carries the ACTUAL receiver's type and
+  access, and MIR compares the receiver binding against it. A subclass
+  method hiding a base method is resolved statically by sema (own methods
+  first), which matches the C++.
+- **Definitions chain** (`mir/definitions.py`). `MIRDefinitions` verifies
+  base-first (memoized; there is no cycle). A constructor with base
+  initializers (`THIRBaseInit.base`, the base's identity) composes its
+  definition from the base's: every struct-base ancestor in the layout is
+  built exactly once, by a base initializer of this constructor or through
+  a base's own ("base constructor not called" / "base constructor called
+  twice" otherwise; a skipped base admitted only when its layout has no
+  fields and its definition verifies), and the base's definition must
+  verify ("base definition: <reason>"). Base-initializer arguments render
+  bare (`BUGS.md#base-init-args-separate-lowering`), so each argument is a
+  PASSING-AWARE leg against the base constructor's parameter, admitting
+  exactly:
+  - a scalar child parameter of the base parameter's type;
+  - a lend: an owned-leaf child parameter whose passing equals the base
+    parameter's borrowing passing (VIEW -> VIEW, CONST_REF -> CONST_REF;
+    no buffer operation);
+  - a MOVE: a `THIRMove` of an owning child parameter into an owning base
+    parameter;
+  - a constant: a literal or a coerced literal (`super().__init__(name, 1)`).
+
+  Anything else refuses "base argument needs matching parameter or
+  literal" -- a bare name forwarded to an owning base parameter included:
+  that spelling is the open bug's C++ build failure, which MIR refuses
+  rather than models. Composition: a lend renames the base initializer's
+  source to the child parameter and keeps its mode; MOVE after MOVE is a
+  MOVE, a MOVE into a base COPY is a MOVE that may raise, SCALAR after
+  SCALAR a SCALAR; a constant keeps SCALAR for a scalar field and becomes
+  a COPY that may raise for an owned leaf (the caller side then refuses
+  it as an owned-leaf constant). A base named by an initializer that is
+  not among the layout's ancestors refuses ("base constructor
+  identity"). An owning leg
+  whose base parameter feeds no base initializer refuses ("base argument
+  effect not modeled"). The composed initializers follow the layout order
+  (`AB(A, B)`: `A`'s, then `B`'s, then the own fields'); the body-side
+  certificate (`constructor_initialization`) and the caller-side check
+  (`_verify`) both compose, and the caller rules -- an owned-leaf
+  constant, a copied owned parameter -- apply to the composed
+  initializers.
+- **Inherited constructor.** A record with no `__init__` of its own
+  (`class Dog(Animal): pass`, emitted `using Animal::Animal;`) has no
+  `THIRConstructor`. THIR publishes `THIRInheritedConstructor(record_layout,
+  base)` for a record with one direct struct base, no own fields and no
+  own special members, and `MIRDefinitions(..., inherited=...)` relabels
+  the base's verified definition at the subclass type: the subclass's
+  layout, the base's constructor node and initializers. It refuses
+  ("inherited constructor shape") unless the two layouts carry the same
+  fields and special-member facts. Sema's `inherits_init_from` covers
+  more -- a multi-base record whose other bases default-construct, own
+  fields with defaults -- and those publish no fact, so a caller's
+  construct of one refuses.
+- **What a caller consumes.** Nothing new: a base method's write
+  `param0.Base::n` on a `Sub` argument projects `s.Base::n`, a member of
+  `Sub`'s layout, and a conflict over an inherited field is the existing
+  `replacement` kind (`view_then_rename`: a view of the inherited `name`
+  live across the inherited `rename`).
+- **Kept refusals.** A virtual hierarchy's method call, "unsupported
+  expression type" (`call_virtual`; the subclass override's body lowers
+  with no callee); a subclass bound at its base at a local alias
+  (`upcast_local`, `b: Base = s`: "unsupported metadata:
+  cpp_local_representation", the alias binding has no fact) or in an
+  Optional payload (`upcast_payload`, `cur: Base | None = s`: "optional
+  backing storage"), exact-typed sites refusing before any type compare; a caller's construct of a record whose layout holds a
+  container field (`main`, "constructor container field", the flat rule);
+  `super().m()` / `Base.m(self)` inside a subclass body, whose call
+  carries no receiver (C++ `this->A::m()`; "call needs resolved ordinary
+  callee", probed); generic, native and exception bases (the eligibility
+  refuses them, unit-pinned); a record field of subclass type (nested
+  records).
+- **Measured, inherited records** (`scripts/mir_coverage --corpus tests`,
+  11187 bodies common to base and after): lowered 2293 -> 2351 (41
+  constructors, 10 methods, 3 dunders, 3 free functions, 1 property; none
+  lost), conflicts 20 -> 20, certified 60 -> 60; generated C++ and
+  diagnostics byte-identical. The old first blockers of the newly lowered
+  bodies: `base_inits` 41, `missing receiver fact` 12, `unsupported
+  parameter type` 3.
 
 ## Scope matrix and remaining increments
 

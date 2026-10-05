@@ -12,8 +12,9 @@ from ...typesys import (
     UnionType, is_void_like_type, unwrap_readonly, unwrap_ref_type,
 )
 from ..scalar_leaves import (
-    binds_cursor, container_view, declared_members, holds_elements, leaf_constant, leaf_global, modeled_members,
-    native_container_subject, native_container_type, owned_leaf, readonly_elements, storage_leaf,
+    binds_cursor, container_view, declared_members, holds_elements, leaf_constant, leaf_global, modeled_hierarchy,
+    modeled_members, native_container_subject, native_container_type, owned_leaf, readonly_elements, record_owner,
+    storage_leaf,
 )
 from ..nodes import (
     Form, THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldAccess, THIRFieldIdentity, THIRName,
@@ -65,8 +66,7 @@ def borrowed_record(typ: TpyType, readonly: bool,
     if not isinstance(typ, NominalType) or typ.type_args or typ.is_protocol:
         return None
     info = analyzer.registry.get_record_for_type(typ)
-    if (info is None or info.is_native or info.is_value_type or info.is_typed_dict
-            or info.parents or info.type_params):
+    if info is None or modeled_hierarchy(info) is None:
         return None
     return THIRBorrowedRecord(typ, readonly)
 
@@ -158,13 +158,20 @@ def record_layout(typ: TpyType, analyzer: 'SemanticAnalyzer') -> THIRRecordLayou
     reference = borrowed_record(typ, False, analyzer)
     if reference is None:
         return None
-    info = analyzer.registry.get_record_for_type(reference.type)
+    registry = analyzer.registry
+    info = registry.get_record_for_type(reference.type)
+    ancestors = list(registry.iter_field_ancestors(info))
+    chain = (info, *ancestors)
+    # Every field is keyed by its declaring owner, in the one identity spelling.
+    fields = tuple(THIRFieldIdentity(record_owner(r), f.name, f.type)
+                   for r, f in registry.construction_order_fields(info))
+    # A subclass's implicit special members run its bases' custom ones.
     return THIRRecordLayout(
-        reference.type,
-        tuple(THIRFieldIdentity(reference.type, f.name, f.type) for f in info.fields),
+        reference.type, fields,
         info.has_init and len(info.get_method_overloads("__init__")) == 1,
-        info.has_copy, info.has_move, info.has_del,
-        not info.is_nocopy, info.is_movable and info.move_override is not False,
+        any(r.has_copy for r in chain), any(r.has_move for r in chain), any(r.has_del for r in chain),
+        all(not r.is_nocopy for r in chain), all(r.is_movable and r.move_override is not False for r in chain),
+        tuple(record_owner(r) for r in ancestors),
     )
 
 
@@ -328,10 +335,27 @@ def direct_field(expr: TpyFieldAccess,
     reference = borrowed_record(typ, False, analyzer) if typ is not None else None
     if reference is None:
         return None
-    info = analyzer.registry.get_record_for_type(reference.type)
-    member = next((f for f in info.fields if f.name == expr.field), None)
-    if member is None or (not storage_leaf(member.type) and not owned_leaf(member.type)
-                          and borrowed_record(member.type, False, analyzer) is None
-                          and not native_container_type(unwrap_readonly(member.type))):
+    return field_identity(reference.type, expr.field, analyzer)
+
+
+def field_identity(receiver: NominalType, name: str, analyzer: 'SemanticAnalyzer', *,
+                   start: NominalType | None = None) -> THIRFieldIdentity | None:
+    """The identity of field `name` read through a `receiver` record: keyed
+    by the record that declares it (`TypeRegistry.declaring_record`), seen
+    from `start` (an explicit `Start.name`, `start` a struct-base ancestor of
+    `receiver`) or from `receiver` itself. None unless the member's type is
+    one MIR models."""
+    registry = analyzer.registry
+    info = registry.get_record_for_type(receiver)
+    start_info = registry.get_record_for_type(start) if start is not None else None
+    if info is None or start is not None and start_info is None:
         return None
-    return THIRFieldIdentity(reference.type, member.name, member.type)
+    found = registry.declaring_record(info, name, start=start_info)
+    if found is None:
+        return None
+    declaring, member = found
+    if (not storage_leaf(member.type) and not owned_leaf(member.type)
+            and borrowed_record(member.type, False, analyzer) is None
+            and not native_container_type(unwrap_readonly(member.type))):
+        return None
+    return THIRFieldIdentity(record_owner(declaring), member.name, member.type)

@@ -1,0 +1,2 @@
+main.py:240: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:247: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol

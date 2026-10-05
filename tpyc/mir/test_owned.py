@@ -250,7 +250,8 @@ def test_cyclic_in_place_replacement(artifacts: Artifacts) -> None:
     (lambda c: replace(c, record_layout=replace(c.record_layout, custom_move=True)), "special member"),
     (lambda c: replace(c, record_layout=replace(c.record_layout, unique_constructor=False)), "unique"),
     (lambda c: replace(c, body=(th.THIRExprStmt(th.THIRLiteral(INT32, 1)),)), "body effects"),
-    (lambda c: replace(c, base_inits=(th.THIRBaseInit("Base", ()),)), "base_inits"),
+    (lambda c: replace(c, base_inits=(th.THIRBaseInit("Base", (), NominalType("Base")),)),
+     "base constructor identity"),
 ])
 def test_incomplete_or_effectful_constructor_is_not_summarized(
     artifacts: Artifacts, change: Callable[[th.THIRConstructor], th.THIRConstructor], reason: str,

@@ -207,6 +207,10 @@ class MIRRecordLayout:
     # project (`MIRDefinitions` answers it from the TypeDef, never from a
     # constructor).
     opaque: bool = False
+    # The struct-base ancestors, MRO order, nearest first: a field's owner
+    # is `type` or one of them, and storage of `type` binds at any of them
+    # (`call_contract.binds_at`).
+    ancestors: tuple[NominalType, ...] = ()
 
 
 @dataclass(frozen=True)

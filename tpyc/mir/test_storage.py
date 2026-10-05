@@ -5,11 +5,13 @@ from dataclasses import fields, replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType
+from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
@@ -276,7 +278,7 @@ def test_semantic_facts_are_required(functions: dict[str, th.THIRFunction]) -> N
 
 @pytest.mark.parametrize("annotation", [
     "Own[Cell]", "Cell | int32", "tuple[tuple[Cell]]",
-    "GenericCell[int32]", "Child",
+    "GenericCell[int32]",
 ])
 def test_excluded_parameter_shapes(annotation: str) -> None:
     source = SOURCE + """\
@@ -291,6 +293,29 @@ class Child(Cell):
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "excluded")
     assert fn.params[0].borrowed_record is None
     not_covered(fn, "unsupported parameter type")
+
+
+def test_a_derived_record_parameter_is_borrowed() -> None:
+    # A derived record's storage holds its base's fields, written by their declaring owner.
+    source = SOURCE + """\
+class Child(Cell):
+    pass
+
+def admitted(value: Child) -> int32:
+    value.value = 2
+    return value.template
+"""
+    compiler, modules = _compile(source)
+    _, ctx = compiler.generate_code_and_thir(_entry(modules))
+    fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "admitted")
+    child = fn.params[0].borrowed_record
+    assert child == th.THIRBorrowedRecord(child.type, False) and child.type.name == "Child"
+    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()),
+                                 inherited=tuple(ctx.thir_inherited_constructors.values()))
+    with activate_compiler(compiler):
+        result = lower_function(fn, MIRBodyId("storage", fn.name), definitions=definitions)
+    assert isinstance(result, MIRFunction), result
+    assert {f.id.owner.name for r in result.records for f in r.fields} == {"Cell"}
 
 
 @pytest.mark.parametrize("body,reason", [

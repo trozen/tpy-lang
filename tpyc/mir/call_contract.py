@@ -1,7 +1,9 @@
 """Immutable certificates for the bounded call interface."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import TYPE_CHECKING
 
 from ..thir.nodes import (
     THIRBorrowedRecord, THIRCallableSignature, THIRFieldIdentity, THIRFunctionIdentity, THIRResolvedCallee,
@@ -18,6 +20,9 @@ from ..typesys import (
     is_protocol_type, loan_class,
     passing_representation, return_representation, unwrap_readonly, unwrap_ref_type,
 )
+
+if TYPE_CHECKING:
+    from .nodes import MIRRecordLayout
 
 # The passings at which a parameter borrows an owned leaf the caller keeps,
 # and those at which the callee receives its own copy.
@@ -493,10 +498,19 @@ def path_parts(parameter: object, path: object, parameters: tuple[MIRParameterBi
 
 
 def record_field(field: THIRFieldIdentity, ref: THIRBorrowedRecord | None) -> bool:
-    """Whether `field` is a field of the record a borrowed record parameter
-    binds (its membership in the certified layout is checked where the
-    layout is known)."""
-    return ref is not None and field.owner == ref.type and isinstance(field.name, str) and bool(field.name)
+    """Whether `field` can be a field of the record a borrowed record
+    parameter binds: one keyed by its declaring owner, the record or an
+    ancestor. Its membership in the layout of the storage an argument binds
+    is checked where that layout is known (the call, the summary)."""
+    return ref is not None and record_type(field.owner) and isinstance(field.name, str) and bool(field.name)
+
+
+def binds_at(records: Mapping[NominalType, 'MIRRecordLayout'], storage: NominalType, slot: NominalType) -> bool:
+    """Whether record storage of type `storage` binds at a borrowed record
+    slot of type `slot`: the type itself or one of its struct-base ancestors,
+    whose fields the storage contains at the same identities. `records`
+    holds the layout of `storage` whenever the two differ."""
+    return slot == storage or storage in records and slot in records[storage].ancestors
 
 
 def return_origin_problem(origin: MIRReturnOrigin, result: THIRBorrowedRecord,

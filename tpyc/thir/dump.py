@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Iterable
 
 from ..identity_map import IdentityMap
-from ..typesys import TpyType
+from ..typesys import TpyType, unwrap_readonly, unwrap_ref_type
 from .reject import is_bodyless_binding
 from .validate import _iter_children
 from .lower import iter_module_callables, iter_module_constructors
@@ -299,7 +299,7 @@ def _expr(e: THIRExpr) -> str:
         if e.deref_check:
             return f"deref_check({_expr(e.receiver)}).{e.field_cpp}{tag}"
         op = "->" if e.is_arrow else "."
-        return f"{_expr(e.receiver)}{op}{e.field_cpp}{tag}"
+        return f"{_expr(e.receiver)}{op}{e.field_cpp}{_declaring_owner(e)}{tag}"
     if isinstance(e, THIRSubscript):
         tag = "" if e.form is Form.VALUE else f" [{e.form.name.lower()}]"
         # A constant offset (every tuple `std::get<N>`, a literal container index)
@@ -829,10 +829,20 @@ def _resumable_lines(name: str, body: 'THIRResumableBody') -> list[str]:
     return lines
 
 
+def _declaring_owner(e: THIRFieldAccess) -> str:
+    """` <Owner::name>` when the field's identity is declared by a record
+    other than the receiver's type (an inherited member)."""
+    identity = e.field_identity
+    if identity is None or identity.owner == unwrap_readonly(unwrap_ref_type(e.receiver.result_type)):
+        return ""
+    return f" <{identity.owner.name}::{identity.name}>"
+
+
 def _constructor_lines(name: str, ctor: 'THIRConstructor') -> list[str]:
     lines = [f"ctor {name}:"]
     for base in ctor.base_inits:
-        lines.append(f"  base {base.base_cpp}({_exprs(base.args)})")
+        identity = "" if base.base is None else f" <{base.base.name}>"
+        lines.append(f"  base {base.base_cpp}({_exprs(base.args)}){identity}")
     for init in ctor.mil_inits:
         move = " [move]" if init.move else ""
         lines.append(f"  mil {init.field_cpp} = {_expr(init.value)}{move}")

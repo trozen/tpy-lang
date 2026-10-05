@@ -205,9 +205,10 @@ def _facts(declaration: str, *, names: dict[str, dict[str, str]],
            events: dict[tuple[int, str], tuple[str, ...]] | None = None,
            borrows: dict[tuple[int, str], tuple[MIRLineReferents, ...]] | None = None,
            holders: frozenset[str] = frozenset(), lines: frozenset[int] = frozenset({2, 3}),
-           borrows_gap: str | None = None) -> MIRLineFacts:
+           borrows_gap: str | None = None,
+           ambiguous: dict[str, tuple[str, ...]] | None = None) -> MIRLineFacts:
     return MIRLineFacts(MIRBodyId("main", declaration), names, holders, lines, writes or {}, events or {},
-                        borrows or {}, borrows_gap=borrows_gap)
+                        borrows or {}, borrows_gap=borrows_gap, ambiguous=ambiguous or {})
 
 
 def _validate_facts(tmp_path: Path, source: str,
@@ -337,6 +338,18 @@ def test_write_event_names_the_replaced_storage(tmp_path):
     assert _validate_facts(tmp_path, source, (_lowered(), facts)) == [
         "Line 2: expected mir_write(u) in 'f' but no write event on line 2 replaces u (events replace t)",
         "Line 3: expected mir_write(t) in 'f' but no write event on line 3 replaces t"]
+
+
+def test_a_shadowed_field_is_spelled_with_its_owner(tmp_path):
+    # A subclass field shadowing an inherited one: two storages, one bare name.
+    source = ("def f(s: Shadow) -> None:\n"
+              "    s.rename('x')  # tpyc: mir_write(s.Shadow.name) mir_write(s.name) mir_write(param(s).name)\n")
+    facts = _facts("f@1:0", names={"s": {"param": "s"}}, events={(2, "s.Shadow.name"): ("call",)},
+                   ambiguous={"s.name": ("s.Base.name", "s.Shadow.name")})
+    ambiguous = "'{}' names s.Base.name and s.Shadow.name (ambiguous: use s.Base.name or s.Shadow.name)"
+    assert _validate_facts(tmp_path, source, (_lowered(), facts)) == [
+        f"Line 2: expected mir_write(s.name) in 'f' but {ambiguous.format('s.name')}",
+        f"Line 2: expected mir_write(param(s).name) in 'f' but {ambiguous.format('param(s).name')}"]
 
 
 def test_an_analysis_gap_and_an_unlowered_body_report_the_reason(tmp_path):

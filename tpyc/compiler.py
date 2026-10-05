@@ -3902,8 +3902,10 @@ class Compiler:
         compiler), so every lowering must run while the compiler is active."""
         collected = tuple(collected)
         with activate_compiler(self):
-            definitions = MIRDefinitions(tuple(
-                ctor for _compiled, ctx in collected for ctor in ctx.thir_constructors.values()))
+            definitions = MIRDefinitions(
+                tuple(ctor for _compiled, ctx in collected for ctor in ctx.thir_constructors.values()),
+                inherited=tuple(inherited for _compiled, ctx in collected
+                                for inherited in ctx.thir_inherited_constructors.values()))
             workspace = analyze_call_workspace(tuple(
                 item for compiled, ctx in collected for item in call_definitions(ctx, compiled.name)),
                 definitions)

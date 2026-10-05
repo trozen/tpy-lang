@@ -37,8 +37,8 @@ contract (approved 2026-09-17) and grows breadth-first (approved 2026-09-29):
 B1 loan classification of representations, B2 owned leaves (BigInt, str,
 String, bytes) then views as places (both landed), B3 containers as places
 (first half landed; in the retained-loans half declared storage members,
-user method summaries and property accessors with projected return origins
-landed, inherited records and then view fields come next), then cleanup, B4 generator/async frames, with B5 call summaries alongside and B6
+user method summaries, property accessors with projected return origins
+and inherited records landed, view fields come next), then cleanup, B4 generator/async frames, with B5 call summaries alongside and B6
 the advisory checker and authority transition
 ([breadth-first order](MIR_ANALYSIS_PLAN.md#breadth-first-order)). Lifetime and
 loan defects are routed to MIR, not patched in sema (`BUGS.md` entries tagged
@@ -1019,7 +1019,15 @@ cascade needed explicit reproduction, the rest subsumed by node-local admission.
 (parent-order-sorted base inits + the `BaseN.__init__` form) + inherited-field writes
 (body branch + `expr_reads_self_field`). The ctor frontier (M3a-M3d) is complete; the
 remaining ctor cells are cross-axis-blocked (F3+ field forms, the record body-write rung,
-native/generic-record frontiers).
+native/generic-record frontiers). For MIR the constructor nodes carry identities, not
+only render text: `THIRBaseInit.base` names the base record (`base_cpp` stays the render
+spelling), so a subclass's constructor definition chains to its base's; a record with no
+`__init__` of its own that constructs through one struct base (`using Base::Base;`)
+publishes `THIRInheritedConstructor(record_layout, base)`; and `THIRRecordLayout` spans
+every field the C++ struct contains, in construction order, with `ancestors` listing the
+struct-base ancestors (MRO order, nearest first). `THIRFieldIdentity.owner` is the record
+that DECLARES the field, so an inherited field has one identity in the base's bodies and
+in every subclass's ([inherited records](MIR_ANALYSIS_PLAN.md#inherited-records)).
 
 **F1 is the pre-commit gate** (Codex review condition + the spike's real test): an
 end-to-end byte-identical lowering of one real non-value function through THIR-
