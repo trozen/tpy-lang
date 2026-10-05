@@ -1,16 +1,16 @@
 """Semantic callable facts retained at the selected lowering operation."""
 
 from dataclasses import replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from ...compilation_context import get_current_compiler
 from ...parse.nodes import TpyFunction
 from ...symbol_binding import SymbolKind
 from ...type_def_registry import ParamPassing, get_type_def
 from ...typesys import (
-    CONST_PARAMS_METHODS, AnyType, FunctionInfo, FunctionLinkage, IntLiteralType, NominalType, ReadonlyType,
+    AnyType, FunctionInfo, FunctionLinkage, IntLiteralType, NominalType, ReadonlyType,
     RecordInfo, RefType, TpyType, VoidType, contains_pending_leaf, contains_type_param, is_fn_type, is_protocol_type,
-    return_const_projected, return_representation, unwrap_readonly, unwrap_ref_type,
+    accessor_role, return_const_projected, return_representation, unwrap_readonly, unwrap_ref_type,
     unwrap_send_sync,
 )
 from ..nodes import (
@@ -18,7 +18,7 @@ from ..nodes import (
     THIRStubCallee, THIRStubContract, THIRStubIdentity, THIRSubscript, declared_param_type, receiver_param,
 )
 from ..scalar_leaves import leaf_constant, native_container_subject
-from .predicates import param_in_verdict, record_method_fi
+from .predicates import param_passing, record_method_fi
 from .storage import borrowed_record
 
 if TYPE_CHECKING:
@@ -87,8 +87,19 @@ def _bound_by_body(fi: FunctionInfo, root: FunctionInfo, arity: int | None) -> b
                 or arity is not None and arity != len(fi.params))
 
 
-def _declares(root: FunctionInfo, declaration: TpyFunction) -> bool:
-    return (root.return_type == declaration.return_type
+def _declared_return(declaration: TpyFunction) -> TpyType:
+    return declaration.return_type if isinstance(declaration.return_type, TpyType) else VoidType()
+
+
+def _declares(root: FunctionInfo, declaration: TpyFunction, accessor: str | None = None) -> bool:
+    """Whether `declaration` is the body `root` binds: the same parameter
+    names and declared types and the same return. An accessor's
+    FunctionInfo holds the value type of the reference its body returns,
+    and a setter's name is its property's (Python has no differently named
+    setter)."""
+    returns = (unwrap_ref_type(root.return_type) == unwrap_ref_type(_declared_return(declaration))
+               if accessor is not None else root.return_type == declaration.return_type)
+    return (returns and (accessor != "fset" or root.property_name == root.name)
             and tuple(p.name for p in root.params) == tuple(n for n, _ in declaration.params)
             and tuple(declared_param_type(p.type) for p in root.params)
             == tuple(declared_param_type(t) for _, t in declaration.params))
@@ -126,12 +137,9 @@ def _borrowed_result(fi: FunctionInfo, declaration: TpyFunction, analyzer: 'Sema
     return borrowed_record(returned, readonly, analyzer)
 
 
-def _declared_passings(fi: FunctionInfo, declaration: TpyFunction) -> tuple[ParamPassing, ...] | None:
-    # The declaration's own types and verdict, as its THIRParams read them.
-    verdict = fi.const_borrow_params
-    return (None if verdict is None else
-            signature_passings(tuple(t for _, t in declaration.params),
-                               tuple(i in verdict for i in range(len(declaration.params)))))
+def _body_passings(declaration: TpyFunction, owning: FunctionInfo | None) -> tuple[ParamPassing, ...]:
+    # The body's own THIRParam passings, so the definition and every call agree.
+    return tuple(param_passing(n, t, declaration, owning) for n, t in declaration.params)
 
 
 def resolved_callee(fi: FunctionInfo | None, analyzer: 'SemanticAnalyzer',
@@ -161,7 +169,7 @@ def resolved_callee(fi: FunctionInfo | None, analyzer: 'SemanticAnalyzer',
     types = tuple(p.type for p in fi.params)
     return THIRResolvedCallee(THIRFunctionIdentity(module, root.name),
                               THIRCallableSignature(types, fi.return_type, _borrowed_result(fi, declaration, analyzer),
-                                                    _declared_passings(fi, declaration),
+                                                    _body_passings(declaration, group[0]),
                                                     return_representation(fi.return_type)))
 
 
@@ -185,10 +193,6 @@ def method_receiver(func: TpyFunction, self_type: TpyType | None, analyzer: 'Sem
     return receiver if info is not None and info.enum_companion_of is None else None
 
 
-def _accessor(fi: FunctionInfo | TpyFunction) -> str | None:
-    return "fget" if fi.is_property_getter else "fset" if fi.is_property_setter else None
-
-
 def _callable_body(owner: str | None, name: str, accessor: str | None) -> TpyFunction | None:
     compiler = get_current_compiler()
     return compiler.callable_body(owner, name, accessor) if compiler is not None else None
@@ -205,61 +209,24 @@ def _role_fis(info: RecordInfo, name: str, accessor: str | None) -> list[Functio
     return [] if fi is None else [fi]
 
 
-def _accessor_passings(info: RecordInfo, body: TpyFunction) -> tuple[ParamPassing, ...] | None:
-    """How a twin or setter body's declared parameters pass, read as the
-    body's own `THIRParam`s read them (`predicates._param_const_verdict`):
-    the last registered overload's const verdict, which is none for an
-    accessor, whose FunctionInfo sema pops before const inference."""
-    if body.name in CONST_PARAMS_METHODS:
-        return None
-    fi = record_method_fi(info, body.name)
-    return signature_passings(tuple(t for _, t in body.params),
-                              tuple(param_in_verdict(fi, body, n, "const_borrow_params") for n, _ in body.params))
-
-
-def _accessor_callee(fi: FunctionInfo, root: FunctionInfo, owner: THIRBorrowedRecord, info: RecordInfo,
-                     analyzer: 'SemanticAnalyzer') -> THIRResolvedCallee | None:
-    """The callee of a property accessor or of an `@auto_readonly` clone:
-    one identity and one signature read off the DEFINING body (the const
-    clone of a twin pair, or the setter), whichever clone sema resolved."""
-    accessor = _accessor(root)
-    name = (root.property_name or root.name) if accessor == "fset" else root.name
-    if not any(f.root is root for f in _role_fis(info, name, accessor)):
-        return None
-    body = _callable_body(root.owning_type_qname, name, accessor)
-    twin = body is not None and body.auto_readonly_polarity is not None
-    defined = method_receiver(body, owner.type, analyzer) if body is not None else None
-    ret = body.return_type if body is not None and isinstance(body.return_type, TpyType) else VoidType()
-    if (body is None or defined is None or twin != (accessor != "fset")
-            or tuple(declared_param_type(p.type) for p in fi.params)
-            != tuple(declared_param_type(t) for _, t in body.params)
-            or unwrap_ref_type(fi.return_type) != unwrap_ref_type(ret)):
-        return None
-    types = (owner.type, *(t for _, t in body.params))
-    passings = _accessor_passings(info, body)
-    if passings is None or not _closed_types((*types, ret)):
-        return None
-    receiver = owner.type.param_passing(True if twin else body.is_readonly)
-    return THIRResolvedCallee(
-        THIRFunctionIdentity(_identity_module(root, analyzer), name, root.owning_type_qname, accessor),
-        THIRCallableSignature(types, ret, _borrowed_result(fi, body, analyzer, twin, return_type=ret),
-                              (receiver, *passings), return_representation(ret), result_follows_receiver=twin))
-
-
 def method_callee(fi: FunctionInfo | None, receiver: TpyType | None, analyzer: 'SemanticAnalyzer', *,
                   arity: int) -> THIRResolvedCallee | None:
-    """The user record method a call on `receiver` (the call's static
-    receiver type) runs, as one identity and one signature whose parameter
-    0 is the receiver at the method's readonly verdict -- the same value
-    the definition publishes. None unless the target is proven: an ordinary
-    instance method, property accessor or `@auto_readonly` def
-    (`method_receiver`) of exactly the receiver's plain record, whose
-    methods nothing overrides virtually (no `@dynamic` protocol), with one
-    defining body in its role (`Compiler.callable_body`), no rendering of
-    its own (a template -- a dunder's injected operator included -- or a
-    native symbol) and a closed signature. A twin callable publishes its
-    definition's signature at every call; the result access of one call is
-    derived from its receiver (`call_contract.bound_result`)."""
+    """The user record callable a call on `receiver` (the call's static
+    receiver type) runs -- an ordinary instance method, a property getter
+    or setter, or an `@auto_readonly` def -- as one identity and one
+    signature whose parameter 0 is the receiver: the value its defining
+    body publishes (`method_definition`). None unless the target is proven:
+    a body-eligible callable (`method_receiver`) of exactly the receiver's
+    plain record, whose methods nothing overrides virtually (no `@dynamic`
+    protocol), with one defining body in its role (`Compiler.callable_body`),
+    that body the one `fi` binds, no rendering of its own (a template -- a
+    dunder's injected operator included -- or a native symbol) and a closed
+    signature. The defining body of a getter and of an `@auto_readonly` def
+    is the const clone of the pair: its receiver passes const and its
+    result follows the receiver, whichever clone sema resolved; the result
+    access of one call is derived from its receiver
+    (`call_contract.bound_result`). Every other body's receiver passes at
+    its readonly verdict, the one the call binds."""
     if fi is None or receiver is None:
         return None
     root = fi.root
@@ -274,39 +241,43 @@ def method_callee(fi: FunctionInfo | None, receiver: TpyType | None, analyzer: '
             or owner.type != NominalType(info.name, _module_qname=info.qualified_name())
             or next(registry.iter_dynamic_protocols(info), None) is not None):
         return None
-    if _accessor(root) is not None or root.is_auto_readonly_mutable_clone or root.overloaded:
-        # An overload group that is no twin pair finds no single defining body.
-        return _accessor_callee(fi, root, owner, info, analyzer)
-    overloads = info.get_method_overloads(root.name)
-    if len(overloads) != 1 or overloads[0].root is not root:
+    role = accessor_role(root)
+    if not any(f.root is root for f in _role_fis(info, root.name, role)):
         return None
-    body = _callable_body(root.owning_type_qname, root.name, None)
-    passings = _declared_passings(fi, body) if body is not None else None
-    if (body is None or method_receiver(body, owner.type, analyzer) != owner
-            or not _declares(root, body) or passings is None):
+    body = _callable_body(root.owning_type_qname, root.name, role)
+    defined = method_receiver(body, owner.type, analyzer) if body is not None else None
+    # A getter is always a clone pair; a method's overload group is one only
+    # when its single defining body is the pair's const clone.
+    twin = defined is not None and body.auto_readonly_polarity is not None
+    if (defined is None or twin != (role == "fget" or root.overloaded)
+            or not twin and defined != owner or not _declares(root, body, role)):
+        return None
+    ret = _declared_return(body)
+    types = (owner.type, *(p.type for p in fi.params))
+    if not _closed_types((*types, ret)):
         return None
     return THIRResolvedCallee(
-        THIRFunctionIdentity(_identity_module(root, analyzer), root.name, root.owning_type_qname),
-        THIRCallableSignature((owner.type, *(p.type for p in fi.params)), fi.return_type,
-                              _borrowed_result(fi, body, analyzer), (receiver_param(owner).passing, *passings),
-                              return_representation(fi.return_type)))
+        THIRFunctionIdentity(_identity_module(root, analyzer), root.name, root.owning_type_qname, role),
+        THIRCallableSignature(types, ret, _borrowed_result(fi, body, analyzer, twin, return_type=ret),
+                              (receiver_param(defined).passing,
+                               *_body_passings(body, record_method_fi(info, body.name))),
+                              return_representation(ret), result_follows_receiver=twin))
 
 
 def method_definition(func: TpyFunction, receiver: THIRBorrowedRecord | None,
                       analyzer: 'SemanticAnalyzer') -> tuple[THIRResolvedCallee | None, bool]:
     """The callee fact a method body publishes -- its calls' `method_callee`,
     when this body is the one they run -- and whether the body is the
-    access twin: the mutable clone of an `@auto_readonly` def, which
-    publishes the identity its const clone defines."""
+    access twin: the mutable clone of an `@auto_readonly` def
+    (`TpyFunction.clone_of`), which publishes the identity its const clone
+    defines."""
     info = analyzer.registry.get_record_for_type(receiver.type) if receiver is not None else None
     if info is None:
         return None, False
-    accessor = _accessor(func)
-    name = (func.property_name or func.name) if accessor == "fset" else func.name
-    body = _callable_body(info.qualified_name(), name, accessor)
-    twin = (body is not None and body is not func and func.auto_readonly_polarity == "strip"
-            and body.auto_readonly_polarity == "apply" and func.loc == body.loc)
-    fis = _role_fis(info, name, accessor)
+    role = accessor_role(func)
+    body = _callable_body(info.qualified_name(), func.name, role)
+    twin = body is not None and func.clone_of is body
+    fis = _role_fis(info, func.name, role)
     if body is None or not (body is func or twin) or not fis:
         return None, False
     callee = (method_callee(fis[0], receiver.type, analyzer, arity=len(fis[0].params))
@@ -408,15 +379,20 @@ def with_method_stub(node: THIRMethodCall, fi: FunctionInfo | None) -> THIRMetho
     return node if stub is None else replace(node, stub_callee=stub)
 
 
-def with_method_callee(node: THIRMethodCall, fi: FunctionInfo | None,
-                       analyzer: 'SemanticAnalyzer') -> THIRMethodCall:
+def with_method_callee(node: THIRMethodCall, fi: FunctionInfo | None, analyzer: 'SemanticAnalyzer',
+                       receiver_readonly: Callable[[], bool]) -> THIRMethodCall:
     """`node` carrying the user method it statically runs
-    (`method_callee`), unless it binds a stub or renders through a form
-    of its own (a template, a native symbol, a deref, a move or unwrap)."""
+    (`method_callee`) and the access its receiver is emitted at
+    (`receiver_readonly`, asked only for a resolved call), unless it binds
+    a stub or renders through a form of its own (a template, a native
+    symbol, a deref, a move or unwrap)."""
     if node.stub_callee is not None or not node.renders_plain_member_call:
         return node
     callee = method_callee(fi, node.receiver.result_type, analyzer, arity=len(node.args))
-    return node if callee is None else replace(node, resolved_callee=callee)
+    if callee is None:
+        return node
+    return replace(node, resolved_callee=callee,
+                   receiver_access=THIRBorrowedRecord(callee.signature.param_types[0], receiver_readonly()))
 
 
 def setitem_stub_callee(target: THIRExpr, analyzer: 'SemanticAnalyzer') -> THIRStubCallee | None:

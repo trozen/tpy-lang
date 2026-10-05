@@ -7,7 +7,7 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..mir_workspace import MIRCallWorkspace, analyze_call_workspace
 from ..thir import nodes as th
-from ..thir.test_method_stubs import nodes as _thir_nodes
+from ..thir.test_method_stubs import _replace_node, nodes as _thir_nodes
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import INT32, STR, NominalType, ReadonlyType, RefType
@@ -20,9 +20,10 @@ from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, analyze_dependencies, call_return_problem, resolve_call_returns
 from .dump import dump_function
 from .liveness import analyze_liveness
+from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRCall, MIRContainerLayout, MIRFunction, MIRPlace, MIRPoint, MIRReturn, MIRSlot,
-    MIRSlotId, MIRSlotKind, MIRTupleElement, MIRValueKind,
+    MIRAssign, MIRBodyId, MIRCall, MIRContainerLayout, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRReturn,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleElement, MIRValueKind,
 )
 from .summaries import summarize_function
 
@@ -511,6 +512,23 @@ def test_a_twin_result_is_bound_at_the_receiver_binding(program: _Program, name:
     assert verdict.status in (MIRVerdictStatus.COVERED, MIRVerdictStatus.CERTIFIED), verdict.reason
     _, holder, _, _ = _call_site(program, name)
     assert holder.readonly is readonly
+
+
+@pytest.mark.parametrize("name", ["read_readonly", "read_inferred", "write_through_me"])
+def test_a_receiver_access_unlike_its_binding_is_refused(program: _Program, name: str) -> None:
+    fn = _free(program, name)
+    body = MIRBodyId("main", name)
+    assert isinstance(lower_function(fn, body, definitions=program.definitions,
+                                     summaries=program.workspace.summaries), MIRFunction)
+    calls = _thir_nodes(fn, th.THIRMethodCall)
+    assert calls
+    for call in calls:
+        # The call's fact is the access C++ picks the overload by; a binding
+        # MIR reads otherwise is no evidence of either, so it never widens.
+        flipped = replace(call.receiver_access, readonly=not call.receiver_access.readonly)
+        result = lower_function(_replace_node(fn, call, replace(call, receiver_access=flipped)), body,
+                                definitions=program.definitions, summaries=program.workspace.summaries)
+        assert isinstance(result, MIRNotCovered) and result.reason == "call receiver access disagrees with its binding"
 
 
 # --- twins ---------------------------------------------------------------------------

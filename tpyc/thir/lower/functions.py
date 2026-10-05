@@ -113,7 +113,9 @@ from ..nodes import (
 )
 from .predicates import (
     _value_record_slot,
-    _param_is_const,
+    _owning_fi,
+    _param_is_const_at,
+    param_passing,
     _param_is_deep_const,
     _peel_coerce,
     _IDENTITY_STR_COERCIONS,
@@ -956,15 +958,15 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     src_params = (func.params if stub is None or literal_group
                   else stub.params)
     src_rt = func.return_type if stub is None else stub.return_type
+    verdict_fi = _owning_fi(func, analyzer, record_name)
+    param_const = {n: _param_is_const_at(n, func, verdict_fi) for n, _ in src_params}
     params = tuple(THIRParam(
         name=n, type=t,
-        passing=t.param_passing(_param_is_const(n, func, analyzer, record_name)),
-        native_container=native_container(t, _param_is_const(n, func, analyzer, record_name), analyzer),
+        passing=param_passing(n, t, func, verdict_fi),
+        native_container=native_container(t, param_const[n], analyzer),
         union_layout=_union_source_layout(n, t, lc),
-        borrowed_record=borrowed_record(t, _param_is_const(n, func, analyzer, record_name),
-                                        analyzer),
-        optional_layout=optional_layout(t, analyzer, borrow=True,
-                                       readonly=_param_is_const(n, func, analyzer, record_name)),
+        borrowed_record=borrowed_record(t, param_const[n], analyzer),
+        optional_layout=optional_layout(t, analyzer, borrow=True, readonly=param_const[n]),
         tuple_layout=tuple_parameter_layout(t, analyzer,
                                             readonly=_param_is_deep_const(n, func, analyzer, record_name)),
     ) for n, t in src_params)
@@ -1247,17 +1249,16 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                 message_init,
                 field_identity=identities.get(qnames.EXCEPTION_MESSAGE_FIELD)))
         body_declared = dict(declared)
+        ctor_fi = _owning_fi(init_method, analyzer, record.name)
+        ctor_const = {n: _param_is_const_at(n, init_method, ctor_fi) for n, _ in init_method.params}
         ctor = THIRConstructor(
             record_name=record.name,
             record_layout=layout,
             params=tuple(THIRParam(
                 name=n, type=t, union_layout=_union_source_layout(n, t, lc),
-                passing=t.param_passing(_param_is_const(n, init_method, analyzer, record.name)),
-                native_container=native_container(
-                    t, _param_is_const(n, init_method, analyzer, record.name), analyzer),
-                optional_layout=optional_layout(
-                    t, analyzer, borrow=True,
-                    readonly=_param_is_const(n, init_method, analyzer, record.name)),
+                passing=param_passing(n, t, init_method, ctor_fi),
+                native_container=native_container(t, ctor_const[n], analyzer),
+                optional_layout=optional_layout(t, analyzer, borrow=True, readonly=ctor_const[n]),
                 tuple_layout=tuple_parameter_layout(
                     t, analyzer, readonly=_param_is_deep_const(n, init_method, analyzer, record.name)),
             ) for n, t in init_method.params),

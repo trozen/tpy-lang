@@ -46,7 +46,7 @@ from .typesys import (
     OwnType, OptionalType, UnionType, TupleType, PtrType, RefType, ReadonlyType,
     RecursiveUnionInfo,
     is_fn_type, unwrap_ref_type, is_protocol_type, is_protocol_union,
-    clear_all_compilation_state, BUILTIN_RETURN_EXCEPTIONS,
+    accessor_role, clear_all_compilation_state, BUILTIN_RETURN_EXCEPTIONS,
 )
 from .type_def_registry import protocol_info_of, enum_info_of
 from .module_names import module_from_qname, public_module_name
@@ -1053,26 +1053,27 @@ class Compiler:
         """The source body defining ONE callable of (owning type, name) in
         the role `accessor` names -- "fget" / "fset" for a property's getter
         / setter, None for a method: the only body of that role, or the const
-        clone of an `@auto_readonly` pair whose clones bind one signature.
-        None for no body or several: an overload or dispatch group, a pair
-        whose clones' signatures differ, and a method and a property sharing
-        the name (the C++ member call cannot tell them apart)."""
+        clone of an `@auto_readonly` pair (`TpyFunction.clone_of`) whose clones
+        bind one signature. None for no body or several: an overload or
+        dispatch group, a pair whose clones' signatures differ, and a method
+        and a property sharing the name (the C++ member call cannot tell them
+        apart)."""
         bodies = self.method_bodies.get((owning_type_qname, name)) if owning_type_qname else None
         if not bodies:
             return None
-        accessors = [b.is_property_getter or b.is_property_setter for b in bodies]
+        accessors = [accessor_role(b) is not None for b in bodies]
         if any(accessors) and not all(accessors):
             return None
-        role = [b for b in bodies
-                if ("fget" if b.is_property_getter else "fset" if b.is_property_setter else None) == accessor]
+        role = [b for b in bodies if accessor_role(b) == accessor]
         if len(role) == 1:
             return role[0] if role[0].auto_readonly_polarity is None else None
         if len(role) != 2:
             return None
-        strip, apply = sorted(role, key=lambda b: b.auto_readonly_polarity != "strip")
-        return (apply if strip.auto_readonly_polarity == "strip" and apply.auto_readonly_polarity == "apply"
-                and strip.loc == apply.loc and strip.params == apply.params
-                and strip.return_type == apply.return_type else None)
+        mutable, const = sorted(role, key=lambda b: b.clone_of is None)
+        # A clone whose parameters or return carry the receiver's access binds
+        # a second signature: two callables, not one.
+        return (const if mutable.clone_of is const and mutable.params == const.params
+                and mutable.return_type == const.return_type else None)
 
     def _finalize_workspace(self) -> None:
         """The post-body workspace passes, shared by both compile paths

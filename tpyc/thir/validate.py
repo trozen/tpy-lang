@@ -40,7 +40,8 @@ constructors through `validate_function` / `validate_constructor`, and the
 resumable-frame bodies -- whose leaves the skeleton holds apart in seam
 tables rather than one linear body -- through `validate_resumable_body`.
 A module's callee definitions are checked together by
-`validate_definitions` where the call workspace collects them.
+`validate_definitions`, once the codegen pass has lowered every function
+body of the module.
 """
 
 from __future__ import annotations
@@ -301,6 +302,11 @@ def _check_method_callee(owner: str, node: THIRMethodCall, fact: THIRResolvedCal
             or passings is None or passings[0] not in (receiver.param_passing(False), receiver.param_passing(True))
             or not node.renders_plain_member_call):
         _fail(owner, node, "resolved method callee on incompatible call")
+    # The receiver's emitted access: never wider than its type lends.
+    access = node.receiver_access
+    if (not isinstance(access, THIRBorrowedRecord) or access.type != receiver or type(access.readonly) is not bool
+            or not access.readonly and unwrap_ref_type(node.receiver.result_type) != receiver):
+        _fail(owner, node, "receiver access disagrees with the receiver")
 
 
 def _stub_callee_problem(fact: THIRStubCallee) -> bool:
@@ -515,6 +521,8 @@ def _check_node(owner: str, node: THIRNode) -> None:
                 or any(value is not None for value in (
                     node.native_name, node.cpp_template, node.callee_expr, node.template_args_cpp))):
             _fail(owner, node, "resolved callee on incompatible call")
+    if isinstance(node, THIRMethodCall) and (node.receiver_access is None) != (node.resolved_callee is None):
+        _fail(owner, node, "receiver access needs exactly a resolved callee")
     if isinstance(node, THIRMethodCall) and node.resolved_callee is not None:
         _check_method_callee(owner, node, node.resolved_callee)
     if isinstance(node, (THIRName, THIRModuleVar, THIRWalrus)) and node.global_binding is not None:

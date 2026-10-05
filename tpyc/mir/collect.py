@@ -14,7 +14,6 @@ from ..thir.lower import iter_module_callables, iter_module_constructors
 from ..thir.nodes import THIRConstructor, THIRFunction, THIRFunctionIdentity
 from ..thir.reject import is_bodyless_binding
 from ..thir.scalar_leaves import owned_leaf, record_type, storage_leaf
-from ..thir.validate import validate_definitions
 from ..typesys import TpyType, unwrap_readonly
 from .call_contract import MIRSummaryResult
 from .call_effects import MIRCallEffects, analyze_call_effects, dump_call_effects
@@ -61,7 +60,6 @@ def call_definitions(ctx: CodeGenContext, module_name: str) -> tuple[tuple[MIRBo
     gives it: the clones of a def share one declaration, so the second
     lowered body is `#2` as in `enumerate_body_sources`. A cache entry is
     read back only for the very function it lowered (`MIRCallWorkspace.lowering`)."""
-    validate_definitions(tuple(ctx.thir_functions.values()))
     seen: dict[str, int] = {}
     result: list[tuple[MIRBodyId, THIRFunction]] = []
     for node, fn in ctx.thir_functions.items():

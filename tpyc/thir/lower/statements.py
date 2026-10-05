@@ -292,6 +292,7 @@ from ..nodes import (
     WithTargetArm,
 )
 from .predicates import (
+    receiver_is_const,
     _record_getitem_key,
     copy_call_arg,
     _storage_family_ok,
@@ -13159,7 +13160,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                             if _inp_fi.native_function else None),
                         cpp_template=_inp_fi.cpp_template,
                         args=(val,),
-                        loc=loc), _inp_fi), _inp_fi, analyzer),
+                        loc=loc), _inp_fi), _inp_fi, analyzer,
+                        lambda: receiver_is_const(stmt.target, lc)),
                     loc=loc)
         if not aug_ok:
             raise ThirUnsupported("stmt.aug_assign")
@@ -16957,14 +16959,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                   and native_container_type(native_container_subject(iterable.result_type))):
                 # The container a user callee returns by reference, walked in
                 # place: const when its return type is, or, for a callable whose
-                # result follows its receiver, when the receiver lends const.
+                # result follows its receiver, when the call's receiver is
+                # emitted const (`THIRMethodCall.receiver_access`).
                 signature = iterable.resolved_callee.signature
-                receiver = getattr(stmt.iterable, "obj", None)
                 source_fact = native_container(
                     iterable.result_type,
                     isinstance(unwrap_ref_type(signature.return_type), ReadonlyType)
-                    or signature.result_follows_receiver and receiver is not None
-                    and _iteration_yields_const(receiver, lc, analyzer), analyzer)
+                    or signature.result_follows_receiver and isinstance(iterable, THIRMethodCall)
+                    and iterable.receiver_access.readonly, analyzer)
         elif (route.consuming_native_name is None and not route.consuming_name
               and isinstance(iterable, THIRMethodCall) and iterable.stub_callee is not None):
             # A container view a stub returns (`d.keys()`) walks its own

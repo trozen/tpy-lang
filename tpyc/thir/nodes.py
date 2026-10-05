@@ -1307,6 +1307,10 @@ class THIRMethodCall(THIRExpr):
     # definition publishes (the receiver is parameter 0); exclusive with
     # `stub_callee`. Analysis only: no render reads it.
     resolved_callee: THIRResolvedCallee | None = None
+    # The access the receiver is emitted at -- the one C++ picks a const or
+    # mutable overload by -- decided once at the call; set exactly when
+    # `resolved_callee` is. Analysis only: no render reads it.
+    receiver_access: THIRBorrowedRecord | None = None
 
     def __post_init__(self) -> None:
         assert not (self.deref_check and self.is_arrow)
