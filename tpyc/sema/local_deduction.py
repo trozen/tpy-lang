@@ -8,6 +8,7 @@ for function-local variables.
 from __future__ import annotations
 
 from dataclasses import replace as dc_replace
+from enum import Enum, auto
 from typing import TYPE_CHECKING, Callable
 
 from ..coercions import CoercionContext
@@ -17,6 +18,7 @@ from ..parse.nodes import (TpyStrLiteral, TpyBytesLiteral, TpySubscript, TpyFiel
                            TpyVarDecl, TpyNoneLiteral, TpyTupleLiteral, TpySlice)
 from ..typesys import (
     recorded_return_borrow_sources,
+    contains_pending_num,
 
     collapse_tuple_own_elements,
     DictLiteralInfo,
@@ -76,8 +78,8 @@ from .type_join import (InferredJoin, JoinOutcome, descend,
                         python_type_name, rebind_mix_message, usage_mix_message,
                         wider_store_message)
 from .numeric_lattice import numeric_info, same_width_family, widen_numeric_types
-from .pending_num import (contains_pending_num, is_pending_num,
-                          numeric_container, pending_list_of)
+from .pending_num import (is_pending_num, numeric_container, pending_leaves,
+                          pending_list_of)
 from .alias_rebind import BindKind
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_list, is_fixed_int_type, is_big_int_type,
@@ -294,6 +296,24 @@ def _numeric_leaf_differs(a: TpyType, b: TpyType) -> bool:
         a, b, lambda x, y: x != y if _is_number(x) and _is_number(y) else None)
 
 
+class _Form(Enum):
+    """The container a list literal resolves to
+    (`LocalTypeDeduction._container_form`)."""
+    ANNOTATED = auto()
+    LIST = auto()
+    REPEAT = auto()
+    ARRAY = auto()
+
+
+def _row_ids(t: TpyType) -> list[int]:
+    """The literal ids of the rows an element tree holds."""
+    if isinstance(t, PendingListType):
+        return [t.literal_id, *_row_ids(t.element_type)]
+    if isinstance(t, TupleType):
+        return [lid for m in t.element_types for lid in _row_ids(m)]
+    return []
+
+
 def pending_elem_read(ctx: 'SemanticContext', receiver: 'TpyType | None',
                       result: TpyType, node: 'TpyExpr') -> TpyType:
     """The type of a read built from the element of a container literal
@@ -305,9 +325,9 @@ def pending_elem_read(ctx: 'SemanticContext', receiver: 'TpyType | None',
     the list literal remembers (`note_pending_elem_read`)."""
     if isinstance(result, (IntLiteralType, FloatLiteralType)):
         return result
-    if is_pending_num(result):
-        # The element of a list whose cell decides it: the read follows
-        # the cell.
+    if pending_leaves(result):
+        # The element of a list whose cells decide it, or a part of one:
+        # the read follows the cells.
         return result
     if (isinstance(receiver, PendingListType)
             and _mentions(result, receiver.element_type)):
@@ -339,8 +359,8 @@ def note_pending_elem_read(ctx: 'SemanticContext', receiver: 'TpyType | None',
     if not isinstance(receiver, PendingListType):
         return
     info = ctx.list_literals.get(receiver.literal_id)
-    # A list whose element a cell decides has no read to go stale.
-    if info is not None and info.elem_cell is None:
+    # A list whose element cells decide has no read to go stale.
+    if info is not None and info.elem_cells is None:
         info.elem_reads.append((receiver.element_type, node))
 
 
@@ -729,7 +749,7 @@ class LocalTypeDeduction:
         if info is None:
             return
         self.update_list_element_type(info, value_type, obj_expr, value)
-        if info.elem_cell is not None:
+        if info.elem_cells is not None:
             # Every name for the list shares the cell the store went to.
             return
         # Propagate up the entire alias chain (zs = ys = xs; zs.append(v))
@@ -848,7 +868,7 @@ class LocalTypeDeduction:
                 info = self.ctx.list_literals[literal_id]
                 # A cell-decided element met the parameter where the
                 # argument was analyzed (`PendingNums.elem_context`).
-                decides = info.elem_cell is None
+                decides = info.elem_cells is None
                 if is_list(param_type):
                     info.passed_to_list_param = True
                     if decides:
@@ -963,15 +983,14 @@ class LocalTypeDeduction:
             if info is None or not (is_list(target) or to_array):
                 return joined
             elem = target.type_args[0]
-            cell = (self.ctx.pending_num_cells.get(info.elem_cell)
-                    if info.elem_cell is not None else None)
-            if cell is not None:
-                # The element is the cell's: the operand was analyzed as a
+            lc = (self.pend.cells_of(info) if info.elem_cells is not None
+                  else None)
+            if lc is not None:
+                # The element is the cells': the operand was analyzed as a
                 # value, which settled it.
-                held = self.pend.known_so_far(cell)
-                if held == unwrap_readonly(elem):
+                if self.pend.known_as(lc, elem):
                     return joined
-                mix = self.int_float_mix(held, elem)
+                mix = self.int_float_mix(self.pend.tree_known(lc), elem)
                 return below(mix, 0) if mix is not None else incompatible
             if (commit and numeric_container(target) is not None
                     and self.pend.seed_by_context(pending, target, None,
@@ -1031,30 +1050,28 @@ class LocalTypeDeduction:
         list literal shares what each holds with the other, and a typed
         list is a container the element must agree with. True when the
         value is a pending list this settled the element question for."""
-        cell = self.pend.list_cell(existing)
-        if cell is None:
+        lc = self.pend.list_cells(existing)
+        if lc is None:
             return False
-        other = self.pend.list_cell(value_type)
-        if other is cell:
-            return True
+        other = self.pend.list_cells(value_type)
         if other is not None:
-            self.pend.elem_store(cell, self.pend.cell_type(other), None, site)
-            self.pend.elem_store(other, self.pend.cell_type(cell), None, site)
-            return True
+            return (other.cids == lc.cids
+                    or self.pend.link(lc.tree, other.tree, site))
         pending = pending_list_of(value_type)
         if pending is not None:
             info = self.ctx.list_literals.get(pending.literal_id)
             if isinstance(pending.element_type, UnknownElementType):
                 if info is not None:
-                    info.elem_cell = cell.cid
-                    info.element_type = self.pend.elem_leaf(cell)
+                    self.pend.attach(info, lc.tree)
                 return True
             container = make_list(pending.element_type)
         else:
             container = numeric_container(value_type)
-        if container is None or numeric_container(container) is None:
+        if (container is None or numeric_container(container) is None
+                or not self.pend.fits_container(
+                    lc.tree, self.pend.context_elem(container))):
             return False
-        refusal = self.pend.context_refusal(cell, container, "rebound")
+        refusal = self.pend.context_refusal(lc, container, "rebound")
         if refusal is not None:
             raise self.ctx.error(refusal, site)
         self.pend.elem_context(existing, container, site, "rebound")
@@ -1107,7 +1124,7 @@ class LocalTypeDeduction:
         if literal_id is not None and literal_id in self.ctx.list_literals and is_list(return_type):
             info = self.ctx.list_literals[literal_id]
             info.passed_to_list_param = True
-            if info.elem_cell is None:
+            if info.elem_cells is None:
                 info.coerced_element_type = return_type.type_args[0]
             return
 
@@ -1144,8 +1161,9 @@ class LocalTypeDeduction:
 
         new_id = self.ctx.literal_counter
         self.ctx.literal_counter += 1
-        # Two names for one list share the cell that decides its element.
-        elem = (source_info.element_type if source_info.elem_cell is not None
+        # Two names for one list share the cells that decide its element.
+        elem = (source_info.element_type
+                if source_info.elem_cells is not None
                 else init_type.element_type)
         info = ListLiteralInfo(
             literal_id=new_id,
@@ -1155,7 +1173,8 @@ class LocalTypeDeduction:
             variable_name=var_name,
             decl_line=decl_line,
             source_literal_id=source_literal_id,
-            elem_cell=source_info.elem_cell,
+            elem_cells=(dict(source_info.elem_cells)
+                        if source_info.elem_cells is not None else None),
         )
         self.ctx.list_literals[new_id] = info
         self.ctx.func.pending_resolutions.append(new_id)
@@ -1241,7 +1260,8 @@ class LocalTypeDeduction:
         - If passed to typed param (list[T] or Span[T]), use T
         - IntLiteralType defaults to ctx.default_int_type for containers
         """
-        for literal_id in self.ctx.func.pending_resolutions:
+        self._close_row_groups()
+        for literal_id in self._rows_first():
             if literal_id not in self.ctx.list_literals:
                 continue
 
@@ -1250,7 +1270,7 @@ class LocalTypeDeduction:
             # Resolve element type
             # Priority: coerced type from param > inferred from usage > resolved inner PendingListType > default
             elem_type = info.element_type
-            by_cell = info.elem_cell is not None
+            by_cell = info.elem_cells is not None
             if by_cell:
                 # The cell settled with the function's numbers; every use
                 # of the element was compiled at this type.
@@ -1304,31 +1324,14 @@ class LocalTypeDeduction:
             # here with the element expr's `Own[T]` return type intact).
             elem_type = unwrap_own(elem_type)
 
-            # Determine resolved type
-            is_repeat = isinstance(info.expr, TpyListRepeat)
-            if info.has_explicit_annotation and info.explicit_type:
+            form = self._container_form(info)
+            if form is _Form.ANNOTATED:
                 resolved = info.explicit_type
-            elif info.is_mutated:
+            elif form is _Form.LIST:
                 resolved = make_list(elem_type)
-            elif info.needs_list_type:
-                # Both ternary branches must have the same C++ type; Array sizes may differ.
-                resolved = make_list(elem_type)
-            elif info.passed_to_list_param:
-                resolved = make_list(elem_type)
-            elif info.is_global:
-                # Globals can be imported and mutated by other modules
-                resolved = make_list(elem_type)
-            elif info.passed_to_span_param and is_repeat and info.size < 0:
-                # Variable count repeat to Span -- needs contiguous memory, materialize
-                resolved = make_list(elem_type)
-            elif info.size < 0 and info.needs_indexing:
-                # Variable count repeat with subscript access -- materialize for operator[]
-                resolved = make_list(elem_type)
-            elif info.size < 0:
-                # Variable count (repeat with non-constant N) -- stays lazy
+            elif form is _Form.REPEAT:
                 resolved = ListRepeatType(elem_type)
             else:
-                # Default: Array (stack-allocated, no mutation detected)
                 resolved = make_array(elem_type, info.size)
 
             # The read guard and the context override above serve the lists
@@ -1374,7 +1377,7 @@ class LocalTypeDeduction:
                       else None)
             if (source is None or info.resolved_type is None
                     or source.resolved_type is None
-                    or info.elem_cell is not None):
+                    or info.elem_cells is not None):
                 continue
             mine = info.resolved_type.get_element_type()
             theirs = source.resolved_type.get_element_type()
@@ -1389,6 +1392,86 @@ class LocalTypeDeduction:
                 f"'{info.variable_name}'; annotate its first binding: "
                 f"{source.variable_name}: list[{decided}] = ...",
                 info.expr)
+
+    def _rows_first(self) -> list[int]:
+        """The function's list records in resolution order: a list whose
+        element cells name rows after those rows, which a store may have
+        created after the list (`g.append([v])`, an empty list seeded by
+        a row), since the list embeds their resolved type."""
+        lits = self.ctx.list_literals
+        order: list[int] = []
+        done: set[int] = set()
+
+        def visit(lid: int) -> None:
+            if lid in done:
+                return
+            done.add(lid)
+            info = lits.get(lid)
+            if info is not None and info.elem_cells is not None:
+                for row in _row_ids(info.element_type):
+                    visit(row)
+            order.append(lid)
+
+        own = set(self.ctx.func.pending_resolutions)
+        for lid in self.ctx.func.pending_resolutions:
+            visit(lid)
+        return [lid for lid in order if lid in own]
+
+    @staticmethod
+    def _container_form(info: ListLiteralInfo) -> '_Form':
+        """The container list literal `info` resolves to: its annotation; a
+        `list` when it is mutated, a ternary branch beside another list
+        (whose Array size may differ), passed as a `list`, or a global
+        (another module may mutate it); a variable-count repeat a `list`
+        where it needs contiguous memory (a repeat passed as a Span) or
+        `operator[]`, else a lazy repeat; else an Array."""
+        if info.has_explicit_annotation and info.explicit_type:
+            return _Form.ANNOTATED
+        if (info.is_mutated or info.needs_list_type
+                or info.passed_to_list_param or info.is_global):
+            return _Form.LIST
+        if info.size < 0:
+            if ((info.passed_to_span_param
+                 and isinstance(info.expr, TpyListRepeat))
+                    or info.needs_indexing):
+                return _Form.LIST
+            return _Form.REPEAT
+        return _Form.ARRAY
+
+    def _close_row_groups(self) -> None:
+        """The rows at one position of one list are one C++ type
+        (`ListLiteralInfo.row_group`): a requirement for a vector on one of
+        them -- a mutation, a list context, a different size, an alias
+        that needs one -- is one on every row of the group and every name
+        for them. Decided before any record resolves, so the list that
+        holds them embeds the type all its rows get."""
+        lits = self.ctx.list_literals
+        groups: dict[int, list[ListLiteralInfo]] = {}
+        for lid in self.ctx.func.pending_resolutions:
+            rec = lits.get(lid)
+            if rec is not None and rec.row_group is not None:
+                groups[id(rec.row_group)] = [
+                    lits[g] for g in rec.row_group if g in lits]
+        if not groups:
+            return
+        changed = True
+        while changed:
+            changed = False
+            for recs in groups.values():
+                members = {r.literal_id for r in recs}
+                names = [lits[lid] for lid in self.ctx.func.pending_resolutions
+                         if lid in lits and lid not in members
+                         and lits[lid].source_literal_id in members]
+                allof = [r for r in recs + names
+                         if not r.has_explicit_annotation]
+                if not (any(self._container_form(r) is not _Form.ARRAY
+                            for r in allof)
+                        or len({r.size for r in recs}) > 1):
+                    continue
+                for r in allof:
+                    if not r.is_mutated:
+                        r.is_mutated = True
+                        changed = True
 
     def _check_elem_reads(self, info: 'ListLiteralInfo',
                           elem_type: TpyType) -> None:
@@ -2401,6 +2484,9 @@ class LocalTypeDeduction:
         self.pend.settle_all(getattr(func, "body", None))
         self._check_unresolved_none_inference()
         self._resolve_pending_list_types()
+        for elem, record in self.ctx.func.after_list_resolution:
+            record(self._deep_resolve_pending(elem))
+        self.ctx.func.after_list_resolution = []
         self._resolve_pending_dict_and_set_types()
         for family in VIEW_TYPE_FAMILIES:
             self._resolve_pending_view_types(family)
@@ -2525,7 +2611,7 @@ class LocalTypeDeduction:
             # A list no cell decides keeps the type its own resolution
             # gives every read.
             if (isinstance(current.element_type, UnknownElementType)
-                    and (info is None or info.elem_cell is None)):
+                    and (info is None or info.elem_cells is None)):
                 continue
             if info is not None and info.resolved_type is not None:
                 self.ctx.expr_types[node] = info.resolved_type

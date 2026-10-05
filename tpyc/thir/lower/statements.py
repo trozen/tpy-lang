@@ -1192,7 +1192,9 @@ def _for_range_route(stmt: TpyForEach, analyzer,
 def _resolved_loop_elem_type(stmt: TpyForEach, analyzer) -> 'TpyType | None':
     # resolve_int_literals: a literal-seeded container's elem_type is still
     # IntLiteral (IntLiteralType.to_cpp() would emit the VALUE), so the loop
-    # binding needs the resolved default-int spelling. A str/bytes loop var
+    # binding needs the resolved default-int spelling -- a list literal
+    # written as the iterable, or a module-level one; a function-local
+    # list's element is its cells' settled type. A str/bytes loop var
     # (list[str] element / owned-str dict key / a bytes-yielding iterator)
     # resolves its pending view type the same way, matching the lowering's
     # `et`.

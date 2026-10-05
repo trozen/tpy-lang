@@ -12,18 +12,21 @@ from .. import get_lib_dir
 from ..compiler import Compiler
 from ..diagnostics import Scope, SemanticError
 from ..parse import (Parser, SourceLocation, TpyArrayLiteral, TpyCoerce,
-                     TpyFloatLiteral, TpyIntLiteral, TpyName, TpyVarDecl)
+                     TpyFloatLiteral, TpyIntLiteral, TpyName, TpyStrLiteral,
+                     TpyTupleLiteral, TpyVarDecl)
 from ..prescan import (fold_int_constant, int_constant_too_wide,
                        literal_constant, scan_first_bindings,
                        scan_pending_num_locals)
 from ..typesys import (BIGINT, FLOAT, FLOAT32, INT8, INT16, INT32, INT64, STR,
                        UNKNOWN_ELEMENT, FloatLiteralType, IntLiteralType,
                        ListLiteralInfo, PendingListType, PendingNumType,
-                       TypeRegistry, UINT8, UINT32, UINT64, make_list)
+                       TupleType, TypeRegistry, UINT8, UINT32, UINT64,
+                       make_list)
 from .compatibility import TypeCompatibility
 from .context import SemanticContext
-from .pending_num import (NO_COMMON, PENDING_NUM_COERCION, PendingNums,
-                          _splice_out, lub_int, pending_join)
+from .pending_num import (NO_COMMON, PENDING_NUM_COERCION, ListCells,
+                          PendingNumCell, PendingNums,
+                          _splice_out, lub_int, pending_join, tree_leaves)
 
 
 def _pending(body: str, params: str = "") -> frozenset[str]:
@@ -277,6 +280,11 @@ def _elem_pend() -> PendingNums:
     return compat.pend
 
 
+def _one(pend: PendingNums, cell: PendingNumCell) -> ListCells:
+    """The cells of a list of scalars whose one cell is `cell`."""
+    return ListCells(None, pend.elem_leaf(cell), (cell,), ((),))
+
+
 def _list_decl(pend: PendingNums, *values: int) -> TpyVarDecl:
     """`ys = [values...]` at line 3, its literals analyzed."""
     elements = [TpyIntLiteral(v) for v in values]
@@ -304,8 +312,8 @@ def test_list_at_a_container_that_would_not_hold_a_value(
     pend = _elem_pend()
     cell = pend.new_elem_cell("ys", 0, _list_decl(pend, 1, 300), False,
                               no_base=False)
-    refusal = pend.context_refusal(cell, make_list(INT8), "passed", None,
-                                   resolved)
+    refusal = pend.context_refusal(_one(pend, cell), make_list(INT8),
+                                   "passed", None, resolved)
     assert re.search(message, refusal)
 
 
@@ -316,7 +324,8 @@ def test_list_at_two_containers_names_both() -> None:
     pend.add_store(cell, INT64, decl)
     pend.settle({cell.cid}, use=decl, what="passed as list[int64]")
     cell.context = (make_list(INT64), decl, "passed")
-    assert pend.context_refusal(cell, make_list(INT32), "passed") == (
+    assert pend.context_refusal(_one(pend, cell), make_list(INT32),
+                                "passed") == (
         "'ys' is passed as list[int64] at line 3 and as list[int32] here; "
         "a list has one element type")
     # A literal the decided element holds still counts as its own type.
@@ -412,7 +421,7 @@ def test_empty_list_literal_store_leaves_the_element_open() -> None:
     ys = _empty_list(pend)
     one = TpyIntLiteral(1)
     pend.ctx.set_expr_type(one, IntLiteralType(1))
-    cell = pend.seed_by_store(ys, IntLiteralType(1), one, _at(4))
+    cell = pend.seed_by_store(ys, IntLiteralType(1), one, _at(4)).scalar
     assert cell is not None and cell.settled is None
     pend.elem_store(cell, INT64, None, _at(5))
     pend.settle({cell.cid})
@@ -423,7 +432,7 @@ def test_empty_list_non_numeric_store_seeds_no_cell() -> None:
     pend = _elem_pend()
     ys = _empty_list(pend)
     assert pend.seed_by_store(ys, STR, None, _at(4)) is None
-    assert pend.ctx.list_literals[0].elem_cell is None
+    assert pend.ctx.list_literals[0].elem_cells is None
 
 
 def test_empty_list_cell_reaches_every_name_bound_to_it() -> None:
@@ -432,7 +441,7 @@ def test_empty_list_cell_reaches_every_name_bound_to_it() -> None:
     zs = _empty_list(pend, "zs", 1, source=0)
     # Seeded through the second name: both records share the cell, and the
     # diagnostics name the first binding.
-    cell = pend.seed_by_store(zs, INT8, None, _at(5))
+    cell = pend.seed_by_store(zs, INT8, None, _at(5)).scalar
     assert cell is not None and cell.name == "ys"
     assert pend.list_cell(ys) is cell and pend.list_cell(zs) is cell
     assert pend.seedable(ys) is None
@@ -496,10 +505,196 @@ def test_empty_list_refusal_wording(body: str, message: str) -> None:
                              lib_dirs=[get_lib_dir() / "tpy"]).compile()
 
 
+_LEAVES_PRELUDE = """from tpy import copy, int8, int32, int64
+def a8() -> int8: return 100
+def a64() -> int64: return 1099511627776
+def pairs64(v: list[tuple[int64, int32]]) -> None: pass
+def rows32(v: list[list[int32]]) -> None: pass
+"""
+
+
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        pytest.param(
+            "def main() -> None:\n    ps = [(a8(), 2)]\n"
+            "    ps.append((a64(), 3))\n",
+            r"^'ps' holds tuple\[int8, int32\] elements \(line 7\), and this "
+            r"value is int64 \(tuple element 0\); annotate its first binding: "
+            r"ps: list\[tuple\[int64, int32\]\] = \[\.\.\.\]$",
+            id="typed-seeded-member"),
+        pytest.param(
+            "def main() -> None:\n    xs = [(1, 2)]\n    pairs64(xs)\n"
+            "    xs.append((a64(), a64()))\n",
+            r"^'xs' holds tuple\[int64, int32\] elements since line 8 \(passed "
+            r"as list\[tuple\[int64, int32\]\]\), and this value is int64 "
+            r"\(tuple element 1\); the list is passed as "
+            r"list\[tuple\[int64, int32\]\], so the value must be int32$",
+            id="member-context-then-wider"),
+        pytest.param(
+            "def main() -> None:\n    g = [[1, 2], [3]]\n    rows32(g)\n"
+            "    g[1].append(a64())\n",
+            r"^'g' holds list\[int32\] elements since line 8 \(passed as "
+            r"list\[list\[int32\]\]\), and this value is int64 \(row "
+            r"element\); the list is passed as list\[list\[int32\]\], so the "
+            r"value must be int32$",
+            id="row-context-then-wider"),
+        # A list stored as a row is linked to it: widening the stored list
+        # afterwards widens the rows, which the later context then meets.
+        pytest.param(
+            "def main() -> None:\n    g = [[1]]\n    other = [5]\n"
+            "    g.append(other)\n    other.append(a64())\n    rows32(g)\n",
+            r"^'g' holds list\[int64\] elements, and it is passed here as "
+            r"list\[list\[int32\]\] \(row element\)",
+            id="stored-row-linked-live"),
+        # So is a list stored through a subscript.
+        pytest.param(
+            "def main() -> None:\n    g = [[1]]\n    other = [5]\n"
+            "    g[0] = other\n    other.append(a64())\n    rows32(g)\n",
+            r"^'g' holds list\[int64\] elements, and it is passed here as "
+            r"list\[list\[int32\]\] \(row element\)",
+            id="subscript-row-linked-live"),
+        pytest.param(
+            "def main() -> None:\n    g = [[a8()], [2]]\n"
+            "    g[0].append(a64())\n",
+            r"^'g' holds list\[int8\] elements \(line 7\), and this value is "
+            r"int64 \(row element\); annotate its first binding: "
+            r"g: list\[list\[int64\]\] = \[\.\.\.\]$",
+            id="typed-seeded-row"),
+        pytest.param(
+            "def main() -> None:\n    g = [[a8()], [2]]\n"
+            "    g[0] = [a64()]\n",
+            r"^'g' holds list\[int8\] elements \(line 7\), and this value is "
+            r"int64 \(row element\); annotate its first binding: "
+            r"g: list\[list\[int64\]\] = \[\.\.\.\]$",
+            id="typed-seeded-row-subscript-store"),
+        # A typed list stored as a row is a container the rows meet, both
+        # ways round; the hint names the whole list's element.
+        pytest.param(
+            "def main() -> None:\n    r: list[int32] = [1]\n    g = [[1]]\n"
+            "    g.append(r)\n    g[0].append(a64())\n",
+            r"^'g' holds list\[int32\] elements since line 9 \(stored as "
+            r"list\[int32\]\), and this value is int64 \(row element\); the "
+            r"list is stored as list\[int32\], so the value must be int32$",
+            id="typed-row-then-wider"),
+        pytest.param(
+            "def main() -> None:\n    r: list[int32] = [1]\n    g = [[1]]\n"
+            "    g[0] = r\n    g[0].append(a64())\n",
+            r"^'g' holds list\[int32\] elements since line 9 \(stored as "
+            r"list\[int32\]\), and this value is int64 \(row element\); the "
+            r"list is stored as list\[int32\], so the value must be int32$",
+            id="typed-row-subscript-store-then-wider"),
+        # A row of another element type stored through a subscript is not a
+        # store into the row element: the ordinary check refuses it.
+        pytest.param(
+            "def main() -> None:\n    g = [[1]]\n    g[0] = [\"a\"]\n",
+            r"^Type mismatch in assignment: expected list\[int32\], got "
+            r"list\[str\]$",
+            id="mismatched-row-subscript-store"),
+        pytest.param(
+            "def main() -> None:\n    r: list[int32] = [1]\n"
+            "    g = [[a64()]]\n    g.append(r)\n",
+            r"^'g' holds list\[int64\] elements \(line 8\), and it is stored "
+            r"here as list\[int32\] \(row element\), which would not hold "
+            r"\.\.\.$",
+            id="wide-rows-then-typed-row"),
+        pytest.param(
+            "def main() -> None:\n    r: list[int32] = [1]\n    g = [[1]]\n"
+            "    g[0].append(a64())\n    g.append(r)\n",
+            r"^'g' holds list\[int64\] elements, and it is stored here as "
+            r"list\[int32\] \(row element\); annotate its first binding: "
+            r"g: list\[list\[int32\]\] = \[\.\.\.\]$",
+            id="widened-rows-then-typed-row"),
+        # copy() decides the list it copies, as any generic call does.
+        pytest.param(
+            "def main() -> None:\n    g = [[1]]\n    other = [5]\n"
+            "    g.append(copy(other))\n    other.append(a64())\n",
+            r"^'other' holds int32 elements since line 9 \(an argument to "
+            r"'copy\(\)'\), and this value is int64; annotate its first "
+            r"binding: other: list\[int64\] = \[\.\.\.\]$",
+            id="copy-then-wider"),
+        pytest.param(
+            "def main() -> None:\n    xs = [(1, 2)]\n    pairs64(xs)\n"
+            "    xs.extend([(a64(), a64())])\n",
+            r"^'xs' holds tuple\[int64, int32\] elements since line 8 \(passed "
+            r"as list\[tuple\[int64, int32\]\]\), and this value is int64 "
+            r"\(tuple element 1\); the list is passed as "
+            r"list\[tuple\[int64, int32\]\], so the value must be int32$",
+            id="member-context-then-wider-extend"),
+    ],
+)
+def test_leaf_refusal_wording(body: str, message: str) -> None:
+    """A tuple member and a row element are refused in the words a scalar
+    element is, naming the member and spelling the whole element."""
+    with pytest.raises(SemanticError, match=message):
+        Compiler.from_source(_LEAVES_PRELUDE + body,
+                             lib_dirs=[get_lib_dir() / "tpy"]).compile()
+
+
+def _tuple_literal(pend: PendingNums, *members) -> TpyTupleLiteral:
+    for m in members:
+        t = (IntLiteralType(m.value) if isinstance(m, TpyIntLiteral)
+             else STR)
+        pend.ctx.set_expr_type(m, t)
+    return TpyTupleLiteral(list(members))
+
+
+def test_non_numeric_member_takes_no_cell() -> None:
+    pend = _elem_pend()
+    one, a = TpyIntLiteral(1), TpyStrLiteral("a")
+    value = _tuple_literal(pend, one, a)
+    tree = pend.new_list_tree("ms", 0, None,
+                              [(TupleType((IntLiteralType(1), STR)), value)],
+                              None, _at(3))
+    assert isinstance(tree, TupleType) and tree.element_types[1] == STR
+    [(path, leaf)] = tree_leaves(tree)
+    assert path == (0,)
+    assert pend.ctx.pending_num_cells[min(leaf.cells)].path == (0,)
+
+
+def test_empty_list_seeded_by_a_tuple() -> None:
+    pend = _elem_pend()
+    ys = _empty_list(pend)
+    one = TpyIntLiteral(1)
+    pend.ctx.set_expr_type(one, IntLiteralType(1))
+    lc = pend.seed_by_store(ys, TupleType((IntLiteralType(1), INT8)),
+                            TpyTupleLiteral([one, TpyName("k")]), _at(4))
+    assert lc is not None and lc.scalar is None
+    literal, typed = lc.cells
+    # Each member is born as a list of scalars is: the literal one open at
+    # the default, the typed one decided at the store.
+    assert literal.settled is None and literal.path == (0,)
+    assert typed.settled == INT8 and typed.path == (1,)
+    pend.elem_store(literal, INT64, None, _at(5))
+    pend.settle({literal.cid})
+    assert literal.settled == INT64
+
+
+def test_empty_list_seeded_by_a_row() -> None:
+    pend = _elem_pend()
+    ys = _empty_list(pend)
+    one = TpyIntLiteral(1)
+    pend.ctx.set_expr_type(one, IntLiteralType(1))
+    row = TpyArrayLiteral([one])
+    pend.ctx.list_literals[1] = ListLiteralInfo(
+        literal_id=1, expr=row, element_type=IntLiteralType(1), size=1)
+    pend.ctx.func.pending_resolutions.append(1)
+    lc = pend.seed_by_store(ys, PendingListType(IntLiteralType(1), 1, 1),
+                            row, _at(4))
+    assert lc is not None
+    # The row literal takes the row's cell; the two are one row group.
+    row_info = pend.ctx.list_literals[1]
+    assert pend.list_cell(PendingListType(row_info.element_type, 1, 1)) \
+        is lc.cells[0]
+    assert lc.cells[0].path == ("row",)
+    assert row_info.row_group == [1]
+
+
 def test_float_list_at_an_int_container_names_no_fix() -> None:
     pend = _elem_pend()
     cell = pend.new_elem_cell("fs", 0, None, True, no_base=False)
-    assert pend.context_refusal(cell, make_list(INT64), "passed") == (
+    assert pend.context_refusal(_one(pend, cell), make_list(INT64),
+                                "passed") == (
         "'fs' holds float values, and it is passed here as list[int64]")
 
 

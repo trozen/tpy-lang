@@ -75,7 +75,8 @@ from .compatibility import TupleSink
 from .narrowing import NarrowingTracker, deref_view_narrowed, truthy_operands
 from .numeric_lattice import widen_numeric_types, join_numeric, smallest_common_int
 from .list_elem import protocol_is_elem_blind
-from .pending_num import (PendingNumCell, PendingNums, is_numeric_slot,
+from .pending_num import (ListCells, PendingNumCell, PendingNums,
+                          is_numeric_slot, value_leaves,
                           is_pending_num, pending_join, strip_int,
                           value_family)
 from .type_join import (InferredJoin, JoinOutcome, declared_float_slot,
@@ -628,10 +629,12 @@ class ExpressionAnalyzer:
         rewrite of the node it named loses the pass and settles the local.
         `slot` is the declared slot the node's value is then coerced to
         (`analyze_at_slot`), None for any other analysis."""
-        cell = self.pend.list_cell(typ)
-        if cell is not None:
-            return self._pending_list_gate(expr, typ, cell, slot)
+        lc = self.pend.list_cells(typ)
+        if lc is not None:
+            return self._pending_list_gate(expr, typ, lc, slot)
         if not is_pending_num(typ):
+            if value_leaves(typ):
+                return self._pending_composite_gate(expr, typ)
             return typ
         # An element read is a reference to its storage, settled or not.
         wrap = make_ref if isinstance(typ, RefType) else (lambda t: t)
@@ -646,31 +649,48 @@ class ExpressionAnalyzer:
         self.ctx.set_expr_type(expr, forced)
         return forced
 
+    def _pending_composite_gate(self, expr: TpyExpr,
+                                typ: TpyType) -> TpyType:
+        """The gate for a value that holds pending numbers inside it (a
+        tuple read from a list whose leaves cells decide): it reaches a
+        consumer that named the node as one taking a pending number or an
+        undecided list element (print, a tuple unpack, the receiver of a
+        subscript reading one member, a comparison operand); any other gets
+        every number in it settled first."""
+        if any(not self.pend.settled_all(leaf)
+               for leaf in value_leaves(typ)):
+            if (expr is self.ctx.pending_ok_node
+                    or expr is self.ctx.pending_list_ok_node):
+                return typ
+        return self.pend.force_value(expr, typ,
+                                     self.describe_pending_use(expr))
+
     def _pending_list_gate(self, expr: TpyExpr, typ: TpyType,
-                           cell: PendingNumCell,
+                           lc: ListCells,
                            slot: SlotHint | None) -> TpyType:
-        """The gate for a list literal whose element a cell decides: a
+        """The gate for a list literal whose element cells decide: a
         consumer that named the node (`PendingNums.list_sink`) sees the
         element undecided, as does a slot declared as a typed container,
         whose coercion decides it (`TypeCompatibility._list_at_container`);
         any other gets it settled first, as a use that needs the element
         type now."""
-        if cell.settled is None and self.ctx.pending_list_ok_node is not expr:
+        if not lc.settled and self.ctx.pending_list_ok_node is not expr:
             scope = (self.ctx.adaptive_list_args[-1]
                      if self.ctx.adaptive_list_args else None)
             if scope is not None and any(n is expr for n in scope[0]):
                 # An argument of a generic call: its element stays open
                 # while the call's type parameters are inferred.
                 if not self.ctx.trial_depth:
-                    scope[1].append(cell)
-                return self.pend.adaptive_view(typ, cell)
+                    scope[1].extend(lc.cells)
+                return self.pend.adaptive_view(typ, lc)
             if self._awaits_container(slot):
                 if not self.ctx.trial_depth:
-                    self.ctx.func.awaiting_container.append((cell.cid, expr))
+                    self.ctx.func.awaiting_container.extend(
+                        (c.cid, expr) for c in lc.cells)
                 return typ
-            self.pend.force_list(expr, typ, cell,
+            self.pend.force_list(expr, typ, lc,
                                  self.describe_pending_use(expr))
-        known = self.pend.list_as_known(typ, cell)
+        known = self.pend.list_as_known(typ, lc)
         if known is not typ:
             self.ctx.set_expr_type(expr, known)
         return known
@@ -1972,6 +1992,13 @@ class ExpressionAnalyzer:
                 for i, (lt, rt) in enumerate(zip(
                     left_effective.element_types, right_effective.element_types
                 )):
+                    if ((is_pending_num(lt) or is_pending_num(rt))
+                            and value_family(strip_int(lt)) is not None
+                            and value_family(strip_int(lt))
+                            == value_family(strip_int(rt))):
+                        # A member a list's cell decides compares with any
+                        # number of its family, as a pending operand does.
+                        continue
                     if lt != rt:
                         try:
                             self.compat.check_type_compatible(lt, rt, "tuple comparison", source_expr=expr)
@@ -3393,7 +3420,7 @@ class ExpressionAnalyzer:
                         target_is_storage_form=True,
                     )
                 except SemanticError:
-                    if self.pend.list_cell(elem_type) is not None:
+                    if self.pend.list_cells(elem_type) is not None:
                         # The refusal names the list and its annotation.
                         raise
                     exp_s, act_s = disambiguated_pair(
@@ -5792,7 +5819,7 @@ class ExpressionAnalyzer:
                     body_type, fn_type.return_type,
                     "lambda return", loc=expr.loc)
             except SemanticError:
-                if self.pend.list_cell(body_type) is not None:
+                if self.pend.list_cells(body_type) is not None:
                     # The refusal names the list and its annotation.
                     raise
                 shown = self.compat.diag_type(body_type)

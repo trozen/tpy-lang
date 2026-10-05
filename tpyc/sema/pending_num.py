@@ -38,13 +38,15 @@ from typing import TYPE_CHECKING, Callable, Iterator, Sequence
 from ..coercions import Coercion, CoercionContext
 from ..parse import (
     TpyArrayLiteral, TpyCall, TpyCoerce, TpyExpr, TpyIntLiteral,
-    TpyMethodCall, TpyName, TpyStmt, TpySubscript, TpyUnaryOp, TpyVarDecl,
+    TpyListRepeat, TpyMethodCall, TpyName, TpyStmt, TpySubscript,
+    TpyTupleLiteral, TpyUnaryOp, TpyVarDecl,
 )
 from ..parse.nodes import is_parse_node
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, PendingNumType, OwnType,
     OptionalType, PendingListType, TupleType, UnionType, UnknownElementType,
     ListLiteralInfo, TypeParamRef, BIGINT, FLOAT, INT64, is_float_type,
+    make_list, contains_pending_leaf, contains_pending_num,
     is_integer_type, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from ..type_def_registry import (
@@ -109,9 +111,12 @@ class PendingNumCell:
     # The use that settled the cell early: (node, what it is, the pending
     # local the use read when it is not this one).
     frozen_by: tuple[TpyExpr | TpyStmt | None, str, str | None] | None = None
-    # The list literal whose element this cell decides (its id); `name` is
-    # then the list's variable, and the cell is no local's.
+    # The list literal whose element this cell decides a leaf of (its id);
+    # `name` is then the list's variable, and the cell is no local's.
     list_literal: int | None = None
+    # Where in that element the leaf is (`ListCells`): () the element
+    # itself, an int a tuple member, `ELEM_ROW` a nested list's element.
+    path: tuple = ()
     # The element of a list whose first binding holds typed values: the
     # join of those values, decided there (`PendingNums.decide_at_birth`),
     # with no default type to start from and no later widening -- as a
@@ -127,6 +132,158 @@ class PendingNumCell:
     # epoch that answer is good for.
     known: TpyType | None = None
     known_at: int = -1
+
+
+# The step of a leaf path into a nested list's element.
+ELEM_ROW = "row"
+
+
+@dataclass(eq=False)
+class ListCells:
+    """The element of a list literal whose numeric leaves cells decide:
+    `info` the record the list's type names, `tree` its element type, whose
+    numeric leaves are the `PendingNumType`s naming `cells` (in path
+    order), every other part the type the literal holds there. A list of
+    scalars has one leaf, the element itself; a list of tuples one per
+    numeric member; a nested list one per depth, shared by every row."""
+    info: ListLiteralInfo
+    tree: TpyType
+    cells: tuple[PendingNumCell, ...]
+    # Each cell's path in `tree` (a row's own element is its leaf's root,
+    # while the cell's `path` is from the list first bound).
+    paths: tuple[tuple, ...] = ()
+
+    @property
+    def settled(self) -> bool:
+        return all(c.settled is not None for c in self.cells)
+
+    @property
+    def cids(self) -> frozenset[int]:
+        return frozenset(c.cid for c in self.cells)
+
+    @property
+    def scalar(self) -> PendingNumCell | None:
+        """The one cell of a list of scalar numbers."""
+        return self.cells[0] if isinstance(self.tree, PendingNumType) else None
+
+
+def tree_leaves(tree: TpyType, path: tuple = ()
+                ) -> list[tuple[tuple, PendingNumType]]:
+    """The pending numeric leaves of element tree `tree`, with their paths,
+    in path order."""
+    if isinstance(tree, PendingNumType):
+        return [(path, tree)]
+    if isinstance(tree, TupleType):
+        return [leaf for i, m in enumerate(tree.element_types)
+                for leaf in tree_leaves(m, path + (i,))]
+    if isinstance(tree, PendingListType):
+        return tree_leaves(tree.element_type, path + (ELEM_ROW,))
+    return []
+
+
+def map_parts(tree: TpyType, f: Callable[[tuple, TpyType], TpyType | None],
+              path: tuple = ()) -> TpyType:
+    """`tree` with each part `f(path, part)` names a replacement for (not
+    None) replaced, outermost first; the members of a tuple and the element
+    of a row `f` leaves in place are asked in turn. Unchanged parts stay the
+    same objects."""
+    new = f(path, tree)
+    if new is not None:
+        return new
+    if isinstance(tree, TupleType):
+        members = tuple(map_parts(m, f, path + (i,))
+                        for i, m in enumerate(tree.element_types))
+        return (tree if all(a is b for a, b in zip(members, tree.element_types))
+                else TupleType(members))
+    if isinstance(tree, PendingListType):
+        elem = map_parts(tree.element_type, f, path + (ELEM_ROW,))
+        return (tree if elem is tree.element_type
+                else PendingListType(elem, tree.size, tree.literal_id))
+    return tree
+
+
+def map_leaves(tree: TpyType, f: Callable[[tuple, PendingNumType], TpyType],
+               ) -> TpyType:
+    """`tree` with every pending numeric leaf replaced by `f(path, leaf)`."""
+    return map_parts(tree, lambda path, part: (
+        f(path, part) if isinstance(part, PendingNumType) else None))
+
+
+def at_path(t: TpyType | None, path: tuple) -> TpyType | None:
+    """The part of type `t` at leaf path `path`: a tuple's member, a list,
+    Span or Array's element (under their qualifiers); None when `t` has no
+    such part."""
+    for step in path:
+        t = _bare_slot(t)
+        if isinstance(step, int):
+            if (not isinstance(t, TupleType)
+                    or step >= len(t.element_types)):
+                return None
+            t = t.element_types[step]
+        elif isinstance(t, PendingListType):
+            t = t.element_type
+        elif t is not None and (is_list(t) or is_span(t) or is_array(t)):
+            t = t.type_args[0]
+        else:
+            return None
+    return t
+
+
+def zip_parts(tree: TpyType, other: TpyType | None, rows: bool = True,
+              path: tuple = ()
+              ) -> Iterator[tuple[tuple, TpyType, TpyType | None]]:
+    """Element tree `tree` paired with type `other` part by part, outermost
+    first: (path, the tree's part, `other`'s part there without its
+    qualifiers). A tuple pairs with a tuple of its arity, a row with a list,
+    Span, Array or list literal, and only such a pair is descended (a row
+    only with `rows`); where `other` has no part of a tuple's or a row's
+    shape, its part is None. The element of an empty list literal holds
+    nothing yet: it pairs with any part, and nothing under that part is
+    visited."""
+    o = _bare_slot(other)
+    if (not isinstance(tree, (TupleType, PendingListType))
+            or isinstance(o, UnknownElementType)):
+        yield path, tree, o
+        return
+    if isinstance(tree, TupleType):
+        steps: Sequence = range(len(tree.element_types))
+        match = (isinstance(o, TupleType)
+                 and len(o.element_types) == len(tree.element_types))
+    else:
+        steps = (ELEM_ROW,)
+        match = at_path(o, (ELEM_ROW,)) is not None
+    yield path, tree, o if match else None
+    if match and (rows or isinstance(tree, TupleType)):
+        for step in steps:
+            yield from zip_parts(at_path(tree, (step,)), at_path(o, (step,)),
+                                 rows, path + (step,))
+
+
+def path_words(path: tuple) -> str:
+    """Where in a list's element a leaf is, as a refusal names it:
+    `tuple element 0`, `row element`; '' for the element itself."""
+    return ", ".join(f"tuple element {step}" if isinstance(step, int)
+                     else "row element" for step in path)
+
+
+def pending_leaves(t: TpyType | None) -> list[PendingNumType]:
+    """Every pending number in type `t`, at any depth."""
+    if t is None:
+        return []
+    if isinstance(t, PendingNumType):
+        return [t]
+    return [leaf for i in t.inner_types() for leaf in pending_leaves(i)]
+
+
+def value_leaves(t: TpyType | None) -> list[PendingNumType]:
+    """The pending numbers type `t` holds by value -- itself, a tuple
+    member -- leaving out the element of a list literal, which the list's
+    own uses decide."""
+    if t is None or isinstance(t, PendingListType):
+        return []
+    if isinstance(t, PendingNumType):
+        return [t]
+    return [leaf for i in t.inner_types() for leaf in value_leaves(i)]
 
 
 @dataclass
@@ -176,14 +333,38 @@ def _bare_slot(declared: TpyType | None) -> TpyType | None:
 
 def numeric_container(declared: TpyType | None) -> TpyType | None:
     """`declared` without its qualifiers when it is a list, a Span or an
-    Array of one numeric type: the container a list literal's element can
+    Array whose element holds numbers -- a number, a tuple with a numeric
+    member, a list of such: the container a list literal's element can
     agree with. A slot is asked through `PendingNums.slot_containers`."""
     t = _bare_slot(declared)
     if t is None or not (is_list(t) or is_span(t) or is_array(t)):
         return None
-    elem = unwrap_readonly(t.type_args[0])
-    if not (is_integer_type(elem) or is_float_type(elem)):
+    if not _holds_number(t.type_args[0]):
         return None
+    return t
+
+
+def _holds_number(t: TpyType) -> bool:
+    t = unwrap_send_sync(unwrap_readonly(t))
+    if is_integer_type(t) or is_float_type(t):
+        return True
+    if isinstance(t, TupleType):
+        return any(_holds_number(m) for m in t.element_types)
+    if is_list(t) or is_span(t) or is_array(t):
+        return _holds_number(t.type_args[0])
+    return False
+
+
+def _type_leaves(t: TpyType, f: Callable[[tuple, TpyType], TpyType],
+                 path: tuple = ()) -> TpyType:
+    """Concrete type `t` with every number in it outside a nested list --
+    itself, a tuple member -- replaced by `f(path, number)`."""
+    bare = unwrap_send_sync(unwrap_readonly(t))
+    if isinstance(bare, TupleType):
+        return TupleType(tuple(_type_leaves(m, f, path + (i,))
+                               for i, m in enumerate(bare.element_types)))
+    if is_integer_type(bare) or is_float_type(bare):
+        return f(path, bare)
     return t
 
 
@@ -358,27 +539,42 @@ class PendingNums:
 
     def new_elem_cell(self, name: str | None, literal_id: int,
                       decl: TpyVarDecl | None, is_float: bool,
-                      no_base: bool) -> PendingNumCell:
-        """The cell that decides the element of list literal `literal_id`,
-        bound to local `name`."""
+                      no_base: bool, path: tuple = ()) -> PendingNumCell:
+        """The cell that decides the leaf at `path` of the element of list
+        literal `literal_id`, bound to local `name`."""
         self.ctx.pending_num_counter += 1
         cell = PendingNumCell(cid=self.ctx.pending_num_counter,
                               name=name or "this list", first_decl=decl,
                               is_float=is_float, list_literal=literal_id,
-                              no_base=no_base)
+                              no_base=no_base, path=path)
         self.ctx.pending_num_cells[cell.cid] = cell
         self.ctx.func.pending_elem_cids.append(cell.cid)
         return cell
 
-    def list_cell(self, t: TpyType | None) -> PendingNumCell | None:
-        """The element cell of the list literal `t` is the type of."""
+    def list_cells(self, t: TpyType | None) -> ListCells | None:
+        """The cells that decide the element of the list literal `t` is
+        the type of; None for a list no cell decides."""
         inner = pending_list_of(t)
         if inner is None:
             return None
         info = self.ctx.list_literals.get(inner.literal_id)
-        if info is None or info.elem_cell is None:
+        if info is None or info.elem_cells is None:
             return None
-        return self.ctx.pending_num_cells.get(info.elem_cell)
+        return self.cells_of(info)
+
+    def cells_of(self, info: ListLiteralInfo) -> ListCells:
+        """The cells of cell list `info` (`elem_cells` set)."""
+        cells = self.ctx.pending_num_cells
+        leaves = tree_leaves(info.element_type)
+        return ListCells(info, info.element_type,
+                         tuple(cells[min(leaf.cells)] for _p, leaf in leaves),
+                         tuple(p for p, _leaf in leaves))
+
+    def list_cell(self, t: TpyType | None) -> PendingNumCell | None:
+        """The one cell of the list of scalar numbers `t` is the type of;
+        None for a list of tuples or rows, or one no cell decides."""
+        lc = self.list_cells(t)
+        return lc.scalar if lc is not None else None
 
     # ------------------------------------------------------------------
     # Empty lists: the cell is born at the first evidence
@@ -387,7 +583,7 @@ class PendingNums:
     def seedable(self, t: TpyType | None) -> ListLiteralInfo | None:
         """The record of `t` when it is an empty list bound to an
         unannotated local of the function under analysis that nothing has
-        given an element yet: its element cell is born at the first store
+        given an element yet: its element cells are born at the first store
         or typed container it meets, as if that value had been written in
         the literal."""
         inner = pending_list_of(t)
@@ -395,7 +591,7 @@ class PendingNums:
                 or not isinstance(inner.element_type, UnknownElementType)):
             return None
         info = self.ctx.list_literals.get(inner.literal_id)
-        if (info is None or info.elem_cell is not None
+        if (info is None or info.elem_cells is not None
                 or not isinstance(info.element_type, UnknownElementType)
                 or info.has_explicit_annotation or info.is_global
                 or info.variable_name is None
@@ -404,18 +600,35 @@ class PendingNums:
         return info
 
     def cell_list(self, t: TpyType | None
-                  ) -> PendingNumCell | ListLiteralInfo | None:
-        """What decides the element of list `t`, born or not: its element
-        cell, or, for an empty list whose cell its first store or typed
+                  ) -> ListCells | ListLiteralInfo | None:
+        """What decides the element of list `t`, born or not: its cells,
+        or, for an empty list whose cells its first store or typed
         container gives birth to, its record (`seedable`). None for a list
         no cell decides."""
-        cell = self.list_cell(t)
-        return cell if cell is not None else self.seedable(t)
+        lc = self.list_cells(t)
+        return lc if lc is not None else self.seedable(t)
 
-    def attach(self, info: ListLiteralInfo, cell: PendingNumCell) -> None:
-        """From here on `cell` decides the element of the list of `info`."""
-        info.elem_cell = cell.cid
-        info.element_type = self.elem_leaf(cell)
+    def attach(self, info: ListLiteralInfo, tree: TpyType) -> None:
+        """From here on the cells `tree` names decide the element of the
+        list of `info`."""
+        info.element_type = tree
+        info.elem_cells = {path: min(leaf.cells)
+                           for path, leaf in tree_leaves(tree)}
+
+    def join_rows(self, *infos: ListLiteralInfo | None) -> None:
+        """The lists of `infos` are rows at one position of one list: one
+        C++ type, so one representation (`ListLiteralInfo.row_group`)."""
+        group: list[int] = []
+        for info in infos:
+            if info is None:
+                continue
+            for lid in info.row_group or [info.literal_id]:
+                if lid not in group:
+                    group.append(lid)
+        for lid in group:
+            rec = self.ctx.list_literals.get(lid)
+            if rec is not None:
+                rec.row_group = group
 
     def _connected(self, info: ListLiteralInfo) -> list[ListLiteralInfo]:
         """The records of the names bound to the list of `info` so far:
@@ -439,7 +652,7 @@ class PendingNums:
                     found[lid] = rec
                     changed = True
         return [r for r in found.values()
-                if r.elem_cell is None
+                if r.elem_cells is None
                 and isinstance(r.element_type, UnknownElementType)]
 
     def _root(self, info: ListLiteralInfo) -> ListLiteralInfo:
@@ -456,7 +669,7 @@ class PendingNums:
 
     def first_binding(self, info: ListLiteralInfo) -> TpyVarDecl | None:
         """The first binding of the name empty list `info` (`seedable`)
-        was bound to: the binding the cell born for it names."""
+        was bound to: the binding the cells born for it name."""
         root = self._root(info)
         name = root.variable_name or info.variable_name
         decl = self.ctx.func.var_decl_by_name.get(name) if name else None
@@ -474,20 +687,154 @@ class PendingNums:
                 or (isinstance(value, TpyName)
                     and value.name in self.ctx.func.int_literal_values))
 
-    def new_list_cell(self, name: str | None, literal_id: int,
-                      decl: TpyVarDecl | None, is_float: bool,
+    def new_list_tree(self, name: str | None, literal_id: int,
+                      decl: TpyVarDecl | None,
                       values: list[tuple[TpyType, TpyExpr | None]],
-                      site: TpyStmt | TpyExpr) -> PendingNumCell:
-        """The element cell of a list born holding the numbers `values`:
-        the values of its literal, or the first stores into an empty list.
-        Literals start it at their family's default base, which the later
-        stores widen; typed values decide it here, and the literals beside
-        them adapt as a literal stored later does. A list born holding
-        nothing (a typed container seeds it) has no base either: the
-        container decides it."""
+                      joined: TpyType | None,
+                      site: TpyStmt | TpyExpr | None) -> TpyType | None:
+        """The element tree of a list born holding `values`: the values of
+        its literal, or the first stores into an empty list. Each numeric
+        leaf gets a cell born from the values at that leaf of every element
+        and every row (`_born_cell`); `joined`, the element the values
+        joined to, gives the parts that hold no number. The rows met on the
+        way take their part of the tree and are grouped by position. None
+        when the values hold no number, or a position whose values do not
+        agree in shape or family, which the ordinary checks report."""
+        leaves: dict[tuple, tuple[bool, list]] = {}
+        rows: dict[tuple, list[ListLiteralInfo]] = {}
+        later: list[tuple[TpyType, TpyType, TpyExpr | None]] = []
+        skeleton = self._collect(values, joined, (), leaves, rows, later)
+        if skeleton is None or not (leaves or tree_leaves(skeleton)):
+            return None
+        cells = {path: self._born_cell(name, literal_id, decl, family, vals,
+                                       site, path)
+                 for path, (family, vals) in leaves.items()}
+        # A placeholder names no cell yet; a leaf of a row that has cells
+        # of its own is that row's.
+        tree = map_leaves(skeleton, lambda path, leaf: (
+            self.elem_leaf(cells[path]) if not leaf.cells else leaf))
+        for part, vt, e in later:
+            self._store_at(part, vt, e, site)
+        for path, recs in rows.items():
+            row_elem = at_path(tree, path + (ELEM_ROW,))
+            for rec in recs:
+                if rec.elem_cells is None:
+                    self.attach(rec, row_elem)
+            self.join_rows(*recs)
+        return tree
+
+    def _literal_values(self, info: ListLiteralInfo,
+                        ) -> list[tuple[TpyType, TpyExpr | None]] | None:
+        """The elements a list literal or repeat `info` is written with;
+        None for a list built another way."""
+        if not isinstance(info.expr, (TpyArrayLiteral, TpyListRepeat)):
+            return None
+        out = []
+        for e in info.expr.elements:
+            t = self.ctx.get_expr_type(e)
+            if t is None:
+                return None
+            out.append((t, e))
+        return out
+
+    def _collect(self, values: list[tuple[TpyType, TpyExpr | None]],
+                 joined: TpyType | None, path: tuple,
+                 leaves: dict[tuple, tuple[bool, list]],
+                 rows: dict[tuple, list[ListLiteralInfo]],
+                 later: list[tuple[TpyType, TpyType, TpyExpr | None]],
+                 ) -> TpyType | None:
+        """The shape of the element at `path`, gathered from every value
+        there (`new_list_tree`): a numeric leaf (a placeholder; its family
+        and values go to `leaves`), a tuple of shapes, a row (its records to
+        `rows`), or the type `joined` holds for a part with no number. Rows
+        among which one is a list with cells of its own take that list's
+        element: the other rows' values are stores into it (`later`)."""
+        bare = [(_bare_slot(t), e) for t, e in values]
+        if not bare:
+            return None
+        families = {value_family(t) for t, _e in bare}
+        if None not in families:
+            if len(families) != 1:
+                return None
+            is_float = bool(families.pop())
+            leaves[path] = (is_float, values)
+            return PendingNumType(frozenset(), None, is_float)
+        if all(isinstance(t, TupleType) for t, _e in bare):
+            n = len(bare[0][0].element_types)
+            if any(len(t.element_types) != n for t, _e in bare):
+                return None
+            j = _bare_slot(joined)
+            j_members = (j.element_types if isinstance(j, TupleType)
+                         and len(j.element_types) == n else (None,) * n)
+            members = []
+            for i in range(n):
+                vals = [(t.element_types[i],
+                         e.elements[i] if isinstance(e, TpyTupleLiteral)
+                         and len(e.elements) == n else None)
+                        for t, e in bare]
+                m = self._collect(vals, j_members[i], path + (i,), leaves,
+                                  rows, later)
+                if m is None:
+                    return None
+                members.append(m)
+            return TupleType(tuple(members))
+        if all(isinstance(t, PendingListType) for t, _e in bare):
+            recs: list[ListLiteralInfo] = []
+            elems: list[tuple[TpyType, TpyExpr | None]] = []
+            own = next((lc for t, _e in bare
+                        if (lc := self.list_cells(t)) is not None), None)
+            for t, e in bare:
+                rec = self.ctx.list_literals.get(t.literal_id)
+                if rec is None:
+                    return None
+                recs.append(rec)
+                if own is not None:
+                    if self.list_cells(t) is not own:
+                        if not self._pairs_with(own.tree, t.element_type):
+                            return None
+                        later.append((PendingListType(own.tree, t.size,
+                                                      own.info.literal_id),
+                                      t, e))
+                    continue
+                written = self._literal_values(rec)
+                if written is None:
+                    return None
+                elems += written
+            first = bare[0][0]
+            if own is not None:
+                rows.setdefault(path, []).extend(recs)
+                return PendingListType(own.tree, first.size,
+                                       own.info.literal_id)
+            j = _bare_slot(joined)
+            sub = self._collect(
+                elems, j.element_type if isinstance(j, PendingListType)
+                else None, path + (ELEM_ROW,), leaves, rows, later)
+            if sub is None:
+                return None
+            rows.setdefault(path, []).extend(recs)
+            return PendingListType(sub, first.size, first.literal_id)
+        if any(f is not None for f in families) or any(
+                isinstance(t, (TupleType, PendingListType)) for t, _e in bare):
+            return None
+        return joined if joined is not None else values[0][0]
+
+    def _born_cell(self, name: str | None, literal_id: int,
+                   decl: TpyVarDecl | None, is_float: bool,
+                   values: list[tuple[TpyType, TpyExpr | None]],
+                   site: TpyStmt | TpyExpr | None,
+                   path: tuple) -> PendingNumCell:
+        """The cell of the leaf at `path` of a list born holding the
+        numbers `values` there. Literals start it at their family's default
+        base, which the later stores widen; typed values decide it here,
+        and the literals beside them adapt as a literal stored later does.
+        A leaf born holding nothing (a typed container seeds it) has no base
+        either: the container decides it. A value that is a leaf of
+        another list's cells is linked both ways: the two lists hold one
+        type there."""
         literal = [self.is_literal_value(e, t) for t, e in values]
         cell = self.new_elem_cell(name, literal_id, decl, is_float,
-                                  no_base=not values or not all(literal))
+                                  no_base=not values or not all(literal),
+                                  path=path)
         if cell.no_base and values:
             for (t, e), lit in zip(values, literal):
                 if not lit:
@@ -496,118 +843,294 @@ class PendingNums:
             values = [p for p, lit in zip(values, literal) if lit]
         for t, e in values:
             self.elem_store(cell, t, e, site)
+            self._link_back(cell, t, site)
         return cell
 
-    def _seed(self, info: ListLiteralInfo, is_float: bool,
+    def _link_back(self, cell: PendingNumCell, value_type: TpyType,
+                   site: TpyStmt | TpyExpr | None) -> None:
+        """`value_type`, stored into `cell`, names leaf cells of other
+        lists: each is linked to `cell` (`link_cells`)."""
+        t = strip_int(value_type)
+        if not isinstance(t, PendingNumType):
+            return
+        for cid in t.cells:
+            other = self.ctx.pending_num_cells.get(cid)
+            if other is not None and other.list_literal is not None:
+                self.link_cells(cell, other, site)
+
+    def link_cells(self, a: PendingNumCell, b: PendingNumCell,
+                   site: TpyStmt | TpyExpr | None) -> None:
+        """Leaf cells `a` and `b` of two lists hold one type: each holds
+        what the other does. A shared type constraint, not aliasing -- the
+        two lists stay two objects."""
+        if a is b:
+            return
+        self.elem_store(a, self.cell_type(b), None, site)
+        self.elem_store(b, self.cell_type(a), None, site)
+
+    def link(self, a: TpyType, b: TpyType,
+             site: TpyStmt | TpyExpr | None) -> bool:
+        """The element trees `a` and `b` of two lists hold one type leaf by
+        leaf (`link_cells`): a list stored as a row of the other, a list
+        rebound to the other. False when the trees are not of one shape."""
+        pairs = self.pair_leaves(a, b)
+        if pairs is None:
+            return False
+        for x, y in pairs:
+            self.link_cells(x, y, site)
+        return True
+
+    def _seed(self, info: ListLiteralInfo,
               values: list[tuple[TpyType, TpyExpr | None]],
-              site: TpyStmt | TpyExpr | None) -> PendingNumCell:
-        """The element cell of empty list `info` (`seedable`), born holding
-        `values` (`new_list_cell`) and set on every record connected to
+              site: TpyStmt | TpyExpr | None) -> ListCells | None:
+        """The cells of empty list `info` (`seedable`), born holding
+        `values` (`new_list_tree`) and set on every record connected to
         it: the diagnostics name the list's first binding."""
         root = self._root(info)
-        cell = self.new_list_cell(root.variable_name or info.variable_name,
+        tree = self.new_list_tree(root.variable_name or info.variable_name,
                                   root.literal_id, self.first_binding(info),
-                                  is_float, values, site)
+                                  values, None, site)
+        if tree is None:
+            return None
         for rec in self._connected(info):
-            self.attach(rec, cell)
-        return cell
+            self.attach(rec, tree)
+        return self.cells_of(info)
 
     def seed_by_store(self, t: TpyType | None, value_type: TpyType,
                       value: TpyExpr | None,
-                      site: TpyStmt | TpyExpr) -> PendingNumCell | None:
-        """A number stored into empty list `t` (`seedable`) seeds its
+                      site: TpyStmt | TpyExpr) -> ListCells | None:
+        """A value stored into empty list `t` (`seedable`) seeds its
         element as if the list had been written with that value
         (`seed_by_stores`)."""
         return self.seed_by_stores(t, [(value_type, value)], site)
 
     def seed_by_stores(self, t: TpyType | None,
                        values: list[tuple[TpyType, TpyExpr | None]],
-                       site: TpyStmt | TpyExpr) -> PendingNumCell | None:
-        """The numbers `values` stored together into empty list `t`
+                       site: TpyStmt | TpyExpr) -> ListCells | None:
+        """The values `values` stored together into empty list `t`
         (`seedable`) seed its element as a list literal of them does
-        (`new_list_cell`). None when `t` takes no cell or the first value
-        is no number."""
+        (`new_list_tree`). None when `t` takes no cell or the values hold
+        no number."""
         info = self.seedable(t)
         if info is None or not values:
             return None
-        family = value_family(strip_int(values[0][0]))
-        if family is None:
-            return None
-        return self._seed(info, family, values, site)
+        return self._seed(info, values, site)
 
     def unseeded(self, t: TpyType | None, value: TpyExpr | None,
                  value_type: TpyType) -> TpyType:
         """A value stored into empty list `t` was analyzed as a value the
         list may take pending (`seedable`); when it seeded no cell, it goes
         to the element as a concrete value."""
-        if self.list_cell(t) is None and is_pending_num(value_type):
-            return self.force(value, value_type)
+        if self.list_cells(t) is None and value_leaves(strip_int(value_type)):
+            return self.force_value(value, value_type)
         return value_type
 
     def store_value(self, t: TpyType | None, value_type: TpyType,
                     value: TpyExpr | None, site: TpyStmt | TpyExpr,
-                    ) -> tuple[PendingNumCell | None, TpyType]:
+                    ) -> tuple[ListCells | None, TpyType]:
         """`value` stored as one element of cell list `t`, born or not
-        (`cell_list`): a store into its cell, or the store that seeds it.
-        Returns the cell and the value's type as the list takes it."""
-        cell = self.list_cell(t)
-        if cell is not None:
-            self.elem_store(cell, value_type, value, site)
-            return cell, value_type
-        cell = self.seed_by_store(t, value_type, value, site)
-        return cell, self.unseeded(t, value, value_type)
+        (`cell_list`): a store into its cells, or the store that seeds
+        them. Returns the cells and the value's type as the list takes
+        it."""
+        lc = self.list_cells(t)
+        if lc is not None:
+            return lc, self.tree_store(lc, value_type, value, site)
+        lc = self.seed_by_store(t, value_type, value, site)
+        if lc is not None:
+            return lc, self.lists_as_known(value_type)
+        return None, self.unseeded(t, value, value_type)
+
+    def tree_store(self, lc: ListCells, value_type: TpyType,
+                   value: TpyExpr | None, site: TpyStmt | TpyExpr) -> TpyType:
+        """`value`, of `value_type`, stored as one element of cell list
+        `lc`: its type tree is zipped with the element tree, each numeric
+        leaf a store into that leaf's cell (`elem_store`), a row a store of
+        a list into the row (`_store_row`). A part that does not pair is
+        left to the ordinary check at the store. Returns the value's type
+        as the list takes it."""
+        self._store_at(lc.tree, value_type, value, site)
+        return self.lists_as_known(value_type)
+
+    def _store_at(self, tree: TpyType, value_type: TpyType,
+                  value: TpyExpr | None, site: TpyStmt | TpyExpr) -> None:
+        # The member a tuple literal writes at each path, for the messages.
+        written: dict[tuple, TpyExpr | None] = {(): value}
+        for path, part, vt in zip_parts(tree, value_type, rows=False):
+            e = written.get(path)
+            while isinstance(e, TpyCoerce):
+                e = e.expr
+            if isinstance(part, PendingNumType):
+                self.elem_store(self.ctx.pending_num_cells[min(part.cells)],
+                                vt, e, site)
+            elif isinstance(part, PendingListType) and vt is not None:
+                self._store_row(part, vt, site)
+            elif (isinstance(part, TupleType) and vt is not None
+                    and isinstance(e, TpyTupleLiteral)
+                    and len(e.elements) == len(part.element_types)):
+                for i, m in enumerate(e.elements):
+                    written[path + (i,)] = m
+
+    def _store_row(self, row: PendingListType, value_type: TpyType,
+                   site: TpyStmt | TpyExpr) -> None:
+        """A list stored as a row of the rows `row` names: one of the same
+        element and one representation. A list with cells of its own is
+        linked to the row's leaf by leaf; a list literal takes the row's
+        cells and stores its values there; an empty one takes them as
+        they are; a typed container stores its element."""
+        group = self.ctx.list_literals.get(row.literal_id)
+        sub = row.element_type
+        other = self.list_cells(value_type)
+        if other is not None:
+            if self.link(sub, other.tree, site):
+                self.join_rows(group, other.info)
+                self._stored_as_row(group, value_type)
+            return
+        pending = pending_list_of(value_type)
+        if pending is not None:
+            rec = self.ctx.list_literals.get(pending.literal_id)
+            if rec is None or rec.elem_cells is not None:
+                return
+            if isinstance(rec.element_type, UnknownElementType):
+                empties = (self._connected(rec) if rec.variable_name
+                           else [rec])
+                for r in empties:
+                    self.attach(r, sub)
+            else:
+                written = self._literal_values(rec)
+                if written is None or not all(self._pairs_with(sub, t)
+                                              for t, _e in written):
+                    return
+                for t, e in written:
+                    self._store_at(sub, t, e, site)
+                self.attach(rec, sub)
+            self.join_rows(group, rec)
+            self._stored_as_row(group, value_type)
+            return
+        bare = _bare_slot(value_type)
+        if (bare is not None and (is_list(bare) or is_array(bare))
+                and group is not None and group.elem_cells is not None):
+            # A typed list stored as a row is a typed container the rows
+            # meet: no conversion makes one C++ list type of another.
+            row_lc = self.cells_of(group)
+            if not self.fits_container(row_lc.tree, self.context_elem(bare)):
+                return
+            refusal = self.context_refusal(row_lc, bare, "stored")
+            if refusal is not None:
+                raise self.ctx.error(refusal, site)
+            self.elem_context(row, bare, site, "stored")
+            self._stored_as_row(group, value_type)
+
+    @staticmethod
+    def _row_key(value_type: TpyType) -> object:
+        """What names a list stored as a row: its literal's record for a
+        list literal, else its type."""
+        pending = pending_list_of(value_type)
+        return (pending.literal_id if pending is not None
+                else _bare_slot(value_type))
+
+    def _stored_as_row(self, group: ListLiteralInfo | None,
+                       value_type: TpyType) -> None:
+        """The store of a list of `value_type` as a row of `group` is
+        admitted (`_store_row`): the store's own check reads the verdict
+        (`is_stored_row`) rather than judging the list again."""
+        if group is not None:
+            group.stored_rows.add(self._row_key(value_type))
+
+    def is_stored_row(self, rows: ListCells, value_type: TpyType) -> bool:
+        """Whether a list of `value_type` was admitted as a row of the
+        rows of `rows` (`_stored_as_row`)."""
+        return self._row_key(value_type) in rows.info.stored_rows
+
+    def pair_leaves(self, a: TpyType, b: TpyType,
+                     ) -> list[tuple[PendingNumCell, PendingNumCell]] | None:
+        """The leaf cells of element trees `a` and `b` at the same paths;
+        None when the trees are not of one shape."""
+        la, lb = tree_leaves(a), tree_leaves(b)
+        if [p for p, _l in la] != [p for p, _l in lb]:
+            return None
+        cells = self.ctx.pending_num_cells
+        return [(cells[min(x.cells)], cells[min(y.cells)])
+                for (_p, x), (_q, y) in zip(la, lb)]
+
+    def lists_as_known(self, t: TpyType) -> TpyType:
+        """`t` with every list literal in it (itself, a tuple member, under
+        their qualifiers) at the element its cells name so far: a row a
+        store just gave the cells of the list it went into."""
+        def known(_path: tuple, part: TpyType) -> TpyType | None:
+            lc = self.list_cells(part)
+            if lc is not None:
+                return self.list_as_known(part, lc)
+            if isinstance(part, PendingListType):
+                # No cell decides this list: its rows are its own.
+                return part
+            bare = _bare_slot(part)
+            if bare is not part and isinstance(bare, TupleType):
+                new = map_parts(bare, known)
+                return part if new is bare else new
+            return None
+        return map_parts(t, known)
 
     def store_elements(self, t: TpyType, value: TpyExpr,
                        value_type: TpyType,
-                       site: TpyStmt | TpyExpr) -> PendingNumCell | None:
+                       site: TpyStmt | TpyExpr) -> ListCells | None:
         """`value`, analyzed to `value_type`, is an iterable whose every
         element list `t` then holds (`extend`, `+=`): each is a store into
-        the list's element cell, which an empty list is seeded by. A list
+        the list's element cells, which an empty list is seeded by. A list
         literal written there stores each of its values; a list whose
-        element a cell decides (settled by its analysis) and a typed list,
-        Span or Array store their element. Returns the cell; None when the
+        element cells decide (settled by its analysis) and a typed list,
+        Span or Array store their element. Returns the cells; None when the
         value says nothing about its elements' types here, or `t` has no
         cell and takes none."""
         v = value
         while isinstance(v, TpyCoerce):
             v = v.expr
+        written: ListLiteralInfo | None = None
         if isinstance(v, TpyArrayLiteral):
             values = [(self.ctx.get_expr_type(e), e) for e in v.elements]
             if any(vt is None for vt, _e in values):
                 return None
+            inner = pending_list_of(value_type)
+            written = (self.ctx.list_literals.get(inner.literal_id)
+                       if inner is not None else None)
         else:
-            other = self.list_cell(value_type)
+            other = self.list_cells(value_type)
             if other is not None:
-                values = [(self.cell_type(other), None)]
+                values = [(self.tree_type(other), None)]
             else:
                 container = numeric_container(value_type)
                 if container is None:
                     return None
                 values = [(self.context_elem(container), None)]
-        cell = self.list_cell(t)
-        if cell is None:
-            return self.seed_by_stores(t, values, site)
-        for vt, e in values:
-            self.elem_store(cell, vt, e, site)
-        return cell
+        lc = self.list_cells(t)
+        if lc is None:
+            lc = self.seed_by_stores(t, values, site)
+        else:
+            for vt, e in values:
+                self.tree_store(lc, vt, e, site)
+        if (lc is not None and written is not None
+                and written.elem_cells is None):
+            # The literal written there holds what the list does: its own
+            # element is the list's.
+            self.attach(written, lc.tree)
+        return lc
 
     def store_elements_at(self, target: TpyExpr, t: TpyType,
                           value: TpyExpr | None, value_type: TpyType,
                           site: TpyStmt | TpyExpr, use: str,
-                          ) -> tuple[TpyType, PendingNumCell | None]:
+                          ) -> tuple[TpyType, ListCells | None]:
         """`value` stored element by element into cell list `t`, born or
         not, that `target` reads (`extend`, `+=`; `store_elements`). An
         operation that stores no values (`value` None), or a value that
         says nothing about its elements' types, is a use that needs the
         element: `use` decides it first. Returns the list as the operation
-        sees it and the cell of a store."""
+        sees it and the cells of a store."""
         stored = (self.store_elements(t, value, value_type, site)
                   if value is not None else None)
         if stored is not None:
             return self.list_so_far(t, stored), stored
-        cell = self.list_cell(t)
-        if cell is not None:
-            t = self.force_list(target, t, cell, use)
+        lc = self.list_cells(t)
+        if lc is not None:
+            t = self.force_list(target, t, lc, use)
             self.ctx.set_expr_type(target, t)
         return t, None
 
@@ -615,20 +1138,31 @@ class PendingNums:
                         node: TpyExpr | TpyStmt | None, verb: str,
                         shown: TpyType | None = None) -> TpyType | None:
         """Empty list `t` (`seedable`) meets the typed `container` before
-        any store: the container's element is the list's, decided here.
-        Returns the list as the container sees it; None when `t` takes no
-        cell."""
+        any store: the container's element is the list's, decided here --
+        a cell for each numeric leaf of it outside a nested list, which has
+        no list literal of its own to hold one. Returns the list as the
+        container sees it; None when `t` takes no cell."""
         info = self.seedable(t)
         if info is None:
             return None
-        family = value_family(self.context_elem(container))
-        if family is None:
+        root = self._root(info)
+        name = root.variable_name or info.variable_name
+        decl = self.first_binding(info)
+
+        def leaf(path: tuple, number: TpyType) -> TpyType:
+            return self.elem_leaf(self.new_elem_cell(
+                name, root.literal_id, decl, bool(value_family(number)),
+                no_base=True, path=path))
+
+        tree = _type_leaves(self.context_elem(container), leaf)
+        if not tree_leaves(tree):
             return None
-        self._seed(info, family, [], node)
+        for rec in self._connected(info):
+            self.attach(rec, tree)
         return self.elem_context(t, container, node, verb, shown)
 
     def meets_list(
-            self, into: PendingNumCell | ListLiteralInfo, declared: TpyType,
+            self, into: ListCells | ListLiteralInfo, declared: TpyType,
             verb: str, adaptive: bool = False,
             order: Callable[[tuple[TpyType, ...]], Sequence[TpyType]] | None = None,
     ) -> tuple[TpyType | None, TpyType | None, str | None]:
@@ -636,7 +1170,7 @@ class PendingNums:
         list meets the first container the slot holds, or a declared view
         of numbers (`Iterable[int64]`): it has no value a view would
         convert, so nothing there refuses it."""
-        if isinstance(into, PendingNumCell):
+        if isinstance(into, ListCells):
             return self.meets(into, declared, verb, adaptive, order)
         containers = self.slot_containers(declared, order)
         if containers:
@@ -645,82 +1179,89 @@ class PendingNums:
             declared, TypeParamRef("__empty_list_elem"))
         return container, shown, None
 
-    def decide_list(self, t: TpyType, into: PendingNumCell | ListLiteralInfo,
+    def decide_list(self, t: TpyType, into: ListCells | ListLiteralInfo,
                     container: TpyType, node: TpyExpr | TpyStmt | None,
                     verb: str, shown: TpyType | None = None,
                     declared: bool = True) -> TpyType | None:
         """List `t`, cell list `into` born or not, meets the typed
         `container` (`meets_list` admitted it): its element is decided
-        there (`elem_context`), an empty list's cell born holding the
+        there (`elem_context`), an empty list's cells born holding the
         container's element (`seed_by_context`). Returns the list as the
         container sees it."""
-        if isinstance(into, PendingNumCell):
+        if isinstance(into, ListCells):
             return self.elem_context(t, container, node, verb, shown,
                                      declared)
         return self.seed_by_context(t, container, node, verb, shown)
 
-    def bind_list(self, into: PendingNumCell | ListLiteralInfo | None,
+    def bind_list(self, into: ListCells | ListLiteralInfo | None,
                   info: ListLiteralInfo, name: str,
-                  decl: TpyVarDecl | None, is_float: bool,
+                  decl: TpyVarDecl | None,
                   values: list[tuple[TpyType, TpyExpr | None]],
-                  site: TpyStmt | TpyExpr) -> PendingNumCell | None:
-        """List literal `info` of the numbers `values` bound to local
+                  joined: TpyType | None,
+                  site: TpyStmt | TpyExpr) -> ListCells | None:
+        """List literal `info` of the values `values` bound to local
         `name`, which holds cell list `into`, born or not, or no list yet
         (`decl` its binding then). One local, one element type: a literal
-        that rebinds a list with a cell stores its values there, one that
+        that rebinds a list with cells stores its values there, one that
         rebinds an empty list nothing seeded yet seeds it, as if the empty
-        list had been written with these values. Returns the cell; None
-        when the binding takes none: an empty literal, or an int list
-        rebound to floats, which the rebinding refuses in its own words."""
-        if isinstance(into, PendingNumCell):
-            if into.is_float != is_float:
+        list had been written with these values. Returns the cells; None
+        when the binding takes none: an empty literal, values with no
+        number, or values the element of the list rebound does not pair
+        with (an int list rebound to floats), which the rebinding refuses
+        in its own words."""
+        if isinstance(into, ListCells):
+            if not all(self._pairs_with(into.tree, t) for t, _e in values):
                 return None
             for t, e in values:
-                self.elem_store(into, t, e, site)
-            cell = into
+                self._store_at(into.tree, t, e, site)
+            tree = into.tree
         elif not values:
             return None
         else:
             if into is not None:
                 decl = self.first_binding(into)
-            cell = self.new_list_cell(name, info.literal_id, decl, is_float,
-                                      values, site)
-        self.attach(info, cell)
+            tree = self.new_list_tree(name, info.literal_id, decl, values,
+                                      joined, site)
+            if tree is None:
+                return None
+        self.attach(info, tree)
         if isinstance(into, ListLiteralInfo):
-            self.share_cell(into, cell)
-        return cell
+            self.share_cell(into, tree)
+        return self.cells_of(info)
 
-    def share_cell(self, info: ListLiteralInfo,
-                   cell: PendingNumCell) -> None:
+    def _pairs_with(self, tree: TpyType, value_type: TpyType) -> bool:
+        """Whether a value of `value_type` pairs with element tree `tree`
+        leaf by leaf, in the same numeric family; a part that holds no
+        number is left to the ordinary check."""
+        for _path, part, t in zip_parts(tree, value_type):
+            if isinstance(t, UnknownElementType):
+                continue
+            if isinstance(part, PendingNumType):
+                if value_family(t) != part.is_float:
+                    return False
+            elif isinstance(part, (TupleType, PendingListType)) and t is None:
+                return False
+        return True
+
+    def share_cell(self, info: ListLiteralInfo, tree: TpyType) -> None:
         """Empty list `info` (`seedable`) is rebound to a list literal whose
-        element `cell` decides: one local, one element type, so the empty
-        list's records share that cell."""
+        element the cells of `tree` decide: one local, one element type, so
+        the empty list's records share them."""
         for rec in self._connected(info):
-            self.attach(rec, cell)
+            self.attach(rec, tree)
 
     def open_list(self, t: TpyType | None) -> bool:
         """Whether `t` is, or holds as a tuple element, a list literal
         whose element is not decided yet; an empty list that has no element
         cell yet is one (`cell_list`)."""
-        cell = self.list_cell(t)
-        if cell is not None:
-            return cell.settled is None
+        lc = self.list_cells(t)
+        if lc is not None:
+            return not lc.settled
         if self.seedable(t) is not None:
             return True
         bare = _bare_slot(t)
         return isinstance(bare, TupleType) and any(
             self.open_list(e) for e in bare.element_types)
-
-    def current_list_type(self, t: TpyType) -> TpyType:
-        """`t` with every list literal in it (itself, a tuple element) at
-        the element its cell has decided so far."""
-        cell = self.list_cell(t)
-        if cell is not None:
-            return self.list_as_known(t, cell)
-        if isinstance(t, TupleType):
-            return TupleType(tuple(self.current_list_type(e)
-                                   for e in t.element_types))
-        return t
 
     def slot_containers(
             self, declared: TpyType | None,
@@ -736,7 +1277,7 @@ class PendingNums:
         if isinstance(t, PendingListType):
             info = self.ctx.list_literals.get(t.literal_id)
             if (info is None or not info.has_explicit_annotation
-                    or info.elem_cell is not None):
+                    or info.elem_cells is not None):
                 return ()
             return self.slot_containers(info.explicit_type, order)
         if isinstance(t, OptionalType):
@@ -748,69 +1289,127 @@ class PendingNums:
         container = numeric_container(t)
         return (container,) if container is not None else ()
 
-    def meets(self, cell: PendingNumCell, declared: TpyType, verb: str,
+    def meets(self, lc: ListCells, declared: TpyType, verb: str,
               adaptive: bool = False,
               order: Callable[[tuple[TpyType, ...]], Sequence[TpyType]] | None = None,
               ) -> tuple[TpyType | None, TpyType | None, str | None]:
-        """How the list of element cell `cell` meets a slot declared
-        `declared`: (container, shown, refusal). The first of the slot's
-        containers (`slot_containers`, a union's members in `order`) that
-        admits the list (`context_refusal`); the refusal of a slot whose
-        one container does not; all None for a slot with no container, or
-        with several that all refuse, which the ordinary check reports.
-        `adaptive` is an argument the enclosing generic call left adaptive,
-        at a parameter that call resolved: there a view of a list
-        (`Iterable[T]`) is a container too, and `shown` is the view the
-        source spells."""
+        """How the list of cells `lc` meets a slot declared `declared`:
+        (container, shown, refusal). The first of the slot's containers
+        (`slot_containers`, a union's members in `order`) whose element
+        the list's pairs with (`fits_container`) and that admits the list
+        (`context_refusal`); the refusal of a slot whose one such container
+        does not; all None for a slot with no container, or with several
+        that all refuse, which the ordinary check reports. `adaptive` is an
+        argument the enclosing generic call left adaptive, at a parameter
+        that call resolved: there a view of a list (`Iterable[T]`) is a
+        container too, and `shown` is the view the source spells."""
         if adaptive:
             container, shown = self.compat.deduction.elem_container(
-                declared, self.elem_leaf(cell))
+                declared, lc.tree)
             found = [(container, shown)] if container is not None else []
         else:
             found = [(c, None) for c in self.slot_containers(declared, order)]
+        found = [(c, s) for c, s in found
+                 if self.fits_container(lc.tree, self.context_elem(c))]
         refusals = []
         for container, shown in found:
-            refusal = self.context_refusal(cell, container, verb, shown,
+            refusal = self.context_refusal(lc, container, verb, shown,
                                            adaptive)
             if refusal is None:
                 return container, shown, None
             refusals.append(refusal)
         return None, None, refusals[0] if len(refusals) == 1 else None
 
+    def fits_container(self, tree: TpyType, want: TpyType | None) -> bool:
+        """Whether element tree `tree` pairs with a container's element
+        `want` part by part: a numeric leaf with a number (of either
+        family: the family refusal names that one), a tuple with a tuple of
+        its arity, a row with a list, Span or Array; a part that holds no
+        number must be compatible as it is."""
+        for _path, part, w in zip_parts(tree, want):
+            if isinstance(part, PendingNumType):
+                if value_family(w) is None:
+                    return False
+            elif isinstance(part, (TupleType, PendingListType)):
+                if w is None:
+                    return False
+            elif w is None or not self.compat.is_type_compatible(part, w):
+                return False
+        return True
+
+    def known_as(self, lc: ListCells, t: TpyType) -> bool:
+        """Whether the element of cell list `lc`, at the types known so far,
+        is `t`: each leaf the number there, each row a list, every other
+        part the same type."""
+        cells = self.ctx.pending_num_cells
+        for _path, part, o in zip_parts(lc.tree, t):
+            if isinstance(part, PendingNumType):
+                if self.known_so_far(cells[min(part.cells)]) != o:
+                    return False
+            elif isinstance(part, PendingListType):
+                if o is None or not is_list(o):
+                    return False
+            elif isinstance(part, TupleType):
+                if o is None:
+                    return False
+            elif part != o:
+                return False
+        return True
+
     @staticmethod
     def elem_leaf(cell: PendingNumCell) -> PendingNumType:
         """The type that names element cell `cell`, settled or not: what
-        the list literal's own record holds."""
+        the list literal's own record holds at the cell's leaf."""
         return PendingNumType(frozenset({cell.cid}), None, cell.is_float)
 
-    def list_as_known(self, t: TpyType, cell: PendingNumCell) -> TpyType:
-        """The list type `t` with the element as its cell has it: the
-        settled type, else the pending one."""
-        return with_list_elem(t, self.cell_type(cell))
+    def tree_type(self, lc: ListCells) -> TpyType:
+        """The element of cell list `lc` as its cells have it: each leaf
+        the settled type, else the pending one."""
+        cells = self.ctx.pending_num_cells
+        return map_leaves(lc.tree, lambda _p, leaf: self.cell_type(
+            cells[min(leaf.cells)]))
 
-    def adaptive_view(self, t: TpyType, cell: PendingNumCell) -> TpyType:
+    def tree_known(self, lc: ListCells) -> TpyType:
+        """The element of cell list `lc` at the types known so far; asks
+        nothing to settle."""
+        cells = self.ctx.pending_num_cells
+        return map_leaves(lc.tree, lambda _p, leaf: self.known_so_far(
+            cells[min(leaf.cells)]))
+
+    def list_as_known(self, t: TpyType, lc: ListCells) -> TpyType:
+        """The list type `t` with the element as its cells have it: the
+        settled types, else the pending ones."""
+        return with_list_elem(t, self.tree_type(lc))
+
+    def adaptive_view(self, t: TpyType, lc: ListCells) -> TpyType:
         """The list type `t` as an argument of a generic call sees it while
-        the call's type parameters are inferred: a list that holds only
-        literals so far shows a literal element, which binds a type
-        parameter as an integer or float literal argument does -- to
-        whatever another argument binds it to, else to the default. A list
-        that holds typed values shows the element known so far. Nothing is
-        settled: the resolved parameter decides the element afterwards
+        the call's type parameters are inferred: a leaf that holds only
+        literals so far shows a literal, which binds a type parameter as an
+        integer or float literal argument does -- to whatever another
+        argument binds it to, else to the default. A leaf that holds typed
+        values shows the type known so far. Nothing is settled: the
+        resolved parameter decides the element afterwards
         (`LocalTypeDeduction.mark_container_param_context`)."""
-        elem = self.known_so_far(cell)
-        if not cell.typed and elem == self.default_type(cell.is_float):
+        cells = self.ctx.pending_num_cells
+
+        def view(_path: tuple, leaf: PendingNumType) -> TpyType:
+            cell = cells[min(leaf.cells)]
+            elem = self.known_so_far(cell)
+            if cell.typed or elem != self.default_type(cell.is_float):
+                return elem
+            literal = FloatLiteralType if cell.is_float else IntLiteralType
             init = cell.first_decl.init if cell.first_decl is not None else None
             first = (self.ctx.get_expr_type(init.elements[0])
-                     if getattr(init, "elements", None) else None)
-            literal = FloatLiteralType if cell.is_float else IntLiteralType
-            elem = (first if isinstance(first, literal)
+                     if cell.path == () and getattr(init, "elements", None)
+                     else None)
+            return (first if isinstance(first, literal)
                     and self.literal_type(first) == elem else literal())
-        return with_list_elem(t, elem)
+        return with_list_elem(t, map_leaves(lc.tree, view))
 
-    def list_so_far(self, t: TpyType, cell: PendingNumCell) -> TpyType:
+    def list_so_far(self, t: TpyType, lc: ListCells) -> TpyType:
         """The list type `t` at the element type known so far; asks nothing
         to settle. For a reader that only inspects the type."""
-        return with_list_elem(t, self.known_so_far(cell))
+        return with_list_elem(t, self.tree_known(lc))
 
     def _cids(self) -> list[int]:
         """Every cell of the function under analysis."""
@@ -1135,10 +1734,11 @@ class PendingNums:
         wide = self._annotation_for(cell, unsigned)
         if cell.list_literal is not None:
             raise self.ctx.error(
-                f"'{cell.name}' holds {python_type_name(held)} elements and "
-                f"this value is {python_type_name(t)}, which have no common "
+                f"'{cell.name}' holds {self._elem_spelled(cell, held)} "
+                f"elements and this value is {python_type_name(t)}"
+                f"{self._member(cell)}, which have no common "
                 f"type; annotate its first binding: {cell.name}: "
-                f"list[{python_type_name(smallest_signed_holding(unsigned))}]"
+                f"list[{self._elem_spelled(cell, smallest_signed_holding(unsigned))}]"
                 f" = {self._list_init(cell)}", node)
         raise self.ctx.error(
             f"'{cell.name}' holds {python_type_name(held)} values and this "
@@ -1154,8 +1754,7 @@ class PendingNums:
     def _elem_holds(self, cell: PendingNumCell) -> str:
         """What a refusal says the list of element cell `cell` holds, and
         since which use when one decided it early."""
-        held = python_type_name(self.known_so_far(cell))
-        head = f"'{cell.name}' holds {held} elements"
+        head = f"'{cell.name}' holds {self._elem_spelled(cell)} elements"
         if cell.no_base and cell.context is None:
             # The line that decided it: the first binding, or the first
             # store into a list first bound empty.
@@ -1178,11 +1777,34 @@ class PendingNums:
             wide = join_int(self.known_so_far(cell), t)
             # Signed and unsigned values with no fixed type in common fit
             # an `int`.
-            spelled = (f"list[{python_type_name(wide)}]"
-                       if isinstance(wide, TpyType)
-                       else "list[float]" if cell.is_float else "list[int]")
+            if not isinstance(wide, TpyType):
+                wide = FLOAT if cell.is_float else BIGINT
+            spelled = f"list[{self._elem_spelled(cell, wide)}]"
         return (f"annotate its first binding: {cell.name}: {spelled} = "
                 f"{self._list_init(cell)}")
+
+    def _elem_spelled(self, cell: PendingNumCell,
+                      at: TpyType | None = None) -> str:
+        """The element of the list whose leaf cell `cell` decides, as a
+        diagnostic spells it: every leaf at the type known so far, this
+        cell's at `at` when given."""
+        info = (self.ctx.list_literals.get(cell.list_literal)
+                if cell.list_literal is not None else None)
+        if cell.path == () or info is None or info.elem_cells is None:
+            return python_type_name(at if at is not None
+                                    else self.known_so_far(cell))
+        cells = self.ctx.pending_num_cells
+
+        def leaf(_path: tuple, t: PendingNumType) -> TpyType:
+            c = cells[min(t.cells)]
+            return at if c is cell and at is not None else self.known_so_far(c)
+        return python_type_name(_spelled_rows(map_leaves(info.element_type,
+                                                         leaf)))
+
+    @staticmethod
+    def _member(cell: PendingNumCell) -> str:
+        """Where in the element a leaf cell is, as a refusal adds it."""
+        return f" ({path_words(cell.path)})" if cell.path else ""
 
     @staticmethod
     def _list_init(cell: PendingNumCell) -> str:
@@ -1200,7 +1822,7 @@ class PendingNums:
         type `t` would not hold, as the source spells it; None when `t`
         holds them all, so an annotation at `t` is a fix to name."""
         init = cell.first_decl.init if cell.first_decl is not None else None
-        values = [*(getattr(init, "elements", None) or ()),
+        values = [*_at_leaf(getattr(init, "elements", None) or [], cell.path),
                   *cell.stored_literals]
         unfit = self.first_unfit(values, t)
         return self._spelled_value(unfit) if unfit is not None else None
@@ -1235,11 +1857,12 @@ class PendingNums:
         floats = other if cell.is_float is False else mine
         mix = self.compat.deduction.int_float_mix(mine, other)
         if mix is None:
-            return (f"'{cell.name}' holds {python_type_name(mine)} elements "
-                    f"and this value is {python_type_name(other)}")
+            return (f"'{cell.name}' holds {self._elem_spelled(cell, mine)} "
+                    f"elements and this value is {python_type_name(other)}"
+                    f"{self._member(cell)}")
         return usage_mix_message(
-            mix, f"list '{cell.name}'",
-            f"{cell.name}: list[{python_type_name(floats)}] = "
+            mix, f"list '{cell.name}'{self._member(cell)}",
+            f"{cell.name}: list[{self._elem_spelled(cell, floats)}] = "
             f"{self._list_init(cell)}", value)
 
     def _elem_mix(self, cell: PendingNumCell, other: TpyType,
@@ -1286,6 +1909,7 @@ class PendingNums:
         this = (f"the literal {self._spelled_value(literal)} counts as "
                 f"{python_type_name(t)}" if literal is not None
                 else f"this value is {python_type_name(t)}")
+        this += self._member(cell)
         head = f"{self._elem_holds(cell)}, and {this}"
         if cell.context is None:
             return f"{head}; {self._elem_annotation(cell, t)}"
@@ -1294,14 +1918,21 @@ class PendingNums:
         container, _node, verb = cell.context
         if (literal_type is not None
                 and self.compat.is_type_compatible(literal_type, cell.settled)):
-            return (f"{head}; "
-                    f"{self._elem_annotation(cell, t, self._annotated(container))}")
+            spelled = self._annotated(container, cell, cell.settled)
+            return f"{head}; {self._elem_annotation(cell, t, spelled)}"
         return (f"{head}; the list is {verb} as {container}, so the value "
                 f"must be {python_type_name(cell.settled)}")
 
-    def _annotated(self, container: TpyType) -> str:
-        """The annotation of a list that meets the typed `container`: a
-        view takes a list, so the list is what to annotate."""
+    def _annotated(self, container: TpyType, cell: PendingNumCell,
+                   leaf: TpyType) -> str:
+        """The annotation of the list of leaf cell `cell` that meets the
+        typed `container` holding `leaf` at the cell's leaf: a container of
+        one of its rows names the whole element (`g: list[list[int32]]`,
+        not the row's `list[int32]`); a view takes a list, so the list is
+        what to annotate."""
+        if cell.path and value_family(
+                at_path(self.context_elem(container), cell.path)) is None:
+            return f"list[{self._elem_spelled(cell, leaf)}]"
         if is_list(container) or is_array(container):
             return str(container)
         return f"list[{python_type_name(self.context_elem(container))}]"
@@ -1334,7 +1965,8 @@ class PendingNums:
                     raise self.ctx.error(
                         f"{self._elem_holds(cell)}, and the literal "
                         f"{self._spelled_value(value)} does not fit "
-                        f"{python_type_name(cell.settled)}; "
+                        f"{python_type_name(cell.settled)}"
+                        f"{self._member(cell)}; "
                         f"{self._elem_annotation(cell, counted)}", at)
             else:
                 # In a list of literals a literal counts as its default
@@ -1359,37 +1991,55 @@ class PendingNums:
         self.resolve_ready()
 
     def force_list(self, expr: TpyExpr | None, t: TpyType,
-                   cell: PendingNumCell, what: str) -> TpyType:
-        """Settle the element of list `t`: `expr` is a use that needs it
-        now. Returns the list with its element decided."""
-        if cell.settled is None:
-            self.settle({cell.cid}, use=expr, what=what)
+                   lc: ListCells, what: str) -> TpyType:
+        """Settle the element of list `t`, every leaf of it: `expr` is a
+        use that needs it now. Returns the list with its element decided."""
+        if not lc.settled:
+            self.settle({c.cid for c in lc.cells if c.settled is None},
+                        use=expr, what=what)
             self.resolve_ready()
-        return self.list_as_known(t, cell)
+        return self.list_as_known(t, lc)
 
     @staticmethod
     def context_elem(container: TpyType) -> TpyType:
         """The element a typed container of numbers holds."""
         return unwrap_send_sync(unwrap_readonly(container.type_args[0]))
 
-    def context_refusal(self, cell: PendingNumCell, container: TpyType,
+    def context_refusal(self, lc: ListCells, container: TpyType,
                         verb: str, shown: TpyType | None = None,
                         resolved: bool = False) -> str | None:
-        """Why the list of element cell `cell` cannot meet the typed
-        `container` (`shown` is the type the source spells there when it is
-        a view of that container), or None when it can: the container
-        confirms the element, or widens it within its family while the
-        element is still open. Asks nothing to settle. `resolved` says the
-        container is a generic call's parameter, resolved from the call's
-        other arguments."""
-        want = self.context_elem(container)
+        """Why the list of cells `lc` cannot meet the typed `container`
+        (`shown` is the type the source spells there when it is a view of
+        that container), or None when it can: at every leaf the container
+        confirms the leaf, or widens it within its family while it is
+        still open. Asks nothing to settle. `resolved` says the container
+        is a generic call's parameter, resolved from the call's other
+        arguments."""
+        for cell, path in zip(lc.cells, lc.paths):
+            refusal = self._leaf_refusal(cell, self.leaf_want(container, path),
+                                         container, verb, shown, resolved)
+            if refusal is not None:
+                return refusal
+        return None
+
+    def leaf_want(self, container: TpyType, path: tuple) -> TpyType:
+        """What typed `container` holds at leaf path `path` of its
+        element."""
+        part = at_path(self.context_elem(container), path)
+        assert part is not None, "the container pairs with the element"
+        return unwrap_send_sync(unwrap_readonly(part))
+
+    def _leaf_refusal(self, cell: PendingNumCell, want: TpyType,
+                      container: TpyType, verb: str,
+                      shown: TpyType | None, resolved: bool) -> str | None:
         if value_family(want) != cell.is_float:
-            return self._family_refusal(cell, container, verb, shown)
+            return self._family_refusal(cell, want, container, verb, shown)
         held = self.known_so_far(cell)
         if held == want or (cell.settled is None
                             and join_int(held, want) == want):
             return None
-        return self.elem_mismatch(cell, container, verb, shown, resolved)
+        return self.elem_mismatch(cell, want, container, verb, shown,
+                                  resolved)
 
     def elem_context(self, t: TpyType, container: TpyType,
                      node: TpyExpr | TpyStmt | None, verb: str,
@@ -1402,26 +2052,74 @@ class PendingNums:
         resolved: an annotation of the list would resolve it otherwise, so
         it is no fixed type later refusals have to respect. Returns the
         list as the container sees it."""
-        cell = self.list_cell(t)
-        want = self.context_elem(container)
-        if cell.settled is None:
+        lc = self.list_cells(t)
+        assert lc is not None
+        open_cells = [(c, p) for c, p in zip(lc.cells, lc.paths)
+                      if c.settled is None]
+        if open_cells:
             spelled = shown if shown is not None else container
-            cell.typed.append(want)
-            self._add(cell, want, node)
-            self.settle({cell.cid}, use=node, what=f"{verb} as {spelled}")
+            for cell, path in open_cells:
+                want = self.leaf_want(container, path)
+                cell.typed.append(want)
+                self._add(cell, want, node)
+            self.settle({c.cid for c, _p in open_cells}, use=node,
+                        what=f"{verb} as {spelled}")
             if declared:
-                cell.context = (spelled, node, verb)
+                for cell, _p in open_cells:
+                    cell.context = (spelled, node, verb)
             self.resolve_ready()
-        return self.list_as_known(t, cell)
+        self._rows_at_container(t, lc.tree, container)
+        lc = self._adopt_parts(lc, self.context_elem(container))
+        return self.list_as_known(t, lc)
 
-    def elem_mismatch(self, cell: PendingNumCell, container: TpyType,
-                      verb: str, shown: TpyType | None = None,
+    def _adopt_parts(self, lc: ListCells, want: TpyType) -> ListCells:
+        """The parts of the element of `lc` that hold no number take the
+        typed container's types there (`fits_container` found them
+        compatible: a view member stored as the owned string the container
+        holds), on every record that names this element."""
+        held = {path: w for path, part, w in zip_parts(lc.tree, want)
+                if w is not None and not pending_leaves(part)
+                and not isinstance(part, (TupleType, PendingListType))}
+        new = map_parts(lc.tree, lambda path, _part: held.get(path))
+        if new == lc.tree:
+            return lc
+        old_parts = _row_parts(lc.tree)
+        new_parts = _row_parts(new)
+        for lid in self.ctx.func.pending_resolutions:
+            rec = self.ctx.list_literals.get(lid)
+            if rec is None or rec.elem_cells is None:
+                continue
+            for old_part, new_part in zip(old_parts, new_parts):
+                if rec.element_type == old_part:
+                    self.attach(rec, new_part)
+                    break
+        return self.cells_of(lc.info)
+
+    def _rows_at_container(self, t: TpyType, tree: TpyType,
+                           container: TpyType) -> None:
+        """A row of a nested list that meets a `list` there is stored as
+        one, with every row of its group (`join_rows`): the row `t` itself
+        when it is one, and each row of `tree` the container holds a list
+        at."""
+        rows = [pending_list_of(t)] if is_list(container) else []
+        rows += [part for _path, part, w in
+                 zip_parts(tree, self.context_elem(container))
+                 if isinstance(part, PendingListType)
+                 and w is not None and is_list(w)]
+        for row in rows:
+            rec = (self.ctx.list_literals.get(row.literal_id)
+                   if row is not None else None)
+            if rec is not None and rec.row_group is not None:
+                rec.passed_to_list_param = True
+
+    def elem_mismatch(self, cell: PendingNumCell, want: TpyType,
+                      container: TpyType, verb: str,
+                      shown: TpyType | None = None,
                       resolved: bool = False) -> str:
         """The refusal of a list whose element is not the one the typed
         `container` it meets holds; `shown` is the type the source spells
         there when it is a view of that container, and `resolved` says the
         call's other arguments gave the container its element."""
-        want = self.context_elem(container)
         here = shown if shown is not None else container
         if cell.context is not None:
             # Two typed containers of different elements: no annotation
@@ -1432,7 +2130,8 @@ class PendingNums:
             again = "" if verb == first_verb else f"{verb} "
             return (f"'{cell.name}' is {first_verb} as {first}{at} and "
                     f"{again}as {here} here; a list has one element type")
-        head = f"{self._elem_holds(cell)}, and it is {verb} here as {here}"
+        head = (f"{self._elem_holds(cell)}, and it is {verb} here as "
+                f"{here}{self._member(cell)}")
         unfit = self._unfit_value(cell, want)
         if unfit is not None:
             held = python_type_name(self.known_so_far(cell))
@@ -1440,25 +2139,27 @@ class PendingNums:
                    f"{python_type_name(want)}: convert them to {held}"
                    if resolved else "")
             return f"{head}, which would not hold {unfit}{fix}"
-        return (f"{head}; "
-                f"{self._elem_annotation(cell, want, self._annotated(container))}")
+        spelled = self._annotated(container, cell, want)
+        return f"{head}; {self._elem_annotation(cell, want, spelled)}"
 
-    def _family_refusal(self, cell: PendingNumCell, container: TpyType,
-                        verb: str, shown: TpyType | None) -> str:
+    def _family_refusal(self, cell: PendingNumCell, want: TpyType,
+                        container: TpyType, verb: str,
+                        shown: TpyType | None) -> str:
         """The refusal of a list at a typed container of the other numeric
         family: a list literal keeps the family its values are written in."""
         here = shown if shown is not None else container
         family = self._elem_family(cell)
         held = ("integer" if isinstance(family, IntLiteralType)
                 else python_type_name(family))
-        head = f"'{cell.name}' holds {held} values, and it is {verb} here as {here}"
-        if cell.is_float or self._unfit_value(
-                cell, self.context_elem(container)) is not None:
+        head = (f"'{cell.name}' holds {held} values, and it is {verb} here "
+                f"as {here}{self._member(cell)}")
+        if cell.is_float or self._unfit_value(cell, want) is not None:
             return head
         # Written as floats the values print as CPython prints them; the
         # annotation converts the integers it is given.
+        spelled = self._annotated(container, cell, want)
         return (f"{head}; write its values as floats, or convert them: "
-                f"{self._elem_annotation(cell, self.context_elem(container), self._annotated(container))}")
+                f"{self._elem_annotation(cell, want, spelled)}")
 
     def _literals_fit(self, name: str, t: TpyType) -> bool:
         tr = int_traits_of(t)
@@ -1521,8 +2222,12 @@ class PendingNums:
         """`t` with a pending number whose cells have all settled replaced
         by its concrete type; anything else as it is."""
         inner = strip_int(t)
-        if isinstance(inner, PendingNumType) and self.settled_all(inner):
-            return self.concrete(inner)
+        if isinstance(inner, PendingNumType):
+            return self.concrete(inner) if self.settled_all(inner) else t
+        if t is not None and not isinstance(inner, PendingListType):
+            leaves = value_leaves(t)
+            if leaves and all(self.settled_all(leaf) for leaf in leaves):
+                return self.finalize_values(t)
         return t
 
     def concrete(self, t: PendingNumType) -> TpyType:
@@ -1560,6 +2265,26 @@ class PendingNums:
             self.ctx.set_expr_type(expr, concrete)
         return concrete
 
+    def force_value(self, expr: TpyExpr | None, t: TpyType,
+                    what: str | None = None) -> TpyType:
+        """`force` for a value that is a pending number or holds some (a
+        tuple read from a list whose leaves cells decide): every one of
+        them is settled, `expr` being a use that needs the type now."""
+        if is_pending_num(t):
+            return self.force(expr, t, what)
+        cids = {cid for leaf in value_leaves(t) for cid in leaf.cells
+                if self.ctx.pending_num_cells[cid].settled is None}
+        if cids:
+            if what is None:
+                what = (self.describe_use(expr) if expr is not None
+                        else "a use that needs its type")
+            self.settle(cids, use=expr, what=what)
+            self.resolve_ready()
+        concrete = self.finalize_values(t)
+        if expr is not None:
+            self.ctx.set_expr_type(expr, concrete)
+        return concrete
+
     def settle_names(self, names: set[str], use: TpyExpr | TpyStmt,
                      what: str) -> None:
         """Settle the pending locals among `names`: a body analyzed in a
@@ -1572,11 +2297,9 @@ class PendingNums:
         for n in names:
             info = self.ctx.list_literals.get(
                 self.ctx.func.variable_to_literal.get(n, -1))
-            cell = (self.ctx.pending_num_cells.get(info.elem_cell)
-                    if info is not None and info.elem_cell is not None
-                    else None)
-            if cell is not None and cell.settled is None:
-                cids.add(cell.cid)
+            if info is not None and info.elem_cells is not None:
+                cids |= {c.cid for c in self.cells_of(info).cells
+                         if c.settled is None}
         for cid in cids:
             self.settle({cid}, use=use, what=what)
         if cids:
@@ -1586,14 +2309,26 @@ class PendingNums:
     # Deferred resolution
     # ------------------------------------------------------------------
 
+    def when_elem_known(self, node: TpyExpr | TpyStmt, lc: ListCells,
+                        record: Callable[[TpyType], None]) -> None:
+        """Call `record` with the element of cell list `lc` once its cells
+        settle -- a signature recorded at the element the call met -- and
+        again once the rows in it, list literals resolved after the settle,
+        have their list types."""
+        def resolve(types: tuple[TpyType, ...]) -> None:
+            record(types[0])
+            if contains_pending_leaf(types[0]):
+                self.ctx.func.after_list_resolution.append((types[0], record))
+        self.defer(node, (lc.tree,), resolve)
+
     def defer(self, node: TpyExpr | TpyStmt | None, types: tuple[TpyType, ...],
               resolve: Callable[[tuple[TpyType, ...]], None]) -> None:
         self.ctx.func.pending_num_deferred.append(
             DeferredIntOp(node, tuple(strip_int(t) for t in types), resolve))
 
     def _ready(self, op: DeferredIntOp) -> bool:
-        return all(not isinstance(t, PendingNumType) or self.settled_all(t)
-                   for t in op.types)
+        return all(self.settled_all(leaf) for t in op.types
+                   for leaf in pending_leaves(t))
 
     def resolve_ready(self) -> None:
         """Resolve the deferred operations whose types have all settled.
@@ -1610,7 +2345,7 @@ class PendingNums:
             func.pending_num_deferred = [
                 op for op in func.pending_num_deferred if not self._ready(op)]
             for op in ready:
-                op.resolve(tuple(self.concrete(t) if isinstance(t, PendingNumType)
+                op.resolve(tuple(self.finalize(t) if pending_leaves(t)
                                  else t for t in op.types))
 
     def check_late_result(self, node: TpyExpr | TpyStmt, what: str,
@@ -1754,6 +2489,15 @@ class PendingNums:
             return self.concrete(t)
         return t.map_inner_types(self.finalize)
 
+    def finalize_values(self, t: TpyType) -> TpyType:
+        """`finalize` for the numbers `t` holds by value (`value_leaves`):
+        a list literal in it keeps its type, which its resolution gives."""
+        if isinstance(t, PendingNumType):
+            return self.concrete(t)
+        if isinstance(t, PendingListType):
+            return t
+        return t.map_inner_types(self.finalize_values)
+
     def drop_cells(self) -> None:
         """Forget the function's cells once nothing refers to them."""
         for cid in self._cids():
@@ -1762,18 +2506,52 @@ class PendingNums:
         self.ctx.func.pending_elem_cids = []
 
 
+def _row_parts(tree: TpyType) -> list[TpyType]:
+    """`tree` and the element of every row in it, outermost first."""
+    out = [tree]
+
+    def visit(path: tuple, part: TpyType) -> None:
+        if path and path[-1] == ELEM_ROW:
+            out.append(part)
+    map_parts(tree, visit)
+    return out
+
+
+def _spelled_rows(t: TpyType) -> TpyType:
+    """`t` with every row a list."""
+    def spell(_path: tuple, part: TpyType) -> TpyType | None:
+        if isinstance(part, PendingListType):
+            return make_list(map_parts(part.element_type, spell))
+        return None
+    return map_parts(t, spell)
+
+
+def _at_leaf(elements: list[TpyExpr], path: tuple) -> list[TpyExpr]:
+    """The expressions written at leaf path `path` of a list literal's
+    `elements`: through tuple literals' members and nested literals'
+    elements."""
+    out = list(elements)
+    for step in path:
+        nxt: list[TpyExpr] = []
+        for e in out:
+            while isinstance(e, TpyCoerce):
+                e = e.expr
+            if isinstance(step, int):
+                if (isinstance(e, TpyTupleLiteral)
+                        and step < len(e.elements)):
+                    nxt.append(e.elements[step])
+            elif isinstance(e, (TpyArrayLiteral, TpyListRepeat)):
+                nxt.extend(e.elements)
+        out = nxt
+    return out
+
+
 def _other_arm(cell: PendingNumCell) -> str:
     return "the other" if len(cell.arm_sites) == 2 else "another"
 
 
 def _line(node: TpyStmt | TpyExpr | None) -> int | None:
     return getattr(getattr(node, "loc", None), "line", None)
-
-
-def contains_pending_num(t: TpyType) -> bool:
-    if isinstance(t, PendingNumType):
-        return True
-    return any(contains_pending_num(i) for i in t.inner_types())
 
 
 def _rewrite_tree(body: list[TpyStmt],

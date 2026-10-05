@@ -981,7 +981,8 @@ def _lower_array_source_comprehension(
 
 def _comp_result_type(t: 'TpyType | None', analyzer) -> TpyType:
     # Sema stamps the result element/key/value types on the node; a
-    # still-literal int resolves to the default int.
+    # still-literal int (an element expression that is a bare literal or
+    # reads one written in place) resolves to the default int.
     assert t is not None
     if isinstance(t, IntLiteralType):
         return analyzer.ctx.default_int_type

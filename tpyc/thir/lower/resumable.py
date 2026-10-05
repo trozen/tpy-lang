@@ -504,6 +504,8 @@ def _region_reject(region: 'rcfg.Region') -> 'str | None':
 
 
 def _loop_elem_type(stmt: 'TpyForEach', analyzer) -> 'TpyType | None':
+    # An int-literal element is a list literal written as the iterable (or
+    # a module-level list); a function-local list's is settled by its cells.
     et = stmt.elem_type
     if isinstance(et, IntLiteralType):
         return analyzer.ctx.default_int_type

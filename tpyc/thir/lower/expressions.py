@@ -4863,7 +4863,9 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
     # non-names) and the retype rebuilds the node paren-free with the
     # target-resolved operator template. A target-less position
     # (print arg) keeps the generic parens even when the operands' sema
-    # types are IntLiteral (a subscript over a literal-seeded array).
+    # types are IntLiteral (a subscript over a module-level or written-in-
+    # place literal array; a function-local list's element read has its
+    # cells' type).
     both_lit = (e.op in _ARITH_OPS or e.op in _BITWISE_OPS) and (
         isinstance(analyzer.get_expr_type(e.left), IntLiteralType)
         and not isinstance(e.left, TpyName)

@@ -1,0 +1,3 @@
+main.py:282: warning: copies list[int64] into owned storage; use copy() to make this explicit
+main.py:294: warning: copies list[int32] into owned storage (tuple element 1); use copy() to make this explicit
+main.py:305: warning: copies list[int32] into owned storage; use copy() to make this explicit

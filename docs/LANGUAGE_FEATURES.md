@@ -1204,7 +1204,14 @@ is still accepted.
 
 **Element type.** A non-empty list literal of numbers (or `[e] * n`) bound to
 an unannotated function local has ONE element type, decided once the function
-body has been read:
+body has been read. The numeric leaves of the element are decided as a
+scalar element is: a list of tuples has one pending element per numeric
+member, a nested list literal one per depth shared by every row, and a
+store, a typed container or a read at any depth works on the leaf at that
+position (`xs = [(1, 2)]; xs.append((big64, 3))` is a
+`list[tuple[int64, int32]]`; `g = [[1, 2], [3]]; g[0].append(big64)` makes
+every row a `list[int64]`). Parts that hold no number keep their types
+(`[(1, "a")]` has one pending member). The rules below are each leaf's:
 
 - from the values written in the literal and every value stored into the list
   (`append`, `insert`, `xs[i] = v`, `xs[i] += v`, a rebinding to another
@@ -1230,10 +1237,17 @@ body has been read:
   holds int8 elements (line N), and this value is int64; annotate its
   first binding: ys: list[int64] = [...]* -- and arithmetic reads an
   element at that type (`ys[0] + 300` is an `int32`, as `a8 + 300` is).
+  Per leaf: `ps = [(a8, 2)]` decides member 0 at `int8` and leaves member
+  1 to widen, and a refusal names the member and spells the whole element
+  with the annotation to write -- *'ps' holds tuple[int8, int32] elements
+  (line N), and this value is int64 (tuple element 0); annotate its first
+  binding: ps: list[tuple[int64, int32]] = [...]* (a row's leaf is the
+  *(row element)*).
   `fs = [f32]; fs.append(0.1)` stays `list[float32]` and stores the literal
   rounded, the divergence from CPython the `float32` local has, and so does
   the empty twin `fs = []; fs.append(f32); fs.append(0.1)`, decided by its
-  first store -- annotate `fs: list[float]` or write `float(f32)` to keep it;
+  first store, and a `float32` tuple member or row element -- annotate
+  `fs: list[float]` or write `float(f32)` to keep it;
 - from a typed container of numbers the list meets at a declared slot: a
   `list[T]` / `Span[T]` / `Array[T, N]` parameter (a `*args` one, a
   `raise E(...)` argument and a TypedDict constructor's field included),
@@ -1308,7 +1322,28 @@ print(sum(ys), n)      # sums int64 elements
 Uses that defer decide nothing: `n = ys[0]`, arithmetic, a comparison,
 `print`, an f-string without a format spec, an argument at a numeric
 parameter, `len(ys)`, a second name (`zs = ys`), `append` / `insert` / `pop`
-/ `clear` / `reverse`, `extend` / `+=` (their values are stores).
+/ `clear` / `reverse`, `extend` / `+=` (their values are stores). For a
+list of tuples or a nested list also: a member read (`xs[0][1]` reads the
+leaf, `t = xs[0]` binds the tuple of leaves), a tuple unpack
+(`a, b = xs[1]` binds each local to its leaf, as `a = xs[1][0]` does), a
+comparison of a tuple read (`xs[0] == (1, 2)`), and a name for a row
+(`row = g[0]`, `row = g.pop()`: the row itself, one more list of the
+rows' element).
+
+The rows of a nested list literal share one element and one representation:
+they are one C++ type, so a row that has to be a `list` -- mutated through
+`g[0]`, a second name for it mutated, passed to a `list[T]` parameter, of a
+size another row does not have, empty -- makes every row at its position
+one (`[[1, 2], [3]]` holds `list` rows; `[[1, 2], [3, 4]]` read only stays an
+`Array` of `Array`s). A row appended or stored later joins them
+(`g.append([big64])`, `g.append(other)`, `g[0] = [v]`, `g[0] = other`,
+`g[0] = []`). A list stored as a row is linked to the rows leaf by leaf --
+`other = [5]; g.append(other); other.append(big64)` widens the rows too --
+a shared type constraint, not aliasing: the row is a copy of `other` (the
+copy warning says so; `g.append(copy(other))` spells it, and `copy()`
+decides `other`, as any generic call does). A comprehension of rows
+(`[[0] * 3 for _ in range(2)]`) builds every row from the one literal it
+writes, so its rows share the element the same way.
 
 At a generic call the list adapts like an integer literal argument: another
 argument that binds the type parameter decides the element
@@ -1341,13 +1376,18 @@ Current limitations:
   through `:=` or through a ternary / `and` / `or` with no declared target,
   a capture by a nested function, lambda or generator expression (so a
   lambda that returns the list decides it before its return type is read),
-  an element of an unannotated tuple, list or dict literal (`t = (ys, 1)`,
-  `outer = [ys]`), a value of a dict literal whatever its annotation
-  (`d: dict[str, list[int64]] = {"a": ys}`), an f-string value WITH a
-  format spec (`f"{ys[0]:5d}"`), and any method other than the six above
-  (`sort`, `index`, ...). `extend` and `+=` with an iterable that says
+  an element of an unannotated tuple, list or dict literal
+  (`t = (ys, 1)`, `outer = [ys]`), a value of a dict literal whatever its
+  annotation (`d: dict[str, list[int64]] = {"a": ys}`), an f-string value
+  WITH a format spec (`f"{ys[0]:5d}"`), and any method other than the six
+  above (`sort`, `index`, ...). `extend` and `+=` with an iterable that says
   nothing about its elements' types (a `range`, a generator) decide the
-  element too.
+  element too. A STORE of the list into a list whose element holds lists
+  (`g.append(ys)`, `g[0] = ys`) decides nothing: it links the two (see
+  the rows of a nested list above). `copy(ys)` is a generic call like
+  `sorted(ys)`: it decides `ys`, and a wider store into `ys` after it is
+  refused naming the call -- *'ys' holds int32 elements since line N (an
+  argument to 'copy()'), and this value is int64*.
 - A call with several candidates decides the element before the candidates
   are scored, so its parameter does not widen the list (`sum(ys)` then a
   wider store is refused). Candidates that take the list as `list[T]` do not
@@ -1357,16 +1397,17 @@ Current limitations:
   its own default type, so `ys = [1]; big(ys); ys.append(6000000000)` is
   refused (the literal counts as `int`); the annotation `ys: list[int64]`
   makes it fit.
-- Tuple elements (`xs = [(1, 2)]`), nested list literals, dict and set
-  literals and module-level lists (`[]` included) are not covered yet. Their element is typed from the literal as it stands at each use: a
-  bare number is resolved by its consumer and a tuple element takes the
-  default width for its literal members, so `xs = [(1, 2)]` followed by
-  `a, b = xs[0]`, `f(xs[0])` or `t = xs[0]` works like the annotated list.
-  When another use gives such a list a different element type, an element
-  taken at the default width by an unannotated local, a loop variable or a
-  tuple unpack is refused with the annotation to write, and whole-list
-  consumers of a module-level list are still compiled at the default width
-  (`BUGS.md#widened-literal-list-read-truncates`). An empty list whose
+- Dict and set literals and module-level lists (`[]` included) are not
+  covered yet. Their element is typed from the literal as it stands at
+  each use: a bare number is resolved by its consumer and a tuple element
+  takes the default width for its literal members. When another use gives
+  such a list a different element type, an element taken at the default
+  width by an unannotated local, a loop variable or a tuple unpack is
+  refused with the annotation to write, and whole-list consumers of a
+  module-level list are still compiled at the default width
+  (`BUGS.md#widened-literal-list-read-truncates`). A repeat of a repeat
+  (`[[0] * 3] * 2`) is typed by the rule but does not compile yet
+  (`BUGS.md#nested-list-repeat-rejects`). An empty list whose
   first store is made by a nested function it is not local to is refused
   (`BUGS.md#empty-list-nested-first-store-rejected`); one the enclosing
   function stored into first is decided at the capture, as any list
@@ -4494,7 +4535,7 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
     - the first binding is lexical: inside a loop body it is the first store in the body's source order, and inside a `try` body it is the body's, though a handler may run when the body's store did not
     - sibling `if` / `match` / `except` arms that are not numeric join in source order: a None-seeded local refined that way, or a tuple whose narrower arm comes first, is refused (`BUGS.md#optional-int-widening-refused`, `BUGS.md#tuple-element-int-widening-refused`)
     - a tuple's int elements and a None-seeded local's inner int type do not widen straight-line either: `p = (3, 1); p = (big, 1)` and `x = None; x = 3; x = big` are refused (same entries)
-    - a list's element type widens with the uses of the literal it was bound from (`xs = [1, 2]; xs.append(big)` and `xs = [1, 2]; xs = [big]` both make it `list[int64]`; "List Literal Inference"), but rebinding a dict, a set or a list of tuples to a literal with wider elements is refused (`d = {"a": 1}; d = {"b": big}`, `BUGS.md#container-rebind-wider-literal-truncates`)
+    - a list's element type widens with the uses of the literal it was bound from (`xs = [1, 2]; xs.append(big)` and `xs = [1, 2]; xs = [big]` both make it `list[int64]`; "List Literal Inference"), and so does a list of tuples (`xs = [(1, 2)]; xs = [(big, 2)]`), but rebinding a dict or a set to a literal with wider elements is refused (`d = {"a": 1}; d = {"b": big}`, `BUGS.md#container-rebind-wider-literal-truncates`)
 - **Working**: Optional class members (`self.field: T | None`) → `std::optional<T>` inline storage
   - Field access through optional (`obj.field.x`) works via `std::optional::operator->()`
   - `is None` / `is not None` checks use `.has_value()`
