@@ -883,6 +883,19 @@ def _detect_compiler_family(cxx: tuple[str, ...]) -> str:
     return "unknown"
 
 
+@functools.lru_cache(maxsize=8)
+def _gcc_major(cxx: tuple[str, ...]) -> int | None:
+    try:
+        out = subprocess.run(
+            list(cxx) + ["-dumpversion"],
+            capture_output=True, text=True, timeout=5,
+        ).stdout.strip()
+    except (subprocess.SubprocessError, OSError):
+        return None
+    major = out.split(".")[0]
+    return int(major) if major.isdigit() else None
+
+
 def strict_warn_flags(cxx: list[str]) -> list[str]:
     """Strict warning set tailored to the C++ compiler family.
 
@@ -891,6 +904,12 @@ def strict_warn_flags(cxx: list[str]) -> list[str]:
     """
     family = _detect_compiler_family(tuple(cxx))
     if family == "gcc":
+        if _gcc_major(tuple(cxx)) == 13:
+            # GCC 13's -Wdangling-reference takes any temporary argument
+            # (a key lambda) for the referent of a returned reference;
+            # GCC 14 narrowed it, and the newer toolchains keep the check.
+            return (_COMMON_WARN_FLAGS + _GCC_ONLY_WARN_FLAGS
+                    + ["-Wno-dangling-reference"])
         return _COMMON_WARN_FLAGS + _GCC_ONLY_WARN_FLAGS
     if family == "clang":
         return _COMMON_WARN_FLAGS + _CLANG_ONLY_WARN_FLAGS
