@@ -77,8 +77,16 @@ def test_for_callers_reach_valid_mir_without_copies(artifacts: Artifacts, name: 
     assert not any(isinstance(v, MIRCopy) for v in values)
     result = inspect_scope_lifetimes(fn)
     assert not isinstance(result, MIRNotCovered) and not result.conflicts
-    if name not in ("Runner", "method"):
-        assert artifacts[1].summaries[th.THIRFunctionIdentity("main", name)].state is MIRSummaryState.OPAQUE
+    if name in ("Runner", "method"):
+        return
+    summary = artifacts[1].summaries[th.THIRFunctionIdentity("main", name)]
+    if name == "records":
+        # A field write through an element of a container parameter is a write origin no summary publishes yet.
+        assert summary.state is MIRSummaryState.OPAQUE and summary.reason == "summary unsupported write origin"
+        return
+    # Each activation's argument temporary is the caller's private storage, only lent to the callee.
+    assert summary.state is MIRSummaryState.KNOWN, summary
+    assert not summary.summary.writes and not summary.summary.returns
 
 
 @pytest.mark.parametrize("name", ["ranges", "written"])

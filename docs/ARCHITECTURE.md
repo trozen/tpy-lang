@@ -213,16 +213,17 @@ an empty result dependency set.
 
 Covered MIR means a complete representable body, not a lifetime-safety
 certificate. Workspace analysis and `--dump-mir` can report coverage while
-separate storage evidence reports a conflict. Callers that keep local record
-backing to their end remain opaque for summary extraction; record storage a
-body returns or hands over, with no borrow of it live at that transfer, is
-private to the body (`mir/summaries._private_records`).
+separate storage evidence reports a conflict. Owned record storage is private
+to the body and publishes nothing in its summary when the body returns or
+hands it over with no borrow of it live at that transfer, or keeps it to its
+end and uses it only through its own holders, field accesses, copies and loans
+at borrowing passings (`mir/summaries._private_records`).
 
 Verified readonly constructor arguments of an existing borrowed-call
 declaration feed the returned-origin substitution through their named holders;
 borrowed-expression MIR lowering shares the scalar path's initialization
-anchors and evaluation-order proof, and local backing keeps caller summaries
-opaque (`MIR_BORROWED_ARGUMENT_STORAGE_PLAN.md`). `PTR_ADDR` pointer
+anchors and evaluation-order proof, and the caller's local backing is its
+private storage (`MIR_BORROWED_ARGUMENT_STORAGE_PLAN.md`). `PTR_ADDR` pointer
 declarations and reseats share the declaration flush contract in the emitter,
 validator and temporary planner; lowering grants them no temporary arguments.
 The flush contract describes well-formed emission of THIR, independently of

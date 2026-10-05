@@ -218,8 +218,9 @@ before any production gate applies to them.
 Ordinary MIR coverage means the body has a complete representable IR, not
 that its lifetimes are safe. Workspace analysis and `--dump-mir` can expose a
 covered body with a storage conflict; only the evidence API evaluates that
-proof. Callers containing local backing remain opaque as callees, so this
-coverage extension does not publish unchecked caller summaries.
+proof. A caller's local backing is private storage to its own summary
+(`docs/MIR_ANALYSIS_PLAN.md` "Owned record results"): the summary publishes
+nothing for it, so this coverage extension publishes no unchecked facts.
 
 ## CPython semantics and explicit alternatives
 

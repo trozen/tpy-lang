@@ -119,7 +119,8 @@ def artifacts() -> Artifacts:
     return functions, bodies, definitions
 
 
-@pytest.mark.parametrize("name", ["read", "selected", "scalar", "literal", "empty"])
+# `owned` keeps a constructed record to its end: private storage, no effect.
+@pytest.mark.parametrize("name", ["read", "selected", "scalar", "literal", "empty", "owned"])
 def test_leaf_evidence_is_known(artifacts: Artifacts, name: str) -> None:
     functions, bodies, definitions = artifacts
     body = bodies[name]
@@ -134,7 +135,7 @@ def test_leaf_evidence_is_known(artifacts: Artifacts, name: str) -> None:
 
 
 @pytest.mark.parametrize(("name", "reason"), [
-    ("owned", "storage or value shape"), ("global_write", "global access"),
+    ("global_write", "global access"),
 ])
 def test_covered_mir_is_not_a_harmlessness_proof(artifacts: Artifacts, name: str, reason: str) -> None:
     functions, bodies, definitions = artifacts

@@ -9489,8 +9489,8 @@ scalar-field constructors to the same evidence. Safe complete bodies can
 certify; the known branch-local select alias escape is an internal Conflict
 with no coverage gaps. This does not diagnose or fix that accepted source
 defect. Repeated while-head emplacement, record and/or, source wrapper sinks,
-mutable argument-temporary access and unproven evaluation order remain uncovered; callers owning backing
-stay opaque as callees.
+mutable argument-temporary access and unproven evaluation order remain uncovered; the backing a caller
+owns is private to its summary.
 The [borrow-operation proof](MIR_BORROW_OBLIGATION_PLAN.md) also records
 supported plain-record alias bindings, reseats and eligible free-function
 borrowed returns. Their exact MIR writes/returns receive whole-body lifetime
@@ -9505,7 +9505,7 @@ hook-free scalar-field record constructors as readonly borrowed arguments,
 with stable bool/int32 constructor operands. Shared THIR placement retains
 eager block lifetime, lazy optional backing, synthetic elif scopes and fresh
 while-condition activations. Ordinary functions, methods and constructor
-tails use the same consumer; owning callers remain opaque as callees.
+tails use the same consumer; the backing an owning caller keeps is private to its summary.
 The [ordinary-for extension](MIR_FOR_ARGUMENT_STORAGE_PLAN.md) covers named
 arguments in existing range/native loop bodies and else blocks, preserving
 the counter/iterator residence and fresh body activations. Named temporaries

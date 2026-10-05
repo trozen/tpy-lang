@@ -9,9 +9,9 @@ from ..compilation_context import activate_compiler
 from ..mir_workspace import MIRCallWorkspace
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
-from ..type_def_registry import latch_declared_native_flags
+from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import INT32, OwnType
-from .call_contract import MIRSummaryState, owned_record_result, result_problem
+from .call_contract import MIRReturnOrigin, MIRSummaryState, owned_record_result, result_problem
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRDefinitions
 from .dependencies import analyze_dependencies
@@ -21,11 +21,13 @@ from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRConstruct, MIRContainerElements,
     MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordWrite,
-    MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRValueKind,
+    MIRRecordStorageInit, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRValueKind,
 )
 from .scope_lifetime import analyze_scope_ends
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
+from . import summaries
 from .summaries import _private_records, summarize_function
 from .validate import MIRValidationError, validate_function
 
@@ -157,6 +159,21 @@ def borrow_then(n: int32) -> int32:
     p = make(n)
     q = ident(p)
     return q.x
+
+
+def lend_back(p: Point, n: int32) -> Point:
+    q = make(n)
+    r = ident(q)
+    return p
+
+
+def keep_hooked(n: int32) -> int32:
+    h = Hooked(n)
+    return h.n
+
+
+def lazy_lend(flag: bool, n: int32) -> int32:
+    return read(make(n)) if flag else 0
 
 
 def use_temp(n: int32) -> int32:
@@ -494,9 +511,172 @@ def test_returned_or_handed_over_storage_is_private(active, name: str) -> None:
     assert result.summary.returns == frozenset() and result.summary.writes == frozenset()
 
 
-def test_storage_the_body_keeps_stays_out_of_summaries(active) -> None:
-    result = _summary(active, "use_result")
+@pytest.mark.parametrize("name", ["use_result", "reseat", "borrow_then", "use_temp", "lend_temp", "discard_temp",
+                                  "reseat_ctor"])
+def test_storage_the_body_keeps_is_private(active, name: str) -> None:
+    # Owned record storage kept to the body's end -- written through its
+    # holder, reseated in place, lent, read by field -- is the body's own.
+    fn = _lowered(active, name)
+    kept = {s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED and s.container_layout is None
+            and s.type.name in ("Point", "Named")}
+    assert kept and kept <= _private_records(fn, analyze_dependencies(fn, analyze_liveness(fn)))
+    result = _summary(active, name)
+    assert result.state is MIRSummaryState.KNOWN, result.reason
+    assert result.summary.returns == frozenset() and result.summary.writes == frozenset()
+
+
+def test_a_kept_record_reached_by_the_result_stays_opaque(active) -> None:
+    # `q` is kept storage lent to `ident`; the result borrows parameter `p`.
+    result = _summary(active, "lend_back")
+    assert result.state is MIRSummaryState.KNOWN, result.reason
+    assert result.summary.returns == frozenset({MIRReturnOrigin(0)}) and result.summary.writes == frozenset()
+    # THIR damage: returning `r`, the borrow of `q` (sema refuses it at the
+    # source: "Cannot return local or temporary as reference"), reaches the
+    # private storage from the caller's side; no parameter origin spells it.
+    source = active.functions["lend_back"]
+    alias = next(s for s in source.body if isinstance(s, th.THIRVarDecl) and s.name == "r")
+    damaged = replace(source, body=tuple(
+        replace(stmt, value=replace(stmt.value, name="r", result_type=alias.resolved_type))
+        if isinstance(stmt, th.THIRReturn) else stmt for stmt in source.body))
+    fn = _relowered(active, damaged)
+    assert isinstance(fn, MIRFunction), fn
+    kept, = (s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
+    assert _private_records(fn, analyze_dependencies(fn, analyze_liveness(fn))) == {kept}
+    escaped = summarize_function(damaged, fn, active.definitions)
+    assert escaped.state is MIRSummaryState.OPAQUE and escaped.reason == "summary unsupported return origin"
+
+
+def _owned_records(fn: MIRFunction) -> list[MIRSlot]:
+    return [s for s in fn.slots if s.value_kind is MIRValueKind.OWNED and s.container_layout is None]
+
+
+def _private(fn: MIRFunction, facts_of: MIRFunction | None = None) -> frozenset[MIRSlotId]:
+    # A hand-built body that would not validate takes the dependency facts of
+    # the body it was built from; a kept slot has no transfer that reads them.
+    base = facts_of or fn
+    return _private_records(fn, analyze_dependencies(base, analyze_liveness(base)))
+
+
+def _appended(fn: MIRFunction, *statements) -> MIRFunction:
+    last = next(b for b in fn.blocks if isinstance(b.terminator, MIRReturn))
+    return replace(fn, blocks=tuple(replace(b, statements=(*b.statements, *statements)) if b is last else b
+                                    for b in fn.blocks))
+
+
+def test_a_list_literal_element_read_leaves_the_temporary_foreign(active) -> None:
+    # `[Point(0, 0)]`: the literal's construct reads the whole temporary,
+    # which is neither a transfer nor one of the body's own uses.
+    fn = _lowered(active, "element")
+    temporary, = _owned_records(fn)
+    assert any(isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct) and temporary.id in s.value.fields
+               for b in fn.blocks for s in b.statements)
+    assert temporary.id not in _private(fn)
+    result = _summary(active, "element")
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary storage or value shape"
+
+
+@pytest.mark.parametrize("use", ["whole_read", "deref_write"])
+def test_a_kept_slot_used_outside_its_fields_is_foreign(active, use: str) -> None:
+    # Hand-built, never validated: no source shape reads kept storage whole
+    # into a scalar or writes it under a non-field projection.
+    fn = _lowered(active, "use_result")
+    storage, = _owned_records(fn)
+    assert storage.id in _private(fn)
+    scalar = next(s for s in fn.slots if s.type == INT32 and s.kind is MIRSlotKind.TEMPORARY)
+    stmt = (MIRAssign(MIRPlace(scalar.id), MIRRead(MIRPlace(storage.id))) if use == "whole_read"
+            else MIRAssign(MIRPlace(storage.id, (MIRDeref(),)), MIRRead(MIRPlace(scalar.id))))
+    assert storage.id not in _private(_appended(fn, stmt), fn)
+
+
+@pytest.mark.parametrize(("passing", "private"), [
+    (ParamPassing.CONST_REF, True), (ParamPassing.MUT_REF, True), (ParamPassing.VIEW, True),
+    (ParamPassing.POINTER, True), (ParamPassing.TRAIT, False),
+])
+def test_a_kept_slot_lent_directly_needs_a_lending_passing(active, passing: ParamPassing, private: bool) -> None:
+    # Hand-built, never validated: a record reaches a stub only at a builtin
+    # leaf or an owning container parameter, and a user callee takes the
+    # holder, so no source lends kept storage itself at TRAIT, VIEW or POINTER.
+    fn = _lowered(active, "lend_temp")
+    storage, = _owned_records(fn)
+
+    def lend(stmt):
+        if not (isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall)
+                and stmt.value.summary.callee.identity.name == "read"):
+            return stmt
+        call = stmt.value
+        binding = replace(call.summary.parameters[0], passing=passing)
+        summary = replace(call.summary, parameters=(binding,))
+        return replace(stmt, value=replace(call, arguments=(storage.id,), summary=summary))
+
+    lent = replace(fn, blocks=tuple(replace(b, statements=tuple(lend(s) for s in b.statements)) for b in fn.blocks))
+    assert (storage.id in _private(lent, fn)) is private
+
+
+def test_a_mut_ref_lend_through_the_holder_keeps_the_slot_private(active) -> None:
+    # `p.bump()` lends the holder at MUT_REF; its write lands in the body's own storage.
+    fn = _lowered(active, "use_result")
+    storage, = _owned_records(fn)
+    bump = next(s for b in fn.blocks for s in b.statements if isinstance(s, MIRCallStmt))
+    assert bump.call.summary.parameters[0].passing is ParamPassing.MUT_REF and bump.call.summary.writes
+    holder = fn.slots[bump.call.arguments[0].index]
+    assert holder.value_kind is MIRValueKind.BORROWED and storage.id in _private(fn)
+    result = _summary(active, "use_result")
+    assert result.state is MIRSummaryState.KNOWN and result.summary.writes == frozenset()
+
+
+@pytest.mark.parametrize("through", ["kept", "parameter"])
+def test_a_reseat_through_a_holder_needs_private_referents(active, through: str) -> None:
+    # Hand-built from `lend_back`: `(*r) = make(n)` in place, `r` borrowing
+    # either the kept `q` or the parameter `p`.
+    source = active.functions["lend_back"]
+    fn = _lowered(active, "lend_back")
+    param = _slot(fn, "p")
+    held = _slot(fn, "q")
+    alias = _slot(fn, "r")
+    make_call = next(s.value for b in fn.blocks for s in b.statements
+                     if isinstance(s, MIRAssign) and isinstance(s.value, MIRCall)
+                     and s.value.summary.callee.identity.name == "make")
+
+    def retarget(stmt):
+        if (through == "parameter" and isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall)
+                and stmt.value.arguments == (held.id,)):
+            return replace(stmt, value=replace(stmt.value, arguments=(param.id,)))
+        return stmt
+
+    fn = replace(fn, blocks=tuple(replace(b, statements=tuple(retarget(s) for s in b.statements))
+                                  for b in fn.blocks))
+    reseat = MIRAssign(MIRPlace(alias.id, (MIRDeref(),)), make_call,
+                       storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, rebind_owner=alias.id))
+    fn = _appended(fn, reseat)
+    validate_function(fn)
+    result = summarize_function(source, fn, active.definitions)
+    if through == "kept":
+        assert result.state is MIRSummaryState.KNOWN, result.reason
+        assert result.summary.writes == frozenset()
+    else:
+        assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary storage operation"
+
+
+def test_a_lazy_backing_init_needs_private_storage(active, monkeypatch) -> None:
+    fn = _lowered(active, "lazy_lend")
+    storage, = _owned_records(fn)
+    assert any(isinstance(s, MIRRecordStorageInit) and s.target == MIRPlace(storage.id)
+               for b in fn.blocks for s in b.statements)
+    assert _summary(active, "lazy_lend").state is MIRSummaryState.KNOWN
+    # The same body with its backing not private: the slot itself refuses
+    # before the init is reached (an OWNED record slot is private or opaque).
+    monkeypatch.setattr(summaries, "_private_records", lambda body, dependencies: frozenset())
+    result = summarize_function(active.functions["lazy_lend"], fn, active.definitions)
+    assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary storage or value shape"
+
+
+def test_a_kept_hooked_local_refuses_at_its_definition(active) -> None:
+    # The body that would destroy `h` at scope end runs `__del__`: lowering
+    # refuses the definition before any summary rule applies.
+    verdict = active.verdicts["keep_hooked"]
+    assert not isinstance(verdict.function, MIRFunction) and verdict.reason == "custom record special member"
+    result = _summary(active, "keep_hooked")
+    assert result.state is MIRSummaryState.OPAQUE and result.reason == "custom record special member"
 
 
 def test_a_borrow_live_past_the_hand_over_keeps_storage_out(active) -> None:

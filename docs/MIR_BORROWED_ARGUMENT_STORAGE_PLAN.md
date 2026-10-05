@@ -83,8 +83,9 @@ value. No holder names, C++ text or source offsets identify storage.
 Borrowed-expression lowering initializes planned anchors and shares the
 scalar path's enclosing argument-order proof before consuming named actuals.
 Calls substitute selected actual holders through the existing dependency
-transfer; no new solver or storage representation is introduced. Callers
-containing local backing remain opaque as callees. The lazy ternary route is
+transfer; no new solver or storage representation is introduced. A caller's
+local backing is storage it keeps: private to it, so it publishes nothing as a
+callee (`summaries._private_records`). The lazy ternary route is
 exercised on a hand-built THIR body because no admitted source reaches it.
 
 `certify_thir_storage(MIRStorageRequest(...))` binds the facts and placement
@@ -101,7 +102,7 @@ record and/or and source wrapper sinks remain outside that consumer.
 This API changes neither source acceptance nor generated C++.
 Ordinary MIR coverage only establishes a complete representable body; it is
 not a lifetime certificate. Workspace analysis and `--dump-mir` retain that
-distinction. Callers with local backing still publish opaque summaries.
+distinction. Local backing is private to the caller and absent from its summary.
 
 ## Scope matrix
 

@@ -167,9 +167,15 @@ def test_returned_temporaries_are_valid_aliases(artifacts: Artifacts, name: str)
     result = inspect_scope_lifetimes(body)
     assert not isinstance(result, MIRNotCovered) and not result.conflicts
     if name not in ("lazy", "method", "Caller"):
+        # The temporary is the caller's private storage: the borrow returned
+        # through it publishes no return origin, and only the write through
+        # the `owner` parameter is published.
         summary = artifacts[1].summaries[th.THIRFunctionIdentity("main", name)]
-        assert summary.state is MIRSummaryState.OPAQUE
-        assert summary.reason == "summary storage or value shape"
+        assert summary.state is MIRSummaryState.KNOWN, summary
+        assert not summary.summary.returns
+        written = {(w.parameter, tuple(f.name for f in w.path)) for w in summary.summary.writes}
+        assert written == ({(1 if name == "mixed" else 0, ("value",))} if name in ("mixed", "unreturned")
+                           else set())
 
 
 @pytest.mark.parametrize("name", ["eager", "lazy", "mixed", "unreturned"])

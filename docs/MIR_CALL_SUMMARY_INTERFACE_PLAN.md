@@ -162,8 +162,8 @@ the actual producer's sequencing and lazy placement, including kwargs.
 
 The subsequent [named-storage extension](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md)
 implements that placement contract for bounded pure record constructors.
-Their callers can now have covered MIR while remaining opaque as callees
-under this interface's no-owned-storage summary extractor.
+Their callers have covered MIR, and the argument backing they keep is
+private storage their own summaries leave out (`summaries._private_records`).
 
 At the call, evaluate scalar inputs and borrow holders, keeping their owners
 live through the operation. A harmless callee does not make an argument use

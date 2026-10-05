@@ -1857,11 +1857,11 @@ alongside related feature work; only the big-rock deferrals live here.
   - Owned record results, what the model leaves out
     (`docs/MIR_ANALYSIS_PLAN.md` "Owned record results" has the rules and
     the exact reasons):
-    - Open decision: record storage a body KEEPS to its end (`p = make(n);
-      p.bump(); return p.x`) is not private, so the body summarizes OPAQUE
-      ("summary storage or value shape") and its callers refuse; making it
-      private flips eighteen existing unit pins (argument storage, calls,
-      summaries, for-argument storage).
+    - A record temporary a list literal takes as an element (`ps:
+      list[Point] = [Point(0, 0)]`) is read by the literal's
+      `MIRConstruct`, which `_private_records` counts as neither a transfer
+      nor an own use, so the body summarizes OPAQUE ("summary storage or
+      value shape").
     - `Own[R]` PARAMETER bodies (`take(p: Own[Point])`, owning-record
       parameters) refuse "unsupported parameter type", and their callers
       with them.
@@ -1974,7 +1974,9 @@ alongside related feature work; only the big-rock deferrals live here.
   - Callers blocked on an OPAQUE method summary (44 sampled bodies), by the
     method's reason: a nested call with no known summary, "stub protocol
     argument is not a builtin leaf", a record whose constructor refuses,
-    "summary storage or value shape", "unsupported statement".
+    "summary storage or value shape" (since kept record storage became
+    private, only a record temporary read by a list literal), "unsupported
+    statement".
   - Recursive and mutually recursive callables have no summary (B5; timing by
     cost and return, decided 2026-10-03): the workspace marks every identity
     still pending after the leaf-first schedule OPAQUE ("recursive or

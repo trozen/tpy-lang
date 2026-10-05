@@ -246,10 +246,14 @@ def test_loop_condition_activation_ends_before_reentry(artifacts: Artifacts, nam
     assert predecessors and all(block.region == region.parent for block in predecessors)
 
 
-def test_owning_callers_remain_opaque_and_excluded_calls_stay_uncovered(artifacts: Artifacts) -> None:
+def test_owning_callers_summarize_known_and_excluded_calls_stay_uncovered(artifacts: Artifacts) -> None:
     workspace = artifacts[1]
-    for name in ("eager", "lazy", "multiple", "branches", "loop"):
-        assert workspace.summaries[th.THIRFunctionIdentity("main", name)].state is MIRSummaryState.OPAQUE
+    # A named argument temporary is storage the caller keeps to its end and
+    # only lends: private to the body, so it publishes nothing.
+    for name in ("eager", "lazy", "multiple", "branches", "loop", "lazy_loop", "lazy_elif"):
+        result = workspace.summaries[th.THIRFunctionIdentity("main", name)]
+        assert result.state is MIRSummaryState.KNOWN, (name, result)
+        assert not result.summary.writes and not result.summary.returns, name
     for name, reason in (("nested_operand", "named temporary needs stable scalar operands"),
                          ("effect", "named argument needs readonly record constructor")):
         body = next(value for key, value in workspace.bodies.items() if key.declaration.split("@")[0] == name)

@@ -612,7 +612,8 @@ def test_a_private_container_write_keeps_the_summary_known(compiled) -> None:
 
 
 def test_an_argument_temporary_the_body_reads_keeps_the_summary_opaque(compiled) -> None:
-    # Private record storage stays opaque unless it is only built and handed over.
+    # Storage handed over to the container is private only when its holder's
+    # borrow is its one other read; a direct field read beside the hand-over is not.
     decl = declared(compiled, "grow")
     fn = grow_body(compiled)
     cell = cell_type(compiled)

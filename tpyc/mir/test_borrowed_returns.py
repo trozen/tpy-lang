@@ -342,12 +342,20 @@ def test_call_results_are_live_alias_holders(workspace: MIRCallWorkspace, name: 
     ("tuple_result", "unsupported return type"),
     ("optional_result", "unsupported return type"),
     ("projected", "unsupported borrowed expression form"),
-    ("local_storage", "summary storage or value shape"),
 ])
 def test_incomplete_result_evidence_stays_opaque(workspace: MIRCallWorkspace, name: str, reason: str) -> None:
     result = next(r for key, r in workspace.summaries.items() if key.name == name)
     assert result.state is MIRSummaryState.OPAQUE
     assert result.reason == reason
+
+
+def test_alias_of_kept_local_storage_publishes_nothing(workspace: MIRCallWorkspace) -> None:
+    # `saved` aliases `local` through the call's returned borrow; `local` is
+    # storage the body keeps to its end, so neither the write through it nor
+    # the read through `saved` is the caller's.
+    result = next(r for key, r in workspace.summaries.items() if key.name == "local_storage")
+    assert result.state is MIRSummaryState.KNOWN, result.reason
+    assert result.summary.writes == frozenset() and result.summary.returns == frozenset()
 
 
 @pytest.mark.parametrize("name", ["loop", "range_loop"])

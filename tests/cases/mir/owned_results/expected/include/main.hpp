@@ -33,13 +33,13 @@ Point forward(int32_t n);
 Point reassigned(bool flag, int32_t n);
 // def reseat_return(n: int32) -> Own[Point]:  # tpyc: mir(uncovered /^reassigned local returned$/)
 Point reseat_return(int32_t n);
-// def use_result(n: int32) -> int32:  # tpyc: mir(covered)
+// def use_result(n: int32) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t use_result(int32_t n);
-// def use_temp(n: int32) -> int32:  # tpyc: mir(certified)
+// def use_temp(n: int32) -> int32:  # tpyc: mir(certified) mir_summary(known)
 int32_t use_temp(int32_t n);
 // def spawn_temp(pool: Pool) -> int32:  # tpyc: mir(certified)
 int32_t spawn_temp(Pool& pool);
-// def reseat(n: int32) -> int32:  # tpyc: mir(covered)
+// def reseat(n: int32) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t reseat(int32_t n);
 // def collect(n: int32) -> int32:  # tpyc: mir(covered)
 int32_t collect(int32_t n);
@@ -53,7 +53,7 @@ int32_t take(Point&& p);
 int32_t give(int32_t n);
 // def read(p: Point) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t read(const Point& p);
-// def lend_temp(n: int32) -> int32:  # tpyc: mir(certified)
+// def lend_temp(n: int32) -> int32:  # tpyc: mir(certified) mir_summary(known)
 int32_t lend_temp(int32_t n);
 // def maybe(flag: bool, n: int32) -> int32:  # tpyc: mir(uncovered /^unsupported record initializer$/)
 int32_t maybe(bool flag, int32_t n);
