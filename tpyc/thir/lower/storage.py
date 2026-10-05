@@ -21,7 +21,7 @@ from ..nodes import (
     THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout, THIRUnionLayout,
     THIRCoerce, THIRLiteral, THIRSelf, THIRUnionLiteral, THIRGlobalBinding, THIRHoistedBinding,
     THIRWrapperDefault, THIROwnedRecord,
-    THIRNativeContainer, THIRCtorCall, THIRVarDecl,
+    THIRNativeContainer, THIRCall, THIRCtorCall, THIRMethodCall, THIRVarDecl, record_rvalue_storage,
 )
 
 if TYPE_CHECKING:
@@ -301,7 +301,14 @@ def union_literal(expr: THIRExpr | None, layout: THIRUnionLayout) -> THIRUnionLi
 
 
 def full_expression_record(expr: THIRExpr, analyzer: 'SemanticAnalyzer') -> THIRExpr:
-    if not isinstance(expr, THIRCtorCall) or expr.form is not Form.STORAGE or expr.brace_init:
+    """Grant a record rvalue -- a construct, or a TPy callee's `Own[R]`
+    result (fresh storage, as a construct is; a bare record result is a
+    borrow) -- storage of its full expression, under one eligibility."""
+    call = (isinstance(expr, (THIRCall, THIRMethodCall)) and expr.resolved_callee is not None
+            and expr.resolved_callee.signature.hands_over(expr.result_type))
+    if not (isinstance(expr, THIRCtorCall) and not expr.brace_init or call):
+        return expr
+    if expr.form is not Form.STORAGE:
         return expr
     layout = record_layout(expr.result_type, analyzer)
     if (layout is None or layout.type != expr.result_type or not layout.unique_constructor
@@ -320,7 +327,7 @@ def direct_field(expr: TpyFieldAccess,
     field_receiver = (isinstance(expr.obj, TpyFieldAccess)
                       and isinstance(receiver, THIRFieldAccess)
                       and receiver.field_identity is not None)
-    temporary_receiver = isinstance(receiver, THIRCtorCall) and receiver.full_expression_storage is not None
+    temporary_receiver = receiver is not None and record_rvalue_storage(receiver) is not None
     element_receiver = (isinstance(expr.obj, TpySubscript) and isinstance(receiver, THIRSubscript)
                         and receiver.tuple_index is None and holds_elements(receiver.receiver.result_type))
     if ((not isinstance(expr.obj, TpyName) and not tuple_receiver and not field_receiver and not temporary_receiver

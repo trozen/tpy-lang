@@ -25,10 +25,10 @@ from ..parse import ResultForm, RebindStorage, SourceLocation, TryTier
 from ..coercions import coercion_rule
 from ..type_def_registry import ParamPassing
 from ..typesys import (
-    FloatLiteralType, IntLiteralType, NominalType, Representation, ResolvedBinop, ResolvedUnaryop, TpyType,
+    FloatLiteralType, IntLiteralType, NominalType, OwnType, Representation, ResolvedBinop, ResolvedUnaryop, TpyType,
     certified_primitive_comparison, certified_primitive_conversion, certified_primitive_op,
     certified_primitive_promotion, certified_primitive_subscript, is_inert_leaf, is_owned_leaf,
-    unwrap_readonly, unwrap_ref_type, view_family_of,
+    unwrap_own, unwrap_readonly, unwrap_ref_type, view_family_of,
 )
 from .scalar_leaves import view_compatible
 
@@ -848,6 +848,14 @@ class THIRCallableSignature:
     # receiver, and C++ overload resolution picks the clone by receiver).
     result_follows_receiver: bool = False
 
+    def hands_over(self, result_type: TpyType) -> bool:
+        """Whether a call of this signature yielding `result_type` hands the
+        caller fresh storage by value (an `Own[T]` result moved out of the
+        callee), never a borrow of existing storage."""
+        return (isinstance(self.return_type, OwnType) and self.borrowed_result is None
+                and self.return_representation is Representation.STORAGE
+                and unwrap_own(self.return_type) == result_type)
+
 
 @dataclass(frozen=True)
 class THIRResolvedCallee:
@@ -969,6 +977,9 @@ class THIRCall(THIRExpr):
     # `lend` verdict for a BORROW (which the helper asserts is a source it
     # can lend from) and with nothing otherwise.
     result_form: ResultForm = ResultForm.NOT_DECLARED
+    # An `Own[R]` result materialized for its full expression (a field
+    # receiver, a discarded statement); as on THIRCtorCall.
+    full_expression_storage: THIROwnedRecord | None = None
 
 
 @dataclass(frozen=True)
@@ -1318,6 +1329,9 @@ class THIRMethodCall(THIRExpr):
     # mutable overload by -- decided once at the call; set exactly when
     # `resolved_callee` is. Analysis only: no render reads it.
     receiver_access: THIRBorrowedRecord | None = None
+    # An `Own[R]` result materialized for its full expression; as on
+    # THIRCtorCall. Analysis only: no render reads it.
+    full_expression_storage: THIROwnedRecord | None = None
 
     def __post_init__(self) -> None:
         assert not (self.deref_check and self.is_arrow)
@@ -1346,6 +1360,15 @@ class THIRMethodCall(THIRExpr):
         return not (self.cpp_template is not None or self.native_function_name is not None
                     or self.method_targs_cpp is not None or self.deref_chain or self.deref_check
                     or self.move_receiver or self.callable_value_unwrap)
+
+
+def record_rvalue_storage(expr: THIRExpr) -> THIROwnedRecord | None:
+    """The storage of its full expression a record rvalue is materialized
+    in: a construct's, or the owned result of a call that hands one over.
+    None for any other node, or one THIR granted no such storage."""
+    if isinstance(expr, (THIRCtorCall, THIRCall, THIRMethodCall)):
+        return expr.full_expression_storage
+    return None
 
 
 @dataclass(frozen=True)

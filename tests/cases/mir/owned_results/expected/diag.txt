@@ -1,0 +1,2 @@
+main.py:195: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:139: warning: Own[Point] param 'p' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

@@ -50,8 +50,8 @@ from .definitions import (
 )
 from .call_contract import (
     BORROWING_PASSINGS, OWNING_PASSINGS, MIRCallSummary, MIRParameterBinding, MIRSummaryResult, MIRSummaryState,
-    binds_at, borrowed_result_of, bound_result, container_result, stub_protocol_argument, stub_summary,
-    summary_problem, view_result,
+    binds_at, borrowed_result_of, bound_result, container_result, owned_record_result, stub_protocol_argument,
+    stub_summary, summary_problem, view_result,
 )
 from .validate import (MIRDefiniteAssignmentError, MIRPresenceError, MIRRepeatedInitializationError,
                        body_may_raise, reaches_element, statement_reads, successors,
@@ -133,6 +133,11 @@ class _Coverage:
         self.views: set[str] = set()
         # The borrowed result the body returns: a record or a view.
         self.result: th.THIRBorrowedRecord | None = None
+        # Locals holding their own record storage, and those never reseated
+        # (a reseat may retarget the holder at another backing). The first
+        # tells a reseated local (refused as such) from a parameter, which
+        # is in neither.
+        self.owned_records: set[str] = set()
         self.fixed_owned: set[str] = set()
         self.optional_record_storage: dict[str, th.THIRBorrowedRecord] = {}
         self.tuples: dict[str, th.THIRTupleLayout] = {}
@@ -160,6 +165,8 @@ class _Coverage:
         # A container result: owned storage moved out, or a borrow of a container place.
         self.container_result: th.THIRBorrowedRecord | None = None
         self.owned_container_result: NominalType | None = None
+        # An `Own[R]` record result: the body's own record storage moved out.
+        self.owned_record_result: NominalType | None = None
         self.iteration_references: set[str] = set()
         self.full_expressions: IdentitySet[th.THIRExpr] = IdentitySet()
         # Expressions whose storage the current full expression owns: record
@@ -177,18 +184,21 @@ class _Coverage:
         # comes from its context, not its node.
         self.types: IdentityMap[th.THIRExpr, TpyType] = IdentityMap()
 
-    def call(self, expr: th.THIRCall | th.THIRMethodCall) -> None:
+    def call(self, expr: th.THIRCall | th.THIRMethodCall, *, temporary: bool = False) -> None:
         """A call through its callee's summary, parameter by parameter over
         `_call_arguments`: a free-function call, or a resolved user method
         call rendered as the plain member call (a pointer receiver spells
-        its access `->`)."""
+        its access `->`). `temporary`: the result is materialized in
+        storage of its full expression."""
         if isinstance(expr, th.THIRCall) and expr.stub_callee is not None:
             self.stub_call(expr)
             return
+        storage = {"full_expression_storage"} if temporary else set()
         if isinstance(expr, th.THIRMethodCall):
-            _plain(expr, {"receiver", "method_cpp", "args", "is_arrow", "resolved_callee", "receiver_access"})
+            _plain(expr, {"receiver", "method_cpp", "args", "is_arrow", "resolved_callee", "receiver_access"}
+                   | storage)
         else:
-            _plain(expr, {"callee", "args", "callee_cpp", "resolved_callee"})
+            _plain(expr, {"callee", "args", "callee_cpp", "resolved_callee"} | storage)
         callee = expr.resolved_callee
         _require(expr, isinstance(callee, th.THIRResolvedCallee), "call needs resolved ordinary callee")
         entry = self.summaries.get(callee.identity)
@@ -226,8 +236,10 @@ class _Coverage:
                 _require(expr, MIRField(MIRFieldId(field.owner, field.name), field.type) in layout.fields,
                          "call write field does not match record layout")
         # An `Own[T]` return hands the caller a plain T.
+        record = owned_record_result(callee.signature.return_type) if result is None else None
         _require(expr, (unwrap_readonly(unwrap_ref_type(expr.result_type)) == result.type if result is not None
                        else expr.result_type == owned if owned is not None
+                       else expr.result_type == record if record is not None
                        else expr.result_type == callee.signature.return_type)
                  and len(_call_arguments(expr)) == len(summary.parameters), "call signature mismatch")
         # The access parameter 0 is bound at: a follows-receiver result takes it.
@@ -389,8 +401,9 @@ class _Coverage:
             return
         if record_type(binding.type) and binding.borrowed_record is None and binding.passing in OWNING_PASSINGS:
             # A record handed over by value (an element a container takes):
-            # built into a temporary of the full expression the call moves from.
-            _require(arg, isinstance(arg, th.THIRCtorCall), "unsupported record argument")
+            # built, or handed over by a call, into a temporary of the full
+            # expression the call moves from.
+            _require(arg, isinstance(arg, th.THIRCtorCall) or _user_call(arg), "unsupported record argument")
             self.literal_record(arg, binding.type)
             return
         if native_container_type(binding.type) or container_view(binding.type):
@@ -458,10 +471,10 @@ class _Coverage:
         _require(arg, self.fn.temp_plan is not None, "named argument needs complete temporary plan")
         placement = self.fn.temp_plan.placement(arg)
         _plain(arg, {"init", "cpp_type", "movable"})
-        _require(arg, arg.form is th.Form.BORROW and isinstance(arg.init, th.THIRCtorCall)
+        _require(arg, arg.form is th.Form.BORROW and (isinstance(arg.init, th.THIRCtorCall) or _user_call(arg.init))
                  and arg.result_type == reference.type and reference.readonly,
                  "named argument needs readonly record constructor")
-        self.record_value(arg.init, reference.type)
+        self.record_value(arg.init, reference.type, call=True)
         self.stable_constructor_operands(arg.init)
         definition = self.records[reference.type]
         _require(arg, not placement.optional or definition.layout.movable and arg.would_bank(),
@@ -480,12 +493,17 @@ class _Coverage:
         _require(expr, self.records[reference.type].layout.movable, "select storage needs movable backing")
         self.select_temporaries[expr] = reference
 
-    def stable_constructor_operands(self, expr: th.THIRCtorCall) -> None:
+    def stable_constructor_operands(self, expr: th.THIRCtorCall | th.THIRCall | th.THIRMethodCall) -> None:
+        # The temporary is initialized where the plan places it, which may
+        # precede other operands: a call building it must write nothing.
         # Narrowed wrapper reads still require a selection proof.
-        for operand in expr.args:
+        operands = expr.args if isinstance(expr, th.THIRCtorCall) else _call_arguments(expr)
+        _require(expr, isinstance(expr, th.THIRCtorCall) or not self.call_writes(expr),
+                 "named temporary needs stable scalar operands")
+        for operand in operands:
             _require(operand, _literal(operand) or isinstance(operand, th.THIRName)
                      and operand.global_binding is None and operand.name not in self.optionals
-                     and operand.name not in self.unions, "named constructor needs stable scalar operands")
+                     and operand.name not in self.unions, "named temporary needs stable scalar operands")
 
     @contextmanager
     def argument_order(self, expr: th.THIRExpr) -> Iterator[None]:
@@ -586,6 +604,10 @@ class _Coverage:
             _require(fn, return_representation(fn.return_type) is Representation.STORAGE, "unsupported return type")
             self.container_layout(fn, bare)
             self.owned_container_result = bare
+        elif (bare := owned_record_result(fn.return_type)) is not None:
+            # The caller destroys what it receives: the record's verified definition.
+            _require(fn, self.record_layout(fn, bare).movable, "owned record result needs movable record")
+            self.owned_record_result = bare
         else:
             _require(fn, not container_view(unwrap_readonly(unwrap_ref_type(fn.return_type))),
                      "view of container storage")
@@ -877,18 +899,17 @@ class _Coverage:
         return typ
 
     def literal_record(self, expr: th.THIRExpr, typ: NominalType) -> None:
-        """A record element of a container literal: constructed into a
-        temporary of the full expression, which the literal moves from, or
-        copied through the holder a name is."""
-        if isinstance(expr, th.THIRCtorCall):
+        """A record element of a container literal: constructed, or handed
+        over by a call's owned result, into a temporary of the full
+        expression, which the literal moves from, or copied through the
+        holder a name is."""
+        if isinstance(expr, th.THIRCtorCall) or _user_call(expr):
             _require(expr, self.active_temporaries is not None, "temporary needs full-expression boundary")
-            self.record_value(expr, typ)
+            self.record_value(expr, typ, call=True)
             self.active_temporaries.append(expr)
-            self.writes[expr] = False
             return
         _require(expr, isinstance(expr, th.THIRCopy), "unsupported container element")
         self.record_value(expr, typ)
-        self.writes[expr] = False
 
     def element_binding(self, stmt: th.THIRVarDecl) -> None:
         """A local binding one record element in place (`p = ps[0]`): a
@@ -1225,11 +1246,16 @@ class _Coverage:
         self.writes[expr] = writing
         return typ
 
-    def record_value(self, expr: th.THIRExpr, typ: NominalType, *, temporary: bool = False) -> None:
+    def record_value(self, expr: th.THIRExpr, typ: NominalType, *, temporary: bool = False,
+                     call: bool = False) -> None:
+        """Check what record storage of type `typ` takes: a construct, a copy
+        through a holder, a move of a fixed owned local, or -- where `call`
+        admits it -- a call handing over an owned record result."""
         definition = self.definitions.get(expr, typ)
         self.records[typ] = definition
         _require(expr, unwrap_readonly(unwrap_ref_type(expr.result_type)) == typ,
                  "record initializer type mismatch")
+        writing = False
         match expr:
             case th.THIRCtorCall():
                 _plain(expr, {"type_cpp", "args"} | ({"full_expression_storage"} if temporary else set()))
@@ -1258,8 +1284,21 @@ class _Coverage:
                     _require(expr, definition.layout.movable and source in self.fixed_owned
                              and not self.references[source].readonly
                              and expr.form is expr.value.form, "move needs fixed movable owned local")
+            case th.THIRCall() | th.THIRMethodCall() if call and _user_call(expr):
+                self.call(expr, temporary=temporary)
+                summary = self.calls[expr]
+                # The callee's contract, not the destination, says whether the
+                # result is fresh: a borrowed result would be copied from its
+                # referent. The summary's borrowed result is the signature's
+                # (a follows-receiver one differs only in access), so
+                # `hands_over` decides; this check only names the refusal.
+                _require(expr, summary.borrowed_result is None, "owned result from a borrowed call")
+                _require(expr, summary.callee.signature.hands_over(typ) and expr.form is th.Form.STORAGE,
+                         "call record result mismatch")
+                writing = self.call_writes(expr)
             case _:
                 raise MIRUnsupported(expr, "unsupported record initializer")
+        self.writes[expr] = writing
 
     def owned(self, stmt: th.THIRVarDecl | th.THIRPtrLocalDecl) -> None:
         fact = stmt.owned_storage
@@ -1280,7 +1319,7 @@ class _Coverage:
                  "owned declaration initializer or access")
 
         def initializer() -> TpyType:
-            self.record_value(stmt.init, fact.type)
+            self.record_value(stmt.init, fact.type, call=True)
             return fact.type
         # A constructor argument may need a temporary (an owned leaf built for
         # it), which the declaration's full expression owns.
@@ -1289,6 +1328,7 @@ class _Coverage:
             _require(stmt, self.records[fact.type].layout.movable, "hoisted backing needs movable record")
         self.bindings[stmt.name] = fact.type
         self.references[stmt.name] = fact
+        self.owned_records.add(stmt.name)
         if (isinstance(stmt, th.THIRVarDecl) and stmt.form is th.Form.STORAGE
                 and stmt.name not in self.fn.layout.reassigned_locals):
             self.fixed_owned.add(stmt.name)
@@ -1301,10 +1341,19 @@ class _Coverage:
                  "unsupported replacement storage")
         _require(stmt, stmt.rebind_storage is not RebindStorage.IN_PLACE
                  or not self.references[name].readonly, "readonly in-place replacement")
-        self.record_value(stmt.value, self.references[name].type)
+        typ = self.references[name].type
+
+        def value() -> TpyType:
+            self.record_value(stmt.value, typ, call=True)
+            return typ
+        # Its argument temporaries end with the replacing full expression.
+        self.full_expression(stmt.value, check=value)
         _require(stmt, self.records[self.references[name].type].layout.movable,
                  "replacement needs movable record")
-        self.fixed_owned.discard(name)
+        # A STORAGE-form local is one sema never rebinds (a rebound local is a
+        # rebind-slot pointer local), so `fixed_owned` is a whole-body fact; a
+        # reseat of a member would hand a returned backing back stale.
+        _require(stmt, name not in self.fixed_owned, "fixed owned local reseated")
 
     def reference(self, node: object, ref: th.THIRBorrowedRecord, typ: TpyType) -> None:
         _require(node, isinstance(ref, th.THIRBorrowedRecord), "invalid reference fact")
@@ -1540,7 +1589,7 @@ class _Coverage:
             self.bindings[stmt.name] = fact.type
             self.references[stmt.name] = fact
         else:
-            self.fixed_owned.discard(stmt.name)
+            _require(stmt, stmt.name not in self.fixed_owned, "fixed owned local reseated")
 
     def borrow_binding(self, stmt: th.THIRStmt, *, declaration: bool = False) -> None:
         storage = stmt.storage_borrow is not None
@@ -1600,7 +1649,7 @@ class _Coverage:
             self.references[name] = fact
         else:
             _require(stmt, self.references.get(name) == fact, "alias destination mismatch")
-            self.fixed_owned.discard(name)
+            _require(stmt, name not in self.fixed_owned, "fixed owned local reseated")
 
     def union_layout(self, node: object, layout: th.THIRUnionLayout, typ: TpyType) -> None:
         _require(node, isinstance(layout, th.THIRUnionLayout)
@@ -1860,7 +1909,8 @@ class _Coverage:
     def field(self, expr: th.THIRFieldAccess, *, write: bool = False) -> TpyType | th.THIRBorrowedRecord:
         _plain(expr, {"receiver", "field_cpp", "field_identity", "is_arrow"})
         match expr.receiver:
-            case th.THIRCtorCall():
+            # A construct names its storage or refuses; a call only when it hands one over.
+            case receiver if isinstance(receiver, th.THIRCtorCall) or th.record_rvalue_storage(receiver) is not None:
                 _require(expr, not write and not expr.is_arrow, "temporary field requires scalar read")
                 reference = self.temporary(expr.receiver)
             case th.THIRFieldAccess():
@@ -1932,12 +1982,14 @@ class _Coverage:
         self.reference(expr, member, expr.result_type)
         return member
 
-    def temporary(self, expr: th.THIRCtorCall) -> th.THIROwnedRecord:
-        fact = expr.full_expression_storage
+    def temporary(self, expr: th.THIRCtorCall | th.THIRCall | th.THIRMethodCall) -> th.THIROwnedRecord:
+        """A record rvalue in storage of its full expression: a construct, or
+        a call's owned record result."""
+        fact = th.record_rvalue_storage(expr)
         _require(expr, self.active_temporaries is not None, "temporary needs full-expression boundary")
         _require(expr, isinstance(fact, th.THIROwnedRecord) and fact.type == expr.result_type
                  and fact.readonly is False, "missing or invalid full-expression storage")
-        self.record_value(expr, fact.type, temporary=True)
+        self.record_value(expr, fact.type, temporary=True, call=not isinstance(expr, th.THIRCtorCall))
         self.active_temporaries.append(expr)
         return fact
 
@@ -1952,7 +2004,7 @@ class _Coverage:
             with self.argument_order(expr):
                 if check is not None:
                     typ = check()
-                elif discard and isinstance(expr, th.THIRCtorCall):
+                elif discard and (isinstance(expr, th.THIRCtorCall) or th.record_rvalue_storage(expr) is not None):
                     typ = self.temporary(expr).type
                 elif discard and _user_call(expr) and isinstance(expr.result_type, VoidType):
                     _require(expr, expr.form is th.Form.VALUE, "unsupported expression form")
@@ -2017,6 +2069,9 @@ class _Coverage:
                 _require(expr, self.bindings[expr.name] == typ, "name type mismatch")
             case th.THIRFieldAccess():
                 self.field(expr)
+                # A temporary receiver's evaluation may write (a call's
+                # arguments); a place receiver evaluates nothing.
+                writing = self.writes.get(expr.receiver, False)
             case th.THIRSubscript() if expr.tuple_index is None and self.container_receiver(expr.receiver):
                 member = self.element_access(expr)
                 _require(expr, member.kind is MIRValueKind.SCALAR and member.type == typ,
@@ -2321,6 +2376,9 @@ class _Coverage:
                 elif self.owned_container_result is not None:
                     self.full_expression(stmt.value, check=lambda: self.owned_container_source(
                         stmt.value, self.owned_container_result))
+                elif self.owned_record_result is not None:
+                    self.full_expression(stmt.value, check=lambda: self.owned_record_source(
+                        stmt.value, self.owned_record_result))
                 elif (owned := owned_value_type(self.fn.return_type)) is not None:
                     _require(stmt, self.full_expression(stmt.value, check=lambda: self.owned_value(stmt.value, sink=True))
                              == owned, "return type mismatch")
@@ -2378,6 +2436,25 @@ class _Coverage:
             case _:
                 raise MIRUnsupported(stmt, "unsupported statement")
 
+    def owned_record_source(self, expr: th.THIRExpr, typ: NominalType) -> TpyType:
+        """What an `Own[R]` record result takes: the backing of a fixed owned
+        local moved out (C++ moves or elides it), or a result built for it."""
+        source = expr.value if isinstance(expr, th.THIRMove) else expr
+        if isinstance(source, th.THIRName) and source.global_binding is None:
+            # A reseat may retarget the holder at another backing: the local's own may be stale.
+            _require(expr, source.name not in self.owned_records or source.name in self.fixed_owned,
+                     "reassigned local returned")
+        if isinstance(expr, th.THIRName) and expr.global_binding is None:
+            _require(expr, expr.name in self.fixed_owned, "owned record return needs fixed owned local")
+            _plain(expr, {"name", "is_last_use", "is_movable", "deref", "indirect"})
+            # A readonly holder cannot be moved from: C++ would copy it.
+            _require(expr, not self.references[expr.name].readonly, "readonly local returned")
+            _require(expr, self.references[expr.name].type == typ, "return type mismatch")
+            self.writes[expr] = False
+            return typ
+        self.record_value(expr, typ, call=True)
+        return typ
+
     def owned_container_source(self, expr: th.THIRExpr, typ: NominalType) -> TpyType:
         """What an `Own[...]` container result takes: the body's own
         container storage moved out, or a literal built for it."""
@@ -2414,8 +2491,7 @@ class _Coverage:
                 case MIRValueKind.OWNED:
                     _require(stmt, self.owned_value(stmt.value, sink=True) == member.type, "assignment type mismatch")
                 case _:
-                    self.record_value(stmt.value, member.type)
-                    self.writes[stmt.value] = False
+                    self.record_value(stmt.value, member.type, call=True)
             self.argument_order_rule(stmt, (target.index, stmt.value))
             return member.type
         self.full_expression(stmt.value, check=check)
@@ -2668,6 +2744,7 @@ class _Builder:
         self.span_holders = coverage.span_holders
         self.container_result = coverage.container_result
         self.owned_container_result = coverage.owned_container_result
+        self.owned_record_result = coverage.owned_record_result
 
     def declare_temporaries(self, stmt: th.THIRStmt) -> None:
         if self.temp_plan is None:
@@ -2834,7 +2911,7 @@ class _Builder:
             fact = expr.global_binding
             return MIRPlace(self.globals[MIRGlobalId(fact.module, fact.name)])
         match expr:
-            case th.THIRCtorCall():
+            case _ if th.record_rvalue_storage(expr) is not None:
                 storage = self.slot(expr.result_type, storage=True, storage_duration=self.region)
                 self.backing_places[expr] = MIRPlace(storage)
                 self.write(storage, self.record_value(expr), expr.loc,
@@ -2859,7 +2936,8 @@ class _Builder:
                 member = expr.field_identity
                 base = self.place(expr.receiver)
                 # An element place is storage itself, like an inline member.
-                inline = isinstance(expr.receiver, (th.THIRFieldAccess, th.THIRCtorCall)) or (
+                inline = isinstance(expr.receiver, th.THIRFieldAccess) or (
+                    th.record_rvalue_storage(expr.receiver) is not None) or (
                     expr.receiver in self.element_places) or (
                     isinstance(expr.receiver, th.THIRSubscript) and isinstance(
                         self.tuple_exprs[expr.receiver.receiver].elements[expr.receiver.tuple_index], th.THIROwnedRecord))
@@ -3139,6 +3217,10 @@ class _Builder:
                 return MIRConstruct(fields, any(init.may_raise for init in definition.initializers))
             case th.THIRCopy():
                 return MIRCopy(MIRPlace(self.place(expr.value).root, (MIRDeref(),)))
+            case th.THIRCall() | th.THIRMethodCall():
+                # The callee's owned result, handed over into the destination.
+                self.initialize_temporaries(expr)
+                return self.call(expr)
             case _:
                 assert isinstance(expr, th.THIRMove)
                 return MIRMove(self.storage[expr.value.name])
@@ -3316,6 +3398,21 @@ class _Builder:
         with self.full_expression(expr):
             self.write(dest, self.owned_rvalue(expr), loc, fact)
 
+    def owned_return(self, expr: th.THIRExpr, loc: SourceLocation | None, storage: Mapping[str, MIRSlotId],
+                     result_slot: Callable[[MIRStorageDuration | MIRRegionId], MIRSlotId],
+                     rvalue: Callable[[th.THIRExpr], MIRRvalue]) -> None:
+        """Return an owned record or container result (`Own[...]`): a local's
+        own storage (`storage` by name) leaves the body itself -- the move is
+        C++'s (or elided), not an event of the body; anything else is built
+        into a result slot (`result_slot`) by `rvalue`."""
+        if isinstance(expr, th.THIRName):
+            self.end(MIRReturn(storage[expr.name], loc))
+            return
+        dest = result_slot(self.region if self.region.index else MIRStorageDuration.BODY)
+        with self.full_expression(expr):
+            self.write(dest, rvalue(expr), loc, self.owned_initialization(dest))
+        self.end(MIRReturn(dest, loc))
+
     def owned_result(self, expr: th.THIRExpr) -> MIRSlotId:
         # The body's own storage is returned itself (C++ moves it out); anything
         # else is copied or built into the result.
@@ -3487,15 +3584,16 @@ class _Builder:
                     self.write(self.bindings[name], MIRBorrow(MIRPlace(storage)), loc)
                 case th.THIRAssign() if stmt.rebind_storage is not None:
                     holder = self.bindings[stmt.target.name]
-                    value = self.record_value(stmt.value)
-                    if stmt.rebind_storage is RebindStorage.OWN:
-                        storage = self.slot(self.slots[holder.index].type, storage=True,
-                                            storage_duration=MIRStorageDuration.BODY)
-                        self.write(storage, value, loc, MIRRecordWrite(MIRRecordWriteMode.OWN_SITE))
-                        self.write(holder, MIRBorrow(MIRPlace(storage)), loc)
-                    else:
-                        self.write(MIRPlace(holder, (MIRDeref(),)), value, loc,
-                                   MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, holder))
+                    with self.full_expression(stmt.value):
+                        value = self.record_value(stmt.value)
+                        if stmt.rebind_storage is RebindStorage.OWN:
+                            storage = self.slot(self.slots[holder.index].type, storage=True,
+                                                storage_duration=MIRStorageDuration.BODY)
+                            self.write(storage, value, loc, MIRRecordWrite(MIRRecordWriteMode.OWN_SITE))
+                            self.write(holder, MIRBorrow(MIRPlace(storage)), loc)
+                        else:
+                            self.write(MIRPlace(holder, (MIRDeref(),)), value, loc,
+                                       MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, holder))
                 case (th.THIRVarDecl() | th.THIRPtrLocalDecl() | th.THIRAssign()
                       | th.THIRPtrLocalRebind()) if stmt.alias_binding is not None or stmt.storage_borrow is not None:
                     declaration = isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl))
@@ -3571,7 +3669,7 @@ class _Builder:
                             self.write(self.place(stmt.target), MIRRead(MIRPlace(self.expr(stmt.value))), loc)
                 case th.THIRExprStmt():
                     with self.full_expression(stmt.expr):
-                        if isinstance(stmt.expr, th.THIRCtorCall):
+                        if th.record_rvalue_storage(stmt.expr) is not None:
                             self.place(stmt.expr)
                         elif (isinstance(stmt.expr, (th.THIRCall, th.THIRMethodCall))
                               and isinstance(stmt.expr.result_type, VoidType)):
@@ -3599,16 +3697,14 @@ class _Builder:
                     self.end(MIRReturn(self.container_slot(stmt.value), loc))
                 case th.THIRReturn() if stmt.value is not None and self.owned_container_result is not None:
                     typ = self.owned_container_result
-                    if isinstance(stmt.value, th.THIRName):
-                        # The body's own container is moved out as the result.
-                        self.end(MIRReturn(self.bindings[stmt.value.name], loc))
-                        continue
-                    dest = self.slot(typ, storage=True, layout=with_access(self.layouts[typ], False),
-                                     storage_duration=self.region if self.region.index else MIRStorageDuration.BODY)
-                    with self.full_expression(stmt.value):
-                        self.write(dest, self.container_construct(stmt.value, typ), loc,
-                                   self.owned_initialization(dest))
-                    self.end(MIRReturn(dest, loc))
+                    self.owned_return(stmt.value, loc, self.bindings, lambda duration: self.slot(
+                        typ, storage=True, layout=with_access(self.layouts[typ], False), storage_duration=duration),
+                        lambda value: self.container_construct(value, typ))
+                case th.THIRReturn() if stmt.value is not None and self.owned_record_result is not None:
+                    typ = self.owned_record_result
+                    self.owned_return(stmt.value, loc, self.storage,
+                                      lambda duration: self.slot(typ, storage=True, storage_duration=duration),
+                                      self.record_value)
                 case th.THIRReturn():
                     result = self.borrowed_result
                     value = (None if stmt.value is None else self.borrowed_expression(stmt.value, result)
@@ -3716,10 +3812,10 @@ class _Builder:
                                   else self.record_temporary(operand))
         return MIRConstruct(tuple(fields), may_raise=True)
 
-    def record_temporary(self, expr: th.THIRCtorCall) -> MIRSlotId:
-        """A record built into storage of the full expression for an
-        operation that moves it out (a container element). THIR publishes no
-        backing for it: it is MIR's own temporary."""
+    def record_temporary(self, expr: th.THIRCtorCall | th.THIRCall | th.THIRMethodCall) -> MIRSlotId:
+        """A record built, or handed over by a call, into storage of the full
+        expression for an operation that moves it out (a container element).
+        THIR publishes no backing for it: it is MIR's own temporary."""
         storage = self.slot(expr.result_type, storage=True, storage_duration=self.region)
         self.write(storage, self.record_value(expr), expr.loc, MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_REGION))
         return storage

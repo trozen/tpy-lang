@@ -98,7 +98,10 @@ their parameter/local/receiver category. Unsupported inventory is distinct from 
 proven empty one. Capture metadata grants no MIR execution or lifetime coverage.
 The verifier checks access and definite assignment,
 including initialized bases for field stores, but proves no lifetimes. Owned
-record slots have explicit construct/copy/move/borrow operations. Supported
+record slots have explicit construct/copy/move/borrow operations, and a
+resolved call handing over an `Own[R]` result (`MIRCall`) initializes or
+replaces one as a construct does; a body returning `Own[R]` moves its own
+record storage out (`MIR_ANALYSIS_PLAN.md`, owned record results). Supported
 pointer-form Optional locals use the same slots: construction borrows distinct
 record storage into a nullable holder, OWN replacement redirects that holder,
 IN_PLACE replaces its present referent and None clears only the holder. THIR
@@ -210,8 +213,10 @@ an empty result dependency set.
 
 Covered MIR means a complete representable body, not a lifetime-safety
 certificate. Workspace analysis and `--dump-mir` can report coverage while
-separate storage evidence reports a conflict. Local-backing callers remain
-opaque for summary extraction.
+separate storage evidence reports a conflict. Callers that keep local record
+backing to their end remain opaque for summary extraction; record storage a
+body returns or hands over, with no borrow of it live at that transfer, is
+private to the body (`mir/summaries._private_records`).
 
 Verified readonly constructor arguments of an existing borrowed-call
 declaration feed the returned-origin substitution through their named holders;

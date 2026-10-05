@@ -218,9 +218,15 @@ def test_leaf_return_origins(artifacts: Artifacts, name: str, origins: set[int],
 
 
 def test_owned_result_is_not_a_borrow(artifacts: Artifacts) -> None:
-    functions, bodies, _ = artifacts
+    # An `Own[Cell]` result is storage the body moves out: no borrowed
+    # result and no return origins.
+    functions, bodies, definitions = artifacts
     assert functions["owned"].resolved_callee.signature.borrowed_result is None
-    assert isinstance(bodies["owned"], MIRNotCovered)
+    body = bodies["owned"]
+    assert isinstance(body, MIRFunction) and body.borrowed_result is None, body
+    result = summarize_function(functions["owned"], body, definitions)
+    assert result.state is MIRSummaryState.KNOWN, result.reason
+    assert result.summary.returns == frozenset() and result.summary.borrowed_result is None
 
 
 def test_decorated_result_preserves_emitted_access(artifacts: Artifacts) -> None:

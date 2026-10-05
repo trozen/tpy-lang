@@ -14,40 +14,58 @@ from .coverage import (
     MIRUnsupported, container_view_holder, leaf_borrow, owned_storage, scalar_slot, view_holder,
 )
 from .definitions import MIRDefinitions
-from .dependencies import MIRReferent, analyze_dependencies, resolve_referents
+from .dependencies import MIRDependencies, MIRReferent, analyze_dependencies, resolve_referents
 from .liveness import analyze_liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRConstruct,
     MIRContainerElements, MIRContainerStructure, MIRCopy, MIRDeref, MIRField, MIRFunction, MIRIteratorAdvance,
     MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNot, MIRNotCovered, MIROp,
     MIROptionalPayload, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRReturn, MIRPlace, MIRSlot, MIRSlotKind,
-    MIRSlotId, MIRTupleIndex, MIRUnionPayload, MIRValueKind, statement_call, statement_target,
+    MIRSlotId, MIRTupleIndex, MIRUnionPayload, MIRValueKind, statement_call,
 )
 from .validate import owned_leaf_place_type, statement_reads, validate_function
 
 
-def _handed_over(body: MIRFunction) -> frozenset[MIRSlotId]:
-    """The OWNED slots whose every use is their construction or handing
-    them over -- a move out, or an argument at an owning passing: argument
-    temporaries the body never lends or reads."""
-    constructed: set[MIRSlotId] = set()
-    used: set[MIRSlotId] = set()
+def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozenset[MIRSlotId]:
+    """The OWNED record slots whose storage is private to the body: read
+    only by the borrow its holder takes and by the transfers that hand it
+    over -- a return (the caller then owns it), a move out, or an argument
+    at an owning passing -- with no borrow of it live at a transfer.
+    Borrows that complete before the transfer are harmless. A slot never
+    handed over stays out: storage the body keeps to its end is not
+    summarized yet."""
+    records = {s.id for s in body.slots
+               if s.value_kind is MIRValueKind.OWNED and s.container_layout is None and not owned_storage(s)}
+    excluded: set[MIRSlotId] = set()
+    transfers: list[tuple[MIRSlotId, MIRPoint]] = []
     for block in body.blocks:
-        if isinstance(block.terminator, MIRReturn) and block.terminator.value is not None:
-            used.add(block.terminator.value)
-        for stmt in block.statements:
-            if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRConstruct) and not stmt.target.projections:
-                constructed.add(stmt.target.root)
-            elif (target := statement_target(stmt)) is not None:
-                used.add(target.root)
-            if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRMove):
+        term = block.terminator
+        if isinstance(term, MIRReturn) and term.value in records:
+            transfers.append((term.value, MIRPoint(block.id, len(block.statements))))
+        for index, stmt in enumerate(block.statements):
+            point = MIRPoint(block.id, index)
+            reads = statement_reads(stmt)
+            if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRBorrow) and not stmt.value.source.projections:
+                # The holder's borrow of the whole storage: tracked by the dependency pass.
                 continue
+            if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRMove) and stmt.value.source in records:
+                transfers.append((stmt.value.source, point))
+                reads = tuple(r for r in reads if r != stmt.value.source)
             if (call := statement_call(stmt)) is not None:
-                used.update(arg for arg, binding in zip(call.arguments, call.summary.parameters)
-                            if binding.passing not in OWNING_PASSINGS)
-                continue
-            used.update(statement_reads(stmt))
-    return frozenset(constructed - used)
+                handed = {arg for arg, binding in zip(call.arguments, call.summary.parameters)
+                          if binding.passing in OWNING_PASSINGS}
+                lent = {arg for arg, binding in zip(call.arguments, call.summary.parameters)
+                        if binding.passing not in OWNING_PASSINGS}
+                for arg in handed & records:
+                    transfers.append((arg, point))
+                excluded.update(lent & records)
+                reads = tuple(r for r in reads if r not in handed)
+            excluded.update(r for r in reads if r in records)
+    for slot, point in transfers:
+        held = dependencies.holders.get(point, {})
+        if any(not ref.external and ref.place.root == slot and owners for ref, owners in held.items()):
+            excluded.add(slot)
+    return frozenset(slot for slot, _ in transfers) - excluded
 
 
 def _container_access(source: MIRPlace, target: MIRSlot) -> bool:
@@ -118,7 +136,23 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         bindings[0] = MIRParameterBinding(receiver.type, callee.signature.passings[0], True,
                                           th.THIRBorrowedRecord(receiver.borrowed_record.type, True))
     slots = {s.id: s for s in body.slots}
-    handed_over = _handed_over(body)
+    # The dependency pass runs once, first asked for by a record storage slot.
+    facts: list[MIRDependencies | MIRNotCovered] = []
+    private: list[frozenset[MIRSlotId]] = []
+
+    def dependency_facts() -> MIRDependencies | MIRNotCovered:
+        if not facts:
+            facts.append(analyze_dependencies(body, analyze_liveness(body)))
+        return facts[0]
+
+    def private_records() -> frozenset[MIRSlotId]:
+        if not private:
+            dependencies = dependency_facts()
+            # Without dependency facts the body is opaque below, by their reason.
+            private.append(frozenset(s.id for s in body.slots) if isinstance(dependencies, MIRNotCovered)
+                           else _private_records(body, dependencies))
+        return private[0]
+
     global_reads: set[MIRGlobalId] = set()
     for slot in body.slots:
         if slot.kind is MIRSlotKind.GLOBAL:
@@ -137,10 +171,11 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             case MIRValueKind.OWNED if owned_storage(slot):
                 # An owned leaf's storage is private to the body: nothing of the caller's.
                 pass
-            case MIRValueKind.OWNED if slot.container_layout is None and slot.id in handed_over:
-                # A record the body builds only to move into a callee or an
-                # element: private storage nothing borrows, whose definition
-                # must be hook-free.
+            case MIRValueKind.OWNED if slot.container_layout is None and slot.id in private_records():
+                # Record storage private to the body (`_private_records`):
+                # whoever destroys it -- the body, a callee or container it is
+                # handed to, or the caller it is returned to -- runs no hook,
+                # so its definition must be hook-free.
                 records = (slot.type,)
             case MIRValueKind.OWNED | MIRValueKind.BORROWED_CONTAINER | MIRValueKind.NATIVE_ITERATOR if (
                     slot.container_layout is not None):
@@ -158,7 +193,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                 return MIRSummaryResult.opaque(f"summary record: {failure.reason}")
     for consumed in body.call_summaries:
         global_reads.update(consumed.global_reads)
-    dependencies = analyze_dependencies(body, analyze_liveness(body))
+    dependencies = dependency_facts()
     if isinstance(dependencies, MIRNotCovered):
         return MIRSummaryResult.opaque(f"summary dependencies: {dependencies.reason}")
     parameters = {slot.id: i for i, slot in enumerate(params)}
@@ -258,6 +293,13 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                 case MIRCall():
                     pass
                 case MIRConstant() | MIRCompare() | MIRNot() | MIROp() | MIRRangeAdvance():
+                    pass
+                case MIRBorrow(source=source) if (not source.projections and source.root in private_records()
+                                                  and target.value_kind is MIRValueKind.BORROWED):
+                    # A record holder of the body's private storage.
+                    pass
+                case MIRCopy() if own_storage and stmt.target.root in private_records():
+                    # A record copied into the body's private storage.
                     pass
                 case MIRCopy() | MIRBorrow() if leaf_place or elements or owned_storage(target) or leaf_borrow(target):
                     # Reads of an owned leaf into the body's own storage, a

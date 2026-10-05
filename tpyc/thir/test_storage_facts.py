@@ -12,7 +12,7 @@ from .emit import ModuleCounter, TempSink, emit_thir_body
 from .storage_facts import THIRBackingKind, collect_storage_facts, validate_storage_facts
 from .temp_plan import prepare_temporaries
 from .testutil import _compile, _entry
-from .validate import validate_function
+from .validate import THIRValidationError, validate_function
 
 
 SOURCE = '''from tpy import int32, readonly, nocopy
@@ -335,3 +335,115 @@ def test_nested_body_storage_is_uncovered(functions: dict[str, th.THIRFunction])
     nested = th.THIRNestedDef(name="inner", capture_cpp="&", body=body)
     backing, = collect_storage_facts((nested,), None).backings
     assert backing.uncovered == "storage inside a nested body"
+
+
+CALL_SOURCE = '''from tpy import int32, Own, ValueType
+
+class Cell:
+    value: int32
+    def __init__(self, value: int32):
+        self.value = value
+    def again(self) -> Own['Cell']:
+        return Cell(self.value + 1)
+
+class Named:
+    name: str
+    n: int32
+    def __init__(self, name: str, n: int32):
+        self.name = name
+        self.n = n
+
+class Pt(ValueType):
+    x: int32
+    def __init__(self, x: int32):
+        self.x = x
+
+def make(n: int32) -> Own[Cell]:
+    return Cell(n)
+
+def ident(c: Cell) -> Cell:
+    return c
+
+def make_named(s: str) -> Own[Named]:
+    return Named(s, 1)
+
+def make_pt(n: int32) -> Own[Pt]:
+    return Pt(n)
+
+def owned(n: int32) -> int32:
+    return make(n).value
+
+def method_owned(c: Cell) -> int32:
+    return c.again().value
+
+def discarded(n: int32) -> None:
+    make(n)
+
+def borrowed(c: Cell) -> int32:
+    return ident(c).value
+
+def ineligible(s: str) -> int32:
+    return make_named(s).n
+
+def value_record(n: int32) -> int32:
+    return make_pt(n).x
+'''
+
+
+@pytest.fixture(scope="module")
+def call_functions() -> dict[str, th.THIRFunction]:
+    compiler, modules = _compile(CALL_SOURCE)
+    _, ctx = compiler.generate_code_and_thir(_entry(modules))
+    return {node.name: fn for node, fn in ctx.thir_functions.items()}
+
+
+def _call_of(fn: th.THIRFunction) -> th.THIRCall | th.THIRMethodCall:
+    stmt = fn.body[0]
+    return stmt.expr if isinstance(stmt, th.THIRExprStmt) else stmt.value.receiver
+
+
+@pytest.mark.parametrize("name", ["owned", "method_owned", "discarded"])
+def test_an_owned_record_call_result_has_full_expression_storage(
+        call_functions: dict[str, th.THIRFunction], name: str) -> None:
+    fn = call_functions[name]
+    call = _call_of(fn)
+    assert call.full_expression_storage == th.THIROwnedRecord(call.result_type)
+    backing, = fn.storage_facts.backings
+    assert backing.kind is THIRBackingKind.FULL_EXPRESSION and backing.node is call and backing.uncovered is None
+    assert backing.full_expression is (fn.body[0].expr if name == "discarded" else fn.body[0].value)
+    if name != "discarded":
+        assert fn.body[0].value.field_identity is not None
+
+
+@pytest.mark.parametrize("name", [
+    # A bare record result borrows existing storage; a record with an
+    # owned-leaf member and a value-type record are outside the eligibility.
+    "borrowed", "ineligible", "value_record",
+])
+def test_other_call_results_have_no_full_expression_storage(
+        call_functions: dict[str, th.THIRFunction], name: str) -> None:
+    fn = call_functions[name]
+    access = fn.body[0].value
+    assert access.receiver.full_expression_storage is None and access.field_identity is None
+    assert not fn.storage_facts.backings
+
+
+@pytest.mark.parametrize("name, change", [
+    ("borrowed", "borrowed_result"), ("owned", "type"), ("owned", "readonly"),
+])
+def test_call_storage_must_agree_with_its_callee(
+        call_functions: dict[str, th.THIRFunction], name: str, change: str) -> None:
+    fn = call_functions[name]
+    access = fn.body[0].value
+    call = access.receiver
+    match change:
+        case "borrowed_result":
+            call = replace(call, full_expression_storage=th.THIROwnedRecord(call.result_type))
+        case "type":
+            call = replace(call, full_expression_storage=th.THIROwnedRecord(call_functions["ineligible"].body[0]
+                                                                            .value.receiver.result_type))
+        case "readonly":
+            call = replace(call, full_expression_storage=replace(call.full_expression_storage, readonly=True))
+    bad = replace(fn, body=(replace(fn.body[0], value=replace(access, receiver=call)),))
+    with pytest.raises(THIRValidationError, match="full-expression storage disagrees with its record rvalue"):
+        validate_function(bad)

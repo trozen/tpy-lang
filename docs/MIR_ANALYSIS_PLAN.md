@@ -1929,8 +1929,15 @@ form facts, never on lists of accepted kinds.
   its declaring record, a layout spans the inherited fields, a subclass
   binds at its base at a call argument, and a subclass constructor's
   definition chains to its base's ([inherited records](#inherited-records)).
+  A record returned by value (`-> Own[R]`) is the body's own record
+  storage moved out, and a resolved call handing one over is a record
+  value wherever record storage takes a construct -- an owned local, a
+  reseat, an element, a handed-over argument, a full-expression temporary
+  ([owned record results](#owned-record-results)).
   Remaining, in this order: view fields (a
-  record retaining a loan) with `retains` on `MIRParameterWrite`; nested
+  record retaining a loan; the owned record result now exists, so a record
+  with a view field returned by value is where field-held origins enter a
+  summary's `returns`) with `retains` on `MIRParameterWrite`; nested
   container elements and nested records (an inline record field as a
   place and as a return origin); record-element literal member-init. From
   here on each step builds the call-effect contracts it needs --
@@ -2446,7 +2453,9 @@ as the corpus grows).
   holder of its elements conflicts, a dead one does not.
 - **Returns and summaries.** `-> list[T]` returns a C++ reference, so it is
   a BORROWED result summarized by `returns` like a borrowed record result;
-  `-> Own[list[T]]` is an owned result moved out. A Span or element result
+  `-> Own[list[T]]` is an owned result moved out (the template an
+  `Own[R]` record result follows, [owned record results](#owned-record-results)).
+  A Span or element result
   rooted in `param[elements]` publishes the whole parameter (a caller's
   structure write still reaches it by prefix overlap); a container field
   of a record parameter publishes its field path
@@ -2506,7 +2515,9 @@ as the corpus grows).
   is not the last use of an owned container local (a literal `take([1, 2])`
   or a parameter `take(ys)`); "unsupported record argument": a record
   handed to an element-taking parameter as anything but a constructor call
-  (`p = Point(1); ps.append(p)`). Four are guards no probed shape reaches:
+  or a call handing over an owned record result
+  ([owned record results](#owned-record-results)) (`p = Point(1);
+  ps.append(p)`). Four are guards no probed shape reaches:
   "readonly owned container parameter" (`Own[readonly[list[T]]]` lowers as
   a mutable owned container), "element binding is reassigned" (a rebound
   `p = ps[0]; ...; p = ps[1]` refuses earlier, "missing alias binding"),
@@ -3104,6 +3115,177 @@ facts) and `tpyc/mir/test_inherited_records.py` (MIR).
   diagnostics byte-identical. The old first blockers of the newly lowered
   bodies: `base_inits` 41, `missing receiver fact` 12, `unsupported
   parameter type` 3.
+
+#### Owned record results
+
+`tests/cases/mir/owned_results` (exec and cpy) pins the verdicts: every
+covered definition shape and caller below (with `mir_owned` /
+`mir_borrowed` / `mir_write` at the owned local and the reseat), the
+certified call temporaries (`use_temp`, `spawn_temp`, `lend_temp`), and
+the source-reachable kept refusals (`reassigned`, `reseat_return`,
+`take` / `give`, `maybe`, `make_pinned`, `make_tok`, `make_box`,
+`Holder.put`). `tpyc/mir/test_owned_results.py` pins the MIR each rule
+builds (the returned backing, a result slot per branch, the write modes
+and temporaries), the refusals the case cannot hold (`from_borrow`,
+`from_param`, `make_hooked`, `stamped`, `stamp_order`, `lend_stamp`,
+`keep_named`, a `__copy__` body, a native factory) and, over hand-built
+THIR or MIR, the guards no source shape reaches ("readonly local
+returned", "call record result mismatch", the validator's two refusals,
+a borrow live past a hand-over, a `scope_end` conflict on a call
+temporary). `tpyc/thir/test_storage_facts.py` pins the call temporary's
+THIR fact. Probe-only: a hoisted declaration from a call and a method
+call on a call result.
+
+- **Invariant.** `-> Own[R]` returns the record by value (C++ `Point
+  make(int32_t n)`, `Representation.STORAGE`); a bare `-> R` stays a borrow
+  (`R&`, a borrowed result). The caller receives owned result storage with
+  no retained borrowed origins: the summary's `returns` is empty. The
+  callee initializes it by CONSTRUCTING it, COPYING into it (`return
+  copy(p)` keeps its `MIRCopy` event, C++ `Point(p)`), MOVING a fixed local
+  out, or FORWARDING another owned result (`return make(n)`). A
+  borrow-returning callee at an `Own[R]` slot is refused by the callee's
+  contract (its summary has a borrowed result), never by the destination's
+  ownership.
+- **Classification** (`call_contract.owned_record_result`). The fourth
+  owned result kind beside owned leaves, borrowed results and `Own[...]`
+  containers: an `OwnType` return whose bare type is a `record_type` at
+  `Representation.STORAGE`. `result_problem` admits it; the body's result
+  check registers the record's verified definition, whose layout must be
+  movable ("owned record result needs movable record") and hook-free (the
+  caller destroys what it receives: `make_hooked` refuses "custom record
+  special member").
+- **Return arm** (`lower.owned_record_source`; the builder's
+  `owned_return`, shared with `Own[...]` container results). A `THIRName`
+  of a FIXED owned local
+  (`fixed_owned`: a STORAGE-form declaration, never replaced) returns the
+  local's own BACKING, `MIRReturn(storage[p])` -- not the holder
+  `bindings[p]`, a borrow of it -- with no MIR move event: the move is C++'s
+  (`return p;`, NRVO), and the terminal return has no live successor. An
+  owned record local outside `fixed_owned` refuses "reassigned local
+  returned": a REBIND_SLOT local whose reseat (`RebindStorage.OWN`)
+  retargets the holder at a new backing while `storage[p]` keeps the first,
+  so its backing would be stale. A STORAGE-form declaration is one sema
+  never rebinds (a rebound local is a rebind-slot pointer local), so
+  `fixed_owned` membership is a whole-body fact, not statement order.
+  The check reads MIR's own `owned_records`
+  / `fixed_owned` sets, not `THIRFunctionLayout.reassigned_locals`, which
+  no producer fills (`BUGS.md#function-layout-reassigned-locals-empty`). A
+  name that holds no owned record storage (a borrowed parameter, `return
+  p` at `-> Own[Point]`) refuses "owned record return needs fixed owned
+  local"; a readonly holder "readonly local returned" (a guard no probed
+  source shape reaches). Anything else -- a construct, `copy(p)`,
+  `move(p)` of a fixed local, a call -- is built into a result slot
+  (owned record storage of the branch's region, else the body's) through
+  `record_value(..., call=True)` and returned; each branch builds its own
+  slot (`pick`).
+- **Validation** (`validate.py`, the owned-record return branch beside the
+  owned-leaf and owned-container ones). The returned slot is OWNED record
+  storage of the result type, no parameter, not readonly, and its layout
+  movable ("owned record return needs movable owned storage"); a readonly
+  or non-movable record would be copied in C++, not moved, and a holder
+  (BORROWED) is no owned result. Pinned over hand-built MIR.
+- **Summaries: private owned-record storage** (`summaries._private_records`).
+  An OWNED record slot is private to the
+  body when its storage leaves it only by a TRANSFER -- a return (the
+  caller owns it), a move out, or an argument at an owning passing -- with
+  no borrow of it live at that transfer (the dependency facts' holders at
+  the transfer point), and the body reads it otherwise only through the
+  borrow its holder takes. Borrows that complete before the transfer are
+  harmless. The summary's operation filter admits a record holder's
+  `MIRBorrow` of private storage and a `MIRCopy` into it, and whoever
+  destroys private storage runs no hook, so its definition must be
+  hook-free. `returns` stays empty. Storage the body KEEPS to its end
+  (`p = make(n); p.bump(); return p.x`) is not private: such a body
+  summarizes OPAQUE "summary storage or value shape" (`use_result`,
+  `reseat`, `named_caller`, `spawned` in the case), as a constructed local
+  kept to the end did before. Making kept storage private would flip
+  eighteen existing unit pins and is filed as its own decision (TODO MIR
+  entry). `collect` (a call result handed to `append`) and every covered
+  factory of the case summarize KNOWN; the refused ones (`reassigned`,
+  `reseat_return`, `make_pinned`, `make_tok`, `make_box`) summarize
+  OPAQUE by their refusal.
+- **Callers** (`lower.record_value(..., call=True)`). A resolved user call
+  (`THIRCall` / `THIRMethodCall`) is a record value of type `R` when its
+  summary is finalized KNOWN ("call needs finalized known summary"), its
+  result is no borrow ("owned result from a borrowed call") and its
+  signature hands `R` over (`THIRCallableSignature.hands_over(R)`) at
+  STORAGE form ("call record result mismatch"); `call()` compares the call's type against the unwrapped
+  `Own[R]`. The builder writes the `MIRCall` into the destination,
+  `may_raise` from the summary. The call's argument writes
+  (`call_writes`) are recorded for the operand-order rule where the
+  constructor paths hardcoded none: a factory writing an argument beside
+  another operand that reads it refuses "order-sensitive eager operands"
+  (`stamped`: `[stamp(c), stamp(c)]`). The arm is reached at an owned
+  declaration (`p = make(n)`, `INITIALIZE_ONCE`), a reseat of a
+  REBIND_SLOT local (`p = make(n + 1)`, `IN_PLACE` / `OWN_SITE`, now
+  inside a full-expression boundary, so a CONSTRUCTOR reseat whose
+  arguments need temporaries is covered too), an element write (`ps[0] =
+  make(n)`, `IN_PLACE`), a container-literal element and an argument handed
+  to an owning stub parameter (`ps.append(make(n))`: MIR's own
+  `record_temporary`, `INITIALIZE_REGION`, no THIR backing, as for a
+  constructor), a readonly named argument temporary (`read(make(n))`: a
+  `THIRArgTemp` whose init is the call, admitted when the call writes
+  nothing and its operands are stable, "named temporary needs stable
+  scalar operands"), and the return arm. The validator's record-write
+  carriers admit `MIRCall`; the initialization / replacement and element
+  arms take a `MIRCall` only under a `MIRRecordWrite` fact and when the
+  callee's signature hands the target type over ("call record result type
+  mismatch"). Dependencies are unchanged: a
+  `MIRCall` result is fresh, with no origins.
+- **Call-result temporaries.** THIR grants `full_expression_storage`
+  (`THIROwnedRecord(R)`) on a `THIRCall` / `THIRMethodCall` as on a
+  `THIRCtorCall`: `storage.full_expression_record` admits a call when
+  `THIRCallableSignature.hands_over(result_type)` -- the ONE predicate for
+  "a call hands over fresh storage by value": an `OwnType` return, no
+  borrowed result, STORAGE, unwrapped equal to the result type -- under the
+  constructor's unchanged eligibility (unique constructor, no custom
+  special members, storage-leaf fields). It is asked at a field receiver
+  (`direct_field` publishes the field identity) and a discarded statement;
+  `storage_facts` records a FULL_EXPRESSION backing, `temp_plan` and
+  `thir/validate.py` accept the field ("full-expression storage disagrees
+  with its record rvalue"). MIR takes the call where it takes a construct:
+  `field()` / `temporary()` check it as a record value, the builder's
+  `place()` materializes region storage the field is read from inline, and
+  the storage adapter binds the backing. A field read of a call temporary
+  passes the call's argument writes to the operand-order rule
+  (`stamp_order`: `c.n + stamp(c).x` refuses "order-sensitive eager
+  operands", the shape of `BUGS.md#subexpression-right-to-left-eval`).
+  `return make(n).x` (`use_temp`) and a discarded `make(n)` certify. The
+  emitter reads none of it: generated C++ is byte-identical.
+- **Wrong-verdict risks pinned.** A stale backing after a reseat
+  (`reassigned`, refused); the backing's mutability taken as proof of a
+  move (the source's access is the HOLDER's, the backing being allocated
+  mutable; a copy is the callee contract's `MIRCopy`); a borrowed-result
+  call taken as fresh (`from_borrow`: `return ident(p)` at `Own[Point]`
+  refuses; hand-built MIR writing `ident(p)` or `read(...)` into record
+  storage fails validation); call writes in operand order (`stamped`,
+  `stamp_order`); a borrow of a call temporary kept past its statement
+  (hand-built: a `scope_end` conflict on the connected backing).
+- **Kept refusals**, by reason. A user function's `Own[R]` PARAMETER body
+  (`take(p: Own[Point])`), "unsupported parameter type", and its caller
+  "call needs finalized known summary"; an Optional or union payload
+  bound to a call (`p: Point | None = None; p = make(n)`), "unsupported
+  record initializer"; a hoisted declaration from a call (`if flag: cell
+  = make()`), "unsupported expression type"; a call result stored into a
+  record field (`h.c = make()`), "record field replacement is
+  unsupported" (nested records); a method call on a call result
+  (`make(n).get()`), "call needs borrowed record name"; a field BORROWED
+  off a call temporary (`v: StrView = make_named(s).name`), "reference
+  needs local name" -- a record with an owned-leaf field gets no
+  full-expression storage, constructor or call, so the `scope_end`
+  conflict such a shape would raise is pinned over hand-built MIR only;
+  a generic record result (`-> Own[Box[int32]]`), "unsupported return
+  type"; a value-type record result, "missing constructor definition" (no
+  MIR layout); a native factory (`@native` returning `Own[Point]`), no
+  user call, "unsupported local type or form" at an owned local and
+  "reference needs local name" as a temporary receiver; a record declaring `__copy__` (or any custom
+  special member), "custom record special member" at its definition.
+- **Measured, owned record results**: `scripts/mir_coverage --corpus
+  tests`, 11214 bodies common to base and after: lowered 2387 -> 2445
+  (31 free functions, 15 dunders, 7 staticmethods, 5 methods; none lost),
+  conflicts 19 -> 19, certified 60 -> 60; the old first blockers:
+  `unsupported return type` 56, `unsupported record initializer` 2;
+  generated C++ and diagnostics byte-identical.
 
 ## Scope matrix and remaining increments
 

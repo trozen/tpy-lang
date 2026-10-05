@@ -1682,7 +1682,8 @@ alongside related feature work; only the big-rock deferrals live here.
   BigInt, str, String and bytes as owned storage and readonly parameter
   borrows, stub contracts, raising and cyclic summaries) and views as
   places (landed), B3 containers as places (first half landed; retained
-  loans in progress: declared storage members and user method summaries
+  loans in progress: declared storage members, user method summaries,
+  accessor and twin callables, inherited records and owned record results
   landed), cleanup, B4 generator/async frames; B5 call summaries
   alongside; B6 advisory
   checker and authority transition. Lifetime/loan bugs tagged `deferred: MIR`
@@ -1744,6 +1745,14 @@ alongside related feature work; only the big-rock deferrals live here.
   body and an owner without a `@dynamic` protocol (`docs/MIR_ANALYSIS_PLAN.md`
   "B3 contract (second half: user method calls)"); case
   `tests/cases/mir/method_calls`.
+  **B3 second half, owned record results** (landed): `-> Own[R]` is the
+  body's own record storage moved out (a fixed local's backing, or a
+  result slot built by a construct, a copy or a forwarded call), returned
+  or handed-over record storage is private to the summary, and a resolved
+  call handing one over is a record value at an owned local, a reseat, an
+  element, a handed-over or readonly named argument and a full-expression
+  temporary (`THIRCall.full_expression_storage`) (`docs/MIR_ANALYSIS_PLAN.md`
+  "Owned record results"); case `tests/cases/mir/owned_results`.
   **B3 second half, retained loans** (next, needs `/tpy-add-feature`; unit
   order in `docs/MIR_ANALYSIS_PLAN.md` "Breadth-first order"):
   - `scalar_leaves._ELEMENT_DISPATCH_DUNDERS` (the comparison and hash
@@ -1845,6 +1854,46 @@ alongside related feature work; only the big-rock deferrals live here.
       argument needs matching parameter or literal"): MIR refuses the
       shape rather than models it until BUGS.md#base-init-args-separate-lowering
       gives the base-init argument a passing.
+  - Owned record results, what the model leaves out
+    (`docs/MIR_ANALYSIS_PLAN.md` "Owned record results" has the rules and
+    the exact reasons):
+    - Open decision: record storage a body KEEPS to its end (`p = make(n);
+      p.bump(); return p.x`) is not private, so the body summarizes OPAQUE
+      ("summary storage or value shape") and its callers refuse; making it
+      private flips eighteen existing unit pins (argument storage, calls,
+      summaries, for-argument storage).
+    - `Own[R]` PARAMETER bodies (`take(p: Own[Point])`, owning-record
+      parameters) refuse "unsupported parameter type", and their callers
+      with them.
+    - Optional and union payloads from a call (`p: Point | None = None; p =
+      make(n)`) refuse "unsupported record initializer": the payload sites
+      take a construct or a name only.
+    - A hoisted declaration from a call (`if flag: cell = make()`) refuses
+      "unsupported expression type".
+    - A reassigned local returned refuses "reassigned local returned": the
+      return would need the backing the last reseat bound, not the local's
+      first.
+    - Value-type record results refuse at the definition ("missing
+      constructor definition": a `ValueType` record has no MIR layout).
+    - Generic results (`-> Own[Box[int32]]`, `Own[Self]` in a generic
+      record) refuse "unsupported return type".
+    - Native factories: a stub summary admits no record result
+      ("unsupported stub result type").
+    - A call result stored into a record field (`h.c = make()`) refuses
+      "record field replacement is unsupported" (nested records).
+    - Full-expression storage for a record with an owned-leaf field: a
+      constructor or call temporary of one gets none, so `make_named(s).n`
+      and `v: StrView = make_named(s).name` refuse "reference needs local
+      name" (`Named(s, 2).n`: "missing or invalid full-expression
+      storage"); relaxing the eligibility to owned-leaf fields lets the
+      view shape reach its `scope_end` conflict.
+    - A `THIRMethodCall` temporary has no `temp_plan` arm, so a method-call
+      temporary in a body that also plans argument temporaries leaves the
+      plan None.
+    - The caller side of an `Own[list[T]]` result: `xs = mk()` refuses
+      "unsupported expression" (`container_value` takes a literal only),
+      although the factory body lowers; the record arm of `record_value`
+      is the template.
   - Inline-record getter results and nested records: `return self.inner`
     (a record field returned by reference) refuses at the getter body
     ("unsupported borrowed expression form") and its caller "call needs

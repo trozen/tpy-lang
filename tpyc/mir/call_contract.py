@@ -18,7 +18,7 @@ from ..type_def_registry import ParamPassing, type_def_of
 from ..typesys import (
     Loan, NominalType, OwnType, ReadonlyType, RefType, Representation, TpyType, VoidType, is_owned_leaf,
     is_protocol_type, loan_class,
-    passing_representation, return_representation, unwrap_readonly, unwrap_ref_type,
+    passing_representation, return_representation, unwrap_own, unwrap_readonly, unwrap_ref_type,
 )
 
 if TYPE_CHECKING:
@@ -261,13 +261,23 @@ def parameter_binding_problem(typ: TpyType, binding: 'MIRParameterBinding') -> s
     return None
 
 
+def owned_record_result(typ: TpyType) -> NominalType | None:
+    """The record an `Own[R]` result hands the caller by value: storage the
+    callee moved out, which the caller owns and destroys. A bare record
+    result is a borrow, never this."""
+    bare = unwrap_own(typ)
+    return (bare if isinstance(typ, OwnType) and record_type(bare)
+            and return_representation(typ) is Representation.STORAGE else None)
+
+
 def result_problem(typ: TpyType, ref: THIRBorrowedRecord | None) -> str | None:
     if ref is None:
-        # An owned leaf, or an `Own[...]` container, returns by value, as
-        # storage the caller receives.
+        # An owned leaf, an `Own[...]` container or an `Own[R]` record
+        # returns by value, as storage the caller receives.
         storage = return_representation(typ) is Representation.STORAGE
         return (None if storage_leaf(typ, return_representation(typ)) or isinstance(typ, VoidType)
                 or storage and (is_owned_leaf(typ) or native_container_type(native_container_subject(typ)))
+                or owned_record_result(typ) is not None
                 else "unsupported return type")
     if isinstance(ref, THIRBorrowedRecord) and (view_leaf(ref.type) or container_view(ref.type)):
         return None if view_result(typ) == ref else "invalid borrowed result"

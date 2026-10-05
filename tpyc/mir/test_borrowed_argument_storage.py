@@ -276,7 +276,7 @@ def rejected() -> int32:
 def rejected(value: int32) -> int32:
     saved = observe(Cell(identity(value)))
     return saved.value
-''', "named constructor needs stable scalar operands"),
+''', "named temporary needs stable scalar operands"),
     ('''def writes(owner: Cell, other: Cell) -> readonly[Cell]:
     owner.value = 2
     return other

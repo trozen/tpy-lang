@@ -1,0 +1,22 @@
+make 2
+make_named 1
+make_local 5
+duplicate 3 2
+pick 7 1
+forward 3
+reassigned 3 0
+reseat_return 4
+use_result 8
+use_temp 4
+spawn_temp 0
+reseat 6
+collect 7
+named_caller 3
+spawned 4
+give 1
+lend_temp 3
+maybe 9 0
+make_pinned 5
+make_tok 6
+make_box 7
+put 8
