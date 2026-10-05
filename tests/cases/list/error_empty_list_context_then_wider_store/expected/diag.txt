@@ -1,0 +1,1 @@
+main.py:18: error: 'ys' holds int32 elements since line 16 (passed as list[int32]), and this value is int64; the list is passed as list[int32], so the value must be int32

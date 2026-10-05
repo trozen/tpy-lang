@@ -12,9 +12,10 @@ def collect_for(xs: list[int32]) -> Own[list[int32]]:
 
 
 def widen_collect(xs: list[int32]) -> Own[list[int64]]:
-    # In-loop int32 element must still widen to the declared int64 -- the
-    # canonical-element use-site check allows coercion, not just exact match.
-    out = []
+    # An empty list's first store decides its element as if it were written
+    # in the literal (`[x]` is a list[int32]), so the int64 list it is
+    # returned as is spelled on its first binding.
+    out: list[int64] = []
     for x in xs:
         out.append(x)
     return out

@@ -729,6 +729,9 @@ class LocalTypeDeduction:
         if info is None:
             return
         self.update_list_element_type(info, value_type, obj_expr, value)
+        if info.elem_cell is not None:
+            # Every name for the list shares the cell the store went to.
+            return
         # Propagate up the entire alias chain (zs = ys = xs; zs.append(v))
         visited: set[int] = {info.literal_id}
         current = info
@@ -788,12 +791,15 @@ class LocalTypeDeduction:
         """Update element type for a ListLiteralInfo from a use, widening if
         needed; `site` is the use the diagnostic points at, `value` the node
         it adds."""
-        cell = (self.ctx.pending_num_cells.get(info.elem_cell)
-                if info.elem_cell is not None else None)
+        cell, value_type = self.pend.store_value(
+            PendingListType(info.element_type, info.size, info.literal_id),
+            value_type, value, value or site or info.expr)
         if cell is not None:
-            self.pend.elem_store(cell, value_type, value,
-                                 value or site or info.expr)
             return
+        # No function-local list of scalar numbers reaches the join below:
+        # a numeric store seeds its element cell above. What does is a
+        # module-level list, a list stored into from a nested body, and a
+        # list of non-numbers.
         name = info.variable_name or "xs"
         init = self._initializer_spelling(info.expr, "[]", "[...]")
         result = self._join_observed_type(
@@ -967,6 +973,12 @@ class LocalTypeDeduction:
                     return joined
                 mix = self.int_float_mix(held, elem)
                 return below(mix, 0) if mix is not None else incompatible
+            if (commit and numeric_container(target) is not None
+                    and self.pend.seed_by_context(pending, target, None,
+                                                  "selected") is not None):
+                # An empty list's element cell is seeded by the container
+                # it shares one C++ type with.
+                return joined
             if info.coerced_element_type is not None:
                 if to_array:
                     return joined
@@ -1319,6 +1331,10 @@ class LocalTypeDeduction:
                 # Default: Array (stack-allocated, no mutation detected)
                 resolved = make_array(elem_type, info.size)
 
+            # The read guard and the context override above serve the lists
+            # without a cell: module-level, nested, tuple-element and
+            # non-numeric ones. A function-local list of scalar numbers,
+            # empty or not, has its element decided by a cell.
             if not info.has_explicit_annotation and not by_cell:
                 self._check_elem_reads(info, elem_type)
             self._apply_container_resolution(info, resolved)
@@ -2506,10 +2522,24 @@ class LocalTypeDeduction:
             if not isinstance(current, PendingListType):
                 continue
             info = self.ctx.list_literals.get(current.literal_id)
+            # A list no cell decides keeps the type its own resolution
+            # gives every read.
+            if (isinstance(current.element_type, UnknownElementType)
+                    and (info is None or info.elem_cell is None)):
+                continue
             if info is not None and info.resolved_type is not None:
                 self.ctx.expr_types[node] = info.resolved_type
             elif contains_pending_num(current):
                 self.ctx.expr_types[node] = self.pend.finalize(current)
+            elif isinstance(current.element_type, UnknownElementType):
+                # A read recorded before its empty list's cell was born has
+                # no pending number to finalize: only the literal's own
+                # resolution gives it an element.
+                raise AssertionError(
+                    f"Internal error: list literal "
+                    f"'{info.variable_name or info.literal_id}' has an "
+                    f"element cell but no resolved type at finalization"
+                )
 
         loop_vars = self.ctx.func.pending_loop_vars
         for name, entry in list(loop_vars.items()):

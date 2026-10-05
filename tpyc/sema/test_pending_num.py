@@ -8,14 +8,17 @@ from textwrap import indent
 
 import pytest
 
+from .. import get_lib_dir
+from ..compiler import Compiler
 from ..diagnostics import Scope, SemanticError
 from ..parse import (Parser, SourceLocation, TpyArrayLiteral, TpyCoerce,
                      TpyFloatLiteral, TpyIntLiteral, TpyName, TpyVarDecl)
 from ..prescan import (fold_int_constant, int_constant_too_wide,
                        literal_constant, scan_first_bindings,
                        scan_pending_num_locals)
-from ..typesys import (BIGINT, FLOAT, FLOAT32, INT8, INT16, INT32, INT64,
-                       FloatLiteralType, IntLiteralType, PendingNumType,
+from ..typesys import (BIGINT, FLOAT, FLOAT32, INT8, INT16, INT32, INT64, STR,
+                       UNKNOWN_ELEMENT, FloatLiteralType, IntLiteralType,
+                       ListLiteralInfo, PendingListType, PendingNumType,
                        TypeRegistry, UINT8, UINT32, UINT64, make_list)
 from .compatibility import TypeCompatibility
 from .context import SemanticContext
@@ -342,6 +345,155 @@ def test_typed_seeded_list_is_decided_at_its_first_binding() -> None:
             r"^'ys' holds int8 elements \(line 3\), and this value is int64; "
             r"annotate its first binding: ys: list\[int64\] = ")):
         pend.elem_store(cell, INT64, None, decl)
+
+
+def _empty_list(pend: PendingNums, name: str = "ys", literal_id: int = 0,
+                source: int | None = None) -> PendingListType:
+    """`name = []` at line 3 in the function under analysis, or, with
+    `source`, a second name bound to that list's record."""
+    expr = TpyArrayLiteral([])
+    if source is not None:
+        expr = pend.ctx.list_literals[source].expr
+    else:
+        pend.ctx.func.var_decl_by_name[name] = TpyVarDecl(
+            name, None, expr, loc=SourceLocation(3, 0))
+    pend.ctx.list_literals[literal_id] = ListLiteralInfo(
+        literal_id=literal_id, expr=expr, element_type=UNKNOWN_ELEMENT,
+        size=0, variable_name=name, source_literal_id=source)
+    pend.ctx.func.pending_resolutions.append(literal_id)
+    return PendingListType(UNKNOWN_ELEMENT, 0, literal_id)
+
+
+def _at(line: int) -> TpyVarDecl:
+    return TpyVarDecl("site", None, None, loc=SourceLocation(line, 0))
+
+
+@pytest.mark.parametrize(
+    ("seed", "store", "message"),
+    [
+        pytest.param(
+            ("store", INT8), (INT64, None),
+            r"^'ys' holds int8 elements \(line 4\), and this value is int64; "
+            r"annotate its first binding: ys: list\[int64\] = \[\]$",
+            id="typed-store-then-wider"),
+        pytest.param(
+            ("context", make_list(INT32)), (INT64, None),
+            r"^'ys' holds int32 elements since line 4 \(passed as "
+            r"list\[int32\]\), and this value is int64; the list is passed "
+            r"as list\[int32\], so the value must be int32$",
+            id="context-then-wider"),
+        pytest.param(
+            ("context", make_list(INT8)), (IntLiteralType(300), 300),
+            r"^'ys' holds int8 elements since line 4 \(passed as "
+            r"list\[int8\]\), and the literal 300 counts as int32; the list "
+            r"is passed as list\[int8\], so the value must be int8$",
+            id="context-then-literal"),
+    ],
+)
+def test_empty_list_seeded_then_refused(seed: tuple, store: tuple,
+                                        message: str) -> None:
+    pend = _elem_pend()
+    ys = _empty_list(pend)
+    kind, what = seed
+    if kind == "store":
+        assert pend.seed_by_store(ys, what, None, _at(4)) is not None
+    else:
+        pend.seed_by_context(ys, what, _at(4), "passed")
+    cell = pend.list_cell(ys)
+    assert cell is not None and cell.settled is not None
+    t, literal = store
+    value = TpyIntLiteral(literal) if literal is not None else None
+    with pytest.raises(SemanticError, match=message):
+        pend.elem_store(cell, t, value, _at(5))
+
+
+def test_empty_list_literal_store_leaves_the_element_open() -> None:
+    pend = _elem_pend()
+    ys = _empty_list(pend)
+    one = TpyIntLiteral(1)
+    pend.ctx.set_expr_type(one, IntLiteralType(1))
+    cell = pend.seed_by_store(ys, IntLiteralType(1), one, _at(4))
+    assert cell is not None and cell.settled is None
+    pend.elem_store(cell, INT64, None, _at(5))
+    pend.settle({cell.cid})
+    assert cell.settled == INT64
+
+
+def test_empty_list_non_numeric_store_seeds_no_cell() -> None:
+    pend = _elem_pend()
+    ys = _empty_list(pend)
+    assert pend.seed_by_store(ys, STR, None, _at(4)) is None
+    assert pend.ctx.list_literals[0].elem_cell is None
+
+
+def test_empty_list_cell_reaches_every_name_bound_to_it() -> None:
+    pend = _elem_pend()
+    ys = _empty_list(pend)
+    zs = _empty_list(pend, "zs", 1, source=0)
+    # Seeded through the second name: both records share the cell, and the
+    # diagnostics name the first binding.
+    cell = pend.seed_by_store(zs, INT8, None, _at(5))
+    assert cell is not None and cell.name == "ys"
+    assert pend.list_cell(ys) is cell and pend.list_cell(zs) is cell
+    assert pend.seedable(ys) is None
+
+
+_EMPTY_PRELUDE = """from tpy import int8, int32, int64, Own
+def a8() -> int8: return 100
+def a64() -> int64: return 1099511627776
+def take8(v: list[int8]) -> None: pass
+"""
+
+
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        pytest.param(
+            "def main() -> None:\n    rs = []\n    rs.append(1)\n"
+            "    take8(rs)\n",
+            r"^'rs' holds int32 elements, and it is passed here as "
+            r"list\[int8\]; annotate its first binding: "
+            r"rs: list\[int8\] = \[\]$",
+            id="literal-store-then-narrower-container"),
+        pytest.param(
+            "def main() -> None:\n    ys = []\n    ys.append(a8())\n"
+            "    ys.append(300)\n",
+            r"^'ys' holds int8 elements \(line 7\), and the literal 300 does "
+            r"not fit int8; annotate its first binding: "
+            r"ys: list\[int32\] = \[\]$",
+            id="typed-store-then-wide-literal"),
+        pytest.param(
+            "def main() -> None:\n    ys = []\n    ys.append(1)\n"
+            "    for v in ys:\n        print(v)\n    ys.append(a64())\n",
+            r"^'ys' holds int32 elements since line 8 \(a loop iterable\), "
+            r"and this value is int64; annotate its first binding: "
+            r"ys: list\[int64\] = \[\]$",
+            id="loop-then-wider"),
+        pytest.param(
+            "def main(x32: int32) -> Own[list[int64]]:\n    out = []\n"
+            "    for i in range(3):\n        out.append(x32)\n"
+            "    return out\n",
+            r"^'out' holds int32 elements \(line 8\), and it is returned here "
+            r"as list\[int64\]; annotate its first binding: "
+            r"out: list\[int64\] = \[\]$",
+            id="typed-store-then-wider-return"),
+        # The capture decides the list: a nested body stores no wider value.
+        pytest.param(
+            "def main() -> None:\n    ys = []\n    ys.append(1)\n"
+            "    def inner() -> None:\n        ys.append(a64())\n"
+            "    inner()\n",
+            r"^'ys' holds int32 elements since line 8 \(read by the nested "
+            r"function 'inner'\), and this value is int64; annotate its first "
+            r"binding: ys: list\[int64\] = \[\]$",
+            id="capture-then-wider"),
+    ],
+)
+def test_empty_list_refusal_wording(body: str, message: str) -> None:
+    """An empty list is refused in the words its literal twin is, with the
+    hint spelling the empty first binding."""
+    with pytest.raises(SemanticError, match=message):
+        Compiler.from_source(_EMPTY_PRELUDE + body,
+                             lib_dirs=[get_lib_dir() / "tpy"]).compile()
 
 
 def test_float_list_at_an_int_container_names_no_fix() -> None:

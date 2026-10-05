@@ -1208,13 +1208,16 @@ body has been read:
 
 - from the values written in the literal and every value stored into the list
   (`append`, `insert`, `xs[i] = v`, `xs[i] += v`, a rebinding to another
-  literal). The first binding declares the element as it declares a numeric
-  local's type ("Numeric widening across reassignments", *Value-seeded*). A
-  first binding of literals only -- a literal-seeded local (`x = 1; ys =
-  [x]`) or an element read of a list still deciding counts as a literal of
-  its family -- starts at the default int (a literal the default does not
-  hold makes the element `int`, with the usual warning)
-  and widens with the typed values stored later, within its family
+  literal, and every value `extend` and `+=` add: each value of a list
+  literal written there, the element of a typed list, or the element of
+  another inferred list, which the call decides). The first binding
+  declares the element as it declares a numeric local's type ("Numeric
+  widening across reassignments", *Value-seeded*). A first binding of
+  literals only -- a literal-seeded local (`x = 1; ys = [x]`) or an element
+  read of a list still deciding counts as a literal of its family -- starts
+  at the default int (a literal the default does not hold makes the element
+  `int`, with the usual warning) and widens with the typed values stored
+  later, within its family
   (`ys = [1]; ys.append(a8)` is a `list[int32]`; `ys.append(big64)` makes
   it a `list[int64]`). A first binding that holds typed values (`[a8]`,
   `[a8, 1]`, `[a8] * n`) decides the element there, as the join of those
@@ -1228,8 +1231,9 @@ body has been read:
   first binding: ys: list[int64] = [...]* -- and arithmetic reads an
   element at that type (`ys[0] + 300` is an `int32`, as `a8 + 300` is).
   `fs = [f32]; fs.append(0.1)` stays `list[float32]` and stores the literal
-  rounded, the divergence from CPython the `float32` local has -- annotate
-  `fs: list[float]` or write `float(f32)` to keep it;
+  rounded, the divergence from CPython the `float32` local has, and so does
+  the empty twin `fs = []; fs.append(f32); fs.append(0.1)`, decided by its
+  first store -- annotate `fs: list[float]` or write `float(f32)` to keep it;
 - from a typed container of numbers the list meets at a declared slot: a
   `list[T]` / `Span[T]` / `Array[T, N]` parameter (a `*args` one, a
   `raise E(...)` argument and a TypedDict constructor's field included),
@@ -1260,6 +1264,37 @@ body has been read:
   annotated list local, does not compile yet either
   (`BUGS.md#literal-list-local-at-optional-union-slot`).
 
+An empty list (`[]`, `list()`) bound to an unannotated function local is
+seeded by its first store or first typed container, in analysis order,
+exactly as if that value had been written in the literal. "First" is the
+order the function is analyzed in, top to bottom: a store in an `if` arm
+or a loop body counts where it is written, not when it runs. So
+`ys = []; ys.append(1); ys.append(big64)` is a `list[int64]`, as `[1]`
+widened by the second store; `ws = []; ws.append(a8)` decides `list[int8]`
+at the store, as `[a8]` would, and a later `ws.append(big64)` is refused
+with the annotation of the empty first binding (*annotate its first
+binding: ws: list[int64] = []*); `ys = []; take32(ys)` decides
+`list[int32]` at the call, and a later wider store is refused naming it;
+`ys = []; ys.append(1); print(sorted(ys)); ys.append(big64)` is refused
+naming the slot that decided the element and its line (*'ys' holds int32
+elements since line N (passed as Iterable[int32]) ... annotate its first
+binding: ys: list[int64] = []*); `rs = []; rs.append(1); take8(rs)` is
+refused as `[1]` at `list[int8]` is (only widen; *annotate its first
+binding: rs: list[int8] = []*). A declared numeric view (`Iterable[int64]`)
+met before any store is a first context too. Rebinding the empty list to a
+literal (`xs = []; xs = [1, 2]`) seeds it with the literal's values; a
+second name bound before the seed (`zs = ys`) is the same list and shares
+the seed. A use that needs the element before anything seeded it
+(`for v in ys`, `sorted(ys)`) keeps the *Cannot infer element type* error
+when nothing stores into the list later; a loop, slice or `copy()` before
+a later store is refused
+(`BUGS.md#empty-list-read-before-first-store-rejected`), and a first store of a non-number (`ys.append("a")`) types the list as
+before. `ys[i] += v` as the FIRST evidence is deliberately no seed: it reads
+the element before it stores, and CPython raises `IndexError` there unless
+an earlier store ran; it is refused (today with the internal spelling
+*Operator '+=' is not supported for ???*,
+`BUGS.md#pending-aug-op-target-diag`).
+
 Every use of the list and of its elements is compiled at that type, wherever
 it stands relative to the use that widened it:
 
@@ -1273,7 +1308,7 @@ print(sum(ys), n)      # sums int64 elements
 Uses that defer decide nothing: `n = ys[0]`, arithmetic, a comparison,
 `print`, an f-string without a format spec, an argument at a numeric
 parameter, `len(ys)`, a second name (`zs = ys`), `append` / `insert` / `pop`
-/ `clear` / `reverse`.
+/ `clear` / `reverse`, `extend` / `+=` (their values are stores).
 
 At a generic call the list adapts like an integer literal argument: another
 argument that binds the type parameter decides the element
@@ -1302,19 +1337,17 @@ Current limitations:
   `ys: list[int64] = [1]`): iterating the list (a `for` loop, a
   comprehension; the loop variable does not follow a later widening), a
   generic call no other argument gives the element (`sorted(ys)`,
-  `enumerate(ys)`, `def f[T](x: T)`), `in`, a slice, `+` and `+=`, an alias
+  `enumerate(ys)`, `def f[T](x: T)`), `in`, a slice, `+`, an alias
   through `:=` or through a ternary / `and` / `or` with no declared target,
   a capture by a nested function, lambda or generator expression (so a
   lambda that returns the list decides it before its return type is read),
   an element of an unannotated tuple, list or dict literal (`t = (ys, 1)`,
   `outer = [ys]`), a value of a dict literal whatever its annotation
   (`d: dict[str, list[int64]] = {"a": ys}`), an f-string value WITH a
-  format spec (`f"{ys[0]:5d}"`), and any method other than the five above
-  (`extend`, `sort`, `index`, ...). `extend` and `+=` with a list literal
-  are among them: a literal they add that the element does not hold is
-  refused in the parameter's words (*Integer literal 1099511627776 is
-  outside int32 range*) where `append` of the same literal widens a list
-  of literals (`BUGS.md#literal-list-extend-wide-literal-refused`).
+  format spec (`f"{ys[0]:5d}"`), and any method other than the six above
+  (`sort`, `index`, ...). `extend` and `+=` with an iterable that says
+  nothing about its elements' types (a `range`, a generator) decide the
+  element too.
 - A call with several candidates decides the element before the candidates
   are scored, so its parameter does not widen the list (`sum(ys)` then a
   wider store is refused). Candidates that take the list as `list[T]` do not
@@ -1325,16 +1358,19 @@ Current limitations:
   refused (the literal counts as `int`); the annotation `ys: list[int64]`
   makes it fit.
 - Tuple elements (`xs = [(1, 2)]`), nested list literals, dict and set
-  literals, empty lists (`xs = []`) and module-level lists are not covered
-  yet. Their element is typed from the literal as it stands at each use: a
+  literals and module-level lists (`[]` included) are not covered yet. Their element is typed from the literal as it stands at each use: a
   bare number is resolved by its consumer and a tuple element takes the
   default width for its literal members, so `xs = [(1, 2)]` followed by
   `a, b = xs[0]`, `f(xs[0])` or `t = xs[0]` works like the annotated list.
   When another use gives such a list a different element type, an element
   taken at the default width by an unannotated local, a loop variable or a
   tuple unpack is refused with the annotation to write, and whole-list
-  consumers of an empty-seeded or module-level list are still compiled at
-  the default width (`BUGS.md#widened-literal-list-read-truncates`).
+  consumers of a module-level list are still compiled at the default width
+  (`BUGS.md#widened-literal-list-read-truncates`). An empty list whose
+  first store is made by a nested function it is not local to is refused
+  (`BUGS.md#empty-list-nested-first-store-rejected`); one the enclosing
+  function stored into first is decided at the capture, as any list
+  literal is.
 
 Nested list literals apply the rule per level. Sublists of differing length
 (a jagged literal, `[[1, 2], [3, 4, 5]]`) can't share a fixed `Array`, so that
@@ -1393,10 +1429,10 @@ def make_items() -> Own[list[int]]:
 def make_empty[T]() -> Own[list[T]]:
     return []              # → std::vector<T> (generic return type context)
 
-def build_from_usage() -> None:
+def build_from_usage(n64: int64) -> None:
     xs = []                # element type unknown at declaration
-    xs.append(42)          # → list[int32], inferred from append arg
-    xs.append(100)         # widened if needed (e.g., int32 + int64 → int64)
+    xs.append(42)          # → list[int32], as if written [42]
+    xs.append(n64)         # a wider typed store widens it → list[int64]
     # xs.append(2.5) here would be an error: an int list meeting a float
     # (convert with float(...) or annotate xs: list[float] = [])
     print(xs)

@@ -32,6 +32,7 @@ from ..typesys import (
     RecursiveAliasInstanceType, recursive_union_alternatives, ConcreteFrameType,
     ConcreteGenType,
     PendingListType, PendingDictType, PendingSetType, PendingNumType,
+    UnknownElementType,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
     unwrap_readonly, unwrap_ref_type, unwrap_qualifiers,
@@ -1919,8 +1920,8 @@ class FunctionTrackingState:
     # rewrites only these nodes -- never a sweep over the module-wide cache.
     pending_composite_exprs: list[object] = field(default_factory=list)
     # Expression nodes typed as a list literal whose element was still a
-    # pending number when they were analyzed; resolve_all gives each the
-    # element its cell settled to.
+    # pending number, or not known yet, when they were analyzed; resolve_all
+    # gives each the element its cell settled to.
     pending_elem_list_exprs: list[object] = field(default_factory=list)
     # Branch-decl snapshot dicts (the `if_branch_decls` values recorded by
     # this function's branch producers). The snapshots capture binding types
@@ -3420,7 +3421,10 @@ class SemanticContext:
         if not isinstance(typ, PENDING_CONTAINER_TYPES) and contains_pending_leaf(typ):
             self.func.pending_composite_exprs.append(expr)
         elif (isinstance(typ, PendingListType)
-              and isinstance(typ.element_type, PendingNumType)):
+              and isinstance(typ.element_type,
+                             (PendingNumType, UnknownElementType))):
+            # An empty list's read may be typed before its element cell is
+            # born; the record names the type it resolves to.
             self.func.pending_elem_list_exprs.append(expr)
 
     def record_branch_decls(self, stmt: TpyStmt, mapping: dict, *,

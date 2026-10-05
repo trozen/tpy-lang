@@ -1,0 +1,1 @@
+main.py:18: error: 'ws' holds int8 elements (line 16), and this value is int64; annotate its first binding: ws: list[int64] = []

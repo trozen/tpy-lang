@@ -125,8 +125,15 @@ def stores() -> None:
     k = zs[0]  # tpyc: type(int)
     # function: a rebinding to a wider literal is one more value held.
     zs = [5000000000, 3, 4]  # tpyc: warning(/outside default int32 range/)
+    vs = [1]  # tpyc: type(list[int])
+    m = vs[0]  # tpyc: type(int)
+    # function: a literal that extend or += adds is one more value held.
+    vs.extend([5000000000])  # tpyc: warning(/outside default int32 range/)
+    ws = [1]  # tpyc: type(list[int])
+    ws += [5000000000]  # tpyc: warning(/outside default int32 range/)
     print("fn.insert", ys, n)
     print("fn.rebind", zs, k)
+    print("fn.extend", vs, m, ws, ws[1] + 1)
 
 
 def first_binding() -> None:

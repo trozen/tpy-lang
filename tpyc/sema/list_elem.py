@@ -16,7 +16,8 @@ from typing import TYPE_CHECKING
 
 from .. import qnames
 from ..typesys import (FunctionInfo, MethodSignature, OwnType, TpyType,
-                       TypeParamRef, contains_type_param, unwrap_ref_type)
+                       TypeParamRef, contains_type_param, is_protocol_type,
+                       unwrap_ref_type)
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -27,8 +28,11 @@ class ElemUse(Enum):
     NONE = auto()
     # The type is the element itself, as a value taken or handed out.
     VALUE = auto()
-    # The element sits inside another type (`Iterable[T]`, `list[T]`).
+    # The element sits inside another type (`list[T]`, `Iterator[T]`).
     INSIDE = auto()
+    # A protocol of the element's values (`Iterable[Own[T]]`): what the
+    # method takes there is values the list then holds.
+    ELEMENTS = auto()
 
 
 def elem_use(t: TpyType | None, elem_params: set[str]) -> ElemUse:
@@ -40,6 +44,10 @@ def elem_use(t: TpyType | None, elem_params: set[str]) -> ElemUse:
         bare = bare.wrapped
     if isinstance(bare, TypeParamRef) and bare.name in elem_params:
         return ElemUse.VALUE
+    args = getattr(bare, "type_args", None)
+    if (is_protocol_type(bare) and args and len(args) == 1
+            and elem_use(args[0], elem_params) is ElemUse.VALUE):
+        return ElemUse.ELEMENTS
     return (ElemUse.INSIDE if contains_type_param(t, elem_params)
             else ElemUse.NONE)
 
@@ -57,7 +65,14 @@ class ElemSignature:
         """The method needs the element's type: it builds a type from it
         or checks a bound on it."""
         return (self.bounded or self.result is ElemUse.INSIDE
-                or ElemUse.INSIDE in self.params)
+                or ElemUse.INSIDE in self.params
+                or ElemUse.ELEMENTS in self.params)
+
+    @property
+    def stores_elements(self) -> bool:
+        """The method's one argument is values the list then holds
+        (`extend`, `__iadd__`): each is a store into the list."""
+        return not self.bounded and self.params == (ElemUse.ELEMENTS,)
 
     @property
     def blind(self) -> bool:

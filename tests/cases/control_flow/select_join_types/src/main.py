@@ -169,12 +169,12 @@ def int_float_select(a: int32, big: int64, f: float, c: bool) -> None:
     g = f if c else 2.5  # tpyc: ok type(float)
     print("float_ternary:", g)
     # An annotated empty list converts an int element; an unannotated one
-    # still widens across integer elements.
+    # first stored a literal still widens across integer elements.
     fs: list[float] = []
     fs.append(a)  # tpyc: ok
     print("int_float_declared_list:", fs[0] / 2)
     ws = []  # tpyc: type(list[int64])
-    ws.append(a)
+    ws.append(1)
     ws.append(big)
     print("int_widen_usage:", ws[0], ws[1])
 

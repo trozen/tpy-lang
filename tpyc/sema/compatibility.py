@@ -416,23 +416,23 @@ class TypeCompatibility:
         produces the coercion, outside an overload trial; any other gets
         the verdict alone. A literal with no cell adapts to the container,
         so each number written in it must fit the container's element."""
-        cell = self.pend.list_cell(actual)
-        if cell is None:
+        into = self.pend.cell_list(actual)
+        if into is None:
             return self._literal_values_fit(actual, expected, context, loc)
         # A declared view converts each element as it reads it and decides
         # nothing about the list; a generic call's resolved one does.
         scope = self.ctx.adaptive_list_args
-        adaptive = bool(scope) and any(c is cell for c in scope[-1][1])
+        adaptive = bool(scope) and any(c is into for c in scope[-1][1])
         verb = coercion_ctx.verb if coercion_ctx is not None else "stored"
-        container, shown, refusal = self.pend.meets(
-            cell, expected, verb, adaptive, self.member_order(actual))
+        container, shown, refusal = self.pend.meets_list(
+            into, expected, verb, adaptive, self.member_order(actual))
         if refusal is not None:
             return CompatError(refusal, loc)
         if container is None:
             return None
         if commit and not self.ctx.trial_depth:
-            return self.pend.elem_context(actual, container, source_expr,
-                                          verb, shown, declared=not adaptive)
+            return self.pend.decide_list(actual, into, container, source_expr,
+                                         verb, shown, declared=not adaptive)
         return with_list_elem(actual, self.pend.context_elem(container))
 
     def list_at_slot(self, actual: TpyType, expected: TpyType,
@@ -2481,10 +2481,12 @@ class TypeCompatibility:
         `slot` is the declared slot the value is stored into: a list
         literal whose element that store decides is named at the slot's
         element."""
-        cell = self.pend.list_cell(t)
-        if cell is not None and slot is not None:
-            container, _, _ = self.pend.meets(
-                cell, slot, "stored", order=self.member_order(t))
+        into = self.pend.cell_list(t)
+        if into is not None and slot is not None:
+            # Born or not: the store into `slot` is what decides (or
+            # seeds) the element, so the list is named at the slot's.
+            container, _, _ = self.pend.meets_list(
+                into, slot, "stored", order=self.member_order(t))
             if container is not None:
                 return make_list(self.pend.context_elem(container))
 

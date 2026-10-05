@@ -22,9 +22,10 @@ std::vector<int32_t> collect_for(const std::vector<int32_t>& xs) {
 }
 
 // def widen_collect(xs: list[int32]) -> Own[list[int64]]:
-//     # In-loop int32 element must still widen to the declared int64 -- the
-//     # canonical-element use-site check allows coercion, not just exact match.
-//     out = []
+//     # An empty list's first store decides its element as if it were written
+//     # in the literal (`[x]` is a list[int32]), so the int64 list it is
+//     # returned as is spelled on its first binding.
+//     out: list[int64] = []
 //     for x in xs:
 //         out.append(x)
 //     return out
@@ -35,7 +36,7 @@ std::vector<int64_t> widen_collect(const std::vector<int32_t>& xs) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        out.push_back(x);
+        out.push_back(static_cast<int64_t>(x));
     }
     return out;
 }
