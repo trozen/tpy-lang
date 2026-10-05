@@ -91,7 +91,7 @@ from .nodes import (
     THIRStubCallee, THIRStubContract, THIRStubIdentity,
     THIRLambda, THIRNestedDef, THIRClosureIdentity, THIRClosureKind,
     THIRCapture, THIRCaptureSlot, THIRCaptureSourceKind, THIRCaptureRelation,
-    THIRComprehension, hoists_declaration,
+    THIRComprehension, hoists_declaration, record_rvalue_storage,
 )
 from .temp_plan import if_chain
 
@@ -439,13 +439,16 @@ def _check_node(owner: str, node: THIRNode) -> None:
                     else (node.lhs, node.rhs))
             if any(_select_ref_type(arm.result_type) != want for arm in arms):
                 _fail(owner, node, "prvalue select arm is not the select's own type")
-    if isinstance(node, THIRCtorCall) and node.full_expression_storage is not None:
-        fact = node.full_expression_storage
+    if (fact := record_rvalue_storage(node)) is not None:
+        # A call's storage is its callee's result handed over, never a borrow.
+        source = (not node.brace_init if isinstance(node, THIRCtorCall)
+                  else node.resolved_callee is not None
+                  and node.resolved_callee.signature.hands_over(node.result_type))
         if (not isinstance(fact, THIROwnedRecord) or not isinstance(fact.type, NominalType)
                 or is_inert_leaf(fact.type) or not fact.type.qualified_name()
                 or fact.type.type_args or fact.type.is_protocol or fact.type != node.result_type
-                or fact.readonly is not False or node.form is not Form.STORAGE or node.brace_init):
-            _fail(owner, node, "full-expression storage disagrees with constructor")
+                or fact.readonly is not False or node.form is not Form.STORAGE or not source):
+            _fail(owner, node, "full-expression storage disagrees with its record rvalue")
     if isinstance(node, THIRVarDecl) and node.native_container is not None:
         _check_native_container(owner, node, node.native_container, node.resolved_type)
         others = (node.alias_binding, node.storage_borrow, node.owned_storage, node.tuple_layout,
@@ -713,8 +716,7 @@ def _check_node(owner: str, node: THIRNode) -> None:
             isinstance(node.receiver, THIRSubscript) and (
                 node.receiver.tuple_index is not None or holds_elements(node.receiver.receiver.result_type))) or (
             isinstance(node.receiver, THIRNarrowedRead) and node.receiver.union_extraction is not None) or (
-            isinstance(node.receiver, THIRCtorCall) and node.receiver.full_expression_storage is not None
-            and storage_leaf(fact.type) and not node.is_arrow)
+            record_rvalue_storage(node.receiver) is not None and storage_leaf(fact.type) and not node.is_arrow)
         typ = unwrap_readonly(fact.type)
         # A container member is reached in place like a record member.
         record = (isinstance(typ, NominalType) and not is_inert_leaf(typ)

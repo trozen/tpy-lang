@@ -952,10 +952,9 @@ lowering re-runs.
 Not yet honest, and named so: a record borrow-returning call stays `VALUE`
 (MIR's `_borrowed_expression` asserts a call is tagged `VALUE`, and a
 `@property` getter's storage-reference result is lifted through a
-`THIRFormConvert` that would become a no-op); a `THIRCtorCall` rvalue stays
-`VALUE` beside the `STORAGE` an `Own[record]` call gets; an all-`Own` tuple
-result has no pointer-repr element and reads as a value; an owned local's
-name read stays `BORROW`. Each is a consumer-visible convention until its
+`THIRFormConvert` that would become a no-op); an all-`Own` tuple result has
+no pointer-repr element and reads as a value; an owned local's name read
+stays `BORROW`. Each is a consumer-visible convention until its
 unit moves it.
 
 ### Form rollout ladder (F1 -> F-final)

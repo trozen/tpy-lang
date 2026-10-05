@@ -41,7 +41,9 @@ from .coverage import (
     view_holder,
 )
 from .region_flow import MIRRegionFlow, outgoing_edges
-from .call_contract import BORROWING_PASSINGS, OWNING_PASSINGS, binds_at, result_problem, summary_problem
+from .call_contract import (
+    BORROWING_PASSINGS, OWNING_PASSINGS, binds_at, owned_record_result, result_problem, summary_problem,
+)
 from .definitions import with_access
 
 
@@ -955,6 +957,13 @@ def _validate_structure(fn: MIRFunction) -> None:
             case _:
                 raise MIRValidationError("container write needs a literal, move, copy or call")
 
+    def validate_call_record(call: MIRCall, typ: TpyType) -> None:
+        """Record storage of type `typ` a call initializes or replaces: fresh
+        storage the callee hands over by value (`Own[R]`), never a borrowed
+        result's referent copied."""
+        validate_call(call)
+        _require(call.summary.callee.signature.hands_over(typ), "call record result type mismatch")
+
     def validate_element_write(stmt: MIRAssign, typ: TpyType) -> None:
         """An element replaced in place (`xs[i] = v`): a weak update of the
         region, under the container's root. The value takes the member's
@@ -994,6 +1003,8 @@ def _validate_structure(fn: MIRFunction) -> None:
                     _require(slots[source].value_kind is MIRValueKind.OWNED and slots[source].type == typ
                              and not slots[source].readonly and records[typ].movable,
                              "record move source or eligibility")
+                case MIRCall():
+                    validate_call_record(value, typ)
                 case _:
                     raise MIRValidationError("element write type mismatch")
 
@@ -1153,7 +1164,8 @@ def _validate_structure(fn: MIRFunction) -> None:
                         payload_init_blocks.add(block.id)
             elif isinstance(fact, MIRRecordWrite):
                 _require(isinstance(fact.mode, MIRRecordWriteMode), "invalid record write fact")
-                _require(isinstance(value, (MIRConstruct, MIRCopy, MIRMove)), "record write on non-record operation")
+                _require(isinstance(value, (MIRConstruct, MIRCopy, MIRMove, MIRCall)),
+                         "record write on non-record operation")
                 match fact.mode:
                     case MIRRecordWriteMode.OPTIONAL_ASSIGN:
                         _require(not stmt.target.projections
@@ -1317,7 +1329,8 @@ def _validate_structure(fn: MIRFunction) -> None:
                              and all(compatible_element(src, dst)
                                      for src, dst in zip(elements, target.tuple_layout.elements)),
                              "tuple payload type or access mismatch")
-                case MIRConstruct() | MIRCopy() | MIRMove():
+                case MIRConstruct() | MIRCopy() | MIRMove() | MIRCall() if (
+                        not isinstance(value, MIRCall) or isinstance(fact, MIRRecordWrite)):
                     if fact is None or fact.mode not in (MIRRecordWriteMode.OWN_SITE, MIRRecordWriteMode.INITIALIZE_REGION,
                                                          MIRRecordWriteMode.OPTIONAL_ASSIGN, MIRRecordWriteMode.IN_PLACE):
                         owning_blocks.add(block.id)
@@ -1348,6 +1361,8 @@ def _validate_structure(fn: MIRFunction) -> None:
                                           or (not value.source.projections
                                               and slots[value.source.root].value_kind is MIRValueKind.OWNED)),
                                      "record copy source or eligibility")
+                        case MIRCall():
+                            validate_call_record(value, target_type)
                         case _:
                             source = slots[value.source]
                             _require(source.value_kind is MIRValueKind.OWNED
@@ -1482,6 +1497,14 @@ def _validate_structure(fn: MIRFunction) -> None:
                 elif owned_container(slots[term.value]):
                     # The body's own container is moved out as the result.
                     _require(slot_type(term.value) == unwrap_own(fn.return_type), "return type mismatch")
+                elif owned_record_result(fn.return_type) is not None:
+                    # The body's own record storage is moved out: a readonly or
+                    # non-movable record would be copied instead.
+                    source = slots[term.value]
+                    _require(source.value_kind is MIRValueKind.OWNED and source.kind is not MIRSlotKind.PARAMETER
+                             and source.type == owned_record_result(fn.return_type) and not source.readonly
+                             and source.type in records and records[source.type].movable,
+                             "owned record return needs movable owned storage")
                 else:
                     _require(slot_type(term.value) == fn.return_type and slots[term.value].value_kind is MIRValueKind.SCALAR,
                              "return type mismatch")

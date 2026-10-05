@@ -250,7 +250,7 @@ def test_owning_callers_remain_opaque_and_excluded_calls_stay_uncovered(artifact
     workspace = artifacts[1]
     for name in ("eager", "lazy", "multiple", "branches", "loop"):
         assert workspace.summaries[th.THIRFunctionIdentity("main", name)].state is MIRSummaryState.OPAQUE
-    for name, reason in (("nested_operand", "named constructor needs stable scalar operands"),
+    for name, reason in (("nested_operand", "named temporary needs stable scalar operands"),
                          ("effect", "named argument needs readonly record constructor")):
         body = next(value for key, value in workspace.bodies.items() if key.declaration.split("@")[0] == name)
         assert isinstance(body, MIRNotCovered) and body.reason == reason, body
@@ -312,7 +312,7 @@ def rejected() -> int32:
     ('''global_value = 1
 def rejected() -> int32:
     return read(Cell(global_value))
-''', "named constructor needs stable scalar operands", None),
+''', "named temporary needs stable scalar operands", None),
     ('''def rejected(value: int32 | None) -> int32:
     if value is not None:
         return read(Cell(value))

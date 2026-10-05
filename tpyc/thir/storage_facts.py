@@ -180,7 +180,7 @@ class _Collector:
                 uncovered = (None if placement is not None
                              else "select slot storage has no temporary plan" if self.plan is None
                              else "select slot storage outside the temporary plan")
-            case th.THIRCtorCall() if node.full_expression_storage is not None:
+            case _ if th.record_rvalue_storage(node) is not None:
                 kind = THIRBackingKind.FULL_EXPRESSION
                 uncovered = None
             case _:

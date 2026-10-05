@@ -239,6 +239,7 @@ from ..nodes import (
     THIRUnaryArith,
     THIRUnionArgLift,
     THIRVarargPack,
+    record_rvalue_storage,
 )
 from ...codegen_cpp.forms import (is_plain_nonvalue, is_ptr_variant_union,
                                   reads_storage_form_optional)
@@ -6567,7 +6568,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         return _self_recv_positioned(THIRFieldAccess(
             result_type=rtype,
             field_identity=direct_field(e, analyzer, receiver)
-            if (isinstance(receiver, (THIRName, THIRSelf, THIRSubscript, THIRFieldAccess, THIRCtorCall))
+            if (isinstance(receiver, (THIRName, THIRSelf, THIRSubscript, THIRFieldAccess))
+                or record_rvalue_storage(receiver) is not None
                 or isinstance(receiver, THIRNarrowedRead) and receiver.union_extraction is not None) else None,
             receiver=receiver,
             field_cpp=_field_cpp(e),
