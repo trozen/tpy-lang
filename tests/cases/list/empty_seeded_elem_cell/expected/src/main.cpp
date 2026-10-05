@@ -382,7 +382,7 @@ void loop_pos() {
 //     print("extend_cell:", xs, src)
 void extend_pos(std::vector<int64_t>& typed) {
     std::vector<int64_t> vs = std::vector<int64_t>{};
-    ::tpy::list_extend(vs, std::array<int32_t, 2>{1, 2});
+    ::tpy::list_extend(vs, std::array<int64_t, 2>{1, 2});
     ::tpy::list_extend(vs, std::vector<int64_t>{3});
     vs.push_back(::tpyapp::main::wide());
     std::cout << "extend_lit:" << " " << ::tpy::ListPrinter(vs) << "\n" << ::tpy::check_signals;

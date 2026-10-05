@@ -62,8 +62,10 @@ from ..type_def_registry import (
     is_dict_view,
 )
 from .overloads import type_matches_numeric
-from .pending_num import (is_numeric_slot, is_pending_num, pending_list_of,
-                          strip_int, with_list_elem)
+from .pending_num import (ListCells, at_path, is_numeric_slot,
+                          is_pending_num, map_leaves, value_leaves,
+                          pending_list_of, strip_int, value_family,
+                          with_list_elem)
 from .iter_loans import iteration_copies_lent_reference, iteration_lend_pending
 
 
@@ -422,7 +424,9 @@ class TypeCompatibility:
         # A declared view converts each element as it reads it and decides
         # nothing about the list; a generic call's resolved one does.
         scope = self.ctx.adaptive_list_args
-        adaptive = bool(scope) and any(c is into for c in scope[-1][1])
+        adaptive = (bool(scope) and isinstance(into, ListCells)
+                    and any(c is cell for c in scope[-1][1]
+                            for cell in into.cells))
         verb = coercion_ctx.verb if coercion_ctx is not None else "stored"
         container, shown, refusal = self.pend.meets_list(
             into, expected, verb, adaptive, self.member_order(actual))
@@ -431,8 +435,17 @@ class TypeCompatibility:
         if container is None:
             return None
         if commit and not self.ctx.trial_depth:
-            return self.pend.decide_list(actual, into, container, source_expr,
-                                         verb, shown, declared=not adaptive)
+            decided = self.pend.decide_list(actual, into, container,
+                                            source_expr, verb, shown,
+                                            declared=not adaptive)
+            if decided is not None:
+                return decided
+        if isinstance(into, ListCells):
+            # The leaves as the container has them; a part that holds no
+            # number stays the list's, for the ordinary check to judge.
+            elem = self.pend.context_elem(container)
+            return with_list_elem(actual, map_leaves(
+                into.tree, lambda path, _leaf: at_path(elem, path)))
         return with_list_elem(actual, self.pend.context_elem(container))
 
     def list_at_slot(self, actual: TpyType, expected: TpyType,
@@ -450,7 +463,7 @@ class TypeCompatibility:
             coercion_ctx=coercion_ctx, commit=True)
         if isinstance(result, CompatError):
             raise SemanticError(result.message, result.loc)
-        return self.pend.current_list_type(actual)
+        return self.pend.lists_as_known(actual)
 
     def _literal_values_fit(
         self, actual: TpyType, expected: TpyType, context: str,
@@ -473,6 +486,8 @@ class TypeCompatibility:
         if container is None:
             return None
         want = self.pend.context_elem(container)
+        if value_family(want) is None:
+            return None
         value = self.pend.first_unfit(values, want, literals_only=True)
         if value is None:
             return None
@@ -661,8 +676,7 @@ class TypeCompatibility:
                 self.pend.check(strip_int(actual), strip_int(expected), context,
                                 coercion_ctx, source_expr)
             return None
-        if is_pending_num(actual):
-            actual = self.pend.current(actual)
+        actual = self.pend.current(actual)
         # A check that produces the coercion is where a list literal's
         # element is decided by the typed container it meets.
         result = self._check_compat(actual, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, commit=True)
@@ -687,6 +701,16 @@ class TypeCompatibility:
         the ordinary way."""
         a, e = strip_int(actual), strip_int(expected)
         if not (isinstance(a, PendingNumType) or isinstance(e, PendingNumType)):
+            if isinstance(e, TupleType) and value_leaves(e):
+                # A tuple read or stored with pending members: its members
+                # convert as a pending number does, once they settle.
+                return True
+            if isinstance(a, TupleType) and value_leaves(a):
+                if isinstance(e, TupleType) and all(
+                        is_numeric_slot(m) or not value_leaves(n)
+                        for m, n in zip(e.element_types, a.element_types)):
+                    return True
+                self.pend.force_value(source_expr, a, what=context)
             return None
         if isinstance(e, PendingNumType):
             return not isinstance(a, (IntLiteralType, FloatLiteralType))
@@ -1493,10 +1517,22 @@ class TypeCompatibility:
                             msg = (f"cannot copy {value_type} into owned storage of type "
                                    f"'{expected.wrapped}'; target is non-copyable{hint}")
                         raise self.ctx.error(msg, source_expr)
-                    if not deferred:
+                    copied = self.pend.list_cells(
+                        self.ctx.get_expr_type(source_expr))
+                    remedy = self.copy_remedy(source_expr)
+                    if not deferred and copied is not None and not copied.settled:
+                        # The copied list's element is decided later: the
+                        # warning names it as it ends up.
+                        list_t = self.ctx.get_expr_type(source_expr)
+                        self.pend.defer(
+                            source_expr, (copied.tree,),
+                            lambda ts: self.ctx.warning(
+                                f"copies {self.diag_type(with_list_elem(list_t, ts[0]))} "
+                                f"into owned storage; {remedy}", source_expr))
+                    elif not deferred:
                         self.ctx.warning(
                             f"copies {value_type} into owned storage; "
-                            f"{self.copy_remedy(source_expr)}",
+                            f"{remedy}",
                             source_expr
                         )
                     if isinstance(unwrap_readonly(unwrap_ref_type(
@@ -1615,6 +1651,13 @@ class TypeCompatibility:
         if isinstance(expected, (PendingListType, PendingDictType, PendingSetType)):
             if unify_literal_types(
                     expected, actual, on_pending_pair=self._demote_pending_pair) is not None:
+                return None
+            # A list stored as a row of a list whose leaves cells decide:
+            # the store admitted it there (`PendingNums.tree_store`), a
+            # typed list deciding the rows' element, a list with cells of
+            # its own linked leaf by leaf.
+            rows = self.pend.list_cells(expected)
+            if rows is not None and self.pend.is_stored_row(rows, actual):
                 return None
 
         # Allow PendingListType compatibility during first phase (before resolution)
@@ -2016,8 +2059,7 @@ class TypeCompatibility:
             return (self.pend.coerce(expr, strip_int(actual),
                                      strip_int(expected), context, coercion_ctx)
                     if pending else expr)
-        if is_pending_num(actual):
-            actual = self.pend.current(actual)
+        actual = self.pend.current(actual)
         # A bound coroutine handle (owned-erased Own[Cancellable[T]]) is
         # single-use and consume-only: borrowing it into a bare-protocol
         # slot (protocol-annotated local, borrow param) has no supported
@@ -2134,12 +2176,12 @@ class TypeCompatibility:
         # compatibility -- coerce_expr can't model pending-list-vs-pending-list,
         # so the element check lives here.
         if isinstance(inner_existing, PendingListType):
-            cell = self.pend.list_cell(inner_existing)
-            if cell is not None:
+            lc = self.pend.list_cells(inner_existing)
+            if lc is not None:
                 # One local, one numeric family: asked of the element as
                 # the list holds it so far.
                 self.deduction.refuse_int_float_rebind(
-                    name, self.pend.list_so_far(inner_existing, cell),
+                    name, self.pend.list_so_far(inner_existing, lc),
                     inner_value, value_expr, site=err_node)
             if self.deduction.rebind_elem_cell(inner_existing, inner_value,
                                                err_node):
@@ -2223,9 +2265,9 @@ class TypeCompatibility:
         # carries UNKNOWN_ELEMENT in the type and learns from its uses.
         existing_raw = (info.element_type if info is not None
                         else existing_pl.element_type)
-        cell = self.pend.list_cell(existing_pl)
-        if cell is not None:
-            existing_raw = self.pend.known_so_far(cell)
+        lc = self.pend.list_cells(existing_pl)
+        if lc is not None:
+            existing_raw = self.pend.tree_known(lc)
         new_elem_raw = self._list_like_element(value_type)
         if (new_elem_raw is None and isinstance(value_type, RefType)
                 and self._list_like_element(value_type.wrapped) is not None):
@@ -2300,9 +2342,13 @@ class TypeCompatibility:
             self.deduction.link_list_literals(a.literal_id, b.literal_id)
 
     def _demote_pending_pair(self, a: TpyType, b: TpyType) -> None:
-        """`on_pending_pair` hook for `unify_literal_types`: demote a matched
-        sibling pending-LIST pair to `list` (vector) when they can't share a fixed
-        `Array` -- different sizes, or either already forced to `list`.
+        """`on_pending_pair` hook for `unify_literal_types`, the one place a
+        matched sibling pending-LIST pair's records are reconciled: demote the
+        pair to `list` (vector) when they can't share a fixed `Array` --
+        different sizes, or either already forced to `list` -- and give an
+        empty unbound peer (`[[], ["a"]]`) its sibling's element, the record
+        side of unify answering the pair with the non-empty one. That copies
+        the element as it is now; it links nothing.
 
         `unify_literal_types` fires this at every pending pair it matches on its
         traversal (inner pairs first), so a jagged level propagates to its
@@ -2319,6 +2365,15 @@ class TypeCompatibility:
                      or self._pending_list_is_list(a) or self._pending_list_is_list(b))):
             self.deduction.mark_list_different_size(a.literal_id)
             self.deduction.mark_list_different_size(b.literal_id)
+        if isinstance(a, PendingListType) and isinstance(b, PendingListType):
+            for empty, full in ((a, b), (b, a)):
+                info = self.ctx.list_literals.get(empty.literal_id)
+                if (info is not None and info.elem_cells is None
+                        and isinstance(info.element_type, UnknownElementType)
+                        and not isinstance(full.element_type,
+                                           UnknownElementType)
+                        and info.variable_name is None):
+                    info.element_type = full.element_type
 
     def _resolve_pending_for_any_storage(self, actual: TpyType) -> TpyType:
         """Convert Pending{List,Dict,Set}Type to its concrete container
@@ -4355,8 +4410,8 @@ class TypeCompatibility:
                     f"cannot copy non-copyable type '{et}' into {dest} "
                     f"(tuple element {path}){NOCOPY_REMEDIATION_HINT}", loc_node)
             self.ctx.warning(
-                f"copies {et} into {dest} (tuple element {path}); "
-                f"use copy() to make this explicit", loc_node)
+                f"copies {self.diag_type(et)} into {dest} (tuple element "
+                f"{path}); use copy() to make this explicit", loc_node)
             fired = True
         return fired
 
@@ -4444,8 +4499,8 @@ class TypeCompatibility:
         if auto_moved:
             return False
         self.ctx.warning(
-            f"copies {member_t} into {dest} (tuple element {path}); "
-            f"{self.copy_remedy(m)}", m)
+            f"copies {self.diag_type(member_t)} into {dest} (tuple element "
+            f"{path}); {self.copy_remedy(m)}", m)
         return True
 
     def is_consuming_field_borrow(self, expr: 'TpyExpr | None') -> bool:

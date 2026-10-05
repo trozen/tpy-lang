@@ -5403,6 +5403,13 @@ class UnknownElementType(TpyType):
 UNKNOWN_ELEMENT = UnknownElementType()
 
 
+def contains_pending_num(t: TpyType) -> bool:
+    """Whether `t` is, or holds at any depth, a pending number."""
+    if isinstance(t, PendingNumType):
+        return True
+    return any(contains_pending_num(i) for i in t.inner_types())
+
+
 @dataclass(frozen=True)
 class PendingListType(TpyType):
     """Unresolved list literal type - becomes Array or list based on usage.
@@ -5421,12 +5428,13 @@ class PendingListType(TpyType):
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
-    # An element that is a pending number refers to the literal's element
-    # cell (`tpyc/sema/pending_num.py`), which the settle sweeps reach
+    # An element that holds a pending number at any depth (a scalar, a
+    # tuple member, a nested row's element) names the literal's element
+    # cells (`tpyc/sema/pending_num.py`), which the settle sweeps reach
     # through here. Any other element is the literal's own snapshot,
     # resolved with the literal and not by a type walk.
     def inner_types(self) -> tuple[TpyType, ...]:
-        if isinstance(self.element_type, PendingNumType):
+        if contains_pending_num(self.element_type):
             return (self.element_type,)
         return ()
 
@@ -5617,10 +5625,22 @@ class ListLiteralInfo:
     needs_list_type: bool = False  # Used in or/and/ternary with another list -- cannot become Array
     source_literal_id: Optional[int] = None  # Alias tracking: b = a
     resolved_type: Optional[TpyType] = None
-    # The pending-number cell that decides a scalar numeric element (its
-    # id); `element_type` is then the `PendingNumType` naming it, and the
-    # cell, not this record, is where uses add what they store.
-    elem_cell: Optional[int] = None
+    # The pending-number cells that decide the numeric leaves of the
+    # element, by the leaf's path in it (`()` the element itself, an int a
+    # tuple member, `ELEM_ROW` a nested list's element): `element_type` is
+    # then the type tree whose leaves are the `PendingNumType`s naming
+    # them, and the cells, not this record, are where uses add what they
+    # store. None for a list no cell decides.
+    elem_cells: Optional[dict] = None
+    # The records of the lists that are rows at one position of one outer
+    # list (shared, the same list object on every member): they are
+    # stored as one C++ type, so a requirement for a vector on one of them
+    # is one on all (`LocalTypeDeduction._close_row_groups`).
+    row_group: Optional[list] = None
+    # The lists a store admitted as rows of this record's rows, each named
+    # by its literal's id or, for a typed list, its type
+    # (`PendingNums._stored_as_row`): the store's own check reads them.
+    stored_rows: set = field(default_factory=set)
     # The reads that handed out an element before the literal resolved:
     # (the element type the read was compiled at, the reading node).
     elem_reads: list = field(default_factory=list)
@@ -5770,6 +5790,16 @@ def unify_literal_types(
     """
     if a == b:
         return a
+    if isinstance(a, UnknownElementType) or isinstance(b, UnknownElementType):
+        # An empty peer (`[[], [2]]`) holds what its siblings do; the pair of
+        # lists is answered with the non-empty one below, and the hook gives
+        # the empty one's record that element.
+        return b if isinstance(a, UnknownElementType) else a
+    if (isinstance(a, PendingNumType) and isinstance(b, PendingNumType)
+            and a.is_float == b.is_float):
+        # Leaves of two lists' element cells: a store between the lists
+        # links them, so they settle to one type.
+        return a
     if isinstance(a, IntLiteralType) and isinstance(b, IntLiteralType):
         return a
     if isinstance(a, IntLiteralType) and is_integer_type(b):
@@ -5796,6 +5826,9 @@ def unify_literal_types(
     if on_pending_pair is not None and isinstance(
             a, (PendingListType, PendingDictType, PendingSetType)):
         on_pending_pair(a, b)
+    if (isinstance(a, PendingListType) and isinstance(b, PendingListType)
+            and isinstance(a.element_type, UnknownElementType)):
+        return b
     return a
 
 

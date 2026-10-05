@@ -165,11 +165,13 @@ and the candidate type is pending/ambiguous:
 
 A parameter can give a list literal another NUMBER for its element than
 the literal defaults to (`[1]` at a `list[int64]` parameter). For a
-non-empty list literal of scalar numbers bound to a function local, the
-element is a pending-number cell the literal owns
-(`tpyc/sema/pending_num.py`, `PendingNums.new_elem_cell`): every copy of the
-pending list type names the cell, so an element read is typed by the cell
-and follows whatever decides it later. The values written and stored are
+non-empty list literal whose element holds numbers, bound to a function
+local, each numeric leaf of the element -- the element itself, a tuple
+member, a nested row's element at each depth -- is a pending-number cell
+the literal owns (`tpyc/sema/pending_num.py`, `PendingNums.new_list_tree`):
+every copy of the pending list type names the cells, so an element read is
+typed by them and follows whatever decides them later; the rows of a nested
+list share one cell per depth and one representation. The values written and stored are
 the cell's evidence. A typed container the list meets -- a parameter, the
 return type, a typed slot, the resolved parameter of a generic call -- adds
 its element as evidence, settles the cell and must then equal it
@@ -181,8 +183,8 @@ bound to a function local gets its cell at its first numeric store or
 typed container, as if that value had been written in the literal
 (`PendingNums.seed_by_store` / `seed_by_context`).
 
-The lists the cell does not cover yet -- tuple elements, nested literals,
-module-level lists -- keep the read guard: each use was typed
+The lists no cell covers -- module-level lists, dict and set literals --
+keep the read guard: each use was typed
 from the pending literal as it stood, so a use that took an element at the
 default width -- an unannotated local, a loop variable, a tuple element --
 is recorded on the literal and refused when the list resolves to another
@@ -212,9 +214,11 @@ For list literals (currently PendingListType):
 | Default | `Array[T, N]` |
 
 Element type follows from the write/usage analysis (widened if needed).
-For a list whose element a cell decides it is the settled cell, read when
+For a list whose element cells decide it is the settled tree, read when
 the list resolves (the pending numbers settle first); the Array-versus-list
-verdict in the table does not depend on it.
+verdict in the table does not depend on it. The rows of a nested list take
+one verdict: a row that needs `list` makes every row at its position one
+(`LocalTypeDeduction._close_row_groups`), before any record resolves.
 
 #### Step 4: String-specific rules
 

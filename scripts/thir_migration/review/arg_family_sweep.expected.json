@@ -14760,44 +14760,44 @@
   ""
  ],
  "list_i__mut__subscript__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%xs[0] [borrow]]) print(%k0.tag [raw])"
  ],
  "list_i__mut__subscript__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%xs[0] [borrow]])"
  ],
  "list_i__mut__subscript__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %xs[0] [borrow]])"
  ],
  "list_i__mut__subscript__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%xs[0] [borrow]])"
  ],
  "list_i__mut__subscript__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%xs[0] [borrow]])"
  ],
  "list_i__mut__subscript__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%xs[0] [borrow]]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get"
  ],
  "list_i__mut__subscript__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%xs[0] [borrow]])"
  ],
  "list_i__mut__subscript__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%xs[0] [borrow]])"
  ],
  "list_i__mut__temp_accessor__ctor": [
   "reject:expr.method_call:unspecified.lends_from_temporary",
@@ -15760,44 +15760,44 @@
   ""
  ],
  "list_i__ro__subscript__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%xs[0] [borrow]]) print(%k0.tag [raw])"
  ],
  "list_i__ro__subscript__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%xs[0] [borrow]])"
  ],
  "list_i__ro__subscript__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %xs[0] [borrow]])"
  ],
  "list_i__ro__subscript__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%xs[0] [borrow]])"
  ],
  "list_i__ro__subscript__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%xs[0] [borrow]])"
  ],
  "list_i__ro__subscript__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%xs[0] [borrow]]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get"
  ],
  "list_i__ro__subscript__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%xs[0] [borrow]])"
  ],
  "list_i__ro__subscript__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%xs[0] [borrow]])"
  ],
  "list_i__ro__temp_accessor__ctor": [
   "reject:expr.method_call:method.ret_type",
@@ -16400,29 +16400,29 @@
   "call(CALLEE, [move(%s0)])"
  ],
  "list_i_own__mut__loop_var__ctor": [
-  "reject:expr.call:call.ctor_arg.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) print(%k0.tag [raw])"
  ],
  "list_i_own__mut__loop_var__fn": [
-  "reject:expr.call:call.arg_shape.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__mut__loop_var__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__mut__loop_var__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%g, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__mut__loop_var__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%t, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__mut__loop_var__nested": [
   "reject:expr.call:call.ctor_arg.own_container",
@@ -16435,9 +16435,9 @@
   ""
  ],
  "list_i_own__mut__loop_var__static": [
-  "reject:expr.call:call.arg_shape.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__mut__narrowed_opt__ctor": [
   "ok",
@@ -17400,29 +17400,29 @@
   "call(CALLEE, [move(%s0)])"
  ],
  "list_i_own__ro__loop_var__ctor": [
-  "reject:expr.call:call.ctor_arg.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) print(%k0.tag [raw])"
  ],
  "list_i_own__ro__loop_var__fn": [
-  "reject:expr.call:call.arg_shape.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__ro__loop_var__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__ro__loop_var__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%g, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__ro__loop_var__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%t, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__ro__loop_var__nested": [
   "reject:expr.call:call.ctor_arg.own_container",
@@ -17435,9 +17435,9 @@
   ""
  ],
  "list_i_own__ro__loop_var__static": [
-  "reject:expr.call:call.arg_shape.own_container",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__ro__narrowed_opt__ctor": [
   "ok",
@@ -18760,14 +18760,14 @@
   ""
  ],
  "list_i_ro__ro__subscript__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%xs[0] [borrow]]) print(%k0.tag [raw])"
  ],
  "list_i_ro__ro__subscript__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%xs[0] [borrow]])"
  ],
  "list_i_ro__ro__subscript__gen": [
   "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
@@ -18775,29 +18775,29 @@
   ""
  ],
  "list_i_ro__ro__subscript__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%xs[0] [borrow]])"
  ],
  "list_i_ro__ro__subscript__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%xs[0] [borrow]])"
  ],
  "list_i_ro__ro__subscript__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%xs[0] [borrow]]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get"
  ],
  "list_i_ro__ro__subscript__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%xs[0] [borrow]])"
  ],
  "list_i_ro__ro__subscript__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%xs[0] [borrow]])"
  ],
  "list_i_ro__ro__temp_accessor__ctor": [
   "reject:expr.call:call.ctor_arg.container",

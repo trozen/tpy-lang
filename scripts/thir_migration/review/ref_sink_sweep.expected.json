@@ -16345,9 +16345,9 @@
   "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [lit(9)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tpy"
  ],
  "list_i__async__subscript__field_write": [
-  "reject:stmt.assign:field_write.lift.borrow",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "[3] *%h.f [storage] = *%xs[0] [borrow] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
  ],
  "list_i__async__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -16552,17 +16552,17 @@
  "list_i__ctor__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: list = %s0 method_call(%x, push_back, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: list = %s0 method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__ctor__loop_var__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0"
  ],
  "list_i__ctor__loop_var__field_write": [
-  "reject:stmt.assign:field_write.lift.borrow",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = %s0 print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__ctor__loop_var__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -16572,7 +16572,7 @@
  "list_i__ctor__loop_var__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%s0, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__ctor__loop_var__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -16800,9 +16800,9 @@
   "ptr_decl[ptr_addr] %x: list = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] ["
  ],
  "list_i__ctor__subscript__field_write": [
-  "reject:stmt.assign:field_write.lift.borrow",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__ctor__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -17077,17 +17077,17 @@
  "list_i__fn__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: list = %s0 method_call(%x, push_back, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: list = %s0 method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__fn__loop_var__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0"
  ],
  "list_i__fn__loop_var__field_write": [
-  "reject:stmt.assign:field_write.lift.borrow",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = %s0 print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__fn__loop_var__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -17097,7 +17097,7 @@
  "list_i__fn__loop_var__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%s0, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__fn__loop_var__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -17350,9 +17350,9 @@
   "ptr_decl[ptr_addr] %x: list = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] ["
  ],
  "list_i__fn__subscript__field_write": [
-  "reject:stmt.assign:field_write.lift.borrow",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__fn__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -17690,9 +17690,9 @@
   "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [lit(9)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tpy"
  ],
  "list_i__gen__subscript__field_write": [
-  "reject:stmt.assign:field_write.lift.borrow",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "[3] *%h.f [storage] = *%xs[0] [borrow] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "list_i__gen__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -17912,17 +17912,17 @@
  "list_i__meth__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: list = %s0 method_call(%x, push_back, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: list = %s0 method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__meth__loop_var__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0"
  ],
  "list_i__meth__loop_var__field_write": [
-  "reject:stmt.assign:field_write.lift.borrow",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = %s0 print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__meth__loop_var__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -17932,7 +17932,7 @@
  "list_i__meth__loop_var__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%s0, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__meth__loop_var__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -18185,9 +18185,9 @@
   "ptr_decl[ptr_addr] %x: list = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] ["
  ],
  "list_i__meth__subscript__field_write": [
-  "reject:stmt.assign:field_write.lift.borrow",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__meth__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -18447,17 +18447,17 @@
  "list_i__nested__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: list = %s0 method_call(%x, push_back, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "%x: list = %s0 method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__loop_var__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw]) call(ne"
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0"
  ],
  "list_i__nested__loop_var__field_write": [
-  "reject:stmt.assign:field_write.lift.borrow",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = %s0 print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__loop_var__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -18467,7 +18467,7 @@
  "list_i__nested__loop_var__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "method_call(%s0, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__loop_var__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -18720,9 +18720,9 @@
   "ptr_decl[ptr_addr] %x: list = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] ["
  ],
  "list_i__nested__subscript__field_write": [
-  "reject:stmt.assign:field_write.lift.borrow",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",

@@ -934,21 +934,68 @@ ordinary `OperatorResolver` / `check_type_compatible` once their operands
 settle; `LocalTypeDeduction.resolve_all` settles the rest and rewrites every
 recorded type, so nothing after sema sees a pending one.
 
-The element of a list literal is the same kind of fact. A non-empty list
-literal of scalar numbers bound to an unannotated function local owns a cell
-of its own (`PendingNums.new_elem_cell`, recorded as
-`ListLiteralInfo.elem_cell`): the element of its `PendingListType` is the
-`PendingNumType` naming that cell, which `PendingListType.inner_types`
-exposes so the settle sweeps reach it. Every copy of the list's type refers
-to the one cell, so an element read (`ys[i]`, `pop`) is typed by the cell
-and follows whatever decides it; stores are the cell's evidence
-(`PendingNums.elem_store`). A list with an undecided element reaches only a
+The element of a list literal is the same kind of fact, decided per numeric
+LEAF. A non-empty list literal whose element holds numbers bound to an
+unannotated function local owns a cell per leaf: the element itself for a
+list of scalars, each numeric member of a tuple, the element of a nested
+row at each depth. The element of its `PendingListType` is a type tree whose
+leaves are the `PendingNumType`s naming those cells, every part that holds
+no number keeping the literal's type; `PendingListType.inner_types` exposes
+the tree whenever it holds a leaf, so the settle sweeps and the finalization
+rewrite reach leaves at any depth. The record names the leaves by path
+(`ListLiteralInfo.elem_cells`, `()` the element, an int a tuple member,
+`ELEM_ROW` a row's element), and `PendingNums.list_cells` hands a reader the
+`ListCells` descriptor -- the record, the tree, the cells in path order, and
+each cell's path in this list's tree (a row's own record roots its leaf at
+`()`, the cell's `path` is from the list first bound, which the refusals
+name: *(tuple element 0)*, *(row element)*). Birth
+(`PendingNums.new_list_tree`) collects the values at every leaf path from
+every element and every row -- not from the joined element, which keeps one
+row only -- and classifies each leaf literal or typed as a scalar birth
+does; the rows met on the way take their part of the tree. Rows at one
+position are one C++ type, so the records of the rows at one position form
+a REPRESENTATION group (`ListLiteralInfo.row_group`, `join_rows`): a row
+appended or stored later joins it, and every requirement for a vector on
+one member -- a mutation through `g[0]`, a list context on one row, a
+differing size, an empty row, an alias that needs one -- is closed over the
+group before any record resolves (`LocalTypeDeduction._close_row_groups`,
+asking the one predicate the resolution asks, `_container_form`), so the
+outer list embeds the type all its rows get. Every copy of the list's
+type refers to the same cells, so an element read (`ys[i]`, `xs[0][1]`,
+`pop`) is typed by them and follows whatever decides them. ONE structural
+zip pairs the tree with another type part by part (`pending_num.zip_parts`:
+path, the tree's part, the other's part there), and every pairing walk is
+that zip with its own leaf rule -- the family check of a store, the fit
+with a typed container, the store itself, the adoption of a container's
+non-numeric parts, the rows a `list` context reaches. Stores are each
+leaf's evidence (`PendingNums.tree_store` -> `elem_store`; a row stored
+through `g.append(v)` or `g[0] = v` alike), a list stored as a row is
+linked to the row leaf by leaf (`PendingNums.link`, the one live link,
+also a rebinding's and a birth value's that reads another list's leaf: a
+shared type constraint, not aliasing -- the row is a copy), and a typed
+list stored as a row is a typed container the row element meets. The
+store records what it admitted (`ListLiteralInfo.stored_rows`), and the
+store's own compatibility check reads that verdict instead of judging the
+list again. A list with an undecided element reaches only a
 consumer that named the node (`PendingNums.list_sink`: a subscript or method
-receiver, `print`, a second name), a declared slot the value is then coerced
-to that holds a typed container of numbers, or, as a literal-element view,
-the arguments of a call whose one candidate is generic
-(`CallAnalyzer._adaptive_list_args`); `_pending_gate` settles the cell for
-every other consumer. That is the single-pass rule numeric locals have
+receiver, `print`, a second name, a row read bound to a name), a declared
+slot the value is then coerced to that holds a typed container of numbers,
+or, as a literal-element view, the arguments of a call whose one candidate
+is generic (`CallAnalyzer._adaptive_list_args`); `_pending_gate` settles the
+cells for every other consumer. A value that holds leaves by value -- a
+tuple read from a list of tuples -- passes one composite gate
+(`ExpressionAnalyzer._pending_composite_gate`, over
+`pending_num.value_leaves`): a consumer that named it (the receiver of
+`xs[0][1]`, `print`, a tuple unpack, which binds each target to its leaf,
+a comparison operand) sees it undecided, every other settles all its
+leaves; the declarations, unpack targets and return values that hold such
+leaves are rewritten when they settle (`PendingNums.defer`). The deferral
+waits for every leaf of the types it names, and a type recorded at a value
+that holds a row -- a call's signature at the element
+(`PendingNums.when_elem_known`), a local bound to a row (`row = g[0]`) --
+is recorded again once the rows' list types are resolved
+(`FunctionTrackingState.after_list_resolution`), since that happens after
+the settle. That is the single-pass rule numeric locals have
 (this module's docstring: nothing is analyzed twice; a use that needs the
 type decides it and a later wider store names that use), chosen on
 2026-09-29 over re-analysis to a fixed point (TODO.md "Whole-function slot
@@ -962,9 +1009,13 @@ the member of an optional slot, each member of a union slot), read by the
 gate, by the decision and by the diagnostic spelling of the stored list
 (`TypeCompatibility.diag_type`). The typed container decides the element in
 ONE place, the coercion check (`TypeCompatibility._list_at_container` ->
-`PendingNums.meets` / `elem_context`): the container's element is one more
-the list holds, the cell settles, and the two must then be equal, so a
-container confirms or widens and never narrows. That check decides only
+`PendingNums.meets` / `elem_context`): the container's element is paired
+with the tree part by part (`fits_container`; a part that holds no number
+must be compatible as it is, and is then taken at the container's type),
+each leaf's container type is one more the leaf holds, the leaves settle,
+and each must then equal the container's, so a container confirms or
+widens and never narrows. The whole candidate is validated before any leaf
+is decided. That check decides only
 under its `commit` argument, which `check_type_compatible` -- the call that
 produces the coercion -- passes (and `list_at_slot`, for a select operand
 the select's own coercion no longer reaches), and which `_check_compat`
@@ -987,13 +1038,15 @@ asked of the stub signature by one classifier (`tpyc/sema/list_elem.py`).
 An empty list (`[]`, `list()`) bound to an unannotated function local has
 no family until something gives it one, so its cell is born at the first
 evidence. `PendingNums.cell_list` answers "a cell list, born or not" -- the
-cell, or the record of an empty list that may still take one
+cells, or the record of an empty list that may still take them
 (`seedable`) -- and every store and context site switches on it once. One
-birth helper (`PendingNums.new_list_cell`) serves the literal binding
-(`StatementAnalyzer._bind_list_elem_cell`) and the lazy birth alike: a
-literal starts a default-based cell, a typed value decides it there, so an
-empty list behaves as the literal its first value would have written. The
-evidence is a number stored into it (`seed_by_store` / `seed_by_stores`,
+birth helper (`PendingNums.new_list_tree`) serves the literal binding
+(`StatementAnalyzer._bind_list_elem_cell`, a comprehension of rows
+included, whose one row record is its element's) and the lazy birth alike:
+a literal starts a default-based cell, a typed value decides it there, so
+an empty list behaves as the literal its first value would have written --
+a tuple or a row seeds a tree as `[(1, 2)]` / `[[1]]` would. The
+evidence is a value stored into it (`seed_by_store` / `seed_by_stores`,
 reached from the element store chokepoint
 `LocalTypeDeduction.update_list_element_type`, a subscript store through
 `store_value`, and `store_elements` for `extend` / `+=`), a typed container
@@ -1008,16 +1061,15 @@ so birth sets the cell on every record connected to the seeded one
 (`PendingNums._connected`, cycle-safe), and names the cell after the first
 binding's record. A type taken before the birth -- a name read, or a
 binding a loop scope restored -- still shows the unknown element; nothing
-patches it in place: `list_cell` keys on the record, so any reader that
-asks for the cell finds it, the cell-reading helpers (`list_as_known`,
+patches it in place: `list_cells` keys on the record, so any reader that
+asks for the cells finds them, the cell-reading helpers (`list_as_known`,
 `list_so_far`) replace the element, and finalization rewrites such a node
 to the record's resolved type (`SemanticContext.set_expr_type` records it,
-`LocalTypeDeduction._finalize_pending_in_bindings`). Lists the cell does
-not cover (module-level, non-numeric, tuple or nested elements, and an
-empty list a nested body stores into first,
-`BUGS.md#empty-list-nested-first-store-rejected`) keep the older element
-record on `ListLiteralInfo` and its read guard; no function-local list of
-scalar numbers reaches that path.
+`LocalTypeDeduction._finalize_pending_in_bindings`). Lists no cell
+covers (module-level, non-numeric, and an empty list a nested body stores
+into first, `BUGS.md#empty-list-nested-first-store-rejected`) keep the
+older element record on `ListLiteralInfo` and its read guard; no
+function-local list whose element holds numbers reaches that path.
 
 Who owns what: the prescan decides which locals are pending, before the
 body is analyzed. The `SemanticContext` holds the cells

@@ -35,6 +35,17 @@ from .context import (BorrowTracker, FunctionTrackingState, PendingLocal,
                       LIVE_HANDLE_FIELDS)
 
 
+class _Recorder:
+    """A recorder closure as the analyzers write one: it holds the node it
+    records on."""
+
+    def __init__(self, node: N.TpyExpr) -> None:
+        self.node = node
+
+    def __call__(self, _elem: TpyType) -> None:
+        pass
+
+
 def _populated() -> FunctionTrackingState:
     """A state holding a parse node in every shape the walk has to reach."""
     stmt = N.TpyPassStmt()
@@ -88,6 +99,7 @@ def _populated() -> FunctionTrackingState:
                                             lambda _types: None)],
         pending_num_splices=[N.TpyName("q")],
         awaiting_container=[(1, N.TpyName("ys"))],
+        after_list_resolution=[(INT32, _Recorder(N.TpyName("rows")))],
         arm_decl_sites=[(N.TpyIf(N.TpyName("c"), [], []), "r",
                          N.TpyVarDecl("r", None, N.TpyName("c")))],
         borrow_tracker=tracker,
@@ -131,6 +143,7 @@ _FIXTURE_FIELDS = {
     'pending_elem_type_fields', 'pending_composite_exprs',
     'pending_elem_list_exprs', 'arm_decl_sites',
     'pending_num_deferred', 'pending_num_splices', 'awaiting_container',
+    'after_list_resolution',
     'borrow_tracker',
     'current_call_edges', 'current_awaited_subframes',
     'pending_generic_instances', 'current_ns', 'own_ns', 'current_scope',

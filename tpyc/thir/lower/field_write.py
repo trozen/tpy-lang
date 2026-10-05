@@ -855,7 +855,9 @@ def _absorbs(member_t: TpyType, rt: 'TpyType | None', lc: _LowerCtx) -> bool:
     if (isinstance(rt, TupleType) and isinstance(member_t, TupleType)
             and len(rt.element_types) == len(member_t.element_types)):
         # A still-pending literal element takes its type from the slot's
-        # element (pending-literal typing).
+        # element (pending-literal typing): a tuple literal written in
+        # place (`self.pair = copy((77, b))`); a tuple read from a
+        # function-local list has its cells' settled members.
         return all(isinstance(e, (IntLiteralType, FloatLiteralType,
                                   LiteralType))
                    or _absorbs(unwrap_readonly(m), unwrap_readonly(e), lc)

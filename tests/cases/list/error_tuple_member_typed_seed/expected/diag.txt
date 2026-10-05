@@ -1,0 +1,1 @@
+main.py:16: error: 'ps' holds tuple[int8, int32] elements (line 15), and this value is int64 (tuple element 0); annotate its first binding: ps: list[tuple[int64, int32]] = [...]

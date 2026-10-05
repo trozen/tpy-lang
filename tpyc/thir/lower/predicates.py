@@ -2032,7 +2032,9 @@ def _resolve_pending_view(t: TpyType | None, analyzer) -> TpyType | None:
 def _resolve_tuple_pending(tt: TupleType, analyzer) -> TupleType:
     """Mirror `TypeResolver._resolve_tuple_pending`: `to_cpp*` do not resolve
     pending slots (a str element carries PendingStr until usage-resolved), so
-    every tuple wrap spelling resolves its elements first."""
+    every tuple wrap spelling resolves its elements first. An int-literal
+    element comes from a tuple literal written in place; an element read
+    of a function-local list is its cells' settled type."""
     resolve_lit = analyzer.ctx.default_int_for_literal
     resolved = []
     for et in tt.element_types:
@@ -5961,8 +5963,9 @@ def _subscript_recv_tuple(e: TpyExpr, locals_: dict[str, TpyType],
     recv_t, idx = res
     if isinstance(recv, TpySubscript) and ib is not None:
         # The container-element receiver's analyzer type can carry
-        # unresolved literal elements (`items = [(7, Box(10))]` types
-        # `items[0]` with an IntLiteralType member); the container's
+        # unresolved literal elements (a module-level `ITEMS = [(7,
+        # Box(10))]` types `ITEMS[0]` with an IntLiteralType member; a
+        # function-local list's members are its element cells'); the container's
         # DECLARED element tuple is the resolved authority (a tuple-over-
         # tuple CHAIN receiver has no container to consult -- ib is None
         # there and the analyzer type stands). A dict
@@ -9416,7 +9419,10 @@ def _resolve_literal_seeded(t: 'TpyType | None', analyzer) -> 'TpyType | None':
     container (PendingListType -> list, or the read-only demoted Array) and
     IntLiteral element types (through the module default) -- the pair
     `get_resolved_type` applies at render time. One helper so the storage
-    families and the Own-slot arg rows cannot drift apart."""
+    families and the Own-slot arg rows cannot drift apart. The literal
+    members still reaching it are those of tuple literals written in place,
+    dict and set literals and module-level lists; a function-local list's
+    element leaves are settled by their cells."""
     if t is None:
         return None
     t = resolve_pending_container(t, analyzer) or t

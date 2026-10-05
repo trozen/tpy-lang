@@ -2160,6 +2160,11 @@ class FunctionTrackingState:
     pending_elem_cids: list[int] = field(default_factory=list)
     # Operations and conversions over pending values, resolved at settle.
     pending_num_deferred: list['DeferredIntOp'] = field(default_factory=list)
+    # Types recorded at a value that holds a row (a call's signature at the
+    # list's element, a local bound to a row): the type and its recorder,
+    # called again with the type once the rows' list types are resolved,
+    # which is after the settle (`PendingNums.when_elem_known`).
+    after_list_resolution: list[tuple['TpyType', Callable[['TpyType'], None]]] = field(default_factory=list)
     # The list literals handed out undecided to a slot declared as a typed
     # container in the statement under analysis, with the node: the slot's
     # coercion decides each, and the statement's end any it did not reach.
@@ -3434,10 +3439,12 @@ class SemanticContext:
         if not isinstance(typ, PENDING_CONTAINER_TYPES) and contains_pending_leaf(typ):
             self.func.pending_composite_exprs.append(expr)
         elif (isinstance(typ, PendingListType)
-              and isinstance(typ.element_type,
-                             (PendingNumType, UnknownElementType))):
-            # An empty list's read may be typed before its element cell is
-            # born; the record names the type it resolves to.
+              and (isinstance(typ.element_type, UnknownElementType)
+                   or typ.inner_types())):
+            # A read of a list whose element cells decide (its inner types
+            # are the element tree holding them), or of an empty list,
+            # which may be typed before its cells are born: the record
+            # names the type it resolves to.
             self.func.pending_elem_list_exprs.append(expr)
 
     def record_branch_decls(self, stmt: TpyStmt, mapping: dict, *,
