@@ -70,14 +70,20 @@ call that statically resolves to it: the identity names the owning record
 so MIR schedules and summarizes methods beside free functions
 (`MIR_ANALYSIS_PLAN.md`, B3 contract, second half). The body a call runs
 comes from `Compiler.callable_body(owner, name, accessor)`, which selects by
-role (method, property getter `fget`, setter `fset`) and collapses an
-`@auto_readonly` clone pair to its const clone; `single_method_body` keeps
-its one-body-or-None rule for sema's with-exit check. A getter or
+role (method, property getter `fget`, setter `fset`; `typesys.accessor_role`)
+and collapses an `@auto_readonly` clone pair -- linked where sema makes it,
+`TpyFunction.clone_of` on the mutable clone -- to its const clone;
+`single_method_body` keeps its one-body-or-None rule for sema's with-exit
+check. One builder, `thir/lower/callables.method_callee`, resolves every role
+from that body, its declared parameters passing as the body's own
+`THIRParam.passing` reads them (`predicates.param_passing`). A getter or
 `@auto_readonly` def is one callable whose receiver passes `const_ref` and
 whose borrowed result follows the receiver's access at the call
-(`THIRCallableSignature.result_follows_receiver`); its mutable clone
-publishes the same callee as an access twin, and MIR requires the two
-clones to summarize alike. Structural module keys
+(`THIRCallableSignature.result_follows_receiver`); the call records the
+access its receiver is emitted at (`THIRMethodCall.receiver_access`), its
+mutable clone publishes the same callee as an access twin, and MIR requires
+the two clones to summarize alike. The codegen pass checks a module's
+definitions together (`thir/validate.validate_definitions`). Structural module keys
 remain independent of rendered C++ namespaces. Selected lambdas and nested defs
 also carry complete capture inventories, distinguishing scalar binding references,
 scalar snapshots, borrowed record referents and receiver aliases. Closure occurrence

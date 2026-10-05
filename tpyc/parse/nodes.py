@@ -1635,7 +1635,13 @@ class TpyFunction:
     # Set on the mutable clone produced by
     # sema.method_expansion._clone_auto_readonly; used to detect
     # mutable+const clone pairs without relying on params-list identity.
+    # Equivalent to `clone_of is not None`: the two record one fact.
     is_auto_readonly_mutable_clone: bool = False
+    # On the mutable clone: the const clone of the same def, which defines
+    # the pair's one callable. A link rather than a shared id so a reader
+    # finds the defining body without a lookup; kept out of eq/repr, which
+    # would otherwise walk into the other clone.
+    clone_of: TpyFunction | None = field(default=None, compare=False, repr=False)
     # Set on both clones after _clone_auto_readonly resolves AutoReadonlyType
     # in params. Tells sema/codegen not to blanket-apply readonly to all params
     # (each param already carries ReadonlyType or not from the clone).

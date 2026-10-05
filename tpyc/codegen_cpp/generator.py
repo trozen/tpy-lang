@@ -494,6 +494,7 @@ class CodeGenerator:
                                    is_bodyless_binding,
                                    raise_deferred_rejects,
                                    reject_or_defer)
+        from ..thir.validate import validate_definitions as _thir_validate_definitions
 
         _ng = _thir_native_globals(module)
 
@@ -572,6 +573,9 @@ class CodeGenerator:
                 continue
             self.ctx.thir_functions[f] = tf
             commit_attempt()
+        # The module's bodies together: one definition and at most one access
+        # twin per callee identity.
+        _thir_validate_definitions(tuple(self.ctx.thir_functions.values()))
         self.ctx.thir_constructors = IdentityMap()
         for rec, init, self_type in _thir_ctors(module, self.analyzer):
             if is_bodyless_binding(init):

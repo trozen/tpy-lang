@@ -110,6 +110,7 @@ from ...typesys import (
     view_family_for_type,
 )
 from ...type_def_registry import (
+    ParamPassing,
     TypeCategory,
     enum_info_of,
     int_traits_of,
@@ -8282,11 +8283,21 @@ def _param_is_const(name: str, func: TpyFunction, analyzer,
     a codegen-side force sema's `const_borrow_params` does not record),
     minus the slices `decide_param_const` short-circuits out from under
     the force -- see `_forced_const_dropped`."""
+    return _param_is_const_at(name, func, _owning_fi(func, analyzer, record_name))
+
+def _param_is_const_at(name: str, func: TpyFunction, fi: 'FunctionInfo | None') -> bool:
+    """`_param_is_const` read off `fi`, the FunctionInfo holding `func`'s
+    param verdicts (`_owning_fi`)."""
     if (func.is_method and func.name in CONST_PARAMS_METHODS
             and name != "self"):
-        return not _forced_const_dropped(name, func, analyzer, record_name)
-    return _param_const_verdict(name, func, analyzer, record_name,
-                                "const_borrow_params")
+        return not _forced_const_dropped(name, func, fi)
+    return param_in_verdict(fi, func, name, "const_borrow_params")
+
+def param_passing(name: str, typ: TpyType, func: TpyFunction, fi: 'FunctionInfo | None') -> ParamPassing:
+    """How `func`'s parameter `name` of type `typ` is passed, its verdicts
+    read off `fi` (`_owning_fi`): the body's `THIRParam.passing` and the
+    passing every callee signature of that body publishes for it."""
+    return typ.param_passing(_param_is_const_at(name, func, fi))
 
 def _vararg_pack_is_const(name: str, func: TpyFunction) -> bool:
     """Whether `name` is a `*args` pack whose ELEMENTS are const. A pack's
@@ -8312,8 +8323,7 @@ def _ptr_pointee_is_readonly(name: str, func: TpyFunction) -> bool:
     bare = unwrap_send_sync(unwrap_ref_type(ptype))
     return is_readonly_ptr(bare)
 
-def _forced_const_dropped(name: str, func: TpyFunction, analyzer,
-                          record_name: str | None) -> bool:
+def _forced_const_dropped(name: str, func: TpyFunction, fi: 'FunctionInfo | None') -> bool:
     """The slices `decide_param_const` drops const for even when the caller
     forces it (`const_params=True`, the inplace-dunder body set) -- asked of
     the canonical decision itself rather than re-derived here. Its
@@ -8329,7 +8339,6 @@ def _forced_const_dropped(name: str, func: TpyFunction, analyzer,
     param emits non-const while a flat force would call it const."""
     ptype = next((t for n, t in func.params if n == name), None)
     idx = next((i for i, (n, _) in enumerate(func.params) if n == name), None)
-    fi = _owning_fi(func, analyzer, record_name)
     if ptype is None or idx is None or fi is None:
         return False
     return not decide_param_const(
@@ -8382,16 +8391,15 @@ def _const_borrow_name(name: str, lc, *, const_locals: bool = False) -> bool:
     return name == lc.self_receiver and _readonly_self(lc)
 
 def _readonly_self(lc) -> bool:
-    """Whether the enclosing method's receiver is const. A DECLARED-or-
-    INFERRED `@readonly` verdict lives on the method's own FunctionInfo, not
-    in the param-index sets -- `self` has no param index -- and the inferred
-    half is decided after the bodies are analyzed, so the overload set is the
-    only place that answers."""
+    """Whether the enclosing method's receiver is emitted const: the body's
+    own `is_readonly`, which sema syncs from the declared-or-inferred verdict
+    (`_sync_inferred_const`). The method NAME's overload set is the wrong
+    place to ask: an `@auto_readonly` pair registers both clones under it,
+    and a `@readonly(False)` opt-out or a `@dynamic` non-const override keeps
+    its body mutable while inference marks the FunctionInfo readonly."""
     if not lc.record_name or lc.func.is_nested_def:
         return False
-    ri = lc.analyzer.registry.get_record(lc.record_name)
-    ovs = ri.get_method_overloads(lc.func.name) if ri is not None else None
-    return bool(ovs and ovs[-1].is_readonly)
+    return bool(lc.func.is_readonly)
 
 def _own_return_const_projected(lc) -> bool:
     """Whether the enclosing method's SIGNATURE const-projects its borrowed
@@ -8574,6 +8582,13 @@ def _expr_is_const_source(src: TpyExpr, lc) -> bool:
     # rule.
     return (isinstance(src, (TpySubscript, TpyMethodCall))
             and _f1_const_rooted_source(src.obj, lc))
+
+def receiver_is_const(obj: TpyExpr, lc) -> bool:
+    """Whether a member call's receiver expression is emitted const, so C++
+    binds the const overload of an access-polymorphic callee: the const-
+    source rule every borrow alias reads (`self` by the body's own verdict,
+    a const parameter, local or field path rooted in one)."""
+    return _walrus_src_is_const(obj, lc)
 
 def _walrus_src_is_const(src: TpyExpr, lc) -> bool:
     """`const T*` for a walrus borrow-alias / pointer-Optional predecl: the

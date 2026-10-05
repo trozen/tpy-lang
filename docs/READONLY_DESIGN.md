@@ -387,8 +387,8 @@ Allowed:
 two ordinary methods during sema method expansion (`_clone_auto_readonly`
 in `tpyc/sema/method_expansion.py`):
 
-- **Mutable clone**: `is_readonly=False`, `is_alt_mutable_clone=True`,
-  return type = `strip_alt(original_return_type)`
+- **Mutable clone**: `is_readonly=False`, `is_auto_readonly_mutable_clone=True`,
+  `clone_of` = the const clone, return type = `strip_alt(original_return_type)`
 - **Const clone**: `is_readonly=True`, deep-copied body,
   return type = `apply_alt(original_return_type)`
 

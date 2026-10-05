@@ -186,7 +186,7 @@ class _Coverage:
             self.stub_call(expr)
             return
         if isinstance(expr, th.THIRMethodCall):
-            _plain(expr, {"receiver", "method_cpp", "args", "is_arrow", "resolved_callee"})
+            _plain(expr, {"receiver", "method_cpp", "args", "is_arrow", "resolved_callee", "receiver_access"})
         else:
             _plain(expr, {"callee", "args", "callee_cpp", "resolved_callee"})
         callee = expr.resolved_callee
@@ -249,6 +249,11 @@ class _Coverage:
                 actual = self.references[name]
                 _require(arg, actual.type == ref.type and (not actual.readonly or ref.readonly),
                          "call record argument mismatch")
+                # The binding's access must be the one C++ picks the overload
+                # by; a follows-receiver result is bound at it.
+                _require(arg, index != 0 or not isinstance(expr, th.THIRMethodCall)
+                         or expr.receiver_access == th.THIRBorrowedRecord(actual.type, actual.readonly),
+                         "call receiver access disagrees with its binding")
                 receiver_readonly = receiver_readonly or index == 0 and actual.readonly
         self.argument_order_rule(expr, _call_arguments(expr))
         self.calls[expr] = summary

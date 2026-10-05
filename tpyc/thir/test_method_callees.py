@@ -12,7 +12,7 @@ import pytest
 
 from ..compilation_context import activate_compiler
 from ..type_def_registry import ParamPassing
-from ..typesys import INT32, STR, NominalType, ReadonlyType, RefType, VoidType, unwrap_ref_type
+from ..typesys import INT32, STR, NominalType, OwnType, ReadonlyType, RefType, VoidType, unwrap_ref_type
 from . import nodes as th
 from .dump import dump_codegen_thir
 from .lower import iter_module_callables
@@ -20,6 +20,7 @@ from ..mir.call_contract import bound_result
 from .lower.callables import method_callee
 from .test_method_stubs import _replace_node, nodes
 from .testutil import _compile, _entry
+from . import validate as validate_module
 from .validate import THIRValidationError, validate_definitions, validate_function
 
 SOURCE = """\
@@ -791,6 +792,73 @@ def test_compiler_finds_one_body_per_role(accessors: Program) -> None:
     assert compiler.single_method_body(owner, "elems") is None
 
 
+_LIST_I32 = NominalType("list", (INT32,), _module_qname="builtins.list")
+
+
+# The one callee each role publishes: (identity, parameter types, return
+# type, borrowed result readonly or None, passings, follows receiver) --
+# literal values, so a change in any role's facts fails here.
+@pytest.mark.parametrize("fixture,role,name,expected", [
+    ("program", None, "merge", (
+        th.THIRFunctionIdentity("main", "merge", "__main__.Counter"),
+        (_counter(), RefType(_counter()), STR), VoidType(), None,
+        (ParamPassing.MUT_REF, ParamPassing.CONST_REF, ParamPassing.VIEW), False)),
+    ("accessors", None, "me", (
+        th.THIRFunctionIdentity("main", "me", "__main__.Counter"),
+        (_counter(),), RefType(_counter()), True, (ParamPassing.CONST_REF,), True)),
+    ("accessors", "fget", "count", (
+        th.THIRFunctionIdentity("main", "count", "__main__.Counter", "fget"),
+        (_counter(),), INT32, None, (ParamPassing.CONST_REF,), True)),
+    ("accessors", "fget", "elems", (
+        th.THIRFunctionIdentity("main", "elems", "__main__.Counter", "fget"),
+        (_counter(),), RefType(_LIST_I32), None, (ParamPassing.CONST_REF,), True)),
+    ("accessors", "fset", "elems", (
+        th.THIRFunctionIdentity("main", "elems", "__main__.Counter", "fset"),
+        (_counter(), OwnType(_LIST_I32)), VoidType(), None, (ParamPassing.MUT_REF, ParamPassing.OWN), False)),
+    ("accessors", "fset", "label", (
+        th.THIRFunctionIdentity("main", "label", "__main__.Counter", "fset"),
+        (_counter(), STR), VoidType(), None, (ParamPassing.MUT_REF, ParamPassing.VIEW), False)),
+])
+def test_one_callee_path_serves_every_role(request: pytest.FixtureRequest, fixture: str, role: str | None,
+                                           name: str, expected: tuple) -> None:
+    program: Program = request.getfixturevalue(fixture)
+    info = program.entry.analyzer.registry.get_record("Counter")
+    prop = info.properties.get(name)
+    fis = (info.get_method_overloads(name) if role is None
+           else [prop.getter if role == "fget" else prop.setter])
+    receiver = _counter()
+    with activate_compiler(program.compiler):
+        # Every FunctionInfo sema may bind for the role (both clones of a
+        # twin) publishes the one callee.
+        callees = {method_callee(fi, receiver, program.entry.analyzer, arity=len(fi.params)) for fi in fis}
+    callee, = callees
+    signature = callee.signature
+    result = signature.borrowed_result
+    assert (callee.identity, signature.param_types, signature.return_type,
+            None if result is None else result.readonly, signature.passings,
+            signature.result_follows_receiver) == expected
+    definitions = [fn for fn in program.functions[("Counter", name)]
+                   if fn.resolved_callee is not None and fn.resolved_callee.identity.accessor == role]
+    assert definitions and all(fn.resolved_callee == callee for fn in definitions)
+
+
+def test_sema_links_each_mutable_clone_to_its_const_clone(accessors: Program) -> None:
+    record = next(r for r in accessors.entry.ast.records if r.name == "Counter")
+    links = {(m.name, m.auto_readonly_polarity, m.is_property_setter): m.clone_of for m in record.methods}
+    bodies = accessors.compiler.method_bodies
+    for name in ("elems", "me", "frozen", "via", "pick"):
+        mutable, const = (b for b in bodies[("__main__.Counter", name)] if not b.is_property_setter)
+        assert mutable.clone_of is const and const.clone_of is None
+    # A value getter's pruned mutable clone keeps its link in the body table.
+    count_mutable, count_const = (b for b in bodies[("__main__.Counter", "count")] if b.is_property_getter)
+    assert count_mutable.clone_of is count_const
+    assert links[("elems", None, True)] is None  # a setter is no clone
+    assert all(m.clone_of is None for m in record.methods if m.auto_readonly_polarity != "strip")
+    # The clones that take `other` at two accesses stay linked; the body
+    # lookup refuses them on their differing signatures.
+    assert accessors.compiler.callable_body("__main__.Counter", "pick", None) is None
+
+
 @pytest.mark.parametrize("record,name,member", [
     ("Plain", "__eq__", None),          # explicit dunder call: an operator template
     ("Plain", "generic", "generic"),    # generic method
@@ -963,6 +1031,31 @@ def test_validator_holds_the_twin_to_its_definition(accessors: Program) -> None:
         validate_definitions((replace(mutable, resolved_callee=other), const))
 
 
+def test_the_codegen_pass_checks_a_modules_definitions_together(monkeypatch: pytest.MonkeyPatch) -> None:
+    # THIR enforces its own invariant: no MIR analysis runs here.
+    checked: list[tuple[th.THIRFunction, ...]] = []
+    real = validate_module.validate_definitions
+
+    def spy(functions: tuple[th.THIRFunction, ...]) -> None:
+        checked.append(tuple(functions))
+        real(functions)
+
+    monkeypatch.setattr(validate_module, "validate_definitions", spy)
+    program = Program(ACCESSORS)
+    ctx = program.compiler.collect_thir(program.entry, tolerate_reject=True)
+    bodies = tuple(ctx.thir_functions.values())
+    assert any(len(group) == len(bodies) and all(a is b for a, b in zip(group, bodies)) for group in checked)
+
+    def duplicated(functions: tuple[th.THIRFunction, ...]) -> None:
+        # The twin, unmarked, claims the definition's identity a second time.
+        twins = [replace(fn, access_twin=False) for fn in functions if fn.access_twin]
+        real((*functions, *twins[:1]))
+
+    monkeypatch.setattr(validate_module, "validate_definitions", duplicated)
+    with pytest.raises(THIRValidationError, match="two bodies define one callee identity"):
+        program.compiler.collect_thir(program.entry, tolerate_reject=True)
+
+
 def test_validator_rejects_a_definition_whose_passings_differ_from_its_parameters(accessors: Program) -> None:
     setter, = _roles(accessors, "rec")["fset"]
     validate_function(setter)
@@ -990,3 +1083,153 @@ def test_dump_names_the_accessor_and_the_follows_receiver_bit(accessors: Program
     assert "callee __main__.Counter.count.fset(Counter: mut_ref, int32: value) -> reference" in out
     # Both clones of a twin print the one callable.
     assert out.count("  signature __main__.Counter(Counter: const_ref) -> reference, follows receiver") >= 6
+
+
+# --- the receiver access a call is emitted at --------------------------------
+
+RECEIVERS = """\
+from tpy import int32, readonly, auto_readonly
+
+class Bag:
+    xs: list[int32]
+    def __init__(self) -> None:
+        self.xs = []
+    @auto_readonly
+    def items(self) -> list[int32]:
+        return self.xs
+    def push(self, v: int32) -> None:
+        self.xs.append(v)
+    @auto_readonly
+    def again(self) -> list[int32]:
+        return self.items()
+    @auto_readonly
+    def total(self) -> int32:
+        t = 0
+        for x in self.items():
+            t += x
+        return t
+
+class Holder:
+    bag: Bag
+    def __init__(self) -> None:
+        self.bag = Bag()
+    @auto_readonly
+    def through(self) -> int32:
+        t = 0
+        for x in self.bag.items():
+            t += x
+        return t
+
+def const_alias(b: readonly[Bag]) -> int32:
+    c = b
+    t = 0
+    for x in c.items():
+        t += x
+    return t
+
+def loop_var(bs: readonly[list[Bag]]) -> int32:
+    t = 0
+    for b in bs:
+        for x in b.items():
+            t += x
+    return t
+
+def mutable(b: Bag) -> int32:
+    b.push(1)
+    t = 0
+    for x in b.items():
+        t += x
+    return t
+
+def declared(b: readonly[Bag]) -> int32:
+    t = 0
+    for x in b.items():
+        t += x
+    return t
+
+def inferred(b: Bag) -> int32:
+    t = 0
+    for x in b.items():
+        t += x
+    return t
+"""
+
+
+@pytest.fixture(scope="module")
+def receivers() -> Program:
+    return Program(RECEIVERS)
+
+
+@pytest.mark.parametrize("name,readonly", [
+    ("mutable", False),    # Bag& b: the mutable overload
+    ("declared", True),    # const Bag& b, from readonly[Bag]
+    ("inferred", True),    # const Bag& b, from the inferred verdict: the static type stays mutable
+])
+def test_a_call_carries_the_access_its_receiver_is_emitted_at(receivers: Program, name: str,
+                                                              readonly: bool) -> None:
+    fn = receivers.fn(None, name)
+    calls = nodes(fn, th.THIRMethodCall)
+    assert calls and all(c.receiver_access == th.THIRBorrowedRecord(c.resolved_callee.signature.param_types[0],
+                                                                     readonly if c.method_cpp == "items" else False)
+                         for c in calls)
+    # The loop over the follows-receiver result walks it at that access.
+    loop, = nodes(fn, th.THIRForEach)
+    assert loop.iteration.source.readonly is readonly
+
+
+def test_a_self_receiver_has_the_access_of_its_clone(receivers: Program) -> None:
+    mutable, const = receivers.functions[("Bag", "again")]
+    assert mutable.access_twin and not const.access_twin
+    for fn, readonly in ((mutable, False), (const, True)):
+        call, = nodes(fn, th.THIRMethodCall)
+        assert call.receiver_access.readonly is readonly
+
+
+@pytest.mark.parametrize("owner,name", [("Bag", "total"), ("Holder", "through")])
+def test_a_loop_in_each_clone_walks_at_its_clone_access(receivers: Program, owner: str, name: str) -> None:
+    # `self.items()` and the field path `self.bag.items()`: the mutable clone
+    # binds the mutable overload, the const clone the const one.
+    mutable, const = receivers.functions[(owner, name)]
+    for fn, readonly in ((mutable, False), (const, True)):
+        call, = nodes(fn, th.THIRMethodCall)
+        assert call.receiver_access.readonly is readonly
+        loop, = nodes(fn, th.THIRForEach)
+        assert loop.iteration.source.readonly is readonly
+
+
+def test_a_const_local_alias_receiver_is_readonly(receivers: Program) -> None:
+    # A local alias of a readonly parameter is emitted const; the loop over
+    # the follows-receiver result walks it at that access.
+    fn = receivers.fn(None, "const_alias")
+    call, = nodes(fn, th.THIRMethodCall)
+    assert call.receiver_access.readonly is True
+    loop, = nodes(fn, th.THIRForEach)
+    assert loop.iteration.source.readonly is True
+
+
+def test_a_const_loop_variable_receiver_is_readonly(receivers: Program) -> None:
+    fn = receivers.fn(None, "loop_var")
+    call, = nodes(fn, th.THIRMethodCall)
+    assert call.receiver_access.readonly is True
+    # The inner loop walks the call result; the outer one, over the readonly
+    # list parameter, carries no native iteration fact.
+    facts = [loop.iteration for loop in nodes(fn, th.THIRForEach) if loop.iteration is not None]
+    assert facts and all(fact.source.readonly for fact in facts)
+
+
+def test_validator_holds_the_receiver_access_to_the_receiver(receivers: Program) -> None:
+    fn = receivers.fn(None, "declared")
+    validate_function(fn)
+    call, = nodes(fn, th.THIRMethodCall)
+    access = call.receiver_access
+    with pytest.raises(THIRValidationError, match="receiver access disagrees with the receiver"):
+        # A readonly[Bag] receiver is never emitted mutable.
+        validate_function(_replace_node(fn, call, replace(call, receiver_access=replace(access, readonly=False))))
+    with pytest.raises(THIRValidationError, match="receiver access disagrees with the receiver"):
+        validate_function(_replace_node(fn, call, replace(call, receiver_access=replace(access, type=INT32))))
+    with pytest.raises(THIRValidationError, match="receiver access needs exactly a resolved callee"):
+        validate_function(_replace_node(fn, call, replace(call, receiver_access=None)))
+    writer = receivers.fn(None, "mutable")
+    push = next(c for c in nodes(writer, th.THIRMethodCall) if c.method_cpp == "push")
+    with pytest.raises(THIRValidationError, match="receiver access needs exactly a resolved callee"):
+        validate_function(_replace_node(writer, push, replace(push, resolved_callee=None)))

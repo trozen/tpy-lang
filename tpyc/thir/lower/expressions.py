@@ -241,6 +241,7 @@ from ..nodes import (
 from ...codegen_cpp.forms import (is_plain_nonvalue, is_ptr_variant_union,
                                   reads_storage_form_optional)
 from .predicates import (
+    receiver_is_const,
     _value_record_slot,
     _poly_narrow_info,
     _owned_viewfam_slot,
@@ -10823,7 +10824,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                            and _witness("method.consuming_move")),
             form=_viewfam_result_form(m_str),
             loc=loc,
-        )), fi), fi, analyzer)
+        )), fi), fi, analyzer, lambda: receiver_is_const(e.obj, lc))
         if (fi.native_cpp_return_type is not None
                 and fi.return_type is not None
                 and fi.error_return_type is None):

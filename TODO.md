@@ -1834,13 +1834,26 @@ alongside related feature work; only the big-rock deferrals live here.
     first): a setter's record parameter is never `const T&` however the
     body uses it, and the getter FunctionInfo's return type lacks the
     `Ref` wrapper its body has. THIR reads the body's own passings
-    (`callables._accessor_passings`), so MIR agrees with the emitted C++;
-    the gap is in sema.
+    (`predicates.param_passing`, the helper `THIRParam.passing` reads),
+    so MIR agrees with the emitted C++; the gap is in sema.
   - Record and container setter parameters: a record setter parameter
     expands to `Own[R]` and refuses as a free function's `Own[R]`
     parameter does ("unsupported parameter type", `Holder.part`); a
     container setter refuses at the field it replaces ("container field
     replacement is unsupported").
+  - Receiver access from the lowered receiver: `THIRMethodCall.receiver_access`
+    is rebuilt from the AST const-source rule (`predicates.receiver_is_const`)
+    where the lowered receiver's binding (`THIRParam.borrowed_record`, a
+    local's decl) plus its field path already carries the emitted access;
+    MIR's "call receiver access disagrees with its binding" compare covers a
+    named receiver only (a field path, call result or ternary receiver is
+    unchecked), and the validator only the never-wider direction. Derive the
+    fact from the binding, pin a deeper field path. With it:
+    `TpyFunction.is_auto_readonly_mutable_clone` derived from `clone_of` (the
+    two record one fact; about 12 sema readers plus the FunctionInfo copy),
+    and pins for the `@readonly(False)` opt-out and the `@dynamic` non-const
+    override shapes `_readonly_self` now answers from the body's own verdict
+    (no case exercises them).
   - Order-sensitive eager operands: a user call used as a container place
     refuses whenever the callee writes ("order-sensitive eager operands",
     `mir/lower.py` `call_container`; `iterate_grab` in
@@ -1849,23 +1862,6 @@ alongside related feature work; only the big-rock deferrals live here.
     such an operand evaluated before the call is at risk: refuse that shape
     alone and admit a writing call iterated or read whole (`for x in
     b.grab()`).
-  - Accessor callee path unification (NEXT unit, decided 2026-10-03): the for-loop
-    arm decides a follows-receiver container result's constness by probing
-    the receiver's parse node (`_iteration_yields_const`,
-    `thir/lower/statements.py`) where a per-call access fact on
-    `THIRMethodCall` would carry it; `callables._accessor_callee` is a
-    second callee path beside `method_callee`'s ordinary one (its own
-    `_declares`-like checks and passing source); and accessor passings are
-    read from the registry verdict (`_accessor_passings`) rather than from
-    the defining body's own `THIRParam`s. One callee path reading the
-    defining body would remove all three. Two more facts belong to the same
-    unit: the clone PAIR relation is re-derived twice (`Compiler.callable_body`
-    by polarity, location, params and return type; `callables.method_definition`
-    by polarity and location) where `sema/method_expansion._clone_auto_readonly`
-    decides it and could tag the two `TpyFunction`s once; and
-    `thir/validate.validate_definitions` (one definition and at most one twin
-    per identity) runs from `mir/collect.call_definitions`, its home being a
-    THIR module-level pass that does not exist yet.
   - Method receivers beyond a name or `self` -- a field (`o.inner.bump()`),
     a call result (`pick(g).read()`), a temporary (`Gauge(k).read()`), an
     element (`gs[0].bump()`), and a getter read through one
@@ -3536,7 +3532,7 @@ See `docs/STDLIB_ROADMAP.md` for the per-module tracker (status, priority, items
 - **Effect graph for cleanup bodies.** A Ctrl-C check point inside `__del__`, `__move__`, the `std::hash` wrapper or an abandoned frame's cleanup now defers (a `::tpy::DeferSignals` scope, emitted unless the body-local `FunctionInfo.may_interrupt` allowlist walk in `sema/may_interrupt.py` finds the body inert). Next: a per-body callee inventory (separate from the mutation edges) carrying `may_interrupt` precision, so a cleanup body calling an inert TPy helper (or hashing a record whose `__hash__` is inert, e.g. `hash((self.a, self.b))` over records) emits no scope (the `std::hash` wrapper is where it matters: an inline thread-local costs two `__tls_get_addr` calls per bump in a `-fPIC` extension build, one `fs`-relative add in an executable), and a reachable-explicit-raise warning for `__del__` / `__hash__` (an exception escaping them is fatal by the fail-fast rule); the full nothrow fact stays with MIR's `exceptional_exits` once stubs carry nothrow annotations. Rejected shapes, for the record: catch-and-repost (the frame cleanup would skip its outer `finally` / `__exit__` actions, and a half-moved object or a wrong hash cannot be returned) and a per-body static omission without deferral (a helper called from the body still raises). Still documented as a limitation: a blocking wait inside such a body does not end on a Ctrl-C (an `asyncio.run` started there declines SIGINT ownership, so it completes and the Ctrl-C follows after the body).
 - **One expression visitor: move the hand-rolled `children()` walks onto `parse.nodes.walk_expr_tree`.** The pruning pre-order visitor (`visit` answers whether to descend) landed with the inert-body walk (`sema/may_interrupt.py`, 2026-10-02); eighteen other walks each carry their own `children()` loop or stack and are marked with a `TODO` comment naming it: `parse/nodes.py` (`collect_name_refs`, `expr_reads_self_field`, `expr_contains_self_method_call`, the suspension scan, `read_names`, the walrus collector), `prescan.py` (two), `sema/analyzer.py`, `alias_rebind.py`, `builder_trace.py`, `expressions.py`, `flow_facts.py` (two), `loop_frames.py`, `match.py`, `narrowing.py`, `statements.py`. A mechanical sweep, one site at a time, each kept behaviour-identical (the `TpyLambda.children() == []` scope boundary and the `into_lambdas` opt-in must survive); drop the comments as the sites move.
 - **A `...` method of a `native_module` class is not a bodyless binding to `is_bodyless_binding`.** The parser leaves `is_stub` False on a `...` method that carries no `@native` of its own inside a `# tpy: native_module` class (the builtin exception initializers), so `typesys.is_bodyless_binding` answers False for it; `sema/may_interrupt.py` works around it by asking the callee's module for `is_native_module`. Fix at the predicate (or set `is_stub` in the parser), then drop the workaround; MIR's `collect.py` and THIR read the same predicate, so run the suite for verdict changes.
-- **One owning-FunctionInfo lookup for a `TpyFunction`.** Four sites find the registry entry of a callable by name with different overload policies: `thir/lower/predicates.py` `_owning_fi` and `codegen_cpp/gen_async.py` `_frame_deep_const_verdict` take `[-1]`, `thir/lower/callables.py` `resolved_definition` requires exactly one entry and checks `fi.root.declaration is func`, and `gen_async.py` `_frame_fi` (the `DeferSignals` fact of a frame) requires exactly one with the identity check. One identity-checked helper; the `[-1]` sites change which overload a THIR verdict picks (BUGS.md#frame-const-verdict-last-overload), so merge them with the suite.
+- **One owning-FunctionInfo lookup for a `TpyFunction`.** Four sites find the registry entry of a callable by name with different overload policies: `thir/lower/predicates.py` `_owning_fi` and `codegen_cpp/gen_async.py` `_frame_deep_const_verdict` take `[-1]`, `thir/lower/callables.py` `resolved_definition` requires exactly one entry and checks `fi.root.declaration is func`, and `gen_async.py` `_frame_fi` (the `DeferSignals` fact of a frame) requires exactly one with the identity check. One identity-checked helper; the `[-1]` sites change which overload a THIR verdict picks (BUGS.md#frame-const-verdict-last-overload), so merge them with the suite. Two more readers of the `[-1]` policy: `predicates.param_passing` (every `THIRParam.passing` and every callee signature `method_callee` publishes, through `record_method_fi` / `_owning_fi`; equal to the resolved FunctionInfo's own verdict today only because `method_callee` admits single bodies and clone pairs) and `_param_is_deep_const` (the tuple layout's verdict, still read through `_param_const_verdict` beside the per-parameter verdict the THIRParam builders compute once).
 - **Ctrl-C in a pure CPU loop stays pending (chunked loop polling).** A loop with no interruptible operation never consumes a Ctrl-C; the second Ctrl-C terminates the process like an unhandled SIGINT (no `finally`, no `KeyboardInterrupt`). CPython checks for signals at bytecode boundaries. A per-iteration flag check was measured at 2.5x on a vectorizable loop under clang, so any fix must poll in chunks (every N iterations, or only in loops that already contain calls) and keep vectorized loops untouched. Surfaced building synchronous SIGINT delivery.
 - **Uncaught exceptions skip the destructors of frames with no handler (top-level catch in generated `main()`).** With no matching handler the Itanium ABI calls `std::terminate` without unwinding, so an uncaught exception -- including a Ctrl-C's `KeyboardInterrupt`, which now reports `KeyboardInterrupt` and dies by SIGINT -- runs no C++ destructors (`__del__`, RAII guards, unflushed buffered files) of frames between the throw and `main`; `finally` / `with` / `except` clauses still run because they are handlers. A `try`/`catch` in generated `main()` that rethrows into the terminate handler would unwind first, but it changes when and in which order every uncaught exception's side effects appear, so decide it on its own. Surfaced building synchronous SIGINT delivery.
 - **Ctrl-C is not delivered inside some blocking waits.** The SIGINT handler uses `SA_RESTART`, so a wait that does not also watch the layer's wake fd sleeps through a Ctrl-C and delivers it at the next check point. Done: sockets, `JoinHandle.join()`, and (2026-10-02) `subprocess.Popen` -- `wait()` and the pipes it creates; the rule is that the owner of a blocking resource composes the wait through `lib/tpy/_interrupt.py`, and the raw `os` calls stay plain system calls (`BUGS.md#sigint-sa-restart-blocking-calls`). Open, each its own unit: (1) `tpy.sync` `Mutex` / `RwLock` locks and `Condvar.wait` (std::mutex / std::condition_variable; fix shape: timed slices like `JoinHandle.join()`, entered only once a lock attempt actually blocks so an uncontended lock stays a plain lock); (2) `socket.makefile()` readers (the bodies `http.client` / `urlopen` read): a socket-specific raw reader over the socket's own interruptible receive and its live timeout -- CPython's `SocketIO` -- in place of the `FileIO` over a dup'd fd with `SO_RCVTIMEO`; (3) `open()` file objects on a FIFO, pipe or tty (`std::fstream` has no portable fd to wait on) and a blocking `os.open` of a FIFO; (4) TLS sockets (`ssl`, whose mbedTLS bio does blocking `read`/`write`), `getaddrinfo` (DNS), `fsync`-style calls; (5) the polling fallback of `Popen.wait()` (no pidfd: macOS) notices the exit up to 50 ms late -- a kqueue `EVFILT_PROC` wait would make it exact. Dropping `SA_RESTART` runtime-wide is the global alternative and needs every native call without an EINTR loop audited first. Surfaced building synchronous SIGINT delivery.

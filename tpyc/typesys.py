@@ -7041,6 +7041,13 @@ class RecordInfo:
         return f"{self.module or '__main__'}.{self.name}"
 
 
+def accessor_role(fn: "FunctionInfo | TpyFunction") -> str | None:
+    """The callable role a record body or its FunctionInfo plays: "fget" /
+    "fset" for a property's getter / setter (Python's names for the two
+    callables), None for a method."""
+    return "fget" if fn.is_property_getter else "fset" if fn.is_property_setter else None
+
+
 def mark_overload_group(infos: list["FunctionInfo"]) -> None:
     """Stamp `FunctionInfo.overloaded` on every member of a group that binds
     more than one signature under one name."""

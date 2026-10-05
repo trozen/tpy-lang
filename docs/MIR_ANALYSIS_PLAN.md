@@ -2098,12 +2098,15 @@ as the corpus grows).
 - **Call rule.** `MIRCallSummary.parameters` are `MIRParameterBinding(type,
   passing, readonly, borrowed_record)`; an unpublished passing fails
   closed, and the caller cross-checks `THIRCallableSignature.passings`
-  against them. Both passings read `TpyType.param_passing` at a const
-  verdict: a resolved signature's from `fi.const_borrow_params` (a stub's
-  from its declaration, `_stub_param_consts`), a definition's
-  `THIRParam.passing` from `_param_is_const`; the validator
-  (`call_contract.summary_problem`, and the caller's check at lowering)
-  enforces that the two agree. An owned-leaf
+  against them. Both passings come from one helper,
+  `predicates.param_passing`, over the FunctionInfo that holds the body's
+  const verdicts: the definition's `THIRParam.passing` and the signature
+  every call publishes for it (a stub's from its declaration,
+  `_stub_param_consts`); the validator (`call_contract.summary_problem`,
+  and the caller's check at lowering) enforces that the two agree. A
+  callable whose FunctionInfo carries no const verdict passes not-const on
+  both sides, and an accessor or twin named like an in-place dunder takes
+  the forced-const rule a method does. An owned-leaf
   argument at CONST_REF / VIEW passing is lent for the call (a borrow of a
   name, a global handle, a static literal or an admitted temporary); at
   VALUE / OWN it is copied. A user callee's owned-leaf result is fresh
@@ -2758,7 +2761,14 @@ validator) and `tpyc/mir/test_return_origins.py` (MIR).
   derived where it is read (`call_contract.bound_result`): MIR binds the
   result at the receiver ARGUMENT's binding (`MIRCallSummary.result_at`),
   so an inferred-const receiver binds a readonly result although its
-  static type is mutable. `twin_mutable` (`d = c.me(); d.count = 7` writes
+  static type is mutable. The call arm records the access its receiver is
+  emitted at (`THIRMethodCall.receiver_access`, set exactly with
+  `resolved_callee`; `self` at its own body's verdict, so the mutable
+  clone's `self` is mutable); the for-loop arm reads it for a
+  follows-receiver container result, MIR refuses a call whose receiver
+  binding disagrees with it ("call receiver access disagrees with its
+  binding"), and the validator never lets it be mutable where the
+  receiver's static type is readonly. `twin_mutable` (`d = c.me(); d.count = 7` writes
   through a mutable result) and `twin_readonly` are certified; a setter
   is no twin (its receiver passes at the setter's own readonly verdict).
 - **Both clones publish.** Both clone bodies of a pair carry the same
@@ -2766,7 +2776,9 @@ validator) and `tpyc/mir/test_return_origins.py` (MIR).
   its own receiver fact; the mutable clone also carries
   `THIRFunction.access_twin`. The THIR validator admits at most one
   definition and one twin per identity, the twin's callee equal to the
-  definition's, follows-receiver, on a mutable receiver. The call
+  definition's, follows-receiver, on a mutable receiver -- checked over a
+  module's bodies together by `validate_definitions` in the codegen pass,
+  once every function body is lowered. The call
   workspace takes the const clone as the definition
   (`MIRCallWorkspace.definitions`), keeps the twin in
   `MIRCallWorkspace.twins`, and summarizes the twin too, its receiver
@@ -2782,18 +2794,26 @@ validator) and `tpyc/mir/test_return_origins.py` (MIR).
 - **Body lookup.** `Compiler.callable_body(owner, name, accessor)` sits
   beside `Compiler.single_method_body(owner, name)`, both over
   `Compiler.method_bodies`. `callable_body` filters the entries by role
-  (method, getter, setter), collapses an actual clone pair (the `strip`
-  and `apply` clones of one def, same location, parameters and return)
-  to its `apply` clone, and returns None for anything else: an overload
-  or `@dispatch` group, a pair whose clones differ, a method and a
-  property sharing the name. `single_method_body` keeps its stricter
+  (method, getter, setter: `typesys.accessor_role`), collapses a clone
+  pair -- sema links the mutable clone to the const clone where it makes
+  them (`TpyFunction.clone_of`), and the pair counts only when the two
+  bind the same parameters and return -- to its const clone, and returns
+  None for anything else: an overload or `@dispatch` group, a pair whose
+  clones differ (`pick(self, other: Counter)` takes `other` at two
+  accesses), a method and a property sharing the name.
+  `callables.method_callee` is the one builder for every role: the
+  defining body from `callable_body`, the declaration check `_declares`
+  by role, the receiver at that body's access, and
+  `callables.method_definition` publishes the same value from the body
+  (the twin by `clone_of`). `single_method_body` keeps its stricter
   rule -- one body or None -- because sema's with-exit check
   (`sema/loop_frames.py`) reads the body it returns and falls back to the
   call's declared write facts when there are several; collapsing a pair
   there would change which diagnostics fire.
 - **Setter passings.** Sema pops accessor FunctionInfos from the method
   table before const inference, so they carry no `const_borrow_params`;
-  the callee publishes each declared parameter by the body's own rule,
+  the callee publishes each declared parameter by the one helper the
+  body's own `THIRParam.passing` reads (`predicates.param_passing`):
   `param_passing(False)` of its expanded type, and the validator checks
   the definition's passings against the body's `THIRParam.passing`. An
   `int32` value passes VALUE, `str` VIEW, `Own[str]` VALUE, a record,

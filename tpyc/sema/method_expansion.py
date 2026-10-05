@@ -318,6 +318,7 @@ def _clone_auto_readonly(method: TpyFunction) -> list[TpyFunction]:
         defaults=copy.deepcopy(method.defaults),
         self_annotation=None,
     )
+    mutable.clone_of = const
     return [mutable, const]
 
 
