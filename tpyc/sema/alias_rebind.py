@@ -631,7 +631,8 @@ class _Replay:
         hold a loan where the next pass starts."""
         if back is None:
             return
-        body = loop_bindings_of(self.ctx.loop_bindings, loop).body
+        body = loop_bindings_of(self.ctx.loop_bindings, loop,
+                                self.ctx.write_summaries).body
         held = {h for h, loans in back.loans.items()
                 if loans and h in self.frames and h in body}
         # One whose borrows cannot be traced holds no loan to see; it is

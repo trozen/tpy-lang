@@ -165,7 +165,10 @@ Unproven optional access emits:
     non-null, value range) is dropped when the body may write the name --
     the back-edge can re-enter the body after the fact was invalidated, so
     single-pass analysis must not assume it (`prescan.collect_fact_kills`
-    + `InitTracker.apply_fact_kills`)
+    + `InitTracker.apply_fact_kills`). A name is written by a whole-name
+    store, a `for` / `with` / walrus / unpack target, a handler `as` name,
+    a `match` capture, a `global` name, or a `nonlocal` / `global` name
+    of a def defined in the body
   - targeted loop stress tests covering reassignment, `continue`, `break`, nested merges, and short-circuit conditions
 - Rule:
   - treat loop body facts as iteration-local unless re-proven by current iteration condition.
@@ -184,7 +187,49 @@ where a fact may have died on some path:
   the statement, minus whatever the finally body itself killed.
 - Call sites: once a nonlocal-writing closure has been defined, every
   subsequent call kills facts for its nonlocal targets (any call may
-  invoke the closure).
+  invoke the closure). The same holds at a meet: a loop body, try body,
+  handler or `else` that holds a call (a hidden one -- `__call__`, a
+  property setter, a `__getattr__` fallback -- included) applies the
+  call kill at loop, handler and finally entry, so a closure defined
+  BEFORE the loop or `try` is covered too. A body without a call keeps
+  the facts (`print(...)` is a call).
+- Closure writes through captures: a nested def that stores through a
+  captured object (`t.v = None`, `del t.f`, `xs.append(..)`,
+  `t.xs[i] = ..`) needs no `nonlocal`, so its writes are exported in the
+  enclosing scope's names (`prescan.closure_exports`): field paths and
+  receivers (method-call receivers, subscript-store roots, call
+  arguments). A key rooted at a name the def declares `nonlocal` /
+  `global`, or reads without binding, is the enclosing scope's own
+  spelling. A key rooted at the def's parameter or local is mapped
+  through the def's own may-hold relation, keeping the projection
+  (`u = t.inner; u.v = None` exports `t.inner.v`, not `t.v`), and only
+  places rooted at a free name are exported: a parameter shadowing an
+  outer name exports nothing. Past a guard of that relation every free
+  name is exported as a receiver. A lambda created in the def counts as
+  the def's. Method-call receivers and call arguments are exported
+  syntactically, whatever the callee: `@readonly` stops writes through
+  `self` only, so a readonly method may still write storage a pointer
+  field of its receiver reaches, and a direct call kills beneath its
+  receiver the same way. A later call therefore kills the facts beneath
+  them even when the callee turns out not to write; re-narrow after the
+  call, or read the field into a local before the closure is defined.
+  Answering from the callee's effect is a Phase-2 refinement (TODO.md
+  "Pre-scan write views: the leftovers" (k)). Every call after the def
+  kills through the exports (a
+  receiver: the facts beneath it and its len-derived ranges, not its own
+  narrowing; a path: what lies beneath the slot, and the slot's own fact
+  unless every store of it keeps it non-None -- the verdict is decided
+  at the def site over the analysed stores, exactly as a meet decides it
+  for a field store in its block, so `o.name = "b"` keeps `o.name`
+  narrowed and `o.name = None` kills it), a call in a narrowing condition
+  drops the facts they reach, and a def defined inside a loop or `try`
+  body adds them to the meet's kill-set. The meet kills BEFORE the
+  body's first statement, so a narrowed non-arithmetic Optional read
+  anywhere in a loop, `try` or handler body that holds a call is a
+  compile error once a closure defined earlier rebinds or writes it --
+  a read before the body's first call too, and even when the closure
+  runs only after the loop; re-narrow at the top of the body or bind
+  the value to a local before the loop.
 - Aliases: a field store, a mutating call and a call argument consult the
   pre-scan's order-free may-hold relation (`prescan.InPlaceWrites`), which
   records which names and field paths each name may hold through any
@@ -230,14 +275,17 @@ where a fact may have died on some path:
   (`BUGS.md#pointer-structure-aliases-unmodelled`), and a local linked
   into one and mutated through the owner
   (`BUGS.md#mutating-call-walk-keeps-linked-local-fact`); parameters
-  passed the same object, a pointer-typed root, and a store inside a
-  nested def through an alias bound in the outer body
-  (`BUGS.md#may-hold-relation-unmodelled-shapes`); a call result, a
+  passed the same object, a pointer-typed root, and a narrowing and a
+  store both inside a nested def, the store through an alias bound in
+  the outer body (`BUGS.md#may-hold-relation-unmodelled-shapes`); a
+  nested def calling a sibling closure that writes a capture
+  (`BUGS.md#sibling-closure-writes-unseen`); a lazy iterator stepped by
+  a `for`, which runs a closure without a call
+  (`BUGS.md#lazy-iterator-runs-closure-uncounted`); a call result, a
   `@property` result, a `with ... as` target, a subscript or an
   iteration variable as an origin (a name bound from one holds only
   itself: `BUGS.md#borrowed-origin-not-related-to-source`,
-  `BUGS.md#subscript-element-not-keyed`); a closure mutating a capture
-  (`BUGS.md#closure-capture-mutation-invisible-to-kills`); a property
+  `BUGS.md#subscript-element-not-keyed`); a property
   setter, a destructor or a user `__iadd__` run by a store
   (`BUGS.md#property-setter-sibling-write-invisible-to-loop-kill-set`,
   `BUGS.md#field-store-destructor-skips-fact-kill`,

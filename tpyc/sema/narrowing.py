@@ -5,7 +5,8 @@ Centralizes type narrowing (Optional + Union) and fact invalidation on writes.
 """
 
 from __future__ import annotations
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
+from itertools import chain
 from typing import TYPE_CHECKING
 
 from ..typesys import (
@@ -571,28 +572,60 @@ class NarrowingTracker:
         `if GO is not None and clear():` where clear() rebinds GO. Any
         fact rooted at a closure-written name or a rebindable value-type
         global is dropped when a call shares the condition, conservatively
-        covering both operand orderings (mirrors the call-site kill).
+        covering both operand orderings (mirrors the call-site kill), as is
+        one a closure's write through captured storage reaches.
         """
         t, f = pair
         if not t and not f:
             return pair
         func = self.ctx.func
         check_globals = self._module_has_rebindable_globals()
-        if not func.closure_written_names and not check_globals:
+        paths = func.closure_mutated_paths
+        written = func.closure_mutated_receivers | paths.keys()
+        if (not func.closure_written_names and not written
+                and not check_globals):
             return pair
         if not self._condition_contains_call(condition):
             return pair
+        rel = func.in_place_writes
 
-        def stable(key: str) -> bool:
+        def reached_in(facts) -> set[str]:
+            out: set[str] = set()
+            for key in func.closure_mutated_receivers:
+                out |= rel.affected_facts(key, facts, own=False,
+                                          is_copy=self.holds_copy)
+            typed = isinstance(facts, dict)
+            for key, keeps in paths.items():
+                # A pointer null-fact set has no type to compare `keeps`
+                # with: every store may null it.
+                out |= self.narrowing_kills(
+                    key, facts, own=True, keeps=keeps if typed else None,
+                    facts=facts if typed else None)
+            return out
+
+        reached_t = reached_in(t) if written else set()
+        reached_f = reached_in(f) if written else set()
+
+        def stable(key: str, reached: set[str]) -> bool:
+            if key in reached:
+                return False
             root = key.split(".")[0]
             if root in func.closure_written_names:
                 return False
             return not (check_globals and self._is_rebindable_global(root))
 
+        def len_stable(v: object) -> bool:
+            hi = getattr(v, "hi_len_of", None)
+            return hi is None or not any(
+                hi == w or rel.may_share(hi, w) for w in written)
+
         if isinstance(t, dict):
-            return ({k: v for k, v in t.items() if stable(k)},
-                    {k: v for k, v in f.items() if stable(k)})
-        return {k for k in t if stable(k)}, {k for k in f if stable(k)}
+            return ({k: v for k, v in t.items()
+                     if stable(k, reached_t) and len_stable(v)},
+                    {k: v for k, v in f.items()
+                     if stable(k, reached_f) and len_stable(v)})
+        return ({k for k in t if stable(k, reached_t)},
+                {k for k in f if stable(k, reached_f)})
 
     def _ptr_null_facts(
         self, expr: TpyExpr,
@@ -1038,18 +1071,21 @@ class NarrowingTracker:
         return keeps
 
     def narrowing_kills(self, key: str, keys: Iterable[str], *, own: bool,
-                        keeps: TpyType | None = None) -> set[str]:
+                        keeps: TpyType | None = None,
+                        facts: Mapping[str, TpyType] | None = None
+                        ) -> set[str]:
         """The narrowing facts among `keys` a write at `key` falsifies under
         every spelling of it (`InPlaceWrites.affected_facts`). A store that
         cannot write None (`keeps`: the slot's non-None type) leaves a fact
-        on the slot saying exactly that, and kills what lay beneath it."""
+        on the slot saying exactly that, and kills what lay beneath it.
+        `facts` types the keys (default: the live narrowed types)."""
         rel = self.ctx.func.in_place_writes
         hit = rel.affected_facts(key, keys, own=own, is_copy=self.holds_copy)
         if keeps is None or not hit:
             return hit
         beneath = rel.affected_facts(key, hit, own=False,
                                      is_copy=self.holds_copy)
-        narrowed = self.ctx.func.narrowed_types
+        narrowed = self.ctx.func.narrowed_types if facts is None else facts
         return {k for k in hit if k in beneath or narrowed.get(k) != keeps}
 
     def _kill_written(self, key: str, *, own: bool,
@@ -1109,6 +1145,27 @@ class NarrowingTracker:
             self.ctx.func.non_null_ptr_vars.discard(name)
             self.ctx.func.value_ranges.pop(name, None)
             self._invalidate_len_ranges(name)
+        if func.closure_mutated_receivers or func.closure_mutated_paths:
+            self._invalidate_closure_writes()
+
+    def _invalidate_closure_writes(self) -> None:
+        """Kill the facts a closure's writes through captured storage may
+        falsify: beneath a receiver (its own narrowing stays, a call cannot
+        rebind it), and at and beneath a stored path as its stores do (all
+        of them keeping the slot non-None: beneath only), under every
+        spelling the may-hold relation gives."""
+        func = self.ctx.func
+        rel = func.in_place_writes
+        for key, own, keeps in chain(
+                ((r, False, None) for r in func.closure_mutated_receivers),
+                ((p, True, k) for p, k in func.closure_mutated_paths.items())):
+            self._kill_written(key, own=own, keeps=keeps)
+            for k in rel.affected_facts(key, func.value_ranges, own=own,
+                                        is_copy=self.holds_copy):
+                del func.value_ranges[k]
+            self._invalidate_len_ranges(key)
+            if not own:
+                func.narrowed_types.pop(deref_view_key(key), None)
 
     def invalidate_suspension_facts(self) -> None:
         """Kill facts a suspension may falsify: while a resumable frame is

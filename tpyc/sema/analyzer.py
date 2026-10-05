@@ -3761,7 +3761,8 @@ class SemanticAnalyzer:
         self.ctx.func.current_alias_sources = dict(self.top_level_scan_result.alias_sources)
         self.ctx.func.current_chain_alias_sources = dict(
             self.top_level_scan_result.chain_alias_sources)
-        self.ctx.func.in_place_writes = collect_in_place_writes(stmts)
+        self.ctx.func.in_place_writes = collect_in_place_writes(
+            stmts, self.ctx.write_summaries)
 
         for stmt in stmts:
             # A parser-minted comprehension temp is an init-scope local, not a
@@ -4338,6 +4339,8 @@ class SemanticAnalyzer:
         )
         new_body = expander.expand(func.body)
         if new_body is not None:
+            # A summary of the replaced list would go stale.
+            assert func.body not in self.ctx.write_summaries
             func.body = new_body
 
     def _expand_builder_trace_top_level(self, stmts: list[TpyStmt]) -> None:
@@ -4356,6 +4359,8 @@ class SemanticAnalyzer:
         )
         new_stmts = expander.expand(stmts)
         if new_stmts is not None:
+            # A summary of the rewritten list would go stale.
+            assert stmts not in self.ctx.write_summaries
             stmts[:] = new_stmts
 
     def _promote_macro_generated_types(self, module: TpyModule) -> None:

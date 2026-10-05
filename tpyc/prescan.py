@@ -1102,10 +1102,127 @@ class InPlaceWrites:
         return hit
 
 
-def collect_in_place_writes(stmts: list[TpyStmt]) -> InPlaceWrites:
+@dataclass(frozen=True, eq=False)
+class StmtSummary:
+    """What one statement binds and declares by its parse shape alone, and
+    the summaries of the statement lists under it.
+
+    Nothing sema attaches to an expression is kept: the write views walk
+    `stmt`'s CURRENT expressions when asked, because sema rewrites nodes in
+    place after the build (a property read becomes a method call, a
+    coercion replaces an argument, an expansion is attached)."""
+    stmt: TpyStmt
+    # Apart from `extra_binds`: a `for` statement's own binds are its loop
+    # target, which the loop payload reports separately.
+    binds: frozenset[str]
+    # Bound by a handler or a match arm, not by the statement's shape that
+    # `bound_names_of` reads.
+    extra_binds: frozenset[str]
+    # Rebound outside the enclosing function: what a def holding the
+    # statement may rebind, and for a `global` the block's own rebinds.
+    decl_outside: frozenset[str]
+    # Aligned with `stmt.sub_bodies()`.
+    subs: tuple['BlockSummary', ...]
+    # A nested def's body: its own scope, so never one of `subs`.
+    closure: 'BlockSummary | None'
+
+
+class BlockSummary:
+    """The summaries of one statement list, with the name sets the views
+    ask for memoized on first ask."""
+    __slots__ = ("stmts", "_fact_names", "_closure_decls")
+
+    def __init__(self, stmts: tuple[StmtSummary, ...]) -> None:
+        self.stmts = stmts
+        self._fact_names: frozenset[str] | None = None
+        self._closure_decls: frozenset[str] | None = None
+
+    def matches(self, stmts: list[TpyStmt]) -> bool:
+        # Sema can append to a summarized list (a trailing `return None`).
+        return (len(stmts) == len(self.stmts)
+                and all(a.stmt is b for a, b in zip(self.stmts, stmts)))
+
+    def closure_decls(self) -> frozenset[str]:
+        """Every `nonlocal` / `global` name declared in the block, nested
+        defs' bodies included: what running a def defined here may
+        rebind."""
+        if self._closure_decls is None:
+            out: set[str] = set()
+            for ss in self.stmts:
+                out |= ss.decl_outside
+                if ss.closure is not None:
+                    out |= ss.closure.closure_decls()
+                for sub in ss.subs:
+                    out |= sub.closure_decls()
+            self._closure_decls = frozenset(out)
+        return self._closure_decls
+
+    def fact_names(self) -> frozenset[str]:
+        """The names the block rebinds by statement shape: whole-name
+        targets, handler `as` and match capture names, `global` names and
+        what a def defined in it may rebind."""
+        if self._fact_names is None:
+            out: set[str] = set()
+            for ss in self.stmts:
+                out |= ss.binds | ss.extra_binds
+                if isinstance(ss.stmt, TpyGlobal):
+                    out |= ss.decl_outside
+                if ss.closure is not None:
+                    out |= ss.closure.closure_decls()
+                for sub in ss.subs:
+                    out |= sub.fact_names()
+            self._fact_names = frozenset(out)
+        return self._fact_names
+
+
+def stmt_summary(stmt: TpyStmt,
+                 table: 'IdentityMap | None' = None) -> StmtSummary:
+    """`stmt`'s summary, its statement lists summarized through `table`."""
+    closure = None
+    subs: tuple[BlockSummary, ...] = ()
+    if isinstance(stmt, TpyNestedDef):
+        closure = block_summary(stmt.func.body, table)
+    else:
+        subs = tuple(block_summary(b, table) for b in stmt.sub_bodies())
+    extra: set[str] = set()
+    if isinstance(stmt, TpyTry):
+        extra.update(h.binding for h in stmt.handlers if h.binding is not None)
+    elif isinstance(stmt, TpyMatch):
+        for case in stmt.cases:
+            extra.update(cap.name
+                         for cap in iter_capture_bindings(case.pattern))
+    decl = (stmt.names if isinstance(stmt, (TpyNonlocal, TpyGlobal))
+            else ())
+    return StmtSummary(stmt, frozenset(bound_names_of(stmt)),
+                       frozenset(extra), frozenset(decl), subs, closure)
+
+
+def block_summary(stmts: list[TpyStmt],
+                  table: 'IdentityMap | None' = None) -> BlockSummary:
+    """`stmts`' summary: from `table` (statement list -> summary) when it
+    holds a current one, else built and stored there. Each statement is
+    summarized once per table, so a nested def's own pre-scan finds its body
+    summarized by its parent's."""
+    if table is not None:
+        hit = table.get(stmts)
+        if hit is not None and hit.matches(stmts):
+            return hit
+    out = BlockSummary(tuple(stmt_summary(s, table) for s in stmts))
+    if table is not None:
+        table[stmts] = out
+    return out
+
+
+def collect_in_place_writes(stmts: list[TpyStmt],
+                            table: 'IdentityMap | None' = None
+                            ) -> InPlaceWrites:
     """The pre-scan's may-hold and write relation (see `InPlaceWrites`).
     Nested defs and lambdas are walked too: a closure writes a captured
-    object whenever it runs."""
+    object whenever it runs. `table` is the summary table to share."""
+    return _in_place_writes(block_summary(stmts, table))
+
+
+def _in_place_writes(block: BlockSummary) -> InPlaceWrites:
     writes: dict[str, set[str | None]] = {}
     # target name -> leaf keys of the values bound to it
     bound_from: dict[str, set[str]] = {}
@@ -1162,8 +1279,9 @@ def collect_in_place_writes(stmts: list[TpyStmt]) -> InPlaceWrites:
         elif isinstance(t, TpySubscript):
             write(t.obj, None)
 
-    def walk(body: list[TpyStmt]) -> None:
-        for s in body:
+    def walk(block: BlockSummary) -> None:
+        for ss in block.stmts:
+            s = ss.stmt
             if isinstance(s, TpyAssign):
                 if isinstance(s.target, TpySubscript):
                     on_store(s.target)
@@ -1188,15 +1306,16 @@ def collect_in_place_writes(stmts: list[TpyStmt]) -> InPlaceWrites:
                 for case in s.cases:
                     for n in _subject_captures(case.pattern):
                         bind(n, s.subject)
-            if isinstance(s, TpyNestedDef):
-                walk(s.func.body)
+            if ss.closure is not None:
+                # Unscoped: the closure's names are read as this body's.
+                walk(ss.closure)
                 continue
             for e in s.exprs():
                 on_expr(e)
-            for b in s.sub_bodies():
-                walk(b)
+            for sub in ss.subs:
+                walk(sub)
 
-    walk(stmts)
+    walk(block)
     return InPlaceWrites.from_bindings(writes, bound_from)
 
 
@@ -1227,10 +1346,14 @@ class FactKills:
     # suspension kills (field paths, deref views, len ranges,
     # closure/global names) must die at the meet as well.
     suspends: bool = False
+    # The body holds a call (a hidden one included): it may run a closure
+    # defined before the body, so the closure-written kills apply at the
+    # meet as they do at every call on the live path.
+    calls: bool = False
 
     def __bool__(self) -> bool:
         return bool(self.names or self.paths or self.receivers
-                    or self.suspends)
+                    or self.suspends or self.calls)
 
     def update(self, other: 'FactKills') -> None:
         self.names |= other.names
@@ -1238,6 +1361,7 @@ class FactKills:
             self.paths.setdefault(path, []).extend(stores)
         self.receivers |= other.receivers
         self.suspends |= other.suspends
+        self.calls |= other.calls
 
 
 def _kills_in_expr(expr: TpyExpr | None, kills: FactKills) -> None:
@@ -1248,6 +1372,9 @@ def _kills_in_expr(expr: TpyExpr | None, kills: FactKills) -> None:
     elif isinstance(expr, TpyMethodCall):
         _object_leaf_keys(expr.obj, kills.receivers)
     if isinstance(expr, (TpyCall, TpyMethodCall)):
+        # A hidden call (`dunder_call`, a property setter, a `__getattr__`
+        # fallback) is a TpyMethodCall field the walk below reaches.
+        kills.calls = True
         for arg in expr.args:
             _object_leaf_keys(arg, kills.receivers)
         for kw_val in getattr(expr, "kwargs", {}).values():
@@ -1317,33 +1444,178 @@ def chain_root_name(expr: TpyExpr) -> str | None:
     return expr.name if isinstance(expr, TpyName) else None
 
 
-def _collect_nested_def_writes(stmts: list[TpyStmt], kills: FactKills) -> None:
-    """Names a nested def may rebind in the enclosing scope (nonlocal/global)."""
-    for stmt in stmts:
-        if isinstance(stmt, (TpyNonlocal, TpyGlobal)):
-            kills.names.update(stmt.names)
-        if isinstance(stmt, TpyNestedDef):
-            _collect_nested_def_writes(stmt.func.body, kills)
-        for body in stmt.sub_bodies():
-            _collect_nested_def_writes(body, kills)
-
-
 def collect_fact_kills(stmts: list[TpyStmt],
-                       extra_exprs: 'tuple[TpyExpr, ...] | list[TpyExpr]' = ()
-                       ) -> FactKills:
+                       extra_exprs: 'tuple[TpyExpr, ...] | list[TpyExpr]' = (),
+                       table: 'IdentityMap | None' = None) -> FactKills:
     """Collect the fact kill-set of a statement body (recursive).
 
     ``extra_exprs`` covers re-evaluated expressions that are part of the
     same control-flow cycle but not of the body (a while-loop condition).
+    ``table`` is the statement-list summary table to share.
     """
-    kills = FactKills()
-    _collect_fact_kills(stmts, kills)
+    block = block_summary(stmts, table)
+    kills = FactKills(names=set(block.fact_names()))
+    _fact_kills_walk(block, kills)
     for e in extra_exprs:
         _kills_in_expr(e, kills)
     # Condition-position awaits are desugared to statement position before
     # sema, so extra_exprs (re-evaluated conditions) cannot suspend.
     kills.suspends = stmts_have_any_suspension(stmts)
     return kills
+
+
+def _fact_kills_walk(block: BlockSummary, kills: FactKills) -> None:
+    """The store and expression keys of `block`, read off the statements'
+    current expressions; a nested def's body is its own scope."""
+    for ss in block.stmts:
+        stmt = ss.stmt
+        if isinstance(stmt, (TpyAssign, TpyAugAssign)):
+            _kills_assign_target(
+                stmt.target, kills,
+                stmt if isinstance(stmt, TpyAssign) else None)
+        elif isinstance(stmt, TpyDelAttr):
+            for t in stmt.targets:
+                key = _expr_to_narrowing_key(t)
+                if key is not None:
+                    kills.paths.setdefault(key, []).append(None)
+        elif isinstance(stmt, TpyDelItem):
+            for t in stmt.targets:
+                root = _expr_root_name(t.obj)
+                if root is not None:
+                    kills.receivers.add(root)
+        elif ss.closure is not None:
+            # Defining the closure counts as running it: whoever holds it
+            # may call it before the meet.
+            exports = _closure_exports(ss)
+            for path, stores in exports.paths.items():
+                kills.paths.setdefault(path, []).extend(stores)
+            kills.receivers |= exports.receivers
+            continue
+        for expr in stmt.exprs():
+            _kills_in_expr(expr, kills)
+        for sub in ss.subs:
+            _fact_kills_walk(sub, kills)
+
+
+@dataclass
+class ClosureExports:
+    """The writes running a nested def makes through storage of its
+    enclosing scope, keyed in that scope's names: `paths` are field stores
+    and `del o.f` (with their stores, as `FactKills.paths`), `receivers`
+    method-call receivers, subscript-store roots and call arguments."""
+    paths: dict[str, list[TpyAssign | None]] = field(default_factory=dict)
+    receivers: set[str] = field(default_factory=set)
+
+
+def _names_read(expr: TpyExpr | None, out: set[str]) -> None:
+    """Every name `expr` spells, a lambda's body and the hidden calls sema
+    attached included."""
+    if expr is None:
+        return
+    if isinstance(expr, TpyName):
+        out.add(expr.name)
+    for f in dc_fields(expr):
+        val = getattr(expr, f.name)
+        if isinstance(val, TpyExpr):
+            _names_read(val, out)
+        elif isinstance(val, TpyComprehensionGenerator):
+            _names_read(val.iterable, out)
+            for cond in val.conditions:
+                _names_read(cond, out)
+        elif isinstance(val, list):
+            for item in val:
+                if isinstance(item, TpyExpr):
+                    _names_read(item, out)
+                elif isinstance(item, TpyFStringValue):
+                    _names_read(item.expr, out)
+        elif isinstance(val, dict):
+            for v in val.values():
+                if isinstance(v, TpyExpr):
+                    _names_read(v, out)
+
+
+def _closure_scope(ss: StmtSummary) -> tuple[set[str], set[str]]:
+    """A nested def's own names (its parameters and what it binds by whole
+    name, minus its `nonlocal` / `global` names) and its free names (what
+    it and the defs nested in it read from outside it, plus the names it
+    declares `nonlocal` / `global`)."""
+    assert isinstance(ss.stmt, TpyNestedDef) and ss.closure is not None
+    bound: set[str] = {name for name, _ in ss.stmt.func.params}
+    reads: set[str] = set()
+    outside: set[str] = set()
+
+    def scan(block: BlockSummary) -> None:
+        for sub_ss in block.stmts:
+            s = sub_ss.stmt
+            outside.update(sub_ss.decl_outside)
+            if sub_ss.closure is not None:
+                assert isinstance(s, TpyNestedDef)
+                bound.add(s.func.name)
+                reads.update(_closure_scope(sub_ss)[1])
+                for d in s.func.defaults:
+                    _names_read(d, reads)
+                continue
+            bound.update(sub_ss.binds | sub_ss.extra_binds
+                         | walrus_names_of(s))
+            for e in s.exprs():
+                _names_read(e, reads)
+            for sub in sub_ss.subs:
+                scan(sub)
+
+    scan(ss.closure)
+    own = bound - outside
+    return own, (reads - own) | outside
+
+
+def _closure_exports(ss: StmtSummary) -> ClosureExports:
+    """What running the nested def `ss` writes in its enclosing scope.
+
+    A key rooted at a free or `nonlocal` name is the enclosing scope's own
+    spelling. A key rooted at one of the def's own names reaches outside
+    storage only through what that name may hold: it is mapped through the
+    def's may-hold relation, projection kept, and only the places rooted at
+    a free name are exported -- a parameter shadowing an outer name exports
+    nothing. Past a guard of that relation every free name is a receiver."""
+    assert ss.closure is not None
+    raw = FactKills()
+    # Nested defs inside re-export through `_fact_kills_walk` in this def's
+    # names, mapped below like its own keys.
+    _fact_kills_walk(ss.closure, raw)
+    out = ClosureExports()
+    if not raw.paths and not raw.receivers:
+        return out
+    own, free = _closure_scope(ss)
+    rel: InPlaceWrites | None = None
+    overflow = False
+
+    def resolve(key: str) -> list[str]:
+        nonlocal rel, overflow
+        root = _key_root(key)
+        if root not in own:
+            return [key]
+        if rel is None:
+            rel = _in_place_writes(ss.closure)
+        if rel.overflowed(root):
+            overflow = True
+            return []
+        return [p for p in rel.holds(key) if _key_root(p) in free]
+
+    for key, stores in raw.paths.items():
+        for place in resolve(key):
+            out.paths.setdefault(place, []).extend(stores)
+    for key in raw.receivers:
+        out.receivers.update(resolve(key))
+    if overflow:
+        out.receivers |= free
+    return out
+
+
+def closure_exports(stmt: TpyNestedDef,
+                    table: 'IdentityMap | None' = None) -> ClosureExports:
+    """What calling the nested def `stmt` writes in its enclosing scope
+    (see `_closure_exports`), read off its body's current expressions.
+    `table` is the statement-list summary table to share."""
+    return _closure_exports(stmt_summary(stmt, table))
 
 
 def bound_names_of(stmt: TpyStmt) -> set[str]:
@@ -1412,37 +1684,6 @@ def walrus_names_of(stmt: TpyStmt) -> set[str]:
     return kills.names
 
 
-def _collect_fact_kills(stmts: list[TpyStmt], kills: FactKills) -> None:
-    for stmt in stmts:
-        kills.names.update(bound_names_of(stmt))
-        if isinstance(stmt, (TpyAssign, TpyAugAssign)):
-            _kills_assign_target(
-                stmt.target, kills,
-                stmt if isinstance(stmt, TpyAssign) else None)
-        elif isinstance(stmt, TpyDelAttr):
-            for t in stmt.targets:
-                key = _expr_to_narrowing_key(t)
-                if key is not None:
-                    kills.paths.setdefault(key, []).append(None)
-        elif isinstance(stmt, TpyDelItem):
-            for t in stmt.targets:
-                root = _expr_root_name(t.obj)
-                if root is not None:
-                    kills.receivers.add(root)
-        elif isinstance(stmt, TpyGlobal):
-            kills.names.update(stmt.names)
-        elif isinstance(stmt, TpyNestedDef):
-            # Calls anywhere in the cycle may invoke the closure; treat its
-            # nonlocal/global targets as killable. Body otherwise not scanned
-            # (separate scope).
-            _collect_nested_def_writes(stmt.func.body, kills)
-            continue
-        for expr in stmt.exprs():
-            _kills_in_expr(expr, kills)
-        for body in stmt.sub_bodies():
-            _collect_fact_kills(body, kills)
-
-
 @dataclass(frozen=True)
 class LoopBindings:
     """What one `for` / `while` binds and writes. `body`: every name a pass
@@ -1463,18 +1704,6 @@ class LoopBindings:
     effects: tuple = field(default=(), compare=False)
     deletes: tuple = field(default=(), compare=False)
     sites: tuple = field(default=(), compare=False)
-
-
-def _stmt_binds(s: TpyStmt) -> set[str]:
-    """Every whole name one statement binds, handler and capture names
-    included."""
-    out = bound_names_of(s) | walrus_names_of(s)
-    if isinstance(s, TpyTry):
-        out.update(h.binding for h in s.handlers if h.binding is not None)
-    elif isinstance(s, TpyMatch):
-        for case in s.cases:
-            out.update(cap.name for cap in iter_capture_bindings(case.pattern))
-    return out
 
 
 def _stmt_stores(s: TpyStmt) -> list[TpyExpr]:
@@ -1508,76 +1737,80 @@ def _expr_effects(e: TpyExpr | None, out: list, sites: list) -> None:
         _expr_effects(child, out, sites)
 
 
-def collect_loop_bindings(stmts: list[TpyStmt], table: 'IdentityMap') -> None:
-    """Fill `table` with the `LoopBindings` of every loop in `stmts`, in one
-    bottom-up walk, so a nested loop's names are collected once rather than
-    once per enclosing loop."""
-    _walk_writes(stmts, table)
-
-
-def block_writes(stmts: list[TpyStmt]) -> LoopBindings:
-    """What a statement list binds and writes, in the shape a loop's facts
-    take (no loop variable)."""
-    w = _walk_writes(stmts, IdentityMap())
-    return LoopBindings(body=frozenset(w.body), target=frozenset(),
-                        stores=tuple(w.stores), effects=tuple(w.effects),
-                        deletes=tuple(w.deletes), sites=tuple(w.sites))
-
-
 @dataclass
-class _Writes:
-    body: set[str] = field(default_factory=set)
+class _Payload:
+    """The node payload of a statement walk, in pre-order: a statement, its
+    expression nodes, its statement-level effect, then its sub-bodies.
+    `check_loop_hold` reports the FIRST offending store or effect, so the
+    order picks the diagnostic."""
     stores: list = field(default_factory=list)
     effects: list = field(default_factory=list)
     deletes: list = field(default_factory=list)
     sites: list = field(default_factory=list)
 
-    def add(self, other: '_Writes') -> None:
-        self.body |= other.body
-        self.stores += other.stores
-        self.effects += other.effects
-        self.deletes += other.deletes
-        self.sites += other.sites
 
-
-def _walk_writes(ss: list[TpyStmt], table: 'IdentityMap') -> _Writes:
-    """What `ss` binds, stores into, runs and deletes, filling `table` with
-    the `LoopBindings` of every loop in it on the way."""
-    out = _Writes()
-    for s in ss:
-        if isinstance(s, TpyNestedDef):
+def _loop_walk(stmts: Iterable[StmtSummary], acc: _Payload,
+               table: 'IdentityMap') -> set[str]:
+    """Append the payload of `stmts` to `acc` and return the names they
+    bind, recording the `LoopBindings` of every loop among them in `table`.
+    Expressions are read in their current state: a loop's payload is
+    whatever its first ask sees."""
+    body: set[str] = set()
+    for ss in stmts:
+        s = ss.stmt
+        if ss.closure is not None:
             continue
-        inner = _Writes()
-        for body in s.sub_bodies():
-            inner.add(_walk_writes(body, table))
-        own = _Writes(sites=[s])
+        marks = (len(acc.stores), len(acc.effects), len(acc.deletes),
+                 len(acc.sites))
+        acc.sites.append(s)
         for e in s.exprs():
-            _expr_effects(e, own.effects, own.sites)
+            _expr_effects(e, acc.effects, acc.sites)
         if isinstance(s, (TpyForEach, TpyWith, TpyAugAssign)):
-            own.effects.append(s)
-        own.stores = _stmt_stores(s)
-        own.deletes = (own.stores
-                       if isinstance(s, (TpyDelAttr, TpyDelItem)) else [])
+            acc.effects.append(s)
+        stores = _stmt_stores(s)
+        acc.stores += stores
+        if isinstance(s, (TpyDelAttr, TpyDelItem)):
+            acc.deletes += stores
+        inner: set[str] = set()
+        for sub in ss.subs:
+            inner |= _loop_walk(sub.stmts, acc, table)
+        walrus = walrus_names_of(s)
         if isinstance(s, (TpyForEach, TpyWhile)):
-            names = bound_names_of(s) if isinstance(s, TpyForEach) else set()
             table[s] = LoopBindings(
-                body=frozenset(inner.body | walrus_names_of(s)),
-                target=frozenset(names),
-                stores=tuple(own.stores + inner.stores),
-                effects=tuple(own.effects + inner.effects),
-                deletes=tuple(own.deletes + inner.deletes),
-                sites=tuple(own.sites + inner.sites))
-        own.body = inner.body | _stmt_binds(s)
-        own.add(inner)
-        out.add(own)
-    return out
+                body=frozenset(inner | walrus),
+                target=ss.binds if isinstance(s, TpyForEach) else frozenset(),
+                stores=tuple(acc.stores[marks[0]:]),
+                effects=tuple(acc.effects[marks[1]:]),
+                deletes=tuple(acc.deletes[marks[2]:]),
+                sites=tuple(acc.sites[marks[3]:]))
+        body |= inner | ss.binds | walrus | ss.extra_binds
+    return body
 
 
-def loop_bindings_of(table: 'IdentityMap', loop: TpyStmt) -> LoopBindings:
+def collect_loop_bindings(stmts: list[TpyStmt], table: 'IdentityMap',
+                          summaries: 'IdentityMap | None' = None) -> None:
+    """Fill `table` with the `LoopBindings` of every loop in `stmts`, in one
+    bottom-up walk, so a nested loop's names are collected once rather than
+    once per enclosing loop."""
+    _loop_walk(block_summary(stmts, summaries).stmts, _Payload(), table)
+
+
+def block_writes(stmts: list[TpyStmt]) -> LoopBindings:
+    """What a statement list binds and writes, in the shape a loop's facts
+    take (no loop variable)."""
+    acc = _Payload()
+    body = _loop_walk(block_summary(stmts).stmts, acc, IdentityMap())
+    return LoopBindings(body=frozenset(body), target=frozenset(),
+                       stores=tuple(acc.stores), effects=tuple(acc.effects),
+                       deletes=tuple(acc.deletes), sites=tuple(acc.sites))
+
+
+def loop_bindings_of(table: 'IdentityMap', loop: TpyStmt,
+                     summaries: 'IdentityMap | None' = None) -> LoopBindings:
     """`loop`'s bindings, walking it (and every loop inside it) on first
-    ask."""
+    ask. `summaries` is the statement-list summary table to share."""
     facts = table.get(loop)
     if facts is None:
-        collect_loop_bindings([loop], table)
+        _loop_walk((stmt_summary(loop, summaries),), _Payload(), table)
         facts = table[loop]
     return facts

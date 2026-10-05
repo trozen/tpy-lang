@@ -1,0 +1,46 @@
+capture_loop: 5
+capture_loop: None
+capture_other: 6
+capture_other: 6
+handler_as: a
+handler_as: a
+closure_loop: 5
+closure_loop: None
+closure_loop_uncalled: 10
+closure_handler: None
+closure_finally: None
+field_straight: None
+field_loop: 1
+field_loop: None
+field_loop_other: 2
+field_loop_other: 2
+field_handler: None
+field_condition: None
+receiver_len: 1
+receiver_len: 2
+local_alias: None
+projection: None 2
+param_shadow: 2
+lambda_in_def wiped: True
+lambda_in_def: None
+gen_capture: None
+method_capture: None
+handler_other: a
+handler_other: a
+closure_try_nocall: 6
+field_condition_other: 2 None
+receiver_len_other: 1
+receiver_len_other: 2
+receiver_len_other grown: 3
+async_body: 1
+async_body: None
+comprehension_cond: [0, 1] None
+with_body: None
+before_def call
+before_def: 2
+def_in_loop: 1
+def_in_loop: None
+readonly_receiver peek: N
+readonly_receiver: 1
+arg_mutating_kills: None
+store_nonnone_kept: B
