@@ -875,7 +875,8 @@ def _through_stable_loop_vars(
             if (root is None or loop.var != root
                     or not isinstance(src, TpyName)
                     or not _stable_loop_source(ctx, loop)
-                    or root in loop_bindings_of(ctx.loop_bindings, loop).body):
+                    or root in loop_bindings_of(ctx.loop_bindings, loop,
+                                                ctx.write_summaries).body):
                 continue
             root = src.name
         out.add(root)
@@ -2202,6 +2203,14 @@ class FunctionTrackingState:
     # this function: any later call may invoke such a closure and rebind
     # these names, so check-elision facts for them die at every call site.
     closure_written_names: set[str] = field(default_factory=set)
+    # Field paths and receivers (the enclosing scope's spellings) the nested
+    # defs analyzed so far write through: any later call may run one. A
+    # stored path maps to the type every store keeps its slot at (None: some
+    # store may write None), decided at the def site, where the stores are
+    # analyzed -- so a fact on the slot that type matches survives a call.
+    closure_mutated_paths: dict[str, TpyType | None] = field(
+        default_factory=dict)
+    closure_mutated_receivers: set[str] = field(default_factory=set)
     nested_def_names: set[str] = field(default_factory=set)
     nested_def_escapes: set[str] = field(default_factory=set)
     nested_def_nodes: dict[str, 'TpyNestedDef'] = field(default_factory=dict)
@@ -2802,6 +2811,10 @@ class SemanticContext:
     # (`prescan.LoopBindings`), walked once per outermost loop and shared
     # with the frame layout.
     loop_bindings: IdentityMap = field(default_factory=IdentityMap)
+    # Per statement list: its `prescan.BlockSummary`, built once by the
+    # body's pre-scan and shared by every write view over it. Not on
+    # the function state, which `save_function_state` deep-copies.
+    write_summaries: IdentityMap = field(default_factory=IdentityMap)
     # This module's generator and async functions, whose close fact is
     # decided once every body is analyzed (sema/frame_close.py).
     frame_close_fis: list[FunctionInfo] = field(default_factory=list)

@@ -531,8 +531,9 @@ escaping lambdas and escaping nested defs). The acknowledgment is to capture a f
 non-reassigned local (`snap = k`, optionally via `copy()`), which eliminates the
 divergence. Two sibling cases are not yet warned (both tracked in `BUGS.md`): **in-place
 mutation** of a captured container/record (`BUGS.md#escaping-capture-mutation-snapshot`;
-the mutation-after-capture fact is untracked -- `closure_written_names` sees only
-`nonlocal`/`global` rebinds), and **loop-variable capture** (`for k in ...: append(lambda: k)`),
+in-place writes inside the nested def are recorded (`prescan.closure_exports`), but the
+missing fact is relating a later in-place write in the ENCLOSING body to an escaping
+capture taken before it), and **loop-variable capture** (`for k in ...: append(lambda: k)`),
 whose rebinding is the loop back-edge rather than a later statement. Both hold in a
 resumable frame as well as a sync body.
 

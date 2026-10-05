@@ -133,7 +133,8 @@ def _loop_bound_names(analyzer, loop: 'TpyForEach') -> 'frozenset[str]':
     An over-approximation on purpose: the caller turns "this name could hold
     an element" into a lifetime decision, so a missed binding is a dangling
     read while a spurious one only costs a frame field."""
-    facts = loop_bindings_of(analyzer.loop_bindings, loop)
+    facts = loop_bindings_of(analyzer.loop_bindings, loop,
+                             analyzer.ctx.write_summaries)
     return facts.body | facts.target
 
 

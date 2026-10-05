@@ -63,7 +63,7 @@ from ..prescan import (
     scan_reassigned_vars, collect_in_place_writes,
     parse_deref_view_key, storage_spelling,
     FactKills, collect_fact_kills, liveness_alias_sources, is_scan_rvalue,
-    collect_nonlocals,
+    collect_nonlocals, closure_exports,
 )
 from ..liveness import (analyze_last_uses, closure_pinned_names,
                         collect_finally_return_candidates,
@@ -2479,7 +2479,8 @@ class StatementAnalyzer:
             # Decided before the body: the ranges after it are the loop's.
             runs_once = self.narrowing.condition_provably_true(stmt.condition)
             body_kills = collect_fact_kills(stmt.body,
-                                            extra_exprs=[stmt.condition])
+                                            extra_exprs=[stmt.condition],
+                                            table=self.ctx.write_summaries)
             # An `isinstance` fold rests on the loop-entry narrowing of its
             # subject; if the body rebinds that subject the condition is not
             # loop-invariant, so drop the static fold and re-check each
@@ -2535,7 +2536,8 @@ class StatementAnalyzer:
                 ns_types_before_foreach = self._save_ns_var_types()
                 with self._loop_body_scope(stmt) as (inner_scope, edges):
                     self.init.apply_loop_entry_facts(
-                        before, kills=collect_fact_kills(stmt.body))
+                        before, kills=collect_fact_kills(
+                            stmt.body, table=self.ctx.write_summaries))
                     with self.scopes.loop_var(inner_scope, stmt.var, elem_type, inner_scope.depth, is_foreach=True):
                         for s in stmt.body:
                             self.analyze_stmt(s)
@@ -2587,7 +2589,8 @@ class StatementAnalyzer:
                 ns_types_before_foreach = self._save_ns_var_types()
                 with self._loop_body_scope(stmt) as (inner_scope, edges):
                     self.init.apply_loop_entry_facts(
-                        before, kills=collect_fact_kills(stmt.body))
+                        before, kills=collect_fact_kills(
+                            stmt.body, table=self.ctx.write_summaries))
                     # Track range facts for loop variable from range() calls
                     self._track_for_range_facts(stmt)
                     prior_iter = self.ctx.func.loop_var_iterable.get(stmt.var)
@@ -3283,11 +3286,14 @@ class StatementAnalyzer:
             return
         entry_kills = FactKills()
         entry_kills.update(try_kills if try_kills is not None
-                           else collect_fact_kills(stmt.try_body))
+                           else collect_fact_kills(
+                               stmt.try_body, table=self.ctx.write_summaries))
         if stmt.else_body:
-            entry_kills.update(collect_fact_kills(stmt.else_body))
+            entry_kills.update(collect_fact_kills(
+                stmt.else_body, table=self.ctx.write_summaries))
         for h in stmt.handlers:
-            entry_kills.update(collect_fact_kills(h.body))
+            entry_kills.update(collect_fact_kills(
+                h.body, table=self.ctx.write_summaries))
         normal_narrowed = dict(self.ctx.func.narrowed_types)
         normal_non_null = set(self.ctx.func.non_null_ptr_vars)
         normal_ranges = dict(self.ctx.func.value_ranges)
@@ -3309,7 +3315,8 @@ class StatementAnalyzer:
         self.ctx.func.narrowed_types = normal_narrowed
         self.ctx.func.non_null_ptr_vars = normal_non_null
         self.ctx.func.value_ranges = normal_ranges
-        self.init.apply_fact_kills(collect_fact_kills(stmt.finally_body))
+        self.init.apply_fact_kills(collect_fact_kills(
+            stmt.finally_body, table=self.ctx.write_summaries))
         self.ctx.func.narrowed_types.update(after_narrowed)
         self.ctx.func.non_null_ptr_vars |= after_non_null
         self.ctx.func.value_ranges.update(after_ranges)
@@ -3409,7 +3416,8 @@ class StatementAnalyzer:
         # thrown at ANY point in the try body, so facts the body may have
         # killed must not be assumed in the handler.
         self._enter_sibling_arm(bindings_before, ns_types_before, before)
-        try_kills = collect_fact_kills(stmt.try_body)
+        try_kills = collect_fact_kills(stmt.try_body,
+                                       table=self.ctx.write_summaries)
         self.init.apply_fact_kills(try_kills)
         self.ctx.func.current_consumed_own_params = consumed_before.copy()
 
@@ -3521,7 +3529,8 @@ class StatementAnalyzer:
         # Analyze each except handler as a separate branch from pre-try state.
         # An exception can be thrown at ANY point in the try body, so facts
         # the body may have killed must not be assumed in any handler.
-        try_kills = collect_fact_kills(stmt.try_body)
+        try_kills = collect_fact_kills(stmt.try_body,
+                                       table=self.ctx.write_summaries)
         handler_states: list[tuple] = []
         handler_carried: list[set[str]] = []
         for i, h in enumerate(stmt.handlers):
@@ -3773,7 +3782,8 @@ class StatementAnalyzer:
         ns_types_before = self._save_ns_var_types()
         with self._loop_body_scope(stmt) as (inner_scope, edges):
             self.init.apply_loop_entry_facts(
-                before, kills=collect_fact_kills(stmt.body))
+                before, kills=collect_fact_kills(
+                    stmt.body, table=self.ctx.write_summaries))
             self.ctx.func.mutated_loop_vars.discard(stmt.var)
             self.ctx.func.consumed_loop_vars.discard(stmt.var)
             # An `async for` borrows what it iterates exactly as the sync
@@ -4163,7 +4173,8 @@ class StatementAnalyzer:
             collect_nested_def_nonlocal_rebinds(func.body, include_del=True)
             | self.ctx.func.enclosing_nonlocal_rebinds)
         self.ctx.func.deleted_names = collect_deleted_names(func.body)
-        self.ctx.func.in_place_writes = collect_in_place_writes(func.body)
+        self.ctx.func.in_place_writes = collect_in_place_writes(
+            func.body, self.ctx.write_summaries)
         self.ctx.func.current_fresh_ctor_locals = set()
         self.ctx.func.tuple_unpack_view_targets = set()
         self.ctx.func.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
@@ -4414,8 +4425,15 @@ class StatementAnalyzer:
             ]
         stmt.nonlocal_names = nonlocal_names
         # After the scope restore: any later call in the enclosing function
-        # may invoke this closure, killing facts for its nonlocal targets.
+        # may invoke this closure, killing facts for its nonlocal targets and
+        # for the outer storage it writes through.
         self.ctx.func.closure_written_names |= nonlocal_names
+        exports = closure_exports(stmt, self.ctx.write_summaries)
+        paths = self.ctx.func.closure_mutated_paths
+        for path, stores in exports.paths.items():
+            keeps = self.narrowing.stores_keep(stores)
+            paths[path] = keeps if paths.get(path, keeps) == keeps else None
+        self.ctx.func.closure_mutated_receivers |= exports.receivers
 
         # Compute captures: free variables that come from outer scope
         captured = sorted(

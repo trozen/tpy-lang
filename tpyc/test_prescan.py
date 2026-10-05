@@ -1,12 +1,23 @@
-"""Tests for prescan fact-kill collection (collect_fact_kills) and the
-may-hold relation fact kills consult (collect_in_place_writes)."""
+"""Tests for prescan fact-kill collection (collect_fact_kills), the
+may-hold relation fact kills consult (collect_in_place_writes) and the
+loop bindings (loop_bindings_of) -- the three views over one write
+summary."""
+
+from types import SimpleNamespace
 
 import pytest
 
-from .parse import Parser, TpyStmt
+from .identity_map import IdentityMap
+from .parse import (Parser, TpyCall, TpyCoerce, TpyFieldAccess, TpyForEach,
+                    TpyIf, TpyMethodCall, TpyNestedDef, TpyStmt, TpyWhile,
+                    TpyWith)
+from .parse.nodes import become_method_call
 from .prescan import (_HOLD_BUDGET, _KEY_DEPTH, _NAME_BUDGET, InPlaceWrites,
-                      collect_fact_kills,
-                      collect_in_place_writes)
+                      closure_exports, collect_fact_kills,
+                      collect_in_place_writes, loop_bindings_of)
+from .sema.narrowing import NarrowingTracker
+from .sema.value_range import ValueRange
+from .typesys import INT32, STR
 
 
 def _body_of(source: str, func: str = "f"):
@@ -29,6 +40,14 @@ class TestCollectFactKills:
     def test_aug_assign(self):
         k = _kills("def f(i: int32):\n    i += 1\n")
         assert "i" in k.names
+
+    def test_calls_bit(self):
+        assert _kills("def f():\n    g()\n").calls
+        assert _kills("def f(o: int32):\n    x = o.m()\n").calls
+        assert _kills("def f(c: bool):\n    if c:\n        x = h(1)\n").calls
+        assert not _kills("def f(i: int32):\n    i += 1\n    x = i\n").calls
+        # A nested def's body does not run where it is defined.
+        assert not _kills("def f():\n    def k():\n        g()\n").calls
 
     def test_field_write_is_path_not_name(self):
         k = _kills("from tpy import *\ndef f(h: int32):\n    h.opt = None\n")
@@ -584,3 +603,375 @@ class TestMayShare:
         assert r.writes_through("st") == {"append"}
         assert r.writes_through("a") == {"reset"}
         assert r.writes_through("b") == {"reset"}
+
+
+def _first_loop(body: list[TpyStmt]) -> TpyStmt:
+    return next(s for s in body if isinstance(s, (TpyWhile, TpyForEach)))
+
+
+def _loop_facts(loop: TpyStmt):
+    return loop_bindings_of(IdentityMap(), loop, IdentityMap())
+
+
+def _nbody(source: str) -> list[TpyStmt]:
+    module = Parser().parse("class N:\n    v: int | None\n\n" + source, "m")
+    return next(fn for fn in module.functions if fn.name == "f").body
+
+
+class TestWriteViews:
+    """The three write views agree with one another over one summary."""
+
+    def test_stores_effects_and_deletes(self):
+        body = _nbody("def f(c: bool, xs: list[int], i: int, o: N,"
+                        " obj: N, y: int):\n"
+                        "    while c:\n"
+                        "        x = f(y)\n"
+                        "        xs[i] = 1\n"
+                        "        del o.f\n"
+                        "        obj.m()\n")
+        loop = _first_loop(body)
+        k = collect_fact_kills(loop.body)
+        assert k.names == {"x"}
+        assert {p: list(ss) for p, ss in k.paths.items()} == {"o.f": [None]}
+        assert k.receivers == {"y", "xs", "obj"}
+        assert not k.suspends
+        facts = _loop_facts(loop)
+        assert facts.body == {"x"} and facts.target == set()
+        xs_store = loop.body[1].target
+        del_target = loop.body[2].targets[0]
+        assert [id(n) for n in facts.stores] == [id(xs_store), id(del_target)]
+        assert [id(n) for n in facts.deletes] == [id(del_target)]
+        assert [id(n) for n in facts.effects] == [
+            id(loop.body[0].init), id(loop.body[3].expr)]
+
+    def test_tuple_loop_target_holds_both_and_stores_a_path(self):
+        body = _nbody("def f(a: N, b: N):\n"
+                        "    for t in (a, b):\n"
+                        "        t.v = None\n")
+        rel = collect_in_place_writes(body)
+        assert {"a", "b"} <= rel.holds("t")
+        loop = _first_loop(body)
+        k = collect_fact_kills(loop.body)
+        assert {p: [id(s) for s in ss] for p, ss in k.paths.items()} == {
+            "t.v": [id(loop.body[0])]}
+        assert _loop_facts(loop).target == {"t"}
+
+    def test_nested_def_in_a_loop(self):
+        body = _nbody("def f(c: bool, o: N):\n"
+                        "    x: int | None = 1\n"
+                        "    while c:\n"
+                        "        def k():\n"
+                        "            nonlocal x\n"
+                        "            x = None\n"
+                        "            y = 2\n"
+                        "            o.f = 1\n"
+                        "            o.clear()\n"
+                        "        k()\n")
+        loop = _first_loop(body)
+        k = collect_fact_kills(loop.body)
+        assert "x" in k.names
+        # Defining k counts as running it: its writes through o are kills.
+        assert "o.f" in k.paths and "o" in k.receivers
+        facts = _loop_facts(loop)
+        assert facts.body.isdisjoint({"x", "y", "k"})
+        # The relation folds a closure's writes into the enclosing
+        # namespace (TODO.md "Pre-scan write views: the leftovers" (a)).
+        assert "clear" in collect_in_place_writes(body).writes_through("o")
+
+    def test_lambda_body_walrus_binds_the_enclosing_scope(self):
+        # BUGS.md#lambda-body-walrus-binds-enclosing-scope
+        body = _nbody("def f():\n    g(lambda: (w := 1))\n")
+        assert "w" in collect_fact_kills(body).names
+
+    def test_with_target_and_effect(self):
+        body = _nbody("def f(c: bool):\n"
+                        "    while c:\n"
+                        "        with cm() as h:\n"
+                        "            pass\n")
+        loop = _first_loop(body)
+        assert collect_fact_kills(loop.body).names == {"h"}
+        with_stmt = loop.body[0]
+        assert isinstance(with_stmt, TpyWith)
+        assert any(e is with_stmt for e in _loop_facts(loop).effects)
+
+    def test_handler_and_capture_names(self):
+        body = _nbody("def f(c: bool, v: int):\n"
+                        "    while c:\n"
+                        "        try:\n"
+                        "            pass\n"
+                        "        except ValueError as e:\n"
+                        "            pass\n"
+                        "        match v:\n"
+                        "            case P(x):\n"
+                        "                pass\n")
+        loop = _first_loop(body)
+        assert {"e", "x"} <= _loop_facts(loop).body
+        assert {"e", "x"} <= collect_fact_kills(loop.body).names
+
+    def test_property_read_reclassified_after_the_build(self):
+        body = _nbody("def f(c: bool, o: N):\n"
+                        "    while c:\n"
+                        "        print(o.p)\n")
+        loop = _first_loop(body)
+        table = IdentityMap()
+        assert collect_fact_kills(loop.body, table=table).receivers == {"o.p"}
+        read = loop.body[0].expr.args[0]
+        assert isinstance(read, TpyFieldAccess)
+        become_method_call(read, method="p", args=[], fi=None)
+        # The kept summary answers from the node's current class.
+        assert collect_fact_kills(loop.body, table=table).receivers == {"o"}
+
+    def test_coerced_argument(self):
+        body = _nbody("def f(c: bool, a: N):\n"
+                        "    while c:\n"
+                        "        g(a.b)\n")
+        loop = _first_loop(body)
+        table = IdentityMap()
+        assert collect_fact_kills(loop.body, table=table).receivers == {"a.b"}
+        call = loop.body[0].expr
+        call.args[0] = TpyCoerce(expr=call.args[0], actual_type=None,
+                                 expected_type=None, coercion=None,
+                                 context_kind="", context_msg="")
+        assert collect_fact_kills(loop.body, table=table).receivers == {"a.b"}
+
+    def test_loop_payload_is_fixed_at_first_ask(self):
+        body = _nbody("def f(c: bool, a: N):\n"
+                        "    while c:\n"
+                        "        g(a)\n")
+        loop = _first_loop(body)
+        table = IdentityMap()
+        first = loop_bindings_of(table, loop)
+        call = loop.body[0].expr
+        assert isinstance(call, TpyCall)
+        call.macro_expansion = TpyCall(func=call.func, args=[])
+        assert loop_bindings_of(table, loop) is first
+        assert not any(e is call.macro_expansion for e in first.effects)
+
+    def test_summary_follows_an_appended_statement(self):
+        body = _nbody("def f(c: bool):\n    x = 1\n")
+        table = IdentityMap()
+        assert collect_fact_kills(body, table=table).names == {"x"}
+        body.append(_nbody("def f():\n    y = 2\n")[0])
+        assert collect_fact_kills(body, table=table).names == {"x", "y"}
+
+
+def _exports(source: str):
+    """The exports of the first nested def in `f`."""
+    body = _nbody(source)
+    nd = next(s for s in body if isinstance(s, TpyNestedDef))
+    out = closure_exports(nd)
+    return set(out.paths), out.receivers
+
+
+class TestClosureExports:
+    """What running a nested def writes, in its enclosing scope's names."""
+
+    def test_free_root_exports_as_is(self):
+        paths, recv = _exports("def f(t: N, xs: list[int]):\n"
+                               "    def k():\n"
+                               "        t.v = None\n"
+                               "        xs.append(1)\n"
+                               "        del t.w\n")
+        assert paths == {"t.v", "t.w"}
+        assert recv == {"xs"}
+
+    def test_nonlocal_root_exports_as_is(self):
+        paths, _ = _exports("def f(t: N):\n"
+                            "    def k():\n"
+                            "        nonlocal t\n"
+                            "        t.v = None\n")
+        assert paths == {"t.v"}
+
+    def test_parameter_shadowing_an_outer_name_exports_nothing(self):
+        paths, recv = _exports("def f(t: N):\n"
+                               "    def k(t: N):\n"
+                               "        t.v = None\n"
+                               "        t.reset()\n")
+        assert paths == set() and recv == set()
+
+    def test_own_fresh_local_exports_nothing(self):
+        paths, recv = _exports("def f(t: N):\n"
+                               "    def k():\n"
+                               "        t = N()\n"
+                               "        t.v = None\n")
+        assert paths == set() and recv == set()
+
+    def test_local_alias_maps_to_the_captured_name(self):
+        paths, recv = _exports("def f(t: N):\n"
+                               "    def k():\n"
+                               "        u = t\n"
+                               "        u.v = None\n"
+                               "        u.reset()\n")
+        assert paths == {"t.v"}
+        assert recv == {"t"}
+
+    def test_projection_is_kept(self):
+        paths, _ = _exports("def f(t: N):\n"
+                            "    def k():\n"
+                            "        u = t.inner\n"
+                            "        u.v = None\n")
+        assert paths == {"t.inner.v"}
+
+    def test_nested_def_reexports_a_grandparent_capture(self):
+        paths, _ = _exports("def f(t: N):\n"
+                            "    def k():\n"
+                            "        def j():\n"
+                            "            t.v = None\n"
+                            "        j()\n")
+        assert paths == {"t.v"}
+
+    def test_nested_def_writing_the_middle_local_exports_nothing(self):
+        paths, recv = _exports("def f(u: N):\n"
+                               "    def k():\n"
+                               "        u = N()\n"
+                               "        def j():\n"
+                               "            u.v = None\n"
+                               "        j()\n")
+        assert paths == set() and recv == set()
+
+    def test_lambda_in_the_def_counts_as_the_defs(self):
+        _, recv = _exports("def f(xs: list[int]):\n"
+                           "    def k():\n"
+                           "        g(lambda: xs.append(1))\n")
+        assert "xs" in recv
+
+    def test_overflowed_local_exports_every_free_name(self):
+        arms = " if c else ".join(f"t.a{i}" for i in range(_HOLD_BUDGET + 1))
+        paths, recv = _exports("def f(t: N, o: N, c: bool):\n"
+                               "    def k():\n"
+                               f"        u = {arms}\n"
+                               "        u.v = None\n"
+                               "        print(o)\n")
+        assert {"t", "o", "c"} <= recv
+
+    def test_element_store_through_a_field_exports_the_root(self):
+        # The key rules stop a subscript store's key at the chain's root
+        # name: a receiver write beneath `t`, which covers `t.xs`.
+        paths, recv = _exports("def f(t: N, i: int, v: int):\n"
+                               "    def k():\n"
+                               "        t.xs[i] = v\n")
+        assert paths == set() and recv == {"t"}
+
+    def test_bare_name_argument_is_a_receiver(self):
+        paths, recv = _exports("def f(xs: list[int]):\n"
+                               "    def k():\n"
+                               "        g(xs)\n")
+        assert paths == set() and recv == {"xs"}
+
+    def test_method_receiver_and_arguments_are_exported(self):
+        # Syntactic: whether the callee writes is not asked, since even a
+        # @readonly method may write what the receiver's pointers reach.
+        paths, recv = _exports("def f(o: N, xs: list[int]):\n"
+                               "    def k():\n"
+                               "        o.peek(xs)\n")
+        assert paths == set() and recv == {"o", "xs"}
+
+
+class TestHiddenCallAtAMeet:
+    """A call sema attaches to a node after the summary was built sets the
+    `calls` bit the next ask reads."""
+
+    def test_property_setter_call(self):
+        body = _nbody("def f(c: bool, o: N):\n"
+                      "    while c:\n"
+                      "        o.p = 1\n")
+        loop = _first_loop(body)
+        table = IdentityMap()
+        assert not collect_fact_kills(loop.body, table=table).calls
+        target = loop.body[0].target
+        assert isinstance(target, TpyFieldAccess)
+        target.property_setter_call = TpyMethodCall(
+            obj=target.obj, method="p", args=[])
+        assert collect_fact_kills(loop.body, table=table).calls
+
+    def test_getattr_fallback_call(self):
+        body = _nbody("def f(c: bool, o: N):\n"
+                      "    while c:\n"
+                      "        y = o.x\n")
+        loop = _first_loop(body)
+        table = IdentityMap()
+        assert not collect_fact_kills(loop.body, table=table).calls
+        read = loop.body[0].init
+        assert isinstance(read, TpyFieldAccess)
+        read.dyn_getattr_call = TpyMethodCall(
+            obj=read.obj, method="__getattr__", args=[])
+        assert collect_fact_kills(loop.body, table=table).calls
+
+
+def _condition(source: str):
+    """The condition of the first `if` in `f`."""
+    return next(s for s in _nbody(source) if isinstance(s, TpyIf)).condition
+
+
+def _tracker(*, receivers: set[str] = frozenset(),
+             paths: dict | None = None) -> NarrowingTracker:
+    """A tracker over a bare function state holding only the closure
+    exports and an empty may-hold relation."""
+    func = SimpleNamespace(closure_written_names=set(),
+                           closure_mutated_receivers=set(receivers),
+                           closure_mutated_paths=dict(paths or {}),
+                           in_place_writes=_bound({}),
+                           current_scope=None)
+    tracker = NarrowingTracker.__new__(NarrowingTracker)
+    tracker.ctx = SimpleNamespace(func=func)
+    tracker._module_has_rebindable_globals = lambda: False
+    return tracker
+
+
+_GROW_COND = ("def f(i: int, xs: list[int]):\n"
+              "    if i < len(xs) and grow():\n"
+              "        pass\n")
+
+
+class TestStripCallUnstable:
+    """Condition facts a call in the same condition may falsify through a
+    closure's writes to captured storage."""
+
+    def test_len_range_of_an_exported_receiver_is_dropped(self):
+        cond = _condition(_GROW_COND)
+        facts = ({"i": ValueRange(lo=0, hi_len_of="xs")}, {})
+        t, _ = _tracker(receivers={"xs"})._strip_call_unstable(facts, cond)
+        assert t == {}
+        t, _ = _tracker(receivers={"ys"})._strip_call_unstable(facts, cond)
+        assert set(t) == {"i"}
+
+    def test_no_call_in_the_condition_keeps_everything(self):
+        cond = _condition("def f(i: int, xs: list[int]):\n"
+                          "    if i < len(xs):\n"
+                          "        pass\n")
+        facts = ({"i": ValueRange(lo=0, hi_len_of="xs")}, {})
+        t, _ = _tracker(receivers={"xs"})._strip_call_unstable(facts, cond)
+        assert set(t) == {"i"}
+
+    def test_receiver_kills_beneath_only(self):
+        cond = _condition(_GROW_COND)
+        facts = ({"t": INT32, "t.v": INT32, "u.v": INT32}, {"t.w": INT32})
+        t, f = _tracker(receivers={"t"})._strip_call_unstable(facts, cond)
+        assert set(t) == {"t", "u.v"} and f == {}
+
+    def test_ptr_null_set_path(self):
+        cond = _condition(_GROW_COND)
+        facts = ({"t.p", "u.p"}, {"t.q"})
+        t, f = _tracker(receivers={"t"})._strip_call_unstable(facts, cond)
+        assert t == {"u.p"} and f == set()
+        # A store keeping its slot non-None says nothing of a pointer.
+        t, _ = _tracker(paths={"t.p": INT32})._strip_call_unstable(
+            facts, cond)
+        assert t == {"u.p"}
+
+    def test_stored_path_kills_at_and_beneath(self):
+        cond = _condition(_GROW_COND)
+        facts = ({"o.name": STR, "o.name.x": INT32, "o": INT32}, {})
+        t, _ = _tracker(paths={"o.name": None})._strip_call_unstable(
+            facts, cond)
+        assert set(t) == {"o"}
+
+    def test_stored_path_whose_stores_keep_the_slot(self):
+        cond = _condition(_GROW_COND)
+        facts = ({"o.name": STR, "o.name.x": INT32},
+                 {"o.name": INT32})
+        t, f = _tracker(paths={"o.name": STR})._strip_call_unstable(
+            facts, cond)
+        # The fact saying what every store keeps survives; one beneath the
+        # slot, or of another type, does not -- each side on its own.
+        assert set(t) == {"o.name"} and f == {}

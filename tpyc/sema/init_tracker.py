@@ -104,6 +104,8 @@ class InitTracker:
             # mid-body suspension) -- everything a suspension kills must
             # die here too, or the restore resurrects it.
             self.narrowing.invalidate_suspension_facts()
+        elif kills.calls:
+            self.narrowing.invalidate_closure_written_facts()
 
         def _sweep(name: str) -> None:
             prefix = name + "."

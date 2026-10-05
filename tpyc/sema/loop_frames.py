@@ -159,7 +159,8 @@ def check_loop_hold(ctx: 'SemanticContext', hold: LoopFrameHold) -> None:
     """Reject `hold` when its loop writes what it borrows by a binding, a
     store, an iteration or a `with`; queue the loop's calls for the check
     after mutation propagation."""
-    facts = loop_bindings_of(ctx.loop_bindings, hold.loop)
+    facts = loop_bindings_of(ctx.loop_bindings, hold.loop,
+                             ctx.write_summaries)
     rebinds = facts.body | facts.target
     container = _stepped_container(ctx, hold, facts.body)
     if container is not None:

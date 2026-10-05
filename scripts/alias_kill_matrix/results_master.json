@@ -1,0 +1,2440 @@
+{
+ "baseline_seconds": 0.74,
+ "commit": "6d09ed95e9",
+ "label": "master",
+ "repo": "/home/tommy/dev/turbo-python/tpy-m3",
+ "rows": {
+  "cost_alias_chain_1000": {
+   "accepted": null,
+   "baseline": 0.74,
+   "detail": "",
+   "expected": "<=2x",
+   "group": "cost",
+   "notes": [],
+   "ratio": 10.46,
+   "seconds": 7.74,
+   "sha": "8eb002643638",
+   "verdict": "+7.00s",
+   "why": ""
+  },
+  "cost_alias_chain_3000": {
+   "accepted": null,
+   "baseline": 0.74,
+   "detail": "TIMEOUT",
+   "expected": "<=2x",
+   "group": "cost",
+   "notes": [],
+   "ratio": null,
+   "seconds": null,
+   "sha": "f69df70294e0",
+   "verdict": "TIMEOUT",
+   "why": ""
+  },
+  "cost_descent_20": {
+   "accepted": null,
+   "baseline": 0.74,
+   "detail": "",
+   "expected": "<=2x",
+   "group": "cost",
+   "notes": [],
+   "ratio": 1.09,
+   "seconds": 0.81,
+   "sha": "604faeb5cb7c",
+   "verdict": "+0.07s",
+   "why": ""
+  },
+  "cost_field_chain_1000": {
+   "accepted": null,
+   "baseline": 0.74,
+   "detail": "",
+   "expected": "<=2x",
+   "group": "cost",
+   "notes": [],
+   "ratio": 6.15,
+   "seconds": 4.55,
+   "sha": "0721ae7970f0",
+   "verdict": "+3.81s",
+   "why": ""
+  },
+  "cost_field_chain_2000": {
+   "accepted": null,
+   "baseline": 0.74,
+   "detail": "",
+   "expected": "<=2x",
+   "group": "cost",
+   "notes": [],
+   "ratio": 24.35,
+   "seconds": 18.02,
+   "sha": "113e5f80ec8a",
+   "verdict": "+17.28s",
+   "why": ""
+  },
+  "cost_many_40x4": {
+   "accepted": null,
+   "baseline": 0.74,
+   "detail": "",
+   "expected": "<=2x",
+   "group": "cost",
+   "notes": [],
+   "ratio": 1.59,
+   "seconds": 1.18,
+   "sha": "d656c9fae1cb",
+   "verdict": "+0.44s",
+   "why": ""
+  },
+  "cost_scc_200": {
+   "accepted": null,
+   "baseline": 0.74,
+   "detail": "",
+   "expected": "<=2x",
+   "group": "cost",
+   "notes": [],
+   "ratio": 2.97,
+   "seconds": 2.2,
+   "sha": "64e28fdbdc85",
+   "verdict": "+1.46s",
+   "why": ""
+  },
+  "cost_walk12": {
+   "accepted": null,
+   "baseline": 0.74,
+   "detail": "",
+   "expected": "<=2x",
+   "group": "cost",
+   "notes": [],
+   "ratio": 1.08,
+   "seconds": 0.8,
+   "sha": "244b421055ca",
+   "verdict": "+0.06s",
+   "why": ""
+  },
+  "cost_walk16": {
+   "accepted": null,
+   "baseline": 0.74,
+   "detail": "",
+   "expected": "<=2x",
+   "group": "cost",
+   "notes": [],
+   "ratio": 1.05,
+   "seconds": 0.78,
+   "sha": "11af25430f8c",
+   "verdict": "+0.04s",
+   "why": ""
+  },
+  "cost_walk8": {
+   "accepted": null,
+   "baseline": 0.74,
+   "detail": "",
+   "expected": "<=2x",
+   "group": "cost",
+   "notes": [],
+   "ratio": 1.05,
+   "seconds": 0.78,
+   "sha": "340edefe3524",
+   "verdict": "+0.04s",
+   "why": ""
+  },
+  "cost_wide_500_40": {
+   "accepted": null,
+   "baseline": 0.74,
+   "detail": "",
+   "expected": "<=2x",
+   "group": "cost",
+   "notes": [],
+   "ratio": 2.84,
+   "seconds": 2.1,
+   "sha": "6e2f3a168059",
+   "verdict": "+1.36s",
+   "why": ""
+  },
+  "ev_copy_int": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (((*x)) + (::tpy::BigInt(1)));",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "9856d3ef6bc1",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "2"
+   ]
+  },
+  "ev_copy_ptr": {
+   "accepted": null,
+   "detail": "int32_t y = p->x;",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "f9574808e4d8",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "5"
+   ]
+  },
+  "ev_copy_str": {
+   "accepted": null,
+   "detail": "std::string y = (*s);",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "658aef841ce2",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "HI"
+   ]
+  },
+  "ev_dict_items_append": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*cfg.limit);",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "232f2e61ae24",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "10"
+   ]
+  },
+  "ev_loop_alias_after": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*cfg.limit);",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.78,
+   "sha": "2d589a7533ff",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "10"
+   ]
+  },
+  "ev_loop_alias_call": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*p.py);",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "c36981899c43",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "ev_loop_alias_store": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*p.py);",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "65a7583d7255",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "ev_loop_first_store": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*first.a.py);",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "d0fef2a330ae",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1",
+    "1"
+   ]
+  },
+  "ev_loopvar_field_call": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*cfg.limit);",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "5a1782a0940b",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "10"
+   ]
+  },
+  "ev_loopvar_field_store": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*cfg.limit);",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.78,
+   "sha": "f433934b8d64",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "10"
+   ]
+  },
+  "ev_loopvar_list_append": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*cfg.limit);",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "5ff92d56f358",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "10"
+   ]
+  },
+  "ev_property_store": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*r.a.py);",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "042904803c1e",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "ev_store_nonnone_copy": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*h.v);",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "9021c354a05d",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "7"
+   ]
+  },
+  "ev_store_nonnone_handler": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "5687afcb6af9",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "2"
+   ]
+  },
+  "ev_store_nonnone_ternary": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "c6deb912536d",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "5"
+   ]
+  },
+  "ev_subscript_local_call": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*cfg.limit);",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.78,
+   "sha": "1133ff50b8c4",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "10"
+   ]
+  },
+  "ev_walk_store_nonnone": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*r.v);",
+   "expected": "UNCHECKED",
+   "group": "everyday",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "e1d0205ddf2e",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_alias_chain": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "c556fcc2ae1f",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_alias_chain_kept": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "049d4ad477b2",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_call_alias_chain": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.inner.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "9eba3b84ef83",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_call_chain": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.inner.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "db11fd2ecdc2",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_call_chain_sibling": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "135559b37534",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_call_kwarg": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "5e716f6a4441",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_call_ternary": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "5319c9928e46",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_call_unrelated": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "1dbbbfdf5145",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_closure_own": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 1.4,
+   "sha": "b387ce4c9b67",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_closure_own_kept": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 2.0,
+   "sha": "f48b0b5ce5a1",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_composed_fwd": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = t.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [
+    "two-level literal None store rejects (assign.field_write_shape); stores an Optional parameter holding None"
+   ],
+   "seconds": 0.77,
+   "sha": "83461ae94bc4",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_composed_fwd_lit": {
+   "accepted": null,
+   "detail": "inl_composed_fwd_lit.py:52: error: in function 'f': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [
+    "everyday spelling of inl_composed_fwd; rejects today -- verdict is REJECT until it lowers"
+   ],
+   "seconds": 0.76,
+   "sha": "0300b34abe7d",
+   "truth": "None-reaches",
+   "verdict": "REJECT",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_composed_rev": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.inner.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "ea1e211b95d4",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_deep_call_ancestor": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = t5.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [
+    "a 2+-field chain in one expression rejects today (decl.slot_type / if.cond_binop.is not); every place is bound one hop at a time"
+   ],
+   "seconds": 0.77,
+   "sha": "ede2e05f6e28",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_deep_kill": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = t5.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [
+    "a 2+-field chain in one expression rejects today (decl.slot_type / if.cond_binop.is not); every place is bound one hop at a time"
+   ],
+   "seconds": 0.77,
+   "sha": "a5598adecfe8",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_deep_kill_onechain": {
+   "accepted": null,
+   "detail": "inl_deep_kill_onechain.py:60: error: in function 'f': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.slot_type)",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [
+    "everyday spelling of inl_deep_kill; rejects today -- verdict is REJECT until it lowers"
+   ],
+   "seconds": 0.77,
+   "sha": "2c5381b42e6b",
+   "truth": "None-reaches",
+   "verdict": "REJECT",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_deep_otherfield": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*t5.w);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [
+    "a 2+-field chain in one expression rejects today (decl.slot_type / if.cond_binop.is not); every place is bound one hop at a time"
+   ],
+   "seconds": 0.78,
+   "sha": "b5bbb7298820",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_deep_sibling": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*t5.v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [
+    "a 2+-field chain in one expression rejects today (decl.slot_type / if.cond_binop.is not); every place is bound one hop at a time"
+   ],
+   "seconds": 0.78,
+   "sha": "7b832f47134e",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_field_chain": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.inner.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.78,
+   "sha": "b9ad64a341ed",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_field_chain_otherfield": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.inner.w);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "22ad10a5ee8d",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_field_chain_sibling": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "76b16523d163",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_finally_entry": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y; ... y = a.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "2ff8b48b565a",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_handler_entry": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "58db652e1e6a",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_handler_entry_kept": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "24d2576e66f9",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_len_range_alias": {
+   "accepted": null,
+   "detail": "int32_t y = ::tpy::__getitem__(xs, i);",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [
+    "truth: IndexError in CPython is the range violation"
+   ],
+   "raised": "IndexError: list index out of range",
+   "seconds": 0.76,
+   "sha": "ad5c9b74fb62",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_len_range_unrelated": {
+   "accepted": null,
+   "detail": "int32_t y = xs[static_cast<std::size_t>(i)];",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "07c6db823b63",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1",
+    "2"
+   ]
+  },
+  "inl_loop_entry": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "1b0594564497",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "1",
+    "None"
+   ]
+  },
+  "inl_loop_entry_kept": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "c45c703c5629",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1",
+    "1"
+   ]
+  },
+  "inl_or": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [
+    "N defines __bool__ so CPython can take the `a` arm"
+   ],
+   "seconds": 0.76,
+   "sha": "2f1a95b1fcd3",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_or_kept": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "5321a564b780",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_plain_bind_nostore": {
+   "accepted": "CHECKED",
+   "detail": "std::optional<::tpy::BigInt> y = a.v;",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [
+    "model kills on stores and calls only; branch-head kills at the bind by design (committed case plain_bind)"
+   ],
+   "seconds": 0.77,
+   "sha": "9d0b5b2f3da9",
+   "truth": "stays-value",
+   "verdict": "CHECKED",
+   "why": "the live path kills at a bare bind under the guard (pinned by none_safety/alias_store_kills_narrowing `plain_bind`; decided in TODO.md \"One fact-kill helper\")",
+   "ys": [
+    "1 1"
+   ]
+  },
+  "inl_reassigned_call": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = h.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "8c204cc4c52e",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_reassigned_store": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = h.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "ed1b66bcbf86",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_receiver_alias": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.78,
+   "sha": "fd28f2cb19f4",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_receiver_field_chain": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.inner.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "dbee51559b79",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_receiver_field_sibling": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "3065a776c8c4",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_receiver_ternary_expr": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.78,
+   "sha": "b1675a4699b5",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_replace_ancestor": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = hi.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [
+    "`h.n.inner.v is not None` rejects (if.cond_binop.is not); fact spelled through stepwise aliases, so CPython keeps the old objects (stays-value) while TPy's inline storage makes hi denote the overwritten slot (None) -- truth understates TPy's exposure"
+   ],
+   "seconds": 0.77,
+   "sha": "9b7e9ad064d5",
+   "truth": "stays-value",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_replace_ancestor_fullpath": {
+   "accepted": null,
+   "detail": "inl_replace_ancestor_fullpath.py:28: error: in function 'f': this construct is not yet supported by C++ code generation (stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not)",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [
+    "everyday spelling of inl_replace_ancestor; rejects today -- verdict is REJECT until it lowers"
+   ],
+   "seconds": 0.76,
+   "sha": "9610b0500bfa",
+   "truth": "None-reaches",
+   "verdict": "REJECT",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_replace_slot": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.inner.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "ca926cedf050",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_replace_slot_alias_fact": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = u.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [
+    "CPython keeps the old M in u (stays-value); TPy stores inline, so u denotes the overwritten storage and reads None -- truth here understates TPy's exposure"
+   ],
+   "seconds": 0.77,
+   "sha": "afa2cc4e2d81",
+   "truth": "stays-value",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_self_alias_call": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = this->v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "429e21f67879",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_self_alias_kept": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*this->v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "cec18ecab755",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_self_alias_store": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = this->v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "400988baf6e8",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_store_nonnone_alias": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [
+    "the model's store rule is value-blind (kills by slot); a value-aware rule would keep it -- truth stays-value either way"
+   ],
+   "seconds": 0.77,
+   "sha": "d4c0ee5c2829",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "5"
+   ]
+  },
+  "inl_store_nonnone_direct": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.w);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "7b757387581e",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "5"
+   ]
+  },
+  "inl_store_nonnone_name": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.w);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "29d37460890c",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "4"
+   ]
+  },
+  "inl_store_optional_alias": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "40dcb2365d5b",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_store_optional_direct": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "732604f1159e",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_ternary": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "ae54ca915034",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_ternary_kept": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [
+    "distinct parameters are distinct objects under the model (f(n, n) is the filed exception)"
+   ],
+   "seconds": 0.76,
+   "sha": "dd7cebcfbf84",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_two_roots": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = s5.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [
+    "a 2+-field chain in one expression rejects today (decl.slot_type / if.cond_binop.is not); every place is bound one hop at a time"
+   ],
+   "seconds": 0.77,
+   "sha": "d6521dae83b5",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_unpack": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "b7e653776b42",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None 1"
+   ]
+  },
+  "inl_unpack_kept": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "9f54b34874d3",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1 1"
+   ]
+  },
+  "inl_unrelated": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "131c70acaf91",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_unrelated_branch": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*t5.v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [
+    "a 2+-field chain in one expression rejects today (decl.slot_type / if.cond_binop.is not); every place is bound one hop at a time"
+   ],
+   "seconds": 0.76,
+   "sha": "f5120088a227",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "inl_walrus": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.v;",
+   "expected": "CHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "a2df3f361397",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "inl_walrus_kept": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "inline",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "19af189d83fc",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "meet_closure_before_loop_record": {
+   "accepted": "REJECT",
+   "detail": "meet_closure_before_loop_record.py:27: error: Type mismatch in argument 'n': expected N, got N | None",
+   "expected": "COMPILES",
+   "group": "meet",
+   "notes": [
+    "print() and use() cannot run wipe, but every call counts as one that may: the loop-entry meet kills x and use(x) is a type error",
+    "before this branch the straight-line twin already rejected (the live path kills after print()); the back edge restored the facts, which was a silent miscompile when a call did run the closure (probe /tmp/agents/meta-wc/c3e.py)"
+   ],
+   "seconds": 1.7,
+   "sha": "efd4f3774dfc",
+   "truth": "stays-value",
+   "verdict": "REJECT",
+   "why": "the live path's rule: any call may run a closure that rebinds through nonlocal; before this branch the back edge restored the facts (silent miscompile /tmp/agents/meta-wc/c3e.py); the builtin-callee exemption is TODO.md \"Pre-scan write views: the leftovers\" (k)",
+   "ys": [
+    "a",
+    "a"
+   ]
+  },
+  "meet_closure_field_write_loop": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = t.v;",
+   "expected": "CHECKED",
+   "group": "meet",
+   "notes": [],
+   "seconds": 2.05,
+   "sha": "971d744a4893",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "1",
+    "None"
+   ]
+  },
+  "meet_closure_field_write_loop_other": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*t.v);",
+   "expected": "UNCHECKED",
+   "group": "meet",
+   "notes": [],
+   "seconds": 1.95,
+   "sha": "294ae60caa48",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1",
+    "1"
+   ]
+  },
+  "meet_closure_nonlocal_before_handler": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = x;",
+   "expected": "CHECKED",
+   "group": "meet",
+   "notes": [],
+   "seconds": 1.76,
+   "sha": "70cadb0ca73a",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "meet_closure_nonlocal_before_loop": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = x;",
+   "expected": "CHECKED",
+   "group": "meet",
+   "notes": [],
+   "seconds": 2.04,
+   "sha": "e051320af179",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "5",
+    "None"
+   ]
+  },
+  "meet_closure_nonlocal_before_loop_uncalled": {
+   "accepted": "CHECKED",
+   "detail": "std::optional<::tpy::BigInt> y = x;",
+   "expected": "UNCHECKED",
+   "group": "meet",
+   "notes": [],
+   "seconds": 1.73,
+   "sha": "821a07d25350",
+   "truth": "stays-value",
+   "verdict": "CHECKED",
+   "why": "any call may run a closure that rebinds through nonlocal, and print() is a call: the loop-entry meet takes the live path's stance, and the live path already kills after print() on master; a body with no call keeps the fact (case closure_and_capture_kills, closure_loop_uncalled)",
+   "ys": [
+    "5",
+    "5"
+   ]
+  },
+  "meet_closure_readonly_inferred": {
+   "accepted": "REJECT",
+   "detail": "meet_closure_readonly_inferred.py:31: error: Cannot call method 'upper' on type str | None",
+   "expected": "COMPILES",
+   "group": "meet",
+   "notes": [
+    "the same rule as meet_closure_readonly_receiver_compiles: the receiver is exported whatever the callee",
+    "before this branch the shape compiled: the previous rule did not export a closure's writes through captured storage at all (its field-store face, unm_nested_def_before, was a silent miscompile)"
+   ],
+   "seconds": 1.68,
+   "sha": "1ea4435112de",
+   "truth": "stays-value",
+   "verdict": "REJECT",
+   "why": "a closure's method receivers are exported syntactically: a @readonly callee may still write storage the receiver's pointer fields reach (probe shape: a readonly method storing None into a global a Ptr field points at), and a direct call on master kills beneath its receiver the same way; the precise answer is a Phase-2 callee effect (TODO.md \"Pre-scan write views: the leftovers\" (k)); the user's decision",
+   "ys": [
+    "A"
+   ]
+  },
+  "meet_closure_readonly_receiver_compiles": {
+   "accepted": "REJECT",
+   "detail": "meet_closure_readonly_receiver_compiles.py:30: error: Cannot call method 'upper' on type str | None",
+   "expected": "COMPILES",
+   "group": "meet",
+   "notes": [
+    "a closure's method receivers are exported syntactically: @readonly stops writes through self only, so the callee may still write what the receiver's pointer fields reach, and a direct call kills beneath its receiver the same way"
+   ],
+   "seconds": 1.79,
+   "sha": "359a52783079",
+   "truth": "stays-value",
+   "verdict": "REJECT",
+   "why": "a closure's method receivers are exported syntactically: a @readonly callee may still write storage the receiver's pointer fields reach (probe shape: a readonly method storing None into a global a Ptr field points at), and a direct call on master kills beneath its receiver the same way; the precise answer is a Phase-2 callee effect (TODO.md \"Pre-scan write views: the leftovers\" (k)); the user's decision",
+   "ys": [
+    "A"
+   ]
+  },
+  "meet_closure_store_nonnone_compiles": {
+   "accepted": null,
+   "detail": "",
+   "expected": "COMPILES",
+   "group": "meet",
+   "notes": [
+    "the def site decides each exported path's store verdict (stores_keep) over the analyzed closure body, as a meet does for a field store in its block; a store of None still kills (case closure_and_capture_kills, field_straight)"
+   ],
+   "seconds": 1.95,
+   "sha": "351e47aba25c",
+   "truth": "stays-value",
+   "verdict": "COMPILES",
+   "why": "",
+   "ys": [
+    "B"
+   ]
+  },
+  "meet_match_capture_loop": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = x;",
+   "expected": "CHECKED",
+   "group": "meet",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "509fdcbfb24f",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "5",
+    "None"
+   ]
+  },
+  "meet_match_capture_loop_other": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*x);",
+   "expected": "UNCHECKED",
+   "group": "meet",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "e01186665957",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "5",
+    "5"
+   ]
+  },
+  "meet_two_params_distinct": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "UNCHECKED",
+   "group": "meet",
+   "notes": [],
+   "seconds": 0.78,
+   "sha": "b137266a3d69",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "meet_two_params_distinct_str": {
+   "accepted": null,
+   "detail": "",
+   "expected": "COMPILES",
+   "group": "meet",
+   "notes": [],
+   "seconds": 1.03,
+   "sha": "daf10c26770b",
+   "truth": "stays-value",
+   "verdict": "COMPILES",
+   "why": "",
+   "ys": [
+    "A"
+   ]
+  },
+  "ptr_box": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*head.v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [
+    "model: Box is an indirection -> abstract BL may be head -> kill; truth stays-value (unique ownership cannot loop back)"
+   ],
+   "seconds": 1.01,
+   "sha": "f996e48ea233",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled (truth stays-value: Box is unique ownership, so the model's kill is the conservative one)",
+   "ys": [
+    "1"
+   ]
+  },
+  "ptr_chain_in_walk": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = u.v;",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.78,
+   "sha": "dc8cd09f160b",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None",
+    "None"
+   ]
+  },
+  "ptr_dll_prev": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*head.v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.79,
+   "sha": "4141fd3246ee",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_hop4_call": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*head.v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.78,
+   "sha": "91d2d2e041dd",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_hop4_store": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*head.v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.78,
+   "sha": "e84441bc5ec6",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_hop4_store_lit": {
+   "accepted": null,
+   "detail": "ptr_hop4_store_lit.py:26: error: in function 'f': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [
+    "everyday spelling of ptr_hop4_store; rejects today -- verdict is REJECT until it lowers"
+   ],
+   "seconds": 0.76,
+   "sha": "ae8955d2b380",
+   "truth": "None-reaches",
+   "verdict": "REJECT",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_hop6_call": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*head.v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "d49cb6e2b2e0",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_inline_vs_ptr": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*a.inner.v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "776f2ba91213",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_inline_vs_ptr_otherfield": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*a.inner.v);",
+   "expected": "UNCHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "ec56fba2e548",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "ptr_parent": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*root.v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "d660d47fa8db",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_rc": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*head.v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 1.0,
+   "sha": "a3e5b5680590",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_recursive_optional": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*head.v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "b795ed6b08f5",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_recursive_optional_walk": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*node->v);",
+   "expected": "UNCHECKED",
+   "group": "pointer",
+   "notes": [
+    "walk starts at head.next: `node: RO | None = head` rejects (decl.slot_type) and a `while True` reseat from head rejects (reference may outlive its storage)"
+   ],
+   "seconds": 0.76,
+   "sha": "0d73d1960ec2",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1",
+    "1"
+   ]
+  },
+  "ptr_recursive_optional_walk_decl": {
+   "accepted": null,
+   "detail": "ptr_recursive_optional_walk_decl.py:21: error: in function 'f': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.slot_type)",
+   "expected": "UNCHECKED",
+   "group": "pointer",
+   "notes": [
+    "everyday spelling of ptr_recursive_optional_walk; rejects today -- verdict is REJECT until it lowers"
+   ],
+   "seconds": 0.76,
+   "sha": "d3fb51b7020b",
+   "truth": "stays-value",
+   "verdict": "REJECT",
+   "why": "",
+   "ys": [
+    "1",
+    "1",
+    "1"
+   ]
+  },
+  "ptr_recursive_optional_walk_kill": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = h2->v;",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "13bd041c8fd2",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_ring": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*head.v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "8d9ccf93ee03",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_second_param": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*node->v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "d2f0a28bc224",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": [
+    "1",
+    "None"
+   ]
+  },
+  "ptr_selfloop_call": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "d66997371db5",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_selfloop_ptrfact": {
+   "accepted": "UNCHECKED",
+   "detail": "std::optional<::tpy::BigInt> y = a.next->v;",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [
+    "verdict = whether the a.next deref on the subject line is checked"
+   ],
+   "raised": "AttributeError: 'NoneType' object has no attribute 'v'",
+   "seconds": 0.76,
+   "sha": "63608b671e29",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": []
+  },
+  "ptr_selfloop_store": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "a7189bdccf5f",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_tree_descent": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = root.v;",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [
+    "truth graph has a back edge c1.l = root (a tree type does not prove acyclicity)"
+   ],
+   "seconds": 0.77,
+   "sha": "872144e13231",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_tree_descent_root_kept": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*s.v);",
+   "expected": "UNCHECKED",
+   "group": "pointer",
+   "notes": [
+    "the rule as written ('may be ANY place whose type is T') kills it; a fresh local whose storage never escapes cannot be behind a pointer, so a refined model keeps it -- truth stays-value"
+   ],
+   "seconds": 0.77,
+   "sha": "7576ac38fcd5",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "ptr_tree_descent_sibling": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*root.v);",
+   "expected": "UNCHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "c499bf2e2dbc",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1 None"
+   ]
+  },
+  "ptr_two_types_call": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*nb->v);",
+   "expected": "UNCHECKED",
+   "group": "pointer",
+   "notes": [
+    "type precision: B is not reachable from A's type"
+   ],
+   "seconds": 0.77,
+   "sha": "7172dbf7217e",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "ptr_two_types_linked_call": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*nb->v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [
+    "B is reachable from A through the bp indirection field"
+   ],
+   "seconds": 0.77,
+   "sha": "d9bbf9683b50",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_two_types_linked_store": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*nb->v);",
+   "expected": "UNCHECKED",
+   "group": "pointer",
+   "notes": [
+    "a plain store writes one slot (A-object, v); no B can be that object"
+   ],
+   "seconds": 0.76,
+   "sha": "9db10d6b3f61",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "ptr_two_types_loopwalk": {
+   "accepted": null,
+   "detail": "ptr_two_types_loopwalk.py:35: error: in function 'f': this construct is not yet supported by C++ code generation (stmt.while:binop.shape.is not)",
+   "expected": "UNCHECKED",
+   "group": "pointer",
+   "notes": [
+    "everyday spelling of ptr_two_types_store; rejects today -- verdict is REJECT until it lowers"
+   ],
+   "seconds": 0.76,
+   "sha": "8c7f9eb73f97",
+   "truth": "stays-value",
+   "verdict": "REJECT",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "ptr_two_types_store": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*nb->v);",
+   "expected": "UNCHECKED",
+   "group": "pointer",
+   "notes": [
+    "type precision: A's v slot cannot be a B's"
+   ],
+   "seconds": 0.76,
+   "sha": "5f67e1ef07b3",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1"
+   ]
+  },
+  "ptr_walk_head_receiver": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = head.v;",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.77,
+   "sha": "8da2cd7fa574",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_walk_head_sibling": {
+   "accepted": "CHECKED",
+   "detail": "std::optional<::tpy::BigInt> y = head.v;",
+   "expected": "UNCHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "7e4edf0ae522",
+   "truth": "stays-value",
+   "verdict": "CHECKED",
+   "why": "the rebind node = node.next kills head.v: node holds head exactly and a rebind kills at the bind (the same decision as inl_plain_bind_nostore)",
+   "ys": [
+    "1"
+   ]
+  },
+  "ptr_walk_head_store": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = head.v;",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "28fb3d315cde",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "ptr_walk_receiver": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = node->v;",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "72aaea966703",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None",
+    "None"
+   ]
+  },
+  "ptr_walk_samefield_other": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*node->v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [
+    "literal None store through a Ptr local rejects (assign.field_write_shape); stores an Optional parameter holding None"
+   ],
+   "seconds": 0.75,
+   "sha": "7ef173920cc4",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": [
+    "1",
+    "None"
+   ]
+  },
+  "ptr_walk_samefield_other_lit": {
+   "accepted": null,
+   "detail": "ptr_walk_samefield_other_lit.py:28: error: in function 'f': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [
+    "everyday spelling of ptr_walk_samefield_other; rejects today -- verdict is REJECT until it lowers"
+   ],
+   "seconds": 0.79,
+   "sha": "769bd5b9c83f",
+   "truth": "None-reaches",
+   "verdict": "REJECT",
+   "why": "",
+   "ys": [
+    "1",
+    "None"
+   ]
+  },
+  "ptr_walk_sibling_plain": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*node->v);",
+   "expected": "UNCHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "284556d12d9d",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1",
+    "1"
+   ]
+  },
+  "ptr_walk_sibling_plus": {
+   "accepted": null,
+   "detail": "::tpy::BigInt y = (*node->v);",
+   "expected": "UNCHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "0c66f9cd7936",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "",
+   "ys": [
+    "1",
+    "1"
+   ]
+  },
+  "res_back_edge": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*head.v);",
+   "expected": "CHECKED",
+   "group": "unmodelled",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "a7c5cac50038",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#may-hold-relation-unmodelled-shapes",
+   "ys": [
+    "1",
+    "None"
+   ]
+  },
+  "res_bare_borrow": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = o->x;",
+   "expected": "CHECKED",
+   "group": "unmodelled",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "07b1ccc2fd50",
+   "truth": "stays-value",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#field-loan-whole-record-callee-unchecked",
+   "ys": [
+    "5"
+   ]
+  },
+  "res_pending_deref": {
+   "accepted": "UNCHECKED",
+   "detail": "std::optional<::tpy::BigInt> y = a.next->v;",
+   "expected": "CHECKED",
+   "group": "unmodelled",
+   "notes": [],
+   "raised": "AttributeError: 'NoneType' object has no attribute 'n'",
+   "seconds": 0.75,
+   "sha": "78951148d03d",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#subexpression-right-to-left-eval",
+   "ys": []
+  },
+  "res_ptr_call_root": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "CHECKED",
+   "group": "unmodelled",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "ebef212744c1",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#may-hold-relation-unmodelled-shapes (3)",
+   "ys": [
+    "None"
+   ]
+  },
+  "res_ptr_param_root": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "CHECKED",
+   "group": "unmodelled",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "c6c6061d1e7d",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#may-hold-relation-unmodelled-shapes (3)",
+   "ys": [
+    "None"
+   ]
+  },
+  "res_recv_walk": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*b.v);",
+   "expected": "CHECKED",
+   "group": "unmodelled",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "65e77dbeb47f",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#mutating-call-walk-keeps-linked-local-fact",
+   "ys": [
+    "None"
+   ]
+  },
+  "res_two_loopvars": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*n.f.v);",
+   "expected": "CHECKED",
+   "group": "unmodelled",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "c4b5a8845ad3",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#subscript-element-not-keyed",
+   "ys": [
+    "None"
+   ]
+  },
+  "reuse_cross_loops": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*m.v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "c36ae7914cb4",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": [
+    "None"
+   ]
+  },
+  "reuse_loopvar_types": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*m.v);",
+   "expected": "CHECKED",
+   "group": "pointer",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "43b9d37b0d75",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#pointer-structure-aliases-unmodelled",
+   "ys": [
+    "None"
+   ]
+  },
+  "unm_iadd_alias": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*h.bag.v);",
+   "expected": "CHECKED",
+   "group": "unmodelled",
+   "notes": [
+    "filed as unmodelled (user __iadd__), but `t.bag += 1` also stores the slot (t, bag) which the fact h.bag.v sits under -- the plain store rule alone would kill it"
+   ],
+   "seconds": 0.75,
+   "sha": "fea6af5190a8",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#iadd-target-keeps-facts-beneath",
+   "ys": [
+    "None"
+   ]
+  },
+  "unm_iadd_local": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*b.v);",
+   "expected": "CHECKED",
+   "group": "unmodelled",
+   "notes": [],
+   "seconds": 0.74,
+   "sha": "10ec03045b14",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#iadd-target-keeps-facts-beneath",
+   "ys": [
+    "None"
+   ]
+  },
+  "unm_match_kw_capture": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*u->v);",
+   "expected": "CHECKED",
+   "group": "unmodelled",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "f3e9344901ba",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#borrowed-origin-not-related-to-source (a keyword capture)",
+   "ys": [
+    "None"
+   ]
+  },
+  "unm_nested_alias_inner": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "CHECKED",
+   "group": "unmodelled",
+   "notes": [
+    "a nested def's may-hold relation is built from its own body, so it never learns that t may hold a"
+   ],
+   "seconds": 1.88,
+   "sha": "444678e78e85",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#may-hold-relation-unmodelled-shapes (2)",
+   "ys": [
+    "None"
+   ]
+  },
+  "unm_nested_alias_outer": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = a.v;",
+   "expected": "CHECKED",
+   "group": "unmodelled",
+   "notes": [
+    "alias bound BEFORE the narrowing so the plain-bind kill (which fires when t is bound inside the narrowed block) does not mask the closure store"
+   ],
+   "seconds": 1.91,
+   "sha": "a5ee12853b5a",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "unm_nested_def_before": {
+   "accepted": null,
+   "detail": "std::optional<::tpy::BigInt> y = t.v;",
+   "expected": "CHECKED",
+   "group": "unmodelled",
+   "notes": [],
+   "seconds": 1.67,
+   "sha": "eb60cd84da8e",
+   "truth": "None-reaches",
+   "verdict": "CHECKED",
+   "why": "",
+   "ys": [
+    "None"
+   ]
+  },
+  "unm_property_setter": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*o.q);",
+   "expected": "CHECKED",
+   "group": "unmodelled",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "57536e5dfb97",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#property-setter-sibling-write-invisible-to-loop-kill-set (the straight-line face)",
+   "ys": [
+    "None"
+   ]
+  },
+  "unm_subscript_local": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*e.v);",
+   "expected": "CHECKED",
+   "group": "unmodelled",
+   "notes": [],
+   "seconds": 0.76,
+   "sha": "f1d200d86af6",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#subscript-element-not-keyed",
+   "ys": [
+    "None"
+   ]
+  },
+  "unm_two_params": {
+   "accepted": "UNCHECKED",
+   "detail": "::tpy::BigInt y = (*a.v);",
+   "expected": "CHECKED",
+   "group": "unmodelled",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "8649ebc27a4b",
+   "truth": "None-reaches",
+   "verdict": "UNCHECKED",
+   "why": "BUGS.md#may-hold-relation-unmodelled-shapes (1)",
+   "ys": [
+    "None"
+   ]
+  },
+  "view_loop_projection": {
+   "accepted": null,
+   "detail": "std::string_view y = ::tpy::str_strip(st);",
+   "expected": "VIEW",
+   "group": "view",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "47579424f06b",
+   "truth": "stays-value",
+   "verdict": "VIEW",
+   "why": "",
+   "ys": [
+    "hello"
+   ]
+  },
+  "view_pointer_walk": {
+   "accepted": null,
+   "detail": "std::string_view y = ::tpy::str_strip(st);",
+   "expected": "VIEW",
+   "group": "view",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "b28f9a092d4e",
+   "truth": "stays-value",
+   "verdict": "VIEW",
+   "why": "",
+   "ys": [
+    "hello"
+   ]
+  },
+  "view_record_after": {
+   "accepted": null,
+   "detail": "std::string_view y = ::tpy::str_strip(st);",
+   "expected": "VIEW",
+   "group": "view",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "2c81807261e2",
+   "truth": "stays-value",
+   "verdict": "VIEW",
+   "why": "",
+   "ys": [
+    "hello"
+   ]
+  },
+  "view_record_before": {
+   "accepted": null,
+   "detail": "std::string_view y = ::tpy::str_strip(st);",
+   "expected": "VIEW",
+   "group": "view",
+   "notes": [],
+   "seconds": 0.75,
+   "sha": "73f82f39a4d6",
+   "truth": "stays-value",
+   "verdict": "VIEW",
+   "why": "",
+   "ys": [
+    "hello"
+   ]
+  }
+ }
+}
