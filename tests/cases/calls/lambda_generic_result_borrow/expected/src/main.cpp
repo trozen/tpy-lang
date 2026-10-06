@@ -60,7 +60,7 @@ void main() {
     })) << "\n" << ::tpy::check_signals;
     Rec& a = ::tpy::__getitem__(rs, 0);
     Rec& b = ::tpy::__getitem__(rs, 1);
-    std::cout << "free_min" << " " << ::tpy::min_key(a, b, [](const Rec& r) -> const Inner& { return r.inner; }).n << "\n" << ::tpy::check_signals;
+    std::cout << "free_min" << " " << ::tpy::assert_lent(::tpy::min_key(a, b, [](const Rec& r) -> const Inner& { return r.inner; })).n << "\n" << ::tpy::check_signals;
     Team().ranked();
     {
         auto __src_1 = ::tpy::builtin_map<::tpy::val_or_ref<Inner>>([](Rec& r) -> Inner& { return r.inner; }, rs);

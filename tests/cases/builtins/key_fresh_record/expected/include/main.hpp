@@ -215,7 +215,7 @@ inline void Holder::show() {
     std::cout << "method sorted_lam" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_1)) << "\n" << ::tpy::check_signals;
     std::vector<Rec> __tmp_2 = ::tpy::builtin_sorted_key<Rec>(this->rs, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); });
     std::cout << "method sorted_cls" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_2)) << "\n" << ::tpy::check_signals;
-    std::cout << "method min_cls" << " " << ::tpy::min_key(a, b, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); }).n << "\n" << ::tpy::check_signals;
+    std::cout << "method min_cls" << " " << ::tpy::assert_lent(::tpy::min_key(a, b, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); })).n << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -1294,11 +1294,12 @@ check this section describes, so Extension B's scope is unchanged.
 
 ### Declarative Borrow Contracts (`@may_reallocate`, `@return_borrows_from`)
 
-(The return half has landed for free functions under another spelling:
+(The return half has landed under another spelling:
 `borrows=(...)` / `element_of=(...)` (keywords of `@native` / `@cpp_template`), docs/NATIVE_INTEROP.md --
-the stub names the parameters its result IS, or whose element it is. It is
-rejected on methods for now, so the `__getitem__` form below is still a sketch;
-a method's receiver borrow is still inferred from the signature.)
+the stub names the parameters its result IS, or whose element it is, `self`
+naming a method's receiver. It is refused on operator methods for now, so the
+`__getitem__` form below is still a sketch; an undeclared method's receiver
+borrow is still inferred from the signature.)
 
 Currently the compiler hardcodes which built-in container methods are *structural*
 (can invalidate element references by reallocating or shifting storage) vs *in-place*

@@ -55,7 +55,8 @@ from ..nodes import (
     THIRName)
 from .checks import (_combinator_pins_source, _container_storage_call_rvalue,
                      _user_iterator_iterable,
-                     _native_iter_combinator)
+                     _native_iter_combinator,
+                     declared_call_elem_copy_ok)
 from .predicates import (
     _mixed_own_storage_source,
     storage_tuple_name_source,
@@ -1046,6 +1047,12 @@ def _lower_comp_container_elem(e, vt: TpyType, lc: '_LowerCtx',
         # same verdict the `Own[container]` argument slot reads for the
         # `out.append(make_row(i))` spelling of the identical store.
         value = _lower_container_elem(e, vt, lc, body_declared)
+    elif declared_call_elem_copy_ok(e, vt, lc.analyzer):
+        # A borrow-declared call handing back the slot's container: the
+        # element copies it, per iteration, inside the push's own full
+        # expression.
+        value = _lower_container_elem(e, vt, lc, body_declared,
+                                      allow_temps=allow_temps)
     else:
         raise ThirUnsupported("comp.container_value", detail=True)
     _witness("comp.container_value")

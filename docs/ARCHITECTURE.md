@@ -418,20 +418,27 @@ representation decisions, not ownership, access-permission or provenance proofs.
 A bodyless binding's result borrows are DECLARED (`borrows=` / `element_of=`,
 `FunctionInfo.return_borrows_from` with `element_borrows_from` for the
 element-of parameters, `borrow_declared`), and whether one CALL's result
-binds as a borrow is decided once, in sema (`CallAnalyzer.stamp_result_borrow`:
-`TpyCall.result_form` -- BORROW, REFERENCE_VALUE (a reference into the
-operands for the statement) or COPY (the C++ hands back a copy) -- and
+binds as a borrow is decided once, in sema (`CallAnalyzer.stamp_result_borrow`,
+for free and method calls alike -- a method's receiver lends as index -1 and
+rule A marks it written:
+`TpyCallLike.result_form` -- BORROW, REFERENCE_VALUE (a reference into the
+operands for the statement), COPY (the C++ hands back a copy) or VALUE (a
+value-shaped result handed back by value, lending nothing; lowering and
+codegen ask `value_category.call_hands_back_value` /
+`call_value_optional` of the node instead of re-deriving it) -- and
 `copy_observable`, from the allow-list
 `sema.context.proven_lend_roots` -- the one root set the lending verdict, the
 loans the result files and the mutable use it makes of its operands all read
 -- and the element-source classification `sema.iter_loans.iter_element_source`
 the `for` statement shares, keyed on the declared element cursor
 `NativeMembers.cursor`, or a record whose `__iter__` hands out a borrowing
-view). The emitter tells an element-returning helper about a BORROW from
-`THIRCall.result_form` (`<void, ::tpy::elem_verdict::lend>`), and the helper
-asserts it: a `lend` over a source it copies from does not build. Every
-other form spells nothing and leaves the helper unchecked (over a lending
-source it still returns the element, which a holder copies). Readers read the stamp: `is_rvalue_source` for the C++ value
+view). The emitter wraps every call whose `THIRCall.result_form` /
+`THIRMethodCall.result_form` is BORROW, at one site, in
+`::tpy::assert_lent(...)` -- an identity that does not build when the C++
+hands back a value, so the compiler's borrow verdict and the callee's C++
+cannot silently disagree. Every other form renders the bare call (over a
+lending source a helper still returns the element, which a holder copies).
+Readers read the stamp: `is_rvalue_source` for the C++ value
 category,
 `value_category.call_result_holdable` for a holder that outlives the
 statement, `call_result_live_in_statement` for an argument bound in place

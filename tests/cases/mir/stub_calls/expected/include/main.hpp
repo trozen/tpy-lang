@@ -35,6 +35,8 @@ bool overloads(const ::tpy::BigInt& a, const ::tpy::BigInt& b, int32_t i, int32_
 double twice(double x);
 // def both(s: str, a: int, b: int) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t both(std::string_view s, const ::tpy::BigInt& a, const ::tpy::BigInt& b);
+// def dict_get_value(d: dict[str, int32], k: str) -> int32:  # tpyc: mir(covered)
+int32_t dict_get_value(const ::tpy::ordered_map<std::string, int32_t>& d, std::string_view k);
 // def record_len(r: Rec) -> int32:  # tpyc: mir(uncovered /^stub protocol argument is not a builtin leaf$/)
 int32_t record_len(const Rec& r);
 // def main() -> None:

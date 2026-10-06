@@ -162,7 +162,8 @@ from ...value_category import (
     CONTAINER_LITERAL_NODES,
     lends_from_dying_source,
     property_access_returns_cpp_ref,
-    frame_factory_callee, call_returns_cpp_ref, is_rvalue_source,
+    frame_factory_callee, call_hands_back_value, call_returns_cpp_ref,
+    is_rvalue_source,
     materializing_temp_source,
 )
 from ..reject import (ThirUnsupported, call_reject_reason, expr_kind_tag,
@@ -244,6 +245,8 @@ from ..nodes import (
 from ...codegen_cpp.forms import (is_plain_nonvalue, is_ptr_variant_union,
                                   reads_storage_form_optional)
 from .predicates import (
+    _alias_call_source_ok,
+    _call_storage_optional_return,
     receiver_is_const,
     _value_record_slot,
     _poly_narrow_info,
@@ -593,6 +596,9 @@ _MEMBERSHIP_RECV = _ExprUse(pos=SinkPos.RECEIVER,
 
 from .checks import (
     _record_copy_borrow_ret,
+    _declared_call_at_owning_elem,
+    declared_call_elem_copy_ok,
+    own_element_copy_type,
     _btuple_pass_arg,
     _own_movable_tuple_pass_arg,
     _own_move_source_slice_facts,
@@ -885,16 +891,6 @@ def lower_copy_construct(src: TpyExpr, payload: TpyType, lc: '_LowerCtx',
                     loc=loc)
 
 
-def own_element_copy_type(member: TpyExpr, analyzer) -> TpyType:
-    """The type a borrowed tuple member sema declared a copy of builds as:
-    the implicit copy renders as its explicit `copy(member)` would, which
-    spells the SOURCE's type (a literal-seeded container resolved) -- so a
-    sink admits it only where that is the slot's own payload."""
-    st = analyzer.get_expr_type(member)
-    st = resolve_pending_container(st, analyzer) or st
-    return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
-
-
 def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                         declared: dict[str, TpyType], use: _ExprUse,
                         allow_whole_optional: bool = False,
@@ -1135,9 +1131,8 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                               unwrap_send_sync(ret)))
                           if isinstance(ret, TpyType) else None,
                           analyzer) is not None
-                       or _storage_optional_return_wide(
-                          fi.return_type if fi is not None else None,
-                          analyzer) is not None)
+                       or _call_storage_optional_return(e, analyzer)
+                       is not None)
                   and _witness("call.storage_opt_ret"))
               # An Own[genrec]-returning call at a STORAGE sink (the
               # argtemp.ru_wrapper_call temp): the by-value wrapper return
@@ -5601,6 +5596,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         movable = lc.movable_now(e.name)
         if last or movable:
             lowered = replace(lowered, is_last_use=last, is_movable=movable)
+    if (isinstance(e, TpyMethodCall) and isinstance(lowered, THIRMethodCall)
+            and e.result_form is not ResultForm.NOT_DECLARED):
+        # Every method-call arm builds its node; sema's verdict is one fact
+        # of the source node, carried here once.
+        lowered = replace(lowered, result_form=e.result_form)
     if (isinstance(e, (TpyCall, TpyMethodCall))
             and isinstance(lowered, (THIRCall, THIRMethodCall))
             and lowered.form is Form.VALUE):
@@ -9405,8 +9405,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             cpp_template=cpp_template,
             callee_cpp=callee_cpp,
             constructs=_callee_is_type_initializer(fi),
-            result_form=e.result_form if isinstance(e, TpyCall)
-            else ResultForm.NOT_DECLARED,
+            result_form=e.result_form,
             form=form,
             loc=loc,
         ))
@@ -10371,7 +10370,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     stmt_position=stmt_position,
                     storage_ret_ok=storage_ret_ok,
                     borrow_ret_ok=result_use in (_ExprResultUse.RECEIVER,
-                                                 _ExprResultUse.BORROW_BIND))
+                                                 _ExprResultUse.BORROW_BIND),
+                    use=use)
                 stub_recv = fam.stub_recv
             elif recv_type is not None and (
                     recv_type.is_pointer()
@@ -11220,6 +11220,17 @@ def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
             return THIRWalrus(result_type=vtu, name=e.target,
                               cpp_name=cpp_name, value=value,
                               tail="deref", addr_of=True, loc=loc)
+        if _alias_call_source_ok(e.value, analyzer):
+            # A BORROW-returning call (`(w := d.get(k, fb)).n`): its result
+            # is a lent operand living past the suspension, the source the
+            # frame decl's alias bind admits.
+            value = _lower_expr(e.value, lc, declared,
+                                use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
+            declared[e.target] = vtu
+            _witness("expr.walrus_frame_alias_call")
+            return THIRWalrus(result_type=vtu, name=e.target,
+                              cpp_name=cpp_name, value=value,
+                              tail="deref", addr_of=True, loc=loc)
         if not (isinstance(e.value, TpySubscript)
                 and not e.value.needs_optional_runtime_check
                 and e.value.slice_function_info is None
@@ -11245,7 +11256,7 @@ def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
         if not (isinstance(e.value, (TpyCall, TpyMethodCall))
                 and _f1_tuple(analyzer.get_expr_type(e.value),
                               analyzer) is not None
-                and not _own_declared_call_ret(e.value)):
+                and not call_hands_back_value(e.value)):
             note_detail("walrus.frame_btuple_src")
             raise ThirUnsupported("expr.walrus")
         value = _lower_expr(e.value, lc, declared,
@@ -12455,6 +12466,23 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
         if copy_row is not None:
             _witness("containerlit.copy_record")
             return copy_row
+    if declared_call_elem_copy_ok(e, slot, lc.analyzer):
+        # The element owns its value and the call hands back a reference:
+        # copy-construct the payload. An Optional slot takes the same copy,
+        # which converts into its `std::optional<P>` storage element.
+        _witness("containerlit.declared_call_copy")
+        _payload = own_element_copy_type(e, lc.analyzer)
+        return lower_copy_construct(e, _payload, lc, declared,
+                                    slot_type=_payload,
+                                    loc=getattr(e, "loc", None))
+    if _declared_call_at_owning_elem(e, lc.analyzer):
+        # A union / wrapper slot holding the payload as one member has no
+        # copy row yet.
+        note_detail(_call_ret_reject(e, lc.analyzer.get_expr_type(e),
+                                     lc.analyzer))
+        raise ThirUnsupported(call_reject_reason(
+            "expr.method_call" if isinstance(e, TpyMethodCall)
+            else "expr.call"))
     if (isinstance(e, TpyMethodCall)
             and record_like(lc.analyzer.get_expr_type(e), lc.analyzer)):
         # A record-returning method-call rvalue element (`rc.clone()`): the
@@ -16136,7 +16164,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             return THIRMove(result_type=own_opt_slot, value=lowered,
                             form=Form.STORAGE, loc=getattr(a, "loc", None))
         if (isinstance(a, (TpyCall, TpyMethodCall)) and at_oo == own_opt_slot
-                and _own_declared_call_ret(a)):
+                and call_hands_back_value(a)):
             # An Own[P|None]-returning call rvalue: the `std::optional<P>`
             # prvalue binds the rvalue-ref slot bare (`take(make(13))`).
             _witness("arg.own_opt_call_pass")

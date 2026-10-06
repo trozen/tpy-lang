@@ -13,9 +13,9 @@
  *      reference payloads (mutable and const), a record whose `__iter__`
  *      returns a separate iterator -- get the winner BY VALUE: a step is
  *      valid only until the next one, and a separate iterator dies inside
- *      the helper. The compiler's verdict, rendered into the call, is
- *      `lend` only (a borrow), checked to be a source the runtime lends
- *      from; every other call is unchecked.
+ *      the helper. A result the compiler binds as a borrow passes through
+ *      `assert_lent`, which accepts only a reference: a lending source's
+ *      result does, the same element.
  *   3. An rvalue container: a reference into it, copied out within the full
  *      expression.
  *   4. An element that can be neither copied nor moved.
@@ -437,20 +437,18 @@ void size_change_raises() {
     check(raised == 7, "a size or storage change during the walk raises RuntimeError");
 }
 
-void verdicts_agree() {
+void borrowed_results() {
     std::vector<Node> v{{3}, {9}, {2}};
-    check(&tpy::builtin_max_elem<Node, tpy::elem_verdict::lend>(v) == &v[1],
-          "verdict lend: a container's element");
-    check(tpy::builtin_min_elem_key<Node, tpy::elem_verdict::lend>(
-              std::vector<Node>{{4}, {1}}, by_v).v == 1,
-          "verdict lend: a temporary container's element");
-    // Unchecked over a lending source: still the element.
-    check(&tpy::builtin_max_elem<Node>(v) == &v[1],
-          "unchecked over a lending source: still the element");
+    check(&tpy::assert_lent(tpy::builtin_max_elem<Node>(v)) == &v[1],
+          "borrow: a container's element");
+    check(tpy::assert_lent(tpy::builtin_min_elem_key<Node>(
+              std::vector<Node>{{4}, {1}}, by_v)).v == 1,
+          "borrow: a temporary container's element");
+    // An iterator's winner is a value, which only a non-borrow call takes.
     Lender<Node> it(&v);
     static_assert(std::is_same_v<decltype(tpy::builtin_max_elem<Node>(it)), Node>);
     check(tpy::builtin_max_elem<Node>(it).v == 9,
-          "unchecked: an iterator's winner by value");
+          "an iterator's winner by value");
 }
 
 void empty_raises() {
@@ -467,7 +465,7 @@ void empty_raises() {
 
 int main() {
     containers();
-    verdicts_agree();
+    borrowed_results();
     iterator_sources();
     rvalue_source();
     pinned_elements();

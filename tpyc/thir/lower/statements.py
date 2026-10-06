@@ -14,6 +14,7 @@ from dataclasses import dataclass, fields as dc_fields, replace
 from ...diagnostics import SemanticError
 from ...prescan import scan_reassigned_vars
 from ...parse.nodes import (
+    ResultForm,
     is_property_getter_read,
     RebindStorage,
     TryTier,
@@ -139,7 +140,6 @@ from ...type_def_registry import (
 )
 from ...modules.type_resolution import is_native_iterable
 from ...codegen_cpp.gen_async import sub_struct_qualname
-from ...sema.context import expr_lends_storage
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    literal_value_from_expr,
                                    numeric_literal_truth)
@@ -182,7 +182,7 @@ from ...liveness import (
     try_terminates_ignoring_finally, tuple_literal_leaves,
 )
 from ...value_category import (
-    call_result_holdable, call_returns_cpp_ref, for_source_is_rvalue,
+    call_hands_back_value, call_result_holdable, call_returns_cpp_ref, for_source_is_rvalue,
     is_rvalue_source, wants_move,
     property_access_returns_cpp_ref,
     async_return_form, AsyncReturnForm,
@@ -293,6 +293,8 @@ from ..nodes import (
     WithTargetArm,
 )
 from .predicates import (
+    _alias_call_source_ok,
+    _call_storage_optional_return,
     receiver_is_const,
     _record_getitem_key,
     copy_call_arg,
@@ -314,7 +316,6 @@ from .predicates import (
     _container_elem_lvalue_subscript,
     _storage_tuple_alias_src_ok,
     _opt_view_arg_shim,
-    _own_declared_call_ret,
     _container_enum_spell,
     _container_scalar_read,
     _dict_view_iterable_ok,
@@ -507,6 +508,9 @@ from .context import (
 )
 from .checks import (
     own_btuple_borrow_name_arg,
+    _declared_call_at_owning_elem,
+    declared_call_elem_copy_ok,
+    own_element_copy_type,
     _chained_subscript_recv_type,
     _const_borrow_call_result,
     _container_comp_arg,
@@ -615,7 +619,6 @@ from .expressions import (
     _lower_copy_record,
     _lower_copy_special,
     lower_copy_construct,
-    own_element_copy_type,
     _lower_ctor_call_args,
     _lower_container_elem,
     _lower_elem_into_any,
@@ -3554,6 +3557,25 @@ def _borrow_tuple_binding_sources(name: str, lc: '_LowerCtx'
     return None if walrus_hit else sources
 
 
+def _reject_value_elem_at_borrow_tuple(name: str, lit: TpyTupleLiteral,
+                                       bt: 'TupleType') -> None:
+    """A borrow-form tuple local holds a pointer per reference-type element,
+    so a VALUE-captured element there (a fresh object, or the copy sema
+    declared of a borrow-returning call) has no storage to point at: refuse
+    it in words instead of spelling the storage tuple at the pointer slot."""
+    for i, cap in enumerate(lit.elem_capture):
+        if (cap is not TupleElemCapture.VALUE or i >= len(bt.element_types)
+                or i >= len(lit.elements)):
+            continue
+        et = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            bt.element_types[i])))
+        if et.is_value_type() or not TupleType._element_is_pointer_repr(et):
+            continue
+        elem = lit.elements[i]
+        emit_prims.reject_value_element_in_rebound_tuple(
+            name, i, et, getattr(elem, "loc", None) or lit.loc)
+
+
 def _borrow_tuple_source_ok(src: TpyExpr, lc: '_LowerCtx') -> bool:
     """One binding source of a borrow-form tuple local: a REF/VALUE-capture
     tuple literal over plain non-const names, or a field/subscript storage
@@ -5299,7 +5321,7 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
         # off the `&*(__slot_N = ...)` reseat arm by its null `rebind_storage`.
         if (init_bare.uses_pointer_repr()
                 and isinstance(stmt.init, (TpyCall, TpyMethodCall))
-                and not _own_declared_call_ret(stmt.init)):
+                and not call_hands_back_value(stmt.init)):
             _witness("top_level.global_opt_passthrough")
             return THIRAssign(
                 target=THIRName(result_type=vtype, name=stmt.name,
@@ -7144,6 +7166,13 @@ def _lower_container_elem_value(stmt: TpyAssign, eu: TpyType,
                             pos=SinkPos.SETITEM_VALUE,
                             forms=_NO_FORMS,
                             allow_temps=True)))
+    if declared_call_elem_copy_ok(v, eu, analyzer):
+        # A borrow-declared call handing back the slot's container: the
+        # owning element copies it, as the record value of the same store
+        # does.
+        _witness("setitem.declared_call_copy")
+        return lower_copy_construct(v, eu, lc, declared, slot_type=eu,
+                                    loc=loc)
     if (type(v) in _comprehensions._COMP_KINDS
             and _container_comp_arg(v, eu)):
         _witness("setitem.container_comp")
@@ -7962,14 +7991,6 @@ def _rebind_can_follow(body: list[TpyStmt], at: TpyStmt, name: str) -> bool:
                for after, loops in writes)
 
 
-def _alias_call_source_ok(init: TpyExpr, analyzer) -> bool:
-    """A free call whose result is a borrow of storage that outlives the
-    statement: a borrow-declared call by sema's stamp, any other one by the
-    same allow-list (`expr_lends_storage`) -- a temporary or merely-lvalue
-    argument fails closed, since the result could be that temporary."""
-    return isinstance(init, TpyCall) and expr_lends_storage(analyzer, init)
-
-
 def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
                       declared: dict[str, TpyType]) -> THIRStmt:
     """Pointer-alias frame bind (`a = items[0]` -> `a = &(<lvalue>);`):
@@ -8110,7 +8131,7 @@ def _lower_borrow_tuple_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
     elif (isinstance(stmt.init, (TpyCall, TpyMethodCall))
             and _f1_tuple(analyzer.get_expr_type(stmt.init),
                           analyzer) is not None
-            and not _own_declared_call_ret(stmt.init)):
+            and not call_hands_back_value(stmt.init)):
         # The C++ return type IS the borrow tuple, so the wrap no-ops. The
         # Own signal must be read off the callee's DECLARED return: sema
         # stamps the call EXPR with the peeled tuple, so the expr-type
@@ -8211,7 +8232,7 @@ def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
             declared[stmt.name])))
         _fsw_tuple_src = (isinstance(_fsw_slot, TupleType)
                           and not (isinstance(init, (TpyCall, TpyMethodCall))
-                                   and _own_declared_call_ret(init)))
+                                   and call_hands_back_value(init)))
         # The emplace direct-initializes the payload, so an all-fresh
         # select renders its prvalue `?:` there.
         value = _lower_expr(init, lc, declared,
@@ -9648,7 +9669,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                                                 stmt.init)
                             and not (isinstance(stmt.init,
                                                 (TpyCall, TpyMethodCall))
-                                     and _own_declared_call_ret(stmt.init))):
+                                     and call_hands_back_value(
+                                         stmt.init))):
                         # A BORROW-returning ptr-Optional free call: the
                         # `T*` return is already the binding's shape, so it
                         # binds bare (`Point* r1 = get_or_none(true, p);`)
@@ -9697,11 +9719,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                             # the Optional local takes the OPT_RVALUE slot
                             # (`Box __slot_1 = make_box(..); Box* t =
                             # &__slot_1;`), not this lift.
-                            and _storage_optional_return_wide(
-                                (stmt.init.resolved_function_info.return_type
-                                 if stmt.init.resolved_function_info
-                                 is not None else None), analyzer)
-                            is not None
+                            and _call_storage_optional_return(
+                                stmt.init, analyzer) is not None
                             and _optional_ptr_borrow_wide(vtype, analyzer)
                             is not None):
                         # An OWN-declared optional-returning call: the
@@ -9905,8 +9924,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # param slot: the trait resolves value-vs-ref per instantiation,
             # so the local reads bare. Reassigned/hoisted names fall through
             # (references can't rebind).
+            # A declared-borrow call stamped COPY hands back a value: the
+            # by-value local below holds it, a reference would dangle.
             if (isinstance(vtype, TypeParamRef) and not vtype.is_value_type()
                     and isinstance(stmt.init, (TpyCall, TpyMethodCall))
+                    and stmt.init.result_form is not ResultForm.COPY
                     and stmt.name not in lc.prescan.reassigned
                     and stmt.name not in lc.prescan.hoisted
                     and stmt.name not in lc.prescan.move_through):
@@ -10090,6 +10112,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 note_detail("reseat.borrow_tuple_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             if isinstance(stmt.init, TpyTupleLiteral):
+                _reject_value_elem_at_borrow_tuple(stmt.name, stmt.init, bt_t)
                 value: THIRExpr = _lower_borrow_tuple_literal(
                     stmt.init, bt_t, lc, declared)
                 _witness("btuple.reseat_literal")
@@ -10255,8 +10278,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                          and _optional_ptr_borrow_wide(declared[stmt.name],
                                                        analyzer) is not None
                          and _ptr_opt_borrow_call_ret(
-                             stmt.init, analyzer.get_expr_type(stmt.init))
-                         and not _own_declared_call_ret(stmt.init))):
+                             stmt.init, analyzer.get_expr_type(stmt.init)))):
             target_t = declared[stmt.name]
             slot_t = _rebind_slot_target(target_t, analyzer)
             if not _rebind_rvalue_source_ok(
@@ -10283,8 +10305,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     if isinstance(stmt.init, (TpyCall, TpyMethodCall))
                     else None)
             if (fi_r is not None
-                    and _storage_optional_return_wide(fi_r.return_type,
-                                                      analyzer) is not None):
+                    and _call_storage_optional_return(stmt.init, analyzer)
+                    is not None):
                 _witness("reseat.opt_storage_call")
                 return THIRPtrLocalRebind(
                     name=stmt.name, kind=PtrSlotKind.OPT_STORAGE_CALL,
@@ -10321,8 +10343,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # its RESEAT sibling, which the storage-ref family has no
                 # lift for either (TODO.md, "Four positions REJECT a
                 # storage-ref `@property` read").
-                and not reads_storage_form_optional(analyzer, stmt.init)
-                and not _own_declared_call_ret(stmt.init)):
+                and not reads_storage_form_optional(analyzer, stmt.init)):
             _witness("reseat.opt_call_pass")
             return THIRAssign(
                 target=THIRName(result_type=vtype, name=stmt.name, loc=loc),
@@ -10557,10 +10578,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         val_cpp=fld, loc=loc)
                 if (lc.resumable_leaf_mode
                         and isinstance(stmt.init, (TpyCall, TpyMethodCall))
-                        and stmt.init.resolved_function_info is not None
-                        and _storage_optional_return_wide(
-                            stmt.init.resolved_function_info.return_type,
-                            analyzer) is not None):
+                        and _call_storage_optional_return(
+                            stmt.init, analyzer) is not None):
                     # The Own-declared optional call fills the prescanned
                     # frame field and the pointer re-lifts
                     # (`__ptr_slot_f0 = make_opt(3); got =
@@ -11267,7 +11286,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             if (not is_reassign
                     and isinstance(_ct, TupleType)
                     and (_ct.has_pointer_repr_element() or _nested_own)
-                    and (_own_declared_call_ret(stmt.init)
+                    and (call_hands_back_value(stmt.init)
                          or _owned_tuple_call_ret(_ct_raw, analyzer)
                          is not None
                          or _nested_own)
@@ -11482,6 +11501,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                             cpp_type=borrow_cpp, form=Form.BORROW,
                             btuple_slot_cpp=lc.render_type(bt), loc=loc)
                     if isinstance(stmt.init, TpyTupleLiteral):
+                        _reject_value_elem_at_borrow_tuple(
+                            stmt.name, stmt.init, bt)
                         binit = _lower_borrow_tuple_literal(
                             stmt.init, bt, lc, declared)
                         _witness("decl.btuple_literal")
@@ -12920,14 +12941,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                         result=_ExprResultUse.BORROW_BIND,
                                         allow_temps=True)))
                     _witness("setitem.record_method_rvalue")
-                elif (isinstance(v, TpyCall)
+                elif ((isinstance(v, TpyCall)
+                       or _declared_call_at_owning_elem(v, analyzer))
                       and v.resolved_function_info is not None
                       and call_returns_cpp_ref(analyzer,
                                                v.resolved_function_info)
                       and vtu is not None and vtu == eu):
                     # A borrow-returning call value copies into the element
                     # (`::tpy::__setitem__(pts, 0, identity(..));` -- the
-                    # checked setitem's V parameter absorbs the `T&`).
+                    # checked setitem's V parameter absorbs the `T&`); a
+                    # borrow-declared method call is the same copy.
                     value = _flush_witness(
                         "flush.assign",
                         _lower_expr(v, lc, declared,
@@ -13689,10 +13712,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     loc=loc)
             elif (isinstance(stmt.value, (TpyCall, TpyMethodCall))
                     and is_rvalue_source(analyzer, stmt.value)
-                    and stmt.value.resolved_function_info is not None
-                    and _storage_optional_return_wide(
-                        stmt.value.resolved_function_info.return_type,
-                        analyzer) == ret_opt):
+                    and _call_storage_optional_return(
+                        stmt.value, analyzer) == ret_opt):
                 # A call whose result IS the whole storage optional forwards
                 # bare (`return Pattern(p, f).search(s);`): the callee already
                 # produced the slot's own C++ type as a prvalue, so there is

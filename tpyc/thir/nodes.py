@@ -972,10 +972,9 @@ class THIRCall(THIRExpr):
     # node rather than a THIRCtorCall, so the arm that resolved the callee
     # records it -- nothing downstream can tell from the render.
     constructs: bool = False
-    # A borrow-declared call's verdict (`TpyCall.result_form`): the emitter
-    # fills an element-returning helper's `{lend}` placeholder with the
-    # `lend` verdict for a BORROW (which the helper asserts is a source it
-    # can lend from) and with nothing otherwise.
+    # A borrow-declared call's verdict (`TpyCallLike.result_form`): the emitter
+    # wraps a BORROW in `::tpy::assert_lent`, which stops the C++ build when
+    # the callee hands back a value instead of a reference.
     result_form: ResultForm = ResultForm.NOT_DECLARED
     # An `Own[R]` result materialized for its full expression (a field
     # receiver, a discarded statement); as on THIRCtorCall.
@@ -1325,6 +1324,8 @@ class THIRMethodCall(THIRExpr):
     # definition publishes (the receiver is parameter 0); exclusive with
     # `stub_callee`. Analysis only: no render reads it.
     resolved_callee: THIRResolvedCallee | None = None
+    # A borrow-declared method's verdict, as `THIRCall.result_form`.
+    result_form: ResultForm = ResultForm.NOT_DECLARED
     # The access the receiver is emitted at -- the one C++ picks a const or
     # mutable overload by -- decided once at the call; set exactly when
     # `resolved_callee` is. Analysis only: no render reads it.

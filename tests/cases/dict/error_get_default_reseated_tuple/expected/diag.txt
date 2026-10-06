@@ -1,0 +1,3 @@
+main.py:14: warning: copies P into owned storage (tuple element 0); use copy() to make this explicit
+main.py:16: warning: copies P into owned storage (tuple element 0); use copy() to make this explicit
+main.py:14: error: tuple variable 't' is assigned more than once, so it refers to its 'P' elements instead of holding them, and element 0 here would have to be held by the tuple; this is not supported yet -- use a separate tuple variable for this assignment.

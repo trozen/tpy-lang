@@ -43,10 +43,11 @@ from typing import TYPE_CHECKING
 
 from ..diagnostics import Diagnostic, DiagnosticLevel, NOCOPY_REMEDIATION_HINT
 from ..identity_map import IdentityMap
-from ..parse import (ResultForm, TpyCall, TpyCoerce, TpyExpr, TpyFieldAccess,
-                     TpyLambda, TpyName, TpySubscript, is_property_getter_read)
+from ..parse import (ResultForm, TpyCallLike, TpyCoerce, TpyExpr, TpyFieldAccess,
+                     TpyLambda, TpySubscript, is_property_getter_read)
 from ..parse.nodes import walk_expr_tree
-from ..typesys import (NominalType, TpyType, TypeParamRef, unwrap_readonly,
+from ..typesys import (INT32, NominalType, TpyType, TypeParamRef,
+                       substitute_type_params_simple, unwrap_readonly,
                        unwrap_ref_type)
 
 if TYPE_CHECKING:
@@ -125,7 +126,8 @@ class OwnCopyEdge:
         return (id(self.callee), self.subst, self.is_record)
 
 
-def contains_reference_type(typ: TpyType) -> bool:
+def contains_reference_type(typ: TpyType, *,
+                            open_params_as_values: bool = False) -> bool:
     """True when copying `typ` copies a reference type -- the copy question.
 
     Recursive, because a structural type answers `is_value_type()` for its
@@ -134,10 +136,23 @@ def contains_reference_type(typ: TpyType) -> bool:
     `TypeParamRef` counts as a possible reference; at discharge the payload
     is fully substituted, so the answer there is definite.
 
+    `open_params_as_values` reads every open type parameter as a value type,
+    so the answer is whether the copy is CERTAIN whatever the parameters
+    turn out to be (`tuple[T, Box]` copies a `Box` at every instantiation;
+    `tuple[T, int32]` only maybe).
+
     Owned by this module rather than by `compatibility.py` so the sink that
     RECORDS the obligation and the discharge that ANSWERS it ask one
     question; a second predicate would let the two disagree.
     """
+    if open_params_as_values:
+        # Substituted rather than skipped in the walk: an Optional / union
+        # answers `is_value_type()` from its members, so an open member
+        # would read as a reference one level up.
+        names = type_param_names(typ)
+        if names:
+            typ = substitute_type_params_simple(typ,
+                                                dict.fromkeys(names, INT32))
     if not typ.is_value_type():
         return True
     return any(contains_reference_type(inner) for inner in typ.inner_types())
@@ -172,29 +187,15 @@ def reference_source_params(typ: TpyType) -> 'set[str] | None':
     """The type params whose instantiation decides whether copying `typ`
     copies a REFERENCE -- or None when it copies one whatever they are.
 
-    A named non-value type is the `None` case: `list[T]`, `Array[T, N]` and
-    a plain `class GContainer[T]` are structs that get copied at every
-    instantiation, so no bound on `T` can make the copy unobservable. Every
-    other shape delegates: a bare `TypeParamRef` answers for itself, and a
-    tuple / `Optional` / union / qualifier wrapper answers for what it holds
-    (`tuple` in particular reports `is_value_type()` True regardless of its
-    elements, which is why the walk cannot stop at the outer type).
-
-    Same question as `contains_reference_type`, which asks whether the answer
-    is "yes" for a payload that is already concrete; this one asks WHICH
-    params the answer still depends on.
+    `None` is the certain copy: a payload holding a reference type even with
+    every parameter read as a value (`list[T]`, `Array[T, N]`, a plain
+    `class GContainer[T]`, `tuple[T, Box]`) copies a struct at every
+    instantiation, so no bound on `T` can make the copy unobservable.
+    Otherwise every parameter the payload names may decide it.
     """
-    if isinstance(typ, TypeParamRef):
-        return {typ.name}
-    if isinstance(typ, NominalType) and not typ.is_value_type():
+    if contains_reference_type(typ, open_params_as_values=True):
         return None
-    names: set[str] = set()
-    for inner in typ.inner_types():
-        sub = reference_source_params(inner)
-        if sub is None:
-            return None
-        names |= sub
-    return names
+    return type_param_names(typ)
 
 
 def slot_message(display: TpyType, target: TpyType, dest: str, kind: str,
@@ -218,7 +219,7 @@ def warn_value_call_binding(ctx: 'SemanticContext', expr: TpyExpr,
                             dest: str) -> None:
     """A holder -- a local binding, a frame argument -- as the owning sink
     of a borrow-declared call sema stamped a fresh value
-    (a fresh `TpyCall.result_form`): it holds a COPY (`P t =
+    (a fresh `TpyCallLike.result_form`): it holds a COPY (`P t =
     ::tpy::min_key(a, __tmp_1, f);`), so where a lent argument is still
     reached the copy is observable and is warned in the owning slots' words
     with `dest` named; `copy(...)` is the explicit spelling. A non-copyable
@@ -230,7 +231,7 @@ def warn_value_call_binding(ctx: 'SemanticContext', expr: TpyExpr,
 
 
 def value_call_copy_message(ctx: 'SemanticContext', expr: TpyExpr,
-                            dest: str) -> 'tuple[TpyCall, str] | None':
+                            dest: str) -> 'tuple[TpyCallLike, str] | None':
     """The call and the owning-slot warning for a borrow-declared call
     stamped a fresh value whose copy into `dest` is observable, or None --
     the call itself, or a field / element read off it (`k = next(it, d).q`
@@ -245,7 +246,9 @@ def value_call_copy_message(ctx: 'SemanticContext', expr: TpyExpr,
         expr = expr.obj
         while isinstance(expr, TpyCoerce):
             expr = expr.expr
-    if not (isinstance(expr, TpyCall) and expr.result_form.is_fresh):
+    # A value-shaped result copies nothing CPython would share.
+    if not (isinstance(expr, TpyCallLike)
+            and expr.result_form.copies_operand):
         return None
     payload = unwrap_readonly(unwrap_ref_type(ctx.get_expr_type(held)))
     if type_has_type_param(payload):
@@ -369,7 +372,7 @@ def discharge_edge(ctx, type_ops, edge: OwnCopyEdge, seen: set,
         _discharge_function(ctx, type_ops, edge.callee, subst, seen, verdicts)
 
 
-def copy_result_under_write(receiver: TpyExpr) -> 'TpyCall | None':
+def copy_result_under_write(receiver: TpyExpr) -> 'TpyCallLike | None':
     """The borrow-declared call whose COPY (`ResultForm.COPY`) a write
     through `receiver` would land in -- the receiver itself, or the object
     a field / element read off it lives in -- or None."""
@@ -380,21 +383,22 @@ def copy_result_under_write(receiver: TpyExpr) -> 'TpyCall | None':
             receiver = receiver.obj
         else:
             break
-    if isinstance(receiver, TpyCall) and receiver.result_form is ResultForm.COPY:
+    if (isinstance(receiver, TpyCallLike)
+            and receiver.result_form is ResultForm.COPY):
         return receiver
     return None
 
 
-def lost_write_message(call: TpyCall) -> str:
+def lost_write_message(call: TpyCallLike) -> str:
     """A write through a call's COPY result changes nothing the program can
     see again; CPython writes the element itself."""
-    return (f"the result of '{call.func_name}(...)' is a copy here (its source "
+    return (f"the result of {call.call_display} is a copy here (its source "
             f"is an iterator, or this is a generic body); a write through it "
             f"is lost -- bind it to a name first (the binding warns), or "
             f"spell the copy with copy(...)")
 
 
-def declared_borrow_call_under(target: TpyExpr) -> 'TpyCall | None':
+def declared_borrow_call_under(target: TpyExpr) -> 'TpyCallLike | None':
     """The first borrow-declared call anywhere in an augmented-assignment
     TARGET -- its receiver chain (`max(a, b, key=f).v`, a method hop
     `next(it, d).get_q().v`), an argument of a call on it (`wrap(next(it,
@@ -405,61 +409,15 @@ def declared_borrow_call_under(target: TpyExpr) -> 'TpyCall | None':
     binds its target once. A lambda body is not entered: the call holding
     the lambda still runs twice, so a declared call inside it runs twice once
     the lambda is called -- the filed double evaluation."""
-    found: list[TpyCall] = []
+    found: list[TpyCallLike] = []
 
     def visit(node: TpyExpr) -> bool:
         if found or isinstance(node, TpyLambda):
             return False
-        if (isinstance(node, TpyCall)
-                and node.result_form is not ResultForm.NOT_DECLARED):
+        if isinstance(node, TpyCallLike) and node.result_form.from_operand:
             found.append(node)
             return False
         return True
 
     walk_expr_tree(target, visit)
     return found[0] if found else None
-
-
-def iterator_advanced_twice(exprs: 'list[TpyExpr]') -> 'tuple[TpyCall, str] | None':
-    """The second borrow-declared call in one statement's expressions that
-    hands back a reference to a STEP of an iterator an earlier one in the
-    same statement also advances (`t = (next(g, d).v, next(g, d).v)`), with
-    the iterator's name; or None. A step reference is valid only until the
-    next advance, so the first reference would read the second step.
-
-    A STOPGAP for BUGS.md#next-step-reference-outlived-by-advance, which
-    MIR's step-loan model replaces: it sees only advances spelled in the
-    statement, not a consumer advancing the iterator through a capture or a
-    global. A COPY result holds no reference, a BORROW is a container's
-    element, and a value-type element (`next(it, 0)`) is not
-    borrow-declared, so none of them counts."""
-    seen: set[str] = set()
-    found: list[tuple[TpyCall, str]] = []
-
-    def visit(node: TpyExpr) -> bool:
-        if found or isinstance(node, TpyLambda):
-            return False
-        # Only a REFERENCE_VALUE result points at a step: a BORROW is a
-        # container's element, which a second walk leaves in place.
-        if (isinstance(node, TpyCall)
-                and node.result_form is ResultForm.REFERENCE_VALUE):
-            fi = node.resolved_function_info
-            for idx in sorted(fi.root.element_borrows_from) if fi else ():
-                if not 0 <= idx < len(node.args):
-                    continue
-                root = node.args[idx]
-                while isinstance(root, (TpyCoerce, TpyFieldAccess,
-                                        TpySubscript)):
-                    root = root.expr if isinstance(root, TpyCoerce) else root.obj
-                if not isinstance(root, TpyName):
-                    continue
-                if root.name in seen:
-                    found.append((node, root.name))
-                    return False
-                seen.add(root.name)
-        return True
-
-    for expr in exprs:
-        walk_expr_tree(expr, visit)
-    return found[0] if found else None
-

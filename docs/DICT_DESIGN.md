@@ -29,7 +29,7 @@
 
 | Area | Detail |
 |------|--------|
-| `get(key, default)` default forwarded | The runtime takes the default as a forwarding reference and builds the owned `V` from it only on the miss path; a hit never touches it. Shared with `pop(key, default)` and `setdefault`. |
+| `get(key, default)` default forwarded | For a value `V` the runtime takes the default as a forwarding reference and builds the owned `V` from it only on the miss path; a hit never touches it (shared with `pop(key, default)` and `setdefault`). For a reference `V` it returns a reference to the stored value or to the default itself and never constructs a `V`. |
 | `setdefault` default ownership | Uses `OwnType(V)` for sema-level move enforcement; `get` uses plain `V` since it never inserts. Intentional asymmetry. |
 
 ---

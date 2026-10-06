@@ -43,18 +43,18 @@ void free_fn() {
     P a = P(::tpy::BigInt(1));
     P b = P(::tpy::BigInt(2));
     P c = P(::tpy::BigInt(3));
-    P& m = ::tpy::min_key(a, b, key_of);
+    P& m = ::tpy::assert_lent(::tpy::min_key(a, b, key_of));
     m.v = ::tpy::BigInt(10);
     std::cout << "free min2" << " " << a.v << " " << b.v << "\n" << ::tpy::check_signals;
-    P& x = ::tpy::max3_key(a, b, c, key_of);
+    P& x = ::tpy::assert_lent(::tpy::max3_key(a, b, c, key_of));
     x.v = ::tpy::BigInt(20);
     std::cout << "free max3" << " " << a.v << " " << b.v << " " << c.v << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::bump(::tpy::min_key(a, b, key_of));
+    ::tpyapp::main::bump(::tpy::assert_lent(::tpy::min_key(a, b, key_of)));
     std::cout << "free arg" << " " << a.v << " " << b.v << "\n" << ::tpy::check_signals;
-    P& n = ::tpy::min_key(::tpy::min_key(a, b, key_of), c, key_of);
+    P& n = ::tpy::assert_lent(::tpy::min_key(::tpy::assert_lent(::tpy::min_key(a, b, key_of)), c, key_of));
     n.v = ::tpy::BigInt(5);
     std::cout << "free nested" << " " << a.v << " " << b.v << " " << c.v << "\n" << ::tpy::check_signals;
-    std::cout << "free read" << " " << ::tpy::max_key(a, b, key_of).v << "\n" << ::tpy::check_signals;
+    std::cout << "free read" << " " << ::tpy::assert_lent(::tpy::max_key(a, b, key_of)).v << "\n" << ::tpy::check_signals;
 }
 
 // # the call itself counts as a mutable use of its operands: it hands back a
@@ -66,7 +66,7 @@ void free_fn() {
 //     m = min(a, b, key=key_of)
 //     return m.v
 ::tpy::BigInt read_only(P& a, P& b) {
-    P& m = ::tpy::min_key(a, b, key_of);
+    P& m = ::tpy::assert_lent(::tpy::min_key(a, b, key_of));
     return m.v;
 }
 
@@ -74,7 +74,7 @@ void free_fn() {
 // def pick_low(a: P, b: P) -> P:
 //     return min(a, b, key=key_of)
 P& pick_low(P& a, P& b) {
-    return ::tpy::min_key(a, b, key_of);
+    return ::tpy::assert_lent(::tpy::min_key(a, b, key_of));
 }
 
 // # a readonly RETURN does not make the result read-only at the call: the
@@ -82,7 +82,7 @@ P& pick_low(P& a, P& b) {
 // def peek_low(a: P, b: P) -> readonly[P]:
 //     return min(a, b, key=key_of)
 const P& peek_low(P& a, P& b) {
-    return ::tpy::min_key(a, b, key_of);
+    return ::tpy::assert_lent(::tpy::min_key(a, b, key_of));
 }
 
 // # readonly operands give a readonly result
@@ -90,7 +90,7 @@ const P& peek_low(P& a, P& b) {
 //     m = max(a, b, key=lambda p: p.v)  # tpyc: type(readonly[P])
 //     return m.v
 ::tpy::BigInt ro_operands(const P& a, const P& b) {
-    const P& m = ::tpy::max_key(a, b, [](const P& p) -> ::tpy::BigInt { return p.v; });
+    const P& m = ::tpy::assert_lent(::tpy::max_key(a, b, [](const P& p) -> ::tpy::BigInt { return p.v; }));
     return m.v;
 }
 
@@ -113,14 +113,17 @@ __gen_gen_body gen_body(P& a, P& b) {
 // # async body
 // async def async_body(a: P, b: P) -> int:
 //     m = max(a, b, key=key_of)
-//     await asyncio.sleep(0)                # -> S_RESUME_0
+//     await asyncio.sleep(0)                              # -> S_RESUME_0
 //     m.v = 88
+//     if (w := max(a, b, key=key_of)).v > 0:  # tpyc: ok
+//         await asyncio.sleep(0)                          # -> S_RESUME_1
+//         w.v += 1
 //     return m.v
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_async_body::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        m = &(::tpy::max_key(a, b, key_of));
+        m = &(::tpy::assert_lent(::tpy::max_key(a, b, key_of)));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -131,6 +134,25 @@ __gen_gen_body gen_body(P& a, P& b) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         m->v = ::tpy::BigInt(88);
+        if (((w = &(::tpy::assert_lent(::tpy::max_key(a, b, key_of))), *w).v > 0)) {
+            __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+            __state = S_RESUME_1;
+            continue;
+        } else {
+            __state = S_JOIN_0;
+            continue;
+        }
+    }
+    case S_RESUME_1: {  // after: await asyncio.sleep(0)
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        w->v = (w->v) + (::tpy::BigInt(1));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = m->v;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -161,7 +183,7 @@ void closure_fn() {
     P a = P(::tpy::BigInt(1));
     P b = P(::tpy::BigInt(2));
     auto inner = [&a, &b]() {
-        P& m = ::tpy::min_key(a, b, key_of);
+        P& m = ::tpy::assert_lent(::tpy::min_key(a, b, key_of));
         m.v = ::tpy::BigInt(33);
     };
     inner();
@@ -189,7 +211,7 @@ void try_fn(bool flag) {
     P* m;
     {
         try {
-            m = &(::tpy::min_key(a, b, key_of));
+            m = &(::tpy::assert_lent(::tpy::min_key(a, b, key_of)));
             m->v = ::tpy::BigInt(44);
         } catch (...) {
             std::cout << "try" << " " << a.v << " " << b.v << "\n" << ::tpy::check_signals;
@@ -199,9 +221,9 @@ void try_fn(bool flag) {
     }
     P* w;
     if (flag) {
-        w = &(::tpy::max_key(a, b, key_of));
+        w = &(::tpy::assert_lent(::tpy::max_key(a, b, key_of)));
     } else {
-        w = &(::tpy::min_key(a, b, key_of));
+        w = &(::tpy::assert_lent(::tpy::min_key(a, b, key_of)));
     }
     w->v = ::tpy::BigInt(55);
     std::cout << "branch" << " " << a.v << " " << b.v << "\n" << ::tpy::check_signals;
@@ -221,10 +243,10 @@ void comp_fn() {
     std::array<P, 2> ys = {P(::tpy::BigInt(2)), P(::tpy::BigInt(4))};
     std::cout << "comp" << " " << ::tpy::ListPrinter(::tpy::array_from_index<::tpy::BigInt, 2>([&](std::size_t __i_0) -> ::tpy::BigInt {
         int32_t i = int32_t(__i_0);
-        return ::tpy::min_key(::tpy::__getitem__(xs, i), ::tpy::__getitem__(ys, i), key_of).v;
+        return ::tpy::assert_lent(::tpy::min_key(::tpy::__getitem__(xs, i), ::tpy::__getitem__(ys, i), key_of)).v;
     })) << "\n" << ::tpy::check_signals;
     for (int32_t i = 0; i < 2; ++i) {
-        ::tpyapp::main::bump(::tpy::min_key(::tpy::__getitem__(xs, i), ::tpy::__getitem__(ys, i), key_of));
+        ::tpyapp::main::bump(::tpy::assert_lent(::tpy::min_key(::tpy::__getitem__(xs, i), ::tpy::__getitem__(ys, i), key_of)));
     }
     std::cout << "comp after" << " " << ::tpy::ListPrinter(({
         std::vector<::tpy::BigInt> __result;
@@ -249,6 +271,31 @@ void comp_fn() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
+}
+
+// # Owned element slots: each holds a warned copy of the operand, read only
+// # here since CPython would alias it; all-fresh operands copy nothing a
+// # program reaches, so that copy is silent.
+// def owned_elements_fn() -> None:
+//     a = P(1)
+//     b = P(2)
+//     # list comprehension: owned slot, a warned copy
+//     xs = [max(a, b, key=key_of) for _ in range(2)]  # tpyc: warning(/copies P into owned storage/)
+//     # tuple literal: owned slot, a warned copy
+//     t = (max(a, b, key=key_of), 1)  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
+//     # all-fresh operands: the copy is unobservable
+//     f = [max(P(5), P(6), key=key_of)]  # tpyc: ok
+//     print("owned", xs[0].v, xs[1].v, t[0].v, t[1], f[0].v)
+void owned_elements_fn() {
+    P a = P(::tpy::BigInt(1));
+    P b = P(::tpy::BigInt(2));
+    std::array<P, 2> xs = ::tpy::array_from_index<P, 2>([&](std::size_t __i_0) -> P {
+        int32_t _ = int32_t(__i_0);
+        return P(::tpy::assert_lent(::tpy::max_key(a, b, key_of)));
+    });
+    auto t = std::tuple<P, int32_t>{P(::tpy::assert_lent(::tpy::max_key(a, b, key_of))), 1};
+    std::array<P, 1> f = {P(::tpy::max_key(P(::tpy::BigInt(5)), P(::tpy::BigInt(6)), key_of))};
+    std::cout << "owned" << " " << ::tpy::__getitem__(xs, 0).v << " " << ::tpy::__getitem__(xs, 1).v << " " << std::get<0>(t).v << " " << std::get<1>(t) << " " << ::tpy::__getitem__(f, 0).v << "\n" << ::tpy::check_signals;
 }
 
 // # a fresh operand makes the result a fresh value
@@ -330,7 +377,7 @@ void unproven_fn() {
 void rows_fn() {
     std::vector<::tpy::BigInt> r1 = {1, 2, 3};
     std::vector<::tpy::BigInt> r2 = {4, 5};
-    std::vector<::tpy::BigInt>& longest = ::tpy::max_key(r1, r2, [](const std::vector<::tpy::BigInt>& r) -> int32_t { return ::tpy::__len__(r); });
+    std::vector<::tpy::BigInt>& longest = ::tpy::assert_lent(::tpy::max_key(r1, r2, [](const std::vector<::tpy::BigInt>& r) -> int32_t { return ::tpy::__len__(r); }));
     longest.push_back(9);
     std::cout << "rows" << " " << ::tpy::ListPrinter(r1) << " " << ::tpy::ListPrinter(r2) << "\n" << ::tpy::check_signals;
 }
@@ -346,10 +393,10 @@ void rows_fn() {
 void consumers_fn() {
     P a = P(::tpy::BigInt(1));
     P b = P(::tpy::BigInt(2));
-    std::cout << "consumers" << " " << ::tpy::min_key(a, b, key_of) << " " << std::string(::tpy::__str__(::tpy::max_key(a, b, key_of))) << "\n" << ::tpy::check_signals;
+    std::cout << "consumers" << " " << ::tpy::assert_lent(::tpy::min_key(a, b, key_of)) << " " << std::string(::tpy::__str__(::tpy::assert_lent(::tpy::max_key(a, b, key_of)))) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> r1 = {1, 2, 3};
     std::vector<::tpy::BigInt> r2 = {4, 5};
-    std::cout << "consumers len" << " " << ::tpy::__len__(::tpy::max_key(r1, r2, [](const std::vector<::tpy::BigInt>& r) -> int32_t { return ::tpy::__len__(r); })) << "\n" << ::tpy::check_signals;
+    std::cout << "consumers len" << " " << ::tpy::__len__(::tpy::assert_lent(::tpy::max_key(r1, r2, [](const std::vector<::tpy::BigInt>& r) -> int32_t { return ::tpy::__len__(r); }))) << "\n" << ::tpy::check_signals;
 }
 
 // # value types are untouched
@@ -437,8 +484,8 @@ void temp_written_fn() {
 void ctor_arg_fn() {
     P a = P(::tpy::BigInt(1));
     P b = P(::tpy::BigInt(2));
-    Holder h = Holder(::tpy::min_key(a, b, key_of));
-    Outer o = Outer(Holder(::tpy::max_key(a, b, key_of)));
+    Holder h = Holder(::tpy::assert_lent(::tpy::min_key(a, b, key_of)));
+    Outer o = Outer(Holder(::tpy::assert_lent(::tpy::max_key(a, b, key_of))));
     std::cout << "ctor arg" << " " << h.seen << " " << o.h.seen << " " << a.v << " " << b.v << "\n" << ::tpy::check_signals;
     P __tmp_1 = P(::tpy::BigInt(0));
     ::tpyapp::main::bump(::tpy::min_key(a, __tmp_1, key_of));
@@ -458,7 +505,7 @@ void ctor_arg_fn() {
 //         raise Missing
 //     return m.v
 std::expected<::tpy::BigInt, Missing> lowest_or_raise(P& a, P& b) {
-    P& m = ::tpy::min_key(a, b, key_of);
+    P& m = ::tpy::assert_lent(::tpy::min_key(a, b, key_of));
     m.v = (m.v) + (::tpy::BigInt(10));
     if ((m.v > 100)) {
         return ::tpy::make_unexpected(Missing{});
@@ -492,7 +539,7 @@ void positions_fn(const ::tpy::BigInt& tag) {
     auto __ctx_1 = Ctx();
     __ctx_1.__enter__();
     try {
-        m = &(::tpy::max_key(a, b, key_of));
+        m = &(::tpy::assert_lent(::tpy::max_key(a, b, key_of)));
         m->v = ::tpy::BigInt(20);
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -515,7 +562,7 @@ void positions_fn(const ::tpy::BigInt& tag) {
     }
     auto& __match_subject_1 = tag;
     if (__match_subject_1 == 1) {
-        P& k = ::tpy::min_key(a, b, key_of);
+        P& k = ::tpy::assert_lent(::tpy::min_key(a, b, key_of));
         k.v = ::tpy::BigInt(30);
     } else {
     }
@@ -528,8 +575,8 @@ void positions_fn(const ::tpy::BigInt& tag) {
 //     bump(max(a, b, key=key_of))
 //     min(a, b, key=key_of).v = 50
 void write_params(P& a, P& b) {
-    ::tpyapp::main::bump(::tpy::max_key(a, b, key_of));
-    ::tpy::min_key(a, b, key_of).v = ::tpy::BigInt(50);
+    ::tpyapp::main::bump(::tpy::assert_lent(::tpy::max_key(a, b, key_of)));
+    ::tpy::assert_lent(::tpy::min_key(a, b, key_of)).v = ::tpy::BigInt(50);
 }
 
 // # a loop accumulator over a parameter aliases the winning element
@@ -546,7 +593,7 @@ void write_params(P& a, P& b) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        best = &(::tpy::max_key((*best), p, key_of));
+        best = &(::tpy::assert_lent(::tpy::max_key((*best), p, key_of)));
     }
     ::tpy::__getitem__(ps, 1).v = ::tpy::BigInt(70);
     return best->v;
@@ -605,7 +652,7 @@ void trio_fn() {
     P b = P(::tpy::BigInt(6));
     P c = P(::tpy::BigInt(4));
     auto inner = [&a, &b, &c]() {
-        P& m = ::tpy::max3_key(a, b, c, key_of);
+        P& m = ::tpy::assert_lent(::tpy::max3_key(a, b, c, key_of));
         m.v = ::tpy::BigInt(50);
     };
     inner();
@@ -631,6 +678,7 @@ void trio_fn() {
 //     closure_fn()
 //     try_fn(True)
 //     comp_fn()
+//     owned_elements_fn()
 //     fresh_fn()
 //     rows_fn()
 //     consumers_fn()
@@ -673,6 +721,7 @@ void main() {
     ::tpyapp::main::closure_fn();
     ::tpyapp::main::try_fn(true);
     ::tpyapp::main::comp_fn();
+    ::tpyapp::main::owned_elements_fn();
     ::tpyapp::main::fresh_fn();
     ::tpyapp::main::rows_fn();
     ::tpyapp::main::consumers_fn();
@@ -712,7 +761,7 @@ void __tpy_init() {
     GA = &__global_slot_1;
     static P __global_slot_2 = P(::tpy::BigInt(2));
     GB = &__global_slot_2;
-    GM = &(::tpy::min_key((*GA), (*GB), key_of));
+    GM = &(::tpy::assert_lent(::tpy::min_key((*GA), (*GB), key_of)));
     GM->v = ::tpy::BigInt(7);
     std::cout << "module" << " " << GA->v << " " << GB->v << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();

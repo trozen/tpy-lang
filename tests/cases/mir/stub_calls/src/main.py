@@ -76,6 +76,13 @@ def both(s: str, a: int, b: int) -> int32:  # tpyc: mir(covered) mir_summary(kno
     return len(s)
 
 
+# free function: a declared method stub's value-shaped result is a plain value,
+# read in place and bound to a local
+def dict_get_value(d: dict[str, int32], k: str) -> int32:  # tpyc: mir(covered)
+    v = d.get(k, 5)
+    return d.get("a", 0) + v
+
+
 # free function: `len` on a record dispatches the record's own __len__
 def record_len(r: Rec) -> int32:  # tpyc: mir(uncovered /^stub protocol argument is not a builtin leaf$/)
     return len(r)
@@ -93,6 +100,7 @@ def main() -> None:
     print("overloads:", overloads(3, 5, 1, 2))
     print("twice:", f"{twice(100.0):.6f}")
     print("both:", both("hi", 12, 40))
+    print("dict_get_value:", dict_get_value({"a": 1}, "z"))
     print("record_len:", record_len(Rec(4)))
 
 

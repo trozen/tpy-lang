@@ -343,8 +343,9 @@ implemented with the coupled contract in checkpoint 4.
     element_of=("it",))` -- which replaced a separate decorator at
     the user's decision (2026-10-04), stamped by
     `TypeRegistrar._stamp_declared_borrow`; its users are `min` / `max`
-    (two or three operands, one iterable with and without `key=`) and
-    `next(it, default)`, the remaining ones are in TODO.md,
+    (two or three operands, one iterable with and without `key=`),
+    `next(it, default)` and the method `dict.get(key, default)`
+    (`borrows=("default",), element_of=("self",)`), the remaining ones are in TODO.md,
     "Callable-level borrow annotation for native stubs". It is the one
     spelling: the `@native(..., return_borrows=[...])` and the
     `("self", "default")` decorator sketches are gone). At each call sema
@@ -353,28 +354,29 @@ implemented with the coupled contract in checkpoint 4.
     ELEMENT of (`element_of=`), a container, never an iterator) or is a
     fresh value, whether holding that value copies something the program
     still reaches, and whether the C++ hands back a copy rather than a
-    reference; it stamps them on the call (`TpyCall.result_form`:
-    BORROW / REFERENCE_VALUE / COPY, with `copy_observable`), and the binding or
+    reference; it stamps them on the call (`TpyCallLike.result_form`, a free
+    call and a method call alike:
+    BORROW / REFERENCE_VALUE / COPY / VALUE, with `copy_observable`), and the binding or
     owning slot that holds such a value warns -- an in-place read copies
     nothing and says nothing; a written parameter given a copy warns. A
     result that is a mutable reference is a mutable use of every operand
     that lends it, as an argument at a generic's open `T` is: the operands
     become mutable whenever the result is, and stay const only when
-    declared readonly. The argument is a tuple of PARAMETER NAMES (the
-    keywords are rejected on methods for now, so `"self"` is not used yet):
+    declared readonly. The argument is a tuple of PARAMETER NAMES, `"self"`
+    naming a method's receiver (index -1):
     `@cpp_template(..., borrows=("a", "b"))` on
     `def max[T, K](a: T, b: T, key: Fn[[T], Own[K]]) -> T: ...` says the result is
     a borrow rooted in either argument, read as a union. It stamps
     `return_borrows_from` exactly as a def body does, so every consumer reads one
-    field whether the callee has a body or not. It is READ AT REGISTRATION. (FUTURE,
-    for methods -- the decorator is rejected on a method today: it would sit beside
+    field whether the callee has a body or not. It is READ AT REGISTRATION. (On a
+    method it sits beside
     the existing native-method receiver stamp, where a bodyless native METHOD whose
     `signature_may_return_borrow` holds already derives `frozenset({-1})` from its
     signature (`TypeRegistrar.register_record` in `tpyc/sema/registration.py`;
     the generator stamp beside it is a different inference), and that is true for an open
     type-param return, i.e. precisely `max`-shaped stubs.) Five points settle how
     the two interact and what the annotation may say.
-    - **Precedence (future, methods).** The annotation SUPPRESSES the signature
+    - **Precedence (methods, implemented).** The annotation SUPPRESSES the signature
       inference for that stub. An omitted `"self"` is therefore a positive denial
       of a receiver borrow, not an oversight the inference fills in.
     - **Schema.** `Parser._schema_from_stub._map_type`
@@ -419,9 +421,10 @@ implemented with the coupled contract in checkpoint 4.
     `-> T` decidable. As implemented the declaration has two keywords:
     `borrows=` (the result IS the argument) and `element_of=` (the result is
     handed out by iterating the argument -- only a container lends then; an
-    iterator's step is valid only until the next one), and it is refused on
-    methods for now (the method call path does not take the call-site
-    decision).
+    iterator's step is valid only until the next one). A bodyless METHOD stub
+    takes it too (`self` names the receiver, as `dict.get(key, default)`'s
+    `element_of=("self",)` does); operator methods and property getters
+    refuse it, since their call sites are not method calls.
 
 ## The admission layer
 

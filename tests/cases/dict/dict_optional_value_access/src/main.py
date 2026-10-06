@@ -30,4 +30,15 @@ def main() -> None:
         print(borrow(v))
 
 
+def popped() -> None:
+    d: dict[str, P | None] = {"a": P(10), "c": P(30)}
+    # pop(k) hands back the stored Optional by value: the binding holds the
+    # popped object, which left the dict.
+    o = d.pop("c")  # tpyc: ok
+    if o is not None:
+        o.x += 1
+        print("pop", o.x, len(d), "c" in d)
+
+
 main()
+popped()

@@ -1,8 +1,10 @@
 main.py:36: warning: copies P into field; use copy() to make this explicit
-main.py:260: warning: copies P into field; use copy() to make this explicit
-main.py:158: warning: copies P into local 't'; use copy() to make this explicit
-main.py:204: warning: copies P into local 'm'; use copy() to make this explicit
-main.py:206: warning: copies P into local 'n'; use copy() to make this explicit
-main.py:209: warning: copies P into the frame of 'tick(...)'; use copy() to make this explicit
-main.py:294: warning: Result borrows from temporary argument 'p'; the temporary is destroyed at end-of-statement
-main.py:299: warning: Result borrows from temporary argument 'p'; the temporary is destroyed at end-of-statement
+main.py:281: warning: copies P into field; use copy() to make this explicit
+main.py:166: warning: copies P into owned storage; use copy() to make this explicit
+main.py:168: warning: copies P into owned storage (tuple element 0); use copy() to make this explicit
+main.py:179: warning: copies P into local 't'; use copy() to make this explicit
+main.py:225: warning: copies P into local 'm'; use copy() to make this explicit
+main.py:227: warning: copies P into local 'n'; use copy() to make this explicit
+main.py:230: warning: copies P into the frame of 'tick(...)'; use copy() to make this explicit
+main.py:315: warning: Result borrows from temporary argument 'p'; the temporary is destroyed at end-of-statement
+main.py:320: warning: Result borrows from temporary argument 'p'; the temporary is destroyed at end-of-statement

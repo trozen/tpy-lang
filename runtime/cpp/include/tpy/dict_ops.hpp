@@ -122,12 +122,71 @@ V dict_pop_default(ordered_map<K, V>& m, const KeyArg& key, DefArg&& def) {
     return result;
 }
 
-// d.get(key, default) -> V
+namespace detail {
+    // A reference-type value hands back the stored object or the default
+    // ITSELF, as CPython does; the default must already be a V (or derive
+    // from it), since building one here would return a reference to a local.
+    template<typename V, typename DefArg>
+    concept lends_dict_default =
+        ReferenceType<V>
+        && (std::same_as<std::remove_cvref_t<DefArg>, V>
+            || std::derived_from<std::remove_cvref_t<DefArg>, V>);
+}
+
+namespace detail {
+    // A `T | None` default arrives in its borrow form, a `T*` (or `const
+    // T*`), which the owned `std::optional<T>` value takes the pointee of;
+    // a `None` literal in a generic body arrives as `nullptr`.
+    template<typename V, typename DefArg>
+    concept optional_from_borrow =
+        requires { typename V::value_type; }
+        && std::same_as<V, std::optional<typename V::value_type>>
+        && (std::is_null_pointer_v<std::remove_cvref_t<DefArg>>
+            || (std::is_pointer_v<std::remove_cvref_t<DefArg>>
+                && std::constructible_from<
+                       typename V::value_type,
+                       std::remove_pointer_t<std::remove_cvref_t<DefArg>>&>));
+}
+
+// d.get(key, default) -> V, for a value-type V (or a default that must be
+// converted): by value.
 template<typename K, typename V, typename KeyArg, typename DefArg>
+    requires (!detail::lends_dict_default<V, DefArg>)
 V dict_get_default(const ordered_map<K, V>& m, const KeyArg& key, DefArg&& def) {
-    TPY_DICT_DEFAULT_ASSERT(V, DefArg);
     auto it = m.find(key);
-    if (it == m.items_end()) return V(std::forward<DefArg>(def));
+    if constexpr (detail::optional_from_borrow<V, DefArg>) {
+        if (it == m.items_end()) {
+            if constexpr (std::is_null_pointer_v<std::remove_cvref_t<DefArg>>)
+                return V();
+            else
+                return def ? V(*def) : V();
+        }
+    } else {
+        TPY_DICT_DEFAULT_ASSERT(V, DefArg);
+        if (it == m.items_end()) return V(std::forward<DefArg>(def));
+    }
+    return (*it).second;
+}
+
+// d.get(key, default) -> the stored object or the default, read-only when
+// either the map or the default is.
+template<typename K, typename V, typename KeyArg, typename DefArg>
+    requires detail::lends_dict_default<V, DefArg>
+const V& dict_get_default(const ordered_map<K, V>& m, const KeyArg& key,
+                          const DefArg& def) {
+    auto it = m.find(key);
+    if (it == m.items_end()) return static_cast<const V&>(def);
+    return (*it).second;
+}
+
+// The mutable form: a temporary default counts as mutable -- the reference
+// is read within the full expression that made it.
+template<typename K, typename V, typename KeyArg, typename DefArg>
+    requires (detail::lends_dict_default<V, DefArg>
+              && !std::is_const_v<std::remove_reference_t<DefArg>>)
+V& dict_get_default(ordered_map<K, V>& m, const KeyArg& key, DefArg&& def) {
+    auto it = m.find(key);
+    if (it == m.items_end()) return static_cast<V&>(def);  // a returned rvalue reference is an xvalue
     return (*it).second;
 }
 

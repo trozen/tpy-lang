@@ -49,14 +49,16 @@ def builtin_function(key: str): ...
 # C++ is a Ctrl-C check point (it calls `::tpy::check_signals()` or raises
 # KeyboardInterrupt itself), so a cleanup body calling it needs deferral.
 # Function-level `borrows=(...)` / `element_of=(...)` (here and on
-# @cpp_template): what a bodyless free binding's result borrows, by
+# @cpp_template): what a bodyless binding's result borrows, by
 # parameter NAME, read as a union. `borrows=` names parameters the result IS
 # (or lives inside the storage of); `element_of=` names parameters the
 # result is handed out by ITERATING -- a container argument lends its
 # elements, an iterator never does (its step is valid only until the next).
 # The call's result binds as a borrow only where every named argument lends;
-# elsewhere it is a value, and a binding that holds it warns. Without them a
-# free function's result is a fresh value. Not supported on methods yet. Each
+# elsewhere it is a value, and a binding that holds it warns. On a method,
+# `self` names the receiver; operator methods and property getters refuse
+# them. Without them a free function's result is a fresh value (a native
+# method's keeps the receiver borrow its signature implies). Each
 # tuple takes any length; `tuple[str]` is how the schema spells "names".
 @builtin_decorator("tpy.extern.native")
 def native(name: str = "", function: bool = False, binding: str = "",
@@ -80,13 +82,6 @@ def cpp_template(template: str, transient: bool = False,
 
 @builtin_decorator("tpy.extern.value_ptr_coercion")
 def value_ptr_coercion(): ...
-
-# Marks an accessor whose Own[V] result is a copy where the method's CPython
-# namesake aliases -- so mutating the result is a silent no-op. sema warns at
-# such call sites (escape: copy(), or an aliasing accessor). Library-declared
-# so the compiler holds no per-type knowledge.
-@builtin_decorator("tpy.extern.copy_returns_warn")
-def copy_returns_warn(): ...
 
 # Marks a native class whose hand-written C++ __raise__ is NOT equivalent to
 # a fresh `throw ClassName(args)` (it dispatches -- e.g. OSError's ctor-time

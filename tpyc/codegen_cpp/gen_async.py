@@ -67,6 +67,7 @@ _FRESH_COLLECTION_NODES = (
 )
 from ..typesys import IntLiteralType, NominalType, TpyType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, varargs_is_readonly, is_readonly_ptr, VoidType, is_fn_type, is_dyn_protocol, ConcreteFrameType, param_takes_ownership
 from ..value_category import (async_return_form, AsyncReturnForm,
+                              declared_call_const,
                               for_source_is_rvalue, frame_factory_callee,
                               iterator_source_callee,
                               materializing_temp_source, peel_coerce)
@@ -4119,7 +4120,11 @@ class AsyncCoroCodegen:
         def borrows_from(target: str, src: 'TpyExpr | None') -> None:
             # A binding whose storage comes out of `src` is const whenever
             # `src` is, however late that is settled (a loop var's own verdict
-            # lands in the for prescan, which runs after this pass).
+            # lands in the for prescan, which runs after this pass). A
+            # borrow-declared call's const-ness is its lenders', which sema
+            # already folded into the result type -- its receiver may not lend.
+            if declared_call_const(self.ctx.analyzer, src) is not None:
+                return
             rcfg.record_const_source_edge(state, target, root_name(src))
 
         def walk(stmts: 'list[TpyStmt]') -> None:

@@ -1,1 +1,0 @@
-main.py:11: warning: 'get(...)' returns a copy of the stored value; mutations through it do not affect the container (CPython aliases). Use an aliasing accessor (e.g. subscript), or wrap in copy() to make the copy explicit.

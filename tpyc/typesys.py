@@ -3819,6 +3819,18 @@ def owned_tuple_storage_type(typ: 'TpyType') -> 'TpyType':
     return ReadonlyType(owned) if isinstance(typ, ReadonlyType) else owned
 
 
+def owned_element_type(typ: 'TpyType') -> 'TpyType':
+    """The type an inferred container element, key or value is held as: a
+    container owns its elements, so neither the ownership marker nor the
+    borrow marker of the source survives (a borrow-returning call's
+    `Ref[P]` would spell a container of references), and neither does its
+    `readonly`: the element is the container's own copy, so writing it
+    cannot reach the readonly source. The borrow facts stay on the source
+    expression; only the slot is owned."""
+    return owned_tuple_storage_type(
+        unwrap_readonly(unwrap_ref_type(unwrap_readonly(unwrap_own(typ)))))
+
+
 @dataclass(frozen=True)
 class NoneType(TpyType):
     """Type of the `None` literal at value-bearing positions (generic
@@ -5428,6 +5440,16 @@ class PendingContainerType(TpyType):
     with the literal and not by a type walk."""
     KIND = ""
     STEPS = ()
+    # The dataclass fields holding the parts, in `STEPS` order.
+    PART_FIELDS = ()
+
+    def __post_init__(self) -> None:
+        # The container owns its parts whatever expression decided them, so
+        # a source's borrow or ownership marker never reaches the slot type
+        # (`Ref[P]` would spell a container of references).
+        for f in self.PART_FIELDS:
+            object.__setattr__(self, f, owned_element_type(getattr(self, f)))
+
     # How an annotation hint names a container of this kind that has no
     # name of its own, and spells its empty and its written initializer.
     HINT_NAME = ""
@@ -5507,6 +5529,7 @@ class PendingListType(PendingContainerType):
     literal_id: int
     KIND = "list"
     STEPS = (ELEM,)
+    PART_FIELDS = ("element_type",)
     HINT_NAME = "xs"
     INITS = ("[]", "[...]")
 
@@ -5742,6 +5765,16 @@ class ContainerLiteralInfo:
     # (the element type the read was compiled at, the reading node).
     elem_reads: list = field(default_factory=list)
 
+    # The fields holding the parts; every write to one takes the owned slot
+    # form, as the pending type's parts do (`PendingContainerType`), so the
+    # record and the type it spells never disagree about a reference marker.
+    PART_FIELDS = ()
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name in self.PART_FIELDS and isinstance(value, TpyType):
+            value = owned_element_type(value)
+        super().__setattr__(name, value)
+
     def pending_type(self) -> 'PendingContainerType':
         """The type of the literal, its parts as this record has them."""
         raise NotImplementedError
@@ -5759,6 +5792,7 @@ class ContainerLiteralInfo:
 class ListLiteralInfo(ContainerLiteralInfo):
     """Tracks usage information for a list literal to determine its resolved type."""
     expr: 'TpyArrayLiteral | TpyListRepeat | TpyListComprehension | TpyCall'
+    PART_FIELDS = ("element_type",)
     element_type: TpyType
     size: int  # -1 for unknown (variable count repeat)
     is_mutated: bool = False
@@ -5788,6 +5822,7 @@ class PendingDictType(PendingContainerType):
     literal_id: int
     KIND = "dict"
     STEPS = (KEY, VALUE)
+    PART_FIELDS = ("key_type", "value_type")
     HINT_NAME = "d"
     INITS = ("{}", "{...}")
 
@@ -5830,6 +5865,7 @@ class DictLiteralInfo(ContainerLiteralInfo):
     key and value types its uses give, or a written one whose numeric
     leaves cells decide."""
     expr: 'TpyDictLiteral | TpyCall'
+    PART_FIELDS = ("key_type", "value_type")
     key_type: TpyType
     value_type: TpyType
 
@@ -5852,6 +5888,7 @@ class PendingSetType(PendingContainerType):
     literal_id: int
     KIND = "set"
     STEPS = (ELEM,)
+    PART_FIELDS = ("element_type",)
     HINT_NAME = "s"
     INITS = ("set()", "{...}")
 
@@ -6018,6 +6055,7 @@ class SetLiteralInfo(ContainerLiteralInfo):
     element type its uses give, or a written one whose numeric leaves
     cells decide."""
     expr: 'TpySetLiteral | TpyCall'
+    PART_FIELDS = ("element_type",)
     element_type: TpyType
 
     def pending_type(self) -> 'PendingSetType':
@@ -7394,7 +7432,6 @@ class FunctionInfo:
     # from then on, or only compares it / hands it back
     # (`tpyc/sema/list_elem.py`). None: neither is declared.
     native_element_effect: Optional[str] = None
-    copy_returns_warn: bool = False  # Own[V] accessor copies where CPython aliases -> warn at call sites
     # `__enter__` only (computed at registration): can what this returns root
     # at `self`? False means it lends storage that is NOT the receiver's, so a
     # `with` target aliasing it does not force the manager to stay alive.

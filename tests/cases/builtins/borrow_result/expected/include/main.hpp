@@ -57,6 +57,8 @@ void closure_fn();
 void try_fn(bool flag);
 // def comp_fn() -> None:
 void comp_fn();
+// def owned_elements_fn() -> None:
+void owned_elements_fn();
 // def fresh_fn() -> None:
 void fresh_fn();
 // def tick(p: P) -> Iterator[int]:
@@ -310,12 +312,16 @@ struct __coro_async_body {
     P& a;
     P& b;
     P* m = nullptr;
+    P* w = nullptr;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_RESUME_0 = 1,
-        S_DONE = 2,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
     };
 
     __coro_async_body(P& a, P& b)
@@ -338,6 +344,7 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, ::tpy::Big
     P& a;
     P& b;
     P* m = nullptr;
+    P* w = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -401,13 +408,13 @@ inline std::string P::__str__() const {
 inline Team::Team(P& a, P& b)
     : a(P(a.v)),
       b(P(b.v)),
-      lead(::tpy::max_key(a, b, key_of)) {}
+      lead(::tpy::assert_lent(::tpy::max_key(a, b, key_of))) {}
 
 // def low(self) -> P:
 //     # method: a returned borrow of a field
 //     return min(self.a, self.b, key=key_of)
 inline P& Team::low() {
-    return ::tpy::min_key(this->a, this->b, key_of);
+    return ::tpy::assert_lent(::tpy::min_key(this->a, this->b, key_of));
 }
 
 // def __init__(self) -> None:
@@ -500,7 +507,7 @@ inline Duo::Duo()
 //     # field operands: the method takes `self` as mutable
 //     bump(min(self.a, self.b, key=key_of))
 inline void Duo::bump_low() {
-    ::tpyapp::main::bump(::tpy::min_key(this->a, this->b, key_of));
+    ::tpyapp::main::bump(::tpy::assert_lent(::tpy::min_key(this->a, this->b, key_of)));
 }
 
 // def __init__(self) -> None:
@@ -515,7 +522,7 @@ inline Trio::Trio()
 // def lowest(self) -> P:
 //     return min(self.a, self.b, self.c, key=key_of)
 inline P& Trio::lowest() {
-    return ::tpy::min3_key(this->a, this->b, this->c, key_of);
+    return ::tpy::assert_lent(::tpy::min3_key(this->a, this->b, this->c, key_of));
 }
 void __tpy_init();
 } // namespace tpyapp::main

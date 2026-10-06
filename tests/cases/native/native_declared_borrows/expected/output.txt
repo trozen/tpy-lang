@@ -1,3 +1,10 @@
 declared 10 2
 element 30
 undeclared 1 2 20
+method_arg 1 50
+method_ro_receiver 1 60
+method_ro_gen 1 60
+method_ro_gen 61 61
+method_ro_co 62 62
+method_ro_branch 62 63
+method_elem 70

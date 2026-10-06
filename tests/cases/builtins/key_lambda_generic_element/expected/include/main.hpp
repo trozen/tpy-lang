@@ -38,14 +38,16 @@ template<typename T>
 std::vector<std::tuple<T, std::string>> by_name(const std::vector<std::tuple<T, std::string>>& pairs) {
     return ::tpy::builtin_sorted_key<std::tuple<T, std::string>>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, std::string>& p) -> std::string { return std::get<1>(p); });
 }
+// # the owned return copies the winning tuple, and with it a class T that
+// # CPython would hand back itself
 // def smaller[T](a: tuple[T, int32], b: tuple[T, int32]) -> Own[tuple[T, int32]]:
-//     return min(a, b, key=lambda p: p[1])
+//     return min(a, b, key=lambda p: p[1])  # tpyc: warning(/may copy tuple\[T, int32\]/)
 template<typename T>
 std::tuple<T, int32_t> smaller(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& a, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& b) {
     return ::tpy::min_key(a, b, [](const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t { return std::get<1>(p); });
 }
 // def larger[T](a: tuple[T, int32], b: tuple[T, int32]) -> Own[tuple[T, int32]]:
-//     return max(a, b, key=lambda p: p[1])
+//     return max(a, b, key=lambda p: p[1])  # tpyc: warning(/may copy tuple\[T, int32\]/)
 template<typename T>
 std::tuple<T, int32_t> larger(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& a, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& b) {
     return ::tpy::max_key(a, b, [](const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t { return std::get<1>(p); });

@@ -751,14 +751,7 @@ def _emit_call(e: THIRCall, state: _EmitState) -> str:
     if e.cpp_template is not None:
         # A scalar type-constructor call: expand the (sema-substituted,
         # positional-only) __init__ template over the args with no receiver.
-        template = e.cpp_template
-        if "{lend}" in template:
-            # Only a BORROW is told to the helper (it asserts the source can
-            # lend); any other form leaves the helper unchecked.
-            template = template.replace(
-                "{lend}", "<void, ::tpy::elem_verdict::lend>"
-                if e.result_form is ResultForm.BORROW else "")
-        return expand_cpp_template(template, None,
+        return expand_cpp_template(e.cpp_template, None,
                                    *[_emit_expr(a, state) for a in e.args])
     args = ", ".join(_emit_expr(a, state) for a in e.args)
     if e.callee_expr is not None:
@@ -1785,8 +1778,15 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return (f"(({cond_cpp}) ? "
                 f"({_then_region.prefix}{then_cpp}) : "
                 f"({_else_region.prefix}{else_cpp}))")
-    if isinstance(e, THIRCall):
-        return _emit_call(e, state)
+    if isinstance(e, (THIRCall, THIRMethodCall)):
+        call = (_emit_call(e, state) if isinstance(e, THIRCall)
+                else _emit_method_call(e, state))
+        if e.result_form is ResultForm.BORROW:
+            # The caller holds the result by reference; a callee whose C++
+            # hands back a value would leave that reference on a temporary,
+            # so the build checks the result is one.
+            return f"::tpy::assert_lent({call})"
+        return call
     if isinstance(e, THIRUnionArgLift):
         return _emit_union_arg_lift(e, state)
     if isinstance(e, THIRCtorCall):
@@ -1839,8 +1839,6 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         if e.lift:
             return f"::tpy::optional_to_ptr({inner})"
         return f"&({inner})" if e.addr_of else inner
-    if isinstance(e, THIRMethodCall):
-        return _emit_method_call(e, state)
     if isinstance(e, THIRClassConstant):
         if e.recv_eval is not None:
             # Effectful / runtime-checked instance receiver: evaluate it,

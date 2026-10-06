@@ -686,6 +686,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # A by-value CALL rvalue at a nested-container element store forwards
     # bare (`__setitem__(d, "k", make())`), like the record element arm.
     "setitem.container_rvalue",
+    # A borrow-declared call's container result at a nested-container
+    # element store copies (`__setitem__(d, "k", std::vector<T>(get(..)))`).
+    "setitem.declared_call_copy",
     # A ptr-repr Optional[F1-record] name at a native protocol slot:
     # bare T* un-narrowed, the (*name) deref when proven.
     "arg.native_protocol_optptr",
@@ -1398,6 +1401,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "containerlit.move",            # `std::move(name)` element at last use
     "containerlit.copy_record",     # `copy(p)` element: the shared
                                     # copy-construct row at a record slot
+    "containerlit.declared_call_copy",  # a borrow-declared call's record
+                                    # or container result at an owning
+                                    # element: the same copy-construct,
+                                    # implicit (`P(get(..))`)
     "containerlit.union_name_lift",  # tracked ptr-variant NAME at a value-
                                     # union slot -> `to_value_variant<..>(a)`
     "containerlit.tparam_elem",     # plain declared NAME at a `T` element
@@ -2217,6 +2224,12 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # pointee): consumers own the binding
     "method.container_union_ret",   # union-element rvalue popped into a
                                     # STORAGE sink (the frame-slot emplace)
+    "method.declared_borrow_ret",   # a borrow-declared stub's record
+                                    # result sema stamped BORROW, bound or
+                                    # read through bare (`P& m = get(..)`)
+    "method.declared_storage_opt_ret",  # a borrow-declared stub's
+                                    # by-value ptr-repr Optional result at a
+                                    # STORAGE sink: the decl slot + lift
     "decl.opt_call_passthrough",    # borrow-returning ptr-opt free call
                                     # bound bare at its decl (no slot)
     "print.opt_ptr_name",           # whole ptr-opt name arg:
@@ -3294,6 +3307,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "expr.walrus_frame_alias",      # `T*` alias field: `(row = &(v), *row)`
     "expr.walrus_frame_alias_slot", # `T*` alias field off a frame_slot NAME:
                                     # `(x = &((*buf)), *x)`
+    "expr.walrus_frame_alias_call", # `T*` alias field off a BORROW call:
+                                    # `(w = &(dict_get_default(d, k, fb)), *w)`
     "expr.walrus_frame_btuple",     # borrow tuple field: `(bt = v, bt)`
     "expr.walrus_frame_field",      # plain field: `(n = v)`
     "ifexpr.isin_narrow_str",       # isinstance-narrowed select at a str

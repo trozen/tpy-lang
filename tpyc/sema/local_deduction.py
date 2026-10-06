@@ -1384,10 +1384,6 @@ class LocalTypeDeduction:
             if isinstance(elem_type, PendingViewType):
                 # Container elements are owned -- views can't be stored in a list.
                 elem_type = elem_type.family.owned_type
-            # Container elements store the owned value; the Own marker is a
-            # boundary annotation, not a storage type (comprehensions reach
-            # here with the element expr's `Own[T]` return type intact).
-            elem_type = unwrap_own(elem_type)
 
             form = self._container_form(info)
             if form is _Form.ANNOTATED:

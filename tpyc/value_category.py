@@ -19,13 +19,14 @@ from .typesys import (
     FunctionInfo, NominalType, PtrType, ReadonlyType, TpyType, TupleType,
     TypeParamRef, OwnType,
     OptionalType, ResultPosition, ResultRepresentation, classify_result_representation,
-    is_open_type_param_return, is_primitive_type, is_protocol_type,
+    is_bodyless_binding, is_open_type_param_return, is_primitive_type,
+    is_protocol_type,
     property_getter_returns_storage_ref, returns_cpp_reference_shape,
     unwrap_optional_own, unwrap_readonly, unwrap_ref_type,
     unwrap_send_sync,
 )
 from .parse import (
-    TpyExpr, TpyForEach, ResultForm,
+    TpyExpr, TpyForEach, ResultForm, TpyCallLike,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
     TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat, TpyListComprehension,
     TpyDictLiteral, TpySetLiteral, TpyDictComprehension, TpySetComprehension,
@@ -38,6 +39,61 @@ from .type_def_registry import (is_bool_type, is_borrowing_view_type,
                                 is_bytes_type, is_bytes_view_type,
                                 is_str_type, is_str_view_type)
 from . import qnames
+
+
+class CallOperands(NamedTuple):
+    """A call-shaped expression as the borrow facts index it: the callee,
+    its receiver (source index -1), its positional arguments and the
+    keyword arguments sema left unnormalized."""
+    fi: FunctionInfo
+    obj: TpyExpr | None
+    args: list[TpyExpr]
+    kwargs: dict[str, TpyExpr] = {}
+
+    def positioned(self) -> list[tuple[int, TpyExpr]]:
+        """Each argument with the parameter index it binds -- positionally,
+        then keywords by name (-2 for a name no parameter has)."""
+        by_name = {p.name: i for i, p in enumerate(self.fi.params)}
+        return list(enumerate(self.args)) + [
+            (by_name.get(k, -2), a) for k, a in (self.kwargs or {}).items()]
+
+    def indexed(self) -> list[tuple[int, TpyExpr]]:
+        """The receiver at source index -1 when there is one, then
+        `positioned()`: every operand a borrow source index can name."""
+        recv = [] if self.obj is None else [(-1, self.obj)]
+        return recv + self.positioned()
+
+
+def call_operands(expr: TpyExpr) -> CallOperands | None:
+    """The operands a call-shaped `expr`'s `return_borrows_from` indexes,
+    whatever form sema stamped its result, or None when `expr` is not a
+    resolved call.
+
+    Operator dispatch is a method call in disguise -- a borrow-returning
+    dunder hands out a borrow of an operand -- and answers with the CANONICAL
+    fi: the resolved copy is synthesized before the dunder's body facts land,
+    so only the root carries them.
+    """
+    kwargs: dict[str, TpyExpr] = {}
+    if isinstance(expr, TpyCall):
+        fi, obj, args = expr.resolved_function_info, None, expr.args
+        kwargs = expr.kwargs or {}
+    elif isinstance(expr, TpyMethodCall):
+        fi, obj, args = expr.resolved_function_info, expr.obj, expr.args
+        kwargs = expr.kwargs or {}
+    elif isinstance(expr, TpyBinOp) and expr.resolved_binop is not None:
+        rb = expr.resolved_binop
+        fi = rb.method.root
+        obj = expr.right if rb.is_reverse else expr.left
+        args = [expr.left if rb.is_reverse else expr.right]
+    elif isinstance(expr, TpyUnaryOp) and expr.resolved_unaryop is not None:
+        fi, obj, args = expr.resolved_unaryop.method.root, expr.operand, []
+    elif (isinstance(expr, TpyGeneratorExpression)
+          and expr.frame_creation is not None):
+        return call_operands(expr.frame_creation)
+    else:
+        return None
+    return None if fi is None else CallOperands(fi, obj, args, kwargs)
 
 
 def wants_move(t: TpyType) -> bool:
@@ -144,6 +200,54 @@ def call_returns_cpp_ref(analyzer: ValueCategoryAnalyzer, fi: 'FunctionInfo | No
     ) is ResultRepresentation.CPP_REFERENCE
 
 
+def declared_result_is_value(fi: 'FunctionInfo | None') -> bool:
+    """Whether a binding that DECLARES its result's borrow sources hands
+    that result back BY VALUE at this instantiation: the declaration lends
+    only a reference-shaped result (a class instance, a container), so a
+    value-shaped one -- an Optional, a union, a tuple, a number -- is a
+    fresh value the caller owns, even where its pointer representation
+    would read as a borrowed `T*` from an undeclared callee. A bare open
+    `T` is not decided here: the instantiation may be a reference."""
+    if (fi is None or not is_bodyless_binding(fi)
+            or not fi.root.borrow_declared):
+        return False
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(fi.return_type)))
+    return (isinstance(rt, TpyType) and not isinstance(rt, TypeParamRef)
+            and not returns_cpp_reference_shape(rt))
+
+
+def call_hands_back_value(call: TpyExpr) -> bool:
+    """Whether a call's C++ result is a VALUE the caller owns rather than a
+    borrow of existing storage: the callee's declared return is `Own[...]`
+    (which sema strips off the call's type), or sema stamped a by-value
+    form on the call (`ResultForm.by_value`). Either way a pointer-repr
+    Optional result is the STORAGE `std::optional<T>`, not a `T*`. The one
+    question lowering and codegen ask of a call node."""
+    if not isinstance(call, (TpyCall, TpyMethodCall)):
+        return False
+    if call.result_form.by_value:
+        return True
+    fi = call.resolved_function_info
+    rt = getattr(fi, "return_type", None) if fi is not None else None
+    return (isinstance(rt, TpyType)
+            and isinstance(unwrap_readonly(unwrap_ref_type(
+                unwrap_send_sync(rt))), OwnType))
+
+
+def call_value_optional(call: TpyExpr) -> 'OptionalType | None':
+    """The pointer-repr Optional a call hands back WHOLE as a value
+    (`call_hands_back_value`): the `std::optional<T>` a pointer-form holder
+    lifts with `optional_to_ptr`. None for any other call."""
+    if not call_hands_back_value(call):
+        return None
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        call.resolved_function_info.return_type)))
+    if isinstance(rt, OwnType):
+        rt = unwrap_readonly(rt.wrapped)
+    return (rt if isinstance(rt, OptionalType) and rt.uses_pointer_repr()
+            else None)
+
+
 def call_result_holdable(analyzer: ValueCategoryAnalyzer,
                          expr: TpyExpr) -> bool:
     """Whether a holder that OUTLIVES the statement (a reseated pointer
@@ -151,12 +255,23 @@ def call_result_holdable(analyzer: ValueCategoryAnalyzer,
     the callee returns a C++ reference, and a borrow-declared call was not
     stamped a fresh value (`ResultForm.is_fresh`), whose reference may
     point into a temporary operand."""
-    if isinstance(expr, TpyCall) and expr.result_form.is_fresh:
+    if isinstance(expr, TpyCallLike) and expr.result_form.is_fresh:
         return False
     if lends_a_fresh_result(expr):
         return False
     return call_returns_cpp_ref(
         analyzer, getattr(expr, "resolved_function_info", None))
+
+
+def binds_fresh_call_value(expr: TpyExpr) -> bool:
+    """Whether a name bound from `expr` OWNS what it holds because `expr`
+    is a borrow-declared call sema stamped a fresh value
+    (`ResultForm.is_fresh`). Whether making that value copies an object the
+    program still reaches is the binding's question (`returns_borrow`,
+    warned there); the bound name is no borrow afterwards, so a later sink
+    moves it at its last use like any owned local."""
+    expr = peel_coerce(expr)
+    return isinstance(expr, TpyCallLike) and expr.result_form.is_fresh
 
 
 def lends_a_fresh_result(expr: TpyExpr) -> bool:
@@ -172,16 +287,16 @@ def lends_a_fresh_result(expr: TpyExpr) -> bool:
         return lends_a_fresh_result(expr.obj)
     if not isinstance(expr, (TpyCall, TpyMethodCall)):
         return False
-    if isinstance(expr, TpyCall) and expr.result_form.is_fresh:
+    if expr.result_form.is_fresh:
         return True
-    fi = expr.resolved_function_info
-    sources = fi.root.return_borrows_from if fi is not None else None
-    for idx in sources or ():
-        operand = (expr.obj if idx == -1 and isinstance(expr, TpyMethodCall)
-                   else expr.args[idx] if 0 <= idx < len(expr.args) else None)
-        if operand is not None and lends_a_fresh_result(operand):
-            return True
-    return False
+    ops = call_operands(expr)
+    sources = ops.fi.root.return_borrows_from if ops is not None else None
+    # Whole operands, not `lent_operands`' tuple-literal elements: a fresh
+    # result inside a tuple literal is held by the tuple temporary, whose
+    # lifetime is the temp-backing question, not this one.
+    return bool(sources) and any(
+        idx in sources and lends_a_fresh_result(operand)
+        for idx, operand in ops.indexed())
 
 
 def call_result_live_in_statement(analyzer: ValueCategoryAnalyzer,
@@ -195,7 +310,7 @@ def call_result_live_in_statement(analyzer: ValueCategoryAnalyzer,
     that outlives the statement asks `call_result_holdable`. (The return
     SHAPE alone does not answer it: a container constructor's `-> list[T]`
     is a reference shape and an rvalue.)"""
-    if isinstance(expr, TpyCall) and expr.result_form.is_fresh:
+    if isinstance(expr, TpyCallLike) and expr.result_form.is_fresh:
         return True
     return (isinstance(expr, (TpyCall, TpyMethodCall))
             and not is_rvalue_source(analyzer, expr))
@@ -204,11 +319,25 @@ def call_result_live_in_statement(analyzer: ValueCategoryAnalyzer,
 def call_result_is_reference(analyzer: ValueCategoryAnalyzer,
                              expr: TpyExpr) -> bool:
     """`call_result_live_in_statement` where the slot may be a MUTABLE
-    reference: a copy the callee hands back (`ResultForm.COPY`) cannot bind
-    one, and goes through a statement temporary instead."""
+    reference: a value the callee hands back (`ResultForm.by_value`) cannot
+    bind one, and goes through a statement temporary instead."""
     return (call_result_live_in_statement(analyzer, expr)
-            and not (isinstance(expr, TpyCall)
-                     and expr.result_form is ResultForm.COPY))
+            and not (isinstance(expr, TpyCallLike)
+                     and expr.result_form.by_value))
+
+
+def declared_call_const(analyzer: ValueCategoryAnalyzer,
+                        expr: TpyExpr) -> 'bool | None':
+    """The const verdict of a borrow-declared call's result, or None when
+    `expr` is not one. Sema folds it into the result TYPE (read-only exactly
+    when a lent operand is), so every const reader asks this FIRST: the
+    callee's `@readonly`, its receiver's const-ness and a reference-returning
+    signature say nothing about a result that may be an argument
+    (`ro.pick(x)` is as mutable as `x`)."""
+    if not (isinstance(expr, TpyCallLike)
+            and expr.result_form is not ResultForm.NOT_DECLARED):
+        return None
+    return isinstance(analyzer.get_expr_type(expr), ReadonlyType)
 
 
 def return_type_is_cpp_ref(rt: 'TpyType | None') -> bool:
@@ -443,6 +572,10 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     if isinstance(expr, CONTAINER_LITERAL_NODES):
         return True
     if isinstance(expr, TpyMethodCall):
+        # A declared-borrow method's call: sema decided, as for a free
+        # binding's call below.
+        if expr.result_form is not ResultForm.NOT_DECLARED:
+            return expr.result_form is not ResultForm.BORROW
         terms = _accessor_terms(analyzer, expr)
         if terms is not None:
             # The accessor pair above, one node kind over: a property read
@@ -899,7 +1032,7 @@ def returns_borrow(analyzer: 'ValueCategoryAnalyzer', expr: TpyExpr) -> bool:
         return inner.await_result_is_borrow
     # A borrow-declared call sema stamped a fresh value is a borrowed source
     # exactly when holding it copies an object the program still reaches.
-    if isinstance(inner, TpyCall) and inner.result_form.is_fresh:
+    if isinstance(inner, TpyCallLike) and inner.result_form.is_fresh:
         return inner.copy_observable
     link = _borrow_link(inner)
     if link is None:

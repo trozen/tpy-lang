@@ -13,12 +13,14 @@ def by_name[T](pairs: list[tuple[T, str]]) -> Own[list[tuple[T, str]]]:
     return sorted(pairs, key=lambda p: p[1])
 
 
+# the owned return copies the winning tuple, and with it a class T that
+# CPython would hand back itself
 def smaller[T](a: tuple[T, int32], b: tuple[T, int32]) -> Own[tuple[T, int32]]:
-    return min(a, b, key=lambda p: p[1])
+    return min(a, b, key=lambda p: p[1])  # tpyc: warning(/may copy tuple\[T, int32\]/)
 
 
 def larger[T](a: tuple[T, int32], b: tuple[T, int32]) -> Own[tuple[T, int32]]:
-    return max(a, b, key=lambda p: p[1])
+    return max(a, b, key=lambda p: p[1])  # tpyc: warning(/may copy tuple\[T, int32\]/)
 
 
 def main() -> None:

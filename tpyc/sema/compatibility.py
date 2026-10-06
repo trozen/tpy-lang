@@ -40,7 +40,7 @@ from .move_chain import why_not_movable, render_move_chain
 from ..parse import (
     ResultForm,
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
-    TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
+    TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyCallLike, TpyMethodCall, TpyUnaryOp,
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFunction, TpyIfExpr, TpyTupleLiteral, TpyLambda, TpyNamedExpr, TpyFString,
     lambda_of,
@@ -303,6 +303,16 @@ _BORROW_FORM_SINKS = frozenset({TupleSink.RETURN, TupleSink.ARG,
 # The sinks whose codegen MOVES a last-use owned member into the slot; the
 # others lift the literal through `tuple_to_storage`, which copies even then.
 _LAST_USE_MOVES_SINKS = frozenset({TupleSink.FIELD, TupleSink.YIELD})
+
+
+def _declared_call_member(m: TpyExpr) -> bool:
+    """A tuple-literal member that is a borrow-declared call handing back
+    an operand (`(d.get(k, fb), 1)`): a LOCAL holds it by value, not by
+    pointer -- its element has no pointer render yet (TODO.md "Sink capture
+    keys on the shared lending verdict") -- so it is owned storage there
+    and takes that slot's copy rule."""
+    inner = peel_value_wrappers(m)
+    return isinstance(inner, TpyCallLike) and inner.result_form.from_operand
 
 
 class CompatError:
@@ -2790,6 +2800,10 @@ class TypeCompatibility:
         # Value types are always safe -- copied, not aliased. OwnType.is_value_type
         # returns True (Own represents a moved value), so we have to peel Own
         # first to see whether the underlying T is genuinely a value type.
+        # A value-shaped type HOLDING an open type parameter (`T | None`,
+        # `tuple[T, int32]`) is not: the parameter may be a reference type,
+        # which the copy duplicates as it would a bare `T`. (A concrete
+        # held instance is the per-element check's.)
         inner = expr
         while isinstance(inner, TpyCoerce):
             inner = inner.expr
@@ -2797,7 +2811,10 @@ class TypeCompatibility:
         if raw_type is not None:
             unwrapped = unwrap_ref_type(raw_type)
             inner_after_own = unwrapped.wrapped if isinstance(unwrapped, OwnType) else unwrapped
-            if inner_after_own.is_value_type():
+            if (inner_after_own.is_value_type()
+                    and not (own_copy.type_param_names(inner_after_own)
+                             and own_copy.contains_reference_type(
+                                 inner_after_own))):
                 return False
             # A WHOLE returned Own-typed name moves out (C++ moves a returned
             # local) unless a closure captures it: that one copies, declared
@@ -3752,6 +3769,10 @@ class TypeCompatibility:
         # Method call returning owned str/String creates a temporary
         # std::string that dangles if returned as StrView.
         if isinstance(expr, TpyMethodCall):
+            # A borrow-declared call sema stamped a fresh value: its reference
+            # may point into a temporary operand.
+            if expr.result_form.is_fresh:
+                return True
             fi = expr.resolved_function_info
             if fi is not None and (is_str_type(fi.return_type) or is_string_type(fi.return_type)
                                    or is_bytes_type(fi.return_type) or is_bytearray_type(fi.return_type)):
@@ -3816,7 +3837,8 @@ class TypeCompatibility:
                 isinstance(expr, TpyCall) and isinstance(expr.func, TpyName)
                 and expr.func_name in self.ctx.registry.records):
             return True
-        if isinstance(expr, TpyCall) and expr.result_form is not ResultForm.NOT_DECLARED:
+        if (isinstance(expr, TpyCallLike)
+                and expr.result_form is not ResultForm.NOT_DECLARED):
             return expr.result_form is not ResultForm.BORROW
         ret = unwrap_readonly(fi.return_type) if fi.return_type else None
         if isinstance(ret, OwnType):
@@ -3865,7 +3887,7 @@ class TypeCompatibility:
                     or is_borrowing_view_type(expr.call_type)):
                 return None
             return expr
-        if isinstance(expr, TpyCall) and expr.result_form.is_fresh:
+        if isinstance(expr, TpyCallLike) and expr.result_form.is_fresh:
             return expr
         ops = call_borrow_operands(expr)
         if ops is None:
@@ -4113,6 +4135,21 @@ class TypeCompatibility:
             if isinstance(expr, TpyNoneLiteral):
                 return
             if self.is_dangling_return(expr, gen_yield=for_yield):
+                call = expr.expr if isinstance(expr, TpyCoerce) else expr
+                if (isinstance(call, TpyCallLike)
+                        and call.result_form is ResultForm.COPY
+                        and own_copy.type_has_type_param(return_type)):
+                    # The hedged generic copy of an open Optional: the
+                    # owning `Own[V | None]` return has no storage slot for
+                    # an open payload yet, so suggesting it would fail too.
+                    raise self.ctx.error(
+                        f"Cannot {verb} the result of {call.call_display} as "
+                        f"'{return_type}': in a generic body it is a copy, "
+                        f"since its payload may be a class, and returning "
+                        f"that copy is not supported yet; bind it to a local "
+                        f"and read it there",
+                        expr
+                    )
                 raise self.ctx.error(
                     f"Cannot {verb} local or temporary as '{return_type}'. "
                     f"The {verb}ed pointer would dangle. "
@@ -4138,6 +4175,19 @@ class TypeCompatibility:
                     f"generator expression: it is handed out by reference and would "
                     f"dangle. Use a list comprehension '[...]' to materialize owned "
                     f"elements instead.",
+                    expr
+                )
+            call = expr.expr if isinstance(expr, TpyCoerce) else expr
+            if (isinstance(call, TpyCallLike)
+                    and call.result_form is ResultForm.COPY
+                    and isinstance(unwrap_readonly(return_type), TypeParamRef)):
+                # The hedged generic copy: the call is not a temporary in
+                # the source, so say why its result is one here.
+                raise self.ctx.error(
+                    f"Cannot {verb} the result of {call.call_display} by "
+                    f"reference: in a generic body it is a copy, since "
+                    f"'{return_type}' may be a class. "
+                    f"{_own_fix(return_type, cap=True)}.",
                     expr
                 )
             raise self.ctx.error(
@@ -4482,7 +4532,9 @@ class TypeCompatibility:
                 continue
             if member_t.is_value_type() or isinstance(nested, TypeParamRef):
                 continue
-            if not owned and sink in _BORROW_FORM_SINKS:
+            if (not owned and sink in _BORROW_FORM_SINKS
+                    and not (sink is TupleSink.LOCAL
+                             and _declared_call_member(m))):
                 continue
             fired |= self._warn_literal_member_copy(
                 m, member_t, dest, path,
@@ -4513,8 +4565,11 @@ class TypeCompatibility:
         (the source is dead, so the copy is unobservable); a `@nocopy` one is
         rejected even then unless the sink moves it (`last_use_moves`), or it
         would reach a deleted copy constructor."""
-        if self.is_copy_call(m) or not (self.arrives_borrowed(m)
-                                        or self._ternary_member_copies(m)):
+        if self.is_copy_call(m):
+            return False
+        if not (self.arrives_borrowed(m) or self._ternary_member_copies(m)):
+            self.check_unobserved_call_copy(
+                m, member_t, f"{dest} (tuple element {path})")
             return False
         auto_moved = self._is_auto_moved(m)
         if auto_moved and last_use_moves:
@@ -4529,6 +4584,24 @@ class TypeCompatibility:
             f"copies {self.diag_type(member_t)} into {dest} (tuple element "
             f"{path}); {self.copy_remedy(m)}", m)
         return True
+
+    def check_unobserved_call_copy(self, expr: TpyExpr, slot_t: TpyType,
+                                   dest: str) -> None:
+        """An owning slot holds a COPY of a borrow-declared call's fresh
+        result even where nothing else reaches the object
+        (`[max(N(1), N(2), key=f)]` copies out of a temporary operand): no
+        warning, since the copy is unobservable, but a non-copyable payload
+        has no copy to make."""
+        inner = peel_value_wrappers(expr)
+        if not (isinstance(inner, TpyCallLike)
+                and inner.result_form.copies_operand
+                and not inner.copy_observable):
+            return
+        payload = unwrap_readonly(unwrap_ref_type(unwrap_own(slot_t)))
+        if self.ctx.is_type_non_copyable(payload):
+            raise self.ctx.error(
+                f"cannot copy non-copyable type '{payload}' into {dest}"
+                f"{self.nocopy_hint(expr)}", expr)
 
     def is_consuming_field_borrow(self, expr: 'TpyExpr | None') -> bool:
         """A consuming method's `self.<field>` read that borrows because it

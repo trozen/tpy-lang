@@ -1,0 +1,55 @@
+hit_miss 2 10
+ro 1
+temp 5
+temp_bound 1
+temp_twice 1 7
+method 4
+gen 1 2 3 10
+async 5 5 11
+comp [5, 11]
+branches 6 21
+branches 6 32
+copy 106 6
+derived 5
+ret 7 33
+field 7
+list 2 1
+generic 1 7 33
+generic_opt int 1 7 -1
+generic_opt P 4 6 -1
+value 1 7
+str x zz
+value_bound 2 1
+walrus 8 34
+try_hit 9
+ro_branches 43 68
+ro_gen 9 10 11
+ro_co 12
+field_hop 2 3
+own_tuple 12 1
+own_list 34
+own_dict 12
+own_comp 12 34
+own_dcomp 12 0
+own_setitem 34
+own_tuple_member 12 1 34 2
+own_ack 12 34
+own_lv_list 1
+own_lv_comp 1 2
+own_lv_dcomp 1 2
+own_lv_setitem 2
+own_opt 12 True
+reseat_hit 12 1
+reseat_miss 134 0 134
+own_set 2
+own_gen 12
+own_gen 134
+own_empty_temp 3 [3, 3, 3, 3] 2
+own_empty_second 7 4
+own_empty_hit 12
+own_empty_append 134
+own_empty_add 2
+bound_stored 3 4
+own_empty_gen 7
+own_empty_gen 5
+ro_copy 9 8

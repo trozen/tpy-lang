@@ -324,7 +324,7 @@ class TpyStarUnpack(TpyExpr):
 
 class ResultForm(Enum):
     """What one call to a borrow-declared binding hands back
-    (`TpyCall.result_form`)."""
+    (`TpyCallLike.result_form`)."""
     # Not a borrow-declared call: the callee's own convention answers.
     NOT_DECLARED = "not_declared"
     # A borrow of storage that outlives the call: holdable by reference.
@@ -336,15 +336,62 @@ class ResultForm(Enum):
     # The C++ hands back a copy (the callee walked a source that is not a
     # container with an iterator of its own, gone at the return).
     COPY = "copy"
+    # A value-shaped result (a number, a `str`, an Optional / union / tuple
+    # of values) handed back by value: nothing is lent, and nothing CPython
+    # would share is copied.
+    VALUE = "value"
 
     @property
     def is_fresh(self) -> bool:
         """The result is a fresh value to every holder."""
+        return self in (ResultForm.REFERENCE_VALUE, ResultForm.COPY,
+                        ResultForm.VALUE)
+
+    @property
+    def by_value(self) -> bool:
+        """The C++ result is a value the caller owns, not a reference."""
+        return self in (ResultForm.COPY, ResultForm.VALUE)
+
+    @property
+    def from_operand(self) -> bool:
+        """The result is a lent operand, or a copy of one: a declared
+        verdict that relates the result to the call's operands."""
+        return self in (ResultForm.BORROW, ResultForm.REFERENCE_VALUE,
+                        ResultForm.COPY)
+
+    @property
+    def copies_operand(self) -> bool:
+        """A fresh result made from a lent operand, which a holder copies."""
         return self in (ResultForm.REFERENCE_VALUE, ResultForm.COPY)
 
 
 @dataclass
-class TpyCall(TpyExpr):
+class TpyCallLike(TpyExpr):
+    """A call whose result sema may stamp a borrow-or-value verdict: a free
+    call (`TpyCall`) or a method call (`TpyMethodCall`). Only the verdict
+    lives here; every other call fact stays on its own node kind."""
+    # Set by sema on a call to a bodyless binding that declares which
+    # arguments its result borrows (`borrows=` / `element_of=`); NOT_DECLARED for every
+    # other call. Recomputed on each analysis of the node, never re-derived
+    # downstream.
+    result_form: ResultForm = field(default=ResultForm.NOT_DECLARED,
+                                    kw_only=True)
+    # With a fresh form (REFERENCE_VALUE / COPY): some lent argument is still
+    # reached by the program (a named object, a handle or view into such
+    # storage), so a sink that HOLDS the fresh value copies an object CPython
+    # would alias -- the owning sinks and the local binding warn. False when
+    # every lent argument is a fresh owner, where nothing can tell the copy
+    # apart.
+    copy_observable: bool = field(default=False, kw_only=True)
+
+    @property
+    def call_display(self) -> str:
+        """How a diagnostic names the call: `'max(...)'`, `'get(...)'`."""
+        raise NotImplementedError
+
+
+@dataclass
+class TpyCall(TpyCallLike):
     """Function or constructor call.
 
     For generic function calls like first[int32](items):
@@ -393,18 +440,10 @@ class TpyCall(TpyExpr):
     # arg `U -> Adapter<T_sub, U_sub>`. None when the call doesn't need any
     # substitution. Empty frozenset is never written -- absence is None.
     representational_subst_params: frozenset[str] | None = None
-    # Set by sema on a call to a bodyless binding that declares which
-    # arguments its result borrows (`borrows=` / `element_of=`); NOT_DECLARED for every
-    # other call. Recomputed on each analysis of the node, never re-derived
-    # downstream.
-    result_form: ResultForm = ResultForm.NOT_DECLARED
-    # With a fresh form (REFERENCE_VALUE / COPY): some lent argument is still
-    # reached by the program (a named object, a handle or view into such
-    # storage), so a sink that HOLDS the fresh value copies an object CPython
-    # would alias -- the owning sinks and the local binding warn. False when
-    # every lent argument is a fresh owner, where nothing can tell the copy
-    # apart.
-    copy_observable: bool = False
+
+    @property
+    def call_display(self) -> str:
+        return f"'{self.func.name if isinstance(self.func, TpyName) else 'call'}(...)'"
 
     @property
     def func_name(self) -> str:
@@ -429,7 +468,7 @@ class TpyCall(TpyExpr):
 
 
 @dataclass
-class TpyMethodCall(TpyExpr):
+class TpyMethodCall(TpyCallLike):
     """Method call on an object."""
     obj: TpyExpr
     method: str
@@ -474,6 +513,10 @@ class TpyMethodCall(TpyExpr):
     nested_type_name: str | None = None  # Set by sema: dotted name for nested type calls
     # See TpyCall.representational_subst_params for the contract.
     representational_subst_params: frozenset[str] | None = None
+
+    @property
+    def call_display(self) -> str:
+        return f"'{self.method}(...)'"
 
     def children(self) -> list[TpyExpr]:
         if self.fstr_expansion is not None:
@@ -1679,9 +1722,6 @@ class TpyFunction:
     # stays DEFAULT linkage (an ordinary TPy function) but the extension glue
     # generator emits a CPython wrapper + PyMethodDef entry for it.
     exposed_to_host: bool = False
-    # @copy_returns_warn: Own[V] accessor that copies where its CPython
-    # namesake aliases, so sema warns at call sites.
-    copy_returns_warn: bool = False
     # @native(cpp_return_type=T) -- see FunctionInfo.native_cpp_return_type.
     native_cpp_return_type: str | None = None
     cpp_template: str | None = None

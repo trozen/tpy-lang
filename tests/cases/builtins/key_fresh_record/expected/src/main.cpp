@@ -71,19 +71,19 @@ void free(std::vector<Rec>& rs) {
     std::cout << "free sorted_cls" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_2)) << "\n" << ::tpy::check_signals;
     std::vector<Rec> __tmp_3 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Key { return ::tpyapp::main::make_key(r); });
     std::cout << "free sorted_own" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_3)) << "\n" << ::tpy::check_signals;
-    std::cout << "free min_lam" << " " << ::tpy::min_key(a, b, [](const Rec& r) -> Key { return Key(r); }).n << "\n" << ::tpy::check_signals;
-    std::cout << "free min_cls" << " " << ::tpy::min_key(a, b, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); }).n << "\n" << ::tpy::check_signals;
-    std::cout << "free max_lam" << " " << ::tpy::max_key(a, b, [](const Rec& r) -> Key { return Key(r); }).n << "\n" << ::tpy::check_signals;
-    std::cout << "free max_cls" << " " << ::tpy::max_key(a, b, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); }).n << "\n" << ::tpy::check_signals;
-    std::cout << "free min3_lam" << " " << ::tpy::min3_key(a, b, c, [](const Rec& r) -> Key { return Key(r); }).n << "\n" << ::tpy::check_signals;
-    std::cout << "free min3_cls" << " " << ::tpy::min3_key(a, b, c, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); }).n << "\n" << ::tpy::check_signals;
-    std::cout << "free max3_own" << " " << ::tpy::max3_key(a, b, c, [](const Rec& r) -> Key { return ::tpyapp::main::make_key(r); }).n << "\n" << ::tpy::check_signals;
-    std::cout << "free max3_cls" << " " << ::tpy::max3_key(a, b, c, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); }).n << "\n" << ::tpy::check_signals;
+    std::cout << "free min_lam" << " " << ::tpy::assert_lent(::tpy::min_key(a, b, [](const Rec& r) -> Key { return Key(r); })).n << "\n" << ::tpy::check_signals;
+    std::cout << "free min_cls" << " " << ::tpy::assert_lent(::tpy::min_key(a, b, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); })).n << "\n" << ::tpy::check_signals;
+    std::cout << "free max_lam" << " " << ::tpy::assert_lent(::tpy::max_key(a, b, [](const Rec& r) -> Key { return Key(r); })).n << "\n" << ::tpy::check_signals;
+    std::cout << "free max_cls" << " " << ::tpy::assert_lent(::tpy::max_key(a, b, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); })).n << "\n" << ::tpy::check_signals;
+    std::cout << "free min3_lam" << " " << ::tpy::assert_lent(::tpy::min3_key(a, b, c, [](const Rec& r) -> Key { return Key(r); })).n << "\n" << ::tpy::check_signals;
+    std::cout << "free min3_cls" << " " << ::tpy::assert_lent(::tpy::min3_key(a, b, c, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); })).n << "\n" << ::tpy::check_signals;
+    std::cout << "free max3_own" << " " << ::tpy::assert_lent(::tpy::max3_key(a, b, c, [](const Rec& r) -> Key { return ::tpyapp::main::make_key(r); })).n << "\n" << ::tpy::check_signals;
+    std::cout << "free max3_cls" << " " << ::tpy::assert_lent(::tpy::max3_key(a, b, c, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); })).n << "\n" << ::tpy::check_signals;
     std::vector<Rec> __tmp_4 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Rec { return r; });
     std::cout << "free sorted_id" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_4)) << "\n" << ::tpy::check_signals;
-    std::cout << "free min_id" << " " << ::tpy::min_key(a, b, [](const Rec& r) -> Rec { return r; }).n << "\n" << ::tpy::check_signals;
-    std::cout << "free min_method" << " " << ::tpy::min_key(a, b, [](const Rec& r) -> int32_t { return r.score(); }).n << "\n" << ::tpy::check_signals;
-    std::cout << "free max_helper" << " " << ::tpy::max_key(a, b, [](const Rec& r) -> int32_t { return ::tpyapp::main::helper(r); }).n << "\n" << ::tpy::check_signals;
+    std::cout << "free min_id" << " " << ::tpy::assert_lent(::tpy::min_key(a, b, [](const Rec& r) -> Rec { return r; })).n << "\n" << ::tpy::check_signals;
+    std::cout << "free min_method" << " " << ::tpy::assert_lent(::tpy::min_key(a, b, [](const Rec& r) -> int32_t { return r.score(); })).n << "\n" << ::tpy::check_signals;
+    std::cout << "free max_helper" << " " << ::tpy::assert_lent(::tpy::max_key(a, b, [](const Rec& r) -> int32_t { return ::tpyapp::main::helper(r); })).n << "\n" << ::tpy::check_signals;
 }
 
 
@@ -109,7 +109,7 @@ __gen_gen gen(const std::vector<Rec>& rs) {
         b = &(::tpy::__getitem__(rs, 1));
         s.emplace(::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); }));
         t.emplace(::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Key { return Key(r); }));
-        m = &(::tpy::min_key((*a), (*b), [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); }));
+        m = &(::tpy::assert_lent(::tpy::min_key((*a), (*b), [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); })));
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpy::__getitem__((*s), 0).n, 100)), (::tpy::mul_check<int32_t>(::tpy::__getitem__((*t), 1).n, 10)))), m->n));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
