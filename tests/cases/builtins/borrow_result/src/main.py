@@ -99,6 +99,9 @@ def gen_body(a: P, b: P) -> Iterator[int]:
     yield m.v
     m.v = 77
     yield m.v
+    # a walrus in a frame condition holds the operand as the binding does
+    if (w := max(a, b, key=key_of)).v > 0:  # tpyc: ok
+        w.v += 1
 
 
 # async body
@@ -106,6 +109,9 @@ async def async_body(a: P, b: P) -> int:
     m = max(a, b, key=key_of)
     await asyncio.sleep(0)
     m.v = 88
+    if (w := max(a, b, key=key_of)).v > 0:  # tpyc: ok
+        await asyncio.sleep(0)
+        w.v += 1
     return m.v
 
 
@@ -148,6 +154,21 @@ def comp_fn() -> None:
     for i in range(2):
         bump(min(xs[i], ys[i], key=key_of))
     print("comp after", [p.v for p in xs], [p.v for p in ys])
+
+
+# Owned element slots: each holds a warned copy of the operand, read only
+# here since CPython would alias it; all-fresh operands copy nothing a
+# program reaches, so that copy is silent.
+def owned_elements_fn() -> None:
+    a = P(1)
+    b = P(2)
+    # list comprehension: owned slot, a warned copy
+    xs = [max(a, b, key=key_of) for _ in range(2)]  # tpyc: warning(/copies P into owned storage/)
+    # tuple literal: owned slot, a warned copy
+    t = (max(a, b, key=key_of), 1)  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
+    # all-fresh operands: the copy is unobservable
+    f = [max(P(5), P(6), key=key_of)]  # tpyc: ok
+    print("owned", xs[0].v, xs[1].v, t[0].v, t[1], f[0].v)
 
 
 # a fresh operand makes the result a fresh value
@@ -450,6 +471,7 @@ def main() -> None:
     closure_fn()
     try_fn(True)
     comp_fn()
+    owned_elements_fn()
     fresh_fn()
     rows_fn()
     consumers_fn()

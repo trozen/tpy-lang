@@ -37,11 +37,10 @@ from ..typesys import (
     unwrap_send_sync,
     param_has_mutable_borrow_surface, contains_type_param,
     del_suppresses_default_ctor, owned_tuple_storage_type,
-    is_bodyless_binding, recorded_return_borrow_sources,
-    returns_cpp_reference_shape)
+    is_bodyless_binding, recorded_return_borrow_sources)
 from ..parse import (
     ResultForm,
-    TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
+    TpyCall, TpyCallLike, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
     TpyBinOp, TpyTupleLiteral, TpyTypeParamConstruct, TpyCoerce, TpyLambda,
     TpyDictLiteral, TpySetLiteral, lambda_of,
@@ -55,7 +54,8 @@ from ..symbol_binding import SymbolKind, is_kind, walk_attribute_chain
 from .context import PENDING_CONTAINER_TYPES, field_chain_storage_key
 from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError
-from ..value_category import (frame_factory_callee, is_iterator_protocol,
+from ..value_category import (declared_result_is_value, frame_factory_callee,
+                              is_iterator_protocol,
                               is_rvalue_source, peel_coerce)
 from .own_copy import (KIND_SLOT, contains_reference_type, copy_result_under_write,
                        lost_write_message,
@@ -715,6 +715,17 @@ def _is_fn_slot_param(ptype: TpyType) -> bool:
     return is_callable_type(unwrap_send_sync(unwrap_ref_type(ptype)))
 
 
+def _held_instance_copy_text(payload: TpyType, call: str) -> str:
+    """Why a value-shaped type (a tuple / Optional / union) is refused where
+    `call` would hand it back by value: it holds a reference type -- or a
+    type parameter that may be one -- which the by-value form copies where
+    CPython hands back the object itself."""
+    held = ("a reference type"
+            if contains_reference_type(payload, open_params_as_values=True)
+            else "a type parameter that may be a reference type")
+    return f"'{payload}' holds {held}, which {call} would copy; not supported yet"
+
+
 class CallAnalyzer:
     """Function and constructor call analysis."""
 
@@ -803,7 +814,7 @@ class CallAnalyzer:
             (by_name.get(k, -1), a) for k, a in (call.kwargs or {}).items()]
         for idx, arg in slots:
             inner = peel_coerce(arg)
-            if not (isinstance(inner, TpyCall)
+            if not (isinstance(inner, TpyCallLike)
                     and inner.result_form is ResultForm.COPY):
                 continue
             if not 0 <= idx < len(params):
@@ -1137,11 +1148,13 @@ class CallAnalyzer:
                 return authoritative
         return rec
 
-    def stamp_result_borrow(self, expr: TpyCall, result_type: TpyType) -> bool:
+    def stamp_result_borrow(self, expr: TpyCallLike,
+                            result_type: TpyType) -> bool:
         """Decide, once per analysis, whether a call to a binding that
         DECLARES its result's borrow sources (`borrows=` / `element_of=`) binds as a
         borrow of its arguments or is a fresh value, and record it on the
-        node (`TpyCall.result_form`, `copy_observable`). Every
+        node (`TpyCallLike.result_form`, `copy_observable`). A method's
+        receiver lends as the argument at index -1 does. Every
         reader of the call reads the stamp. Returns whether the result is
         READ-ONLY because what lends it is.
 
@@ -1162,21 +1175,40 @@ class CallAnalyzer:
         expr.result_form = ResultForm.NOT_DECLARED
         expr.copy_observable = False
         fi = expr.resolved_function_info
-        if fi is None or not is_bodyless_binding(fi):
+        # Only a DECLARATION decides a form: a native method's receiver
+        # borrow inferred from its signature keeps its own convention.
+        if (fi is None or not is_bodyless_binding(fi)
+                or not fi.root.borrow_declared):
             return False
         sources = recorded_return_borrow_sources(fi)
+        if not sources:
+            return False
         # An open `T` result (a generic body's call) is decided here too: a
         # hedged copy (the instantiation may be a reference type).
-        if not sources or not (
-                returns_cpp_reference_shape(fi.return_type)
-                or isinstance(unwrap_qualifiers(result_type), TypeParamRef)):
-            return False
+        open_result = isinstance(unwrap_qualifiers(result_type), TypeParamRef)
+        if declared_result_is_value(fi) and not open_result:
+            # A value-shaped result (an Optional / union / tuple) is handed
+            # back by value. Holding only value payloads it copies nothing
+            # CPython would share. Holding a class instance -- even beside
+            # an open `T` -- it certainly copies the instance CPython hands
+            # back, and its borrow form is not declared yet. Holding only
+            # open `T`s as reference candidates it is the hedged copy a bare
+            # open `T` result is: the instantiation may be a reference type.
+            payload = unwrap_readonly(unwrap_ref_type(result_type))
+            if not contains_reference_type(payload):
+                expr.result_form = ResultForm.VALUE
+                return False
+            if contains_reference_type(payload, open_params_as_values=True):
+                raise self.ctx.error(
+                    _held_instance_copy_text(payload, expr.call_display),
+                    expr)
+            open_result = True
         ops = call_borrow_operands(expr)
         if ops is None:
             return False
         lent = call_lend_sources(ops, sources, expr_type=None)
         verdicts = [self._lent_operand_verdict(fi, s.idx, s.expr) for s in lent]
-        if isinstance(unwrap_qualifiers(result_type), TypeParamRef):
+        if open_result:
             # A generic body decides before instantiation, and a borrow of an
             # open `T` has no slot yet: the result is a COPY, held in the
             # hedged generic copy contract (TODO.md, "Per-instantiation
@@ -1196,7 +1228,7 @@ class CallAnalyzer:
             payload = unwrap_readonly(unwrap_ref_type(result_type))
             if self.ctx.is_type_non_copyable(payload):
                 _, message = slot_message(
-                    payload, payload, f"the result of '{expr.func_name}(...)'",
+                    payload, payload, f"the result of {expr.call_display}",
                     KIND_SLOT, "", non_copyable=True)
                 raise self.ctx.error(message, expr)
         read_only = any(v.read_only for v in verdicts)
@@ -1255,7 +1287,9 @@ class CallAnalyzer:
         container = (iter_element_source(rt, self.ctx.registry)
                      is IterElementSource.CONTAINER)
         params = fi.root.params
-        declared = params[idx].type if 0 <= idx < len(params) else None
+        # The receiver's declared type is the container it is called on.
+        declared = (rt if idx == -1
+                    else params[idx].type if 0 <= idx < len(params) else None)
         own_iterator = (declared is not None and not is_iterator_protocol(
             unwrap_qualifiers(declared)))
         return _LentVerdict(lends and container, fresh and container,
@@ -2091,12 +2125,7 @@ class CallAnalyzer:
         self._reject_kwargs_for_builtin(expr, "copy")
         if len(expr.args) != 1:
             raise self.ctx.error("copy() takes exactly 1 argument", expr)
-        prev_in_copy = self.ctx.func.in_copy_call_arg
-        self.ctx.func.in_copy_call_arg = True
-        try:
-            arg_type = self.expr.analyze_expr(expr.args[0])
-        finally:
-            self.ctx.func.in_copy_call_arg = prev_in_copy
+        arg_type = self.expr.analyze_expr(expr.args[0])
         # Unwrap OwnType if already wrapped
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
@@ -5508,8 +5537,7 @@ class CallAnalyzer:
             # overload admits is the class instance it holds, which the
             # value overload would copy.
             if contains_reference_type(type_arg):
-                return (f": '{type_arg}' holds a class instance, which this "
-                        f"call would copy; not supported yet")
+                return ": " + _held_instance_copy_text(type_arg, "this call")
             return f": '{type_arg}' is neither a value type nor a reference type"
         marker = self._bound_marker(bound)
         # A bound that IS the marker already says it.

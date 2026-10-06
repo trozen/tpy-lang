@@ -17,7 +17,7 @@ from ..typesys import (
     IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo, ModuleInfo, INT32,
     AliasRef, RecursiveUnionInfo, RecordInfo,
     is_protocol_type, unwrap_readonly, unwrap_qualifiers, ensure_qualified, unwrap_ref_type,
-    is_union_or_optional_type, is_own_pointer_repr_optional,
+    is_union_or_optional_type,
     polymorphic_source_is_pointer, param_takes_ownership,
 )
 from ..parse import (
@@ -42,6 +42,8 @@ from ..value_category import (
     is_rvalue_source as _is_rvalue_source_shared,
     call_returns_cpp_ref as _call_returns_cpp_ref_shared,
     property_access_returns_cpp_ref,
+    declared_call_const,
+    call_value_optional,
     CONTAINER_LITERAL_NODES,
 )
 from .forms import (
@@ -2756,6 +2758,9 @@ class CodeGenContext:
         """
         if self.is_const_union_source(expr):
             return True
+        declared = declared_call_const(self.analyzer, expr)
+        if declared is not None:
+            return declared
         if isinstance(expr, TpyMethodCall) and expr.obj is not None:
             fi = expr.resolved_function_info
             if fi is not None and (
@@ -2831,17 +2836,13 @@ class CodeGenContext:
             f"chokepoint (val.form={val.form}, dst_form={dst_form})")
 
     def callee_returns_own_ptr_optional(self, init: 'TpyExpr') -> bool:
-        """True when `init` is a function call returning
-        `Own[OptionalType[T_ref]]` (storage form). Codegen sites bridging
-        the function's `std::optional<T>` return into a pointer-form local
-        check this to know they need the `optional_to_ptr` lift.
+        """True when `init` is a call handing back its pointer-repr Optional
+        result as the storage `std::optional<T>` (`call_value_optional`: an
+        `Own[T | None]` return, or a by-value declared result). Codegen
+        sites bridging it into a pointer-form local check this to know they
+        need the `optional_to_ptr` lift.
         """
-        if not isinstance(init, (TpyCall, TpyMethodCall)):
-            return False
-        fi = init.resolved_function_info
-        if fi is None:
-            return False
-        return is_own_pointer_repr_optional(fi.return_type)
+        return call_value_optional(init) is not None
 
     def is_own_ptr_variant_param(self, name: str) -> bool:
         """True when `name` is a function parameter typed

@@ -4,10 +4,15 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
 
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_method_ro_gen;
+struct __coro_method_ro_co;
 
 // def declared() -> None:
 void declared();
@@ -15,8 +20,74 @@ void declared();
 void element();
 // def undeclared() -> None:
 void undeclared();
+// def method_arg() -> None:
+void method_arg();
+// def method_ro_receiver(ro: readonly[Node], x: Node) -> None:
+void method_ro_receiver(const ::Node& ro, ::Node& x);
+// def method_ro_gen(ro: readonly[Node], x: Node) -> Iterator[int32]:
+__gen_method_ro_gen method_ro_gen(const ::Node& ro, ::Node& x);
+// async def method_ro_co(ro: readonly[Node], x: Node) -> int32:
+__coro_method_ro_co method_ro_co(const ::Node& ro, ::Node& x);
+// def method_ro_branch(ro: readonly[Node], x: Node, y: Node, c: bool) -> None:
+void method_ro_branch(const ::Node& ro, ::Node& x, ::Node& y, bool c);
+// def method_elem() -> None:
+void method_elem();
 // def main() -> None:
 void main();
+
+// async def method_ro_co(ro: readonly[Node], x: Node) -> int32:
+struct __coro_method_ro_co {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    const ::Node& ro;
+    ::Node& x;
+    ::Node* n = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_DONE = 1,
+    };
+
+    __coro_method_ro_co(const ::Node& ro, ::Node& x)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          ro(ro),
+          x(x) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_method_ro_co&) {
+        return os << "<coroutine method_ro_co>";
+    }
+};
+
+// def method_ro_gen(ro: readonly[Node], x: Node) -> Iterator[int32]:
+struct __gen_method_ro_gen : public ::tpy::next_iter_mixin<__gen_method_ro_gen, int32_t> {
+    ::tpy::frame_state __state;
+    const ::Node& ro;
+    ::Node& x;
+    ::Node* n = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_method_ro_gen(const ::Node& ro, ::Node& x)
+        : __state(S_INITIAL),
+          ro(ro),
+          x(x) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_method_ro_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_method_ro_gen&) {
+        return os << "<generator method_ro_gen>";
+    }
+};
 
 void __tpy_init();
 } // namespace tpyapp::main

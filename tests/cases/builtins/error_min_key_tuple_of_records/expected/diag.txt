@@ -1,1 +1,1 @@
-main.py:15: error: Type 'tuple[Node, int]' does not satisfy 'ValueType' required by 'min': 'tuple[Node, int]' holds a class instance, which this call would copy; not supported yet
+main.py:15: error: Type 'tuple[Node, int]' does not satisfy 'ValueType' required by 'min': 'tuple[Node, int]' holds a reference type, which this call would copy; not supported yet

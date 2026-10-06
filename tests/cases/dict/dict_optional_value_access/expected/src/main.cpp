@@ -45,13 +45,33 @@ void main() {
     }
 }
 
+// def popped() -> None:
+//     d: dict[str, P | None] = {"a": P(10), "c": P(30)}
+//     # pop(k) hands back the stored Optional by value: the binding holds the
+//     # popped object, which left the dict.
+//     o = d.pop("c")  # tpyc: ok
+//     if o is not None:
+//         o.x += 1
+//         print("pop", o.x, len(d), "c" in d)
+void popped() {
+    ::tpy::ordered_map<std::string, std::optional<P>> d = ::tpy::ordered_map<std::string, std::optional<P>>({{"a", P(10)}, {"c", P(30)}});
+    std::optional<P> __slot_1 = ::tpy::dict_pop(d, "c");
+    P* o = ::tpy::optional_to_ptr(__slot_1);
+    if ((o != nullptr)) {
+        o->x = ::tpy::add_check<int32_t>(o->x, 1);
+        std::cout << "pop" << " " << o->x << " " << ::tpy::__len__(d) << " " << ::tpy::print_bool((d.contains("c"))) << "\n" << ::tpy::check_signals;
+    }
+}
+
 // main()
+// popped()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpyapp::main::main();
+    ::tpyapp::main::popped();
 }
 
 } // namespace tpyapp::main

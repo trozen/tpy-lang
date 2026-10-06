@@ -147,20 +147,17 @@ def min[T: ValueType, K: Comparable](iterable: Iterable[T], key: Fn[[T], K]) -> 
 
 # A class instance (or list, dict, ...) comes back as the element itself,
 # borrowed from a container source, as Python returns the object; over any
-# other source it is a copy. The emitter fills `{lend}` from the call's
-# verdict: a borrow spells `<void, ::tpy::elem_verdict::lend>`, which the
-# helper refuses to build over a source it can only copy from; any other form
-# spells nothing.
+# other source it is a copy.
 @dispatch
 @pure
 @readonly
-@cpp_template("::tpy::builtin_min_elem{lend}({0})", element_of=("iterable",))
+@cpp_template("::tpy::builtin_min_elem({0})", element_of=("iterable",))
 def min[T: ComparableRef](iterable: readonly[Iterable[T]]) -> T: ...
 
 @dispatch
 @pure
 @readonly
-@cpp_template("::tpy::builtin_min_elem_key{lend}({0}, {1})", element_of=("iterable",))
+@cpp_template("::tpy::builtin_min_elem_key({0}, {1})", element_of=("iterable",))
 def min[T: ReferenceType, K: Comparable](iterable: readonly[Iterable[T]], key: Fn[[T], K]) -> T: ...
 
 
@@ -228,20 +225,17 @@ def max[T: ValueType, K: Comparable](iterable: Iterable[T], key: Fn[[T], K]) -> 
 
 # A class instance (or list, dict, ...) comes back as the element itself,
 # borrowed from a container source, as Python returns the object; over any
-# other source it is a copy. The emitter fills `{lend}` from the call's
-# verdict: a borrow spells `<void, ::tpy::elem_verdict::lend>`, which the
-# helper refuses to build over a source it can only copy from; any other form
-# spells nothing.
+# other source it is a copy.
 @dispatch
 @pure
 @readonly
-@cpp_template("::tpy::builtin_max_elem{lend}({0})", element_of=("iterable",))
+@cpp_template("::tpy::builtin_max_elem({0})", element_of=("iterable",))
 def max[T: ComparableRef](iterable: readonly[Iterable[T]]) -> T: ...
 
 @dispatch
 @pure
 @readonly
-@cpp_template("::tpy::builtin_max_elem_key{lend}({0}, {1})", element_of=("iterable",))
+@cpp_template("::tpy::builtin_max_elem_key({0}, {1})", element_of=("iterable",))
 def max[T: ReferenceType, K: Comparable](iterable: readonly[Iterable[T]], key: Fn[[T], K]) -> T: ...
 
 

@@ -1,5 +1,5 @@
 # `tuple[T, Record]` is not an OPEN VALUE tuple: the concrete element is a
-# reference type, so the borrow/storage duality matters and the return rejects.
+# reference type copied at every instantiation, so the call is refused.
 from tpy import int32, Own
 
 
@@ -11,7 +11,7 @@ class Box:
 
 
 def smaller[T](a: tuple[T, Box], b: tuple[T, Box]) -> Own[tuple[T, Box]]:
-    return min(a, b, key=lambda p: p[1].n)  # tpyc: error(/call.ret_type.tuple/)
+    return min(a, b, key=lambda p: p[1].n)  # tpyc: error(/holds a reference type/)
 
 
 def main() -> None:

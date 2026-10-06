@@ -1,0 +1,6 @@
+main.py:28: warning: copies R into owned storage; use copy() to make this explicit
+main.py:30: warning: copies R into owned storage; use copy() to make this explicit
+main.py:36: warning: copies R into owned storage; use copy() to make this explicit
+main.py:42: warning: copies R into owned storage; use copy() to make this explicit
+main.py:42: warning: copies R into owned storage; use copy() to make this explicit
+main.py:55: warning: copies R into container; use copy() to make this explicit

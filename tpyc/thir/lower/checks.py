@@ -23,7 +23,7 @@ from ...parse.nodes import (
     TpyBinOp,
     TpyBoolLiteral,
     TpyBytesLiteral,
-    TpyCall,
+    TpyCall, TpyCallLike,
     TpyCoerce,
     TpyDictComprehension,
     TpyDictLiteral,
@@ -85,6 +85,8 @@ from ...typesys import (
     CppDefaultInit, cpp_default_init,
     is_dyn_protocol,
     is_fn_type,
+    is_bodyless_binding,
+    is_ptr_variant_union,
     is_any_bytes_type,
     is_any_int_type,
     is_any_str_type,
@@ -136,8 +138,8 @@ from ...codegen_cpp.forms import (LocalBinding, classify_local_binding,
 from ...codegen_cpp.protocols import (classify_dyn_own_arg, dyn_forward_ok,
                                       resolve_own_source_type)
 from ...value_category import (
-    call_result_holdable, call_result_is_reference,
-    call_result_live_in_statement, call_returns_cpp_ref,
+    call_hands_back_value, call_result_holdable, call_result_is_reference,
+    call_result_live_in_statement, call_returns_cpp_ref, declared_call_const,
     is_rvalue_source,
     property_getter_of,
 )
@@ -171,6 +173,7 @@ from ..nodes import (
     THIRStrSlice,
 )
 from .predicates import (
+    _call_storage_optional_return,
     _value_record_slot,
     _value_opt_call_ret_arg,
     _union_dict_literal_temp_arg,
@@ -755,6 +758,8 @@ def _record_source_call(e: TpyExpr, analyzer) -> bool:
     its receiver/args itself and falls the body back on its own rejects).
     Shared by the record element arm and the record-inner-Optional element
     arm."""
+    if _declared_call_at_owning_elem(e, analyzer):
+        return _witness("containerlit.declared_call_copy")
     if isinstance(e, TpyMethodCall):
         return (record_like(analyzer.get_expr_type(e), analyzer)
                 and is_rvalue_source(analyzer, e))
@@ -868,6 +873,8 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             if (is_list(inner) or is_array(inner)):
                 if isinstance(e, (TpyNoneLiteral, TpyArrayLiteral)):
                     return True
+                if declared_call_elem_copy_ok(e, su, analyzer):
+                    return _witness("containerlit.declared_call_copy")
                 return note_detail(
                     "container_lit.elem.optional") if note else False
             if not (isinstance(inner, NominalType) and inner.is_user_record):
@@ -1156,9 +1163,12 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                             if note else False)
             elif mfam not in (None, "record", "bytes"):
                 return note_detail("container_lit.elem.tuple") if note else False
+            # A declared call's borrow result is no rvalue, but the member
+            # owns its value as a top-level element does: the copy row.
             if (not mbare.is_value_type()
                     and not isinstance(sub, TpyTupleLiteral)
-                    and not is_rvalue_source(analyzer, sub)):
+                    and not is_rvalue_source(analyzer, sub)
+                    and not declared_call_elem_copy_ok(sub, mslot, analyzer)):
                 return note_detail("container_lit.elem.tuple") if note else False
             return _container_lit_elem_ok(
                 sub, mslot, declared, analyzer, threaded=True, forced=True,
@@ -1261,6 +1271,10 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
         # target -- a call renders bare at any position.
         if _container_storage_call_rvalue(e, su, analyzer):
             return True
+        # A borrow-declared call handing back the slot's container: the
+        # owning slot copies it (the record arm's declared-call row).
+        if declared_call_elem_copy_ok(e, su, analyzer):
+            return _witness("containerlit.declared_call_copy")
         if not (allow_nested and (is_list(su) or is_array(su))
                 and isinstance(e, TpyArrayLiteral)):
             return note_detail("container_lit.elem.container") if note else False
@@ -1744,6 +1758,9 @@ def _const_borrow_call_result(call: TpyMethodCall, analyzer) -> bool:
     The same pair of facts `_expr_is_const_source` reads off a DIRECT
     method-call init; spelled here because a consumer reached through a FIELD
     hop has no `_LowerCtx` to ask that derivation with."""
+    declared = declared_call_const(analyzer, call)
+    if declared is not None:
+        return declared
     if isinstance(analyzer.get_expr_type(call), ReadonlyType):
         return True
     fi = call.resolved_function_info
@@ -3686,12 +3703,30 @@ def copy_construct_source(init: TpyExpr, analyzer,
     arg = copy_call_arg(init, analyzer)
     if arg is None or not copy_construct_form(arg, pointers, analyzer):
         return None
-    # The PAYLOAD, not the read: a borrow-returning source reads as `T&`,
-    # and the copy constructs a `T` -- an element slot spelled off the read
-    # would be an array of references.
-    au = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        analyzer.get_expr_type(arg))))
+    return copy_construct_payload(analyzer.get_expr_type(arg), analyzer)
+
+
+def copy_construct_payload(t: 'TpyType | None',
+                           analyzer) -> 'TpyType | None':
+    """The reference-type payload the copy-construct tail builds from a
+    source of type `t` -- a record or a reference-form container -- or None.
+    The PAYLOAD, not the read: a borrow-returning source reads as `T&`, and
+    the copy constructs a `T` (an element slot spelled off the read would
+    be an array of references)."""
+    if t is None:
+        return None
+    au = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     return au if (_f1_record(au, analyzer) or _f1_container_ref(au)) else None
+
+
+def own_element_copy_type(member: TpyExpr, analyzer) -> TpyType:
+    """The type a borrowed member sema declared a copy of builds as: the
+    implicit copy renders as its explicit `copy(member)` would, which
+    spells the SOURCE's type (a literal-seeded container resolved) -- so a
+    sink admits it only where that is the slot's own payload."""
+    st = analyzer.get_expr_type(member)
+    st = resolve_pending_container(st, analyzer) or st
+    return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
 
 
 def copy_ctor_rvalue_source(e: TpyExpr, analyzer) -> 'TpyExpr | None':
@@ -4610,6 +4645,36 @@ def _native_union_name_arg(a: TpyExpr, ptype: 'TpyType | None',
                  or _eligible_ptr_union_wide(u, analyzer) is not None)
                 and _witness("arg.native_union_name"))
 
+def _declared_call_at_owning_elem(e: TpyExpr, analyzer) -> bool:
+    """A reference-type result (record or container) of a call sema stamped
+    with a declared borrow verdict (`ResultForm.from_operand`), consumed as
+    an element of a tuple / list / set / dict literal or a comprehension.
+    The element OWNS its value, so it copy-constructs from the result inside
+    the element's own full expression (`lower_copy_construct`, the implicit
+    twin of `copy(...)`) -- for a borrow and a fresh form alike, free call
+    or method; sema warns where the copy is observable."""
+    return (isinstance(e, TpyCallLike)
+            and e.result_form.from_operand
+            and copy_construct_payload(analyzer.get_expr_type(e),
+                                       analyzer) is not None)
+
+
+def declared_call_elem_copy_ok(e: TpyExpr, slot: 'TpyType | None',
+                               analyzer) -> bool:
+    """`_declared_call_at_owning_elem` at an element slot its copy lands in:
+    the slot is the result's own payload, or an Optional of it (the copy
+    converts into the `std::optional<P>` storage element, as a constructor
+    rvalue does)."""
+    if slot is None or not _declared_call_at_owning_elem(e, analyzer):
+        return False
+    su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
+    if isinstance(su, OwnType):
+        su = unwrap_readonly(su.wrapped)
+    if isinstance(su, OptionalType):
+        su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(su.inner)))
+    return own_element_copy_type(e, analyzer) == su
+
+
 def _record_copy_borrow_ret(use, analyzer, fi, ret) -> bool:
     """A borrow-returning record / container call -- free or method -- at
     the owning COPY sink (`h.p = o.get_p();`, `h.p = identity(pt);`):
@@ -5197,7 +5262,8 @@ def _tuple_literal_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
     return (isinstance(slot, TupleType)
             and len(a.elements) == len(slot.element_types))
 
-def _call_ret_reject(e: TpyCall, ret: 'TpyType | None', analyzer) -> str:
+def _call_ret_reject(e: TpyCallLike, ret: 'TpyType | None',
+                     analyzer) -> str:
     """Drilldown label for a call result the value-position set does not
     admit -- splits call.ret_type by the return's type family so the tally
     ranks which result rung to open next (one bucket routinely hides
@@ -7177,7 +7243,7 @@ def _own_opt_slot_arg(a: TpyExpr, ptype: TpyType | None,
             if at is not None else None)
     if isinstance(a, TpyName) and a.name in locals_:
         return at_u == unwrap_readonly(slot.inner)
-    if isinstance(a, (TpyCall, TpyMethodCall)) and _own_declared_call_ret(a):
+    if isinstance(a, (TpyCall, TpyMethodCall)) and call_hands_back_value(a):
         return at_u == slot
     return False
 
@@ -10521,7 +10587,8 @@ def _stub_method_ret_ok(
 def _container_method_call_supported(
         e: TpyMethodCall, fi, locals_: dict[str, TpyType], analyzer, *,
         stmt_position: bool, storage_ret_ok: bool,
-        borrow_ret_ok: bool = False) -> bool:
+        borrow_ret_ok: bool = False,
+        use: '_ExprUse | None' = None) -> bool:
     if fi.cpp_template is not None and "{cpp}" in fi.cpp_template:
         return note_detail("method.cpp_ret_substitution")
     ret = analyzer.get_expr_type(e)
@@ -10538,6 +10605,26 @@ def _container_method_call_supported(
             # (`groups.setdefault("a", []).append(1)`): the outer stub method
             # composes onto the bare inner render, borrow or not.
             or (borrow_ret_ok and _container_method_recv(ret, analyzer, None))
+            # A record result of a borrow-declared stub sema stamped a
+            # BORROW (`m = d.get("a", fb)` -> `P& m = ...`): the free-call
+            # row's method twin; a fresh form is the rvalue row below.
+            or (borrow_ret_ok and e.result_form is ResultForm.BORROW
+                and record_like(ret, analyzer)
+                and _witness("method.declared_borrow_ret"))
+            # An Optional result the callee hands back BY VALUE -- an
+            # `Own` return (`dq.pop("a")`) or a borrow-declared stub's
+            # value-shaped result (`m = d.get("a", dflt)` over `V | None`
+            # values) -- is the `std::optional<V>` that lands bare in the
+            # storage slot the binding lifts from.
+            or (storage_ret_ok
+                and call_hands_back_value(e)
+                and _call_storage_optional_return(e, analyzer) is not None
+                and _witness("method.declared_storage_opt_ret"))
+            # A borrow-returning record result at the owning COPY sink
+            # (`h.p = d.get("a", fb)`): the record arm's and the free call's
+            # row -- the copy-assign absorbs the reference, sema warns.
+            or (use is not None
+                and _record_copy_borrow_ret(use, analyzer, fi, ret))
             # An owned RVALUE result landing in a value sink (`second =
             # heap.pop()` -> `Box second = ::tpy::pop_back(heap);`, `c =
             # b.copy()` on `list[Node]`): the element families
@@ -10568,6 +10655,33 @@ def _container_method_call_supported(
             or note_detail("method.ret_type"))
 
 
+def _borrow_form_at_storage_slot(e: TpyMethodCall, index: int,
+                                 ptype: 'TpyType | None') -> bool:
+    """Whether argument `index` of a bodyless binding lands in a slot whose
+    C++ is the receiver's STORAGE type while every argument the rows admit
+    there renders the BORROW form: the stub spells the slot as a bare type
+    parameter (`dict.pop(key, default: V)` -- the runtime template's `V`
+    is `std::optional<P>` at `dict[str, P | None]`), and the instantiation
+    is a pointer-repr Optional or pointer-variant union, whose `T*` /
+    `Union<A*, B*>` argument (`None`, a `P | None` name) cannot construct
+    that storage. A parameter the binding declares it lends is exempt: the
+    declaration says the runtime takes it as a borrow."""
+    fi = e.resolved_function_info
+    root = fi.root if fi is not None else None
+    if (root is None or not is_bodyless_binding(root)
+            or not 0 <= index < len(root.params)
+            or index in (root.return_borrows_from or ())):
+        return False
+    # The UNSUBSTITUTED slot: the instantiated fi carries `P | None` there.
+    if not isinstance(unwrap_readonly(unwrap_ref_type(
+            root.params[index].type)), TypeParamRef):
+        return False
+    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if isinstance(ptype, TpyType) else None)
+    return ((isinstance(pt, OptionalType) and pt.uses_pointer_repr())
+            or (pt is not None and is_ptr_variant_union(pt)))
+
+
 def _method_call_arg_ok(
         e: TpyMethodCall, a: TpyExpr, ptype: 'TpyType | None', index: int,
         locals_: dict[str, TpyType], analyzer, *, temps_ok: bool,
@@ -10586,6 +10700,8 @@ def _method_call_arg_ok(
         # A marker call's arguments take the free call's path
         # (`_lower_marker_method_arg`); none reaches the receiver families.
         return False
+    if _borrow_form_at_storage_slot(e, index, ptype):
+        return note_detail("method.arg_shape")
 
     recv_type = _method_receiver_type(e.obj, locals_, analyzer)
     fam = _method_recv_family(recv_type, analyzer, tparam_bounds, e.method)
@@ -10662,7 +10778,8 @@ def _method_call_arg_ok(
 def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
                                    analyzer, *, stmt_position: bool,
                                    storage_ret_ok: bool,
-                                   borrow_ret_ok: bool = False) -> bool:
+                                   borrow_ret_ok: bool = False,
+        use: '_ExprUse | None' = None) -> bool:
     """A method call on a bare protocol receiver -- `pet.make_noise()` on a
     `@dynamic` `Base&` (a vtable call) or `count.length()` on a structural
     `const T_c&` (monomorphized). Both spell `recv.method(args)`: the flavor
@@ -11493,7 +11610,7 @@ def _fresh_value_at_written_slot(req: _ArgReq) -> bool:
     the element -- the argument is refused. A reference into the operands
     (`ResultForm.REFERENCE_VALUE`) binds in place, its temporary operands
     hoisted."""
-    if not (isinstance(req.a, TpyCall)
+    if not (isinstance(req.a, TpyCallLike)
             and req.a.result_form is ResultForm.COPY):
         return False
     if req.mutated_slots:
@@ -14019,7 +14136,8 @@ def _record_method_arg_ok(
 def _view_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
                                analyzer, *, stmt_position: bool,
                                storage_ret_ok: bool,
-                               borrow_ret_ok: bool = False) -> bool:
+                               borrow_ret_ok: bool = False,
+        use: '_ExprUse | None' = None) -> bool:
     """A str/StrView value-view receiver's builtin method call -- the
     builtin-method arm (`native_function or cpp_template`)
     reduced to its pass-through subset. The shared marker /
@@ -14096,7 +14214,7 @@ class _MethodRecvFamily(NamedTuple):
     `_method_recv_family`, so a family's shape admission and arg admission
     cannot drift apart -- widening or adding a family is one table row. Shape
     fns share the signature (e, fi, locals_, analyzer, *, stmt_position,
-    storage_ret_ok, borrow_ret_ok) and arg fns (a, ptype, locals_, analyzer,
+    storage_ret_ok, borrow_ret_ok, use) and arg fns (a, ptype, locals_, analyzer,
     *, param_names, narrowed); a family ignores the knobs it has no rows for. `stub_recv`
     marks the builtin-stub receivers whose args render through the
     builtin-stub arg loop (raw param type threaded into literal renders)."""
@@ -14278,7 +14396,8 @@ def _scalar_method_recv(recv_type: 'TpyType | None', analyzer,
 def _scalar_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
                                   analyzer, *, stmt_position: bool,
                                   storage_ret_ok: bool,
-                                  borrow_ret_ok: bool = False) -> bool:
+                                  borrow_ret_ok: bool = False,
+        use: '_ExprUse | None' = None) -> bool:
     """The view family's admission shape over a scalar receiver, plus a
     VALUE-TUPLE result at storage/statement sinks (`num, den =
     v.as_integer_ratio()` -> the unpack's `auto __tup_N = ...` source;

@@ -2227,7 +2227,6 @@ class TypeOperations:
             native_function=method.native_function,
             native_mutates=method.native_mutates,
             native_element_effect=method.native_element_effect,
-            copy_returns_warn=method.copy_returns_warn,
             cpp_template=method.cpp_template,
             value_ptr_coercion=method.value_ptr_coercion,
             error_return_type=method.error_return_type,

@@ -95,7 +95,7 @@ __gen_nodes nodes(::tpy::BigInt n) {
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        auto&& n = *__beg_1;
+        const auto& n = *__beg_1;
         total = (total) + (::tpy::__getitem__(d, n));
     }
     return total;

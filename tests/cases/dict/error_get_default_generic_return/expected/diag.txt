@@ -1,0 +1,1 @@
+main.py:8: error: Cannot return the result of 'get(...)' by reference: in a generic body it is a copy, since 'V' may be a class. Use Own[V] to return by value.

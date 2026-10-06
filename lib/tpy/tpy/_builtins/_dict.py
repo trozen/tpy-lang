@@ -3,7 +3,7 @@
 from .._typing import Self, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, Own, auto_readonly, dispatch
 from .._core._types import int32, NativeIterable
-from .._bootstrap._extern import native, cpp_template, builtin_type, copy_returns_warn
+from .._bootstrap._extern import native, cpp_template, builtin_type
 
 
 @builtin_type("builtins.dict_keys")
@@ -111,14 +111,12 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
     @readonly
     def get(self, key: readonly[K]) -> V | None: ...
 
-    # Copies where CPython aliases, so `d.get(k, []).append(x)` silently
-    # no-ops -- @copy_returns_warn flags the call site.
     @dispatch
-    @native("tpy::dict_get_default", function=True, element_effect="lookup")
+    @native("tpy::dict_get_default", function=True, element_effect="lookup",
+            borrows=("default",), element_of=("self",))
     @pure
     @readonly
-    @copy_returns_warn
-    def get(self, key: readonly[K], default: V) -> Own[V]: ...
+    def get(self, key: readonly[K], default: V) -> V: ...
 
     @dispatch
     @native("tpy::dict_pop", function=True, element_effect="lookup")

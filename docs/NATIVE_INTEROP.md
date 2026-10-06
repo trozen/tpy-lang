@@ -378,7 +378,22 @@ field / `Own` slot's own words elsewhere (`copy(...)` makes the copy
 explicit; a non-copyable type is an error). When every named argument is a
 fresh owner nothing can see the copy, and nothing is said. Returning such a
 value through a borrowing `-> Node` is the dangling-return error. A
-value-type result (`int`, `str`, a tuple) is a value at every call.
+value-type result (`int`, `str`, a tuple) is a value at every call. An
+owned element slot -- a tuple / list / set / dict literal element, a list /
+set comprehension element, a dict-comprehension value, an item store, an
+empty container's first store / `append` / `add` (its element type is the
+owned payload, never a reference) --
+holds a COPY of a reference-type result (a class or a `list` / `dict` /
+`set` / `bytearray`) whatever its form, borrow included, when the slot's
+type is the result's own, or an `Optional` of it at a literal element
+(`[pick(x, y) for _ in r]` -> `push_back(Node(::tpy::assert_lent(pick(x,
+y))))`), warned where the copy is observable (`copies Node into owned
+storage`, `... (tuple element 0)` for a tuple local). Not admitted yet: a
+union element slot holding the result as one member, an `Optional`
+comprehension element, an owned element in a generic body over an open
+`T`, and a tuple local assigned more than once (it holds pointers to its
+class elements, so the copied element is refused in words). Holding the
+alias needs a name, `n = pick(x, y)` then `(n, 1)`.
 
 Two refusals key on the declaration, so they hold for EVERY binding that
 declares `borrows=` / `element_of=`, not only the builtin `min` / `max` / `next`: an augmented
@@ -391,10 +406,56 @@ overload for const arguments), and for `element_of=` a reference into a
 container's element; for a source walked through `__next__`, a value when
 the parameter is an `Iterable` (the builtin `min` / `max` helpers) and a
 reference valid until the caller's next step when it is the caller's
-`Iterator` (`next`), which only an in-place use reads. A free function without the
+`Iterator` (`next`), which only an in-place use reads. A call the compiler
+binds as a borrow renders wrapped in `::tpy::assert_lent(...)`, so a
+declared binding whose C++ returns by value stops the C++ build with "a call
+the compiler bound as a borrow returns a value; return a reference, or
+declare the stub's result Own[...]". A free function without the
 declaration keeps a by-value result, even when its C++ returns a reference
-(`BUGS.md`, "An UNDECLARED free `@native` function"). The decorator is not
-supported on methods yet (TODO.md, "Callable-level borrow annotation").
+(`BUGS.md`, "An UNDECLARED free `@native` function").
+
+A bodyless METHOD stub declares the same way, `self` naming the receiver:
+
+```python
+@native
+class Node:
+    @native(borrows=("other",))
+    @readonly
+    def pick(self, other: Node) -> Node: ...   # C++: Node& pick(Node&) const
+
+@native("::Bag", elements=True)
+class Bag[T](NativeIterable[T]):
+    @native("first", element_of=("self",))
+    @readonly
+    def first(self) -> T: ...                  # a reference to an element
+```
+
+The call takes the same borrow-or-value decision a free binding's call does,
+the receiver lending as an argument would. The declaration REPLACES the
+receiver borrow an undeclared native method infers from its signature, so a
+method that names only `other` says its result does not borrow the
+receiver: `ro.pick(x)` on a `readonly` receiver with a mutable `x` is a
+mutable `Node&`. The builtin `dict.get(key, default)` is declared
+`borrows=("default",), element_of=("self",)`: over a reference-type value it
+hands back the stored object or the default itself, as CPython does
+(`m = d.get("a", fb)` binds `P& m`; a temporary default is read in place, and
+a local holding it copies, warned). `self` is refused on a `@staticmethod` /
+`@classmethod` (no receiver) and on a method taking `self: Own[Self]` (the
+receiver is moved into the call); the keywords are refused on an operator
+method (`__x__`) and a `@property`, which are reached through syntax of their
+own that does not take the declaration yet. A native method WITHOUT the
+keywords still infers that its result borrows the receiver; requiring a
+declaration where the result could borrow several sources (the ambiguity rule)
+is deferred (TODO.md, "Borrow-declaration elision and the ambiguity rule for
+native stubs"). A declared result that is a value type HOLDING a class
+instance (an Optional, union or tuple of one) is refused: the by-value C++
+result would copy the instance. In a generic body, a call whose result is
+an open `T` -- bare, or held in an Optional, union or tuple (`V | None`) --
+is decided before instantiation as a copy: the C++ hands it back by value,
+and a holder warns in the generic hedge (*may copy V | None into local 'm'
+if not a value type*). A concrete class beside an open `T`
+(`tuple[T, Box]`, `list[V] | None`) is refused as its concrete twin is:
+that copy is certain whatever `T` turns out to be.
 
 Each name must be a parameter of the binding whose argument can hold storage
 the result borrows (a reference type, an open `T`, a view, a `str`, a callable
@@ -986,7 +1047,6 @@ These are orthogonal to the import/export system and remain unchanged:
 | `cpp_template("...")` | Inline C++ template expansion; takes `transient=True` and `checks_signals=True` like `@native` (see "Declaring a transient binding", "Declaring a check point") |
 | `pure` (from `tpy`) | No non-local mutation, no I/O, nothing retained after return or raise; implies `readonly`. Read by sema's borrow-argument check, mutation call edges, the with-exit and loop-hold write checks (`sema/loop_frames.py`) and `sema/receiver_calls.call_mutates_receiver`, and published as a stub callee's `PURE` contract for MIR's stub call contract, which admits it only at inert or owned-leaf arguments of builtin TypeDefs (a protocol or callable parameter bound to user code refuses: `@pure` was never audited for "runs no user code") |
 | `native(..., mutates="elements")` | Marks a native method as replacing elements in place and moving none, so it invalidates no iterator (see "Declaring element storage") |
-| `copy_returns_warn` | Marks an `Own[V]` accessor that copies where its CPython namesake aliases; sema warns at call sites (silence with `copy()`) |
 | `value_ptr_coercion` | Type coercion annotation |
 | `virtual_raise` | Class marker: its hand-written C++ `__raise__` dispatches (is not `throw *this`), so `raise X(args)` routes through it instead of the fresh-throw peephole. Not inherited. Used by `OSError`'s errno -> subclass mapping |
 

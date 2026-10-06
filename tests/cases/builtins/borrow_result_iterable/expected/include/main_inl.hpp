@@ -102,7 +102,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_body::__next
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        m = &(::tpy::builtin_min_elem_key<void, ::tpy::elem_verdict::lend>(ps, key_of));
+        m = &(::tpy::assert_lent(::tpy::builtin_min_elem_key(ps, key_of)));
         __state = S_RESUME_0;
         return m->v;
     }

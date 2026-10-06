@@ -11,14 +11,15 @@ ro 60
 ro temp 7
 gen 2
 gen 77
-gen after 60 77
-async 88
-async after 60 88
+gen after 60 78
+async 89
+async after 60 89
 closure 33 2
 try 44 2
 branch 55 2
 comp [1, 4]
 comp after [1001, 5] [2, 1004]
+owned 2 2 2 1 6
 fresh mixed 9 1
 fresh read -9
 fresh all 6
@@ -44,5 +45,5 @@ temp method ret -4 102 3
 temp method head 46 3
 unproven 5 4
 frame [1] 1
-ctor 88
-method -1 88
+ctor 89
+method -1 89

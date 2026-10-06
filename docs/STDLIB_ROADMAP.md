@@ -233,7 +233,7 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 | `str` | Done | Context-dependent `std::string` / `std::string_view` |
 | `bytes`, `bytearray` | Done | |
 | `list` | Done | `std::vector<T>` |
-| `dict` | Done | Insertion-ordered `tpy::ordered_map<K, V>`; items()/values()/setdefault alias (CPython semantics); two-arg get(k, default) copies reference values with a warning (BUGS.md tracks the borrow form) |
+| `dict` | Done | Insertion-ordered `tpy::ordered_map<K, V>`; items()/values()/setdefault and two-arg get(k, default) alias (CPython semantics; a temporary default held by a local is a warned copy) |
 | `set` | Done | Insertion-ordered `tpy::ordered_set<T>` |
 | `tuple` | Partial | `std::tuple<...>`. `tuple(iterable)` is refused with the reason: a tuple's length is part of its type (`tuple(xs)` -> "tuple(...) cannot build a tuple from a sequence ...") |
 | `range` | Done | `Range[T]` |

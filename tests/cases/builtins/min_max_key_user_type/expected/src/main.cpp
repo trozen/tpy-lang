@@ -20,10 +20,10 @@ void main() {
     Task a = Task("low", Priority(1));
     Task b = Task("high", Priority(3));
     Task c = Task("mid", Priority(2));
-    std::cout << ::tpy::min_key(a, b, [](const Task& t) -> const Priority& { return t.prio; }).name << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::max_key(a, b, [](const Task& t) -> const Priority& { return t.prio; }).name << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::min3_key(a, b, c, [](const Task& t) -> const Priority& { return t.prio; }).name << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::max3_key(a, b, c, [](const Task& t) -> const Priority& { return t.prio; }).name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::assert_lent(::tpy::min_key(a, b, [](const Task& t) -> const Priority& { return t.prio; })).name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::assert_lent(::tpy::max_key(a, b, [](const Task& t) -> const Priority& { return t.prio; })).name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::assert_lent(::tpy::min3_key(a, b, c, [](const Task& t) -> const Priority& { return t.prio; })).name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::assert_lent(::tpy::max3_key(a, b, c, [](const Task& t) -> const Priority& { return t.prio; })).name << "\n" << ::tpy::check_signals;
 }
 
 // main()

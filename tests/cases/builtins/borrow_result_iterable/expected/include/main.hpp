@@ -420,7 +420,7 @@ inline Bag::Bag() : items(std::vector<P>{P(::tpy::BigInt(4)), P(::tpy::BigInt(6)
 //     # method: a returned borrow of a field's element
 //     return max(self.items, key=key_of)
 inline P& Bag::top() {
-    return ::tpy::builtin_max_elem_key<void, ::tpy::elem_verdict::lend>(this->items, key_of);
+    return ::tpy::assert_lent(::tpy::builtin_max_elem_key(this->items, key_of));
 }
 
 // def __init__(self) -> None:

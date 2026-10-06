@@ -100,10 +100,10 @@ from .iter_loans import (
     IterElementSource, iter_element_source,
     _record_iter_receiver_mutation, check_iter_receiver_loans, hold_whole,
     is_dangling_temporary_arg,
-    register_iteration_loans, temp_arg_kept_alive,
+    iterator_advanced_twice, register_iteration_loans, temp_arg_kept_alive,
 )
 from .own_copy import (contains_reference_type, copy_result_under_write,
-                       declared_borrow_call_under, iterator_advanced_twice,
+                       declared_borrow_call_under,
                        lost_write_message,
                        type_has_type_param, warn_value_call_binding)
 from .value_range import ValueRange
@@ -127,6 +127,7 @@ from ..value_category import (
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
     async_return_form, AsyncReturnForm, iterator_source_callee,
     peel_value_wrappers, tuple_literal_elems, peel_coerce,
+    binds_fresh_call_value,
 )
 from .expressions import (_nested_def_free_names, _find_list_member,
                           _names_rebound_by, generic_constructor_factory)
@@ -2112,10 +2113,10 @@ class StatementAnalyzer:
             self._analyze_stmt_dispatch(stmt)
             # Stopgap until MIR models the step loan
             # (BUGS.md#next-step-reference-outlived-by-advance).
-            twice = iterator_advanced_twice(stmt.exprs())
+            twice = iterator_advanced_twice(self.ctx, stmt.exprs())
             if twice is not None:
                 raise self.ctx.error(
-                    f"'{twice[0].func_name}(...)' advances '{twice[1]}' twice "
+                    f"{twice[0].call_display} advances '{twice[1]}' twice "
                     f"in one expression; bind the first step to a name",
                     twice[0])
             self._check_retained_genexprs(stmt)
@@ -6381,9 +6382,11 @@ class StatementAnalyzer:
                     self.ctx.func.consumed_vars.add(stmt.init.name)
             # Preserve Ref on non-reassigned function locals from reference
             # sources (call returns, field access, subscript, params).
-            # Strip for: reassigned locals (T* codegen), top-level globals.
+            # Strip for: reassigned locals (T* codegen), top-level globals,
+            # and a declared call's fresh value, which the local owns.
             if (stmt.name in self.ctx.func.current_reassigned_vars
-                    or self.ctx.is_top_level):
+                    or self.ctx.is_top_level
+                    or binds_fresh_call_value(stmt.init)):
                 var_type = unwrap_ref_type(var_type)
             # A reassigned per-element-Own tuple local must model the unified
             # borrow type, not owning storage (else an alias rebind copies
@@ -8352,7 +8355,7 @@ class StatementAnalyzer:
         twice = declared_borrow_call_under(stmt.target)
         if twice is not None:
             raise self.ctx.error(
-                f"'{twice.func_name}(...)' is evaluated twice by an augmented "
+                f"{twice.call_display} is evaluated twice by an augmented "
                 f"assignment; bind it to a name first", twice)
         list_target = (isinstance(stmt.target, TpyName)
                        and self.pend.cell_container(target_type) is not None)

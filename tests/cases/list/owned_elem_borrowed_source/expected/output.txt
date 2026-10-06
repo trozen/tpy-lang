@@ -1,0 +1,5 @@
+comp_method 1 3
+empty_seeded 2 4
+literal_param 3
+gen_params 4
+gen_params 5

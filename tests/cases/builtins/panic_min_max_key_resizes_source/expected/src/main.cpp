@@ -26,7 +26,7 @@ namespace tpyapp::main {
 //     print(m.v)
 void main() {
     std::vector<P> ps = {P(::tpy::BigInt(1)), P(::tpy::BigInt(5)), P(::tpy::BigInt(3))};
-    P& m = ::tpy::builtin_max_elem_key<void, ::tpy::elem_verdict::lend>(ps, [&ps](const P& p) -> ::tpy::BigInt { return ::tpyapp::main::shrink(ps, p); });
+    P& m = ::tpy::assert_lent(::tpy::builtin_max_elem_key(ps, [&ps](const P& p) -> ::tpy::BigInt { return ::tpyapp::main::shrink(ps, p); }));
     m.v = ::tpy::BigInt(50);
     std::cout << m.v << "\n" << ::tpy::check_signals;
 }

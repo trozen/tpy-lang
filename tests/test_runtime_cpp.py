@@ -50,9 +50,13 @@ _SELFCHECKS = [
     ("test_print_join.cpp",
      "print(*xs) separators span every segment and each source is borrowed"),
     ("test_extreme_element.cpp",
-     "element-returning min/max hand back a lending source's own element, a copy otherwise; a one-way lend verdict check; size and storage checks"),
+     "element-returning min/max hand back a lending source's own element, a copy otherwise; size and storage checks"),
     ("test_min_max_key_forms.cpp",
      "min/max with key return the operand: T& off non-const operands, const T& off a const one"),
+    ("test_dict_get_default_forms.cpp",
+     "dict.get(key, default) returns the stored value or the default itself over reference types, by value otherwise"),
+    ("test_assert_lent.cpp",
+     "a call bound as a borrow passes through assert_lent as the same object in the same const-ness"),
 ]
 
 # Runtime impls (runtime/cpp/src/) a self-check links against, and the libs
@@ -185,3 +189,22 @@ def test_no_signals_leaves_the_embedding_api_undeclared(request, tmp_path):
                                   capture_output=True, text=True)
     assert compiled_out.returncode != 0
     assert "request_interrupt" in compiled_out.stderr, compiled_out.stderr
+
+
+@pytest.mark.parametrize("result", ["P", "const P", "P&&"])
+def test_assert_lent_rejects_a_value(result, request, tmp_path):
+    """A call the compiler bound as a borrow whose C++ hands back a value (or
+    an expiring object) would leave the caller's reference on a temporary:
+    the build stops at the wrapper's assertion, which names the remedy."""
+    if request.config.getoption("--no-exec"):
+        pytest.skip("--no-exec builds nothing")
+    src = tmp_path / "lent.cpp"
+    src.write_text('#include "tpy/tpy.hpp"\n'
+                   "struct P { int v; };\n"
+                   f"{result} make();\n"
+                   "int use() { return tpy::assert_lent(make()).v; }\n")
+    cmd = [*CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}", "-I", str(RUNTIME_DIR),
+           "-c", str(src), "-o", str(tmp_path / "lent.o")]
+    build = subprocess.run(cmd, capture_output=True, text=True)
+    assert build.returncode != 0
+    assert "bound as a borrow returns a value" in build.stderr, build.stderr

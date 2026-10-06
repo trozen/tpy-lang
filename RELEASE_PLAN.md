@@ -43,10 +43,11 @@ release commit (annotated; the build hook bakes `git describe`), then
   TODO: "Nested comprehensions"
 - `collections.defaultdict` -- TODO: "collections: the rest of the
   module"
-- Method borrows, then builtin keyword arguments, then iterator
-  provenance, in that order (user, 2026-10-04) -- TODO: "Callable-level
-  borrow annotation for native stubs" (item 1, methods), then "Builtin
-  functions take keyword arguments", then "Iterator provenance"
+- Per-instantiation result form for a generic body, then builtin
+  keyword arguments, then iterator provenance, in that order (user,
+  2026-10-05) -- TODO: "Per-instantiation result form for a generic
+  body", "Builtin functions take keyword arguments", "Iterator
+  provenance"
 - The 0.6.0 known limitations, silent miscompiles first
 - Rejects the ports filed: `prebound-list-rebound-in-loop-from-comprehension`,
   `tuple-local-ref-element-unpack-rejects`,

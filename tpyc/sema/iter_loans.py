@@ -22,14 +22,15 @@ from .. import qnames
 
 from ..parse import (
     ResultForm,
-    TpyCall, TpyCoerce, TpyExpr, TpyFieldAccess, TpyFString, TpyBinOp,
-    TpyGeneratorExpression, TpyIfExpr, TpyMethodCall, TpyName, TpySubscript,
-    is_property_getter_read,
+    TpyCall, TpyCallLike, TpyCoerce, TpyExpr, TpyFieldAccess, TpyFString, TpyBinOp,
+    TpyGeneratorExpression, TpyIfExpr, TpyLambda, TpyMethodCall, TpyName,
+    TpySubscript, is_property_getter_read,
 )
+from ..parse.nodes import walk_expr_tree
 from ..type_def_registry import (get_type_def, is_borrowing_view_type,
                                  iter_yields_owned_elements)
 from ..typesys import (
-    FunctionInfo, NominalType, PendingDictType, PendingListType,
+    FunctionInfo, NominalType, PendingDictType, PendingListType, ReadonlyType,
     PendingSetType, TpyType, TupleType, TypeParamRef, make_dict, make_list,
     make_set,
     held_whole_borrow_sources,
@@ -37,7 +38,8 @@ from ..typesys import (
     unwrap_own, unwrap_readonly, unwrap_ref_type,
 )
 from ..value_category import (
-    frame_factory_callee, frame_temp_arg_source, iterator_source_callee,
+    call_operands, frame_factory_callee, frame_temp_arg_source,
+    iterator_source_callee,
 )
 from .context import (
     BorrowKind, ITER_BORROWER, LoanInfo, _borrow_storage_roots, call_lend_sources,
@@ -274,7 +276,7 @@ def is_dangling_temporary_arg(expr: TpyExpr) -> bool:
     if isinstance(expr, TpyCall) and expr.call_type is not None:
         if is_borrowing_view_type(expr.call_type) or expr.call_type.is_pointer():
             return bool(expr.args) and is_dangling_temporary_arg(expr.args[0])
-    if isinstance(expr, TpyCall) and expr.result_form is ResultForm.BORROW:
+    if isinstance(expr, TpyCallLike) and expr.result_form is ResultForm.BORROW:
         # Sema proved every argument it lends is existing storage.
         return False
     if isinstance(expr, (TpyCall, TpyMethodCall, TpyBinOp, TpyFString)):
@@ -596,3 +598,71 @@ def register_iteration_loans(
                    for idx, op in _sources_by_idx(storage.operands).items()}
     return IterationLoan(iter_srcs, _yield_elem_sources(fi_iter, srcs_by_idx),
                          unplaceable=storage.unplaceable)
+
+
+
+def _declared_readonly_param(fi: FunctionInfo, idx: int) -> bool:
+    """Whether parameter `idx` of the stub is declared `readonly[...]`, the
+    one fact that says a bodyless callee leaves that argument alone."""
+    params = fi.root.params
+    return (0 <= idx < len(params)
+            and isinstance(params[idx].type, ReadonlyType))
+
+def iterator_advanced_twice(ctx: 'SemanticContext', exprs: 'list[TpyExpr]'
+                            ) -> 'tuple[TpyCallLike, str] | None':
+    """The second borrow-declared call in one statement's expressions that
+    hands back a reference to a STEP of an iterator an earlier one in the
+    same statement also advances (`t = (next(g, d).v, next(g, d).v)`), with
+    the iterator's name; or None. A step reference is valid only until the
+    next advance, so the first reference would read the second step.
+
+    A STOPGAP for BUGS.md#next-step-reference-outlived-by-advance, which
+    MIR's step-loan model replaces: it sees only advances spelled in the
+    statement, not a consumer advancing the iterator through a capture or a
+    global. A COPY result holds no reference, a BORROW is a container's
+    element, and a value-type element (`next(it, 0)`) is not
+    borrow-declared, so none of them counts. Neither does an `element_of=`
+    operand that is a CONTAINER the callee leaves alone -- a `@readonly`
+    stub's receiver, a `readonly[...]` parameter (`d.get(k, P(0))`): its element is not a step, and a second call leaves it in
+    place. A callee that mutates the container (`b.grow_or(P(0))`) may move
+    the first call's element, so it counts like an advance."""
+    seen: set[str] = set()
+    found: list[tuple[TpyCallLike, str]] = []
+
+    def visit(node: TpyExpr) -> bool:
+        if found or isinstance(node, TpyLambda):
+            return False
+        # Only a REFERENCE_VALUE result points at a step: a BORROW is a
+        # container's element, which a second walk leaves in place.
+        if (isinstance(node, TpyCallLike)
+                and node.result_form is ResultForm.REFERENCE_VALUE):
+            ops = call_operands(node)
+            lent = (call_lend_sources(
+                        ops, ops.fi.root.element_borrows_from, expr_type=None)
+                    if ops is not None else [])
+            for src in lent:
+                # The fact that the callee leaves the container alone is
+                # per operand: `@readonly` speaks for the receiver only, a
+                # parameter is left alone when it is declared readonly.
+                untouched = (ops.fi.root.is_readonly if src.idx == -1
+                             else _declared_readonly_param(ops.fi, src.idx))
+                if (untouched
+                        and iter_element_source(ctx.get_expr_type(src.expr),
+                                                ctx.registry)
+                        is IterElementSource.CONTAINER):
+                    continue
+                root = src.expr
+                while isinstance(root, (TpyCoerce, TpyFieldAccess,
+                                        TpySubscript)):
+                    root = root.expr if isinstance(root, TpyCoerce) else root.obj
+                if not isinstance(root, TpyName):
+                    continue
+                if root.name in seen:
+                    found.append((node, root.name))
+                    return False
+                seen.add(root.name)
+        return True
+
+    for expr in exprs:
+        walk_expr_tree(expr, visit)
+    return found[0] if found else None

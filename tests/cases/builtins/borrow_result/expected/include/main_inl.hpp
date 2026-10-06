@@ -8,14 +8,17 @@ namespace tpyapp::main {
 // # generator body: the borrow lives across a suspension
 // def gen_body(a: P, b: P) -> Iterator[int]:
 //     m = min(a, b, key=key_of)
-//     yield m.v                               # -> S_RESUME_0
+//     yield m.v                                                              # -> S_RESUME_0
 //     m.v = 77
-//     yield m.v                               # -> S_RESUME_1
+//     yield m.v                                                              # -> S_RESUME_1
+//     # a walrus in a frame condition holds the operand as the binding does
+//     if (w := max(a, b, key=key_of)).v > 0:  # tpyc: ok
+//         w.v += 1
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        m = &(::tpy::min_key(a, b, key_of));
+        m = &(::tpy::assert_lent(::tpy::min_key(a, b, key_of)));
         __state = S_RESUME_0;
         return m->v;
     }
@@ -25,6 +28,9 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_body::__next
         return m->v;
     }
     case S_RESUME_1: {  // after: yield m.v
+        if (((w = &(::tpy::assert_lent(::tpy::max_key(a, b, key_of))), *w).v > 0)) {
+            w->v = (w->v) + (::tpy::BigInt(1));
+        }
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

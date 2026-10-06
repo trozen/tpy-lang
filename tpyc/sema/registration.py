@@ -1754,7 +1754,6 @@ class TypeRegistrar:
                 native_function=method.native_function,
                 native_mutates=method.native_mutates,
                 native_element_effect=method.native_element_effect,
-                copy_returns_warn=method.copy_returns_warn,
                 # Only `__enter__` needs it, and only it pays the body walk.
                 returns_self_borrow=(
                     returns_borrow_rooted_at_self(method)
@@ -1783,6 +1782,9 @@ class TypeRegistrar:
                 # which would flip every generator method non-readonly; the
                 # receiver borrow is tracked in BUGS.md instead.
                 self._stamp_iterator_retention(method, func_info)
+            elif method.declared_borrows is not None:
+                # What the stub declares replaces the signature inference.
+                self._stamp_declared_borrow(method, func_info)
             elif ((func_info.native_name is not None
                        or func_info.is_native
                        or func_info.cpp_template is not None)
@@ -3623,17 +3625,41 @@ class TypeRegistrar:
         `element_borrows_from` the ones the result is an ELEMENT of, which
         lend only as a container does (`CallAnalyzer._lent_operand_verdict`).
 
-        Indices are positions in `info.params` (the call's argument list)."""
+        Indices are positions in `info.params` (the call's argument list);
+        a method's `self` is the receiver, index -1."""
         where = f"'{func.name}'"
         if not is_bodyless_binding(func):
             raise SemanticError(
                 f"borrows= / element_of= are for a function without a body; {where} "
                 f"has one, and what it returns already says what the result "
                 f"borrows", func.loc)
+        if func.is_method:
+            self._check_method_borrow_position(func)
 
         def indices_of(names: tuple[str, ...]) -> set[int]:
             out: set[int] = set()
             for name in names:
+                if name == "self" and func.is_method:
+                    if func.is_staticmethod or func.is_classmethod:
+                        kind = ("class" if func.is_classmethod
+                                else "static")
+                        raise SemanticError(
+                            f"borrows= / element_of= name 'self', which names "
+                            f"no parameter of the {kind} method {where}",
+                            func.loc)
+                    if func.is_consuming:
+                        raise SemanticError(
+                            f"borrows= / element_of= name 'self', but {where} "
+                            f"consumes its receiver: the receiver is moved "
+                            f"into the call, so the result cannot borrow it",
+                            func.loc)
+                    if -1 in out:
+                        raise SemanticError(
+                            f"borrows= / element_of= name 'self' twice",
+                            func.loc)
+                    # The receiver is the owning record: it always lends.
+                    out.add(-1)
+                    continue
                 idx = next((i for i, p in enumerate(info.params)
                             if p.name == name), None)
                 if idx is None:
@@ -3656,6 +3682,23 @@ class TypeRegistrar:
         info.return_borrows_from = frozenset(returns | elements)
         info.element_borrows_from = frozenset(elements)
         info.borrow_declared = True
+
+    @staticmethod
+    def _check_method_borrow_position(func: TpyFunction) -> None:
+        """Refuse the declaration on a method reached through syntax of its
+        own -- an operator or a property read is not a method call, and
+        those call sites do not take the declaration yet."""
+        name = func.name
+        if name.startswith("__") and name.endswith("__"):
+            raise SemanticError(
+                f"borrows= / element_of= on '{name}': an operator method is "
+                f"reached through its own syntax, which does not take the "
+                f"declaration yet", func.loc)
+        if func.is_property_getter or func.is_property_setter:
+            raise SemanticError(
+                f"borrows= / element_of= on '{name}': a property is reached "
+                f"through its own syntax, which does not take the declaration "
+                f"yet", func.loc)
 
     def _stamp_iterator_retention(self, func: TpyFunction, info: FunctionInfo) -> None:
         """Set `return_borrows_from` at registration for a callee whose result

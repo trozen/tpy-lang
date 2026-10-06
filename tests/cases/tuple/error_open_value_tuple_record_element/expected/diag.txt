@@ -1,1 +1,1 @@
-main.py:14: error: in function 'smaller': this construct is not yet supported by C++ code generation (expr.call:call.ret_type.tuple)
+main.py:14: error: 'tuple[T, Box]' holds a reference type, which 'min(...)' would copy; not supported yet

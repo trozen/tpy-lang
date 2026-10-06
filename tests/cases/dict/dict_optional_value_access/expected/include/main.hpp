@@ -15,6 +15,8 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t borrow(const P* p);
 // def main() -> None:
 void main();
+// def popped() -> None:
+void popped();
 
 // class P:
 struct P {

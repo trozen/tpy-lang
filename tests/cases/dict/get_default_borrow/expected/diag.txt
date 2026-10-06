@@ -1,0 +1,32 @@
+main.py:134: warning: copies P into field; use copy() to make this explicit
+main.py:38: warning: copies P into local 'm'; use copy() to make this explicit
+main.py:139: warning: copies P into field; use copy() to make this explicit
+main.py:156: warning: may copy V into owned storage if not a value type; use copy() to make this explicit
+main.py:172: warning: may copy V | None into local 'm' if not a value type; use copy() to make this explicit
+main.py:174: warning: may copy V | None into local 'm' if not a value type; use copy() to make this explicit
+main.py:176: warning: may copy V | None into local 'w' if not a value type; use copy() to make this explicit
+main.py:303: warning: copies P into owned storage (tuple element 0); use copy() to make this explicit
+main.py:306: warning: copies P into owned storage; use copy() to make this explicit
+main.py:309: warning: copies P into owned storage; use copy() to make this explicit
+main.py:312: warning: copies P into owned storage; use copy() to make this explicit
+main.py:317: warning: copies P into owned storage; use copy() to make this explicit
+main.py:321: warning: copies P into container; use copy() to make this explicit
+main.py:325: warning: copies P into owned storage (tuple element 0); use copy() to make this explicit
+main.py:326: warning: copies P into owned storage (tuple element 0); use copy() to make this explicit
+main.py:342: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:345: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:348: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:352: warning: copies list[int32] into container; use copy() to make this explicit
+main.py:358: warning: copies P into owned storage; use copy() to make this explicit
+main.py:381: warning: copies K into owned storage; use copy() to make this explicit
+main.py:381: warning: copies K into owned storage; use copy() to make this explicit
+main.py:401: warning: copies W into container; use copy() to make this explicit
+main.py:410: warning: copies P into container; use copy() to make this explicit
+main.py:414: warning: copies P into owned storage; use copy() to make this explicit
+main.py:419: warning: copies K into owned storage; use copy() to make this explicit
+main.py:427: warning: copies P into local 'a'; use copy() to make this explicit
+main.py:430: warning: copies P into local 'b'; use copy() to make this explicit
+main.py:440: warning: copies W into container; use copy() to make this explicit
+main.py:448: warning: copies P into owned storage; use copy() to make this explicit
+main.py:457: warning: copies readonly[P] into owned storage; use copy() to make this explicit
+main.py:459: warning: copies readonly[P] into owned storage; use copy() to make this explicit

@@ -83,6 +83,16 @@ int32_t both(std::string_view s, const ::tpy::BigInt& a, const ::tpy::BigInt& b)
     return ::tpy::__len__(s);
 }
 
+// # free function: a declared method stub's value-shaped result is a plain value,
+// # read in place and bound to a local
+// def dict_get_value(d: dict[str, int32], k: str) -> int32:  # tpyc: mir(covered)
+//     v = d.get(k, 5)
+//     return d.get("a", 0) + v
+int32_t dict_get_value(const ::tpy::ordered_map<std::string, int32_t>& d, std::string_view k) {
+    int32_t v = ::tpy::dict_get_default(d, k, 5);
+    return (::tpy::add_check<int32_t>(::tpy::dict_get_default(d, "a", 0), v));
+}
+
 // # free function: `len` on a record dispatches the record's own __len__
 // def record_len(r: Rec) -> int32:  # tpyc: mir(uncovered /^stub protocol argument is not a builtin leaf$/)
 //     return len(r)
@@ -102,6 +112,7 @@ int32_t record_len(const Rec& r) {
 //     print("overloads:", overloads(3, 5, 1, 2))
 //     print("twice:", f"{twice(100.0):.6f}")
 //     print("both:", both("hi", 12, 40))
+//     print("dict_get_value:", dict_get_value({"a": 1}, "z"))
 //     print("record_len:", record_len(Rec(4)))
 void main() {
     std::cout << "label_len:" << " " << Rec(0).label_len("four") << "\n" << ::tpy::check_signals;
@@ -115,8 +126,10 @@ void main() {
     std::cout << "overloads:" << " " << ::tpy::print_bool(::tpyapp::main::overloads(::tpy::BigInt(3), ::tpy::BigInt(5), 1, 2)) << "\n" << ::tpy::check_signals;
     std::cout << "twice:" << " " << std::format("{:.6f}", ::tpyapp::main::twice(100.0)) << "\n" << ::tpy::check_signals;
     std::cout << "both:" << " " << ::tpyapp::main::both("hi", ::tpy::BigInt(12), ::tpy::BigInt(40)) << "\n" << ::tpy::check_signals;
-    Rec __tmp_1 = Rec(4);
-    std::cout << "record_len:" << " " << ::tpyapp::main::record_len(__tmp_1) << "\n" << ::tpy::check_signals;
+    ::tpy::ordered_map<std::string, int32_t> __tmp_1 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
+    std::cout << "dict_get_value:" << " " << ::tpyapp::main::dict_get_value(__tmp_1, "z") << "\n" << ::tpy::check_signals;
+    Rec __tmp_2 = Rec(4);
+    std::cout << "record_len:" << " " << ::tpyapp::main::record_len(__tmp_2) << "\n" << ::tpy::check_signals;
 }
 
 // # MIR verdicts for calls to stdlib stubs: a declared contract (@pure / transient=True)

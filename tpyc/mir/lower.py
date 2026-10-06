@@ -8,7 +8,7 @@ from types import MappingProxyType
 from ..identity_map import IdentityMap, IdentitySet
 from ..codegen_cpp.forms import LoopBinding, loop_binding_kind
 from ..type_def_registry import is_array
-from ..parse import RebindStorage, SourceLocation
+from ..parse import ResultForm, RebindStorage, SourceLocation
 from ..thir import nodes as th
 from ..thir.temp_plan import if_chain, validate_plan
 from ..thir.scalar_leaves import (
@@ -68,6 +68,15 @@ def _user_call(expr: th.THIRExpr) -> bool:
     call THIR resolved to a user record method. A method stub's call has
     arms of its own."""
     return isinstance(expr, th.THIRCall) or isinstance(expr, th.THIRMethodCall) and expr.resolved_callee is not None
+
+
+def _value_result_form(expr: th.THIRCall | th.THIRMethodCall) -> set[str]:
+    """`result_form` admitted as metadata when it carries no borrow fact: a
+    declared callee's value-shaped result (`d.get("a", 0)` over int values)
+    is a plain value. A BORROW / REFERENCE_VALUE / COPY verdict names what
+    the result borrows or copies, which MIR does not model yet."""
+    return ({"result_form"} if expr.result_form in (ResultForm.NOT_DECLARED, ResultForm.VALUE)
+            else set())
 
 
 def _call_arguments(expr: th.THIRCall | th.THIRMethodCall) -> tuple[th.THIRExpr, ...]:
@@ -280,7 +289,8 @@ class _Coverage:
         (`call_contract.stub_summary`); its arguments follow the user-call
         rows, and a protocol parameter admits only a builtin leaf argument,
         whose dispatch runs the stub's own runtime code."""
-        _plain(expr, {"callee", "args", "native_name", "cpp_template", "callee_cpp", "stub_callee", "constructs"})
+        _plain(expr, {"callee", "args", "native_name", "cpp_template", "callee_cpp", "stub_callee", "constructs"}
+               | _value_result_form(expr))
         callee = expr.stub_callee
         _require(expr, expr.resolved_callee is None, "call has both a resolved and a stub callee")
         # Calls of one stub share one summary object, as the body's summary table holds it.
@@ -331,7 +341,8 @@ class _Coverage:
         parameter 0, lent whole; the arguments follow the stub-call rows.
         With `view`, the result is a container view of the receiver's
         region. Returns the receiver's place."""
-        _plain(expr, {"receiver", "method_cpp", "args", "native_function_name", "cpp_template", "stub_callee"})
+        _plain(expr, {"receiver", "method_cpp", "args", "native_function_name", "cpp_template", "stub_callee"}
+               | _value_result_form(expr))
         callee = expr.stub_callee
         _require(expr, isinstance(callee, th.THIRStubCallee) and callee.receiver, "invalid stub callee")
         summary = self.stub_summaries.get(callee.identity)

@@ -47,7 +47,7 @@ from ..type_def_registry import (int_traits_of, is_borrowing_view_type,
 from ..parse import (
     ResultForm,
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
-    TpyCall, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp,
+    TpyCall, TpyCallLike, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp,
     TpyUnaryOp, TpyIfExpr, TpyVarargPack, TpyStarUnpack,
     TpyNestedDef, TpyNamedExpr, TpyIntLiteral, TpyStrLiteral,
     TpyGeneratorExpression, TpyForEach, TpyWhile,
@@ -56,7 +56,9 @@ from ..parse import (
 )
 from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
 from ..value_category import (
-    ExprTypeOf, ValueCategoryAnalyzer, call_returns_cpp_ref, frame_factory_callee,
+    CallOperands, call_operands,
+    ExprTypeOf, ValueCategoryAnalyzer, call_returns_cpp_ref, declared_call_const,
+    frame_factory_callee,
     is_rvalue_source, lent_operands, lent_operand_binds_open_param,
     peel_coerce,
 )
@@ -443,23 +445,6 @@ def _borrow_storage_roots(expr: TpyExpr) -> list[str]:
     return [] if root is None else [root]
 
 
-class CallOperands(NamedTuple):
-    """A call-shaped expression as the borrow facts index it: the callee,
-    its receiver (source index -1), its positional arguments and the
-    keyword arguments sema left unnormalized."""
-    fi: FunctionInfo
-    obj: TpyExpr | None
-    args: list[TpyExpr]
-    kwargs: dict[str, TpyExpr] = {}
-
-    def positioned(self) -> list[tuple[int, TpyExpr]]:
-        """Each argument with the parameter index it binds -- positionally,
-        then keywords by name (-2 for a name no parameter has)."""
-        by_name = {p.name: i for i, p in enumerate(self.fi.params)}
-        return list(enumerate(self.args)) + [
-            (by_name.get(k, -2), a) for k, a in (self.kwargs or {}).items()]
-
-
 class LendSource(NamedTuple):
     """One operand of a call -- or one lending element of a tuple-literal
     operand -- whose storage the call's result may point into."""
@@ -589,17 +574,18 @@ def call_lend_sources(ops: CallOperands,
     `temp_backed` -- only those the result's type can point into
     (`temp_element_can_back`), and none when the call builds a frame,
     which holds the tuple by value for as long as the handle lives."""
-    fi, obj, _args, _kwargs = ops
+    fi = ops.fi
     temp_backing = temp_backing and not (fi.is_async
                                          or frame_factory_callee(fi))
     result = fi.return_type
     out: list[LendSource] = []
-    if obj is not None and (indices is None or -1 in indices):
-        out.append(LendSource(-1, obj, None, -1 in held))
     params = fi.params
     declared_params = fi.root.params
-    for idx, arg in ops.positioned():
+    for idx, arg in ops.indexed():
         if indices is not None and idx not in indices:
+            continue
+        if idx == -1:
+            out.append(LendSource(-1, arg, None, -1 in held))
             continue
         slot = params[idx].type if 0 <= idx < len(params) else None
         declared = (declared_params[idx].type
@@ -647,7 +633,8 @@ def proven_lend_roots(analyzer: 'ValueCategoryAnalyzer',
                 or getattr(expr, "needs_optional_runtime_check", False)):
             return None
         return proven_lend_roots(analyzer, expr.obj)
-    if isinstance(expr, TpyCall) and expr.result_form is not ResultForm.NOT_DECLARED:
+    if (isinstance(expr, TpyCallLike)
+            and expr.result_form is not ResultForm.NOT_DECLARED):
         if expr.result_form is not ResultForm.BORROW:
             return None
     elif not isinstance(expr, (TpyCall, TpyMethodCall)) or is_property_getter_read(expr):
@@ -682,38 +669,12 @@ def expr_lends_storage(analyzer: 'ValueCategoryAnalyzer',
 
 
 def call_borrow_operands(expr: TpyExpr) -> CallOperands | None:
-    """The operands a call-shaped `expr`'s `return_borrows_from` indexes, or
-    None when `expr` is not a resolved call -- or is one whose result sema
-    decided is a fresh value (`ResultForm.is_fresh`: a declared
-    borrow with a temporary lent argument), which borrows nothing.
-
-    Operator dispatch is a method call in disguise -- a borrow-returning
-    dunder hands out a borrow of an operand -- and answers with the CANONICAL
-    fi: the resolved copy is synthesized before the dunder's body facts land,
-    so only the root carries them.
-    """
-    kwargs: dict[str, TpyExpr] = {}
-    if isinstance(expr, TpyCall):
-        if expr.result_form.is_fresh:
-            return None
-        fi, obj, args = expr.resolved_function_info, None, expr.args
-        kwargs = expr.kwargs or {}
-    elif isinstance(expr, TpyMethodCall):
-        fi, obj, args = expr.resolved_function_info, expr.obj, expr.args
-        kwargs = expr.kwargs or {}
-    elif isinstance(expr, TpyBinOp) and expr.resolved_binop is not None:
-        rb = expr.resolved_binop
-        fi = rb.method.root
-        obj = expr.right if rb.is_reverse else expr.left
-        args = [expr.left if rb.is_reverse else expr.right]
-    elif isinstance(expr, TpyUnaryOp) and expr.resolved_unaryop is not None:
-        fi, obj, args = expr.resolved_unaryop.method.root, expr.operand, []
-    elif (isinstance(expr, TpyGeneratorExpression)
-          and expr.frame_creation is not None):
-        return call_borrow_operands(expr.frame_creation)
-    else:
+    """`call_operands`, or None when sema decided the call's result is a
+    fresh value (`ResultForm.is_fresh`: a declared borrow with a temporary
+    lent argument), which borrows nothing."""
+    if isinstance(expr, TpyCallLike) and expr.result_form.is_fresh:
         return None
-    return None if fi is None else CallOperands(fi, obj, args, kwargs)
+    return call_operands(expr)
 
 
 def frame_borrowed_operands(call: TpyExpr) -> list[TpyExpr] | None:
@@ -1649,6 +1610,10 @@ def record_stmt_borrow_binding(ctx: 'SemanticContext', name: str,
     alias_key = field_chain_storage_key(inner)
     if alias_key is not None:
         ctx.mark_all_view_borrowers_mutated(alias_key)
+    declared = declared_call_const(ctx, inner)
+    if declared is not None:
+        record_borrow_binding(ctx, name, const=declared)
+        return
     const = isinstance(ctx.get_expr_type(inner), ReadonlyType)
     if not const and isinstance(inner, TpyMethodCall):
         fi = inner.resolved_function_info
@@ -1973,10 +1938,6 @@ class FunctionTrackingState:
     # write through one unpack target climbs to its own source, not to
     # every argument. Absent when the yield does not say.
     loop_var_elem_iterable: dict[str, list[list[str]]] = field(default_factory=dict)
-    # True while analyzing the argument of an explicit copy(...) call --
-    # copy-divergence warnings (e.g. dict.get(k, default)) are suppressed,
-    # the wrap being the acknowledgment spelling.
-    in_copy_call_arg: bool = False
 
     # --- Scope escape tracking ---
     var_scope_depth: dict[str, int] = field(default_factory=dict)

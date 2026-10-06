@@ -64,15 +64,15 @@ void show(std::string_view tag, const std::vector<P>& ps) {
 //     show("list read after", ps)
 void list_fn() {
     std::vector<P> ps = {P(::tpy::BigInt(3)), P(::tpy::BigInt(1)), P(::tpy::BigInt(2))};
-    P& big = ::tpy::builtin_max_elem<void, ::tpy::elem_verdict::lend>(ps);
+    P& big = ::tpy::assert_lent(::tpy::builtin_max_elem(ps));
     big.v = ::tpy::BigInt(30);
-    P& small = ::tpy::builtin_min_elem_key<void, ::tpy::elem_verdict::lend>(ps, key_of);
+    P& small = ::tpy::assert_lent(::tpy::builtin_min_elem_key(ps, key_of));
     small.v = ::tpy::BigInt(-1);
     ::tpyapp::main::show("list", ps);
-    ::tpyapp::main::bump(::tpy::builtin_max_elem_key<void, ::tpy::elem_verdict::lend>(ps, key_of));
+    ::tpyapp::main::bump(::tpy::assert_lent(::tpy::builtin_max_elem_key(ps, key_of)));
     ::tpyapp::main::show("list arg", ps);
-    std::cout << "list read" << " " << ::tpy::builtin_min_elem<void, ::tpy::elem_verdict::lend>(ps).v << " " << ::tpy::builtin_max_elem_key<void, ::tpy::elem_verdict::lend>(ps, key_of).v << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::bump(::tpy::builtin_min_elem<void, ::tpy::elem_verdict::lend>(ps));
+    std::cout << "list read" << " " << ::tpy::assert_lent(::tpy::builtin_min_elem(ps)).v << " " << ::tpy::assert_lent(::tpy::builtin_max_elem_key(ps, key_of)).v << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::bump(::tpy::assert_lent(::tpy::builtin_min_elem(ps)));
     ::tpyapp::main::show("list read after", ps);
 }
 
@@ -83,7 +83,7 @@ void list_fn() {
 //     m = min(ps, key=key_of)
 //     return m.v
 ::tpy::BigInt lowest(std::vector<P>& ps) {
-    P& m = ::tpy::builtin_min_elem_key<void, ::tpy::elem_verdict::lend>(ps, key_of);
+    P& m = ::tpy::assert_lent(::tpy::builtin_min_elem_key(ps, key_of));
     return m.v;
 }
 
@@ -91,7 +91,7 @@ void list_fn() {
 // def pick_max(ps: list[P]) -> P:
 //     return max(ps, key=key_of)
 P& pick_max(std::vector<P>& ps) {
-    return ::tpy::builtin_max_elem_key<void, ::tpy::elem_verdict::lend>(ps, key_of);
+    return ::tpy::assert_lent(::tpy::builtin_max_elem_key(ps, key_of));
 }
 
 // # a readonly source gives a readonly element
@@ -99,7 +99,7 @@ P& pick_max(std::vector<P>& ps) {
 //     m = max(ps, key=lambda p: p.v)  # tpyc: type(readonly[P])
 //     return m.v
 ::tpy::BigInt ro_source(const std::vector<P>& ps) {
-    const P& m = ::tpy::builtin_max_elem_key<void, ::tpy::elem_verdict::lend>(ps, [](const P& p) -> ::tpy::BigInt { return p.v; });
+    const P& m = ::tpy::assert_lent(::tpy::builtin_max_elem_key(ps, [](const P& p) -> ::tpy::BigInt { return p.v; }));
     return m.v;
 }
 
@@ -108,7 +108,7 @@ P& pick_max(std::vector<P>& ps) {
 //     m = min(xs, key=key_of)
 //     m.v = -5
 void span_fn(std::span<P> xs) {
-    P& m = ::tpy::builtin_min_elem_key<void, ::tpy::elem_verdict::lend>(xs, key_of);
+    P& m = ::tpy::assert_lent(::tpy::builtin_min_elem_key(xs, key_of));
     m.v = ::tpy::BigInt(-5);
 }
 
@@ -266,7 +266,7 @@ void fresh_fn() {
 //     print("rows", rows)
 void rows_fn() {
     std::vector<std::vector<::tpy::BigInt>> rows = {{1}, {1, 2, 3}, {1, 2}};
-    std::vector<::tpy::BigInt>& longest = ::tpy::builtin_max_elem_key<void, ::tpy::elem_verdict::lend>(rows, [](const std::vector<::tpy::BigInt>& r) -> int32_t { return ::tpy::__len__(r); });
+    std::vector<::tpy::BigInt>& longest = ::tpy::assert_lent(::tpy::builtin_max_elem_key(rows, [](const std::vector<::tpy::BigInt>& r) -> int32_t { return ::tpy::__len__(r); }));
     longest.push_back(0);
     std::cout << "rows" << " " << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
 }
@@ -369,7 +369,7 @@ void copy_arg_fn() {
 //     print("values", d["a"].v)
 void dict_values_fn() {
     ::tpy::ordered_map<std::string, P> d = ::tpy::ordered_map<std::string, P>({{"a", P(::tpy::BigInt(5))}, {"b", P(::tpy::BigInt(2))}});
-    P& m = ::tpy::builtin_max_elem_key<void, ::tpy::elem_verdict::lend>(::tpy::dict_values(d), key_of);
+    P& m = ::tpy::assert_lent(::tpy::builtin_max_elem_key(::tpy::dict_values(d), key_of));
     m.v = ::tpy::BigInt(-1);
     std::cout << "values" << " " << ::tpy::__getitem__(d, "a").v << "\n" << ::tpy::check_signals;
 }
@@ -472,7 +472,7 @@ __gen_gen_body gen_body(std::vector<P>& ps) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        m = &(::tpy::builtin_max_elem_key<void, ::tpy::elem_verdict::lend>(ps, key_of));
+        m = &(::tpy::assert_lent(::tpy::builtin_max_elem_key(ps, key_of)));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -509,7 +509,7 @@ void empty_fn() {
     std::vector<P> none = std::vector<P>{};
     {
         try {
-            std::cout << ::tpy::builtin_max_elem_key<void, ::tpy::elem_verdict::lend>(none, key_of).v << "\n" << ::tpy::check_signals;
+            std::cout << ::tpy::assert_lent(::tpy::builtin_max_elem_key(none, key_of)).v << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
             std::cout << "empty ValueError" << "\n" << ::tpy::check_signals;
         }

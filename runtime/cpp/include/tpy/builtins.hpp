@@ -538,23 +538,6 @@ namespace detail {
             return size != o.size || data != o.data;
         }
     };
-}
-
-// The compiler's verdict for an element-returning min / max, rendered into
-// the call only when it binds the result as a borrow (`lend`), which the
-// runtime must then be able to hand out; every other call -- and a
-// hand-written one -- is `unchecked`.
-enum class elem_verdict { unchecked, lend };
-
-namespace detail {
-    // A `lend` verdict over a source the runtime copies from would bind a
-    // reference to a copy.
-    template<elem_verdict V, typename Iter>
-    constexpr void assert_elem_verdict() {
-        static_assert(V != elem_verdict::lend || lending_elem_source<Iter>,
-                      "min/max: the compiler bound the result as a borrow of a "
-                      "source the runtime hands back a copy from");
-    }
 
     template<typename Iter>
     constexpr void assert_copyable_elem() {
@@ -563,15 +546,12 @@ namespace detail {
                       "min/max over a source that does not lend its elements "
                       "copies the result: the element type must be copyable");
     }
-
 }
 
 // The first of equal elements wins.
-template<typename T, elem_verdict V = elem_verdict::unchecked, typename Iter,
-         typename Better>
+template<typename T, typename Iter, typename Better>
 decltype(auto) builtin_extreme_elem(Iter&& iterable, std::string_view name,
                                     Better&& better) {
-    detail::assert_elem_verdict<V, Iter>();
     if constexpr (!detail::lending_elem_source<Iter>) {
         detail::assert_copyable_elem<Iter>();
         return builtin_extreme<T>(std::forward<Iter>(iterable), name,
@@ -596,17 +576,17 @@ decltype(auto) builtin_extreme_elem(Iter&& iterable, std::string_view name,
     }
 }
 
-template<typename T = void, elem_verdict V = elem_verdict::unchecked, typename Iter>
+template<typename T = void, typename Iter>
 decltype(auto) builtin_min_elem(Iter&& iterable) {
     using E = detail::elem_t<T, Iter>;
-    return builtin_extreme_elem<E, V>(std::forward<Iter>(iterable), "min",
+    return builtin_extreme_elem<E>(std::forward<Iter>(iterable), "min",
         [](const E& a, const E& b) { return a < b; });
 }
 
-template<typename T = void, elem_verdict V = elem_verdict::unchecked, typename Iter>
+template<typename T = void, typename Iter>
 decltype(auto) builtin_max_elem(Iter&& iterable) {
     using E = detail::elem_t<T, Iter>;
-    return builtin_extreme_elem<E, V>(std::forward<Iter>(iterable), "max",
+    return builtin_extreme_elem<E>(std::forward<Iter>(iterable), "max",
         [](const E& a, const E& b) { return b < a; });
 }
 
@@ -616,11 +596,9 @@ decltype(auto) builtin_max_elem(Iter&& iterable) {
 // `builtin_extreme_key` makes for the other sources. The comparison of two
 // keys is user code too (a key type's `__lt__`), so the source is re-checked
 // after it as after the key.
-template<typename T, elem_verdict V = elem_verdict::unchecked, typename Iter,
-         typename KeyFn, typename Better>
+template<typename T, typename Iter, typename KeyFn, typename Better>
 decltype(auto) builtin_extreme_elem_key(Iter&& iterable, KeyFn&& key,
                                         std::string_view name, Better&& better) {
-    detail::assert_elem_verdict<V, Iter>();
     if constexpr (!detail::lending_elem_source<Iter>) {
         detail::assert_copyable_elem<Iter>();
         return builtin_extreme_key<T>(std::forward<Iter>(iterable),
@@ -652,19 +630,17 @@ decltype(auto) builtin_extreme_elem_key(Iter&& iterable, KeyFn&& key,
     }
 }
 
-template<typename T = void, elem_verdict V = elem_verdict::unchecked, typename Iter,
-         typename KeyFn>
+template<typename T = void, typename Iter, typename KeyFn>
 decltype(auto) builtin_min_elem_key(Iter&& iterable, KeyFn&& key) {
-    return builtin_extreme_elem_key<detail::elem_t<T, Iter>, V>(
+    return builtin_extreme_elem_key<detail::elem_t<T, Iter>>(
         std::forward<Iter>(iterable),
         std::forward<KeyFn>(key), "min",
         [](const auto& a, const auto& b) { return a < b; });
 }
 
-template<typename T = void, elem_verdict V = elem_verdict::unchecked, typename Iter,
-         typename KeyFn>
+template<typename T = void, typename Iter, typename KeyFn>
 decltype(auto) builtin_max_elem_key(Iter&& iterable, KeyFn&& key) {
-    return builtin_extreme_elem_key<detail::elem_t<T, Iter>, V>(
+    return builtin_extreme_elem_key<detail::elem_t<T, Iter>>(
         std::forward<Iter>(iterable),
         std::forward<KeyFn>(key), "max",
         [](const auto& a, const auto& b) { return b < a; });

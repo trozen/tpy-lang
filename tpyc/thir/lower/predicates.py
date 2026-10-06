@@ -11,6 +11,7 @@ from __future__ import annotations
 import math
 from dataclasses import replace
 from ...parse.nodes import (
+    ResultForm,
     is_property_getter_read,
     FunctionLinkage,
     TpyArrayLiteral,
@@ -48,6 +49,7 @@ from ...parse.nodes import (
 from ...modules.defs import BINOP_TO_METHOD, get_dunder_cpp_template
 from ...modules.type_resolution import get_iterable_element_type
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
+from ...sema.context import expr_lends_storage
 from ...typesys import (
     RecordInfo,
     ConcreteFrameType,
@@ -142,6 +144,8 @@ from ...type_def_registry import (
 from ...coercions import BIGINT_NARROW, CoercionContext, context_free_wrap_template
 from ...value_category import (
     CONTAINER_LITERAL_NODES,
+    declared_call_const,
+    call_hands_back_value, call_value_optional,
     call_result_is_reference,
     call_returns_cpp_ref,
     FrameTempElem,
@@ -8548,6 +8552,9 @@ def _expr_is_const_source(src: TpyExpr, lc) -> bool:
     Shared by the decl (`_f1_is_const`) and walrus (`_walrus_src_is_const`)
     derivations so the two cannot drift; each adds the arms only it can see."""
     analyzer = lc.analyzer
+    declared = declared_call_const(analyzer, src)
+    if declared is not None:
+        return declared
     if isinstance(analyzer.get_expr_type(src), ReadonlyType):  # raw sema type
         return True
     # A readonly method's ref return binds `const T&` -- the method-call
@@ -9722,12 +9729,42 @@ def _own_declared_call_ret(call: 'TpyCall | TpyMethodCall') -> bool:
     `is_storage_form_source` keys owning tuple slots on it)."""
     return _declared_own_return(call, under_optional=False) is not None
 
+def _alias_call_source_ok(init: TpyExpr, analyzer) -> bool:
+    """A call whose result is a borrow of storage that outlives the
+    statement: a borrow-declared call (free or method) by sema's stamp, any
+    other free call by the same allow-list (`expr_lends_storage`) -- a
+    temporary or merely-lvalue argument fails closed, since the result could
+    be that temporary. An undeclared method keeps its own routes."""
+    if isinstance(init, TpyMethodCall):
+        return init.result_form is ResultForm.BORROW
+    return isinstance(init, TpyCall) and expr_lends_storage(analyzer, init)
+
+
+def _call_storage_optional_return(call: 'TpyCall | TpyMethodCall',
+                                  analyzer) -> 'OptionalType | None':
+    """The storage `std::optional<T>` a call hands back WHOLE, or None: an
+    Own-declared optional return (`_storage_optional_return_wide` over the
+    declared return, which sema strips off the call's type), or the
+    pointer-repr Optional a borrow-declared callee hands back by value
+    (`call_value_optional` under a by-value stamp). The latter's payload may
+    be an open `T`: the by-value result is the same `std::optional<T>` at
+    every instantiation, so it needs no record witness."""
+    fi = getattr(call, "resolved_function_info", None)
+    if fi is None:
+        return None
+    own = _storage_optional_return_wide(fi.return_type, analyzer)
+    if own is not None or not call.result_form.by_value:
+        return own
+    return call_value_optional(call)
+
+
 def _ptr_opt_borrow_call_ret(e: 'TpyCall | TpyMethodCall',
                              ret: 'TpyType | None') -> bool:
     """A call whose result is a ptr-repr `Optional[T]` the callee BORROWS
-    (its declared return is not `Own[...]`), i.e. already a `T*` at the call
-    site -- `callee_returns_own_ptr_optional`'s complement, which is what
-    picks the bare pass-through over the slot + `optional_to_ptr` lift.
+    (it does not hand back a value, `call_hands_back_value`), i.e.
+    already a `T*` at the call site -- `callee_returns_own_ptr_optional`'s
+    complement, which is what picks the bare pass-through over the slot +
+    `optional_to_ptr` lift.
 
     A `@property` getter's declared return is the same but its RESULT is
     not: the storage-ref convention spells it as the FIELD's
@@ -9737,7 +9774,7 @@ def _ptr_opt_borrow_call_ret(e: 'TpyCall | TpyMethodCall',
     so the decl pass-through asks `reads_storage_form_optional` itself and
     the other eight keep their answers."""
     return (isinstance(ret, OptionalType) and ret.uses_pointer_repr()
-            and not _own_declared_call_ret(e))
+            and not call_hands_back_value(e))
 
 
 def _call_iterable_lvalue(e: TpyCall, analyzer) -> bool:
@@ -11439,8 +11476,7 @@ def _positional_only_template(tmpl: str, n_args: int) -> bool:
     the subset `expand_cpp_template` can render with no receiver and no
     substitution context. A surviving named field (`{cpp}`, `{self}`, a type
     param) means sema's substitution did not fully resolve the template, so
-    the call rejects -- except `{lend}`, which the emitter fills from the
-    call's own `result_form`."""
+    the call rejects."""
     i, n = 0, len(tmpl)
     while i < n:
         c = tmpl[i]
@@ -11450,8 +11486,7 @@ def _positional_only_template(tmpl: str, n_args: int) -> bool:
                 continue
             close = tmpl.find("}", i + 1)
             field = tmpl[i + 1:close] if close != -1 else ""
-            if field != "lend" and (not field.isdigit()
-                                    or int(field) >= n_args):
+            if not field.isdigit() or int(field) >= n_args:
                 return False
             i = close + 1
         elif c == "}":

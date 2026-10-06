@@ -9,4 +9,5 @@ smaller_sum: 5
 overloads: True
 twice: 1.527180
 both: 2
+dict_get_value: 6
 record_len: 4

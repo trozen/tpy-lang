@@ -2555,8 +2555,8 @@ class Parser:
         native_function: bool = False
         native_mutates: str | None = None
         mutates_dec: ast.expr | None = None
+        borrow_facts: 'tuple[tuple[str, ...], tuple[str, ...]] | None' = None
         element_effect: str | None = None
-        copy_returns_warn: bool = False
         cpp_template: str | None = None
         is_property_getter = False
         is_property_setter = False
@@ -2580,12 +2580,9 @@ class Parser:
                     raise ParseError(f"@property deleter is not supported", dec)
             qname, arg = self._require_decorator(dec, f"method '{node.name}'")
             pos, kw = self._validate_decorator_args(qname, arg, dec)
-            if (qname in (qnames.NATIVE, qnames.CPP_TEMPLATE)
-                    and ("borrows" in kw or "element_of" in kw)):
-                raise ParseError(
-                    f"@{bare_name(qname)}(borrows=..., element_of=...) is not "
-                    f"supported on a method yet ('{node.name}'); declare it on "
-                    f"a free function", dec)
+            if qname in (qnames.NATIVE, qnames.CPP_TEMPLATE):
+                borrow_facts = (self._parse_borrow_facts(qname, kw, dec)
+                                or borrow_facts)
             if qname == qnames.STATICMETHOD:
                 is_staticmethod = True
             elif qname == qnames.CLASSMETHOD:
@@ -2617,8 +2614,6 @@ class Parser:
                     transient_dec = dec
                 if kw.get("checks_signals"):
                     checks_signals_dec = dec
-            elif qname == qnames.COPY_RETURNS_WARN:
-                copy_returns_warn = True
             elif qname in self._SEND_SYNC_DECORATOR_MAP:
                 # if_params_* kwargs are a generic-class-only feature; on a method
                 # they are rejected by the generic decorator-arg validation above
@@ -2964,9 +2959,10 @@ class Parser:
             native_function=native_function,
             native_mutates=native_mutates,
             native_element_effect=element_effect,
-            copy_returns_warn=copy_returns_warn,
             native_cpp_return_type=native_cpp_return_type,
             cpp_template=cpp_template,
+            declared_borrows=borrow_facts[0] if borrow_facts else None,
+            declared_element_of=borrow_facts[1] if borrow_facts else (),
             type_params=method_type_params,
             type_param_bounds=method_type_param_bounds,
             defaults=defaults,

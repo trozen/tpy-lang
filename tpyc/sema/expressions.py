@@ -26,7 +26,7 @@ from ..typesys import (
     PendingGenericInstanceType, unwrap_ref_type, unwrap_send_sync, make_ref, RefType,
     is_integer_type, is_any_int_type, is_union_or_optional_type,
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
-    unwrap_own, coro_struct_owner, is_readonly_span, collapse_tuple_own_elements, global_binds_by_reference, owned_tuple_storage_type,
+    unwrap_own, coro_struct_owner, is_readonly_span, collapse_tuple_own_elements, global_binds_by_reference, owned_element_type,
     ConcreteCoroType, make_concrete_gen, is_dyn_protocol,
     RecursiveAliasInstanceType, recursive_union_alternatives)
 from ..parse.nodes import GENEXPR_FUNC_PREFIX, op_spelling
@@ -850,8 +850,11 @@ class ExpressionAnalyzer:
             self.narrowing.invalidate_field_facts_for_call(expr)
             self.narrowing.invalidate_closure_written_facts()
         elif isinstance(expr, TpyMethodCall):
+            expr.result_form = ResultForm.NOT_DECLARED
             typ = self._concrete_generator_call(
                 expr, self.methods.analyze_method_call(expr))
+            if self.calls.stamp_result_borrow(expr, typ):
+                typ = ReadonlyType(unwrap_readonly(unwrap_ref_type(typ)))
             self._warn_frame_held_copies(expr)
             self.calls.defer_argument_copies(expr)
             self.calls.defer_copy_receiver_call(expr)
@@ -3450,6 +3453,7 @@ class ExpressionAnalyzer:
             return
         if bare.is_value_type():
             return
+        self.compat.check_unobserved_call_copy(elem, bare, "owned storage")
         self.compat.check_type_compatible(
             bare, OwnType(bare), "container literal element",
             elem.loc, source_expr=elem)
@@ -3617,21 +3621,14 @@ class ExpressionAnalyzer:
             for elem, et in zip(expr.elements, elem_types):
                 self._warn_storage_element_copy(elem, et)
 
-        # A container owns its elements, so an inferred TUPLE element type takes
-        # the owned storage form -- the same type the annotation rule forces the
-        # user to spell (`list[tuple[Box, Box]]`; `Own` there is rejected as
-        # redundant). Left uncollapsed, the element keeps its `Own`/`Ref`
-        # markers, which to_cpp() renders as reference members
-        # (`std::tuple<Box, Box&>`) -- so the same store aliased under a fixed
-        # Array and copied under a vector, purely by which one inference picked.
-        first_type = owned_tuple_storage_type(first_type)
-
         size = len(expr.elements)
 
         # Global context (no current function) -> ListType (std::vector)
-        # Keep IntLiteralType to allow coercion to int32 when annotation is present
+        # Keep IntLiteralType to allow coercion to int32 when annotation is present.
+        # A container owns its elements; the pending list below normalizes its
+        # own element (`PendingContainerType`), this concrete one is built here.
         if self.ctx.func.current_function is None:
-            return make_list(first_type)
+            return make_list(owned_element_type(first_type))
 
         # Function-local context -> create PendingListType for deferred resolution
         literal_id = self.ctx.literal_counter
@@ -4614,9 +4611,10 @@ class ExpressionAnalyzer:
                     f"[... for _ in range(n)]",
                     expr)
 
-        # Global context -> ListType (no deferred resolution)
+        # Global context -> ListType (no deferred resolution); a container
+        # owns its elements, as the pending list below does by construction.
         if self.ctx.func.current_function is None:
-            return make_list(first_type)
+            return make_list(owned_element_type(first_type))
 
         # Function-local context -> PendingListType for deferred resolution
         # Compute size if count is compile-time constant
@@ -4947,14 +4945,12 @@ class ExpressionAnalyzer:
         if kind == "set":
             self.type_ops.validate_hashable_container_elem(result_elem_type, "set element", expr.loc)
 
-        # Container elements are stored owned; collapse a per-element Own so the
-        # node field matches the storage slot. Own[DynProtocol] would otherwise
-        # render `unique_ptr<P>` here against a bare `P` slot. The unwrap only
-        # peels the OUTER Own, so a tuple element additionally takes its owned
-        # storage form -- otherwise its per-element markers survive and render as
-        # reference members, and the comprehension aliases where the equivalent
-        # literal copies.
-        result_elem_type = owned_tuple_storage_type(unwrap_own(result_elem_type))
+        # Container elements are stored owned, so the slot drops the source's
+        # Own / Ref markers: Own[DynProtocol] would render `unique_ptr<P>`
+        # against a bare `P` slot, a borrow-returning call's Ref[P] a vector
+        # of references, and a tuple's per-element markers reference members
+        # (the comprehension would alias where the equivalent literal copies).
+        result_elem_type = owned_element_type(result_elem_type)
         expr.result_elem_type = result_elem_type
         self._track_pending_elem_field(expr, "result_elem_type", result_elem_type)
 
@@ -5098,12 +5094,13 @@ class ExpressionAnalyzer:
             value_type = expected_value
 
         self.type_ops.validate_hashable_container_elem(key_type, "dict key", expr.loc)
-        # A dict owns its values, so a tuple value takes the owned storage form
-        # like every other container element. Left uncollapsed it keeps its
-        # per-element markers and renders a reference member into the map value
-        # (`ordered_map<K, std::tuple<A, B&>>`), which then ALIASES while the
-        # store's copy warning says otherwise.
-        value_type = owned_tuple_storage_type(value_type)
+        # A dict owns its keys and values, like every other container element.
+        # Left uncollapsed a borrow marker renders a reference into the map
+        # (`ordered_map<K, P&>`, `ordered_map<K, std::tuple<A, B&>>`), which
+        # then ALIASES -- or dangles -- while the store's copy warning says
+        # otherwise.
+        key_type = owned_element_type(key_type)
+        value_type = owned_element_type(value_type)
         expr.result_key_type = key_type
         expr.result_value_type = value_type
         self._track_pending_elem_field(expr, "result_key_type", key_type)

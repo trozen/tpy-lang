@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from ..codegen_cpp.context import CodeGenError
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
@@ -192,25 +193,24 @@ def test_scalar_projection_does_not_admit_temporary_owned_backing(artifacts: Art
     assert result.reason == "owned tuple projection needs existing local"
 
 
-@pytest.mark.parametrize("source,reason", [
-    ('''def boundary(flag: bool) -> int32:
+@pytest.mark.parametrize("source", [
+    '''def boundary(flag: bool) -> int32:
     if flag:
         pair = (Cell(1),)
     else:
         pair = (Cell(2),)
     return pair[0].value
-''', "missing tuple layout"),
-    ('''def boundary() -> int32:
+''',
+    '''def boundary() -> int32:
     pair = (Cell(1),)
     pair = (Cell(2),)
     return pair[0].value
-''', "missing tuple layout"),
+''',
 ])
-def test_owned_tuple_source_hoists_and_rebinds_remain_uncovered(source: str, reason: str) -> None:
+def test_owned_tuple_source_hoists_and_rebinds_refuse_before_mir(source: str) -> None:
+    # A rebound tuple local refers to its elements, so a fresh element has
+    # nothing to refer to: lowering refuses it and no THIR body reaches MIR
+    # (BUGS.md#pointer-repr-tuple-local-value-capture-literal).
     compiler, modules = _compile(SOURCE.split("def singleton", 1)[0] + source)
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    fn, = ctx.thir_functions.values()
-    result = lower_function(fn, MIRBodyId("boundary", fn.name),
-                            definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
-    assert isinstance(result, MIRNotCovered)
-    assert result.reason == reason
+    with pytest.raises(CodeGenError, match="assigned more than once"):
+        compiler.generate_code_and_thir(_entry(modules))

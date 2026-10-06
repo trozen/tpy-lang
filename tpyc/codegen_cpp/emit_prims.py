@@ -44,6 +44,7 @@ from ..sema.literal_utils import (fixed_int_literal_value_from_expr,
                                   literal_value_from_expr)
 from ..sema.registration import receiver_self_type
 from ..type_def_registry import is_fixed_int_type
+from ..value_category import declared_call_const
 from ..typesys import (
     BIGINT, FLOAT, AnyType, FloatLiteralType, IntLiteralType, LiteralType,
     NominalType, OptionalType,
@@ -154,6 +155,11 @@ def is_const_indirect(ctx: 'CodeGenContext', target_type: TpyType | None,
         if (isinstance(sema_var_type, OptionalType)
                 and isinstance(sema_var_type.inner, ReadonlyType)):
             return True
+    # A borrow-declared call's const-ness is the type sema gave it; the
+    # receiver and `@readonly` arms below do not apply to it.
+    declared = declared_call_const(ctx.analyzer, init) if init is not None else None
+    if declared is not None:
+        return declared
     # Readonly method call returns const T& -> variable needs const indirection.
     # (TypeParamRef returns are handled separately via val_or_cref_t at the local var decl.)
     if isinstance(init, TpyMethodCall):
@@ -1446,6 +1452,25 @@ def reject_polymorphic_rvalue_into_optional_local(
         f"'{name}: Optional[{target_type.inner.name}]' with rvalue rebind "
         f"is not yet supported; pass the value directly as an argument "
         f"or assign to a typed local of type '{sub.name}'.",
+        loc=loc
+    )
+
+
+def reject_value_element_in_rebound_tuple(
+        name: str, index: int, elem_type: TpyType,
+        loc: SourceLocation | None) -> NoReturn:
+    """A tuple local assigned more than once refers to its reference-type
+    elements, and this literal's element is a value of its own -- a fresh
+    object, a copy of a call result, or a variable moved at its last use --
+    with no variable left to refer to
+    (BUGS.md#pointer-repr-tuple-local-value-capture-literal). The advice
+    names the one rewrite that works for every such element."""
+    raise CodeGenError(
+        f"tuple variable '{name}' is assigned more than once, so it refers "
+        f"to its '{elem_type}' elements instead of holding them, and "
+        f"element {index} here would have to be held by the tuple; this is "
+        f"not supported yet -- use a separate tuple variable for this "
+        f"assignment.",
         loc=loc
     )
 
