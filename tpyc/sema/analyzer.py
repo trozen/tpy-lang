@@ -477,10 +477,6 @@ class SemanticAnalyzer:
         return self.ctx.imported_names
 
     @property
-    def list_literals(self) -> dict:
-        return self.ctx.list_literals
-
-    @property
     def global_ns(self):
         return self.ctx.global_ns
 
@@ -1943,8 +1939,8 @@ class SemanticAnalyzer:
         inner = self.ctx.func
         enclosing.pending_composite_exprs.extend(inner.pending_composite_exprs)
         inner.pending_composite_exprs.clear()
-        enclosing.pending_elem_list_exprs.extend(inner.pending_elem_list_exprs)
-        inner.pending_elem_list_exprs.clear()
+        enclosing.pending_container_exprs.extend(inner.pending_container_exprs)
+        inner.pending_container_exprs.clear()
         enclosing.pending_elem_type_fields.extend(inner.pending_elem_type_fields)
         inner.pending_elem_type_fields.clear()
 

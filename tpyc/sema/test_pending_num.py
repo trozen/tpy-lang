@@ -10,23 +10,25 @@ import pytest
 
 from .. import get_lib_dir
 from ..compiler import Compiler
-from ..diagnostics import Scope, SemanticError
+from ..codegen_cpp.context import ThirRejectError
+from ..diagnostics import DiagnosticLevel, Scope, SemanticError
 from ..parse import (Parser, SourceLocation, TpyArrayLiteral, TpyCoerce,
                      TpyFloatLiteral, TpyIntLiteral, TpyName, TpyStrLiteral,
                      TpyTupleLiteral, TpyVarDecl)
 from ..prescan import (fold_int_constant, int_constant_too_wide,
                        literal_constant, scan_first_bindings,
                        scan_pending_num_locals)
-from ..typesys import (BIGINT, FLOAT, FLOAT32, INT8, INT16, INT32, INT64, STR,
+from ..typesys import (BIGINT, ELEM, FLOAT, FLOAT32, INT8, INT16, INT32, INT64, STR,
                        UNKNOWN_ELEMENT, FloatLiteralType, IntLiteralType,
                        ListLiteralInfo, PendingListType, PendingNumType,
                        TupleType, TypeRegistry, UINT8, UINT32, UINT64,
                        make_list)
 from .compatibility import TypeCompatibility
 from .context import SemanticContext
-from .pending_num import (NO_COMMON, PENDING_NUM_COERCION, ListCells,
+from .pending_num import (NO_COMMON, PENDING_NUM_COERCION, ContainerCells,
                           PendingNumCell, PendingNums,
-                          _splice_out, lub_int, pending_join, tree_leaves)
+                          Entry, _splice_out, lub_int, pending_join,
+                          tree_leaves)
 
 
 def _pending(body: str, params: str = "") -> frozenset[str]:
@@ -280,9 +282,17 @@ def _elem_pend() -> PendingNums:
     return compat.pend
 
 
-def _one(pend: PendingNums, cell: PendingNumCell) -> ListCells:
+def _a_list() -> ListLiteralInfo:
+    """The record of a list literal whose cells a test makes by hand."""
+    return ListLiteralInfo(literal_id=0, expr=TpyArrayLiteral([]),
+                           element_type=UNKNOWN_ELEMENT, size=0)
+
+
+def _one(pend: PendingNums, cell: PendingNumCell) -> ContainerCells:
     """The cells of a list of scalars whose one cell is `cell`."""
-    return ListCells(None, pend.elem_leaf(cell), (cell,), ((),))
+    return ContainerCells(cell.record,
+                          PendingListType(pend.elem_leaf(cell), 0, 0),
+                          (cell,), ((ELEM,),))
 
 
 def _list_decl(pend: PendingNums, *values: int) -> TpyVarDecl:
@@ -310,8 +320,8 @@ def _list_decl(pend: PendingNums, *values: int) -> TpyVarDecl:
 def test_list_at_a_container_that_would_not_hold_a_value(
         resolved: bool, message: str) -> None:
     pend = _elem_pend()
-    cell = pend.new_elem_cell("ys", 0, _list_decl(pend, 1, 300), False,
-                              no_base=False)
+    cell = pend.new_elem_cell("ys", _a_list(), _list_decl(pend, 1, 300), False,
+                              no_base=False, path=(ELEM,))
     refusal = pend.context_refusal(_one(pend, cell), make_list(INT8),
                                    "passed", None, resolved)
     assert re.search(message, refusal)
@@ -320,7 +330,7 @@ def test_list_at_a_container_that_would_not_hold_a_value(
 def test_list_at_two_containers_names_both() -> None:
     pend = _elem_pend()
     decl = _list_decl(pend, 1)
-    cell = pend.new_elem_cell("ys", 0, decl, False, no_base=False)
+    cell = pend.new_elem_cell("ys", _a_list(), decl, False, no_base=False, path=(ELEM,))
     pend.add_store(cell, INT64, decl)
     pend.settle({cell.cid}, use=decl, what="passed as list[int64]")
     cell.context = (make_list(INT64), decl, "passed")
@@ -340,7 +350,7 @@ def test_list_at_two_containers_names_both() -> None:
 def test_typed_seeded_list_is_decided_at_its_first_binding() -> None:
     pend = _elem_pend()
     decl = _list_decl(pend, 1)
-    cell = pend.new_elem_cell("ys", 0, decl, False, no_base=True)
+    cell = pend.new_elem_cell("ys", _a_list(), decl, False, no_base=True, path=(ELEM,))
     pend.add_store(cell, INT8, decl)
     pend.decide_at_birth(cell, decl)
     assert cell.settled == INT8
@@ -362,11 +372,11 @@ def _empty_list(pend: PendingNums, name: str = "ys", literal_id: int = 0,
     `source`, a second name bound to that list's record."""
     expr = TpyArrayLiteral([])
     if source is not None:
-        expr = pend.ctx.list_literals[source].expr
+        expr = pend.ctx.container_literals[source].expr
     else:
         pend.ctx.func.var_decl_by_name[name] = TpyVarDecl(
             name, None, expr, loc=SourceLocation(3, 0))
-    pend.ctx.list_literals[literal_id] = ListLiteralInfo(
+    pend.ctx.container_literals[literal_id] = ListLiteralInfo(
         literal_id=literal_id, expr=expr, element_type=UNKNOWN_ELEMENT,
         size=0, variable_name=name, source_literal_id=source)
     pend.ctx.func.pending_resolutions.append(literal_id)
@@ -405,7 +415,7 @@ def test_empty_list_seeded_then_refused(seed: tuple, store: tuple,
     ys = _empty_list(pend)
     kind, what = seed
     if kind == "store":
-        assert pend.seed_by_store(ys, what, None, _at(4)) is not None
+        assert pend.seed_by_store(ys, Entry(((what, None),)), _at(4)) is not None
     else:
         pend.seed_by_context(ys, what, _at(4), "passed")
     cell = pend.list_cell(ys)
@@ -421,7 +431,8 @@ def test_empty_list_literal_store_leaves_the_element_open() -> None:
     ys = _empty_list(pend)
     one = TpyIntLiteral(1)
     pend.ctx.set_expr_type(one, IntLiteralType(1))
-    cell = pend.seed_by_store(ys, IntLiteralType(1), one, _at(4)).scalar
+    cell = pend.seed_by_store(ys, Entry(((IntLiteralType(1), one),)),
+                              _at(4)).scalar
     assert cell is not None and cell.settled is None
     pend.elem_store(cell, INT64, None, _at(5))
     pend.settle({cell.cid})
@@ -431,8 +442,8 @@ def test_empty_list_literal_store_leaves_the_element_open() -> None:
 def test_empty_list_non_numeric_store_seeds_no_cell() -> None:
     pend = _elem_pend()
     ys = _empty_list(pend)
-    assert pend.seed_by_store(ys, STR, None, _at(4)) is None
-    assert pend.ctx.list_literals[0].elem_cells is None
+    assert pend.seed_by_store(ys, Entry(((STR, None),)), _at(4)) is None
+    assert pend.ctx.container_literals[0].elem_cells is None
 
 
 def test_empty_list_cell_reaches_every_name_bound_to_it() -> None:
@@ -441,7 +452,7 @@ def test_empty_list_cell_reaches_every_name_bound_to_it() -> None:
     zs = _empty_list(pend, "zs", 1, source=0)
     # Seeded through the second name: both records share the cell, and the
     # diagnostics name the first binding.
-    cell = pend.seed_by_store(zs, INT8, None, _at(5)).scalar
+    cell = pend.seed_by_store(zs, Entry(((INT8, None),)), _at(5)).scalar
     assert cell is not None and cell.name == "ys"
     assert pend.list_cell(ys) is cell and pend.list_cell(zs) is cell
     assert pend.seedable(ys) is None
@@ -491,7 +502,7 @@ def take8(v: list[int8]) -> None: pass
             "def main() -> None:\n    ys = []\n    ys.append(1)\n"
             "    def inner() -> None:\n        ys.append(a64())\n"
             "    inner()\n",
-            r"^'ys' holds int32 elements since line 8 \(read by the nested "
+            r"^'ys' holds int32 elements since line 8 \(captured by the nested "
             r"function 'inner'\), and this value is int64; annotate its first "
             r"binding: ys: list\[int64\] = \[\]$",
             id="capture-then-wider"),
@@ -621,6 +632,72 @@ def rows32(v: list[list[int32]]) -> None: pass
             r"\(tuple element 1\); the list is passed as "
             r"list\[tuple\[int64, int32\]\], so the value must be int32$",
             id="member-context-then-wider-extend"),
+        # A list's `remove` / `index` / `count` and `in` are lookups: a
+        # value the element holds leaves it open
+        # (`test_list_lookup_leaves_cells_open`); any other decides the list
+        # first and is then checked as against a decided list, which refuses
+        # a wider argument to the methods.
+        pytest.param(
+            "def main() -> None:\n    xs = [1, 2]\n    xs.remove(a64())\n",
+            r"^Type mismatch in argument 'value': expected int32, got int64$",
+            id="remove-wider-lookup"),
+        pytest.param(
+            "def main() -> None:\n    xs = [1, 2]\n    i = xs.index(a64())\n",
+            r"^Type mismatch in argument 'value': expected int32, got int64$",
+            id="index-wider-lookup"),
+        pytest.param(
+            "def main() -> None:\n    xs = [1, 2]\n    n = xs.count(a64())\n",
+            r"^Type mismatch in argument 'value': expected int32, got int64$",
+            id="count-wider-lookup"),
+        # A looked-up value the element does not hold -- a wider width, an
+        # `int`, the other family, a part that is no single number --
+        # decides the list first and is compared, never converted down.
+        pytest.param(
+            "def main() -> None:\n    xs = [1, 2]\n    b = a64() in xs\n"
+            "    xs.append(a64())\n",
+            r"^'xs' holds int32 elements since line 8 \(an operand of "
+            r"'in'\), and this value is int64",
+            id="in-wider-decides"),
+        pytest.param(
+            "def main() -> None:\n    xs = [1, 2]\n    n: int = 5\n"
+            "    b = n in xs\n    xs.append(a64())\n",
+            r"^'xs' holds int32 elements since line 9 \(an operand of "
+            r"'in'\), and this value is int64",
+            id="in-bigint-decides"),
+        pytest.param(
+            "def main() -> None:\n    xs = [1, 2]\n    n: int = 5\n"
+            "    k = xs.count(n)\n    xs.append(a64())\n",
+            r"^'xs' holds int32 elements since line 9 \(a call to "
+            r"'count\(\)'\), and this value is int64",
+            id="count-bigint-decides"),
+        pytest.param(
+            "def main() -> None:\n    xs = [1, 2]\n    b = 1.5 in xs\n"
+            "    xs.append(a64())\n",
+            r"^'xs' holds int32 elements since line 8 \(an operand of "
+            r"'in'\), and this value is int64",
+            id="in-other-family-decides"),
+        pytest.param(
+            "def main() -> None:\n    xs = [(1, 2)]\n    b = (1, 2) in xs\n"
+            "    xs.append((a64(), 3))\n",
+            r"^'xs' holds tuple\[int32, int32\] elements since line 8 \(an "
+            r"operand of 'in'\)",
+            id="in-tuple-element-decides"),
+        # An `or` whose value is bound (not a truth test) is an alias the
+        # list is decided at.
+        pytest.param(
+            "def main() -> None:\n    ys = [1]\n    other = [2]\n"
+            "    zs = ys or other\n    ys.append(a64())\n",
+            r"^'ys' holds int32 elements since line 9 \(an operand of "
+            r"'or'\), and this value is int64",
+            id="or-value-decides"),
+        # `sort` bounds the element (`def sort[T: Comparable]`) and declares
+        # no effect: it decides the list first.
+        pytest.param(
+            "def main() -> None:\n    xs = [1, 2]\n    xs.sort()\n"
+            "    xs.append(a64())\n",
+            r"^'xs' holds int32 elements since line 8 \(a call to "
+            r"'sort\(\)'\), and this value is int64",
+            id="sort-decides"),
     ],
 )
 def test_leaf_refusal_wording(body: str, message: str) -> None:
@@ -643,13 +720,14 @@ def test_non_numeric_member_takes_no_cell() -> None:
     pend = _elem_pend()
     one, a = TpyIntLiteral(1), TpyStrLiteral("a")
     value = _tuple_literal(pend, one, a)
-    tree = pend.new_list_tree("ms", 0, None,
-                              [(TupleType((IntLiteralType(1), STR)), value)],
-                              None, _at(3))
-    assert isinstance(tree, TupleType) and tree.element_types[1] == STR
+    tree = pend.new_tree("ms", _a_list(), None,
+                         [Entry(((TupleType((IntLiteralType(1), STR)), value),))],
+                         None, _at(3))
+    member = tree.element_type
+    assert isinstance(member, TupleType) and member.element_types[1] == STR
     [(path, leaf)] = tree_leaves(tree)
-    assert path == (0,)
-    assert pend.ctx.pending_num_cells[min(leaf.cells)].path == (0,)
+    assert path == (ELEM, 0)
+    assert pend.ctx.pending_num_cells[min(leaf.cells)].path == (ELEM, 0)
 
 
 def test_empty_list_seeded_by_a_tuple() -> None:
@@ -657,14 +735,15 @@ def test_empty_list_seeded_by_a_tuple() -> None:
     ys = _empty_list(pend)
     one = TpyIntLiteral(1)
     pend.ctx.set_expr_type(one, IntLiteralType(1))
-    lc = pend.seed_by_store(ys, TupleType((IntLiteralType(1), INT8)),
-                            TpyTupleLiteral([one, TpyName("k")]), _at(4))
+    lc = pend.seed_by_store(ys, Entry(((TupleType((IntLiteralType(1), INT8)),
+                                        TpyTupleLiteral([one, TpyName("k")])),)),
+                            _at(4))
     assert lc is not None and lc.scalar is None
     literal, typed = lc.cells
     # Each member is born as a list of scalars is: the literal one open at
     # the default, the typed one decided at the store.
-    assert literal.settled is None and literal.path == (0,)
-    assert typed.settled == INT8 and typed.path == (1,)
+    assert literal.settled is None and literal.path == (ELEM, 0)
+    assert typed.settled == INT8 and typed.path == (ELEM, 1)
     pend.elem_store(literal, INT64, None, _at(5))
     pend.settle({literal.cid})
     assert literal.settled == INT64
@@ -676,23 +755,23 @@ def test_empty_list_seeded_by_a_row() -> None:
     one = TpyIntLiteral(1)
     pend.ctx.set_expr_type(one, IntLiteralType(1))
     row = TpyArrayLiteral([one])
-    pend.ctx.list_literals[1] = ListLiteralInfo(
+    pend.ctx.container_literals[1] = ListLiteralInfo(
         literal_id=1, expr=row, element_type=IntLiteralType(1), size=1)
     pend.ctx.func.pending_resolutions.append(1)
-    lc = pend.seed_by_store(ys, PendingListType(IntLiteralType(1), 1, 1),
-                            row, _at(4))
+    lc = pend.seed_by_store(
+        ys, Entry(((PendingListType(IntLiteralType(1), 1, 1), row),)), _at(4))
     assert lc is not None
     # The row literal takes the row's cell; the two are one row group.
-    row_info = pend.ctx.list_literals[1]
+    row_info = pend.ctx.container_literals[1]
     assert pend.list_cell(PendingListType(row_info.element_type, 1, 1)) \
         is lc.cells[0]
-    assert lc.cells[0].path == ("row",)
+    assert lc.cells[0].path == (ELEM, ELEM)
     assert row_info.row_group == [1]
 
 
 def test_float_list_at_an_int_container_names_no_fix() -> None:
     pend = _elem_pend()
-    cell = pend.new_elem_cell("fs", 0, None, True, no_base=False)
+    cell = pend.new_elem_cell("fs", _a_list(), None, True, no_base=False, path=(ELEM,))
     assert pend.context_refusal(_one(pend, cell), make_list(INT64),
                                 "passed") == (
         "'fs' holds float values, and it is passed here as list[int64]")
@@ -868,3 +947,307 @@ def test_assert_settled_refuses_a_surviving_placeholder() -> None:
     with pytest.raises(AssertionError,
                        match="conversion at line 4 was left unresolved"):
         pend.assert_settled(_body_holding(_placeholder(4)))
+
+
+_DICT_SET_PRELUDE = """from tpy import int8, int32, int64
+def a8() -> int8: return 100
+def a64() -> int64: return 1099511627776
+def take32(d: dict[str, int32]) -> None: pass
+"""
+
+
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        pytest.param(
+            "def main() -> None:\n    d = {'a': 1}\n    take32(d)\n"
+            "    d['c'] = a64()\n",
+            r"^'d' holds int32 values since line 7 \(passed as "
+            r"dict\[str, int32\]\), and this value is int64; the dict is "
+            r"passed as dict\[str, int32\], so the value must be int32$",
+            id="dict-context-then-wider"),
+        pytest.param(
+            "def main() -> None:\n    d = {}\n    d['a'] = a8()\n"
+            "    d['b'] = a64()\n",
+            r"^'d' holds int8 values \(line 7\), and this value is int64; "
+            r"annotate its first binding: d: dict\[str, int64\] = \{\}$",
+            id="empty-dict-typed-first-store"),
+        pytest.param(
+            "def main() -> None:\n    s = {a8()}\n    s.add(a64())\n",
+            r"^'s' holds int8 elements \(line 6\), and this value is int64; "
+            r"annotate its first binding: s: set\[int64\] = \{\.\.\.\}$",
+            id="set-typed-seed"),
+        pytest.param(
+            "def main() -> None:\n    s = {1}\n    for v in s:\n"
+            "        print(v)\n    s.add(a64())\n",
+            r"^'s' holds int32 elements since line 7 \(a loop iterable\), "
+            r"and this value is int64; annotate its first binding: "
+            r"s: set\[int64\] = \{\.\.\.\}$",
+            id="set-loop-then-wider"),
+        pytest.param(
+            "def main() -> None:\n    d = {'a': 1}\n"
+            "    print(d.get('b', a64()))\n",
+            r"^Type mismatch in argument 'default': expected int32, got "
+            r"int64$",
+            id="wider-get-default"),
+        pytest.param(
+            "def main() -> None:\n    k = {1: 'x'}\n    print(a64() in k)\n",
+            r"^Type mismatch in membership test \(expected int32\): "
+            r"expected int32, got int64$",
+            id="wider-lookup-key"),
+        pytest.param(
+            "def main() -> None:\n    s = {1}\n    print(a64() in s)\n",
+            r"^Type mismatch in membership test \(expected int32\): "
+            r"expected int32, got int64$",
+            id="set-wider-in"),
+        # An `int` looked up decides the dict or set first. `in` then
+        # compares it as it is; `discard` checks it against the decided
+        # element as a value to store, narrowing it with a check that
+        # panics on a value the element cannot hold
+        # (BUGS.md#list-lookup-method-arg-converts).
+        pytest.param(
+            "def main() -> None:\n    k = {1: 'x'}\n    n: int = 5\n"
+            "    b = n in k\n    k[a64()] = 'y'\n",
+            r"^Type mismatch in dict key: expected int32, got int64$",
+            id="dict-bigint-in-decides"),
+        pytest.param(
+            "def main() -> None:\n    s = {1}\n    n: int = 5\n"
+            "    b = n in s\n    s.add(a64())\n",
+            r"^'s' holds int32 elements since line 8 \(an operand of 'in'\)",
+            id="set-bigint-in-decides"),
+        pytest.param(
+            "def main() -> None:\n    s = {1}\n    n: int = 5\n"
+            "    s.discard(n)\n    s.add(a64())\n",
+            r"^'s' holds int32 elements since line 8 \(a call to "
+            r"'discard\(\)'\)",
+            id="set-bigint-discard-decides"),
+        pytest.param(
+            "def main() -> None:\n    d1 = {'a': 1}\n    d2 = {'b': a64()}\n"
+            "    z = d1 if len(d1) > 0 else d2\n",
+            r"^Incompatible types in ternary expression: 'dict\[str, int32\]'"
+            r" and 'dict\[str, int64\]'$",
+            id="select-of-two-cell-dicts"),
+        pytest.param(
+            "def main() -> None:\n    d = {'a': 1}\n    d = {'b': 1.5}\n",
+            r"^'d' is bound to int elements at line 6 and to float elements "
+            r"here",
+            id="int-dict-rebound-to-floats"),
+        # An int stored into, or defaulted out of, a float container mixes
+        # the families.
+        pytest.param(
+            "def main() -> None:\n    d = {'a': 0.5}\n    d['b'] = 1\n",
+            r"^dict 'd' mixes int and float values, and CPython keeps each "
+            r"value's own type; write 1\.0 instead of 1, or annotate the "
+            r"container, e\.g\. d: dict\[str, float\] = \{\.\.\.\}$",
+            id="int-store-into-float-dict"),
+        pytest.param(
+            "def main() -> None:\n    s = {0.5}\n    s.add(1)\n",
+            r"^set 's' mixes int and float values, and CPython keeps each "
+            r"value's own type; write 1\.0 instead of 1, or annotate the "
+            r"container, e\.g\. s: set\[float\] = \{\.\.\.\}$",
+            id="int-add-into-float-set"),
+        pytest.param(
+            "def main() -> None:\n    fd = {'a': 0.5}\n"
+            "    print(fd.get('b', 0))\n",
+            r"^dict 'fd' mixes int and float values, and CPython keeps each "
+            r"value's own type; write 0\.0 instead of 0",
+            id="int-get-default-of-float-dict"),
+        pytest.param(
+            "def main() -> None:\n    s = set()\n    s.add(a8())\n"
+            "    s.add(a64())\n",
+            r"^'s' holds int8 elements \(line 7\), and this value is int64; "
+            r"annotate its first binding: s: set\[int64\] = set\(\)$",
+            id="empty-set-typed-first-add"),
+        pytest.param(
+            "def main() -> None:\n    d = {'a': 1}\n"
+            "    for v in d.values():\n        print(v)\n"
+            "    d['b'] = a64()\n",
+            r"^'d' holds int32 values since line 7 \(a loop iterable\), and "
+            r"this value is int64; annotate its first binding: "
+            r"d: dict\[str, int64\] = \{\.\.\.\}$",
+            id="values-loop-then-wider"),
+        pytest.param(
+            "def main() -> None:\n    d1 = {'a': 1}\n    d2 = {'b': 2}\n"
+            "    z = d1 if len(d1) > 0 else d2\n    print(z)\n"
+            "    d1['c'] = a64()\n",
+            r"^'d1' holds int32 values since line 8 \(a conditional "
+            r"expression arm\), and this value is int64",
+            id="select-of-two-cell-dicts-then-wider"),
+        pytest.param(
+            "def main() -> None:\n    k = {1: 'x'}\n    print(k[a64()])\n",
+            r"^Type mismatch in dict key: expected int32, got int64$",
+            id="wider-subscript-key"),
+        pytest.param(
+            "def main() -> None:\n    d = {1: 'x'}\n    print(d.get(a64()))\n",
+            r"^No matching overload for 'get' with argument types \(int64\)$",
+            id="wider-get-key"),
+        # An update's source rows must be the receiver's: no conversion makes
+        # one C++ list type of another.
+        pytest.param(
+            "def main() -> None:\n    d = {'a': 1}\n"
+            "    print(d.pop('x', a64()))\n",
+            r"^Type mismatch in argument 'default': expected int32, got "
+            r"int64$",
+            id="wider-pop-default"),
+        # Each stub method's declared effect: a looked-up argument must fit
+        # the cells (a fitting one leaves them open:
+        # `test_dict_set_effect_leaves_cells_open`), an inserted one widens
+        # them, which a typed container met afterwards shows.
+        pytest.param(
+            "def main() -> None:\n    s = {1}\n    s.discard(a64())\n",
+            r"^Type mismatch in argument 'value': expected int32, got int64$",
+            id="set-discard-lookup"),
+        pytest.param(
+            "def main() -> None:\n    s = {1}\n    s.remove(a64())\n",
+            r"^Type mismatch in argument 'value': expected int32, got int64$",
+            id="set-remove-lookup"),
+        pytest.param(
+            "def main() -> None:\n    d = {1: 'x'}\n    del d[a64()]\n",
+            r"^Type mismatch in dict key: expected int32, got int64$",
+            id="dict-delitem-lookup"),
+        # `update` from a dict literal as an empty dict's first evidence
+        # stops with today's ordinary mismatch against the still-unknown
+        # parts; pinned so a change to it is seen.
+        pytest.param(
+            "def main() -> None:\n    d = {}\n    d.update({'a': 'b'})\n",
+            r"^Type mismatch in argument 'other': expected \?\?\?, got str$",
+            id="empty-dict-update-from-literal"),
+        # A list's `__delitem__` takes an index, no element to look up: the
+        # delete decides the list first.
+        pytest.param(
+            "def main() -> None:\n    xs = [1, 2]\n    del xs[0]\n"
+            "    xs.append(a64())\n",
+            r"^'xs' holds int32 elements since line 7 \(a 'del' key\), and "
+            r"this value is int64",
+            id="list-del-decides"),
+        pytest.param(
+            "def takeset32(s: set[int32]) -> None: pass\n"
+            "def main() -> None:\n    s = {1}\n"
+            "    s.symmetric_difference_update({a64()})\n    takeset32(s)\n",
+            r"^'s' holds int64 elements, and it is passed here as set\[int32\]",
+            id="set-symmetric-difference-update-inserts"),
+        pytest.param(
+            "def takeset32(s: set[int32]) -> None: pass\n"
+            "def main() -> None:\n    s = {1}\n    s ^= {a64()}\n"
+            "    takeset32(s)\n",
+            r"^'s' is stored as set\[int64\] at line 8 and passed as "
+            r"set\[int32\] here",
+            id="set-ixor-inserts"),
+        pytest.param(
+            "def main() -> None:\n    d = {'a': 1}\n    d |= {'b': a64()}\n"
+            "    take32(d)\n",
+            r"^'d' holds int64 values, and it is passed here as "
+            r"dict\[str, int32\]",
+            id="dict-ior-inserts"),
+        pytest.param(
+            "def takelist32(xs: list[int32]) -> None: pass\n"
+            "def main() -> None:\n    xs = [1]\n    xs.insert(0, a64())\n"
+            "    takelist32(xs)\n",
+            r"^'xs' holds int64 elements, and it is passed here as "
+            r"list\[int32\]",
+            id="list-insert-inserts"),
+        # A stub method that names the element and declares no effect
+        # decides the element first.
+        pytest.param(
+            "def main() -> None:\n    s = {1}\n"
+            "    s.intersection_update({1})\n    s.add(a64())\n",
+            r"^'s' holds int32 elements since line 7 \(a call to "
+            r"'intersection_update\(\)'\), and this value is int64",
+            id="set-undeclared-method-decides"),
+        pytest.param(
+            "def main() -> None:\n    g = {'a': [1]}\n    g['c'] = [a64()]\n"
+            "    h: dict[str, list[int32]] = {'z': [3]}\n    g.update(h)\n",
+            r"^'g' holds list\[int64\] values, and it is stored here as "
+            r"list\[int32\] \(row element\)",
+            id="update-from-narrower-typed-rows"),
+    ],
+)
+def test_dict_set_refusal_wording(body: str, message: str) -> None:
+    """A dict or set literal's leaves are refused in the words a list's
+    element is, naming the key, value or element."""
+    with pytest.raises(SemanticError, match=message):
+        Compiler.from_source(_DICT_SET_PRELUDE + body,
+                             lib_dirs=[get_lib_dir() / "tpy"]).compile()
+
+
+def test_tuple_store_into_a_cell_dict_copies_per_member() -> None:
+    """A tuple literal stored into a dict whose value cells are still open
+    copies its reference members as a declared dict's store does."""
+    source = _DICT_SET_PRELUDE + """class P:
+    def __init__(self, x: int) -> None:
+        self.x = x
+def main() -> None:
+    t = {"a": (P(1), 1)}
+    w = P(5)
+    t["b"] = (w, 2)
+    w.x = 50
+"""
+    comp = Compiler.from_source(source, lib_dirs=[get_lib_dir() / "tpy"])
+    # The store itself is not lowered yet
+    # (BUGS.md#setitem-dict-tuple-ref-member); the warning is sema's.
+    try:
+        comp.compile()
+    except ThirRejectError:
+        pass
+    entry = next(m for m in comp.modules.values() if m.is_entry_point)
+    warnings = [d.message for d in entry.analyzer.diagnostics
+                if d.level is DiagnosticLevel.WARNING]
+    assert any(w.startswith("copies P into container (tuple element 0)")
+               for w in warnings), warnings
+
+
+@pytest.mark.parametrize("body", [
+    pytest.param("    s = {1}\n    s.discard(1)\n    s.add(a64())\n",
+                 id="set-discard"),
+    pytest.param("    s = {1}\n    s.remove(1)\n    s.add(a64())\n",
+                 id="set-remove"),
+    # `del d[k]` is the stub's `__delitem__`, a lookup of the key (a list's
+    # `del xs[i]` takes an index and still decides the list first).
+    pytest.param("    d = {1: 2}\n    del d[1]\n    d[a64()] = a64()\n",
+                 id="dict-del-lookup"),
+    pytest.param("    d = {1: 2}\n    b = a8() in d\n    n = d[1]\n"
+                 "    m = d.get(a8())\n    d[a64()] = a64()\n",
+                 id="dict-in-getitem-get"),
+    pytest.param("    s = {1}\n    b = 2 in s\n    s.add(a64())\n",
+                 id="set-in"),
+    # A typed value of the part's own width is held losslessly.
+    pytest.param("    n: int32 = 1\n    d = {1: 2}\n    b = n in d\n"
+                 "    m = d.get(n)\n    d[a64()] = a64()\n",
+                 id="dict-equal-typed-key"),
+    pytest.param("    n: int32 = 1\n    s = {1}\n    b = n in s\n"
+                 "    s.discard(n)\n    s.add(a64())\n",
+                 id="set-equal-typed-element"),
+])
+def test_dict_set_effect_leaves_cells_open(body: str) -> None:
+    """A looked-up argument that fits leaves the cells open: a wider store
+    after it widens them."""
+    Compiler.from_source(_DICT_SET_PRELUDE + "def main() -> None:\n" + body,
+                         lib_dirs=[get_lib_dir() / "tpy"]).compile()
+
+
+@pytest.mark.parametrize("body", [
+    pytest.param("    xs.remove(1)\n    xs.remove(a8())\n", id="remove"),
+    pytest.param("    i = xs.index(2)\n    j = xs.index(a8())\n", id="index"),
+    pytest.param("    n = xs.count(2)\n    m = xs.count(a8())\n", id="count"),
+    pytest.param("    b = 2 in xs\n    c = a8() not in xs\n", id="in"),
+    pytest.param("    n: int32 = 2\n    b = n in xs\n    k = xs.count(n)\n"
+                 "    xs.remove(n)\n", id="equal-typed"),
+    # A literal-seeded local reaches the lookup as an int32 already, so it
+    # is an equal-typed operand, not a pending one, and the list stays
+    # open; pinned so a change to either rule is seen.
+    pytest.param("    x = 1\n    b = x in xs\n    k = xs.count(x)\n",
+                 id="literal-seeded-local"),
+    # A truth test reads the length only, and so does a list operand of
+    # an `and` / `or` that is one.
+    pytest.param("    if xs:\n        print(1)\n", id="truth-test"),
+    pytest.param("    c = len(xs) > 1\n    if xs and c:\n        print(1)\n"
+                 "    while c or xs:\n        c = False\n        break\n",
+                 id="and-or-truth-operand"),
+])
+def test_list_lookup_leaves_cells_open(body: str) -> None:
+    """A list's lookup of a fitting value (a literal, a narrower typed
+    value) and a truth test leave its element open: a wider store after
+    them widens it."""
+    source = (_DICT_SET_PRELUDE + "def main() -> None:\n    xs = [1, 2, 3]\n"
+              + body + "    xs.append(a64())\n")
+    Compiler.from_source(source, lib_dirs=[get_lib_dir() / "tpy"]).compile()

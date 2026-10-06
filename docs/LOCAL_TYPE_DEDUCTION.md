@@ -168,7 +168,7 @@ the literal defaults to (`[1]` at a `list[int64]` parameter). For a
 non-empty list literal whose element holds numbers, bound to a function
 local, each numeric leaf of the element -- the element itself, a tuple
 member, a nested row's element at each depth -- is a pending-number cell
-the literal owns (`tpyc/sema/pending_num.py`, `PendingNums.new_list_tree`):
+the literal owns (`tpyc/sema/pending_num.py`, `PendingNums.new_tree`):
 every copy of the pending list type names the cells, so an element read is
 typed by them and follows whatever decides them later; the rows of a nested
 list share one cell per depth and one representation. The values written and stored are
@@ -181,14 +181,16 @@ ask for the list by node (`PendingNums.list_sink`) gets the cell settled
 first, and a wider use after that is an error naming it. An empty list
 bound to a function local gets its cell at its first numeric store or
 typed container, as if that value had been written in the literal
-(`PendingNums.seed_by_store` / `seed_by_context`).
+(`PendingNums.seed_by_store` / `seed_by_context`). A dict or set literal
+bound to a function local, written or empty, takes cells at its key, value
+or element leaves the same way (its tree is the container type itself;
+`PendingNums.container_cells`).
 
-The lists no cell covers -- module-level lists, dict and set literals --
-keep the read guard: each use was typed
-from the pending literal as it stood, so a use that took an element at the
-default width -- an unannotated local, a loop variable, a tuple element --
-is recorded on the literal and refused when the list resolves to another
-number (`BUGS.md#widened-literal-list-read-truncates`).
+The containers no cell covers -- module-level lists, dicts and sets --
+keep the read guard: each use was typed from the pending literal as it
+stood, so a use that took an element at the default width -- an
+unannotated local, a loop variable, a tuple element -- is recorded on the
+literal and refused when the container resolves to another number (`BUGS.md#widened-literal-list-read-truncates`).
 
 **Return type:** If the variable is returned and the function has a
 declared return type, use it to inform deduction (list / dict / set alike):

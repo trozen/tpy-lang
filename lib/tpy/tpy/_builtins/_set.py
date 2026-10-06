@@ -29,18 +29,18 @@ class set[T](Iterable[T], NativeIterable[T]):
     @readonly
     def __len__(self) -> int32: ...
 
-    @native("contains")
+    @native("contains", element_effect="lookup")
     @pure
     @readonly
     def __contains__(self, value: T) -> bool: ...
 
-    @native("insert")
+    @native("insert", element_effect="insert")
     def add(self, value: Own[T]) -> None: ...
 
-    @native("erase")
+    @native("erase", element_effect="lookup")
     def discard(self, value: T) -> None: ...
 
-    @native("tpy::set_remove", function=True)
+    @native("tpy::set_remove", function=True, element_effect="lookup")
     def remove(self, value: T) -> None: ...
 
     @native("tpy::set_pop", function=True)
@@ -92,7 +92,7 @@ class set[T](Iterable[T], NativeIterable[T]):
     def isdisjoint(self, other: set[T]) -> bool: ...
 
     # In-place set algebra
-    @native("tpy::set_update", function=True)
+    @native("tpy::set_update", function=True, element_effect="insert")
     def update(self, other: set[T]) -> None: ...
 
     @native("tpy::set_intersection_update", function=True)
@@ -101,7 +101,7 @@ class set[T](Iterable[T], NativeIterable[T]):
     @native("tpy::set_difference_update", function=True)
     def difference_update(self, other: set[T]) -> None: ...
 
-    @native("tpy::set_symmetric_difference_update", function=True)
+    @native("tpy::set_symmetric_difference_update", function=True, element_effect="insert")
     def symmetric_difference_update(self, other: set[T]) -> None: ...
 
     # Operators (same as named methods)
@@ -126,7 +126,7 @@ class set[T](Iterable[T], NativeIterable[T]):
     def __xor__(self, other: set[T]) -> Own[set[T]]: ...
 
     # In-place operators
-    @native("tpy::set_update", function=True)
+    @native("tpy::set_update", function=True, element_effect="insert")
     def __ior__(self, other: set[T]) -> set[T]: ...
 
     @native("tpy::set_intersection_update", function=True)
@@ -135,5 +135,5 @@ class set[T](Iterable[T], NativeIterable[T]):
     @native("tpy::set_difference_update", function=True)
     def __isub__(self, other: set[T]) -> set[T]: ...
 
-    @native("tpy::set_symmetric_difference_update", function=True)
+    @native("tpy::set_symmetric_difference_update", function=True, element_effect="insert")
     def __ixor__(self, other: set[T]) -> set[T]: ...

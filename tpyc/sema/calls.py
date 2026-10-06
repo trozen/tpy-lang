@@ -1630,7 +1630,7 @@ class CallAnalyzer:
                     size=0,
                     is_mutated=True,
                 )
-                self.ctx.list_literals[literal_id] = info
+                self.ctx.container_literals[literal_id] = info
                 self.ctx.func.pending_resolutions.append(literal_id)
                 result_type = PendingListType(UNKNOWN_ELEMENT, 0, literal_id)
                 expr.call_type = result_type
@@ -1647,8 +1647,8 @@ class CallAnalyzer:
                     key_type=UNKNOWN_ELEMENT,
                     value_type=UNKNOWN_ELEMENT,
                 )
-                self.ctx.dict_literals[literal_id] = info
-                self.ctx.func.pending_dict_resolutions.append(literal_id)
+                self.ctx.container_literals[literal_id] = info
+                self.ctx.func.pending_resolutions.append(literal_id)
                 result_type = PendingDictType(UNKNOWN_ELEMENT, UNKNOWN_ELEMENT, literal_id)
                 expr.call_type = result_type
                 return result_type
@@ -1663,8 +1663,8 @@ class CallAnalyzer:
                     expr=expr,
                     element_type=UNKNOWN_ELEMENT,
                 )
-                self.ctx.set_literals[literal_id] = info
-                self.ctx.func.pending_set_resolutions.append(literal_id)
+                self.ctx.container_literals[literal_id] = info
+                self.ctx.func.pending_resolutions.append(literal_id)
                 result_type = PendingSetType(UNKNOWN_ELEMENT, literal_id)
                 expr.call_type = result_type
                 return result_type
@@ -5684,7 +5684,7 @@ class CallAnalyzer:
             # The coercion to the view seeds the list's element cell
             # (`PendingNums.meets_list`).
             return
-        info = self.ctx.list_literals.get(arg_type.literal_id)
+        info = self.ctx.list_literal(arg_type.literal_id)
         if info is not None and info.coerced_element_type is None:
             info.coerced_element_type = elem_type
 

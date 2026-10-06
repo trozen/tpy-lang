@@ -5410,8 +5410,92 @@ def contains_pending_num(t: TpyType) -> bool:
     return any(contains_pending_num(i) for i in t.inner_types())
 
 
+# The steps from a container to its parts: a list's or set's element, a
+# dict's key and value (a tuple member is its index).
+ELEM = "elem"
+KEY = "key"
+VALUE = "value"
+
+
 @dataclass(frozen=True)
-class PendingListType(TpyType):
+class PendingContainerType(TpyType):
+    """A list, dict or set literal bound to a function local whose type is
+    not decided yet: its record (`ContainerLiteralInfo`, by `literal_id`)
+    resolves it once the function is analyzed. Its parts are at `STEPS`.
+    Parts that hold a pending number at any depth name the record's cells
+    (`tpyc/sema/pending_num.py`), which the settle sweeps reach through
+    `inner_types`; any other part is the literal's own snapshot, resolved
+    with the literal and not by a type walk."""
+    KIND = ""
+    STEPS = ()
+    # How an annotation hint names a container of this kind that has no
+    # name of its own, and spells its empty and its written initializer.
+    HINT_NAME = ""
+    INITS = ("", "")
+
+    @classmethod
+    def declares(cls, other: TpyType) -> bool:
+        """Whether declared container `other` is one a literal of this
+        kind can be stored as."""
+        raise NotImplementedError
+
+    @classmethod
+    def written_as(cls) -> tuple[type, ...]:
+        """The literals a container of this kind is written as (a method:
+        the parse nodes import this module)."""
+        raise NotImplementedError
+
+    @classmethod
+    def new_record(cls, literal_id: int, expr: 'TpyExpr',
+                   **fields: Any) -> 'ContainerLiteralInfo':
+        """A record of a literal of this kind whose parts are not known
+        yet."""
+        raise NotImplementedError
+
+    def parts(self) -> tuple[TpyType, ...]:
+        raise NotImplementedError
+
+    def with_parts(self, parts: tuple[TpyType, ...]) -> 'PendingContainerType':
+        raise NotImplementedError
+
+    def part(self, step: str) -> TpyType:
+        return self.parts()[self.STEPS.index(step)]
+
+    def spelled(self, parts: tuple[TpyType, ...]) -> TpyType:
+        """The container a literal of this kind holding `parts` is, as the
+        source spells it (a list literal's storage is decided apart)."""
+        raise NotImplementedError
+
+    def inner_types(self) -> tuple[TpyType, ...]:
+        parts = self.parts()
+        if any(contains_pending_num(p) for p in parts):
+            return parts
+        return ()
+
+    def with_inner_types(self, types: tuple[TpyType, ...]) -> 'TpyType':
+        return self.with_parts(tuple(types))
+
+    def to_cpp(self) -> str:
+        raise RuntimeError(f"{type(self).__name__} should be resolved before "
+                           f"codegen (literal_id={self.literal_id})")
+
+    def qualified_name(self) -> Optional[str]:
+        return f"builtins.{self.KIND}"
+
+
+def bound_as_spelled(t: TpyType, *, lists: bool) -> TpyType:
+    """What container literal type `t`, not decided yet, binds a type
+    parameter as: the container it spells. With `lists` False a list
+    literal stays itself, its storage (Array or list) still open. Any
+    other type is itself."""
+    if not isinstance(t, PendingContainerType) or (
+            not lists and isinstance(t, PendingListType)):
+        return t
+    return t.spelled(t.parts())
+
+
+@dataclass(frozen=True)
+class PendingListType(PendingContainerType):
     """Unresolved list literal type - becomes Array or list based on usage.
 
     This type is assigned to list literals in function-local contexts during
@@ -5421,31 +5505,42 @@ class PendingListType(TpyType):
     element_type: TpyType
     size: int
     literal_id: int
+    KIND = "list"
+    STEPS = (ELEM,)
+    HINT_NAME = "xs"
+    INITS = ("[]", "[...]")
 
-    def to_cpp(self) -> str:
-        raise RuntimeError(f"PendingListType should be resolved before codegen (literal_id={self.literal_id})")
+    @classmethod
+    def declares(cls, other: TpyType) -> bool:
+        from .type_def_registry import is_list, is_span, is_array
+        return is_list(other) or is_span(other) or is_array(other)
+
+    @classmethod
+    def written_as(cls) -> tuple[type, ...]:
+        from .parse.nodes import TpyArrayLiteral, TpyListRepeat
+        return (TpyArrayLiteral, TpyListRepeat)
+
+    @classmethod
+    def new_record(cls, literal_id: int, expr: 'TpyExpr',
+                   **fields: Any) -> 'ListLiteralInfo':
+        fields.setdefault("size", 0)
+        return ListLiteralInfo(literal_id=literal_id, expr=expr,
+                               element_type=UNKNOWN_ELEMENT, **fields)
+
+    def parts(self) -> tuple[TpyType, ...]:
+        return (self.element_type,)
+
+    def with_parts(self, parts: tuple[TpyType, ...]) -> 'PendingListType':
+        return PendingListType(parts[0], self.size, self.literal_id)
+
+    def spelled(self, parts: tuple[TpyType, ...]) -> TpyType:
+        return make_list(parts[0])
 
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
-    # An element that holds a pending number at any depth (a scalar, a
-    # tuple member, a nested row's element) names the literal's element
-    # cells (`tpyc/sema/pending_num.py`), which the settle sweeps reach
-    # through here. Any other element is the literal's own snapshot,
-    # resolved with the literal and not by a type walk.
-    def inner_types(self) -> tuple[TpyType, ...]:
-        if contains_pending_num(self.element_type):
-            return (self.element_type,)
-        return ()
-
-    def with_inner_types(self, types: tuple[TpyType, ...]) -> 'TpyType':
-        return PendingListType(types[0], self.size, self.literal_id)
-
     def __str__(self) -> str:
         return f"PendingList[{self.element_type}, {self.size}]#{self.literal_id}"
-
-    def qualified_name(self) -> Optional[str]:
-        return "builtins.list"
 
 
 @dataclass(frozen=True)
@@ -5605,37 +5700,39 @@ def contains_fn_type(typ: TpyType) -> bool:
     return any(contains_fn_type(inner) for inner in typ.inner_types())
 
 
-@dataclass
-class ListLiteralInfo:
-    """Tracks usage information for a list literal to determine its resolved type."""
+@dataclass(kw_only=True)
+class ContainerLiteralInfo:
+    """The record of a container literal bound to a function local whose
+    type is resolved once the function is analyzed: a list's (written,
+    empty or built), a dict's or a set's. The literal's type is its
+    `pending_type()`, which names this record by `literal_id`; the kind is
+    that type's class."""
     literal_id: int
-    expr: 'TpyArrayLiteral | TpyListRepeat | TpyListComprehension | TpyCall'  # Forward reference to avoid circular import
-    element_type: TpyType
-    size: int  # -1 for unknown (variable count repeat)
+    expr: 'TpyExpr'
     variable_name: Optional[str] = None
     decl_line: Optional[int] = None
     is_global: bool = False
-    is_mutated: bool = False
-    needs_indexing: bool = False
-    passed_to_list_param: bool = False
-    passed_to_span_param: bool = False
     has_explicit_annotation: bool = False
     explicit_type: Optional[TpyType] = None
-    coerced_element_type: Optional[TpyType] = None  # Element type from typed param (list[T] or Span[T])
-    needs_list_type: bool = False  # Used in or/and/ternary with another list -- cannot become Array
     source_literal_id: Optional[int] = None  # Alias tracking: b = a
+    # The record of the container literal whose tree holds this one as a
+    # part (a dict or set nested in another container literal); its
+    # cells are that container's.
+    part_of: Optional[int] = None
     resolved_type: Optional[TpyType] = None
     # The pending-number cells that decide the numeric leaves of the
-    # element, by the leaf's path in it (`()` the element itself, an int a
-    # tuple member, `ELEM_ROW` a nested list's element): `element_type` is
-    # then the type tree whose leaves are the `PendingNumType`s naming
-    # them, and the cells, not this record, are where uses add what they
-    # store. None for a list no cell decides.
+    # container, by the leaf's path from it (`ELEM` / `KEY` / `VALUE`
+    # first, then an int for a tuple member and further steps into a
+    # nested container): its parts are then the type trees whose leaves
+    # are the `PendingNumType`s naming them, and the cells, not this
+    # record, are where uses add what they store. None for a container no
+    # cell decides.
     elem_cells: Optional[dict] = None
-    # The records of the lists that are rows at one position of one outer
-    # list (shared, the same list object on every member): they are
-    # stored as one C++ type, so a requirement for a vector on one of them
-    # is one on all (`LocalTypeDeduction._close_row_groups`).
+    # The records of the containers that are rows at one position of one
+    # outer container (shared, the same list object on every member): a
+    # list row's records are stored as one C++ type, so a requirement for
+    # a vector on one of them is one on all
+    # (`LocalTypeDeduction._close_row_groups`).
     row_group: Optional[list] = None
     # The lists a store admitted as rows of this record's rows, each named
     # by its literal's id or, for a typed list, its type
@@ -5645,21 +5742,80 @@ class ListLiteralInfo:
     # (the element type the read was compiled at, the reading node).
     elem_reads: list = field(default_factory=list)
 
+    def pending_type(self) -> 'PendingContainerType':
+        """The type of the literal, its parts as this record has them."""
+        raise NotImplementedError
+
+    def set_parts(self, node: 'PendingContainerType') -> None:
+        """Hold the parts of container type `node` from here on."""
+        raise NotImplementedError
+
+    @property
+    def kind(self) -> str:
+        return self.pending_type().KIND
+
+
+@dataclass(kw_only=True)
+class ListLiteralInfo(ContainerLiteralInfo):
+    """Tracks usage information for a list literal to determine its resolved type."""
+    expr: 'TpyArrayLiteral | TpyListRepeat | TpyListComprehension | TpyCall'
+    element_type: TpyType
+    size: int  # -1 for unknown (variable count repeat)
+    is_mutated: bool = False
+    needs_indexing: bool = False
+    passed_to_list_param: bool = False
+    passed_to_span_param: bool = False
+    coerced_element_type: Optional[TpyType] = None  # Element type from typed param (list[T] or Span[T])
+    needs_list_type: bool = False  # Used in or/and/ternary with another list -- cannot become Array
+
+    def pending_type(self) -> 'PendingListType':
+        return PendingListType(self.element_type, self.size, self.literal_id)
+
+    def set_parts(self, node: 'PendingContainerType') -> None:
+        (self.element_type,) = node.parts()
+
 
 @dataclass(frozen=True)
-class PendingDictType(TpyType):
-    """Unresolved empty dict literal -- key/value types inferred from usage.
+class PendingDictType(PendingContainerType):
+    """Unresolved dict literal bound to a function local -- an empty one
+    (`{}`, `dict()`), whose key/value types its uses give, or a written one
+    whose numeric leaves its record's cells decide.
 
-    Assigned to empty dict literals ({}) or dict() calls in function-local
-    contexts. After full function analysis, resolved to DictType based on
-    collected usage facts (primarily d[k] = v subscript assignment).
+    After full function analysis, resolved to a dict type from its record.
     """
     key_type: TpyType
     value_type: TpyType
     literal_id: int
+    KIND = "dict"
+    STEPS = (KEY, VALUE)
+    HINT_NAME = "d"
+    INITS = ("{}", "{...}")
 
-    def to_cpp(self) -> str:
-        raise RuntimeError(f"PendingDictType should be resolved before codegen (literal_id={self.literal_id})")
+    @classmethod
+    def declares(cls, other: TpyType) -> bool:
+        from .type_def_registry import is_dict
+        return is_dict(other)
+
+    @classmethod
+    def written_as(cls) -> tuple[type, ...]:
+        from .parse.nodes import TpyDictLiteral
+        return (TpyDictLiteral,)
+
+    @classmethod
+    def new_record(cls, literal_id: int, expr: 'TpyExpr',
+                   **fields: Any) -> 'DictLiteralInfo':
+        return DictLiteralInfo(literal_id=literal_id, expr=expr,
+                               key_type=UNKNOWN_ELEMENT,
+                               value_type=UNKNOWN_ELEMENT, **fields)
+
+    def parts(self) -> tuple[TpyType, ...]:
+        return (self.key_type, self.value_type)
+
+    def with_parts(self, parts: tuple[TpyType, ...]) -> 'PendingDictType':
+        return PendingDictType(parts[0], parts[1], self.literal_id)
+
+    def spelled(self, parts: tuple[TpyType, ...]) -> TpyType:
+        return make_dict(parts[0], parts[1])
 
     def get_element_type(self) -> Optional[TpyType]:
         return self.value_type
@@ -5667,44 +5823,68 @@ class PendingDictType(TpyType):
     def __str__(self) -> str:
         return f"PendingDict[{self.key_type}, {self.value_type}]#{self.literal_id}"
 
-    def qualified_name(self) -> Optional[str]:
-        return "builtins.dict"
 
-
-@dataclass
-class DictLiteralInfo:
-    """Tracks usage information for an empty dict literal to determine its resolved type."""
-    literal_id: int
+@dataclass(kw_only=True)
+class DictLiteralInfo(ContainerLiteralInfo):
+    """Tracks a dict literal bound to a function local: an empty one, whose
+    key and value types its uses give, or a written one whose numeric
+    leaves cells decide."""
     expr: 'TpyDictLiteral | TpyCall'
     key_type: TpyType
     value_type: TpyType
-    variable_name: Optional[str] = None
-    decl_line: Optional[int] = None
-    resolved_type: Optional[TpyType] = None
+
+    def pending_type(self) -> 'PendingDictType':
+        return PendingDictType(self.key_type, self.value_type, self.literal_id)
+
+    def set_parts(self, node: 'PendingContainerType') -> None:
+        self.key_type, self.value_type = node.parts()
 
 
 @dataclass(frozen=True)
-class PendingSetType(TpyType):
-    """Unresolved empty set -- element type inferred from usage.
+class PendingSetType(PendingContainerType):
+    """Unresolved set literal bound to a function local -- an empty one
+    (`set()`), whose element type its uses give, or a written one whose
+    numeric leaves its record's cells decide.
 
-    Assigned to set() calls in function-local contexts. After full function
-    analysis, resolved to SetType based on collected usage facts (primarily
-    s.add(v) calls).
+    After full function analysis, resolved to a set type from its record.
     """
     element_type: TpyType
     literal_id: int
+    KIND = "set"
+    STEPS = (ELEM,)
+    HINT_NAME = "s"
+    INITS = ("set()", "{...}")
 
-    def to_cpp(self) -> str:
-        raise RuntimeError(f"PendingSetType should be resolved before codegen (literal_id={self.literal_id})")
+    @classmethod
+    def declares(cls, other: TpyType) -> bool:
+        from .type_def_registry import is_set
+        return is_set(other)
+
+    @classmethod
+    def written_as(cls) -> tuple[type, ...]:
+        from .parse.nodes import TpySetLiteral
+        return (TpySetLiteral,)
+
+    @classmethod
+    def new_record(cls, literal_id: int, expr: 'TpyExpr',
+                   **fields: Any) -> 'SetLiteralInfo':
+        return SetLiteralInfo(literal_id=literal_id, expr=expr,
+                              element_type=UNKNOWN_ELEMENT, **fields)
+
+    def parts(self) -> tuple[TpyType, ...]:
+        return (self.element_type,)
+
+    def with_parts(self, parts: tuple[TpyType, ...]) -> 'PendingSetType':
+        return PendingSetType(parts[0], self.literal_id)
+
+    def spelled(self, parts: tuple[TpyType, ...]) -> TpyType:
+        return make_set(parts[0])
 
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
     def __str__(self) -> str:
         return f"PendingSet[{self.element_type}]#{self.literal_id}"
-
-    def qualified_name(self) -> Optional[str]:
-        return "builtins.set"
 
 
 # Builtin containers whose concrete type can still wrap a pending leaf in a type
@@ -5832,15 +6012,19 @@ def unify_literal_types(
     return a
 
 
-@dataclass
-class SetLiteralInfo:
-    """Tracks usage information for an empty set to determine its resolved type."""
-    literal_id: int
-    expr: 'TpyCall'
+@dataclass(kw_only=True)
+class SetLiteralInfo(ContainerLiteralInfo):
+    """Tracks a set literal bound to a function local: an empty one, whose
+    element type its uses give, or a written one whose numeric leaves
+    cells decide."""
+    expr: 'TpySetLiteral | TpyCall'
     element_type: TpyType
-    variable_name: Optional[str] = None
-    decl_line: Optional[int] = None
-    resolved_type: Optional[TpyType] = None
+
+    def pending_type(self) -> 'PendingSetType':
+        return PendingSetType(self.element_type, self.literal_id)
+
+    def set_parts(self, node: 'PendingContainerType') -> None:
+        (self.element_type,) = node.parts()
 
 
 @dataclass(frozen=True)
@@ -7205,6 +7389,11 @@ class FunctionInfo:
     # receiver's structure. None on a mutating method: it may move or free
     # every element.
     native_mutates: Optional[str] = None
+    # @native(element_effect="insert" | "lookup"): what the method does with
+    # an argument naming its receiver's element, key or value -- holds it
+    # from then on, or only compares it / hands it back
+    # (`tpyc/sema/list_elem.py`). None: neither is declared.
+    native_element_effect: Optional[str] = None
     copy_returns_warn: bool = False  # Own[V] accessor copies where CPython aliases -> warn at call sites
     # `__enter__` only (computed at registration): can what this returns root
     # at `self`? False means it lends storage that is NOT the receiver's, so a

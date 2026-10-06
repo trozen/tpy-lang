@@ -682,6 +682,72 @@ std::expected<int64_t, Refused> alias_pair(int64_t limit) {
     return (::tpy::add_check<int64_t>(::tpy::__getitem__(ys, 1), static_cast<int64_t>(::tpy::__len__(ys))));
 }
 
+// def lookups_pos() -> None:
+//     xs = [1, 2, 3, 2]  # tpyc: type(list[int64])
+//     a: int8 = 3
+//     # function: remove / index / count and `in` look the value up: a literal
+//     # adapts and a narrower typed value converts, and the element stays open.
+//     xs.remove(1)  # tpyc: ok
+//     n = xs.count(2)
+//     i = xs.index(a)
+//     print("fn.lookups.in", 2 in xs, a in xs, 7 not in xs)
+//     xs.append(w64())
+//     print("fn.lookups", xs, n, i, w64() in xs)
+void lookups_pos() {
+    std::vector<int64_t> xs = {1, 2, 3, 2};
+    int8_t a = 3;
+    ::tpy::list_remove(xs, 1);
+    int32_t n = ::tpy::list_count(xs, 2);
+    int32_t i = ::tpy::list_index(xs, static_cast<int64_t>(a));
+    std::cout << "fn.lookups.in" << " " << ::tpy::print_bool(::tpy::seq_contains(xs, 2)) << " " << ::tpy::print_bool(::tpy::seq_contains(xs, static_cast<int64_t>(a))) << " " << ::tpy::print_bool(!::tpy::seq_contains(xs, 7)) << "\n" << ::tpy::check_signals;
+    xs.push_back(::tpyapp::main::w64());
+    std::cout << "fn.lookups" << " " << ::tpy::ListPrinter(xs) << " " << n << " " << i << " " << ::tpy::print_bool(::tpy::seq_contains(xs, ::tpyapp::main::w64())) << "\n" << ::tpy::check_signals;
+}
+
+// def truth_pos(c: bool) -> None:
+//     xs = [1, 2]  # tpyc: type(list[int64])
+//     ys = [3]  # tpyc: type(list[int64])
+//     # function: a truth test reads the length only, and so does a list
+//     # operand of an and / or that is one.
+//     if xs:  # tpyc: ok
+//         print("fn.truth.if", len(xs))
+//     if ys and c:  # tpyc: ok
+//         print("fn.truth.and", len(ys))
+//     xs.append(w64())
+//     ys.append(w64())
+//     print("fn.truth", xs, ys)
+void truth_pos(bool c) {
+    std::vector<int64_t> xs = {1, 2};
+    std::vector<int64_t> ys = {3};
+    if ((::tpy::__len__(xs) != 0)) {
+        std::cout << "fn.truth.if" << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
+    }
+    if (((::tpy::__len__(ys) != 0) && c)) {
+        std::cout << "fn.truth.and" << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
+    }
+    xs.push_back(::tpyapp::main::w64());
+    ys.push_back(::tpyapp::main::w64());
+    std::cout << "fn.truth" << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
+}
+
+// def wide_lookups_pos(n: int64, big: int) -> None:
+//     ps = [2, 3, 5]  # tpyc: type(Array[int32, 3])
+//     k = {1: "x", 2: "y"}  # tpyc: type(dict[int32, str])
+//     s = {1, 2}  # tpyc: type(set[int32])
+//     xs = [1, 2]  # tpyc: type(Array[int32, 2])
+//     # function: a value wider than the element decides the container first
+//     # and is compared as it is, never converted down.
+//     print("fn.wide.in", n in ps)  # tpyc: ok
+//     print("fn.wide.bigint", big in k, big in s, big in xs)  # tpyc: ok
+void wide_lookups_pos(int64_t n, const ::tpy::BigInt& big) {
+    std::array<int32_t, 3> ps = {2, 3, 5};
+    ::tpy::ordered_map<int32_t, std::string> k = ::tpy::ordered_map<int32_t, std::string>({{1, "x"}, {2, "y"}});
+    ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
+    std::array<int32_t, 2> xs = {1, 2};
+    std::cout << "fn.wide.in" << " " << ::tpy::print_bool(::tpy::seq_contains(ps, n)) << "\n" << ::tpy::check_signals;
+    std::cout << "fn.wide.bigint" << " " << ::tpy::print_bool((k.contains(big))) << " " << ::tpy::print_bool((s.contains(big))) << " " << ::tpy::print_bool(::tpy::seq_contains(xs, big)) << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
 //     param_widens()
 //     param_confirms()
@@ -693,6 +759,10 @@ std::expected<int64_t, Refused> alias_pair(int64_t limit) {
 //     generic_call()
 //     typed_slots()
 //     select_operands()
+//     lookups_pos()
+//     truth_pos(True)
+//     wide_lookups_pos(3, 2)
+//     wide_lookups_pos(4, 1000000000000)
 //     print("fn.pick", pick(True), pick(False))
 //     raise_arg()
 //     m = Maker(5000000000)
@@ -729,6 +799,10 @@ void main() {
     ::tpyapp::main::generic_call();
     ::tpyapp::main::typed_slots();
     ::tpyapp::main::select_operands();
+    ::tpyapp::main::lookups_pos();
+    ::tpyapp::main::truth_pos(true);
+    ::tpyapp::main::wide_lookups_pos(3, ::tpy::BigInt(2));
+    ::tpyapp::main::wide_lookups_pos(4, ::tpy::BigInt(static_cast<int64_t>(1000000000000LL)));
     std::cout << "fn.pick" << " " << ::tpy::ListPrinter(::tpyapp::main::pick(true)) << " " << ::tpy::ListPrinter(::tpyapp::main::pick(false)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::raise_arg();
     Maker m = Maker(static_cast<int64_t>(5000000000));

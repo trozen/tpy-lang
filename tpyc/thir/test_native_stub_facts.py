@@ -213,10 +213,17 @@ def _method(*decorators: str, signature: str = "def at(self, i: int32) -> T: ...
     (_method('@cpp_template("put({self}, {v})", mutates="elements")',
              signature="def put(self, v: Own[T]) -> None: ..."),
      r"@cpp_template\(\) got unexpected keyword argument 'mutates'"),
+    # What a method does with its parts is a method's declaration.
+    (HEADER + '@native("my::Ring", element_effect="insert")\nclass Ring[T]:\n    pass\n',
+     r"@native\(element_effect=\.\.\.\) is only valid on a method stub"),
+    (HEADER + '@native("put", element_effect="insert")\ndef put(v: int32) -> None: ...\n',
+     r"@native\(element_effect=\.\.\.\) is only valid on a method stub: a free function"),
+    (_method('@native("put", element_effect="store")', signature="def put(self, v: Own[T]) -> None: ..."),
+     r'@native\(element_effect=\.\.\.\) is "insert" or "lookup"'),
 ], ids=["mutates-on-class", "elements-on-method", "elements-on-function", "mutates-on-function",
         "mutates-shape", "mutates-structure", "mutates-then-readonly", "readonly-then-mutates",
         "mutates-pure", "mutates-auto-readonly", "mutates-staticmethod", "mutates-classmethod",
-        "cpp-template-mutates"])
+        "cpp-template-mutates", "effect-on-class", "effect-on-function", "effect-unknown"])
 def test_the_parser_rejects_a_misplaced_storage_declaration(source, message):
     with pytest.raises(ParseError, match=message):
         _compile(source)

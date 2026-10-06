@@ -10,7 +10,7 @@ from typing import Literal, Sequence, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, TypeParamRef, NominalType, RecursiveAliasInstanceType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, InteriorMutableType,
-    make_array, make_list, PendingListType, PendingViewType, GenExprType, SelfType, OptionalType, UnionType,
+    bound_as_spelled, make_array, make_list, PendingListType, PendingViewType, GenExprType, SelfType, OptionalType, UnionType,
     TupleType, FinalType, ClassVarType,
     IntLiteralType, FloatLiteralType, TypeParamKind, BIGINT, NONE, UnknownElementType,
     NoneType, VoidType, CallableType, SendType, SyncType, unwrap_send_sync,
@@ -37,6 +37,7 @@ from .overloads import resolve_overload
 from .slot_hint import SlotHint, params_at_inferred
 from .type_join import NumKind, numeric_kind
 from .numeric_lattice import join_numeric
+from .pending_num import leaves_as_numbers
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
@@ -689,6 +690,9 @@ class TypeOperations:
             elem = elem.wrapped
         if isinstance(elem, IntLiteralType):
             return
+        # A leaf whose cell decides it is a number of its family whatever
+        # width it takes: asked as one.
+        elem = leaves_as_numbers(elem)
         if is_enum_type(elem):
             return
         if isinstance(elem, PendingViewType):
@@ -1009,6 +1013,8 @@ class TypeOperations:
         arg_was_owned = isinstance(arg_type, OwnType)
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
+        # A list literal's storage is still open: its own arms below.
+        arg_type = bound_as_spelled(arg_type, lists=False)
 
         # TypeParamRef -- infer or check consistency
         if isinstance(param_type, TypeParamRef):
@@ -2151,7 +2157,7 @@ class TypeOperations:
             return True
 
         if isinstance(actual_elem, IntLiteralType) and is_integer_type(expected_elem):
-            info = self.ctx.list_literals.get(actual.literal_id)
+            info = self.ctx.list_literal(actual.literal_id)
             if info:
                 info.coerced_element_type = expected_elem
             return True
@@ -2220,6 +2226,7 @@ class TypeOperations:
             native_name=method.native_name,
             native_function=method.native_function,
             native_mutates=method.native_mutates,
+            native_element_effect=method.native_element_effect,
             copy_returns_warn=method.copy_returns_warn,
             cpp_template=method.cpp_template,
             value_ptr_coercion=method.value_ptr_coercion,
@@ -2301,5 +2308,3 @@ class TypeOperations:
         if is_readonly_ptr(typ):
             return None
         return self.get_deref_target_type(typ)
-
-

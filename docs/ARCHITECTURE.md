@@ -954,14 +954,16 @@ row at each depth. The element of its `PendingListType` is a type tree whose
 leaves are the `PendingNumType`s naming those cells, every part that holds
 no number keeping the literal's type; `PendingListType.inner_types` exposes
 the tree whenever it holds a leaf, so the settle sweeps and the finalization
-rewrite reach leaves at any depth. The record names the leaves by path
-(`ListLiteralInfo.elem_cells`, `()` the element, an int a tuple member,
-`ELEM_ROW` a row's element), and `PendingNums.list_cells` hands a reader the
-`ListCells` descriptor -- the record, the tree, the cells in path order, and
-each cell's path in this list's tree (a row's own record roots its leaf at
-`()`, the cell's `path` is from the list first bound, which the refusals
-name: *(tuple element 0)*, *(row element)*). Birth
-(`PendingNums.new_list_tree`) collects the values at every leaf path from
+rewrite reach leaves at any depth. The record names the leaves by path from
+the container (`ContainerLiteralInfo.elem_cells`: `ELEM` the element, then
+an int a tuple member, `ELEM` again a row's element), and
+`PendingNums.container_cells` hands a reader the `ContainerCells`
+descriptor -- the record, the tree (the record's pending type), the cells
+in path order, and each cell's path in this container's tree (a row's own
+record roots its leaves at the row, the cell's `path` is from the
+container first bound, which the refusals name: *(tuple element 0)*,
+*(row element)*). Birth
+(`PendingNums.new_tree`) collects the values at every leaf path from
 every element and every row -- not from the joined element, which keeps one
 row only -- and classifies each leaf literal or typed as a scalar birth
 does; the rows met on the way take their part of the tree. Rows at one
@@ -1045,23 +1047,23 @@ later store, container and generic context must fit it.
 How a list method or a protocol uses the element -- not at all, as a
 value in or out, inside another type, as values the list then holds
 (`extend`, `__iadd__`: each is a store, `PendingNums.store_elements`) -- is
-asked of the stub signature by one classifier (`tpyc/sema/list_elem.py`).
+asked of the stub by the one container classifier
+(`tpyc/sema/list_elem.py`, below).
 
 An empty list (`[]`, `list()`) bound to an unannotated function local has
 no family until something gives it one, so its cell is born at the first
 evidence. `PendingNums.cell_list` answers "a cell list, born or not" -- the
 cells, or the record of an empty list that may still take them
 (`seedable`) -- and every store and context site switches on it once. One
-birth helper (`PendingNums.new_list_tree`) serves the literal binding
+birth helper (`PendingNums.new_tree`) serves the literal binding
 (`StatementAnalyzer._bind_list_elem_cell`, a comprehension of rows
 included, whose one row record is its element's) and the lazy birth alike:
 a literal starts a default-based cell, a typed value decides it there, so
 an empty list behaves as the literal its first value would have written --
 a tuple or a row seeds a tree as `[(1, 2)]` / `[[1]]` would. The
 evidence is a value stored into it (`seed_by_store` / `seed_by_stores`,
-reached from the element store chokepoint
-`LocalTypeDeduction.update_list_element_type`, a subscript store through
-`store_value`, and `store_elements` for `extend` / `+=`), a typed container
+reached from the store chokepoint `LocalTypeDeduction.observe_store`, a
+subscript store through `store_value`, and `store_elements` for `extend` / `+=`), a typed container
 it meets under `commit` (`seed_by_context`, from
 `TypeCompatibility._empty_list_at_container`, which also takes a declared
 numeric view, and from the select pin), or a list literal it is rebound to
@@ -1082,6 +1084,101 @@ covers (module-level, non-numeric, and an empty list a nested body stores
 into first, `BUGS.md#empty-list-nested-first-store-rejected`) keep the
 older element record on `ListLiteralInfo` and its read guard; no
 function-local list whose element holds numbers reaches that path.
+
+Dict and set literals bound to an unannotated function local take the same
+cells, and the three kinds are ONE family. A container literal's type is a
+`PendingContainerType` -- `PendingListType`, `PendingDictType`,
+`PendingSetType`, written or empty -- carrying its record's `literal_id`
+and the steps to its parts (`STEPS`: `ELEM` for a list or set, `KEY` /
+`VALUE` for a dict); its record is a `ContainerLiteralInfo` (the list's
+subclass adds the storage facts, Array or list), and the kind is the
+type's class. Every record lives in ONE table by its literal id
+(`SemanticContext.container_literals`), a function's records and its
+names for them in one list and one map (`pending_resolutions`,
+`variable_to_literal`); work for one kind filters that table (the list
+storage facts through `list_literal`; the resolver resolves the lists
+before the dicts and sets that may hold them). What differs per kind is a
+fact of the pending type's class: its steps, the containers it is declared
+as (`declares`), the literals it is written as (`written_as`), how a hint
+spells it (`HINT_NAME`, `INITS`) and its empty record (`new_record`). A record's TREE is its pending type (`pending_type()`), so a
+dict, a set and a list are rooted alike and every walk (`tree_leaves`,
+`map_parts`, `zip_parts`, `at_path`, `path_words`, birth's `_collect`, the
+pairing with a declared container by `pairs_as` and `container_parts`)
+descends tuples and container nodes by their steps. `container_cells` is a
+record lookup by the literal id (`SemanticContext.container_record`); a
+dict or set inside another container's tree is a node with a record of its
+own (`part_of` names the container whose cells it shares), so a read of it
+(`dd["a"]`, `ls[0]`) finds the cells by identity too. A store is ONE ENTRY
+(`Entry`: a type and the written expression per step), so `store_value`,
+`tree_store` and birth treat a list's `append`, a subscript store of any
+kind, `add`, `setdefault` and the entries of a written literal alike;
+`extend` / `update` / `|=` store their source's entries through
+`store_elements`: the source is read open, a container inside its entries
+(a row, an inner dict) is linked to the receiver's part (`_link_source`)
+-- or, typed, must be what that part is -- and then its numbers settle,
+and the runtime update helpers take the source at its own instantiation
+and convert each scalar entry, losslessly only (`dict_update`,
+`set_update`, `set_symmetric_difference_update`, each constrained by
+`widens_to` in `runtime/cpp/include/tpy/type_traits.hpp`). A dict or set
+has no storage decision once its leaves settle: a settled one reaches a
+consumer that did not name it at its settled form
+(`PendingNums.settled_form`, the container its parts spell; a list keeps
+its pending type for the Array/list decision), and a method on any
+container is resolved at `receiver_form` (the dicts and sets inside it
+spelled), so no consumer needs a pending dict or set arm. What a container
+method does with an argument that names a part -- insert it, or only look
+it up -- is the stub's own declaration, `@native(..., element_effect=...)`
+(`FunctionInfo.native_element_effect`), read by ONE classifier over the
+three stubs (`list_elem.container_call`, parameterised by the stub's
+type-parameter -> step map); a method that names a part -- by an argument,
+or by a bound of its own on a class type parameter (`def sort[T:
+Comparable]`, which builds no type: `ContainerCall.bounds_parts`) -- with
+no declared effect decides the container first (`sort`,
+`intersection_update`). Every method call on a cell container goes through
+`MethodAnalyzer._cell_container_method`; an argument that names an
+unsettled leaf is passed at that leaf (`PendingNums.part_leaf` /
+`pass_at_leaf`: a literal adapts to it, a typed value goes through the
+pending conversion to it, judged once the leaf settles; another numeric
+family is refused), and so are the operand of `in`, the key of a
+`d[k]` read and of `del` when the stub's `__contains__` /
+`__getitem__` / `__delitem__` declares an effect, so the shared
+overload resolver has no pending-leaf rule. A list has no
+`__contains__`: `in` compares with the part its `__iter__` yields
+(`list_elem.iterated_step`), a lookup as its `remove` / `index` /
+`count` declare. A looked-up value is passed at the leaf only when the
+part holds it losslessly so far; any other (a wider width, an `int`,
+the other family, a pending local, a part that is no single number)
+decides the container first, at every lookup spelling of the three
+kinds, methods included (`PendingNums.lookup_decides`, asked by
+`ExpressionAnalyzer.decide_for_lookup`), so the lookup then takes the
+path a decided container takes and never converts its operand down; a
+looked-up value reaches its leaf only while the part is open
+(`PendingNums.lookup_leaf`). A `get` / `pop` default is handed back, not
+compared (`ContainerCall.compares`), and stays a value passed at the
+leaf. A call on a container
+no cell decides -- an empty one, a module-level or non-numeric one -- goes
+through
+`MethodAnalyzer._join_container_method`, classified by the same
+`ContainerCall`: the arguments that name every part are one entry stored
+through `LocalTypeDeduction.observe_named_store` (the first numbers seed
+the cells, anything else joins the parts), whatever the call does with
+them. That path reads no effect on purpose: such a container is empty,
+so the call's parts are its first evidence, or it is a module-level or
+non-numeric one, whose parts are known and against which a looked-up
+argument still type-checks -- it is not drift from the stub. An empty
+container's `extend` / `update` / `|=` seeds through
+`store_elements` on the cell path. The
+resolved signature of such a call and of an in-place operator is recorded
+again once the cells settle (`MethodAnalyzer._settle_elem_method_later`,
+`StatementAnalyzer._resolve_inplace_later`), and a record resolves through
+`finalize` of its tree (`_resolve_pending_dict_and_set_types`). An empty
+container's first entry goes through one entry,
+`LocalTypeDeduction.observe_store`: the cells take it (`store_value`,
+which seeds through `seedable`), else the parts the container learned from
+its uses join it -- the home of the module-level and non-numeric
+containers no cell covers; the typed-context arms
+(`mark_container_param_context`, `mark_container_return_context`) switch
+on the cells once at their top.
 
 Who owns what: the prescan decides which locals are pending, before the
 body is analyzed. The `SemanticContext` holds the cells

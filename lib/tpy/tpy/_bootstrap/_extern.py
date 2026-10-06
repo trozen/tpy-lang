@@ -28,6 +28,15 @@ def builtin_function(key: str): ...
 # into them, and a mutating method may move or free them.
 # Method-level `mutates="elements"`: the method replaces elements in place and
 # moves none, so iterators and references to the other elements stay valid.
+# Method-level `element_effect="insert"` / `"lookup"`, stdlib-only: read on
+# the methods of the builtin `list`, `dict` and `set` stubs and ignored on any
+# other class. What the method does with an argument whose type is one of the
+# container's type parameters (its element, key or value) or a container of
+# them -- holds it from then on (`insert`), or only compares it with what it
+# holds or hands it back (`lookup`). A container literal whose numbers are
+# not decided yet widens by an inserted value and requires a looked-up one to
+# fit; without the keyword such a call decides its numbers first. Each use is
+# an audit of the binding.
 # The default for a mutating method (neither @readonly nor @pure) is the
 # wider claim: it may replace elements AND move or free every one of them
 # (reallocate, erase), so it invalidates everything inside the receiver.
@@ -55,6 +64,7 @@ def native(name: str = "", function: bool = False, binding: str = "",
            borrowing_view: bool = False, transient: bool = False,
            checks_signals: bool = False,
            elements: bool = False, mutates: str = "",
+           element_effect: str = "",
            _iter_yields_ref_tuple_proxies: bool = False, *,
            borrows: tuple[str], element_of: tuple[str]): ...
 

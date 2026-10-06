@@ -25,6 +25,15 @@ fn.star_args [1, 5000000000, 5000000000, 7] 1
 fn.select [1, 5000000000] 2 5000000001 [2, 5000000000] 2 5000000001
 fn.genexpr 5000000001
 fn.genexpr [1, 5000000000, 5000000000]
+fn.lookups.in True True True
+fn.lookups [2, 3, 2, 5000000000] 2 1 True
+fn.truth.if 2
+fn.truth.and 1
+fn.truth [1, 2, 5000000000] [3, 5000000000]
+fn.wide.in True
+fn.wide.bigint True True True
+fn.wide.in False
+fn.wide.bigint False False False
 fn.pick [1] [2]
 raise 5000000001 [1, 5000000000] 1
 ctor 5000000000 5000000001

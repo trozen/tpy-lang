@@ -74,10 +74,13 @@ from .alias_rebind import bind_kind_of
 from .compatibility import TupleSink
 from .narrowing import NarrowingTracker, deref_view_narrowed, truthy_operands
 from .numeric_lattice import widen_numeric_types, join_numeric, smallest_common_int
-from .list_elem import protocol_is_elem_blind
-from .pending_num import (ListCells, PendingNumCell, PendingNums,
+from .list_elem import (Role, container_call, container_calls, iterated_step,
+                        protocol_is_elem_blind)
+from .pending_num import (ContainerCells, PendingNumCell, PendingNums,
+                          pairs_as,
                           is_numeric_slot, value_leaves,
                           is_pending_num, pending_join, strip_int,
+                          leaves_as_numbers,
                           value_family)
 from .type_join import (InferredJoin, JoinOutcome, declared_float_slot,
                         peel_value,
@@ -405,7 +408,8 @@ class ExpressionAnalyzer:
         # The expressions whose analysis is open, innermost last: what a
         # forced pending read is part of (`describe_pending_use`).
         self._expr_stack: list[TpyExpr] = []
-        self.describe_statement_use: Callable[[], str] = lambda: "this use"
+        self.describe_statement_use: Callable[[TpyExpr | None], str] = (
+            lambda _e=None: "this use")
 
     def set_scopes(self, scopes: ScopeTracker) -> None:
         """Set scope tracker (available once StatementAnalyzer is created)."""
@@ -629,9 +633,9 @@ class ExpressionAnalyzer:
         rewrite of the node it named loses the pass and settles the local.
         `slot` is the declared slot the node's value is then coerced to
         (`analyze_at_slot`), None for any other analysis."""
-        lc = self.pend.list_cells(typ)
+        lc = self.pend.container_cells(typ)
         if lc is not None:
-            return self._pending_list_gate(expr, typ, lc, slot)
+            return self._cell_container_gate(expr, typ, lc, slot)
         if not is_pending_num(typ):
             if value_leaves(typ):
                 return self._pending_composite_gate(expr, typ)
@@ -665,16 +669,19 @@ class ExpressionAnalyzer:
         return self.pend.force_value(expr, typ,
                                      self.describe_pending_use(expr))
 
-    def _pending_list_gate(self, expr: TpyExpr, typ: TpyType,
-                           lc: ListCells,
-                           slot: SlotHint | None) -> TpyType:
-        """The gate for a list literal whose element cells decide: a
-        consumer that named the node (`PendingNums.list_sink`) sees the
-        element undecided, as does a slot declared as a typed container,
-        whose coercion decides it (`TypeCompatibility._list_at_container`);
-        any other gets it settled first, as a use that needs the element
-        type now."""
-        if not lc.settled and self.ctx.pending_list_ok_node is not expr:
+    def _cell_container_gate(self, expr: TpyExpr, typ: TpyType,
+                             lc: ContainerCells,
+                             slot: SlotHint | None) -> TpyType:
+        """The gate for a container literal -- a list, a dict, a set,
+        written or seeded -- whose cells decide its leaves: a consumer that
+        named the node (`PendingNums.list_sink`) sees the leaves undecided,
+        as does a slot declared as a typed container, whose coercion
+        decides them (`TypeCompatibility._list_at_container`); any other
+        gets them settled first, as a use that needs the type now. A read
+        of an empty container recorded before its cells were born comes
+        out as the cells have it."""
+        if (not lc.settled and self.ctx.pending_list_ok_node is not expr
+                and not any(n is expr for n in self.ctx.truth_ok_node)):
             scope = (self.ctx.adaptive_list_args[-1]
                      if self.ctx.adaptive_list_args else None)
             if scope is not None and any(n is expr for n in scope[0]):
@@ -683,24 +690,87 @@ class ExpressionAnalyzer:
                 if not self.ctx.trial_depth:
                     scope[1].extend(lc.cells)
                 return self.pend.adaptive_view(typ, lc)
-            if self._awaits_container(slot):
+            if self._awaits_container(slot, lc.tree):
                 if not self.ctx.trial_depth:
                     self.ctx.func.awaiting_container.extend(
                         (c.cid, expr) for c in lc.cells)
                 return typ
             self.pend.force_list(expr, typ, lc,
                                  self.describe_pending_use(expr))
-        known = self.pend.list_as_known(typ, lc)
+        known = self.pend.as_known(typ, lc)
+        if (lc.settled and self.ctx.pending_list_ok_node is not expr
+                and not self._awaits_container(slot, lc.tree)
+                and not (slot is not None and slot.is_declared
+                         and pairs_as(lc.tree, unwrap_qualifiers(slot.type)))):
+            # A settled container reaches a consumer that did not name it
+            # at its settled form; one that named the node, or a declared
+            # container slot, keeps the record its cells are found by.
+            known = self.pend.settled_form(typ, lc)
         if known is not typ:
             self.ctx.set_expr_type(expr, known)
         return known
 
-    def _awaits_container(self, slot: SlotHint | None) -> bool:
+    def _contains_leaf(self, haystack: TpyType, operand: TpyExpr,
+                       operand_type: TpyType) -> PendingNumType | None:
+        """The pending leaf the operand of `in` is passed at when the
+        haystack is a container whose cells are still open at the part it
+        is looked up at (`membership_step`, `PendingNums.lookup_leaf`, as
+        for a method's part argument); an operand the part does not hold
+        decided the haystack first (`PendingNums.lookup_decides`)."""
+        lc = self.pend.container_cells(haystack)
+        return self.pend.lookup_leaf(lc, self.membership_step(lc), operand,
+                                     operand_type)
+
+    def membership_step(self, lc: ContainerCells | None) -> str | None:
+        """The part of cell container `lc` the operand of `in` is looked
+        up at: the one its stub's `__contains__` names, or with no
+        `__contains__` the one its `__iter__` yields, which `in` then
+        compares the operand with (a list's element)."""
+        if lc is None:
+            return None
+        if container_calls(self.ctx, lc.tree, "__contains__", 1):
+            return self.lookup_step(lc, "__contains__")
+        return iterated_step(self.ctx, lc.tree)
+
+    def decide_for_lookup(self, container: TpyExpr, t: TpyType,
+                          step: str | None, operand_type: TpyType,
+                          what: str | None = None) -> TpyType:
+        """Container `container`, of type `t`, decided first when the
+        value looked up at its part `step` is one that part does not hold
+        (`PendingNums.lookup_decides`); otherwise `t` as it is. `what`
+        names the use for a later store's diagnostic (by default the
+        expression holding `container`)."""
+        lc = self.pend.container_cells(t)
+        if (lc is None or lc.settled or step is None
+                or not self.pend.lookup_decides(lc, step, operand_type)):
+            return t
+        t = self.pend.force_list(
+            container, t, lc,
+            what if what is not None else self.describe_pending_use(container))
+        self.ctx.set_expr_type(container, t)
+        return t
+
+    def lookup_step(self, lc: ContainerCells | None,
+                    dunder: str) -> str | None:
+        """The part of cell container `lc` its one-argument `dunder` takes
+        its argument at, when the stub declares an effect for it (`in`'s
+        `__contains__`, `del`'s `__delitem__`); None when the call names no
+        part (a list's index) or declares nothing."""
+        cc = (container_call(self.ctx, lc.tree, dunder, 1)
+              if lc is not None else None)
+        if (cc is None or cc.effect is None or cc.roles[0] is None
+                or cc.roles[0][0] is not Role.PART):
+            return None
+        return cc.roles[0][1]
+
+    def _awaits_container(self, slot: SlotHint | None,
+                          node: TpyType | type = PendingListType) -> bool:
         """Whether `slot`, the declared slot a value is then coerced to,
-        holds a typed container of numbers (`PendingNums.slot_containers`):
-        that coercion decides the element of a list literal."""
+        holds a typed container of numbers a container literal of tree
+        node `node`'s kind meets (`PendingNums.slot_containers`): that
+        coercion decides its leaves."""
         return (slot is not None and slot.is_declared and not slot.is_fill
-                and bool(self.pend.slot_containers(slot.type)))
+                and bool(self.pend.slot_containers(slot.type, None, node)))
 
     def describe_pending_use(self, expr: TpyExpr) -> str:
         """What the consumer of `expr` uses it as, for the diagnostic of a
@@ -710,7 +780,7 @@ class ExpressionAnalyzer:
             if parent is expr:
                 continue
             return _use_as_part_of(parent, expr)
-        return self.describe_statement_use()
+        return self.describe_statement_use(expr)
 
     def _analyze_expr_raw(self, expr: TpyExpr) -> TpyType:
         own = self.ctx.slot_hint_at(expr)
@@ -854,7 +924,14 @@ class ExpressionAnalyzer:
         a comprehension filter, a ternary test, a `not` operand, the argument
         of a constructor that only tests it (`bool(...)`)."""
         self.mark_truth_test(expr)
-        typ = self.analyze_expr(expr)
+        saved = self.ctx.truth_ok_node
+        # The operands an `and` / `or` / ternary distributes the test over
+        # are tested for truth too.
+        self.ctx.truth_ok_node = (expr, *truthy_operands(expr))
+        try:
+            typ = self.analyze_expr(expr)
+        finally:
+            self.ctx.truth_ok_node = saved
         record_truth_calls(self.ctx, truthy_operands(expr))
         return typ
 
@@ -953,7 +1030,7 @@ class ExpressionAnalyzer:
         if (not isinstance(typ, PendingListType)
                 or self._hint_converts_int(typ, list_hint)):
             return
-        info = self.ctx.list_literals.get(typ.literal_id)
+        info = self.ctx.list_literal(typ.literal_id)
         if info is None:
             return
         info.has_explicit_annotation = True
@@ -1117,7 +1194,7 @@ class ExpressionAnalyzer:
                             has_explicit_annotation=True,
                             explicit_type=list_hint,
                         )
-                        self.ctx.list_literals[literal_id] = info
+                        self.ctx.container_literals[literal_id] = info
                         self.ctx.func.pending_resolutions.append(literal_id)
                         typ = PendingListType(elem_type, 0, literal_id)
                     self.ctx.set_expr_type(expr, typ)
@@ -1594,6 +1671,20 @@ class ExpressionAnalyzer:
                           e_expr: TpyExpr) -> TpyType | InferredJoin | None:
         if t == e:
             return t
+        lt, le = self.pend.container_cells(t), self.pend.container_cells(e)
+        if (lt is not None and le is not None
+                and type(lt.tree) is type(le.tree)
+                and not isinstance(lt.tree, PendingListType)):
+            # Two dicts or sets whose cells decide: one C++ type, so each
+            # arm is decided by what it holds and they must agree.
+            if lt.cids == le.cids:
+                return t
+            for x, lc, node in ((t, lt, t_expr), (e, le, e_expr)):
+                self.pend.force_list(node, x, lc,
+                                     self.describe_pending_use(node))
+            tc = self.pend.declared_form(self.pend.tree_type(lt))
+            ec = self.pend.declared_form(self.pend.tree_type(le))
+            return tc if tc == ec else None
         if isinstance(t, IntLiteralType) and isinstance(e, IntLiteralType):
             # Each literal at its own default, so `0 or 10**10` and
             # `10**10 or 0` both widen to the type that holds the big one.
@@ -1690,7 +1781,7 @@ class ExpressionAnalyzer:
             # size; the operands must share the one `list` type.
             for pt in collect_pending_source_types(self.ctx, expr):
                 if isinstance(pt, PendingListType):
-                    info = self.ctx.list_literals.get(pt.literal_id)
+                    info = self.ctx.list_literal(pt.literal_id)
                     if info is not None:
                         info.needs_list_type = True
         for attr, operand_type in operands:
@@ -1763,6 +1854,15 @@ class ExpressionAnalyzer:
             if expr.op in _PENDING_NUM_BINOPS:
                 with self.pend.sink(e):
                     return self.analyze_expr(e)
+            if expr.op in ("in", "not in") and e is expr.right:
+                # A membership test compares the operand with a dict's keys,
+                # a set's or a list's elements: one they hold leaves them
+                # open, any other decides them first.
+                with self.pend.list_sink(e):
+                    t = self.analyze_expr(e)
+                return self.decide_for_lookup(
+                    e, t, self.membership_step(self.pend.container_cells(t)),
+                    left_type)
             return self.analyze_expr(e)
         left_type = operand(expr.left)
         if expr.op in ("&&", "||"):
@@ -2105,7 +2205,11 @@ class ExpressionAnalyzer:
                                 break
                         else:
                             check_left = self.ctx.default_int_for_literal(check_left)
-                    matched = resolve_overload(subst_overloads, [check_left])
+                    leaf = self._contains_leaf(right_type, expr.left,
+                                               left_type)
+                    matched = resolve_overload(
+                        subst_overloads,
+                        [leaf if leaf is not None else check_left])
                     if matched is not None:
                         # Map back to the original (un-substituted) method for codegen
                         idx = subst_overloads.index(matched)
@@ -2120,6 +2224,21 @@ class ExpressionAnalyzer:
                             self.ctx, expr.right, right_type, original_method,
                             "__contains__", expr)
                         expr.resolved_contains = original_method
+                        passed = (self.pend.pass_at_leaf(
+                            expr.left, left_type, leaf, "membership test")
+                            if leaf is not None else expr.left)
+                        if passed is not expr.left:
+                            # Its conversion to the leaf is judged once
+                            # the leaf settles.
+                            expr.left = passed
+                            return BOOL
+                        lookup = unwrap_readonly(matched.params[0].type)
+                        if is_pending_num(lookup):
+                            # A key looked up in a dict whose cells decide
+                            # its keys must fit them once they settle.
+                            self.compat.check_type_compatible(
+                                left_type, lookup, "membership test",
+                                loc=expr.loc, source_expr=expr.left)
                         return BOOL
                     # No __contains__ overload matched. Defer to
                     # check_type_compatible: it raises for genuine mismatches
@@ -2177,7 +2296,9 @@ class ExpressionAnalyzer:
                         right_type)
                     if elem_type is not None:
                         equatable = NominalType("Equatable", is_protocol=True)
-                        if not self.protocols.type_conforms_to_protocol(elem_type, equatable):
+                        # Any width a pending leaf settles to compares alike.
+                        if not self.protocols.type_conforms_to_protocol(
+                                leaves_as_numbers(elem_type), equatable):
                             raise self.ctx.error(
                                 f"'in' requires element type '{elem_type}' to "
                                 f"conform to 'Equatable' (no '__eq__' method)",
@@ -2191,6 +2312,13 @@ class ExpressionAnalyzer:
                             and iter_recv.is_user_record):
                         _record_iter_receiver_mutation(
                             self.ctx, expr.right, iter_recv)
+                    leaf = self._contains_leaf(right_type, expr.left,
+                                               left_type)
+                    if leaf is not None:
+                        # A list literal's element compared with the
+                        # operand must hold it, as a looked-up key must.
+                        expr.left = self.pend.pass_at_leaf(
+                            expr.left, left_type, leaf, "membership test")
                 return BOOL
             raise self.ctx.error(f"Cannot use '{op_spelling(expr.op)}' with non-iterable type {right_type}", expr)
 
@@ -3367,7 +3495,7 @@ class ExpressionAnalyzer:
                 size=0,
                 is_mutated=True,  # empty list is always list, never Array
             )
-            self.ctx.list_literals[literal_id] = info
+            self.ctx.container_literals[literal_id] = info
             self.ctx.func.pending_resolutions.append(literal_id)
             typ = PendingListType(UNKNOWN_ELEMENT, 0, literal_id)
             self.ctx.set_expr_type(expr, typ)
@@ -3516,7 +3644,7 @@ class ExpressionAnalyzer:
             size=size,
             is_global=self.ctx.is_top_level
         )
-        self.ctx.list_literals[literal_id] = info
+        self.ctx.container_literals[literal_id] = info
         self.ctx.func.pending_resolutions.append(literal_id)
 
         return PendingListType(first_type, size, literal_id)
@@ -4219,8 +4347,8 @@ class ExpressionAnalyzer:
                 key_type=UNKNOWN_ELEMENT,
                 value_type=UNKNOWN_ELEMENT,
             )
-            self.ctx.dict_literals[literal_id] = info
-            self.ctx.func.pending_dict_resolutions.append(literal_id)
+            self.ctx.container_literals[literal_id] = info
+            self.ctx.func.pending_resolutions.append(literal_id)
             return PendingDictType(UNKNOWN_ELEMENT, UNKNOWN_ELEMENT, literal_id)
 
         key_types = [self._analyze_and_strip(k, key_hint) for k in expr.keys]
@@ -4507,7 +4635,7 @@ class ExpressionAnalyzer:
             size=size,
             is_global=self.ctx.is_top_level,
         )
-        self.ctx.list_literals[literal_id] = info
+        self.ctx.container_literals[literal_id] = info
         self.ctx.func.pending_resolutions.append(literal_id)
 
         return PendingListType(first_type, size, literal_id)
@@ -4842,7 +4970,7 @@ class ExpressionAnalyzer:
                     size=array_size,
                     is_global=self.ctx.is_top_level,
                 )
-                self.ctx.list_literals[literal_id] = info
+                self.ctx.container_literals[literal_id] = info
                 self.ctx.func.pending_resolutions.append(literal_id)
                 return PendingListType(result_elem_type, array_size, literal_id)
 
@@ -5274,6 +5402,16 @@ class ExpressionAnalyzer:
         # the int-indexed container path applies below.
         readonly_dict = isinstance(inner_obj_type, ReadonlyType)
         lookup_index_type = unwrap_readonly(index_type)
+        if (isinstance(actual_obj, PendingDictType)
+                and not expr.is_write_target):
+            # A read looks the key up; a store's key is inserted.
+            decided = self.decide_for_lookup(
+                expr.obj, obj_type,
+                self.lookup_step(self.pend.container_cells(obj_type),
+                                 "__getitem__"),
+                lookup_index_type)
+            if decided is not obj_type:
+                actual_obj = unwrap_readonly(unwrap_ref_type(decided))
         if isinstance(actual_obj, PendingDictType):
             # An unresolved key type has nothing to check against; every other
             # pending dict takes the same narrow a resolved one does.
@@ -5350,7 +5488,7 @@ class ExpressionAnalyzer:
             # Subscript on a repeat-sourced pending list needs indexing support
             # (repeat_range doesn't have operator[], but Array does).
             if isinstance(actual_type, PendingListType):
-                info = self.ctx.list_literals.get(actual_type.literal_id)
+                info = self.ctx.list_literal(actual_type.literal_id)
                 if info and isinstance(info.expr, TpyListRepeat):
                     info.needs_indexing = True
                 elem_type = pending_elem_read(self.ctx, actual_type,

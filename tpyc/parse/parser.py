@@ -1720,11 +1720,12 @@ class Parser:
                             f"@{bare_name(qname)}({call_kw}=...) is only valid on a "
                             f"function or method stub: it declares what a bound C++ "
                             f"call does", dec)
-                if "mutates" in kw:
-                    raise ParseError(
-                        f"@{bare_name(qname)}(mutates=...) is only valid on a "
-                        f"method stub: it declares what a bound C++ method "
-                        f"writes", dec)
+                for method_kw in ("mutates", "element_effect"):
+                    if method_kw in kw:
+                        raise ParseError(
+                            f"@{bare_name(qname)}({method_kw}=...) is only valid "
+                            f"on a method stub: it declares what a bound C++ "
+                            f"method does", dec)
                 if kw.get("indirecting"):
                     is_indirecting = True
                 if kw.get("elements"):
@@ -2554,6 +2555,7 @@ class Parser:
         native_function: bool = False
         native_mutates: str | None = None
         mutates_dec: ast.expr | None = None
+        element_effect: str | None = None
         copy_returns_warn: bool = False
         cpp_template: str | None = None
         is_property_getter = False
@@ -2650,6 +2652,12 @@ class Parser:
                             dec)
                     native_mutates = "elements"
                     mutates_dec = dec
+                if "element_effect" in kw:
+                    if kw["element_effect"] not in ("insert", "lookup"):
+                        raise ParseError(
+                            f"@{bare_name(qname)}(element_effect=...) is "
+                            f"\"insert\" or \"lookup\"", dec)
+                    element_effect = kw["element_effect"]
                 if kw.get("transient"):
                     transient_dec = dec
                 if kw.get("checks_signals"):
@@ -2955,6 +2963,7 @@ class Parser:
             native_name=native_name,
             native_function=native_function,
             native_mutates=native_mutates,
+            native_element_effect=element_effect,
             copy_returns_warn=copy_returns_warn,
             native_cpp_return_type=native_cpp_return_type,
             cpp_template=cpp_template,
@@ -3118,11 +3127,12 @@ class Parser:
                 self._reject_type_fact_kwargs(qname, kw, dec)
                 borrow_facts = (self._parse_borrow_facts(qname, kw, dec)
                                 or borrow_facts)
-                if "mutates" in kw:
-                    raise ParseError(
-                        f"@{bare_name(qname)}(mutates=...) is only valid on a "
-                        f"method stub: a free function has no receiver whose "
-                        f"elements it writes", dec)
+                for method_kw in ("mutates", "element_effect"):
+                    if method_kw in kw:
+                        raise ParseError(
+                            f"@{bare_name(qname)}({method_kw}=...) is only valid "
+                            f"on a method stub: a free function has no receiver "
+                            f"whose elements it acts on", dec)
                 if kw.get("transient"):
                     transient_dec = dec
                 if kw.get("checks_signals"):

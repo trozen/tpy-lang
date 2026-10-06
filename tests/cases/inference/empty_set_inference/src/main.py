@@ -23,7 +23,7 @@ def test_multiple() -> None:
 
 def test_numeric_widen() -> None:
     s = set()  # tpyc: type(set[int64])
-    s.add(int32(1))
+    s.add(1)
     s.add(int64(2))
     print(s)
 

@@ -121,6 +121,50 @@ concept ReferenceType = !ValueType<T>;
 template<typename T>
 concept Copyable = std::is_copy_constructible_v<T>;
 
+// --- Lossless entry conversion ---
+
+namespace detail {
+template<typename From, typename To>
+constexpr bool widens_scalar() {
+    if constexpr (std::is_same_v<From, To>) {
+        return true;
+    } else if constexpr (!std::is_arithmetic_v<From>
+                         || !std::is_arithmetic_v<To>
+                         || std::is_same_v<From, bool>
+                         || std::is_same_v<To, bool>) {
+        return false;
+    } else if constexpr (std::is_floating_point_v<From>
+                         || std::is_floating_point_v<To>) {
+        return std::is_floating_point_v<From> && std::is_floating_point_v<To>
+            && sizeof(To) >= sizeof(From);
+    } else if constexpr (std::is_signed_v<From> == std::is_signed_v<To>) {
+        return sizeof(To) >= sizeof(From);
+    } else {
+        return std::is_unsigned_v<From> && sizeof(To) > sizeof(From);
+    }
+}
+}  // namespace detail
+
+/**
+ * widens_to - whether every value of `From` converts to `To` unchanged: the
+ * same type, an integer to one of its signedness at least as wide, an
+ * unsigned integer to a strictly wider signed one, a floating type to one at
+ * least as wide, and a tuple member by member. An integer to a floating type
+ * is not one (int64 rounds in a double), nor is any container, `bool` or
+ * class conversion: an update between two containers converts its entries
+ * only where sema decided the source narrower than the target.
+ */
+template<typename From, typename To>
+struct widens_to : std::bool_constant<detail::widens_scalar<From, To>()> {};
+
+template<typename... From, typename... To>
+    requires (sizeof...(From) == sizeof...(To))
+struct widens_to<std::tuple<From...>, std::tuple<To...>>
+    : std::bool_constant<(widens_to<From, To>::value && ...)> {};
+
+template<typename From, typename To>
+inline constexpr bool widens_to_v = widens_to<From, To>::value;
+
 // --- Thread safety markers ---
 
 /**

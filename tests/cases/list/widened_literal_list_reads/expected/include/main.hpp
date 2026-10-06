@@ -94,6 +94,12 @@ void with_body(bool c);
 // @error_return(Refused)
 // def alias_pair(limit: int64) -> int64:
 std::expected<int64_t, Refused> alias_pair(int64_t limit);
+// def lookups_pos() -> None:
+void lookups_pos();
+// def truth_pos(c: bool) -> None:
+void truth_pos(bool c);
+// def wide_lookups_pos(n: int64, big: int) -> None:
+void wide_lookups_pos(int64_t n, const ::tpy::BigInt& big);
 // def main() -> None:
 void main();
 

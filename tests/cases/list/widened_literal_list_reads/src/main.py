@@ -395,6 +395,44 @@ def alias_pair(limit: int64) -> int64:
     return ys[1] + len(ys)
 
 
+def lookups_pos() -> None:
+    xs = [1, 2, 3, 2]  # tpyc: type(list[int64])
+    a: int8 = 3
+    # function: remove / index / count and `in` look the value up: a literal
+    # adapts and a narrower typed value converts, and the element stays open.
+    xs.remove(1)  # tpyc: ok
+    n = xs.count(2)
+    i = xs.index(a)
+    print("fn.lookups.in", 2 in xs, a in xs, 7 not in xs)
+    xs.append(w64())
+    print("fn.lookups", xs, n, i, w64() in xs)
+
+
+def truth_pos(c: bool) -> None:
+    xs = [1, 2]  # tpyc: type(list[int64])
+    ys = [3]  # tpyc: type(list[int64])
+    # function: a truth test reads the length only, and so does a list
+    # operand of an and / or that is one.
+    if xs:  # tpyc: ok
+        print("fn.truth.if", len(xs))
+    if ys and c:  # tpyc: ok
+        print("fn.truth.and", len(ys))
+    xs.append(w64())
+    ys.append(w64())
+    print("fn.truth", xs, ys)
+
+
+def wide_lookups_pos(n: int64, big: int) -> None:
+    ps = [2, 3, 5]  # tpyc: type(Array[int32, 3])
+    k = {1: "x", 2: "y"}  # tpyc: type(dict[int32, str])
+    s = {1, 2}  # tpyc: type(set[int32])
+    xs = [1, 2]  # tpyc: type(Array[int32, 2])
+    # function: a value wider than the element decides the container first
+    # and is compared as it is, never converted down.
+    print("fn.wide.in", n in ps)  # tpyc: ok
+    print("fn.wide.bigint", big in k, big in s, big in xs)  # tpyc: ok
+
+
 def main() -> None:
     param_widens()
     param_confirms()
@@ -406,6 +444,10 @@ def main() -> None:
     generic_call()
     typed_slots()
     select_operands()
+    lookups_pos()
+    truth_pos(True)
+    wide_lookups_pos(3, 2)
+    wide_lookups_pos(4, 1000000000000)
     print("fn.pick", pick(True), pick(False))
     raise_arg()
     m = Maker(5000000000)

@@ -113,6 +113,8 @@ void tuple_sinks_pos();
 void float32_member_pos();
 // def subscript_row_pos() -> None:
 void subscript_row_pos();
+// def alias_chain_pos() -> None:
+void alias_chain_pos();
 // def main() -> None:
 void main();
 

@@ -10877,7 +10877,7 @@
  "dict_si__async__local__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] *%x[str('z')] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [*%s0]) [raw])"
+  "[2] %x = form_convert[borrow](*%s0) [3] *%x[str('z')] = lit(9) [4] print(call(len [tpy::__len__], [*%s0]) [raw])"
  ],
  "dict_si__async__local__decl_reassigned": [
   "ok",
@@ -10897,7 +10897,7 @@
  "dict_si__async__local__recv_mut": [
   "ok",
   "",
-  "[2] *%s0[str('z')] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [*%s0]) [raw])"
+  "[2] *%s0[str('z')] = lit(9) [3] print(call(len [tpy::__len__], [*%s0]) [raw])"
  ],
  "dict_si__async__local__tuple_elem": [
   "ok",
@@ -10907,7 +10907,7 @@
  "dict_si__async__local_last__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] *%x[str('z')] = coerce(lit(9) -> int32)"
+  "[2] %x = form_convert[borrow](*%s0) [3] *%x[str('z')] = lit(9)"
  ],
  "dict_si__async__local_last__decl_reassigned": [
   "ok",
@@ -10927,7 +10927,7 @@
  "dict_si__async__local_last__recv_mut": [
   "ok",
   "",
-  "[2] *%s0[str('z')] = coerce(lit(9) -> int32)"
+  "[2] *%s0[str('z')] = lit(9)"
  ],
  "dict_si__async__local_last__tuple_elem": [
   "ok",
@@ -11042,7 +11042,7 @@
  "dict_si__async__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] *%x[str('z')] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw])"
+  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] *%x[str('z')] = lit(9) [4] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw])"
  ],
  "dict_si__async__subscript__decl_reassigned": [
   "ok",
@@ -11062,7 +11062,7 @@
  "dict_si__async__subscript__recv_mut": [
   "ok",
   "",
-  "[2] *%xs[0] [borrow][str('z')] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw])"
+  "[2] *%xs[0] [borrow][str('z')] = lit(9) [3] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw])"
  ],
  "dict_si__async__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'dict[str, int32]'",
@@ -11167,7 +11167,7 @@
  "dict_si__ctor__local__decl_alias": [
   "ok",
   "",
-  "%x: dict = %s0 %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: dict = %s0 %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__ctor__local__decl_reassigned": [
   "ok",
@@ -11187,7 +11187,7 @@
  "dict_si__ctor__local__recv_mut": [
   "ok",
   "",
-  "%s0[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%s0[str('z')] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__ctor__local__tuple_elem": [
   "ok",
@@ -11197,7 +11197,7 @@
  "dict_si__ctor__local_last__decl_alias": [
   "ok",
   "",
-  "%x: dict = move(%s0) %x[str('z')] = coerce(lit(9) -> int32)"
+  "%x: dict = move(%s0) %x[str('z')] = lit(9)"
  ],
  "dict_si__ctor__local_last__decl_reassigned": [
   "ok",
@@ -11217,7 +11217,7 @@
  "dict_si__ctor__local_last__recv_mut": [
   "ok",
   "",
-  "%s0[str('z')] = coerce(lit(9) -> int32)"
+  "%s0[str('z')] = lit(9)"
  ],
  "dict_si__ctor__local_last__tuple_elem": [
   "ok",
@@ -11467,7 +11467,7 @@
  "dict_si__ctor__subscript__decl_alias": [
   "ok",
   "",
-  "%x: dict = %xs[0] [borrow] %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%x: dict = %xs[0] [borrow] %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
  ],
  "dict_si__ctor__subscript__decl_reassigned": [
   "ok",
@@ -11487,7 +11487,7 @@
  "dict_si__ctor__subscript__recv_mut": [
   "ok",
   "",
-  "%xs[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%xs[0] [borrow][str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
  ],
  "dict_si__ctor__subscript__tuple_elem": [
   "ok",
@@ -11657,7 +11657,7 @@
  "dict_si__fn__local__decl_alias": [
   "ok",
   "",
-  "%x: dict = %s0 %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: dict = %s0 %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__fn__local__decl_reassigned": [
   "ok",
@@ -11677,7 +11677,7 @@
  "dict_si__fn__local__recv_mut": [
   "ok",
   "",
-  "%s0[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%s0[str('z')] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__fn__local__tuple_elem": [
   "ok",
@@ -11687,7 +11687,7 @@
  "dict_si__fn__local_last__decl_alias": [
   "ok",
   "",
-  "%x: dict = move(%s0) %x[str('z')] = coerce(lit(9) -> int32)"
+  "%x: dict = move(%s0) %x[str('z')] = lit(9)"
  ],
  "dict_si__fn__local_last__decl_reassigned": [
   "ok",
@@ -11707,7 +11707,7 @@
  "dict_si__fn__local_last__recv_mut": [
   "ok",
   "",
-  "%s0[str('z')] = coerce(lit(9) -> int32)"
+  "%s0[str('z')] = lit(9)"
  ],
  "dict_si__fn__local_last__tuple_elem": [
   "ok",
@@ -11982,7 +11982,7 @@
  "dict_si__fn__subscript__decl_alias": [
   "ok",
   "",
-  "%x: dict = %xs[0] [borrow] %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%x: dict = %xs[0] [borrow] %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
  ],
  "dict_si__fn__subscript__decl_reassigned": [
   "ok",
@@ -12002,7 +12002,7 @@
  "dict_si__fn__subscript__recv_mut": [
   "ok",
   "",
-  "%xs[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%xs[0] [borrow][str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
  ],
  "dict_si__fn__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'dict[str, int32]'",
@@ -12157,7 +12157,7 @@
  "dict_si__gen__local__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] *%x[str('z')] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %x = form_convert[borrow](*%s0) [3] *%x[str('z')] = lit(9) [4] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "dict_si__gen__local__decl_reassigned": [
   "ok",
@@ -12177,7 +12177,7 @@
  "dict_si__gen__local__recv_mut": [
   "ok",
   "",
-  "[2] *%s0[str('z')] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] *%s0[str('z')] = lit(9) [3] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "dict_si__gen__local__tuple_elem": [
   "ok",
@@ -12187,7 +12187,7 @@
  "dict_si__gen__local_last__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] *%x[str('z')] = coerce(lit(9) -> int32) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %x = form_convert[borrow](*%s0) [3] *%x[str('z')] = lit(9) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "dict_si__gen__local_last__decl_reassigned": [
   "ok",
@@ -12207,7 +12207,7 @@
  "dict_si__gen__local_last__recv_mut": [
   "ok",
   "",
-  "[2] *%s0[str('z')] = coerce(lit(9) -> int32) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] *%s0[str('z')] = lit(9) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "dict_si__gen__local_last__tuple_elem": [
   "ok",
@@ -12322,7 +12322,7 @@
  "dict_si__gen__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] *%x[str('z')] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] *%x[str('z')] = lit(9) [4] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "dict_si__gen__subscript__decl_reassigned": [
   "ok",
@@ -12342,7 +12342,7 @@
  "dict_si__gen__subscript__recv_mut": [
   "ok",
   "",
-  "[2] *%xs[0] [borrow][str('z')] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] *%xs[0] [borrow][str('z')] = lit(9) [3] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "dict_si__gen__subscript__tuple_elem": [
   "ok",
@@ -12457,7 +12457,7 @@
  "dict_si__meth__local__decl_alias": [
   "ok",
   "",
-  "%x: dict = %s0 %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: dict = %s0 %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__meth__local__decl_reassigned": [
   "ok",
@@ -12477,7 +12477,7 @@
  "dict_si__meth__local__recv_mut": [
   "ok",
   "",
-  "%s0[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%s0[str('z')] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__meth__local__tuple_elem": [
   "ok",
@@ -12487,7 +12487,7 @@
  "dict_si__meth__local_last__decl_alias": [
   "ok",
   "",
-  "%x: dict = move(%s0) %x[str('z')] = coerce(lit(9) -> int32)"
+  "%x: dict = move(%s0) %x[str('z')] = lit(9)"
  ],
  "dict_si__meth__local_last__decl_reassigned": [
   "ok",
@@ -12507,7 +12507,7 @@
  "dict_si__meth__local_last__recv_mut": [
   "ok",
   "",
-  "%s0[str('z')] = coerce(lit(9) -> int32)"
+  "%s0[str('z')] = lit(9)"
  ],
  "dict_si__meth__local_last__tuple_elem": [
   "ok",
@@ -12782,7 +12782,7 @@
  "dict_si__meth__subscript__decl_alias": [
   "ok",
   "",
-  "%x: dict = %xs[0] [borrow] %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%x: dict = %xs[0] [borrow] %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
  ],
  "dict_si__meth__subscript__decl_reassigned": [
   "ok",
@@ -12802,7 +12802,7 @@
  "dict_si__meth__subscript__recv_mut": [
   "ok",
   "",
-  "%xs[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%xs[0] [borrow][str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
  ],
  "dict_si__meth__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'dict[str, int32]'",
@@ -12957,7 +12957,7 @@
  "dict_si__nested__local__decl_alias": [
   "ok",
   "",
-  "%x: dict = %s0 %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "%x: dict = %s0 %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__local__decl_reassigned": [
   "ok",
@@ -12977,7 +12977,7 @@
  "dict_si__nested__local__recv_mut": [
   "ok",
   "",
-  "%s0[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "%s0[str('z')] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__local__tuple_elem": [
   "ok",
@@ -12987,7 +12987,7 @@
  "dict_si__nested__local_last__decl_alias": [
   "ok",
   "",
-  "%x: dict = %s0 %x[str('z')] = coerce(lit(9) -> int32) call(nested_inner, [])"
+  "%x: dict = %s0 %x[str('z')] = lit(9) call(nested_inner, [])"
  ],
  "dict_si__nested__local_last__decl_reassigned": [
   "ok",
@@ -13007,7 +13007,7 @@
  "dict_si__nested__local_last__recv_mut": [
   "ok",
   "",
-  "%s0[str('z')] = coerce(lit(9) -> int32) call(nested_inner, [])"
+  "%s0[str('z')] = lit(9) call(nested_inner, [])"
  ],
  "dict_si__nested__local_last__tuple_elem": [
   "ok",
@@ -13282,7 +13282,7 @@
  "dict_si__nested__subscript__decl_alias": [
   "ok",
   "",
-  "%x: dict = %xs[0] [borrow] %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw]) call(nested_inner, [])"
+  "%x: dict = %xs[0] [borrow] %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__subscript__decl_reassigned": [
   "ok",
@@ -13302,7 +13302,7 @@
  "dict_si__nested__subscript__recv_mut": [
   "ok",
   "",
-  "%xs[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw]) call(nested_inner, [])"
+  "%xs[0] [borrow][str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'dict[str, int32]'",
@@ -16440,9 +16440,9 @@
   "ptr_decl[ptr_addr] %x: list = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%d"
  ],
  "list_i__ctor__dict_subscript__field_write": [
-  "reject:stmt.assign:field_write.lift.borrow",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = %d[str('k')] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__ctor__dict_subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -16955,9 +16955,9 @@
   "ptr_decl[ptr_addr] %x: list = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%d"
  ],
  "list_i__fn__dict_subscript__field_write": [
-  "reject:stmt.assign:field_write.lift.borrow",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = %d[str('k')] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__fn__dict_subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -17790,9 +17790,9 @@
   "ptr_decl[ptr_addr] %x: list = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%d"
  ],
  "list_i__meth__dict_subscript__field_write": [
-  "reject:stmt.assign:field_write.lift.borrow",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = %d[str('k')] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__meth__dict_subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -18325,9 +18325,9 @@
   "ptr_decl[ptr_addr] %x: list = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%d"
  ],
  "list_i__nested__dict_subscript__field_write": [
-  "reject:stmt.assign:field_write.lift.borrow",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f [storage] = %d[str('k')] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__dict_subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -24467,7 +24467,7 @@
  "set_i__async__local__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] method_call(%x, ->insert, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [*%s0]) [raw])"
+  "[2] %x = form_convert[borrow](*%s0) [3] method_call(%x, ->insert, [lit(9)]) [4] print(call(len [tpy::__len__], [*%s0]) [raw])"
  ],
  "set_i__async__local__decl_reassigned": [
   "ok",
@@ -24487,7 +24487,7 @@
  "set_i__async__local__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%s0, insert, [coerce(lit(9) -> int32)]) [3] print(call(len [tpy::__len__], [*%s0]) [raw])"
+  "[2] method_call(*%s0, insert, [lit(9)]) [3] print(call(len [tpy::__len__], [*%s0]) [raw])"
  ],
  "set_i__async__local__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -24497,7 +24497,7 @@
  "set_i__async__local_last__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] method_call(%x, ->insert, [coerce(lit(9) -> int32)])"
+  "[2] %x = form_convert[borrow](*%s0) [3] method_call(%x, ->insert, [lit(9)])"
  ],
  "set_i__async__local_last__decl_reassigned": [
   "ok",
@@ -24517,7 +24517,7 @@
  "set_i__async__local_last__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%s0, insert, [coerce(lit(9) -> int32)])"
+  "[2] method_call(*%s0, insert, [lit(9)])"
  ],
  "set_i__async__local_last__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -24632,7 +24632,7 @@
  "set_i__async__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] method_call(%x, ->insert, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw])"
+  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] method_call(%x, ->insert, [lit(9)]) [4] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw])"
  ],
  "set_i__async__subscript__decl_reassigned": [
   "ok",
@@ -24652,7 +24652,7 @@
  "set_i__async__subscript__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%xs[0] [borrow], insert, [coerce(lit(9) -> int32)]) [3] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw])"
+  "[2] method_call(*%xs[0] [borrow], insert, [lit(9)]) [3] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw])"
  ],
  "set_i__async__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'set[int32]' is re",
@@ -24727,7 +24727,7 @@
  "set_i__ctor__dict_subscript__decl_alias": [
   "ok",
   "",
-  "%x: set = %d[str('k')] [borrow] method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%d[str('k')] [borrow]]) [raw])"
+  "%x: set = %d[str('k')] [borrow] method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%d[str('k')] [borrow]]) [raw])"
  ],
  "set_i__ctor__dict_subscript__decl_reassigned": [
   "ok",
@@ -24747,7 +24747,7 @@
  "set_i__ctor__dict_subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%d[str('k')] [borrow], insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%d[str('k')] [borrow]]) [raw])"
+  "method_call(%d[str('k')] [borrow], insert, [lit(9)]) print(call(len [tpy::__len__], [%d[str('k')] [borrow]]) [raw])"
  ],
  "set_i__ctor__dict_subscript__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -24787,7 +24787,7 @@
  "set_i__ctor__local__decl_alias": [
   "ok",
   "",
-  "%x: set = %s0 method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: set = %s0 method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__ctor__local__decl_reassigned": [
   "ok",
@@ -24807,7 +24807,7 @@
  "set_i__ctor__local__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%s0, insert, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__ctor__local__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -24817,7 +24817,7 @@
  "set_i__ctor__local_last__decl_alias": [
   "ok",
   "",
-  "%x: set = move(%s0) method_call(%x, insert, [coerce(lit(9) -> int32)])"
+  "%x: set = move(%s0) method_call(%x, insert, [lit(9)])"
  ],
  "set_i__ctor__local_last__decl_reassigned": [
   "ok",
@@ -24837,7 +24837,7 @@
  "set_i__ctor__local_last__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, insert, [coerce(lit(9) -> int32)])"
+  "method_call(%s0, insert, [lit(9)])"
  ],
  "set_i__ctor__local_last__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -25087,7 +25087,7 @@
  "set_i__ctor__subscript__decl_alias": [
   "ok",
   "",
-  "%x: set = %xs[0] [borrow] method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%x: set = %xs[0] [borrow] method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
  ],
  "set_i__ctor__subscript__decl_reassigned": [
   "ok",
@@ -25107,7 +25107,7 @@
  "set_i__ctor__subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%xs[0] [borrow], insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "method_call(%xs[0] [borrow], insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
  ],
  "set_i__ctor__subscript__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -25242,7 +25242,7 @@
  "set_i__fn__dict_subscript__decl_alias": [
   "ok",
   "",
-  "%x: set = %d[str('k')] [borrow] method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%d[str('k')] [borrow]]) [raw])"
+  "%x: set = %d[str('k')] [borrow] method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%d[str('k')] [borrow]]) [raw])"
  ],
  "set_i__fn__dict_subscript__decl_reassigned": [
   "ok",
@@ -25262,7 +25262,7 @@
  "set_i__fn__dict_subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%d[str('k')] [borrow], insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%d[str('k')] [borrow]]) [raw])"
+  "method_call(%d[str('k')] [borrow], insert, [lit(9)]) print(call(len [tpy::__len__], [%d[str('k')] [borrow]]) [raw])"
  ],
  "set_i__fn__dict_subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'set[int32]' is re",
@@ -25312,7 +25312,7 @@
  "set_i__fn__local__decl_alias": [
   "ok",
   "",
-  "%x: set = %s0 method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: set = %s0 method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__fn__local__decl_reassigned": [
   "ok",
@@ -25332,7 +25332,7 @@
  "set_i__fn__local__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%s0, insert, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__fn__local__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -25342,7 +25342,7 @@
  "set_i__fn__local_last__decl_alias": [
   "ok",
   "",
-  "%x: set = move(%s0) method_call(%x, insert, [coerce(lit(9) -> int32)])"
+  "%x: set = move(%s0) method_call(%x, insert, [lit(9)])"
  ],
  "set_i__fn__local_last__decl_reassigned": [
   "ok",
@@ -25362,7 +25362,7 @@
  "set_i__fn__local_last__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, insert, [coerce(lit(9) -> int32)])"
+  "method_call(%s0, insert, [lit(9)])"
  ],
  "set_i__fn__local_last__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -25637,7 +25637,7 @@
  "set_i__fn__subscript__decl_alias": [
   "ok",
   "",
-  "%x: set = %xs[0] [borrow] method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%x: set = %xs[0] [borrow] method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
  ],
  "set_i__fn__subscript__decl_reassigned": [
   "ok",
@@ -25657,7 +25657,7 @@
  "set_i__fn__subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%xs[0] [borrow], insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "method_call(%xs[0] [borrow], insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
  ],
  "set_i__fn__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'set[int32]' is re",
@@ -25812,7 +25812,7 @@
  "set_i__gen__local__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] method_call(%x, ->insert, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %x = form_convert[borrow](*%s0) [3] method_call(%x, ->insert, [lit(9)]) [4] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "set_i__gen__local__decl_reassigned": [
   "ok",
@@ -25832,7 +25832,7 @@
  "set_i__gen__local__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%s0, insert, [coerce(lit(9) -> int32)]) [3] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] method_call(*%s0, insert, [lit(9)]) [3] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "set_i__gen__local__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -25842,7 +25842,7 @@
  "set_i__gen__local_last__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] method_call(%x, ->insert, [coerce(lit(9) -> int32)]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %x = form_convert[borrow](*%s0) [3] method_call(%x, ->insert, [lit(9)]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "set_i__gen__local_last__decl_reassigned": [
   "ok",
@@ -25862,7 +25862,7 @@
  "set_i__gen__local_last__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%s0, insert, [coerce(lit(9) -> int32)]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] method_call(*%s0, insert, [lit(9)]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "set_i__gen__local_last__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -25977,7 +25977,7 @@
  "set_i__gen__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] method_call(%x, ->insert, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -"
+  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] method_call(%x, ->insert, [lit(9)]) [4] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "set_i__gen__subscript__decl_reassigned": [
   "ok",
@@ -25997,7 +25997,7 @@
  "set_i__gen__subscript__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%xs[0] [borrow], insert, [coerce(lit(9) -> int32)]) [3] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] method_call(*%xs[0] [borrow], insert, [lit(9)]) [3] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "set_i__gen__subscript__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -26077,7 +26077,7 @@
  "set_i__meth__dict_subscript__decl_alias": [
   "ok",
   "",
-  "%x: set = %d[str('k')] [borrow] method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%d[str('k')] [borrow]]) [raw])"
+  "%x: set = %d[str('k')] [borrow] method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%d[str('k')] [borrow]]) [raw])"
  ],
  "set_i__meth__dict_subscript__decl_reassigned": [
   "ok",
@@ -26097,7 +26097,7 @@
  "set_i__meth__dict_subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%d[str('k')] [borrow], insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%d[str('k')] [borrow]]) [raw])"
+  "method_call(%d[str('k')] [borrow], insert, [lit(9)]) print(call(len [tpy::__len__], [%d[str('k')] [borrow]]) [raw])"
  ],
  "set_i__meth__dict_subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'set[int32]' is re",
@@ -26147,7 +26147,7 @@
  "set_i__meth__local__decl_alias": [
   "ok",
   "",
-  "%x: set = %s0 method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: set = %s0 method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__meth__local__decl_reassigned": [
   "ok",
@@ -26167,7 +26167,7 @@
  "set_i__meth__local__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%s0, insert, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__meth__local__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -26177,7 +26177,7 @@
  "set_i__meth__local_last__decl_alias": [
   "ok",
   "",
-  "%x: set = move(%s0) method_call(%x, insert, [coerce(lit(9) -> int32)])"
+  "%x: set = move(%s0) method_call(%x, insert, [lit(9)])"
  ],
  "set_i__meth__local_last__decl_reassigned": [
   "ok",
@@ -26197,7 +26197,7 @@
  "set_i__meth__local_last__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, insert, [coerce(lit(9) -> int32)])"
+  "method_call(%s0, insert, [lit(9)])"
  ],
  "set_i__meth__local_last__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -26472,7 +26472,7 @@
  "set_i__meth__subscript__decl_alias": [
   "ok",
   "",
-  "%x: set = %xs[0] [borrow] method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%x: set = %xs[0] [borrow] method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
  ],
  "set_i__meth__subscript__decl_reassigned": [
   "ok",
@@ -26492,7 +26492,7 @@
  "set_i__meth__subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%xs[0] [borrow], insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "method_call(%xs[0] [borrow], insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
  ],
  "set_i__meth__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'set[int32]' is re",
@@ -26612,7 +26612,7 @@
  "set_i__nested__dict_subscript__decl_alias": [
   "ok",
   "",
-  "%x: set = %d[str('k')] [borrow] method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%d[str('k')] [borrow]]) [raw]) call(nested_inner, [])"
+  "%x: set = %d[str('k')] [borrow] method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%d[str('k')] [borrow]]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__dict_subscript__decl_reassigned": [
   "ok",
@@ -26632,7 +26632,7 @@
  "set_i__nested__dict_subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%d[str('k')] [borrow], insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%d[str('k')] [borrow]]) [raw]) call(nested_inner, [])"
+  "method_call(%d[str('k')] [borrow], insert, [lit(9)]) print(call(len [tpy::__len__], [%d[str('k')] [borrow]]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__dict_subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'set[int32]' is re",
@@ -26682,7 +26682,7 @@
  "set_i__nested__local__decl_alias": [
   "ok",
   "",
-  "%x: set = %s0 method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "%x: set = %s0 method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__local__decl_reassigned": [
   "ok",
@@ -26702,7 +26702,7 @@
  "set_i__nested__local__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "method_call(%s0, insert, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__local__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -26712,7 +26712,7 @@
  "set_i__nested__local_last__decl_alias": [
   "ok",
   "",
-  "%x: set = %s0 method_call(%x, insert, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
+  "%x: set = %s0 method_call(%x, insert, [lit(9)]) call(nested_inner, [])"
  ],
  "set_i__nested__local_last__decl_reassigned": [
   "ok",
@@ -26732,7 +26732,7 @@
  "set_i__nested__local_last__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, insert, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
+  "method_call(%s0, insert, [lit(9)]) call(nested_inner, [])"
  ],
  "set_i__nested__local_last__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -27007,7 +27007,7 @@
  "set_i__nested__subscript__decl_alias": [
   "ok",
   "",
-  "%x: set = %xs[0] [borrow] method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw]) call(nested_inner, [])"
+  "%x: set = %xs[0] [borrow] method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__subscript__decl_reassigned": [
   "ok",
@@ -27027,7 +27027,7 @@
  "set_i__nested__subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%xs[0] [borrow], insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw]) call(nested_inner, [])"
+  "method_call(%xs[0] [borrow], insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'set[int32]' is re",

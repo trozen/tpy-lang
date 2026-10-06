@@ -371,6 +371,17 @@ def subscript_row_pos() -> None:
     print("subscript_row:", g, m, k, t)
 
 
+# a two-hop alias chain reaches the literal: a wider append through the far
+# name widens the element the first name reads
+def alias_chain_pos() -> None:
+    xs = [1, 2]
+    zs = ys = xs
+    zs.append(wide())  # tpyc: ok
+    v = xs[0]  # tpyc: type(int64)
+    ys[1] = 7
+    print("alias_chain:", v, xs, zs)
+
+
 def main() -> None:
     free_fn()
     h = Holder()
@@ -409,6 +420,7 @@ def main() -> None:
     tuple_sinks_pos()
     float32_member_pos()
     subscript_row_pos()
+    alias_chain_pos()
 
 
 main()
