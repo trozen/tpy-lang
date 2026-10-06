@@ -27,11 +27,12 @@ if TYPE_CHECKING:
     from .slot_hint import SlotHint
 
 from ..typesys import (
-    TpyType, recorded_return_borrow_sources, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
+    TpyType, recorded_return_borrow_sources, TypeRegistry, ContainerLiteralInfo, ListLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
     INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType, UnionType, TupleType,
     RecursiveAliasInstanceType, recursive_union_alternatives, ConcreteFrameType,
     ConcreteGenType,
-    PendingListType, PendingDictType, PendingSetType, PendingNumType,
+    PendingContainerType, PendingListType, PendingDictType, PendingSetType,
+    PendingNumType,
     UnknownElementType,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
@@ -1898,16 +1899,12 @@ class FunctionTrackingState:
     # (return, tuple member path or None) sites that defer it).
     pending_return_borrows: list[dict[str, tuple[str, list[tuple['TpyReturn', 'tuple[int, ...] | None']]]]] = field(default_factory=list)
 
-    # --- List/dict/set literal tracking ---
+    # --- Container literal tracking (lists, dicts and sets alike) ---
     variable_to_literal: dict[str, int] = field(default_factory=dict)
     pending_resolutions: list[int] = field(default_factory=list)
     # Keyed by the TpyMethodCall; survives `save_function_state`'s deep
     # copy with its keys intact (see `IdentityMap.__deepcopy__`).
     pre_analyzed_method_args: IdentityMap = field(default_factory=IdentityMap)
-    variable_to_dict_literal: dict[str, int] = field(default_factory=dict)
-    pending_dict_resolutions: list[int] = field(default_factory=list)
-    variable_to_set_literal: dict[str, int] = field(default_factory=dict)
-    pending_set_resolutions: list[int] = field(default_factory=list)
     # Comprehension/genexpr nodes cache their element/key/value type in a
     # snapshot field (result_elem_type etc.) taken during analysis. When that
     # snapshot is a Pending* container type (a list-literal element), the
@@ -1920,10 +1917,11 @@ class FunctionTrackingState:
     # `tuple[Pending,...]`). Recorded at set_expr_type so the finalization pass
     # rewrites only these nodes -- never a sweep over the module-wide cache.
     pending_composite_exprs: list[object] = field(default_factory=list)
-    # Expression nodes typed as a list literal whose element was still a
-    # pending number, or not known yet, when they were analyzed; resolve_all
-    # gives each the element its cell settled to.
-    pending_elem_list_exprs: list[object] = field(default_factory=list)
+    # Expression nodes typed as a container literal -- a list, a dict, a
+    # set -- with a part still a pending number, or not known yet, when
+    # they were analyzed; resolve_all gives each the type its record
+    # resolved to.
+    pending_container_exprs: list[object] = field(default_factory=list)
     # Branch-decl snapshot dicts (the `if_branch_decls` values recorded by
     # this function's branch producers). The snapshots capture binding types
     # BEFORE the deferred container resolution, so resolve_all must finalize
@@ -2568,9 +2566,10 @@ class SemanticContext:
 
     # --- Literal tracking (counters + registries persist across functions) ---
     literal_counter: int = 0
-    list_literals: dict[int, ListLiteralInfo] = field(default_factory=dict)
-    dict_literals: dict[int, DictLiteralInfo] = field(default_factory=dict)
-    set_literals: dict[int, SetLiteralInfo] = field(default_factory=dict)
+    # Every container literal's record by its id (one sequence for lists,
+    # dicts and sets); the kind is the record's class.
+    container_literals: dict[int, ContainerLiteralInfo] = field(
+        default_factory=dict)
     pending_generic_counter: int = 0
     str_var_counter: int = 0
     str_vars: dict[int, ViewVarInfo] = field(default_factory=dict)
@@ -2595,6 +2594,10 @@ class SemanticContext:
     # element is not decided yet may reach; any other gets the element
     # settled first.
     pending_list_ok_node: TpyExpr | None = None
+    # The expressions now being analyzed as truth tests (a condition and
+    # the operands it distributes over): a container whose leaves are not
+    # decided yet reaches them undecided (its truth is its size).
+    truth_ok_node: tuple = ()
     # Innermost last: for each call under analysis whose one candidate is
     # generic, its argument nodes and the element cells of the list
     # literals they showed as adaptive (`PendingNums.adaptive_view`).
@@ -3420,6 +3423,17 @@ class SemanticContext:
         """
         return self.expr_types.get(expr)
 
+    def container_record(self, literal_id: int
+                         ) -> 'ContainerLiteralInfo | None':
+        """The record of the container literal `literal_id` names."""
+        return self.container_literals.get(literal_id)
+
+    def list_literal(self, literal_id: int | None) -> ListLiteralInfo | None:
+        """The record of the list literal `literal_id` names: the one a
+        list's representation facts (Array or list) are kept on."""
+        rec = self.container_literals.get(literal_id)
+        return rec if isinstance(rec, ListLiteralInfo) else None
+
     def set_expr_type(self, expr: TpyExpr, typ: TpyType) -> None:
         """Cache the type of an expression."""
         self.expr_types[expr] = typ
@@ -3438,14 +3452,15 @@ class SemanticContext:
         # contains_pending_leaf fast-returns on leaves.
         if not isinstance(typ, PENDING_CONTAINER_TYPES) and contains_pending_leaf(typ):
             self.func.pending_composite_exprs.append(expr)
-        elif (isinstance(typ, PendingListType)
-              and (isinstance(typ.element_type, UnknownElementType)
+        elif (isinstance(typ, PENDING_CONTAINER_TYPES)
+              and (any(isinstance(p, UnknownElementType)
+                       for p in typ.parts())
                    or typ.inner_types())):
-            # A read of a list whose element cells decide (its inner types
-            # are the element tree holding them), or of an empty list,
-            # which may be typed before its cells are born: the record
+            # A read of a container literal whose cells decide its leaves
+            # (its inner types are its parts holding them), or of an empty
+            # one, which may be typed before its cells are born: the record
             # names the type it resolves to.
-            self.func.pending_elem_list_exprs.append(expr)
+            self.func.pending_container_exprs.append(expr)
 
     def record_branch_decls(self, stmt: TpyStmt, mapping: dict, *,
                             per_arm: bool = False) -> dict:
@@ -3482,7 +3497,7 @@ class SemanticContext:
         literal, and a handler/arm bind is not a visible reassignment), so
         only the plain list form is size-safe."""
         if isinstance(typ, PendingListType):
-            info = self.list_literals.get(typ.literal_id)
+            info = self.list_literal(typ.literal_id)
             if info is not None:
                 info.is_mutated = True
             # inner_types() does not traverse a Pending's element type, and
@@ -3591,8 +3606,8 @@ class SemanticContext:
           -- `save_function_state` hands them back as themselves; the trial
           binds only into the lambda's own child scope/namespace.
         - Module-level type cache (``expr_types``) and the literal/view
-          counters and registries (``literal_counter``, ``list_literals``,
-          ``dict_literals``, ``set_literals``, ``pending_generic_counter``,
+          counters and registries (``literal_counter``,
+          ``container_literals``, ``pending_generic_counter``,
           ``str_var_counter``, ``str_vars``, ``bytes_var_counter``,
           ``bytes_vars``).
         - The diagnostics list -- truncated to its pre-trial length so
@@ -3608,9 +3623,7 @@ class SemanticContext:
         saved_func = self.save_function_state()
         saved_expr_types = self.expr_types.copy()
         saved_literal_counter = self.literal_counter
-        saved_list_literals = dict(self.list_literals)
-        saved_dict_literals = dict(self.dict_literals)
-        saved_set_literals = dict(self.set_literals)
+        saved_container_literals = dict(self.container_literals)
         saved_pending_generic_counter = self.pending_generic_counter
         saved_str_var_counter = self.str_var_counter
         saved_str_vars = dict(self.str_vars)
@@ -3628,12 +3641,8 @@ class SemanticContext:
             self.expr_types.clear()
             self.expr_types.update(saved_expr_types)
             self.literal_counter = saved_literal_counter
-            self.list_literals.clear()
-            self.list_literals.update(saved_list_literals)
-            self.dict_literals.clear()
-            self.dict_literals.update(saved_dict_literals)
-            self.set_literals.clear()
-            self.set_literals.update(saved_set_literals)
+            self.container_literals.clear()
+            self.container_literals.update(saved_container_literals)
             self.pending_generic_counter = saved_pending_generic_counter
             self.str_var_counter = saved_str_var_counter
             self.str_vars.clear()
@@ -4193,36 +4202,16 @@ class SemanticContext:
     # Unified container literal lookup
     # ------------------------------------------------------------------
 
-    def get_container_info(self, literal_id: int) -> ListLiteralInfo | DictLiteralInfo | SetLiteralInfo | None:
-        """Look up container info across all container types by literal_id."""
-        return (self.list_literals.get(literal_id)
-                or self.dict_literals.get(literal_id)
-                or self.set_literals.get(literal_id))
-
     def track_container_variable(
         self,
         var_name: str,
-        pending_type: 'PendingListType | PendingDictType | PendingSetType',
+        pending_type: 'PendingContainerType',
         decl_line: int | None,
     ) -> None:
-        """Register var-name -> literal_id mapping for any pending container type.
-
-        Also sets variable_name and decl_line on the corresponding LiteralInfo.
-        Single code path for list/dict/set -- adding a new container type means
-        adding one branch here instead of duplicating blocks in statements.py.
-        """
+        """Register `var_name` as a name for the container literal of
+        `pending_type`, and the record's name and declaration line."""
         literal_id = pending_type.literal_id
-        info: ListLiteralInfo | DictLiteralInfo | SetLiteralInfo
-        if isinstance(pending_type, PendingListType):
-            self.func.variable_to_literal[var_name] = literal_id
-            info = self.list_literals[literal_id]
-        elif isinstance(pending_type, PendingDictType):
-            self.func.variable_to_dict_literal[var_name] = literal_id
-            info = self.dict_literals[literal_id]
-        elif isinstance(pending_type, PendingSetType):
-            self.func.variable_to_set_literal[var_name] = literal_id
-            info = self.set_literals[literal_id]
-        else:
-            return
+        self.func.variable_to_literal[var_name] = literal_id
+        info = self.container_literals[literal_id]
         info.variable_name = var_name
         info.decl_line = decl_line

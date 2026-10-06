@@ -654,6 +654,25 @@ void subscript_row_pos() {
     std::cout << "subscript_row:" << " " << ::tpy::ListPrinter(g) << " " << ::tpy::ListPrinter(m) << " " << ::tpy::ListPrinter(k) << " " << ::tpy::ListPrinter(t) << "\n" << ::tpy::check_signals;
 }
 
+// # a two-hop alias chain reaches the literal: a wider append through the far
+// # name widens the element the first name reads
+// def alias_chain_pos() -> None:
+//     xs = [1, 2]
+//     zs = ys = xs
+//     zs.append(wide())  # tpyc: ok
+//     v = xs[0]  # tpyc: type(int64)
+//     ys[1] = 7
+//     print("alias_chain:", v, xs, zs)
+void alias_chain_pos() {
+    std::vector<int64_t> xs = {1, 2};
+    std::vector<int64_t>& zs = xs;
+    std::vector<int64_t>& ys = zs;
+    zs.push_back(::tpyapp::main::wide());
+    int64_t v = ::tpy::__getitem__(xs, 0);
+    ::tpy::__setitem__(ys, 1, 7);
+    std::cout << "alias_chain:" << " " << v << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::ListPrinter(zs) << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
 //     free_fn()
 //     h = Holder()
@@ -692,6 +711,7 @@ void subscript_row_pos() {
 //     tuple_sinks_pos()
 //     float32_member_pos()
 //     subscript_row_pos()
+//     alias_chain_pos()
 void main() {
     ::tpyapp::main::free_fn();
     Holder h = Holder();
@@ -737,6 +757,7 @@ void main() {
     ::tpyapp::main::tuple_sinks_pos();
     ::tpyapp::main::float32_member_pos();
     ::tpyapp::main::subscript_row_pos();
+    ::tpyapp::main::alias_chain_pos();
 }
 
 // # The numeric leaves of an unannotated list's element -- tuple members, the

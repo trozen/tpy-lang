@@ -1,1 +1,1 @@
-main.py:5: error: Type mismatch in assignment: expected IntLiteral(1), got str
+main.py:5: error: Type mismatch in assignment: expected int32, got str

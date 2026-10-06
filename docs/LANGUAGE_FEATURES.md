@@ -1141,7 +1141,7 @@ process(b"hello")      # zero-alloc: static span passed directly
 - **Working**: `dict[K, V]` - ordered hash map → `tpy::ordered_map<K, V>` (insertion-order preserving)
   - Literals `{k: v, ...}`, subscript `d[k]`/`d[k] = v`, `del d[k]`, `len(d)`, `k in d`, `for k in d`
   - Constructor: `dict(iterable)` from any iterable of `tuple[K, V]` (list of tuples, `.items()` view, etc.)
-  - Usage-based inference: `d = {}; d[k] = v` and `d = dict(); d[k] = v` infer key/value types from subsequent subscript assignment (integer types widen; an int value meeting a float one is a compile error with a conversion hint, since CPython keeps each value's own type -- convert with `float(...)` or annotate `d: dict[K, float] = {}`). Empty `{}` also takes its `K`, `V` from a `dict[K, V]` annotation on the LHS (local annotation, class field, function param, return type, nested dict slot).
+  - Usage-based inference: `d = {}; d[k] = v` and `d = dict(); d[k] = v` infer key/value types from subsequent stores, the numeric ones under "List Literal Inference" (*Dict and set literals*: a literal first store starts at the default int and typed stores widen it; a typed first store decides it; an int value meeting a float one is a compile error with a conversion hint, since CPython keeps each value's own type -- convert with `float(...)` or annotate `d: dict[K, float] = {}`). A written `{"a": 1}` local follows the same rule. Empty `{}` also takes its `K`, `V` from a `dict[K, V]` annotation on the LHS (local annotation, class field, function param, return type, nested dict slot).
   - **Annotated nested values**: a value written as a container LITERAL takes the annotated value type, one level at a time -- `d: dict[str, list[int32]] = {"a": [1, 2]}` stores a real `list[int32]`, and so do the `dict`, `set`, `Array[T, N]` and tuple-of-container value slots, an `Optional[dict[K, V]]` slot, and arbitrary nesting (`dict[str, list[list[int32]]]`). A value literal of a different container kind is still a type mismatch.
   - Methods: `get(k)`, `get(k, default)`, `pop(k)`, `pop(k, default)`, `clear()`, `update(other)`, `setdefault(k, default)`, `keys()`, `values()`, `items()`; augmented `|=` (merge in-place)
   - Views: `d.keys()`, `d.values()`, `d.items()` return zero-allocation views with `for`-loop, `len()`, `in`
@@ -1157,7 +1157,7 @@ process(b"hello")      # zero-alloc: static span passed directly
 - **Working**: `set[T]` - ordered hash set -> `tpy::ordered_set<T>` (insertion-order preserving)
   - Literals `{a, b, ...}`, `len(s)`, `x in s`, `for x in s`
   - Constructor: `set(iterable)` from any iterable
-  - Usage-based inference: `s = set(); s.add(v)` infers element type from subsequent `.add()` calls (integer types widen; an int meeting a float is refused -- convert with `float(...)` or annotate `s: set[float] = set()`)
+  - Usage-based inference: `s = set(); s.add(v)` infers element type from subsequent stores, the numeric ones under "List Literal Inference" (*Dict and set literals*; an int meeting a float is refused -- convert with `float(...)` or annotate `s: set[float] = set()`); a written `{1}` local follows the same rule
   - Methods: `add(v)`, `discard(v)`, `remove(v)`, `pop()`, `clear()`, `copy()`
   - Algebra: `union(other)`, `intersection(other)`, `difference(other)`, `symmetric_difference(other)`
   - Predicates: `issubset(other)`, `issuperset(other)`, `isdisjoint(other)`
@@ -1309,6 +1309,75 @@ an earlier store ran; it is refused (today with the internal spelling
 *Operator '+=' is not supported for ???*,
 `BUGS.md#pending-aug-op-target-diag`).
 
+**Dict and set literals.** A dict or set literal bound to an unannotated
+function local, empty or written, follows the same rules at its leaves: a
+set's element, a dict's key and value, a list-literal value as a row (one
+row element for every value), a nested dict or set literal as more leaves
+(`dd = {"a": {"x": 1}}; dd["a"]["y"] = big64` is a
+`dict[str, dict[str, int64]]`, `ls = [{"a": 1}]; ls[0]["b"] = big64` a list
+of `dict[str, int64]`, `t = {(1, 2): "x"}; t[(big64, 3)] = "y"` widens the
+key's first member). `d = {"a": 1}; d["b"] = big64; n = d["a"]` makes `d` a
+`dict[str, int64]` and `n` an `int64`; `e = {"a": a8}` decides its value at
+the first binding (a later `e["b"] = big64` is refused: *'e' holds int8
+values (line N), and this value is int64; annotate its first binding:
+e: dict[str, int64] = {...}*); an empty `{}` / `dict()` / `set()` is seeded
+by its first store (`f = {}; f["a"] = a8; f["b"] = big64` is refused, the
+hint spelled `= {}`), two empty literals are independent, and a rebinding
+literal joins the local's cells (`d = {"a": 1}; d = {"b": big64}`). Per
+leaf:
+
+- a value STORED into the container is evidence that widens: `d[k] = v`,
+  `s.add(v)`, `d.setdefault(k, v)` (key and value), and every entry of
+  `update` / `|=` / `^=` / `symmetric_difference_update`;
+- a default that is only RETURNED (`d.get(k, v)`, `d.pop(k, v)`) must fit
+  the value: a literal adapts, a wider typed default is refused (*Type
+  mismatch in argument 'default': expected int32, got int64*), and an int
+  default of a float dict is refused as the int/float mix it is (*write
+  0.0 instead of 0*) where it used to convert;
+- `update`, `|=` and the set operators settle their source's numbers
+  first and store its entries, as `extend` does; a source decided narrower
+  than the target stays narrower, and the runtime converts each scalar
+  entry, losslessly only (`other = {"b": 1}; d.update(other);
+  d["c"] = big64` keeps `other` a `dict[str, int32]`). A container inside
+  the source's entries -- a list-literal row, an inner dict literal -- is
+  linked to the target's instead, as a list stored as a row is: no
+  conversion makes one C++ container of another, so both hold one width
+  (`g = {"a": [1]}; g["c"] = [big64]; h = {"z": [3]}; g.update(h)` gives
+  `h` `int64` rows, of the one representation `g`'s rows have), and a typed one must be what the
+  target's is (`h: dict[str, list[int32]]` there is refused);
+- a lookup key (`d[k]`, `k in d`, `d.get(k)`, `d.pop(k)`, `del d[k]`, `x in
+  s`, `s.discard(x)`, `s.remove(x)`) the key or element holds -- a
+  literal that fits it, a typed value of its family no wider -- leaves the
+  container open; any other operand decides the container first and is
+  compared as before -- a lookup never converts its operand down (`n in
+  k` with `n: int` compares the `int`; an `int64` key is refused as at
+  a decided dict, *Type mismatch in membership test (expected int32):
+  expected int32, got int64*), while an inserting key (`d[k] = v`,
+  `setdefault(k, ..)`) widens it. A list's lookups are the same rule at
+  its element (below). A default `get` / `pop` hands back is a value,
+  not a lookup: it must fit the value.
+
+One rule holds for a list, a dict and a set: a stored value widens, a
+looked-up value the container holds leaves it open (any other decides it),
+a width-blind use decides nothing. A dict's or
+set's width-blind uses: `len`, `print`, a truth test (`if d:`), `k in d`
+and `del d[k]` (they look the key up only), a method that hands back a
+part or a view (`d.get(k)` is a `V | None` that follows the cells,
+`d.pop(k)`, `d.items()`), a subscript or method receiver, and a second
+name. The method rule is the dict's and set's own: a list method outside
+the deferring ones listed below decides the list whether its result is
+used or dropped (`xs.sort()` alone decides `xs`). Iteration (`for k, v in d.items()`,
+`for x in s`), a generic call no other argument decides (`sorted(s)`,
+`sum(d.values())`), a comparison, a select arm, a capture and any other
+method decide it on the spot, as for a list. A typed dict or set slot -- a
+parameter, a field, a return (`-> Own[dict[str, int64]]`), the dict or set
+member of an optional or union slot -- confirms or widens its leaves as a
+typed list slot does a list's (`take32(d)` then `d["c"] = big64` is refused
+naming the call). Two dicts in a select are each decided by their arm, so
+two of different widths are refused as two lists are. A `float32` dict
+value or set element stores a later float literal rounded, as the list
+element does.
+
 Every use of the list and of its elements is compiled at that type, wherever
 it stands relative to the use that widened it:
 
@@ -1321,8 +1390,21 @@ print(sum(ys), n)      # sums int64 elements
 
 Uses that defer decide nothing: `n = ys[0]`, arithmetic, a comparison,
 `print`, an f-string without a format spec, an argument at a numeric
-parameter, `len(ys)`, a second name (`zs = ys`), `append` / `insert` / `pop`
-/ `clear` / `reverse`, `extend` / `+=` (their values are stores). For a
+parameter, `len(ys)`, a truth test (`if ys:`, and a list that is an `and` /
+`or` operand of one: `if ys and n > 0:`; `zs = ys or other` decides), a
+second name (`zs = ys`), `append` / `insert` / `pop` (its result used or
+dropped) / `clear` / `reverse`, `extend` / `+=` (their values are
+stores), and the lookups `remove` / `index` / `count` / `in` of a value
+the element holds: a looked-up value the element holds leaves the list
+open -- a literal that fits it, or a typed value of its family no wider
+(`xs.remove(a8)` renders `::tpy::list_remove(xs,
+static_cast<int64_t>(a8))` once a later store made `xs` a
+`list[int64]`). Any other operand -- a wider width, an `int`, the other
+family, a tuple or a row -- decides the list first and is compared as
+before; a lookup never converts its operand down (`n in ps` with `n:
+int64` decides `ps` and renders `::tpy::seq_contains(ps, n)`; a wider
+argument to `remove` / `index` / `count` is refused as on a decided
+list, *Type mismatch in argument 'value': expected int32, got int64*). For a
 list of tuples or a nested list also: a member read (`xs[0][1]` reads the
 leaf, `t = xs[0]` binds the tuple of leaves), a tuple unpack
 (`a, b = xs[1]` binds each local to its leaf, as `a = xs[1][0]` does), a
@@ -1372,15 +1454,15 @@ Current limitations:
   `ys: list[int64] = [1]`): iterating the list (a `for` loop, a
   comprehension; the loop variable does not follow a later widening), a
   generic call no other argument gives the element (`sorted(ys)`,
-  `enumerate(ys)`, `def f[T](x: T)`), `in`, a slice, `+`, an alias
+  `enumerate(ys)`, `def f[T](x: T)`), a slice, `+`, an alias
   through `:=` or through a ternary / `and` / `or` with no declared target,
   a capture by a nested function, lambda or generator expression (so a
   lambda that returns the list decides it before its return type is read),
   an element of an unannotated tuple, list or dict literal
   (`t = (ys, 1)`, `outer = [ys]`), a value of a dict literal whatever its
   annotation (`d: dict[str, list[int64]] = {"a": ys}`), an f-string value
-  WITH a format spec (`f"{ys[0]:5d}"`), and any method other than the six
-  above (`sort`, `index`, ...). `extend` and `+=` with an iterable that says
+  WITH a format spec (`f"{ys[0]:5d}"`), and any method other than the
+  deferring ones and the lookups above (`sort`, `copy`, ...). `extend` and `+=` with an iterable that says
   nothing about its elements' types (a `range`, a generator) decide the
   element too. A STORE of the list into a list whose element holds lists
   (`g.append(ys)`, `g[0] = ys`) decides nothing: it links the two (see
@@ -1397,15 +1479,17 @@ Current limitations:
   its own default type, so `ys = [1]; big(ys); ys.append(6000000000)` is
   refused (the literal counts as `int`); the annotation `ys: list[int64]`
   makes it fit.
-- Dict and set literals and module-level lists (`[]` included) are not
-  covered yet. Their element is typed from the literal as it stands at
-  each use: a bare number is resolved by its consumer and a tuple element
+- Module-level lists (`[]` included), module-level dict and set literals
+  and dict, set and list comprehensions are not covered yet. Their element
+  is typed from the literal as it stands at each use: a bare number is resolved by its consumer and a tuple element
   takes the default width for its literal members. When another use gives
   such a list a different element type, an element taken at the default
   width by an unannotated local, a loop variable or a tuple unpack is
   refused with the annotation to write, and whole-list consumers of a
   module-level list are still compiled at the default width
-  (`BUGS.md#widened-literal-list-read-truncates`). A repeat of a repeat
+  (`BUGS.md#widened-literal-list-read-truncates`). A dict literal with
+  float keys has no cell for them: the lowering admits no float key family
+  today. A repeat of a repeat
   (`[[0] * 3] * 2`) is typed by the rule but does not compile yet
   (`BUGS.md#nested-list-repeat-rejects`). An empty list whose
   first store is made by a nested function it is not local to is refused
@@ -4535,7 +4619,7 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
     - the first binding is lexical: inside a loop body it is the first store in the body's source order, and inside a `try` body it is the body's, though a handler may run when the body's store did not
     - sibling `if` / `match` / `except` arms that are not numeric join in source order: a None-seeded local refined that way, or a tuple whose narrower arm comes first, is refused (`BUGS.md#optional-int-widening-refused`, `BUGS.md#tuple-element-int-widening-refused`)
     - a tuple's int elements and a None-seeded local's inner int type do not widen straight-line either: `p = (3, 1); p = (big, 1)` and `x = None; x = 3; x = big` are refused (same entries)
-    - a list's element type widens with the uses of the literal it was bound from (`xs = [1, 2]; xs.append(big)` and `xs = [1, 2]; xs = [big]` both make it `list[int64]`; "List Literal Inference"), and so does a list of tuples (`xs = [(1, 2)]; xs = [(big, 2)]`), but rebinding a dict or a set to a literal with wider elements is refused (`d = {"a": 1}; d = {"b": big}`, `BUGS.md#container-rebind-wider-literal-truncates`)
+    - a list's element type widens with the uses of the literal it was bound from (`xs = [1, 2]; xs.append(big)` and `xs = [1, 2]; xs = [big]` both make it `list[int64]`; "List Literal Inference"), and so does a list of tuples (`xs = [(1, 2)]; xs = [(big, 2)]`), and so do a function-local dict's and set's (`d = {"a": 1}; d = {"b": big}` is a `dict[str, int64]`)
 - **Working**: Optional class members (`self.field: T | None`) → `std::optional<T>` inline storage
   - Field access through optional (`obj.field.x`) works via `std::optional::operator->()`
   - `is None` / `is not None` checks use `.has_value()`

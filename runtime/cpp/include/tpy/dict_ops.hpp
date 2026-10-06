@@ -131,12 +131,27 @@ V dict_get_default(const ordered_map<K, V>& m, const KeyArg& key, DefArg&& def) 
     return (*it).second;
 }
 
-// d.update(other)
-template<typename K, typename V>
-void dict_update(ordered_map<K, V>& m, const ordered_map<K, V>& other) {
+// d.update(other). `other` may hold narrower entries than `m` (a source
+// whose leaves were decided at int32, stored into an int64 dict): each
+// entry converts as it goes in. Sema's widening rule is the authority on
+// which sources are admitted; `widens_to` is a guard beneath it, not a
+// second rule: only a lossless conversion instantiates, so a sema defect
+// that settles a wider source fails here instead of truncating silently
+// (`list_extend` has no such guard).
+template<typename K, typename V, typename K2, typename V2>
+    requires widens_to_v<K2, K> && widens_to_v<V2, V>
+void dict_update(ordered_map<K, V>& m, const ordered_map<K2, V2>& other) {
     for (auto it = other.items_begin(); it != other.items_end(); ++it) {
         auto&& [k, v] = *it;
-        m.insert_or_assign(k, v);
+        if constexpr (std::is_same_v<K, K2> && std::is_same_v<V, V2>) {
+            m.insert_or_assign(k, v);
+        } else if constexpr (std::is_same_v<K, K2>) {
+            m.insert_or_assign(k, V(v));
+        } else if constexpr (std::is_same_v<V, V2>) {
+            m.insert_or_assign(K(k), v);
+        } else {
+            m.insert_or_assign(K(k), V(v));
+        }
     }
 }
 

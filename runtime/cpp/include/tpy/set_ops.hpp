@@ -11,6 +11,7 @@
 #include <iostream>
 #include <ranges>
 #include <sstream>
+#include <type_traits>
 
 #include "core.hpp"
 #include "next_iter.hpp"
@@ -162,13 +163,22 @@ bool set_isdisjoint(const ordered_set<T>& a, const ordered_set<T>& b) {
 
 // -- In-place updates -------------------------------------------------------
 
-template<typename T>
-void set_update(ordered_set<T>& s, const ordered_set<T>& other) {
+// `other` may hold narrower elements than `s` (see `dict_update`): each
+// converts losslessly as it goes in.
+template<typename T, typename T2>
+    requires widens_to_v<T2, T>
+void set_update(ordered_set<T>& s, const ordered_set<T2>& other) {
     for (auto& v : other) {
-        s.insert(v);
+        if constexpr (std::is_same_v<T, T2>) {
+            s.insert(v);
+        } else {
+            s.insert(T(v));
+        }
     }
 }
 
+// Same-width only, as is `set_difference_update`: they remove, never insert,
+// so no width conversion is needed.
 template<typename T>
 void set_intersection_update(ordered_set<T>& s, const ordered_set<T>& other) {
     ordered_set<T> result;
@@ -186,12 +196,23 @@ void set_difference_update(ordered_set<T>& s, const ordered_set<T>& other) {
     }
 }
 
-template<typename T>
-void set_symmetric_difference_update(ordered_set<T>& s, const ordered_set<T>& other) {
-    if (&s == &other) { s.clear(); return; }
-    for (auto& v : other) {
-        if (!s.erase(v)) {
-            s.insert(v);
+template<typename T, typename T2>
+    requires widens_to_v<T2, T>
+void set_symmetric_difference_update(ordered_set<T>& s,
+                                     const ordered_set<T2>& other) {
+    if constexpr (std::is_same_v<T, T2>) {
+        if (&s == &other) { s.clear(); return; }
+        for (auto& v : other) {
+            if (!s.erase(v)) {
+                s.insert(v);
+            }
+        }
+    } else {
+        for (auto& v : other) {
+            T e(v);
+            if (!s.erase(e)) {
+                s.insert(std::move(e));
+            }
         }
     }
 }

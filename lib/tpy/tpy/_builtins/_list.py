@@ -30,7 +30,7 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     @readonly
     def __len__(self) -> int32: ...
 
-    @native("push_back")
+    @native("push_back", element_effect="insert")
     def append(self, value: Own[T]) -> None: ...
 
     @dispatch
@@ -68,7 +68,7 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     def __getitem__(self, index: slice) -> Own[list[T]]: ...
 
     @dispatch
-    @native("tpy::__setitem__", function=True, mutates="elements")
+    @native("tpy::__setitem__", function=True, mutates="elements", element_effect="insert")
     def __setitem__(self, index: int32, value: Own[T]) -> None: ...
 
     @dispatch
@@ -82,21 +82,21 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     @native("tpy::__delitem__", function=True)
     def __delitem__(self, index: int32) -> None: ...
 
-    @native("tpy::list_insert", function=True)
+    @native("tpy::list_insert", function=True, element_effect="insert")
     def insert(self, index: int32, value: Own[T]) -> None: ...
 
-    @native("tpy::list_remove", function=True)
+    @native("tpy::list_remove", function=True, element_effect="lookup")
     def remove[T: Equatable](self, value: T) -> None: ...
 
-    @native("tpy::list_extend", function=True)
+    @native("tpy::list_extend", function=True, element_effect="insert")
     def extend(self, other: Iterable[Own[T]]) -> None: ...
 
-    @native("tpy::list_index", function=True)
+    @native("tpy::list_index", function=True, element_effect="lookup")
     @pure
     @readonly
     def index[T: Equatable](self, value: T) -> int32: ...
 
-    @native("tpy::list_count", function=True)
+    @native("tpy::list_count", function=True, element_effect="lookup")
     @pure
     @readonly
     def count[T: Equatable](self, value: T) -> int32: ...
@@ -117,7 +117,7 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     @readonly
     def __add__(self, other: list[T]) -> Own[list[T]]: ...
 
-    @native("tpy::list_extend", function=True)
+    @native("tpy::list_extend", function=True, element_effect="insert")
     def __iadd__(self, other: Iterable[Own[T]]) -> list[T]: ...
 
     @native("tpy::as_span", function=True)

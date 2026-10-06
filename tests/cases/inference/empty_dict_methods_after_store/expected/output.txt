@@ -1,0 +1,5 @@
+setdefault: y ['a', 'b']
+pop: x 2
+items: b y
+items: c z
+set: ['p'] True

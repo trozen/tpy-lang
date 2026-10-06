@@ -43,7 +43,7 @@ def resolve_pending_container(typ: 'TpyType | None', analyzer) -> 'TpyType | Non
     handled in one place."""
     if not isinstance(typ, PENDING_CONTAINER_TYPES):
         return None
-    info = analyzer.ctx.get_container_info(typ.literal_id)
+    info = analyzer.ctx.container_record(typ.literal_id)
     if info and info.resolved_type:
         return info.resolved_type
     return None

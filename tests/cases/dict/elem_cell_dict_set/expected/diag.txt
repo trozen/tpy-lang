@@ -1,0 +1,3 @@
+main.py:288: warning: copies dict[str, int64] into field; use copy() to make this explicit
+main.py:377: warning: copies list[int64] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:381: warning: copies dict[str, int64] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)

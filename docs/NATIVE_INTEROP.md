@@ -459,6 +459,17 @@ binding: the stdlib declares
 `mutates="elements"` on `dict.__setitem__` and `list`'s integer-index
 `__setitem__` (its slice overloads stay undeclared).
 
+**`element_effect="insert"` / `"lookup"` (stdlib-only).** The builtin
+`list`, `dict` and `set` stubs also declare, per method, what it does with an
+argument naming the container's element, key or value (or a container of
+them): holds it from then on (`insert`: `append`, `add`, `__setitem__`,
+`update`, `setdefault`, ...) or only compares it with what it holds or hands
+it back (`lookup`: `get`, `pop`'s key and default, `discard`,
+`__contains__`, ...). A container literal whose numbers are not decided yet
+(`xs = [1, 2]`) is widened by an inserted value and requires a looked-up one
+to fit; a method without the keyword decides its numbers first. The keyword
+is read only on those three stubs and ignored on any other class.
+
 **Members.** Which type arguments are elements is read off the stub, never
 off the type's name:
 

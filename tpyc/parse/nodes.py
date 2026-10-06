@@ -1673,6 +1673,8 @@ class TpyFunction:
     declared_element_of: tuple[str, ...] = ()
     # @native(mutates="elements"): see FunctionInfo.native_mutates.
     native_mutates: str | None = None
+    # @native(element_effect=...): see FunctionInfo.native_element_effect.
+    native_element_effect: str | None = None
     # Set when @export is applied inside an `# tpy: ext_module`: the function
     # stays DEFAULT linkage (an ordinary TPy function) but the extension glue
     # generator emits a CPython wrapper + PyMethodDef entry for it.

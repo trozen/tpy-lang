@@ -89,24 +89,24 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
 
     # Pure-READ methods take readonly[K]: the key is only hashed/compared, never
     # stored, so a readonly key is safe. __setitem__/setdefault store K (mutable).
-    @native("tpy::__getitem__", function=True)
+    @native("tpy::__getitem__", function=True, element_effect="lookup")
     @pure
     @readonly
     def __getitem__(self, key: readonly[K]) -> V: ...
 
-    @native("tpy::__setitem__", function=True, mutates="elements")
+    @native("tpy::__setitem__", function=True, mutates="elements", element_effect="insert")
     def __setitem__(self, key: K, value: Own[V]) -> None: ...
 
-    @native("tpy::__delitem__", function=True)
+    @native("tpy::__delitem__", function=True, element_effect="lookup")
     def __delitem__(self, key: readonly[K]) -> None: ...
 
-    @native("contains")
+    @native("contains", element_effect="lookup")
     @pure
     @readonly
     def __contains__(self, key: readonly[K]) -> bool: ...
 
     @dispatch
-    @native("tpy::dict_get", function=True)
+    @native("tpy::dict_get", function=True, element_effect="lookup")
     @pure
     @readonly
     def get(self, key: readonly[K]) -> V | None: ...
@@ -114,33 +114,33 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
     # Copies where CPython aliases, so `d.get(k, []).append(x)` silently
     # no-ops -- @copy_returns_warn flags the call site.
     @dispatch
-    @native("tpy::dict_get_default", function=True)
+    @native("tpy::dict_get_default", function=True, element_effect="lookup")
     @pure
     @readonly
     @copy_returns_warn
     def get(self, key: readonly[K], default: V) -> Own[V]: ...
 
     @dispatch
-    @native("tpy::dict_pop", function=True)
+    @native("tpy::dict_pop", function=True, element_effect="lookup")
     def pop(self, key: readonly[K]) -> Own[V]: ...
 
     @dispatch
-    @native("tpy::dict_pop_default", function=True)
+    @native("tpy::dict_pop_default", function=True, element_effect="lookup")
     def pop(self, key: readonly[K], default: V) -> Own[V]: ...
 
     @native
     def clear(self) -> None: ...
 
-    @native("tpy::dict_update", function=True)
+    @native("tpy::dict_update", function=True, element_effect="insert")
     def update(self, other: dict[K, Own[V]]) -> None: ...
 
-    @native("tpy::dict_update", function=True)
+    @native("tpy::dict_update", function=True, element_effect="insert")
     def __ior__(self, other: dict[K, Own[V]]) -> dict[K, V]: ...
 
     # Returns a borrow of the stored value (CPython returns the stored
     # object), so `d.setdefault(k, []).append(x)` mutates the dict. The
     # bare `-> V` (not `Own[V]`) is what makes the result alias.
-    @native("tpy::dict_setdefault", function=True)
+    @native("tpy::dict_setdefault", function=True, element_effect="insert")
     def setdefault(self, key: K, default: Own[V]) -> V: ...
 
     @native("tpy::dict_keys", function=True)

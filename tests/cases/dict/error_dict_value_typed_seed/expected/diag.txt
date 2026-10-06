@@ -1,0 +1,1 @@
+main.py:16: error: 'd' holds int8 values (line 15), and this value is int64; annotate its first binding: d: dict[str, int64] = {...}

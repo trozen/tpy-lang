@@ -14160,44 +14160,44 @@
   ""
  ],
  "list_i__mut__dict_subscript__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%d[str('k')] [borrow]]) print(%k0.tag [raw])"
  ],
  "list_i__mut__dict_subscript__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_i__mut__dict_subscript__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %d[str('k')] [borrow]])"
  ],
  "list_i__mut__dict_subscript__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_i__mut__dict_subscript__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_i__mut__dict_subscript__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%d[str('k')] [borrow]]) -> Own[DynP])])]) print(method_call(method_call(method_call(%r"
  ],
  "list_i__mut__dict_subscript__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_i__mut__dict_subscript__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_i__mut__empty_literal__ctor": [
   "ok",
@@ -15160,44 +15160,44 @@
   ""
  ],
  "list_i__ro__dict_subscript__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%d[str('k')] [borrow]]) print(%k0.tag [raw])"
  ],
  "list_i__ro__dict_subscript__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_i__ro__dict_subscript__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %d[str('k')] [borrow]])"
  ],
  "list_i__ro__dict_subscript__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_i__ro__dict_subscript__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_i__ro__dict_subscript__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%d[str('k')] [borrow]]) -> Own[DynP])])]) print(method_call(method_call(method_call(%r"
  ],
  "list_i__ro__dict_subscript__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_i__ro__dict_subscript__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_i__ro__empty_literal__ctor": [
   "ok",
@@ -18160,14 +18160,14 @@
   ""
  ],
  "list_i_ro__ro__dict_subscript__ctor": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%d[str('k')] [borrow]]) print(%k0.tag [raw])"
  ],
  "list_i_ro__ro__dict_subscript__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_i_ro__ro__dict_subscript__gen": [
   "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
@@ -18175,29 +18175,29 @@
   ""
  ],
  "list_i_ro__ro__dict_subscript__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_i_ro__ro__dict_subscript__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_i_ro__ro__dict_subscript__nested": [
-  "reject:expr.call:call.ctor_arg.container",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%d[str('k')] [borrow]]) -> Own[DynP])])]) print(method_call(method_call(method_call(%r"
  ],
  "list_i_ro__ro__dict_subscript__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_i_ro__ro__dict_subscript__static": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%d[str('k')] [borrow]])"
  ],
  "list_i_ro__ro__empty_literal__ctor": [
   "reject:expr.call:call.ctor_arg.container",

@@ -344,7 +344,7 @@ codegen (and later MIR lowering) can consume without referencing the `SemanticAn
 | `resolved_function_info` optional field | `THIRCall.target: ResolvedFunction` required field |
 | Per-function analyzer dicts (`function_scan_results`, `function_hoisted_vars`, `function_movable_locals`, `function_move_through_vars`, `function_global_decls`) | `THIRFunction.layout` and `THIRFunction.declared_globals` |
 | Module options from sema/context (`default_int_type`, `default_int_for_literal`) | `THIRModule` required fields |
-| View/literal registries (`str_vars`, `bytes_vars`, `list_literals`, `dict_literals`, `set_literals`) | explicit `view_info` / `literal_info` on the relevant THIR nodes |
+| View/literal registries (`str_vars`, `bytes_vars`, `container_literals`) | explicit `view_info` / `literal_info` on the relevant THIR nodes |
 | Codegen holds `self.ctx.analyzer` reference | Codegen receives `THIRModule`, no analyzer reference |
 
 ### THIR Node Hierarchy

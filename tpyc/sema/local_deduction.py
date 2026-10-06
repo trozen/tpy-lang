@@ -41,6 +41,9 @@ from ..typesys import (
     PendingDictType,
     PendingNumType,
     PendingListType,
+    PendingContainerType,
+    ContainerLiteralInfo,
+    KEY,
     PendingSetType,
     PendingStrType,
     PendingBytesType,
@@ -78,8 +81,10 @@ from .type_join import (InferredJoin, JoinOutcome, descend,
                         python_type_name, rebind_mix_message, usage_mix_message,
                         wider_store_message)
 from .numeric_lattice import numeric_info, same_width_family, widen_numeric_types
-from .pending_num import (is_pending_num, numeric_container, pending_leaves,
+from .pending_num import (Entry, container_parts, is_pending_num,
+                          numeric_container, pairs_as, pending_leaves,
                           pending_list_of)
+from ..parse.nodes import is_parse_node
 from .alias_rebind import BindKind
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_list, is_fixed_int_type, is_big_int_type,
@@ -358,7 +363,7 @@ def note_pending_elem_read(ctx: 'SemanticContext', receiver: 'TpyType | None',
     refuses it."""
     if not isinstance(receiver, PendingListType):
         return
-    info = ctx.list_literals.get(receiver.literal_id)
+    info = ctx.list_literal(receiver.literal_id)
     # A list whose element cells decide has no read to go stale.
     if info is not None and info.elem_cells is None:
         info.elem_reads.append((receiver.element_type, node))
@@ -372,14 +377,14 @@ def mark_pending_list_mutated(ctx: 'SemanticContext', expr: 'TpyExpr | None',
     expression-rooted mutation routes: mutating method receivers, binary
     concat operands, and aug-assign targets."""
     if isinstance(expr_type, PendingListType):
-        info = ctx.list_literals.get(expr_type.literal_id)
+        info = ctx.list_literal(expr_type.literal_id)
         if info:
             info.is_mutated = True
         return
     if isinstance(expr, TpyName):
         lit_id = ctx.func.variable_to_literal.get(expr.name)
         if lit_id is not None:
-            info = ctx.list_literals.get(lit_id)
+            info = ctx.list_literal(lit_id)
             if info:
                 info.is_mutated = True
 
@@ -731,39 +736,43 @@ class LocalTypeDeduction:
     # List literal deduction (moved from ListLiteralTracker)
     # ------------------------------------------------------------------
 
-    def infer_empty_list_element_type(self, obj_expr: TpyExpr, value_type: TpyType,
-                                      value: TpyExpr | None = None) -> None:
-        """Infer element type for an empty list literal from usage (e.g. .append(v)).
-
-        If the list's element type is still UNKNOWN_ELEMENT, set it from value_type.
-        If already set, widen using the numeric lattice (same rules as variable
-        reassignment widening).
-        """
-        if not isinstance(obj_expr, TpyName):
+    def observe_named_store(self, obj: TpyExpr, t: TpyType,
+                            entry: Entry) -> None:
+        """`entry` stored into the container literal local `obj` names, of
+        container type `t`, through a method or a subscript
+        (`observe_store`); each name the list was bound to before (`ys =
+        xs`) learns the joined element too."""
+        if not isinstance(obj, TpyName):
             return
-        var_name = obj_expr.name
-        literal_id = self.ctx.func.variable_to_literal.get(var_name)
-        if literal_id is None:
-            return
-        info = self.ctx.list_literals.get(literal_id)
+        info = self._named_record(obj.name, t)
         if info is None:
             return
-        self.update_list_element_type(info, value_type, obj_expr, value)
-        if info.elem_cells is not None:
-            # Every name for the list shares the cell the store went to.
+        site = entry.parts[-1][1] or obj
+        if self.observe_store(info, entry, site, obj):
+            # Every name for the container shares the cells the store
+            # went to.
             return
-        # Propagate up the entire alias chain (zs = ys = xs; zs.append(v))
         visited: set[int] = {info.literal_id}
         current = info
         while current.source_literal_id is not None:
             if current.source_literal_id in visited:
                 break
             visited.add(current.source_literal_id)
-            source = self.ctx.list_literals.get(current.source_literal_id)
+            source = self.ctx.container_record(current.source_literal_id)
             if source is None:
                 break
-            self.update_list_element_type(source, value_type, obj_expr, value)
+            self.observe_store(source, entry, site, obj)
             current = source
+
+    def rebind_pending(self, obj: TpyExpr, t: TpyType) -> None:
+        """The container literal `obj` reads as `t` from here on: the parts
+        its record learned."""
+        self.ctx.set_expr_type(obj, t)
+        if isinstance(obj, TpyName):
+            if self.ctx.func.current_scope:
+                self.ctx.func.current_scope.define(obj.name, t)
+            if self.ctx.func.current_ns:
+                self.ctx.func.current_ns.bind_variable(obj.name, t)
 
     @staticmethod
     def _widen_inferred_type(current: TpyType, new_type: TpyType) -> Optional[TpyType]:
@@ -811,23 +820,46 @@ class LocalTypeDeduction:
         """Update element type for a ListLiteralInfo from a use, widening if
         needed; `site` is the use the diagnostic points at, `value` the node
         it adds."""
-        cell, value_type = self.pend.store_value(
-            PendingListType(info.element_type, info.size, info.literal_id),
-            value_type, value, value or site or info.expr)
-        if cell is not None:
-            return
-        # No function-local list of scalar numbers reaches the join below:
-        # a numeric store seeds its element cell above. What does is a
-        # module-level list, a list stored into from a nested body, and a
-        # list of non-numbers.
-        name = info.variable_name or "xs"
-        init = self._initializer_spelling(info.expr, "[]", "[...]")
-        result = self._join_observed_type(
-            info.element_type, value_type, site or info.expr,
-            f"list '{name}'" if info.variable_name else "this list",
-            lambda f: f"{name}: list[{f}] = {init}", value)
-        if result is not None:
-            info.element_type = result
+        self.observe_store(info, Entry(((value_type, value),)),
+                           value or site or info.expr, site or info.expr)
+
+    def observe_store(self, info: 'ContainerLiteralInfo', entry: Entry,
+                      store_site: TpyStmt | TpyExpr, site: TpyExpr) -> bool:
+        """An entry stored into container literal `info`. The one switch
+        between the cells and the joins of the containers no cell decides:
+        the cells take it (`PendingNums.store_value`, which seeds an empty
+        container whose entry holds a number); otherwise each part the
+        container learned from its uses joins the entry's -- what reaches
+        that join is a module-level container, one stored into from a
+        nested body, or one of non-numbers. True when the cells took it."""
+        cells, last = self.pend.store_value(info.pending_type(), entry,
+                                            store_site)
+        if cells is not None:
+            return True
+        # The value as the store left it (a pending number it settled).
+        entry = Entry((*entry.parts[:-1], (last, entry.parts[-1][1])))
+        root = info.pending_type()
+        kind = root.KIND
+        name = info.variable_name or root.HINT_NAME
+        init = self._initializer_spelling(info.expr, *root.INITS)
+        parts = list(root.parts())
+        for i, (step, (new_type, value)) in enumerate(zip(root.STEPS,
+                                                         entry.parts)):
+            def annotation(f: str, i: int = i) -> str:
+                shown = [f if j == i else
+                         ("..." if isinstance(p, UnknownElementType)
+                          else python_type_name(p))
+                         for j, p in enumerate(parts)]
+                return f"{name}: {kind}[{', '.join(shown)}] = {init}"
+            result = self._join_observed_type(
+                parts[i], new_type, site,
+                (f"{kind} '{name}'" if info.variable_name else f"this {kind}")
+                + (" keys" if step == KEY else ""),
+                annotation, value if is_parse_node(value) else None)
+            if result is not None:
+                parts[i] = result
+                info.set_parts(root.with_parts(tuple(parts)))
+        return False
 
     def _join_observed_type(self, current: TpyType, new_type: TpyType,
                             site: TpyExpr, container: str,
@@ -848,8 +880,10 @@ class LocalTypeDeduction:
     def mark_container_param_context(self, arg_expr: TpyExpr, arg_type: TpyType, param_type: TpyType) -> None:
         """Track parameter context for list/dict/set literal inference.
 
-        Single entry point for all container types -- handles list (passed_to_list_param,
-        passed_to_span_param), dict (key/value widening), and set (element widening).
+        Single entry point for all container types: a list's storage facts
+        (passed_to_list_param, passed_to_span_param), then -- for a container
+        no cell decides; one whose cells decide met the parameter where the
+        argument was analyzed (`PendingNums.elem_context`) -- its parts.
         """
         if isinstance(arg_expr, TpyCoerce):
             arg_expr = arg_expr.expr
@@ -861,43 +895,18 @@ class LocalTypeDeduction:
         # call site fails the C++ build (mirrors mark_container_return_context).
         if isinstance(param_type, OwnType):
             param_type = param_type.wrapped
-
-        if isinstance(arg_type, PendingListType):
-            literal_id = self.ctx.func.variable_to_literal.get(arg_expr.name)
-            if literal_id is not None and literal_id in self.ctx.list_literals:
-                info = self.ctx.list_literals[literal_id]
-                # A cell-decided element met the parameter where the
-                # argument was analyzed (`PendingNums.elem_context`).
-                decides = info.elem_cells is None
-                if is_list(param_type):
-                    info.passed_to_list_param = True
-                    if decides:
-                        info.coerced_element_type = param_type.type_args[0]
-                elif is_span(param_type):
-                    info.passed_to_span_param = True
-                    if decides:
-                        info.coerced_element_type = param_type.type_args[0]
-
-        elif isinstance(arg_type, PendingDictType) and is_dict(param_type):
-            literal_id = self.ctx.func.variable_to_dict_literal.get(arg_expr.name)
-            if literal_id is not None:
-                info = self.ctx.dict_literals.get(literal_id)
-                if info:
-                    result = self._widen_inferred_type(info.key_type, param_type.type_args[0])
-                    if result is not None:
-                        info.key_type = result
-                    result = self._widen_inferred_type(info.value_type, param_type.type_args[1])
-                    if result is not None:
-                        info.value_type = result
-
-        elif isinstance(arg_type, PendingSetType) and is_set(param_type):
-            literal_id = self.ctx.func.variable_to_set_literal.get(arg_expr.name)
-            if literal_id is not None:
-                info = self.ctx.set_literals.get(literal_id)
-                if info:
-                    result = self._widen_inferred_type(info.element_type, param_type.type_args[0])
-                    if result is not None:
-                        info.element_type = result
+        info = self._named_record(arg_expr.name, arg_type)
+        if info is None:
+            return
+        if isinstance(info, ListLiteralInfo):
+            if is_list(param_type):
+                info.passed_to_list_param = True
+            elif is_span(param_type):
+                info.passed_to_span_param = True
+            else:
+                return
+        if info.elem_cells is None:
+            self._learn_parts(info, param_type)
 
     def elem_container(self, slot_type: TpyType, marker: TpyType,
                        ) -> tuple[TpyType | None, TpyType | None]:
@@ -978,7 +987,7 @@ class LocalTypeDeduction:
                     else verdict)
 
         if isinstance(pending, PendingListType):
-            info = self.ctx.list_literals.get(pending.literal_id)
+            info = self.ctx.list_literal(pending.literal_id)
             to_array = is_array(target)
             if info is None or not (is_list(target) or to_array):
                 return joined
@@ -988,9 +997,10 @@ class LocalTypeDeduction:
             if lc is not None:
                 # The element is the cells': the operand was analyzed as a
                 # value, which settled it.
-                if self.pend.known_as(lc, elem):
+                if self.pend.known_as(lc, target):
                     return joined
-                mix = self.int_float_mix(self.pend.tree_known(lc), elem)
+                mix = self.int_float_mix(
+                    self.pend.tree_known(lc).element_type, elem)
                 return below(mix, 0) if mix is not None else incompatible
             if (commit and numeric_container(target) is not None
                     and self.pend.seed_by_context(pending, target, None,
@@ -1020,9 +1030,14 @@ class LocalTypeDeduction:
                 return joined
             return below(verdict, 0)
         if isinstance(pending, PendingDictType) and is_dict(target):
-            info = self.ctx.dict_literals.get(pending.literal_id)
+            info = self.ctx.container_record(pending.literal_id)
             if info is None:
                 return joined
+            if info.elem_cells is not None or (
+                    commit and self.pend.seed_by_context(
+                        pending, target, None, "selected") is not None):
+                # The cells decide; the operand was analyzed as a value.
+                return self._pin_cells(info, target)
             key = pin(info.key_type, target.type_args[0])
             value = pin(info.value_type, target.type_args[1])
             for index, verdict in enumerate((key, value)):
@@ -1032,9 +1047,13 @@ class LocalTypeDeduction:
                 info.key_type, info.value_type = key.joined, value.joined
             return joined
         if isinstance(pending, PendingSetType) and is_set(target):
-            info = self.ctx.set_literals.get(pending.literal_id)
+            info = self.ctx.container_record(pending.literal_id)
             if info is None:
                 return joined
+            if info.elem_cells is not None or (
+                    commit and self.pend.seed_by_context(
+                        pending, target, None, "selected") is not None):
+                return self._pin_cells(info, target)
             verdict = pin(info.element_type, target.type_args[0])
             if verdict.outcome is not JoinOutcome.JOINED:
                 return below(verdict, 0)
@@ -1043,23 +1062,54 @@ class LocalTypeDeduction:
             return joined
         return incompatible
 
+    def _pin_cells(self, info: 'DictLiteralInfo | SetLiteralInfo',
+                   target: TpyType) -> InferredJoin:
+        """`pin_pending_container` for a dict or set whose cells decide its
+        leaves: JOINED when they are `target`'s at the types known so far,
+        else the mix or the incompatibility."""
+        lc = self.pend.cells_of(info)
+        if self.pend.known_as(lc, target):
+            return InferredJoin(JoinOutcome.JOINED, target)
+        mix = self.int_float_mix(
+            self.pend.declared_form(self.pend.tree_known(lc)), target)
+        return mix if mix is not None else InferredJoin(JoinOutcome.INCOMPATIBLE)
+
     def rebind_elem_cell(self, existing: TpyType, value_type: TpyType,
                          site: TpyStmt | TpyExpr) -> bool:
-        """A name whose list literal has an element cell is rebound to a
-        value of `value_type`: one local holds one element type, so another
-        list literal shares what each holds with the other, and a typed
-        list is a container the element must agree with. True when the
-        value is a pending list this settled the element question for."""
-        lc = self.pend.list_cells(existing)
+        """A name whose container literal has cells is rebound to a value
+        of `value_type`: one local holds one element type, so another
+        container literal shares what each holds with the other, and a typed
+        container is one the leaves must agree with. True when the value is
+        a container this settled the element question for (for a dict or a
+        set, a typed one too: the rebinding then converts nothing)."""
+        lc = self.pend.container_cells(existing)
         if lc is None:
             return False
-        other = self.pend.list_cells(value_type)
-        if other is not None:
+        kind = type(lc.tree)
+        other = self.pend.container_cells(value_type)
+        if other is not None and type(other.tree) is kind:
             return (other.cids == lc.cids
                     or self.pend.link(lc.tree, other.tree, site))
-        pending = pending_list_of(value_type)
+        empty = self.pend.seedable(value_type)
+        if empty is not None and type(empty.pending_type()) is kind:
+            # An empty container rebinding one with cells holds what it
+            # does: one local, one element type.
+            self.pend.share_cell(empty, lc.tree)
+            return True
+        is_list_cells = isinstance(lc.tree, PendingListType)
+        pending = pending_list_of(value_type) if is_list_cells else None
+        if not is_list_cells:
+            container = numeric_container(value_type, lc.tree)
+            if (container is None
+                    or not self.pend.fits_container(lc.tree, container)):
+                return False
+            refusal = self.pend.context_refusal(lc, container, "rebound")
+            if refusal is not None:
+                raise self.ctx.error(refusal, site)
+            self.pend.elem_context(existing, container, site, "rebound")
+            return True
         if pending is not None:
-            info = self.ctx.list_literals.get(pending.literal_id)
+            info = self.ctx.list_literal(pending.literal_id)
             if isinstance(pending.element_type, UnknownElementType):
                 if info is not None:
                     self.pend.attach(info, lc.tree)
@@ -1068,8 +1118,7 @@ class LocalTypeDeduction:
         else:
             container = numeric_container(value_type)
         if (container is None or numeric_container(container) is None
-                or not self.pend.fits_container(
-                    lc.tree, self.pend.context_elem(container))):
+                or not self.pend.fits_container(lc.tree, container)):
             return False
         refusal = self.pend.context_refusal(lc, container, "rebound")
         if refusal is not None:
@@ -1079,8 +1128,9 @@ class LocalTypeDeduction:
 
     def mark_list_different_size(self, literal_id: int) -> None:
         """Mark a pending list literal as needing list (different-size reassignment)."""
-        if literal_id in self.ctx.list_literals:
-            self.ctx.list_literals[literal_id].is_mutated = True
+        info = self.ctx.list_literal(literal_id)
+        if info is not None:
+            info.is_mutated = True
 
     def link_list_literals(self, target_id: int, value_id: int) -> None:
         """Link target literal to value literal for alias-based promotion.
@@ -1088,7 +1138,7 @@ class LocalTypeDeduction:
         Sets a one-directional edge; the resolution pass propagates promotion
         in both directions (Array->List transitivity) via the while-changed loop.
         """
-        target = self.ctx.list_literals.get(target_id)
+        target = self.ctx.list_literal(target_id)
         if target is None:
             return
         if target.source_literal_id is None:
@@ -1097,13 +1147,13 @@ class LocalTypeDeduction:
             # Target already linked to a different source -- it can hold multiple
             # distinct list literals, so all three must be promoted to list.
             target.is_mutated = True
-            if target.source_literal_id in self.ctx.list_literals:
-                self.ctx.list_literals[target.source_literal_id].is_mutated = True
-            if value_id in self.ctx.list_literals:
-                self.ctx.list_literals[value_id].is_mutated = True
+            for lid in (target.source_literal_id, value_id):
+                info = self.ctx.list_literal(lid)
+                if info is not None:
+                    info.is_mutated = True
 
     def mark_container_return_context(self, return_expr: TpyExpr, return_type: TpyType) -> None:
-        """Track return-type context for list/dict/set literal inference.
+        """Track return context for list/dict/set literal inference.
 
         Mirror of ``mark_container_param_context`` for the return position: an
         empty container returned (`d = {}; return d` with `-> dict[K, V]`)
@@ -1118,35 +1168,51 @@ class LocalTypeDeduction:
             return_expr = return_expr.expr
         if not isinstance(return_expr, TpyName):
             return
-        var_name = return_expr.name
-
-        literal_id = self.ctx.func.variable_to_literal.get(var_name)
-        if literal_id is not None and literal_id in self.ctx.list_literals and is_list(return_type):
-            info = self.ctx.list_literals[literal_id]
+        info = self._named_record(return_expr.name, None, return_type)
+        if info is None:
+            return
+        if isinstance(info, ListLiteralInfo):
             info.passed_to_list_param = True
-            if info.elem_cells is None:
-                info.coerced_element_type = return_type.type_args[0]
-            return
+        # Cells meet the return type where the value is coerced to it.
+        if info.elem_cells is None:
+            self._learn_parts(info, return_type)
 
-        dict_id = self.ctx.func.variable_to_dict_literal.get(var_name)
-        if dict_id is not None and is_dict(return_type):
-            info = self.ctx.dict_literals.get(dict_id)
-            if info is not None:
-                widened = self._widen_inferred_type(info.key_type, return_type.type_args[0])
-                if widened is not None:
-                    info.key_type = widened
-                widened = self._widen_inferred_type(info.value_type, return_type.type_args[1])
-                if widened is not None:
-                    info.value_type = widened
-            return
+    def _named_record(self, name: str, t: TpyType | None,
+                      returned: TpyType | None = None,
+                      ) -> 'ContainerLiteralInfo | None':
+        """The record of the container literal local `name` names: of
+        `t`'s kind when `t` is given, else of the kind a returned
+        container `returned` is (a list returned as a list)."""
+        info = self.ctx.container_record(
+            self.ctx.func.variable_to_literal.get(name))
+        if info is None:
+            return None
+        cls = type(info.pending_type())
+        if t is not None and not isinstance(t, cls):
+            return None
+        if returned is not None and not (
+                is_list(returned) if cls is PendingListType
+                else pairs_as(cls, returned)):
+            return None
+        return info
 
-        set_id = self.ctx.func.variable_to_set_literal.get(var_name)
-        if set_id is not None and is_set(return_type):
-            info = self.ctx.set_literals.get(set_id)
-            if info is not None:
-                widened = self._widen_inferred_type(info.element_type, return_type.type_args[0])
-                if widened is not None:
-                    info.element_type = widened
+    def _learn_parts(self, info: 'ContainerLiteralInfo',
+                     container: TpyType) -> None:
+        """A container literal no cell decides meets the typed `container`
+        of its kind: a list takes its element from it, a dict or set widens
+        each part toward it."""
+        root = info.pending_type()
+        if not pairs_as(root, container):
+            return
+        parts = container_parts(container, root)
+        if isinstance(info, ListLiteralInfo):
+            info.coerced_element_type = parts[0]
+            return
+        learned = []
+        for old, new in zip(root.parts(), parts):
+            widened = self._widen_inferred_type(old, new)
+            learned.append(widened if widened is not None else old)
+        info.set_parts(root.with_parts(tuple(learned)))
 
     def register_list_alias(self, var_name: str, init_type: PendingListType, decl_line: int | None = None) -> PendingListType:
         """Register alias relationship when b = a where a is a PendingListType.
@@ -1155,7 +1221,7 @@ class LocalTypeDeduction:
         pointing to the original. Returns a new PendingListType for the alias.
         """
         source_literal_id = init_type.literal_id
-        source_info = self.ctx.list_literals.get(source_literal_id)
+        source_info = self.ctx.list_literal(source_literal_id)
         if source_info is None:
             return init_type
 
@@ -1176,7 +1242,7 @@ class LocalTypeDeduction:
             elem_cells=(dict(source_info.elem_cells)
                         if source_info.elem_cells is not None else None),
         )
-        self.ctx.list_literals[new_id] = info
+        self.ctx.container_literals[new_id] = info
         self.ctx.func.pending_resolutions.append(new_id)
         self.ctx.func.variable_to_literal[var_name] = new_id
         return PendingListType(elem, init_type.size, new_id)
@@ -1189,7 +1255,7 @@ class LocalTypeDeduction:
             if current.source_literal_id in visited:
                 break
             visited.add(current.source_literal_id)
-            source = self.ctx.list_literals.get(current.source_literal_id)
+            source = self.ctx.list_literal(current.source_literal_id)
             if source is None:
                 break
             if not isinstance(source.element_type, UnknownElementType):
@@ -1262,10 +1328,9 @@ class LocalTypeDeduction:
         """
         self._close_row_groups()
         for literal_id in self._rows_first():
-            if literal_id not in self.ctx.list_literals:
+            info = self.ctx.list_literal(literal_id)
+            if info is None:
                 continue
-
-            info = self.ctx.list_literals[literal_id]
 
             # Resolve element type
             # Priority: coerced type from param > inferred from usage > resolved inner PendingListType > default
@@ -1351,10 +1416,10 @@ class LocalTypeDeduction:
         while changed:
             changed = False
             for literal_id in self.ctx.func.pending_resolutions:
-                info = self.ctx.list_literals.get(literal_id)
+                info = self.ctx.list_literal(literal_id)
                 if info is None or info.source_literal_id is None:
                     continue
-                source = self.ctx.list_literals.get(info.source_literal_id)
+                source = self.ctx.list_literal(info.source_literal_id)
                 if source is None:
                     continue
                 # Forward: source became list -> alias must too
@@ -1371,8 +1436,8 @@ class LocalTypeDeduction:
         # An alias and its source are one list, so they hold one element
         # type; a use of only one of the names can decide it differently.
         for literal_id in self.ctx.func.pending_resolutions:
-            info = self.ctx.list_literals.get(literal_id)
-            source = (self.ctx.list_literals.get(info.source_literal_id)
+            info = self.ctx.list_literal(literal_id)
+            source = (self.ctx.list_literal(info.source_literal_id)
                       if info is not None and info.source_literal_id is not None
                       else None)
             if (source is None or info.resolved_type is None
@@ -1398,7 +1463,6 @@ class LocalTypeDeduction:
         element cells name rows after those rows, which a store may have
         created after the list (`g.append([v])`, an empty list seeded by
         a row), since the list embeds their resolved type."""
-        lits = self.ctx.list_literals
         order: list[int] = []
         done: set[int] = set()
 
@@ -1406,16 +1470,18 @@ class LocalTypeDeduction:
             if lid in done:
                 return
             done.add(lid)
-            info = lits.get(lid)
+            info = self.ctx.list_literal(lid)
             if info is not None and info.elem_cells is not None:
                 for row in _row_ids(info.element_type):
                     visit(row)
             order.append(lid)
 
-        own = set(self.ctx.func.pending_resolutions)
-        for lid in self.ctx.func.pending_resolutions:
+        own = [lid for lid in self.ctx.func.pending_resolutions
+               if self.ctx.list_literal(lid) is not None]
+        for lid in own:
             visit(lid)
-        return [lid for lid in order if lid in own]
+        mine = set(own)
+        return [lid for lid in order if lid in mine]
 
     @staticmethod
     def _container_form(info: ListLiteralInfo) -> '_Form':
@@ -1445,13 +1511,14 @@ class LocalTypeDeduction:
         that needs one -- is one on every row of the group and every name
         for them. Decided before any record resolves, so the list that
         holds them embeds the type all its rows get."""
-        lits = self.ctx.list_literals
+        lits = {lid: rec for lid in self.ctx.func.pending_resolutions
+                if (rec := self.ctx.list_literal(lid)) is not None}
         groups: dict[int, list[ListLiteralInfo]] = {}
-        for lid in self.ctx.func.pending_resolutions:
-            rec = lits.get(lid)
-            if rec is not None and rec.row_group is not None:
+        for rec in lits.values():
+            if rec.row_group is not None:
                 groups[id(rec.row_group)] = [
-                    lits[g] for g in rec.row_group if g in lits]
+                    r for g in rec.row_group
+                    if (r := self.ctx.list_literal(g)) is not None]
         if not groups:
             return
         changed = True
@@ -1512,52 +1579,8 @@ class LocalTypeDeduction:
                 self.ctx.var_types[var_decl] = resolved
 
     # ------------------------------------------------------------------
-    # Dict literal deduction
+    # Dict and set resolution
     # ------------------------------------------------------------------
-
-    def infer_dict_key_value_types(self, obj_expr: TpyExpr, key_type: TpyType,
-                                   value_type: TpyType,
-                                   key: TpyExpr | None = None,
-                                   value: TpyExpr | None = None) -> None:
-        """Infer key/value types for an empty dict literal from subscript assignment (d[k] = v)."""
-        if not isinstance(obj_expr, TpyName):
-            return
-        var_name = obj_expr.name
-        literal_id = self.ctx.func.variable_to_dict_literal.get(var_name)
-        if literal_id is None:
-            return
-        info = self.ctx.dict_literals.get(literal_id)
-        if info is None:
-            return
-        self._update_dict_type_param(info, "key", key_type, obj_expr, key)
-        self._update_dict_type_param(info, "value", value_type, obj_expr,
-                                     value)
-
-    def _update_dict_type_param(self, info: DictLiteralInfo, which: str,
-                                new_type: TpyType, site: TpyExpr,
-                                value: TpyExpr | None = None) -> None:
-        """Update key or value type for a DictLiteralInfo from a use,
-        widening if needed."""
-        current = info.key_type if which == "key" else info.value_type
-        name = info.variable_name or "d"
-        init = self._initializer_spelling(info.expr, "{}", "{...}")
-
-        def annotation(f: str) -> str:
-            other = info.value_type if which == "key" else info.key_type
-            o = ("..." if isinstance(other, UnknownElementType)
-                 else python_type_name(other))
-            k, v = (f, o) if which == "key" else (o, f)
-            return f"{name}: dict[{k}, {v}] = {init}"
-        result = self._join_observed_type(
-            current, new_type, site,
-            (f"dict '{name}'" if info.variable_name else "this dict")
-            + (" keys" if which == "key" else ""),
-            annotation, value)
-        if result is not None:
-            if which == "key":
-                info.key_type = result
-            else:
-                info.value_type = result
 
     def _resolve_pending_dict_and_set_types(self) -> None:
         """Resolve all pending dict and set types after function analysis.
@@ -1567,9 +1590,15 @@ class LocalTypeDeduction:
         Merged into a single method to guarantee identical handling.
         """
         # Process dicts
-        for literal_id in self.ctx.func.pending_dict_resolutions:
-            info = self.ctx.dict_literals.get(literal_id)
-            if info is None:
+        for literal_id in self.ctx.func.pending_resolutions:
+            info = self.ctx.container_record(literal_id)
+            if not isinstance(info, DictLiteralInfo):
+                continue
+            if info.elem_cells is not None:
+                # Its cells decided its leaves.
+                self._apply_container_resolution(
+                    info, self._deep_resolve_pending(self.pend.declared_form(
+                        self.pend.finalize(info.pending_type()))))
                 continue
 
             key_type = info.key_type
@@ -1596,9 +1625,14 @@ class LocalTypeDeduction:
             self._apply_container_resolution(info, make_dict(key_type, value_type))
 
         # Process sets
-        for literal_id in self.ctx.func.pending_set_resolutions:
-            info = self.ctx.set_literals.get(literal_id)
-            if info is None:
+        for literal_id in self.ctx.func.pending_resolutions:
+            info = self.ctx.container_record(literal_id)
+            if not isinstance(info, SetLiteralInfo):
+                continue
+            if info.elem_cells is not None:
+                self._apply_container_resolution(
+                    info, self._deep_resolve_pending(self.pend.declared_form(
+                        self.pend.finalize(info.pending_type()))))
                 continue
 
             elem_type = info.element_type
@@ -1618,31 +1652,6 @@ class LocalTypeDeduction:
                 elem_type = elem_type.family.owned_type
 
             self._apply_container_resolution(info, make_set(elem_type))
-
-    # ------------------------------------------------------------------
-    # Set literal deduction
-    # ------------------------------------------------------------------
-
-    def infer_set_element_type(self, obj_expr: TpyExpr, value_type: TpyType,
-                               value: TpyExpr | None = None) -> None:
-        """Infer element type for an empty set from .add() usage."""
-        if not isinstance(obj_expr, TpyName):
-            return
-        var_name = obj_expr.name
-        literal_id = self.ctx.func.variable_to_set_literal.get(var_name)
-        if literal_id is None:
-            return
-        info = self.ctx.set_literals.get(literal_id)
-        if info is None:
-            return
-        name = info.variable_name or "s"
-        init = self._initializer_spelling(info.expr, "set()", "{...}")
-        result = self._join_observed_type(
-            info.element_type, value_type, obj_expr,
-            f"set '{name}'" if info.variable_name else "this set",
-            lambda f: f"{name}: set[{f}] = {init}", value)
-        if result is not None:
-            info.element_type = result
 
     # ------------------------------------------------------------------
     # String variable deduction (moved from StrVarTracker)
@@ -2603,21 +2612,25 @@ class LocalTypeDeduction:
         # at the literal's resolved type, as a read of an annotated list is
         # recorded at its annotation: the lowering keys on the node's type
         # (the member a union slot lifts, for one).
-        for node in self.ctx.func.pending_elem_list_exprs:
+        for node in self.ctx.func.pending_container_exprs:
             current = self.ctx.expr_types.get(node)
-            if not isinstance(current, PendingListType):
+            if not isinstance(current, PendingContainerType):
                 continue
-            info = self.ctx.list_literals.get(current.literal_id)
-            # A list no cell decides keeps the type its own resolution
-            # gives every read.
-            if (isinstance(current.element_type, UnknownElementType)
-                    and (info is None or info.elem_cells is None)):
+            info = self.ctx.container_record(current.literal_id)
+            unknown = any(isinstance(p, UnknownElementType)
+                          for p in current.parts())
+            # A container no cell decides keeps the type its own
+            # resolution gives every read.
+            if unknown and (info is None or info.elem_cells is None):
                 continue
             if info is not None and info.resolved_type is not None:
                 self.ctx.expr_types[node] = info.resolved_type
+            elif info is not None and info.part_of is not None:
+                self.ctx.expr_types[node] = self._deep_resolve_pending(
+                    self.pend.finalize(current))
             elif contains_pending_num(current):
                 self.ctx.expr_types[node] = self.pend.finalize(current)
-            elif isinstance(current.element_type, UnknownElementType):
+            elif unknown:
                 # A read recorded before its empty list's cell was born has
                 # no pending number to finalize: only the literal's own
                 # resolution gives it an element.
@@ -2660,17 +2673,20 @@ class LocalTypeDeduction:
         resolved = self._resolved_container_type(typ)
         if resolved is not None:
             return resolved
+        if isinstance(typ, (PendingDictType, PendingSetType)):
+            rec = self.ctx.container_record(typ.literal_id)
+            if rec is not None and rec.part_of is not None:
+                # A dict or set inside another container literal is the
+                # container its parts spell; its cells are the outer one's.
+                return typ.spelled(tuple(
+                    self._deep_resolve_pending(p, settle_views=settle_views)
+                    for p in typ.parts()))
         return typ.map_inner_types(
             lambda t: self._deep_resolve_pending(t, settle_views=settle_views))
 
     def _resolved_container_type(self, typ: TpyType) -> TpyType | None:
         """The registry-resolved type for a Pending* container, else None."""
-        if isinstance(typ, PendingListType):
-            info = self.ctx.list_literals.get(typ.literal_id)
-        elif isinstance(typ, PendingDictType):
-            info = self.ctx.dict_literals.get(typ.literal_id)
-        elif isinstance(typ, PendingSetType):
-            info = self.ctx.set_literals.get(typ.literal_id)
-        else:
+        if not isinstance(typ, PendingContainerType):
             return None
+        info = self.ctx.container_record(typ.literal_id)
         return info.resolved_type if info is not None else None

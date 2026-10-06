@@ -1,0 +1,1 @@
+main.py:17: error: 's' holds int32 elements since line 16 (passed as set[int32]), and this value is int64; the set is passed as set[int32], so the value must be int32

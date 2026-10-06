@@ -42,7 +42,7 @@ void test_multiple() {
 
 // def test_numeric_widen() -> None:
 //     d = {}  # tpyc: type(dict[str, int64])
-//     d["a"] = int32(1)
+//     d["a"] = 1
 //     d["b"] = int64(2)
 //     print(d)
 void test_numeric_widen() {

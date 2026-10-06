@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 from tpyc.typesys import (
     TypeParamRef, NominalType, PtrType, TupleType,
     TpyType, CHAR, OwnType, GenExprType, ReadonlyType,
-    is_any_str_type, is_protocol_type, unwrap_ref_type, unwrap_qualifiers, unwrap_readonly,
+    bound_as_spelled, is_any_str_type, is_protocol_type, unwrap_ref_type, unwrap_qualifiers, unwrap_readonly,
 )
 from tpyc.type_def_registry import is_span, is_span_iter, is_copy_iter, is_own_iter, is_iterator_adapter, protocol_info_of
 from tpyc.modules.defs import ParamDef, MethodDef
@@ -121,8 +121,8 @@ def extract_type_params(tpy_type: "TpyType") -> dict[str, "TpyType"]:
     Note: Only type parameters that are themselves types are extracted.
     Integer parameters like N in Container[T, N] are not included.
     """
-    from tpyc.typesys import PtrType
     from tpyc.type_def_registry import is_dict_view, is_dict
+    tpy_type = bound_as_spelled(tpy_type, lists=True)
     if is_dict(tpy_type) or is_dict_view(tpy_type):
         return {"K": tpy_type.type_args[0], "V": tpy_type.type_args[1]}
     # Pointer types: use the full pointee (preserving readonly if present).

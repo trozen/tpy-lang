@@ -127,7 +127,7 @@ class NarrowingTracker:
         list literal whose element is not decided yet shows the element
         known so far. This lookup is no use, so it settles nothing."""
         lc = self.pend.list_cells(typ)
-        return self.pend.list_so_far(typ, lc) if lc is not None else typ
+        return self.pend.so_far(typ, lc) if lc is not None else typ
 
     def _resolve_field_path_type(self, key: str) -> TpyType | None:
         """Resolve the declared type for a dotted field path like 'obj.field' or 'obj.a.b'."""

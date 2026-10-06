@@ -1753,6 +1753,7 @@ class TypeRegistrar:
                 native_name=method.native_name,
                 native_function=method.native_function,
                 native_mutates=method.native_mutates,
+                native_element_effect=method.native_element_effect,
                 copy_returns_warn=method.copy_returns_warn,
                 # Only `__enter__` needs it, and only it pays the body walk.
                 returns_self_borrow=(
