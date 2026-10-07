@@ -1603,6 +1603,26 @@ __gen_cells cells(::tpy::BigInt n) {
     return __gen_cells(n);
 }
 
+
+// def batches(n: int) -> Iterator[Own[list[C]]]:
+__gen_batches batches(::tpy::BigInt n) {
+    return __gen_batches(n);
+}
+
+
+// def shelves(n: int) -> Iterator[Own[Shelf]]:
+__gen_shelves shelves(::tpy::BigInt n) {
+    return __gen_shelves(n);
+}
+
+// def grow_cs(cs: list[C]) -> bool:
+//     cs.append(C(9))
+//     return True
+bool grow_cs(std::vector<C>& cs) {
+    cs.push_back(C(::tpy::BigInt(9)));
+    return true;
+}
+
 // def keep(row: list[int]) -> bool:
 //     print("lc keep", len(row))
 //     return len(row) != 2
@@ -2836,6 +2856,577 @@ void lc_owned() {
     std::cout << "lc owned genexpr" << " " << ::tpy::builtin_sum_bigint(::tpyapp::main::__genexpr_lc_owned_23(3)) << "\n" << ::tpy::check_signals;
 }
 
+// def lc_owned_outer() -> None:
+//     # free function: an outer clause over an owned source; the inner clause borrows its element
+//     print("lc own outer", [c.n for cs in batches(2) for c in cs])  # tpyc: ok
+//     # filters on both clauses
+//     print("lc own outer filter", [c.n for cs in batches(3) if len(cs) > 1 for c in cs if c.n % 2 == 0])  # tpyc: ok
+//     # an outer filter grows the owned element before the inner clause iterates it
+//     print("lc own outer grow", [c.n for cs in batches(2) if grow_cs(cs) for c in cs])  # tpyc: ok
+//     # a scalar walrus in the outer filter, read by the element
+//     print("lc own outer walrus", [c.n + k for cs in batches(2) if (k := len(cs)) > 1 for c in cs])  # tpyc: ok
+//     # mutation through the inner var reaches the owned element: the element reads it back
+//     print("lc own outer bump", [cs[0].n for cs in batches(2) for c in cs if c.bump() > 0])  # tpyc: ok
+//     # dict and set; the dict key and value both read the outer element
+//     print("lc own outer dict", {c.n: len(cs) for cs in batches(2) for c in cs})  # tpyc: ok
+//     print("lc own outer set", sorted({c.n for cs in batches(3) for c in cs}))  # tpyc: ok
+//     # a field of the owned element as the inner source
+//     print("lc own outer field", [c.n for s in shelves(2) for c in s.cs])  # tpyc: ok
+//     # both clauses owned: the innermost element still moves into the result
+//     ws = [w for cs in batches(2) for w in widgets(len(cs))]  # tpyc: ok
+//     print("lc own both", [w.id for w in ws])
+//     # the outer element as the result is copied per inner iteration, and says
+//     # so (CPython aliases one list twice; read-only here, the copy is the warned divergence)
+//     rows = [cs for cs in batches(2) for _ in range(2)]  # tpyc: warning(/copies/)
+//     print("lc own outer copy", [len(r) for r in rows])
+void lc_owned_outer() {
+    std::cout << "lc own outer" << " " << ::tpy::ListPrinter(({
+        std::vector<::tpy::BigInt> __result;
+        auto __obj_0 = ::tpyapp::main::batches(::tpy::BigInt(2));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            auto&& cs = *__beg_0;
+            auto& __obj_1 = cs;
+            auto __beg_1 = __obj_1.begin();
+            auto __end_1 = __obj_1.end();
+            for (; __beg_1 != __end_1; ++__beg_1) {
+                const auto& c = *__beg_1;
+                __result.push_back(c.n);
+            }
+        }
+        std::move(__result);
+    })) << "\n" << ::tpy::check_signals;
+    std::cout << "lc own outer filter" << " " << ::tpy::ListPrinter(({
+        std::vector<::tpy::BigInt> __result;
+        auto __obj_2 = ::tpyapp::main::batches(::tpy::BigInt(3));
+        auto __beg_2 = __obj_2.begin();
+        auto __end_2 = __obj_2.end();
+        for (; __beg_2 != __end_2; ++__beg_2) {
+            auto&& cs = *__beg_2;
+            if ((::tpy::__len__(cs) > 1)) {
+                auto& __obj_3 = cs;
+                auto __beg_3 = __obj_3.begin();
+                auto __end_3 = __obj_3.end();
+                for (; __beg_3 != __end_3; ++__beg_3) {
+                    const auto& c = *__beg_3;
+                    if ((((c.n) % (::tpy::BigInt(2))) == 0)) {
+                        __result.push_back(c.n);
+                    }
+                }
+            }
+        }
+        std::move(__result);
+    })) << "\n" << ::tpy::check_signals;
+    std::cout << "lc own outer grow" << " " << ::tpy::ListPrinter(({
+        std::vector<::tpy::BigInt> __result;
+        auto __obj_4 = ::tpyapp::main::batches(::tpy::BigInt(2));
+        auto __beg_4 = __obj_4.begin();
+        auto __end_4 = __obj_4.end();
+        for (; __beg_4 != __end_4; ++__beg_4) {
+            auto&& cs = *__beg_4;
+            if (::tpyapp::main::grow_cs(cs)) {
+                auto& __obj_5 = cs;
+                auto __beg_5 = __obj_5.begin();
+                auto __end_5 = __obj_5.end();
+                for (; __beg_5 != __end_5; ++__beg_5) {
+                    const auto& c = *__beg_5;
+                    __result.push_back(c.n);
+                }
+            }
+        }
+        std::move(__result);
+    })) << "\n" << ::tpy::check_signals;
+    int32_t k;
+    std::cout << "lc own outer walrus" << " " << ::tpy::ListPrinter(({
+        std::vector<::tpy::BigInt> __result;
+        auto __obj_6 = ::tpyapp::main::batches(::tpy::BigInt(2));
+        auto __beg_6 = __obj_6.begin();
+        auto __end_6 = __obj_6.end();
+        for (; __beg_6 != __end_6; ++__beg_6) {
+            auto&& cs = *__beg_6;
+            if (((k = ::tpy::__len__(cs)) > 1)) {
+                auto& __obj_7 = cs;
+                auto __beg_7 = __obj_7.begin();
+                auto __end_7 = __obj_7.end();
+                for (; __beg_7 != __end_7; ++__beg_7) {
+                    const auto& c = *__beg_7;
+                    __result.push_back(((c.n) + (::tpy::BigInt(k))));
+                }
+            }
+        }
+        std::move(__result);
+    })) << "\n" << ::tpy::check_signals;
+    std::cout << "lc own outer bump" << " " << ::tpy::ListPrinter(({
+        std::vector<::tpy::BigInt> __result;
+        auto __obj_8 = ::tpyapp::main::batches(::tpy::BigInt(2));
+        auto __beg_8 = __obj_8.begin();
+        auto __end_8 = __obj_8.end();
+        for (; __beg_8 != __end_8; ++__beg_8) {
+            auto&& cs = *__beg_8;
+            auto& __obj_9 = cs;
+            auto __beg_9 = __obj_9.begin();
+            auto __end_9 = __obj_9.end();
+            for (; __beg_9 != __end_9; ++__beg_9) {
+                auto&& c = *__beg_9;
+                if ((c.bump() > 0)) {
+                    __result.push_back(::tpy::__getitem__(cs, 0).n);
+                }
+            }
+        }
+        std::move(__result);
+    })) << "\n" << ::tpy::check_signals;
+    std::cout << "lc own outer dict" << " " << ::tpy::DictPrinter(({
+        ::tpy::ordered_map<::tpy::BigInt, int32_t> __result;
+        auto __obj_10 = ::tpyapp::main::batches(::tpy::BigInt(2));
+        auto __beg_10 = __obj_10.begin();
+        auto __end_10 = __obj_10.end();
+        for (; __beg_10 != __end_10; ++__beg_10) {
+            auto&& cs = *__beg_10;
+            auto& __obj_11 = cs;
+            auto __beg_11 = __obj_11.begin();
+            auto __end_11 = __obj_11.end();
+            for (; __beg_11 != __end_11; ++__beg_11) {
+                const auto& c = *__beg_11;
+                __result.insert_or_assign(c.n, ::tpy::__len__(cs));
+            }
+        }
+        std::move(__result);
+    })) << "\n" << ::tpy::check_signals;
+    std::cout << "lc own outer set" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<::tpy::BigInt>(({
+        ::tpy::ordered_set<::tpy::BigInt> __result;
+        auto __obj_12 = ::tpyapp::main::batches(::tpy::BigInt(3));
+        auto __beg_12 = __obj_12.begin();
+        auto __end_12 = __obj_12.end();
+        for (; __beg_12 != __end_12; ++__beg_12) {
+            auto&& cs = *__beg_12;
+            auto& __obj_13 = cs;
+            auto __beg_13 = __obj_13.begin();
+            auto __end_13 = __obj_13.end();
+            for (; __beg_13 != __end_13; ++__beg_13) {
+                const auto& c = *__beg_13;
+                __result.insert(c.n);
+            }
+        }
+        std::move(__result);
+    }))) << "\n" << ::tpy::check_signals;
+    std::cout << "lc own outer field" << " " << ::tpy::ListPrinter(({
+        std::vector<::tpy::BigInt> __result;
+        auto __obj_14 = ::tpyapp::main::shelves(::tpy::BigInt(2));
+        auto __beg_14 = __obj_14.begin();
+        auto __end_14 = __obj_14.end();
+        for (; __beg_14 != __end_14; ++__beg_14) {
+            auto&& s = *__beg_14;
+            auto& __obj_15 = s.cs;
+            auto __beg_15 = __obj_15.begin();
+            auto __end_15 = __obj_15.end();
+            for (; __beg_15 != __end_15; ++__beg_15) {
+                const auto& c = *__beg_15;
+                __result.push_back(c.n);
+            }
+        }
+        std::move(__result);
+    })) << "\n" << ::tpy::check_signals;
+    std::vector<W> ws = ({
+        std::vector<W> __result;
+        auto __obj_16 = ::tpyapp::main::batches(::tpy::BigInt(2));
+        auto __beg_16 = __obj_16.begin();
+        auto __end_16 = __obj_16.end();
+        for (; __beg_16 != __end_16; ++__beg_16) {
+            auto&& cs = *__beg_16;
+            int32_t __tmp_1 = ::tpy::__len__(cs);
+            auto __obj_17 = ::tpyapp::main::widgets(::tpy::BigInt(__tmp_1));
+            auto __beg_17 = __obj_17.begin();
+            auto __end_17 = __obj_17.end();
+            for (; __beg_17 != __end_17; ++__beg_17) {
+                auto&& w = *__beg_17;
+                __result.push_back(std::move(w));
+            }
+        }
+        std::move(__result);
+    });
+    std::cout << "lc own both" << " " << ::tpy::ListPrinter(({
+        std::vector<::tpy::BigInt> __result;
+        auto& __obj_18 = ws;
+        __result.reserve(static_cast<std::size_t>(__obj_18.size()));
+        auto __beg_18 = __obj_18.begin();
+        auto __end_18 = __obj_18.end();
+        for (; __beg_18 != __end_18; ++__beg_18) {
+            const auto& w = *__beg_18;
+            __result.push_back(w.id);
+        }
+        std::move(__result);
+    })) << "\n" << ::tpy::check_signals;
+    std::vector<std::vector<C>> rows = ({
+        std::vector<std::vector<C>> __result;
+        auto __obj_19 = ::tpyapp::main::batches(::tpy::BigInt(2));
+        auto __beg_19 = __obj_19.begin();
+        auto __end_19 = __obj_19.end();
+        for (; __beg_19 != __end_19; ++__beg_19) {
+            auto&& cs = *__beg_19;
+            for (int32_t _ = 0; _ < 2; ++_) {
+                __result.push_back(cs);
+            }
+        }
+        std::move(__result);
+    });
+    std::cout << "lc own outer copy" << " " << ::tpy::ListPrinter(({
+        std::vector<int32_t> __result;
+        auto& __obj_21 = rows;
+        __result.reserve(static_cast<std::size_t>(__obj_21.size()));
+        auto __beg_21 = __obj_21.begin();
+        auto __end_21 = __obj_21.end();
+        for (; __beg_21 != __end_21; ++__beg_21) {
+            const auto& r = *__beg_21;
+            __result.push_back(::tpy::__len__(r));
+        }
+        std::move(__result);
+    })) << "\n" << ::tpy::check_signals;
+}
+
+// def own_for_stmt() -> None:
+//     # for statement: a nested for over the element of a for over an owned source
+//     for cs in batches(2):
+//         cs.append(C(7))
+//         for c in cs:  # tpyc: ok
+//             c.bump()
+//         print("own for stmt", [c.n for c in cs])
+void own_for_stmt() {
+    {
+        auto __src_0 = ::tpyapp::main::batches(::tpy::BigInt(2));
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& cs = ::tpy::unwrap_ref(*__r_1);
+            cs.push_back(C(::tpy::BigInt(7)));
+            auto& __obj_2 = cs;
+            auto __beg_2 = __obj_2.begin();
+            auto __end_2 = __obj_2.end();
+            for (; __beg_2 != __end_2; ++__beg_2) {
+                auto&& c = *__beg_2;
+                c.bump();
+            }
+            std::cout << "own for stmt" << " " << ::tpy::ListPrinter(({
+                std::vector<::tpy::BigInt> __result;
+                auto& __obj_3 = cs;
+                __result.reserve(static_cast<std::size_t>(__obj_3.size()));
+                auto __beg_3 = __obj_3.begin();
+                auto __end_3 = __obj_3.end();
+                for (; __beg_3 != __end_3; ++__beg_3) {
+                    const auto& c = *__beg_3;
+                    __result.push_back(c.n);
+                }
+                std::move(__result);
+            })) << "\n" << ::tpy::check_signals;
+        }
+    }
+}
+
+// def own_gen(n: int) -> Iterator[int]:
+//     # generator body: the comprehension and the for statement twin
+//     flat = [c.n for cs in batches(n) for c in cs]  # tpyc: ok
+//     yield len(flat)                                                 # -> S_RESUME_0
+//     for ds in batches(n):
+//         for d in ds:  # tpyc: ok
+//             yield d.n                                               # -> S_RESUME_1
+std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_own_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        flat.emplace(({
+            std::vector<::tpy::BigInt> __result;
+            auto __obj_0 = ::tpyapp::main::batches(n);
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                auto&& cs = *__beg_0;
+                auto& __obj_1 = cs;
+                auto __beg_1 = __obj_1.begin();
+                auto __end_1 = __obj_1.end();
+                for (; __beg_1 != __end_1; ++__beg_1) {
+                    const auto& c = *__beg_1;
+                    __result.push_back(c.n);
+                }
+            }
+            std::move(__result);
+        }));
+        __state = S_RESUME_0;
+        return ::tpy::BigInt(::tpy::__len__((*flat)));
+    }
+    case S_RESUME_0: {  // after: yield len(flat)
+        __for_src_0.emplace(::tpyapp::main::batches(n));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        __for_r_0.emplace((*__for_src_0).__next__());
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        ds.emplace(::tpy::unwrap_ref(*(*__for_r_0)));
+        auto& __for_obj_1 = (*ds);
+        __for_it_1.emplace((__for_obj_1).begin());
+        __for_end_1.emplace((__for_obj_1).end());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_1:  // after: yield d.n
+    case S_JOIN_1: {
+        if ((*__for_it_1) == (*__for_end_1)) {
+            __state = S_JOIN_0;
+            continue;
+        }
+        d = &(*((*__for_it_1))++);
+        __state = S_RESUME_1;
+        return d->n;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def own_gen(n: int) -> Iterator[int]:
+__gen_own_gen own_gen(::tpy::BigInt n) {
+    return __gen_own_gen(n);
+}
+
+// async def own_async(n: int) -> int:
+//     await asyncio.sleep(0)                                                         # -> S_RESUME_0
+//     # async def, after a suspension: the comprehension and the for statement twin
+//     # (distinct names: BUGS.md#async-comp-target-named-like-frame-loop-var)
+//     total = sum([c.n for cs in batches(n) for c in cs])  # tpyc: ok
+//     for ds in batches(n):
+//         for d in ds:  # tpyc: ok
+//             total += d.n
+//     return total
+::tpystd::tpy::Poll<::tpy::BigInt> __coro_own_async::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        total = ::tpy::builtin_sum_bigint(({
+            std::vector<::tpy::BigInt> __result;
+            auto __obj_0 = ::tpyapp::main::batches(n);
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                auto&& cs = *__beg_0;
+                auto& __obj_1 = cs;
+                auto __beg_1 = __obj_1.begin();
+                auto __end_1 = __obj_1.end();
+                for (; __beg_1 != __end_1; ++__beg_1) {
+                    const auto& c = *__beg_1;
+                    __result.push_back(c.n);
+                }
+            }
+            std::move(__result);
+        }));
+        {
+            __for_src_0.emplace(::tpyapp::main::batches(n));
+            auto& __src_2 = (*__for_src_0);
+            auto&& __itr_2 = ::tpy::__iter__(__src_2);
+            for (;;) {
+                auto __r_3 = __itr_2.__next__();
+                if (!__r_3.has_value()) break;
+                const auto& ds = ::tpy::unwrap_ref(*__r_3);
+                auto& __obj_4 = ds;
+                auto __beg_4 = __obj_4.begin();
+                auto __end_4 = __obj_4.end();
+                for (; __beg_4 != __end_4; ++__beg_4) {
+                    const auto& d = *__beg_4;
+                    total = (total) + (d.n);
+                }
+            }
+        }
+        __state = S_DONE;
+        ::tpy::BigInt __tpy_async_ret = std::move(total);
+        return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def own_async(n: int) -> int:
+__coro_own_async own_async(::tpy::BigInt n) {
+    return __coro_own_async(n);
+}
+
+// def own_positions(k: int) -> None:
+//     match k:
+//         case 1:
+//             # match arm
+//             print("own match", [c.n for cs in batches(2) for c in cs if c.n != k])  # tpyc: ok
+//         case _:
+//             print("own match other")
+//     try:
+//         # try/finally body
+//         print("own try", [c.n for cs in batches(2) for c in cs])  # tpyc: ok
+//     finally:
+//         print("own finally")
+//     with Ctx():
+//         # with body
+//         print("own with", [c.n for cs in batches(1) for c in cs])  # tpyc: ok
+//
+//     def inner() -> Own[list[int]]:
+//         # nested def: the comprehension reads the enclosing parameter
+//         return [c.n + k for cs in batches(2) for c in cs]  # tpyc: ok
+//     print("own nested def", inner())
+//     # lambda body
+//     total: Callable[[int], int] = lambda n: sum([c.n for cs in batches(n) for c in cs])  # tpyc: ok
+//     print("own lambda", total(2))
+void own_positions(const ::tpy::BigInt& k) {
+    auto& __match_subject_1 = k;
+    if (__match_subject_1 == 1) {
+        std::cout << "own match" << " " << ::tpy::ListPrinter(({
+            std::vector<::tpy::BigInt> __result;
+            auto __obj_0 = ::tpyapp::main::batches(::tpy::BigInt(2));
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                auto&& cs = *__beg_0;
+                auto& __obj_1 = cs;
+                auto __beg_1 = __obj_1.begin();
+                auto __end_1 = __obj_1.end();
+                for (; __beg_1 != __end_1; ++__beg_1) {
+                    const auto& c = *__beg_1;
+                    if ((c.n != k)) {
+                        __result.push_back(c.n);
+                    }
+                }
+            }
+            std::move(__result);
+        })) << "\n" << ::tpy::check_signals;
+    } else {
+        std::cout << "own match other" << "\n" << ::tpy::check_signals;
+    }
+    {
+        try {
+            std::cout << "own try" << " " << ::tpy::ListPrinter(({
+                std::vector<::tpy::BigInt> __result;
+                auto __obj_2 = ::tpyapp::main::batches(::tpy::BigInt(2));
+                auto __beg_2 = __obj_2.begin();
+                auto __end_2 = __obj_2.end();
+                for (; __beg_2 != __end_2; ++__beg_2) {
+                    auto&& cs = *__beg_2;
+                    auto& __obj_3 = cs;
+                    auto __beg_3 = __obj_3.begin();
+                    auto __end_3 = __obj_3.end();
+                    for (; __beg_3 != __end_3; ++__beg_3) {
+                        const auto& c = *__beg_3;
+                        __result.push_back(c.n);
+                    }
+                }
+                std::move(__result);
+            })) << "\n" << ::tpy::check_signals;
+        } catch (...) {
+            std::cout << "own finally" << "\n" << ::tpy::check_signals;
+            throw;
+        }
+        std::cout << "own finally" << "\n" << ::tpy::check_signals;
+    }
+    auto __ctx_1 = Ctx();
+    __ctx_1.__enter__();
+    try {
+        std::cout << "own with" << " " << ::tpy::ListPrinter(({
+            std::vector<::tpy::BigInt> __result;
+            auto __obj_4 = ::tpyapp::main::batches(::tpy::BigInt(1));
+            auto __beg_4 = __obj_4.begin();
+            auto __end_4 = __obj_4.end();
+            for (; __beg_4 != __end_4; ++__beg_4) {
+                auto&& cs = *__beg_4;
+                auto& __obj_5 = cs;
+                auto __beg_5 = __obj_5.begin();
+                auto __end_5 = __obj_5.end();
+                for (; __beg_5 != __end_5; ++__beg_5) {
+                    const auto& c = *__beg_5;
+                    __result.push_back(c.n);
+                }
+            }
+            std::move(__result);
+        })) << "\n" << ::tpy::check_signals;
+        goto __with_exit_1;
+    } catch (::tpy::BaseException& __exc_1) {
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
+    } catch (...) {
+        __ctx_1.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
+    auto inner = [&k]() -> std::vector<::tpy::BigInt> {
+        return ({
+            std::vector<::tpy::BigInt> __result;
+            auto __obj_6 = ::tpyapp::main::batches(::tpy::BigInt(2));
+            auto __beg_6 = __obj_6.begin();
+            auto __end_6 = __obj_6.end();
+            for (; __beg_6 != __end_6; ++__beg_6) {
+                auto&& cs = *__beg_6;
+                auto& __obj_7 = cs;
+                auto __beg_7 = __obj_7.begin();
+                auto __end_7 = __obj_7.end();
+                for (; __beg_7 != __end_7; ++__beg_7) {
+                    const auto& c = *__beg_7;
+                    __result.push_back(((c.n) + (k)));
+                }
+            }
+            std::move(__result);
+        });
+    };
+    std::cout << "own nested def" << " " << ::tpy::ListPrinter(inner()) << "\n" << ::tpy::check_signals;
+    std::function<::tpy::BigInt(const ::tpy::BigInt&)> total = [](const ::tpy::BigInt& n) -> ::tpy::BigInt { return ::tpy::builtin_sum_bigint(({
+        std::vector<::tpy::BigInt> __result;
+        auto __obj_8 = ::tpyapp::main::batches(n);
+        auto __beg_8 = __obj_8.begin();
+        auto __end_8 = __obj_8.end();
+        for (; __beg_8 != __end_8; ++__beg_8) {
+            auto&& cs = *__beg_8;
+            auto& __obj_9 = cs;
+            auto __beg_9 = __obj_9.begin();
+            auto __end_9 = __obj_9.end();
+            for (; __beg_9 != __end_9; ++__beg_9) {
+                const auto& c = *__beg_9;
+                __result.push_back(c.n);
+            }
+        }
+        std::move(__result);
+    })); };
+    std::cout << "own lambda" << " " << total(::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
+}
+
+// def own_main() -> None:
+//     lc_owned_outer()
+//     own_for_stmt()
+//     rows = OwnRows(2)
+//     print("own ctor", rows.ns)
+//     print("own method", rows.doubled())
+//     print("own generator", list(own_gen(2)))
+//     print("own async", asyncio.run(own_async(2)))
+//     own_positions(1)
+void own_main() {
+    ::tpyapp::main::lc_owned_outer();
+    ::tpyapp::main::own_for_stmt();
+    OwnRows rows = OwnRows(::tpy::BigInt(2));
+    std::cout << "own ctor" << " " << ::tpy::ListPrinter(rows.ns) << "\n" << ::tpy::check_signals;
+    std::cout << "own method" << " " << ::tpy::ListPrinter(rows.doubled()) << "\n" << ::tpy::check_signals;
+    std::cout << "own generator" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::own_gen(::tpy::BigInt(2)))) << "\n" << ::tpy::check_signals;
+    std::cout << "own async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::own_async(::tpy::BigInt(2)))) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::own_positions(::tpy::BigInt(1));
+}
+
 // def lc_copy(grid: list[list[int]]) -> None:
 //     # a reference element is copied once per inner iteration, and says so
 //     print("lc copy", [row for row in grid for _ in range(2)])  # tpyc: warning(/copies/)
@@ -3079,8 +3670,8 @@ void lc_try(const std::vector<std::vector<::tpy::BigInt>>& grid) {
 //         # with body
 //         print("lc with", {x: len(row) for row in grid for x in row})  # tpyc: ok
 void lc_with(const std::vector<std::vector<::tpy::BigInt>>& grid) {
-    auto __ctx_1 = Ctx();
-    __ctx_1.__enter__();
+    auto __ctx_2 = Ctx();
+    __ctx_2.__enter__();
     try {
         std::cout << "lc with" << " " << ::tpy::DictPrinter(({
             ::tpy::ordered_map<::tpy::BigInt, int32_t> __result;
@@ -3099,16 +3690,16 @@ void lc_with(const std::vector<std::vector<::tpy::BigInt>>& grid) {
             }
             std::move(__result);
         })) << "\n" << ::tpy::check_signals;
-        goto __with_exit_1;
-    } catch (::tpy::BaseException& __exc_1) {
-        __ctx_1.__exit__({}, &__exc_1, {});
+        goto __with_exit_2;
+    } catch (::tpy::BaseException& __exc_2) {
+        __ctx_2.__exit__({}, &__exc_2, {});
         throw;
     } catch (...) {
-        __ctx_1.__exit__({}, nullptr, {});
+        __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
-    __with_exit_1:
-    __ctx_1.__exit__({}, nullptr, {});
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
 }
 
 // @error_return(Odd)
@@ -3301,6 +3892,7 @@ void lc_main() {
 //     kept([1, 2])
 //     genexpr_positions([[1, 2], [3]])
 //     lc_main()
+//     own_main()
 void main() {
     std::vector<std::vector<::tpy::BigInt>> __tmp_1 = {{1, 2}, {3, 4, 5}, {6}};
     std::vector<std::string> __tmp_2 = {"ab", "c"};
@@ -3324,6 +3916,7 @@ void main() {
     std::vector<std::vector<::tpy::BigInt>> __tmp_7 = {{1, 2}, {3}};
     ::tpyapp::main::genexpr_positions(__tmp_7);
     ::tpyapp::main::lc_main();
+    ::tpyapp::main::own_main();
 }
 
 
@@ -3446,6 +4039,8 @@ __genexpr_module_1_frame __genexpr_module_1(int32_t __r0, int32_t __r1) {
 // print("lc module", lc_pairs, [x * y for x in range(1, 3) for y in range(x, 4)])  # tpyc: ok
 // # module level: clause 0 over a temporary source, inner clause a range
 // print("lc module src", [c.n for c in pick([C(5)]) for j in range(2)])  # tpyc: ok
+// # module level: an outer clause over an owned source
+// print("own module", [c.n for cs in batches(2) for c in cs])  # tpyc: ok
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -3506,6 +4101,23 @@ void __tpy_init() {
         for (; __beg_6 != __end_6; ++__beg_6) {
             const auto& c = *__beg_6;
             for (int32_t j = 0; j < 2; ++j) {
+                __result.push_back(c.n);
+            }
+        }
+        std::move(__result);
+    })) << "\n" << ::tpy::check_signals;
+    std::cout << "own module" << " " << ::tpy::ListPrinter(({
+        std::vector<::tpy::BigInt> __result;
+        auto __obj_8 = ::tpyapp::main::batches(::tpy::BigInt(2));
+        auto __beg_8 = __obj_8.begin();
+        auto __end_8 = __obj_8.end();
+        for (; __beg_8 != __end_8; ++__beg_8) {
+            auto&& cs = *__beg_8;
+            auto& __obj_9 = cs;
+            auto __beg_9 = __obj_9.begin();
+            auto __end_9 = __obj_9.end();
+            for (; __beg_9 != __end_9; ++__beg_9) {
+                const auto& c = *__beg_9;
                 __result.push_back(c.n);
             }
         }

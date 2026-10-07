@@ -39,9 +39,7 @@ release commit (annotated; the build hook bakes `git describe`), then
 - Iterating a tuple (`for b in (b1, b2):`), the aliasing spelling for
   reference elements -- TODO: "Iterating a tuple"
 - Nested / multi-`for` comprehensions (list/dict/set + genexprs) --
-  landed; before the freeze, lift the owned outer clause together with
-  its `for`-statement twin -- TODO: "Lift: an outer `for` clause",
-  BUGS.md#nested-for-over-owned-element-rejects
+  landed, the owned outer clause and its `for`-statement twin included
 - `collections.defaultdict` -- TODO: "collections: the rest of the
   module"
 - Per-instantiation result form for a generic body, then builtin

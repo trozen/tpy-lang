@@ -16,6 +16,8 @@ struct Holder;
 struct CPtr;
 struct GenCtor;
 struct W;
+struct Shelf;
+struct OwnRows;
 struct Pairs;
 struct Ctx;
 struct Odd;
@@ -32,8 +34,12 @@ struct __gen_gen;
 struct __coro_work;
 struct __gen_widgets;
 struct __gen_cells;
+struct __gen_batches;
+struct __gen_shelves;
 struct __gen_lc_gen_src;
 struct __coro_lc_async_src;
+struct __gen_own_gen;
+struct __coro_own_async;
 struct __gen_lc_gen;
 struct __coro_lc_async;
 struct __genexpr_total_2_frame;
@@ -70,6 +76,12 @@ void genexpr_positions(std::vector<std::vector<::tpy::BigInt>>& rows);
 __gen_widgets widgets(::tpy::BigInt n);
 // def cells(n: int) -> Iterator[Own[C]]:
 __gen_cells cells(::tpy::BigInt n);
+// def batches(n: int) -> Iterator[Own[list[C]]]:
+__gen_batches batches(::tpy::BigInt n);
+// def shelves(n: int) -> Iterator[Own[Shelf]]:
+__gen_shelves shelves(::tpy::BigInt n);
+// def grow_cs(cs: list[C]) -> bool:
+bool grow_cs(std::vector<C>& cs);
 // def keep(row: list[int]) -> bool:
 bool keep(const std::vector<::tpy::BigInt>& row);
 // def inner_src(row: list[int]) -> Own[list[int]]:
@@ -104,6 +116,18 @@ void lc_ranges(const ::tpy::BigInt& n, const ::tpy::BigInt& s, const ::tpy::BigI
 void lc_grow();
 // def lc_owned() -> None:
 void lc_owned();
+// def lc_owned_outer() -> None:
+void lc_owned_outer();
+// def own_for_stmt() -> None:
+void own_for_stmt();
+// def own_gen(n: int) -> Iterator[int]:
+__gen_own_gen own_gen(::tpy::BigInt n);
+// async def own_async(n: int) -> int:
+__coro_own_async own_async(::tpy::BigInt n);
+// def own_positions(k: int) -> None:
+void own_positions(const ::tpy::BigInt& k);
+// def own_main() -> None:
+void own_main();
 // def lc_copy(grid: list[list[int]]) -> None:
 void lc_copy(const std::vector<std::vector<::tpy::BigInt>>& grid);
 // def lc_bump() -> None:
@@ -252,6 +276,41 @@ struct W {
 
 inline std::ostream& operator<<(std::ostream& os, const W& obj) {
     ::tpy::print_object_default(os, "W", obj);
+    return os;
+}
+
+// class Shelf:
+struct Shelf {
+    // cs: list[C]
+    std::vector<C> cs;
+
+    // def __init__(self, cs: Own[list[C]]) -> None:
+    Shelf() = default;
+    explicit Shelf(std::vector<C>&& cs);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Shelf";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Shelf& obj) {
+    ::tpy::print_object_default(os, "Shelf", obj);
+    return os;
+}
+
+// class OwnRows:
+struct OwnRows {
+    // ns: list[int]
+    std::vector<::tpy::BigInt> ns;
+
+    // def __init__(self, n: int) -> None:
+    OwnRows() = default;
+    explicit OwnRows(const ::tpy::BigInt& n);
+
+    // def doubled(self) -> Own[list[int]]:
+    std::vector<::tpy::BigInt> doubled() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OwnRows";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OwnRows& obj) {
+    ::tpy::print_object_default(os, "OwnRows", obj);
     return os;
 }
 
@@ -489,6 +548,89 @@ struct __gen_cells : public ::tpy::next_iter_mixin<__gen_cells, C> {
     }
 };
 
+// def batches(n: int) -> Iterator[Own[list[C]]]:
+struct __gen_batches : public ::tpy::next_iter_mixin<__gen_batches, std::vector<C>> {
+    ::tpy::frame_state __state;
+    ::tpy::BigInt n;
+    int32_t i;
+    ::tpy::frame_slot<std::vector<C>> out;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_batches(::tpy::BigInt n_)
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
+
+    std::expected<std::vector<C>, ::tpy::StopIteration> __next__();
+    __gen_batches& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_batches&) {
+        return os << "<generator batches>";
+    }
+};
+
+// async def own_async(n: int) -> int:
+struct __coro_own_async {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpy::BigInt n;
+    ::tpy::BigInt total;
+    ::tpy::frame_slot<C> d;
+    ::tpy::frame_slot<std::vector<C>> ds;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::batches(n)))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_own_async(::tpy::BigInt n_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
+
+    ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_own_async&) {
+        return os << "<coroutine own_async>";
+    }
+};
+
+// def shelves(n: int) -> Iterator[Own[Shelf]]:
+struct __gen_shelves : public ::tpy::next_iter_mixin<__gen_shelves, Shelf> {
+    ::tpy::frame_state __state;
+    ::tpy::BigInt n;
+    int32_t i;
+    ::tpy::frame_slot<Shelf> s;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_shelves(::tpy::BigInt n_)
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
+
+    std::expected<Shelf, ::tpy::StopIteration> __next__();
+    __gen_shelves& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_shelves&) {
+        return os << "<generator shelves>";
+    }
+};
+
 // def lc_gen_src() -> Iterator[int]:
 struct __gen_lc_gen_src : public ::tpy::next_iter_mixin<__gen_lc_gen_src, ::tpy::BigInt> {
     ::tpy::frame_state __state;
@@ -508,6 +650,41 @@ struct __gen_lc_gen_src : public ::tpy::next_iter_mixin<__gen_lc_gen_src, ::tpy:
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_lc_gen_src&) {
         return os << "<generator lc_gen_src>";
+    }
+};
+
+// def own_gen(n: int) -> Iterator[int]:
+struct __gen_own_gen : public ::tpy::next_iter_mixin<__gen_own_gen, ::tpy::BigInt> {
+    ::tpy::frame_state __state;
+    ::tpy::BigInt n;
+    ::tpy::frame_slot<std::vector<::tpy::BigInt>> flat;
+    ::tpy::frame_slot<std::vector<C>> ds;
+    using __for_src_1_t = decltype(((*ds)));
+    ::tpy::begin_elem_t<__for_src_1_t>* d = nullptr;
+    using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::batches(n)))>;
+    ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_1_t>> __for_it_1;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_1_t>> __for_end_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __gen_own_gen(::tpy::BigInt n_)
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_own_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_own_gen&) {
+        return os << "<generator own_gen>";
     }
 };
 
@@ -889,6 +1066,56 @@ inline GenCtor::GenCtor(const std::vector<std::vector<::tpy::BigInt>>& rows) : t
 // def __init__(self, i: int) -> None:
 //     self.id = i
 inline W::W(const ::tpy::BigInt& i) : id(i) {}
+
+// def __init__(self, cs: Own[list[C]]) -> None:
+//     self.cs = cs
+inline Shelf::Shelf(std::vector<C>&& cs) : cs(std::move(cs)) {}
+
+// def __init__(self, n: int) -> None:
+//     # constructor: the member init of a field
+//     self.ns = [c.n for cs in batches(n) for c in cs]  # tpyc: ok
+inline OwnRows::OwnRows(const ::tpy::BigInt& n) : ns(({
+    std::vector<::tpy::BigInt> __result;
+    auto __obj_0 = ::tpyapp::main::batches(n);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& cs = *__beg_0;
+        auto& __obj_1 = cs;
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            const auto& c = *__beg_1;
+            __result.push_back(c.n);
+        }
+    }
+    std::move(__result);
+})) {}
+
+// def doubled(self) -> Own[list[int]]:
+//     # method
+//     r = [c.n * 2 + len(self.ns) for cs in batches(2) for c in cs]  # tpyc: ok
+//     return r
+inline std::vector<::tpy::BigInt> OwnRows::doubled() const {
+    std::vector<::tpy::BigInt> r = ({
+        std::vector<::tpy::BigInt> __result;
+        auto __obj_0 = ::tpyapp::main::batches(::tpy::BigInt(2));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            auto&& cs = *__beg_0;
+            auto& __obj_1 = cs;
+            auto __beg_1 = __obj_1.begin();
+            auto __end_1 = __obj_1.end();
+            for (; __beg_1 != __end_1; ++__beg_1) {
+                const auto& c = *__beg_1;
+                __result.push_back(((((c.n) * (::tpy::BigInt(2)))) + (::tpy::BigInt(::tpy::__len__(this->ns)))));
+            }
+        }
+        std::move(__result);
+    });
+    return r;
+}
 
 // def __init__(self, n: int) -> None:
 //     # constructor: the member init of a field
