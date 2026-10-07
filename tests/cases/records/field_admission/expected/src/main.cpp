@@ -494,7 +494,7 @@ Built::Built(int32_t n, Src& s, ::tpy::Any p, std::string_view text, P&& own, bo
       payload(p),
       name(text),
       lab(::tpy::str_slice(text, ::tpy::BasicSlice{1, 3})),
-      pair(::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(own)})),
+      pair(std::tuple<int32_t, P>{1, P(own)}),
       other(std::move(own)),
       lim(g_limit),
       lim2((::tpy::add_check<int32_t>(g_limit, 1))),

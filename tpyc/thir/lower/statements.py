@@ -484,6 +484,8 @@ from .predicates import (
 )
 from .context import (
     _btuple_const_storage,
+    field_slot_use,
+    SlotConstruct,
     _decl_slot_forms,
     _ExprResultUse,
     _LEND_OK,
@@ -12854,117 +12856,25 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                      value=value, form=Form.STORAGE, loc=loc)
                     _witness("setitem.ru_move")
                 _witness("setitem.ru_scalar")
-            elif (isinstance(eu, TupleType) and eu.has_pointer_repr_element()
-                    and not _tuple_elem_slots_ptr_optional(eu)):
-                # Plain RECORD-element tuple value slot (`d[1] =
-                # make_borrow(b)` on `dict[int32, tuple[Box, Box]]`): only
-                # the borrow-tuple CALL source is witnessed -- the non-move
-                # `tuple_to_storage` copy lift (the store COPIES; sema warns
-                # per element). Literals/names/subscripts reject.
-                v = stmt.value
-                _rt_vt = analyzer.get_expr_type(v)
-                _rt_vb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    _rt_vt))) if _rt_vt is not None else None)
-                # A MIXED-own-tuple call (`d[1] = make_mixed(b)`) takes the
-                # same lift -- the type equality collapses per-element Own.
-                _rt_mixed = _mixed_own_storage_source(v, eu, frozenset(),
-                                                      analyzer)
-                if not (isinstance(v, (TpyCall, TpyMethodCall))
-                        and (_rt_vb == eu or _rt_mixed is not None)):
-                    note_detail("setitem.btuple_value_shape")
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
-                _rt_use = (
-                    _ExprUse(result=_ExprResultUse.VALUE,
-                             pos=SinkPos.SETITEM_VALUE, forms=_ONLY_BTUPLE_SLOT)
-                    if _rt_vb != eu
-                    else _ExprUse(result=_ExprResultUse.STORAGE,
-                                  pos=SinkPos.SETITEM_VALUE,
-                                  allow_temps=True))
-                value = THIRFormConvert(
-                    result_type=eu,
-                    value=_lower_expr(v, lc, declared, use=_rt_use),
-                    form=Form.STORAGE, loc=loc)
-                _witness("setitem.record_tuple_call")
-            elif (isinstance(eu, TupleType) and eu.has_pointer_repr_element()
-                    and _tuple_elem_slots_ptr_optional(eu)):
-                # Ptr-Optional-element tuple value slot. Three sources, all
-                # the NON-move `tuple_to_storage` family (the dict store
-                # COPIES -- a setitem never moves elements):
-                # a borrow-tuple-returning CALL (`d[k] = make_pair(a, b)`),
-                # a tuple LITERAL (`d[k] = (a, b)` -> the borrow tuple with
-                # plain `&(a)` lifts), and a whole same-tuple ELEMENT read
-                # (`d2[k] = d[k]` -> bare `__getitem__`, storage-to-storage).
-                v = stmt.value
-                _bt_vt = analyzer.get_expr_type(v)
-                _bt_vb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    _bt_vt))) if _bt_vt is not None else None)
-                if isinstance(v, TpyTupleLiteral):
-                    value = THIRFormConvert(
-                        result_type=eu,
-                        value=_lower_borrow_tuple_literal(
-                            v, eu, lc, declared, rvalue_ok=True,
-                            use=_ExprUse(allow_temps=True)),
-                        form=Form.STORAGE, loc=loc)
-                    _witness("setitem.btuple_literal")
-                elif isinstance(v, TpySubscript) and _bt_vb == eu:
-                    value = _lower_expr(
-                        v, lc, declared,
-                        use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                     pos=SinkPos.SETITEM_VALUE))
-                    _witness("setitem.btuple_elem_pass")
-                elif (isinstance(v, (TpyCall, TpyMethodCall))
-                        and _bt_vb == eu):
-                    value = THIRFormConvert(
-                        result_type=eu,
-                        value=_lower_expr(
-                            v, lc, declared,
-                            use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                         pos=SinkPos.SETITEM_VALUE,
-                                         allow_temps=True)),
-                        form=Form.STORAGE, loc=loc)
-                    _witness("setitem.btuple_call")
-                else:
-                    note_detail("setitem.btuple_value_shape")
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
             elif (isinstance(eu, TupleType)
-                    and _nested_storage_tuple(eu, analyzer) is not None):
-                # NESTED-storage tuple value slot (`d[0] = (9, (8, c))`):
-                # the outer tuple has no borrow form, so the spelled literal
-                # stores bare (`__setitem__(d, 0, std::tuple<...>{9,
-                # ::tpy::tuple_to_storage<S2>(..)})`); nested members carry
-                # their per-level lifts through the shared literal render.
-                _nt_vb = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    analyzer.get_expr_type(stmt.value))))
-                if _nt_vb == eu and (
-                        isinstance(stmt.value, (TpyCall, TpyMethodCall,
-                                                TpySubscript))
-                        or (isinstance(stmt.value, TpyName)
-                            and stmt.value.name in declared)):
-                    # A same-typed SOURCE EXPRESSION hands the whole nested
-                    # tuple over BY VALUE -- a call's return slot, a local's
-                    # copy, an element read -- so it stores bare with no
-                    # per-level lift (the borrow-tuple arms' storage twin).
-                    # `_nested_storage_tuple` also admits a RECORD element
-                    # somewhere in the nest, which the bare store copies
-                    # where CPython would alias; sema warns per record
-                    # element ("copies T into container (tuple element ..)")
-                    # at every such write, so the divergence is signalled.
-                    # No move is taken: a later read of a name source must
-                    # still see its value.
-                    value = _lower_expr(
-                        stmt.value, lc, declared,
-                        use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                     pos=SinkPos.SETITEM_VALUE,
-                                     allow_temps=True))
-                    _witness("setitem.nested_tuple_source")
-                elif not (isinstance(stmt.value, TpyTupleLiteral)
-                          and len(stmt.value.elements)
-                          == len(eu.element_types)):
-                    note_detail("setitem.nested_tuple_value_shape")
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                    and (eu.has_pointer_repr_element()
+                         or _nested_storage_tuple(eu, analyzer) is not None)):
+                # A tuple element slot holding a reference somewhere: an
+                # OWNING place, so the value takes the field write's storage
+                # conversion -- a literal spells the borrow tuple inside
+                # `tuple_to_storage`, any other source is lowered once and
+                # rendered off its node (a storage read stores bare, a
+                # borrow-form name or call lifts, an owned name at its last
+                # use moves). The store COPIES what it borrows; sema warns
+                # per element.
+                slot_use = field_slot_use(eu, SlotConstruct.ASSIGN)
+                if isinstance(stmt.value, TpyTupleLiteral):
+                    value = _field_write._storage_tuple_literal(
+                        stmt, eu, lc, declared, loc)
                 else:
-                    value = _lower_tuple_literal(stmt.value, eu, lc, declared)
-                    _witness("setitem.nested_tuple_literal")
+                    value = _field_write._storage_source(
+                        stmt, eu, slot_use, lc, declared, loc)
+                _witness("setitem.tuple_storage")
             elif (isinstance(eu, TupleType)
                     and _value_tuple(eu, analyzer) is not None):
                 # VALUE tuple value slot (`self._store[lk] = (key, value)` on

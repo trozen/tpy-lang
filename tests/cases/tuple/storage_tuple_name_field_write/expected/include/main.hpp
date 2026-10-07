@@ -55,6 +55,6 @@ inline Elem::Elem(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:
 //     self.pair = (None, None)
-inline Holder::Holder() : pair(::tpy::tuple_to_storage<std::tuple<std::optional<Elem>, std::optional<Elem>>>(std::tuple<std::optional<Elem>, std::optional<Elem>>{std::nullopt, std::nullopt})) {}
+inline Holder::Holder() : pair(std::tuple<std::optional<Elem>, std::optional<Elem>>{std::nullopt, std::nullopt}) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -1626,7 +1626,8 @@ class StatementAnalyzer:
         self.compat.check_tuple_literal_members(
             literal, tuple_type, sink, sink_dest)
         is_return = sink is TupleSink.RETURN
-        is_field = sink is TupleSink.FIELD
+        # A field and a container element both OWN what they store.
+        is_field = sink in (TupleSink.FIELD, TupleSink.CONTAINER)
         V = TupleElemCapture.VALUE
         R = TupleElemCapture.REF
         CR = TupleElemCapture.CONST_REF
@@ -1646,8 +1647,13 @@ class StatementAnalyzer:
                 literal.elem_capture.append(V)
                 continue
 
-            # Field context: all reference-type elements are owned (VALUE).
+            # Owned storage (a field, a container element): every
+            # reference-type element is held by value -- an owned local or
+            # param at its last use MOVES in (and is consumed, as the scalar
+            # `self.f = q` consumes it), a borrowed one is copied.
             if is_field:
+                if self.compat.is_owned_last_use_move(elem):
+                    self.compat.check_own_consumption(elem)
                 literal.elem_capture.append(V)
                 continue
 

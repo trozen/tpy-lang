@@ -134,7 +134,7 @@ inline Counter::Counter(int32_t n) : n(n) {}
 
 // def __init__(self, b: Box) -> None:
 //     self.t = (b, 1)  # tpyc: warning(/copies Box into field/)
-inline H::H(const Box& b) : t(::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(std::tuple<Box, int32_t>{b, 1})) {}
+inline H::H(const Box& b) : t(std::tuple<Box, int32_t>{b, 1}) {}
 
 // def __init__(self) -> None:
 //     self.total = 0

@@ -63,10 +63,10 @@ void arg_quiet() {
 //     show("setitem_last_use", d[2])
 void setitem_quiet(C& c) {
     ::tpy::ordered_map<int32_t, std::tuple<std::optional<C>, int32_t>> d = ::tpy::ordered_map<int32_t, std::tuple<std::optional<C>, int32_t>>();
-    ::tpy::__setitem__(d, 0, ::tpy::tuple_to_storage<std::tuple<std::optional<C>, int32_t>>(::tpy::tuple_value_to_borrow<std::tuple<C*, int32_t>>(std::tuple<C, int32_t>{C(c), 1})));
-    ::tpy::__setitem__(d, 1, ::tpy::tuple_to_storage<std::tuple<std::optional<C>, int32_t>>(::tpy::tuple_value_to_borrow<std::tuple<C*, int32_t>>(std::tuple<C, int32_t>{C(8), 2})));
+    ::tpy::__setitem__(d, 0, std::tuple<std::optional<C>, int32_t>{C(c), 1});
+    ::tpy::__setitem__(d, 1, std::tuple<std::optional<C>, int32_t>{C(8), 2});
     C last = C(9);
-    ::tpy::__setitem__(d, 2, ::tpy::tuple_to_storage<std::tuple<std::optional<C>, int32_t>>(std::tuple<C*, int32_t>{&(last), 3}));
+    ::tpy::__setitem__(d, 2, std::tuple<std::optional<C>, int32_t>{std::move(last), 3});
     c.v = 99;
     ::tpyapp::main::show("setitem_copy", ::tpy::tuple_to_pointer<std::tuple<const C*, int32_t>>(::tpy::__getitem__(d, 0)));
     ::tpyapp::main::show("setitem_fresh", ::tpy::tuple_to_pointer<std::tuple<const C*, int32_t>>(::tpy::__getitem__(d, 1)));
@@ -94,10 +94,10 @@ void show(std::string_view tag, const std::tuple<const C*, int32_t>& p) {
 //     h.q = (2, last)  # tpyc: ok
 //     print("field_last_use", h.q[1].v)
 void field_quiet(H& h) {
-    h.q = ::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{1, C(11)});
+    h.q = std::tuple<int32_t, C>{1, C(11)};
     std::cout << "field_fresh" << " " << std::get<1>(h.q).v << "\n" << ::tpy::check_signals;
     C last = C(12);
-    h.q = ::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{2, std::move(last)});
+    h.q = std::tuple<int32_t, C>{2, std::move(last)};
     std::cout << "field_last_use" << " " << std::get<1>(h.q).v << "\n" << ::tpy::check_signals;
 }
 

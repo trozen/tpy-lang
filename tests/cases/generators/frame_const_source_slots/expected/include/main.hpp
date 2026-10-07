@@ -719,7 +719,7 @@ inline P::P(const std::vector<int32_t>& xs) : xs(xs) {}
 
 // def __init__(self, n: int32) -> None:
 //     self.pair = (n, Box(n + 1))
-inline H::H(int32_t n) : pair(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{n, Box((::tpy::add_check<int32_t>(n, 1)))})) {}
+inline H::H(int32_t n) : pair(std::tuple<int32_t, Box>{n, Box((::tpy::add_check<int32_t>(n, 1)))}) {}
 
 // def __init__(self, rows: list[list[int32]]) -> None:
 //     self.rows = rows

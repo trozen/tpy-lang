@@ -59,7 +59,7 @@ inline Box::Box(int32_t v) : val(v) {}
 //     self.a = (1, Box(5))
 //     self.b = (2, Box(7))
 inline Holder::Holder()
-    : a(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(5)})),
-      b(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{2, Box(7)})) {}
+    : a(std::tuple<int32_t, Box>{1, Box(5)}),
+      b(std::tuple<int32_t, Box>{2, Box(7)}) {}
 void __tpy_init();
 } // namespace tpyapp::main

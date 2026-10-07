@@ -752,7 +752,7 @@ inline Box::Box(int32_t n) : n(n) {}
 // def __init__(self, b: Box) -> None:
 //     # the field owns its element; the generator then aliases THAT Box
 //     self.pair = (1, b)  # tpyc: warning(/copies Box into field/)
-inline Holder::Holder(const Box& b) : pair(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, b})) {}
+inline Holder::Holder(const Box& b) : pair(std::tuple<int32_t, Box>{1, b}) {}
 
 // def __init__(self, b: Box) -> None:
 //     self.h = Holder(b)

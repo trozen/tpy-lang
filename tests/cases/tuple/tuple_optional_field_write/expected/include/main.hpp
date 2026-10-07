@@ -97,7 +97,7 @@ inline T::T(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:
 //     self.pair = (None, None)
-inline Holder::Holder() : pair(::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<std::optional<T>, std::optional<T>>{std::nullopt, std::nullopt})) {}
+inline Holder::Holder() : pair(std::tuple<std::optional<T>, std::optional<T>>{std::nullopt, std::nullopt}) {}
 
 // def update(self, p: tuple[T | None, T | None]) -> None:
 //     self.pair = p  # tpyc: warning(/copies/) warning(/copies/)

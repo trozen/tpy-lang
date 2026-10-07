@@ -172,6 +172,7 @@ from ..faces import witness as _witness
 from .arg_table import (_ArgReq, _ArgRow, _ArgSink, arg_ok, register_sink)
 from ...sema.literal_utils import literal_value_from_expr, numeric_literal_truth
 from ...sema.type_ops import signature_may_return_borrow
+from ...sema.own_copy import contains_reference_type
 from ...codegen_cpp.functions import NULL_PROTOCOL_ARG_CPP
 from ...codegen_cpp.int_literals import render_int_literal_value
 from ..nodes import (
@@ -245,6 +246,8 @@ from ..nodes import (
 from ...codegen_cpp.forms import (is_plain_nonvalue, is_ptr_variant_union,
                                   reads_storage_form_optional)
 from .predicates import (
+    _nested_storage_tuple,
+    _own_stripped_tuple_eq,
     _alias_call_source_ok,
     _call_storage_optional_return,
     receiver_is_const,
@@ -609,7 +612,7 @@ from .checks import (
     _own_tuple_borrow_lift_arg_facts,
     _own_tuple_decay_copy_arg_facts,
     builds_named_frame,
-    own_btuple_borrow_name_arg,
+    _own_slot_reference_tuple,
     _enum_receiver,
     _is_move_source_facts,
     _own_opt_ptr_name_move_arg_facts,
@@ -14948,6 +14951,15 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     use=_ExprUse(allow_temps=temp_args or nested_temps),
                     consuming=True)
             if (isinstance(own_inner, TupleType)
+                    and _nested_storage_tuple(own_inner, lc.analyzer)
+                    is not None):
+                # A NESTED-storage tuple literal (`xs.append((1, (2, c)))`):
+                # the outer tuple has no borrow form, so the spelled
+                # brace-init stores bare with the per-level lifts inside --
+                # the render the field write and the setitem give it.
+                _witness("arg.own_btuple_literal")
+                return _lower_tuple_literal(a, own_inner, lc, declared)
+            if (isinstance(own_inner, TupleType)
                     and not own_inner.has_pointer_repr_element()):
                 pslot = own_inner
             elif (isinstance(own_inner, TupleType)
@@ -15080,25 +15092,53 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                             for i in range(len(a.elements))),
                         loc=getattr(a, "loc", None))
             raise ThirUnsupported("expr.tuple_literal")
-    _obn = own_btuple_borrow_name_arg(a, ptype, declared, lc.narrow.narrowed,
-                                      lc.storage_tuple_locals, lc.analyzer)
-    if _obn is not None and a.name not in lc.pointers:
-        # A BORROW-form tuple NAME at an Own[ptr-repr tuple] element slot
-        # (`xs.append(t)`): sema warned the copy, and the non-move storage
-        # lift makes it -- moving would empty objects the tuple borrows.
-        _witness("arg.own_btuple_borrow_name")
-        return THIRFormConvert(
-            result_type=_obn,
-            value=_lower_expr(a, lc, declared, allow_unrouted_name=True),
-            form=Form.STORAGE, move=False, loc=getattr(a, "loc", None))
-    if isinstance(a, (TpySubscript, TpyCall, TpyMethodCall)):
-        # Own[ptr-repr tuple] element slot, non-literal sources:
-        # - a whole storage-tuple ELEMENT read (`pairs2.append(pairs[0])`)
-        #   passes bare (`push_back(__getitem__(..))`, storage-to-storage);
-        # - a borrow-tuple-returning CALL (`pairs.append(make_pair(a, b))`)
-        #   lifts via the NON-move `tuple_to_storage<S>(..)` -- moving from
-        #   a returned pointer would alias storage the caller still owns
-        #   (the copy-path rule).
+    _own_t = _own_slot_reference_tuple(ptype, lc.analyzer)
+    if _own_t is not None and not isinstance(a, TpyTupleLiteral):
+        # A tuple holding a reference at an Own element slot (`xs.append(t)`,
+        # `pairs.append(pairs[0])`, `xs.append(make_pair(a, b))`,
+        # `xs.append(make_mixed(b))`): an OWNING place, so the source is
+        # lowered once and rendered off its node by the field write's
+        # storage conversion -- a storage read or an owning return passes
+        # bare, a borrow-form name or call lifts through the non-move
+        # `tuple_to_storage`, an owned name at its last use moves (a mixed
+        # local moves its tuple VALUE: inline elements move, pointees copy).
+        # A name source that copies must be a copy sema declared.
+        _at = lc.analyzer.get_expr_type(a)
+        _ab = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(_at)))
+               if _at is not None else None)
+        _mixed = (isinstance(a, (TpyCall, TpyMethodCall))
+                  and _mixed_own_storage_source(a, _own_t, frozenset(),
+                                                lc.analyzer) is not None)
+        _name_ok = (not isinstance(a, TpyName)
+                    or (a.name in declared and a.name != "self"
+                        and a.name not in lc.narrow.narrowed
+                        and a.name not in lc.pointers))
+        if ((isinstance(_ab, TupleType) and _own_stripped_tuple_eq(_ab, _own_t))
+                or _mixed) and _name_ok:
+            from . import field_write as _field_write  # cycle: it imports us
+            _use = (_ExprUse(result=_ExprResultUse.VALUE,
+                             pos=SinkPos.TUPLE_ELEM, forms=_ONLY_BTUPLE_SLOT)
+                    if _mixed
+                    else replace(_NESTED_ARG_USE, pos=SinkPos.TUPLE_ELEM,
+                                 result=_ExprResultUse.STORAGE,
+                                 allow_temps=temp_args))
+            lowered = _lower_expr(a, lc, declared, use=_use,
+                                  allow_unrouted_name=True)
+            mv = _node_moves(lowered)
+            if (isinstance(a, TpyName) and not mv
+                    and contains_reference_type(_own_t)
+                    and a not in lc.analyzer.ctx.own_element_copies):
+                # A copy of a reference the store would make silently; a
+                # tuple of plain values copies like any value.
+                note_detail("arg.own_tuple_undeclared_copy")
+                raise ThirUnsupported("expr.tuple_arg")
+            _witness("arg.own_tuple_storage")
+            return _field_write._storage_value(
+                lowered, _own_t, _own_t,
+                (declared.get(a.name) if isinstance(a, TpyName)
+                 and a.name in lc.prescan.param_names else None),
+                mv, False, False, lc, getattr(a, "loc", None))
+    if isinstance(a, TpySubscript):
         _sub_own = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
                     if isinstance(ptype, TpyType) else None)
         if isinstance(_sub_own, OwnType):
@@ -15106,41 +15146,9 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             _sub_at = lc.analyzer.get_expr_type(a)
             _sub_ab = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 _sub_at))) if _sub_at is not None else None)
-            if (isinstance(_sub_inner, TupleType)
-                    and _sub_inner.has_pointer_repr_element()
+            if (_open_t_tuple_slot(_sub_inner, lc.analyzer) is not None
                     and _sub_ab == _sub_inner):
-                if isinstance(a, TpySubscript):
-                    return _lower_expr(
-                        a, lc, declared,
-                        use=replace(_NESTED_ARG_USE,
-                                    pos=SinkPos.TUPLE_ELEM,
-                                    result=_ExprResultUse.STORAGE))
-                if _storage_form_tuple_return(a.resolved_function_info):
-                    # A storage-form tuple RETURN already matches the owning
-                    # slot and passes bare (`push_back(make_pair(..))`); only
-                    # a borrow-form or MIXED-render return owes the copy lift.
-                    _witness("arg.own_btuple_call_storage")
-                    return _lower_expr(
-                        a, lc, declared,
-                        use=replace(_NESTED_ARG_USE,
-                                    pos=SinkPos.TUPLE_ELEM,
-                                    result=_ExprResultUse.STORAGE))
-                _witness("arg.own_btuple_call")
-                return THIRFormConvert(
-                    result_type=_sub_inner,
-                    value=_lower_expr(
-                        a, lc, declared,
-                        use=replace(
-                            _NESTED_ARG_USE,
-                            pos=SinkPos.TUPLE_ELEM,
-                            result=_ExprResultUse.STORAGE,
-                            allow_temps=temp_args)),
-                    form=Form.STORAGE, move=False,
-                    loc=getattr(a, "loc", None))
-            if (isinstance(a, TpySubscript)
-                    and _open_t_tuple_slot(_sub_inner, lc.analyzer) is not None
-                    and _sub_ab == _sub_inner):
-                # The OPEN-T sibling of the storage-element read above
+                # An OPEN-T tuple element read at the Own element slot
                 # (`out.append(ranked[i])` at `list[tuple[T, int]]`): the
                 # generic element has no pointer repr, so borrow and storage
                 # coincide and the read passes bare with no conversion.
@@ -15150,25 +15158,6 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     use=replace(_NESTED_ARG_USE,
                                 pos=SinkPos.TUPLE_ELEM,
                                 result=_ExprResultUse.STORAGE))
-            if (isinstance(_sub_inner, TupleType)
-                    and _sub_inner.has_pointer_repr_element()
-                    and isinstance(a, (TpyCall, TpyMethodCall))
-                    and _mixed_own_storage_source(a, _sub_inner, frozenset(),
-                                                  lc.analyzer) is not None):
-                # A MIXED-own-tuple call at the Own element slot: the same
-                # NON-move materialization (`push_back(tuple_to_storage<
-                # std::tuple<Box, Box>>(make_mixed(b)))`); the call renders
-                # bare via the btuple-slot admission.
-                _witness("arg.own_btuple_mixed_call")
-                return THIRFormConvert(
-                    result_type=_sub_inner,
-                    value=_lower_expr(
-                        a, lc, declared,
-                        use=_ExprUse(
-                            result=_ExprResultUse.VALUE,
-                            pos=SinkPos.TUPLE_ELEM, forms=_ONLY_BTUPLE_SLOT)),
-                    form=Form.STORAGE, move=False,
-                    loc=getattr(a, "loc", None))
     if (isinstance(a, TpyName) and _value_opt_scalar_binding(a.name, lc)
             and _value_opt_scalar(ptype, lc.analyzer) is not None):
         # A value-repr Optional[scalar] name into a value-repr Optional slot

@@ -69,7 +69,7 @@ inline Handle::Handle(int32_t fd) : fd(fd) {}
 inline Container::Container() {
     Handle a = Handle(1);
     Handle b = Handle(2);
-    this->pair = ::tpy::tuple_to_storage<std::tuple<Handle, Handle>>(std::tuple<Handle, Handle>{std::move(a), std::move(b)});
+    this->pair = std::tuple<Handle, Handle>{std::move(a), std::move(b)};
 }
 void __tpy_init();
 } // namespace tpyapp::main

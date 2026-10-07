@@ -81,6 +81,6 @@ inline Box::Box(int32_t v) : val(v) {}
 
 // def __init__(self, b: Own[Box]) -> None:
 //     self.pair = (1, b)
-inline Holder::Holder(Box&& b) : pair(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, std::move(b)})) {}
+inline Holder::Holder(Box&& b) : pair(std::tuple<int32_t, Box>{1, std::move(b)}) {}
 void __tpy_init();
 } // namespace tpyapp::main

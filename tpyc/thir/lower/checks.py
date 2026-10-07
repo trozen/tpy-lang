@@ -3117,24 +3117,14 @@ def _setitem_widened_elem_ok(elem_t: 'TpyType', analyzer) -> bool:
             or _value_opt_callable(elem_t, analyzer) is not None
             or _optional_record_field_inner(elem_t, analyzer) is not None
             or _eligible_ptr_union(elem_t, analyzer) is not None
-            # A ptr-Optional-element tuple value slot (`d[k] = make_pair(..)`
-            # on `dict[K, tuple[P | None, ..]]`): the non-move
-            # tuple_to_storage lift; the value shape narrows at the arm.
-            # A plain RECORD-element tuple (`dict[K, tuple[Box, Box]]`)
-            # takes the same lift for a borrow-tuple CALL source (the
-            # copies-into-container shape); other sources narrow at the arm.
+            # A tuple value slot holding a reference anywhere (`dict[K,
+            # tuple[Box, int32]]`, `tuple[P | None, ..]`, a nested
+            # `tuple[int32, tuple[int32, Box]]`): an owning slot, so the
+            # value takes the field write's storage conversion at the arm.
             or (isinstance(_swe_b := unwrap_readonly(unwrap_ref_type(
                     unwrap_send_sync(elem_t))), TupleType)
-                and _swe_b.has_pointer_repr_element()
-                and (_tuple_elem_slots_ptr_optional(_swe_b)
-                     or all(isinstance(_e, TpyType)
-                            and record_like(unwrap_readonly(_e), analyzer)
-                            for _e in _swe_b.element_types)))
-            # A NESTED-storage tuple value slot (`d[0] = (9, (8, c))`):
-            # the bare spelled literal, per-level lifts inside.
-            or (isinstance(_swe_b2 := unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(elem_t))), TupleType)
-                and _nested_storage_tuple(_swe_b2, analyzer) is not None)
+                and (_swe_b.has_pointer_repr_element()
+                     or _nested_storage_tuple(_swe_b, analyzer) is not None))
             # A VALUE tuple value slot (`d[k] = (key, value)` on
             # `dict[str, tuple[str, str]]`): borrow and storage coincide, so
             # the spelled brace-init stores directly with no lift -- the
@@ -11374,6 +11364,21 @@ def _own_slot_ptr_repr_tuple(ptype: 'TpyType | None') -> 'TupleType | None':
     return bare
 
 
+def _own_slot_reference_tuple(ptype: 'TpyType | None',
+                              analyzer) -> 'TupleType | None':
+    """The Own[tuple[..]] element slot whose tuple holds a reference
+    somewhere -- a pointer-repr element or a nested tuple with one -- so the
+    slot OWNS what a borrowing source refers to and the value takes the
+    storage conversion."""
+    bare = _own_slot_ptr_repr_tuple(ptype)
+    if bare is not None:
+        return bare
+    own = _plain_own_slot(ptype)
+    if own is None:
+        return None
+    return _nested_storage_tuple(own, analyzer)
+
+
 def _r_own_btuple_literal(req: _ArgReq) -> bool:
     if not isinstance(req.a, TpyTupleLiteral):
         return False
@@ -11386,22 +11391,6 @@ def _r_own_btuple_literal(req: _ArgReq) -> bool:
                  # CONST_REF lvalue rule the borrow builder does not carry
                  # never fires on an rvalue element.
                  or _btuple_literal_elems_rvalue(req.a, bare, req.analyzer)))
-
-
-def _r_own_btuple_storage_source(req: _ArgReq) -> bool:
-    if not isinstance(req.a, (TpySubscript, TpyCall, TpyMethodCall)):
-        return False
-    bare = _own_slot_ptr_repr_tuple(req.ptype)
-    return (bare is not None
-            and (_tuple_elem_slots_ptr_optional(bare)
-                 # The plain-record F3 sibling, SUBSCRIPT only
-                 # (`out.append(items[0])` at `list[tuple[int32, P]]` -- the
-                 # bare storage element pass); mixed-own CALL sources keep
-                 # their own admission.
-                 or (isinstance(req.a, TpySubscript)
-                     and _f1_tuple(bare, req.analyzer) is not None))
-            and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                req.analyzer.get_expr_type(req.a)))) == bare)
 
 
 def _r_own_open_t_tuple_storage_source(req: _ArgReq) -> bool:
@@ -11423,29 +11412,6 @@ def _r_own_open_t_tuple_storage_source(req: _ArgReq) -> bool:
         return False
     return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         req.analyzer.get_expr_type(req.a)))) == bare
-
-
-def _r_own_btuple_mixed_call(req: _ArgReq) -> bool:
-    if not isinstance(req.a, (TpyCall, TpyMethodCall)):
-        return False
-    bare = _own_slot_ptr_repr_tuple(req.ptype)
-    return (bare is not None
-            and _mixed_own_storage_source(req.a, bare, frozenset(),
-                                          req.analyzer) is not None)
-
-
-def _r_own_btuple_nested_name(req: _ArgReq) -> bool:
-    a = req.a
-    if not (isinstance(a, TpyName) and a.name in req.locals_):
-        return False
-    own = _plain_own_slot(req.ptype)
-    if own is None:
-        return False
-    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(own)))
-    return (isinstance(bare, TupleType)
-            and _nested_storage_tuple(bare, req.analyzer) is not None
-            and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                req.locals_[a.name]))) == bare)
 
 
 def declared_name_copy(a: TpyExpr, analyzer) -> bool:
@@ -11479,10 +11445,39 @@ def own_btuple_borrow_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     return bare if au == bare else None
 
 
-def _r_own_btuple_borrow_name(req: _ArgReq) -> bool:
-    return own_btuple_borrow_name_arg(
-        req.a, req.ptype, req.locals_, req.narrowed,
-        req.storage_tuple_locals, req.analyzer) is not None
+def _r_own_tuple_storage(req: _ArgReq) -> bool:
+    """A tuple holding a reference at an Own element slot, from any source
+    but a literal (the literal rows build it): a same-typed expression or a
+    mixed own / borrow call. The name's copy-or-move verdict is the
+    lowering's (`arg.own_tuple_storage`), off the lowered node."""
+    a = req.a
+    if isinstance(a, TpyTupleLiteral):
+        return False
+    bare = _own_slot_reference_tuple(req.ptype, req.analyzer)
+    if bare is None:
+        return False
+    if isinstance(a, TpyName) and not (
+            a.name in req.locals_ and a.name != "self"
+            and a.name not in req.narrowed):
+        return False
+    at = req.analyzer.get_expr_type(a)
+    ab = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+          if at is not None else None)
+    # Equal modulo per-element Own: a mixed local's type keeps its markers,
+    # the slot spells the materialized storage.
+    return (isinstance(ab, TupleType) and _own_stripped_tuple_eq(ab, bare)) or (
+        isinstance(a, (TpyCall, TpyMethodCall))
+        and _mixed_own_storage_source(a, bare, frozenset(),
+                                      req.analyzer) is not None)
+
+
+def _r_own_tuple_mixed_call(req: _ArgReq) -> bool:
+    a = req.a
+    bare = _own_slot_reference_tuple(req.ptype, req.analyzer)
+    return (bare is not None
+            and isinstance(a, (TpyCall, TpyMethodCall))
+            and _mixed_own_storage_source(a, bare, frozenset(),
+                                          req.analyzer) is not None)
 
 
 def _r_own_tuple_call_rvalue(req: _ArgReq) -> bool:
@@ -12859,36 +12854,24 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # and rejects there.
         _ArgRow("own_btuple_literal", _r_own_btuple_literal,
                 face="arg.own_btuple_literal"),
-        # A whole storage-tuple ELEMENT read (`pairs2.append(pairs[0])`,
-        # bare `__getitem__`) or a borrow-tuple-returning CALL
-        # (`pairs.append(make_pair(a, b))`, the non-move
-        # tuple_to_storage lift) into the same tuple's Own slot; the
-        # source's own gates re-check at lowering.
-        _ArgRow("own_btuple_storage_source", _r_own_btuple_storage_source,
-                extra=_x_insert_own_slot),
+        # A tuple holding a reference, from any non-literal source, into
+        # the same tuple's Own slot (`pairs2.append(pairs[0])`,
+        # `pairs.append(make_pair(a, b))`, `xs.append(make_mixed(b))`,
+        # `xs.append(t)`): the field write's storage conversion at the
+        # lowering decides bare / lift / move off the lowered node.
+        _ArgRow("own_tuple_storage", _r_own_tuple_storage,
+                face="arg.own_tuple_storage", extra=_x_insert_own_slot),
+        # The MIXED own / borrow CALL at a USER signature's Own[tuple] slot
+        # too (`s.take(make_mixed(b))`): its conversion is a prvalue, so
+        # the by-value `T&&` slot binds it -- the insert-only extra above
+        # exists for the lvalue sources, not for this one.
+        _ArgRow("own_tuple_mixed_call", _r_own_tuple_mixed_call),
         # Its OPEN-T sibling (`out.append(ranked[i])` at
         # `list[tuple[T, int]]`): the generic element has no pointer repr,
         # so the read passes bare with no form conversion at all.
         _ArgRow("own_open_t_tuple_storage_source",
                 _r_own_open_t_tuple_storage_source,
                 face="arg.own_open_t_tuple_storage_source",
-                extra=_x_insert_own_slot),
-        # A MIXED-own-tuple call at the same Own element slot
-        # (`xs.append(make_mixed(b))` -> `push_back(tuple_to_storage<
-        # S>(make_mixed(b)))` -- the non-move materialization).
-        _ArgRow("own_btuple_mixed_call", _r_own_btuple_mixed_call),
-        # A NESTED-storage tuple NAME at the same Own element slot
-        # (`xs.append(q)` -> `push_back(q)`): the outer tuple has NO
-        # pointer-repr element (a nested reference gives no borrow
-        # form), so the local owns its members and copies bare (or
-        # moves at a movable name's last use).
-        _ArgRow("own_btuple_nested_name", _r_own_btuple_nested_name,
-                extra=_x_insert_own_slot),
-        # A BORROW-form tuple NAME at the same Own element slot
-        # (`xs.append(t)` -> `push_back(tuple_to_storage<S>(t))`): the
-        # warned copy, lifted like the borrow-tuple CALL above.
-        _ArgRow("own_btuple_borrow_name", _r_own_btuple_borrow_name,
-                face="arg.own_btuple_borrow_name",
                 extra=_x_insert_own_slot),
         # An owning CALL whose result IS the Own element slot
         # (`pairs.append(make_pair(1, 10))` at `Own[tuple[int32,

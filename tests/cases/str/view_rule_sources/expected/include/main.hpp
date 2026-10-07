@@ -388,8 +388,8 @@ inline void Ctx::__exit__(std::monostate et, const ::tpy::BaseException* ev, std
 //     self.u = (Rec(n), mk_s(n))
 //     self.ub = (Rec(n), mk_b(n))
 inline P::P(int32_t n)
-    : u(::tpy::tuple_to_storage<std::tuple<Rec, std::string>>(std::tuple<Rec, std::string>{Rec(n), ::tpyapp::main::mk_s(n)})),
-      ub(::tpy::tuple_to_storage<std::tuple<Rec, ::tpy::Bytes>>(std::tuple<Rec, ::tpy::Bytes>{Rec(n), ::tpyapp::main::mk_b(n)})) {}
+    : u(std::tuple<Rec, std::string>{Rec(n), ::tpyapp::main::mk_s(n)}),
+      ub(std::tuple<Rec, ::tpy::Bytes>{Rec(n), ::tpyapp::main::mk_b(n)}) {}
 
 // def __init__(self, ba: bytearray) -> None:
 //     # scaffolding: a field stores its own bytearray, so the parameter is
@@ -401,8 +401,8 @@ inline BaHolder::BaHolder(const ::tpy::ByteArray& ba) : ba(ba) {}
 //     self.u = (mk_s(n), Rec(n))
 //     self.ub = (mk_b(n), Rec(n))
 inline PS::PS(int32_t n)
-    : u(::tpy::tuple_to_storage<std::tuple<std::string, Rec>>(std::tuple<std::string, Rec>{::tpyapp::main::mk_s(n), Rec(n)})),
-      ub(::tpy::tuple_to_storage<std::tuple<::tpy::Bytes, Rec>>(std::tuple<::tpy::Bytes, Rec>{::tpyapp::main::mk_b(n), Rec(n)})) {}
+    : u(std::tuple<std::string, Rec>{::tpyapp::main::mk_s(n), Rec(n)}),
+      ub(std::tuple<::tpy::Bytes, Rec>{::tpyapp::main::mk_b(n), Rec(n)}) {}
 
 // def __init__(self, ba: bytearray) -> None:
 //     self.ba = ba  # copies into the field (the warning is the scaffolding's)

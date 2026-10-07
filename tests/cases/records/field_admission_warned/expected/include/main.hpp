@@ -724,7 +724,7 @@ inline int32_t Slots::showu_g3() const {
 
 // def __init__(self) -> None:
 //     self.t = (0, P(0))
-inline Paired::Paired() : t(::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{0, P(0)})) {}
+inline Paired::Paired() : t(std::tuple<int32_t, P>{0, P(0)}) {}
 
 // def __init__(self, it: Own[Item]) -> None:
 //     super().__init__()

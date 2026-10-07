@@ -72,7 +72,7 @@ inline std::string Point::__repr__() const {
 inline Pair::Pair() {
     Point a = Point(1, 2);
     Point b = Point(3, 4);
-    this->points = ::tpy::tuple_to_storage<std::tuple<Point, Point>>(std::tuple<Point, Point>{std::move(a), std::move(b)});
+    this->points = std::tuple<Point, Point>{std::move(a), std::move(b)};
 }
 void __tpy_init();
 } // namespace tpyapp::main

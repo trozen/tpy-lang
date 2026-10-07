@@ -130,7 +130,7 @@ void walrus_member() {
     C c = C(4);
     H h = H();
     C* d = nullptr;
-    h.q = ::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{1, (d = &(c), *d)});
+    h.q = std::tuple<int32_t, C>{1, (d = &(c), *d)};
     c.v = 44;
     std::cout << "walrus_member" << " " << std::get<1>(h.q).v << " " << d->v << "\n" << ::tpy::check_signals;
 }
@@ -174,7 +174,7 @@ void container_ternary() {
 void getter_member() {
     G g = G();
     H h = H();
-    h.q = ::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{1, g.get()});
+    h.q = std::tuple<int32_t, C>{1, g.get()};
     g.c.v = 33;
     std::cout << "getter_member" << " " << std::get<1>(h.q).v << "\n" << ::tpy::check_signals;
 }
@@ -189,7 +189,7 @@ void getter_member() {
 void dict_setitem() {
     C a = C(1);
     ::tpy::ordered_map<int32_t, std::tuple<std::optional<C>, int32_t>> d = ::tpy::ordered_map<int32_t, std::tuple<std::optional<C>, int32_t>>();
-    ::tpy::__setitem__(d, 0, ::tpy::tuple_to_storage<std::tuple<std::optional<C>, int32_t>>(std::tuple<C*, int32_t>{&(a), 1}));
+    ::tpy::__setitem__(d, 0, std::tuple<std::optional<C>, int32_t>{a, 1});
     a.v = 99;
     ::tpyapp::main::show("dict_setitem", ::tpy::tuple_to_pointer<std::tuple<const C*, int32_t>>(::tpy::__getitem__(d, 0)));
 }
@@ -204,7 +204,7 @@ void dict_setitem() {
 void list_setitem() {
     C b = C(2);
     std::vector<std::tuple<std::optional<C>, int32_t>> xs = {::tpy::tuple_to_storage<std::tuple<std::optional<C>, int32_t>>(std::tuple<C*, int32_t>{nullptr, 0})};
-    ::tpy::__setitem__(xs, 0, ::tpy::tuple_to_storage<std::tuple<std::optional<C>, int32_t>>(std::tuple<C*, int32_t>{&(b), 1}));
+    ::tpy::__setitem__(xs, 0, std::tuple<std::optional<C>, int32_t>{b, 1});
     b.v = 77;
     ::tpyapp::main::show("list_setitem", ::tpy::tuple_to_pointer<std::tuple<const C*, int32_t>>(::tpy::__getitem__(xs, 0)));
 }
@@ -226,7 +226,7 @@ void match_arm(int32_t tag) {
     auto& __match_subject_1 = tag;
     switch (__match_subject_1) {
     case 1: {
-        ::tpy::__setitem__(d, 0, ::tpy::tuple_to_storage<std::tuple<std::optional<C>, int32_t>>(std::tuple<C*, int32_t>{&(a), 1}));
+        ::tpy::__setitem__(d, 0, std::tuple<std::optional<C>, int32_t>{a, 1});
         break;
     }
     default: {
@@ -252,7 +252,7 @@ void try_body() {
     ::tpy::ordered_map<int32_t, std::tuple<std::optional<C>, int32_t>> d = ::tpy::ordered_map<int32_t, std::tuple<std::optional<C>, int32_t>>();
     {
         try {
-            ::tpy::__setitem__(d, 0, ::tpy::tuple_to_storage<std::tuple<std::optional<C>, int32_t>>(std::tuple<C*, int32_t>{&(a), 1}));
+            ::tpy::__setitem__(d, 0, std::tuple<std::optional<C>, int32_t>{a, 1});
         } catch (const ::tpy::ValueError&) {
         }
     }

@@ -304,6 +304,9 @@ _BORROW_FORM_SINKS = frozenset({TupleSink.RETURN, TupleSink.ARG,
                                 TupleSink.YIELD, TupleSink.LOCAL})
 # The sinks whose codegen MOVES a last-use owned member into the slot; the
 # others lift the literal through `tuple_to_storage`, which copies even then.
+# CONTAINER stays out although the subscript STORE builds its literal by
+# value now: the sink also names a container LITERAL's element, which still
+# lifts, and the rule must not exempt a `@nocopy` member there.
 _LAST_USE_MOVES_SINKS = frozenset({TupleSink.FIELD, TupleSink.YIELD})
 
 

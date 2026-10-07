@@ -1,0 +1,11 @@
+setitem_literal 5 1
+append_mixed_last_use 1 7
+append_mixed_live 1 1 0
+append_nested_literal 1
+copy_nested_between_dicts (1, (2, 3))
+store_call_result 11 2 1
+store_element_read 24 2 2
+append_nested_scalar (1, (2, 3))
+user_slot_mixed_call 5
+own_param_member 21 1 22 2
+method 1 15 3

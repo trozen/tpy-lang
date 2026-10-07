@@ -194,6 +194,6 @@ inline C::C(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
 //     self.q = (0, C(0))
-inline H::H() : q(::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{0, C(0)})) {}
+inline H::H() : q(std::tuple<int32_t, C>{0, C(0)}) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -56,6 +56,6 @@ inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
 
 // def __init__(self, b: Box):
 //     self.pair = (1, b)  # tpyc: warning(/copies Box into field/)
-inline Holder::Holder(const Box& b) : pair(::tpy::tuple_to_storage<std::tuple<::tpy::BigInt, Box>>(std::tuple<::tpy::BigInt, Box>{::tpy::BigInt(1), b})) {}
+inline Holder::Holder(const Box& b) : pair(std::tuple<::tpy::BigInt, Box>{::tpy::BigInt(1), b}) {}
 void __tpy_init();
 } // namespace tpyapp::main
