@@ -1262,6 +1262,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                 name=n, type=t, union_layout=_union_source_layout(n, t, lc),
                 passing=param_passing(n, t, init_method, ctor_fi),
                 native_container=native_container(t, ctor_const[n], analyzer),
+                borrowed_record=borrowed_record(t, ctor_const[n], analyzer),
                 optional_layout=optional_layout(t, analyzer, borrow=True, readonly=ctor_const[n]),
                 tuple_layout=tuple_parameter_layout(
                     t, analyzer, readonly=_param_is_deep_const(n, init_method, analyzer, record.name)),

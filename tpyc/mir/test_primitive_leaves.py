@@ -352,7 +352,6 @@ def test_raising_bodies_summarize_their_exit_and_printing_stays_opaque(artifacts
 @pytest.mark.parametrize("name,reason", [
     ("pointer", "unsupported parameter type"),
     ("view", "unsupported parameter type"),
-    ("owned", "unsupported parameter type"),
     # The enum parameter is a leaf; print refuses it (a user enum may define `__str__`).
     ("enum_print", "print argument needs a scalar leaf"),
     ("record_print", "unsupported expression form"),
@@ -364,6 +363,11 @@ def test_raising_bodies_summarize_their_exit_and_printing_stays_opaque(artifacts
 def test_non_leaf_types_stay_not_covered(excluded, name: str, reason: str) -> None:
     body = excluded[1][name]
     assert isinstance(body, MIRNotCovered) and reason in body.reason, body
+
+
+def test_an_owned_record_parameter_is_body_storage(excluded) -> None:
+    # A record handed over at OWN is the body's own storage (test_nested_records.py).
+    assert isinstance(excluded[1]["owned"], MIRFunction), excluded[1]["owned"]
 
 
 @pytest.mark.parametrize("name", ["text", "big", "big_compare", "text_print"])

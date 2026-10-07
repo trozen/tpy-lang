@@ -10,16 +10,16 @@ from ..thir import nodes as th
 from ..thir.test_method_stubs import _replace_node, nodes as _thir_nodes
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
-from ..typesys import INT32, STR, NominalType, ReadonlyType, RefType
+from ..typesys import INT32, STR, NominalType, OwnType, ReadonlyType, RefType, VoidType, return_representation
 from .call_contract import (
-    MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRParameterBinding, MIRReturnOrigin, MIRSummaryResult,
-    MIRSummaryState, bound_result,
-    result_problem, stub_summary, summary_problem,
+    MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRParameterBinding, MIRParameterWrite,
+    MIRReturnOrigin, MIRSummaryResult, MIRSummaryState, bound_result, endpoint_admitted, parameter_binding_problem,
+    path_hops, resolve_path, result_problem, stub_summary, summary_problem,
 )
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, analyze_dependencies, call_return_problem, resolve_call_returns
-from .dump import dump_function
+from .dump import _call as _dump_call, dump_function
 from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
@@ -106,6 +106,28 @@ class Box:
 
     def __init__(self, inner: Inner) -> None:
         self.inner = inner
+
+
+class Shelf:
+    bag: Bag
+
+    def __init__(self, bag: Bag) -> None:
+        self.bag = bag
+
+
+class Room:
+    shelf: Shelf
+
+    def __init__(self, shelf: Shelf) -> None:
+        self.shelf = shelf
+
+
+def shelf_count(s: Shelf) -> int32:
+    return s.bag.n
+
+
+def room_count(r: Room) -> int32:
+    return r.shelf.bag.n
 
 
 def via_getter(b: Bag) -> int32:
@@ -306,12 +328,12 @@ def test_unspellable_origins_refuse(program: _Program) -> None:
         ({MIRReturnOrigin(0, (n,))}, "unsupported return origin type or access"),
         ({MIRReturnOrigin(0)}, "unsupported return origin type or access"),
         ({MIRReturnOrigin(0, (items, MIRContainerElements()))}, "unsupported return origin type or access"),
-        # Two fields are no path of the grammar.
+        # Only a record member continues a field chain: a container field ends it.
         ({MIRReturnOrigin(0, (items, items))}, "invalid return parameter"),
         ({MIRReturnOrigin(1, (items,))}, "invalid return parameter"),
     ):
         assert summary_problem(replace(elems, returns=frozenset(returns))) == reason, returns
-    # A record field returned as a record (an inline record result) is deferred with nested records.
+    # A record result reaches a record member of its own type, never a scalar field.
     me = _known(program, "Bag.me")
     assert summary_problem(replace(me, returns=frozenset({MIRReturnOrigin(0, (n,))}))) == (
         "unsupported return origin type or access")
@@ -334,6 +356,182 @@ def test_a_return_path_names_a_field_of_the_bound_storage(program: _Program) -> 
     result = lower_function(_free(program, "via_getter"), MIRBodyId("main", "via_getter"),
                             definitions=program.definitions, summaries=summaries)
     assert isinstance(result, MIRNotCovered) and result.reason == "call write field does not match record layout"
+
+
+# --- nested paths: one resolver for writes and return origins -------------------------
+
+@dataclass(frozen=True)
+class _Nested:
+    shelf: NominalType
+    room: NominalType
+    bag: NominalType
+    # Shelf::bag, Room::shelf, and Bag's n / name / items.
+    bag_f: th.THIRFieldIdentity
+    shelf_f: th.THIRFieldIdentity
+    n: th.THIRFieldIdentity
+    name: th.THIRFieldIdentity
+    items: th.THIRFieldIdentity
+    view: object
+
+
+@pytest.fixture
+def nested(program: _Program) -> _Nested:
+    shelf = _free(program, "shelf_count").params[0].borrowed_record.type
+    room = _free(program, "room_count").params[0].borrowed_record.type
+    bag = _bag(program)
+    fields = {f.name: f for f in _bag_fields(program)}
+    return _Nested(shelf, room, bag, th.THIRFieldIdentity(shelf, "bag", bag), th.THIRFieldIdentity(room, "shelf", shelf),
+                   fields["n"], fields["name"], fields["items"],
+                   _definition(program, "Bag.tag").resolved_callee.signature.return_type)
+
+
+def _record_summary(param: NominalType, readonly: bool, *, ret=None, borrowed=None, writes=(), returns=()
+                    ) -> MIRCallSummary:
+    """A hand-built free function over one borrowed record parameter."""
+    ret = ret if ret is not None else VoidType()
+    passing = param.param_passing(readonly)
+    signature = th.THIRCallableSignature((param,), ret, borrowed, (passing,), return_representation(ret))
+    callee = th.THIRResolvedCallee(th.THIRFunctionIdentity("main", "nested"), signature)
+    binding = MIRParameterBinding(param, passing, readonly, th.THIRBorrowedRecord(param, readonly))
+    return MIRCallSummary(callee, (binding,), frozenset({0}), frozenset(MIRParameterWrite(0, p) for p in writes),
+                          frozenset(), frozenset(MIRReturnOrigin(0, p) for p in returns), frozenset(), True)
+
+
+def _record_result(typ: NominalType, readonly: bool) -> dict:
+    return {"ret": RefType(typ), "borrowed": th.THIRBorrowedRecord(typ, readonly)}
+
+
+def test_path_hops_name_the_storage_each_field_is_read_from(program: _Program, nested: _Nested) -> None:
+    room = _record_summary(nested.room, False).parameters[0]
+    deep = (nested.shelf_f, nested.bag_f, nested.items, MIRContainerStructure())
+    assert path_hops(room, deep) == (
+        (nested.room, nested.shelf_f), (nested.shelf, nested.bag_f), (nested.bag, nested.items))
+    # At a call, hop 0 reads the record the argument binds (a descendant's storage).
+    other = NominalType("Wing", _module_qname="main.Wing")
+    assert path_hops(room, (nested.shelf_f,), storage=other) == ((other, nested.shelf_f),)
+    assert path_hops(room, (MIRContainerStructure(),)) == ()
+    # The storage of a later hop is the previous field's type, whatever owner the field names:
+    # its membership in that storage's layout is the consumer's check.
+    stray = (nested.shelf_f, nested.shelf_f)
+    assert path_hops(room, stray) == ((nested.room, nested.shelf_f), (nested.shelf, nested.shelf_f))
+    assert summary_problem(_record_summary(nested.room, True, **_record_result(nested.shelf, True),
+                                           returns=[stray])) is None
+    for malformed in ((nested.n, nested.bag_f), (nested.bag_f, nested.items, nested.n),
+                      (MIRContainerElements(), nested.bag_f), (MIRContainerStructure(), MIRContainerElements())):
+        assert path_hops(room, malformed) is None, malformed
+    # Fields need a record parameter.
+    assert path_hops(MIRParameterBinding(INTS, ParamPassing.MUT_REF, False), (nested.items,)) is None
+
+
+def test_the_access_at_a_path_end_accumulates(program: _Program, nested: _Nested) -> None:
+    parameters = _record_summary(nested.shelf, False).parameters
+    assert not resolve_path(0, (nested.bag_f, nested.n), parameters).readonly
+    frozen_bag = replace(nested.bag_f, type=ReadonlyType(nested.bag))
+    assert resolve_path(0, (frozen_bag, nested.n), parameters).readonly
+    assert resolve_path(0, (nested.bag_f, replace(nested.items, type=ReadonlyType(INTS))), parameters).readonly
+    readonly = _record_summary(nested.shelf, True).parameters
+    resolved = resolve_path(0, (nested.bag_f, nested.items, MIRContainerElements()), readonly)
+    assert resolved.readonly and resolved.fields == (nested.bag_f, nested.items)
+    assert resolved.projection == MIRContainerElements()
+
+
+def test_nested_write_paths(program: _Program, nested: _Nested) -> None:
+    structure = MIRContainerStructure()
+    for path in (
+        (nested.bag_f, nested.n),                   # a scalar of a member, written in place
+        (nested.bag_f, nested.name),                # an owned leaf of a member, its buffer replaced
+        (nested.bag_f,),                            # the member replaced whole
+        (nested.bag_f, nested.items, structure),    # a container field of a member
+    ):
+        assert summary_problem(_record_summary(nested.shelf, False, writes=[path])) is None, path
+    for path in ((nested.shelf_f, nested.bag_f, nested.n), (nested.shelf_f, nested.bag_f), (nested.shelf_f,)):
+        assert summary_problem(_record_summary(nested.room, False, writes=[path])) is None, path
+    frozen_bag = replace(nested.bag_f, type=ReadonlyType(nested.bag))
+    for param, readonly, path, reason in (
+        # A scalar intermediate hop, a field after a projection, a container intermediate hop.
+        (nested.shelf, False, (nested.n, nested.bag_f), "invalid call write path"),
+        (nested.shelf, False, (MIRContainerElements(), nested.bag_f), "invalid call write path"),
+        (nested.shelf, False, (nested.bag_f, nested.items, nested.n), "invalid call write path"),
+        # Never through a readonly receiver or a `readonly[...]` member.
+        (nested.shelf, True, (nested.bag_f, nested.n), "unsupported call write field or access"),
+        (nested.shelf, False, (frozen_bag, nested.n), "unsupported call write field or access"),
+        (nested.shelf, False, (frozen_bag,), "unsupported call write field or access"),
+        # A first field whose owner is no record.
+        (nested.shelf, False, (th.THIRFieldIdentity(INT32, "bag", nested.bag), nested.n),
+         "unsupported call write field or access"),
+        # A container member is written through a projection; a record member takes none.
+        (nested.shelf, False, (nested.bag_f, nested.items), "unsupported call write field or access"),
+        (nested.shelf, False, (nested.bag_f, structure), "unsupported call write field or access"),
+    ):
+        assert summary_problem(_record_summary(param, readonly, writes=[path])) == reason, path
+
+
+def test_nested_return_origins(program: _Program, nested: _Nested) -> None:
+    for readonly, result_readonly, param, path, result in (
+        # `return self.bag` at a readonly and at a mutable receiver.
+        (True, True, nested.shelf, (nested.bag_f,), nested.bag),
+        (False, False, nested.shelf, (nested.bag_f,), nested.bag),
+        (False, True, nested.shelf, (nested.bag_f,), nested.bag),
+        # `return self.shelf.bag`, two members down.
+        (False, False, nested.room, (nested.shelf_f, nested.bag_f), nested.bag),
+    ):
+        summary = _record_summary(param, readonly, **_record_result(result, result_readonly), returns=[path])
+        assert summary_problem(summary) is None, path
+    container = _record_summary(nested.shelf, False, ret=RefType(INTS), returns=[(nested.bag_f, nested.items)])
+    assert summary_problem(container) is None
+    view = _record_summary(nested.shelf, True, ret=nested.view, returns=[(nested.bag_f, nested.name)])
+    assert summary_problem(view) is None
+    frozen_bag = replace(nested.bag_f, type=ReadonlyType(nested.bag))
+    assert summary_problem(_record_summary(nested.shelf, False, **_record_result(nested.bag, True),
+                                           returns=[(frozen_bag,)])) is None
+    for readonly, result_readonly, param, path, result, reason in (
+        # A record member of another type than the result's.
+        (False, False, nested.room, (nested.shelf_f,), nested.bag, "unsupported return origin type or access"),
+        # A mutable result through a readonly receiver or a readonly member.
+        (True, False, nested.shelf, (nested.bag_f,), nested.bag, "unsupported return origin type or access"),
+        (False, False, nested.shelf, (frozen_bag,), nested.bag, "unsupported return origin type or access"),
+        (False, False, nested.room, (replace(nested.shelf_f, type=ReadonlyType(nested.shelf)), nested.bag_f),
+         nested.bag, "unsupported return origin type or access"),
+        # A projection ends no return path.
+        (False, False, nested.shelf, (nested.bag_f, MIRContainerStructure()), nested.bag,
+         "unsupported return origin type or access"),
+        # A scalar intermediate hop, a field after a projection.
+        (False, False, nested.shelf, (nested.n, nested.bag_f), nested.bag, "invalid return parameter"),
+        (False, False, nested.shelf, (MIRContainerElements(), nested.bag_f), nested.bag, "invalid return parameter"),
+    ):
+        summary = _record_summary(param, readonly, **_record_result(result, result_readonly), returns=[path])
+        assert summary_problem(summary) == reason, path
+
+
+def test_one_endpoint_table_serves_writes_and_returns(program: _Program, nested: _Nested) -> None:
+    binding, = _record_summary(nested.shelf, False).parameters
+    member = resolve_path(0, (nested.bag_f,), (binding,))
+    assert endpoint_admitted(binding, member)
+    assert endpoint_admitted(binding, member, th.THIRBorrowedRecord(nested.bag, False))
+    assert not endpoint_admitted(binding, member, th.THIRBorrowedRecord(nested.shelf, False))
+    frozen, = _record_summary(nested.shelf, True).parameters
+    member = resolve_path(0, (nested.bag_f,), (frozen,))
+    assert not endpoint_admitted(frozen, member)
+    assert endpoint_admitted(frozen, member, th.THIRBorrowedRecord(nested.bag, True))
+    assert not endpoint_admitted(frozen, member, th.THIRBorrowedRecord(nested.bag, False))
+
+
+def test_an_owned_record_parameter_is_handed_over(program: _Program, nested: _Nested) -> None:
+    for record in (nested.bag, nested.shelf):
+        typ = OwnType(record)
+        handed = MIRParameterBinding(record, typ.param_passing(False), False)
+        assert parameter_binding_problem(typ, handed) is None, record
+        # Owned storage is never readonly and never a borrow of the caller's.
+        assert parameter_binding_problem(typ, replace(handed, readonly=True)) == "unsupported element call parameter"
+        borrowed = replace(handed, borrowed_record=th.THIRBorrowedRecord(record, False))
+        assert parameter_binding_problem(typ, borrowed) == "unsupported record call parameter"
+
+
+def test_dump_spells_every_field_of_a_path(program: _Program, nested: _Nested) -> None:
+    summary = _record_summary(nested.room, False, writes=[(nested.shelf_f, nested.bag_f, nested.n)],
+                              **_record_result(nested.bag, False), returns=[(nested.shelf_f, nested.bag_f)])
+    text = _dump_call(MIRCall(summary, (MIRSlotId(MIRBodyId("main", "dump"), 0),), True))
+    assert "writes={param0.shelf.bag.n}" in text and "returns={param0.shelf.bag}" in text
 
 
 # --- the caller side: the origin's place, resolved like a direct borrow -------------

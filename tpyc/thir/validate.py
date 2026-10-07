@@ -74,7 +74,7 @@ from .nodes import (
     THIRErrorReturnUnwrap, THIRExprStmt, THIRFieldAccess, THIRFormConvert,
     THIRBinOp, THIRExpr, THIRForIterProto, THIRFunction, THIRIf,
     THIRIfExpr, THIRMethodCall, declared_param_type, effective_params,
-    THIRNode, THIRName, THIRInplaceContainerOp, THIRWhile, THIRModuleVar, THIRWalrus, THIRGlobalBinding,
+    THIRNode, THIRName, THIRInplaceContainerOp, THIRParam, THIRWhile, THIRModuleVar, THIRWalrus, THIRGlobalBinding,
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
     THIRFinallyDeferredReturn, DeferredPartKind,
     THIRSubscript, THIRTupleUnpack,
@@ -1235,6 +1235,29 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
               via_transparent=isinstance(node, _TRANSPARENT_WRAPPERS))
 
 
+def _check_param(owner: str, param: THIRParam) -> None:
+    """The storage facts of one function or constructor parameter: each
+    agrees with the parameter's type, and at most one describes it."""
+    if param.native_container is not None:
+        _check_native_container(owner, param, param.native_container, param.type)
+        if any(f is not None for f in (param.borrowed_record, param.optional_layout,
+                                      param.union_layout, param.tuple_layout)):
+            _fail(owner, param, "conflicting parameter facts")
+    if param.tuple_layout is not None:
+        if any(f is not None for f in (param.borrowed_record, param.optional_layout, param.union_layout)):
+            _fail(owner, param, "conflicting parameter facts")
+        _check_tuple(owner, param, param.tuple_layout, param.type)
+    if param.union_layout is not None:
+        _check_union(owner, param, param.union_layout, param.type)
+    if param.optional_layout is not None:
+        _check_optional(owner, param, param.optional_layout, param.type)
+    fact = param.borrowed_record
+    if fact is not None and (
+            unwrap_readonly(unwrap_ref_type(param.type)) != fact.type
+            or type(fact.readonly) is not bool):
+        _fail(owner, param, "borrowed record fact disagrees with parameter")
+
+
 def validate_function(fn: THIRFunction) -> None:
     if fn.receiver is not None:
         fact = fn.receiver
@@ -1244,24 +1267,7 @@ def validate_function(fn: THIRFunction) -> None:
                 or any(p.name == "self" for p in fn.params)):
             _fail(fn.name, fn, "invalid receiver fact")
     for param in fn.params:
-        if param.native_container is not None:
-            _check_native_container(fn.name, param, param.native_container, param.type)
-            if any(f is not None for f in (param.borrowed_record, param.optional_layout,
-                                          param.union_layout, param.tuple_layout)):
-                _fail(fn.name, param, "conflicting parameter facts")
-        if param.tuple_layout is not None:
-            if any(f is not None for f in (param.borrowed_record, param.optional_layout, param.union_layout)):
-                _fail(fn.name, param, "conflicting parameter facts")
-            _check_tuple(fn.name, param, param.tuple_layout, param.type)
-        if param.union_layout is not None:
-            _check_union(fn.name, param, param.union_layout, param.type)
-        if param.optional_layout is not None:
-            _check_optional(fn.name, param, param.optional_layout, param.type)
-        fact = param.borrowed_record
-        if fact is not None and (
-                unwrap_readonly(unwrap_ref_type(param.type)) != fact.type
-                or type(fact.readonly) is not bool):
-            _fail(fn.name, param, "borrowed record fact disagrees with parameter")
+        _check_param(fn.name, param)
     if fn.resolved_callee is not None:
         _check_callee(fn.name, fn, fn.resolved_callee)
         signature = fn.resolved_callee.signature
@@ -1318,19 +1324,7 @@ def _check_no_statement_temp(owner: str, node: THIRNode) -> None:
 def validate_constructor(ctor: THIRConstructor) -> None:
     owner = f"{ctor.record_name}.__init__"
     for param in ctor.params:
-        if param.native_container is not None:
-            _check_native_container(owner, param, param.native_container, param.type)
-            if any(f is not None for f in (param.borrowed_record, param.optional_layout,
-                                          param.union_layout, param.tuple_layout)):
-                _fail(owner, param, "conflicting parameter facts")
-        if param.tuple_layout is not None:
-            if any(f is not None for f in (param.borrowed_record, param.optional_layout, param.union_layout)):
-                _fail(owner, param, "conflicting parameter facts")
-            _check_tuple(owner, param, param.tuple_layout, param.type)
-        if param.union_layout is not None:
-            _check_union(owner, param, param.union_layout, param.type)
-        if param.optional_layout is not None:
-            _check_optional(owner, param, param.optional_layout, param.type)
+        _check_param(owner, param)
     for mil in ctor.mil_inits:
         if mil.field_identity is not None and (
                 ctor.record_layout is None

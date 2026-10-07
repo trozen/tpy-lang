@@ -292,7 +292,8 @@ class Child(Cell):
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "excluded")
     assert fn.params[0].borrowed_record is None
-    not_covered(fn, "unsupported parameter type")
+    # A record handed over at OWN is the body's own storage, which needs its definition.
+    not_covered(fn, "missing constructor definition" if annotation == "Own[Cell]" else "unsupported parameter type")
 
 
 def test_a_derived_record_parameter_is_borrowed() -> None:

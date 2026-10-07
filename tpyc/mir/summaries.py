@@ -2,13 +2,14 @@
 
 from ..thir import nodes as th
 from ..thir.scalar_leaves import (
-    native_container_subject, native_container_type, owned_leaf, owned_value_type, storage_leaf, view_leaf,
+    native_container_subject, owned_value_type, record_type, storage_leaf, view_leaf,
 )
 from ..type_def_registry import ParamPassing
 from ..typesys import TpyType, unwrap_readonly
 from .call_contract import (
     BORROWING_PASSINGS, OWNING_PASSINGS, MIRCallSummary, MIRGlobalId, MIRParameterBinding, MIRParameterWrite,
-    MIRReturnOrigin, MIRSummaryResult, MIRSummaryState, bound_result, summary_problem,
+    MIRReturnOrigin, MIRSummaryResult, MIRSummaryState, bound_result, path_hops, return_origin_problem,
+    summary_problem, write_problem,
 )
 from .call_effects import resolve_call_writes
 from .coverage import (
@@ -35,8 +36,9 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
     """The OWNED record slots whose storage is private to the body.
 
     HANDED OVER: storage that leaves the body by a transfer -- a return
-    (the caller then owns it), a move out, or an argument at an owning
-    passing -- is private when it is read otherwise only by the borrow
+    (the caller then owns it), a move out, an argument at an owning
+    passing, or a temporary a construct moves into the record or element
+    it builds -- is private when it is read otherwise only by the borrow
     its holder takes and no borrow of it is live at a transfer. Borrows
     that complete before the transfer are harmless.
 
@@ -47,8 +49,11 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
     callee retains nothing; its writes reach this storage through the
     dependency pass). Escapes through a holder are the summary's own
     checks: a returned borrow has no parameter origin and a write's
-    origin outside the parameters is refused. The body destroys it at
-    scope end, so its definition must still be hook-free."""
+    origin outside the parameters is refused. Its destruction is outside
+    the summary -- by the body at scope end, or by the caller for a
+    parameter handed over at OWN -- so its definition must still be
+    hook-free."""
+    slots = {s.id: s for s in body.slots}
     records = {s.id for s in body.slots
                if s.value_kind is MIRValueKind.OWNED and s.container_layout is None and not owned_storage(s)}
     excluded: set[MIRSlotId] = set()
@@ -82,6 +87,13 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
             if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRMove) and stmt.value.source in records:
                 transfers.append((stmt.value.source, point))
                 reads = tuple(r for r in reads if r != stmt.value.source)
+            if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRConstruct):
+                # Owned temporary record storage a construct names as an
+                # operand is moved into the built record or element: a
+                # transfer, which leaves the destination's own slot to classify.
+                moved = {f for f in stmt.value.fields if f in records and slots[f].kind is MIRSlotKind.TEMPORARY}
+                transfers.extend((f, point) for f in moved)
+                reads = tuple(r for r in reads if r not in moved)
             if (call := statement_call(stmt)) is not None:
                 handed = {arg for arg, binding in zip(call.arguments, call.summary.parameters)
                           if binding.passing in OWNING_PASSINGS}
@@ -103,6 +115,47 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
         if any(not ref.external and ref.place.root == slot and owners for ref, owners in held.items()):
             excluded.add(slot)
     return frozenset((handed_over - excluded) | (records - handed_over - foreign))
+
+
+def _member_chain(source: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId]) -> bool:
+    """Whether `source` reaches through inline record members of storage the
+    summary accounts for: under a live borrowed record (one leading
+    dereference of its holder) or under the body's private record storage,
+    one or more fields, every one before the last a record member. The last
+    field is the caller's to classify."""
+    path = source.projections
+    if slots[source.root].value_kind is MIRValueKind.BORROWED and path[:1] == (MIRDeref(),):
+        fields = path[1:]
+    elif source.root in private:
+        fields = path
+    else:
+        return False
+    return (bool(fields) and all(isinstance(f, MIRField) for f in fields)
+            and all(record_type(unwrap_readonly(f.type)) for f in fields[:-1]))
+
+
+def _published_path(place: MIRPlace) -> tuple[object, ...]:
+    """The projections of a place under a parameter, spelled as a summary
+    path: each field by its THIR identity, any other step as it is (the
+    path grammar refuses what it does not admit)."""
+    return tuple(th.THIRFieldIdentity(p.id.owner, p.id.name, p.type) if isinstance(p, MIRField) else p
+                 for p in place.projections)
+
+
+def _path_in_layouts(declaration: th.THIRFunction, definitions: MIRDefinitions, binding: MIRParameterBinding,
+                     path: tuple[object, ...], place: MIRPlace) -> bool:
+    """Whether each field of a published path is a member of the layout of
+    the storage its hop reads: the parameter's record, then each member's."""
+    return all(field in definitions.get(declaration, storage).layout.fields
+               for (storage, _), field in zip(path_hops(binding, path), place.projections))
+
+
+def _record_member(place: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId]) -> bool:
+    """Whether `place` is an inline record member of storage the summary
+    accounts for (`_member_chain`): a whole member a write replaces in
+    place or a copy reads."""
+    return (_member_chain(place, slots, private)
+            and record_type(unwrap_readonly(place.projections[-1].type)))
 
 
 def _container_access(source: MIRPlace, target: MIRSlot) -> bool:
@@ -241,27 +294,25 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         if origins is None:
             return "summary missing write origin"
         for origin in origins:
-            path = origin.place.projections
             if not origin.external and slots[origin.place.root].value_kind is MIRValueKind.OWNED:
                 # A write into the body's own storage: nothing the caller can observe.
                 continue
             if not origin.external or origin.place.root not in parameters:
                 return "summary unsupported write origin"
-            # Published: one leaf or owned-leaf field of a record parameter, or
-            # a container's shape or elements region, directly under a
-            # container parameter or under one container field of a record.
-            region = bool(path) and isinstance(path[-1], (MIRContainerStructure, MIRContainerElements))
-            fields = path[:-1] if region else path
-            if (len(fields) > 1 or not all(isinstance(f, MIRField) for f in fields)
-                    or not region and not (fields and (storage_leaf(fields[0].type) or owned_leaf(fields[0].type)))):
+            # Published as the full path, under the one grammar and endpoint
+            # rule a caller checks it by; each field must be a member of the
+            # layout of the storage its hop reads.
+            index = parameters[origin.place.root]
+            write = MIRParameterWrite(index, _published_path(origin.place))
+            if write_problem(write, tuple(bindings)) is not None:
                 return "summary unsupported write origin"
-            for field in fields:
-                if field not in definitions.get(declaration, field.id.owner).layout.fields:
-                    return "summary write field differs from definition"
-            writes.add(MIRParameterWrite(parameters[origin.place.root], (
-                *(th.THIRFieldIdentity(f.id.owner, f.id.name, f.type) for f in fields), *path[len(fields):])))
+            if not _path_in_layouts(declaration, definitions, bindings[index], write.path, origin.place):
+                return "summary write field differs from definition"
+            writes.add(write)
         return None
 
+    # The borrowed result the summary publishes, as a caller binds it.
+    result = bound_result(callee.signature, bool(bindings) and bindings[0].readonly)
     for block in body.blocks:
         if body.borrowed_result is not None and isinstance(block.terminator, MIRReturn):
             state = dependencies.referents.get(MIRPoint(block.id, len(block.statements)))
@@ -285,18 +336,16 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                             return MIRSummaryResult.opaque("summary unsupported return origin")
                         returns.add(MIRReturnOrigin(index))
                         continue
-                    # Inside a record parameter: the record itself, or one of its
-                    # fields -- a container a container result is, an owned leaf a
-                    # view result views. A record result from inside a record is
-                    # deferred with nested records.
-                    if len(path) > 1 or path and not (
-                            isinstance(path[0], MIRField) and (view or native_container_type(unwrap_readonly(path[0].type)))):
+                    # Inside a record parameter: the record itself, or a field
+                    # chain through its inline members, under the one grammar
+                    # and endpoint rule a caller checks the origin by; each field
+                    # must be a member of the layout of the storage its hop reads.
+                    returned = MIRReturnOrigin(index, _published_path(origin.place))
+                    if return_origin_problem(returned, result, tuple(bindings)) is not None:
                         return MIRSummaryResult.opaque("summary unsupported return origin")
-                    for field in path:
-                        if field not in definitions.get(declaration, field.id.owner).layout.fields:
-                            return MIRSummaryResult.opaque("summary return field differs from definition")
-                    returns.add(MIRReturnOrigin(index, tuple(
-                        th.THIRFieldIdentity(f.id.owner, f.id.name, f.type) for f in path)))
+                    if not _path_in_layouts(declaration, definitions, bindings[index], returned.path, origin.place):
+                        return MIRSummaryResult.opaque("summary return field differs from definition")
+                    returns.add(returned)
         for index, stmt in enumerate(block.statements):
             state = dependencies.referents.get(MIRPoint(block.id, index), {})
             if (call := statement_call(stmt)) is not None:
@@ -328,7 +377,11 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             private_target = (stmt.target.projections == (MIRDeref(),) and bool(origins)
                               and all(not o.external and not o.place.projections
                                       and o.place.root in private_records() for o in origins))
-            if stmt.storage_write is not None and not (leaf_place or own_storage or elements or private_target):
+            # An inline record member replaced whole: published as a write of
+            # the member under a parameter, nothing under private storage.
+            member = _record_member(stmt.target, slots, private_records())
+            if stmt.storage_write is not None and not (
+                    leaf_place or own_storage or elements or private_target or member):
                 return MIRSummaryResult.opaque("summary storage operation")
             if stmt.target.projections:
                 problem = include_writes(origins or None)
@@ -343,8 +396,22 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                                                   and target.value_kind is MIRValueKind.BORROWED):
                     # A record holder of the body's private storage.
                     pass
+                case MIRBorrow(source=source) if (target.value_kind is MIRValueKind.BORROWED
+                                                  and _record_member(source, slots, private_records())):
+                    # A record holder of an inline member: the dependency pass
+                    # tracks it to the member's place, so a write through it is
+                    # published (or kept private) by its origin, and a returned
+                    # one meets the return rule.
+                    pass
                 case MIRCopy() if (own_storage and stmt.target.root in private_records()) or private_target:
                     # A record copied into the body's private storage.
+                    pass
+                case MIRCopy(source=source) if member and (
+                        source.projections in ((), (MIRDeref(),)) or _record_member(source, slots, private_records())
+                        or _container_access(source, target)):
+                    # A record copied into a member: a read of the body's own
+                    # storage, of what a holder points at, of another member or
+                    # of an element.
                     pass
                 case MIRCopy() | MIRBorrow() if leaf_place or elements or owned_storage(target) or leaf_borrow(target):
                     # Reads of an owned leaf into the body's own storage, a
@@ -356,23 +423,21 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     # of a container field: reads the dependency pass tracks.
                     pass
                 case MIRRead(source=source):
-                    # Scalar field reads are safe on a live borrowed record and
-                    # on the body's private record storage; wrapper extraction
-                    # and other projections need more proof.
+                    # Scalar field reads, through inline record members too, are
+                    # safe on a live borrowed record and on the body's private
+                    # record storage; wrapper extraction and other projections
+                    # need more proof.
                     path = source.projections
-                    if path and not (
-                        isinstance(path[-1], MIRField) and storage_leaf(path[-1].type)
-                        and (slots[source.root].value_kind is MIRValueKind.BORROWED
-                             and len(path) == 2 and isinstance(path[0], MIRDeref)
-                             or len(path) == 1 and source.root in private_records())
-                    ):
+                    if path and not (_member_chain(source, slots, private_records())
+                                     and storage_leaf(path[-1].type)):
                         return MIRSummaryResult.opaque("summary unsupported read projection")
                 case MIRAlias():
                     if target.value_kind not in (MIRValueKind.BORROWED, MIRValueKind.BORROWED_CONTAINER):
                         return MIRSummaryResult.opaque("summary unsupported alias")
-                case MIRConstruct() | MIRMove() if own_storage or elements or private_target:
+                case MIRConstruct() | MIRMove() if own_storage or elements or private_target or member:
                     # Building the body's own storage, or handing it to an
-                    # element (the container takes the moved value).
+                    # element or a member (which takes the moved value; the
+                    # moved storage is a transfer of `_private_records`).
                     pass
                 case MIRIteratorInit() | MIRIteratorHasNext() | MIRIteratorRead() | MIRIteratorAdvance():
                     pass

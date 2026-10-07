@@ -47,9 +47,9 @@ int32_t collect(int32_t n);
 int32_t named_caller(std::string_view s);
 // def spawned(pool: Pool) -> int32:  # tpyc: mir(covered)
 int32_t spawned(Pool& pool);
-// def take(p: Own[Point]) -> int32:  # tpyc: warning(/never consumed/) mir(uncovered /^unsupported parameter type$/)
+// def take(p: Own[Point]) -> int32:  # tpyc: warning(/never consumed/) mir(covered) mir_summary(known)
 int32_t take(Point&& p);
-// def give(n: int32) -> int32:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+// def give(n: int32) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t give(int32_t n);
 // def read(p: Point) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t read(const Point& p);
@@ -193,7 +193,7 @@ struct Holder {
     // def __init__(self) -> None:
     Holder();
 
-    // def put(self, n: int32) -> None:  # tpyc: mir(uncovered /^record field replacement is unsupported$/)
+    // def put(self, n: int32) -> None:  # tpyc: mir(covered) mir_summary(known)
     void put(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -254,8 +254,8 @@ inline Tok::Tok(int32_t a) : a(a) {}
 //     self.p = Point(0, 0)
 inline Holder::Holder() : p(Point(0, 0)) {}
 
-// # kept refusal: a result stored into a record field
-// def put(self, n: int32) -> None:  # tpyc: mir(uncovered /^record field replacement is unsupported$/)
+// # method: a result handed over into an inline record field (replaced in place)
+// def put(self, n: int32) -> None:  # tpyc: mir(covered) mir_summary(known)
 //     self.p = make(n)
 inline void Holder::put(int32_t n) {
     this->p = ::tpyapp::main::make(n);

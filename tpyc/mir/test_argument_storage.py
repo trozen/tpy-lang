@@ -307,12 +307,6 @@ def rejected() -> int32:
 def rejected():
     text(Cell(1))
 ''', "unsupported expression form", None),
-    ('''from tpy import Own
-def consume(cell: Own[Cell]) -> int32:
-    return cell.value
-def rejected() -> int32:
-    return consume(Cell(1))
-''', "call needs finalized known summary", None),
     ('''global_value = 1
 def rejected() -> int32:
     return read(Cell(global_value))
@@ -328,7 +322,7 @@ def rejected() -> int32:
     return 0
 ''', "named argument needs complete temporary plan", None),
 ], ids=["order-proof", "record-layout-summary", "record-hook-summary", "effectful-summary",
-        "unsupported-result-form", "owned-parameter-summary", "global-constructor-input",
+        "unsupported-result-form", "global-constructor-input",
         "unplanned-optional-narrowing", "unplanned-union-narrowing"])
 def test_source_boundaries_reject_at_the_expected_gate(
         extra: str, reason: str, blocked_callee: str | None) -> None:

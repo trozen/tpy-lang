@@ -563,16 +563,17 @@ def _appended(fn: MIRFunction, *statements) -> MIRFunction:
                                     for b in fn.blocks))
 
 
-def test_a_list_literal_element_read_leaves_the_temporary_foreign(active) -> None:
-    # `[Point(0, 0)]`: the literal's construct reads the whole temporary,
-    # which is neither a transfer nor one of the body's own uses.
+def test_a_list_literal_element_temporary_is_handed_over(active) -> None:
+    # `[Point(0, 0)]`: the literal's construct moves the temporary into its
+    # element, a transfer like a move out.
     fn = _lowered(active, "element")
     temporary, = _owned_records(fn)
     assert any(isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct) and temporary.id in s.value.fields
                for b in fn.blocks for s in b.statements)
-    assert temporary.id not in _private(fn)
+    assert temporary.id in _private(fn)
     result = _summary(active, "element")
-    assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary storage or value shape"
+    assert result.state is MIRSummaryState.KNOWN, result.reason
+    assert result.summary.writes == frozenset()
 
 
 @pytest.mark.parametrize("use", ["whole_read", "deref_write"])

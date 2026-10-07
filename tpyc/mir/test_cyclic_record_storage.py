@@ -168,5 +168,8 @@ def test_cyclic_replacement_checks_retained_holder_leaves(shape: str, safe: bool
     stmts = (*stmts[:-1], replace(capture, value=value))
     fn = replace(fn, blocks=(fn.blocks[0], replace(block, statements=stmts), *fn.blocks[2:]))
     result = analyze(fn)
-    assert {c.holder for c in result.conflicts} == (set() if safe else {holder})
+    # A move also empties INITIAL, which `current` still reaches from the
+    # first activation and is captured and read through afterwards.
+    moved = {MIRPlace(CURRENT)} if operation == "move" else set()
+    assert {c.holder for c in result.conflicts} == (set() if safe else {holder}) | moved
     assert all(c.point.block == LOOP for c in result.conflicts)

@@ -121,7 +121,11 @@ def test_indirect_overlap_reads_before_replacement(move: bool, live_alias: bool,
     if readonly_alias:
         fn = replace(fn, slots=tuple(replace(s, readonly=True) if s.id == optional.SAVED else s for s in fn.slots))
     assert execute(fn, 7, False) == 7
-    assert {c.holder for c in analyze(fn).conflicts} == ({MIRPlace(optional.SAVED)} if live_alias else set())
+    # A move empties BACKING, which CURRENT itself points at: reading
+    # through CURRENT afterwards reads moved-from storage.
+    expected = ({MIRPlace(optional.SAVED)} if live_alias
+                else {MIRPlace(optional.CURRENT)} if move else set())
+    assert {c.holder for c in analyze(fn).conflicts} == expected
     if not move:
         assert optional.SAVED in analyze_liveness(fn).points[MIRPoint(optional.ENTRY, 4)]
 

@@ -1,5 +1,6 @@
 """A bounded MIR interpreter with explicit shared object identities."""
 
+import copy
 from dataclasses import dataclass
 import operator
 
@@ -9,7 +10,7 @@ from ..typesys import INT32_MIN, INT32_MAX
 from .nodes import (
     MIRAlias, MIRBranch, MIRCallStmt, MIRCompare, MIRConstant, MIRField, MIRFieldId,
     MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRSlotKind, MIRGlobalId,
-    MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRValueKind, MIRSlotId,
+    MIRBorrow, MIRConstruct, MIRCopy, MIRMemberInits, MIRMove, MIRValueKind, MIRSlotId,
     MIRPayloadWrite, MIRPayloadWriteMode, MIRRecordStorageInit, MIRRecordStorageKind,
     MIRDeref, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRStorageInit, MIREdge,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
@@ -109,17 +110,29 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
         reference = values[init.receiver]
         assert isinstance(reference, Reference) and not reference.path
         assert reference.identity not in objects or not objects[reference.identity]
-        def member_value(source: MIRSlotId | MIRConstant | MIRConstruct) -> Value:
+        def member_value(member: MIRField, source: MIRSlotId | MIRConstant | MIRConstruct | MIRMemberInits) -> Value:
+            # A record member is inline storage: a copy of what its parameter
+            # holds (or the parameter's own storage moved in), or the fields
+            # its own constructor initializes.
+            layout = records.get(member.type)
+            layout = None if layout is None or layout.opaque else layout
             match source:
                 case MIRConstant():
                     return source.value
+                case MIRMemberInits():
+                    return {f.id: member_value(f, m.source) for f, m in zip(layout.fields, source.fields)}
                 case MIRConstruct():
                     return ContainerValue([values[s] for s in source.fields])
             value = values[source]
+            if layout is not None and isinstance(value, Reference):
+                held = objects[value.identity]
+                for step in value.path:
+                    held = held[step]
+                return copy.deepcopy(held)
             # A container member copies its parameter's container.
             return ContainerValue(value.elements) if isinstance(value, ContainerValue) else value
         objects[reference.identity] = {
-            member.id: member_value(value.source)
+            member.id: member_value(member, value.source)
             for member, value in zip(records[slots[init.receiver].type].fields, init.fields)
         }
     next_identity = max(objects, default=0) + 1

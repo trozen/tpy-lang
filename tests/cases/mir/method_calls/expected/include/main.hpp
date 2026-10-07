@@ -110,7 +110,7 @@ void write_prop(Temp& t, int32_t v);
 bool call_dunder(const Pair& p, const Pair& q);
 // def call_bool(p: Pair) -> bool:  # tpyc: mir(covered)
 bool call_bool(const Pair& p);
-// def field_receiver(o: Outer) -> None:  # tpyc: mir(uncovered /^call needs borrowed record name$/)
+// def field_receiver(o: Outer) -> None:  # tpyc: mir(covered) mir_summary(known)
 void field_receiver(Outer& o);
 // def pick(g: Gauge) -> Gauge:  # tpyc: mir(covered) mir_summary(known)
 Gauge& pick(Gauge& g);

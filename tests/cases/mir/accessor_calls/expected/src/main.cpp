@@ -168,8 +168,8 @@ int32_t twin_items_write(Counter& c) {
     return ::tpy::__getitem__(ys, 0);
 }
 
-// # kept refusal: a getter read through a field receiver (receivers beyond a name or self)
-// def getter_through_field(w: Wrap) -> int32:  # tpyc: mir(uncovered /^call needs borrowed record name$/)
+// # free caller: a getter read through an inline record field receiver (a member holder)
+// def getter_through_field(w: Wrap) -> int32:  # tpyc: mir(covered) mir_summary(known)
 //     return w.c.count
 int32_t getter_through_field(const Wrap& w) {
     return w.c.count();
@@ -185,9 +185,9 @@ int32_t getter_through_field(const Wrap& w) {
     return ::tpy::BigInt(::tpy::__len__(c.items));
 }
 
-// # kept refusal: an inline record getter (deferred) and a record setter; the getter's
-// # result is mutated before the setter replaces the field
-// def record_accessors(h: Holder) -> int32:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+// # free caller: an inline record getter and a record setter, both summarized; kept refusal:
+// # the last line reads a field of a getter CALL result, a receiver with no field identity
+// def record_accessors(h: Holder) -> int32:  # tpyc: mir(uncovered /^reference needs local name$/)
 //     p = h.part
 //     p.x += 10
 //     seen = h.inner.x

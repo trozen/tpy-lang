@@ -5,13 +5,17 @@ from ..thir.metadata import unsupported_metadata
 # `view_compatible` is the one predicate between a view holder and what it
 # borrows: a TypeDef family pairing, a leaf fact rather than a MIR rule.
 from ..thir.scalar_leaves import (  # noqa: F401
-    container_view, owned_leaf, primitive_leaf, primitive_owned_leaf, storage_leaf, view_compatible, view_leaf,
+    container_view, owned_leaf, primitive_leaf, primitive_owned_leaf, record_type, storage_leaf, view_compatible,
+    view_leaf,
 )
 from ..typesys import (
     FLOAT, INT32, FloatLiteralType, IntLiteralType, NominalType, Representation, TpyType, passing_representation,
     through_view,
 )
-from .nodes import MIROptionalLayout, MIRSlot, MIRSlotKind, MIRTupleElement, MIRTupleLayout, MIRValueKind
+from ..type_def_registry import ParamPassing
+from .nodes import (
+    MIROptionalLayout, MIRSlot, MIRSlotKind, MIRStorageDuration, MIRTupleElement, MIRTupleLayout, MIRValueKind,
+)
 
 
 def literal_type(expr: th.THIRLiteral, expected: TpyType | None = None) -> TpyType:
@@ -46,6 +50,15 @@ def slot_representation(slot: MIRSlot) -> Representation:
 def owned_storage(slot: MIRSlot) -> bool:
     """An OWNED slot of an owned leaf: storage the body holds by value."""
     return slot.value_kind is MIRValueKind.OWNED and owned_leaf(slot.type)
+
+
+def handed_record(slot: MIRSlot) -> bool:
+    """An `Own[R]` parameter's record storage: handed over at OWN, mutable,
+    the body's own from entry to exit (the caller materialized it)."""
+    return (slot.kind is MIRSlotKind.PARAMETER and slot.value_kind is MIRValueKind.OWNED
+            and record_type(slot.type) and slot.container_layout is None
+            and slot.passing is ParamPassing.OWN and not slot.readonly
+            and slot.storage_duration is MIRStorageDuration.BODY)
 
 
 def owned_borrow(slot: MIRSlot) -> bool:
@@ -88,11 +101,12 @@ def region_holder(slot: MIRSlot) -> bool:
             or container_view_holder(slot))
 
 
-def moved_buffer(slot: MIRSlot) -> bool:
+def moved_storage(slot: MIRSlot) -> bool:
     """Owned storage a move empties while the slot lives on: an owned leaf's
-    buffer or a container's. A moved record is a whole object handed over,
-    whose holders the record-write rules already track."""
-    return owned_container(slot) or slot.value_kind is MIRValueKind.OWNED and owned_leaf(slot.type)
+    buffer, a container's, or a record's -- a holder of the record or of
+    any member inside it then reads moved-from storage."""
+    return owned_container(slot) or slot.value_kind is MIRValueKind.OWNED and (
+        owned_leaf(slot.type) or record_type(slot.type))
 
 
 def leaf_borrow(slot: MIRSlot) -> bool:

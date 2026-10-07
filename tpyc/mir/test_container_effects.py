@@ -241,9 +241,11 @@ def test_container_regions_of_one_origin_are_disjoint_siblings() -> None:
     assert may_overlap(ref(0, ELEMENTS), ref(1, ELEMENTS))
 
 
+# An inline record member (`OTHER`) is replaced whole in place; a scalar
+# field (`VALUE`) is overwritten, never storage a borrow points into.
 @pytest.mark.parametrize(("target", "expected"), [
     (place(0, ELEMENTS), True), (place(0, STRUCTURE), True), (place(2, ITEMS), True),
-    (place(2, ITEMS, ELEMENTS), True), (place(2, OTHER), False), (place(3, VALUE), False), (place(0), False),
+    (place(2, ITEMS, ELEMENTS), True), (place(2, OTHER), True), (place(3, VALUE), False), (place(0), False),
 ])
 def test_storage_destination_counts_container_regions_and_fields(target: MIRPlace, expected: bool) -> None:
     slots = {s.id: s for s in (param(0), holder(2, BAG), holder(3))}

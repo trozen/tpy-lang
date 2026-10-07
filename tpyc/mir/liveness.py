@@ -7,7 +7,7 @@ from types import MappingProxyType
 
 from .nodes import (
     MIRStatement, MIRBlockId, MIRBranch, MIRFunction, MIRGoto, MIRReturn,
-    MIRPoint, MIRSlotId, MIRTerminator,
+    MIRPoint, MIRSlotId, MIRTerminator, member_init_operands,
 )
 from .validate import MIRPrepared, MIRValidationError, _validated_function, source_definition, statement_reads, successors
 
@@ -100,8 +100,7 @@ def _liveness(prepared: MIRPrepared) -> MIRLiveness:
             points[MIRPoint(bid, index)] = live
     entry = incoming[fn.entry]
     if fn.receiver_init is not None:
-        entry = close(entry | {fn.receiver_init.receiver} | {
-            member.source for member in fn.receiver_init.fields if isinstance(member.source, MIRSlotId)})
+        entry = close(entry | {fn.receiver_init.receiver} | set(member_init_operands(fn.receiver_init.fields)))
     return MIRLiveness(fn, MappingProxyType(incoming), MappingProxyType(outgoing),
                        MappingProxyType(points), entry)
 

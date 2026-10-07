@@ -4,10 +4,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from ..thir.scalar_leaves import record_type, storage_leaf
+from ..thir.scalar_leaves import storage_leaf
 from ..typesys import unwrap_readonly
 from .call_effects import call_write_places
-from .coverage import moved_buffer
+from .coverage import moved_storage
 from .dump import _location, _place
 from .liveness import MIRPoint
 from .nodes import (
@@ -56,7 +56,7 @@ def analyze_storage(fn: MIRFunction) -> MIRStorageEvents | MIRNotCovered:
                     calls[MIRPoint(block.id, index)] = replaced
             if not isinstance(stmt, MIRAssign):
                 continue
-            if isinstance(stmt.value, MIRMove) and moved_buffer(slots[stmt.value.source]) and block.id in reached:
+            if isinstance(stmt.value, MIRMove) and moved_storage(slots[stmt.value.source]) and block.id in reached:
                 moves[MIRPoint(block.id, index)] = MIRPlace(stmt.value.source)
             if isinstance(stmt.value, MIRTupleConstruct):
                 initialized = tuple(MIRPlace(stmt.target.root, (MIRTupleIndex(i),))
@@ -73,17 +73,17 @@ def analyze_storage(fn: MIRFunction) -> MIRStorageEvents | MIRNotCovered:
 
 
 def owned_field(field: MIRField) -> bool:
-    """A field whose storage is owned by its record and replaced in place:
-    an owned leaf's buffer or a container (scalar fields hold no loan, and
-    inline records are never replaced)."""
-    return not (storage_leaf(field.type) or record_type(unwrap_readonly(field.type)))
+    """A field whose storage its record owns and a write replaces in place:
+    an owned leaf's buffer, a container, or an inline record member -- every
+    modeled field but a scalar leaf, which holds no loan."""
+    return not storage_leaf(unwrap_readonly(field.type))
 
 
 def storage_destination(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
     """Whether a write to `place` replaces storage a borrow can point into:
     an OWNED root, the storage a borrowed holder points at (a trailing
-    dereference), an owned-leaf or container field, or a container's shape
-    or elements region. The write's event follows its destination, whatever
+    dereference), an owned-leaf, container or record member field, or a
+    container's shape or elements region. The write's event follows its destination, whatever
     produces the value; a scalar field is overwritten, never a storage a
     borrow can point into."""
     if not place.projections:

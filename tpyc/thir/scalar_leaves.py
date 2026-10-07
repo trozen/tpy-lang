@@ -301,6 +301,16 @@ def record_type(typ: object) -> bool:
     return td is None or td.record is not None and not td.record.is_native and td.enum is None
 
 
+def modeled_field(typ: object) -> bool:
+    """Whether a record member of declared type `typ` has a shape MIR
+    models: a scalar leaf, an owned leaf, a native container, or a record
+    (`record_type`) stored inline. The shape question only: whether that
+    record's definition verifies is `MIRDefinitions`'s answer, never this
+    predicate's."""
+    bare = unwrap_readonly(typ)
+    return storage_leaf(typ) or owned_leaf(typ) or native_container_type(bare) or record_type(bare)
+
+
 def converted_literal(typ: object, value: object) -> object | None:
     """The constant a number literal holding `value` is once converted into
     the leaf `typ`, or None when that leaf cannot hold it exactly. An int

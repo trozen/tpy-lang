@@ -85,15 +85,15 @@ class Holder:
         self.inner = inner  # tpyc: warning(/copies Inner into field/)
         self.k = 1
 
-    # deferred getter body: an inline record field returned by reference -- design:
-    # deferred to nested records (a layout with a record field has no definition yet)
+    # getter body: an inline record field returned by reference (origin param0.inner); the
+    # record's definition composes its member record's
     @property
-    def part(self) -> Inner:  # tpyc: mir(uncovered /^unsupported borrowed expression form$/)
+    def part(self) -> Inner:  # tpyc: mir(covered) mir_summary(known)
         return self.inner
 
-    # setter body: a record parameter (expanded to Own[Inner]) stored into a field
+    # setter body: a record parameter (expanded to Own[Inner]) moved into a field
     @part.setter
-    def part(self, v: Inner) -> None:  # tpyc: mir(uncovered /^unsupported parameter type$/)
+    def part(self, v: Inner) -> None:  # tpyc: mir(covered) mir_summary(known)
         self.inner = v
 
 
@@ -203,8 +203,8 @@ class Wrap:
         self.c = c
 
 
-# kept refusal: a getter read through a field receiver (receivers beyond a name or self)
-def getter_through_field(w: Wrap) -> int32:  # tpyc: mir(uncovered /^call needs borrowed record name$/)
+# free caller: a getter read through an inline record field receiver (a member holder)
+def getter_through_field(w: Wrap) -> int32:  # tpyc: mir(covered) mir_summary(known)
     return w.c.count
 
 
@@ -221,9 +221,9 @@ def write_through_getter(c: Counter) -> int:  # tpyc: mir(covered)
     return len(c.items)
 
 
-# kept refusal: an inline record getter (deferred) and a record setter; the getter's
-# result is mutated before the setter replaces the field
-def record_accessors(h: Holder) -> int32:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+# free caller: an inline record getter and a record setter, both summarized; kept refusal:
+# the last line reads a field of a getter CALL result, a receiver with no field identity
+def record_accessors(h: Holder) -> int32:  # tpyc: mir(uncovered /^reference needs local name$/)
     p = h.part
     p.x += 10
     seen = h.inner.x
