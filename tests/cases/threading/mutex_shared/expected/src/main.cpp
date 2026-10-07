@@ -20,7 +20,7 @@ namespace tpyapp::main {
 //             n += 1
 //         print(n, total)              # 301 elements; 0 + 100*(1+2+3) = 600
 void main() {
-    ::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>> data = Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>::new_<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>(::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_({0}));
+    ::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>> data = Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>::new_<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>(::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_(std::vector<int32_t>{0}));
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h1 = ::tpystd::tpy::thread::spawn<std::monostate, Appender>(Appender(data.clone(), 1, 100));
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h2 = ::tpystd::tpy::thread::spawn<std::monostate, Appender>(Appender(data.clone(), 2, 100));
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h3 = ::tpystd::tpy::thread::spawn<std::monostate, Appender>(Appender(data.clone(), 3, 100));

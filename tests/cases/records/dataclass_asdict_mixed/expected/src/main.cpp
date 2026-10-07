@@ -23,7 +23,7 @@ void main() {
     std::cout << ::tpy::TuplePrinter(std::tuple<std::string, int32_t>{p.name, p.age}) << "\n" << ::tpy::check_signals;
     NamedPoint np = NamedPoint("origin", Point(0, 0));
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", np.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", np.pos.x}, {"y", np.pos.y}})}}))) << "\n" << ::tpy::check_signals;
-    Group g = Group("pts", {Point(1, 2), Point(3, 4)});
+    Group g = Group("pts", std::vector<Point>{Point(1, 2), Point(3, 4)});
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>({{"label", g.label}, {"members", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_0 = g.members;

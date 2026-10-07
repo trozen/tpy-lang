@@ -58,7 +58,7 @@ void main() {
     std::cout << ::tpy::__len__(s) << " " << ::tpy::print_bool((s.contains(50))) << "\n" << ::tpy::check_signals;
     std::string_view word = "hi";
     std::cout << sink.greet(word) << "\n" << ::tpy::check_signals;
-    ::tpystd::tplib::box::Box<std::vector<int32_t>> b = ::tpystd::tplib::box::Box<std::vector<int32_t>>({1, 2});
+    ::tpystd::tplib::box::Box<std::vector<int32_t>> b = ::tpystd::tplib::box::Box<std::vector<int32_t>>(std::vector<int32_t>{1, 2});
     std::vector<int32_t> other = {7};
     b.set(std::move(other));
     std::cout << ::tpy::ListPrinter(b.get()) << "\n" << ::tpy::check_signals;

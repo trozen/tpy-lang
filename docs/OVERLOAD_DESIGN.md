@@ -289,6 +289,73 @@ at the same tier:
   so `bytearray` vs `Iterable[uint8]` scores 0 and vs `Iterable[int32]` scores
   positive.
 
+**Container literals written in the call.** A list literal is a pending
+container wherever it is written (its storage is decided later). A dict
+or set literal is one only where it has to wait:
+written as an argument of a call that scores several candidates, each
+declaring the parameter it lands at plainly -- no view, no type parameter
+(`CallAnalyzer.open_written_literals`; a candidate that reads the literal
+through `Iterable[T]` reads the type its own values give, so for `max`,
+`sum` or a generic candidate it is typed at once) -- and with no
+declared parameter to type it at, it keeps its numbers as the literals
+written (`ExpressionAnalyzer._await_winner`) and its record awaits the
+winner's slot, like a written empty container's
+(`OpenCallArgs.awaiting`); a candidate accepts it when every written
+value fits the part it is written at
+(`TypeCompatibility._written_arg_entries`), and the winner's slot analyzes
+the literal again at its parameter, which types it. Anywhere else a dict
+or set literal takes its type from its own values at once.
+
+**Undecided container arguments.** An argument whose type is a pending
+container (`PendingContainerType`: an unannotated list / dict / set local,
+a list, dict or set literal or an empty container written in the call,
+settled or still open) goes through one arm (`_undecided_container_arm`), shared by
+both passes, Regime C's manual loops and the operator matcher, at a
+parameter that decides it: one that is neither a protocol nor still holds
+a type parameter, or a view a generic candidate's call resolved. It asks
+the pure compatibility query (`TypeCompatibility.is_type_compatible` in
+the argument context, which writes nothing; reached through
+`TypeOperations.pending_arg_leaves`, wired to
+`PendingNums.overload_leaves`) whether a call to that candidate alone
+would accept the container -- widen an open leaf, never narrow one, never
+cross int/float for a local -- and returns its leaves (`ContainerMeet`):
+each numeric TYPE POSITION (tree leaves, not literal occurrences) with
+the cell that decides it, what it holds so far (`PendingNums.known_so_far`;
+a literal leaf at its family's default; an empty part holds nothing and
+is not listed) and what the parameter wants there. A candidate is
+applicable only if its parameters accept every container argument
+TOGETHER (`_container_fit`): a cell met at two positions (one local passed
+twice, two rows of one nested list) must be wanted at one type by both,
+and cells that stores tie -- both ways (a local rebound to another, a row
+stored into a nested list) or one way (an element of one appended to the
+other) -- must be wanted at types they can hold together. That second
+question is the cells' owner's: `PendingNums.wants_fit` runs the settle
+walk's own fixed point with each want as one more value, deciding
+nothing, and the candidate is applicable when every cell comes out at its
+want and every later store checked against a cell still fits it. It also
+says which wanted cells are tied both ways -- one list under two names
+(`mb = ma`) -- so that they widen as one, as the same name passed twice
+does. Values that clash whatever is wanted are not a reason against a
+candidate: the call that decides the lists refuses them in its own words.
+
+The first key of a candidate's rank, in the strict pass, the coercion
+pass and Regime C alike, is its CONTAINER WIDENING: the sum of
+`_scalar_widening_cost` over those leaves, each cell counted once and
+cells tied both ways as one. A
+declared view (`Iterable[int64]`) decides nothing, so it widens 0 (its
+per-element conversion cost stays in the tier cost below). Lower
+container widening wins outright -- an overload never widens a list that
+another applicable overload takes as it is -- and among equal container
+widening the order above applies unchanged (tiers, then cost, in the
+strict pass; the existing keys in the coercion pass, one named key,
+`CoercionFit.rank()`, that Regime C's coercion fallback shares, literal
+penalty and generic tie-break included). An applicable container at a
+concrete parameter is an `EXACT_CONCRETE` match at cost 0: its widening
+is counted once, in the first key. Nothing is decided while scoring: the winner is
+applied afterwards (`CallAnalyzer.apply_winner`, see `docs/ARCHITECTURE.md`
+"pending_num"). A pending dict is ranked at a one-argument protocol as
+the dict it spells, never by its value type.
+
 **Concrete-over-generic invariant.** Because generic tiers (2, 5, 6, 7) all
 rank weaker than their concrete counterparts (1, 3, 4), concrete overloads
 always beat equally-matching generics. Stub ordering cannot change this.
@@ -415,7 +482,17 @@ operand types for '+': int32 and str") instead of a generic
 #### Testing
 
 - Unit tests: `tpyc/test_overloads.py` pins `MatchTier` ordering, the cost
-  model, `_score`, and the `_classify_strict_match` contract.
+  model, `_score`, the `_classify_strict_match` contract, the
+  undecided-container arm (container widening first, one query per
+  candidate and argument, joint applicability, a query that writes
+  nothing) and the overload paths no case runs end to end (the overloaded
+  `raise`, the `typing.overload` form).
+- Undecided container arguments: `tests/cases/calls/overload_pending_container`
+  (every call path, container kind and position, the ranking CPython's
+  dispatch emulation can follow), `tests/cases/calls/overload_pending_container_rank`
+  (the declaration orders it cannot), `tests/cases/calls/error_overload_pending_then_wider`,
+  `tests/cases/calls/error_overload_pending_no_match`,
+  `tests/cases/calls/error_overload_pending_ambiguous`.
 - Integration tests for the key invariants: `tests/cases/calls/overload_concrete_beats_protocol`
   (concrete wins regardless of stub order), `tests/cases/calls/error_overload_ambiguous`
   (ambiguity -> diagnostic), `tests/cases/calls/overload_iterable_empty_literal`

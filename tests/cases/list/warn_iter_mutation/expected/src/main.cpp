@@ -367,7 +367,7 @@ void test_element_source_outer_mutation(std::vector<std::vector<int32_t>>& rows,
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        rows.push_back({v});
+        rows.push_back(std::vector<int32_t>{v});
     }
 }
 
@@ -527,7 +527,7 @@ void test_merged_element_loan_unknown_index() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
         rows = &(::tpy::__getitem__(cube, 1));
-        ::tpy::__getitem__(cube, 2).push_back({v});
+        ::tpy::__getitem__(cube, 2).push_back(std::vector<int32_t>{v});
     }
     std::cout << "merged loan:" << " " << ::tpy::__len__(cube) << " " << ::tpy::__len__(::tpy::__getitem__(cube, 2)) << "\n" << ::tpy::check_signals;
 }

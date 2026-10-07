@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //     with data.lock() as g:
 //         print(sorted(g.get()))      # [1, 2, 3]
 void main() {
-    ::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>> data = Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>::new_<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>(::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_({1, 2}));
+    ::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>> data = Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>::new_<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>(::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_(std::vector<int32_t>{1, 2}));
     auto __ctx_1 = data.__deref__().lock();
     ::tpystd::tpy::sync::MutexGuard<std::vector<int32_t>>* g = &(__ctx_1.__enter__());
     try {

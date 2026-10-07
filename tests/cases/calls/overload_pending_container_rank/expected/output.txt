@@ -1,0 +1,6 @@
+floor b: int64 [1, 2, 7]
+concrete first: iter32 [1, 2]
+scalar int32: Iterable [1, 2]
+scalar int: Iterable [1, 2]
+to big: iter64 [1, 2]
+tiers: generic [1, 2, 1]

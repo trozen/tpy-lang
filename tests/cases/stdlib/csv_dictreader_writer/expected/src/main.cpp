@@ -123,7 +123,7 @@ void read_long_row() {
 //     print(repr(out.getvalue()))
 void write_basic() {
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
-    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, {"name", "age"});
+    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"name", "age"});
     w.writeheader();
     w.writerow(::tpy::ordered_map<std::string, std::string>({{"name", "Alice"}, {"age", "30"}}));
     w.writerows({::tpy::ordered_map<std::string, std::string>({{"name", "Bob"}, {"age", "25"}}), ::tpy::ordered_map<std::string, std::string>({{"name", "Cy"}, {"age", "40"}})});
@@ -138,7 +138,7 @@ void write_basic() {
 //     print(repr(out.getvalue()))
 void write_quoting() {
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
-    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, {"k", "v"});
+    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"k", "v"});
     w.writeheader();
     w.writerow(::tpy::ordered_map<std::string, std::string>({{"k", "x"}, {"v", "has,comma"}}));
     std::cout << ::tpy::repr_of(out.getvalue()) << "\n" << ::tpy::check_signals;
@@ -152,7 +152,7 @@ void write_quoting() {
 //     print(repr(out.getvalue()))
 void write_missing_key() {
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
-    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, {"name", "age"});
+    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"name", "age"});
     w.writerow(::tpy::ordered_map<std::string, std::string>({{"name", "Alice"}}));
     std::cout << ::tpy::repr_of(out.getvalue()) << "\n" << ::tpy::check_signals;
 }
@@ -168,7 +168,7 @@ void write_missing_key() {
 //         print("got ValueError")
 void write_extra_key_raises() {
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
-    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, {"name"});
+    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"name"});
     {
         try {
             w.writerow(::tpy::ordered_map<std::string, std::string>({{"name", "Alice"}, {"extra", "x"}}));
@@ -188,7 +188,7 @@ void write_extra_key_raises() {
 //         print(row["name"], "->", row["note"])
 void roundtrip() {
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
-    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, {"name", "note"});
+    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"name", "note"});
     w.writeheader();
     w.writerow(::tpy::ordered_map<std::string, std::string>({{"name", "Alice"}, {"note", "says, hi"}}));
     {

@@ -5456,11 +5456,12 @@ def _own_container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
     """A container LITERAL into an `Own[container]` slot
     (`Mutex.new([1, 2])` -> `new_({1, 2})`, `ds.append({3: 4})` ->
     `push_back(::tpy::ordered_map<int32_t, int32_t>({{3, 4}}))`).
-    NOTE: `_lower_call_arg` has no dedicated render arm for this row (the
-    explicit literal arms exclude Own slots); the literal falls to the
-    generic tail and renders off its OWN resolved type, which is why the
-    shape check below pins the literal's family to the peeled slot's --
-    the two renders coincide only while they match."""
+    The literal renders in place through `_lower_call_arg`'s generic tail,
+    off its OWN resolved type, and a list / Array brace is then spelled with
+    the slot's container (`fo(std::vector<int32_t>{1, 2})`) -- which is why
+    the shape check below pins the literal's family to the peeled slot's:
+    the two spellings coincide only while they match. A raw `Own[T]` slot
+    keeps the bare brace."""
     if not isinstance(a, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
         return False
     inner = _own_container_slot(ptype, analyzer)

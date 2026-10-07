@@ -25,7 +25,7 @@ void main() {
     ::tpy::__getitem__(xs, 0).push_back(9);
     std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> rows = {{1, 2}};
-    rows.push_back({3, 4, 5});
+    rows.push_back(std::vector<int32_t>{3, 4, 5});
     std::cout << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
     std::array<std::array<std::vector<int32_t>, 1>, 2> deep = {{{{{1, 2}}}, {{{3, 4, 5}}}}};
     ::tpy::__getitem__(::tpy::__getitem__(deep, 1), 0).push_back(9);

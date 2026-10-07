@@ -36,14 +36,14 @@ void main() {
         }
         std::move(__result);
     });
-    rows.push_back({9, 9});
+    rows.push_back(std::array<int32_t, 2>{9, 9});
     std::cout << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(::tpy::__getitem__(rows, 0), 0, 99);
     std::cout << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<::tpy::BigInt>> __tmp_1 = {{1, 2}, {3, 4}};
     ::tpyapp::main::take(__tmp_1);
     std::vector<std::array<int32_t, 2>> lits = {{1, 2}};
-    lits.push_back({3, 4});
+    lits.push_back(std::array<int32_t, 2>{3, 4});
     std::cout << ::tpy::ListPrinter(lits) << "\n" << ::tpy::check_signals;
 }
 

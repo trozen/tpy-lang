@@ -264,7 +264,7 @@ void main() {
             std::cout << "meth-explicit" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    Box2<int32_t> g = Box2<int32_t>({10, 20, 30, 40});
+    Box2<int32_t> g = Box2<int32_t>(std::vector<int32_t>{10, 20, 30, 40});
     {
         auto __src_24 = g.take();
         auto&& __itr_24 = ::tpy::__iter__(__src_24);

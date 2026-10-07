@@ -1,5 +1,5 @@
-# Two overloads match an inferred float local, so neither fills the empty dict,
-# which matches none (BUGS.md#pending-container-overload-no-match).
+# An empty dict literal two overloads both accept at no widening is an
+# ambiguous call: neither candidate's parameter may decide it.
 from tpy import dispatch
 
 
@@ -15,7 +15,7 @@ def amb(d: dict[int, float]) -> float:
 
 def rebind() -> None:
     y = 0.5
-    y = amb({})  # tpyc: error(/No matching overload for amb/)
+    y = amb({})  # tpyc: error(/Ambiguous overload for .amb./)
     print(y)
 
 

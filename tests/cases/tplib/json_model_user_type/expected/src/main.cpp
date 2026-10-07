@@ -34,7 +34,7 @@ void test_roundtrip() {
 //     print(sc2.events[0].when._value)
 //     print(sc2.default_duration._value)
 void test_nested() {
-    Schedule sc = Schedule({Event("a", Seconds(10)), Event("b", Seconds(20))}, Seconds(60));
+    Schedule sc = Schedule(std::vector<Event>{Event("a", Seconds(10)), Event("b", Seconds(20))}, Seconds(60));
     std::string s = sc.to_json();
     std::cout << s << "\n" << ::tpy::check_signals;
     Schedule sc2 = Schedule::from_json(s);
@@ -62,7 +62,7 @@ void test_nested() {
 //     sc4 = Schedule.from_json(s3)
 //     print(sc4.deadline is None)
 void test_optional() {
-    Schedule sc = Schedule({Event("x", Seconds(1))}, Seconds(30), Seconds(99));
+    Schedule sc = Schedule(std::vector<Event>{Event("x", Seconds(1))}, Seconds(30), Seconds(99));
     std::string s = sc.to_json();
     std::cout << s << "\n" << ::tpy::check_signals;
     Schedule sc2 = Schedule::from_json(s);
@@ -70,7 +70,7 @@ void test_optional() {
     if ((d != nullptr)) {
         std::cout << d->_value << "\n" << ::tpy::check_signals;
     }
-    Schedule sc3 = Schedule({Event("y", Seconds(2))}, Seconds(30));
+    Schedule sc3 = Schedule(std::vector<Event>{Event("y", Seconds(2))}, Seconds(30));
     std::string s3 = sc3.to_json();
     std::cout << s3 << "\n" << ::tpy::check_signals;
     Schedule sc4 = Schedule::from_json(s3);

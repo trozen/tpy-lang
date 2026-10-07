@@ -18,15 +18,32 @@ from __future__ import annotations
 import pytest
 
 from tpyc.sema.overloads import (
+    ContainerLeaf,
+    ContainerMeet,
     MatchTier,
     OverloadAmbiguityError,
     _bool_checker_to_classifier,
     _classify_strict_match,
+    _container_fit,
     _scalar_widening_cost,
+    _undecided_container_arm,
+    call_resolves_params,
+    coercion_pass_rank,
+    resolve_overload,
+    type_matches_with_coercion,
     _score,
     _type_args_widening_cost,
 )
+from tpyc import get_lib_dir
+from tpyc.coercions import CoercionContext
+from tpyc.compiler import Compiler
+from tpyc.diagnostics import Scope, SemanticError
+from tpyc.parse import TpyArrayLiteral
+from tpyc.sema.compatibility import TypeCompatibility
+from tpyc.sema.context import SemanticContext
+from tpyc.sema.pending_num import PendingNums
 from tpyc.sema.protocols import ProtocolConformanceKind
+from tpyc.sema.type_ops import TypeOperations
 from tpyc.typesys import (
     BIGINT,
     BOOL,
@@ -40,6 +57,7 @@ from tpyc.typesys import (
     NONE,
     NominalType,
     PendingListType,
+    PendingDictType,
     STR,
     TupleType,
     UINT8,
@@ -52,6 +70,10 @@ from tpyc.typesys import (
     TypeParamRef,
     FunctionInfo,
     ParamInfo,
+    ListLiteralInfo,
+    TypeRegistry,
+    make_array,
+    make_span,
 )
 
 
@@ -200,6 +222,144 @@ def test_type_args_cost_empty_pending_list_biases_to_default_int():
     assert _type_args_widening_cost(pl, _iterable(INT32), default_int_type=INT32) == 0
     assert _type_args_widening_cost(pl, _iterable(INT64), default_int_type=INT32) == 4
     assert _type_args_widening_cost(pl, _iterable(FLOAT), default_int_type=INT32) == 16
+
+
+def test_type_args_cost_pending_dict_is_not_ranked_by_its_value():
+    # A dict iterates its keys: ranking `Iterable[K]` candidates by the
+    # value type would pick a specialization for the wrong part.
+    pd = PendingDictType(key_type=INT32, value_type=INT64, literal_id=0)
+    assert _type_args_widening_cost(pd, _iterable(INT64), default_int_type=INT32) == 0
+    assert _type_args_widening_cost(pd, _iterable(INT32), default_int_type=INT32) == 0
+
+
+class _Ops:
+    """A stand-in for TypeOperations carrying only the undecided-container
+    query: `leaves[param]` is what the argument meets there (None: a call
+    to that candidate alone refuses it), as (cell, held, wanted)."""
+    def __init__(self, leaves):
+        self.leaves = leaves
+        self.asked = []
+        self.pending_wants_fit = None
+
+    def pending_arg_leaves(self, arg, param, view):
+        self.asked.append(param)
+        return self.leaves.get(param)
+
+
+_OPEN_LIST = PendingListType(element_type=IntLiteralType(value=1), size=2, literal_id=7)
+_CELL = object()
+
+
+def test_undecided_container_is_a_strict_match_its_widening_ranks():
+    # The widening is the candidate's first key (`_container_fit`), counted
+    # once; the argument's own strict cost is nothing.
+    ops = _Ops({_list(INT32): [(None, INT32, INT32)], _list(INT64): [(None, INT32, INT64)]})
+    for slot, widening in ((_list(INT32), 0), (_list(INT64), 4)):
+        assert _classify_strict_match(_OPEN_LIST, slot, type_ops=ops,
+                                      default_int_type=INT32) == (MatchTier.EXACT_CONCRETE, 0)
+        meet = _undecided_container_arm(_OPEN_LIST, slot, ops)
+        assert _container_fit([meet], INT32) == widening
+
+
+def test_undecided_container_widening_sums_type_positions():
+    tuple_list = _list(TupleType((INT64, FLOAT)))
+    ops = _Ops({tuple_list: [(None, INT32, INT64), (None, FLOAT, FLOAT)]})
+    meet = _undecided_container_arm(_OPEN_LIST, tuple_list, ops)
+    assert _container_fit([meet], INT32) == 4
+
+
+def test_undecided_container_refused_by_the_query_is_no_match():
+    ops = _Ops({})
+    assert _classify_strict_match(_OPEN_LIST, _list(INT8), type_ops=ops) is None
+    assert not type_matches_with_coercion(_OPEN_LIST, _list(INT8), type_ops=ops)
+
+
+def test_undecided_container_arm_leaves_protocols_and_type_params_alone():
+    ops = _Ops({})
+    _classify_strict_match(_OPEN_LIST, _iterable(INT32), type_ops=ops)
+    _classify_strict_match(_OPEN_LIST, _list(TypeParamRef("T")), type_ops=ops)
+    assert ops.asked == []
+
+
+def test_coercion_pass_rank_leads_with_container_widening():
+    ops = _Ops({_list(INT32): [(None, INT32, INT32)], _list(INT64): [(None, INT32, INT64)]})
+    narrow = coercion_pass_rank([_OPEN_LIST], [_list(INT32)], None, None, None, ops, INT32)
+    wide = coercion_pass_rank([_OPEN_LIST], [_list(INT64)], None, None, None, ops, INT32)
+    assert narrow is not None and wide is not None
+    assert narrow.widening < wide.widening
+    assert coercion_pass_rank([_OPEN_LIST], [_list(INT8)], None, None, None, ops, INT32) is None
+
+
+def test_coercion_pass_rank_asks_each_argument_once():
+    ops = _Ops({_list(INT64): [(None, INT32, INT64)]})
+    coercion_pass_rank([_OPEN_LIST], [_list(INT64)], None, None, None, ops, INT32)
+    assert ops.asked == [_list(INT64)]
+
+
+def test_container_widening_outranks_the_scalar_keys():
+    # `f(1, ms)` at `(int, list[int64])` / `(int, Iterable[int64])`: the
+    # literal converts to `int` at both, and the candidate that widens the
+    # container loses to the one that takes it as it is.
+    ops = _Ops({_list(INT64): [(None, INT32, INT64)]})
+    widens = _fn("f", BIGINT, _list(INT64))
+    view = _fn("f", BIGINT, _iterable(INT64))
+    for overloads in ([widens, view], [view, widens]):
+        assert resolve_overload(overloads, [IntLiteralType(value=1), _OPEN_LIST],
+                                protocol_checker=lambda a, p: True,
+                                default_int_type=INT32, type_ops=ops) is view
+
+
+def test_a_cell_passed_twice_must_be_wanted_at_one_type():
+    # `f(ms, ms)` at `(list[int32], list[int64])`: no call to that candidate
+    # alone accepts `ms` at both, so it is not applicable.
+    ops = _Ops({_list(INT32): [(_CELL, INT32, INT32)],
+                _list(INT64): [(_CELL, INT32, INT64)]})
+    assert coercion_pass_rank([_OPEN_LIST, _OPEN_LIST], [_list(INT32), _list(INT64)],
+                              None, None, None, ops, INT32) is None
+    same = coercion_pass_rank([_OPEN_LIST, _OPEN_LIST], [_list(INT64), _list(INT64)],
+                              None, None, None, ops, INT32)
+    # One cell widened once.
+    assert same is not None and same.widening == 4
+
+
+def test_cells_a_store_ties_are_asked_together():
+    # `b = a` ties the cells of two locals: `f(a, b)` at
+    # `(list[int32], list[int64])` wants them at types they cannot hold
+    # together, which the cells' owner answers (`PendingNums.wants_fit`).
+    ops = _Ops({_list(INT32): [(3, INT32, INT32)],
+                _list(INT64): [(4, INT32, INT64)]})
+    meets = [_undecided_container_arm(_OPEN_LIST, _list(INT32), ops),
+             _undecided_container_arm(_OPEN_LIST, _list(INT64), ops)]
+    asked = []
+    ops.pending_wants_fit = lambda wants: asked.append(dict(wants))
+    assert _container_fit(meets, INT32, ops) is None
+    assert asked == [{3: INT32, 4: INT64}]
+    ops.pending_wants_fit = lambda wants: {c: c for c in wants}
+    assert _container_fit(meets, INT32, ops) == 4
+
+
+def test_cells_tied_both_ways_widen_as_one():
+    # `mb = ma`: one list under two names, wanted at int64 by both
+    # parameters, is one widening -- as the same name passed twice is.
+    ops = _Ops({})
+    meets = [ContainerMeet(True, (ContainerLeaf(3, INT32, INT64),)),
+             ContainerMeet(True, (ContainerLeaf(4, INT32, INT64),))]
+    ops.pending_wants_fit = lambda wants: {3: 3, 4: 3}
+    assert _container_fit(meets, INT32, ops) == 4
+    ops.pending_wants_fit = lambda wants: {3: 3, 4: 4}
+    assert _container_fit(meets, INT32, ops) == 8
+
+
+def test_a_declared_view_in_a_generic_candidate_is_not_resolved():
+    # `g[T](xs: Iterable[int64], t: T)`: only `t` is resolved by the call,
+    # so only a view naming `T` decides an undecided container.
+    g = FunctionInfo(name="g", params=(ParamInfo("xs", _iterable(INT64)),
+                                       ParamInfo("t", TypeParamRef("T")),
+                                       ParamInfo("ys", _iterable(TypeParamRef("T")))),
+                     return_type=VOID, type_params=["T"])
+    assert call_resolves_params(g) == (False, True, True)
+    h = _fn("h", _iterable(INT64), INT32)
+    assert call_resolves_params(h) == (False, False)
 
 
 def test_type_args_cost_tuple_all_same_uses_that_element():
@@ -408,3 +568,121 @@ def test_overload_ambiguity_error_carries_candidates():
     msg = str(err)
     assert "f(int32)" in msg
     assert "f(int64)" in msg
+
+
+# --------------------------------------------------------------------------
+# The overload query writes nothing (undecided containers)
+# --------------------------------------------------------------------------
+
+
+def _literal_compat():
+    """A compatibility checker and the record of a list literal `[1, 2]`
+    no cell decides."""
+    ctx = SemanticContext(registry=TypeRegistry(), global_scope=Scope())
+    compat = TypeCompatibility(ctx)
+    compat.pend = PendingNums(ctx, compat)
+    compat.type_ops = TypeOperations(ctx)
+    info = ListLiteralInfo(literal_id=0, expr=TpyArrayLiteral([]),
+                           element_type=IntLiteralType(value=1), size=2)
+    ctx.container_literals[0] = info
+    return compat, info, PendingListType(IntLiteralType(value=1), 2, 0)
+
+
+@pytest.mark.parametrize("slot", [make_span(INT64), make_array(INT64, 2)],
+                         ids=["span", "array"])
+def test_overload_query_leaves_the_literal_record_alone(slot):
+    # A candidate asked and then refused must leave no element or storage
+    # fact on the literal; only the committing check of the winner writes.
+    compat, info, lit = _literal_compat()
+    assert compat.is_type_compatible(lit, slot, CoercionContext.ARG)
+    assert info.coerced_element_type is None
+    assert not info.passed_to_span_param
+    compat._check_compat(lit, slot, "", coercion_ctx=CoercionContext.ARG,
+                         commit=True)
+    assert info.coerced_element_type == INT64
+
+
+_SEMA_PRELUDE = """from tpy import dispatch, int8, int32, int64
+def a64() -> int64: return 1099511627776
+"""
+
+
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        # The overloaded `raise` constructor: its winner decides the local,
+        # which its user exception's codegen cannot show end to end
+        # (BUGS.md#dispatch-ctor-group-unlowered).
+        pytest.param(
+            "class E(Exception):\n    n: int32\n"
+            "    @dispatch\n    def __init__(self, xs: list[int32]) -> None:\n"
+            "        self.n = len(xs)\n"
+            "    @dispatch\n    def __init__(self, s: str) -> None:\n"
+            "        self.n = -1\n"
+            "def main() -> None:\n    ms = [1, 2]\n    try:\n"
+            "        raise E(ms)\n    except E as e:\n        print(e.n)\n"
+            "    ms.append(a64())\n",
+            r"^'ms' holds int32 elements since line 14 \(passed as "
+            r"list\[int32\]\), and this value is int64",
+            id="raise-group-then-wider"),
+        pytest.param(
+            "class E(Exception):\n    n: int32\n"
+            "    @dispatch\n    def __init__(self, xs: list[str]) -> None:\n"
+            "        self.n = 1\n"
+            "    @dispatch\n    def __init__(self, xs: list[int64]) -> None:\n"
+            "        self.n = 2\n"
+            "def main() -> None:\n    xs = []\n    raise E(xs)\n",
+            r"^Ambiguous overload: __init__\(list\[str\]\), "
+            r"__init__\(list\[int64\]\)$",
+            id="raise-group-ambiguous"),
+        # The `typing.overload` form: the stub the call resolves to decides
+        # the local (its implementation's narrowing does not lower,
+        # BUGS.md#overload-stub-narrows-container-param).
+        pytest.param(
+            "from typing import overload\n"
+            "@overload\ndef t(x: list[int32]) -> int32: ...\n"
+            "@overload\ndef t(x: str) -> int32: ...\n"
+            "def t(x: list[int32] | str) -> int32:\n    return 7\n"
+            "def main() -> None:\n    ms = [5, 6]\n    print(t(ms))\n"
+            "    ms.append(a64())\n",
+            r"^'ms' holds int32 elements since line 12 \(passed as "
+            r"list\[int32\]\), and this value is int64",
+            id="typing-overload-then-wider"),
+        # The constructor overload a local is passed to decides its element:
+        # a later wider value is refused, as after a call to that one
+        # constructor.
+        pytest.param(
+            "class K:\n    n: int32\n"
+            "    @dispatch\n    def __init__(self, xs: list[int32]) -> None:\n"
+            "        self.n = len(xs)\n"
+            "    @dispatch\n    def __init__(self, s: str) -> None:\n"
+            "        self.n = -1\n"
+            "def main() -> None:\n    ms = [1, 2]\n    k = K(ms)\n"
+            "    ms.append(a64())\n    print(k.n)\n",
+            r"^'ms' holds int32 elements since line 13 \(passed as "
+            r"list\[int32\]\), and this value is int64",
+            id="ctor-group-then-wider"),
+        # No constructor of the group may narrow the local's int32.
+        pytest.param(
+            "class K:\n    n: int32\n"
+            "    @dispatch\n    def __init__(self, xs: list[int8]) -> None:\n"
+            "        self.n = len(xs)\n"
+            "    @dispatch\n    def __init__(self, s: str) -> None:\n"
+            "        self.n = -1\n"
+            "def main() -> None:\n    ms = [1, 2]\n    print(K(ms).n)\n",
+            r"^No matching overload for 'K\(list\[int32\]\)'$",
+            id="ctor-group-no-match"),
+        # An empty container no candidate takes is named by its container.
+        pytest.param(
+            "@dispatch\ndef fn(x: int) -> str:\n    return 'int'\n"
+            "@dispatch\ndef fn(x: str) -> str:\n    return 'str'\n"
+            "def main() -> None:\n    print(fn([]))\n    print(fn(set()))\n",
+            r"^No matching overload for fn\(list\)$",
+            id="empty-container-no-match"),
+    ],
+)
+def test_overload_paths_without_an_end_to_end_case(body: str,
+                                                   message: str) -> None:
+    with pytest.raises(SemanticError, match=message):
+        Compiler.from_source(_SEMA_PRELUDE + body,
+                             lib_dirs=[get_lib_dir() / "tpy"]).compile()

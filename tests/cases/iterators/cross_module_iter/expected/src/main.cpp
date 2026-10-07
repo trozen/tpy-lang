@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //         total += v
 //     print(total)
 void main() {
-    ::tpyapp::bag::Bag<int32_t> b = ::tpyapp::bag::make_bag<int32_t>({10, 20, 30});
+    ::tpyapp::bag::Bag<int32_t> b = ::tpyapp::bag::make_bag<int32_t>(std::vector<int32_t>{10, 20, 30});
     int32_t total = 0;
     auto& __src_0 = b;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

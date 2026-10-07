@@ -140,7 +140,7 @@ inline int32_t K::fill_set(::tpy::ordered_set<int32_t>& s) const {
 //     rows.append([9])
 //     return len(rows)
 inline int32_t K::fill_nested(std::vector<std::vector<int32_t>>& rows) const {
-    rows.push_back({9});
+    rows.push_back(std::vector<int32_t>{9});
     return ::tpy::__len__(rows);
 }
 

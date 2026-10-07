@@ -8,13 +8,14 @@ operators, calls, methods, and module infrastructure.
 from __future__ import annotations
 from dataclasses import replace as dc_replace
 from enum import Enum
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Hashable
+from typing import TYPE_CHECKING, Callable, NamedTuple
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, BIGINT,
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
     PendingStrType, PendingViewType, LiteralType, LiteralTag,
-    PendingBytesType, TupleType, UnknownElementType,
+    PendingBytesType, TupleType, UnknownElementType, PendingContainerType,
     NominalType, PtrType, OwnType, ReadonlyType, RefType, CallableType, is_fn_type, VoidType, NoneType,
     OptionalType,
     unwrap_ref_type, strip_own_type_args,
@@ -79,6 +80,26 @@ class OverloadAmbiguityError(Exception):
             for c in candidates
         )
         super().__init__(f"Ambiguous overload: {sigs}")
+
+
+def call_resolves_param(overload: FunctionInfo, index: int) -> bool:
+    """Whether a call to `overload` resolves its parameter `index` from the
+    arguments: one whose type as declared (`overload.root`, before any
+    substitution) names one of the callee's own type parameters is
+    inferred, so where it is a view (`Iterable[T]`) it decides an undecided
+    container argument. Any other parameter is a declared slot -- a
+    declared view converts per element and decides nothing -- whether or
+    not the callee is generic."""
+    declared = overload.root.params
+    return (bool(overload.type_params) and index < len(declared)
+            and contains_type_param(declared[index].type,
+                                    set(overload.type_params)))
+
+
+def call_resolves_params(overload: FunctionInfo) -> tuple[bool, ...]:
+    """`call_resolves_param` for each parameter of `overload`."""
+    return tuple(call_resolves_param(overload, i)
+                 for i in range(len(overload.params)))
 
 
 def _always_false_checker(arg: 'TpyType', param: 'TpyType') -> bool:
@@ -206,6 +227,10 @@ def _type_args_widening_cost(
     """
     if not isinstance(param, NominalType) or not param.type_args:
         return 0
+    if isinstance(actual, PendingContainerType):
+        # Ranked as the container it spells, so a dict literal is scored
+        # as a dict is, never by its value type.
+        actual = actual.spelled(actual.parts())
     actual_args: tuple[TpyType, ...] = ()
     if isinstance(actual, NominalType):
         actual_args = tuple(a for a in actual.type_args if isinstance(a, TpyType))
@@ -233,11 +258,107 @@ def _type_args_widening_cost(
     return total
 
 
+class ContainerLeaf(NamedTuple):
+    """One numeric type position of an undecided container argument at an
+    overload candidate's parameter: the cell that decides it, None when
+    none does (a literal written in the call); the type it holds so far;
+    the type the parameter wants there."""
+    cell: Hashable | None
+    held: TpyType
+    wanted: TpyType
+
+
+class ContainerMeet(NamedTuple):
+    """How an undecided container argument meets one candidate's parameter
+    (`_undecided_container_arm`): whether a call to that candidate alone
+    would accept it, and if so its leaves as the parameter wants them."""
+    accepted: bool
+    leaves: tuple[ContainerLeaf, ...] = ()
+
+
+def _undecided_container(arg_type: TpyType) -> bool:
+    """Whether `arg_type` is an undecided container argument's (a container
+    literal or an unannotated container local)."""
+    arg_inner = unwrap_ref_type(unwrap_readonly(arg_type))
+    if isinstance(arg_inner, OwnType):
+        arg_inner = arg_inner.wrapped
+    return isinstance(arg_inner, PendingContainerType)
+
+
+def _undecided_container_arm(
+    arg_type: TpyType, param_type: TpyType,
+    type_ops: 'TypeOperations | None',
+    decides_view: bool = False,
+) -> ContainerMeet | None:
+    """How an undecided container argument (`_undecided_container`) meets a
+    parameter that decides it: one that is no protocol and holds no type
+    parameter, or -- `decides_view`, a parameter the call resolved
+    (`call_resolves_param`) -- a view of it (`Iterable[int64]`). None when
+    this is no such pair (another argument, a declared view, which converts
+    per element and decides nothing, a parameter still naming a type
+    parameter, or no query to ask). Nothing is decided."""
+    param_inner = unwrap_ref_type(unwrap_readonly(param_type))
+    if isinstance(param_inner, OwnType):
+        param_inner = param_inner.wrapped
+    if (type_ops is None or type_ops.pending_arg_leaves is None
+            or not _undecided_container(arg_type)
+            or (is_protocol_type(param_inner) and not decides_view)
+            or contains_type_param(param_inner)):
+        return None
+    leaves = type_ops.pending_arg_leaves(
+        arg_type, param_type, is_protocol_type(param_inner))
+    if leaves is None:
+        return ContainerMeet(False)
+    return ContainerMeet(True, tuple(ContainerLeaf(*leaf) for leaf in leaves))
+
+
+def _container_fit(
+    meets: 'list[ContainerMeet | None]',
+    default_int_type: TpyType | None,
+    type_ops: 'TypeOperations | None' = None,
+) -> int | None:
+    """A candidate's container widening -- the first key of its rank in
+    every pass: the sum over its undecided container arguments' leaves of
+    how far its parameters widen them, a cell counted once and cells tied
+    both ways (one list under two names) as one. None when the candidate
+    is not applicable: an argument it refuses, one cell (one local passed
+    twice, two rows of one nested list) wanted at two types, or cells
+    wanted at types they cannot hold together, which their owner answers
+    (`TypeOperations.pending_wants_fit`: a local rebound to another, a row
+    or an element stored from one into another)."""
+    wanted: dict[Hashable, TpyType] = {}
+    widens: dict[Hashable, int] = {}
+    total = 0
+    for meet in meets:
+        if meet is None:
+            continue
+        if not meet.accepted:
+            return None
+        for leaf in meet.leaves:
+            cost = _scalar_widening_cost(leaf.held, leaf.wanted,
+                                         default_int_type)
+            if leaf.cell is None:
+                total += cost
+            elif leaf.cell not in wanted:
+                wanted[leaf.cell] = leaf.wanted
+                widens[leaf.cell] = cost
+            elif wanted[leaf.cell] != leaf.wanted:
+                return None
+    if (not wanted or type_ops is None
+            or type_ops.pending_wants_fit is None):
+        return total + sum(widens.values())
+    groups = type_ops.pending_wants_fit(wanted)
+    if groups is None:
+        return None
+    return total + sum(widens[first] for first in set(groups.values()))
+
+
 def _classify_strict_match(
     arg_type: TpyType,
     param_type: TpyType,
     protocol_classifier: ProtocolClassifier | None = None,
     default_int_type: TpyType | None = None,
+    type_ops: 'TypeOperations | None' = None,
 ) -> tuple[MatchTier, int] | None:
     """Strict (no-coercion) match with specificity tier + widening cost.
 
@@ -255,6 +376,12 @@ def _classify_strict_match(
         param_inner = param_inner.wrapped
     if arg_inner == param_inner:
         return (MatchTier.EXACT_CONCRETE, 0)
+    # Every container a call to this candidate alone would accept is a
+    # strict match; how far it widens is the candidate's own first key
+    # (`_container_fit`), so it costs nothing here.
+    meet = _undecided_container_arm(arg_type, param_type, type_ops)
+    if meet is not None:
+        return (MatchTier.EXACT_CONCRETE, 0) if meet.accepted else None
     # CallableType (Fn and Callable): compare with qualifier unwrapping on inner
     # types. The arg callable may have Own/Ref on param/return types from FI,
     # while the resolved overload's callable has bare types from substitution.
@@ -287,7 +414,8 @@ def _classify_strict_match(
     if isinstance(param_inner, OptionalType):
         if isinstance(arg_inner, NoneType):
             return (MatchTier.EXACT_CONCRETE, 0)
-        return _classify_strict_match(arg_inner, param_inner.inner, protocol_classifier, default_int_type)
+        return _classify_strict_match(arg_inner, param_inner.inner, protocol_classifier, default_int_type,
+                                      type_ops)
     # Callable -> Fn: std::function satisfies template requires clauses
     if (isinstance(arg_inner, CallableType) and is_fn_type(param_inner)
             and arg_inner.param_types == param_inner.param_types
@@ -361,13 +489,15 @@ def type_matches_strict(
     arg_type: TpyType,
     param_type: TpyType,
     protocol_checker: ProtocolChecker | None = None,
+    type_ops: 'TypeOperations | None' = None,
 ) -> bool:
     """Strict type matching: exact equality or protocol conformance.
 
     Used for first-pass overload resolution where no coercions are desired.
     """
     result = _classify_strict_match(
-        arg_type, param_type, _bool_checker_to_classifier(protocol_checker)
+        arg_type, param_type, _bool_checker_to_classifier(protocol_checker),
+        type_ops=type_ops,
     )
     return result is not None
 
@@ -472,11 +602,17 @@ def type_matches_with_coercion(
     protocol_checker: ProtocolChecker | None = None,
     deref_checker: DerefChecker | None = None,
     subclass_checker: SubclassChecker | None = None,
+    type_ops: 'TypeOperations | None' = None,
 ) -> bool:
     """Type matching allowing IntLiteral flexibility, protocols, and registered coercions.
 
     Used for overload resolution second pass and constructor matching.
     """
+    # An undecided container is applicable here exactly when it is in the
+    # strict pass (`_undecided_container_arm`).
+    meet = _undecided_container_arm(arg_type, param_type, type_ops)
+    if meet is not None:
+        return meet.accepted
     # Unwrap ReadonlyType, OwnType, RefType from args -- mutable values match
     # readonly params, Own[T] variables match T params, and Ref[T] is transparent.
     arg_inner = unwrap_ref_type(unwrap_readonly(arg_type))
@@ -555,6 +691,86 @@ def type_matches_with_coercion(
     return False
 
 
+def _int_literal_penalty(arg_t: TpyType, ptype: TpyType,
+                         default_int_type: TpyType) -> int:
+    """How far an integer literal argument's parameter is from the default
+    integer type (0 there), so a literal prefers the default width."""
+    if not isinstance(arg_t, IntLiteralType):
+        return 0
+    ptype = unwrap_ref_type(ptype)
+    if ptype == default_int_type:
+        return 0
+    default_tr = int_traits_of(default_int_type)
+    if default_tr is not None:
+        ptype_tr = int_traits_of(ptype)
+        if ptype_tr is not None:
+            # Keep preference stable around configured width/signedness.
+            width_gap = abs(ptype_tr.bits - default_tr.bits) // 8
+            sign_penalty = 1 if ptype_tr.signed != default_tr.signed else 0
+            return 1 + width_gap + sign_penalty
+        if is_big_int_type(ptype):
+            return 8
+    if is_big_int_type(default_int_type):
+        if is_fixed_int_type(ptype):
+            return 2
+    return 1
+
+
+class CoercionFit(NamedTuple):
+    """A candidate's coercion-pass match (`coercion_pass_rank`): its
+    container widening (`_container_fit`), how many arguments match without
+    a conversion, how far the call narrows a scalar (a BigInt into a
+    fixed-width slot, an integer literal away from the default width), and
+    whether it is a generic one's instantiation."""
+    widening: int
+    exact: int
+    narrowing: int
+    generic: bool
+
+    def rank(self) -> tuple[int, int, int, bool]:
+        """Lower is better: the least container widening, then the most
+        arguments matching without a conversion, the least narrowing, then
+        a concrete signature over a generic instantiation."""
+        return (self.widening, -self.exact, self.narrowing, self.generic)
+
+
+def coercion_pass_rank(
+    args: list[TpyType], params: list[TpyType],
+    protocol_checker: ProtocolChecker | None,
+    deref_checker: DerefChecker | None,
+    subclass_checker: SubclassChecker | None,
+    type_ops: 'TypeOperations | None',
+    default_int_type: TpyType | None,
+    declared: FunctionInfo | None = None,
+    generic: bool = False,
+) -> CoercionFit | None:
+    """A candidate's fit in the coercion pass, or None when an argument
+    does not convert to its parameter. `declared`: the candidate, asked
+    which parameters the call resolves (`call_resolves_param`), so a view
+    there decides; `generic`: it is a generic one's instantiation."""
+    meets = [(_undecided_container_arm(
+                  a, p, type_ops,
+                  declared is not None and call_resolves_param(declared, i))
+              if _undecided_container(a) else None)
+             for i, (a, p) in enumerate(zip(args, params))]
+    widening = _container_fit(meets, default_int_type, type_ops)
+    if widening is None:
+        return None
+    if not all(type_matches_with_coercion(a, p, protocol_checker, deref_checker,
+                                          subclass_checker)
+               for a, p, meet in zip(args, params, meets)
+               if meet is None or is_protocol_type(
+                   unwrap_ref_type(unwrap_readonly(p)))):
+        return None
+    exact = sum(1 for a, p in zip(args, params) if type_matches_numeric(a, p))
+    default = default_int_type if default_int_type is not None else BIGINT
+    narrowing = sum(1 for a, p in zip(args, params)
+                    if is_big_int_type(a) and is_fixed_int_type(unwrap_ref_type(p)))
+    narrowing += sum(_int_literal_penalty(a, p, default)
+                     for a, p in zip(args, params))
+    return CoercionFit(widening, exact, narrowing, generic)
+
+
 def _expand_arg_types_with_kwargs(
     arg_types: list[TpyType],
     kwarg_types: dict[str, TpyType],
@@ -623,6 +839,19 @@ def _expand_arg_types_with_kwargs(
     return result
 
 
+class OverloadFit(NamedTuple):
+    """A candidate's strict-pass match (`_classify_overload`): its
+    container widening (`_container_fit`) and its per-argument tiers."""
+    widening: int
+    per_arg: tuple[tuple[MatchTier, int], ...]
+
+    def rank(self) -> tuple[int, tuple[int, ...], int]:
+        """Lower is better: the container widening first -- an overload
+        never widens a container another applicable one takes as it is --
+        then the tiers and the cost (`_score`)."""
+        return (self.widening, *_score(self.per_arg))
+
+
 def _classify_overload(
     overload: FunctionInfo,
     arg_types: list[TpyType],
@@ -632,9 +861,10 @@ def _classify_overload(
     type_ops: 'TypeOperations | None',
     kwarg_types: dict[str, TpyType] | None = None,
     joined_out: 'IdentityMap[FunctionInfo, dict[str, TpyType]] | None' = None,
-) -> tuple[tuple[MatchTier, int], ...] | None:
-    """Classify every arg against ``overload``'s params, returning a
-    per-arg tier vector on match or ``None`` if any arg rejects. A generic
+) -> OverloadFit | None:
+    """Classify every arg against ``overload``'s params, returning its
+    container widening and per-arg tier vector on match or ``None`` if any
+    arg rejects (or the container arguments do not fit it together). A generic
     overload refused for a joined fixed-int binding leaves its bindings in
     ``joined_out`` for the second pass.
 
@@ -668,17 +898,36 @@ def _classify_overload(
         if inferred is None or joined:
             return None
     per_arg: list[tuple[MatchTier, int]] = []
-    for arg_t, (_, ptype) in zip(arg_types, overload.params):
-        if has_tpr and contains_type_param(ptype):
+    meets: list[ContainerMeet | None] = []
+    for i, (arg_t, (_, ptype)) in enumerate(zip(arg_types, overload.params)):
+        resolved = ptype
+        if (has_tpr and _undecided_container(arg_t)
+                and contains_type_param(ptype)):
+            resolved = type_ops.substitute_types(ptype, inferred)
+        meet = (_undecided_container_arm(arg_t, resolved, type_ops,
+                                         call_resolves_param(overload, i))
+                if _undecided_container(arg_t) else None)
+        meets.append(meet)
+        if meet is not None and not is_protocol_type(
+                unwrap_ref_type(unwrap_readonly(resolved))):
+            if not meet.accepted:
+                return None
+            cell = (MatchTier.EXACT_CONCRETE if resolved is ptype
+                    else MatchTier.EXACT_GENERIC_SHAPE, 0)
+        elif has_tpr and contains_type_param(ptype):
             cell = _classify_generic_param_match(
                 ptype, arg_t, inferred, type_ops, classifier, default_int_type,
             )
         else:
-            cell = _classify_strict_match(arg_t, ptype, classifier, default_int_type)
+            cell = _classify_strict_match(arg_t, ptype, classifier, default_int_type,
+                                          type_ops)
         if cell is None:
             return None
         per_arg.append(cell)
-    return tuple(per_arg)
+    widening = _container_fit(meets, default_int_type, type_ops)
+    if widening is None:
+        return None
+    return OverloadFit(widening, tuple(per_arg))
 
 
 def resolve_overload(
@@ -738,7 +987,7 @@ def resolve_overload(
 
     first_generic_match_fallback: FunctionInfo | None = None
     joined_bindings: IdentityMap[FunctionInfo, dict[str, TpyType]] = IdentityMap()
-    scored_candidates: list[tuple[tuple[tuple[int, ...], int], FunctionInfo]] = []
+    scored_candidates: list[tuple[tuple[int, tuple[int, ...], int], FunctionInfo]] = []
     for overload in overloads:
         if type_ops is None and overload.is_generic() and any(
                 contains_type_param(p.type) for p in overload.params):
@@ -755,12 +1004,12 @@ def resolve_overload(
                             for arg_t, (_, ptype) in zip(arg_types, overload.params))):
                 first_generic_match_fallback = overload
             continue
-        per_arg = _classify_overload(
+        fit = _classify_overload(
             overload, arg_types, protocol_checker, classifier, default_int_type, type_ops,
             kwarg_types=kwarg_types, joined_out=joined_bindings,
         )
-        if per_arg is not None:
-            scored_candidates.append((_score(per_arg), overload))
+        if fit is not None:
+            scored_candidates.append((fit.rank(), overload))
 
     if scored_candidates:
         if len(scored_candidates) == 1:
@@ -789,7 +1038,7 @@ def resolve_overload(
 
     # Second pass: allow coercions, prefer overload with most non-coercion
     # matches and fewest narrowing conversions (BigInt->int32 is lossy).
-    candidates: list[tuple[int, int, FunctionInfo, list[TpyType], list[TpyType]]] = []
+    candidates: list[tuple[CoercionFit, FunctionInfo]] = []
     for overload in overloads:
         effective_args = arg_types
         if kwarg_types:
@@ -805,53 +1054,16 @@ def resolve_overload(
         if type_ops is not None and overload in joined_bindings:
             params = [p.type for p in type_ops.substitute_method_type_params(
                 overload, joined_bindings[overload]).params]
-        if all(type_matches_with_coercion(arg_t, ptype, protocol_checker, deref_checker, subclass_checker)
-               for arg_t, ptype in zip(effective_args, params)):
-            score = sum(1 for arg_t, ptype in zip(effective_args, params)
-                        if type_matches_numeric(arg_t, ptype))
-            narrowing = sum(1 for arg_t, ptype in zip(effective_args, params)
-                           if is_big_int_type(arg_t) and is_fixed_int_type(unwrap_ref_type(ptype)))
-            candidates.append((score, narrowing, overload, effective_args, params))
+        fit = coercion_pass_rank(effective_args, params, protocol_checker,
+                                 deref_checker, subclass_checker, type_ops,
+                                 default_int_type,
+                                 declared=overload,
+                                 generic=overload.is_generic())
+        if fit is not None:
+            candidates.append((fit, overload))
 
     if candidates:
-        if default_int_type is None:
-            default_int_type = BIGINT
-
-        def _int_literal_penalty(arg_t: TpyType, ptype: TpyType) -> int:
-            if not isinstance(arg_t, IntLiteralType):
-                return 0
-            ptype = unwrap_ref_type(ptype)
-            # Prefer the configured default integer type for integer literals.
-            if ptype == default_int_type:
-                return 0
-            default_tr = int_traits_of(default_int_type)
-            if default_tr is not None:
-                ptype_tr = int_traits_of(ptype)
-                if ptype_tr is not None:
-                    # Keep preference stable around configured width/signedness.
-                    width_gap = abs(ptype_tr.bits - default_tr.bits) // 8
-                    sign_penalty = 1 if ptype_tr.signed != default_tr.signed else 0
-                    return 1 + width_gap + sign_penalty
-                if is_big_int_type(ptype):
-                    return 8
-            if is_big_int_type(default_int_type):
-                if is_fixed_int_type(ptype):
-                    return 2
-            return 1
-
-        # Apply literal penalty to break ties deterministically.
-        # Covers both same-return (e.g. range(IntLiteral) over many fixed-int
-        # overloads) and different-return cases (IntLiteral->FixedInt narrowing).
-        if len(candidates) > 1:
-            for i, (score, narrowing, overload, effective_args, params) in enumerate(candidates):
-                extra = sum(
-                    _int_literal_penalty(arg_t, ptype)
-                    for arg_t, ptype in zip(effective_args, params)
-                )
-                candidates[i] = (score, narrowing + extra, overload, effective_args, params)
-        # Best: most numeric matches, then fewest narrowing conversions, then
-        # a concrete signature over a generic instantiation of the same score.
-        candidates.sort(key=lambda x: (-x[0], x[1], x[2].is_generic()))
-        return candidates[0][2]
+        candidates.sort(key=lambda c: c[0].rank())
+        return candidates[0][1]
 
     return None

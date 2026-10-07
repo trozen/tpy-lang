@@ -47,7 +47,7 @@ void main() {
     t.total = ::tpy::add_check<int32_t>(t.total, 100);
     t.tags.push_back("late");
     std::cout << "record:" << " " << t.total << " " << ::tpy::str_join(" ", t.tags) << "\n" << ::tpy::check_signals;
-    int32_t s = ::tpystd::tpy::thread::spawn<int32_t, Summer>(Summer({1, 2, 3})).join();
+    int32_t s = ::tpystd::tpy::thread::spawn<int32_t, Summer>(Summer(std::vector<int32_t>{1, 2, 3})).join();
     std::cout << "value:" << " " << s << "\n" << ::tpy::check_signals;
     std::array<::tpystd::tpy::thread::JoinHandle<std::vector<std::string>>, 3> hs = ::tpy::array_from_index<::tpystd::tpy::thread::JoinHandle<std::vector<std::string>>, 3>([&](std::size_t __i_0) -> ::tpystd::tpy::thread::JoinHandle<std::vector<std::string>> {
         int32_t t = int32_t(__i_0);

@@ -66,7 +66,7 @@ int64_t take_arr(std::array<int64_t, 3>& o) {
 //     o.append([9])
 //     return o[0][0]
 int64_t take_nested(std::vector<std::vector<int64_t>>& o) {
-    o.push_back({9});
+    o.push_back(std::vector<int64_t>{9});
     return ::tpy::__getitem__(::tpy::__getitem__(o, 0), 0);
 }
 

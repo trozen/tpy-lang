@@ -4491,7 +4491,7 @@ void main() {
             std::cout << "range_bound" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "generic_method" << " " << Bag<int32_t>({1, 2, 3}).count() << " " << Bag<std::string>({"a"}).count() << "\n" << ::tpy::check_signals;
+    std::cout << "generic_method" << " " << Bag<int32_t>(std::vector<int32_t>{1, 2, 3}).count() << " " << Bag<std::string>(std::vector<std::string>{"a"}).count() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::narrowed_for_head(xs, 2);
     std::cout << "narrowed_loop_closure" << " " << ::tpyapp::main::narrowed_loop_closure(xs, 2) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::narrowed_kept(xs, 2);

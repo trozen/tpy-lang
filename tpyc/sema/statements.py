@@ -2982,31 +2982,31 @@ class StatementAnalyzer:
                 # winning overload like the expression construction path;
                 # the single-init arity check below would only ever see the
                 # first stub's signature.
-                arg_types = [self.expr.analyze_expr(a) for a in stmt.args]
-                try:
-                    winner = resolve_overload(
-                        init_overloads, arg_types,
-                        protocol_checker=self.protocols.type_conforms_to_protocol,
-                        default_int_type=self.ctx.default_int_type,
-                        subclass_checker=self.ctx.registry.is_subclass_of,
-                        protocol_classifier=self.protocols.classify_protocol_conformance,
-                        type_ops=self.type_ops,
-                    )
-                except OverloadAmbiguityError as e:
-                    raise self.ctx.error(str(e), stmt)
-                if winner is None:
-                    types_str = ", ".join(str(t) for t in arg_types)
-                    raise self.ctx.error(
-                        f"No matching overload for '{stmt.exception_type}"
-                        f"({types_str})'", stmt)
-                for i, (arg, arg_type, (pname, ptype)) in enumerate(
-                        zip(stmt.args, arg_types, winner.params)):
-                    arg_type = self.expr.calls._restore_readonly_arg(arg, arg_type)
-                    self.expr.calls.check_own_param(arg, arg_type, pname, ptype)
-                    self.expr.calls.mark_pending_arg_context(arg, arg_type, ptype)
-                    stmt.args[i] = self.compat.coerce_expr(
-                        arg, arg_type, ptype, f"argument '{pname}'",
-                        coercion_ctx=CoercionContext.ARG)
+                with self.expr.calls.open_call_args(
+                        stmt, list(stmt.args), stmt.exception_type,
+                        scored=True) as scope:
+                    arg_types = [self.expr.analyze_expr(a) for a in stmt.args]
+                    try:
+                        winner = resolve_overload(
+                            init_overloads, arg_types,
+                            protocol_checker=self.protocols.type_conforms_to_protocol,
+                            default_int_type=self.ctx.default_int_type,
+                            subclass_checker=self.ctx.registry.is_subclass_of,
+                            protocol_classifier=self.protocols.classify_protocol_conformance,
+                            type_ops=self.type_ops,
+                        )
+                    except OverloadAmbiguityError as e:
+                        sigs = ", ".join(self.compat.call_signature_text(c)
+                                         for c in e.candidates)
+                        raise self.ctx.error(f"Ambiguous overload: {sigs}", stmt)
+                    if winner is None:
+                        types_str = ", ".join(self.compat.call_type_text(t)
+                                              for t in arg_types)
+                        raise self.ctx.error(
+                            f"No matching overload for '{stmt.exception_type}"
+                            f"({types_str})'", stmt)
+                    self.expr.calls.receive_winner_args(
+                        scope, stmt.args, arg_types, winner.params, winner)
                 stmt.resolved_ctor_init = winner
             elif record.has_init:
                 min_args = sum(1 for _, _, d in record.init_params if d is None)

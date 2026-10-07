@@ -18,7 +18,7 @@ namespace tpyapp::main {
 //             n += 1
 //         print(n, total)              # 101 elements; 0 + 50*(1+2) = 150
 void main() {
-    ::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::RwLock<std::vector<int32_t>>> data = Arc<::tpystd::tpy::sync::RwLock<std::vector<int32_t>>>::new_<::tpystd::tpy::sync::RwLock<std::vector<int32_t>>>(::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_({0}));
+    ::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::RwLock<std::vector<int32_t>>> data = Arc<::tpystd::tpy::sync::RwLock<std::vector<int32_t>>>::new_<::tpystd::tpy::sync::RwLock<std::vector<int32_t>>>(::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_(std::vector<int32_t>{0}));
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h1 = ::tpystd::tpy::thread::spawn<std::monostate, Writer>(Writer(data.clone(), 1, 50));
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h2 = ::tpystd::tpy::thread::spawn<std::monostate, Writer>(Writer(data.clone(), 2, 50));
     h1.join();

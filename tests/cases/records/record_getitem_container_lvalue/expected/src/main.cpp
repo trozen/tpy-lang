@@ -116,12 +116,12 @@ void receivers() {
     x->push_back(20);
     std::cout << "rows:" << " " << ::tpy::ListPrinter(r[0]) << " " << ::tpy::ListPrinter(r[1]) << " " << ::tpy::__len__(r[0]) << "\n" << ::tpy::check_signals;
     Box<std::vector<int32_t>> b = Box<std::vector<int32_t>>();
-    b.add({1});
+    b.add(std::vector<int32_t>{1});
     std::vector<int32_t>& z = b[0];
     z.push_back(2);
     std::cout << "box:" << " " << ::tpy::ListPrinter(b[0]) << " " << ::tpy::__len__(b[0]) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<std::vector<int32_t>, 4> al = ::tpystd::tplib::array_list::ArrayList<std::vector<int32_t>, 4>();
-    al.append({3});
+    al.append(std::vector<int32_t>{3});
     ::tpy::__setitem__(al, 0, std::vector<int32_t>{5});
     std::cout << "arraylist setitem:" << " " << ::tpy::ListPrinter(al[0]) << "\n" << ::tpy::check_signals;
     std::vector<int32_t>& w = al[0];
@@ -214,7 +214,7 @@ void main() {
     Holder<int32_t> h = Holder<int32_t>();
     std::cout << "generic method:" << " " << h.first(4) << " " << ::tpy::ListPrinter(h.box[0]) << "\n" << ::tpy::check_signals;
     Box<std::vector<int32_t>> b = Box<std::vector<int32_t>>();
-    b.add({6, 7});
+    b.add(std::vector<int32_t>{6, 7});
     {
         auto __src_0 = ::tpyapp::main::walk(b);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);

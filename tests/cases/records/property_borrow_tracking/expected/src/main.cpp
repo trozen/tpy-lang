@@ -43,7 +43,7 @@ void test_iter_via_property() {
 void test_setter_invalidates_borrow() {
     Container c = Container();
     std::vector<int32_t>& v = c.items();
-    c.set_items({10, 11, 12});
+    c.set_items(std::vector<int32_t>{10, 11, 12});
     std::cout << ::tpy::ListPrinter(v) << "\n" << ::tpy::check_signals;
 }
 

@@ -29,7 +29,7 @@ namespace tpyapp::main {
 //     with rw.read() as r:
 //         print(len(r.get()))         # 2 -- WriteGuard copy is independent
 void main() {
-    ::tpystd::tpy::sync::Mutex<std::vector<int32_t>> m = ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_({1, 2});
+    ::tpystd::tpy::sync::Mutex<std::vector<int32_t>> m = ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_(std::vector<int32_t>{1, 2});
     std::vector<int32_t> live = {7, 8};
     auto __ctx_1 = m.lock();
     auto& g = __ctx_1.__enter__();
@@ -91,7 +91,7 @@ void main() {
     }
     __with_exit_4:
     __ctx_4.__exit__({}, nullptr, {});
-    ::tpystd::tpy::sync::RwLock<std::vector<int32_t>> rw = ::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_({1, 2});
+    ::tpystd::tpy::sync::RwLock<std::vector<int32_t>> rw = ::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_(std::vector<int32_t>{1, 2});
     std::vector<int32_t> shared = {7, 8};
     auto __ctx_5 = rw.write();
     auto& w = __ctx_5.__enter__();

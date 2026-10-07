@@ -248,7 +248,7 @@ void main() {
     std::vector<int32_t> xs = {1, 0};
     std::vector<std::string> names = {"", "a"};
     std::vector<std::vector<int32_t>> rows = std::vector<std::vector<int32_t>>{};
-    rows.push_back({1});
+    rows.push_back(std::vector<int32_t>{1});
     std::vector<int32_t> blank = std::vector<int32_t>{};
     rows.push_back(std::move(blank));
     std::cout << "scalar" << " " << ::tpyapp::main::scalar_shapes(h, xs, ::tpy::char_from_str("x")) << "\n" << ::tpy::check_signals;

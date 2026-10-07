@@ -74,7 +74,7 @@ void main() {
     std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{line.start.x, line.start.y}, std::tuple<int32_t, int32_t>{line.end.x, line.end.y}}) << "\n" << ::tpy::check_signals;
     NamedPoint np = NamedPoint("origin", Point(0, 0));
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", np.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", np.pos.x}, {"y", np.pos.y}})}}))) << "\n" << ::tpy::check_signals;
-    Polygon poly = Polygon({Point(0, 0), Point(1, 0), Point(0, 1)});
+    Polygon poly = Polygon(std::vector<Point>{Point(0, 0), Point(1, 0), Point(0, 1)});
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>({{"vertices", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_0 = poly.vertices;
@@ -87,7 +87,7 @@ void main() {
         }
         std::move(__result);
     })}})) << "\n" << ::tpy::check_signals;
-    Drawing d = Drawing("sketch", {Point(1, 2)});
+    Drawing d = Drawing("sketch", std::vector<Point>{Point(1, 2)});
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>({{"title", d.title}, {"shapes", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_1 = d.shapes;
@@ -117,7 +117,7 @@ void main() {
         }
         std::move(__result);
     })}})) << "\n" << ::tpy::check_signals;
-    MultiList ml = MultiList({Point(1, 2)}, {"a", "b"});
+    MultiList ml = MultiList(std::vector<Point>{Point(1, 2)}, std::vector<std::string>{"a", "b"});
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::ordered_map<std::string, int32_t>>, std::vector<std::string>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::ordered_map<std::string, int32_t>>, std::vector<std::string>>>({{"points", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_3 = ml.points;

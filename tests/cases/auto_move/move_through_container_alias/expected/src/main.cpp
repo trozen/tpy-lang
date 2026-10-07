@@ -60,7 +60,7 @@ void other_kinds() {
     b2.push_back(99);
     std::vector<std::vector<int32_t>> ns = {{9}};
     std::vector<std::vector<int32_t>> n2 = std::move(ns);
-    n2.push_back({1});
+    n2.push_back(std::vector<int32_t>{1});
     std::cout << "kinds" << " " << ::tpy::__len__(d2) << " " << ::tpy::__len__(s2) << " " << ::tpy::__len__(b2) << " " << ::tpy::__len__(n2) << "\n" << ::tpy::check_signals;
 }
 

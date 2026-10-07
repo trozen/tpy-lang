@@ -1,0 +1,85 @@
+list: list[int64] 7
+list: 1099511627776
+dict: dict[str, int64] 9
+dict: 1099511627776
+set: set[int64] 3
+set: 4
+rows: list[list[int64]] 3
+rows: 1099511627776
+tuples: list[tuple[int64, float]] 2
+tuples: 1099511627776
+empty local: list[float] 1.5
+empty local: [1.5, 2.5]
+empty dict local: dict[str, int64] 9
+empty dict local: 1099511627776
+empty set local: set[int64] 1
+empty set local: 2
+inline: list[int64]
+inline empty: list[float]
+written empty: 1 1 1 1
+written empty method: 1 1
+method literal: 3
+dict literal: dict[str, int64] 2 dict[str, int64] 2
+set literal: set[int64]
+literal rank: 32 64 64
+literal parts: 2 1
+literal view: 2.5 (2, 'b') 2.5
+own setdefault: 2
+keyword: list[int64] 7
+keyword: 1099511627776
+optional: list[int64] | None 7
+optional: 1099511627776
+own: [1, 2, 7]
+own local: [1, 2, 7]
+own pick: [1, 2, 3]
+own zero: [0, 7]
+words: list[str] c
+span: Span[int64] [1099511627776, 2]
+array: Array[int64, 2] [1, 1099511627776]
+rank default: 32 [1, 2, 7]
+rank wide: 64 7
+floor a: int64 7
+typed scalar: 64 1099511627776
+two locals: 64 7 8
+generic: 1099511627776 1099511627776
+view vs concrete: Iterable [1, 2]
+view vs concrete, int: Iterable [1, 2]
+joint views: views 3 3
+joint wide: both int64 [1, 2, 7]
+joint rows: both int64 [[1], [2, 7]]
+linked: both int64 [1, 2, 1, 2] 4
+two names: lists [1, 1]
+one name twice: lists [1, 1, 1]
+one way: both int64 [1, 2] [2, 8]
+from view big: iterbig [1, 2]
+view first32: iter32 [1, 2]
+view first64: iter64 [1, 2]
+twin generic first: declared [1, 2]
+twin declared first: declared [1, 2]
+generic declared view: list64 [1, 2]
+plain declared view: plain-view [1, 2] 1099511627776
+regime c rank: iter32 [1, 2]
+generic keyword: 1099511627776 1099511627776
+nested call: list[int64] [1, 2, 7]
+nested call hoisted: list[int64] [1, 2, 7]
+nested builtin: list[int64] [1, 2, 7]
+lose array: list[int32] 3
+lose span: list[int32] [1, 2, 0]
+regime c: 2 7
+regime c: 1099511627776
+builtin: 6
+method group: list[int64] 8
+method group: 1099511627776
+method keyword: list[int64] 8
+method keyword: 1099511627776
+generic method: 1099511627776 1099511627776
+generic ctor: 1 1099511627776
+operator: 2
+operator: 1099511627776
+method: list[int64] 7
+generator: list[int64]
+generator: 1099511627776
+async: list[int64] 1099511627776
+try: list[int64]
+try: 1099511627776
+module level: list[int32] [1, 2, 7]

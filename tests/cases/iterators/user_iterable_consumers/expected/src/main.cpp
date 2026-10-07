@@ -360,7 +360,7 @@ void main() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    std::cout << "self_source" << " " << ::tpy::ListPrinter(Letters({"h", "i"}).upper()) << " " << ::tpy::ListPrinter(Letters({"o", "k"}).listed()) << "\n" << ::tpy::check_signals;
+    std::cout << "self_source" << " " << ::tpy::ListPrinter(Letters(std::vector<std::string>{"h", "i"}).upper()) << " " << ::tpy::ListPrinter(Letters(std::vector<std::string>{"o", "k"}).listed()) << "\n" << ::tpy::check_signals;
     std::cout << "readonly" << " " << ::tpy::ListPrinter(::tpyapp::main::ro_comp(b)) << "\n" << ::tpy::check_signals;
     {
         auto __src_14 = ::tpyapp::main::gen_body(b);
@@ -398,7 +398,7 @@ void main() {
         });
     };
     std::cout << "closure" << " " << ::tpy::ListPrinter(closure()) << "\n" << ::tpy::check_signals;
-    Box<int32_t> bx = Box<int32_t>({1, 2});
+    Box<int32_t> bx = Box<int32_t>(std::vector<int32_t>{1, 2});
     std::cout << "generic" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto&& __obj_19 = ::tpy::iter_range(bx);
