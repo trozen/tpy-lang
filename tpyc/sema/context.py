@@ -488,6 +488,18 @@ def holds_no_pointer(t: TpyType) -> bool:
     return is_bufferless_scalar(t) or is_str_type(t) or is_bytes_type(t)
 
 
+def readonly_reaches(t: TpyType) -> bool:
+    """Whether a readonly source projects `readonly` onto a member of this
+    type: a reference type, or a tuple / Optional holding one -- the tuple
+    is a value type, but its record element is the object the source
+    refers to. A `Ptr` or a view stops the projection (its pointee's
+    const-ness is its own type's business), as does any other value."""
+    t = unwrap_readonly(unwrap_ref_type(t))
+    if isinstance(t, (TupleType, OptionalType)):
+        return any(readonly_reaches(m) for m in t.inner_types())
+    return not t.is_value_type()
+
+
 def value_may_point(t: TpyType) -> bool:
     """A value of this declared type (a field, a moved `self` field, a type
     argument) may be or hold a pointer into other storage: a value type

@@ -980,8 +980,20 @@ def _storage_value(lowered: THIRExpr, member_t: TpyType, slot_t: TpyType,
     # copies the active member), so the node's move flag stays a real-move
     # claim.
     union = _eligible_ptr_union(member_t, analyzer) is not None
-    return THIRFormConvert(result_type=member_t, value=lowered,
-                           form=Form.STORAGE, move=mv and not union,
+    value = lowered
+    pointee_move = mv and not union
+    if mv and _borrow_tuple(lowered):
+        # A borrow-form tuple owns only its INLINE elements; its pointer
+        # elements borrow objects the source does not own (a mixed local's
+        # or param's borrowed half). A consuming store therefore moves the
+        # tuple VALUE -- the inline elements move through the rvalue, the
+        # pointees copy -- and never the pointee-moving lift, which would
+        # move the caller's object out from behind the borrow.
+        value = THIRMove(value=lowered, result_type=lowered.result_type,
+                         form=lowered.form, loc=loc)
+        pointee_move = False
+    return THIRFormConvert(result_type=member_t, value=value,
+                           form=Form.STORAGE, move=pointee_move,
                            materialize=_object_source_materialize(
                                lowered, analyzer),
                            loc=loc)

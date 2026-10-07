@@ -306,7 +306,7 @@ from .predicates import (
     _generic_value_tuple_return,
     _own_opt_storage_binding,
     _comp_shadow_pointers,
-    _borrow_tuple_param_elem_subscript,
+    _tuple_name_elem_subscript,
     _container_del_recv,
     _slot_free_ptr_reseat_ok,
     _module_var_recv,
@@ -2922,21 +2922,6 @@ def _tuple_unpack_source(
         return None
     return src_t
 
-def _borrow_form_tuple_param(name: str, lc: '_LowerCtx') -> bool:
-    """A function parameter whose C++ binding is already a borrow-form
-    (pointer-repr) tuple: `tuple[T, ...]` with a reference-type element passes
-    as `const std::tuple<T*, ...>&`. Its standalone `a, b = p` unpack binds the
-    source by ref directly (`auto& __tup = p`), no `tuple_to_pointer` lift --
-    the `not is_storage_form_source` name arm. A value-tuple storage LOCAL
-    (which needs the lift) rides the `storage_tuple_locals` arm; a global or
-    borrow-form-local source rejects (`is_storage_form_source` claims
-    globals, and borrow-form locals are not tracked here)."""
-    pt = next((t for n, t in lc.params if n == name), None)
-    if pt is None:
-        return False
-    tu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
-    return isinstance(tu, TupleType) and tu.has_pointer_repr_element()
-
 def _iteration_yields_const(it: TpyExpr, lc: '_LowerCtx', analyzer) -> bool:
     """Whether iterating `it` binds the loop var const (element pointers spell
     `const T*`) -- the SUBSET of codegen's `is_const_storage_source` this gate
@@ -3679,6 +3664,18 @@ def _reject_value_elem_at_borrow_tuple(name: str, lit: TpyTupleLiteral,
         elem = lit.elements[i]
         emit_prims.reject_value_element_in_rebound_tuple(
             name, i, et, getattr(elem, "loc", None) or lit.loc)
+
+
+def _note_inline_elements(name: str, lit: TpyTupleLiteral, slot: 'TupleType',
+                          lc: '_LowerCtx') -> None:
+    """A borrow-form tuple local whose literal holds a record element
+    INLINE (`t = (Box(1), b)` -> `std::tuple<Box, Box*>`): sema's capture
+    says which elements, and the element reads ask `inline_tuple_elems`,
+    not the type, whether `std::get` yields a pointer."""
+    inline = tuple(c is TupleElemCapture.VALUE and not storage_leaf(et)
+                   for c, et in zip(lit.elem_capture, slot.element_types))
+    if len(inline) == len(slot.element_types) and any(inline):
+        lc.inline_tuple_elems[name] = inline
 
 
 def _borrow_tuple_source_ok(src: TpyExpr, lc: '_LowerCtx') -> bool:
@@ -4613,11 +4610,13 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         if isinstance(stmt.init, TpySubscript):
             src = _lower_expr(stmt.init, lc, declared, subscript_prechecked=True)
             if (isinstance(src, THIRSubscript)
-                    and _borrow_tuple_param_elem_subscript(
-                        stmt.init, lc.prescan, lc.analyzer)):
-                # A borrow-form tuple PARAM element: std::get yields the
+                    and _tuple_name_elem_subscript(stmt.init, declared,
+                                                   lc.analyzer)
+                    and _subscript_yields_borrow_ptr(stmt.init, lc)):
+                # A borrow-form tuple name's element: std::get yields the
                 # element `T*`, so the `T&` alias binds its referent --
-                # the deref-flagged render (`(*std::get<1>(p))`).
+                # the deref-flagged render (`(*std::get<1>(p))`). A
+                # storage-form name's element is the lvalue itself.
                 src = replace(src, deref=True)
                 _witness("decl.btuple_elem_alias")
         elif isinstance(stmt.init, (TpyBinOp, TpyUnaryOp, TpyIfExpr)):
@@ -9960,17 +9959,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     move_through=lc.prescan.move_through,
                     storage_tuple_locals=lc.storage_tuple_locals)
                     and _storage_tuple_alias_src_ok(
-                        stmt.init, lc, declared, analyzer)
+                        stmt.init, declared, analyzer)
                     and _f1_tuple(
                         analyzer.get_expr_type(stmt.init), analyzer) is not None):
                 lc.storage_tuple_locals.add(stmt.name)
                 # The alias aliases its source's const-ness (`auto&&` deduces it): a
                 # const-receiver source makes reads lift to `const T*`. Tracked in
                 # `const_locals` so the borrow read at a return picks the const helper.
-                # The FIELD source and a subscript off a FIELD receiver derive it
-                # here; the plain-name-receiver / bare-name shapes are admitted
-                # non-const only (see `_storage_tuple_alias_src_ok`), so they never
-                # add a member and leave the const topology untouched.
                 if isinstance(stmt.init, TpyFieldAccess):
                     src_recv = stmt.init.obj  # TpyName (FieldAccess receiver)
                     if (src_recv.name in lc.const_locals
@@ -9979,17 +9974,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         lc.const_locals.add(stmt.name)
                     src = _lower_field_source(stmt.init, lc, declared)
                 elif isinstance(stmt.init, TpySubscript):
-                    field_recv = isinstance(stmt.init.obj, TpyFieldAccess)
-                    if field_recv and _btuple_const_storage(stmt.init, lc):
+                    if _btuple_const_storage(stmt.init, lc):
                         lc.const_storage_tuple_locals.add(stmt.name)
                     src = _lower_expr(stmt.init, lc, declared,
                                       subscript_prechecked=True)
-                    if field_recv:
+                    if isinstance(stmt.init.obj, TpyFieldAccess):
                         _witness("decl.storage_tuple_alias_field_subscript")
                 else:
                     # A bare alias-of-an-alias (`u = t`): the name renders as the
                     # storage-form name it already is, so `auto&&` re-binds the same
                     # storage. Never moved -- an alias source is single-assignment.
+                    if _btuple_const_storage(stmt.init, lc):
+                        lc.const_storage_tuple_locals.add(stmt.name)
                     src = _lower_expr(stmt.init, lc, declared)
                 declared[stmt.name] = vtype
                 tuple_alias = None
@@ -11756,12 +11752,36 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 if (isinstance(stmt.init, TpyName)
                         and stmt.init.name in lc.own_borrow_tuple_locals):
                     lc.own_borrow_tuple_locals.add(stmt.name)
+                # A name holding a record element INLINE is aliased, not
+                # copied -- the copy would duplicate the element where the
+                # scalar `u = t` aliases -- and the alias reads its layout;
+                # a ternary of such names aliases the same way when both
+                # arms hold the same elements inline. A single-assignment
+                # alias of a const name is const like it.
+                alias_cpp = "auto"
+                arm_names = ([stmt.init.name] if isinstance(stmt.init, TpyName)
+                             else [a.name for a in (stmt.init.then_expr,
+                                                    stmt.init.else_expr)
+                                   if isinstance(a, TpyName)]
+                             if isinstance(stmt.init, TpyIfExpr) else [])
+                inline = [lc.inline_tuple_elems.get(n) for n in arm_names]
+                if any(f is not None for f in inline):
+                    if (len(arm_names) < (2 if isinstance(stmt.init, TpyIfExpr)
+                                          else 1)
+                            or any(f != inline[0] for f in inline)):
+                        note_detail("decl.btuple_alias_inline_arms")
+                        raise ThirUnsupported(stmt_reject_reason(stmt))
+                    lc.inline_tuple_elems[stmt.name] = inline[0]
+                    alias_cpp = "auto&"
+                if arm_names and all(_const_borrow_name(n, lc, const_locals=True)
+                                     for n in arm_names):
+                    lc.const_locals.add(stmt.name)
                 lc.ensure_borrow_tuple_const()
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=src_bt, init=init,
                     tuple_layout=tuple_layout(src_bt, analyzer, borrow=True,
                                               readonly=stmt.name in lc.const_borrow_tuple_locals),
-                    cpp_type="auto", form=Form.BORROW, loc=loc)
+                    cpp_type=alias_cpp, form=Form.BORROW, loc=loc)
         # A REASSIGNED ptr-repr tuple's first decl has one fixed C++ shape
         # across all its bindings: BORROW form (`std::tuple<..., T*>`),
         # const per the whole-body fixpoint (`ensure_borrow_tuple_const`).
@@ -11881,6 +11901,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         f"decl.tuple_literal_shape:{ex.reason}")) from None
                 declared[stmt.name] = slot_bt
                 _witness("btuple.decl")
+                _note_inline_elements(stmt.name, stmt.init, slot_bt, lc)
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=slot_bt, init=binit,
                     tuple_layout=binit.tuple_layout,
@@ -16306,10 +16327,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # bare name missed every const family outside the param
                 # indices (const loop var, `*args` pack, `@readonly` self,
                 # readonly pointee).
-                const_src = (_const_borrow_name(stmt.value.name, lc,
-                                                const_locals=True)
-                             if isinstance(stmt.value, TpyName)
-                             else lvalue_src_const)
+                # A readonly-typed target is sema's own verdict for the same
+                # element (a readonly tuple's reference element unpacks
+                # readonly), spelled const whatever the source name says.
+                const_src = (isinstance(unwrap_ref_type(unwrap_send_sync(
+                    stmt.target_types[i])), ReadonlyType)
+                             or (_const_borrow_name(stmt.value.name, lc,
+                                                    const_locals=True)
+                                 if isinstance(stmt.value, TpyName)
+                                 else lvalue_src_const))
                 inner_cpp = lc.render_type(unwrap_readonly(tt.inner))
                 target_cpps.append(f"const {inner_cpp}*" if const_src
                                    else f"{inner_cpp}*")
@@ -16383,10 +16409,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     note_detail("tuple_unpack.ref_source_form")
                     raise ThirUnsupported("stmt.tuple_unpack")
             elif (isinstance(stmt.value, TpyName)
-                  and (_borrow_form_tuple_param(stmt.value.name, lc)
-                       # A local holding the mixed render is the same
-                       # borrow form a mixed param is.
-                       or stmt.value.name in lc.own_borrow_tuple_locals)):
+                  # A borrow-form tuple NAME -- a param, a literal- or
+                  # alias-bound local, a local holding the mixed render --
+                  # is already the pointer tuple the targets read.
+                  and _borrow_tuple_local_type(
+                      stmt.value.name, declared,
+                      lc.storage_tuple_locals) is not None):
                 ref_name_source = True
                 _witness("stmt.tuple_unpack.ref_param_source")
             elif (isinstance(stmt.value, TpyName)

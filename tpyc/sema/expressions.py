@@ -66,7 +66,7 @@ from ..prescan import (
     int_constant_too_wide, storage_spelling, walrus_names_of)
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
-from .context import PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
+from .context import PENDING_CONTAINER_TYPES, readonly_reaches, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
 from ..value_category import (frame_factory_callee, is_rvalue_source, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
@@ -3223,7 +3223,7 @@ class ExpressionAnalyzer:
 
         # Readonly self propagates into non-value reads so writes through
         # the result are rejected and references come back const.
-        if current_fn.is_readonly and not field_type.is_value_type():
+        if current_fn.is_readonly and readonly_reaches(field_type):
             if isinstance(field_type, PtrType) and not field_type.is_readonly:
                 field_type = field_type.as_const()
             elif is_span(field_type) and not is_readonly_span(field_type):
@@ -3418,7 +3418,7 @@ class ExpressionAnalyzer:
                         result = result.as_const()
                     elif is_span(result) and not is_readonly_span(result):
                         result = span_as_const(result)
-                    elif not result.is_value_type():
+                    elif readonly_reaches(result):
                         result = ReadonlyType(unwrap_readonly(result))
                 # A consuming method (self: Own[Self]) moves a field out only
                 # where its return value may (see consuming_return_fields);
@@ -5674,8 +5674,11 @@ class ExpressionAnalyzer:
         if isinstance(actual_for_tuple, TupleType):
             elem = self._analyze_tuple_subscript(expr, actual_for_tuple)
             # Without projecting readonly onto the element, a write through
-            # `t[i]` of a readonly tuple is silently accepted.
-            if isinstance(inner_obj_type, ReadonlyType) and not elem.is_value_type():
+            # `t[i]` of a readonly tuple is silently accepted. A nested tuple
+            # holding a reference carries it on: `t[0][1].n = v` writes the
+            # object the readonly tuple refers to.
+            if (isinstance(inner_obj_type, ReadonlyType)
+                    and readonly_reaches(elem)):
                 elem = ReadonlyType(unwrap_readonly(elem))
             return elem
 
@@ -5745,14 +5748,14 @@ class ExpressionAnalyzer:
                 self.check_dict_key(expr, actual_obj.key_type,
                                     lookup_index_type)
             v_type = actual_obj.value_type
-            if readonly_dict and not v_type.is_value_type():
+            if readonly_dict and readonly_reaches(v_type):
                 v_type = ReadonlyType(unwrap_readonly(v_type))
             return make_ref(v_type)
         if is_dict(actual_obj):
             k_type = actual_obj.type_args[0]
             v_type = actual_obj.type_args[1]
             self.check_dict_key(expr, k_type, lookup_index_type)
-            if readonly_dict and not v_type.is_value_type():
+            if readonly_dict and readonly_reaches(v_type):
                 v_type = ReadonlyType(unwrap_readonly(v_type))
             return make_ref(v_type)
 
@@ -5786,7 +5789,7 @@ class ExpressionAnalyzer:
                     key_t, ret_t = kr
                     if self.compat.is_type_compatible(unwrap_readonly(index_type), unwrap_readonly(key_t)):
                         self._tag_record_getitem(expr, bare_obj, ret_t, index_type)
-                        if ro_obj and not ret_t.is_value_type():
+                        if ro_obj and readonly_reaches(ret_t):
                             ret_t = _readonly_result(ret_t)
                         return make_ref(ret_t)
 
@@ -5819,7 +5822,11 @@ class ExpressionAnalyzer:
                     info.needs_indexing = True
                 elem_type = pending_elem_read(self.ctx, actual_type,
                                               elem_type, expr)
-            if is_readonly_obj and not elem_type.is_value_type():
+            # A tuple element holding a reference (`list[tuple[int32, Box]]`)
+            # is a value type that still reaches the object: readonly
+            # projects through it, so `xs[0][1].n = v` is refused like
+            # `xs[0].n = v` off a `readonly[list[Box]]`.
+            if is_readonly_obj and readonly_reaches(elem_type):
                 elem_type = ReadonlyType(unwrap_readonly(elem_type))
             return make_ref(elem_type)
 
@@ -5833,7 +5840,7 @@ class ExpressionAnalyzer:
                     and not _protocol_getitem_is_readonly(actual_type)):
                 credit_implicit_receiver_call(
                     self.ctx, expr.obj, actual_type, None, "__getitem__", expr)
-            if is_readonly_obj and not ret.is_value_type():
+            if is_readonly_obj and readonly_reaches(ret):
                 ret = ReadonlyType(unwrap_readonly(ret))
             return make_ref(ret)
 
@@ -5843,7 +5850,7 @@ class ExpressionAnalyzer:
             if ret is None:
                 raise self.ctx.error(f"Cannot index type {actual_type}: no __getitem__ method", expr)
             self._tag_record_getitem(expr, actual_type, ret, index_type)
-            if is_readonly_obj and not ret.is_value_type():
+            if is_readonly_obj and readonly_reaches(ret):
                 ret = _readonly_result(ret)
             return make_ref(ret)
 

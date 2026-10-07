@@ -1,0 +1,16 @@
+literal_local 111
+literal_mixed 222 220
+literal_mixed_optional 39
+const_alias 0
+literal_mixed_ternary 9
+shadowed_in_comprehension 8
+param_alias 7
+nested_shadow 11
+readonly_optional_unpack 5
+call_local 12
+mixed_local 1 55
+elem_of_param_list 6
+field_alias 7
+loop_var 1006
+readonly_elems 3021
+own_param 6

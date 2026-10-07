@@ -104,7 +104,7 @@ void readonly_loop(const std::vector<Holder>& hs) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& h = *__beg_0;
+        const auto& h = *__beg_0;
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(h.pair);
         int32_t a = std::get<0>(__tup_1);
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
@@ -257,7 +257,7 @@ void ptr_ro_loop(const Grid* p) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& h = *__beg_0;
+        const auto& h = *__beg_0;
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(h.pair);
         int32_t a = std::get<0>(__tup_1);
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
@@ -277,7 +277,7 @@ void ro_field_loop(const Grid& g) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& h = *__beg_0;
+        const auto& h = *__beg_0;
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(h.pair);
         int32_t a = std::get<0>(__tup_1);
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
