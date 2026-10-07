@@ -356,7 +356,14 @@ Allowed:
 
 3. **Container-mediated aliases** -- resolved by type-embedded refactor.
    ReadonlyType propagates through subscript (`readonly[list[T]][i]` ->
-   `readonly[T]`), field access chains, and iteration. List literals with
+   `readonly[T]`), field access chains, and iteration. It projects onto an
+   element that is not a value type, and onto a tuple or Optional that
+   HOLDS one (`sema/context.py readonly_reaches`, the one predicate every
+   projection site asks; a `Ptr` or a view stops it), so `xs[0][1].n = v` off a
+   `readonly[list[tuple[int32, Box]]]` and a write through an unpack target
+   of a readonly tuple are refused like the record element's write; a
+   tuple of plain values (`tuple[int32, str]`) is copied and takes no
+   readonly. List literals with
    readonly elements infer `PendingList[readonly[T]]` which rejects assignment
    to `list[T]`. Passing `readonly[list[T]]` to `list[T]` param is caught by
    type compatibility. No taint-tracking needed for these cases.

@@ -73,7 +73,7 @@ from ..liveness import (analyze_last_uses, closure_pinned_names,
                         stmts_terminate, tuple_literal_leaves,
                         while_head_always_true)
 from ..parse.nodes import SourceLocation, VarLinkage, op_spelling
-from .context import (OwnSlot, PendingLocal, addr_taken_roots, call_borrow_operands,
+from .context import (OwnSlot, readonly_reaches, PendingLocal, addr_taken_roots, call_borrow_operands,
                       proven_lend_roots,
                       canonical_storage_key,
                       expr_yields_non_null_ptr, LoopClauseEdges,
@@ -6166,7 +6166,7 @@ class StatementAnalyzer:
                                                          coercion_ctx=CoercionContext.INIT)
                 var_type = stmt.type
                 # Inherit ReadonlyType from init expression
-                if isinstance(init_type, ReadonlyType) and not var_type.is_value_type():
+                if isinstance(init_type, ReadonlyType) and readonly_reaches(var_type):
                     var_type = ReadonlyType(var_type)
                 self.deduction.set_authoritative_annotation(
                     stmt.name,
@@ -6770,6 +6770,11 @@ class StatementAnalyzer:
         with self.pend.list_sink(None if stmt.is_loop_head else stmt.value):
             rhs_type = self.expr.analyze_expr(stmt.value)
         rhs_check = rhs_type.wrapped if isinstance(rhs_type, OwnType) else rhs_type
+        # A readonly tuple (a `readonly[list[tuple[..]]]` element, a readonly
+        # param) unpacks like the bare one; its reference elements stay
+        # readonly in their targets.
+        rhs_readonly = isinstance(rhs_check, ReadonlyType)
+        rhs_check = unwrap_readonly(rhs_check)
 
         if not isinstance(rhs_check, TupleType):
             raise self.ctx.error(
@@ -6826,6 +6831,8 @@ class StatementAnalyzer:
             stmt.is_owned.append(owned)
             if isinstance(elem_type, OwnType):
                 elem_type = elem_type.wrapped
+            if rhs_readonly and readonly_reaches(elem_type):
+                elem_type = ReadonlyType(unwrap_readonly(elem_type))
             is_ref = (not owned and not elem_type.is_value_type()
                       and not isinstance(elem_type, TypeParamRef))
             stmt.is_ref.append(is_ref)
@@ -7561,7 +7568,7 @@ class StatementAnalyzer:
                     stmt.target.name, inner_target, inner_value, init_expr=stmt.value
                 )
                 # Readonly status flows from the value expression
-                if isinstance(value_type, ReadonlyType) and not target_type.is_value_type():
+                if isinstance(value_type, ReadonlyType) and readonly_reaches(target_type):
                     target_type = ReadonlyType(target_type)
             self.ctx.func.current_scope.define(stmt.target.name, target_type)
             # Reassignment revives a consumed variable

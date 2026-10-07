@@ -206,7 +206,7 @@
  "bytes__collection__T_unpack": [
   "ok",
   "",
-  "std::vector<std::tuple<::tpy::Bytes, int32_t>> probe_xs = std::vector<std::tuple<::tpy::Bytes, int32_t>>{} | probe_xs.push_back(std::tuple<::tpy::Bytes, int32_t>{::tpy::Bytes(v), 1}) | auto __tup_1 = ::tpy::__getitem__(probe_xs, 0) | ::tpy::BytesView probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "std::vector<std::tuple<::tpy::Bytes, int32_t>> probe_xs = std::vector<std::tuple<::tpy::Bytes, int32_t>>{} | probe_xs.push_back(std::tuple<::tpy::Bytes, int32_t>{::tpy::Bytes(v), 1}) | auto __tup_1 = ::tpy::__getitem__(probe_xs, 0) | ::tpy::Bytes probe_x = std::move(std::get<0>(__tup_1)) | int32_t k = std::get<1>(__tup_1)",
   "same"
  ],
  "bytes__field__S": [
@@ -224,7 +224,7 @@
  "bytes__field__T_unpack": [
   "ok",
   "",
-  "std::tuple<::tpy::Bytes, int32_t> probe_f | inline H::H(::tpy::BytesView v) : probe_f(std::tuple<::tpy::Bytes, int32_t>{::tpy::Bytes(v), 1}) {} | auto __tup_1 = h.probe_f | ::tpy::BytesView probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "std::tuple<::tpy::Bytes, int32_t> probe_f | inline H::H(::tpy::BytesView v) : probe_f(std::tuple<::tpy::Bytes, int32_t>{::tpy::Bytes(v), 1}) {} | auto __tup_1 = h.probe_f | ::tpy::Bytes probe_x = std::move(std::get<0>(__tup_1)) | int32_t k = std::get<1>(__tup_1)",
   "same"
  ],
  "bytes__global__S": [
@@ -254,7 +254,7 @@
  "bytes__local__T_sub": [
   "ok",
   "",
-  "std::tuple<::tpy::Bytes, int32_t> probe_loc = std::tuple<::tpy::Bytes, int32_t>{::tpy::Bytes(v), 1} | ::tpy::Bytes probe_x = std::get<0>(probe_loc)",
+  "std::tuple<::tpy::Bytes, int32_t> probe_loc = std::tuple<::tpy::Bytes, int32_t>{::tpy::Bytes(v), 1} | ::tpy::BytesView probe_x = std::get<0>(probe_loc)",
   "same"
  ],
  "bytes__local__T_unpack": [
@@ -272,7 +272,7 @@
  "bytes__param__T_sub": [
   "ok",
   "",
-  "void probe_fn(const std::tuple<::tpy::Bytes, int32_t>& p) | ::tpy::Bytes probe_x = std::get<0>(p) | probe_fn(std::tuple<::tpy::Bytes, int32_t>{::tpy::Bytes(v), 1})",
+  "void probe_fn(const std::tuple<::tpy::Bytes, int32_t>& p) | ::tpy::BytesView probe_x = std::get<0>(p) | probe_fn(std::tuple<::tpy::Bytes, int32_t>{::tpy::Bytes(v), 1})",
   "same"
  ],
  "bytes__param__T_unpack": [
@@ -290,7 +290,7 @@
  "bytes__return__T_sub": [
   "ok",
   "",
-  "std::tuple<::tpy::Bytes, int32_t> probe_fn(::tpy::BytesView v) | std::tuple<::tpy::Bytes, int32_t> r = probe_fn(::tpy::bytes_literal(\"hello\", 5)) | ::tpy::Bytes probe_x = std::get<0>(r)",
+  "std::tuple<::tpy::Bytes, int32_t> probe_fn(::tpy::BytesView v) | std::tuple<::tpy::Bytes, int32_t> r = probe_fn(::tpy::bytes_literal(\"hello\", 5)) | ::tpy::BytesView probe_x = std::get<0>(r)",
   "same"
  ],
  "bytes__return__T_unpack": [
@@ -518,13 +518,13 @@
  "str__collection__T_sub": [
   "ok",
   "",
-  "std::vector<std::tuple<std::string, int32_t>> probe_xs = std::vector<std::tuple<std::string, int32_t>>{} | probe_xs.push_back(std::tuple<std::string, int32_t>{std::string(v), 1}) | std::string_view probe_x = std::get<0>(::tpy::__getitem__(probe_xs, 0))",
+  "std::vector<std::tuple<std::string, int32_t>> probe_xs = std::vector<std::tuple<std::string, int32_t>>{} | probe_xs.push_back(std::tuple<std::string, int32_t>{std::string(v), 1}) | std::string probe_x = std::get<0>(::tpy::__getitem__(probe_xs, 0))",
   "same"
  ],
  "str__collection__T_unpack": [
   "ok",
   "",
-  "std::vector<std::tuple<std::string, int32_t>> probe_xs = std::vector<std::tuple<std::string, int32_t>>{} | probe_xs.push_back(std::tuple<std::string, int32_t>{std::string(v), 1}) | auto __tup_1 = ::tpy::__getitem__(probe_xs, 0) | std::string_view probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "std::vector<std::tuple<std::string, int32_t>> probe_xs = std::vector<std::tuple<std::string, int32_t>>{} | probe_xs.push_back(std::tuple<std::string, int32_t>{std::string(v), 1}) | auto __tup_1 = ::tpy::__getitem__(probe_xs, 0) | std::string probe_x = std::move(std::get<0>(__tup_1)) | int32_t k = std::get<1>(__tup_1)",
   "same"
  ],
  "str__field__S": [
@@ -536,13 +536,13 @@
  "str__field__T_sub": [
   "ok",
   "",
-  "std::tuple<std::string, int32_t> probe_f | inline H::H(std::string_view v) : probe_f(std::tuple<std::string, int32_t>{std::string(v), 1}) {} | std::string_view probe_x = std::get<0>(h.probe_f)",
+  "std::tuple<std::string, int32_t> probe_f | inline H::H(std::string_view v) : probe_f(std::tuple<std::string, int32_t>{std::string(v), 1}) {} | std::string probe_x = std::get<0>(h.probe_f)",
   "same"
  ],
  "str__field__T_unpack": [
   "ok",
   "",
-  "std::tuple<std::string, int32_t> probe_f | inline H::H(std::string_view v) : probe_f(std::tuple<std::string, int32_t>{std::string(v), 1}) {} | auto __tup_1 = h.probe_f | std::string_view probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "std::tuple<std::string, int32_t> probe_f | inline H::H(std::string_view v) : probe_f(std::tuple<std::string, int32_t>{std::string(v), 1}) {} | auto __tup_1 = h.probe_f | std::string probe_x = std::move(std::get<0>(__tup_1)) | int32_t k = std::get<1>(__tup_1)",
   "same"
  ],
  "str__global__S": [
@@ -554,7 +554,7 @@
  "str__global__T_sub": [
   "ok",
   "",
-  "extern std::tuple<std::string, int32_t> probe_g | std::tuple<std::string, int32_t> probe_g | std::string_view probe_x = std::get<0>(probe_g) | probe_g = std::tuple<std::string, int32_t>{\"hello\", 1}",
+  "extern std::tuple<std::string, int32_t> probe_g | std::tuple<std::string, int32_t> probe_g | std::string probe_x = std::get<0>(probe_g) | probe_g = std::tuple<std::string, int32_t>{\"hello\", 1}",
   "same"
  ],
  "str__global__T_unpack": [
@@ -924,10 +924,10 @@
   "same"
  ],
  "x__unpack_local__T": [
-  "stmt.tuple_unpack",
+  "ok",
   "",
-  "",
-  ""
+  "auto& __tup_1 = t | auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))) | int32_t k = std::get<1>(__tup_1)",
+  "same"
  ],
  "x__unpack_relay__T": [
   "ok",

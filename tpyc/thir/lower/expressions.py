@@ -2557,6 +2557,14 @@ def _subscript_yields_borrow_ptr(sub: TpySubscript, lc: '_LowerCtx') -> bool:
                 # a `T&`, `.` access -- the storage-alias rule.
                 or sub.obj.name in lc.walrus_slot_locals):
             return False
+        # A literal-bound local holds its VALUE-captured record elements
+        # inline (`t = (Box(1), b)` is `std::tuple<Box, Box*>`): the
+        # binding, not the type, says which element is a pointer. Asked
+        # after the storage registrations, which a comprehension or loop
+        # variable shadowing the name makes while it is in scope.
+        _inline = lc.inline_tuple_elems.get(sub.obj.name)
+        if _inline is not None and idx < len(_inline) and _inline[idx]:
+            return False
     elif isinstance(sub.obj, (TpyCall, TpyMethodCall)):
         # A MIXED-own-tuple CALL receiver holds its ref elements as bare
         # pointers (`std::get<1>(make_mixed(b))->val`) -- the mixed render

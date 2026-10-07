@@ -5869,28 +5869,42 @@ def _subscript_index_and_tuple(sub: TpySubscript,
         return None
     return recv_t, idx
 
-def _borrow_tuple_param_elem_subscript(sub: TpyExpr, prescan, analyzer) -> bool:
-    """A pointer-repr record element read off a borrow-form tuple PARAM
-    (`b = p[1]` off `readonly[tuple[int32, Counter]]` -> `const Counter& b =
-    (*std::get<1>(p));`): `std::get` on the borrow tuple yields the element
-    `T*`, so the REF_ALIAS decl binds its referent via the deref-flagged
-    subscript render -- the value-context wrap. PARAM receivers only:
-    the storage-vs-borrow membership question that needs walk state (an
-    `auto&&` alias local holds elements by value) cannot arise for a param;
-    an `Own[tuple]` param is storage form and excluded the same way."""
+def _borrow_tuple_local_type(name: str, declared: dict[str, TpyType],
+                             storage_tuple_locals: 'AbstractSet[str]'
+                             ) -> 'TupleType | None':
+    """The pointer-repr TupleType of a BORROW-form tuple name, or None.
+    Borrow is the default form for a declared ptr-repr tuple name (params,
+    btuple.decl literals, branch hoists); the storage registrations
+    (`storage_tuple_locals`) carve out the owning locals, and an
+    `Own[tuple]` param keeps its Own wrapper in `declared`."""
+    t = declared.get(name)
+    if not isinstance(t, TpyType):
+        return None
+    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if (isinstance(bare, TupleType) and bare.has_pointer_repr_element()
+            and name not in storage_tuple_locals):
+        return bare
+    return None
+
+
+def _tuple_name_elem_subscript(sub: TpyExpr, declared: dict[str, TpyType],
+                               analyzer) -> bool:
+    """A pointer-repr record element read off a tuple NAME (`b = p[1]`,
+    `a = t[0]`): the REF_ALIAS decl binds the element's referent. Which
+    render that is follows the name's layout, decided once by
+    `_subscript_yields_borrow_ptr`: a borrow-form name holds the element
+    as `T*` (`(*std::get<1>(p))`), a storage-form name (an `auto&&` alias,
+    a loop variable, an `Own[tuple]` param) holds it by value
+    (`std::get<0>(t)`)."""
     if not isinstance(sub, TpySubscript) or sub.needs_optional_runtime_check:
         return False
-    if not (isinstance(sub.obj, TpyName)
-            and sub.obj.name in prescan.param_names):
+    if not isinstance(sub.obj, TpyName):
         return False
-    # `get_expr_type` strips the Own wrapper, so the Own exclusion must key
-    # on the DECLARED param fact: an Own[tuple] param binds the storage
-    # tuple by value -- `std::get` yields a `T&`, and the deref-flagged
-    # render would be ill-formed.
-    if sub.obj.name in prescan.own_tuple_params:
+    t = declared.get(sub.obj.name)
+    if not isinstance(t, TpyType):
         return False
-    pt = unwrap_readonly(unwrap_send_sync(analyzer.get_expr_type(sub.obj)))
-    if isinstance(pt, OwnType):
+    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(_unwrap_own(t))))
+    if not (isinstance(bare, TupleType) and bare.has_pointer_repr_element()):
         return False
     res = _subscript_index_and_tuple(sub, analyzer)
     if res is None:
@@ -7291,44 +7305,20 @@ def _const_exact_field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType],
     return _optional_ptr_borrow_name(e.obj, declared, analyzer) is None
 
 
-def _storage_tuple_alias_src_ok(init: TpyExpr, lc, declared: dict[str, TpyType],
+def _storage_tuple_alias_src_ok(init: TpyExpr, declared: dict[str, TpyType],
                                 analyzer) -> bool:
     """The source-side gate for an `auto&&` storage-tuple alias, per shape.
 
     A FIELD source keeps the const-spelling receiver gate, because the decl
-    below derives the alias's const-ness from it. So does a subscript off a
-    FIELD receiver (`self.store[k]`), whose const verdict comes from the
-    `_btuple_const_storage` walk -- the counterpart of
-    `is_const_storage_source` -- that the decl runs beside it.
-
-    The plain-NAME receiver and bare NAME shapes are admitted CONST-FREE only:
-    deriving their const-ness would mean reproducing that set's whole consumer
-    topology, not just its value here. Rejecting const sources keeps them from
-    contributing a member at all, which is what makes those arms
-    const-topology-neutral.
-
-    Both const-free arms also consult `const_storage_tuple_locals`, where a loop
-    variable iterating a const source records its const-ness. That check CANNOT
-    FIRE today -- F3 admission requires `fn_top`, and a loop body lowers with
-    `in_branch` set -- so this is belt-and-braces, not a live-bug fix. It is here
-    because the guarantee the gate advertises should be enforced by the gate,
-    rather than resting on an admission condition two files away staying narrow.
-    """
+    derives the alias's const-ness from it. A subscript (off a field, a
+    local or a parameter) and a bare name take the `_btuple_const_storage`
+    walk -- the counterpart of `is_const_storage_source` -- so a const
+    source makes the alias const instead of rejecting it."""
     if isinstance(init, TpyFieldAccess):
         return _const_exact_field_receiver_ok(init, declared, analyzer)
     if isinstance(init, TpySubscript):
-        recv = init.obj
-        if isinstance(recv, TpyFieldAccess):
-            return True
-        if not isinstance(recv, TpyName):
-            return False
-        return not (recv.name in lc.const_locals
-                    or recv.name in lc.const_storage_tuple_locals
-                    or _param_is_const(recv.name, lc.func, analyzer,
-                                       lc.record_name))
-    return (isinstance(init, TpyName)
-            and init.name not in lc.const_locals
-            and init.name not in lc.const_storage_tuple_locals)
+        return isinstance(init.obj, (TpyFieldAccess, TpyName))
+    return isinstance(init, TpyName)
 
 
 def _optional_checked_field(e: TpyExpr, declared: dict[str, TpyType],
@@ -8387,7 +8377,12 @@ def _const_borrow_name(name: str, lc, *, const_locals: bool = False) -> bool:
     the const verdict."""
     if name in lc.const_loop_vars:
         return True
-    if const_locals and name in lc.const_locals:
+    # The `auto&&` storage alias of a const source keeps its const-ness in
+    # the tuple set (`const_borrow_tuple_locals` is NOT read here: that
+    # body-wide memo is inherited by a nested def whose own names may
+    # shadow the outer tuple).
+    if const_locals and (name in lc.const_locals
+                         or name in lc.const_storage_tuple_locals):
         return True
     f = _const_verdict_func(name, lc)
     if (_param_is_deep_const(name, f, lc.analyzer, lc.record_name)

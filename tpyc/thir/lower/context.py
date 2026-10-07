@@ -1167,7 +1167,7 @@ _BRANCH_SCOPED_SETS = (
     "ref_alias_locals", "value_opt_bindings", "storage_opt_locals",
     "const_storage_opt_locals",
     "movable_locals", "storage_tuple_locals", "owned_tuple_layouts", "own_borrow_tuple_locals",
-    "optional_borrow_tuple_locals",
+    "inline_tuple_elems", "optional_borrow_tuple_locals",
     "const_storage_tuple_locals",
     # The for-body registration of sema's `const_loop_var` binding: scoped to
     # the loop body, like every other name the loop head registers.
@@ -1378,7 +1378,8 @@ class _LowerCtx:
                  "params", "capture_funcs", "capture_sites",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals", "owned_tuple_layouts",
-                 "own_borrow_tuple_locals", "optional_borrow_tuple_locals",
+                 "own_borrow_tuple_locals", "inline_tuple_elems",
+                 "optional_borrow_tuple_locals",
                  "const_storage_tuple_locals", "const_loop_vars",
                  "frame_own_tuple_types",
                  "frame_slots",
@@ -1848,6 +1849,13 @@ class _LowerCtx:
         self.storage_tuple_locals: set[str] = set()
         # Only unconditional constructor locals and their fixed aliases carry these facts.
         self.owned_tuple_layouts: dict[str, THIRTupleLayout] = {}
+        # Borrow-form tuple locals bound from a literal that holds a record
+        # element INLINE beside the pointer ones (`t = (Box(1), b)` is
+        # `std::tuple<Box, Box*>`): per element, whether `std::get` yields
+        # the object rather than a pointer to it. The declared type cannot
+        # say (it is `tuple[Box, Box]` either way), so element reads and
+        # aliases of such a name ask here.
+        self.inline_tuple_elems: dict[str, tuple[bool, ...]] = {}
         # Two param shapes spell a STORAGE tuple in the signature, so their
         # name reads are storage -- the unpack lift
         # (`tuple_to_pointer<std::tuple<P*, P*>>(t)`), the optional-element

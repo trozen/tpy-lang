@@ -282,16 +282,15 @@ per shape; the mixed tuple global (D2) waits on that entry.
     `BUGS.md#field-tuple-unpack-copies-whole-tuple` (perf, U7).
 - [ ] **U2 -- everyday shapes compile.** Loud rejects of ordinary Python,
   measured 2026-09-21 (reject tag in brackets). These rows are taken INSIDE
-  U5, as its acceptance cells: each needs the element's form at its
-  position, which is the fact U5 decides once, so a per-row lowering arm
-  now would be a shape-keyed row the slot contract deletes. Each row still
-  gets a snapshot case and keeps the adjacent `error_` pin. File a
-  `BUGS.md` entry for a row only if the reject queue
-  (`scripts/thir_migration/review/`) does not already carry it.
-  - [ ] unpack of a local tuple: `t = (b, 1); x, k = t` [`stmt.tuple_unpack`];
-    the rebind after it (`x = Box(5)`) sits behind the same reject
-  - [ ] element read off a container: `t = xs[0]` on `list[tuple[Box, int32]]`
-    [`decl.slot_type`]
+  U5, one per step, as its acceptance cells. Each row gets a snapshot case
+  and keeps the adjacent `error_` pin. File a `BUGS.md` entry for a row only
+  if the reject queue (`scripts/thir_migration/review/`) does not already
+  carry it.
+  - [x] unpack of a local tuple: `t = (b, 1); x, k = t` -- U5 step 1
+    (`tests/cases/tuple/local_tuple_element_places`); the rebind after it
+    (`x = Box(5)`) is not covered there
+  - [x] element read off a container: `t = xs[0]` on `list[tuple[Box, int32]]`
+    off a parameter list, and `a = t[0]` off any tuple name -- U5 step 1
   - [ ] `xs.append(t)` with a MIXED tuple local bound from a call (an owned
     element beside a borrowed one) [`method.arg_shape`, after the warning];
     the all-borrow local and parameter lower since U3 D1. A nested literal
@@ -367,34 +366,63 @@ per shape; the mixed tuple global (D2) waits on that entry.
     a field (`BUGS.md#tuple-elem-copy-mixed-or-list-rejects`). Done in
     the `tuple-u4` squash (2026-10-01).
 
+- [ ] **U5 -- tuples through the two runtime helpers** (user-approved
+  2026-10-07, replacing the "one elementwise form question" design, whose
+  attempt on branch `tuple-u3` grew four modules for three tuple shapes and
+  is frozen under tag `keep/tuple-u3-20261006`, not to be landed). The
+  rule: the runtime already converts a tuple element by element for any
+  source form -- a borrowing place renders `::tpy::tuple_to_pointer<Dest>(
+  src)` (or nothing when the C++ types match), an owning place renders
+  `::tpy::tuple_to_storage<Dest>(src)` with `std::move(src)` at a last use.
+  Per place, the tuple-specific source lists in that place's gate are
+  DELETED and the layout question is asked of the one existing fact
+  (`_borrow_tuple_local_type` / `_subscript_yields_borrow_ptr`); no new
+  module, node fact or family enum. One place per short branch off master,
+  landing between steps; acceptance per step: the step's pair programs
+  (same meaning, one compiled, its twin rejected) compile and match CPython
+  after a mutation through the binding, the differential sweep over `int`
+  and `int32` elements shows no `ok -> reject` and no render change, the
+  full suite is green, and the place's code is shorter.
+  - [x] step 0 -- the HIGH fix alone: a consuming store of a mixed tuple
+    moves its owned elements only (`tuple_to_storage<S>(std::move(p))`,
+    never the pointee-moving lift); `tests/cases/tuple/
+    mixed_storage_lift_moves_owned_only`.
+  - [x] step 1 -- locals: the element alias (`a = t[N]`) admits any tuple
+    NAME and takes its deref from the one arrow decision; the unpack's
+    "already borrow form" row reads the layout fact instead of "is a
+    param"; the `auto&&` storage alias no longer refuses a const source
+    (its const-ness joins `const_storage_tuple_locals`); a literal local
+    holding a fresh record INLINE beside a borrowed one (`t = (Box(1), b)`,
+    `std::tuple<Box, Box*>`) records that layout for its element reads and
+    is aliased, not copied, by `u = t` -- `t[0].n` off it was ill-formed
+    C++ before. Sema twin (`sema/context.py readonly_reaches`, asked at
+    every projection site): readonly
+    projects through a tuple element that holds a reference (`xs[0][1].n =
+    v` off a `readonly[list[tuple[int32, Box]]]` is refused like the
+    record element; a readonly tuple unpacks with readonly targets). Local
+    sweep (sources x `int`/`int32`/mixed/owned x uses, 544 programs): 374
+    -> 524 compile, no `ok -> reject`, the 12 render changes are the
+    mixed-literal reads above, every changed program matches CPython;
+    left: a storage
+    alias declared inside a loop body and the alias of an OWNED element
+    (step 4). `tests/cases/tuple/local_tuple_element_places`,
+    `error_readonly_tuple_element_write`.
+  - [ ] step 2 -- container stores: `xs.append(t)` / `d[k] = (b, 1)` /
+    nested literals at an owning element slot.
+  - [ ] step 3 -- arguments and returns; carries the `-> tuple[...] | None`
+    return (`std::optional<R>`) and its escape fix from `tuple-u3` as one
+    small commit.
+  - [ ] step 4 -- the owned-param element places and the mixed global (D2).
+  Also owned here, after the steps: the real fix of
+  `BUGS.md#resumable-alias-identity` (the per-rebind-site element ownership
+  verdict, decided in sema); the shared root `tpyc/sema/alias_rebind.py`
+  admits neither tuple locals nor multi-hop loans (two U1 stopgaps and
+  `BUGS.md#finally-mutate-then-rebind-return`,
+  `BUGS.md#nested-list-literal-alias-rebind-clobbers` come from it); the
+  container FIELD as a borrow-tuple element (`btuple.elem_container_field`).
+
 ### After 0.7.0
 
-- [ ] **U5 -- one elementwise form question** (design entry step (c)). The
-  structural fix: "what form does element `i` take at position P" is decided
-  once, as a THIR fact, and every position consumes it -- instead of each
-  element kind re-deriving its form at each site, which is why the matrix
-  drifts. Prerequisites: TODO: "Make the tuple RENDER 3-valued instead of
-  stacking booleans over it" and TODO: "Sema mirrors codegen's tuple-render
-  pair at a different breadth". Needs `/tpy-add-feature`. Size: 2-3 weeks.
-  Also owns the real fix of `BUGS.md#resumable-alias-identity` (loud since
-  U1): the per-rebind-site element ownership verdict, decided in sema, feeds
-  a tuple twin of the record's pointer-over-per-site-frame-field form. Then
-  delete the lowering guard (`alias.rebound_tuple_slot_elem`,
-  `_rebound_tuple_alias_reject`) including its chain and timing
-  extensions.
-  ONE shared root, to be designed as one `/tpy-add-feature` unit before or
-  inside U5: `tpyc/sema/alias_rebind.py` admits neither tuple locals nor
-  multi-hop loans. Two U1 stopgaps and one HIGH come from it -- the
-  lowering frame-alias guard above, the eager capture for a name a finally
-  rebinds (`BUGS.md#finally-mutate-then-rebind-return`; its record-local slice,
-  which also lifts the `@nocopy` refusal, is designed there and needs only
-  records, so it can land first) and
-  `BUGS.md#nested-list-literal-alias-rebind-clobbers`. Extending the
-  alias-gated IN_PLACE proof to tuples and multi-hop element loans closes
-  all of them and deletes the two stopgaps.
-  Also owns the container FIELD as a borrow-tuple element: the bind is the
-  record's (`T*`), the READER of a container element is what is missing
-  (`btuple.elem_container_field` in the lowering).
 - [ ] **U6 -- `str` / `bytes` view elements** (D3, D4). A view element at a
   tuple param and a view-safe local, as the scalar has. ABI change with wide
   snapshot churn, and it needs the loan a view inside a tuple takes on its

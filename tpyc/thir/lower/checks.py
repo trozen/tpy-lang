@@ -263,7 +263,8 @@ from .predicates import (
     _record_getitem_borrow_subscript,
     _getitem_container_lvalue,
     _nested_container_elem_type,
-    _borrow_tuple_param_elem_subscript,
+    _tuple_name_elem_subscript,
+    _borrow_tuple_local_type,
     _tuple_field_opt_elem_subscript,
     _empty_instantiation_family,
     _field_receiver_ok,
@@ -2062,14 +2063,12 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and _record_getitem_borrow_subscript(stmt.init, declared,
                                                      analyzer, pointers)):
             return binding
-        # A pointer-repr record element off a borrow-form tuple PARAM
-        # (`b = p[1]`) binds the `T&` alias of the element referent (the
-        # deref-flagged std::get render). REF_ALIAS only -- a reassigned
-        # sibling's reseat is unwitnessed.
+        # A pointer-repr record element off a tuple name (`b = p[1]`,
+        # `a = t[0]`) binds the `T&` alias of the element referent.
+        # REF_ALIAS only -- a reassigned sibling's reseat is unwitnessed.
         if (binding is LocalBinding.REF_ALIAS
                 and record_like(target_type, analyzer)
-                and _borrow_tuple_param_elem_subscript(stmt.init, prescan,
-                                                       analyzer)):
+                and _tuple_name_elem_subscript(stmt.init, declared, analyzer)):
             return binding
         # A nested-container element subscript (`row = matrix[0]`) binds the
         # `T&` alias of the element list/dict/set, or -- reassigned -- the
@@ -4939,23 +4938,6 @@ def _container_comp_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
     if isinstance(a, TpyDictComprehension):
         return is_dict(slot)
     return False
-
-
-def _borrow_tuple_local_type(name: str, declared: dict[str, TpyType],
-                             storage_tuple_locals: 'AbstractSet[str]'
-                             ) -> 'TupleType | None':
-    """The pointer-repr TupleType of a BORROW-form tuple local, or None.
-    Borrow is the default form for a declared ptr-repr tuple name (params,
-    btuple.decl literals, branch hoists); the storage registrations
-    (`storage_tuple_locals`) carve out the owning locals."""
-    t = declared.get(name)
-    if not isinstance(t, TpyType):
-        return None
-    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if (isinstance(bare, TupleType) and bare.has_pointer_repr_element()
-            and name not in storage_tuple_locals):
-        return bare
-    return None
 
 
 def _borrow_tuple_slot(ptype: 'TpyType | None', analyzer) -> 'TupleType | None':
