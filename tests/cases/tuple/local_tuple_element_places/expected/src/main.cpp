@@ -364,7 +364,7 @@ void main() {
     std::cout << "loop_var" << " " << std::get<0>(::tpy::__getitem__(xs, 0)).n << "\n" << ::tpy::check_signals;
     std::cout << "readonly_elems" << " " << ::tpyapp::main::readonly_elems(xs) << "\n" << ::tpy::check_signals;
     Sink s = Sink();
-    s.take(::tpy::tuple_to_storage_move<std::tuple<int32_t, Counter>>(std::tuple<int32_t, Counter>{4, Counter(2)}));
+    s.take(std::tuple<int32_t, Counter>{4, Counter(2)});
     std::cout << "own_param" << " " << s.total << "\n" << ::tpy::check_signals;
 }
 

@@ -103,6 +103,21 @@ def addr_taken_roots(expr: TpyExpr) -> list[str]:
     return []
 
 
+def escaping_borrow_tuple(slot: TpyType) -> 'tuple[TupleType, bool] | None':
+    """The borrow-form tuple a return / yield slot hands out, peeling one
+    Optional (`tuple[Box, Box] | None` lends exactly what its bare twin
+    does), with whether the slot is readonly (provenance only, no write
+    access). None when the slot carries no borrowing tuple."""
+    ro = isinstance(slot, ReadonlyType)
+    bare = unwrap_readonly(slot)
+    if isinstance(bare, OptionalType):
+        ro = ro or isinstance(bare.inner, ReadonlyType)
+        bare = unwrap_readonly(bare.inner)
+    if isinstance(bare, TupleType) and bare.has_borrowing_element():
+        return bare, ro
+    return None
+
+
 def tuple_borrow_escape_roots(expr: 'TpyExpr', tuple_bare: 'TupleType',
                               ro_tuple: bool, *,
                               expr_type: 'ExprTypeOf | None'
@@ -2823,6 +2838,10 @@ class SemanticContext:
 
     # --- Last-use tracking (shared with codegen, persists across functions) ---
     all_last_uses: IdentitySet = field(default_factory=IdentitySet)
+    # Last-use reads whose active alias is read in the same statement (any
+    # order): a by-VALUE owning slot moves the name while binding, which C++
+    # may sequence before the alias read, so such a slot copies instead.
+    same_stmt_alias_reads: IdentitySet = field(default_factory=IdentitySet)
     # Sources that COPY into an `Own` tuple-element slot, as declared by the
     # warning: a tuple-literal member, or a tuple name some element of which
     # arrives borrowed. The lowering builds exactly these copies -- never a
@@ -2831,9 +2850,10 @@ class SemanticContext:
     # The declared-copy NAMES among them whose binding also holds an element
     # by value (mixed): no whole-tuple lift may build their copy.
     own_element_mixed: IdentitySet = field(default_factory=IdentitySet)
-    # `return t[i]` values that MOVE owned element `i` out of a tuple the
-    # body owns, at the tuple's last use (`returned_owned_element`).
-    returned_element_moves: IdentitySet = field(default_factory=IdentitySet)
+    # `t[i]` reads that MOVE owned element `i` out of a tuple the body
+    # owns, at the tuple's last use: a return (`returned_owned_element`)
+    # or an `Own[T]` argument (`passed_owned_element`).
+    element_moves: IdentitySet = field(default_factory=IdentitySet)
     # The `return <name>` values under a non-suspending finally
     # (liveness.collect_finally_return_candidates; every such return -- the
     # finally can reach the local through aliases/closures, so candidacy is

@@ -62,6 +62,10 @@ class _Walk:
     last_uses: IdentitySet
     source_aliases: _Aliases
     detached_aliases: set[str]
+    # Name reads whose active alias is read in the SAME statement, in any
+    # order: a consumer that moves the name while binding (a by-value slot)
+    # may run before the alias read, whatever the source order says.
+    same_stmt_alias_reads: IdentitySet = field(default_factory=IdentitySet)
     ex: _Exits = _Exits()
     # Per try with a finally, the names a `return` leaving through it
     # returns: a deferred one materializes them only after the finally ran.
@@ -89,6 +93,7 @@ def analyze_last_uses(
     alias_sources: dict[str, str] | None = None,
     pinned: frozenset[str] | None = None,
     captured: frozenset[str] = frozenset(),
+    same_stmt_alias_reads: IdentitySet | None = None,
 ) -> IdentitySet:
     """Analyze a function body to find last-use sites for auto-move.
 
@@ -137,6 +142,8 @@ def analyze_last_uses(
               returned_through=_returned_names_by_try(stmts), pinned=pinned,
               captured=captured)
     _analyze_stmts_backward(stmts, live, w, first_reassign_pos)
+    if same_stmt_alias_reads is not None:
+        same_stmt_alias_reads |= w.same_stmt_alias_reads
     return w.last_uses
 
 
@@ -1185,6 +1192,9 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[str],
                 and not _has_live_alias(node.name, live, w.source_aliases,
                                         w.detached_aliases)):
             w.last_uses.add(node)
+            if _has_live_alias(node.name, set(name_counts), w.source_aliases,
+                               w.detached_aliases):
+                w.same_stmt_alias_reads.add(node)
 
     # Add all read names to live set
     for node in reads:

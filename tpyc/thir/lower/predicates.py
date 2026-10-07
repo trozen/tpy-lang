@@ -141,6 +141,7 @@ from ...type_def_registry import (
     is_string_type,
     type_def_of,
 )
+from ...sema.numeric_lattice import widen_numeric_types
 from ...coercions import BIGINT_NARROW, CoercionContext, context_free_wrap_template
 from ...value_category import (
     CONTAINER_LITERAL_NODES,
@@ -4536,8 +4537,26 @@ def _value_opt_tuple(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     t = unwrap_readonly(unwrap_send_sync(t))
     if not (isinstance(t, OptionalType) and not t.uses_pointer_repr()):
         return None
-    return t if _value_tuple(unwrap_readonly(t.inner),
-                             analyzer) is not None else None
+    return t if _value_opt_tuple_inner(t, analyzer) is not None else None
+
+
+def _value_opt_tuple_inner(t: OptionalType, analyzer) -> 'TupleType | None':
+    """The tuple a by-value optional holds: a value tuple, or an
+    owned-record one (`tuple[Own[Box], int32]`), whose records are held by
+    value too, so borrow and storage coincide."""
+    inner = unwrap_readonly(t.inner)
+    return _value_tuple(inner, analyzer) or _own_record_tuple(inner, analyzer)
+
+
+def _value_opt_tuple_copyable(t: 'TpyType | None',
+                              analyzer) -> 'OptionalType | None':
+    """`_value_opt_tuple` whose WHOLE copy is unobservable: a value-tuple
+    inner. An owned-record inner holds instances Python shares, so a sink
+    that copies another binding's optional must not take it."""
+    vot = _value_opt_tuple(t, analyzer)
+    return (vot if vot is not None
+            and _value_tuple(unwrap_readonly(vot.inner), analyzer) is not None
+            else None)
 
 
 def _value_opt_call_ret_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -4618,7 +4637,7 @@ def _narrowed_value_opt_tuple_read(
         return None
     if isinstance(unwrap_readonly(unwrap_send_sync(read_type)), OptionalType):
         return None
-    return _value_tuple(unwrap_readonly(vot.inner), analyzer)
+    return _value_opt_tuple_inner(vot, analyzer)
 
 def _narrowed_value_opt_tuple_name(
         e: TpyExpr, declared: dict[str, TpyType],
@@ -4749,7 +4768,7 @@ def _value_opt_tuple_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
     tuple[str, str] | None` param): a value tuple is a value type, so the
     whole optional passes bare like the scalar and callable inners."""
     return bool(_whole_value_opt_name_arg(a, ptype, locals_, narrowed,
-                                          analyzer, _value_opt_tuple)
+                                          analyzer, _value_opt_tuple_copyable)
                 and _witness("arg.value_opt_tuple"))
 
 def _value_opt_callable_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -4983,7 +5002,9 @@ def _f1_tuple_element_ok(e: TpyType, analyzer) -> bool:
     recursion off cross-module / native / generic / pending types, where bare
     `to_cpp()` would mis-spell. Union / container / generic elements are not
     lowered yet."""
-    if _eligible_scalar(e) or _f1_record(e, analyzer):
+    # An enum spells the same value in both forms, like a scalar.
+    if (_eligible_scalar(e) or _eligible_enum(e, analyzer) is not None
+            or _f1_record(e, analyzer)):
         return True
     # An owned view-family element spells `std::string` / `::tpy::Bytes`
     # in BOTH forms (a value type; only the pointer-repr siblings split),
@@ -5062,10 +5083,8 @@ def _optional_borrow_tuple(t: 'TpyType | None',
                            analyzer) -> 'TupleType | None':
     """The borrow TupleType under a nullable borrow-form tuple binding
     (`tuple[int, Box] | None` -> `std::optional<std::tuple<BigInt, Box*>>`),
-    or None: an Optional whose bare inner is a ptr-repr F1 tuple. Non-Own
-    tuples only -- the Optional of a MIXED owned+borrow tuple is a broken
-    shape and a recorded design fork (BUGS.md), and `_f1_tuple` keeps Own
-    elements out by construction."""
+    or None: an Optional whose bare inner is a ptr-repr F1 tuple, the mixed
+    owned+borrow one included (`std::optional<std::tuple<Box, Box*>>`)."""
     if not isinstance(t, TpyType):
         return None
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
@@ -5073,6 +5092,19 @@ def _optional_borrow_tuple(t: 'TpyType | None',
         return None
     return _f1_tuple(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         u.inner))), analyzer)
+
+
+def _nullable_borrow_tuple_call(e: TpyExpr, analyzer) -> 'TupleType | None':
+    """The borrow tuple a call hands back inside its nullable result: the
+    callee's DECLARED return (sema strips `Own` off the call's type) is a
+    nullable borrow tuple, whose C++ result is the tuple's return layout
+    inside the optional (`std::optional<std::tuple<Box*, int32_t>>`)."""
+    if not isinstance(e, (TpyCall, TpyMethodCall)):
+        return None
+    fi = e.resolved_function_info
+    if fi is None or call_returns_cpp_ref(analyzer, fi):
+        return None
+    return _optional_borrow_tuple(fi.return_type, analyzer)
 
 
 def _nested_storage_tuple(t: 'TpyType | None', analyzer) -> 'TupleType | None':
@@ -8096,44 +8128,22 @@ def _mixed_own_storage_source(e: TpyExpr, slot: 'TupleType',
     # deliberately leaves a MIXED tuple alone (its one live shape IS the
     # mixed render), but the SINK slot spells the materialized storage
     # (`tuple[Box, Box]`), so the comparison strips the per-element Own.
-    return src if _own_stripped_tuple_eq(atu, slot) else None
+    return src if tuple_stores_into(atu, slot) else None
 
 
-def _own_stripped_tuple_eq(a: 'TupleType', b: 'TupleType') -> bool:
-    """Element-wise tuple equality with per-element `Own` stripped on both
-    sides -- the comparison every mixed-own sink row needs (a mixed source
-    type retains its Own markers; the sink slot spells the materialized
-    storage)."""
-    if len(a.element_types) != len(b.element_types):
+def tuple_stores_into(src: 'TupleType', slot: 'TupleType') -> bool:
+    """A tuple of type `src` fits an owning `slot`: equal element-wise modulo
+    per-element `Own` (a mixed source keeps its markers, the slot spells the
+    materialized storage), a scalar element the slot WIDENS (`int32` into
+    `int`, sema's numeric lattice) included -- the storage helper's
+    per-element construct converts it, as the scalar's assignment does."""
+    if len(src.element_types) != len(slot.element_types):
         return False
     return all(
-        unwrap_readonly(_unwrap_own(ae)) == unwrap_readonly(_unwrap_own(be))
-        for ae, be in zip(a.element_types, b.element_types))
-
-
-def _btuple_literal_elems_rvalue(a: 'TpyTupleLiteral', slot: 'TupleType',
-                                 analyzer) -> bool:
-    """The plain-record sibling of `_tuple_elem_slots_ptr_optional`: every
-    non-value element slot is an F1 record AND its literal element is an
-    rvalue source (a fresh ctor call) or a borrowed member sema declared a
-    copy of, which builds as one. The CONST_REF storage rule that keeps
-    plain-record LVALUE members out (see the sibling's docstring) cannot
-    fire on an rvalue -- it rides the `tuple_value_to_borrow` source-tuple
-    path, whose per-element admission the borrow builder still owns. F1
-    (not just is_user_record) because the double-convert spells the element
-    types."""
-    if len(a.elements) != len(slot.element_types):
-        return False
-    for el, t in zip(a.elements, slot.element_types):
-        if t.is_value_type():
-            continue
-        bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-        if not _f1_record(bare, analyzer):
-            return False
-        if not (is_rvalue_source(analyzer, el)
-                or el in analyzer.ctx.own_element_copies):
-            return False
-    return True
+        s == d or widen_numeric_types(s, d) == d
+        for s, d in ((unwrap_readonly(_unwrap_own(x)),
+                      unwrap_readonly(_unwrap_own(y)))
+                     for x, y in zip(src.element_types, slot.element_types)))
 
 
 def copy_call_arg(e: TpyExpr, analyzer) -> 'TpyExpr | None':

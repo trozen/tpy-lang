@@ -725,6 +725,13 @@ inline bool is_truthy(const std::optional<T>& opt) {
     return opt.has_value() && static_cast<bool>(*opt);
 }
 
+// A tuple has no operator bool: a non-empty one is truthy, so an engaged
+// optional of one is truthy.
+template <typename... Ts>
+inline bool is_truthy(const std::optional<std::tuple<Ts...>>& opt) {
+    return opt.has_value() && sizeof...(Ts) > 0;
+}
+
 // String truthiness: non-empty is truthy (std::string has no operator bool)
 inline bool is_truthy(const std::optional<std::string>& opt) {
     return opt.has_value() && !opt->empty();

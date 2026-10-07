@@ -1,0 +1,18 @@
+main.py:36: warning: copies Box into field (tuple element 0); use copy() to make this explicit
+main.py:65: warning: owned tuple param 't' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:102: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit
+main.py:111: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit
+main.py:127: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit
+main.py:132: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit
+main.py:138: warning: copies Box into owned storage (argument 't' tuple element 0); use copy() to make this explicit
+main.py:146: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit
+main.py:157: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit
+main.py:156: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:179: warning: copies tuple[Own[Box], Own[Box]] into owned storage; use copy() to make this explicit
+main.py:179: warning: copies tuple[Box, Box] into owned storage; use copy() to make this explicit
+main.py:186: warning: copies P | None into owned storage (argument 't' tuple element 0); use copy() to make this explicit
+main.py:186: warning: copies P | None into owned storage (argument 't' tuple element 1); use copy() to make this explicit
+main.py:192: warning: copies Box into owned storage (tuple element 1.1); use copy() to make this explicit
+main.py:205: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit
+main.py:218: warning: copies Box into field (tuple element 0); use copy() to make this explicit
+main.py:219: warning: copies Box into container (tuple element 0); use copy() to make this explicit

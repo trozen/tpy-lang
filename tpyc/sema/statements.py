@@ -83,6 +83,7 @@ from .context import (OwnSlot, readonly_reaches, PendingLocal, addr_taken_roots,
                       frame_binding_calls, frame_binding_fact,
                       record_frame_binding_roots,
                       frame_borrowed_operands,
+                      escaping_borrow_tuple,
                       tuple_borrow_escape_roots)
 from .flow_facts import condition_walrus_assigned, condition_walrus_targets
 from .literal_utils import is_char_literal_init
@@ -1206,10 +1207,8 @@ class StatementAnalyzer:
                 # A tuple is a value type, but its borrow form hands out
                 # mutable element pointers into the source storage -- the
                 # root must stay non-const and the borrow be recorded.
-                expected_bare = unwrap_readonly(expected)
-                returns_borrow_tuple = (
-                    isinstance(expected_bare, TupleType)
-                    and expected_bare.has_borrowing_element())
+                borrow_tuple = escaping_borrow_tuple(expected)
+                returns_borrow_tuple = borrow_tuple is not None
                 if (not expected.is_value_type() or returns_borrowing_view
                         or returns_borrow_tuple):
                     # A readonly return hands out a CONST borrow -- of a
@@ -1220,9 +1219,9 @@ class StatementAnalyzer:
                     # method and, through the Phase-2 receiver edge, on every
                     # caller that reads the borrow.
                     ro_return = isinstance(expected, ReadonlyType)
-                    if returns_borrow_tuple:
+                    if borrow_tuple is not None:
                         ret_roots = tuple_borrow_escape_roots(
-                            stmt.value, expected_bare, ro_return,
+                            stmt.value, borrow_tuple[0], borrow_tuple[1],
                             expr_type=self.ctx.get_expr_type)
                     else:
                         ret_roots = [(root, not ro_return)
@@ -1236,6 +1235,10 @@ class StatementAnalyzer:
                             # `return o.f` form.
                             self.ctx.mark_param_mutated(
                                 ret_root, through_field=True)
+                            # A loop variable lent writable through a
+                            # tuple member must not bind `const auto&`.
+                            if borrow_tuple is not None:
+                                self.ctx.mark_loop_var_mutated(ret_root)
                         self.ctx.mark_param_returned(ret_root)  # 8b: track which param storage the return borrows
                     # 8b rule 3: transitive return -- if returning the result of a call
                     # whose return_borrows_from is known, propagate the borrow contract.
@@ -1450,6 +1453,17 @@ class StatementAnalyzer:
             # binding.
             eligible = (isinstance(declared, OptionalType)
                         and declared.uses_pointer_repr())
+            # An owned nullable tuple local holds the slot's own by-value
+            # optional, so it defers like an Own[T] local (shape A): the
+            # finally's write through it must reach the returned tuple.
+            if (not eligible and isinstance(declared, OptionalType)
+                    and not declared.uses_pointer_repr()):
+                inner = unwrap_readonly(declared.inner)
+                eligible = (isinstance(inner, TupleType)
+                            and any(isinstance(unwrap_readonly(et), OwnType)
+                                    and not unwrap_readonly(
+                                        unwrap_own(et)).is_value_type()
+                                    for et in inner.element_types))
         if eligible:
             self.ctx.all_last_uses.add(stmt.value)
             stmt.finally_deferred_capture = True
@@ -4183,7 +4197,8 @@ class StatementAnalyzer:
             func.body, liveness_alias_sources(scan),
             pinned=self.ctx.func.closure_pinned,
             captured=(nested_def_free_names(func) if func.is_nested_def
-                      else frozenset()))
+                      else frozenset()),
+            same_stmt_alias_reads=self.ctx.same_stmt_alias_reads)
         self.ctx.finally_return_candidates |= collect_finally_return_candidates(func.body)
         self.ctx.finally_rebound_returns |= collect_finally_rebound_returns(func.body)
         self.ctx.func.current_reassigned_vars = scan.reassigned.copy()
@@ -5456,12 +5471,10 @@ class StatementAnalyzer:
         # as the mutable-borrow yield above, missed by the is_value_type()
         # guard. Mirrors the TpyReturn borrow-tuple branch: a readonly tuple
         # (or element) grants no write access, so it records provenance only.
-        elem_bare = unwrap_readonly(unwrap_ref_type(elem_type))
-        if (isinstance(elem_bare, TupleType)
-                and elem_bare.has_borrowing_element()):
-            ro_tuple = isinstance(unwrap_ref_type(elem_type), ReadonlyType)
+        borrow_tuple = escaping_borrow_tuple(unwrap_ref_type(elem_type))
+        if borrow_tuple is not None:
             for root, grants_write in tuple_borrow_escape_roots(
-                    stmt.value, elem_bare, ro_tuple,
+                    stmt.value, borrow_tuple[0], borrow_tuple[1],
                     expr_type=self.ctx.get_expr_type):
                 if grants_write:
                     self.ctx.mark_param_mutated(root, through_field=True)

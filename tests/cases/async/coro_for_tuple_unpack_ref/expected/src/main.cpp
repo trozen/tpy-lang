@@ -61,8 +61,8 @@ __coro_total total(const std::vector<std::tuple<Item, Item>>& pairs) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         pairs.emplace(std::vector<std::tuple<Item, Item>>{});
-        (*pairs).push_back(::tpy::tuple_to_storage_move<std::tuple<Item, Item>>(std::tuple<Item, Item>{Item(1), Item(2)}));
-        (*pairs).push_back(::tpy::tuple_to_storage_move<std::tuple<Item, Item>>(std::tuple<Item, Item>{Item(10), Item(20)}));
+        (*pairs).push_back(std::tuple<Item, Item>{Item(1), Item(2)});
+        (*pairs).push_back(std::tuple<Item, Item>{Item(10), Item(20)});
         __sub_0.emplace((*pairs));
         __state = S_RESUME_0;
         continue;

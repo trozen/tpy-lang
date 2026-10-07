@@ -503,7 +503,7 @@ inline int32_t H::first_len() const {
 //     r = take_ro((self.a, self.b))  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
 //     return r * 10 + len(self.a.xs)
 inline int32_t H::after() && {
-    int32_t r = ::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)})));
+    int32_t r = ::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)});
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(r, 10)), ::tpy::__len__(this->a.xs)));
 }
 
@@ -511,7 +511,7 @@ inline int32_t H::after() && {
 // def last_use(self: Own[Self]) -> int32:
 //     return take_mut((self.a, self.b))  # tpyc: ok
 inline int32_t H::last_use() && {
-    return ::tpyapp::main::take_mut(::tpy::tuple_to_storage_move<std::tuple<P, P>>(std::tuple<P*, P*>{&(this->a), &(this->b)}));
+    return ::tpyapp::main::take_mut(std::tuple<P, P>{std::move(this->a), std::move(this->b)});
 }
 
 // # bare_return: a returned field moves
@@ -531,7 +531,7 @@ inline ::tpy::BigInt H::bare_return() && {
 inline int32_t H::loop_return() && {
     for (int32_t i = 0; i < 2; ++i) {
         if ((i == 1)) {
-            return ::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)})));
+            return ::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)});
         }
     }
     return 0;
@@ -547,7 +547,7 @@ inline int32_t H::try_return() && {
     {
         bool __fin_ran_1 = false;
         try {
-            int32_t __tpy_ret_0 = ::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)})));
+            int32_t __tpy_ret_0 = ::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)});
             __fin_ran_1 = true;
             std::cout << "try_return finally" << " " << ::tpy::__len__(this->a.xs) << "\n" << ::tpy::check_signals;
             return __tpy_ret_0;
@@ -592,7 +592,7 @@ inline int32_t H::with_return() && {
     __ctx_1.__enter__();
     bool __fin_ran_3 = false;
     try {
-        int32_t __tpy_ret_0 = ::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)})));
+        int32_t __tpy_ret_0 = ::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)});
         __fin_ran_3 = true;
         __ctx_1.__exit__({}, nullptr, {});
         return __tpy_ret_0;
@@ -612,14 +612,14 @@ inline int32_t H::with_return() && {
 // def same_field_twice(self: Own[Self]) -> int32:
 //     return take_both((self.a, self.a))  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
 inline int32_t H::same_field_twice() && {
-    return ::tpyapp::main::take_both(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->a)})));
+    return ::tpyapp::main::take_both(std::tuple<P, P>{P(this->a), P(this->a)});
 }
 
 // # whole_self_in_return: a method call on `self` may read any field
 // def whole_self_in_return(self: Own[Self]) -> int32:
 //     return take_ro((self.a, self.b)) + self.count()  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
 inline int32_t H::whole_self_in_return() && {
-    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)}))), this->count()));
+    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}), this->count()));
 }
 
 // # nonscalar_local_in_return: `v` aliases the field
@@ -628,7 +628,7 @@ inline int32_t H::whole_self_in_return() && {
 //     return take_ro((self.a, self.b)) + len(v.xs)  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
 inline int32_t H::nonscalar_local_in_return() && {
     P& v = this->a;
-    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)}))), ::tpy::__len__(v.xs)));
+    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}), ::tpy::__len__(v.xs)));
 }
 
 // # scalar_local_ok: a scalar local cannot alias the field
@@ -637,7 +637,7 @@ inline int32_t H::nonscalar_local_in_return() && {
 //     return take_mut((self.a, self.b)) + n  # tpyc: ok
 inline int32_t H::scalar_local_ok() && {
     int32_t n = 3;
-    return (::tpy::add_check<int32_t>(::tpyapp::main::take_mut(::tpy::tuple_to_storage_move<std::tuple<P, P>>(std::tuple<P*, P*>{&(this->a), &(this->b)})), n));
+    return (::tpy::add_check<int32_t>(::tpyapp::main::take_mut(std::tuple<P, P>{std::move(this->a), std::move(this->b)}), n));
 }
 
 // # field_store: a store outside a return copies, as in an ordinary method
@@ -654,7 +654,7 @@ inline int32_t H::field_store(O& o) && {
 //     r = take_mut((copy(self.a), self.b))  # tpyc: warning(/tuple element 1\)/)
 //     return r * 10 + len(self.a.xs)
 inline int32_t H::escape_copy() && {
-    int32_t r = ::tpyapp::main::take_mut(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P, P*>>(std::tuple<P, P>{P(this->a), P(this->b)})));
+    int32_t r = ::tpyapp::main::take_mut(std::tuple<P, P>{P(this->a), P(this->b)});
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(r, 10)), ::tpy::__len__(this->a.xs)));
 }
 
@@ -676,7 +676,7 @@ inline ::tpy::BigInt H::nested_def_return() && {
 //     r = run_twice(lambda: take_ro((self.a, self.b)))  # tpyc: warning(/tuple element 0\); use copy\(\) to make this explicit$/) warning(/tuple element 1\); use copy\(\) to make this explicit$/)
 //     return r
 inline int32_t H::lambda_body() && {
-    int32_t r = ::tpyapp::main::run_twice([this]() -> int32_t { return ::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)}))); });
+    int32_t r = ::tpyapp::main::run_twice([this]() -> int32_t { return ::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}); });
     return r;
 }
 
@@ -690,7 +690,7 @@ inline int32_t H::nested_def_in_return() && {
     auto peek = [this]() -> int32_t {
         return ::tpy::__len__(this->a.xs);
     };
-    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)}))), 10)), peek()));
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}), 10)), peek()));
 }
 
 // # while_return: nothing of a `while` runs after its return, so the fields move
@@ -699,7 +699,7 @@ inline int32_t H::nested_def_in_return() && {
 //         return take_mut((self.a, self.b))  # tpyc: ok
 inline int32_t H::while_return() && {
     while (true) {
-        return ::tpyapp::main::take_mut(::tpy::tuple_to_storage_move<std::tuple<P, P>>(std::tuple<P*, P*>{&(this->a), &(this->b)}));
+        return ::tpyapp::main::take_mut(std::tuple<P, P>{std::move(this->a), std::move(this->b)});
     }
 }
 
@@ -718,7 +718,7 @@ inline int32_t H::try_handler_return() && {
             try {
                 throw ::tpy::ValueError("boom");
             } catch (const ::tpy::ValueError&) {
-                int32_t __tpy_ret_0 = ::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)})));
+                int32_t __tpy_ret_0 = ::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)});
                 __fin_ran_4 = true;
                 std::cout << "try_handler_return finally" << " " << ::tpy::__len__(this->a.xs) << "\n" << ::tpy::check_signals;
                 return __tpy_ret_0;
@@ -753,7 +753,7 @@ inline int32_t H::try_else_return() && {
             goto __after_else_1;
         }
         // else:
-        return ::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)})));
+        return ::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)});
         __after_else_1:;
     }
     return -1;
@@ -763,7 +763,7 @@ inline int32_t H::try_else_return() && {
 // def comprehension_in_return(self: Own[Self]) -> int32:
 //     return take_ro((self.a, self.b)) + len([i for i in range(2)])  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
 inline int32_t H::comprehension_in_return() && {
-    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)}))), ::tpy::__len__(({
+    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}), ::tpy::__len__(({
         std::vector<int32_t> __result;
         if (2 > 0) __result.reserve(static_cast<size_t>(2));
         for (int32_t i = 0; i < 2; ++i) {
@@ -778,28 +778,28 @@ inline int32_t H::comprehension_in_return() && {
 //     return take_ro((self.a, self.b)) + (k := 4)  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
 inline int32_t H::walrus_in_return() && {
     int32_t k;
-    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)}))), (k = 4)));
+    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}), (k = 4)));
 }
 
 // # property_in_return: a property reads `self` as a whole
 // def property_in_return(self: Own[Self]) -> int32:
 //     return take_ro((self.a, self.b)) * 10 + self.first_len  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
 inline int32_t H::property_in_return() && {
-    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)}))), 10)), this->first_len()));
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}), 10)), this->first_len()));
 }
 
 // # nonscalar_param_in_return: a reference-type parameter could alias the field
 // def nonscalar_param_in_return(self: Own[Self], o: O) -> int32:
 //     return take_ro((self.a, self.b)) + len(o.p.xs)  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
 inline int32_t H::nonscalar_param_in_return(const O& o) && {
-    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)}))), ::tpy::__len__(o.p.xs)));
+    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}), ::tpy::__len__(o.p.xs)));
 }
 
 // # module_var_in_return: a module variable could hold the receiver
 // def module_var_in_return(self: Own[Self]) -> int32:
 //     return take_ro((self.a, self.b)) + len(GP.xs)  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
 inline int32_t H::module_var_in_return() && {
-    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)}))), ::tpy::__len__(GP->xs)));
+    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}), ::tpy::__len__(GP->xs)));
 }
 
 // # scalar_kinds_ok: bool, char and enum locals and a module-level enum
@@ -813,7 +813,7 @@ inline int32_t H::scalar_kinds_ok() && {
     bool f = true;
     char c = ::tpy::char_from_str("x");
     Color k = Color::RED;
-    return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_mut(::tpy::tuple_to_storage_move<std::tuple<P, P>>(std::tuple<P*, P*>{&(this->a), &(this->b)})), 10)), ((f) ? (1) : (0)))), (((c == 'x')) ? (1) : (0)))), (((k == Color::RED)) ? (1) : (0))));
+    return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_mut(std::tuple<P, P>{std::move(this->a), std::move(this->b)}), 10)), ((f) ? (1) : (0)))), (((c == 'x')) ? (1) : (0)))), (((k == Color::RED)) ? (1) : (0))));
 }
 
 // # scalar_field_twice_ok: a second field read twice stays borrowed, but a
@@ -821,7 +821,7 @@ inline int32_t H::scalar_kinds_ok() && {
 // def scalar_field_twice_ok(self: Own[Self]) -> int32:
 //     return take_mut((self.a, self.b)) * 10 + (1 if self.n == self.n else 0)  # tpyc: ok
 inline int32_t H::scalar_field_twice_ok() && {
-    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_mut(::tpy::tuple_to_storage_move<std::tuple<P, P>>(std::tuple<P*, P*>{&(this->a), &(this->b)})), 10)), (((this->n == this->n)) ? (1) : (0))));
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_mut(std::tuple<P, P>{std::move(this->a), std::move(this->b)}), 10)), (((this->n == this->n)) ? (1) : (0))));
 }
 
 // # local_generator: `g` is destroyed after the return value is built and
@@ -833,7 +833,7 @@ inline int32_t H::scalar_field_twice_ok() && {
 inline int32_t H::local_generator() && {
     __gen_H_gen g = this->gen();
     ::tpyapp::main::step(g);
-    return ::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)})));
+    return ::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)});
 }
 
 // # local_list_in_scope: the blunt cost of the rule above -- `xs` runs no
@@ -846,7 +846,7 @@ inline int32_t H::local_generator() && {
 inline int32_t H::local_list_in_scope() && {
     std::array<int32_t, 2> xs = {5, 6};
     int32_t n = ::tpy::__len__(xs);
-    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)}))), n));
+    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}), n));
 }
 
 // # scalar_locals_only: int locals in scope, one not even in the value,
@@ -858,7 +858,7 @@ inline int32_t H::local_list_in_scope() && {
 inline int32_t H::scalar_locals_only() && {
     int32_t k = 5;
     int32_t m = (::tpy::add_check<int32_t>(k, 1));
-    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_mut(::tpy::tuple_to_storage_move<std::tuple<P, P>>(std::tuple<P*, P*>{&(this->a), &(this->b)})), 10)), m));
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_mut(std::tuple<P, P>{std::move(this->a), std::move(this->b)}), 10)), m));
 }
 
 // # sibling_loop_guard: `gd` is bound only inside loop bodies, so it is not
@@ -881,7 +881,7 @@ inline int32_t H::sibling_loop_guard() && {
     for (int32_t j = 0; j < 1; ++j) {
         gd = &*(__slot_2 = Guard(&this->a));
     }
-    return ::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)})));
+    return ::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)});
 }
 
 // # loop_body_list: the blunt cost of the rule above -- `xs` is bound in a
@@ -899,7 +899,7 @@ inline int32_t H::loop_body_list() && {
         std::array<int32_t, 2> xs = {5, 6};
         n = ::tpy::add_check<int32_t>(n, ::tpy::__len__(xs));
     }
-    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)}))), n));
+    return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}), n));
 }
 
 // # self_in_nested_def: a nested def may run twice, so it does not own
@@ -910,7 +910,7 @@ inline int32_t H::loop_body_list() && {
 //     return inner() * 10 + inner()
 inline int32_t H::self_in_nested_def() && {
     auto inner = [this]() -> int32_t {
-        return ::tpyapp::main::take_self(::tpy::tuple_to_storage_move<std::tuple<H, int32_t>>(::tpy::tuple_value_to_borrow<std::tuple<H*, int32_t>>(std::tuple<H, int32_t>{H((*this)), 1})));
+        return ::tpyapp::main::take_self(std::tuple<H, int32_t>{H((*this)), 1});
     };
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(inner(), 10)), inner()));
 }
@@ -930,7 +930,7 @@ inline HPtr::HPtr()
 // def ptr_field_in_return(self: Own[Self]) -> int32:
 //     return take_peek((self.a, self.b), self.pa)  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
 inline int32_t HPtr::ptr_field_in_return() && {
-    return ::tpyapp::main::take_peek(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)})), this->pa);
+    return ::tpyapp::main::take_peek(std::tuple<P, P>{P(this->a), P(this->b)}, this->pa);
 }
 
 // def __init__(self) -> None:
@@ -954,7 +954,7 @@ inline Sub::Sub() : Base() {}
 // def super_in_return(self: Own[Self]) -> int32:
 //     return take_ro((self.a, self.b)) * 10 + super().count()  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
 inline int32_t Sub::super_in_return() && {
-    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)}))), 10)), this->Base::count()));
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_ro(std::tuple<P, P>{P(this->a), P(this->b)}), 10)), this->Base::count()));
 }
 // def step(g: Iterator[int32]) -> None:
 //     try:

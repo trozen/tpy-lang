@@ -106,6 +106,7 @@ from .checks import (
     view_slot_shape_ok,
 )
 from .predicates import (
+    tuple_stores_into,
     _comp_shadow_pointers,
     _eligible_char,
     _eligible_enum,
@@ -695,7 +696,8 @@ def _storage_literal(stmt: TpyAssign, plan: _StoragePlan, slot: _ExprUse,
             v, lit_t, lc, declared,
             _comp_shadow_pointers(lc.pointers, declared, analyzer))
     if isinstance(v, TpyTupleLiteral):
-        return _storage_tuple_literal(stmt, st, lc, declared, loc)
+        return _storage_tuple_literal(v, st, lc, declared,
+                                      stmt_reject_reason(stmt))
     if (isinstance(st, RecursiveAliasInstanceType)
             and isinstance(v, (TpyArrayLiteral, TpyDictLiteral))):
         # A container literal into a recursive-alias wrapper field: the
@@ -752,28 +754,24 @@ def _is_direct_init(slot: _ExprUse) -> bool:
             and slot.dest.construct is SlotConstruct.DIRECT_INIT)
 
 
-def _storage_tuple_literal(stmt: TpyAssign, st: TpyType, lc: _LowerCtx,
-                           declared: dict[str, TpyType], loc) -> THIRExpr:
+def _storage_tuple_literal(v: TpyTupleLiteral, st: TpyType, lc: _LowerCtx,
+                           declared: dict[str, TpyType],
+                           reason: str) -> THIRExpr:
     """A tuple LITERAL at a tuple slot: the spelled brace-init, built
     against the slot. A VALUE tuple's (and an Optional of one's) borrow and
     storage forms coincide; a pointer-repr tuple's literal is value-captured
     here (a REF-captured one is refused below), so the brace-init already
-    spells the storage form and no conversion wraps it; a nested-storage
-    tuple carries its per-level lifts inside the literal."""
+    spells the storage form and no conversion wraps it; each element lands
+    in its own storage slot by the container element's rules."""
     analyzer = lc.analyzer
     lit_st = unwrap_readonly(st.inner) if isinstance(st, OptionalType) else st
-    vt = _value_tuple(lit_st, analyzer)
-    ft = None if vt is not None else _f1_tuple(st, analyzer)
-    nt = (None if vt is not None or ft is not None
-          else _nested_storage_tuple(st, analyzer))
-    slot_t = vt or ft or nt
-    v = stmt.value
+    slot_t = (_value_tuple(lit_st, analyzer)
+              or (st if isinstance(st, TupleType) else None))
     if (slot_t is None
             or len(v.elements) != len(slot_t.element_types)
-            or (nt is None
-                and _tuple_literal_has_ref_elements(v, slot_t))):
+            or _tuple_literal_has_ref_elements(v, slot_t)):
         note_detail("assign.field_write_shape")
-        raise ThirUnsupported(stmt_reject_reason(stmt))
+        raise ThirUnsupported(reason)
     _witness("field_write.tuple_literal")
     return _lower_tuple_literal(v, slot_t, lc, declared)
 
@@ -878,9 +876,10 @@ def _storage_lift_renders(member_t: TpyType, rt: 'TpyType | None',
         return (rt == member_t
                 and _eligible_ptr_union(member_t, analyzer) is not None)
     if isinstance(member_t, TupleType):
-        return rt == member_t and (
-            _f1_tuple(member_t, analyzer) is not None
-            or _nested_storage_tuple(member_t, analyzer) is not None)
+        return (isinstance(rt, TupleType) and tuple_stores_into(rt, member_t)
+                and (_f1_tuple(member_t, analyzer) is not None
+                     or _nested_storage_tuple(member_t, analyzer)
+                     is not None))
     if (_resolved_str_value(member_t, analyzer) is not None
             or _resolved_bytes_value(member_t, analyzer) is not None):
         # The view->owned copy; a view member has no storage form to lift to.
@@ -979,13 +978,13 @@ def _storage_value(lowered: THIRExpr, member_t: TpyType, slot_t: TpyType,
     union = _eligible_ptr_union(member_t, analyzer) is not None
     value = lowered
     pointee_move = mv and not union
-    if mv and _borrow_tuple(lowered):
-        # A borrow-form tuple owns only its INLINE elements; its pointer
-        # elements borrow objects the source does not own (a mixed local's
-        # or param's borrowed half). A consuming store therefore moves the
-        # tuple VALUE -- the inline elements move through the rvalue, the
-        # pointees copy -- and never the pointee-moving lift, which would
-        # move the caller's object out from behind the borrow.
+    if mv and isinstance(_storage_type(lowered.result_type), TupleType):
+        # A tuple owns only its INLINE elements; a pointer element borrows
+        # an object the source does not own (a mixed local's or param's
+        # borrowed half). A consuming store therefore moves the tuple VALUE
+        # -- the inline elements move through the rvalue (a widened scalar
+        # converts), the pointees copy -- and never the pointee-moving lift,
+        # which would move the caller's object out from behind the borrow.
         value = THIRMove(value=lowered, result_type=lowered.result_type,
                          form=lowered.form, loc=loc)
         pointee_move = False

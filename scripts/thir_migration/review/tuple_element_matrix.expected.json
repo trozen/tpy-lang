@@ -122,7 +122,7 @@
  "borrow__collection__T_lit": [
   "ok",
   "copies Cell into owned storage (argument 'value' tuple element 0); use copy() to",
-  "std::vector<std::tuple<Cell, int32_t>> probe_xs = std::vector<std::tuple<Cell, int32_t>>{} | probe_xs.push_back(::tpy::tuple_to_storage_move<std::tuple<Cell, int32_t>>(::tpy::tuple_value_to_borrow<std::tuple<Cell*, int32_t>>(std::tuple<Cell, int32_t>{Cell(b), 1}))) | std::get<0>(::tpy::__getitem__(probe_xs, 0)).n = 9",
+  "std::vector<std::tuple<Cell, int32_t>> probe_xs = std::vector<std::tuple<Cell, int32_t>>{} | probe_xs.push_back(std::tuple<Cell, int32_t>{Cell(b), 1}) | std::get<0>(::tpy::__getitem__(probe_xs, 0)).n = 9",
   "differs"
  ],
  "borrow__collection__T_local": [
@@ -840,10 +840,10 @@
   "same"
  ],
  "x__own_arg__T": [
-  "stmt.expr_stmt:call.arg_shape.own_tuple",
+  "ok",
   "copies Cell into owned storage (tuple element 0); use copy() to make this explic",
   "",
-  ""
+  "same"
  ],
  "x__read_elem__S": [
   "ok",

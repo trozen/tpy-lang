@@ -88,7 +88,7 @@ inline Holder::Holder() : a(P(3)) {}
 // def give(self: Own[Self]) -> int32:
 //     return take((self.a, P(4)))  # tpyc: ok
 inline int32_t Holder::give() && {
-    return ::tpyapp::main::take(::tpy::tuple_to_storage_move<std::tuple<P, P>>(std::tuple<P*, P>{&(this->a), P(4)}));
+    return ::tpyapp::main::take(std::tuple<P, P>{std::move(this->a), P(4)});
 }
 void __tpy_init();
 } // namespace tpyapp::main

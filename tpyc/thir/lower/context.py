@@ -29,10 +29,12 @@ from ...typesys import (
 )
 from ...codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
 from ...typesys import holds_borrowing_view
+from ...sema.own_copy import contains_reference_type
 from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf, THIRTupleLayout, THIRUnionExtraction, THIRUnionLayout
 from .captures import CaptureSites
 from .predicates import (
     _borrow_tuple_return_type,
+    _optional_borrow_tuple,
     _res_container_return,
     _eligible_char,
     _eligible_enum,
@@ -761,6 +763,7 @@ class _Prescan:
                  "hoisted", "move_through",
                  "alias_sources", "alias_born", "owned_viewfam_params",
                  "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple",
+                 "ret_nullable_tuple",
                  "ret_record_borrow", "ret_record_storage",
                  "ret_res_container",
                  "ret_value_tuple", "ret_generic_tuple",
@@ -918,7 +921,16 @@ class _Prescan:
         # F3: the function's borrow-form pointer-repr tuple return slot, if any
         # (`tuple[..., Ref]` -> `std::tuple<..., T*>`), so a `return <storage tuple
         # lvalue>` lifts via `tuple_to_pointer`. None for every other return type.
-        self.ret_borrow_tuple = _borrow_tuple_return_type(rt, analyzer)
+        # A nullable reference-tuple return keeps the tuple's return layout
+        # inside the optional (`std::optional<std::tuple<Box*, int32_t>>`),
+        # so the bare twin's fact over the inner renders the non-None value
+        # (the optional absorbs it) and `return None` is the empty optional.
+        self.ret_nullable_tuple: 'OptionalType | None' = (
+            unwrap_readonly(unwrap_send_sync(rt))
+            if _optional_borrow_tuple(rt, analyzer) is not None else None)
+        self.ret_borrow_tuple = _borrow_tuple_return_type(
+            self.ret_nullable_tuple.inner
+            if self.ret_nullable_tuple is not None else rt, analyzer)
         # The borrow-form REFERENCE return slot (`-> Box` -> `Box&`,
         # `-> list[T]` -> `std::vector<T>&`): a bare borrow name
         # (`return name;`), `self` (`return (*this);`), a plain field read
@@ -1305,7 +1317,8 @@ _LC_INHERITED_BY_DESIGN = (
 _PRESCAN_NOT_NAME_KEYED = (
     # Return-slot facts: a nested def swaps in its own prescan and a lambda
     # body has no `return`.
-    "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple", "ret_record_borrow",
+    "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple",
+    "ret_nullable_tuple", "ret_record_borrow",
     "ret_record_storage", "ret_res_container", "ret_value_tuple",
     "ret_generic_tuple", "ret_own_storage_tuple", "ret_wrapper_ref_tuple",
     "ret_str", "ret_bytes", "ret_char", "ret_union", "ret_ptr_union",
@@ -1958,7 +1971,13 @@ class _LowerCtx:
         for pname, ptype in self.params:
             owns = func.takes_ownership_of(pname, ptype)
             own = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype)))
-            if owns and own is not None and not own.wrapped.is_value_type():
+            # A tuple is a value type, but one holding a reference copies
+            # that reference's object as any `Own[record]` would, so its
+            # last use moves too.
+            if owns and own is not None and (
+                    not own.wrapped.is_value_type()
+                    or (isinstance(unwrap_readonly(own.wrapped), TupleType)
+                        and contains_reference_type(own.wrapped))):
                 self.movable_locals.add(pname)
             # An ownership-transfer TUPLE param (`tuple[Own[A], B]` --
             # `std::tuple<A, B*>&&`): seed_param_locals' tuple branch.

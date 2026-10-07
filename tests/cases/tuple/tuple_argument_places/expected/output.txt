@@ -1,0 +1,22 @@
+local_last_use 1
+local_last_use stored 105 2
+local_live 7
+local_alias_same_stmt 8
+forward_own 1
+append_own 121 2
+mixed_call 1 1 30
+field_read 1 0
+literal 2 41
+borrowed_local 2 42 3
+element_last_use 50
+element_last_use stored 150
+element_live 102
+method_mixed_element 53
+method_mixed_element stored 152 53
+amp_slot 43
+optional_member 14 0
+nested 3
+const_borrow 61
+ctor_sources 123
+ctor_element 170
+bigint_name 80 3 3

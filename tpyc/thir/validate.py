@@ -875,6 +875,11 @@ def _borrow_legal_return(rt) -> bool:
         inner = unwrap_readonly(t.inner)
         if is_str_view_type(inner) or is_bytes_view_type(inner):
             return True
+        # A nullable tuple return holds the tuple's return layout
+        # (`std::optional<std::tuple<Box*, int32_t>>`), so a borrow-form
+        # value of it is the slot's own form.
+        if isinstance(inner, TupleType) and inner.has_pointer_repr_element():
+            return True
     return is_str_view_type(t) or is_bytes_view_type(t)
 
 

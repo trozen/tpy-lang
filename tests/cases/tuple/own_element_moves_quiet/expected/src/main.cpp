@@ -179,8 +179,8 @@ std::vector<std::tuple<int32_t, int32_t>> values_into_list(int32_t n) {
 void main() {
     P c = P(7);
     P d = P(8);
-    std::cout << "fresh_copy" << " " << ::tpyapp::main::take(::tpy::tuple_to_storage_move<std::tuple<P, P>>(std::tuple<P, P>{P(7), P(c)})) << " " << ::tpy::__len__(c.xs) << "\n" << ::tpy::check_signals;
-    std::cout << "last_use" << " " << ::tpyapp::main::take(::tpy::tuple_to_storage_move<std::tuple<P, P>>(std::tuple<P*, P*>{std::move(&(c)), std::move(&(d))})) << "\n" << ::tpy::check_signals;
+    std::cout << "fresh_copy" << " " << ::tpyapp::main::take(std::tuple<P, P>{P(7), P(c)}) << " " << ::tpy::__len__(c.xs) << "\n" << ::tpy::check_signals;
+    std::cout << "last_use" << " " << ::tpyapp::main::take(std::tuple<P, P>{std::move(c), std::move(d)}) << "\n" << ::tpy::check_signals;
     std::cout << "give" << " " << Holder().give() << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpyapp::main::ret_moves();
     P m = std::move(std::get<0>(__tup_1));

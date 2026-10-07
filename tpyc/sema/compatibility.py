@@ -50,7 +50,7 @@ from ..parse import (
 from .literal_utils import literal_value_from_expr
 from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error
 from ..modules import get_span_return_type
-from .context import OwnSlot, addr_taken_roots, _storage_root, BorrowKind, BorrowTracker, CallOperands, LendSource, call_borrow_operands, call_lend_sources, tuple_borrow_escape_roots
+from .context import OwnSlot, addr_taken_roots, escaping_borrow_tuple, _storage_root, BorrowKind, BorrowTracker, CallOperands, LendSource, call_borrow_operands, call_lend_sources, tuple_borrow_escape_roots
 from .numeric_lattice import fixed_int_range_contains, numeric_info
 from ..diagnostics import (
     SemanticError, NOCOPY_REMEDIATION_HINT, CONSUMING_FIELD_MOVE_NOTE,
@@ -2803,7 +2803,7 @@ class TypeCompatibility:
         if action == "return" and whole_slot:
             moved = self.returned_owned_element(expr)
             if moved is not None:
-                self.ctx.returned_element_moves.add(expr)
+                self.ctx.element_moves.add(expr)
                 self.ctx.mark_own_element_consumed(*moved)
                 return False
         if not self.arrives_borrowed(expr):
@@ -2816,6 +2816,32 @@ class TypeCompatibility:
         out of a tuple this body owns: element `i` is `Own[...]` and the
         return is the tuple's last use, so nothing reads the moved-from
         element (the other elements stay where they are). None otherwise."""
+        read = self.owned_element_read(expr)
+        if read is None or not self.is_auto_move_use(expr.obj):
+            return None
+        return read
+
+    def passed_owned_element(self, own_type: OwnType, expr: TpyExpr) -> bool:
+        """An owned element `name[i]` passed to an `Own[T]` parameter MOVES
+        out exactly where a returned one does (`returned_owned_element`: the
+        tuple's last use with no hidden borrower); otherwise the slot copies
+        it and says so, and a `@nocopy` element errors. False when `expr` is
+        no owned element read."""
+        read = self.owned_element_read(expr)
+        if read is None:
+            return False
+        if self.is_auto_move_use(expr.obj):
+            self.ctx.element_moves.add(expr)
+            self.ctx.mark_own_element_consumed(*read)
+            return True
+        self._check_own_borrowed_source(own_type, expr,
+                                        f"tuple element {read[1]}", "pass",
+                                        whole_slot=False)
+        return True
+
+    def owned_element_read(self, expr: TpyExpr) -> 'tuple[str, int] | None':
+        """`(name, i)` for `name[i]` with a constant index reading an
+        `Own[...]` element of a tuple-typed name; None otherwise."""
         if not (isinstance(expr, TpySubscript) and isinstance(expr.obj, TpyName)):
             return None
         index = expr.index
@@ -2835,8 +2861,6 @@ class TypeCompatibility:
             idx += len(tt.element_types)
         if not (0 <= idx < len(tt.element_types)
                 and isinstance(unwrap_readonly(tt.element_types[idx]), OwnType)):
-            return None
-        if not self.is_auto_move_use(expr.obj):
             return None
         return expr.obj.name, idx
 
@@ -4148,6 +4172,14 @@ class TypeCompatibility:
         # the source dangles (BUGS.md). A top-level borrow member is fine when
         # rooted, so it gets the per-element fresh-source dangling check.
         tuple_rt = unwrap_readonly(return_type)
+        # A nullable borrow tuple lends exactly what its bare twin does, so
+        # its non-None value takes the bare slot's element checks.
+        opt_tuple = (escaping_borrow_tuple(return_type)
+                     if isinstance(tuple_rt, OptionalType)
+                     and not isinstance(peel_value_wrappers(expr),
+                                        TpyNoneLiteral) else None)
+        if opt_tuple is not None:
+            tuple_rt = opt_tuple[0]
         if isinstance(tuple_rt, TupleType):
             nested_bad = self._nested_tuple_borrow_member(tuple_rt)
             if nested_bad is not None:
