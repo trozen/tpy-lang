@@ -57,6 +57,7 @@ from .checks import (_combinator_pins_source, _container_storage_call_rvalue,
                      _native_iter_combinator,
                      declared_call_elem_copy_ok)
 from .predicates import (
+    _unwrap_own,
     _mixed_own_storage_source,
     storage_tuple_name_source,
     _storage_opt_ternary_elem,
@@ -515,12 +516,14 @@ def _source_route(gen, declared: dict[str, TpyType],
 
 def _clause_bindings(gen, route: _CompRoute) -> list[tuple[str, TpyType]]:
     """The names one `for` clause binds, with the types its body reads them
-    at."""
+    at. A name is a borrow of its element whatever the source hands over:
+    `Own` stays the source's fact (`owns_elements`), as on a `for`
+    statement's loop variable."""
     if route.unpack_types is not None:
         return [(name, tt) for name, tt in zip(gen.unpack_vars,
                                                route.unpack_types)
                 if name is not None]
-    return [(gen.var, route.et)]
+    return [(gen.var, _unwrap_own(route.et))]
 
 
 def _clause_route(kind: str, gen, declared: dict[str, TpyType],
@@ -717,8 +720,7 @@ def _comp_result_slots_ok(
     targets are in the slice. Each clause's source routes while the clause
     lowers, with the names in scope there; this gate reads only the kind
     and the innermost clause's ownership, both fixed before any clause
-    lowers (sema refuses an owned source anywhere but the innermost
-    clause)."""
+    lowers (only the innermost clause's element can reach the result)."""
     kind = _COMP_KINDS.get(type(init))
     if kind is None:
         return False

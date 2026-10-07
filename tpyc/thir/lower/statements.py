@@ -16632,7 +16632,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             _lower_hoist_predecls(foreach_hoists, declared, lc,
                                   "foreach.hoist_decl", foreach_flavors, foreach_bindings))
         body_declared = dict(declared)
-        body_declared[stmt.var] = et
+        # An owned element stays in the iterator's step slot for the
+        # iteration; the name binds it like a local, and the consuming move
+        # keys on the source's element type, not on this binding.
+        body_declared[stmt.var] = _unwrap_own(et)
         # Frame-field shadowing: in a resumable
         # leaf the loop var (and tuple-unpack targets) bind C++ locals that
         # shadow same-named frame fields for the body's duration, so the

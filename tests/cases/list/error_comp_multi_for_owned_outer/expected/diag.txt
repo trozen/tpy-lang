@@ -1,1 +1,0 @@
-main.py:20: error: a `for` clause over a source that yields owned values must be the last clause of the comprehension

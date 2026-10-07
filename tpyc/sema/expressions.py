@@ -4903,23 +4903,18 @@ class ExpressionAnalyzer:
         k: int, elem_type: TpyType,
     ) -> None:
         """Stamp clause `k`'s source facts. Only the innermost clause's
-        element is handed to the sink, so only it may iterate a source that
-        hands its elements over."""
+        element can be handed to the sink; an outer clause's owned element
+        stays in its iterator's step slot while the inner clauses borrow it."""
         gen = expr.generators[k]
         gen.owns_elements = isinstance(elem_type, OwnType)
         if (gen.owns_elements and isinstance(expr, TpyGeneratorExpression)
                 and len(expr.generators) > 1):
-            # No generator-expression frame takes over its source's elements,
-            # so the last-clause rule of the comprehensions does not apply;
+            # No generator-expression frame takes over its source's elements;
             # the single-clause form keeps its lowering refusal.
             raise self.ctx.error(
                 "a generator expression cannot iterate a source that yields "
                 "owned values; use a list comprehension or a `for` loop",
                 gen.iterable)
-        if gen.owns_elements and k + 1 < len(expr.generators):
-            raise self.ctx.error(
-                "a `for` clause over a source that yields owned values must be "
-                "the last clause of the comprehension", gen.iterable)
 
     def _analyze_genexpr_function(self, expr: TpyGeneratorExpression,
                                   elem_type: TpyType) -> TpyType:

@@ -129,7 +129,32 @@ lc exit
 lc error_return 6
 lc match [2, 3, 4, 5, 6]
 lc lambda 20
+lc own outer [0, 1, 1, 2]
+lc own outer filter [0, 2, 2]
+lc own outer grow [0, 1, 9, 1, 2, 9]
+lc own outer walrus [2, 3, 3, 4]
+lc own outer bump [1, 1, 2, 2]
+lc own outer dict {0: 2, 1: 2, 2: 2}
+lc own outer set [0, 1, 2, 3]
+lc own outer field [0, 10]
+lc own both [0, 1, 0, 1]
+lc own outer copy [2, 2, 2, 2]
+own for stmt [1, 2, 8]
+own for stmt [2, 3, 8]
+own ctor [0, 1, 1, 2]
+own method [4, 6, 6, 8]
+own generator [4, 0, 1, 1, 2]
+own async 8
+own match [0, 2]
+own try [0, 1, 1, 2]
+own finally
+lc enter
+own with [0, 1]
+lc exit
+own nested def [1, 2, 2, 3]
+own lambda 4
 module 16
 lc module shadow [1, 2, 3] [9] -1
 lc module [(1, 0), (2, 0), (2, 1)] [1, 2, 3, 4, 6]
 lc module src [5, 5]
+own module [0, 1, 1, 2]

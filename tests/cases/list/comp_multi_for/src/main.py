@@ -204,6 +204,34 @@ def cells(n: int) -> Iterator[Own[C]]:
         i += 1
 
 
+def batches(n: int) -> Iterator[Own[list[C]]]:
+    i = 0
+    while i < n:
+        out: list[C] = [C(i), C(i + 1)]
+        yield out
+        i += 1
+
+
+class Shelf:
+    cs: list[C]
+
+    def __init__(self, cs: Own[list[C]]) -> None:
+        self.cs = cs
+
+
+def shelves(n: int) -> Iterator[Own[Shelf]]:
+    i = 0
+    while i < n:
+        s = Shelf([C(i * 10)])
+        yield s
+        i += 1
+
+
+def grow_cs(cs: list[C]) -> bool:
+    cs.append(C(9))
+    return True
+
+
 def keep(row: list[int]) -> bool:
     print("lc keep", len(row))
     return len(row) != 2
@@ -422,6 +450,109 @@ def lc_owned() -> None:
     print("lc owned genexpr", sum(c.n for n in range(3) for c in cells(n)))  # tpyc: ok
 
 
+def lc_owned_outer() -> None:
+    # free function: an outer clause over an owned source; the inner clause borrows its element
+    print("lc own outer", [c.n for cs in batches(2) for c in cs])  # tpyc: ok
+    # filters on both clauses
+    print("lc own outer filter", [c.n for cs in batches(3) if len(cs) > 1 for c in cs if c.n % 2 == 0])  # tpyc: ok
+    # an outer filter grows the owned element before the inner clause iterates it
+    print("lc own outer grow", [c.n for cs in batches(2) if grow_cs(cs) for c in cs])  # tpyc: ok
+    # a scalar walrus in the outer filter, read by the element
+    print("lc own outer walrus", [c.n + k for cs in batches(2) if (k := len(cs)) > 1 for c in cs])  # tpyc: ok
+    # mutation through the inner var reaches the owned element: the element reads it back
+    print("lc own outer bump", [cs[0].n for cs in batches(2) for c in cs if c.bump() > 0])  # tpyc: ok
+    # dict and set; the dict key and value both read the outer element
+    print("lc own outer dict", {c.n: len(cs) for cs in batches(2) for c in cs})  # tpyc: ok
+    print("lc own outer set", sorted({c.n for cs in batches(3) for c in cs}))  # tpyc: ok
+    # a field of the owned element as the inner source
+    print("lc own outer field", [c.n for s in shelves(2) for c in s.cs])  # tpyc: ok
+    # both clauses owned: the innermost element still moves into the result
+    ws = [w for cs in batches(2) for w in widgets(len(cs))]  # tpyc: ok
+    print("lc own both", [w.id for w in ws])
+    # the outer element as the result is copied per inner iteration, and says
+    # so (CPython aliases one list twice; read-only here, the copy is the warned divergence)
+    rows = [cs for cs in batches(2) for _ in range(2)]  # tpyc: warning(/copies/)
+    print("lc own outer copy", [len(r) for r in rows])
+
+
+def own_for_stmt() -> None:
+    # for statement: a nested for over the element of a for over an owned source
+    for cs in batches(2):
+        cs.append(C(7))
+        for c in cs:  # tpyc: ok
+            c.bump()
+        print("own for stmt", [c.n for c in cs])
+
+
+class OwnRows:
+    ns: list[int]
+
+    def __init__(self, n: int) -> None:
+        # constructor: the member init of a field
+        self.ns = [c.n for cs in batches(n) for c in cs]  # tpyc: ok
+
+    def doubled(self) -> Own[list[int]]:
+        # method
+        r = [c.n * 2 + len(self.ns) for cs in batches(2) for c in cs]  # tpyc: ok
+        return r
+
+
+def own_gen(n: int) -> Iterator[int]:
+    # generator body: the comprehension and the for statement twin
+    flat = [c.n for cs in batches(n) for c in cs]  # tpyc: ok
+    yield len(flat)
+    for ds in batches(n):
+        for d in ds:  # tpyc: ok
+            yield d.n
+
+
+async def own_async(n: int) -> int:
+    await asyncio.sleep(0)
+    # async def, after a suspension: the comprehension and the for statement twin
+    # (distinct names: BUGS.md#async-comp-target-named-like-frame-loop-var)
+    total = sum([c.n for cs in batches(n) for c in cs])  # tpyc: ok
+    for ds in batches(n):
+        for d in ds:  # tpyc: ok
+            total += d.n
+    return total
+
+
+def own_positions(k: int) -> None:
+    match k:
+        case 1:
+            # match arm
+            print("own match", [c.n for cs in batches(2) for c in cs if c.n != k])  # tpyc: ok
+        case _:
+            print("own match other")
+    try:
+        # try/finally body
+        print("own try", [c.n for cs in batches(2) for c in cs])  # tpyc: ok
+    finally:
+        print("own finally")
+    with Ctx():
+        # with body
+        print("own with", [c.n for cs in batches(1) for c in cs])  # tpyc: ok
+
+    def inner() -> Own[list[int]]:
+        # nested def: the comprehension reads the enclosing parameter
+        return [c.n + k for cs in batches(2) for c in cs]  # tpyc: ok
+    print("own nested def", inner())
+    # lambda body
+    total: Callable[[int], int] = lambda n: sum([c.n for cs in batches(n) for c in cs])  # tpyc: ok
+    print("own lambda", total(2))
+
+
+def own_main() -> None:
+    lc_owned_outer()
+    own_for_stmt()
+    rows = OwnRows(2)
+    print("own ctor", rows.ns)
+    print("own method", rows.doubled())
+    print("own generator", list(own_gen(2)))
+    print("own async", asyncio.run(own_async(2)))
+    own_positions(1)
+
+
 def lc_copy(grid: list[list[int]]) -> None:
     # a reference element is copied once per inner iteration, and says so
     print("lc copy", [row for row in grid for _ in range(2)])  # tpyc: warning(/copies/)
@@ -569,6 +700,7 @@ def main() -> None:
     kept([1, 2])
     genexpr_positions([[1, 2], [3]])
     lc_main()
+    own_main()
 
 
 main()
@@ -584,3 +716,5 @@ lc_pairs = [(i, j) for i in range(3) for j in range(i)]  # tpyc: ok
 print("lc module", lc_pairs, [x * y for x in range(1, 3) for y in range(x, 4)])  # tpyc: ok
 # module level: clause 0 over a temporary source, inner clause a range
 print("lc module src", [c.n for c in pick([C(5)]) for j in range(2)])  # tpyc: ok
+# module level: an outer clause over an owned source
+print("own module", [c.n for cs in batches(2) for c in cs])  # tpyc: ok

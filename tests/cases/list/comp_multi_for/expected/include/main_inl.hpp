@@ -98,6 +98,74 @@ inline std::expected<C, ::tpy::StopIteration> __gen_cells::__next__() {
     __builtin_unreachable();
 }
 
+// def batches(n: int) -> Iterator[Own[list[C]]]:
+//     i = 0
+//     while i < n:
+//         out: list[C] = [C(i), C(i + 1)]
+//         yield out                               # -> S_RESUME_0
+//         i += 1
+inline std::expected<std::vector<C>, ::tpy::StopIteration> __gen_batches::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield out
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((::tpy::BigInt(i) < n)) {
+            out.emplace(std::vector<C>{C(::tpy::BigInt(i)), C(::tpy::BigInt((::tpy::add_check<int32_t>(i, 1))))});
+            __state = S_RESUME_0;
+            return (*out);
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def shelves(n: int) -> Iterator[Own[Shelf]]:
+//     i = 0
+//     while i < n:
+//         s = Shelf([C(i * 10)])
+//         yield s                               # -> S_RESUME_0
+//         i += 1
+inline std::expected<Shelf, ::tpy::StopIteration> __gen_shelves::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield s
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((::tpy::BigInt(i) < n)) {
+            s.emplace(Shelf(std::vector<C>{C(::tpy::BigInt((::tpy::mul_check<int32_t>(i, 10))))}));
+            __state = S_RESUME_0;
+            return (*s);
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 // def lc_gen_src() -> Iterator[int]:
 //     # generator body: clause 0's temporary source, values read after a yield
 //     vals = [c.n + k for c in pick([C(100), C(200)]) for k in range(1)]  # tpyc: ok

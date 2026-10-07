@@ -258,10 +258,15 @@ var is rebound each iteration):
   last use -- `{node: node.id}` keeps the key copy.
 
 A derived sink (`x.field`, `f(x)`) and a borrowed source still copy. Only the
-innermost element is ever handed to the sink, so an OUTER clause over an
-owned-yielding source has nowhere to hold its element for the inner clauses
-and is refused: *a `for` clause over a source that yields owned values must be
-the last clause of the comprehension* (`owns_elements` is stamped per clause).
+innermost element is ever handed to the sink. An OUTER clause may iterate an
+owned-yielding source too: its element stays in the iterator's step slot
+(`auto&& ps = *__beg_0;`) for that iteration, and the inner clauses borrow it
+(`auto& __obj_1 = ps;`), as a nested `for` statement does. `owns_elements` is
+stamped per clause and stays the SOURCE's fact; the clause's name binds the
+element's storage type (`_clause_bindings` strips the `Own`, as the `for`
+statement's loop-var binding does), and only the innermost clause's sink reads
+`owns_elements` to move. An outer element used as the result is copied per
+inner iteration under the storage-copy warning, like a borrowed one.
 A generator expression takes no owned source at clause 0. With several
 clauses the refusal says so: *a generator expression cannot iterate a source
 that yields owned values; use a list comprehension or a `for` loop*; a single
@@ -819,7 +824,6 @@ This is deferred -- the frame is correct and efficient enough as baseline. Fusio
 | Incompatible annotation | `x: list[int32] = [s for s in strs]` | "Type mismatch in list comprehension element" |
 | Name bound by two clauses | `[row for row in rows for row in row]` | "'row' is bound by two `for` clauses of this comprehension; rename one" |
 | Read before the binding clause | `[x for row in rows if x > 0 for x in row]` | "'x' is read before the `for` clause that binds it" |
-| Owned-yielding outer clause | `[p.v for ps in batches() for p in ps]` | "a `for` clause over a source that yields owned values must be the last clause of the comprehension" |
 | Owned source of a multi-clause generator expression | `sum(p.v + k for p in widgets() for k in range(2))` | "a generator expression cannot iterate a source that yields owned values; use a list comprehension or a `for` loop" |
 | Walrus binding a reference (CPython runs it) | `[c for c in xs if (last := c).n > 0]` | "a walrus inside a comprehension cannot bind 'last' to a reference to an object; use a `for` loop" |
 | Genexpr inner-clause capture rebound | `for v in (a + b for a in xs for b in ys): ys = [v]` | "'ys' is iterated by this generator expression, but the loop it feeds rebinds it between pulls; bind it to a local first" |
@@ -842,7 +846,6 @@ tests/cases/list/
     error_comp_multi_for_underscore_read/       # `_` two clauses bind, read
     error_comp_multi_for_read_before_bind/      # a filter reads a later clause's name
     error_comp_multi_for_read_before_bind_iter/ # an inner iterable does
-    error_comp_multi_for_owned_outer/           # owned-yielding outer clause
     error_comp_walrus_reference/                # walrus binding an object
 
 tests/cases/dict/
