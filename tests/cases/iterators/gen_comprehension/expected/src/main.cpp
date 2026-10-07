@@ -139,7 +139,8 @@ void main() {
         auto __beg_7 = __obj_7.begin();
         auto __end_7 = __obj_7.end();
         for (; __beg_7 != __end_7; ++__beg_7) {
-            auto& __tup_1 = *__beg_7;
+            auto&& __for_tup_0 = *__beg_7;
+            auto& __tup_1 = __for_tup_0;
             int32_t a = std::get<0>(__tup_1);
             int32_t b = std::get<1>(__tup_1);
             __result.push_back((::tpy::add_check<int32_t>(a, b)));

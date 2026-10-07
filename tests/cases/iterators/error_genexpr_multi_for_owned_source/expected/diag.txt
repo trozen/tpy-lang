@@ -1,0 +1,1 @@
+main.py:21: error: a generator expression cannot iterate a source that yields owned values; use a list comprehension or a `for` loop

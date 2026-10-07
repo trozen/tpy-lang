@@ -4,31 +4,39 @@
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | List comprehension: `[expr for var in iterable]`, single generator, no filter | Done |
-| 2 | Filter clause: `[expr for var in iterable if cond]` | Done |
-| 3 | Tuple unpacking in generator: `[v for k, v in pairs]` | Done |
+| 1 | List comprehension: `[expr for var in iterable]` | Done |
+| 2 | Filter clauses: `[expr for var in iterable if cond]` | Done |
+| 3 | Tuple unpacking in a clause: `[v for k, v in pairs]` | Done |
 | 4 | Annotation propagation: `result: list[int32] = [x for x in items]` | Done |
 | 5 | Optimizations: Sized iterables -> `reserve()`, range -> `reserve()` | Done |
 | 6 | Dict comprehension: `{key: value for var in iterable if cond}` | Done |
 | 7 | Set comprehension: `{expr for var in iterable if cond}` | Done |
 | 8 | `range(N)` -> Array: compile-time-known size produces `std::array<T, N>` | Done |
 | 9 | Generator expressions: `(expr for x in iterable)` -> a generator frame | Done |
+| 10 | Several `for` clauses: `[x for row in grid for x in row]`, every form | Done |
 
 ### Future Extensions
 
 | Feature | Notes |
 |---------|-------|
 | `Span[T, N]` -> Array | When fixed-size span is available, `[x for x in span]` can produce `std::array<T, N>` |
-| Nested generators | `[f(x, y) for x in a for y in b]` -- multiple `comprehension` nodes. Low priority (rare in practice) |
-| Walrus operator in filter | `[y for x in items if (y := f(x)) > 0]` -- requires walrus operator |
-| Async comprehensions | `[x async for x in aiter]` -- requires async/await (G1) |
+| Multi-clause Array demotion | `[i * j for i in range(3) for j in range(4)]` has a compile-time size too (TODO.md "A multi-clause list comprehension never demotes to an `Array`") |
+| Lifting the clause refusals | An owned-yielding outer clause, a walrus binding a reference, a name two clauses bind, a rebound capture an inner genexpr clause iterates (TODO.md "Lift: ..." entries) |
+| Async comprehensions | `[x async for x in aiter]` |
 
-### Known Limitations (once implemented)
+### Known Limitations
 
 | Area | Detail |
 |------|--------|
-| Single generator only (Phase 1-5) | Nested generators (`for x in a for y in b`) are deferred |
+| Name bound by two `for` clauses | `[row for row in rows for row in row]` is refused; `_` is exempt while nothing in the comprehension reads it |
+| Owned-yielding outer clause | Only the innermost clause of a list / set / dict comprehension may iterate an `Iterator[Own[T]]` source; a generator expression's clause 0 never may (its inner clauses are the frame body's own `for` loops, which may) |
+| Walrus binding a reference | A walrus whose target can hold a reference is refused inside a list / set / dict comprehension, whatever it iterates, though CPython runs it (see Error Cases) |
+| Genexpr inner-clause capture rebound | Refused while the frame may still pull ("bind it to a local first") |
 | No starred unpacking | `[*a, *b]` inside comprehensions is not supported |
+
+A filter or inner iterable that reads a name a later clause binds is refused
+too, but that refuses no working program: CPython raises `UnboundLocalError`
+there.
 
 ---
 
@@ -43,65 +51,63 @@ from tpy import int32
 squares = [x * x for x in range(10)]
 evens = [x for x in items if x % 2 == 0]
 names = [p.name for p in people]
+flat = [x for row in grid for x in row]
 ```
 
 They are used in 16+ files of the TPy compiler source and are a prerequisite for
 self-hosting. More importantly, they're idiomatic Python that users expect to work.
 
-The key insight is that all Python comprehension forms (`ListComp`, `DictComp`,
-`SetComp`, `GeneratorExp`) share the same `comprehension` generator structure in the
-AST. Designing the generator infrastructure well means dict/set comprehensions and
-generator expressions come cheaply later.
+All Python comprehension forms (`ListComp`, `DictComp`, `SetComp`, `GeneratorExp`)
+share the same list of `comprehension` clauses in the AST, and TPy keeps that
+shape: one clause model, one analysis, one source classification for every form.
 
 ---
 
 ## Design Principles
 
-1. **Expression semantics via IIFE**: Comprehensions are expressions, not statements.
-   In C++, the cleanest way to produce a value from a loop is an immediately-invoked
-   lambda (IIFE). This slots naturally into any expression context -- assignments,
-   function arguments, return values.
+1. **Expression semantics via a statement expression**: a comprehension is an
+   expression whose body is a loop. It renders as a GCC statement expression
+   (`({ ...; std::move(__result); })`) whose body is ordinary THIR statements, so
+   it slots into any expression context -- assignments, arguments, returns, a
+   constructor's member init.
 
-2. **Reuse existing infrastructure**: The for-loop analysis (`get_iterable_element_type`,
-   scope management, iteration codegen) and list type system (`ListType`,
-   `PendingListType`) already exist. Comprehensions build on top of these rather than
-   introducing parallel paths.
+2. **The `for` statement's loops**: each clause's loop is the loop node the `for`
+   statement builds over the same source (`build_loop_node`,
+   `tpyc/thir/lower/statements.py`), rendered by the statement emitter. A source
+   one form iterates, the other does too, with the same render.
 
-3. **Shared generator model**: The new `TpyComprehensionGenerator` node is reusable
-   across list/dict/set comprehensions and generator expressions. Design it once.
+3. **Shared clause model**: `TpyComprehensionGenerator` is one clause; every
+   comprehension kind and generator expressions carry a list of them.
 
 4. **Optimize where obvious**: `range(N)` with literal N can produce `Array[T, N]`
-   (zero heap allocation). Sized iterables can `reserve()`. But the baseline must work
-   first -- optimizations are a later phase.
+   (zero heap allocation); a sized single-clause source `reserve()`s.
 
-5. **CPython compatible**: List comprehensions are native Python. No stubs or
+5. **CPython compatible**: comprehensions are native Python. No stubs or
    `no_cpython.txt` needed.
 
 ---
 
 ## Python AST Structure
 
-All comprehension forms use the same `comprehension` generator node:
+All comprehension forms use the same `comprehension` clause node:
 
 ```python
-# Python AST for: [x * 2 for x in items if x > 0]
+# Python AST for: [x * 2 for row in grid if row for x in row if x > 0]
 ListComp(
     elt=BinOp(left=Name('x'), op=Mult(), right=Constant(2)),
     generators=[
-        comprehension(
-            target=Name('x', Store()),       # loop variable
-            iter=Name('items', Load()),      # iterable
-            ifs=[Compare(...)],              # filter conditions (0 or more)
-            is_async=0
-        )
+        comprehension(target=Name('row', Store()), iter=Name('grid', Load()),
+                      ifs=[Name('row')], is_async=0),
+        comprehension(target=Name('x', Store()), iter=Name('row', Load()),
+                      ifs=[Compare(...)], is_async=0),
     ]
 )
 ```
 
 `DictComp` has `key` + `value` instead of `elt`. `GeneratorExp` is identical to
-`ListComp` structurally. All share the `generators` list of `comprehension` nodes.
-
-Phase 1-5 restricts to `len(generators) == 1`. Nested generators are a future extension.
+`ListComp` structurally. CPython evaluates clause 0's iterable in the enclosing
+scope; everything else -- the filters, the inner iterables, the element -- runs
+in the comprehension's own scope, where every clause's target is a variable.
 
 ---
 
@@ -109,286 +115,323 @@ Phase 1-5 restricts to `len(generators) == 1`. Nested generators are a future ex
 
 ### TpyComprehensionGenerator
 
-Shared generator node, reusable across comprehension kinds:
+One `for` clause, shared by every comprehension kind:
 
 ```python
 @dataclass
 class TpyComprehensionGenerator:
-    """Single generator clause: `for var in iterable [if cond]*`"""
-    var: str                           # loop variable name
-    iterable: TpyExpr                  # iterable expression
-    conditions: list[TpyExpr]          # filter conditions (may be empty)
-    unpack_vars: list[str] | None      # Phase 3: tuple unpacking (k, v)
+    """Single generator clause: for var in iterable [if cond]*"""
+    var: str                           # loop variable (a fresh `__for_tup_N` holder when unpacking)
+    iterable: TpyExpr
+    conditions: list[TpyExpr]          # filters (may be empty)
+    unpack_vars: list[str | None] | None = None   # `for k, v in`; `_` -> None
+    const_loop_var: bool = False       # set by sema
+    owns_elements: bool = False        # set by sema: the source yields Own[T]
+
+    @property
+    def targets(self) -> list[str]: ...    # the names this clause binds
 ```
 
-`unpack_vars` is `None` for simple `for x in items` and a list of names for
-`for k, v in items`. Only one of `var` / `unpack_vars` is meaningful at a time.
-(Phase 3 adds unpacking; Phase 1 uses `var` only.)
-
-### TpyListComprehension
+### TpyListComprehension (and its siblings)
 
 ```python
 @dataclass
 class TpyListComprehension(TpyExpr):
-    """List comprehension: [expr for var in iterable if cond]"""
     element_expr: TpyExpr
-    generator: TpyComprehensionGenerator
+    generators: list[TpyComprehensionGenerator]   # outermost first
+    result_elem_type: TpyType | None = None       # set by sema
 ```
 
-Single generator field (not a list) since we restrict to one generator.
+`TpySetComprehension` has the same fields, `TpyDictComprehension` has
+`key_expr` / `value_expr` and `result_key_type` / `result_value_type`, and
+`TpyGeneratorExpression` adds the frame facts sema sets (the function it builds,
+the capture reads, the creation call). `children()` lists every clause's iterable
+and filters in the order CPython evaluates them (`comp_clause_children`), then
+the element(s).
 
 ---
 
 ## Parser
 
-Handle `ast.ListComp` in `_parse_expr`:
+`_parse_expr` handles all four node kinds through one helper:
 
 ```python
-elif isinstance(node, ast.ListComp):
-    if len(node.generators) != 1:
-        raise ParseError("Nested comprehensions not yet supported", node)
-    gen = node.generators[0]
-    if gen.is_async:
+def _parse_comprehension_generators(self, node) -> list[TpyComprehensionGenerator]:
+    if any(gen.is_async for gen in node.generators):
         raise ParseError("Async comprehensions not yet supported", node)
-    # Parse generator
-    generator = self._parse_comprehension_generator(gen)
-    element_expr = self._parse_expr(node.elt)
-    return TpyListComprehension(element_expr, generator, loc=loc)
+    return [self._parse_comprehension_generator(gen) for gen in node.generators]
 ```
 
-The `_parse_comprehension_generator` helper parses the shared `comprehension` node:
-
-```python
-def _parse_comprehension_generator(self, gen: ast.comprehension) -> TpyComprehensionGenerator:
-    iterable = self._parse_expr(gen.iter)
-    conditions = [self._parse_expr(c) for c in gen.ifs]
-
-    if isinstance(gen.target, ast.Name):
-        return TpyComprehensionGenerator(
-            var=gen.target.id, iterable=iterable,
-            conditions=conditions, unpack_vars=None)
-    elif isinstance(gen.target, ast.Tuple):
-        # Phase 3: tuple unpacking
-        ...
-    else:
-        raise ParseError("Unsupported comprehension target", gen.target)
-```
-
-This helper is shared -- `DictComp` and `GeneratorExp` will call it too.
+`_parse_comprehension_generator` parses one clause: a `Name` target sets `var`,
+a `Tuple` of names sets `unpack_vars` (a `_` element is `None`), anything else
+is a `ParseError`. The parser accepts any number of clauses; the clause rules
+are sema's.
 
 ---
 
 ## Semantic Analysis
 
-Comprehension analysis creates a temporary scope for the loop variable,
-types it from the iterable's element type, then analyzes the element expression.
-
 ### Analysis flow
 
-```python
-def _analyze_list_comprehension(self, expr: TpyListComprehension) -> TpyType:
-    gen = expr.generator
+`_analyze_elem_comprehension` / `_analyze_dict_comprehension`
+(`tpyc/sema/expressions.py`):
 
-    # 1. Analyze iterable (outside comprehension scope)
-    iterable_type = self.analyze_expr(gen.iterable)
-
-    # 2. Extract element type from iterable
-    elem_type = self.iterable.get_iterable_element_type(iterable_type, loc=expr.loc)
-
-    # 3. Open scope, register loop variable
-    # (similar to TpyForEach analysis in statements.py)
-    with self.scopes.comprehension_scope():
-        self.scopes.declare(gen.var, elem_type)
-
-        # 4. Analyze filter conditions (Phase 2)
-        # No type restriction -- matches if/while behavior (truthy dispatch in codegen)
-        for cond in gen.conditions:
-            self.analyze_expr(cond)
-
-        # 5. Analyze element expression
-        result_elem_type = self.analyze_expr(expr.element_expr)
-
-    # 6. Return list type
-    return ListType(result_elem_type)
-```
+1. `_check_comp_clause_names` refuses the clause-name shapes below.
+2. Clause 0's iterable is analyzed in the ENCLOSING scope
+   (`_resolve_comp_iterable`), its element type extracted, and
+   `_stamp_comp_source_facts` records whether it yields `Own[T]`.
+3. One `comprehension_scope()` opens, and `_enter_comp_clause(k)` recurses
+   through the clauses: it files clause k's iteration loans
+   (`_register_comp_iter_loans`), binds clause k's targets as loop variables,
+   analyzes clause k's filters, then either analyzes clause k+1's iterable
+   (inside the scope, with every earlier target visible) and recurses, or -- in
+   the innermost clause -- analyzes the element(s) with the slot hint.
+4. On the way out each clause credits a mutation of its loop variable to the
+   comprehension target its source is rooted at
+   (`credit_iter_source_mutation`, `reach=comp_targets`), so
+   `[[c.bump() for c in row] for row in grid]` binds `row` mutably.
 
 ### Scoping
 
-Comprehensions have their own scope in Python 3 (unlike Python 2 where the loop
-variable leaked). The loop variable is not visible after the comprehension. This maps
-naturally to a C++ lambda scope (IIFE) -- variables declared inside the lambda don't
-escape.
+The comprehension's variables are not visible after it (Python 3 semantics).
+All clauses share ONE scope, which gives two refusals:
 
-The `comprehension_scope()` context manager works like the existing `loop_scope()` but
-without break/continue support.
+- **A name two clauses bind** (`[row for row in rows for row in row]`) would be
+  one variable the inner loop rebinds; each clause binds a fresh C++ local, so
+  the shape is refused: *'row' is bound by two `for` clauses of this
+  comprehension; rename one*. CPython accepts it. A `_` target is exempt
+  while no inner iterable, filter or element reads it (`_comp_free_names`):
+  then nothing can tell which clause bound it.
+- **A read before the binding clause**: a filter, or an inner clause's
+  iterable, reading a name a LATER clause binds reads that clause's variable
+  before it is bound (CPython: `UnboundLocalError`), and is refused: *'x' is
+  read before the `for` clause that binds it*. Clause 0's iterable is exempt:
+  it runs in the enclosing scope and reads the enclosing name. A nested
+  comprehension or lambda in a filter that binds the same name reads its own
+  variable, not the later clause's (`_comp_free_names`).
+
+A filter walrus binds in the ENCLOSING scope (PEP 572), so the inner sources,
+the element and the code after the comprehension read it. Each clause's
+source is classified while that clause lowers, against exactly the names in
+scope there -- the earlier clauses' targets and the earlier filters' walrus
+targets -- so `[c for i in r if (s := str(i)) for c in s]` iterates the
+walrus target like any other name. Because the target
+outlives the comprehension while an element may live in storage that dies
+with it (clause 0 over an owning rvalue, or an inner clause over a temporary,
+rebuilt per outer element), a walrus whose target can hold a REFERENCE -- a
+reference type, an open type parameter, a pointer or borrowing view, or an
+Optional / tuple / union holding one (`_may_keep_reference`) -- is refused
+inside a list / set / dict comprehension whatever it iterates: *a walrus
+inside a comprehension cannot bind 'last' to a reference to an object; use a
+`for` loop*. Which source a reference comes from is not tracked, so a named
+source is refused too. The check runs once in `_analyze_named_expr`, on the
+target's type, before the binding branches split. A value-type target is
+legal everywhere (a `str` slice is a view and is refused; a value tuple is
+refused for now, BUGS.md#value-tuple-walrus-rejects). CPython runs every refused shape. A generator expression's
+walrus binds a local of its frame
+(BUGS.md#genexpr-walrus-target-stays-in-frame), so the rule does not arise
+there.
 
 ### Type inference details
 
-- **Element type**: Determined by analyzing `element_expr` with the loop variable in
-  scope. Standard expression analysis, no special rules.
-- **Filter conditions**: No type restriction -- conditions are passed to
-  `gen_truthy_expr` in codegen, same as `if`/`while`. Filter does not affect
-  element type.
-- **Result type**: `ListType(result_elem_type)` -- always a `list[T]`. Unlike array
-  literals, comprehensions don't use `PendingListType` in Phase 1 because the result
-  size is generally unknown. Phase 5 adds optimization for known-size cases.
+- **Element type**: the element expression analyzed with every clause's
+  variables in scope.
+- **Filter conditions**: no type restriction -- truthiness as in `if`/`while`.
+- **Result type**: `ListType(result_elem_type)` -- `list[T]`, except the
+  compile-time-sized single-clause case below.
 
 ### Ownership
 
-`[p for p in people]` where `people: list[Person]` produces a new `list[Person]`
-where each element is copied into the result via `push_back` (the source is
-borrowed, so the loop var is a borrow into a live element). This is consistent
-with how a for-loop + `append` would behave -- the result list owns its elements.
+`[p for p in people]` over `people: list[Person]` copies each element into the
+result: the result list owns its elements, as a `for` + `append` would.
 
-When the source instead *yields* `Own[T]` (a generator of owned values, or an
-`Iterable[Own[T]]`), a bare loop-var element is *moved* into the result,
-mirroring the consuming `for`+`append`: `[node for node in g()]` over
-`g() -> Iterator[Own[Node]]` emits `push_back(std::move(node))`. So `@nocopy`
-owned elements collect without a copy error, and the storage-copy warning is
-suppressed. The rule is **the comprehension's last-evaluated sink** is
-structurally the last use (the loop var is rebound each iteration; earlier reads
-are sequenced before it), so it moves a bare owned var unconditionally:
+When the INNERMOST clause's source yields `Own[T]` (a generator of owned
+values, or an `Iterable[Own[T]]`), a bare loop-var element is *moved* into the
+result -- the consuming `for` + `append` move: `[node for node in g()]` emits
+`push_back(std::move(node))`, so `@nocopy` owned elements collect without a
+copy error. The comprehension's last-evaluated sink is the last use (the loop
+var is rebound each iteration):
 
-- list/set: the element is the last sink -- moves even after a filter
-  (`[x for x in g() if p(x)]` moves; the filter ran first).
-- dict: the *value* is the last sink and moves; the *key* (evaluated first) is
-  sequenced into a local before the value move so `{node.id: node}` does not read
-  a moved-from element. The key moves only when it is the genuine last use --
-  `{node: node.id}` keeps the key copy (the value reads the element after it).
+- list/set: the element moves, even after a filter (the filter ran first).
+- dict: the *value* is the last sink and moves; the key is sequenced into a
+  local first (see Dict codegen). The key moves only when it is the genuine
+  last use -- `{node: node.id}` keeps the key copy.
 
-An earlier or derived sink (`x.field`, `f(x)`, the dict key when a later sink
-reads the var) and a borrowed source still copy.
+A derived sink (`x.field`, `f(x)`) and a borrowed source still copy. Only the
+innermost element is ever handed to the sink, so an OUTER clause over an
+owned-yielding source has nowhere to hold its element for the inner clauses
+and is refused: *a `for` clause over a source that yields owned values must be
+the last clause of the comprehension* (`owns_elements` is stamped per clause).
+A generator expression takes no owned source at clause 0. With several
+clauses the refusal says so: *a generator expression cannot iterate a source
+that yields owned values; use a list comprehension or a `for` loop*; a single
+clause keeps its lowering refusal (`genexpr.owned_source`,
+`iterators/error_genexpr_owned_generator_source`). Its inner clauses are
+`for` loops of the frame body and follow the `for` statement's rule.
 
-For `@nocopy` types over a *borrowed* source, the element expression must produce
-an owned value (e.g. `[make_thing(x) for x in inputs]` where `make_thing` returns
-`Own[Thing]`). Copying a `@nocopy` loop variable into the result is an error,
-same as `items.append(nocopy_ref)` would be.
+For `@nocopy` types over a *borrowed* source, the element expression must
+produce an owned value (`[make_thing(x) for x in inputs]`); copying a `@nocopy`
+loop variable into the result is an error, as `items.append(nocopy_ref)` is.
 
 ### Iteration loan and loop-variable writes
 
-A list, set or dict comprehension borrows its source exactly as a `for` over it
-does: `register_iteration_loans` (`tpyc/sema/iter_loans.py`) files the ITER
-borrow when `comprehension_scope` opens, and it is held while the conditions and
-the element run. So growing the source there warns (`Mutation of 'xs' while
-iterating over it`, or `Passing borrowed container 'xs' to non-readonly
-parameter` through a mutating callee), and the borrow ends with the
-comprehension. An enclosing loop's borrow of the same storage is merged, not
-replaced (`for v in xss[0]:` around `[... for w in xss ...]` keeps the element
-borrow), and the scope's exit puts back exactly the borrows held on entry.
+Each clause borrows its source exactly as a `for` over it does:
+`register_iteration_loans` (`tpyc/sema/iter_loans.py`) files the ITER borrow
+when the clause binds, and it is held for everything nested inside that clause
+-- its filters, the inner clauses, the element. So growing a source there warns
+(`Mutation of 'row' while iterating over it`, or `Passing borrowed container
+'row' to non-readonly parameter` through a mutating callee), an inner source
+once per outer element. The borrows end with the comprehension; an enclosing
+loop's borrow of the same storage is merged, not replaced, and the scope's exit
+puts back exactly the borrows held on entry.
 
-A source rooted at a name spelled like one of the targets (`[grow(c) for c in
-c]`) is the ENCLOSING binding of that name, which the comprehension's own code
-cannot reach by name, so no loan is filed on it: inside the scope the name is
-the target, and a write through the target is not growth of the source.
+A clause-0 source rooted at a name spelled like one of the targets (`[grow(c)
+for c in c]`) is the ENCLOSING binding of that name, which the comprehension's
+own code cannot reach by name, so no loan is filed on it.
 
-The loop variable records no source: a write through it does not reach a
-parameter source or an enclosing loop variable, so `[c.bump(1) for c in cs]`
-over a parameter keeps `cs` const and fails the build
-(`BUGS.md#comprehension-loop-var-mutation-not-propagated`, whose design notes
-say why the name-keyed fact the `for` statement uses is not enough here).
-
-### Edge case: empty iterable
-
-`[f(x) for x in empty_list]` where `empty_list: list[int32]` works fine -- the
-loop variable type is `int32` (from the list's element type), the element expression
-is analyzed, and the result is an empty `list[T]`. The iterable's element type is
-always known from the iterable's type, regardless of runtime emptiness.
+A write through a loop variable reaches another comprehension's target (step
+4 above) but not a parameter or an enclosing `for` variable, so `[c.bump(1) for
+c in cs]` over a parameter keeps `cs` const and fails the build
+(`BUGS.md#comprehension-loop-var-mutation-not-propagated`).
 
 ---
 
 ## Code Generation
 
-### IIFE Pattern
+THIR (`tpyc/thir/lower/comprehensions.py`) lowers a list/set/dict comprehension
+to `THIRComprehensionBlock`: a statement expression around ordinary statements.
 
-Comprehensions generate an immediately-invoked lambda expression (IIFE):
+- One loop per clause, built by `build_loop_node` -- `THIRForRange` (a 1/2-arg
+  range, or a 3-arg range whose step the `for` statement's step classifier
+  admits), `THIRForEach` (begin/end over a container, a dict view, a combinator,
+  a generator call held in `auto __obj_N`, a 3-arg `Range` object), or
+  `THIRForIterProto` (a user iterable, an `Iterable[T]` / `Iterator[T]`:
+  `::tpy::__iter__` + `__next__`). A tuple-unpacking clause opens its body with the `for`
+  statement's `THIRTupleUnpack` head.
+- Clause k+1's loop sits inside clause k's filters, so an inner source runs
+  once per outer element that passed them.
+- One nested `THIRIf` per filter, so a later filter runs only when the earlier
+  ones passed (Python's short circuit).
+- A `THIRCompInsert` leaf: `push_back` (list), `insert` (set),
+  `insert_or_assign` (dict). Its operands' temporaries flush right above it,
+  once per iteration that reaches it.
+
+The block is a flush region of its own, except clause 0's source
+(`source_in_enclosing` on the outermost loop): Python evaluates it in the
+enclosing scope, so its temporaries are declared at the enclosing statement and
+outlive the block -- a temporary a borrowed source lends from stays valid for a
+pointer stored in an element and read afterwards. A filter walrus's
+declaration also lands at the enclosing statement.
+
+### Single clause with a filter
 
 ```python
-# [x * 2 for x in items]
+pos = [x for x in data if x > 0]      # data: list[int32]
 ```
 
 ```cpp
-[&]() {
+std::vector<int32_t> pos = ({
     std::vector<int32_t> __result;
-    auto& __obj_1 = items;
-    auto __beg_1 = __obj_1.begin();
-    auto __end_1 = __obj_1.end();
-    for (; __beg_1 != __end_1; ++__beg_1) {
-        auto& x = *__beg_1;
-        __result.push_back(x * 2);
-    }
-    return __result;
-}()
-```
-
-The IIFE pattern:
-- Works in any expression context (assignment, argument, return)
-- Naturally scopes the loop variable
-- Reuses the existing begin/end loop codegen shape from `_gen_begin_end_loop`
-- The `[&]` capture is safe -- the lambda executes immediately, no lifetime issues
-- Return type is deduced by C++ from `__result` -- no explicit `-> std::vector<T>`
-  trailing return type needed
-
-### With filter (Phase 2)
-
-```python
-# [x for x in items if x > 0]
-```
-
-```cpp
-[&]() {
-    std::vector<int32_t> __result;
-    auto& __obj_1 = items;
-    auto __beg_1 = __obj_1.begin();
-    auto __end_1 = __obj_1.end();
-    for (; __beg_1 != __end_1; ++__beg_1) {
-        auto& x = *__beg_1;
-        if (x > 0) {
+    auto& __obj_0 = data;
+    __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
+        if ((x > 0)) {
             __result.push_back(x);
         }
     }
-    return __result;
-}()
+    std::move(__result);
+});
 ```
 
-### With tuple unpacking (Phase 3)
+Two filters nest: `[x for x in range(20) if x % 2 == 0 if x % 3 == 0]` renders
+`if (... == 0) { if (... == 0) { __result.push_back(x); } }`.
+
+### Several clauses
 
 ```python
-# [v for k, v in pairs]
+kept = [x for row in grid if keep(row) for x in inner_src(row) if x > 1]
 ```
 
 ```cpp
-[&]() {
-    std::vector<ValueType> __result;
-    auto& __obj_1 = pairs;
-    auto __beg_1 = __obj_1.begin();
-    auto __end_1 = __obj_1.end();
-    for (; __beg_1 != __end_1; ++__beg_1) {
-        auto& [k, v] = *__beg_1;
-        __result.push_back(v);
+std::vector<::tpy::BigInt> kept = ({
+    std::vector<::tpy::BigInt> __result;
+    auto& __obj_2 = grid;
+    auto __beg_2 = __obj_2.begin();
+    auto __end_2 = __obj_2.end();
+    for (; __beg_2 != __end_2; ++__beg_2) {
+        const auto& row = *__beg_2;
+        if (::tpyapp::main::keep(row)) {
+            auto __obj_3 = ::tpyapp::main::inner_src(row);
+            auto __beg_3 = __obj_3.begin();
+            auto __end_3 = __obj_3.end();
+            for (; __beg_3 != __end_3; ++__beg_3) {
+                const ::tpy::BigInt& x = *__beg_3;
+                if ((x > 1)) {
+                    __result.push_back(x);
+                }
+            }
+        }
     }
-    return __result;
-}()
+    std::move(__result);
+});
 ```
 
-C++17 structured bindings (`auto& [k, v]`) map directly to tuple unpacking.
+An inner range reads the outer variable like any other source:
+
+```python
+[i * 10 + j for i in range(4) for j in range(i)]
+```
+
+```cpp
+for (int32_t i = 0; i < 4; ++i) {
+    int32_t __stop_11 = i;
+    for (int32_t j = 0; j < __stop_11; ++j) {
+        __result.push_back((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(i, 10)), j)));
+    }
+}
+```
+
+### Tuple unpacking
+
+The loop variable binds the whole element and the targets read it, as in the
+`for` statement. The holder draws its name from the for statement's own
+per-module counter (`__for_tup_N`), so every clause gets a holder of its own
+and no fixed spelling can hide a user name the element reads:
+
+```python
+{s: n * k for k in range(1, 3) for n, s in tagged if n >= k}   # tagged: list[tuple[int, str]]
+```
+
+```cpp
+for (int32_t k = 1; k < 3; ++k) {
+    auto& __obj_7 = tagged;
+    auto __beg_7 = __obj_7.begin();
+    auto __end_7 = __obj_7.end();
+    for (; __beg_7 != __end_7; ++__beg_7) {
+        const auto& __for_tup_1 = *__beg_7;
+        const auto& __tup_1 = __for_tup_1;
+        ::tpy::BigInt n = std::get<0>(__tup_1);
+        std::string s = std::get<1>(__tup_1);
+        if ((n >= k)) {
+            __result.insert_or_assign(s, ((n) * (::tpy::BigInt(k))));
+        }
+    }
+}
+```
 
 ### Iteration strategies
 
-The codegen should reuse the existing for-loop iteration strategies:
+| Iterable | Loop node | Render |
+|----------|-----------|--------|
+| `range(n)`, `range(a, b)` | `THIRForRange` | counter loop; a literal bound inlines, another is captured into `__stop_N` / `__start_N` |
+| `range(a, b, step)` | `THIRForRange` stepped, else `THIRForEach` | `for (i = a; i > b; i += step)` with the overflow / zero-step checks the `for` statement emits; a step the classifier declines (too wide for the counter) iterates the `Range` object |
+| `list[T]`, `Array[T, N]`, `Span[T]`, `str`, dict views, combinators, generator call | `THIRForEach` | `begin()/end()` over `auto& __obj_N` (lvalue) or `auto __obj_N` (rvalue) |
+| user iterable, `Iterable[T]` / `Iterator[T]` | `THIRForIterProto` | `auto&& __itr_N = ::tpy::__iter__(__src_N);` stepping `__next__()` |
 
-| Iterable type | Strategy | Same as `for x in ...` |
-|---------------|----------|------------------------|
-| `list[T]`, `Array[T,N]`, `Span[T]` | `begin()/end()` range | Yes |
-| `range(N)` | Counter loop (`for i = 0; i < N; ++i`) | Yes |
-| `dict[K,V]` | Native iteration over ordered_map | Yes |
-| `Iterator[T]` / `Iterable[T]` | `__next__` while-loop (`std::expected`) | Yes |
-
-The existing `_gen_for_each` already handles all these cases. The comprehension codegen
-wraps the same logic inside the IIFE.
-
----
-
-## Phase 4: Annotation Propagation
+### Annotation propagation
 
 When the user provides an explicit type annotation:
 
@@ -396,65 +439,37 @@ When the user provides an explicit type annotation:
 result: list[int32] = [x for x in items]
 ```
 
-The expected element type (`int32`) propagates into the comprehension's element
-expression via `analyze_expr_with_hint`, enabling coercions (e.g., int32 -> int,
-int32 -> int64). This follows the same pattern as list literal annotation propagation.
+The expected element type (`int32`) propagates into the element expression via
+`analyze_expr_with_hint`, enabling coercions (int32 -> int, int32 -> int64), as
+for list literals. Without an annotation the element type is inferred bottom-up.
+Works in every hint-providing context: declarations, returns (`Own[list[T]]`),
+arguments. An incompatible annotation is an error: "Type mismatch in list
+comprehension element".
 
-Without annotation, the element type is inferred purely from the element expression
-(bottom-up). With annotation, the expected type also flows top-down (bi-directional).
+### Sized sources -> reserve
 
-Works in all hint-providing contexts: variable declarations, return statements
-(`Own[list[T]]`), and function arguments. Incompatible annotations produce a clear
-error: "Type mismatch in list comprehension element".
-
----
-
-## Phase 5: Optimizations
-
-### Sized iterables -> reserve
-
-For Sized iterables (list, array, dict, span, dict views), `reserve()` is emitted
-before the loop to pre-allocate the result vector:
+A single-clause LIST comprehension reserves its result to the trip count once
+the source is captured. The loop node carries the result's name (`presize`),
+because only the loop can spell its capture:
 
 ```cpp
-[&]() {
-    std::vector<int32_t> __result;
-    auto& __obj_1 = items;
-    __result.reserve(__obj_1.size());
-    auto __beg_1 = __obj_1.begin();
-    // ...
-}()
+auto& __obj_0 = data;
+__result.reserve(static_cast<std::size_t>(__obj_0.size()));        // a Sized source
+
+if (10 > 0) __result.reserve(static_cast<size_t>(10));             // range(10)
+if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0)); // range(n)
+{ size_t __sz; if (__stop_0.to_size_checked(__sz)) __result.reserve(__sz); }  // BigInt bound
 ```
 
-For `range()` iterables, range arguments are hoisted into temporaries (to avoid
-double-evaluation when used in both `reserve()` and the loop), with a guard
-against negative values:
+The reserve is a no-regret over-allocation under a filter. A 3-arg range, an
+iterator-protocol source and a multi-clause comprehension (whose trip count is
+not known up front) reserve nothing.
 
-```cpp
-// range(N) with FixedInt:
-const int32_t __stop_0 = N;
-if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-for (int32_t i = 0; i < __stop_0; ++i) { ... }
+### Compile-time Array promotion
 
-// range(start, stop) with FixedInt:
-const int32_t __start_0 = start;
-const int32_t __stop_1 = stop;
-if (__stop_1 > __start_0) __result.reserve(static_cast<size_t>(__stop_1 - __start_0));
-for (int32_t i = __start_0; i < __stop_1; ++i) { ... }
-
-// range(N) with BigInt (uses checked conversion):
-{ size_t __sz; if (__stop_0.to_size_checked(__sz)) __result.reserve(__sz); }
-```
-
-The `reserve()` is a no-regret optimization even with filters (over-reserves but
-never under-reserves). For 3-arg `range(start, stop, step)`, no `reserve()` is
-emitted since the element count cannot be cheaply computed.
-
-### Compile-time Array promotion (Phase 8)
-
-When a list comprehension's output size is known at compile time and there are no
-filter conditions, the result type is `Array[T, N]` instead of `list[T]`, producing
-`std::array<T, N>` with zero heap allocation.
+When a SINGLE-CLAUSE list comprehension's output size is known at compile time
+and there are no filter conditions, the result type is `Array[T, N]` instead of
+`list[T]`, producing `std::array<T, N>` with zero heap allocation.
 
 Supported sources:
 - `range(N)` with literal N >= 0
@@ -468,58 +483,41 @@ parameter, explicitly annotated as `list[T]`, or when the element expression
 reaches an `@error_return` callable (the unwrap's `return`/`goto` cannot cross
 the array builder's lambda).
 
-Codegen strategies (all via `tpy::array_from_index<T, N>(f)` -- aggregate
-construction, element expression evaluated exactly N times left-to-right,
-each result constructed in place; no element default ctor or assignment):
-- `range(...)` with literal args: per-index lambda binds the loop var as
-  `start + i * step` index arithmetic
-- `Array[T,N]` source: stmt-expr prelude borrows the source once, the lambda
-  binds from `__obj[i]` (random access); tuple-unpack shares the inline
-  unpack helper with the vector path
+It lowers to `THIRArrayComprehension`, not a loop: `tpy::array_from_index<T,
+N>(f)` -- aggregate construction, the element evaluated exactly N times
+left-to-right, each result constructed in place (no element default ctor or
+assignment):
+- `range(...)` with literal args: the per-index lambda binds the loop var as
+  `start + i * step`
+- `Array[T,N]` source: a statement-expression prelude borrows the source once,
+  the lambda binds from `__obj[i]`; tuple-unpack shares the unpack head
 
 ---
 
-## Dict Comprehension (Phase 6)
+## Dict Comprehension
 
-Dict comprehensions share the generator infrastructure but produce `dict[K, V]`:
+Dict comprehensions share the clause model and produce `dict[K, V]` --
+`TpyDictComprehension` (`key_expr`, `value_expr`, `generators`) and a
+`THIRComprehensionBlock` of kind `dict` over `tpy::ordered_map<K, V>`, with
+`insert_or_assign` for Python's overwrite semantics (a later key replaces the
+value, the first insertion fixes the order). No `reserve()`.
+
+When the value moves an owned loop variable, `insert_or_assign`'s two
+arguments are unsequenced, so a key reading the element would read a
+moved-from value; the key is evaluated into a local first (`key_first` on
+`THIRCompInsert`):
 
 ```python
-# {k: v * 2 for k, v in items.items() if v > 0}
+d = {w.id: w for w in widgets(3)}     # widgets() -> Iterator[Own[Widget]]
 ```
-
-### AST Node
-
-```python
-@dataclass
-class TpyDictComprehension(TpyExpr):
-    """Dict comprehension: {key_expr: value_expr for var in iterable if cond}"""
-    key_expr: TpyExpr
-    value_expr: TpyExpr
-    generator: TpyComprehensionGenerator
-    result_key_type: TpyType | None = None    # set by sema
-    result_value_type: TpyType | None = None  # set by sema
-```
-
-### Codegen
 
 ```cpp
-[&]() {
-    tpy::ordered_map<KeyType, ValueType> __result;
-    for (auto& [k, v] : items) {
-        if (v > 0) {
-            __result.insert_or_assign(k, v * 2);
-        }
-    }
-    return __result;
-}()
+for (; __beg_0 != __end_0; ++__beg_0) {
+    auto&& w = *__beg_0;
+    auto __dk_1 = w.id;
+    __result.insert_or_assign(std::move(__dk_1), std::move(w));
+}
 ```
-
-Same IIFE pattern, same generator reuse. No `reserve()` since `ordered_map` doesn't
-expose it. Uses `insert_or_assign` for correct Python overwrite semantics (later keys
-replace earlier ones).
-
-Supports all iteration strategies (range, begin/end), filters, tuple unpacking,
-and annotation propagation (both key and value types independently).
 
 ---
 
@@ -554,8 +552,28 @@ def __genexpr_f_1(__src, k):        # source first, then the captures
             yield x * x + k
 ```
 
-and analyzes it ONCE, through the ordinary `_analyze_function` lifecycle, under
-a function state of its own (the enclosing function's state is set aside and
+Each further `for` clause is one more loop nested inside the previous clause's
+filters, the `yield` innermost:
+
+```python
+total = sum(x + e for row in rows for x in row if x != 2 for e in extras)
+```
+
+```python
+def __genexpr_f_2(__src, extras):
+    for row in __src:
+        for x in row:
+            if x != 2:
+                for e in extras:
+                    yield x + e
+```
+
+Only clause 0's source is the frame's source param. An inner clause's source is
+part of the body, evaluated once per outer element that passed the outer
+filters, and the enclosing names it reads are captures like any other.
+
+Sema analyzes the function ONCE, through the ordinary `_analyze_function`
+lifecycle, under a function state of its own (the enclosing function's state is set aside and
 put back as itself). Every per-function fact the frame emitter reads -- frame
 locals, const verdicts, mutation facts, deferred yield-borrow checks -- comes
 from that lifecycle; nothing is filled in by hand. Three things are specific to
@@ -567,7 +585,7 @@ a genexpr:
   flow, because that is where it is evaluated (CPython's eager
   `iter(outermost)`).
 - **Captures are params taken by reference.** A capture is every enclosing
-  name the element and filters read (`self` and a nested def's own captures
+  name the element, the filters and the inner clauses' sources read (`self` and a nested def's own captures
   included). The frame holds each in a deduced-type forwarding slot, which an
   lvalue argument makes a reference field of whatever C++ type the enclosing
   variable has -- so the storage form of that variable stays the enclosing
@@ -575,7 +593,7 @@ a genexpr:
 
 Creating the frame hands the source and the captures over the way a call hands
 over its arguments, and is checked as one, with the three checks every call
-site runs:
+site runs, and one more for the inner clauses:
 
 - **Mutation facts.** A body that mutates through its loop var or through a
   capture keeps the enclosing param a mutable borrow, except when its source is an
@@ -596,6 +614,22 @@ site runs:
   source param. A body that grows its own source (`sum(v for v in xs if
   grow(xs))`, `v + xs.pop()`) gets the verdict of a `for` over that source,
   at the mutating line.
+- **Inner clauses over a capture.** The loop of an inner clause that iterates
+  a capture, or a field or element of one (`b_list`, `h.items`, `bs[0]`),
+  records the iterated place (`TpyFunction.genexpr_inner_loans`, filed by
+  `_register_foreach_iter_loans`), and the creation holds those loans with the
+  source's (`frame_capture_loans`), so the consuming loop's growth of that
+  place warns as growth of the source does. The frame iterates the capture
+  through a reference to the enclosing VARIABLE, so a rebind of the variable
+  between two pulls would leave the inner iteration walking freed storage:
+  `reject_rebound_iterated_capture` refuses it -- *'b_list' is iterated by
+  this generator expression, but the loop it feeds rebinds it between pulls;
+  bind it to a local first* -- and the kept-genexpr scan below refuses it for
+  a genexpr kept past its statement. CPython accepts both (its inner iterator
+  keeps the old list alive; TODO.md "Lift: rebinding a capture a generator
+  expression's inner clause iterates"). A kept genexpr's loans end with the
+  statement that creates it, so GROWING its source or such a capture between
+  pulls is not diagnosed (BUGS.md#kept-genexpr-source-grown-between-pulls).
 
 ```cpp
 template <typename F_k>
@@ -649,7 +683,7 @@ Key properties:
 | Source | How the frame takes it |
 |--------|------------------------|
 | `range(...)` | The bounds are evaluated at creation and go in BY VALUE; the body loops over a range of them, which the frame walks with plain counters |
-| Stable lvalue container (name, field, subscript) | Its own type, by reference; walked by begin/end, so a reference element -- or a record unpacked from a tuple element -- aliases the source |
+| Stable lvalue container (name, field; a subscript is not admitted yet, BUGS.md#comp-subscript-element-source-rejects) | Its own type, by reference; walked by begin/end, so a reference element -- or a record unpacked from a tuple element -- aliases the source |
 | Any rvalue (literal, dict view, combinator, generator call, `Own[container]` call), or a non-container iterable | A deduced slot the frame OWNS, built IN PLACE from a factory: `f(std::in_place, [&] { return <source>; }, captures...)` initializes the field from the prvalue the factory returns (guaranteed elision) |
 
 The source classification (`_source_route` in `tpyc/thir/lower/comprehensions.py`)
@@ -675,7 +709,7 @@ comprehension route: the genexpr source is lowered with no arg-temp right, so a
 source call whose argument needs a hoisted temp rejects
 (BUGS.md#genexpr-source-needs-arg-temp).
 
-### Narrowing of a captured name
+### Narrowing of a captured name (and rebinding an iterated one)
 
 The body runs at each pull, later than the creation. A narrowing proved at the
 creation holds in the body only where nothing can rebind the name between two
@@ -697,14 +731,17 @@ the last read of the kept name, widened to the end of any loop that read sits
 in. A name the value is handed on to (`h = g`) is kept as well, a `nonlocal`
 write in a nested def counts as a rebind, and a nested def READING the kept
 name leaves the range open. A rebind inside that range is a located error
-naming the fix (bind the narrowed value to a local first). The scan cannot see
+naming the fix (bind the narrowed value to a local first). The same scan
+refuses a rebind of a capture an inner `for` clause iterates (*... but it is
+kept past the statement and can be rebound between pulls; bind it to a local
+first*), narrowed or not. The scan cannot see
 types of statements it has not reached yet, so ANY statement that reads the
 kept name and binds another counts as handing it on, a consuming one included
 (BUGS.md#genexpr-kept-scan-consumer-binding).
 
 ### Emit shape
 
-A genexpr frame has one resume point and it is the loop head, so
+A single-clause genexpr frame has one resume point and it is the loop head, so
 `_single_loop_plan` (`tpyc/codegen_cpp/gen_async.py`) reads that shape off the
 CFG before anything is rendered -- one loop advance, an entry that falls into
 its head, every other case an empty chain of `Fall` blocks onto it -- and the
@@ -729,6 +766,12 @@ rows and 14% on clang's user row. (TODO.md's generator-frames perf entry quotes
 Two gcc layout facts are encoded in the emitter: the terminal return sits AFTER
 the loop (12% on an out-of-line consumer), and a filter's redundant trailing
 `else { continue; }` is dropped (10%).
+
+A genexpr with several `for` clauses has a loop head per clause, so it keeps
+the `switch (__state)` dispatch. Its constructor still seeds the OUTERMOST
+loop's begin/end pair over a borrowed container (`ctor_seeded_uid`), and the
+first pull does not take that pair again; an inner clause's pair is taken in
+the body, once per outer element.
 
 The form is written against the frame's CFG shape but enabled for genexpr
 frames only; a `def` generator of the same shape still emits the state switch
@@ -771,10 +814,15 @@ This is deferred -- the frame is correct and efficient enough as baseline. Fusio
 
 | Error | Example | Message |
 |-------|---------|---------|
-| Nested generators | `[x+y for x in a for y in b]` | "Nested comprehensions not yet supported" |
 | Async comprehension | `[x async for x in aiter]` | "Async comprehensions not yet supported" |
-| Non-iterable source | `[x for x in 42]` | "Type 'int32' is not iterable" (existing error) |
+| Non-iterable source | `[x for x in 42]` | "Cannot iterate over type int32" |
 | Incompatible annotation | `x: list[int32] = [s for s in strs]` | "Type mismatch in list comprehension element" |
+| Name bound by two clauses | `[row for row in rows for row in row]` | "'row' is bound by two `for` clauses of this comprehension; rename one" |
+| Read before the binding clause | `[x for row in rows if x > 0 for x in row]` | "'x' is read before the `for` clause that binds it" |
+| Owned-yielding outer clause | `[p.v for ps in batches() for p in ps]` | "a `for` clause over a source that yields owned values must be the last clause of the comprehension" |
+| Owned source of a multi-clause generator expression | `sum(p.v + k for p in widgets() for k in range(2))` | "a generator expression cannot iterate a source that yields owned values; use a list comprehension or a `for` loop" |
+| Walrus binding a reference (CPython runs it) | `[c for c in xs if (last := c).n > 0]` | "a walrus inside a comprehension cannot bind 'last' to a reference to an object; use a `for` loop" |
+| Genexpr inner-clause capture rebound | `for v in (a + b for a in xs for b in ys): ys = [v]` | "'ys' is iterated by this generator expression, but the loop it feeds rebinds it between pulls; bind it to a local first" |
 
 ---
 
@@ -782,36 +830,37 @@ This is deferred -- the frame is correct and efficient enough as baseline. Fusio
 
 ```
 tests/cases/list/
-    list_comp_basic/           # Phase 1: [x*2 for x in range(5)], [p.name for p in items]
-    list_comp_filter/          # Phase 2: [x for x in items if x > 0]
-    list_comp_unpack/          # Phase 3: [v for k, v in pairs]
-    list_comp_annotation/      # Phase 4: annotation propagation (int32->int, int32->int64)
-    list_comp_types/           # Various element types: records, Optional, str
-    list_comp_nested_expr/     # Complex element expressions: method calls, f-strings
-    list_comp_in_context/      # Comprehension as function arg, return value, in print()
-    error_list_comp_annotation/    # Error: incompatible annotation type
-    error_list_comp_nested/    # Error: nested generators
-    error_list_comp_not_iterable/  # Error: non-iterable source
-    error_list_comp_unpack_count/  # Error: unpack count mismatch
-    error_list_comp_unpack_non_tuple/  # Error: unpack on non-tuple
+    list_comp_basic/, list_comp_filter/, list_comp_unpack/, list_comp_annotation/
+    list_comp_to_array/, comp_array_*/          # Array promotion
+    comp_owned_elem_move/                       # Own[T] source moves the element
+    comp_multi_for/                             # several clauses: every position,
+                                                # source family, range step, filter
+                                                # order, walrus, genexpr inner loans
+    error_list_comp_annotation/, error_list_comp_not_iterable/
+    error_list_comp_unpack_count/, error_list_comp_unpack_non_tuple/
+    error_comp_multi_for_name_reuse/            # a name two clauses bind
+    error_comp_multi_for_underscore_read/       # `_` two clauses bind, read
+    error_comp_multi_for_read_before_bind/      # a filter reads a later clause's name
+    error_comp_multi_for_read_before_bind_iter/ # an inner iterable does
+    error_comp_multi_for_owned_outer/           # owned-yielding outer clause
+    error_comp_walrus_reference/                # walrus binding an object
 
 tests/cases/dict/
-    dict_comp_basic/           # Phase 6: range->dict, list->dict, dict rebuild, 2-arg range
-    dict_comp_filter/          # Phase 6: single/multiple filter conditions
-    dict_comp_unpack/          # Phase 6: tuple unpacking from dict.items(), list of tuples
-    dict_comp_annotation/      # Phase 6: annotation propagation (int32->int, int32->int64)
-    error_dict_comp_nested/    # Error: nested generators
-    error_dict_comp_not_iterable/      # Error: non-iterable source
-    error_dict_comp_unpack_count/      # Error: unpack count mismatch
-    error_dict_comp_unpack_non_tuple/  # Error: unpack on non-tuple
+    dict_comp_basic/, dict_comp_filter/, dict_comp_unpack/, dict_comp_annotation/
+    dict_comp_owned_move/
+    error_dict_comp_not_iterable/, error_dict_comp_unpack_count/
+    error_dict_comp_unpack_non_tuple/
 
 tests/cases/set/
-    set_comp_basic/            # Phase 7: range->set, list->set, dedup, 2-arg range
-    set_comp_filter/           # Phase 7: single filter, string filtering
-    set_comp_unpack/           # Phase 7: tuple unpacking from dict.items(), list of tuples
-    set_comp_annotation/       # Phase 7: annotation propagation (int32->int64, int32->int)
-    error_set_comp_nested/     # Error: nested generators
-    error_set_comp_not_iterable/       # Error: non-iterable source
-    error_set_comp_unpack_count/       # Error: unpack count mismatch
-    error_set_comp_unpack_non_tuple/   # Error: unpack on non-tuple
+    set_comp_basic/, set_comp_filter/, set_comp_unpack/, set_comp_annotation/
+    set_comp_owned_move/
+    error_set_comp_not_iterable/, error_set_comp_unpack_count/
+    error_set_comp_unpack_non_tuple/
+
+tests/cases/iterators/
+    genexpr_basic/, genexpr_frames/, genexpr_rvalue_sources/, genexpr_source_shapes/
+    error_genexpr_multi_for_owned_source/       # owned source at clause 0
+    error_genexpr_multi_for_capture_rebound/    # consuming loop rebinds an
+                                                # inner-iterated capture
+    error_genexpr_multi_for_retained_rebound/   # kept genexpr, same capture rebound
 ```

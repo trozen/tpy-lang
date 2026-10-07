@@ -469,7 +469,7 @@ void comp_walrus_in_loop() {
     for (int32_t i = 0; i < 2; ++i) {
         ys = ({
             std::vector<int32_t> __result;
-            const int32_t __stop_1 = (::tpy::add_check<int32_t>(i, 1));
+            int32_t __stop_1 = (::tpy::add_check<int32_t>(i, 1));
             if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
             for (int32_t x = 0; x < __stop_1; ++x) {
                 __result.push_back((y = (::tpy::mul_check<int32_t>(x, 10))));

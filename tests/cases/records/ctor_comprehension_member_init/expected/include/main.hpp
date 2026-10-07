@@ -34,9 +34,8 @@ inline std::ostream& operator<<(std::ostream& os, const Rows& obj) {
 //     self.items = [i for i in range(3)]  # spelled into the init list
 inline Rows::Rows() : items(({
     std::vector<int32_t> __result;
-    const int32_t __stop_0 = 3;
-    if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-    for (int32_t i = 0; i < __stop_0; ++i) {
+    if (3 > 0) __result.reserve(static_cast<size_t>(3));
+    for (int32_t i = 0; i < 3; ++i) {
         __result.push_back(i);
     }
     std::move(__result);

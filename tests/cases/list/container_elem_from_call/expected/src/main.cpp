@@ -135,9 +135,8 @@ void main() {
     std::cout << "comp" << " " << ::tpy::__len__(rs) << " " << ::tpy::__len__(::tpy::__getitem__(rs, 0)) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> ls = ({
         std::vector<std::vector<int32_t>> __result;
-        const int32_t __stop_1 = 2;
-        if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
-        for (int32_t i = 0; i < __stop_1; ++i) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t i = 0; i < 2; ++i) {
             __result.push_back(::tpyapp::main::make_ints(i));
         }
         std::move(__result);

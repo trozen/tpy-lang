@@ -254,7 +254,7 @@ def _build_dict_comprehension(
     return ast.dict_comprehension(
         value_fn(ctx, ast.name(k_var), key_type),
         value_fn(ctx, ast.name(v_var), val_type),
-        ast.comprehension_generator("__comp_tup", items_call,
+        ast.comprehension_generator(ast.fresh_tmp("macro"), items_call,
                                     unpack_vars=[k_var, v_var]),
     )
 

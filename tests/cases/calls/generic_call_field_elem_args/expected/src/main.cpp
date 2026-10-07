@@ -34,9 +34,8 @@ void main() {
     std::cout << "field_recs" << " " << ::tpyapp::main::take_recs<int32_t>(1, b.recs) << " " << ::tpy::__len__(b.recs) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_1 = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = 2;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t i = 0; i < 2; ++i) {
             __result.push_back(i);
         }
         std::move(__result);
@@ -44,8 +43,7 @@ void main() {
     std::cout << "comp_list" << " " << ::tpyapp::main::take_list<int32_t>(1, __tmp_1) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> __tmp_2 = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
-        const int32_t __stop_1 = 2;
-        for (int32_t i = 0; i < __stop_1; ++i) {
+        for (int32_t i = 0; i < 2; ++i) {
             __result.insert_or_assign(::tpy::fixed_to_str<int32_t>(i), i);
         }
         std::move(__result);

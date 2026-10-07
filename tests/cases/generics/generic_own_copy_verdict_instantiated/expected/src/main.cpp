@@ -92,9 +92,8 @@ int32_t elems_ctor_twin(const std::vector<std::tuple<std::string, Cell>>& pairs)
 int32_t comp_slot_twin(const Cell& v) {
     std::vector<Cell> xs = ({
         std::vector<Cell> __result;
-        const int32_t __stop_0 = 2;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t _ = 0; _ < __stop_0; ++_) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t _ = 0; _ < 2; ++_) {
             __result.push_back(v);
         }
         std::move(__result);

@@ -190,9 +190,8 @@ void __tpy_init() {
     r5 = &__global_slot_6;
     static std::vector<int32_t> __global_slot_7 = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_4 = 5;
-        if (__stop_4 > 0) __result.reserve(static_cast<size_t>(__stop_4));
-        for (int32_t x = 0; x < __stop_4; ++x) {
+        if (5 > 0) __result.reserve(static_cast<size_t>(5));
+        for (int32_t x = 0; x < 5; ++x) {
             __result.push_back((::tpy::mul_check<int32_t>(x, x)));
         }
         std::move(__result);

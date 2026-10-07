@@ -22,9 +22,8 @@ namespace tpyapp::main {
 void main() {
     std::vector<std::array<int32_t, 2>> rows = ({
         std::vector<std::array<int32_t, 2>> __result;
-        const int32_t __stop_0 = 4;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (4 > 0) __result.reserve(static_cast<size_t>(4));
+        for (int32_t i = 0; i < 4; ++i) {
             if ((i > 0)) {
                 __result.push_back({i, (::tpy::add_check<int32_t>(i, 1))});
             }
@@ -37,9 +36,8 @@ void main() {
     std::optional<std::vector<std::array<int32_t, 2>>> cols;
     std::cout << ::tpy::ListPrinter((cols = ({
         std::vector<std::array<int32_t, 2>> __result;
-        const int32_t __stop_1 = 3;
-        if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
-        for (int32_t j = 0; j < __stop_1; ++j) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t j = 0; j < 3; ++j) {
             if ((j > 0)) {
                 __result.push_back({(::tpy::mul_check<int32_t>(j, 2)), (::tpy::mul_check<int32_t>(j, 3))});
             }
@@ -62,9 +60,8 @@ void main() {
 void loop_mutate() {
     std::vector<std::array<int32_t, 2>> rows = ({
         std::vector<std::array<int32_t, 2>> __result;
-        const int32_t __stop_0 = 4;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (4 > 0) __result.reserve(static_cast<size_t>(4));
+        for (int32_t i = 0; i < 4; ++i) {
             if ((i > 0)) {
                 __result.push_back({i, (::tpy::add_check<int32_t>(i, 1))});
             }

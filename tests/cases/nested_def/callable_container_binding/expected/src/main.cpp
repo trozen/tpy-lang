@@ -250,9 +250,8 @@ void branching_bindings(int32_t flag) {
     __ctx_1.__exit__({}, nullptr, {});
     std::vector<std::function<int32_t(int32_t)>> generated = ({
         std::vector<std::function<int32_t(int32_t)>> __result;
-        const int32_t __stop_0 = 2;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t _ = 0; _ < __stop_0; ++_) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t _ = 0; _ < 2; ++_) {
             __result.push_back([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 90)); });
         }
         std::move(__result);
@@ -260,8 +259,7 @@ void branching_bindings(int32_t flag) {
     std::cout << "comprehension" << " " << (::tpy::__getitem__(generated, 0))(1) << " " << (::tpy::__getitem__(generated, 1))(2) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::function<int32_t(int32_t)>> generated_dict = ({
         ::tpy::ordered_map<std::string, std::function<int32_t(int32_t)>> __result;
-        const int32_t __stop_1 = 1;
-        for (int32_t _ = 0; _ < __stop_1; ++_) {
+        for (int32_t _ = 0; _ < 1; ++_) {
             __result.insert_or_assign("run", [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 91)); });
         }
         std::move(__result);

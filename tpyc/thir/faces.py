@@ -1513,7 +1513,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # wrap(3)]`): the owning `auto __obj_N` capture with begin/end.
     "comp.genfac_source",
     # A comp source of the `__iter__`/`__next__` family (a user iterable, an
-    # Iterable/Iterator param): captured through `::tpy::iter_range`.
+    # Iterable/Iterator param): the for statement's `__iter__`/`__next__`
+    # loop (THIRForIterProto).
     "comp.iter_protocol_source",
     # A container-type ctor call at a VALUE sink (`print(asdict(p))` --
     # the expansion's `dict(...)` prvalue under the printer wrap).
@@ -2608,18 +2609,24 @@ THIR_FACES: frozenset[str] = frozenset({
     "stmt.tuple_unpack.global_slot_target",
     "stmt.tuple_unpack.global_ptr_target",  # the borrowed twin: no slot
     "stmt.tuple_unpack.ref_global_source",  # a pointer-slot tuple global, bound by ref
-    # THIRComprehension (lowering, the C1+C2 slice).
+    # THIRComprehensionBlock (lowering): a comprehension as a statement body.
     "comp.list",                    # list comp -> vector stmt-expr
     "comp.set",                     # set comp -> ordered_set stmt-expr
     "comp.dict",                    # dict comp -> insert_or_assign loop
     "comp.range",                   # 1/2-arg counter loop arm
     "comp.begin_end",               # __obj/__beg/__end container loop arm
+    "comp.statement_body",          # loop/filters/insert as statements in a
+                                    # THIRComprehensionBlock
     "comp.reserve",                 # sized begin/end list reserve line
-    "comp.filter",                  # &&-joined `if (conds)` wrapper
+    "comp.filter",                  # one nested THIRIf per filter
+    "comp.multi_clause",            # one nested statement loop per `for`
+                                    # clause, inside the outer filters
     "comp.filter_walrus_leak",      # PEP 572 filter-walrus target bound
                                     # in the enclosing scope
-    "comp.unpack",                  # inline __tup_N tuple-unpack binding
-    "comp.range3",                  # 3-arg range: begin/end over the Range object
+    "comp.unpack",                  # the for statement's THIRTupleUnpack head
+    "comp.range3",                  # 3-arg range: the stepped counter loop, or
+                                    # begin/end over the Range object when the
+                                    # counter loop declines the step
     "comp.field_iter",              # field-access iterable (recv.items)
     "comp.print_arg",               # comprehension print arg (container printer wrap)
     "comp.container_value",         # dict-comp list/Array VALUE slot: self-typed

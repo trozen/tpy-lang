@@ -28,17 +28,15 @@ void main() {
     xs.push_back(3);
     std::vector<std::vector<int32_t>> ls = ({
         std::vector<std::vector<int32_t>> __result;
-        const int32_t __stop_0 = 2;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t i = 0; i < 2; ++i) {
             __result.push_back(xs);
         }
         std::move(__result);
     });
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> dv = ({
         ::tpy::ordered_map<int32_t, std::vector<int32_t>> __result;
-        const int32_t __stop_1 = 2;
-        for (int32_t i = 0; i < __stop_1; ++i) {
+        for (int32_t i = 0; i < 2; ++i) {
             __result.insert_or_assign(i, xs);
         }
         std::move(__result);

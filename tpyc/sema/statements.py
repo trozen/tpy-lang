@@ -98,7 +98,8 @@ from .receiver_calls import (
 )
 from .iter_loans import (
     IterElementSource, iter_element_source,
-    _record_iter_receiver_mutation, check_iter_receiver_loans, hold_whole,
+    _record_iter_receiver_mutation, check_iter_receiver_loans,
+    frame_capture_loans, hold_whole,
     is_dangling_temporary_arg,
     iterator_advanced_twice, register_iteration_loans, temp_arg_kept_alive,
 )
@@ -130,7 +131,8 @@ from ..value_category import (
     binds_fresh_call_value,
 )
 from .expressions import (_nested_def_free_names, _find_list_member,
-                          _names_rebound_by, generic_constructor_factory)
+                          _names_rebound_by, generic_constructor_factory,
+                          reject_rebound_iterated_capture)
 from .pending_num import (ContainerCells, Entry, PendingNums, PendingNumCell,
                           at_path, value_family, is_numeric_slot,
                           is_pending_num, literal_entries, pairs_as,
@@ -316,7 +318,9 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
                     f"the temporary is destroyed at end-of-statement",
                     expr,
                 )
-
+    for key, info in frame_capture_loans(expr):
+        bt.add_borrow(key, borrower, info.kind, on_element=info.on_element,
+                      elem_index=info.elem_index, merge=True)
 
 
 def _register_tuple_binding_borrows(
@@ -376,20 +380,6 @@ def _format_aug_target(target: TpyExpr) -> str:
         obj = target.obj.name if isinstance(target.obj, TpyName) else "..."
         return f"'{obj}[...]'"
     return "target"
-
-
-def _iter_source_root(expr: TpyExpr) -> str | None:
-    """The NAME the storage a for-each iterable borrows is rooted at.
-
-    The borrow key is the answer wherever the tracker files a loan
-    (`iter_borrow_storage`), so the loan and the mutable-borrow credit can
-    never root differently -- one question, one walker. An iterable the
-    tracker files nothing for (a borrowing accessor hop, a property getter
-    with no `return_borrows_from`) still lends the loop var storage that
-    cannot bind const, so the syntactic climb answers for those.
-    """
-    key = iter_borrow_storage(expr)
-    return _storage_root(key) if key is not None else _root_name_of_expr(expr)
 
 
 # view_family_for_type is in typesys (alongside ViewTypeFamily / VIEW_TYPE_FAMILIES).
@@ -2177,6 +2167,10 @@ class StatementAnalyzer:
                     f"to a local first", gx)
             func = gx.frame_func
             if func is not None:
+                reject_rebound_iterated_capture(
+                    self.ctx, gx, func,
+                    [n for n in func.capture_params if later is None or n in later],
+                    "it is kept past the statement and can be rebound between pulls")
                 gx.frame_rebindable = tuple(dict.fromkeys(
                     gx.frame_rebindable
                     + tuple(n for n in func.capture_params
@@ -2717,17 +2711,9 @@ class StatementAnalyzer:
                         self.init.remove_loop_var_provenance(stmt.var)
                     for name in eph_added:
                         self.ctx.func.ephemeral_borrow_vars.pop(name, None)
-                # A mutated loop var lends a MUTABLE borrow of the storage it
-                # was iterated out of, so that storage cannot bind const
-                # either. Keyed on the iterable's ROOT rather than on the
-                # statement shape, which is what makes the rule compose: an
-                # inner loop marks the outer loop var, whose own foreach then
-                # marks ITS source in turn. Same edge the tuple unpack records
-                # when it takes an element borrow out of a loop var.
-                if stmt.var in self.ctx.func.mutated_loop_vars:
-                    iter_root = _iter_source_root(stmt.iterable)
-                    if iter_root is not None and iter_root != stmt.var:
-                        self.ctx.mark_loop_var_mutated(iter_root)
+                # Same edge the tuple unpack records when it takes an element
+                # borrow out of a loop var.
+                self.ctx.credit_iter_source_mutation([stmt.var], stmt.iterable)
                 # Set const-ref binding when the loop var was never mutated.
                 # mutated_loop_vars was cleared for stmt.var before entering the
                 # loop body, so it only reflects mutations from this loop.
@@ -3698,6 +3684,11 @@ class StatementAnalyzer:
             self.ctx, stmt.iterable, iterable_type,
             self.ctx.func.genexpr_source_loans if frame_loop else ())
         stmt.iter_borrow_unplaceable = loan.unplaceable
+        if isinstance(cur, TpyFunction) and cur.is_genexpr and not frame_loop:
+            cur.genexpr_inner_loans += tuple(
+                (key, info) for key, info in loan.loans
+                if _storage_root(key) in cur.capture_params
+                and (key, info) not in cur.genexpr_inner_loans)
         if loan.sources:
             self.ctx.func.loop_var_iterable[stmt.var] = loan.sources
             if stmt.is_tuple_unpack and loan.elem_sources is not None:

@@ -30,8 +30,7 @@ void str_param_sinks(std::string_view s) {
     ::tpy::ordered_set<std::string> set_comp = ::tpy::ordered_set<std::string>({std::string(s)});
     ::tpy::ordered_map<std::string, int32_t> dict_comp = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
-        const int32_t __stop_1 = 1;
-        for (int32_t _ = 0; _ < __stop_1; ++_) {
+        for (int32_t _ = 0; _ < 1; ++_) {
             __result.insert_or_assign(std::string(s), 1);
         }
         std::move(__result);

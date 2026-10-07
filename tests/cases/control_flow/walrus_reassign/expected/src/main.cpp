@@ -48,9 +48,8 @@ void main() {
     int32_t m = 10;
     std::vector<int32_t> xs = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t _ = 0; _ < __stop_0; ++_) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t _ = 0; _ < 3; ++_) {
             if (((m = (::tpy::sub_check<int32_t>(m, 1))) > 0)) {
                 __result.push_back(m);
             }

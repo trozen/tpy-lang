@@ -78,9 +78,8 @@ std::vector<std::tuple<P, P>> copy_into_comp(P& p) {
     auto t = std::tuple<P*, P*>{&(p), &(p)};
     return ({
         std::vector<std::tuple<P, P>> __result;
-        const int32_t __stop_0 = 2;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t _ = 0; _ < __stop_0; ++_) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t _ = 0; _ < 2; ++_) {
             __result.push_back(::tpy::tuple_to_storage<std::tuple<P, P>>(t));
         }
         std::move(__result);

@@ -938,6 +938,12 @@ class TempState:
         # compiler-owned declaration, not a user walrus pre-declaration.
         self._auto_named: set[str] = set()
         self._counter: int = 0
+        # Inside a statement block: the enclosing statement's named row,
+        # where a walrus pre-declaration still lands (see statement_block).
+        self._enclosing_named: list[tuple[str, str, str | None, str]] | None = None
+        # The (queue, named row) each open statement block replaced,
+        # innermost last.
+        self._outer_regions: list[tuple[TempQueue, list]] = []
 
     def _draw(self) -> int:
         self._counter += 1
@@ -954,6 +960,44 @@ class TempState:
             yield
         finally:
             self._counter = saved
+
+    @contextmanager
+    def statement_block(self) -> Iterator[None]:
+        """Statements rendered inside an expression (a comprehension's
+        statement-expression body): their flushes drain only what they
+        registered, never the enclosing statement's pending temps, and
+        every temp they register is declared inside the block. A walrus
+        pre-declaration is the exception -- PEP 572 binds its target in the
+        enclosing scope, so it joins the enclosing statement's named row
+        (the outermost one when blocks nest)."""
+        saved = (self._queue, self._pending_named, self._enclosing_named)
+        if self._enclosing_named is None:
+            self._enclosing_named = self._pending_named
+        self._outer_regions.append((self._queue, self._pending_named))
+        self._queue = TempQueue()
+        self._pending_named = []
+        try:
+            yield
+            assert not self._queue.pending and not self._pending_named, (
+                "a statement block left temporaries unflushed")
+        finally:
+            self._outer_regions.pop()
+            self._queue, self._pending_named, self._enclosing_named = saved
+
+    @contextmanager
+    def enclosing_statement(self) -> Iterator[None]:
+        """Inside a statement block, register temps on the statement the
+        block's expression sits in -- for a part of the block Python
+        evaluates in the enclosing scope (a comprehension's first source),
+        whose temps must outlive the block."""
+        assert self._outer_regions, "enclosing_statement outside a block"
+        inner = (self._queue, self._pending_named)
+        self._queue, self._pending_named = self._outer_regions.pop()
+        try:
+            yield
+        finally:
+            self._outer_regions.append((self._queue, self._pending_named))
+            self._queue, self._pending_named = inner
 
     @contextmanager
     def conditional_region(self) -> Iterator[CondRegion]:
@@ -1039,7 +1083,9 @@ class TempState:
         """Register a named pre-declaration (for walrus operator variables);
         `suffix` is a placeholder's declarator suffix
         (`emit_prims.placeholder_init`)."""
-        self._pending_named.append((name, cpp_type, init, suffix))
+        row = (self._enclosing_named if self._enclosing_named is not None
+               else self._pending_named)
+        row.append((name, cpp_type, init, suffix))
 
     def has_pending_since(self, checkpoint: tuple[int, ...]) -> bool:
         """True if anonymous temps were registered after `checkpoint`."""

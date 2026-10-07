@@ -34,9 +34,8 @@ void main() {
     }
     std::vector<::tpystd::tplib::box::Box<Pet>> comp = ({
         std::vector<::tpystd::tplib::box::Box<Pet>> __result;
-        const int32_t __stop_2 = 2;
-        if (__stop_2 > 0) __result.reserve(static_cast<size_t>(__stop_2));
-        for (int32_t _ = 0; _ < __stop_2; ++_) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t _ = 0; _ < 2; ++_) {
             __result.push_back(::tpystd::tplib::box::Box<Dog>(Dog()));
         }
         std::move(__result);

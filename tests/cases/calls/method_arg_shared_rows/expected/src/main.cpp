@@ -70,9 +70,8 @@ void main() {
     std::cout << k.n << " " << ::tpy::__len__(blob) << "\n" << ::tpy::check_signals;
     k.soak(({
         std::vector<double> __result;
-        const int32_t __stop_0 = 4;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (4 > 0) __result.reserve(static_cast<size_t>(4));
+        for (int32_t i = 0; i < 4; ++i) {
             __result.push_back(((2.0) * (static_cast<double>(i))));
         }
         std::move(__result);

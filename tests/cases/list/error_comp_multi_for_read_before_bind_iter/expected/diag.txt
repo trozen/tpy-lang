@@ -1,0 +1,1 @@
+main.py:8: error: 'b' is read before the `for` clause that binds it

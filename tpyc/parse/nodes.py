@@ -162,6 +162,7 @@ class TpyExpr:
 
 if TYPE_CHECKING:
     from ..coercions import Coercion
+    from ..sema.context import LoanInfo
     from ..typesys import FunctionInfo, RecordInfo, ResolvedBinop, ResolvedUnaryop
 
 
@@ -691,29 +692,49 @@ class TpyComprehensionGenerator:
     # element into the result instead of copying (the consuming for-append move).
     owns_elements: bool = False
 
+    @property
+    def targets(self) -> list[str]:
+        """The names this clause binds."""
+        if self.unpack_vars is not None:
+            return [u for u in self.unpack_vars if u is not None]
+        return [self.var]
+
+
+def comp_clause_children(generators: 'list[TpyComprehensionGenerator]'
+                         ) -> list[TpyExpr]:
+    """Every clause's iterable and filters, in the order CPython evaluates
+    them (clause 0's iterable first, each clause's filters before the next
+    clause's iterable)."""
+    out: list[TpyExpr] = []
+    for gen in generators:
+        out.append(gen.iterable)
+        out.extend(gen.conditions)
+    return out
+
 
 @dataclass
 class TpyListComprehension(TpyExpr):
-    """List comprehension: [expr for var in iterable if cond]"""
+    """List comprehension: [expr for var in iterable if cond ...], one clause
+    per `for`."""
     element_expr: TpyExpr
-    generator: TpyComprehensionGenerator
+    generators: list[TpyComprehensionGenerator]
     result_elem_type: 'TpyType | None' = None  # set by sema
 
     def children(self) -> list[TpyExpr]:
-        return [self.element_expr, self.generator.iterable] + self.generator.conditions
+        return comp_clause_children(self.generators) + [self.element_expr]
 
 
 @dataclass
 class TpyDictComprehension(TpyExpr):
-    """Dict comprehension: {key: value for var in iterable if cond}"""
+    """Dict comprehension: {key: value for var in iterable if cond ...}"""
     key_expr: TpyExpr
     value_expr: TpyExpr
-    generator: TpyComprehensionGenerator
+    generators: list[TpyComprehensionGenerator]
     result_key_type: 'TpyType | None' = None  # set by sema
     result_value_type: 'TpyType | None' = None  # set by sema
 
     def children(self) -> list[TpyExpr]:
-        return [self.key_expr, self.value_expr, self.generator.iterable] + self.generator.conditions
+        return comp_clause_children(self.generators) + [self.key_expr, self.value_expr]
 
 
 @dataclass
@@ -728,20 +749,20 @@ class TpyDictLiteral(TpyExpr):
 
 @dataclass
 class TpySetComprehension(TpyExpr):
-    """Set comprehension: {expr for var in iterable if cond}"""
+    """Set comprehension: {expr for var in iterable if cond ...}"""
     element_expr: TpyExpr
-    generator: TpyComprehensionGenerator
+    generators: list[TpyComprehensionGenerator]
     result_elem_type: 'TpyType | None' = None  # set by sema
 
     def children(self) -> list[TpyExpr]:
-        return [self.element_expr, self.generator.iterable] + self.generator.conditions
+        return comp_clause_children(self.generators) + [self.element_expr]
 
 
 @dataclass
 class TpyGeneratorExpression(TpyExpr):
-    """Generator expression: (expr for var in iterable if cond)"""
+    """Generator expression: (expr for var in iterable if cond ...)"""
     element_expr: TpyExpr
-    generator: TpyComprehensionGenerator
+    generators: list[TpyComprehensionGenerator]
     result_elem_type: 'TpyType | None' = None  # set by sema
     # Set by sema on the frame route: the generator function this expression
     # creates, and the analyzed reads of the enclosing names it takes as
@@ -760,7 +781,7 @@ class TpyGeneratorExpression(TpyExpr):
     frame_creation: 'TpyCall | None' = None
 
     def children(self) -> list[TpyExpr]:
-        return [self.element_expr, self.generator.iterable] + self.generator.conditions
+        return comp_clause_children(self.generators) + [self.element_expr]
 
 
 @dataclass
@@ -1765,6 +1786,12 @@ class TpyFunction:
     # The function the genexpr is written in (None at module level): what a
     # diagnostic about the body names, since the user never wrote this one.
     genexpr_owner: str | None = None
+    # Set by sema on a genexpr's function: the loans its INNER `for` clauses
+    # hold on storage reached through a capture, keyed in the frame's names
+    # (a capture param is named as the variable it binds). Such a capture is
+    # iterated across pulls like the source, not merely read afresh at each
+    # one.
+    genexpr_inner_loans: 'tuple[tuple[str, LoanInfo], ...]' = ()
     generator_yield_type: 'TpyType | None' = None  # Set by sema: T from Iterator[T]
     # Set by sema for a generator whose yield type is an open `T`: does the
     # frame LEND what it yields (the `val_or_ref<T>` slot) or hand out a value?
@@ -1819,6 +1846,24 @@ class TpyFunction:
             return None
         loop = self.body[0]
         return loop if isinstance(loop, TpyForEach) else None
+
+    @property
+    def genexpr_loops(self) -> 'list[TpyForEach]':
+        """Every loop of a generator expression's function, one per `for`
+        clause, outermost (`genexpr_loop`) first. Empty for any other
+        function."""
+        loops: list[TpyForEach] = []
+        stmts: list[TpyStmt] = [self.genexpr_loop] if self.genexpr_loop else []
+        while stmts:
+            nxt: list[TpyStmt] = []
+            for s in stmts:
+                if isinstance(s, TpyForEach):
+                    loops.append(s)
+                    nxt.extend(s.body)
+                elif isinstance(s, TpyIf):
+                    nxt.extend(s.then_body)
+            stmts = nxt
+        return loops
 
     def is_capture(self, pname: str) -> bool:
         """Whether `pname` is a lexical capture rather than an argument the

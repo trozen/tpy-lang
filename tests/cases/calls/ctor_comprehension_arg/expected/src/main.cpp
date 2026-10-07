@@ -49,9 +49,8 @@ void ctor_borrow(const ::tpy::ordered_map<::tpy::Bytes, ::tpy::Bytes>& d) {
 void ctor_mutated_slot() {
     std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t i = 0; i < 3; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
         }
         std::move(__result);
@@ -67,16 +66,14 @@ void ctor_mutated_slot() {
 void ctor_set_dict() {
     ::tpy::ordered_map<std::string, int32_t> __tmp_1 = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
-        const int32_t __stop_0 = 3;
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        for (int32_t i = 0; i < 3; ++i) {
             __result.insert_or_assign(::tpy::fixed_to_str<int32_t>(i), i);
         }
         std::move(__result);
     });
     ::tpy::ordered_set<int32_t> __tmp_2 = ({
         ::tpy::ordered_set<int32_t> __result;
-        const int32_t __stop_1 = 4;
-        for (int32_t i = 0; i < __stop_1; ++i) {
+        for (int32_t i = 0; i < 4; ++i) {
             __result.insert((::tpy::mul_check<int32_t>(i, 2)));
         }
         std::move(__result);
@@ -91,9 +88,8 @@ void ctor_set_dict() {
 void ctor_nested_call() {
     std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_0 = 2;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t i = 0; i < 2; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
         }
         std::move(__result);
@@ -108,7 +104,7 @@ void ctor_nested_call() {
 Flat make(int32_t k) {
     std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_0 = k;
+        int32_t __stop_0 = k;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
@@ -127,9 +123,8 @@ Flat make(int32_t k) {
 void ctor_element_and_condition() {
     std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_0 = 2;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t i = 0; i < 2; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
         }
         std::move(__result);
@@ -138,9 +133,8 @@ void ctor_element_and_condition() {
     std::cout << "ctor_element" << " " << ::tpy::__getitem__(fs, 0).n << " " << ::tpy::__getitem__(fs, 1).n << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Bytes> __tmp_2 = ({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_1 = 2;
-        if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
-        for (int32_t i = 0; i < __stop_1; ++i) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t i = 0; i < 2; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
         }
         std::move(__result);
@@ -163,9 +157,8 @@ void ctor_element_and_condition() {
 void own_slots() {
     Keep k = Keep(({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t i = 0; i < 3; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
         }
         std::move(__result);
@@ -174,9 +167,8 @@ void own_slots() {
     std::cout << "own_ctor" << " " << ::tpy::__len__(k.data) << "\n" << ::tpy::check_signals;
     k.reset(({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_1 = 5;
-        if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
-        for (int32_t i = 0; i < __stop_1; ++i) {
+        if (5 > 0) __result.reserve(static_cast<size_t>(5));
+        for (int32_t i = 0; i < 5; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
         }
         std::move(__result);
@@ -185,9 +177,8 @@ void own_slots() {
     std::cout << "own_method" << " " << ::tpy::__len__(k.data) << "\n" << ::tpy::check_signals;
     std::cout << "own_free" << " " << ::tpy::__len__(::tpyapp::main::take_own(({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_2 = 2;
-        if (__stop_2 > 0) __result.reserve(static_cast<size_t>(__stop_2));
-        for (int32_t i = 0; i < __stop_2; ++i) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t i = 0; i < 2; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
         }
         std::move(__result);
@@ -210,9 +201,8 @@ void own_stub_elem() {
     std::vector<std::vector<double>> table = std::vector<std::vector<double>>{};
     table.push_back(({
         std::vector<double> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t i = 0; i < 3; ++i) {
             __result.push_back(((2.0) * (static_cast<double>(i))));
         }
         std::move(__result);
@@ -222,9 +212,8 @@ void own_stub_elem() {
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> d = ::tpy::ordered_map<int32_t, std::vector<int32_t>>();
     std::vector<int32_t>& got = ::tpy::dict_setdefault(d, 1, ({
         std::vector<int32_t> __result;
-        const int32_t __stop_1 = 3;
-        if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
-        for (int32_t x = 0; x < __stop_1; ++x) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t x = 0; x < 3; ++x) {
             __result.push_back(x);
         }
         std::move(__result);
@@ -247,9 +236,8 @@ void own_stub_elem() {
 void own_marker_and_pending() {
     ::tpystd::tplib::rc::Rc<std::vector<int32_t>> r = Rc<std::vector<int32_t>>::new_<std::vector<int32_t>>(({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t x = 0; x < __stop_0; ++x) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t x = 0; x < 3; ++x) {
             __result.push_back((::tpy::mul_check<int32_t>(x, 2)));
         }
         std::move(__result);
@@ -259,9 +247,8 @@ void own_marker_and_pending() {
     std::vector<std::vector<int32_t>> rows = std::vector<std::vector<int32_t>>{};
     rows.push_back(({
         std::vector<int32_t> __result;
-        const int32_t __stop_1 = 3;
-        if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
-        for (int32_t x = 0; x < __stop_1; ++x) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t x = 0; x < 3; ++x) {
             __result.push_back(x);
         }
         std::move(__result);
@@ -280,7 +267,7 @@ void own_marker_and_pending() {
 void rebind_slot_reseat(int32_t k) {
     std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_0 = k;
+        int32_t __stop_0 = k;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
@@ -292,7 +279,7 @@ void rebind_slot_reseat(int32_t k) {
     std::cout << "rebind_slot_reseat" << " " << f->n << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Bytes> __tmp_2 = ({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_1 = (::tpy::add_check<int32_t>(k, 1));
+        int32_t __stop_1 = (::tpy::add_check<int32_t>(k, 1));
         if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
         for (int32_t i = 0; i < __stop_1; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
@@ -314,7 +301,7 @@ void closure() {
     auto inner = [](int32_t k) -> int32_t {
         std::vector<::tpy::Bytes> __tmp_1 = ({
             std::vector<::tpy::Bytes> __result;
-            const int32_t __stop_0 = k;
+            int32_t __stop_0 = k;
             if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
             for (int32_t i = 0; i < __stop_0; ++i) {
                 __result.push_back(::tpy::bytes_literal_owned("x", 1));
@@ -350,7 +337,7 @@ void blocks(int32_t k) {
     try {
         std::vector<::tpy::Bytes> __tmp_1 = ({
             std::vector<::tpy::Bytes> __result;
-            const int32_t __stop_0 = n;
+            int32_t __stop_0 = n;
             if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
             for (int32_t i = 0; i < __stop_0; ++i) {
                 __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
@@ -373,7 +360,7 @@ void blocks(int32_t k) {
         try {
             std::vector<::tpy::Bytes> __tmp_2 = ({
                 std::vector<::tpy::Bytes> __result;
-                const int32_t __stop_1 = k;
+                int32_t __stop_1 = k;
                 if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
                 for (int32_t i = 0; i < __stop_1; ++i) {
                     __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
@@ -391,7 +378,7 @@ void blocks(int32_t k) {
     case 3: {
         std::vector<::tpy::Bytes> __tmp_3 = ({
             std::vector<::tpy::Bytes> __result;
-            const int32_t __stop_2 = (::tpy::add_check<int32_t>(k, 1));
+            int32_t __stop_2 = (::tpy::add_check<int32_t>(k, 1));
             if (__stop_2 > 0) __result.reserve(static_cast<size_t>(__stop_2));
             for (int32_t i = 0; i < __stop_2; ++i) {
                 __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
@@ -437,7 +424,7 @@ void hoisted_reseat(int32_t k) {
     __ctx_2.__exit__({}, nullptr, {});
     std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_0 = k;
+        int32_t __stop_0 = k;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
@@ -483,7 +470,7 @@ void str_append_temp(int32_t k) {
 std::expected<int32_t, MyErr> error_return_body(int32_t k) {
     std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_0 = k;
+        int32_t __stop_0 = k;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
@@ -561,9 +548,8 @@ void __tpy_init() {
     ::tpyapp::main::main();
     std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t i = 0; i < 3; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::vector<int32_t>{i}));
         }
         std::move(__result);

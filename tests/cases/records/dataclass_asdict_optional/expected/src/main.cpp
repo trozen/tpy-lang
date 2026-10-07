@@ -88,7 +88,8 @@ void main() {
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
-            const auto& __tup_1 = *__beg_2;
+            const auto& __macro_3 = *__beg_2;
+            const auto& __tup_1 = __macro_3;
             std::string __macro_1 = std::get<0>(__tup_1);
             const auto& __macro_2 = std::get<1>(__tup_1);
             __result.insert_or_assign(__macro_1, (((__macro_2.has_value())) ? (std::optional<::tpy::ordered_map<std::string, int32_t>>(::tpy::ordered_map<std::string, int32_t>({{"x", (*__macro_2).x}, {"y", (*__macro_2).y}}))) : (std::optional<::tpy::ordered_map<std::string, int32_t>>(std::nullopt))));

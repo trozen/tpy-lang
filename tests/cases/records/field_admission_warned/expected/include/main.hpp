@@ -591,9 +591,8 @@ inline void Opt::elem(std::vector<P>& ps) {
 inline Many::Many(P&& p)
     : xs(({
     std::vector<P> __result;
-    const int32_t __stop_0 = 3;
-    if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-    for (int32_t _ = 0; _ < __stop_0; ++_) {
+    if (3 > 0) __result.reserve(static_cast<size_t>(3));
+    for (int32_t _ = 0; _ < 3; ++_) {
         __result.push_back(p);
     }
     std::move(__result);
@@ -608,17 +607,15 @@ inline Many::Many(P&& p)
 inline void Many::reset(P&& p, const P& r) {
     this->xs = ({
         std::vector<P> __result;
-        const int32_t __stop_0 = 2;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t _ = 0; _ < __stop_0; ++_) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t _ = 0; _ < 2; ++_) {
             __result.push_back(p);
         }
         std::move(__result);
     });
     this->d = ({
         ::tpy::ordered_map<int32_t, P> __result;
-        const int32_t __stop_1 = 2;
-        for (int32_t i = 0; i < __stop_1; ++i) {
+        for (int32_t i = 0; i < 2; ++i) {
             __result.insert_or_assign(i, r);
         }
         std::move(__result);

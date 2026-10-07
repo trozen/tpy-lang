@@ -37,8 +37,7 @@ void main() {
     }
     ::tpy::ordered_set<::tpy::BigInt> big = ({
         ::tpy::ordered_set<::tpy::BigInt> __result;
-        const int32_t __stop_2 = 4;
-        for (int32_t x = 0; x < __stop_2; ++x) {
+        for (int32_t x = 0; x < 4; ++x) {
             __result.insert(::tpy::BigInt((::tpy::mul_check<int32_t>(x, x))));
         }
         std::move(__result);

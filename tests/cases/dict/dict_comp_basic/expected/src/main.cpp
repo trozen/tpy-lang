@@ -30,8 +30,7 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_map<int32_t, int32_t> squares = ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
-        const int32_t __stop_0 = 5;
-        for (int32_t x = 0; x < __stop_0; ++x) {
+        for (int32_t x = 0; x < 5; ++x) {
             __result.insert_or_assign(x, (::tpy::mul_check<int32_t>(x, x)));
         }
         std::move(__result);
@@ -65,7 +64,8 @@ void main() {
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
-            const auto& __tup_1 = *__beg_3;
+            const auto& __for_tup_0 = *__beg_3;
+            const auto& __tup_1 = __for_tup_0;
             std::string k = std::get<0>(__tup_1);
             int32_t v = std::get<1>(__tup_1);
             __result.insert_or_assign(k, v);
@@ -76,18 +76,16 @@ void main() {
     std::cout << ::tpy::__getitem__(copy, "b") << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, int32_t> r2 = ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
-        const int32_t __start_4 = 2;
-        const int32_t __stop_5 = 5;
-        for (int32_t x = __start_4; x < __stop_5; ++x) {
+        for (int32_t x = 2; x < 5; ++x) {
             __result.insert_or_assign(x, (::tpy::add_check<int32_t>(x, 10)));
         }
         std::move(__result);
     });
-    auto& __obj_6 = r2;
-    auto __beg_6 = __obj_6.begin();
-    auto __end_6 = __obj_6.end();
-    for (; __beg_6 != __end_6; ++__beg_6) {
-        int32_t k = *__beg_6;
+    auto& __obj_5 = r2;
+    auto __beg_5 = __obj_5.begin();
+    auto __end_5 = __obj_5.end();
+    for (; __beg_5 != __end_5; ++__beg_5) {
+        int32_t k = *__beg_5;
         std::cout << k << " " << ::tpy::__getitem__(r2, k) << "\n" << ::tpy::check_signals;
     }
 }

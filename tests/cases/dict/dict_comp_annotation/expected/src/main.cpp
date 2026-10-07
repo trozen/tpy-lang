@@ -37,8 +37,7 @@ void main() {
     }
     ::tpy::ordered_map<int32_t, int64_t> wide64 = ({
         ::tpy::ordered_map<int32_t, int64_t> __result;
-        const int32_t __stop_2 = 3;
-        for (int32_t x = 0; x < __stop_2; ++x) {
+        for (int32_t x = 0; x < 3; ++x) {
             __result.insert_or_assign(x, static_cast<int64_t>((::tpy::mul_check<int32_t>(x, 2))));
         }
         std::move(__result);

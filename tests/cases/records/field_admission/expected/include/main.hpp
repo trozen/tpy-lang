@@ -779,9 +779,8 @@ inline void Keep::load(::tpy::BytesView src) {
     this->ba = ::tpy::ByteArray(src);
     std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_0 = 5;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (5 > 0) __result.reserve(static_cast<size_t>(5));
+        for (int32_t i = 0; i < 5; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
         }
         std::move(__result);

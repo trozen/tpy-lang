@@ -1036,6 +1036,111 @@ def _range_step_kind(step_arg: TpyExpr, declared: dict[str, TpyType],
         return "variable"
     return None
 
+def build_loop_node(shape: str, var: str, et: TpyType,
+                    body: tuple[THIRStmt, ...], lc: _LowerCtx,
+                    declared: dict[str, TpyType], *,
+                    range_call: 'TpyCall | None' = None,
+                    step_kind: str = "plus_one",
+                    iterable: 'THIRExpr | None' = None,
+                    source: 'TpyExpr | None' = None,
+                    const_loop_var: bool = False,
+                    iterable_lvalue: bool = True,
+                    consuming: bool = False,
+                    hoist_loop_var: bool = False,
+                    **position_facts: object) -> THIRStmt:
+    """The one loop assembly the for statement and a comprehension clause
+    share, so a source renders the same loop wherever it is written;
+    `position_facts` are node fields only one of the two positions sets."""
+    if shape == "range":
+        assert range_call is not None
+        args = range_call.args
+        start = None
+        start_is_literal = True
+        stop_arg = args[0]
+        if len(args) >= 2:
+            start = _lower_range_arg(args[0], et, lc, declared)
+            start_is_literal = _range_bound_literal_value(args[0]) is not None
+            stop_arg = args[1]
+        # The unit-step arms reference no step expr; the other three render it.
+        step = (_lower_range_arg(args[2], et, lc, declared)
+                if len(args) == 3
+                and step_kind in ("literal_pos", "literal_neg", "variable")
+                else None)
+        return THIRForRange(
+            var=var, elem_type=et,
+            stop=_lower_range_arg(stop_arg, et, lc, declared),
+            start=start, start_is_literal=start_is_literal,
+            stop_is_literal=_range_bound_literal_value(stop_arg) is not None,
+            body=body, step=step, step_kind=step_kind,
+            hoist_loop_var=hoist_loop_var, **position_facts)
+    assert iterable is not None
+    if shape == "iter_proto":
+        return THIRForIterProto(
+            var=var, elem_type=et, iterable=iterable, body=body,
+            const_loop_var=const_loop_var, iterable_lvalue=iterable_lvalue,
+            **position_facts)
+    assert shape == "each", shape
+    iteration = (None if source is None else _native_iteration(
+        iterable, source, et, lc, iterable_lvalue=iterable_lvalue,
+        consuming=consuming, const_loop_var=const_loop_var,
+        hoisted=hoist_loop_var))
+    return THIRForEach(
+        var=var, elem_type=et, iterable=iterable, body=body,
+        const_loop_var=const_loop_var, iterable_lvalue=iterable_lvalue,
+        consuming=consuming, hoist_loop_var=hoist_loop_var,
+        iteration=iteration, **position_facts)
+
+
+def _native_iteration(iterable: THIRExpr, source: TpyExpr, et: TpyType,
+                      lc: _LowerCtx, *, iterable_lvalue: bool,
+                      consuming: bool, const_loop_var: bool,
+                      hoisted: bool) -> 'THIRNativeIteration | None':
+    """The native container a begin/end loop walks in place, and how its
+    loop var binds an element of it -- None for a fresh value or a consuming
+    wrapper, which have no place."""
+    analyzer = lc.analyzer
+    source_fact = None
+    if iterable_lvalue and not consuming:
+        if isinstance(iterable, THIRName):
+            source_fact = native_container(iterable.result_type,
+                                           _const_borrow_name(iterable.name, lc, const_locals=True), analyzer)
+        elif (isinstance(iterable, THIRFieldAccess) and iterable.field_identity is not None
+              and isinstance(iterable.receiver, (THIRName, THIRSelf))):
+            # A container field of a named record: const when the
+            # receiver lends const (C++ propagates it through the member).
+            source_fact = native_container(
+                iterable.result_type,
+                _iteration_yields_const(source, lc, analyzer)
+                or isinstance(iterable.field_identity.type, ReadonlyType), analyzer)
+        elif (isinstance(iterable, (THIRCall, THIRMethodCall)) and iterable.resolved_callee is not None
+              and native_container_type(native_container_subject(iterable.result_type))):
+            # The container a user callee returns by reference, walked in
+            # place: const when its return type is, or, for a callable whose
+            # result follows its receiver, when the call's receiver is
+            # emitted const (`THIRMethodCall.receiver_access`).
+            signature = iterable.resolved_callee.signature
+            source_fact = native_container(
+                iterable.result_type,
+                isinstance(unwrap_ref_type(signature.return_type), ReadonlyType)
+                or signature.result_follows_receiver and isinstance(iterable, THIRMethodCall)
+                and iterable.receiver_access.readonly, analyzer)
+    elif (not consuming and isinstance(iterable, THIRMethodCall)
+          and iterable.stub_callee is not None):
+        # A container view a stub returns (`d.keys()`) walks its own
+        # declared element; any other result is a fresh value, no place.
+        if container_view(native_container_subject(iterable.result_type)):
+            source_fact = native_container(
+                iterable.result_type, _iteration_yields_const(source, lc, analyzer), analyzer)
+    if source_fact is not None and (not binds_cursor(source_fact.type) or not binds_element(et, (
+            source_fact.element.type if isinstance(source_fact.element, THIRBorrowedRecord)
+            else source_fact.element))):
+        source_fact = None
+    if source_fact is None:
+        return None
+    return THIRNativeIteration(source_fact, loop_binding_kind(
+        et, const_loop_var, hoisted=hoisted))
+
+
 def _shadowable_globals(lc: '_LowerCtx',
                         declared: dict[str, TpyType]) -> 'AbstractSet[str]':
     """The module globals a loop variable may shadow: those whose read is a
@@ -16797,41 +16902,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # threads into the arg render): a no-op for fixed-int
             # counters (bare token either way), the `::tpy::BigInt(N)`
             # ctor wrap for a BigInt one.
-            nargs = len(it.args)
-            if nargs == 1:
-                start = None
-                start_is_literal = True
-                stop_arg = it.args[0]
-            else:
-                start_arg = it.args[0]
-                start = _lower_range_arg(start_arg, et, lc, declared)
-                start_is_literal = _range_bound_literal_value(start_arg) is not None
-                stop_arg = it.args[1]
-            step = None
-            step_kind = route.step_kind
-            if nargs == 3:
+            if len(it.args) == 3:
                 _witness("range.step_variable_expr"
                          if route.step_expr_computed
-                         else f"range.step_{step_kind}")
-                # The unit-step arms (plus_one / unit_neg) reference no step expr;
-                # the other three render it (retype is a no-op for the fixed-int
-                # counter this arm requires).
-                if step_kind in ("literal_pos", "literal_neg", "variable"):
-                    step = _lower_range_arg(it.args[2], et, lc, declared)
+                         else f"range.step_{route.step_kind}")
             # Binding scans cover match targets; fact kills add closure writes.
             target_written = (
                 _body_writes_name(stmt.body, stmt.var)
                 or stmt.var in collect_fact_kills(stmt.body).names)
-            return THIRForRange(
-                var=stmt.var,
-                elem_type=et,
-                stop=_lower_range_arg(stop_arg, et, lc, declared),
-                start=start,
-                start_is_literal=start_is_literal,
-                stop_is_literal=_range_bound_literal_value(stop_arg) is not None,
-                body=body,
-                step=step,
-                step_kind=step_kind,
+            return build_loop_node(
+                "range", stmt.var, et, body, lc, declared,
+                range_call=it, step_kind=route.step_kind,
                 hoist_loop_var=stmt.hoist_loop_var,
                 target_written=target_written,
                 hoist_decls=foreach_hoist_decls,
@@ -16882,11 +16963,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             proto_src_field = _frame_src_slot(stmt, lc)
             if proto_src_field is not None:
                 proto_iterable = self_typed_frame_source(proto_iterable, lc)
-            return THIRForIterProto(
-                var=stmt.var,
-                elem_type=et,
+            return build_loop_node(
+                "iter_proto", stmt.var, et, body, lc, declared,
                 iterable=proto_iterable,
-                body=body,
                 const_loop_var=stmt.const_loop_var,
                 iterable_lvalue=route.iterable_lvalue,
                 frame_src_field=proto_src_field,
@@ -16901,11 +16980,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # bare enum TYPE name, which has no value-position lowering).
             members_cpp = (
                 f"::tpy::EnumUtil<{lc.render_type(stmt.enum_iterable)}>::members")
-            return THIRForEach(
-                var=stmt.var,
-                elem_type=et,
+            return build_loop_node(
+                "each", stmt.var, et, body, lc, declared,
                 iterable=THIRModuleVar(cpp=members_cpp, result_type=et),
-                body=body,
                 const_loop_var=stmt.const_loop_var,
                 iterable_lvalue=True,
                 hoist_decls=foreach_hoist_decls,
@@ -16966,60 +17043,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                      else _frame_src_slot(stmt, lc))
         if src_field is not None:
             iterable = self_typed_frame_source(iterable, lc)
-        source_fact = None
-        if route.iterable_lvalue and route.consuming_native_name is None and not route.consuming_name:
-            if isinstance(iterable, THIRName):
-                source_fact = native_container(iterable.result_type,
-                                               _const_borrow_name(iterable.name, lc, const_locals=True), analyzer)
-            elif (isinstance(iterable, THIRFieldAccess) and iterable.field_identity is not None
-                  and isinstance(iterable.receiver, (THIRName, THIRSelf))):
-                # A container field of a named record: const when the
-                # receiver lends const (C++ propagates it through the member).
-                source_fact = native_container(
-                    iterable.result_type,
-                    _iteration_yields_const(stmt.iterable, lc, analyzer)
-                    or isinstance(iterable.field_identity.type, ReadonlyType), analyzer)
-            elif (isinstance(iterable, (THIRCall, THIRMethodCall)) and iterable.resolved_callee is not None
-                  and native_container_type(native_container_subject(iterable.result_type))):
-                # The container a user callee returns by reference, walked in
-                # place: const when its return type is, or, for a callable whose
-                # result follows its receiver, when the call's receiver is
-                # emitted const (`THIRMethodCall.receiver_access`).
-                signature = iterable.resolved_callee.signature
-                source_fact = native_container(
-                    iterable.result_type,
-                    isinstance(unwrap_ref_type(signature.return_type), ReadonlyType)
-                    or signature.result_follows_receiver and isinstance(iterable, THIRMethodCall)
-                    and iterable.receiver_access.readonly, analyzer)
-        elif (route.consuming_native_name is None and not route.consuming_name
-              and isinstance(iterable, THIRMethodCall) and iterable.stub_callee is not None):
-            # A container view a stub returns (`d.keys()`) walks its own
-            # declared element; any other result is a fresh value, no place.
-            if container_view(native_container_subject(iterable.result_type)):
-                source_fact = native_container(
-                    iterable.result_type, _iteration_yields_const(stmt.iterable, lc, analyzer), analyzer)
-        if source_fact is not None and (not binds_cursor(source_fact.type) or not binds_element(et, (
-                source_fact.element.type if isinstance(source_fact.element, THIRBorrowedRecord)
-                else source_fact.element))):
-            source_fact = None
-        iteration = (THIRNativeIteration(source_fact, loop_binding_kind(
-            et, stmt.const_loop_var, hoisted=stmt.hoist_loop_var)) if source_fact is not None else None)
-        return THIRForEach(
-            var=stmt.var,
-            elem_type=et,
+        return build_loop_node(
+            "each", stmt.var, et, body, lc, declared,
             iterable=iterable,
-            body=body,
+            source=stmt.iterable,
             const_loop_var=stmt.const_loop_var,
             iterable_lvalue=route.iterable_lvalue,
-            str_literal_iterable=route.str_literal_iterable,
             consuming=(route.consuming_native_name is not None
                        or route.consuming_name),
             hoist_loop_var=stmt.hoist_loop_var,
+            str_literal_iterable=route.str_literal_iterable,
             hoisted_tuple_lift_cpp=(hoisted_bt.to_cpp_return()
                                     if hoisted_bt is not None else None),
             hoist_decls=foreach_hoist_decls,
             hoisted_bindings=tuple(foreach_bindings),
-            iteration=iteration,
             hoist_ptr_inits=tuple(sorted(ptr_null_hoists)),
             frame_src_field=src_field,
             orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,

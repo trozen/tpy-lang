@@ -234,9 +234,8 @@ void main() {
     std::cout << "repeat-arg" << " " << (::tpy::__getitem__(app.writers, "touch"))(__tmp_2) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_3 = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = 2;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t _ = 0; _ < __stop_0; ++_) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t _ = 0; _ < 2; ++_) {
             __result.push_back(1);
         }
         std::move(__result);

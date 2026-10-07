@@ -505,20 +505,21 @@ THIRTupleUnpack
   value: THIRExpr
   result_type: TpyType
 
-THIRComprehension
-  kind: AggregateKind
-  element: THIRExpr
-  clauses: list[THIRComprehensionClause]
+THIRComprehensionBlock                   # list / set / dict comprehension
+  kind: str                            # list / set / dict
+  body: tuple[THIRStmt, ...]           # ordinary statements: one loop per `for`
+                                       # clause (the for statement's loop nodes),
+                                       # one nested THIRIf per filter, a
+                                       # THIRCompInsert leaf
   result_type: TpyType
 
-THIRGeneratorExpr
-  element: THIRExpr
-  clauses: list[THIRComprehensionClause]
-  result_type: TpyType
+THIRArrayComprehension                   # list comprehension demoted to Array[T, N]
+  element: THIRExpr                    # built by array_from_index, no loop
 
-THIRComprehensionClause
-  = For(target: THIRExpr, iterable: THIRExpr)
-  | If(condition: THIRExpr)
+THIRGenExpr                              # the CREATION of a generator expression:
+  iterable: THIRExpr                   # its source and captures; the loops are
+  frame_captures: tuple                # the body of the generator function sema
+  result_type: TpyType                 # built for it, lowered like any generator
 
 THIRLiteralInfo
   needs_stable_storage: bool

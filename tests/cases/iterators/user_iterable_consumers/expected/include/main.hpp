@@ -449,11 +449,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_protocol<T_xs>::__next__(
         __state = S_RESUME_0;
         return ::tpy::__len__(({
     std::vector<std::string> __result;
-    auto&& __obj_0 = ::tpy::iter_range(xs);
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        const std::string& s = *__beg_0;
+    auto& __src_0 = xs;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        const std::string& s = ::tpy::unwrap_ref(*__r_1);
         __result.push_back(s);
     }
     std::move(__result);
@@ -463,11 +464,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_protocol<T_xs>::__next__(
         __state = S_RESUME_1;
         return ::tpy::builtin_sum<int32_t>(({
     std::vector<int32_t> __result;
-    auto&& __obj_1 = ::tpy::iter_range(xs);
-    auto __beg_1 = __obj_1.begin();
-    auto __end_1 = __obj_1.end();
-    for (; __beg_1 != __end_1; ++__beg_1) {
-        const std::string& s = *__beg_1;
+    auto& __src_2 = xs;
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
+    for (;;) {
+        auto __r_3 = __itr_2.__next__();
+        if (!__r_3.has_value()) break;
+        const std::string& s = ::tpy::unwrap_ref(*__r_3);
         __result.push_back(::tpy::__len__(s));
     }
     std::move(__result);
@@ -706,11 +708,12 @@ inline Holder::Holder() : bag(Bag()) {}
 inline std::vector<std::string> Holder::values() const {
     return ({
         std::vector<std::string> __result;
-        auto&& __obj_0 = ::tpy::iter_range(this->bag);
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const std::string& s = *__beg_0;
+        auto& __src_0 = this->bag;
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const std::string& s = ::tpy::unwrap_ref(*__r_1);
             __result.push_back((::tpy::str_concat(s, "?")));
         }
         std::move(__result);
@@ -724,11 +727,12 @@ inline std::vector<std::string> Holder::values() const {
 inline bool Holder::any_a() const {
     return ::tpy::builtin_any(({
         std::vector<bool> __result;
-        auto&& __obj_0 = ::tpy::iter_range(this->bag);
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const std::string& s = *__beg_0;
+        auto& __src_0 = this->bag;
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const std::string& s = ::tpy::unwrap_ref(*__r_1);
             __result.push_back((s == "a"));
         }
         std::move(__result);
@@ -758,11 +762,12 @@ inline Letters::Letters(std::vector<std::string>&& chars) : chars(std::move(char
 inline std::vector<std::string> Letters::upper() const {
     return ({
         std::vector<std::string> __result;
-        auto&& __obj_0 = ::tpy::iter_range((*this));
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const std::string& c = *__beg_0;
+        auto& __src_0 = (*this);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const std::string& c = ::tpy::unwrap_ref(*__r_1);
             __result.push_back(::tpy::str_upper(c));
         }
         std::move(__result);
@@ -789,11 +794,12 @@ template<::tpystd::typing::Iterable<int32_t> T_xs>
 std::vector<int32_t> proto_comp(T_xs& xs) {
     return ({
         std::vector<int32_t> __result;
-        auto&& __obj_0 = ::tpy::iter_range(xs);
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            int32_t x = *__beg_0;
+        auto& __src_0 = xs;
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
             __result.push_back(x);
         }
         std::move(__result);
@@ -806,11 +812,12 @@ template<::tpystd::typing::Iterable<std::string> T_xs>
 std::vector<std::string> ups(T_xs& xs) {
     return ({
         std::vector<std::string> __result;
-        auto&& __obj_0 = ::tpy::iter_range(xs);
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const std::string& s = *__beg_0;
+        auto& __src_0 = xs;
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const std::string& s = ::tpy::unwrap_ref(*__r_1);
             __result.push_back(::tpy::str_upper(s));
         }
         std::move(__result);
@@ -823,11 +830,12 @@ template<::tpystd::typing::Iterator<std::string> T_it>
 std::vector<std::string> drain(T_it& it) {
     return ({
         std::vector<std::string> __result;
-        auto&& __obj_0 = ::tpy::iter_range(it);
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const std::string& s = *__beg_0;
+        auto& __src_0 = it;
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const std::string& s = ::tpy::unwrap_ref(*__r_1);
             __result.push_back(s);
         }
         std::move(__result);

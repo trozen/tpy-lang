@@ -34,7 +34,7 @@ void array_comp() {
 void list_comp(int32_t n) {
     std::vector<::tpystd::tplib::box::Box<int32_t>> ys = ({
         std::vector<::tpystd::tplib::box::Box<int32_t>> __result;
-        const int32_t __stop_0 = n;
+        int32_t __stop_0 = n;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
             int32_t __tmp_1 = i;
@@ -121,7 +121,7 @@ void genexpr(int32_t n) {
 void filtered(int32_t n) {
     std::vector<int32_t> zs = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = n;
+        int32_t __stop_0 = n;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
             int32_t __tmp_1 = i;
@@ -145,7 +145,7 @@ void walrus_owned(int32_t n) {
     int32_t y;
     std::vector<int32_t> zs = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = n;
+        int32_t __stop_0 = n;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t x = 0; x < __stop_0; ++x) {
             int32_t __tmp_1 = x;

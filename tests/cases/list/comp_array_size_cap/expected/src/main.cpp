@@ -14,9 +14,8 @@ namespace tpyapp::main {
 void main() {
     std::vector<int32_t> big = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = 2000;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (2000 > 0) __result.reserve(static_cast<size_t>(2000));
+        for (int32_t i = 0; i < 2000; ++i) {
             __result.push_back(i);
         }
         std::move(__result);

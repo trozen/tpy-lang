@@ -179,7 +179,8 @@ void comp_reads() {
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
-            auto& __tup_1 = *__beg_1;
+            auto&& __for_tup_0 = *__beg_1;
+            auto& __tup_1 = __for_tup_0;
             int32_t a = std::get<0>(__tup_1);
             auto& b = std::get<1>(__tup_1);
             __result.push_back(a);

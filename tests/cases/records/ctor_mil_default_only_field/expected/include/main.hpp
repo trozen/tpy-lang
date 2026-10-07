@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 inline Grid::Grid() {
     this->cells = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = this->n;
+        int32_t __stop_0 = this->n;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
             __result.push_back(i);

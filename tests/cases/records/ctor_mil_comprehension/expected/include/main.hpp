@@ -67,7 +67,7 @@ inline Grid::Grid(int32_t n)
     : n(n),
       cells(({
     std::vector<Cell> __result;
-    const int32_t __stop_0 = this->n;
+    int32_t __stop_0 = this->n;
     if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
     for (int32_t i = 0; i < __stop_0; ++i) {
         __result.push_back(Cell(i));
@@ -76,7 +76,7 @@ inline Grid::Grid(int32_t n)
 })),
       seen(({
     ::tpy::ordered_set<int32_t> __result;
-    const int32_t __stop_1 = this->n;
+    int32_t __stop_1 = this->n;
     for (int32_t i = 0; i < __stop_1; ++i) {
         __result.insert((::tpy::mul_check<int32_t>(i, 2)));
     }
@@ -84,7 +84,7 @@ inline Grid::Grid(int32_t n)
 })),
       index(({
     ::tpy::ordered_map<int32_t, int32_t> __result;
-    const int32_t __stop_2 = this->n;
+    int32_t __stop_2 = this->n;
     for (int32_t i = 0; i < __stop_2; ++i) {
         __result.insert_or_assign(i, (::tpy::mul_check<int32_t>(i, i)));
     }

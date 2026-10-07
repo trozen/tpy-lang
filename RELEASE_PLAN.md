@@ -37,10 +37,11 @@ release commit (annotated; the build hook bakes `git describe`), then
   `str-bytes-view-rule`; what remains is MIR's relaxation of its copies --
   TODO: "`str` / `bytes` views: MIR precision over the one view rule"
 - Iterating a tuple (`for b in (b1, b2):`), the aliasing spelling for
-  reference elements; ranks above nested comprehensions -- TODO:
-  "Iterating a tuple"
+  reference elements -- TODO: "Iterating a tuple"
 - Nested / multi-`for` comprehensions (list/dict/set + genexprs) --
-  TODO: "Nested comprehensions"
+  landed; before the freeze, lift the owned outer clause together with
+  its `for`-statement twin -- TODO: "Lift: an outer `for` clause",
+  BUGS.md#nested-for-over-owned-element-rejects
 - `collections.defaultdict` -- TODO: "collections: the rest of the
   module"
 - Per-instantiation result form for a generic body, then builtin
@@ -56,6 +57,9 @@ release commit (annotated; the build hook bakes `git describe`), then
 
 Queue (triage at 0.7 planning; not commitments):
 
+- The other multi-`for` comprehension refusals -- TODO: "Lift: a name
+  bound by two `for` clauses", "Lift: rebinding a capture" (MIR),
+  "Lift: a walrus binding a reference inside a comprehension" (MIR)
 - Tuples, the structural half -- `docs/TUPLE_COMPLETION_PLAN.md`, units
   U5-U7: one elementwise form rule in THIR, `str` / `bytes` view elements
   (ABI change), the loud tail. U8 (the general partial move: reading a

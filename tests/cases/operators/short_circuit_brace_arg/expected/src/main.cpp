@@ -293,11 +293,10 @@ bool chained(int64_t a, int64_t b) {
 int64_t relocated_decl(bool flag) {
     return ((flag) ? (::tpy::builtin_sum<int64_t>(({
         std::vector<int64_t> __result;
-        const int32_t __stop_0 = 2;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t _ = 0; _ < __stop_0; ++_) {
-            std::optional<std::vector<int64_t>> __tmp_1 = std::vector<int64_t>{1, 2, 3};
-            __result.push_back(::tpyapp::main::take_i64((*__tmp_1)));
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t _ = 0; _ < 2; ++_) {
+            std::vector<int64_t> __tmp_1 = {1, 2, 3};
+            __result.push_back(::tpyapp::main::take_i64(__tmp_1));
         }
         std::move(__result);
     }))) : (0));

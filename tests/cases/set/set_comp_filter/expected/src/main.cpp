@@ -19,8 +19,7 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_set<int32_t> evens = ({
         ::tpy::ordered_set<int32_t> __result;
-        const int32_t __stop_0 = 10;
-        for (int32_t x = 0; x < __stop_0; ++x) {
+        for (int32_t x = 0; x < 10; ++x) {
             if (((::tpy::mod_floor<int32_t>(x, 2)) == 0)) {
                 __result.insert(x);
             }

@@ -93,9 +93,8 @@ int32_t doubled(::tpy::Union<const std::vector<int32_t>*, const std::string*> x)
     auto& __x = *std::get<const std::vector<int32_t>*>(x);
     return ::tpy::builtin_sum<int32_t>(({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = 2;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t i = 0; i < 2; ++i) {
             __result.push_back((::tpy::mul_check<int32_t>(::tpy::__getitem__(__x, i), 2)));
         }
         std::move(__result);

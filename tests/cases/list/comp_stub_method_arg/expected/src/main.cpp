@@ -15,11 +15,8 @@ namespace tpyapp::main {
     std::vector<::tpy::BigInt> primes = {2, 3};
     ::tpy::list_extend(primes, ({
         std::vector<int32_t> __result;
-        auto __obj_0 = ::tpy::Range<int32_t>(5, 12, 2);
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            int32_t i = *__beg_0;
+        ::tpy::range_check_overflow<int32_t>(5, 12, 2);
+        for (int32_t i = 5; i < 12; i += 2) {
             if ((i != 9)) {
                 __result.push_back(i);
             }
@@ -59,8 +56,7 @@ std::string join_iterable() {
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>({{1, 2}});
     ::tpy::dict_update(d, ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
-        const int32_t __stop_0 = 3;
-        for (int32_t k = 0; k < __stop_0; ++k) {
+        for (int32_t k = 0; k < 3; ++k) {
             __result.insert_or_assign(k, k);
         }
         std::move(__result);
@@ -76,8 +72,7 @@ std::string join_iterable() {
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
     ::tpy::set_update(s, ({
         ::tpy::ordered_set<int32_t> __result;
-        const int32_t __stop_0 = 3;
-        for (int32_t x = 0; x < __stop_0; ++x) {
+        for (int32_t x = 0; x < 3; ++x) {
             __result.insert((::tpy::mul_check<int32_t>(x, 2)));
         }
         std::move(__result);

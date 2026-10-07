@@ -18,8 +18,7 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_map<int32_t, int32_t> evens = ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
-        const int32_t __stop_0 = 10;
-        for (int32_t x = 0; x < __stop_0; ++x) {
+        for (int32_t x = 0; x < 10; ++x) {
             if (((::tpy::mod_floor<int32_t>(x, 2)) == 0)) {
                 __result.insert_or_assign(x, (::tpy::mul_check<int32_t>(x, x)));
             }
@@ -40,7 +39,8 @@ void main() {
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
-            const auto& __tup_1 = *__beg_2;
+            const auto& __for_tup_0 = *__beg_2;
+            const auto& __tup_1 = __for_tup_0;
             std::string k = std::get<0>(__tup_1);
             int32_t v = std::get<1>(__tup_1);
             if ((v > 3)) {

@@ -91,7 +91,8 @@ from .nodes import (
     THIRStubCallee, THIRStubContract, THIRStubIdentity,
     THIRLambda, THIRNestedDef, THIRClosureIdentity, THIRClosureKind,
     THIRCapture, THIRCaptureSlot, THIRCaptureSourceKind, THIRCaptureRelation,
-    THIRComprehension, hoists_declaration, record_rvalue_storage,
+    THIRArrayComprehension, THIRComprehensionBlock, THIRCompInsert,
+    hoists_declaration, record_rvalue_storage,
 )
 from .temp_plan import if_chain
 
@@ -988,9 +989,9 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     nesting (the flush right rides through call-shaped args / receivers /
     operands). If and while CONDITIONS are also flushable: the emit places
     their temps (pre-`if` flush, the nested-elif block, the restructured
-    `while (true)` loop head -- never a pre-loop stale snapshot). Anywhere
-    else (a loop-header iterable, a MIL cell) a temp has no flush point at
-    all, so reaching one is a lowering bug.
+    `while (true)` loop head -- never a pre-loop stale snapshot), and so are
+    for-loop sources and range bounds. Anywhere else (a MIL cell) a temp has
+    no flush point at all, so reaching one is a lowering bug.
 
     `eager_only` marks a CONDITIONAL operand position (a ternary arm, a
     logical RHS): only an AUDITED temp -- one whose creator recorded the
@@ -1069,15 +1070,24 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
             if child is not node.condition:
                 _walk(owner, child, return_type)
         return
-    if isinstance(node, THIRForIterProto):
-        # The iterable renders as its own `__src` bind with a temps flush
-        # right before it (inside the rvalue brace scope, the for-each flush
-        # point), so it is a flushable value position. The
-        # begin/end for-each route stays temp-free: its iterable renders
-        # into the loop header, which has no flush point.
-        _walk(owner, node.iterable, return_type, argtemp_ok=True)
+    if isinstance(node, (THIRForEach, THIRForIterProto, THIRForRange)):
+        # A for-each / iterator-protocol source flushes its temps right
+        # before its one capture line (inside the rvalue brace scope for the
+        # protocol loop), and each range bound right before its own
+        # `__start_N` / `__stop_N` / `__step_N` capture, so every loop source
+        # is a flushable value position. A comprehension's
+        # first loop evaluates its source in the enclosing statement, so
+        # there the source keeps the right the comprehension itself was
+        # given (passed down by the block arm).
+        sources = _loop_sources(node)
+        for child in sources:
+            if node.source_in_enclosing:
+                _walk(owner, child, return_type, argtemp_ok=argtemp_ok,
+                      eager_only=eager_only)
+            else:
+                _walk(owner, child, return_type, argtemp_ok=True)
         for child in _iter_children(node):
-            if child is not node.iterable:
+            if not any(child is c for c in sources):
                 _walk(owner, child, return_type)
         return
     if isinstance(node, THIRPrint):
@@ -1165,13 +1175,25 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # ctor's directly -- no intermediate THIRCtorCall node carries them.)
         _walk_arg_list(owner, node.args, return_type, argtemp_ok=True)
         return
-    if isinstance(node, THIRComprehension):
-        # The element and the filters render inside the loop body, which
-        # flushes their temps per iteration (`checkpoint` / `flush_since`
-        # around the insert and the `if`), so they are flushable positions
-        # whatever the comprehension sits in. The source, the range bounds
-        # and a dict's key / value have no flush of their own: they keep
-        # the enclosing right.
+    if isinstance(node, THIRComprehensionBlock):
+        # Every statement of the body flushes its own temps inside the
+        # block, so each grants its positions as it would anywhere -- except
+        # the first loop's source, which keeps this position's right.
+        for stmt in node.body:
+            _walk(owner, stmt, return_type, argtemp_ok=argtemp_ok,
+                  eager_only=eager_only)
+        return
+    if isinstance(node, THIRCompInsert):
+        # The insert flushes its operands' temps right above itself.
+        for child in (node.element, node.key, node.value):
+            if child is not None:
+                _walk(owner, child, return_type, argtemp_ok=True)
+        return
+    if isinstance(node, THIRArrayComprehension):
+        # The range arm's element flushes its temps inside the per-index
+        # lambda, so it is a flushable position whatever the comprehension
+        # sits in. The source arm's element and its source, and the range
+        # bounds, have no flush of their own: they keep the enclosing right.
         own_flush = _own_flush_children(node)
         for child in own_flush:
             _walk(owner, child, return_type, argtemp_ok=True)
@@ -1297,24 +1319,41 @@ def validate_function(fn: THIRFunction) -> None:
         _walk(fn.name, stmt, fn.return_type)
 
 
+def _loop_sources(node: 'THIRForEach | THIRForIterProto | THIRForRange'
+                  ) -> 'tuple[THIRNode, ...]':
+    if isinstance(node, THIRForRange):
+        return tuple(c for c in (node.start, node.stop, node.step)
+                     if c is not None)
+    return (node.iterable,)
+
+
 def _own_flush_children(node: THIRNode) -> 'tuple[THIRNode, ...]':
-    """The children of `node` that flush their own temps: a comprehension's
-    element and filters render inside its loop body, which drains them per
-    iteration. A dict's key and value get no such flush."""
-    if not isinstance(node, THIRComprehension):
-        return ()
-    return (((node.element,) if node.element is not None else ())
-            + tuple(node.conditions))
+    """The children of `node` that flush their own temps: every statement of
+    a comprehension's body, and an Array range comprehension's element
+    (flushed inside its per-index lambda). A comprehension's first loop
+    source does not: `_check_no_statement_temp` reaches it separately."""
+    if isinstance(node, THIRComprehensionBlock):
+        return node.body
+    if (isinstance(node, THIRArrayComprehension) and node.arm == "range"
+            and node.element is not None):
+        return (node.element,)
+    return ()
 
 
 def _check_no_statement_temp(owner: str, node: THIRNode) -> None:
     """A member-init or base-init cell runs before the ctor body, so no
     statement exists to host a hoisted declaration: lowering demotes an
-    init whose source needs one. A comprehension's element and filters
-    flush inside its own loop body and are skipped; a lambda body is not
-    a flush region, so it is walked."""
+    init whose source needs one. A comprehension's body flushes its own
+    temps and is skipped, all but its first loop's source, which evaluates
+    in the cell; a lambda body is not a flush region, so it is walked."""
     if hoists_declaration(node):
         _fail(owner, node, "statement temp in a member-init / base-init cell")
+    if isinstance(node, THIRComprehensionBlock):
+        for stmt in node.body:
+            if (isinstance(stmt, (THIRForEach, THIRForIterProto, THIRForRange))
+                    and stmt.source_in_enclosing):
+                for src in _loop_sources(stmt):
+                    _check_no_statement_temp(owner, src)
     skip = _own_flush_children(node)
     for child in _iter_children(node):
         if not any(child is c for c in skip):
@@ -1411,15 +1450,15 @@ def validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
     # what a fresh container argument in a loop head means.
     for expr in body.conds.values():
         _walk(owner, expr, argtemp_ok=True)
-    # Both maps below pool entries from several populate sites of which
-    # exactly ONE grants temps -- `suspend_exprs` holds the await operand
+    # Both maps below pool entries from several populate sites, not all of
+    # which grant temps -- `suspend_exprs` holds the await operand
     # (flushable) plus the bound-method receiver; `region_exprs` the sync
-    # for-head iterable (flushable) plus the range bounds, the with-manager
-    # and the async-for iterable. Pooling by expression identity leaves no way to
-    # tell them apart here, so both are walked at the looser right: a temp
-    # reaching one of the four temp-free seams pooled in (the bound-method
-    # receiver, the range bounds, the with-manager and the async-for
-    # iterable), where the skeleton has no flush point, is NOT caught.
+    # for-head iterable and range bounds (flushable) plus the with-manager
+    # and the async-for iterable. Pooling by expression identity leaves no way
+    # to tell them apart here, so both are walked at the looser right: a temp
+    # reaching one of the three temp-free seams pooled in (the bound-method
+    # receiver, the with-manager and the async-for iterable), where the
+    # skeleton has no flush point, is NOT caught.
     for args in body.await_args.values():
         # The tuple IS the emplace's arg list, so it is walked the way the
         # call-node arm walks a call's args.

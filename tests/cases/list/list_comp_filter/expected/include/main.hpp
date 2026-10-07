@@ -7,10 +7,38 @@
 
 namespace tpyapp::main {
 
+struct Probe;
+
+extern std::vector<int32_t>* built;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def keep(p: Probe) -> bool:
+bool keep(const Probe& p);
 // def main() -> None:
 void main();
 
+// class Probe:
+struct Probe {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    Probe() = default;
+    explicit Probe(int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Probe";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Probe& obj) {
+    ::tpy::print_object_default(os, "Probe", obj);
+    return os;
+}
+
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+//     built.append(n)
+inline Probe::Probe(int32_t n) : n(n) {
+    built->push_back(n);
+}
 void __tpy_init();
 } // namespace tpyapp::main

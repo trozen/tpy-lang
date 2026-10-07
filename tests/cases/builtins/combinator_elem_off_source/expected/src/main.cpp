@@ -601,7 +601,8 @@ void comp_shapes() {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto& __tup_1 = *__beg_0;
+            auto&& __for_tup_13 = *__beg_0;
+            auto& __tup_1 = __for_tup_13;
             auto& n = std::get<0>(__tup_1);
             int32_t x = std::get<1>(__tup_1);
             __result.push_back(n.bump(x));
@@ -628,7 +629,8 @@ void comp_shapes() {
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
-            auto& __tup_2 = *__beg_2;
+            auto&& __for_tup_14 = *__beg_2;
+            auto& __tup_2 = __for_tup_14;
             auto& n = std::get<0>(__tup_2);
             int32_t x = std::get<1>(__tup_2);
             __result.push_back(n.bump(x));
@@ -678,7 +680,8 @@ void comp_shapes() {
         auto __beg_6 = __obj_6.begin();
         auto __end_6 = __obj_6.end();
         for (; __beg_6 != __end_6; ++__beg_6) {
-            auto& __tup_3 = *__beg_6;
+            auto&& __for_tup_15 = *__beg_6;
+            auto& __tup_3 = __for_tup_15;
             auto& n = std::get<0>(__tup_3);
             int32_t x = std::get<1>(__tup_3);
             __result.push_back(n.bump(x));
@@ -692,7 +695,8 @@ void comp_shapes() {
         auto __beg_7 = __obj_7.begin();
         auto __end_7 = __obj_7.end();
         for (; __beg_7 != __end_7; ++__beg_7) {
-            auto& __tup_4 = *__beg_7;
+            auto&& __for_tup_16 = *__beg_7;
+            auto& __tup_4 = __for_tup_16;
             auto& n = std::get<0>(__tup_4);
             auto& x = std::get<1>(__tup_4);
             __result.push_back(n.bump(x.v));
@@ -706,7 +710,8 @@ void comp_shapes() {
         auto __beg_8 = __obj_8.begin();
         auto __end_8 = __obj_8.end();
         for (; __beg_8 != __end_8; ++__beg_8) {
-            auto& __tup_5 = *__beg_8;
+            auto&& __for_tup_17 = *__beg_8;
+            auto& __tup_5 = __for_tup_17;
             int32_t i = std::get<0>(__tup_5);
             auto& n = std::get<1>(__tup_5);
             __result.push_back(n.bump(i));
@@ -720,7 +725,8 @@ void comp_shapes() {
         auto __beg_9 = __obj_9.begin();
         auto __end_9 = __obj_9.end();
         for (; __beg_9 != __end_9; ++__beg_9) {
-            auto& __tup_6 = *__beg_9;
+            auto&& __for_tup_18 = *__beg_9;
+            auto& __tup_6 = __for_tup_18;
             auto& n = std::get<0>(__tup_6);
             int32_t x = std::get<1>(__tup_6);
             __result.push_back(n.bump(x));
@@ -762,8 +768,8 @@ void comp_shapes() {
             int32_t __tpy_async_ret = t;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
-        __for_tup_13 = &(::tpy::unwrap_ref(*(*__for_r_0)));
-        auto& __tup_1 = (*__for_tup_13);
+        __for_tup_22 = &(::tpy::unwrap_ref(*(*__for_r_0)));
+        auto& __tup_1 = (*__for_tup_22);
         i = std::get<0>(__tup_1);
         c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -797,8 +803,8 @@ int32_t explicit_ro(std::span<const Cell> cells, const std::vector<int32_t>& ws)
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            auto&& __for_tup_14 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_14;
+            auto&& __for_tup_23 = ::tpy::unwrap_ref(*__r_1);
+            auto& __tup_1 = __for_tup_23;
             int32_t i = std::get<0>(__tup_1);
             auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
             t = ::tpy::add_check<int32_t>(t, (::tpy::mul_check<int32_t>(c.val(), (::tpy::add_check<int32_t>(i, 1)))));
@@ -810,7 +816,8 @@ int32_t explicit_ro(std::span<const Cell> cells, const std::vector<int32_t>& ws)
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
-            auto& __tup_2 = *__beg_2;
+            auto&& __for_tup_24 = *__beg_2;
+            auto& __tup_2 = __for_tup_24;
             auto& c = std::get<0>(__tup_2);
             int32_t w = std::get<1>(__tup_2);
             __result.push_back((::tpy::add_check<int32_t>(c.val(), w)));
@@ -835,8 +842,8 @@ void values(const std::vector<std::string>& names, const std::vector<int32_t>& n
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& __for_tup_15 = ::tpy::unwrap_ref(*__r_1);
-            const auto& __tup_1 = __for_tup_15;
+            const auto& __for_tup_25 = ::tpy::unwrap_ref(*__r_1);
+            const auto& __tup_1 = __for_tup_25;
             int32_t i = std::get<0>(__tup_1);
             std::string_view s = std::get<1>(__tup_1);
             std::cout << "values" << " " << i << " " << s << "\n" << ::tpy::check_signals;
@@ -848,8 +855,8 @@ void values(const std::vector<std::string>& names, const std::vector<int32_t>& n
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
-            const auto& __for_tup_16 = ::tpy::unwrap_ref(*__r_3);
-            const auto& __tup_2 = __for_tup_16;
+            const auto& __for_tup_26 = ::tpy::unwrap_ref(*__r_3);
+            const auto& __tup_2 = __for_tup_26;
             int32_t n = std::get<0>(__tup_2);
             std::string_view s = std::get<1>(__tup_2);
             n = ::tpy::add_check<int32_t>(n, 1);
@@ -876,8 +883,8 @@ std::expected<int32_t, Failed> er_body(std::vector<Cell>& cells) {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            auto&& __for_tup_17 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_17;
+            auto&& __for_tup_27 = ::tpy::unwrap_ref(*__r_1);
+            auto& __tup_1 = __for_tup_27;
             int32_t i = std::get<0>(__tup_1);
             auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
             t = ::tpy::add_check<int32_t>(t, c.bump(i));
@@ -958,8 +965,8 @@ int32_t match_arm(std::vector<Cell>& cells, int32_t k) {
             for (;;) {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
-                auto&& __for_tup_18 = ::tpy::unwrap_ref(*__r_1);
-                auto& __tup_1 = __for_tup_18;
+                auto&& __for_tup_28 = ::tpy::unwrap_ref(*__r_1);
+                auto& __tup_1 = __for_tup_28;
                 auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
                 int32_t w = std::get<1>(__tup_1);
                 t = ::tpy::add_check<int32_t>(t, c.bump(w));

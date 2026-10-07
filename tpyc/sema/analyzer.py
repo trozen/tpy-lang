@@ -1806,10 +1806,10 @@ class SemanticAnalyzer:
             func.generator_locals = [
                 (n, resolve_int_literals(t, self.ctx.default_int_for_literal))
                 for n, t in func.generator_locals]
-            loop = func.genexpr_loop
-            if loop is not None and loop.elem_type is not None:
-                loop.elem_type = resolve_int_literals(
-                    loop.elem_type, self.ctx.default_int_for_literal)
+            for loop in func.genexpr_loops:
+                if loop.elem_type is not None:
+                    loop.elem_type = resolve_int_literals(
+                        loop.elem_type, self.ctx.default_int_for_literal)
         self.compat.drain_deferred_escape_checks()
         self._enqueue_generic_yield_settle()
 

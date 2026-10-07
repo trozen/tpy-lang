@@ -532,9 +532,8 @@ void comprehension_forms() {
         int32_t b = __range_2;
         std::vector<int32_t> filtered_values = ({
             std::vector<int32_t> __result;
-            const int32_t __stop_3 = 2;
-            if (__stop_3 > 0) __result.reserve(static_cast<size_t>(__stop_3));
-            for (int32_t j = 0; j < __stop_3; ++j) {
+            if (2 > 0) __result.reserve(static_cast<size_t>(2));
+            for (int32_t j = 0; j < 2; ++j) {
                 if (((j == 1) && ((b = 10) == 10))) {
                     __result.push_back(j);
                 }

@@ -42,9 +42,8 @@ void holder_writes(std::optional<std::string_view> s, std::string_view text, int
     Keep k = Keep();
     std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_0 = 4;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (4 > 0) __result.reserve(static_cast<size_t>(4));
+        for (int32_t i = 0; i < 4; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
         }
         std::move(__result);
@@ -502,9 +501,8 @@ Built::Built(int32_t n, Src& s, ::tpy::Any p, std::string_view text, P&& own, bo
       res(((flag) ? (::tpyapp::main::make_res(1)) : (::tpyapp::main::make_res(2)))) {
     std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t i = 0; i < 3; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
         }
         std::move(__result);
@@ -533,7 +531,7 @@ Built::Built(int32_t n, Src& s, ::tpy::Any p, std::string_view text, P&& own, bo
 //     self.xs = []
 Placed::Placed(int32_t n, int32_t a, const std::vector<int32_t>& src) : ks(({
     std::vector<int32_t> __result;
-    const int32_t __stop_0 = n;
+    int32_t __stop_0 = n;
     if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
     for (int32_t i = 0; i < __stop_0; ++i) {
         std::vector<int32_t> __tmp_1 = {i};

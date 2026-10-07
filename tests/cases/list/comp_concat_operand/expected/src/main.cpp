@@ -79,8 +79,7 @@ std::vector<::tpy::BigInt> both_comps(const std::vector<::tpy::BigInt>& xs) {
     ::tpy::ordered_set<::tpy::BigInt> base = ::tpy::ordered_set<::tpy::BigInt>({::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)});
     ::tpy::ordered_set<::tpy::BigInt> grown = (::tpy::set_union(base, ({
         ::tpy::ordered_set<::tpy::BigInt> __result;
-        const int32_t __stop_0 = 4;
-        for (int32_t x = 0; x < __stop_0; ++x) {
+        for (int32_t x = 0; x < 4; ++x) {
             if ((x != 1)) {
                 __result.insert(::tpy::BigInt(static_cast<int64_t>(x)));
             }
@@ -89,8 +88,7 @@ std::vector<::tpy::BigInt> both_comps(const std::vector<::tpy::BigInt>& xs) {
     })));
     ::tpy::ordered_set<::tpy::BigInt> shrunk = (::tpy::set_difference(({
         ::tpy::ordered_set<::tpy::BigInt> __result;
-        const int32_t __stop_1 = 4;
-        for (int32_t x = 0; x < __stop_1; ++x) {
+        for (int32_t x = 0; x < 4; ++x) {
             __result.insert(::tpy::BigInt(static_cast<int64_t>(x)));
         }
         std::move(__result);

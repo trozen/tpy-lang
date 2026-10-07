@@ -16,7 +16,7 @@ bool is_small(const ::tpystd::tplib::box::Box<int32_t>& b) {
 void main(int32_t n) {
     ::tpy::ordered_set<int32_t> s = ({
         ::tpy::ordered_set<int32_t> __result;
-        const int32_t __stop_0 = n;
+        int32_t __stop_0 = n;
         for (int32_t i = 0; i < __stop_0; ++i) {
             int32_t __tmp_1 = i;
             ::tpystd::tplib::box::Box<int32_t> __tmp_2 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1));

@@ -129,9 +129,8 @@ int32_t use(const Noisy& p) {
 bool comp_rhs(bool flag) {
     return (flag || (::tpy::builtin_sum<int32_t>(({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t i = 0; i < 3; ++i) {
             Noisy __tmp_1 = Noisy(i);
             __result.push_back(::tpyapp::main::use(__tmp_1));
         }

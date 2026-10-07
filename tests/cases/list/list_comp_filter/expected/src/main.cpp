@@ -3,6 +3,13 @@
 
 namespace tpyapp::main {
 
+std::vector<int32_t>* built{};
+
+// def keep(p: Probe) -> bool:
+//     return p.n > 0
+bool keep(const Probe& p) {
+    return (p.n > 0);
+}
 
 // def main() -> None:
 //     # Filter: keep only positive
@@ -22,6 +29,11 @@ namespace tpyapp::main {
 //     words: list[str] = ["hi", "hello", "hey", "howdy", "yo"]
 //     short = [w for w in words if len(w) <= 3]
 //     print(short)
+//
+//     # A later filter runs only when the earlier ones passed: a Probe is built
+//     # for 4 and 5 alone, not for every element.
+//     kept = [x for x in data if x > 3 if keep(Probe(x))]  # tpyc: ok
+//     print("two_filters:", kept, built)
 void main() {
     std::vector<int32_t> data = {3, -1, 4, -2, 5};
     std::vector<int32_t> pos = ({
@@ -41,9 +53,8 @@ void main() {
     std::cout << ::tpy::ListPrinter(pos) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> evens = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_1 = 10;
-        if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
-        for (int32_t x = 0; x < __stop_1; ++x) {
+        if (10 > 0) __result.reserve(static_cast<size_t>(10));
+        for (int32_t x = 0; x < 10; ++x) {
             if (((::tpy::mod_floor<int32_t>(x, 2)) == 0)) {
                 __result.push_back((::tpy::mul_check<int32_t>(x, x)));
             }
@@ -53,11 +64,12 @@ void main() {
     std::cout << ::tpy::ListPrinter(evens) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> result = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_2 = 20;
-        if (__stop_2 > 0) __result.reserve(static_cast<size_t>(__stop_2));
-        for (int32_t x = 0; x < __stop_2; ++x) {
-            if (((::tpy::mod_floor<int32_t>(x, 2)) == 0) && ((::tpy::mod_floor<int32_t>(x, 3)) == 0)) {
-                __result.push_back(x);
+        if (20 > 0) __result.reserve(static_cast<size_t>(20));
+        for (int32_t x = 0; x < 20; ++x) {
+            if (((::tpy::mod_floor<int32_t>(x, 2)) == 0)) {
+                if (((::tpy::mod_floor<int32_t>(x, 3)) == 0)) {
+                    __result.push_back(x);
+                }
             }
         }
         std::move(__result);
@@ -79,14 +91,36 @@ void main() {
         std::move(__result);
     });
     std::cout << ::tpy::ListPrinter(short_) << "\n" << ::tpy::check_signals;
+    std::vector<int32_t> kept = ({
+        std::vector<int32_t> __result;
+        auto& __obj_4 = data;
+        __result.reserve(static_cast<std::size_t>(__obj_4.size()));
+        auto __beg_4 = __obj_4.begin();
+        auto __end_4 = __obj_4.end();
+        for (; __beg_4 != __end_4; ++__beg_4) {
+            int32_t x = *__beg_4;
+            if ((x > 3)) {
+                Probe __tmp_1 = Probe(x);
+                if (::tpyapp::main::keep(__tmp_1)) {
+                    __result.push_back(x);
+                }
+            }
+        }
+        std::move(__result);
+    });
+    std::cout << "two_filters:" << " " << ::tpy::ListPrinter(kept) << " " << ::tpy::ListPrinter((*built)) << "\n" << ::tpy::check_signals;
 }
 
+// built: list[int32] = []
+//
 // main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
+    static std::vector<int32_t> __global_slot_1 = std::vector<int32_t>{};
+    built = &__global_slot_1;
     ::tpyapp::main::main();
 }
 

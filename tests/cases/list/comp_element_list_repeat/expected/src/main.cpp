@@ -17,9 +17,8 @@ void main() {
     int32_t n = 3;
     std::vector<std::vector<double>> rows = ({
         std::vector<std::vector<double>> __result;
-        const int32_t __stop_0 = 2;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t _ = 0; _ < __stop_0; ++_) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t _ = 0; _ < 2; ++_) {
             __result.push_back(::tpy::from_range<std::vector<double>>(::tpy::repeat_range<double>(n, {0.0})));
         }
         std::move(__result);
@@ -28,8 +27,7 @@ void main() {
     std::cout << ::tpy::__len__(rows) << " " << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(rows, 0), 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(rows, 1), 0)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> table = ({
         ::tpy::ordered_map<int32_t, std::vector<int32_t>> __result;
-        const int32_t __stop_1 = 2;
-        for (int32_t i = 0; i < __stop_1; ++i) {
+        for (int32_t i = 0; i < 2; ++i) {
             __result.insert_or_assign(i, ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(2, {0})));
         }
         std::move(__result);

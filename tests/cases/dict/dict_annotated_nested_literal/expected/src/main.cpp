@@ -187,8 +187,7 @@ void main() {
     std::cout << "ctor arg" << " " << ::tpy::DictPrinter(sink.table) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> comp = ({
         ::tpy::ordered_map<int32_t, std::vector<int32_t>> __result;
-        const int32_t __stop_0 = 2;
-        for (int32_t k = 0; k < __stop_0; ++k) {
+        for (int32_t k = 0; k < 2; ++k) {
             __result.insert_or_assign(k, std::vector<int32_t>{k});
         }
         std::move(__result);
