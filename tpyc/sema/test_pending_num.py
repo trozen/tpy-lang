@@ -10,7 +10,6 @@ import pytest
 
 from .. import get_lib_dir
 from ..compiler import Compiler
-from ..codegen_cpp.context import ThirRejectError
 from ..diagnostics import DiagnosticLevel, Scope, SemanticError
 from ..parse import (Parser, SourceLocation, TpyArrayLiteral, TpyCoerce,
                      TpyFloatLiteral, TpyIntLiteral, TpyName, TpyStrLiteral,
@@ -1183,12 +1182,7 @@ def main() -> None:
     w.x = 50
 """
     comp = Compiler.from_source(source, lib_dirs=[get_lib_dir() / "tpy"])
-    # The store itself is not lowered yet
-    # (BUGS.md#setitem-dict-tuple-ref-member); the warning is sema's.
-    try:
-        comp.compile()
-    except ThirRejectError:
-        pass
+    comp.compile()
     entry = next(m for m in comp.modules.values() if m.is_entry_point)
     warnings = [d.message for d in entry.analyzer.diagnostics
                 if d.level is DiagnosticLevel.WARNING]

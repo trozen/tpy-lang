@@ -507,7 +507,7 @@ inline Init::Init(std::tuple<Tok, Box*>&& p, std::tuple<Tok, Tok>&& q)
 
 // def __init__(self) -> None:
 //     self.pair = (Box(0), Box(0))
-inline Slot::Slot() : pair(::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::tuple<Box, Box>{Box(0), Box(0)})) {}
+inline Slot::Slot() : pair(std::tuple<Box, Box>{Box(0), Box(0)}) {}
 
 // def put(self, p: tuple[Own[Box], Box]) -> None:
 //     self.pair = p  # tpyc: warning(/copies Box into field \(tuple element 1\)/)

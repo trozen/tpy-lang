@@ -306,10 +306,10 @@
   "differs"
  ],
  "mixed__collection__T_local": [
-  "expr.method_call:method.arg_shape",
+  "ok",
   "copies Cell into owned storage (tuple element 1); use copy() to make this explic",
-  "",
-  ""
+  "std::vector<std::tuple<Cell, Cell>> probe_xs = std::vector<std::tuple<Cell, Cell>>{} | probe_xs.push_back(::tpy::tuple_to_storage<std::tuple<Cell, Cell>>(std::move(t))) | std::get<1>(::tpy::__getitem__(probe_xs, 0)).n = 9",
+  "differs"
  ],
  "mixed__field__T": [
   "ok",
@@ -740,7 +740,7 @@
  "x__comprehension__T": [
   "ok",
   "",
-  "std::vector<int32_t> probe_xs = ({ | auto& __tup_1 = *__beg_0 | auto& bx = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
+  "std::vector<int32_t> probe_xs = ({ | auto& __tup_1 = __for_tup_0 | auto& bx = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1)",
   "same"
  ],
  "x__dict_items__T": [
@@ -756,10 +756,10 @@
   "differs"
  ],
  "x__dict_value__T": [
-  "stmt.assign:setitem.family",
+  "ok",
   "copies Cell into container (tuple element 0); use copy() to make this explicit",
   "",
-  ""
+  "differs"
  ],
  "x__enumerate__T": [
   "ok",

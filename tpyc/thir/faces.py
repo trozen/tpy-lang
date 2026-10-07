@@ -772,20 +772,12 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # type-prefixed on the checked path
     "setitem.container_comp",       # nested-container element: comprehension
                                     # stmt-expr moved into the slot
-    "setitem.btuple_call",          # ptr-Optional-tuple value slot: a
-                                    # borrow-tuple call lifts via the
-                                    # non-move tuple_to_storage
-    "setitem.nested_tuple_literal", # nested-storage tuple value slot: the
-                                    # bare spelled literal, lifts inside
-    "setitem.nested_tuple_source",  # the same slot from a same-typed source
-                                    # expression: the whole tuple stores bare
+    "setitem.tuple_storage",        # a tuple value slot holding a reference
+                                    # (direct, Optional or nested): the field
+                                    # write's storage conversion of any source
     "setitem.value_tuple_literal",  # VALUE tuple value slot: the spelled
                                     # brace-init stores directly, each
                                     # element carrying its own view->owned
-    "setitem.btuple_literal",       # ... a tuple LITERAL value: the borrow
-                                    # tuple with plain lifts, same non-move
-    "setitem.btuple_elem_pass",     # ... a same-tuple element read passes
-                                    # bare (`d2[k] = d[k]`)
     "setitem.borrow_lift",          # Optional/union element: borrow NAME lifts
                                     # via ptr_to_optional / to_value_variant
                                     # (narrowed member names store bare)
@@ -871,7 +863,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.own_tuple_borrow_lift",
     # ... and at a whole Own[ptr-repr tuple] ELEMENT slot (`xs.append(t)`
     # -> `push_back(tuple_to_storage<S>(t))`).
-    "arg.own_btuple_borrow_name",
     # F1-record element/value slot: a record RVALUE (exact or covariant
     # upcast) forwarded bare by the checked `__setitem__`
     # (`::tpy::__setitem__(s._pool, key, Box<Conn>(std::move(conn)));`).
@@ -1761,30 +1752,25 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # element slot -> spelled value render
     "arg.own_open_t_tuple_literal", # open-T tuple literal at an Own[tuple]
                                     # element slot -> bare-`T` value render
-    "arg.own_open_t_tuple_storage_source",
-                                    # whole open-T tuple element READ at an
-                                    # Own[tuple] element slot -> bare pass
     "arg.ptr_none",                 # None at the (collapsed) Ptr[T] slot ->
                                     # the bare nullptr render
     "arg.ptr_addr_of_elem",         # record-element lvalue at a Ptr elem
                                     # slot: the &(...) lift
     "arg.own_tuple_call_rvalue",    # owning call whose result IS the
                                     # Own[tuple] element slot: bare insert
+    "arg.own_tuple_storage",       # a tuple holding a reference at an Own
+                                    # element slot, any non-literal source:
+                                    # the field write's storage conversion
+    "arg.own_open_t_tuple_storage_source",  # open-T tuple element read at an
+                                    # Own slot: no pointer repr, passes bare
     "arg.own_btuple_literal",       # ref-element tuple literal at an
                                     # Own[tuple[T|None, ..]] element slot ->
                                     # tuple_to_storage_move<S>(borrow tuple
                                     # with per-element moves)
-    "arg.own_btuple_call",          # borrow-tuple-returning call at the same
-                                    # slot -> non-move tuple_to_storage lift
-    "arg.own_btuple_mixed_call",    # mixed-own-tuple call at the Own elem
-                                    # slot -> non-move tuple_to_storage
     "arg.own_tuple_storage_elem",   # storage element read at an Own[tuple]
                                     # param slot -> bare __getitem__ copy
     "arg.wrapper_ref_tuple_elem",   # wrapper elem off a reference-element
                                     # tuple binding -> bare std::get pass
-    "arg.own_btuple_call_storage",  # storage-form tuple return (Own[tuple] /
-                                    # all-Own per-element synthesis) at the
-                                    # same slot -> passes bare
     "call.btuple_pass",             # borrow-tuple call result at a MATCHING
                                     # borrow-form tuple param -> binds bare
     "method.protocol_self_storage_ret",  # Own[Self] rvalue into the `auto`
@@ -2882,7 +2868,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "setitem.optval_none",          # None into a value-repr Optional[scalar]
                                     # element -> the nullopt STORAGE store
     "setitem.optview_whole",        # whole Optional[str/bytes] value store
-    "setitem.record_tuple_call",    # record-tuple call value: tuple_to_storage
     "setitem.bytes_owned_copy",     # view-form bytes source -> Bytes(...)
     "setitem.unit_none",            # `d[k] = None` at a unit value slot
                                     # -> the monostate STORAGE literal

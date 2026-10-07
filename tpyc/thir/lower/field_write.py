@@ -754,11 +754,12 @@ def _is_direct_init(slot: _ExprUse) -> bool:
 
 def _storage_tuple_literal(stmt: TpyAssign, st: TpyType, lc: _LowerCtx,
                            declared: dict[str, TpyType], loc) -> THIRExpr:
-    """A tuple LITERAL at a tuple slot. A VALUE tuple (and an Optional of
-    one) takes the spelled brace-init directly -- borrow and storage
-    coincide; an F3 tuple wraps the literal in `tuple_to_storage`; a
-    nested-storage tuple spells its bare brace-init with per-level lifts
-    inside."""
+    """A tuple LITERAL at a tuple slot: the spelled brace-init, built
+    against the slot. A VALUE tuple's (and an Optional of one's) borrow and
+    storage forms coincide; a pointer-repr tuple's literal is value-captured
+    here (a REF-captured one is refused below), so the brace-init already
+    spells the storage form and no conversion wraps it; a nested-storage
+    tuple carries its per-level lifts inside the literal."""
     analyzer = lc.analyzer
     lit_st = unwrap_readonly(st.inner) if isinstance(st, OptionalType) else st
     vt = _value_tuple(lit_st, analyzer)
@@ -773,12 +774,8 @@ def _storage_tuple_literal(stmt: TpyAssign, st: TpyType, lc: _LowerCtx,
                 and _tuple_literal_has_ref_elements(v, slot_t))):
         note_detail("assign.field_write_shape")
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    lit = _lower_tuple_literal(v, slot_t, lc, declared)
     _witness("field_write.tuple_literal")
-    if ft is not None:
-        return THIRFormConvert(result_type=st, value=lit, form=Form.STORAGE,
-                               move=False, loc=loc)
-    return lit
+    return _lower_tuple_literal(v, slot_t, lc, declared)
 
 
 def _storage_use(slot: _ExprUse, member_t: TpyType, analyzer) -> _ExprUse:

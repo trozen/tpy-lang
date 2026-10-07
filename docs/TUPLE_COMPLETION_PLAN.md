@@ -47,9 +47,10 @@ the raw grid.
 
 - **D1** -- a MIXED tuple LOCAL (an owned element beside a borrowed one,
   from a literal or a call) at an owning container insert (`xs.append(t)`)
-  or a whole-tuple return warns its borrowed elements and then rejects
-  (loud); the call source copies and warns like the scalar. The all-borrow
-  row took the scalar's warning in U3 D1.
+  moves its owned element at the last use and copies the borrowed one,
+  warned, since U5 step 2 (the whole-tuple RETURN still rejects, loud); the
+  call source copies and warns like the scalar. The all-borrow row took the
+  scalar's warning in U3 D1.
   The return of an ELEMENT of a list of such tuples has no borrow-form arm
   yet: the concrete function is refused
   (`BUGS.md#tuple-elem-return-borrow-form-rejects`) and its generic twin is
@@ -291,12 +292,13 @@ per shape; the mixed tuple global (D2) waits on that entry.
     (`x = Box(5)`) is not covered there
   - [x] element read off a container: `t = xs[0]` on `list[tuple[Box, int32]]`
     off a parameter list, and `a = t[0]` off any tuple name -- U5 step 1
-  - [ ] `xs.append(t)` with a MIXED tuple local bound from a call (an owned
-    element beside a borrowed one) [`method.arg_shape`, after the warning];
-    the all-borrow local and parameter lower since U3 D1. A nested literal
-    `xs.append((1, (2, c)))` / `sink((1, (2, c)))` at an `Own` tuple slot
-    [`expr.tuple_literal`] (sema warns the nested copy)
-  - [ ] `d["a"] = (b, 1)` [`setitem.family`]
+  - [x] `xs.append(t)` with a MIXED tuple local bound from a call (an owned
+    element beside a borrowed one): moves its tuple value at the last use,
+    lifts (both copies warned) while live -- U5 step 2. The nested literal
+    `xs.append((1, (2, c)))` at an `Own` tuple slot -- step 2; `sink((1,
+    (2, c)))` at a free function's slot is step 3.
+  - [x] `d["a"] = (b, 1)` -- U5 step 2 (`tests/cases/tuple/
+    container_tuple_stores`)
   - [ ] an `Optional` element local: `t: tuple[Box | None, int32] = (b, 1)`
     [`decl.slot_type`]
   - [ ] walrus of a tuple call: `(t := g(b))[1]` [`expr.walrus`]; a nested
@@ -407,8 +409,30 @@ per shape; the mixed tuple global (D2) waits on that entry.
     alias declared inside a loop body and the alias of an OWNED element
     (step 4). `tests/cases/tuple/local_tuple_element_places`,
     `error_readonly_tuple_element_write`.
-  - [ ] step 2 -- container stores: `xs.append(t)` / `d[k] = (b, 1)` /
-    nested literals at an owning element slot.
+  - [x] step 2 -- container stores. The setitem's three tuple-value arms
+    (record-only / Optional-element / nested, each with its own source
+    list) and the method argument's four Own[tuple]-slot rows (storage
+    source / mixed call / nested name / borrow name) are ONE arm each,
+    calling the field write's conversion (`_storage_tuple_literal` for a
+    literal, `_storage_source` -> `_storage_value` for every other source:
+    bare for a storage read or an owning return, the non-move
+    `tuple_to_storage` lift for a borrow-form name or call, a move at an
+    owned name's last use -- a mixed local moves its tuple value). Sema
+    twin: a container element OWNS what it stores like a field (the
+    literal's captures are VALUE, a last-use owned member moves there). A
+    name source that copies must be a copy sema declared, else a located
+    reject. Store sweep (15 sources x 6 element shapes x append / dict
+    store / list store / field x free/method, 720 programs): 296 -> 492
+    compile, no `ok -> reject`, no render change; left: a tuple FIELD read
+    as an argument (`xs.append(h.t)`, a read gap), an `Own[tuple]`
+    PARAMETER appended at its last use (the param is not marked movable),
+    a `tuple[Box, int]` (BigInt element) NAME at a field or dict store
+    (`_f1_tuple` excludes the BigInt element; the literal stores), and the
+    pre-existing sema bug `BUGS.md#list-setitem-ref-tuple-false-readonly`
+    for `xs[0] = t` over reference tuples.
+    `tests/cases/tuple/container_tuple_stores`; `error_own_tuple_mixed_call_
+    local_insert` and `dict/error_setitem_nested_tuple_from_subscript`
+    pinned closed gaps and fold into it.
   - [ ] step 3 -- arguments and returns; carries the `-> tuple[...] | None`
     return (`std::optional<R>`) and its escape fix from `tuple-u3` as one
     small commit.

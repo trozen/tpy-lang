@@ -57,7 +57,7 @@ inline Box::Box(int32_t v) : val(v) {}
 
 // def __init__(self, a: Box, b: Box) -> None:
 //     self.t = (a, b)  # tpyc: warning(/copies/) warning(/copies/)
-inline H::H(const Box& a, const Box& b) : t(::tpy::tuple_to_storage<std::tuple<std::optional<Box>, Box>>(std::tuple<std::optional<Box>, Box>{a, b})) {}
+inline H::H(const Box& a, const Box& b) : t(std::tuple<std::optional<Box>, Box>{a, b}) {}
 
 // def set(self, p: tuple[Optional[Box], Box]) -> None:
 //     self.t = p  # tpyc: warning(/copies/) warning(/copies/)

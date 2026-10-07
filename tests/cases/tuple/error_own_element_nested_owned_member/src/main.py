@@ -21,7 +21,7 @@ class P:
 def ins(xs: list[tuple[tuple[N, int32], P]], p: P) -> None:
     t = ((N(1), 1), p)
     # Copying `t` whole would copy the N its first element owns.
-    xs.append(t)  # tpyc: warning(/tuple element 1\)/) error(/method.arg_shape/)
+    xs.append(t)  # tpyc: warning(/tuple element 1\)/) error(/field_write.lift.borrow/)
 
 
 def main() -> None:

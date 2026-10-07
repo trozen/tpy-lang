@@ -223,7 +223,7 @@ class TestMethodArgSinkShape:
     # a stub can never reach sits in the leading half anyway: the hoisting
     # `container_literal` cell has to follow its inline sibling immediately,
     # or a row between the two would claim the literal first.
-    STUB_ROWS = 52
+    STUB_ROWS = 50
 
     def test_row_order_is_pinned(self):
         # Order is load-bearing: `_witness` fires during the walk, so a
@@ -278,11 +278,9 @@ class TestMethodArgSinkShape:
             "own_value_tuple_literal",
             "own_open_t_tuple_literal",
             "own_btuple_literal",
-            "own_btuple_storage_source",
+            "own_tuple_storage",
+            "own_tuple_mixed_call",
             "own_open_t_tuple_storage_source",
-            "own_btuple_mixed_call",
-            "own_btuple_nested_name",
-            "own_btuple_borrow_name",
             "own_tuple_call_rvalue",
             "ptr_addr_of_elem",
             # -- the rows only a user record's signature reaches --
@@ -351,8 +349,8 @@ class TestMethodArgSinkShape:
         # already name: 15 shapes were written twice, and the leading cell is
         # now the only one deciding them.
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len(rows) == 110
-        assert len(rows[:self.STUB_ROWS]) == 52
+        assert len(rows) == 108
+        assert len(rows[:self.STUB_ROWS]) == 50
         assert rows[self.STUB_ROWS] == "lambda"
 
     def test_str_owned_slot_precedes_own_lvalue(self):
@@ -401,9 +399,9 @@ class TestMethodArgSinkShape:
             ("own_open_t_tuple_literal",
              "arg.own_open_t_tuple_literal"),
             ("own_btuple_literal", "arg.own_btuple_literal"),
+            ("own_tuple_storage", "arg.own_tuple_storage"),
             ("own_open_t_tuple_storage_source",
              "arg.own_open_t_tuple_storage_source"),
-            ("own_btuple_borrow_name", "arg.own_btuple_borrow_name"),
             ("tparam_scalar", "method.tparam_scalar_arg"),
             ("tparam_open_pass", "method.tparam_open_pass_arg"),
             ("nullable_proto_addr", "arg.nullable_proto_addr"),
@@ -512,10 +510,8 @@ class TestMethodArgSinkShape:
             ("value_opt_scalar_elem", "_x_insert_own_slot"),
             ("own_ptr_value", "_x_insert_own_slot"),
             ("tparam_slot", "_x_insert_own_slot"),
-            ("own_btuple_storage_source", "_x_insert_own_slot"),
+            ("own_tuple_storage", "_x_insert_own_slot"),
             ("own_open_t_tuple_storage_source", "_x_insert_own_slot"),
-            ("own_btuple_nested_name", "_x_insert_own_slot"),
-            ("own_btuple_borrow_name", "_x_insert_own_slot"),
             ("record_rvalue_temp_factory", "_x_temps_and_frame"),
             ("tparam_slot_temp", "_x_temps_ok"),
             ("union_ctor_temp", "_x_temps_ok"),
@@ -598,11 +594,9 @@ class TestMethodArgSinkShape:
             "own_value_tuple_literal",
             "own_open_t_tuple_literal",
             "own_btuple_literal",
-            "own_btuple_storage_source",
+            "own_tuple_storage",
+            "own_tuple_mixed_call",
             "own_open_t_tuple_storage_source",
-            "own_btuple_mixed_call",
-            "own_btuple_nested_name",
-            "own_btuple_borrow_name",
             "ptr_addr_of_elem",
             "plain_scalar_slot",
             "tparam_scalar",

@@ -608,8 +608,8 @@ void sec_try() {
 //     p.u = (Rec(0), mk_s(0))
 //     p.ub = (Rec(0), mk_b(0))
 void bump(P& p) {
-    p.u = ::tpy::tuple_to_storage<std::tuple<Rec, std::string>>(std::tuple<Rec, std::string>{Rec(0), ::tpyapp::main::mk_s(0)});
-    p.ub = ::tpy::tuple_to_storage<std::tuple<Rec, ::tpy::Bytes>>(std::tuple<Rec, ::tpy::Bytes>{Rec(0), ::tpyapp::main::mk_b(0)});
+    p.u = std::tuple<Rec, std::string>{Rec(0), ::tpyapp::main::mk_s(0)};
+    p.ub = std::tuple<Rec, ::tpy::Bytes>{Rec(0), ::tpyapp::main::mk_b(0)};
 }
 
 // def sec_tuple_name_over_field() -> None:
@@ -655,8 +655,8 @@ void sec_tuple_name_over_field() {
     auto&& qub = q.ub;
     std::string y2 = std::get<1>(qu);
     ::tpy::Bytes z2 = std::get<1>(qub);
-    q.u = ::tpy::tuple_to_storage<std::tuple<Rec, std::string>>(std::tuple<Rec, std::string>{Rec(3), ::tpyapp::main::mk_s(3)});
-    q.ub = ::tpy::tuple_to_storage<std::tuple<Rec, ::tpy::Bytes>>(std::tuple<Rec, ::tpy::Bytes>{Rec(3), ::tpyapp::main::mk_b(3)});
+    q.u = std::tuple<Rec, std::string>{Rec(3), ::tpyapp::main::mk_s(3)};
+    q.ub = std::tuple<Rec, ::tpy::Bytes>{Rec(3), ::tpyapp::main::mk_b(3)};
     std::cout << "tuple-field write" << " " << y2 << " " << ::tpy::BytesPrinter(z2) << "\n" << ::tpy::check_signals;
     P r = P(4);
     auto&& ru = r.u;
@@ -664,8 +664,8 @@ void sec_tuple_name_over_field() {
     std::string y3 = std::get<1>(ru);
     ::tpy::Bytes z3 = std::get<1>(rub);
     P& g = r;
-    g.u = ::tpy::tuple_to_storage<std::tuple<Rec, std::string>>(std::tuple<Rec, std::string>{Rec(5), ::tpyapp::main::mk_s(5)});
-    g.ub = ::tpy::tuple_to_storage<std::tuple<Rec, ::tpy::Bytes>>(std::tuple<Rec, ::tpy::Bytes>{Rec(5), ::tpyapp::main::mk_b(5)});
+    g.u = std::tuple<Rec, std::string>{Rec(5), ::tpyapp::main::mk_s(5)};
+    g.ub = std::tuple<Rec, ::tpy::Bytes>{Rec(5), ::tpyapp::main::mk_b(5)};
     std::cout << "tuple-field alias" << " " << y3 << " " << ::tpy::BytesPrinter(z3) << "\n" << ::tpy::check_signals;
 }
 
@@ -1001,8 +1001,8 @@ void sec_tuple_alias_closure() {
     std::string y = std::get<1>(u);
     ::tpy::Bytes z = std::get<1>(ub);
     auto w = [&p]() {
-        p.u = ::tpy::tuple_to_storage<std::tuple<Rec, std::string>>(std::tuple<Rec, std::string>{Rec(5), ::tpyapp::main::mk_s(5)});
-        p.ub = ::tpy::tuple_to_storage<std::tuple<Rec, ::tpy::Bytes>>(std::tuple<Rec, ::tpy::Bytes>{Rec(5), ::tpyapp::main::mk_b(5)});
+        p.u = std::tuple<Rec, std::string>{Rec(5), ::tpyapp::main::mk_s(5)};
+        p.ub = std::tuple<Rec, ::tpy::Bytes>{Rec(5), ::tpyapp::main::mk_b(5)};
     };
     w();
     std::array<::tpy::Bytes, 4> junk = ::tpy::array_from_index<::tpy::Bytes, 4>([&](std::size_t __i_0) -> ::tpy::Bytes {
@@ -1118,8 +1118,8 @@ void sec_tuple_unpack_over_field() {
     auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<::tpy::Bytes, Rec*>>(qub);
     ::tpy::Bytes z = std::get<0>(__tup_2);
     auto&& rb0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
-    q.u = ::tpy::tuple_to_storage<std::tuple<std::string, Rec>>(std::tuple<std::string, Rec>{::tpyapp::main::mk_s(7), Rec(7)});
-    q.ub = ::tpy::tuple_to_storage<std::tuple<::tpy::Bytes, Rec>>(std::tuple<::tpy::Bytes, Rec>{::tpyapp::main::mk_b(7), Rec(7)});
+    q.u = std::tuple<std::string, Rec>{::tpyapp::main::mk_s(7), Rec(7)};
+    q.ub = std::tuple<::tpy::Bytes, Rec>{::tpyapp::main::mk_b(7), Rec(7)};
     std::cout << "tuple-unpack-field" << " " << y << " " << ::tpy::BytesPrinter(z) << "\n" << ::tpy::check_signals;
     P p = P(1);
     auto&& u = p.u;
@@ -1130,8 +1130,8 @@ void sec_tuple_unpack_over_field() {
     auto __tup_4 = ::tpy::tuple_to_pointer<std::tuple<Rec*, ::tpy::Bytes>>(ub);
     auto&& rb = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_4)));
     ::tpy::Bytes z2 = std::get<1>(__tup_4);
-    p.u = ::tpy::tuple_to_storage<std::tuple<Rec, std::string>>(std::tuple<Rec, std::string>{Rec(7), ::tpyapp::main::mk_s(7)});
-    p.ub = ::tpy::tuple_to_storage<std::tuple<Rec, ::tpy::Bytes>>(std::tuple<Rec, ::tpy::Bytes>{Rec(7), ::tpyapp::main::mk_b(7)});
+    p.u = std::tuple<Rec, std::string>{Rec(7), ::tpyapp::main::mk_s(7)};
+    p.ub = std::tuple<Rec, ::tpy::Bytes>{Rec(7), ::tpyapp::main::mk_b(7)};
     std::cout << "tuple-unpack-field rec" << " " << y2 << " " << ::tpy::BytesPrinter(z2) << "\n" << ::tpy::check_signals;
 }
 

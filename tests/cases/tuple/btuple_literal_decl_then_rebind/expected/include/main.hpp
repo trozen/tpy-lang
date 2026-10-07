@@ -56,6 +56,6 @@ inline Box::Box(int32_t v) : val(v) {}
 
 // def __init__(self, b: Box) -> None:
 //     self.pair = (7, b)  # tpyc: warning(/copies Box into field/)
-inline Holder::Holder(const Box& b) : pair(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{7, b})) {}
+inline Holder::Holder(const Box& b) : pair(std::tuple<int32_t, Box>{7, b}) {}
 void __tpy_init();
 } // namespace tpyapp::main

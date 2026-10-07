@@ -208,7 +208,7 @@ inline Box::Box(int32_t n) : n(n) {}
 //     self.pair = (n, Box(n * 2))
 //     self.label = ("h", n)
 inline Holder::Holder(int32_t n)
-    : pair(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{n, Box((::tpy::mul_check<int32_t>(n, 2)))})),
+    : pair(std::tuple<int32_t, Box>{n, Box((::tpy::mul_check<int32_t>(n, 2)))}),
       label(std::tuple<std::string, int32_t>{"h", n}) {}
 
 // def __init__(self, n: int32) -> None:

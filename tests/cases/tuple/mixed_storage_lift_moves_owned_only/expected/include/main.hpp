@@ -100,7 +100,7 @@ inline Box::Box(int32_t n)
 
 // def __init__(self) -> None:
 //     self.t = (Box(0), Box(0))
-inline Holder::Holder() : t(::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::tuple<Box, Box>{Box(0), Box(0)})) {}
+inline Holder::Holder() : t(std::tuple<Box, Box>{Box(0), Box(0)}) {}
 
 // def __init__(self, p: tuple[Own[Box], Box]) -> None:
 //     # constructor: a mixed PARAM stored at its last use (member-init route).
@@ -113,7 +113,7 @@ inline Ctor::Ctor(std::tuple<Box, Box*>&& p) {
 
 // def __init__(self) -> None:
 //     self.t = (Box(0), Box(0))
-inline Sink::Sink() : t(::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::tuple<Box, Box>{Box(0), Box(0)})) {}
+inline Sink::Sink() : t(std::tuple<Box, Box>{Box(0), Box(0)}) {}
 
 // def put(self, p: tuple[Own[Box], Box]) -> None:
 //     p[1].n += 10

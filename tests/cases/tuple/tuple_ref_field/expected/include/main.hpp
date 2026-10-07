@@ -62,7 +62,7 @@ inline Point::Point(int32_t x, int32_t y)
 
 // def __init__(self, p: Point, n: int32) -> None:
 //     self.data = (copy(p), n)
-inline Container::Container(const Point& p, int32_t n) : data(::tpy::tuple_to_storage<std::tuple<Point, int32_t>>(std::tuple<Point, int32_t>{Point(p), n})) {}
+inline Container::Container(const Point& p, int32_t n) : data(std::tuple<Point, int32_t>{Point(p), n}) {}
 
 // def __repr__(self) -> str:
 //     return "Container"

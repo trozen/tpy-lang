@@ -64,7 +64,7 @@ inline Point::Point(int32_t x, int32_t y)
 inline Mixed::Mixed() {
     Point a = Point(1, 2);
     Point b = Point(3, 4);
-    this->pp = ::tpy::tuple_to_storage<std::tuple<Point, Point>>(std::tuple<Point, Point>{a, std::move(b)});
+    this->pp = std::tuple<Point, Point>{a, std::move(b)};
     std::cout << a.x << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();
