@@ -225,13 +225,14 @@ def test_inert_leaf_shortcut_agrees_with_the_classifier():
     assert len(registered) >= 20
 
 
-def test_records_are_never_inert_and_recursion_answers_unknown():
+def test_records_are_never_inert_and_recursion_adds_no_loan():
     compiler, types = _record_types()
     with activate_compiler(compiler):
         # Scalar fields hold nothing, but a reference record lends its storage.
         assert loan_class(types["point"]) == LoanClass(Loan.NO, Loan.YES)
-        # Re-entering Node through its own field is not a proof of anything.
-        assert loan_class(types["node"]).holds is Loan.UNKNOWN
+        # Re-entering Node through its own field adds nothing the frame that
+        # entered it does not already join: Node's other fields decide.
+        assert loan_class(types["node"]).holds is Loan.NO
         # A value record with a view field holds a borrow.
         assert loan_class(types["label"]).holds is Loan.YES
         assert not any(is_inert_leaf(t) for t in types.values())

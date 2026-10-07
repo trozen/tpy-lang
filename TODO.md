@@ -1682,8 +1682,9 @@ alongside related feature work; only the big-rock deferrals live here.
   borrows, stub contracts, raising and cyclic summaries) and views as
   places (landed), B3 containers as places (first half landed; retained
   loans in progress: declared storage members, user method summaries,
-  accessor and twin callables, inherited records, owned record results
-  and nested records landed), cleanup, B4 generator/async frames; B5 call summaries
+  accessor and twin callables, inherited records, owned record results,
+  nested records and view fields slice 1 landed), cleanup, B4
+  generator/async frames; B5 call summaries
   alongside; B6 advisory
   checker and authority transition. Lifetime/loan bugs tagged `deferred: MIR`
   in BUGS.md wait on it. The history below records the landed increments.
@@ -1762,8 +1763,17 @@ alongside related feature work; only the big-rock deferrals live here.
   on its source, and a parameter path runs through one or more members
   (`docs/MIR_ANALYSIS_PLAN.md` "Nested records"); case
   `tests/cases/mir/nested_records`.
-  **B3 second half, retained loans** (next: view fields, a record
-  retaining a loan; needs `/tpy-add-feature`; unit order in
+  **B3 second half, view fields slice 1** (landed): a `StrView` /
+  `BytesView` member stores a loan in the record object -- set by the
+  constructor's BORROW member initializer from a lent `str` / view
+  parameter or a literal, carried by a copy or move into the body's own
+  storage, seeded opaque (`held`) for a borrowed record parameter -- and a
+  member read takes it; a view member is a summary return endpoint;
+  every other way such a record moves or is written refuses
+  (`docs/MIR_ANALYSIS_PLAN.md` "View fields"); case
+  `tests/cases/mir/view_fields`.
+  **B3 second half, retained loans** (next: view fields slice 2, below;
+  needs `/tpy-add-feature`; unit order in
   `docs/MIR_ANALYSIS_PLAN.md` "Breadth-first order"):
   - `scalar_leaves._ELEMENT_DISPATCH_DUNDERS` (the comparison and hash
     dunders that make a record element non-plain) stays a name list: no
@@ -1809,8 +1819,71 @@ alongside related feature work; only the big-rock deferrals live here.
     operation" gate fails open there; unreachable in a build (every record of
     a compilation has a TypeDef), reachable from unit tests that lower outside
     an active compiler. Fail closed and activate a compiler in those tests.
-  - View FIELDS refuse as "record holds a borrow": storing a view in a
-    record is a retention effect, reading one needs the field's loan.
+  - View fields slice 2 (slice 1 landed; `docs/MIR_ANALYSIS_PLAN.md`
+    "View fields" lists every refusal by reason):
+    - "view member write" (`t.s = s` after construction) and callees that
+      retain a loan: a loan-transfer contract (holder: a parameter or a
+      result member; source: a parameter path or static), a MAY-effect
+      applied as a weak union at the caller, never a `MIRParameterWrite`
+      (`call_effects` resolves a write destination as its old referents,
+      `dependencies.transfer` ignores `MIRCallStmt`); an exceptional exit
+      publishes every loan possibly retained before it. A write rooted in
+      a parameter or the constructor receiver (`def fill(t: Tok): buf =
+      ...; t.s = buf`) needs an escape obligation (the written referents
+      external or static). Strong update only for a uniquely identified
+      holder, a weak union otherwise.
+    - "in-place replacement holds a borrow": an IN_PLACE whole reseat of a
+      view-holding record (`t = Tok(a, 2)` inside a branch over an earlier
+      `t`) needs a strong update on a single referent, a weak one on
+      several (`branch`, `block_source` in
+      `/tmp/agents/b3v/codex_probes2/review.py`).
+    - "owned result holds a borrow" / "owned parameter holds a borrow":
+      `-> Own[R]` and `Own[R]` parameters of view-holding records. The
+      result's member loans are field-held return origins
+      (`_return_escapes` must run for them); an `Own[R]` parameter's stored
+      loans are body storage, not external.
+    - "wrapper holds a borrow" / "container holds a borrow" / "record
+      member holds a borrow": Optional, union and tuple members, container
+      elements and member records holding a view; union / Optional view
+      members (`StrView | None`); Span members
+      (the container helpers know root holders only).
+    - "base argument borrow not modeled" / "inherited constructor borrow":
+      inherited constructors and base legs passing a view.
+    - "record member loan unknown beside a view member": a view member
+      beside a member the loan classifier cannot decide (a `bytearray`, a
+      native or protocol-typed field; recursion is decided). A record with
+      no view member of its own beside such a member still gets a held
+      layout; the direct invariant is "a record whose loan class is
+      UNKNOWN has no definition and no held layout".
+    - Census blockers left: `records/init_str_bytes_field_sources`
+      `Meta.__init__` ("unsupported metadata: materialize": a `StrView`
+      parameter materialized into a `str` member); `JsonReader.__init__`
+      (`self._len = len(data)`); `JsonReader._unescape` (the summary of
+      `_parse_hex4` is opaque: summaries need a verified definition for
+      record slots).
+    - Test hygiene: `scalar_leaves.holds_loan` reads TypeDefs that the
+      per-test state reset clears, so a validator guard over hand-built
+      MIR passes silently outside a compilation
+      (`tpyc/mir/test_view_fields.py` restores them in its fixture). The
+      definitions rule "record member loan unknown beside a view member"
+      does not change that: it reads `loan_class` too.
+    - Held layouts get their own map: `_Coverage.records`
+      (`tpyc/mir/lower.py`) holds verified definitions and `MIRHeldLayout`
+      under one key, so `record_layout()` answers by registration order.
+    - The storage-evidence audit recomputes `live_holders` per point from
+      `referents`, where `dependencies.active` already has the keys:
+      either keep it as a deliberate re-check of the referents (and say so
+      at the audit), or read `active` and make `test_storage_evidence`
+      `_drop_origins` edit `active` too.
+    - Untested guards: "handed-over record holds a borrow" and "call
+      result holds a borrow", in the lowering and the validator (no
+      program reaches them; a test needs a KNOWN summary of a function
+      returning `Own[Tok]`).
+    - Optional backstop: one slot-level validator rule that a
+      loan-holding record type appears only as a BORROWED holder, OWNED
+      local / temporary storage or a view holder, beside (not replacing)
+      the operation-level "holds a borrow" guards, so a new spelling
+      cannot slip past the enumerated list.
   - Inherited records, what the model leaves out
     (`docs/MIR_ANALYSIS_PLAN.md` "Inherited records" has the rules):
     - `super().m()` / `Base.m(self)` inside a subclass body refuse ("call
@@ -2995,6 +3068,7 @@ Goal: speed up test runs (currently ~3 min parallel, ~6 min single-threaded for 
 - `tpy.unsafe.unsafe_address_of(x) -> int`: return the memory address of an object as an integer. Useful for identity comparison in tests (proving reference semantics vs silent copy). C++ codegen: `reinterpret_cast<uintptr_t>(&x)`.
 
 ## Python features
+- **[design] What does rebinding a `str` / `bytes` name do while a view borrows its buffer?** `buf = mk(k); t = Tok(buf, 1); buf = mk(k + 1); print(t.s)` with `s: StrView`: in Python the rebind only moves the name and `t.s` keeps the old object alive; in TPy a `str` local is its own storage, so the rebind assigns into the same `std::string` and frees the buffer `t.s` views (silent stale read today: `BUGS.md#record-view-member-source-replaced`; the bare view-local twin is `BUGS.md#explicit-view-local-source-mutation-unguarded`). Options: (1) a compile error at the rebind while a view of the name is live (one rule for locals, members, callees, loops; MIR already computes the conflict); (2) the rebind of a borrowed name gets fresh storage (records already do this, `RebindStorage.OWN`) -- matches Python in straight-line code, but a rebind in a loop re-runs on the same storage and adds storage the user does not see; (3) allow it and keep the view as the user's responsibility. MIR follows whichever lowering is chosen, so this is a language decision only; until it is taken MIR reports the case as a replacement conflict (`tests/cases/mir/view_fields`, `alias_replaced`).
 - **[design] Should an unannotated container literal of views infer the owning element type?** `xs = [b.name]` (a view getter), `[s]` for a `StrView` parameter and `[line[1:3] for line in lines]` all infer `list[StrView]` today, and a view-typed element slot admits no source (`BUGS.md#view-element-slot-admits-no-source`), so the everyday spelling rejects and the user must write `xs: list[str] = ...`. A list has its own lifetime, so a list of views is only sound when every source provably outlives it -- a MIR question. Inferring `list[str]` instead (the element copies into an owned string, which for an immutable `str` is unobservable in CPython terms) would make the everyday spelling compile and safe with no lifetime analysis. Questions: does it change the type of programs that compile today (a `list[StrView]` inferred from literals of string LITERALS is static storage and legitimately zero-copy -- keep that); the `bytes` / `BytesView` twin; `Span` elements (not copyable into an owner the same way); dict keys and values, set elements, tuples inside the literal; whether an explicit `list[StrView]` annotation then stays the opt-in for the zero-copy form once MIR can prove it. Raised 2026-09-21 by THIR batch 7.
 - **Iterating a tuple (`for b in (b1, b2):`, `for shift in (16, 8, 0):`) -- not supported at all today.** Sema refuses every tuple iterable: `for x in (1, 2, 3):` stops at *Cannot iterate over type tuple[IntLiteral(1), IntLiteral(2), IntLiteral(3)]* and `for b in (b1, b2):` at *Cannot iterate over type tuple[Box, Box]*. This is the everyday Python spelling for "do this to these few things", and for REFERENCE types it is the only one that can alias: a list stores its records inline, so `for b in [b1, b2]: b.bump()` copies `b1` and `b2` under the *copies Box into owned storage* warning and the bumps never reach them (TPy `source 1 2`, CPython `source 2 3`; pinned by `tests/cases/iterators/for_literal_named_elements`). That copy is deliberate and stays -- it is the same rule `l = [b1, b2]` and `l.append(b)` follow, and one position aliasing would be an inconsistent model (user decision 2026-09-21). A tuple passes references, so the tuple spelling is the one the language should point users to; today a user who wants to mutate two objects in a loop has no spelling that works. Design questions when picked up (`/tpy-add-feature`): homogeneous element types only, or a mixed tuple through a common supertype / protocol / union; tuple LITERALS only, or also a tuple-typed name, field, parameter and call result; the render for reference elements (the borrow form of a tuple already holds `T*` per element -- the loop variable must alias, never copy) and for value elements; the loop variable's const-ness from the elements' sources; positions -- generator / `async` frames with a suspension inside the loop, module level, comprehensions and generator expressions over a tuple; and the sibling consumers that take any iterable (`sum`, `min` / `max`, `enumerate`, `zip`, `list(...)`, `in`). Once it lands, the copy warning at a list literal of named reference elements in a `for` head should name the tuple spelling as the remedy. Surfaced 2026-09-21 by THIR batch 7, when a fix made the mutating list-literal loop buildable and its divergence visible.
 - **A multi-clause list comprehension never demotes to an `Array`.** `_try_comp_array_size` (`tpyc/sema/expressions.py`) answers None for more than one clause, so `[i * j for i in range(3) for j in range(4)]` is a `list` even though its size (12) is known at compile time, like the single-clause `[i for i in range(12)]`, which demotes. Lifting it needs the product of every clause's literal size, no filter at any level, and the `array_from_index` render of a flattened index. Raised with the multi-clause comprehensions, 2026-10-06.

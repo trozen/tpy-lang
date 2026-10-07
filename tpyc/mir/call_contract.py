@@ -10,14 +10,14 @@ from ..thir.nodes import (
     THIRStubCallee, THIRStubContract, THIRStubIdentity,
 )
 from ..thir.scalar_leaves import (
-    container_element, container_view, modeled_members, native_container_subject, native_container_type,
+    container_element, container_view, holds_loan, modeled_members, native_container_subject, native_container_type,
     owned_leaf, owned_value_type, plain_record_element, readonly_elements, record_type, storage_leaf,
-    view_compatible, view_leaf,
+    view_compatible, view_endpoint, view_leaf,
 )
 from ..type_def_registry import ParamPassing, type_def_of
 from ..typesys import (
-    Loan, NominalType, OwnType, ReadonlyType, RefType, Representation, TpyType, VoidType, is_owned_leaf,
-    is_protocol_type, loan_class,
+    NominalType, OwnType, ReadonlyType, RefType, Representation, TpyType, VoidType, is_owned_leaf,
+    is_protocol_type,
     passing_representation, return_representation, unwrap_own, unwrap_readonly, unwrap_ref_type,
 )
 
@@ -425,7 +425,7 @@ def stub_protocol_argument(read: TpyType) -> bool:
 
 
 def _holds_borrow(container: TpyType) -> bool:
-    return any(loan_class(a).holds is Loan.YES for a in container.type_args if isinstance(a, TpyType))
+    return any(holds_loan(a) for a in container.type_args)
 
 
 def _method_stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
@@ -596,8 +596,9 @@ def endpoint_admitted(binding: MIRParameterBinding, resolved: MIRResolvedPath,
     leaf (its buffer replaced), a record member (replaced whole) or a
     container projection of a container field whose members MIR models. A
     return ends at no projection: a view result views an owned-leaf field
-    of its family; a container or record result is a field of exactly its
-    type, never lent with more access than the path lends.
+    of its family or is the loan a view member of its family stores; a
+    container or record result is a field of exactly its type, never lent
+    with more access than the path lends.
 
     The whole parameter (no field): a write projects a mutable borrowed or
     owned container, or the elements of a writable container view (a view
@@ -618,7 +619,7 @@ def endpoint_admitted(binding: MIRParameterBinding, resolved: MIRResolvedPath,
     if resolved.projection is not None:
         return False
     if view_leaf(result.type):
-        return owned_leaf(bare) and view_compatible(result.type, bare)
+        return view_endpoint(result.type, bare)
     return ((native_container_type(bare) and modeled_members(bare) or record_type(bare))
             and bare == result.type and (result.readonly or not resolved.readonly))
 

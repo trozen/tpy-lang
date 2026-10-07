@@ -18,9 +18,10 @@ from ..thir.scalar_leaves import owned_leaf, record_type, storage_leaf
 from ..typesys import TpyType, unwrap_readonly
 from .call_contract import MIRSummaryResult
 from .call_effects import MIRCallEffects, analyze_call_effects, dump_call_effects
-from .definitions import MIRDefinitions
+from .definitions import MIRDefinitions, view_members
 from .dependencies import (
-    MIRDependencies, MIRReferent, _leaves, analyze_dependencies, dump_dependencies, resolve_referents,
+    MIRDependencies, MIRReferent, MIRUnseededLoan, _leaves, analyze_dependencies, dump_dependencies,
+    resolve_referents,
 )
 from .dump import dump_function
 from .liveness import MIRLiveness, MIRPoint, analyze_liveness, dump_liveness
@@ -624,14 +625,20 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
                     continue
                 lines.add(member.loc.line)
                 spelled = _spell(MIRPlace(receiver.id, (MIRDeref(), field)), named)
-                kind = MIRValueKind.SCALAR if member.mode is MIRMemberInitMode.SCALAR else MIRValueKind.OWNED
+                kind = (MIRValueKind.SCALAR if member.mode is MIRMemberInitMode.SCALAR
+                        else MIRValueKind.BORROWED if member.mode is MIRMemberInitMode.BORROW
+                        else MIRValueKind.OWNED)
                 writes.setdefault((member.loc.line, spelled), []).append(
                     MIRLineWrite(fn.entry.index, kind, member.mode is MIRMemberInitMode.COPY))
 
     dependencies = analyses.dependencies
     leaves: dict[str, list[MIRPlace]] = {}
+    # A named record holder's view members (`t.s`): the loans the objects it
+    # reaches store, resolved through the holder (their storage is unnamed).
+    members: dict[str, MIRPlace] = {}
     borrows: dict[tuple[int, str], list[MIRLineReferents]] = {}
     if not isinstance(dependencies, MIRNotCovered):
+        layouts = {record.type: record for record in fn.records}
         for slot in fn.slots:
             if slot.id not in named:
                 continue
@@ -639,6 +646,10 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
                 leaves.setdefault(named[slot.id], []).append(leaf)
                 if leaf.projections:
                     leaves.setdefault(_spell(leaf, named), []).append(leaf)
+            if slot.value_kind is MIRValueKind.BORROWED and record_type(slot.type):
+                for member in view_members(layouts.get(slot.type)):
+                    place = MIRPlace(slot.id, (MIRDeref(), member))
+                    members[_spell(place, named)] = place
         for (line, block_id), index in last.items():
             state = dependencies.referents.get(MIRPoint(block_id, index + 1))
             if state is None:
@@ -646,8 +657,15 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
             for spelled, held in leaves.items():
                 refs = frozenset(referent(ref) for leaf in held for ref in state.get(leaf, ()))
                 borrows.setdefault((line, spelled), []).append(MIRLineReferents(block_id.index, refs))
+            for spelled, place in members.items():
+                try:
+                    loans = resolve_referents(place, state, slots) if state.get(MIRPlace(place.root)) else ()
+                except MIRUnseededLoan:
+                    loans = ()
+                borrows.setdefault((line, spelled), []).append(
+                    MIRLineReferents(block_id.index, frozenset(referent(ref) for ref in loans)))
     return MIRLineFacts(
-        verdict.body, names, frozenset(leaves), frozenset(lines),
+        verdict.body, names, frozenset(leaves) | frozenset(members), frozenset(lines),
         {key: tuple(found) for key, found in writes.items()},
         {key: tuple(found) for key, found in replaced.items()},
         {key: tuple(found) for key, found in borrows.items()},

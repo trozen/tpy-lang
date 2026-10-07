@@ -5,11 +5,12 @@ call-effect and presence facts over one whole validated body. This is not a
 production certificate for emitted code: an adapter must still bind the exact
 function and roots to the emitted THIR obligations and placement plan.
 
-MIR itself bounds the channels: a record field or a container element never
-holds a borrow (view fields and borrow-holding elements refuse at admission),
-globals hold no references, and MIR has no captures, exceptional edges or
-opaque calls; every call carries a validated summary without retention on any
-exit. Record cleanup is not representable in MIR, so every body storage record
+MIR itself bounds the channels: a container element never holds a borrow
+(borrow-holding elements refuse at admission), a record holds one only in a
+view member its constructor stored, keyed at the object's stored-loan entries
+(`MIRDependencies.objects`), globals hold no references, and MIR has no
+captures, exceptional edges or opaque calls; every call carries a validated
+summary without retention on any exit. Record cleanup is not representable in MIR, so every body storage record
 (a container's record elements included) needs a verified hook-free definition
 from the caller.
 
@@ -27,7 +28,9 @@ from ..parse import SourceLocation
 from .call_effects import analyze_call_effects
 from .coverage import MIRUnsupported, owned_tuple, scalar_wrapper
 from .definitions import MIRDefinitions
-from .dependencies import MIRDependencies, MIRReferent, _dependencies, _leaves, resolve_referents
+from .dependencies import (
+    MIRDependencies, MIRReferent, _dependencies, _leaves, live_holders, resolve_referents,
+)
 from .liveness import MIRLiveness, _liveness
 from .nodes import (
     MIRAssign, MIRBodyKind, MIREdge, MIRFunction, MIRNotCovered, MIROptionalPayload, MIRPlace, MIRPoint,
@@ -108,6 +111,10 @@ class MIRBorrowEvidence:
                              explicit_roots: frozenset[MIRSlotId]) -> bool:
         return (self.function is fn and bool(operations) and operations == self.operations
                 and explicit_roots == self.explicit_roots and self.verdict is MIRStorageVerdict.CERTIFIED)
+
+
+def _place_key(place: MIRPlace) -> tuple[int, int]:
+    return place.root.index, len(place.projections)
 
 
 def _storage_root(slot: MIRSlot) -> bool:
@@ -289,6 +296,16 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
                 gap("missing dependency facts at a feasible point", point_loc(point))
                 continue
             selected = dict(facts)
+            # A record object a live holder reaches has an entry for each
+            # loan it stores (`MIRDependencies.objects`).
+            for holder in sorted(live_holders(state, liveness.points[point], dependencies.stored_loans),
+                                 key=_place_key):
+                for ref in state[holder]:
+                    if ref.place.projections or ref.place.root not in slots:
+                        continue
+                    for key in dependencies.objects[ref.place.root]:
+                        if not state.get(key):
+                            gap(f"live record %{ref.place.root.index} has unknown stored loans", point_loc(point))
             for sid in sorted(liveness.points[point], key=lambda s: s.index):
                 for leaf in _leaves(slots[sid]):
                     match leaf.projections:

@@ -13,8 +13,8 @@ from ...typesys import (
 )
 from ..scalar_leaves import (
     binds_cursor, container_view, declared_members, holds_elements, leaf_constant, leaf_global, modeled_hierarchy,
-    modeled_members, native_container_subject, native_container_type, owned_leaf, readonly_elements, record_owner,
-    storage_leaf,
+    modeled_leaf_field, modeled_members, native_container_subject, native_container_type, owned_leaf,
+    readonly_elements, record_owner, storage_leaf,
 )
 from ..nodes import (
     Form, THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldAccess, THIRFieldIdentity, THIRName,
@@ -361,8 +361,6 @@ def field_identity(receiver: NominalType, name: str, analyzer: 'SemanticAnalyzer
     if found is None:
         return None
     declaring, member = found
-    if (not storage_leaf(member.type) and not owned_leaf(member.type)
-            and borrowed_record(member.type, False, analyzer) is None
-            and not native_container_type(unwrap_readonly(member.type))):
+    if not modeled_leaf_field(member.type) and borrowed_record(member.type, False, analyzer) is None:
         return None
     return THIRFieldIdentity(record_owner(declaring), member.name, member.type)

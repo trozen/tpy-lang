@@ -1,0 +1,30 @@
+alias_replaced xxxxx
+copied_rebind 7
+copied_rebind xxxxx xxxxxx
+sibling_view abc
+sibling_copy abc
+aliased_params abc
+temporary_source 1
+static_source lit xxxxxxxx
+callee_reads 25
+callee_reads_late 1
+callee_replaces xxxxxxxxxx
+late_read xxxxxxxxxxx
+alias_late xxxxxxxxxxx
+loop_alias xxxxxxxxxxx
+pick_late q
+detached_view lit
+first zzz
+size 11
+literal_member 4
+retarget rt
+reset rs
+make 2
+consume 3
+in_list 1
+maybe 1
+paired 1
+deferred 1 0
+selected 1 2
+child 1
+branch lit

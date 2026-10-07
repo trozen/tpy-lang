@@ -3322,7 +3322,9 @@ def _storage_loan_class(t: TpyType) -> LoanClass:
     if rec is None or rec.is_native or t.is_protocol:
         return _LOAN_UNKNOWN
     if t in _evaluating_loan:
-        return _LOAN_UNKNOWN
+        # The frame that entered `t` joins every field of the cycle, so a
+        # re-entry adds no loan of its own; no partial answer is kept.
+        return LoanClass(Loan.NO, Loan.UNKNOWN)
     _evaluating_loan.add(t)
     try:
         holds = Loan.NO

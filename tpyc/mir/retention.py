@@ -7,7 +7,7 @@ from ..thir.scalar_leaves import owned_leaf, record_type
 from ..typesys import TpyType, unwrap_readonly
 
 from .coverage import container_holder
-from .dependencies import MIRDependencies, MIRReferent, resolve_referents
+from .dependencies import MIRDependencies, MIRReferent, _referent, live_holders, resolve_referents
 from .dump import _location, _place
 from .liveness import MIRLiveness, MIRPoint
 from .nodes import (
@@ -48,9 +48,13 @@ def _origin(place: MIRPlace) -> MIRPlace:
 
 
 def may_overlap(left: MIRReferent, right: MIRReferent) -> bool:
-    """Private roots are distinct; external payload origins need no disjointness."""
+    """Private roots are distinct; external payload origins need no
+    disjointness. A stored loan of an external object views storage of no
+    known place, so it may be any external storage."""
     if left.external != right.external:
         return False
+    if left.external and (left.held or right.held):
+        return True
     if left.external and _origin(left.place) != _origin(right.place):
         return True
     if left.place.root != right.place.root:
@@ -119,6 +123,11 @@ def affects(written: MIRReferent, retained: MIRReferent, slots: Mapping[MIRSlotI
         return False
     if written.external != retained.external:
         return False
+    # A stored loan of an external object views owned-leaf storage outside
+    # the body that any external replacement may be, a sibling member of
+    # the same object included (its place names the member, not what it views).
+    if written.held or retained.held:
+        return True
     reach = _reach(written.place)
     if reach is None:
         return may_overlap(written, retained)
@@ -175,10 +184,11 @@ def analyze_retention(fn: MIRFunction, liveness: MIRLiveness,
         replaced.append((point, place, None))
     for point, target, rebind_owner in sorted(replaced, key=lambda e: (e[0].block.index, e[0].index, _place(e[1]))):
         incoming = dependencies.referents[point]
-        live_after = liveness.points[MIRPoint(point.block, point.index + 1)]
+        live_after = live_holders(incoming, liveness.points[MIRPoint(point.block, point.index + 1)],
+                                  dependencies.stored_loans)
         affected = resolve_referents(target, incoming, slots)
         for holder, refs in sorted(incoming.items(), key=lambda item: _place(item[0])):
-            if holder.root not in live_after or holder.root == rebind_owner:
+            if holder not in live_after or holder.root == rebind_owner:
                 continue
             for written in sorted(affected, key=_referent_key):
                 for retained in sorted(refs, key=_referent_key):
@@ -201,8 +211,7 @@ def dump_retention(result: MIRRetention | MIRNotCovered) -> str:
     for conflict in result.conflicts:
         point = conflict.point
         loc = blocks[point.block].statements[point.index].loc
-        affected = ("external:" if conflict.affected.external else "storage:") + _place(conflict.affected.place)
-        retained = ("external:" if conflict.retained.external else "storage:") + _place(conflict.retained.place)
+        affected, retained = _referent(conflict.affected), _referent(conflict.retained)
         lines.append(f"  bb{point.block.index} before {point.index}: replace {affected}; "
                      f"{_place(conflict.holder)} retains {retained}{_location(loc)}")
     return "\n".join(lines) + "\n"
