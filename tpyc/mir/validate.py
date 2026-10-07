@@ -9,7 +9,8 @@ from ..parse import SourceLocation
 from ..thir.nodes import COMPARISON_OPS, Form, THIRBorrowedRecord, THIRStubCallee, THIRStubContract
 from ..type_def_registry import is_array
 from ..thir.scalar_leaves import (
-    binds_cursor, container_view, declared_members, leaf_constant, native_container_type, owned_constant, owned_leaf,
+    binds_cursor, container_view, declared_members, leaf_constant, modeled_field, native_container_type,
+    owned_constant, owned_leaf,
     owned_value_type, primitive_leaf, readonly_elements, record_type, storage_leaf, view_leaf,
 )
 from ..type_def_registry import ParamPassing, type_def_of, zero_value_of
@@ -23,7 +24,7 @@ from .nodes import (
     MIRField, MIRFieldId, MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead,
     MIRReturn, MIRRvalue, MIRSlot, MIRSlotId, MIRSlotKind, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRReceiverInit, MIRBodyKind, MIRGlobalId,
-    MIRMemberInit, MIRMemberInitMode,
+    MIRMemberInit, MIRMemberInitMode, MIRMemberInits,
     MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode, MIRStorageInit, MIRRecordStorageInit, MIRStatement,
     MIRRegionId, MIREdge, MIRRecordStorageKind, MIRTupleInitialization,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
@@ -36,15 +37,15 @@ from .nodes import (
 )
 from .presence import MIRPresence, _analyze_presence
 from .coverage import (
-    container_view_holder, leaf_borrow, owned_borrow, owned_container, owned_storage, owned_tuple,
+    container_view_holder, handed_record, leaf_borrow, owned_borrow, owned_container, owned_storage, owned_tuple,
     primitive_operand, read_leaf, region_holder, scalar_member, scalar_slot, scalar_wrapper, view_compatible,
     view_holder,
 )
 from .region_flow import MIRRegionFlow, outgoing_edges
 from .call_contract import (
-    BORROWING_PASSINGS, OWNING_PASSINGS, binds_at, owned_record_result, result_problem, summary_problem,
+    BORROWING_PASSINGS, OWNING_PASSINGS, binds_at, owned_record_result, path_hops, result_problem, summary_problem,
 )
-from .definitions import with_access
+from .definitions import layout_copy_may_raise, with_access
 
 
 class MIRValidationError(ValueError):
@@ -313,8 +314,9 @@ def copies_into(source: TpyType, target: TpyType) -> bool:
 
 def body_may_raise(blocks: 'tuple[MIRBlock, ...] | list[MIRBlock]', slots: 'Mapping[MIRSlotId, MIRSlot]',
                    receiver_init: MIRReceiverInit | None) -> bool:
-    """`MIRFunction.exceptional_exits`: some statement may raise, or the
-    receiver's entry initialization copies an owned leaf that may."""
+    """`MIRFunction.exceptional_exits`: some statement may raise, or some
+    member of the receiver's entry initialization may (a composed member's
+    fact is its fields', checked by the validator)."""
     return (receiver_init is not None and any(member.may_raise for member in receiver_init.fields)
             or any(statement_may_raise(stmt, slots) for block in blocks for stmt in block.statements))
 
@@ -406,24 +408,20 @@ def _validate_structure(fn: MIRFunction) -> None:
         for member in record.fields:
             _require(isinstance(member, MIRField) and isinstance(member.id, MIRFieldId)
                      and member.id.owner in owners and bool(member.id.name)
-                     and member.id not in seen
-                     and (storage_leaf(member.type) or owned_leaf(member.type) or native_container_type(member.type)),
+                     and member.id not in seen and modeled_field(member.type),
                      "invalid record layout field")
-            # An owned-leaf field is a place of that leaf's opaque storage.
+            # An owned-leaf field is a place of that leaf's opaque storage,
+            # a record field a place of its member record's.
             _require(not owned_leaf(member.type) or member.type in records and records[member.type].opaque,
                      "owned-leaf field needs its opaque layout")
+            bare = unwrap_readonly(member.type)
+            _require(not record_type(bare) or bare in records and not records[bare].opaque,
+                     "record field needs its layout")
             seen.add(member.id)
             # A field is one storage of one type in every layout carrying it
             # (its declaring owner's and each descendant's).
             _require(field_types.setdefault(member.id, member.type) == member.type,
                      "inconsistent field type")
-    for summary in fn.call_summaries:
-        for write in summary.writes:
-            for field in write.path:
-                if isinstance(field, (MIRContainerStructure, MIRContainerElements)):
-                    continue
-                _require(field_types.get(MIRFieldId(field.owner, field.name)) == field.type,
-                         "call write field does not match record layout")
     global_ids: set[MIRGlobalId] = set()
     for slot in fn.slots:
         _require(slot.id.body == fn.id and slot.id.index >= 0, "foreign or invalid slot ID")
@@ -439,9 +437,11 @@ def _validate_structure(fn: MIRFunction) -> None:
                           or slot.value_kind is MIRValueKind.UNION)
                      and ((slot.storage_duration is MIRStorageDuration.CALLER
                            and slot.kind is MIRSlotKind.PARAMETER and slot.value_kind is MIRValueKind.UNION)
-                          # A by-value owned leaf is the body's storage from entry to exit.
+                          # A by-value owned leaf, an `Own[...]` container or record
+                          # is the body's storage from entry to exit.
                           or (slot.storage_duration is MIRStorageDuration.BODY
-                              and slot.kind is MIRSlotKind.PARAMETER and (owned_storage(slot) or owned_container(slot)))
+                              and slot.kind is MIRSlotKind.PARAMETER and (
+                                  owned_storage(slot) or owned_container(slot) or handed_record(slot)))
                           or ((slot.storage_duration is MIRStorageDuration.BODY
                                or isinstance(slot.storage_duration, MIRRegionId))
                               and slot.kind in (MIRSlotKind.LOCAL, MIRSlotKind.TEMPORARY))),
@@ -541,7 +541,8 @@ def _validate_structure(fn: MIRFunction) -> None:
             _require(slot.type in records and slot.form is Form.STORAGE
                      and records[slot.type].opaque == owned_leaf(slot.type)
                      and (slot.kind is not MIRSlotKind.PARAMETER
-                          or owned_leaf(slot.type) and slot.passing in OWNING_PASSINGS),
+                          or owned_leaf(slot.type) and slot.passing in OWNING_PASSINGS
+                          or handed_record(slot)),
                      "unsupported record storage type or form")
             if owned_leaf(slot.type):
                 _require(not slot.readonly and slot.storage_duration is not None,
@@ -610,6 +611,152 @@ def _validate_structure(fn: MIRFunction) -> None:
                 return False
         return True
 
+    def construct_members_ok(value: MIRConstruct, members: tuple[MIRField, ...]) -> bool:
+        """One operand per member: an inert leaf by value, an owned leaf
+        copied from what a readonly holder lends (its own borrow, a `String`
+        borrow or a view of its family) or moved out of owned temporary
+        storage, or a record copied through a holder of it or moved out of
+        temporary record storage; the construct may raise exactly when a
+        copy may."""
+        if len(value.fields) != len(members) or type(value.may_raise) is not bool:
+            return False
+        raises = False
+        for src, member in zip(value.fields, members):
+            source = slots.get(src)
+            if source is None:
+                return False
+            if record_type(bare := unwrap_readonly(member.type)):
+                layout = records.get(bare)
+                if layout is None or layout.opaque or source.type != bare:
+                    return False
+                if source.value_kind is MIRValueKind.BORROWED and layout.copyable:
+                    raises = raises or record_copy_may_raise(bare)
+                elif not (source.value_kind is MIRValueKind.OWNED and source.kind is MIRSlotKind.TEMPORARY
+                          and not source.readonly and layout.movable):
+                    return False
+            elif not owned_leaf(member.type):
+                if source.type != member.type or source.value_kind is not MIRValueKind.SCALAR:
+                    return False
+            elif leaf_borrow(source) and copies_into(source.type, member.type):
+                raises = raises or bool(type_def_of(member.type).copy_may_raise)
+            elif not (owned_storage(source) and source.type == member.type
+                      and source.kind is MIRSlotKind.TEMPORARY):
+                return False
+        return value.may_raise is raises
+
+    def record_copy_may_raise(typ: TpyType) -> bool:
+        return layout_copy_may_raise(records[typ], records.get)
+
+    def record_copy_ok(value: MIRCopy, typ: TpyType) -> bool:
+        """A copy of record storage of type `typ`: the owned storage a
+        holder points at, the body's own record storage, or an inline record
+        member; it may raise exactly when copying the layout may (or an
+        element access on the way)."""
+        source_type, source_kind, _ = place_info(value.source)
+        projections = value.source.projections
+        return (records[typ].copyable and source_type == typ and source_kind is MIRValueKind.OWNED
+                and (projections == (MIRDeref(),) or not projections
+                     or isinstance(projections[-1], MIRField))
+                and value.may_raise is (record_copy_may_raise(typ) or reaches_element(value.source)))
+
+    def validate_member_inits(inits: tuple[MIRMemberInit, ...], members: tuple[MIRField, ...]) -> None:
+        """Entry initialization of record storage: one initializer per field
+        of its layout, in layout order (the receiver's, or a composed
+        member's, recursively)."""
+        _require(isinstance(inits, tuple) and len(inits) == len(members), "incomplete receiver initialization")
+        for init_member, member in zip(inits, members):
+            validate_member_init(init_member, member)
+
+    def validate_member_init(init_member: MIRMemberInit, member: MIRField) -> None:
+        _require(isinstance(init_member, MIRMemberInit) and isinstance(init_member.mode, MIRMemberInitMode)
+                 and type(init_member.may_raise) is bool, "invalid receiver initializer")
+        value, mode = init_member.source, init_member.mode
+        if native_container_type(member.type):
+            # Copied from a container parameter, or moved from the literal
+            # built over parameters; either allocates.
+            layout = expected_container_layout(member.type, False, records)
+            _require(layout is not None, "unsupported container field")
+            match value:
+                case MIRSlotId():
+                    source = slots.get(value)
+                    _require(mode is MIRMemberInitMode.COPY and source is not None
+                             and source.kind is MIRSlotKind.PARAMETER and region_holder(source)
+                             and not container_view_holder(source) and source.type == member.type,
+                             "invalid receiver initializer parameter")
+                case MIRConstruct():
+                    _require(mode is MIRMemberInitMode.MOVE and all(
+                        slots.get(o) is not None and slots[o].kind is MIRSlotKind.PARAMETER for o in value.fields)
+                        and container_literal_ok(value, member.type, layout),
+                        "invalid receiver initializer literal")
+                case _:
+                    raise MIRValidationError("invalid receiver initializer")
+            _require(init_member.may_raise is True, "receiver initializer exit fact mismatch")
+            return
+        if record_type(bare := unwrap_readonly(member.type)):
+            # Copied through a record parameter lent readonly, moved out of
+            # an `Own[R]` parameter's storage, or built by the member's own
+            # constructor, field by field.
+            layout = records.get(bare)
+            _require(layout is not None and not layout.opaque, "record field needs its layout")
+            match value:
+                case MIRSlotId():
+                    source = slots.get(value)
+                    _require(source is not None and source.kind is MIRSlotKind.PARAMETER and source.type == bare
+                             and (mode is MIRMemberInitMode.COPY and layout.copyable
+                                  and source.value_kind is MIRValueKind.BORROWED and source.readonly
+                                  or mode is MIRMemberInitMode.MOVE and layout.movable
+                                  and source.value_kind is MIRValueKind.OWNED and not source.readonly
+                                  and source.passing is ParamPassing.OWN),
+                             "invalid receiver initializer parameter")
+                    raises = mode is MIRMemberInitMode.COPY and record_copy_may_raise(bare)
+                case MIRMemberInits():
+                    _require(mode is MIRMemberInitMode.MOVE and layout.movable,
+                             "invalid receiver initializer construct")
+                    validate_member_inits(value.fields, layout.fields)
+                    raises = any(nested.may_raise for nested in value.fields)
+                case _:
+                    raise MIRValidationError("invalid receiver initializer")
+            _require(init_member.may_raise is raises, "receiver initializer exit fact mismatch")
+            return
+        if not owned_leaf(member.type):
+            _require(mode is MIRMemberInitMode.SCALAR and init_member.may_raise is False,
+                     "invalid receiver initializer mode")
+            match value:
+                case MIRSlotId():
+                    _require(value in slots and slots[value].kind is MIRSlotKind.PARAMETER
+                             and slots[value].value_kind is MIRValueKind.SCALAR
+                             and slots[value].type == member.type, "invalid receiver initializer parameter")
+                case MIRConstant(value=literal):
+                    _require(leaf_constant(member.type, literal), "invalid receiver initializer constant")
+                case _:
+                    raise MIRValidationError("invalid receiver initializer")
+            return
+        # An owned leaf is copied from a parameter's storage -- the caller's
+        # through a readonly borrow (of its own type or the family's view),
+        # or the body's own by-value copy -- or from a constant, or moved
+        # out of the by-value copy.
+        match value:
+            case MIRSlotId():
+                source = slots.get(value)
+                _require(source is not None and source.kind is MIRSlotKind.PARAMETER and (
+                    mode is MIRMemberInitMode.COPY and (
+                        owned_borrow(source) and source.type == member.type
+                        or owned_storage(source) and source.type == member.type)
+                    or mode is MIRMemberInitMode.MOVE and owned_storage(source) and source.type == member.type),
+                    "invalid receiver initializer parameter")
+            case MIRConstant(value=literal):
+                _require(mode is MIRMemberInitMode.COPY and owned_constant(member.type, literal),
+                         "invalid receiver initializer constant")
+            case _:
+                raise MIRValidationError("invalid receiver initializer")
+        # A move into a base's own copy that the base copies on raises like
+        # the copy (`definitions._compose`).
+        _require(init_member.may_raise is (mode is MIRMemberInitMode.COPY
+                                           and bool(type_def_of(member.type).copy_may_raise))
+                 or mode is MIRMemberInitMode.MOVE and init_member.may_raise is True
+                 and bool(type_def_of(member.type).copy_may_raise),
+                 "receiver initializer exit fact mismatch")
+
     if fn.receiver_init is not None:
         init = fn.receiver_init
         _require(isinstance(init, MIRReceiverInit) and init.receiver in slots,
@@ -619,71 +766,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                  and receiver.value_kind is MIRValueKind.BORROWED
                  and not receiver.readonly and receiver.type in records
                  and isinstance(fn.return_type, VoidType), "invalid constructor receiver")
-        members = records[receiver.type].fields
-        _require(len(init.fields) == len(members), "incomplete receiver initialization")
-        for init_member, member in zip(init.fields, members):
-            _require(isinstance(init_member, MIRMemberInit) and isinstance(init_member.mode, MIRMemberInitMode)
-                     and type(init_member.may_raise) is bool, "invalid receiver initializer")
-            value, mode = init_member.source, init_member.mode
-            if native_container_type(member.type):
-                # Copied from a container parameter, or moved from the literal
-                # built over parameters; either allocates.
-                layout = expected_container_layout(member.type, False, records)
-                _require(layout is not None, "unsupported container field")
-                match value:
-                    case MIRSlotId():
-                        source = slots.get(value)
-                        _require(mode is MIRMemberInitMode.COPY and source is not None
-                                 and source.kind is MIRSlotKind.PARAMETER and region_holder(source)
-                                 and not container_view_holder(source) and source.type == member.type,
-                                 "invalid receiver initializer parameter")
-                    case MIRConstruct():
-                        _require(mode is MIRMemberInitMode.MOVE and all(
-                            slots.get(o) is not None and slots[o].kind is MIRSlotKind.PARAMETER for o in value.fields)
-                            and container_literal_ok(value, member.type, layout),
-                            "invalid receiver initializer literal")
-                    case _:
-                        raise MIRValidationError("invalid receiver initializer")
-                _require(init_member.may_raise is True, "receiver initializer exit fact mismatch")
-                continue
-            if not owned_leaf(member.type):
-                _require(mode is MIRMemberInitMode.SCALAR and init_member.may_raise is False,
-                         "invalid receiver initializer mode")
-                match value:
-                    case MIRSlotId():
-                        _require(value in slots and slots[value].kind is MIRSlotKind.PARAMETER
-                                 and slots[value].value_kind is MIRValueKind.SCALAR
-                                 and slots[value].type == member.type, "invalid receiver initializer parameter")
-                    case MIRConstant(value=literal):
-                        _require(leaf_constant(member.type, literal), "invalid receiver initializer constant")
-                    case _:
-                        raise MIRValidationError("invalid receiver initializer")
-                continue
-            # An owned leaf is copied from a parameter's storage -- the
-            # caller's through a readonly borrow (of its own type or the
-            # family's view), or the body's own by-value copy -- or from a
-            # constant, or moved out of the by-value copy.
-            match value:
-                case MIRSlotId():
-                    source = slots.get(value)
-                    _require(source is not None and source.kind is MIRSlotKind.PARAMETER and (
-                        mode is MIRMemberInitMode.COPY and (
-                            owned_borrow(source) and source.type == member.type
-                            or owned_storage(source) and source.type == member.type)
-                        or mode is MIRMemberInitMode.MOVE and owned_storage(source) and source.type == member.type),
-                        "invalid receiver initializer parameter")
-                case MIRConstant(value=literal):
-                    _require(mode is MIRMemberInitMode.COPY and owned_constant(member.type, literal),
-                             "invalid receiver initializer constant")
-                case _:
-                    raise MIRValidationError("invalid receiver initializer")
-            # A move into a base's own copy that the base copies on raises
-            # like the copy (`definitions._compose`).
-            _require(init_member.may_raise is (mode is MIRMemberInitMode.COPY
-                                               and bool(type_def_of(member.type).copy_may_raise))
-                     or mode is MIRMemberInitMode.MOVE and init_member.may_raise is True
-                     and bool(type_def_of(member.type).copy_may_raise),
-                     "receiver initializer exit fact mismatch")
+        validate_member_inits(init.fields, records[receiver.type].fields)
 
     def slot_type(slot: MIRSlotId) -> TpyType:
         _require(slot in slots, "undeclared operand or destination")
@@ -697,7 +780,6 @@ def _validate_structure(fn: MIRFunction) -> None:
         _require(not (write and slot.kind is MIRSlotKind.GLOBAL and readonly), "store through readonly global")
         tuple_member = False
         optional_member = False
-        inline_record = False
         # The layout of the container the place denotes so far, if it is one.
         container = slot.container_layout if region_holder(slot) else None
         # A container field written whole: no operation replaces one yet.
@@ -717,7 +799,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                     kind = MIRValueKind.SCALAR if member.kind is MIRValueKind.SCALAR else MIRValueKind.OWNED
                     _require(not (write and readonly), "store through readonly container")
                     container = None
-                    whole_container = inline_record = False
+                    whole_container = False
                 case MIRUnionPayload():
                     _require(kind is MIRValueKind.UNION and slot.union_layout is not None,
                              "union projection needs union payload")
@@ -771,7 +853,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                         container = expected_container_layout(member_type, field_readonly, records)
                         _require(container is not None, "unsupported container field")
                         whole_container = leaf_storage = True
-                    _require(storage_leaf(projection.type) or inline_record or leaf_storage, "unsupported field type")
+                    _require(modeled_field(projection.type), "unsupported field type")
                     if typ in records:
                         _require(projection.id in field_types, "field missing from record layout")
                     _require(field_types.setdefault(projection.id, projection.type) == projection.type,
@@ -785,7 +867,8 @@ def _validate_structure(fn: MIRFunction) -> None:
                     raise MIRValidationError("unsupported place projections")
         _require(not (write and tuple_member), "tuple element replacement is forbidden")
         _require(not (write and optional_member), "optional payload replacement is forbidden")
-        _require(not (write and inline_record), "inline record replacement is unsupported")
+        # An inline record member is replaced whole only by a member write
+        # (`validate_member_write`), which every write of such a place reaches.
         _require(not (write and whole_container), "container replacement is unsupported")
         if kind is MIRValueKind.OWNED and not place.projections and not owned_container(slot):
             _require(typ in records, "record place needs layout")
@@ -815,6 +898,22 @@ def _validate_structure(fn: MIRFunction) -> None:
         _require(type(call.may_raise) is bool and call.may_raise is (not summary.normal_return_only),
                  "call exit fact mismatch")
         _require(len(call.arguments) == len(summary.parameters), "call arity mismatch")
+        for parameter, path in (*((w.parameter, w.path) for w in summary.writes),
+                                *((o.parameter, o.path) for o in summary.returns)):
+            # Each field of a write or return path is a member of the record
+            # storage it is read from: hop 0 the record the argument binds
+            # (a descendant's layout carries its ancestors' fields), hop k
+            # the previous field's member record.
+            argument = slots.get(call.arguments[parameter])
+            storage = argument.type if argument is not None and record_type(argument.type) else None
+            ref = summary.parameters[parameter].borrowed_record
+            if storage is not None and ref is not None and not binds_at(records, storage, ref.type):
+                continue  # the argument check below refuses the binding itself
+            hops = path_hops(summary.parameters[parameter], path, storage)
+            _require(hops is not None and all(
+                record in records and MIRField(MIRFieldId(field.owner, field.name), field.type)
+                in records[record].fields for record, field in hops),
+                "call write field does not match record layout")
         # A pure stub reads every argument whatever its declared access.
         pure = isinstance(summary.callee, THIRStubCallee) and summary.callee.contract is THIRStubContract.PURE
         for sid, binding in zip(call.arguments, summary.parameters):
@@ -872,28 +971,6 @@ def _validate_structure(fn: MIRFunction) -> None:
             else:
                 _require(source.type == binding.type and source.value_kind is MIRValueKind.SCALAR,
                          "call scalar argument mismatch")
-
-    def construct_members_ok(value: MIRConstruct, members: tuple[MIRField, ...]) -> bool:
-        """One operand per member: an inert leaf by value, or an owned leaf
-        copied from what a readonly holder lends (its own borrow, a `String`
-        borrow or a view of its family) or moved out of owned temporary
-        storage; the construct may raise exactly when a copy may."""
-        if len(value.fields) != len(members) or type(value.may_raise) is not bool:
-            return False
-        raises = False
-        for src, member in zip(value.fields, members):
-            source = slots.get(src)
-            if source is None:
-                return False
-            if not owned_leaf(member.type):
-                if source.type != member.type or source.value_kind is not MIRValueKind.SCALAR:
-                    return False
-            elif leaf_borrow(source) and copies_into(source.type, member.type):
-                raises = raises or bool(type_def_of(member.type).copy_may_raise)
-            elif not (owned_storage(source) and source.type == member.type
-                      and source.kind is MIRSlotKind.TEMPORARY):
-                return False
-        return value.may_raise is raises
 
     pred: dict[MIRBlockId, set[MIRBlockId]] = {b: set() for b in blocks}
     initialized_storage: set[MIRSlotId] = set()
@@ -990,23 +1067,48 @@ def _validate_structure(fn: MIRFunction) -> None:
             validate_owned_value(value, typ, stmt.target)
         else:
             _require(typ in records and not records[typ].opaque, "element write type mismatch")
-            match value:
-                case MIRConstruct():
-                    _require(construct_members_ok(value, records[typ].fields),
-                             "incomplete or mistyped record construction")
-                case MIRCopy(source=source):
-                    holder = slots[source.root]
-                    _require(source.projections == (MIRDeref(),) and holder.value_kind is MIRValueKind.BORROWED
-                             and holder.type == typ and records[typ].copyable and value.may_raise is False,
-                             "record copy source or eligibility")
-                case MIRMove(source=source):
-                    _require(slots[source].value_kind is MIRValueKind.OWNED and slots[source].type == typ
-                             and not slots[source].readonly and records[typ].movable,
-                             "record move source or eligibility")
-                case MIRCall():
-                    validate_call_record(value, typ)
-                case _:
-                    raise MIRValidationError("element write type mismatch")
+            _require(isinstance(value, (MIRConstruct, MIRCopy, MIRMove, MIRCall)), "element write type mismatch")
+            validate_record_value(value, typ, stmt.target)
+
+    def validate_record_value(value: MIRRvalue, typ: TpyType, target: MIRPlace) -> None:
+        """What record storage of type `typ` takes, wherever it lives (a
+        local's or a temporary's own storage, what a holder points at, an
+        element, an inline member): a construct of its members, a copy of a
+        record source (`record_copy_ok`), a move out of other owned record
+        storage, or a call handing over a fresh result."""
+        match value:
+            case MIRConstruct():
+                _require(construct_members_ok(value, records[typ].fields),
+                         "incomplete or mistyped record construction")
+            case MIRCopy():
+                _require(record_copy_ok(value, typ), "record copy source or eligibility")
+            case MIRMove(source=source):
+                _require(source in slots and slots[source].value_kind is MIRValueKind.OWNED
+                         and slots[source].type == typ and not slots[source].readonly
+                         and records[typ].movable and source != target.root,
+                         "record move source or eligibility")
+            case MIRCall():
+                validate_call_record(value, typ)
+            case _:
+                raise MIRValidationError("record write needs a construct, move, copy or call")
+
+    def validate_member_write(stmt: MIRStatement, typ: TpyType) -> None:
+        """An inline record member replaced whole (`ln.a = v`): in place,
+        under the record a holder reaches, which keeps its identity; a
+        declared `readonly[...]` member, or one reached readonly, is never
+        replaced. C++ copy- or move-assigns, so the member is movable."""
+        _require(isinstance(stmt, MIRAssign), "record member write needs a replacement fact")
+        fact = stmt.storage_write
+        _require(isinstance(fact, MIRRecordWrite) and fact.mode is MIRRecordWriteMode.IN_PLACE
+                 and fact.rebind_owner is None, "record member write needs a replacement fact")
+        _, kind, readonly = place_info(stmt.target, write=True)
+        _require(kind is MIRValueKind.OWNED and not readonly, "store through readonly storage")
+        _require(typ in records and not records[typ].opaque and records[typ].movable,
+                 "record member replacement needs movable record")
+        for operand in operands(stmt.value):
+            _require(operand in slots and slots[operand].kind is not MIRSlotKind.GLOBAL,
+                     "global value needs explicit read")
+        validate_record_value(stmt.value, typ, stmt.target)
 
     def validate_owned_field_write(stmt: MIRAssign, typ: TpyType) -> None:
         # A field is initialized by its constructor; any later write replaces
@@ -1131,6 +1233,10 @@ def _validate_structure(fn: MIRFunction) -> None:
                 continue
             if stmt.target.projections and owned_leaf_place_type(stmt.target, slots) is not None:
                 validate_owned_field_write(stmt, target_type)
+                continue
+            if (stmt.target.projections and isinstance(member := stmt.target.projections[-1], MIRField)
+                    and record_type(unwrap_readonly(member.type))):
+                validate_member_write(stmt, target_type)
                 continue
             if isinstance(fact, MIRTupleInitialization):
                 _require(not stmt.target.projections and owned_tuple(target)
@@ -1350,25 +1456,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                                  and (isinstance(value, MIRConstruct)
                                       or fact is not None and fact.mode is MIRRecordWriteMode.IN_PLACE),
                                  "unsupported record replacement")
-                    match value:
-                        case MIRConstruct():
-                            _require(construct_members_ok(value, records[target_type].fields),
-                                     "incomplete or mistyped record construction")
-                        case MIRCopy():
-                            _require(records[target_type].copyable and value.may_raise is False
-                                     and place_type(value.source) == target_type
-                                     and (value.source.projections == (MIRDeref(),)
-                                          or (not value.source.projections
-                                              and slots[value.source.root].value_kind is MIRValueKind.OWNED)),
-                                     "record copy source or eligibility")
-                        case MIRCall():
-                            validate_call_record(value, target_type)
-                        case _:
-                            source = slots[value.source]
-                            _require(source.value_kind is MIRValueKind.OWNED
-                                     and source.type == target_type and not source.readonly
-                                     and records[target_type].movable and value.source != stmt.target.root,
-                                     "record move source or eligibility")
+                    validate_record_value(value, target_type, stmt.target)
                 case MIRBorrow():
                     target = slots[stmt.target.root]
                     source_type, source_kind, readonly = place_info(value.source)
@@ -1498,10 +1586,12 @@ def _validate_structure(fn: MIRFunction) -> None:
                     # The body's own container is moved out as the result.
                     _require(slot_type(term.value) == unwrap_own(fn.return_type), "return type mismatch")
                 elif owned_record_result(fn.return_type) is not None:
-                    # The body's own record storage is moved out: a readonly or
-                    # non-movable record would be copied instead.
+                    # The body's own record storage (a local's, or an `Own[R]`
+                    # parameter's) is moved out: a readonly or non-movable
+                    # record would be copied instead.
                     source = slots[term.value]
-                    _require(source.value_kind is MIRValueKind.OWNED and source.kind is not MIRSlotKind.PARAMETER
+                    _require(source.value_kind is MIRValueKind.OWNED
+                             and (source.kind is not MIRSlotKind.PARAMETER or handed_record(source))
                              and source.type == owned_record_result(fn.return_type) and not source.readonly
                              and source.type in records and records[source.type].movable,
                              "owned record return needs movable owned storage")

@@ -61,11 +61,11 @@ int32_t twin_via(const Counter& c);
 int32_t twin_items_grow(Counter& c);
 // def twin_items_write(c: Counter) -> int32:  # tpyc: mir(covered)
 int32_t twin_items_write(Counter& c);
-// def getter_through_field(w: Wrap) -> int32:  # tpyc: mir(uncovered /^call needs borrowed record name$/)
+// def getter_through_field(w: Wrap) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t getter_through_field(const Wrap& w);
 // def write_through_getter(c: Counter) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt write_through_getter(Counter& c);
-// def record_accessors(h: Holder) -> int32:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+// def record_accessors(h: Holder) -> int32:  # tpyc: mir(uncovered /^reference needs local name$/)
 int32_t record_accessors(Holder& h);
 // def call_virtual_getter(b: Base) -> int32:  # tpyc: mir(uncovered /^unsupported expression$/)
 int32_t call_virtual_getter(const Base& b);
@@ -178,15 +178,15 @@ struct Holder {
     explicit Holder(const Inner& inner);
 
     // @property
-    // def part(self) -> Inner:  # tpyc: mir(uncovered /^unsupported borrowed expression form$/)
+    // def part(self) -> Inner:  # tpyc: mir(covered) mir_summary(known)
     Inner& part();
 
     // @property
-    // def part(self) -> Inner:  # tpyc: mir(uncovered /^unsupported borrowed expression form$/)
+    // def part(self) -> Inner:  # tpyc: mir(covered) mir_summary(known)
     const Inner& part() const;
 
     // @part.setter
-    // def part(self, v: Inner) -> None:  # tpyc: mir(uncovered /^unsupported parameter type$/)
+    // def part(self, v: Inner) -> None:  # tpyc: mir(covered) mir_summary(known)
     void set_part(Inner&& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -410,27 +410,27 @@ inline Holder::Holder(const Inner& inner)
     : inner(inner),
       k(1) {}
 
-// # deferred getter body: an inline record field returned by reference -- design:
-// # deferred to nested records (a layout with a record field has no definition yet)
+// # getter body: an inline record field returned by reference (origin param0.inner); the
+// # record's definition composes its member record's
 // @property
-// def part(self) -> Inner:  # tpyc: mir(uncovered /^unsupported borrowed expression form$/)
+// def part(self) -> Inner:  # tpyc: mir(covered) mir_summary(known)
 //     return self.inner
 inline Inner& Holder::part() {
     return this->inner;
 }
 
-// # deferred getter body: an inline record field returned by reference -- design:
-// # deferred to nested records (a layout with a record field has no definition yet)
+// # getter body: an inline record field returned by reference (origin param0.inner); the
+// # record's definition composes its member record's
 // @property
-// def part(self) -> Inner:  # tpyc: mir(uncovered /^unsupported borrowed expression form$/)
+// def part(self) -> Inner:  # tpyc: mir(covered) mir_summary(known)
 //     return self.inner
 inline const Inner& Holder::part() const {
     return this->inner;
 }
 
-// # setter body: a record parameter (expanded to Own[Inner]) stored into a field
+// # setter body: a record parameter (expanded to Own[Inner]) moved into a field
 // @part.setter
-// def part(self, v: Inner) -> None:  # tpyc: mir(uncovered /^unsupported parameter type$/)
+// def part(self, v: Inner) -> None:  # tpyc: mir(covered) mir_summary(known)
 //     self.inner = v
 inline void Holder::set_part(Inner&& v) {
     this->inner = std::move(v);

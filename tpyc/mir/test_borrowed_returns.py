@@ -19,7 +19,7 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRCall, MIRConstruct, MIRDeref,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstruct, MIRDeref, MIRField,
     MIRFunction, MIRNotCovered, MIRReturn, MIRPoint, MIRPlace, MIRRecordWrite, MIRRecordWriteMode,
 )
 from .retention import analyze_retention
@@ -341,12 +341,23 @@ def test_call_results_are_live_alias_holders(workspace: MIRCallWorkspace, name: 
     ("recursive", "recursive or recursion-dependent call"),
     ("tuple_result", "unsupported return type"),
     ("optional_result", "unsupported return type"),
-    ("projected", "unsupported borrowed expression form"),
 ])
 def test_incomplete_result_evidence_stays_opaque(workspace: MIRCallWorkspace, name: str, reason: str) -> None:
     result = next(r for key, r in workspace.summaries.items() if key.name == name)
     assert result.state is MIRSummaryState.OPAQUE
     assert result.reason == reason
+
+
+def test_a_member_result_borrows_the_member_place(workspace: MIRCallWorkspace) -> None:
+    # `return outer.cell`: the result holder borrows the inline member.
+    body = workspace.bodies[MIRBodyId("main", "projected")]
+    assert isinstance(body, MIRFunction), body
+    borrow, = (s for b in body.blocks for s in b.statements
+               if isinstance(s, MIRAssign) and isinstance(s.value, MIRBorrow))
+    assert borrow.value.source.projections[0] == MIRDeref()
+    assert isinstance(borrow.value.source.projections[-1], MIRField)
+    returned, = (b.terminator.value for b in body.blocks if isinstance(b.terminator, MIRReturn))
+    assert returned == borrow.target.root
 
 
 def test_alias_of_kept_local_storage_publishes_nothing(workspace: MIRCallWorkspace) -> None:

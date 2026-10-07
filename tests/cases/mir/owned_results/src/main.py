@@ -133,14 +133,14 @@ def spawned(pool: Pool) -> int32:  # tpyc: mir(covered)
     return p.x + p.y
 
 
-# kept refusal: a user parameter taking the record by value. The parameter
-# only pins the refusal of an owning record parameter body, so sema's
-# never-consumed warning is expected.
-def take(p: Own[Point]) -> int32:  # tpyc: warning(/never consumed/) mir(uncovered /^unsupported parameter type$/)
+# free function: a user parameter taking the record by value is the body's
+# own storage, handed over by the caller. The parameter is only read, so
+# sema's never-consumed warning is expected.
+def take(p: Own[Point]) -> int32:  # tpyc: warning(/never consumed/) mir(covered) mir_summary(known)
     return p.x
 
 
-def give(n: int32) -> int32:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+def give(n: int32) -> int32:  # tpyc: mir(covered) mir_summary(known)
     return take(make(n))
 
 
@@ -206,8 +206,8 @@ class Holder:
     def __init__(self) -> None:
         self.p = Point(0, 0)
 
-    # kept refusal: a result stored into a record field
-    def put(self, n: int32) -> None:  # tpyc: mir(uncovered /^record field replacement is unsupported$/)
+    # method: a result handed over into an inline record field (replaced in place)
+    def put(self, n: int32) -> None:  # tpyc: mir(covered) mir_summary(known)
         self.p = make(n)
 
 

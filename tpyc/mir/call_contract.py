@@ -48,16 +48,19 @@ class MIRContainerElements:
     is never tracked, so a write of one element is a write of any."""
 
 
-# A place under a parameter: at most one field, then at most one container projection.
+# A place under a parameter: fields through inline record members, then at
+# most one container projection (`resolve_path` walks it).
 MIRParameterPath = tuple[THIRFieldIdentity | MIRContainerStructure | MIRContainerElements, ...]
 
 
 @dataclass(frozen=True)
 class MIRParameterWrite:
     """A write the callee may make through parameter `parameter`: at the
-    fields `path` names, ending in at most one container projection
-    (`(structure,)` grows or shrinks the container the parameter is,
-    `(F::items, elements)` replaces elements of its field)."""
+    place the fields of `path` name, one inline record member after
+    another, ending in at most one container projection (`(structure,)`
+    grows or shrinks the container the parameter is, `(F::items,
+    elements)` replaces elements of its field, `(L::a, P::x)` writes a
+    scalar of the record member `a`, `(L::a,)` replaces that member)."""
     parameter: int
     path: MIRParameterPath
 
@@ -67,11 +70,33 @@ class MIRReturnOrigin:
     """What a borrowed result may reach through parameter `parameter`: the
     place `path` names under it, in the write-path alphabet (`(F::items,)`
     is a container field of a record parameter, `(F::name,)` an owned-leaf
-    field a view result views). An empty path is the whole parameter,
-    whose caller projects a container argument into its elements region
-    when the result is no container itself."""
+    field a view result views, `(F::line, L::a)` a record member a record
+    result is). An empty path is the whole parameter, whose caller projects
+    a container argument into its elements region when the result is no
+    container itself."""
     parameter: int
     path: MIRParameterPath = ()
+
+
+# One step of a parameter path: the record storage a field is read from and
+# the field, keyed by its declaring owner (that storage or a struct-base
+# ancestor of it).
+MIRPathHop = tuple[NominalType, THIRFieldIdentity]
+
+
+@dataclass(frozen=True)
+class MIRResolvedPath:
+    """A parameter path walked hop by hop (`resolve_path`): its fields with
+    the storage each is read from, its trailing container projection, and
+    the access the place it reaches is lent at -- readonly when the
+    parameter is, or when any field on the way is `readonly[...]` typed."""
+    hops: tuple[MIRPathHop, ...]
+    projection: MIRContainerStructure | MIRContainerElements | None
+    readonly: bool
+
+    @property
+    def fields(self) -> tuple[THIRFieldIdentity, ...]:
+        return tuple(field for _, field in self.hops)
 
 
 @dataclass(frozen=True)
@@ -216,8 +241,10 @@ def parameter_binding_problem(typ: TpyType, binding: 'MIRParameterBinding') -> s
     A native container binds by reference (readonly exactly at CONST_REF)
     or, as `Own[...]`, as the callee's own storage; a container view binds
     by value, readonly when its element argument is; an `Own[...]` element
-    of a container (a scalar or owned leaf, or a plain record) is handed
-    over by value or by move."""
+    of a container (a scalar or owned leaf, or a plain record) and an
+    `Own[R]` record are handed over by value or by move, the callee's own
+    storage. Whether MIR models the record's definition is checked where
+    definitions are known (the lowering, the summary)."""
     owned = owned_value_type(typ)
     declared = unwrap_readonly(unwrap_ref_type(typ))
     subject = native_container_subject(typ)
@@ -231,7 +258,8 @@ def parameter_binding_problem(typ: TpyType, binding: 'MIRParameterBinding') -> s
         return "call parameter passing differs from its type"
     ref = binding.borrowed_record
     if ref is not None:
-        if (not isinstance(ref, THIRBorrowedRecord) or ref.type != bare
+        # Storage handed over is the callee's own, never a borrow of the caller's.
+        if (handed or not isinstance(ref, THIRBorrowedRecord) or ref.type != bare
                 or not record_type(bare) or type(ref.readonly) is not bool
                 or binding.readonly is not ref.readonly or binding.passing is not typ.param_passing(ref.readonly)):
             return "unsupported record call parameter"
@@ -254,7 +282,8 @@ def parameter_binding_problem(typ: TpyType, binding: 'MIRParameterBinding') -> s
                 and (binding.readonly or not readonly_elements(bare))):
             return "unsupported container view call parameter"
     elif handed:
-        if not (container_element(bare) and binding.passing in OWNING_PASSINGS and not binding.readonly):
+        if not ((container_element(bare) or record_type(bare))
+                and binding.passing in OWNING_PASSINGS and not binding.readonly):
             return "unsupported element call parameter"
     elif binding.readonly or not storage_leaf(typ, passing_representation(binding.passing)):
         return "unsupported scalar call parameter"
@@ -491,28 +520,136 @@ def _method_stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
 _CONTAINER_PROJECTIONS = (MIRContainerStructure, MIRContainerElements)
 
 
-def path_parts(parameter: object, path: object, parameters: tuple[MIRParameterBinding, ...]
-               ) -> tuple[tuple[THIRFieldIdentity, ...], MIRContainerStructure | MIRContainerElements | None] | None:
-    """Split a parameter path into its fields and its container projection
-    under the one grammar writes and return origins share: at most one
-    field, then at most one container projection. None when the parameter
-    index or the path is malformed."""
+def path_hops(binding: MIRParameterBinding, path: object, storage: NominalType | None = None
+              ) -> tuple[MIRPathHop, ...] | None:
+    """The hops of the fields leading a parameter path, in order: hop 0
+    reads the record the parameter binds (`storage` when given: the record
+    an argument binds at the call, which may be a descendant of the
+    parameter's), hop k the record the previous field is. A container
+    projection may only end the path. None when the path is malformed: a
+    step that is neither a field nor a final projection, fields under a
+    parameter binding no record, or a field before the last that is no
+    record (a scalar, owned-leaf or container field ends the chain).
+
+    Each field is keyed by its declaring owner, the hop's storage or one of
+    its struct-base ancestors; its membership in that storage's layout is
+    checked where layouts are known (the call, the summary)."""
+    if not isinstance(path, tuple):
+        return None
+    fields = path[:-1] if path and isinstance(path[-1], _CONTAINER_PROJECTIONS) else path
+    if not all(isinstance(f, THIRFieldIdentity) for f in fields):
+        return None
+    if not fields:
+        return ()
+    ref = binding.borrowed_record if isinstance(binding, MIRParameterBinding) else None
+    if not isinstance(ref, THIRBorrowedRecord):
+        return None
+    current = storage if storage is not None else ref.type
+    hops: list[MIRPathHop] = []
+    for field in fields:
+        if hops:
+            current = unwrap_readonly(hops[-1][1].type)
+            if not record_type(current):
+                return None
+        hops.append((current, field))
+    return tuple(hops)
+
+
+def resolve_path(parameter: object, path: object, parameters: tuple[MIRParameterBinding, ...]
+                 ) -> MIRResolvedPath | None:
+    """Walk a parameter path under the one grammar writes and return origins
+    share: fields through inline record members (`path_hops`), then at most
+    one container projection. The access at its end accumulates: readonly
+    when the parameter is, or when any field on the way is `readonly[...]`
+    typed. None when the parameter index or the path is malformed."""
     if (type(parameter) is not int or not 0 <= parameter < len(parameters)
             or not isinstance(path, tuple)):
         return None
-    projection = path[-1] if path and isinstance(path[-1], _CONTAINER_PROJECTIONS) else None
-    fields = path[:-1] if projection is not None else path
-    if len(fields) > 1 or not all(isinstance(f, THIRFieldIdentity) for f in fields):
+    binding = parameters[parameter]
+    hops = path_hops(binding, path)
+    if hops is None:
         return None
-    return fields, projection
+    projection = path[-1] if path and isinstance(path[-1], _CONTAINER_PROJECTIONS) else None
+    if not hops:
+        return MIRResolvedPath((), projection, binding.readonly)
+    readonly = binding.borrowed_record.readonly or any(isinstance(f.type, ReadonlyType) for _, f in hops)
+    return MIRResolvedPath(hops, projection, readonly)
 
 
 def record_field(field: THIRFieldIdentity, ref: THIRBorrowedRecord | None) -> bool:
     """Whether `field` can be a field of the record a borrowed record
-    parameter binds: one keyed by its declaring owner, the record or an
-    ancestor. Its membership in the layout of the storage an argument binds
-    is checked where that layout is known (the call, the summary)."""
+    parameter binds, or of a record member reached from it: one keyed by
+    its declaring owner, the hop's record or an ancestor. Its membership in
+    the layout of the storage the hop reads is checked where that layout is
+    known (the call, the summary)."""
     return ref is not None and record_type(field.owner) and isinstance(field.name, str) and bool(field.name)
+
+
+def endpoint_admitted(binding: MIRParameterBinding, resolved: MIRResolvedPath,
+                      result: THIRBorrowedRecord | None = None) -> bool:
+    """Whether the place a resolved path reaches may be written (`result`
+    None) or reached by the borrowed result `result`: the one endpoint
+    table for summary writes and return origins.
+
+    Under a record parameter (every field a `record_field`), a write needs
+    a mutable path and ends at a scalar leaf (written in place), an owned
+    leaf (its buffer replaced), a record member (replaced whole) or a
+    container projection of a container field whose members MIR models. A
+    return ends at no projection: a view result views an owned-leaf field
+    of its family; a container or record result is a field of exactly its
+    type, never lent with more access than the path lends.
+
+    The whole parameter (no field): a write projects a mutable borrowed or
+    owned container, or the elements of a writable container view (a view
+    cannot change its container's shape). A return is a lent leaf a view
+    result views, a container parameter whose elements or whole self the
+    result is, or a record parameter the record result is."""
+    if not resolved.hops:
+        return _whole_parameter_endpoint(binding, resolved.projection, result)
+    if not all(record_field(field, binding.borrowed_record) for _, field in resolved.hops):
+        return False
+    bare = unwrap_readonly(resolved.hops[-1][1].type)
+    if result is None:
+        if resolved.readonly:
+            return False
+        if resolved.projection is not None:
+            return native_container_type(bare) and modeled_members(bare)
+        return storage_leaf(bare) or owned_leaf(bare) or record_type(bare)
+    if resolved.projection is not None:
+        return False
+    if view_leaf(result.type):
+        return owned_leaf(bare) and view_compatible(result.type, bare)
+    return ((native_container_type(bare) and modeled_members(bare) or record_type(bare))
+            and bare == result.type and (result.readonly or not resolved.readonly))
+
+
+def _whole_parameter_endpoint(binding: MIRParameterBinding,
+                              projection: MIRContainerStructure | MIRContainerElements | None,
+                              result: THIRBorrowedRecord | None) -> bool:
+    if result is None:
+        if projection is None or binding.readonly or binding.borrowed_record is not None:
+            return False
+        if native_container_type(binding.type) and modeled_members(binding.type):
+            return True
+        return (container_view(binding.type) and modeled_members(binding.type)
+                and isinstance(projection, MIRContainerElements))
+    if projection is not None:
+        return False
+    if view_leaf(result.type):
+        # A view result borrows what a lent parameter of its family reaches.
+        return binding.readonly and binding.borrowed_record is None and view_compatible(result.type, binding.type)
+    if binding.borrowed_record is None and (native_container_type(binding.type) or container_view(binding.type)):
+        # A container view or element result rooted in a container
+        # parameter's elements is published as the whole parameter, as
+        # is the container itself.
+        return ((view_compatible(result.type, binding.type) if container_view(result.type)
+                 else result.type in binding.type.type_args or result.type == binding.type)
+                and (result.readonly or not binding.readonly))
+    source = binding.borrowed_record
+    # A whole record parameter is a record result of its own type; a
+    # container result of a record parameter names its field.
+    return not (container_view(result.type) or source is None or source.type != result.type
+                or source.readonly and not result.readonly)
 
 
 def binds_at(records: Mapping[NominalType, 'MIRRecordLayout'], storage: NominalType, slot: NominalType) -> bool:
@@ -526,82 +663,27 @@ def binds_at(records: Mapping[NominalType, 'MIRRecordLayout'], storage: NominalT
 def return_origin_problem(origin: MIRReturnOrigin, result: THIRBorrowedRecord,
                           parameters: tuple[MIRParameterBinding, ...]) -> str | None:
     """Check one published return origin against the borrowed result it
-    reaches (bound at the definition's receiver). A whole parameter: a lent
-    leaf a view result views, a container parameter whose elements or
-    whole self the result is, or a record parameter the record result is.
-    A field of a borrowed record parameter: a container field a container
-    result is, or an owned-leaf field a view result views. Never more
-    access than the source lends."""
-    parts = path_parts(origin.parameter, origin.path, parameters) if isinstance(origin, MIRReturnOrigin) else None
-    if parts is None:
+    reaches (bound at the definition's receiver): a path of the grammar
+    (`resolve_path`) whose endpoint the result may reach
+    (`endpoint_admitted`)."""
+    resolved = (resolve_path(origin.parameter, origin.path, parameters)
+                if isinstance(origin, MIRReturnOrigin) else None)
+    if resolved is None:
         return "invalid return parameter"
-    fields, projection = parts
-    binding = parameters[origin.parameter]
-    if projection is not None:
-        return "unsupported return origin type or access"
-    if fields:
-        ref, field = binding.borrowed_record, fields[0]
-        bare = unwrap_readonly(field.type)
-        if not record_field(field, ref):
-            return "unsupported return origin type or access"
-        if view_leaf(result.type):
-            return None if owned_leaf(bare) and view_compatible(result.type, bare) else (
-                "unsupported return origin type or access")
-        if not (native_container_type(bare) and modeled_members(bare) and bare == result.type
-                and (result.readonly or not ref.readonly and not isinstance(field.type, ReadonlyType))):
-            return "unsupported return origin type or access"
-        return None
-    if view_leaf(result.type):
-        # A view result borrows what a lent parameter of its family reaches.
-        if not (binding.readonly and binding.borrowed_record is None
-                and view_compatible(result.type, binding.type)):
-            return "unsupported return origin type or access"
-        return None
-    if binding.borrowed_record is None and (native_container_type(binding.type) or container_view(binding.type)):
-        # A container view or element result rooted in a container
-        # parameter's elements is published as the whole parameter, as
-        # is the container itself.
-        if not ((view_compatible(result.type, binding.type) if container_view(result.type)
-                 else result.type in binding.type.type_args or result.type == binding.type)
-                and (result.readonly or not binding.readonly)):
-            return "unsupported return origin type or access"
-        return None
-    source = binding.borrowed_record
-    # A whole record parameter is a record result of its own type; a
-    # container result of a record parameter names its field.
-    if (container_view(result.type) or source is None or source.type != result.type
-            or source.readonly and not result.readonly):
+    if not endpoint_admitted(parameters[origin.parameter], resolved, result):
         return "unsupported return origin type or access"
     return None
 
 
 def write_problem(write: MIRParameterWrite, parameters: tuple[MIRParameterBinding, ...]) -> str | None:
-    """Check one published parameter write: at most one field of a mutable
-    borrowed record, then at most one container projection of a container
-    the path reaches -- the parameter itself (a mutable borrowed or owned
-    container, or a writable container view, whose shape a view cannot
-    change) or a container field. A readonly parameter is never written."""
-    parts = (path_parts(write.parameter, write.path, parameters)
-             if isinstance(write, MIRParameterWrite) and write.path else None)
-    if parts is None:
+    """Check one published parameter write: a non-empty path of the grammar
+    (`resolve_path`) whose endpoint may be written (`endpoint_admitted`). A
+    readonly parameter is never written."""
+    resolved = (resolve_path(write.parameter, write.path, parameters)
+                if isinstance(write, MIRParameterWrite) and write.path else None)
+    if resolved is None:
         return "invalid call write path"
-    fields, projection = parts
-    binding = parameters[write.parameter]
-    if not fields:
-        if binding.readonly or binding.borrowed_record is not None:
-            return "unsupported call write field or access"
-        if native_container_type(binding.type) and modeled_members(binding.type):
-            return None
-        if (container_view(binding.type) and modeled_members(binding.type)
-                and isinstance(projection, MIRContainerElements)):
-            return None
-        return "unsupported call write field or access"
-    ref = binding.borrowed_record
-    field = fields[0]
-    if (not record_field(field, ref) or ref.readonly
-            or not (projection is None and (storage_leaf(field.type) or owned_leaf(field.type))
-                    or projection is not None and native_container_type(field.type)
-                    and modeled_members(field.type))):
+    if not endpoint_admitted(parameters[write.parameter], resolved):
         return "unsupported call write field or access"
     return None
 

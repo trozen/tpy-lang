@@ -1218,6 +1218,8 @@ Status: implemented and verified for the autonomous M2.6-M2.8 batch.
 M2.5 landed on master as `2cb3c41d3f`. This is an architectural extension of
 the analysis-only THIR/MIR contract, not a new source feature or a lifetime
 checker. Existing acceptance, diagnostics and C++ emission stay unchanged.
+The whole-field replacement and nested owning operations this increment
+excludes are the [nested records](#nested-records) rules of B3.
 
 ### Observable contract and evidence
 
@@ -1933,13 +1935,18 @@ form facts, never on lists of accepted kinds.
   storage moved out, and a resolved call handing one over is a record
   value wherever record storage takes a construct -- an owned local, a
   reseat, an element, a handed-over argument, a full-expression temporary
-  ([owned record results](#owned-record-results)).
+  ([owned record results](#owned-record-results)). An inline record field
+  is a place of its record's storage: a record's definition composes its
+  member records' definitions, a member is replaced whole in place, copied,
+  borrowed, returned as a borrowed result and lent to a call, an `Own[R]`
+  parameter is the body's own storage, and a parameter path runs through
+  one or more members ([nested records](#nested-records)).
   Remaining, in this order: view fields (a
   record retaining a loan; the owned record result now exists, so a record
   with a view field returned by value is where field-held origins enter a
   summary's `returns`) with `retains` on `MIRParameterWrite`; nested
-  container elements and nested records (an inline record field as a
-  place and as a return origin); record-element literal member-init. From
+  container elements; record elements whose record has record fields
+  (`list[Line]`); record-element literal member-init. From
   here on each step builds the call-effect contracts it needs --
   retention, invalidation, exceptional behavior -- where
   `call_contract.py` today excludes globals and requires empty
@@ -2684,10 +2691,12 @@ as the corpus grows).
   record's definition refuses a constructor with body effects, so the
   method's summary is OPAQUE ("summary record: constructor body effects")
   and the constructor refuses ("call needs finalized known summary"); a
-  field, call-result, constructor-temporary or
-  element receiver (`o.inner.bump()`, `pick(g).read()`, `Gauge(k).read()`,
+  call-result, constructor-temporary or
+  element receiver (`pick(g).read()`, `Gauge(k).read()`,
   `gs[0].bump()`), "call needs borrowed record name", the limit record
-  arguments of free functions have -- a getter through a call result
+  arguments of free functions have (an inline record field receiver,
+  `o.inner.bump()`, lowers through a holder of the member:
+  [nested records](#nested-records)) -- a getter through a call result
   (`c.via().count`) is the same refusal (`mir/accessor_calls`
   `twin_via`); a generic record's
   method, where the caller's parameter of that record refuses first
@@ -2711,9 +2720,10 @@ as the corpus grows).
   summary"). The lifecycle hooks (`LIFECYCLE_HOOKS`) and the constructor
   (`INIT_METHOD`) are the names the language defines them by, decided once
   at the parse node and read by the record's accessors and the body
-  predicate alike. Receivers beyond a name or `self` (a field, a call
-  result, a temporary, an element) refuse, so a getter reached through
-  `self.c.count` or `c.via().count` refuses where `c.count` lowers.
+  predicate alike. Receivers beyond a name, `self` or an inline record
+  field (a call result, a temporary, an element) refuse, so a getter
+  reached through `c.via().count` refuses where `c.count` and
+  `self.c.count` lower.
 - **Measured, user method summaries** (same tool and sample; branch base
   d1fb396703 vs the finished branch; 11046 test bodies on the base, 11140
   on the branch, the 94 more being `mir/method_calls`): lowered 2033 ->
@@ -2839,8 +2849,9 @@ validator) and `tpyc/mir/test_return_origins.py` (MIR).
   (`test_a_setter_passes_its_value_as_its_body_declares`).
   MIR verdicts: the `int32` and `str` setters summarize KNOWN (writes
   `param0.n`, `param0.name`); an `Own[str]` setter too (probe); a record
-  setter refuses at its parameter, "unsupported parameter type", as a free
-  function's `Own[R]` parameter does (`Holder.part`); a container setter
+  setter summarizes KNOWN too, its `Own[R]` parameter the body's own
+  storage moved into the inline field (`Holder.part`,
+  [nested records](#nested-records)); a container setter
   refuses at the field it replaces, "container field replacement is
   unsupported" (probe).
 - **What a caller consumes.** A getter read `c.count` is a
@@ -2865,13 +2876,15 @@ validator) and `tpyc/mir/test_return_origins.py` (MIR).
   (`BUGS.md#getter-borrow-whole-record-false-positive`).
 - **Kept refusals.** A getter on a record inheriting a `@dynamic`
   protocol, "unsupported expression" (`call_virtual_getter`); a getter
-  through a call result or a field, "call needs borrowed record name"
-  (`twin_via`, `self.c.count` probed); an inline record getter result
-  (`return self.inner`), the getter body "unsupported borrowed expression
-  form" and its caller "call needs finalized known summary"
-  (`record_accessors`; deferred to nested records: a layout with a record
-  field has no definition yet); accessors of a generic or virtual owner
-  and a method + property name clash (unit-pinned).
+  through a call result, "call needs borrowed record name"
+  (`twin_via`; a getter through an inline record field receiver lowers,
+  `getter_through_field`); a field read through a getter CALL result
+  (`h.part.x` in `record_accessors`), "reference needs local name": THIR
+  publishes no field identity on a field read whose receiver is a call,
+  while `q = h.part; q.x` lowers (the getter returning the inline field,
+  `return self.inner`, summarizes KNOWN with origin `param0.inner`:
+  [nested records](#nested-records)); accessors of a generic or virtual
+  owner and a method + property name clash (unit-pinned).
 
 #### Projected return origins
 
@@ -2880,28 +2893,31 @@ validator) and `tpyc/mir/test_return_origins.py` (MIR).
   frozenset[MIRReturnOrigin]`, and the caller binds the result holder to
   exactly the referent the direct borrow of that place produces. The path
   is a `MIRParameterPath`, the alphabet `MIRParameterWrite.path` uses, under
-  one grammar (`call_contract.path_parts`): at most one field, then at most
-  one container projection. The whole parameter is the empty path. The
-  MIR dump spells `returns={param0.items}` / `returns={param0}`.
+  one grammar (`call_contract.resolve_path`): fields through inline record
+  members, then at most one container projection
+  ([nested records](#nested-records) has the hop rule). The whole
+  parameter is the empty path. The MIR dump spells
+  `returns={param0.items}` / `returns={param0}`.
 - **Body rule** (`summaries.summarize_function`). The field path of a
   returned referent is kept, never widened to the whole parameter. Into a
   borrowed record parameter it admits the record itself (a record result
   of its own type), a container field (a container result:
-  `return self.items` -> `param0.items`) and an owned-leaf field a `str` /
+  `return self.items` -> `param0.items`), an owned-leaf field a `str` /
   `bytes` view result views (`return self.name` at `-> StrView` ->
-  `param0.name`); the field must belong to the record's certified layout
+  `param0.name`) and an inline record member a record result of its type
+  is (`return self.a` -> `param0.a`); each
+  field must belong to the certified layout of the storage its hop reads
   ("summary return field differs from definition"). Anything else
   refuses "summary unsupported return origin": a Span over a field
-  (`test_unspellable_origins_refuse`), a record from inside a record
-  (deferred to nested records). A result rooted in a parameter that is
+  (`test_unspellable_origins_refuse`). A result rooted in a parameter that is
   no record (a container, a Span, a leaf) keeps the whole-parameter
   origin.
 - **Summary check** (`return_origin_problem`, inside `summary_problem`).
   Origins are validated as writes are: the grammar, a field of the
   parameter's record, an endpoint typed for the result (a container field
-  equal to a container result, an owned leaf compatible with a view
-  result), and never more access than the source lends, checked with the
-  result bound at the definition's receiver.
+  or a record member equal to a container or record result, an owned leaf
+  compatible with a view result), and never more access than the source
+  lends, checked with the result bound at the definition's receiver.
 - **Caller** (`dependencies.resolve_call_returns`). Each origin's PLACE
   is built through `call_place` -- shared with call writes -- and its
   referents resolved in sequence, like a direct borrow of it; a non-empty
@@ -3106,8 +3122,9 @@ facts) and `tpyc/mir/test_inherited_records.py` (MIR).
   `super().m()` / `Base.m(self)` inside a subclass body, whose call
   carries no receiver (C++ `this->A::m()`; "call needs resolved ordinary
   callee", probed); generic, native and exception bases (the eligibility
-  refuses them, unit-pinned); a record field of subclass type (nested
-  records).
+  refuses them, unit-pinned). A record field of subclass type is a
+  [nested record](#nested-records) member: an inherited method called on it
+  (`h.s.grow()`) binds at the member's own storage.
 - **Measured, inherited records** (`scripts/mir_coverage --corpus tests`,
   11187 bodies common to base and after): lowered 2293 -> 2351 (41
   constructors, 10 methods, 3 dunders, 3 free functions, 1 property; none
@@ -3123,8 +3140,10 @@ covered definition shape and caller below (with `mir_owned` /
 `mir_borrowed` / `mir_write` at the owned local and the reseat), the
 certified call temporaries (`use_temp`, `spawn_temp`, `lend_temp`), and
 the source-reachable kept refusals (`reassigned`, `reseat_return`,
-`take` / `give`, `maybe`, `make_pinned`, `make_tok`, `make_box`,
-`Holder.put`). `tpyc/mir/test_owned_results.py` pins the MIR each rule
+`maybe`, `make_pinned`, `make_tok`, `make_box`); `take` / `give` (an
+`Own[R]` parameter) and `Holder.put` (a call result stored into a record
+field) are covered under the [nested records](#nested-records) rules.
+`tpyc/mir/test_owned_results.py` pins the MIR each rule
 builds (the returned backing, a result slot per branch, the write modes
 and temporaries), the refusals the case cannot hold (`from_borrow`,
 `from_param`, `make_hooked`, `stamped`, `stamp_order`, `lend_stamp`,
@@ -3189,8 +3208,9 @@ call on a call result.
   storage publishes nothing: `returns` stays empty, and a write into it is
   no parameter write.
   - HANDED OVER: its storage leaves the body only by a TRANSFER -- a
-    return (the caller owns it), a move out, or an argument at an owning
-    passing -- with no borrow of it live at that transfer (the dependency
+    return (the caller owns it), a move out, an argument at an owning
+    passing, or a temporary a construct moves into the record or element
+    it builds -- with no borrow of it live at that transfer (the dependency
     facts' holders at the transfer point), and the body reads it otherwise
     only through the borrow its holder takes. Borrows that complete before
     the transfer are harmless.
@@ -3209,9 +3229,10 @@ call on a call result.
   ("summary unsupported return origin", pinned over THIR damage in
   `test_owned_results`; sema refuses the source with "Cannot return local
   or temporary as reference"), and a write origin outside the parameters
-  refuses. The stores that would leave such a holder in caller storage are
-  refused at admission: a record field store ("record field replacement is
-  unsupported"), a view field store and a view appended to a parameter's
+  refuses. A record member store puts no holder in caller storage: it
+  copies the record into the member, or moves it out (a transfer). The
+  stores that would leave such a holder in caller storage are
+  refused at admission: a view field store and a view appended to a parameter's
   list (THIR rejects both), a borrowed record handed to an owning stub
   parameter ("unsupported record argument"). The summary's operation
   filter admits what a private slot's body does: a record holder's
@@ -3227,9 +3248,9 @@ call on a call result.
   `lend_temp`), as does every covered factory; the refused ones
   (`reassigned`, `reseat_return`, `make_pinned`, `make_tok`, `make_box`)
   summarize OPAQUE by their refusal. A record temporary a list literal
-  takes as an element (`[Point(0, 0)]`) is read by the literal's
-  `MIRConstruct`, neither a transfer nor an own use, so such a body stays
-  OPAQUE "summary storage or value shape".
+  takes as an element (`[Point(0, 0)]`) is moved in by the literal's
+  `MIRConstruct`, a transfer, so such a body summarizes KNOWN
+  (`test_a_list_literal_element_temporary_is_handed_over`).
 - **Callers** (`lower.record_value(..., call=True)`). A resolved user call
   (`THIRCall` / `THIRMethodCall`) is a record value of type `R` when its
   summary is finalized KNOWN ("call needs finalized known summary"), its
@@ -3287,14 +3308,10 @@ call on a call result.
   storage fails validation); call writes in operand order (`stamped`,
   `stamp_order`); a borrow of a call temporary kept past its statement
   (hand-built: a `scope_end` conflict on the connected backing).
-- **Kept refusals**, by reason. A user function's `Own[R]` PARAMETER body
-  (`take(p: Own[Point])`), "unsupported parameter type", and its caller
-  "call needs finalized known summary"; an Optional or union payload
+- **Kept refusals**, by reason. An Optional or union payload
   bound to a call (`p: Point | None = None; p = make(n)`), "unsupported
   record initializer"; a hoisted declaration from a call (`if flag: cell
-  = make()`), "unsupported expression type"; a call result stored into a
-  record field (`h.c = make()`), "record field replacement is
-  unsupported" (nested records); a method call on a call result
+  = make()`), "unsupported expression type"; a method call on a call result
   (`make(n).get()`), "call needs borrowed record name"; a field BORROWED
   off a call temporary (`v: StrView = make_named(s).name`), "reference
   needs local name" -- a record with an owned-leaf field gets no
@@ -3312,6 +3329,312 @@ call on a call result.
   conflicts 19 -> 19, certified 60 -> 60; the old first blockers:
   `unsupported return type` 56, `unsupported record initializer` 2;
   generated C++ and diagnostics byte-identical.
+
+#### Nested records
+
+`tests/cases/mir/nested_records` (exec and cpy) pins the verdicts and line
+facts: every constructor (copied, moved and composed members), the member
+writes (`mir_write(ln.a) mir_owned(ln.a)` at `ln.a = Point(9, "n")`,
+`mir_write(self.a)` in `Line.reset`, `mir_write(ln.a)` at the call
+`ln.reset(4)`), member holders (`mir_borrows(held, ln.a)`, and
+`mir_borrows(p, ln.a)` through `p = ln.first()`), the five `replacement`
+conflicts below beside their safe siblings, the owned and handed-over
+records (`build`, `build_frame`, `owned_local_path`, `adopt`,
+`keep_and_store`, `composed`), their callers handing over temporaries
+(`hand_over_callers`; `adopt_live`, a holder under the member a callee
+replaces by a move, conflicts), and `mutate_through_member`, whose write
+through a member holder is observed through the owner (after a silent copy
+the owner would keep its old value). `tpyc/mir/test_nested_records.py`
+pins the MIR each rule builds
+and the validator's refusals over hand-built MIR,
+`tpyc/mir/test_nested_summaries.py` the summaries,
+`tpyc/mir/test_return_origins.py` the path grammar and
+`tpyc/thir/test_constructor_params.py` the THIR constructor-parameter
+fact. Other cases pin covered bodies under these rules: `mir/owned_results`
+`take`, `give` and `Holder.put`; `mir/accessor_calls` the `part` getter
+and setter and `getter_through_field`; `mir/method_calls`
+`field_receiver`.
+
+- **Invariant.** An inline record field is a place of its record's
+  storage, keyed like every field by (declaring owner, name): built with
+  the record by its member initializer, replaced in place by a whole-member
+  write (a replacement event of exactly that place; the record around it
+  keeps its identity), borrowed, copied and lent through its owner's
+  holder. A record's verified definition composes its member records'
+  definitions, and reads its container fields' element definitions, as it
+  composes its struct bases'.
+- **Definitions** (`mir/definitions.py`). `MIRDefinitions` verifies what a
+  definition reads before the record itself (`_read_records`: struct
+  bases, record fields, the record members of container fields). A field is
+  admitted by shape through one predicate, `scalar_leaves.modeled_field` (a
+  scalar leaf, an owned leaf, a native container or a `record_type`,
+  `readonly` removed), which the definition, the validator's layouts and
+  `place_info` read; a layout holding any other field (an Optional, union,
+  tuple, `Ptr`, `Box` or `Rc` field) refuses "unsupported record fields".
+  Each member record's definition must verify (`_member_definitions`,
+  "member definition: <reason>": `HasHooked` "... custom record special
+  member", `HasEffect` "... constructor body effects", a value-type or
+  exception member "... missing constructor definition"), and a container
+  field's elements are read through the shared `container_definition`
+  (`Bag`, whose `list[Loud]` element runs a copy hook: "unsupported native
+  container element"). A record holding itself inline is malformed input
+  (C++ forbids it): the placeholder refuses "member definition: cyclic
+  record definition". A body's layouts close transitively over member
+  records (`close_layouts`), and the validator requires the layout of every
+  record field ("record field needs its layout").
+- **Constructor parameters and member initializers.** THIR publishes
+  `THIRParam.borrowed_record` on a constructor's record parameters at the
+  constructor's own const verdict, as on a function's; an `Own[R]`
+  parameter carries none. `definitions.record_parameter` admits a record
+  lent readonly at CONST_REF or handed over at OWN
+  (`owned_record_parameter`); a record parameter the constructor mutates
+  refuses "constructor parameter type" (`Mutated`). A record member's
+  initializer (`_record_initializer`) takes one of three modes: COPY from a
+  readonly lent parameter, spelled bare (`self.a = a`, the implicit copy
+  sema warns about) or `copy(a)` -- one initializer for both spellings;
+  MOVE from an `Own[R]` parameter (`self.b = b`); or a composed construct
+  (`self.p = Point(x, name)`): the member's own verified definition
+  composed with one leg per argument by the base-initializer composition
+  (`_composed` / `_base_leg` / `_compose`, with the role's wording,
+  "member argument ..."), recorded as `MIRComposedConstruct(initializers)`
+  and moved in. A literal leg is a constant of the member's field; one
+  parameter in two borrowed legs is two copies (`Twice`). A borrowed
+  parameter is never moved ("constructor move needs an owned parameter").
+- **Record copies may raise.** `definitions.layout_copy_may_raise` is the
+  one exit fact of a whole-record copy: an owned-leaf field whose TypeDef
+  copy may raise, any container field (a new allocation), or a member
+  record whose copy may, recursively; a member whose layout is unknown
+  may. Every record copy reads it: the COPY member initializer, the
+  builder's `MIRCopy`, the validator's record copy (`record_copy_ok`,
+  shared by record destinations, element writes and member writes), the
+  receiver-initialization rule and `construct_members_ok`. A copy of a
+  record with a `str` or a `list` field is an exceptional exit, an
+  all-scalar record's is not (`duplicate_point`, `duplicate_plain`,
+  `duplicate_flat`); a record whose container element runs a copy hook has
+  no definition, so its copy refuses (`duplicate`, "unsupported native
+  container element").
+- **Receiver initialization** (`MIRMemberInits`). A composed member is
+  initialized at entry field by field, as the receiver is:
+  `MIRMemberInit(MIRMemberInits(fields), MOVE)`, one initializer per field
+  of the member's layout (a parameter slot or a constant), nested for a
+  composed member of a composed member, raising when some field may. The
+  dump spells `initialize-receiver %0 (move {%1, copy (*%2) may-raise},
+  %1)` (`Built`). A COPY member reads the lent parameter's holder and a
+  MOVE member the `Own[R]` parameter's storage slot (`Line`: `(copy (*%1)
+  may-raise, move %2)`); a container literal stays a `MIRConstruct`, inside
+  a composed member too (`HasListed`). `nodes.member_init_operands` lists
+  the slots entry initialization reads (entry liveness, reachable slots).
+  One recursive validator rule (`validate_member_init`) checks each nested
+  field by its own field's rule, the member layout's movability and
+  copyability and every exit fact (`test_receiver_record_member_validation`).
+- **`Own[R]` parameters.** A record handed over at OWN is the body's own
+  storage: a PARAMETER slot, OWNED, BODY duration, mutable, fixed owned,
+  reached through an unnamed holder borrowed at entry (the parameter's
+  name spells the storage slot, so a line annotation needs no `param(p)` /
+  `local(p)`), its definition verified (`take_hooked`: "custom record
+  special member"). C++ passes it as `R&&`, the caller materializing the
+  storage; the model follows the `Own[list[T]]` parameter's. It is returned
+  as that storage (`give`), moved into a member (`adopt`, `Frame.__init__`),
+  and a caller hands it a temporary (`hand_over`).
+  `call_contract.parameter_binding_problem` admits a record at an owning
+  passing, never readonly ("unsupported element call parameter") and never
+  with a borrowed-record fact ("unsupported record call parameter").
+- **Callers' constructs** (`record_value`'s construct arm, the validator's
+  `construct_members_ok`). An operand follows its constructor parameter's
+  passing, never "a temporary moves": a record lent at CONST_REF is copied
+  by the member through a holder -- the name's own, one borrowing a member
+  place (`Line(ln.a, mk(x))`), or one of a full-expression temporary bound
+  to the parameter (`Line(Point(x, "a"), mk(x))`: C++ binds the temporary
+  to `const Point&` and the member initializer copies it); a record handed
+  to `Own[R]` is built, copied or returned by a call into a full-expression
+  temporary the member moves from (`record_temporary`); a composed member
+  is built over the caller's own operands into full-expression storage and
+  moved in (the member's construct carries its copies, the outer construct
+  only moves). The validator takes per member a borrowed holder of a
+  copyable layout, raising by `layout_copy_may_raise`, or a mutable owned
+  temporary of a movable one. A writing operand refuses "effectful
+  constructor argument"; a composed construct outside a full expression
+  (a tuple member) "temporary needs full-expression boundary".
+- **Whole-member writes** (`ln.a = v`, `self.a = v`:
+  `_Coverage.member_write`). The value is what record storage takes
+  (`record_value(call=True)`): a construct, `copy(x)` of a name or a member
+  place, a borrowed name stored bare (C++ copies it; sema warns), a member
+  read stored bare (`self.a = self.b`), an owned local stored bare (`self.b
+  = t`, a copy through its holder), an `Own[R]` parameter moved at its last
+  use, or a call handing over an owned result (`Holder.put`). The builder
+  writes `MIRAssign(member place, value, MIRRecordWrite(IN_PLACE))`; the
+  validator requires that fact with no rebind owner, a mutable place and a
+  movable member ("record member write needs a replacement fact", "store
+  through readonly storage", "record member replacement needs movable
+  record": C++ move-assigns the member). `storage.owned_field` is the one
+  "replaced in place" predicate -- every modeled field but a scalar leaf --
+  so `storage_destination` makes the write an event of the member place.
+  `retention.affects` reaches holders at or under the member, not a
+  sibling member and not the record around it: replacing `f.line` reaches
+  a holder of `f.line.a`, replacing `f.line.a` spares `f.line` and
+  `f.line.b`; across external origins that may alias, any holder
+  (`test_member_write_reach`). A scalar write under a member (`ln.a.x =
+  7`, `self.a.x += 1`) stays no storage event.
+- **Record moves.** A `MIRMove` out of owned record storage is a
+  replacement event on the source (`coverage.moved_storage`, records beside
+  owned leaves and containers): a holder of the record or of a member
+  inside it read after the move conflicts. Pinned over hand-built MIR
+  (`test_a_record_move_replaces_its_source`): THIR spells the bare store a
+  copy while a borrow of the source is live.
+- **Member copies, results, receivers and arguments.** A record source
+  names storage in place (`_Coverage.record_source`): a name, `self`, or a
+  member read through them. `copy(ln.a)` copies the member place
+  (`copy_does_not_replace_source`, `Line.swap`); a member copied into an
+  element is copied from the place (`ps[0] = copy(ln.a)`), into a literal
+  through a holder of it. `return self.a` at a borrowed record result
+  borrows the member place into the result holder (`Line.first`), never
+  with more access than the path has ("return increases access"). A member
+  receiver (`o.inner.bump()`, `ln.a.get()`) and a member argument
+  (`read_point(ln.b)`) are lent through a holder borrowing the member place
+  at its access, and the call binds at the member's own record
+  (`via_member`: an inherited method called on a `Sub` member). Reseats,
+  aliases and wrapper captures keep needing a name (`reference_name`).
+- **Parameter paths** (`call_contract.py`). A `MIRParameterPath` is one or
+  more fields through inline record members, then at most one container
+  projection. `path_hops(binding, path, storage)` names the record each
+  field is read from: hop 0 the record the parameter binds (at a call, the
+  record the ARGUMENT binds, which may be a descendant), hop k the previous
+  field's record; a field after a projection, a field under a binding with
+  no record, or an intermediate field that is no record is malformed.
+  `resolve_path` adds the projection and the access, readonly when the
+  parameter is or when any field on the way is `readonly[...]`. One endpoint
+  table, `endpoint_admitted`, serves writes and return origins: a write
+  needs a mutable path ending at a scalar leaf, an owned leaf, a record
+  member or a projection of a container field whose members MIR models; a
+  return takes no projection and ends at an owned leaf of a view result's
+  family, or at a container or record field of exactly the result's type at
+  no more access. `write_problem` / `return_origin_problem` are those two
+  steps ("invalid call write path" / "invalid return parameter" for a
+  malformed path, "unsupported call write field or access" / "unsupported
+  return origin type or access" for its end). Layout membership is checked
+  per hop where layouts are known: at a call, in lowering and in the
+  validator, against the argument's bound record ("call write field does
+  not match record layout"), and in the summary ("summary write field
+  differs from definition", "summary return field differs from
+  definition"). The dump spells every field: `writes={param0.line.a.x}`.
+- **Summaries** (`summaries.py`). A published write or return origin is
+  the full field chain (`_published_path`) under the rules above. A read
+  through members (`ln.a.x`, `f.line.a.x`) under a borrowed record or the
+  body's private storage is admitted (`_member_chain`: every field before
+  the last a record member, the last a storage leaf). A record holder of a
+  member is tracked to the member's place, so a write through it is
+  published (`mutate_through_member`: `writes={param0.a.x}`) and a returned
+  one meets the return rule (`returns={param0.a}`). A member replaced whole
+  under a parameter is published as a write of the member (`Line.reset`:
+  `writes={param0.a}`), under private storage as nothing; a construct, a
+  move, or a copy of a whole owned root, a holder's referent, another
+  member or an element may fill it. A record temporary a construct names
+  as an operand -- an `Own[R]` member, a composed member, a list element --
+  is moved in: a transfer under the handed-over rule (private when nothing
+  else reads it and no holder of it is live at the construct), so `build`,
+  `build_frame` and `composed` summarize KNOWN with nothing published.
+- **Conflicts.** The existing `replacement` kind: a member replaced while
+  a holder borrows it (`replace_live`; sema warns "Mutation of 'ln.a' while
+  borrowed"); the member of a parameter that may alias the holder's owner
+  (`alias_external`); the member above the holder's replaced
+  (`replace_ancestor`: `f.line` under a holder of `f.line.a`; sema warns
+  on `f.line`); a method's published member write under the holder's
+  prefix (`member_receiver`: `held = f.line.first(); f.line.reset(9)`); a
+  member replaced through the callee's summary (`reset_live`: `held =
+  ln.a; ln.reset(4)`). Sema is silent on `alias_external`,
+  `member_receiver` and `reset_live`: on `reset_live` TPy reads the new
+  member where CPython keeps the old object (probed: 4 against 9), the
+  inline-member face of `BUGS.md#field-loan-whole-record-callee-unchecked`;
+  `alias_external` called with one object twice diverges the same way
+  (`BUGS.md#aliased-record-params-member-replaced`). A member holder
+  outliving its owner's block is a `scope_end` conflict (`escape_member`,
+  unit-pinned).
+- **Kept refusals**, by reason.
+  - A record ELEMENT whose record has record fields (`[Built(x, "e")]`),
+    "unsupported native container element" (`listed`): a container element
+    stays a record of leaf fields (`plain_record_element`).
+  - Optional, union, tuple, `Ptr`, `Box` and `Rc` fields, "unsupported
+    record fields" at the definition (a tuple and an Optional field pinned
+    in `test_owned.py`; an Optional record field probed).
+  - In a member initializer: a call result (`Called`, `self.a = mk(x)`),
+    "constructor initializer needs parameter or literal"; a record argument
+    of the member's constructor (`Nested`, `self.line = Line(a, b)`),
+    "member argument needs matching parameter or literal" (`_base_leg`
+    models no record leg), and with the same reason an `Own[str]`
+    parameter passed bare as a leg of the member's construct (`self.p =
+    Point(1, s)` with `s: Own[str]`; probed). One `Own[R]` parameter
+    stored into two members (`self.a = p; self.b = p`: THIR spells a copy,
+    then the move at the last use), "constructor initializer needs
+    parameter" (probed). A member whose constructor has body effects
+    (`HasEffect`), "member definition: constructor body effects", although
+    copying or moving a member never runs its constructor; a member whose
+    constructor stores an owned-leaf constant (`self.name = "t"`), "member
+    definition: constructor owned-leaf constant" (probed).
+  - A local moved into an `Own[R]` constructor argument (`moved_local`: `q
+    = Point(x, "q"); Line(Point(1, "a"), q)`), "move needs fixed movable
+    owned local": THIR spells the last-use `THIRMove` in STORAGE form over
+    a BORROW-form name, and the record move requires equal forms.
+  - An `Own[R]` parameter forwarded to another owning parameter (`return
+    consume(p)` with `p: Own[Point]`), "unsupported record argument"
+    (probed).
+  - Two-level member writes and member borrows into a local (`f.line.a =
+    v`, `held = f.line.a`) are THIR rejects (`assign.field_write_shape`,
+    `decl.slot_type`; probed); MIR reaches two levels through a call
+    (`held = f.line.first()`) and pins the two-level reach with
+    `affects()` rows.
+  - Full-expression temporaries of a record with a record member:
+    `Pair(Flat(x), 1).a.x` refuses "missing or invalid full-expression
+    storage", `make(x).a.x` and the scalar `make(x).n` "reference needs
+    local name" (probed): `full_expression_record` admits storage-leaf
+    fields only.
+  - A field read through a borrowed call result (`h.part.x`,
+    `record_accessors`), "reference needs local name": THIR publishes no
+    `field_identity` on a field read whose receiver is a call.
+  - `print` with a writing call beside a non-literal read (the case's
+    `main`, pinned), "order-sensitive eager operands", as it should; a
+    string literal beside a writing call (`print("label", tick(c))`,
+    probed) refuses the same, because `lower._literal` counts no
+    `THIRStrLiteral`.
+  - Precision, with no refusal: a member-borrow result (`Line.first`) is
+    covered, not certified ("borrow evidence: demanded operation is not a
+    supported record borrow"); a moved `Own[R]` constructor parameter keeps
+    a dead holder borrow at entry (`%2 = borrow %1` in `Line.__init__`);
+    an elements write on an external list conflicts with any live external
+    record holder (`held = ln.a; xs[0] = 1`, probed), the may-alias branch.
+  - One predicate not consolidated: THIR's `storage.field_identity` admits
+    a record member through `borrowed_record` (a modeled hierarchy), MIR's
+    definitions through `modeled_field` (`record_type`); they differ on a
+    value-type, generic-base, typed-dict or exception record member, which
+    the member definition refuses (the value-type and exception members
+    pinned: "member definition: missing constructor definition").
+- **Measured, nested records** (`scripts/mir_coverage --corpus tests`).
+  Base master d762c4c0d9: 2470 of 11258 test bodies lowered (21.9%; 26.3%
+  excluding module init), 19 bodies with a conflict, 63 certified, 1156
+  with exceptional exits. By mechanism, over the bodies both trees hold:
+  definitions +72 lowered, member writes, borrows, copies and receivers
+  +63, field-by-field receiver initialization +21, none lost at any stage.
+  Summaries over 11368 bodies: no KNOWN summary lost or changed, 12 then
+  48 gained. Chaining container-field elements into the definition took
+  the definition from 24 records whose container element MIR does not
+  model (`list[list[int32]]`, `list[Point | None]`, `list[Loud]` with a
+  copy hook); no body that lowered stopped lowering -- only the first
+  reason of bodies that already refused changed. Existing snapshots changed only in the source comments the
+  flipped pins edit (echoed into the generated C++) and fingerprints; no
+  diagnostic changed.
+  Integrated tree (master 17b8fa09a5 merged in): 2633 of 11260 bodies
+  lowered (23.4%; 28.1% excluding module init), 19 with a conflict, 73
+  certified, 1176 with exceptional exits. Over the 11250 bodies both runs
+  hold: lowered 2468 -> 2631 (+163: 70 constructors, 28 free functions,
+  26 methods, 20 dunder methods, 19 properties), none lost; by former
+  first blocker: 70 "unsupported record fields" constructors and 14 of
+  their callers and factories, 48 "unsupported borrowed expression form"
+  (a member returned by reference), 12 "unsupported parameter type"
+  (`Own[R]`), 7 "record field replacement is unsupported", 8 callers of a
+  method whose summary became KNOWN, 2 member receivers, 2 others.
+  Conflicts 19 -> 19 (the sample holds none of the nested-record conflict
+  shapes; they are pinned in `tests/cases/mir/nested_records`), certified
+  63 -> 73, exceptional exits 1156 -> 1176, every one of the 20 on a
+  newly lowered body: no body lowered in both runs changed its exit fact.
 
 ## Scope matrix and remaining increments
 

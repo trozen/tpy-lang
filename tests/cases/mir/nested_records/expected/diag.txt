@@ -1,0 +1,3 @@
+main.py:119: warning: Mutation of 'ln.a' while borrowed (field assignment may invalidate references)
+main.py:134: warning: Mutation of 'f.line' while borrowed (field assignment may invalidate references)
+main.py:227: warning: Own[Line] param 'src' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

@@ -1,0 +1,24 @@
+read_path 3
+member_result 101
+write_scalar 7
+replace_member 9 n
+mutate_through_member 50 50
+replace_live True 9
+reset_live True 4
+alias_external True 9
+sibling_survives 2
+scalar_call_is_not_replacement 10 10
+copy_does_not_replace_source 20
+copy_then_replace 10 5
+name_then_replace 1 z
+read_deep 6
+replace_ancestor True 1
+member_receiver True 9
+build_frame 10
+adopt 8
+keep_and_store 1 9
+owned_local_path 10
+composed 8
+hand_over_callers 10
+adopt_live True
+swap 2 1

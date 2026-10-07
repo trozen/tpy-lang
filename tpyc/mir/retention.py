@@ -107,9 +107,9 @@ def static_referent(ref: MIRReferent) -> bool:
 def affects(written: MIRReferent, retained: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
     """Whether replacing `written` reaches what a holder of `retained` holds.
     A literal's static storage is never written, so no replacement reaches
-    it. Replacing an owned-leaf or container field replaces that storage
-    only: the record around it keeps its identity, so only a holder at or
-    under the field is affected; a container's shape or elements write
+    it. Replacing an owned-leaf, container or record member field replaces
+    that storage only: the record around it keeps its identity, so only a
+    holder at or under the field is affected; a container's shape or elements write
     reaches what lies inside it (`_reach`). In private storage, or under one
     external origin, that is the path; across external origins that may
     alias, it is any holder that could lie inside the written storage: no
@@ -128,9 +128,10 @@ def affects(written: MIRReferent, retained: MIRReferent, slots: Mapping[MIRSlotI
         return (written.place.root == retained.place.root and held[:len(path)] == path
                 and (inclusive or len(held) > len(path)))
     if not _replaced_leaf(written.place):
-        # Across external origins that may alias, a container's interior may
-        # hold any record or owned leaf a holder retains; a container object
-        # is never an element, so only a shape or elements write spares one.
+        # Across external origins that may alias, a container's interior or
+        # a record member may hold any record or owned leaf a holder
+        # retains; a container object is never an element, so only a shape
+        # or elements write spares one.
         region = isinstance(written.place.projections[-1], (MIRContainerStructure, MIRContainerElements))
         return not (region and _whole_container(retained, slots))
     typ = _referent_type(retained, slots)

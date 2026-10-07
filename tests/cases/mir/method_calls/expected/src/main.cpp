@@ -343,8 +343,8 @@ bool call_bool(const Pair& p) {
     return p.__bool__();
 }
 
-// # kept refusal: a field receiver
-// def field_receiver(o: Outer) -> None:  # tpyc: mir(uncovered /^call needs borrowed record name$/)
+// # free caller: an inline record field as the receiver (a member holder)
+// def field_receiver(o: Outer) -> None:  # tpyc: mir(covered) mir_summary(known)
 //     o.inner.bump()
 void field_receiver(Outer& o) {
     o.inner.bump();

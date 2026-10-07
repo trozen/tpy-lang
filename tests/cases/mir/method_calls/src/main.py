@@ -419,8 +419,8 @@ class Outer:
         self.inner = inner
 
 
-# kept refusal: a field receiver
-def field_receiver(o: Outer) -> None:  # tpyc: mir(uncovered /^call needs borrowed record name$/)
+# free caller: an inline record field as the receiver (a member holder)
+def field_receiver(o: Outer) -> None:  # tpyc: mir(covered) mir_summary(known)
     o.inner.bump()
 
 

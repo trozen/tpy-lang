@@ -323,8 +323,9 @@ class MIRUnionExtract:
 @dataclass(frozen=True)
 class MIRCopy:
     source: MIRPlace
-    # The copy can exit by exception (`TypeDef.copy_may_raise`): a buffer
-    # allocation a bare `except:` catches.
+    # The copy can exit by exception: a buffer allocation a bare `except:`
+    # catches (an owned leaf's `TypeDef.copy_may_raise`; for a record, any
+    # buffer in its whole layout, `layout_copy_may_raise`).
     may_raise: bool = False
 
 
@@ -521,20 +522,36 @@ class MIRMemberInitMode(Enum):
     # An inert leaf, by value.
     SCALAR = auto()
     # An owned leaf copied from a parameter's storage (borrowed or owned) or
-    # materialized from a constant: an allocation.
+    # materialized from a constant: an allocation. A record copied through
+    # the record parameter lent readonly: its whole storage, which may
+    # allocate (`definitions.layout_copy_may_raise`).
     COPY = auto()
-    # An owned leaf moved out of a by-value parameter's storage.
+    # An owned leaf moved out of a by-value parameter's storage; a record
+    # moved out of an `Own[R]` parameter's storage, or built by its own
+    # constructor (`MIRMemberInits`) and moved in.
     MOVE = auto()
+
+
+@dataclass(frozen=True)
+class MIRMemberInits:
+    """A record member built by its own constructor at entry: initialized
+    exactly as the receiver is, one initializer per field of the member's
+    layout, in layout order. There are no temporaries before the CFG, so
+    each field names its own parameter or constant."""
+    fields: tuple['MIRMemberInit', ...]
 
 
 @dataclass(frozen=True)
 class MIRMemberInit:
     """How one member of the receiver is initialized at entry, in layout order.
     A container member is copied from a container parameter, or MOVEd from
-    the literal its `MIRConstruct` builds over parameters."""
-    source: MIRSlotId | MIRConstant | MIRConstruct
+    the literal its `MIRConstruct` builds over parameters; a record member
+    built by its own constructor is MOVEd from its `MIRMemberInits`."""
+    source: MIRSlotId | MIRConstant | MIRConstruct | MIRMemberInits
     mode: MIRMemberInitMode = MIRMemberInitMode.SCALAR
-    # The initialization can exit by exception (`TypeDef.copy_may_raise` of a COPY).
+    # The initialization can exit by exception (`TypeDef.copy_may_raise` of a
+    # COPY, a record copy's layout, a literal's allocation, some field of a
+    # `MIRMemberInits`).
     may_raise: bool = False
     loc: SourceLocation | None = None
 
@@ -544,6 +561,21 @@ class MIRReceiverInit:
     """Initialize supplied storage before the CFG can observe the receiver."""
     receiver: MIRSlotId
     fields: tuple[MIRMemberInit, ...]
+
+
+def member_init_operands(members: tuple[MIRMemberInit, ...]) -> tuple[MIRSlotId, ...]:
+    """The slots entry initialization reads, through literals and nested
+    member initializers."""
+    operands: list[MIRSlotId] = []
+    for member in members:
+        match member.source:
+            case MIRSlotId():
+                operands.append(member.source)
+            case MIRConstruct(fields=fields):
+                operands.extend(fields)
+            case MIRMemberInits(fields=nested):
+                operands.extend(member_init_operands(nested))
+    return tuple(operands)
 
 
 @dataclass(frozen=True)

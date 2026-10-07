@@ -9400,7 +9400,8 @@ M2.6 adds borrowed nested plain-record paths, field-derived holders and scalar
 leaf writes. A captured field keeps its subobject identity across parent-holder
 reseats; readonly aliases still observe writes through mutable aliases. Existing
 tuple-local and narrowed Optional/union roots compose with nested paths. Nested
-owning operations and whole-field replacement remain uncovered; existing
+owning operations and whole-field replacement were outside M2.6;
+`MIR_ANALYSIS_PLAN.md` "Nested records" covers them. Existing
 frontend field-alias spelling restrictions are unchanged.
 M2.7 adds flat tuple parameters and selected standalone borrowed-record element
 captures, including normalized negative indices and per-element readonly access.

@@ -9,12 +9,12 @@ no facts."""
 import pytest
 
 from ..compilation_context import activate_compiler
-from ..typesys import NominalType
+from ..typesys import NominalType, ReadonlyType
 from . import nodes as th
 from .dump import dump_codegen_thir
 from .lower import iter_module_callables
 from ..type_def_registry import type_def_of
-from .scalar_leaves import modeled_hierarchy, plain_record_element, record_type
+from .scalar_leaves import modeled_field, modeled_hierarchy, plain_record_element, record_type
 from .test_method_stubs import nodes
 from .testutil import _compile, _entry
 
@@ -323,6 +323,22 @@ def test_modeled_records_need_a_plain_hierarchy(program: Program) -> None:
         # A container element: inherited fields must be leaves too.
         assert plain_record_element(program.type("Dog"))
         assert not plain_record_element(program.type("Sub"))
+
+
+def test_a_modeled_field_is_a_shape_not_a_definition(program: Program) -> None:
+    base, box = program.info("Base"), program.info("Box")
+    with activate_compiler(program.compiler):
+        # A scalar leaf, an owned leaf, a native container, an inline record.
+        for f in base.fields:
+            assert modeled_field(f.type), f.name
+        assert modeled_field(program.type("Sub")) and modeled_field(ReadonlyType(program.type("Sub")))
+        # A record whose hierarchy MIR does not model still has a record's
+        # shape: refusing its definition is MIRDefinitions' answer.
+        for name in ("IntBox", "SubErr", "NSub"):
+            assert modeled_field(program.type(name)), name
+        # A native record and a type parameter are no modeled member.
+        assert not modeled_field(program.type("Counter"))
+        assert not modeled_field(next(f.type for f in box.fields if f.name == "v"))
 
 
 # --- parameters, fields and calls ----------------------------------------------

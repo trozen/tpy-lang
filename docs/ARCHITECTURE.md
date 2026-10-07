@@ -167,8 +167,12 @@ projections after the root dereference. THIR storage-borrow facts distinguish
 capturing a field subobject from copying a name holder; MIRBorrow takes a place
 and captures its current storage identity. Holder reseats cannot retarget a
 captured field, and readonly access propagates down the path. Scalar leaves
-may be written; whole-field replacement and nested owning operations remain
-uncovered. These borrowed paths require no eligible owning constructor. Tests
+may be written. An inline record member is a place of its record's storage:
+a whole-member write replaces that place in place, a record's verified
+definition composes its member records' definitions, and a summary's
+parameter path runs through one or more members, each hop checked against
+the layout of the record it reads (`MIR_ANALYSIS_PLAN.md` "Nested
+records"). These borrowed paths require no eligible owning constructor. Tests
 feed it the exact THIR returned by `Compiler.generate_code_and_thir()`, together
 with body identity and declaration kind. The `--dump-mir` debug option uses
 the same emitted THIR caches, collecting constructor definitions across user

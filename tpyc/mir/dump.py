@@ -5,7 +5,7 @@ from ..thir.nodes import THIRStubCallee
 from .nodes import (
     MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref, MIRField,
     MIRGoto, MIRFunction, MIRNot, MIROp, MIRPrint, MIRPlace, MIRRead, MIRReturn, MIRValueKind,
-    MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRMemberInit, MIRMemberInitMode,
+    MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRMemberInit, MIRMemberInitMode, MIRMemberInits,
     MIRRegionId, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRTupleInitialization,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
@@ -64,12 +64,19 @@ def _layout(layout: MIRContainerLayout) -> str:
 
 def _member_init(member: MIRMemberInit, borrowed: set[MIRSlotId]) -> str:
     """One receiver member's entry initialization: a scalar by its value, an
-    owned leaf by how its buffer arrives (a copy through a borrowed
-    parameter reads the storage it points at)."""
-    source = (repr(member.source.value) if isinstance(member.source, MIRConstant)
-              else "construct (" + ", ".join(f"%{s.index}" for s in member.source.fields) + ")"
-              if isinstance(member.source, MIRConstruct)
-              else f"(*%{member.source.index})" if member.source in borrowed else f"%{member.source.index}")
+    owned leaf or a record by how its storage arrives (a copy through a
+    borrowed parameter reads the storage it points at; a literal is built
+    over its operands, then moved in; a composed member lists its fields'
+    initializations in braces)."""
+    match member.source:
+        case MIRConstant(value=value):
+            source = repr(value)
+        case MIRConstruct(fields=fields):
+            source = "construct (" + ", ".join(f"%{s.index}" for s in fields) + ")"
+        case MIRMemberInits(fields=nested):
+            source = "{" + ", ".join(_member_init(m, borrowed) for m in nested) + "}"
+        case _:
+            source = f"(*%{member.source.index})" if member.source in borrowed else f"%{member.source.index}"
     match member.mode:
         case MIRMemberInitMode.SCALAR:
             return source

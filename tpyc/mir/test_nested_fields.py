@@ -9,14 +9,18 @@ from ..thir.testutil import _assert_rejects_at, _compile, _entry, _strict_reject
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from ..typesys import BOOL, NoneType, OptionalType, UnionType
 from .definitions import MIRDefinitions
+from .dependencies import analyze_dependencies
 from .dump import dump_function
+from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRDeref, MIRField, MIRFieldId,
-    MIRFunction, MIRNotCovered, MIROptionalConstruct, MIROptionalLayout,
+    MIRFunction, MIROptionalConstruct, MIROptionalLayout,
     MIROptionalPayload, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleElement,
     MIRUnionConstruct, MIRUnionLayout, MIRUnionPayload, MIRValueKind,
 )
+from .retention import analyze_retention
+from .storage import analyze_storage
 from .testutil import Heap, OptionalValue, Reference, UnionValue, execute
 from .validate import MIRPresenceError, MIRValidationError, validate_function
 
@@ -296,14 +300,28 @@ def test_borrow_facts_reach_sibling_producers(artifacts: Artifacts) -> None:
     assert execute(result, Reference(1), heap=heap) == 8
 
 
-@pytest.mark.parametrize("name", ["replace_field", "owning"])
-def test_nested_owning_operations_remain_uncovered(artifacts: Artifacts, name: str) -> None:
+def test_replacing_a_member_reaches_its_live_borrow(artifacts: Artifacts) -> None:
+    # `outer.inner = Cell(23)` replaces the member `saved` borrows, in place:
+    # `saved.value` then reads the new member (CPython keeps the old object).
     functions, constructors = artifacts
-    result = lower_function(functions[name], MIRBodyId("nested", name),
+    result = lower_function(functions["replace_field"], MIRBodyId("nested", "replace_field"),
                             definitions=MIRDefinitions(constructors))
-    assert isinstance(result, MIRNotCovered)
-    assert result.reason == ("unsupported record fields" if name == "owning"
-                             else "record field replacement is unsupported")
+    assert isinstance(result, MIRFunction), result
+    live = analyze_liveness(result)
+    retention = analyze_retention(result, live, analyze_dependencies(result, live), analyze_storage(result))
+    conflict, = retention.conflicts
+    saved = next(s.id for s in result.slots if s.name == "saved")
+    assert conflict.holder == MIRPlace(saved) and conflict.affected == conflict.retained
+    assert isinstance(conflict.retained.place.projections[-1], MIRField)
+
+
+def test_an_owned_record_with_a_record_member_is_constructed(artifacts: Artifacts) -> None:
+    # `Outer(1)` composes `Cell(value)`: built for the full expression, moved in.
+    functions, constructors = artifacts
+    result = lower_function(functions["owning"], MIRBodyId("nested", "owning"),
+                            definitions=MIRDefinitions(constructors))
+    assert isinstance(result, MIRFunction), result
+    assert execute(result) == 1
 
 
 def test_storage_borrow_fact_must_agree_with_source(artifacts: Artifacts) -> None:
