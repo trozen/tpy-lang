@@ -261,12 +261,13 @@ class MIRBorrow:
 
 @dataclass(frozen=True)
 class MIRConstruct:
-    """Build a record from one operand per field: an inert leaf by value, or
-    an owned leaf copied out of the storage a borrowed holder lends (the
+    """Build a record from one operand per field: an inert leaf by value, an
+    owned leaf copied out of the storage a borrowed holder lends (the
     constructor's member initializer copies it) or moved out of owned
-    temporary storage the call hands over. Into a container layout it is a
-    literal: one operand per element (a dict's keys and values alternate),
-    each by its member's form."""
+    temporary storage the call hands over, or a view member storing the loan
+    a lending holder holds. Into a container layout it is a literal: one
+    operand per element (a dict's keys and values alternate), each by its
+    member's form."""
     fields: tuple[MIRSlotId, ...]
     # Some owned-leaf member is copied, and that copy can exit by exception
     # (`TypeDef.copy_may_raise`); a container literal allocates, so always.
@@ -530,6 +531,10 @@ class MIRMemberInitMode(Enum):
     # moved out of an `Own[R]` parameter's storage, or built by its own
     # constructor (`MIRMemberInits`) and moved in.
     MOVE = auto()
+    # A view member storing the loan its source holds: a view parameter's,
+    # an owned-leaf parameter's lent storage, or a literal's static storage.
+    # No buffer is copied, so it never raises.
+    BORROW = auto()
 
 
 @dataclass(frozen=True)

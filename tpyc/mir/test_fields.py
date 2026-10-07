@@ -331,11 +331,13 @@ def test_constructor_body_write_replaces_the_initialized_field(active) -> None:
     assert "(*%0).__main__.Cond::name = copy (*%1) may-raise [in_place]" in lines
 
 
-def test_a_record_holding_a_view_refuses_by_name(active) -> None:
-    result = active.constructors["Holder"]
-    assert isinstance(result, MIRNotCovered) and result.reason == "record holds a borrow"
-    holder = next(t for t in active.definitions.records if t.name == "Holder")
-    assert active.definitions.records[holder] == "record holds a borrow"
+def test_a_record_holding_a_view_stores_its_parameters_loan(active) -> None:
+    # The view member stores the loan the view parameter holds: no copy, no exit.
+    holder = _ctor(active, "Holder")
+    assert "initialize-receiver %0 (borrow (*%1))" in _lines(holder) and not holder.exceptional_exits
+    record = next(t for t in active.definitions.records if t.name == "Holder")
+    definition = active.definitions.records[record]
+    assert [init.mode for init in definition.initializers] == [MIRMemberInitMode.BORROW]
 
 
 def test_caller_definitions_need_a_lent_or_moved_argument(active) -> None:

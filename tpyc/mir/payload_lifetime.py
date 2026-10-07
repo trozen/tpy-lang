@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 from .coverage import scalar_wrapper
-from .dependencies import MIRDependencies, _dependencies
+from .dependencies import MIRDependencies, _dependencies, live_holders
 from .dump import _location, _place
 from .liveness import MIRLiveness, _liveness
 from .nodes import (
@@ -119,9 +119,10 @@ def _payload_conflicts(prepared: MIRPrepared, liveness: MIRLiveness,
     conflicts: list[MIRPayloadConflict] = []
     for point, payloads in ends.ends.items():
         incoming = dependencies.referents[point]
-        live_after = liveness.points[MIRPoint(point.block, point.index + 1)]
+        live_after = live_holders(incoming, liveness.points[MIRPoint(point.block, point.index + 1)],
+                                  dependencies.stored_loans)
         for holder, refs in sorted(incoming.items(), key=lambda item: _place(item[0])):
-            if holder.root not in live_after:
+            if holder not in live_after:
                 continue
             # Inline payloads already name storage; they are not pointer-holder leaves.
             retained = {ref.place for ref in refs if not ref.external}

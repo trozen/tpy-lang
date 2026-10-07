@@ -125,10 +125,10 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 
 // class Holder:
 struct Holder {
-    // self.v = v
+    // self.v = v  # tpyc: mir_borrowed(self.v)
     std::string_view v;
 
-    // def __init__(self, v: StrView) -> None:  # tpyc: mir(uncovered /^record holds a borrow$/)
+    // def __init__(self, v: StrView) -> None:  # tpyc: mir(covered)
     Holder() = default;
     explicit Holder(std::string_view v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -169,9 +169,9 @@ inline void Rec::rename_m(std::string_view s) {
     this->name = s;
 }
 
-// # constructor: a record holding a view is a retention effect, deferred
-// def __init__(self, v: StrView) -> None:  # tpyc: mir(uncovered /^record holds a borrow$/)
-//     self.v = v
+// # constructor: a view member stores the loan its view parameter holds
+// def __init__(self, v: StrView) -> None:  # tpyc: mir(covered)
+//     self.v = v  # tpyc: mir_borrowed(self.v)
 inline Holder::Holder(std::string_view v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -177,9 +177,9 @@ class Rec:
 
 
 class Holder:
-    # constructor: a record holding a view is a retention effect, deferred
-    def __init__(self, v: StrView) -> None:  # tpyc: mir(uncovered /^record holds a borrow$/)
-        self.v = v
+    # constructor: a view member stores the loan its view parameter holds
+    def __init__(self, v: StrView) -> None:  # tpyc: mir(covered)
+        self.v = v  # tpyc: mir_borrowed(self.v)
 
 
 # free function: a field read through a borrowed record parameter

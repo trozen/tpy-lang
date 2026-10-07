@@ -187,11 +187,12 @@ def test_actual_emitted_exclusions(fields: str, body: str, reason: str) -> None:
 
 @pytest.mark.parametrize("field,param,body,reason", [
     ("value: str", "value: str", "self.value = value + '!'", "parameter or literal"),
-    ("view: StrView", "value: StrView", "self.view = value", "record holds a borrow"),
+    # The record would store a loan of the constructor's own copy, which dies at return.
+    ("view: StrView", "value: Own[str]", "self.view = value", "constructor view needs a lent parameter"),
     ("pair: tuple[str, str]", "value: str", "self.pair = (value, value)", "unsupported record fields"),
 ])
 def test_owned_leaf_field_exclusions(field: str, param: str, body: str, reason: str) -> None:
-    source = (f"from tpy import StrView\nclass Record:\n    {field}\n"
+    source = (f"from tpy import Own, StrView\nclass Record:\n    {field}\n"
               f"    def __init__(self, {param}):\n        {body}\n")
     compiler, modules = _compile(source)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))

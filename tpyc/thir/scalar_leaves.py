@@ -4,8 +4,8 @@ from ..type_def_registry import (
     NativeMembers, float_traits_of, int_traits_of, is_borrowing_view_type, type_def_of, zero_value_of,
 )
 from ..typesys import (
-    NominalType, OwnType, ReadonlyType, RecordInfo, Representation, TpyType, TypeParamRef, TypeRegistry,
-    is_inert_leaf, is_owned_leaf, is_primitive_owned_leaf, record_owner, unwrap_readonly, unwrap_ref_type,
+    Loan, NominalType, OwnType, ReadonlyType, RecordInfo, Representation, TpyType, TypeParamRef, TypeRegistry,
+    is_inert_leaf, loan_class, is_owned_leaf, is_primitive_owned_leaf, record_owner, unwrap_readonly, unwrap_ref_type,
     view_family_of, view_owned_leaf,
 )
 
@@ -40,6 +40,22 @@ def view_leaf(typ: object) -> bool:
     return isinstance(typ, NominalType) and not typ.type_args and view_owned_leaf(typ) is not None
 
 
+def holds_loan(typ: object) -> bool:
+    """Whether a value of `typ` held in storage holds a borrow
+    (`typesys.loan_class`): a view, or a record, container or wrapper with
+    a view somewhere inside. UNKNOWN is not YES: MIR keeps an unproved
+    member away from a stored loan only where a record has a view member
+    (`loan_free` beside it, `definitions._record_members`)."""
+    return isinstance(typ, TpyType) and loan_class(typ).holds is Loan.YES
+
+
+def loan_free(typ: object) -> bool:
+    """Whether a value of `typ` is proved to hold no borrow: NO, never
+    UNKNOWN (a native, protocol or `bytearray` member the classifier cannot
+    decide)."""
+    return isinstance(typ, TpyType) and loan_class(typ).holds is Loan.NO
+
+
 def view_compatible(holder: object, source: object) -> bool:
     """Whether a view holder of type `holder` may hold a borrow of a
     `source` value: `holder` is its family's view type (`view_leaf`) and
@@ -62,6 +78,13 @@ def view_compatible(holder: object, source: object) -> bool:
         return False
     family = view_family_of(holder)
     return view_family_of(source) is family and (owned_leaf(source) or source == family.view_type)
+
+
+def view_endpoint(holder: object, member: object) -> bool:
+    """Whether a view result of type `holder` may be a borrow ending at a
+    record member of type `member`: an owned-leaf member it views, or the
+    loan a view member stores (`view_compatible`)."""
+    return (owned_leaf(member) or view_leaf(member)) and view_compatible(holder, member)
 
 
 def container_view(typ: object) -> bool:
@@ -301,14 +324,22 @@ def record_type(typ: object) -> bool:
     return td is None or td.record is not None and not td.record.is_native and td.enum is None
 
 
+def modeled_leaf_field(typ: object) -> bool:
+    """Whether a record member of declared type `typ` is a place MIR models
+    with no record inside it: a scalar leaf, an owned leaf, a view of an
+    owned leaf (`view_leaf`, a stored loan) or a native container. THIR
+    publishes a field identity for exactly these and the records it
+    models (`storage.field_identity`)."""
+    return storage_leaf(typ) or owned_leaf(typ) or view_leaf(typ) or native_container_type(unwrap_readonly(typ))
+
+
 def modeled_field(typ: object) -> bool:
     """Whether a record member of declared type `typ` has a shape MIR
-    models: a scalar leaf, an owned leaf, a native container, or a record
-    (`record_type`) stored inline. The shape question only: whether that
-    record's definition verifies is `MIRDefinitions`'s answer, never this
+    models: a leaf place (`modeled_leaf_field`) or a record (`record_type`)
+    stored inline. The shape question only: whether that record's
+    definition verifies is `MIRDefinitions`'s answer, never this
     predicate's."""
-    bare = unwrap_readonly(typ)
-    return storage_leaf(typ) or owned_leaf(typ) or native_container_type(bare) or record_type(bare)
+    return modeled_leaf_field(typ) or record_type(unwrap_readonly(typ))
 
 
 def converted_literal(typ: object, value: object) -> object | None:

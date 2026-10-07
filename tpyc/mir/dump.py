@@ -1,5 +1,6 @@
 """Deterministic internal MIR dump; names supplement identities, never replace them."""
 
+
 from ..parse import SourceLocation
 from ..thir.nodes import THIRStubCallee
 from .nodes import (
@@ -82,6 +83,8 @@ def _member_init(member: MIRMemberInit, borrowed: set[MIRSlotId]) -> str:
             return source
         case MIRMemberInitMode.MOVE:
             return f"move {source}"
+        case MIRMemberInitMode.BORROW:
+            return f"borrow {source}"
     return f"copy {source}" + (" may-raise" if member.may_raise else "")
 
 
