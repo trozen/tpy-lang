@@ -28,52 +28,6 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_words::__next__() 
     __builtin_unreachable();
 }
 
-// def gen_body(b: Bag) -> Iterator[int32]:
-//     # generator body: a comprehension evaluated inside a resumable frame
-//     vs = [len(s) for s in b]  # tpyc: ok
-//     yield len(vs)                                                                                         # -> S_RESUME_0
-//     yield sum([len(s) for s in b])  # a comprehension, not a genexpr: BUGS.md#genexpr-over-user-iterable  # -> S_RESUME_1
-inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
-    while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __state = S_DONE;  // until a yield sets where to resume
-        vs.emplace(({
-            std::vector<int32_t> __result;
-            auto&& __obj_0 = ::tpy::iter_range(b);
-            auto __beg_0 = __obj_0.begin();
-            auto __end_0 = __obj_0.end();
-            for (; __beg_0 != __end_0; ++__beg_0) {
-                const std::string& s = *__beg_0;
-                __result.push_back(::tpy::__len__(s));
-            }
-            std::move(__result);
-        }));
-        __state = S_RESUME_0;
-        return ::tpy::__len__((*vs));
-    }
-    case S_RESUME_0: {  // after: yield len(vs)
-        __state = S_RESUME_1;
-        return ::tpy::builtin_sum<int32_t>(({
-            std::vector<int32_t> __result;
-            auto&& __obj_1 = ::tpy::iter_range(b);
-            auto __beg_1 = __obj_1.begin();
-            auto __end_1 = __obj_1.end();
-            for (; __beg_1 != __end_1; ++__beg_1) {
-                const std::string& s = *__beg_1;
-                __result.push_back(::tpy::__len__(s));
-            }
-            std::move(__result);
-        }));
-    }
-    case S_RESUME_1: {  // after: yield sum([len(s) for s in b])  # a comprehension, not a genexpr: BUGS.md#genexpr-over-user-iterable
-        __state = S_DONE;
-        return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    __builtin_unreachable();
-}
-
 // def __iter__(self) -> Iterator[int32]:
 //     for x in self.items:
 //         yield x                         # -> S_RESUME_0

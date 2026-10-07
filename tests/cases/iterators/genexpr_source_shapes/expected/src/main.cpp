@@ -366,7 +366,8 @@ void main() {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto& __tup_1 = *__beg_0;
+            auto&& __for_tup_3 = *__beg_0;
+            auto& __tup_1 = __for_tup_3;
             auto& p = std::get<0>(__tup_1);
             int32_t n = std::get<1>(__tup_1);
             __result.push_back(p.x);

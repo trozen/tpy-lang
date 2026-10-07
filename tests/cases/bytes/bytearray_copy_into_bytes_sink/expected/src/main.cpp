@@ -77,9 +77,8 @@ void main() {
     ::tpy::ordered_map<std::string, ::tpy::Bytes> dlit = ::tpy::ordered_map<std::string, ::tpy::Bytes>({{"k", ::tpy::Bytes(ba)}});
     std::vector<::tpy::Bytes> comp = ({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_0 = 1;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t _ = 0; _ < __stop_0; ++_) {
+        if (1 > 0) __result.reserve(static_cast<size_t>(1));
+        for (int32_t _ = 0; _ < 1; ++_) {
             __result.push_back(::tpy::Bytes(ba));
         }
         std::move(__result);

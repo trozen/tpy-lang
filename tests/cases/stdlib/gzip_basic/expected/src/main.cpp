@@ -444,7 +444,7 @@ void files() {
     }
     std::cout << "comprehension" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        const int32_t __stop_4 = ::tpy::__len__(payloads);
+        int32_t __stop_4 = ::tpy::__len__(payloads);
         if (__stop_4 > 0) __result.reserve(static_cast<size_t>(__stop_4));
         for (int32_t i = 0; i < __stop_4; ++i) {
             __result.push_back(::tpy::__len__(::tpyapp::main::load(std::format("gzip_basic_{}.gz", i))));

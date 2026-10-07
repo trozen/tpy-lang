@@ -2139,15 +2139,16 @@ squares = [x * x for x in range(10)]
 evens = [x for x in items if x % 2 == 0]
 ```
 
-Expression that builds a list from an iterable with optional filtering. Maps to an
-immediately-invoked lambda (IIFE) containing a loop + `push_back`. Single generator
-only (no nested `for x in a for y in b`).
+Expression that builds a list from an iterable with optional filtering. Maps to a
+GCC statement expression holding one statement loop per `for` clause (nested
+`for x in a for y in b` included) + `push_back`.
 
 See `docs/COMPREHENSION_DESIGN.md` for full design including phased rollout,
 codegen strategy, and future extensions (dict/set comprehensions, generator expressions).
 
-**Current state**: Done (Phase 1+2). Single-generator list comprehensions with optional
-filter clause. Codegen uses IIFE pattern (`[&]() { ... }()`). Supports range() counter
+**Current state**: Done. List comprehensions with any number of `for` clauses and
+filters. Codegen is a statement expression (`({ ...; std::move(__result); })`) around
+the `for` statement's own loops. Supports range() counter
 optimization and begin/end iteration for native containers. Tuple unpacking in generators,
 annotation propagation, and Array optimization have all shipped (a fixed-length comprehension
 produces a stack `std::array` built by aggregate construction via `tpy::array_from_index` --
@@ -2366,13 +2367,13 @@ scores = {name: len(name) for name in names}
 filtered = {k: v for k, v in d.items() if v > 0}
 ```
 
-Builds a `dict[K, V]` from an iterable with optional filtering. Same IIFE codegen
-pattern as list comprehensions, producing `tpy::ordered_map<K, V>`.
+Builds a `dict[K, V]` from an iterable with optional filtering. Same statement-loop
+codegen as list comprehensions, producing `tpy::ordered_map<K, V>`.
 
 See `docs/COMPREHENSION_DESIGN.md` for design sketch.
 
-**Current state**: Done. Single-generator dict comprehensions with optional filter
-clause and tuple unpacking (`for k, v in`). Codegen uses IIFE pattern, producing
+**Current state**: Done. Dict comprehensions with any number of `for` clauses,
+filters and tuple unpacking (`for k, v in`). Codegen is a statement expression, producing
 `tpy::ordered_map<K, V>`. Annotation hints propagate key/value types.
 
 **Dependencies**: Dict type (done). List comprehension infrastructure (B9, done).
@@ -2390,8 +2391,8 @@ unique_lengths = {len(name) for name in names}
 Builds a `set[T]` from an iterable with optional filtering. Same generator model
 as list/dict comprehensions.
 
-**Current state**: Done. IIFE-based codegen with loop + `insert`, supports filtering
-and tuple unpacking. Annotation propagation supported.
+**Current state**: Done. Statement-expression codegen with loops + `insert`, supports
+several `for` clauses, filtering and tuple unpacking. Annotation propagation supported.
 
 **Dependencies**: Set type (D9). List comprehension infrastructure (B9).
 
@@ -2437,8 +2438,8 @@ See `docs/COMPREHENSION_DESIGN.md` for full design.
 
 **Current state**: Done. A genexpr compiles to a generator frame (the struct a
 `def` generator gets) satisfying `Iterable[T]`. Supports range sources, container
-and rvalue iterable sources, filter clauses, tuple unpacking, reference capture of
-outer locals.
+and rvalue iterable sources, several `for` clauses (one nested loop each), filter
+clauses, tuple unpacking, reference capture of outer locals.
 
 **Dependencies**: List comprehension infrastructure (B9). Builtin function awareness
 in sema for fusion.

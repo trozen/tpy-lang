@@ -14,7 +14,7 @@ Pic* top{};
 void fill_free(Pic& p, int32_t n) {
     p.d = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
-        const int32_t __stop_0 = n;
+        int32_t __stop_0 = n;
         for (int32_t j = 0; j < __stop_0; ++j) {
             __result.insert_or_assign(::tpy::fixed_to_str<int32_t>(j), j);
         }
@@ -22,7 +22,7 @@ void fill_free(Pic& p, int32_t n) {
     });
     p.s = ({
         ::tpy::ordered_set<int32_t> __result;
-        const int32_t __stop_1 = n;
+        int32_t __stop_1 = n;
         for (int32_t j = 0; j < __stop_1; ++j) {
             __result.insert((::tpy::mul_check<int32_t>(j, 2)));
         }
@@ -30,7 +30,7 @@ void fill_free(Pic& p, int32_t n) {
     });
     p.opt = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_2 = n;
+        int32_t __stop_2 = n;
         if (__stop_2 > 0) __result.reserve(static_cast<size_t>(__stop_2));
         for (int32_t j = 0; j < __stop_2; ++j) {
             __result.push_back(j);
@@ -50,9 +50,8 @@ void reseat_opt(Pic& p) {
     p.opt = std::nullopt;
     p.opt = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = 2;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t j = 0; j < __stop_0; ++j) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t j = 0; j < 2; ++j) {
             __result.push_back((::tpy::mul_check<int32_t>(j, 2)));
         }
         std::move(__result);
@@ -85,7 +84,7 @@ void setitems(Pic& p, int32_t n) {
     std::vector<std::vector<int32_t>> rows = {{}, {}};
     ::tpy::__setitem__(rows, 0, ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = n;
+        int32_t __stop_0 = n;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t j = 0; j < __stop_0; ++j) {
             __result.push_back(j);
@@ -98,9 +97,8 @@ void setitems(Pic& p, int32_t n) {
     for (int32_t i = 0; i < __stop_1; ++i) {
         rows[static_cast<std::size_t>(i)] = ({
             std::vector<int32_t> __result;
-            const int32_t __stop_2 = 2;
-            if (__stop_2 > 0) __result.reserve(static_cast<size_t>(__stop_2));
-            for (int32_t j = 0; j < __stop_2; ++j) {
+            if (2 > 0) __result.reserve(static_cast<size_t>(2));
+            for (int32_t j = 0; j < 2; ++j) {
                 __result.push_back((::tpy::add_check<int32_t>(j, i)));
             }
             std::move(__result);
@@ -111,7 +109,7 @@ void setitems(Pic& p, int32_t n) {
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     ::tpy::__setitem__(d, "a", ({
         std::vector<int32_t> __result;
-        const int32_t __stop_3 = n;
+        int32_t __stop_3 = n;
         if (__stop_3 > 0) __result.reserve(static_cast<size_t>(__stop_3));
         for (int32_t j = 0; j < __stop_3; ++j) {
             __result.push_back(j);
@@ -122,7 +120,7 @@ void setitems(Pic& p, int32_t n) {
     std::cout << "setitem_dict" << " " << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(p.data, 1, ({
         std::vector<int32_t> __result;
-        const int32_t __stop_4 = n;
+        int32_t __stop_4 = n;
         if (__stop_4 > 0) __result.reserve(static_cast<size_t>(__stop_4));
         for (int32_t j = 0; j < __stop_4; ++j) {
             __result.push_back((::tpy::add_check<int32_t>(j, 10)));
@@ -151,7 +149,7 @@ void closure(Pic& p) {
     auto inner = [&p](int32_t n) -> int32_t {
         p.flat = ({
             std::vector<int32_t> __result;
-            const int32_t __stop_0 = n;
+            int32_t __stop_0 = n;
             if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
             for (int32_t j = 0; j < __stop_0; ++j) {
                 __result.push_back(j);
@@ -234,9 +232,8 @@ void __tpy_init() {
     top = &__global_slot_1;
     top->flat = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t j = 0; j < __stop_0; ++j) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t j = 0; j < 3; ++j) {
             __result.push_back((::tpy::mul_check<int32_t>(j, 3)));
         }
         std::move(__result);

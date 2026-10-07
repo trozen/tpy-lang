@@ -88,7 +88,7 @@ inline Maker::Maker(std::string_view tag, int32_t n)
       rows(::tpy::make_vector<std::vector<std::string>>(::tpyapp::main::make_rows(1), ::tpyapp::main::make_rows(2))),
       grid(({
     std::vector<std::vector<int32_t>> __result;
-    const int32_t __stop_0 = n;
+    int32_t __stop_0 = n;
     if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
     for (int32_t i = 0; i < __stop_0; ++i) {
         __result.push_back(::tpyapp::main::make_ints(i));

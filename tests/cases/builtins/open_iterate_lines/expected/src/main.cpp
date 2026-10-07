@@ -398,7 +398,8 @@ void main() {
                 auto __beg_5 = __obj_5.begin();
                 auto __end_5 = __obj_5.end();
                 for (; __beg_5 != __end_5; ++__beg_5) {
-                    const auto& __tup_2 = *__beg_5;
+                    const auto& __for_tup_1 = *__beg_5;
+                    const auto& __tup_2 = __for_tup_1;
                     std::string a = std::get<0>(__tup_2);
                     std::string b = std::get<1>(__tup_2);
                     __result.push_back((a == b));
@@ -434,8 +435,8 @@ void main() {
             for (;;) {
                 auto __r_7 = __itr_6.__next__();
                 if (!__r_7.has_value()) break;
-                const auto& __for_tup_1 = ::tpy::unwrap_ref(*__r_7);
-                const auto& __tup_3 = __for_tup_1;
+                const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_7);
+                const auto& __tup_3 = __for_tup_2;
                 int32_t i = std::get<0>(__tup_3);
                 std::string_view line = std::get<1>(__tup_3);
                 if ((i == 0)) {
@@ -463,7 +464,8 @@ void main() {
             auto __beg_8 = __obj_8.begin();
             auto __end_8 = __obj_8.end();
             for (; __beg_8 != __end_8; ++__beg_8) {
-                const auto& __tup_4 = *__beg_8;
+                const auto& __for_tup_3 = *__beg_8;
+                const auto& __tup_4 = __for_tup_3;
                 std::string a = std::get<0>(__tup_4);
                 std::string b = std::get<1>(__tup_4);
                 __result.push_back((::tpy::str_concat(a, b)));

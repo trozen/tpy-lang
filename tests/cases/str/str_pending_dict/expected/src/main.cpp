@@ -45,8 +45,7 @@ namespace tpyapp::main {
     std::string_view label = "no";
     return ({
         ::tpy::ordered_map<std::string, std::string> __result;
-        const int32_t __stop_0 = 3;
-        for (int32_t _ = 0; _ < __stop_0; ++_) {
+        for (int32_t _ = 0; _ < 3; ++_) {
             __result.insert_or_assign(std::string(label), std::string(label));
         }
         std::move(__result);

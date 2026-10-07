@@ -102,7 +102,7 @@ __gen_gen gen(int32_t n) {
 int32_t comp(int32_t n) {
     std::vector<int32_t> doubled = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = n;
+        int32_t __stop_0 = n;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
             __result.push_back(::tpyapp::main::double_(i));

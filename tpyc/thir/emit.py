@@ -53,7 +53,9 @@ from .nodes import (
     THIRCall,
     THIRCharLiteral,
     THIRWalrus,
-    THIRComprehension,
+    THIRArrayComprehension,
+    THIRComprehensionBlock,
+    THIRCompInsert,
     THIRGenExpr,
     THIRClassConstant,
     THIRCoerce,
@@ -300,6 +302,16 @@ class TempSink:
 
     def checkpoint(self) -> tuple[int, int]:
         return self._ctx.temps.checkpoint()
+
+    def statement_block(self) -> ContextManager[None]:
+        # The planner refuses a body holding an expression with statements
+        # inside, so a block never runs under a plan.
+        assert self.plan is None, "statement block under a temporary plan"
+        return self._ctx.temps.statement_block()
+
+    def enclosing_statement(self) -> ContextManager[None]:
+        assert self.plan is None, "statement block under a temporary plan"
+        return self._ctx.temps.enclosing_statement()
 
     def has_pending_since(self, checkpoint: tuple[int, ...]) -> bool:
         return self._ctx.temps.has_pending_since(checkpoint)
@@ -862,23 +874,20 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
             f"{e.method_cpp}{mtargs}({', '.join(args)})")
 
 
-def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
-    """The GCC stmt-expr comprehension render. Inner lines indent relative
-    to the enclosing statement (`state.stmt_indent_level`); the
-    first line is bare `({` (it renders inline after `= `). NB the range arm
-    draws one loop index PER non-literal bound (the comprehension emitter's
-    scheme -- unlike the statement range-for's single draw), start before
-    stop in source order."""
+def _emit_array_comprehension(e: 'THIRArrayComprehension',
+                              state: _EmitState) -> str:
+    """The Array-demoted comprehension: a `::tpy::array_from_index` call, no
+    loop. Inner lines indent relative to the enclosing statement
+    (`state.stmt_indent_level`); the first line renders inline after `= `."""
     stmt_ind = INDENT * state.stmt_indent_level
     ind1 = stmt_ind + INDENT
     ind2 = ind1 + INDENT
-    ind3 = ind2 + INDENT
     cpp_var = escape_cpp_name(e.var)
-    if e.loop == "array_range":
-        # The array_from_index RANGE arm: sema proved literal bounds, so
-        # start/step inline as index arithmetic inside the per-index lambda;
-        # no `({` prelude, no reserve. Element temps flush into the lambda
-        # before the `return` (per-iteration: `auto __tmp_N = i;` ahead of
+    if e.arm == "range":
+        # Sema proved literal bounds, so start/step inline as index
+        # arithmetic inside the per-index lambda; no `({` prelude, no
+        # reserve. Element temps flush into the lambda before the `return`
+        # (per-iteration: `auto __tmp_N = i;` ahead of
         # `Box(std::move(__tmp_N))`).
         n = state.next_loop_index()
         idx = f"{e.counter_cpp}(__i_{n})"
@@ -900,165 +909,80 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
         buf.write(f"{ind1}return {elem_s};\n")
         buf.write(f"{stmt_ind}}})")
         return buf.getvalue()
-    if e.loop == "array_source":
-        # The array_from_index SOURCE arm: a `({...})` prelude borrows the
-        # sized source once (lvalue verdict) and the per-index lambda indexes
-        # it (`__obj_N[__i_N]`). The loop-var binding is the shared non-const
-        # `loop_var_binding` (value copy / `auto&&` borrow, split on whether
-        # the element is a value type).
-        n = state.next_loop_index()
-        obj = f"__obj_{n}"
-        binding_kw = "auto&" if e.iterable_lvalue else "auto"
-        buf = io.StringIO()
-        buf.write("({\n")
-        buf.write(f"{ind1}{binding_kw} {obj} = {_emit_expr(e.iterable, state)};\n")
-        buf.write(f"{ind1}::tpy::array_from_index<{e.array_elem_cpp}, "
-                  f"{e.array_size_cpp}>("
-                  f"[&](std::size_t __i_{n}) -> {e.array_elem_cpp} {{\n")
-        if e.unpack_targets:
-            # Unpack heads over the indexed element (`auto& __tup_N =
-            # __obj_N[__i_N];` + per-var `std::get` decls -- the begin_end
-            # arm's prologue at the indexed read, plain `auto&`).
-            un = state.next_unpack()
-            tmp = f"__tup_{un}"
-            buf.write(f"{ind2}auto& {tmp} = {obj}[__i_{n}];\n")
-            for i, name in enumerate(e.unpack_targets):
-                if name is None:
-                    continue
-                buf.write(f"{ind2}{e.unpack_target_cpps[i]} "
-                          f"{escape_cpp_name(name)} = std::get<{i}>({tmp});\n")
-        else:
-            binding = loop_var_binding(
-                e.elem_type, cpp_var, f"{obj}[__i_{n}]", False)
-            buf.write(f"{ind2}{binding}\n")
-        buf.write(f"{ind2}return {_emit_expr(e.element, state)};\n")
-        buf.write(f"{ind1}}});\n")
-        buf.write(f"{stmt_ind}}})")
-        return buf.getvalue()
-    skip_reserve = e.kind != "list"
+    assert e.arm == "source", e.arm
+    # A `({...})` prelude borrows the sized source once (lvalue verdict) and
+    # the per-index lambda indexes it (`__obj_N[__i_N]`). The loop-var
+    # binding is the shared non-const `loop_var_binding` (value copy /
+    # `auto&&` borrow, split on whether the element is a value type).
+    n = state.next_loop_index()
+    obj = f"__obj_{n}"
+    binding_kw = "auto&" if e.iterable_lvalue else "auto"
+    buf = io.StringIO()
+    buf.write("({\n")
+    buf.write(f"{ind1}{binding_kw} {obj} = {_emit_expr(e.iterable, state)};\n")
+    buf.write(f"{ind1}::tpy::array_from_index<{e.array_elem_cpp}, "
+              f"{e.array_size_cpp}>("
+              f"[&](std::size_t __i_{n}) -> {e.array_elem_cpp} {{\n")
+    if e.unpack_targets:
+        # Unpack heads over the indexed element: `auto& __tup_N =
+        # __obj_N[__i_N];` + per-var `std::get` decls.
+        un = state.next_unpack()
+        tmp = f"__tup_{un}"
+        buf.write(f"{ind2}auto& {tmp} = {obj}[__i_{n}];\n")
+        for i, name in enumerate(e.unpack_targets):
+            if name is None:
+                continue
+            buf.write(f"{ind2}{e.unpack_target_cpps[i]} "
+                      f"{escape_cpp_name(name)} = std::get<{i}>({tmp});\n")
+    else:
+        binding = loop_var_binding(
+            e.elem_type, cpp_var, f"{obj}[__i_{n}]", False)
+        buf.write(f"{ind2}{binding}\n")
+    buf.write(f"{ind2}return {_emit_expr(e.element, state)};\n")
+    buf.write(f"{ind1}}});\n")
+    buf.write(f"{stmt_ind}}})")
+    return buf.getvalue()
+
+
+def _emit_comprehension_block(e: 'THIRComprehensionBlock',
+                              state: _EmitState) -> str:
+    """The statement-expression around a comprehension body. It renders
+    inline after the enclosing statement's `= `, so the first line is a bare
+    `({` and the body indents one level past that statement."""
+    level = state.stmt_indent_level
+    ind1 = INDENT * (level + 1)
     buf = io.StringIO()
     buf.write("({\n")
     buf.write(f"{ind1}{e.container_cpp} __result;\n")
-    if e.loop == "range":
-        cpp_elem = e.counter_cpp
-        if e.range_start is not None:
-            start_cpp = _emit_expr(e.range_start, state)
-            if e.range_start_literal:
-                start_var = start_cpp
-            else:
-                n = state.next_loop_index()
-                start_var = f"__start_{n}"
-                buf.write(f"{ind1}const {cpp_elem} {start_var} = {start_cpp};\n")
-        stop_cpp = _emit_expr(e.range_stop, state)
-        if e.range_stop_literal:
-            stop_var = stop_cpp
-        else:
-            n = state.next_loop_index()
-            stop_var = f"__stop_{n}"
-            buf.write(f"{ind1}const {cpp_elem} {stop_var} = {stop_cpp};\n")
-        if e.range_start is None:
-            if not skip_reserve:
-                if e.counter_bigint:
-                    buf.write(f"{ind1}{{ size_t __sz; if ({stop_var}"
-                              f".to_size_checked(__sz)) __result.reserve(__sz); }}\n")
-                else:
-                    buf.write(f"{ind1}if ({stop_var} > 0) __result.reserve("
-                              f"static_cast<size_t>({stop_var}));\n")
-            buf.write(f"{ind1}for ({cpp_elem} {cpp_var} = 0; "
-                      f"{cpp_var} < {stop_var}; ++{cpp_var}) {{\n")
-        else:
-            if not skip_reserve:
-                if e.counter_bigint:
-                    buf.write(f"{ind1}if ({stop_var} > {start_var}) {{ size_t __sz; "
-                              f"if (({stop_var} - {start_var}).to_size_checked(__sz)) "
-                              f"__result.reserve(__sz); }}\n")
-                else:
-                    buf.write(f"{ind1}if ({stop_var} > {start_var}) __result.reserve("
-                              f"static_cast<size_t>({stop_var} - {start_var}));\n")
-            buf.write(f"{ind1}for ({cpp_elem} {cpp_var} = {start_var}; "
-                      f"{cpp_var} < {stop_var}; ++{cpp_var}) {{\n")
-    else:
-        n = state.next_loop_index()
-        obj, beg, end = f"__obj_{n}", f"__beg_{n}", f"__end_{n}"
-        binding_kw = "auto&" if e.iterable_lvalue else "auto"
-        src = _emit_expr(e.iterable, state)
-        if e.iter_protocol:
-            # `iter_range` takes an lvalue only: the iterator it holds may
-            # point into the source, which must outlive the loop.
-            if not e.iterable_lvalue:
-                buf.write(f"{ind1}auto __src_{n} = {src};\n")
-                src = f"__src_{n}"
-            buf.write(f"{ind1}auto&& {obj} = ::tpy::iter_range({src});\n")
-        else:
-            buf.write(f"{ind1}{binding_kw} {obj} = {src};\n")
-        if not skip_reserve and e.sized_reserve:
-            buf.write(f"{ind1}__result.reserve(static_cast<std::size_t>"
-                      f"({obj}.size()));\n")
-        buf.write(f"{ind1}auto {beg} = {obj}.begin();\n")
-        buf.write(f"{ind1}auto {end} = {obj}.end();\n")
-        buf.write(f"{ind1}for (; {beg} != {end}; ++{beg}) {{\n")
-        if e.unpack_targets:
-            un = state.next_unpack()
-            tmp = f"__tup_{un}"
-            ref = "const auto&" if e.const_loop_var else "auto&"
-            buf.write(f"{ind2}{ref} {tmp} = *{beg};\n")
-            for i, name in enumerate(e.unpack_targets):
-                if name is None:
-                    continue
-                buf.write(f"{ind2}{e.unpack_target_cpps[i]} "
-                          f"{escape_cpp_name(name)} = std::get<{i}>({tmp});\n")
-        else:
-            binding = loop_var_binding(e.elem_type, cpp_var, f"*{beg}",
-                                       e.const_loop_var)
-            buf.write(f"{ind2}{binding}\n")
-    if e.kind == "dict":
-        if e.value_moved:
-            # Owned-move dict: the moved value leaves insert_or_assign's two args
-            # unsequenced, so the key evaluates into a `__dk_N` local FIRST (a key
-            # reading the moved-from loop var would otherwise be a use-after-move).
-            # Render key then value (their own counters) before drawing __dk_N.
-            key_s = _emit_expr(e.key, state)
-            value_s = _emit_expr(e.value, state)
-            dk = f"__dk_{state.next_unpack()}"
-            insert = (f"{{ auto {dk} = {key_s}; __result.insert_or_assign("
-                      f"std::move({dk}), {value_s}); }}")
-        else:
-            insert = (f"__result.insert_or_assign({_emit_expr(e.key, state)}, "
-                      f"{_emit_expr(e.value, state)})")
-    elif e.kind == "set":
-        cp_el = state.temps.checkpoint()
-        insert = f"__result.insert({_emit_expr(e.element, state)})"
-    else:
-        cp_el = state.temps.checkpoint()
-        insert = f"__result.push_back({_emit_expr(e.element, state)})"
-    if e.conditions:
-        # Condition temps land at loop-body indent BEFORE the `if` -- the
-        # loop var they consume is only in scope here.
-        # checkpoint/flush_since drains ONLY the
-        # conditions' own temps: an outer pending decl (a walrus predecl
-        # enqueued before this comp rendered) must stay for the statement
-        # flush, not fall inside the loop. Element temps flush innermost
-        # (right above the insert), after the filter passes.
-        cp = state.temps.checkpoint()
-        cond_str = " && ".join(_emit_expr(c, state) for c in e.conditions)
-        state.temps.flush_since(buf, cp, ind2)
-        buf.write(f"{ind2}if ({cond_str}) {{\n")
-        if e.kind != "dict":
-            state.temps.flush_since(buf, cp_el, ind3)
-        buf.write(f"{ind3}{insert};\n")
-        buf.write(f"{ind2}}}\n")
-    else:
-        # Element temps flush per-iteration at loop-body indent, right
-        # above the insert (the degrade seam: a temp DEFERRED by an
-        # enclosing conditional region relocates here as the eager
-        # `std::optional<T> __tmp_N = init;` decl).
-        if e.kind != "dict":
-            state.temps.flush_since(buf, cp_el, ind2)
-        buf.write(f"{ind2}{insert};\n")
-    buf.write(f"{ind1}}}\n")
+    try:
+        with state.temps.statement_block():
+            _emit_stmts(buf, e.body, level + 1, state)
+    finally:
+        # The body's statements restamp the level; the enclosing statement
+        # may render more after this expression.
+        state.stmt_indent_level = level
     buf.write(f"{ind1}std::move(__result);\n")
-    buf.write(f"{stmt_ind}}})")
+    buf.write(f"{INDENT * level}}})")
     return buf.getvalue()
+
+
+def _emit_comp_insert(out: TextIO, stmt: THIRCompInsert, indent: str,
+                      state: _EmitState) -> None:
+    if stmt.key_first:
+        key_s = _emit_expr(stmt.key, state)
+        state.temps.flush(out, indent)
+        dk = f"__dk_{state.next_unpack()}"
+        out.write(f"{indent}auto {dk} = {key_s};\n")
+        call = (f"insert_or_assign(std::move({dk}), "
+                f"{_emit_expr(stmt.value, state)})")
+    elif stmt.kind == "dict":
+        call = (f"insert_or_assign({_emit_expr(stmt.key, state)}, "
+                f"{_emit_expr(stmt.value, state)})")
+    else:
+        method = "push_back" if stmt.kind == "list" else "insert"
+        call = f"{method}({_emit_expr(stmt.element, state)})"
+    state.temps.flush(out, indent)
+    out.write(f"{indent}__result.{call};\n")
 
 
 def _emit_genexpr(e: 'THIRGenExpr', state: _EmitState) -> str:
@@ -1895,8 +1819,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRRecordCopy):
         # `copy(x)` of a record: the explicit copy-ctor call `T(x)`.
         return f"{e.cpp_type}({_emit_expr(e.value, state)})"
-    if isinstance(e, THIRComprehension):
-        return _emit_comprehension(e, state)
+    if isinstance(e, THIRArrayComprehension):
+        return _emit_array_comprehension(e, state)
+    if isinstance(e, THIRComprehensionBlock):
+        return _emit_comprehension_block(e, state)
     if isinstance(e, THIRGenExpr):
         return _emit_genexpr(e, state)
     if isinstance(e, THIRCoerce):
@@ -2168,6 +2094,34 @@ def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitSta
     _pop_loop_frame(out, indent, state, saved_depth, stmt.orelse, indent_level, scope_owner=stmt)
 
 
+def _emit_loop_source(stmt: 'THIRForRange | THIRForEach | THIRForIterProto',
+                      e: THIRExpr, state: _EmitState) -> str:
+    if not stmt.source_in_enclosing:
+        return _emit_expr(e, state)
+    with state.temps.enclosing_statement():
+        return _emit_expr(e, state)
+
+
+def _emit_range_reserve(out: TextIO, indent: str, target: str, start: str,
+                        stop: str, *, plain_start: bool, bigint: bool) -> None:
+    # An empty or negative trip count reserves nothing; a BigInt count too
+    # large for size_t is left to grow.
+    if plain_start:
+        if bigint:
+            out.write(f"{indent}{{ size_t __sz; if ({stop}.to_size_checked"
+                      f"(__sz)) {target}.reserve(__sz); }}\n")
+        else:
+            out.write(f"{indent}if ({stop} > 0) {target}.reserve("
+                      f"static_cast<size_t>({stop}));\n")
+    elif bigint:
+        out.write(f"{indent}if ({stop} > {start}) {{ size_t __sz; "
+                  f"if (({stop} - {start}).to_size_checked(__sz)) "
+                  f"{target}.reserve(__sz); }}\n")
+    else:
+        out.write(f"{indent}if ({stop} > {start}) {target}.reserve("
+                  f"static_cast<size_t>({stop} - {start}));\n")
+
+
 def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
                     state: _EmitState) -> None:
     # Grab the loop index BEFORE the body so nested loops number after this
@@ -2184,14 +2138,25 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
     # Keep target writes and post-loop values independent of induction.
     separate_target = stmt.hoist_loop_var or stmt.target_written
     counter = f"__range_{n}" if separate_target else var
-    start_cpp = "0" if stmt.start is None else _emit_expr(stmt.start, state)
-    stop_cpp = _emit_expr(stmt.stop, state)
-    if stmt.start is not None and not stmt.start_is_literal:
-        out.write(f"{indent}{cpp_elem} __start_{n} = {start_cpp};\n")
-        start_cpp = f"__start_{n}"
+    # Each bound's arg temps are declared right ahead of that bound's own
+    # capture, so start, stop and step evaluate in source order.
+    start_cpp = "0"
+    if stmt.start is not None:
+        start_cpp = _emit_loop_source(stmt, stmt.start, state)
+        state.temps.flush(out, indent)
+        if not stmt.start_is_literal:
+            out.write(f"{indent}{cpp_elem} __start_{n} = {start_cpp};\n")
+            start_cpp = f"__start_{n}"
+    stop_cpp = _emit_loop_source(stmt, stmt.stop, state)
+    state.temps.flush(out, indent)
     if not stmt.stop_is_literal:
         out.write(f"{indent}{cpp_elem} __stop_{n} = {stop_cpp};\n")
         stop_cpp = f"__stop_{n}"
+    if stmt.presize is not None:
+        assert stmt.step_kind == "plus_one", "presize needs a unit step"
+        _emit_range_reserve(out, indent, stmt.presize, start_cpp, stop_cpp,
+                            plain_start=stmt.start is None,
+                            bigint=is_big_int_type(stmt.elem_type))
     # The step arms. The unit steps are the plain ascending / descending
     # loop; the non-unit literal / variable steps add an upfront
     # range_check_overflow, which is fixed-int only -- a BigInt counter
@@ -2205,7 +2170,7 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
         out.write(f"{indent}for ({cpp_elem} {counter} = {start_cpp}; "
                   f"{counter} > {stop_cpp}; --{counter}) {{\n")
     elif stmt.step_kind in ("literal_pos", "literal_neg"):
-        step_cpp = _emit_expr(stmt.step, state)
+        step_cpp = _emit_loop_source(stmt, stmt.step, state)
         if is_big_int_type(stmt.elem_type):
             # A BigInt counter's literal step captures into a `__step_N`
             # temp and skips the overflow check (fixed-int only).
@@ -2218,7 +2183,8 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
         out.write(f"{indent}for ({cpp_elem} {counter} = {start_cpp}; "
                   f"{counter} {cmp} {stop_cpp}; {counter} += {step_cpp}) {{\n")
     else:  # variable
-        step_cpp = _emit_expr(stmt.step, state)
+        step_cpp = _emit_loop_source(stmt, stmt.step, state)
+        state.temps.flush(out, indent)
         out.write(f"{indent}{cpp_elem} __step_{n} = {step_cpp};\n")
         out.write(f"{indent}::tpy::range_check_step_nonzero(__step_{n});\n")
         if not is_big_int_type(stmt.elem_type):
@@ -2264,9 +2230,12 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     n = state.next_loop_index()
     obj, beg, end = f"__obj_{n}", f"__beg_{n}", f"__end_{n}"
     binding_kw = "auto&" if stmt.iterable_lvalue else "auto"
-    iterable_cpp = _emit_expr(stmt.iterable, state)
+    iterable_cpp = _emit_loop_source(stmt, stmt.iterable, state)
     if stmt.str_literal_iterable:
         iterable_cpp = f"std::string_view({iterable_cpp})"
+    # The source's arg temps (an inner comprehension clause's call source)
+    # are declared ahead of its one capture.
+    state.temps.flush(out, indent)
     if stmt.frame_src_field is not None:
         # A fresh source whose elements this body binds into borrowing frame
         # storage: the frame owns the source so those bindings stay valid
@@ -2276,6 +2245,9 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
         obj = f"(*{stmt.frame_src_field})"
     else:
         out.write(f"{indent}{binding_kw} {obj} = {iterable_cpp};\n")
+    if stmt.presize is not None:
+        out.write(f"{indent}{stmt.presize}.reserve(static_cast<std::size_t>"
+                  f"({obj}.size()));\n")
     out.write(f"{indent}auto {beg} = {obj}.begin();\n")
     out.write(f"{indent}auto {end} = {obj}.end();\n")
     out.write(f"{indent}for (; {beg} != {end}; ++{beg}) {{\n")
@@ -2303,7 +2275,7 @@ def _emit_for_iter_proto(out: TextIO, stmt: THIRForIterProto,
     # consecutive per-function loop-index draws.
     indent = INDENT * indent_level
     saved_depth = _push_loop_frame(state, has_else=bool(stmt.orelse))
-    it_cpp = _emit_expr(stmt.iterable, state)
+    it_cpp = _emit_loop_source(stmt, stmt.iterable, state)
     n = state.next_loop_index()
     src, itr = f"__src_{n}", f"__itr_{n}"
     outer = indent
@@ -4301,6 +4273,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         _emit_for_each(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRForIterProto):
         _emit_for_iter_proto(out, stmt, indent_level, state)
+    elif isinstance(stmt, THIRCompInsert):
+        _emit_comp_insert(out, stmt, indent, state)
     elif isinstance(stmt, THIRWith):
         _emit_with(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRTry):

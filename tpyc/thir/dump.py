@@ -94,7 +94,9 @@ from .nodes import (
     THIRBorrowTupleLiteral,
     THIRConstructor,
     THIRChainedCompareStmtExpr,
-    THIRComprehension,
+    THIRArrayComprehension,
+    THIRComprehensionBlock,
+    THIRCompInsert,
     THIRErrorReturnBind,
     THIRErrorReturnDiscard,
     THIRErrorReturnUnwrap,
@@ -360,11 +362,16 @@ def _expr(e: THIRExpr) -> str:
         elems = ", ".join(("&" if a else "") + _expr(x)
                           for x, a in zip(e.elements, e.addr_of))
         return f"tuple_value_to_borrow<{e.dst_cpp}>({e.src_cpp}{{{elems}}})"
-    if isinstance(e, THIRComprehension):
-        # The loop strategy and result container are the emit-shaping facts.
-        proto = " [iter_protocol]" if e.iter_protocol else ""
-        return (f"comp[{e.kind}/{e.loop}]({e.container_cpp}, "
-                f"var %{e.var}{' const' if e.const_loop_var else ''}){proto}")
+    if isinstance(e, THIRArrayComprehension):
+        src = "" if e.iterable is None else f" over {_expr(e.iterable)}"
+        return (f"array_comp[{e.arm}]({e.array_elem_cpp}, {e.array_size_cpp}, "
+                f"var %{e.var}){src} -> {_expr(e.element)}")
+    if isinstance(e, THIRComprehensionBlock):
+        # The body is ordinary statements; an expression dumps on one line,
+        # so they join in braces.
+        body = "; ".join(line.strip() for s in e.body
+                         for line in _stmt_lines(s, 0))
+        return f"comp[{e.kind}]({e.container_cpp}) {{ {body} }}"
     if isinstance(e, THIRGenExpr):
         src = (f"range({_exprs(e.range_args)})" if e.range_args
                else "" if e.iterable is None else _expr(e.iterable))
@@ -509,7 +516,8 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
     if isinstance(stmt, THIRForRange):
         start = "0" if stmt.start is None else _expr(stmt.start)
         step = f", {_expr(stmt.step)}" if stmt.step is not None else ""
-        lines = [f"{pad}for %{stmt.var} in range({start}, {_expr(stmt.stop)}{step}):"]
+        presize = "" if stmt.presize is None else f" [presize {stmt.presize}]"
+        lines = [f"{pad}for %{stmt.var} in range({start}, {_expr(stmt.stop)}{step}){presize}:"]
         for s in stmt.body:
             lines.extend(_stmt_lines(s, depth + 1))
         _extend_orelse(lines, stmt.orelse, depth)
@@ -523,7 +531,8 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
         # `[frame_src=N]`: the resumable frame owns the source in that field.
         fsrc = ("" if stmt.frame_src_field is None
                 else f" [frame_src={stmt.frame_src_field}]")
-        lines = [f"{pad}for %{stmt.var}{const}{rval}{fsrc} "
+        presize = "" if stmt.presize is None else f" [presize {stmt.presize}]"
+        lines = [f"{pad}for %{stmt.var}{const}{rval}{fsrc}{presize} "
                  f"in {_expr(stmt.iterable)}:"]
         for s in stmt.body:
             lines.extend(_stmt_lines(s, depth + 1))
@@ -712,6 +721,12 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return [f"{pad}er_bind %{stmt.name}{decl} = {_expr(stmt.call)}"]
     if isinstance(stmt, THIRErrorReturnDiscard):
         return [f"{pad}er_discard({_expr(stmt.call)})"]
+    if isinstance(stmt, THIRCompInsert):
+        if stmt.kind == "dict":
+            first = " [key_first]" if stmt.key_first else ""
+            return [f"{pad}comp_insert{first} {_expr(stmt.key)}: "
+                    f"{_expr(stmt.value)}"]
+        return [f"{pad}comp_insert {_expr(stmt.element)}"]
     if type(stmt) in _UNDUMPED:
         return [f"{pad}<{type(stmt).__name__}>"]
     raise AssertionError(

@@ -1548,66 +1548,66 @@ class THIRRecordCopy(THIRExpr):
 
 
 @dataclass(frozen=True)
-class THIRComprehension(THIRExpr):
-    """A list/set/dict comprehension at a fresh local's decl-init -- a GCC
-    statement-expression IIFE (the C1+C2 slice):
+class THIRArrayComprehension(THIRExpr):
+    """A list comprehension sema demoted to `Array[E, N]`: no loop, a
+    `::tpy::array_from_index<E, N>` call whose per-index lambda constructs
+    each slot.
 
-        ({ <container_cpp> __result; <loop head> { <binding>
-           [if (c1 && c2) {] <insert>; [}] } std::move(__result); })
+    `arm` "range" (a filter-less comp over a literal-proven range; the stop
+    bound is encoded in N, never rendered):
 
-    Loop arms: `range` (1/2-arg counter loop; each NON-literal bound hoists
-    its own `const <counter> __start/__stop_N = ...;` -- NB the comprehension
-    emitter draws one loop index PER bound, unlike the statement range-for's
-    single draw) and `begin_end` (`__obj_N` capture with the lvalue verdict,
-    `__beg_N`/`__end_N`, the shared `loop_var_binding` or the inline
-    tuple-unpack `__tup_N` lines). A 3-arg range iterates begin/end over
-    the Range OBJECT (`iterable` is the substituted `::tpy::Range<T>(...)`
-    template call, an rvalue capture).
-    A list result reserves (`sized_reserve`
-    for begin/end over sized iterables; the range arms' `> 0` / BigInt
-    `to_size_checked` guards); set/dict skip the reserve.
-    Inserts: `push_back(elem)` / `insert(elem)` / `insert_or_assign(k, v)`;
-    elements arrive through the S5 per-slot owned-str wrap. Gate-excluded:
-    owned-move elements (`owns_elements` -- the `__dk_N` key-sequencing and
-    move-sink arms), Array demotion (`array_from_index`), genexpr,
-    temp-producing elements/filters (the comprehension admission helpers admit
-    none),
-    narrowed-Optional iterables. The multi-line render reads
-    the enclosing statement indent off `_EmitState.stmt_indent_level`."""
-    kind: str = ""                        # "list" | "set" | "dict"
-    container_cpp: str = ""               # spelled result container type
+        ::tpy::array_from_index<E, N>([&](std::size_t __i_N) -> E {
+            <counter> var = start + <counter>(__i_N) * (step);
+            return <element>; })
+
+    `arm` "source" (a sized Array source borrowed once, then indexed):
+
+        ({ auto[&] __obj_N = <iterable>;
+           ::tpy::array_from_index<E, N>([&](std::size_t __i_N) -> E {
+               <binding of var | unpack targets off __obj_N[__i_N]>
+               return <element>; }); })
+
+    The range arm's element flushes its temps inside the lambda, before the
+    `return`; the source arm's element has no flush."""
+    arm: str = ""                         # "range" | "source"
     var: str = ""                         # loop var (source name)
-    loop: str = ""                        # "range" | "begin_end"
-    elem_type: 'TpyType | None' = None    # loop-var binding type (begin_end)
-    const_loop_var: bool = False
-    counter_cpp: str = ""                 # range counter spelling
-    counter_bigint: bool = False          # BigInt reserve arm
-    range_start: 'THIRExpr | None' = None  # None for 1-arg range
-    range_stop: 'THIRExpr | None' = None
-    range_start_literal: bool = False     # bare TpyIntLiteral bounds inline
-    range_stop_literal: bool = False
-    # The array_from_index range arm (loop="array_range"): per-index lambda,
-    # `E var = start + E(__i_N) * (step); return elem;` -- the Array-demoted
-    # comprehension (the stop bound is encoded in N, never rendered).
     array_elem_cpp: str = ""              # the array element spelling
     array_size_cpp: str = ""              # the N template arg spelling
-    range_step: 'THIRExpr | None' = None  # 3-arg range step (untargeted render)
-    iterable: 'THIRExpr | None' = None    # begin_end only
+    element: 'THIRExpr | None' = None
+    # range arm
+    counter_cpp: str = ""
+    range_start: 'THIRExpr | None' = None  # None for 1-arg range
+    range_step: 'THIRExpr | None' = None   # None for 1/2-arg range
+    # source arm
+    elem_type: 'TpyType | None' = None    # loop-var binding type
+    iterable: 'THIRExpr | None' = None
     iterable_lvalue: bool = True
-    # begin_end over the iterator `__iter__()` returns: the capture goes
-    # through `::tpy::iter_range` (an rvalue source is owned first).
-    iter_protocol: bool = False
-    sized_reserve: bool = False           # list over a sized begin_end iterable
     unpack_targets: tuple = ()            # ('a', None, 'b') -- None = discard
     unpack_target_cpps: tuple = ()
-    conditions: tuple = ()                # &&-joined filter conditions
-    element: 'THIRExpr | None' = None     # list/set insert value
-    key: 'THIRExpr | None' = None         # dict
-    value: 'THIRExpr | None' = None       # dict
-    # Owned-move dict: the value (last sink) moved, so the key is sequenced into
-    # `__dk_N` first (insert_or_assign leaves its two args unsequenced, so a key
-    # reading the moved-from loop var would be a use-after-move).
-    value_moved: bool = False
+
+
+@dataclass(frozen=True)
+class THIRComprehensionBlock(THIRExpr):
+    """A comprehension whose loop is an ordinary statement body -- a GCC
+    statement expression around it:
+
+        ({ <container_cpp> __result; <body> std::move(__result); })
+
+    `body` is plain THIR: a THIRForEach / THIRForRange (rendered by the
+    statement emitter, which spells the reserve via its `presize`), one
+    nested THIRIf per filter -- so a later filter runs only when the earlier
+    ones passed -- and a THIRCompInsert leaf. The body flushes its own
+    temporaries in a statement region of its own, so a comprehension is a
+    flush position for everything inside it wherever it sits (a ctor
+    member-init cell included) -- except its first loop's source
+    (`source_in_enclosing`), which Python evaluates in the enclosing scope:
+    its temps land at the enclosing statement and outlive the block. A
+    walrus pre-declaration lands there too: PEP 572 binds the target in the
+    enclosing scope.
+    An Array-demoted comprehension has no loop: THIRArrayComprehension."""
+    kind: str = ""                        # "list" | "set" | "dict"
+    container_cpp: str = ""
+    body: tuple['THIRStmt', ...] = ()
 
 
 @dataclass(frozen=True)
@@ -3029,6 +3029,14 @@ class THIRForRange(THIRStmt):
     # Includes the loop var itself when `hoist_loop_var`.
     hoist_decls: tuple[HoistDecl, ...] = ()
     hoisted_bindings: tuple[THIRHoistedBinding, ...] = ()
+    # A container the loop reserves to its trip count once the bounds are
+    # captured (a list comprehension's result): the capture names are the
+    # emitter's, so only the loop can spell the reserve.
+    presize: 'str | None' = None
+    # A comprehension's first loop: Python evaluates its source in the
+    # enclosing scope, so the source's temps belong to the statement the
+    # comprehension sits in and outlive the comprehension's block.
+    source_in_enclosing: bool = False
 
 
 class TupleSourceBind(Enum):
@@ -3253,6 +3261,11 @@ class THIRForEach(THIRStmt):
     # `auto __obj_N` would die with. Decided by the resumable frame prescan,
     # which is the pass that places the field.
     frame_src_field: 'str | None' = None
+    # A container reserved to the source's size right after the capture
+    # (a list comprehension over a sized source; see THIRForRange).
+    presize: 'str | None' = None
+    # See THIRForRange.
+    source_in_enclosing: bool = False
 
 
 @dataclass(frozen=True)
@@ -3288,6 +3301,8 @@ class THIRForIterProto(THIRStmt):
     orelse: tuple[THIRStmt, ...] = ()
     # The frame field owning this loop's source -- see THIRForEach.
     frame_src_field: 'str | None' = None
+    # See THIRForRange.
+    source_in_enclosing: bool = False
 
 
 class WithTargetArm(Enum):
@@ -3951,6 +3966,27 @@ class THIRPrint(THIRStmt):
     # A literal `flush=True` appends `<< std::flush` after the end token
     # runtime flush values reject.
     flush: bool = False
+
+
+@dataclass(frozen=True)
+class THIRCompInsert(THIRStmt):
+    """The insert leaf of a THIRComprehensionBlock body, into the block's
+    `__result`: `push_back(element)` (list), `insert(element)` (set),
+    `insert_or_assign(key, value)` (dict). Its operands' temporaries flush
+    right above it, once per iteration that reaches it.
+
+    `key_first` (a dict whose value moves the loop var): insert_or_assign
+    leaves its two arguments unsequenced, so a key reading the moved-from
+    loop var would be a use-after-move -- the key evaluates into a
+    `__dk_N` local first:
+
+        auto __dk_N = <key>;
+        __result.insert_or_assign(std::move(__dk_N), <value>);"""
+    kind: str                             # "list" | "set" | "dict"
+    element: 'THIRExpr | None' = None
+    key: 'THIRExpr | None' = None
+    value: 'THIRExpr | None' = None
+    key_first: bool = False
 
 
 @dataclass(frozen=True)

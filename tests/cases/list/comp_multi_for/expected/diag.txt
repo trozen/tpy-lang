@@ -1,0 +1,7 @@
+main.py:122: warning: Mutation of 'b_list' while iterating over it ('append' invalidates the iterator)
+main.py:138: warning: Mutation of 'h.items' while iterating over it ('append' invalidates the iterator)
+main.py:144: warning: Mutation of 'bs[...]' while iterating over it ('append' invalidates the iterator)
+main.py:152: warning: Mutation of 'bs[...]' may hit the element being iterated ('append' may invalidate the iterator)
+main.py:410: warning: Passing borrowed container 'row' to non-readonly parameter 'row' (function may invalidate references)
+main.py:412: warning: Mutation of 'row' while iterating over it ('pop' invalidates the iterator)
+main.py:427: warning: copies list[int] into owned storage; use copy() to make this explicit

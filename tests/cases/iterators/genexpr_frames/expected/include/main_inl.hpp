@@ -112,7 +112,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk::__next__() {
         __state = S_DONE;  // until a yield sets where to resume
         xs.emplace(({
             std::vector<int32_t> __result;
-            const int32_t __stop_0 = n;
+            int32_t __stop_0 = n;
             if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
             for (int32_t i = 0; i < __stop_0; ++i) {
                 __result.push_back(i);

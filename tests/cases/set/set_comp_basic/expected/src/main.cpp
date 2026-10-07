@@ -27,8 +27,7 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_set<int32_t> squares = ({
         ::tpy::ordered_set<int32_t> __result;
-        const int32_t __stop_0 = 5;
-        for (int32_t x = 0; x < __stop_0; ++x) {
+        for (int32_t x = 0; x < 5; ++x) {
             __result.insert((::tpy::mul_check<int32_t>(x, x)));
         }
         std::move(__result);
@@ -68,18 +67,16 @@ void main() {
     std::cout << ::tpy::__len__(name_set) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> r2 = ({
         ::tpy::ordered_set<int32_t> __result;
-        const int32_t __start_4 = 3;
-        const int32_t __stop_5 = 7;
-        for (int32_t x = __start_4; x < __stop_5; ++x) {
+        for (int32_t x = 3; x < 7; ++x) {
             __result.insert(x);
         }
         std::move(__result);
     });
-    auto& __obj_6 = r2;
-    auto __beg_6 = __obj_6.begin();
-    auto __end_6 = __obj_6.end();
-    for (; __beg_6 != __end_6; ++__beg_6) {
-        int32_t v = *__beg_6;
+    auto& __obj_5 = r2;
+    auto __beg_5 = __obj_5.begin();
+    auto __end_5 = __obj_5.end();
+    for (; __beg_5 != __end_5; ++__beg_5) {
+        int32_t v = *__beg_5;
         std::cout << v << "\n" << ::tpy::check_signals;
     }
 }

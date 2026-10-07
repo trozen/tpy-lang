@@ -148,9 +148,8 @@ int32_t both_arms(int32_t k) {
     if ((k > 0)) {
         ys = &*(__slot_1 = ({
             std::vector<int32_t> __result;
-            const int32_t __stop_0 = 4;
-            if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-            for (int32_t i = 0; i < __stop_0; ++i) {
+            if (4 > 0) __result.reserve(static_cast<size_t>(4));
+            for (int32_t i = 0; i < 4; ++i) {
                 __result.push_back((::tpy::add_check<int32_t>(i, 1)));
             }
             std::move(__result);
@@ -158,9 +157,8 @@ int32_t both_arms(int32_t k) {
     } else {
         ys = &*(__slot_2 = ({
             std::vector<int32_t> __result;
-            const int32_t __stop_1 = 4;
-            if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
-            for (int32_t i = 0; i < __stop_1; ++i) {
+            if (4 > 0) __result.reserve(static_cast<size_t>(4));
+            for (int32_t i = 0; i < 4; ++i) {
                 __result.push_back((::tpy::add_check<int32_t>(i, 2)));
             }
             std::move(__result);
@@ -285,7 +283,8 @@ void tuple_elems() {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto& __tup_1 = *__beg_0;
+            auto&& __for_tup_0 = *__beg_0;
+            auto& __tup_1 = __for_tup_0;
             int32_t a = std::get<0>(__tup_1);
             int32_t b = std::get<1>(__tup_1);
             __result.push_back(std::tuple<int32_t, int32_t>{(::tpy::add_check<int32_t>(a, 1)), b});

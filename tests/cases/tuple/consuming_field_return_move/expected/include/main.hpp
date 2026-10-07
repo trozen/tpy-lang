@@ -765,9 +765,8 @@ inline int32_t H::try_else_return() && {
 inline int32_t H::comprehension_in_return() && {
     return (::tpy::add_check<int32_t>(::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->b)}))), ::tpy::__len__(({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = 2;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t i = 0; i < 2; ++i) {
             __result.push_back(i);
         }
         std::move(__result);

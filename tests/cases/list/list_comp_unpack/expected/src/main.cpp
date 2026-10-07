@@ -56,7 +56,8 @@ void main() {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& __tup_1 = *__beg_0;
+            const auto& __for_tup_0 = *__beg_0;
+            const auto& __tup_1 = __for_tup_0;
             std::string k = std::get<0>(__tup_1);
             int32_t v = std::get<1>(__tup_1);
             __result.push_back(v);
@@ -71,7 +72,8 @@ void main() {
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
-            const auto& __tup_2 = *__beg_1;
+            const auto& __for_tup_1 = *__beg_1;
+            const auto& __tup_2 = __for_tup_1;
             std::string k = std::get<0>(__tup_2);
             int32_t v = std::get<1>(__tup_2);
             __result.push_back(k);
@@ -87,7 +89,8 @@ void main() {
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
-            const auto& __tup_3 = *__beg_2;
+            const auto& __for_tup_2 = *__beg_2;
+            const auto& __tup_3 = __for_tup_2;
             std::string k = std::get<0>(__tup_3);
             int32_t v = std::get<1>(__tup_3);
             __result.push_back((::tpy::mul_check<int32_t>(v, 2)));
@@ -102,7 +105,8 @@ void main() {
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
-            const auto& __tup_4 = *__beg_3;
+            const auto& __for_tup_3 = *__beg_3;
+            const auto& __tup_4 = __for_tup_3;
             std::string k = std::get<0>(__tup_4);
             int32_t v = std::get<1>(__tup_4);
             if ((v > 15)) {
@@ -119,7 +123,8 @@ void main() {
         auto __beg_4 = __obj_4.begin();
         auto __end_4 = __obj_4.end();
         for (; __beg_4 != __end_4; ++__beg_4) {
-            const auto& __tup_5 = *__beg_4;
+            const auto& __for_tup_4 = *__beg_4;
+            const auto& __tup_5 = __for_tup_4;
             std::string k = std::get<0>(__tup_5);
             int32_t v = std::get<1>(__tup_5);
             __result.push_back((::tpy::str_concat((::tpy::str_concat(k, "=")), ::tpy::fixed_to_str<int32_t>(v))));
@@ -134,7 +139,8 @@ void main() {
         auto __beg_5 = __obj_5.begin();
         auto __end_5 = __obj_5.end();
         for (; __beg_5 != __end_5; ++__beg_5) {
-            const auto& __tup_6 = *__beg_5;
+            const auto& __for_tup_5 = *__beg_5;
+            const auto& __tup_6 = __for_tup_5;
             int32_t v = std::get<1>(__tup_6);
             __result.push_back(v);
         }
@@ -148,7 +154,8 @@ void main() {
         auto __beg_6 = __obj_6.begin();
         auto __end_6 = __obj_6.end();
         for (; __beg_6 != __end_6; ++__beg_6) {
-            const auto& __tup_7 = *__beg_6;
+            const auto& __for_tup_6 = *__beg_6;
+            const auto& __tup_7 = __for_tup_6;
             std::string k = std::get<0>(__tup_7);
             int32_t v = std::get<1>(__tup_7);
             if ((k != "x")) {
@@ -166,7 +173,8 @@ void main() {
         auto __beg_7 = __obj_7.begin();
         auto __end_7 = __obj_7.end();
         for (; __beg_7 != __end_7; ++__beg_7) {
-            const auto& __tup_8 = *__beg_7;
+            const auto& __for_tup_7 = *__beg_7;
+            const auto& __tup_8 = __for_tup_7;
             int32_t n = std::get<1>(__tup_8);
             __result.push_back(n);
         }
@@ -180,7 +188,8 @@ void main() {
         auto __beg_8 = __obj_8.begin();
         auto __end_8 = __obj_8.end();
         for (; __beg_8 != __end_8; ++__beg_8) {
-            const auto& __tup_9 = *__beg_8;
+            const auto& __for_tup_8 = *__beg_8;
+            const auto& __tup_9 = __for_tup_8;
             std::string s = std::get<0>(__tup_9);
             bool b = std::get<2>(__tup_9);
             __result.push_back((::tpy::str_concat((::tpy::str_concat(s, ":")), std::string(::tpy::bool_to_str(b)))));
@@ -196,7 +205,8 @@ void main() {
         auto __beg_9 = __obj_9.begin();
         auto __end_9 = __obj_9.end();
         for (; __beg_9 != __end_9; ++__beg_9) {
-            const auto& __tup_10 = *__beg_9;
+            const auto& __for_tup_9 = *__beg_9;
+            const auto& __tup_10 = __for_tup_9;
             const auto& p = std::get<1>(__tup_10);
             __result.push_back(p);
         }

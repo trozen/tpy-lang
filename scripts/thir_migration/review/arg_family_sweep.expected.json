@@ -9682,17 +9682,17 @@
  "dict_si__mut__comprehension__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict/begin_end](::tpy::ordered_map<std::string, int32_t>, var %k const)}]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Array]([str('c')]):; c"
  ],
  "dict_si__mut__comprehension__fn": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict/begin_end](::tpy::ordered_map<std::string, int32_t>, var %k const)}])"
+  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k:"
  ],
  "dict_si__mut__comprehension__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict/begin_end](::tpy::ordered_map<std::string, int32_t>, var %k const)}])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Ar"
  ],
  "dict_si__mut__comprehension__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -9717,7 +9717,7 @@
  "dict_si__mut__comprehension__static": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict/begin_end](::tpy::ordered_map<std::string, int32_t>, var %k const)}])"
+  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k:"
  ],
  "dict_si__mut__copy_call__ctor": [
   "ok",
@@ -10602,27 +10602,27 @@
  "dict_si__ro__comprehension__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict/begin_end](::tpy::ordered_map<std::string, int32_t>, var %k const)}]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Array]([str('c')]):; c"
  ],
  "dict_si__ro__comprehension__fn": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict/begin_end](::tpy::ordered_map<std::string, int32_t>, var %k const)}])"
+  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k:"
  ],
  "dict_si__ro__comprehension__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict/begin_end](::tpy::ordered_map<std::string, int32_t>, var %k const)}])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Ar"
  ],
  "dict_si__ro__comprehension__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [comp[dict/begin_end](::tpy::ordered_map<std::string, int32_t>, var %k const)])"
+  "method_call(%g, CALLEE, [comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k: lit(1) }])"
  ],
  "dict_si__ro__comprehension__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [comp[dict/begin_end](::tpy::ordered_map<std::string, int32_t>, var %k const)])"
+  "method_call(%t, CALLEE, [comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k: lit(1) }])"
  ],
  "dict_si__ro__comprehension__nested": [
   "reject:expr.call:call.ctor_arg.container",
@@ -10637,7 +10637,7 @@
  "dict_si__ro__comprehension__static": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict/begin_end](::tpy::ordered_map<std::string, int32_t>, var %k const)}])"
+  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k:"
  ],
  "dict_si__ro__copy_call__ctor": [
   "ok",
@@ -14042,17 +14042,17 @@
  "list_i__mut__comprehension__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t>){comp[list/range](std::vector<int32_t>, var %i)}]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}]) print(%k0.tag [raw])"
  ],
  "list_i__mut__comprehension__fn": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(std::vector<int32_t>){comp[list/range](std::vector<int32_t>, var %i)}])"
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}])"
  ],
  "list_i__mut__comprehension__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t>){comp[list/range](std::vector<int32_t>, var %i)}])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}])"
  ],
  "list_i__mut__comprehension__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -14077,7 +14077,7 @@
  "list_i__mut__comprehension__static": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(std::vector<int32_t>){comp[list/range](std::vector<int32_t>, var %i)}])"
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}])"
  ],
  "list_i__mut__copy_call__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -15042,27 +15042,27 @@
  "list_i__ro__comprehension__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t>){comp[list/range](std::vector<int32_t>, var %i)}]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}]) print(%k0.tag [raw])"
  ],
  "list_i__ro__comprehension__fn": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(std::vector<int32_t>){comp[list/range](std::vector<int32_t>, var %i)}])"
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}])"
  ],
  "list_i__ro__comprehension__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t>){comp[list/range](std::vector<int32_t>, var %i)}])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}])"
  ],
  "list_i__ro__comprehension__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [comp[list/range](std::vector<int32_t>, var %i)])"
+  "method_call(%g, CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }])"
  ],
  "list_i__ro__comprehension__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [comp[list/range](std::vector<int32_t>, var %i)])"
+  "method_call(%t, CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }])"
  ],
  "list_i__ro__comprehension__nested": [
   "reject:expr.call:call.ctor_arg.container",
@@ -15077,7 +15077,7 @@
  "list_i__ro__comprehension__static": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(std::vector<int32_t>){comp[list/range](std::vector<int32_t>, var %i)}])"
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}])"
  ],
  "list_i__ro__copy_call__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -16042,12 +16042,12 @@
  "list_i_own__mut__comprehension__ctor": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "%k0: CALLEE = ctor(CALLEE, [comp[list/range](std::vector<int32_t>, var %i)]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }]) print(%k0.tag [raw])"
  ],
  "list_i_own__mut__comprehension__fn": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE, [comp[list/range](std::vector<int32_t>, var %i)])"
+  "call(CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }])"
  ],
  "list_i_own__mut__comprehension__gen": [
   "reject:expr.call:call.generic_arg_shape",
@@ -16057,12 +16057,12 @@
  "list_i_own__mut__comprehension__genrec": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%g, CALLEE, [comp[list/range](std::vector<int32_t>, var %i)])"
+  "method_call(%g, CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }])"
  ],
  "list_i_own__mut__comprehension__meth": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%t, CALLEE, [comp[list/range](std::vector<int32_t>, var %i)])"
+  "method_call(%t, CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }])"
  ],
  "list_i_own__mut__comprehension__nested": [
   "reject:expr.call:call.ctor_arg.own_container",
@@ -16077,7 +16077,7 @@
  "list_i_own__mut__comprehension__static": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE, [comp[list/range](std::vector<int32_t>, var %i)])"
+  "call(CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }])"
  ],
  "list_i_own__mut__copy_call__ctor": [
   "reject:expr.call:call.ctor_arg.own_container",
@@ -17042,12 +17042,12 @@
  "list_i_own__ro__comprehension__ctor": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "%k0: CALLEE = ctor(CALLEE, [comp[list/range](std::vector<int32_t>, var %i)]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }]) print(%k0.tag [raw])"
  ],
  "list_i_own__ro__comprehension__fn": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE, [comp[list/range](std::vector<int32_t>, var %i)])"
+  "call(CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }])"
  ],
  "list_i_own__ro__comprehension__gen": [
   "reject:expr.call:call.generic_arg_shape",
@@ -17057,12 +17057,12 @@
  "list_i_own__ro__comprehension__genrec": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%g, CALLEE, [comp[list/range](std::vector<int32_t>, var %i)])"
+  "method_call(%g, CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }])"
  ],
  "list_i_own__ro__comprehension__meth": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%t, CALLEE, [comp[list/range](std::vector<int32_t>, var %i)])"
+  "method_call(%t, CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }])"
  ],
  "list_i_own__ro__comprehension__nested": [
   "reject:expr.call:call.ctor_arg.own_container",
@@ -17077,7 +17077,7 @@
  "list_i_own__ro__comprehension__static": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE, [comp[list/range](std::vector<int32_t>, var %i)])"
+  "call(CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }])"
  ],
  "list_i_own__ro__copy_call__ctor": [
   "reject:expr.call:call.ctor_arg.own_container",
@@ -18042,27 +18042,27 @@
  "list_i_ro__ro__comprehension__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t>){comp[list/range](std::vector<int32_t>, var %i)}]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}]) print(%k0.tag [raw])"
  ],
  "list_i_ro__ro__comprehension__fn": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(std::vector<int32_t>){comp[list/range](std::vector<int32_t>, var %i)}])"
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}])"
  ],
  "list_i_ro__ro__comprehension__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t>){comp[list/range](std::vector<int32_t>, var %i)}])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}])"
  ],
  "list_i_ro__ro__comprehension__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [comp[list/range](std::vector<int32_t>, var %i)])"
+  "method_call(%g, CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }])"
  ],
  "list_i_ro__ro__comprehension__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [comp[list/range](std::vector<int32_t>, var %i)])"
+  "method_call(%t, CALLEE, [comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }])"
  ],
  "list_i_ro__ro__comprehension__nested": [
   "reject:expr.call:call.ctor_arg.container",
@@ -18077,7 +18077,7 @@
  "list_i_ro__ro__comprehension__static": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(std::vector<int32_t>){comp[list/range](std::vector<int32_t>, var %i)}])"
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){comp[list](std::vector<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert %i }}])"
  ],
  "list_i_ro__ro__copy_call__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -19042,17 +19042,17 @@
  "list_r__mut__comprehension__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<R>){comp[list/range](std::vector<R>, var %i)}]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<R>){comp[list](std::vector<R>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert ctor(R, [%i]) }}]) print(%k0.tag [raw])"
  ],
  "list_r__mut__comprehension__fn": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(std::vector<R>){comp[list/range](std::vector<R>, var %i)}])"
+  "call(CALLEE, [%argtmp(std::vector<R>){comp[list](std::vector<R>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert ctor(R, [%i]) }}])"
  ],
  "list_r__mut__comprehension__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<R>){comp[list/range](std::vector<R>, var %i)}])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<R>){comp[list](std::vector<R>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert ctor(R, [%i]) }}])"
  ],
  "list_r__mut__comprehension__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -19077,7 +19077,7 @@
  "list_r__mut__comprehension__static": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(std::vector<R>){comp[list/range](std::vector<R>, var %i)}])"
+  "call(CALLEE, [%argtmp(std::vector<R>){comp[list](std::vector<R>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert ctor(R, [%i]) }}])"
  ],
  "list_r__mut__copy_call__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -19962,27 +19962,27 @@
  "list_r__ro__comprehension__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<R>){comp[list/range](std::vector<R>, var %i)}]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<R>){comp[list](std::vector<R>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert ctor(R, [%i]) }}]) print(%k0.tag [raw])"
  ],
  "list_r__ro__comprehension__fn": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(std::vector<R>){comp[list/range](std::vector<R>, var %i)}])"
+  "call(CALLEE, [%argtmp(std::vector<R>){comp[list](std::vector<R>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert ctor(R, [%i]) }}])"
  ],
  "list_r__ro__comprehension__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<R>){comp[list/range](std::vector<R>, var %i)}])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<R>){comp[list](std::vector<R>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert ctor(R, [%i]) }}])"
  ],
  "list_r__ro__comprehension__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [comp[list/range](std::vector<R>, var %i)])"
+  "method_call(%g, CALLEE, [comp[list](std::vector<R>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert ctor(R, [%i]) }])"
  ],
  "list_r__ro__comprehension__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [comp[list/range](std::vector<R>, var %i)])"
+  "method_call(%t, CALLEE, [comp[list](std::vector<R>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert ctor(R, [%i]) }])"
  ],
  "list_r__ro__comprehension__nested": [
   "reject:expr.call:call.ctor_arg.container",
@@ -19997,7 +19997,7 @@
  "list_r__ro__comprehension__static": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(std::vector<R>){comp[list/range](std::vector<R>, var %i)}])"
+  "call(CALLEE, [%argtmp(std::vector<R>){comp[list](std::vector<R>) { for %i in range(0, coerce(lit(2) -> int32)) [presize __result]:; comp_insert ctor(R, [%i]) }}])"
  ],
  "list_r__ro__copy_call__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -27852,17 +27852,17 @@
  "set_i__mut__comprehension__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){comp[set/range](::tpy::ordered_set<int32_t>, var %i)}]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){comp[set](::tpy::ordered_set<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)):; comp_insert %i }}]) print(%k0.tag [raw])"
  ],
  "set_i__mut__comprehension__fn": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){comp[set/range](::tpy::ordered_set<int32_t>, var %i)}])"
+  "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){comp[set](::tpy::ordered_set<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)):; comp_insert %i }}])"
  ],
  "set_i__mut__comprehension__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_set<int32_t>){comp[set/range](::tpy::ordered_set<int32_t>, var %i)}])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_set<int32_t>){comp[set](::tpy::ordered_set<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)):; comp_insert %i }}])"
  ],
  "set_i__mut__comprehension__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -27887,7 +27887,7 @@
  "set_i__mut__comprehension__static": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){comp[set/range](::tpy::ordered_set<int32_t>, var %i)}])"
+  "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){comp[set](::tpy::ordered_set<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)):; comp_insert %i }}])"
  ],
  "set_i__mut__copy_call__ctor": [
   "ok",
@@ -28812,27 +28812,27 @@
  "set_i__ro__comprehension__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){comp[set/range](::tpy::ordered_set<int32_t>, var %i)}]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){comp[set](::tpy::ordered_set<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)):; comp_insert %i }}]) print(%k0.tag [raw])"
  ],
  "set_i__ro__comprehension__fn": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){comp[set/range](::tpy::ordered_set<int32_t>, var %i)}])"
+  "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){comp[set](::tpy::ordered_set<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)):; comp_insert %i }}])"
  ],
  "set_i__ro__comprehension__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_set<int32_t>){comp[set/range](::tpy::ordered_set<int32_t>, var %i)}])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_set<int32_t>){comp[set](::tpy::ordered_set<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)):; comp_insert %i }}])"
  ],
  "set_i__ro__comprehension__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [comp[set/range](::tpy::ordered_set<int32_t>, var %i)])"
+  "method_call(%g, CALLEE, [comp[set](::tpy::ordered_set<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)):; comp_insert %i }])"
  ],
  "set_i__ro__comprehension__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [comp[set/range](::tpy::ordered_set<int32_t>, var %i)])"
+  "method_call(%t, CALLEE, [comp[set](::tpy::ordered_set<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)):; comp_insert %i }])"
  ],
  "set_i__ro__comprehension__nested": [
   "reject:expr.call:call.ctor_arg.container",
@@ -28847,7 +28847,7 @@
  "set_i__ro__comprehension__static": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){comp[set/range](::tpy::ordered_set<int32_t>, var %i)}])"
+  "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){comp[set](::tpy::ordered_set<int32_t>) { for %i in range(0, coerce(lit(2) -> int32)):; comp_insert %i }}])"
  ],
  "set_i__ro__copy_call__ctor": [
   "ok",

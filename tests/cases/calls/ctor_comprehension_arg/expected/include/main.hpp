@@ -221,7 +221,7 @@ inline void CM::__exit__(std::monostate et, const ::tpy::BaseException* ev, std:
 inline Site::Site(int32_t k) {
     std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_0 = k;
+        int32_t __stop_0 = k;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));
@@ -239,7 +239,7 @@ inline Site::Site(int32_t k) {
 inline void Site::bump(int32_t k) {
     std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;
-        const int32_t __stop_0 = k;
+        int32_t __stop_0 = k;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
             __result.push_back(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{i}));

@@ -210,19 +210,19 @@ int32_t nested_comp(std::vector<int32_t>& xs, bool big) {
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t v = *__beg_0;
             __result.push_back(({
-        std::vector<int32_t> __result;
-        auto __obj_1 = {1, 2};
-        __result.reserve(static_cast<std::size_t>(__obj_1.size()));
-        auto __beg_1 = __obj_1.begin();
-        auto __end_1 = __obj_1.end();
-        for (; __beg_1 != __end_1; ++__beg_1) {
-            int32_t w = *__beg_1;
-            if ((big && ::tpyapp::main::grow(xs))) {
-                __result.push_back(w);
-            }
-        }
-        std::move(__result);
-    }));
+                std::vector<int32_t> __result;
+                auto __obj_1 = {1, 2};
+                __result.reserve(static_cast<std::size_t>(__obj_1.size()));
+                auto __beg_1 = __obj_1.begin();
+                auto __end_1 = __obj_1.end();
+                for (; __beg_1 != __end_1; ++__beg_1) {
+                    int32_t w = *__beg_1;
+                    if ((big && ::tpyapp::main::grow(xs))) {
+                        __result.push_back(w);
+                    }
+                }
+                std::move(__result);
+            }));
         }
         std::move(__result);
     }));
@@ -633,9 +633,8 @@ int32_t after_comp(std::vector<int32_t>& xs) {
 int32_t range_source(std::vector<int32_t>& xs) {
     return ::tpy::__len__(({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t i = 0; i < 3; ++i) {
             if (::tpyapp::main::grow(xs)) {
                 __result.push_back(i);
             }

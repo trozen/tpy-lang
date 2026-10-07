@@ -123,18 +123,18 @@ inline Pic::Pic()
 inline void Pic::fill(int32_t w, int32_t h) {
     this->data = ({
         std::vector<std::vector<int32_t>> __result;
-        const int32_t __stop_0 = w;
+        int32_t __stop_0 = w;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t j = 0; j < __stop_0; ++j) {
             __result.push_back(({
-        std::vector<int32_t> __result;
-        const int32_t __stop_1 = h;
-        if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
-        for (int32_t k = 0; k < __stop_1; ++k) {
-            __result.push_back(0);
-        }
-        std::move(__result);
-    }));
+                std::vector<int32_t> __result;
+                int32_t __stop_1 = h;
+                if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
+                for (int32_t k = 0; k < __stop_1; ++k) {
+                    __result.push_back(0);
+                }
+                std::move(__result);
+            }));
         }
         std::move(__result);
     });
@@ -157,18 +157,18 @@ inline Grid::Grid(const std::vector<int32_t>& raw) {
     this->height = height;
     this->data = ({
         std::vector<std::vector<int32_t>> __result;
-        const int32_t __stop_0 = width;
+        int32_t __stop_0 = width;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t j = 0; j < __stop_0; ++j) {
             __result.push_back(({
-        std::vector<int32_t> __result;
-        const int32_t __stop_1 = height;
-        if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
-        for (int32_t k = 0; k < __stop_1; ++k) {
-            __result.push_back(0);
-        }
-        std::move(__result);
-    }));
+                std::vector<int32_t> __result;
+                int32_t __stop_1 = height;
+                if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
+                for (int32_t k = 0; k < __stop_1; ++k) {
+                    __result.push_back(0);
+                }
+                std::move(__result);
+            }));
         }
         std::move(__result);
     });

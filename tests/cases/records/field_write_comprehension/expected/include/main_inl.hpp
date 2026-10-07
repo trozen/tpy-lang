@@ -29,9 +29,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         i = ((*__for_i_0))++;
         p.flat = ({
             std::vector<int32_t> __result;
-            const int32_t __stop_0 = 2;
-            if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-            for (int32_t j = 0; j < __stop_0; ++j) {
+            if (2 > 0) __result.reserve(static_cast<size_t>(2));
+            for (int32_t j = 0; j < 2; ++j) {
                 __result.push_back((::tpy::add_check<int32_t>(i, j)));
             }
             std::move(__result);

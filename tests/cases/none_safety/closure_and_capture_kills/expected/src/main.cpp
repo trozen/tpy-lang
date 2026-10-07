@@ -710,9 +710,8 @@ void comprehension_cond() {
     if ((t.v.has_value())) {
         std::vector<int32_t> ks = ({
             std::vector<int32_t> __result;
-            const int32_t __stop_0 = 2;
-            if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-            for (int32_t k = 0; k < __stop_0; ++k) {
+            if (2 > 0) __result.reserve(static_cast<size_t>(2));
+            for (int32_t k = 0; k < 2; ++k) {
                 if (wipe()) {
                     __result.push_back(k);
                 }

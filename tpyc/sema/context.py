@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from enum import Enum
-from typing import Any, Callable, Iterator, NamedTuple, TYPE_CHECKING
+from typing import Any, Callable, Container, Iterator, NamedTuple, TYPE_CHECKING
 
 from ..identity_map import IdentityMap, IdentitySet
 from ..macro_loader import MacroRegistry
@@ -410,6 +410,20 @@ def _root_name_of_expr(expr: TpyExpr) -> str | None:
         else:
             break
     return expr.name if isinstance(expr, TpyName) else None
+
+
+def iter_source_root(expr: TpyExpr) -> str | None:
+    """The NAME the storage a for-each iterable borrows is rooted at.
+
+    The borrow key is the answer wherever the tracker files a loan
+    (`iter_borrow_storage`), so the loan and the mutable-borrow credit can
+    never root differently -- one question, one walker. An iterable the
+    tracker files nothing for (a borrowing accessor hop, a property getter
+    with no `return_borrows_from`) still lends the loop var storage that
+    cannot bind const, so the syntactic climb answers for those.
+    """
+    key = iter_borrow_storage(expr)
+    return _storage_root(key) if key is not None else _root_name_of_expr(expr)
 
 
 def _is_borrowing_auto_readonly_accessor(expr: TpyExpr) -> bool:
@@ -1926,6 +1940,9 @@ class FunctionTrackingState:
     pending_loop_vars: dict[str, PendingLocal] = field(default_factory=dict)
     loop_vars: set[str] = field(default_factory=set)
     mutated_loop_vars: set[str] = field(default_factory=set)
+    # The targets of the comprehension clauses being analyzed, innermost
+    # last: the loop vars a comprehension's write may lend through.
+    comp_targets: list[str] = field(default_factory=list)
     consumed_loop_vars: set[str] = field(default_factory=set)
     deferred_loop_copy_warnings: dict[str, list[int]] = field(default_factory=dict)
     # One loop var can borrow MANY sources: a `*args` pack is a single
@@ -3703,6 +3720,23 @@ class SemanticContext:
         """Mark a for-each loop variable as mutated (prevents const-ref binding)."""
         if name in self.func.loop_vars:
             self.func.mutated_loop_vars.add(name)
+
+    def credit_iter_source_mutation(self, targets: 'list[str]',
+                                    iterable: TpyExpr,
+                                    reach: 'Container[str] | None' = None) -> None:
+        """A mutated loop target lends a MUTABLE borrow of the storage it was
+        iterated out of, so that storage cannot bind const either. Keyed on
+        the iterable's ROOT rather than on the iterating construct, which is
+        what makes the rule compose: an inner loop (or comprehension clause)
+        marks the outer loop var, whose own iteration then marks ITS source
+        in turn. Called after the targets' scope closes, innermost first.
+        `reach`, when given, is the set of loop vars the edge may mark."""
+        if not any(t in self.func.mutated_loop_vars for t in targets):
+            return
+        root = iter_source_root(iterable)
+        if (root is not None and root not in targets
+                and (reach is None or root in reach)):
+            self.mark_loop_var_mutated(root)
 
     def mark_loop_var_consumed(self, name: str) -> None:
         """Mark a for-each loop variable as consumed (copied into owned storage).

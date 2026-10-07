@@ -23,11 +23,8 @@ std::expected<int32_t, MyErr> half(int32_t n) {
 std::expected<int32_t, MyErr> halves() {
     std::vector<int32_t> hs = ({
         std::vector<int32_t> __result;
-        auto __obj_0 = ::tpy::Range<int32_t>(0, 8, 2);
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            int32_t i = *__beg_0;
+        ::tpy::range_check_overflow<int32_t>(0, 8, 2);
+        for (int32_t i = 0; i < 8; i += 2) {
             __result.push_back(({ auto __er_1 = ::tpyapp::main::half(i); if (!__er_1.has_value()) return ::tpy::make_unexpected(std::move(__er_1.error())); ::tpy::unwrap_ref_move(*__er_1); }));
         }
         std::move(__result);
@@ -42,9 +39,8 @@ std::expected<int32_t, MyErr> halves() {
 std::expected<int32_t, MyErr> bad() {
     std::vector<int32_t> hs = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t i = 0; i < 3; ++i) {
             __result.push_back(({ auto __er_2 = ::tpyapp::main::half(i); if (!__er_2.has_value()) return ::tpy::make_unexpected(std::move(__er_2.error())); ::tpy::unwrap_ref_move(*__er_2); }));
         }
         std::move(__result);
@@ -97,18 +93,16 @@ void main() {
     {
         props = ({
             std::vector<int32_t> __result;
-            const int32_t __stop_0 = 4;
-            if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-            for (int32_t i = 0; i < __stop_0; ++i) {
+            if (4 > 0) __result.reserve(static_cast<size_t>(4));
+            for (int32_t i = 0; i < 4; ++i) {
                 __result.push_back(({ auto __er_8 = g.val(); if (!__er_8.has_value()) goto __except_7; ::tpy::unwrap_ref_move(*__er_8); }));
             }
             std::move(__result);
         });
         meths = ({
             std::vector<int32_t> __result;
-            const int32_t __stop_1 = 3;
-            if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
-            for (int32_t i = 0; i < __stop_1; ++i) {
+            if (3 > 0) __result.reserve(static_cast<size_t>(3));
+            for (int32_t i = 0; i < 3; ++i) {
                 __result.push_back(({ auto __er_9 = g.scaled(i); if (!__er_9.has_value()) goto __except_7; ::tpy::unwrap_ref_move(*__er_9); }));
             }
             std::move(__result);
@@ -125,9 +119,8 @@ void main() {
     {
         broken = ({
             std::vector<int32_t> __result;
-            const int32_t __stop_2 = 2;
-            if (__stop_2 > 0) __result.reserve(static_cast<size_t>(__stop_2));
-            for (int32_t i = 0; i < __stop_2; ++i) {
+            if (2 > 0) __result.reserve(static_cast<size_t>(2));
+            for (int32_t i = 0; i < 2; ++i) {
                 __result.push_back(({ auto __er_11 = bad_g.val(); if (!__er_11.has_value()) goto __except_10; ::tpy::unwrap_ref_move(*__er_11); }));
             }
             std::move(__result);

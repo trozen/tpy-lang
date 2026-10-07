@@ -116,9 +116,8 @@ int32_t closure(const std::vector<P>* d) {
 std::vector<int32_t> comprehension(const std::vector<P>* d) {
     return ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = 2;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t _ = 0; _ < __stop_0; ++_) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t _ = 0; _ < 2; ++_) {
             __result.push_back(::tpy::__getitem__(::tpy::deref_check(d), 0).x);
         }
         std::move(__result);

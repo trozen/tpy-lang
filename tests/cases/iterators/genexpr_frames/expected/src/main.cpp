@@ -4289,8 +4289,8 @@ void main() {
         for (;;) {
             auto __r_4 = __itr_3.__next__();
             if (!__r_4.has_value()) break;
-            auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_4);
-            const auto& __tup_1 = __for_tup_0;
+            auto&& __for_tup_4 = ::tpy::unwrap_ref(*__r_4);
+            const auto& __tup_1 = __for_tup_4;
             int32_t i = std::get<0>(__tup_1);
             int32_t v = std::get<1>(__tup_1);
             std::cout << "owning_enumerate" << " " << i << " " << v << "\n" << ::tpy::check_signals;
@@ -4302,8 +4302,8 @@ void main() {
         for (;;) {
             auto __r_6 = __itr_5.__next__();
             if (!__r_6.has_value()) break;
-            auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_6);
-            const auto& __tup_2 = __for_tup_1;
+            auto&& __for_tup_5 = ::tpy::unwrap_ref(*__r_6);
+            const auto& __tup_2 = __for_tup_5;
             int32_t a = std::get<0>(__tup_2);
             int32_t b = std::get<1>(__tup_2);
             std::cout << "zip_two" << " " << a << " " << b << "\n" << ::tpy::check_signals;
@@ -4420,7 +4420,8 @@ void main() {
         auto __beg_18 = __obj_18.begin();
         auto __end_18 = __obj_18.end();
         for (; __beg_18 != __end_18; ++__beg_18) {
-            auto& __tup_3 = *__beg_18;
+            auto&& __for_tup_8 = *__beg_18;
+            auto& __tup_3 = __for_tup_8;
             auto& p = std::get<0>(__tup_3);
             int32_t q = std::get<1>(__tup_3);
             __result.push_back(p.v);

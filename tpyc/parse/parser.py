@@ -3784,6 +3784,22 @@ class Parser:
             type_args.append(self._parse_type_ref(s))
         return tuple(type_args)
 
+    def _parse_comprehension_generators(
+            self, node: ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp
+    ) -> list[TpyComprehensionGenerator]:
+        """Parse every `for` clause of a comprehension, outermost first."""
+        if any(gen.is_async for gen in node.generators):
+            raise ParseError("Async comprehensions not yet supported", node)
+        return [self._parse_comprehension_generator(gen) for gen in node.generators]
+
+    def _fresh_for_unpack_holder(self) -> str:
+        """A module-unique name for the synthetic local a tuple-unpacking
+        `for` (statement or comprehension clause) binds the whole element
+        to."""
+        name = f"__for_tup_{self._for_unpack_counter}"
+        self._for_unpack_counter += 1
+        return name
+
     def _parse_comprehension_generator(self, gen: ast.comprehension) -> TpyComprehensionGenerator:
         """Parse a single comprehension generator clause."""
         iterable = self._parse_expr(gen.iter)
@@ -3801,8 +3817,11 @@ class Parser:
                 None if elt.id == "_" else elt.id  # type: ignore[union-attr]
                 for elt in gen.target.elts
             ]
+            # The whole-element holder is a synthetic local the for
+            # statement's unpack holder names too: a fixed spelling would
+            # hide a user name the element or an inner clause reads.
             return TpyComprehensionGenerator(
-                var="__comp_tup", iterable=iterable,
+                var=self._fresh_for_unpack_holder(), iterable=iterable,
                 conditions=conditions, unpack_vars=unpack_vars)
         else:
             raise ParseError("Unsupported comprehension target", gen.target)
@@ -4013,8 +4032,7 @@ class Parser:
                     None if elt.id == "_" else elt.id  # type: ignore[union-attr]
                     for elt in node.target.elts
                 ]
-                synth_var = f"__for_tup_{self._for_unpack_counter}"
-                self._for_unpack_counter += 1
+                synth_var = self._fresh_for_unpack_holder()
                 iterable = self._parse_expr(node.iter)
                 body = self._parse_body(node.body)
                 unpack = TpyTupleUnpack(
@@ -4553,25 +4571,15 @@ class Parser:
             return TpyArrayLiteral(elements=elements, loc=loc)
 
         elif isinstance(node, ast.ListComp):
-            if len(node.generators) != 1:
-                raise ParseError("Nested comprehensions not yet supported", node)
-            gen = node.generators[0]
-            if gen.is_async:
-                raise ParseError("Async comprehensions not yet supported", node)
-            generator = self._parse_comprehension_generator(gen)
+            generators = self._parse_comprehension_generators(node)
             element_expr = self._parse_expr(node.elt)
-            return TpyListComprehension(element_expr, generator, loc=loc)
+            return TpyListComprehension(element_expr, generators, loc=loc)
 
         elif isinstance(node, ast.DictComp):
-            if len(node.generators) != 1:
-                raise ParseError("Nested comprehensions not yet supported", node)
-            gen = node.generators[0]
-            if gen.is_async:
-                raise ParseError("Async comprehensions not yet supported", node)
-            generator = self._parse_comprehension_generator(gen)
+            generators = self._parse_comprehension_generators(node)
             key_expr = self._parse_expr(node.key)
             value_expr = self._parse_expr(node.value)
-            return TpyDictComprehension(key_expr, value_expr, generator, loc=loc)
+            return TpyDictComprehension(key_expr, value_expr, generators, loc=loc)
 
         elif isinstance(node, ast.Dict):
             if any(k is None for k in node.keys):
@@ -4581,26 +4589,16 @@ class Parser:
             return TpyDictLiteral(keys=keys, values=values, loc=loc)
 
         elif isinstance(node, ast.SetComp):
-            if len(node.generators) != 1:
-                raise ParseError("Nested comprehensions not yet supported", node)
-            gen = node.generators[0]
-            if gen.is_async:
-                raise ParseError("Async comprehensions not yet supported", node)
-            generator = self._parse_comprehension_generator(gen)
+            generators = self._parse_comprehension_generators(node)
             element_expr = self._parse_expr(node.elt)
-            return TpySetComprehension(element_expr, generator, loc=loc)
+            return TpySetComprehension(element_expr, generators, loc=loc)
 
         elif isinstance(node, ast.GeneratorExp):
-            if len(node.generators) != 1:
-                raise ParseError("Nested comprehensions not yet supported", node)
-            gen = node.generators[0]
-            if gen.is_async:
-                raise ParseError("Async comprehensions not yet supported", node)
-            generator = self._parse_comprehension_generator(gen)
+            generators = self._parse_comprehension_generators(node)
             element_expr = self._parse_expr(node.elt)
             if not self._type_param_scope:
                 self._plain_genexpr_count += 1
-            return TpyGeneratorExpression(element_expr, generator, loc=loc)
+            return TpyGeneratorExpression(element_expr, generators, loc=loc)
 
         elif isinstance(node, ast.Set):
             elements = [self._parse_expr(e) for e in node.elts]

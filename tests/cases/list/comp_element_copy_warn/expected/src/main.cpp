@@ -66,7 +66,7 @@ void dict_value(const std::vector<Cell>& cells) {
 void exempt_fresh(int32_t n) {
     std::vector<Cell> xs = ({
         std::vector<Cell> __result;
-        const int32_t __stop_0 = n;
+        int32_t __stop_0 = n;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
             __result.push_back(Cell(i));
@@ -101,7 +101,7 @@ void exempt_copy(const std::vector<Cell>& cells) {
 void exempt_value(int32_t n) {
     std::vector<int32_t> xs = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = n;
+        int32_t __stop_0 = n;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
             __result.push_back(i);

@@ -17,9 +17,8 @@ namespace tpyapp::main {
         __state = S_DONE;  // until a yield sets where to resume
         rows.emplace(({
             std::vector<std::array<int32_t, 2>> __result;
-            const int32_t __stop_0 = 3;
-            if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-            for (int32_t i = 0; i < __stop_0; ++i) {
+            if (3 > 0) __result.reserve(static_cast<size_t>(3));
+            for (int32_t i = 0; i < 3; ++i) {
                 if ((i > 0)) {
                     __result.push_back({i, (::tpy::add_check<int32_t>(i, 1))});
                 }

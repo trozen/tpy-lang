@@ -388,8 +388,6 @@ class _LoopForm:
     records_done: bool
     # The exhaustion test may become the loop's own condition.
     may_hoist_test: bool
-    # The constructor seeded this loop, so the first pull has nothing to do.
-    ctor_seeded_uid: 'int | None' = None
     # Set by the advance emitter when it handed its test to the loop.
     condition: 'str | None' = None
 
@@ -2664,8 +2662,11 @@ class AsyncCoroCodegen:
             for i, p in enumerate(ctor_params))
         init_parts = ["__state(S_INITIAL)", *self._resumable_extra_ctor_inits()]
         init_parts.extend(p.ctor_init() for p in ctor_params)
-        ctor_seed = self._constructor_loop_seed(func)
+        seeded = self._constructor_loop_seed(func)
+        ctor_seed = seeded[1] if seeded is not None else None
         rcfg.resumable_state(func).ctor_loop_seed = ctor_seed
+        rcfg.resumable_state(func).ctor_seeded_uid = (
+            seeded[0] if seeded is not None else None)
         ctor_body = " ".join(ctor_seed or ())
         ctor_body = f"{{ {ctor_body} }}" if ctor_body else "{}"
         out.write(f"{INDENT}{struct_name}({ctor_param_list})"
@@ -5243,20 +5244,13 @@ class AsyncCoroCodegen:
                      and advance.exhausted_bb not in case_entries
                      and not exhausted.stmts
                      and isinstance(exhausted.terminator, rcfg.Unreachable))
-        init_stmts = [st for bb_id in self._fall_chain(cfg, init[0], case_entries)
-                      for st in cfg.blocks[bb_id].stmts]
-        seeded = (rcfg.resumable_state(func).ctor_loop_seed is not None
-                  and len(init_stmts) == 1
-                  and isinstance(init_stmts[0], rcfg.AsyncForIterSetup)
-                  and init_stmts[0].uid == advance.uid)
         loop_label = case_entries[loop_bb].cpp_name()
         return _LoopForm(
             head_labels=frozenset(
                 [loop_label] + [case_entries[b].cpp_name() for b in others]),
             loop_label=loop_label, init_bb=init[0], loop_bb=loop_bb,
             records_done=not idempotent,
-            may_hoist_test=may_hoist,
-            ctor_seeded_uid=advance.uid if seeded else None)
+            may_hoist_test=may_hoist)
 
     @staticmethod
     def _fall_chain(cfg: 'rcfg.CFG', start_bb: int,
@@ -5331,9 +5325,10 @@ class AsyncCoroCodegen:
         assert label in form.head_labels, (label, form.head_labels)
         return "" if tail else f"{indent}continue;\n"
 
-    def _constructor_loop_seed(self, func: TpyFunction) -> 'list[str] | None':
-        """The loop-seeding statements a genexpr frame runs in its CONSTRUCTOR,
-        or None when it seeds at the first pull.
+    def _constructor_loop_seed(self, func: TpyFunction
+                               ) -> 'tuple[int, list[str]] | None':
+        """The loop a genexpr frame seeds in its CONSTRUCTOR and the seeding
+        statements, or None when it seeds at the first pull.
 
         CPython takes `iter(source)` where the genexpr is written, and a
         begin/end pair over a BORROWED container points outside the frame, so
@@ -5346,18 +5341,21 @@ class AsyncCoroCodegen:
         loop = func.genexpr_loop
         if loop is None or not isinstance(loop.iterable, TpyName):
             return None
-        infos = list(rcfg.resumable_state(func).for_info_by_uid.items())
-        if len(infos) != 1:
+        # Only the source loop: an inner `for` clause's source is evaluated
+        # in the body, per outer element, so it is never seeded here.
+        state = rcfg.resumable_state(func)
+        uid = state.for_uid_map.get(id(loop))
+        info = state.for_info_by_uid.get(uid) if uid is not None else None
+        if info is None:
             return None
-        uid, info = infos[0]
         if info.strategy != "begin_end" or self._for_has_src_slot(info, uid):
             return None
         # A bare name is one evaluation however often it is written, so the
         # pair cannot straddle two objects and needs no binding to name.
         # `this->`: the constructor's param shadows the member of the same name.
         src = f"(this->{escape_cpp_name(loop.iterable.name)})"
-        return [f"__for_it_{uid}.emplace({src}.begin());",
-                f"__for_end_{uid}.emplace({src}.end());"]
+        return uid, [f"__for_it_{uid}.emplace({src}.begin());",
+                     f"__for_end_{uid}.emplace({src}.end());"]
 
     def _case_is_no_throw(self, cfg: 'rcfg.CFG', entry_bb: int) -> bool:
         """True iff the case body that starts at `entry_bb` provably
@@ -6733,7 +6731,9 @@ class AsyncCoroCodegen:
                      derived iterator, or no-ops for a self-iterator source)
         """
         uid = stmt.uid
-        if self._loop_form is not None and self._loop_form.ctor_seeded_uid == uid:
+        # The source loop's setup runs once per frame, so a pair the
+        # constructor already took is not taken again.
+        if rcfg.resumable_state(func).ctor_seeded_uid == uid:
             return
         if stmt.is_async:
             iter_cpp = self._leaf.render_region_expr(stmt.iterable_expr)

@@ -18,9 +18,8 @@ namespace tpyapp::main {
 void main() {
     std::vector<int32_t> __tmp_1 = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t i = 0; i < 3; ++i) {
             __result.push_back(i);
         }
         std::move(__result);
@@ -28,8 +27,7 @@ void main() {
     std::cout << "static_list" << " " << Holder::take_list(__tmp_1) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> __tmp_2 = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
-        const int32_t __stop_1 = 2;
-        for (int32_t i = 0; i < __stop_1; ++i) {
+        for (int32_t i = 0; i < 2; ++i) {
             __result.insert_or_assign(::tpy::fixed_to_str<int32_t>(i), i);
         }
         std::move(__result);
@@ -37,8 +35,7 @@ void main() {
     std::cout << "static_dict" << " " << Holder::take_dict(__tmp_2) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> __tmp_3 = ({
         ::tpy::ordered_set<int32_t> __result;
-        const int32_t __stop_2 = 2;
-        for (int32_t i = 0; i < __stop_2; ++i) {
+        for (int32_t i = 0; i < 2; ++i) {
             __result.insert(i);
         }
         std::move(__result);
@@ -46,9 +43,8 @@ void main() {
     std::cout << "static_set" << " " << Holder::take_set(__tmp_3) << "\n" << ::tpy::check_signals;
     std::vector<Rec> __tmp_4 = ({
         std::vector<Rec> __result;
-        const int32_t __stop_3 = 2;
-        if (__stop_3 > 0) __result.reserve(static_cast<size_t>(__stop_3));
-        for (int32_t i = 0; i < __stop_3; ++i) {
+        if (2 > 0) __result.reserve(static_cast<size_t>(2));
+        for (int32_t i = 0; i < 2; ++i) {
             __result.push_back(Rec(i));
         }
         std::move(__result);
@@ -56,9 +52,8 @@ void main() {
     std::cout << "static_recs" << " " << Holder::take_recs(__tmp_4) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_5 = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_4 = 3;
-        if (__stop_4 > 0) __result.reserve(static_cast<size_t>(__stop_4));
-        for (int32_t i = 0; i < __stop_4; ++i) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t i = 0; i < 3; ++i) {
             __result.push_back(i);
         }
         std::move(__result);

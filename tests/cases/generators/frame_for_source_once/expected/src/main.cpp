@@ -505,7 +505,7 @@ __gen_nested_src nested_src(std::vector<Row>& rows) {
 std::vector<Cell> take(const Cell& seed, int32_t n) {
     return ({
         std::vector<Cell> __result;
-        const int32_t __stop_0 = n;
+        int32_t __stop_0 = n;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
             __result.push_back(Cell((::tpy::add_check<int32_t>(seed.v, i))));

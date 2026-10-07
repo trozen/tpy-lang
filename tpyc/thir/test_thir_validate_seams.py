@@ -18,10 +18,11 @@ from ..compilation_context import activate_compiler
 from ..typesys import BOOL, INT32, NominalType, VoidType
 from .nodes import (
     Form, HoistDecl, THIRArgTemp, THIRBaseInit, THIRBinOp, THIRCall,
-    THIRCoerce, THIRComprehension, THIRConstructor, THIRExprStmt,
+    THIRCoerce, THIRComprehensionBlock, THIRCompInsert, THIRConstructor,
+    THIRExpr, THIRExprStmt, THIRForEach, THIRForRange,
     THIRMilInit,
     THIRFieldAccess, THIRFormConvert, THIRFunction, THIRFunctionLayout,
-    THIRIf, THIRLiteral,
+    THIRIf, THIRIfExpr, THIRLiteral,
     THIRMethodCall, THIRRaise, THIRResumableBody, THIRReturn, THIRSelf,
     THIRUnionArgLift,
 )
@@ -439,15 +440,115 @@ class TestValidator:
     def test_arg_temp_in_a_mil_comprehension_element_passes(self):
         # The element renders inside the comprehension's loop body, which
         # flushes its temps per iteration: a flush point of its own.
-        comp = THIRComprehension(
+        loop = THIRForRange(
+            var="i", elem_type=INT32,
+            stop=THIRLiteral(result_type=INT32, value=3),
+            body=(THIRCompInsert(kind="list",
+                                 element=self._call_with_temp()),))
+        comp = THIRComprehensionBlock(
             result_type=INT32, kind="list",
-            container_cpp="std::vector<int32_t>", var="i", loop="range",
-            counter_cpp="int32_t",
-            range_stop=THIRLiteral(result_type=INT32, value=3),
-            range_stop_literal=True, element=self._call_with_temp())
+            container_cpp="std::vector<int32_t>", body=(loop,))
         validate_constructor(THIRConstructor(
             record_name="R", params=(),
             mil_inits=(THIRMilInit(field_cpp="xs", value=comp),)))
+
+    @staticmethod
+    def _comp_over(first_source: THIRExpr, *, inner_source=None,
+                   range_first: bool = False) -> THIRComprehensionBlock:
+        """`[i for _ in <first_source> (for i in <inner_source>)]`, the first
+        loop evaluating its source in the enclosing position."""
+        body: tuple = (THIRCompInsert(
+            kind="list", element=THIRLiteral(result_type=INT32, value=0)),)
+        if inner_source is not None:
+            body = (THIRForEach(var="i", elem_type=INT32,
+                                iterable=inner_source, body=body),)
+        if range_first:
+            first = THIRForRange(var="k", elem_type=INT32, stop=first_source,
+                                 stop_is_literal=False, body=body,
+                                 source_in_enclosing=True)
+        else:
+            first = THIRForEach(var="k", elem_type=INT32,
+                                iterable=first_source, body=body,
+                                source_in_enclosing=True)
+        return THIRComprehensionBlock(
+            result_type=INT32, kind="list",
+            container_cpp="std::vector<int32_t>", body=(first,))
+
+    @classmethod
+    def _call_with_unaudited_temp(cls) -> THIRCall:
+        call = cls._call_with_temp()
+        return dataclasses.replace(call, args=(dataclasses.replace(
+            call.args[0], movable=None),))
+
+    @staticmethod
+    def _fn_of(*stmts) -> THIRFunction:
+        return THIRFunction(name="w", params=(), return_type=VoidType(),
+                            body=stmts, layout=THIRFunctionLayout())
+
+    def _in_ternary_arm(self, comp: THIRComprehensionBlock) -> THIRFunction:
+        sel = THIRIfExpr(result_type=INT32,
+                         cond=THIRLiteral(result_type=BOOL, value=True),
+                         then=comp, orelse=comp)
+        return self._fn_of(THIRExprStmt(expr=sel))
+
+    def test_first_loop_source_temp_takes_the_comprehension_right(self):
+        # The first source evaluates in the enclosing statement, so its temp
+        # is legal exactly where one would be at the comprehension itself:
+        # at a statement, and audited under a conditional operand ...
+        validate_function(self._fn_of(THIRExprStmt(
+            expr=self._comp_over(self._call_with_unaudited_temp()))))
+        validate_function(self._in_ternary_arm(
+            self._comp_over(self._call_with_temp())))
+        # ... but not unaudited there.
+        with pytest.raises(THIRValidationError, match="unaudited THIRArgTemp"):
+            validate_function(self._in_ternary_arm(
+                self._comp_over(self._call_with_unaudited_temp())))
+
+    def test_inner_loop_source_temp_flushes_in_the_block(self):
+        # An inner loop flushes its own source temps inside the block, so the
+        # conditional-operand rule of the comprehension's position is moot.
+        validate_function(self._in_ternary_arm(self._comp_over(
+            THIRLiteral(result_type=INT32, value=0),
+            inner_source=self._call_with_unaudited_temp())))
+
+    def test_first_loop_source_temp_in_a_mil_cell_raises(self):
+        # The cell has no statement to declare the first source's temp
+        # before; an inner source's temp flushes inside the block.
+        def ctor(comp: THIRComprehensionBlock) -> THIRConstructor:
+            return THIRConstructor(
+                record_name="R", params=(),
+                mil_inits=(THIRMilInit(field_cpp="xs", value=comp),))
+        validate_constructor(ctor(self._comp_over(
+            THIRLiteral(result_type=INT32, value=0),
+            inner_source=self._call_with_temp())))
+        for range_first in (False, True):
+            with pytest.raises(THIRValidationError,
+                               match="statement temp in a member-init"):
+                validate_constructor(ctor(self._comp_over(
+                    self._call_with_temp(), range_first=range_first)))
+
+    def test_range_bound_temp_flushes_before_its_capture(self):
+        # Each bound's temps are declared right before its `__start_N` /
+        # `__stop_N` / `__step_N` capture, for a statement loop and a
+        # comprehension's inner loop alike.
+        loop = THIRForRange(var="i", elem_type=INT32,
+                            start=self._call_with_temp(),
+                            start_is_literal=False,
+                            stop=self._call_with_temp(),
+                            stop_is_literal=False,
+                            step=self._call_with_temp(), step_kind="variable")
+        validate_function(self._fn_of(loop))
+        inner = THIRComprehensionBlock(
+            result_type=INT32, kind="list",
+            container_cpp="std::vector<int32_t>",
+            body=(THIRForRange(
+                var="k", elem_type=INT32,
+                stop=THIRLiteral(result_type=INT32, value=2),
+                body=(dataclasses.replace(loop, body=(THIRCompInsert(
+                    kind="list",
+                    element=THIRLiteral(result_type=INT32, value=0)),)),),
+                source_in_enclosing=True),))
+        validate_function(self._fn_of(THIRExprStmt(expr=inner)))
 
     def test_borrow_return_of_value_type_raises(self):
         bad = THIRReturn(value=THIRLiteral(result_type=INT32, value=1,

@@ -1841,16 +1841,16 @@ class AstBuilder:
 
     def list_comprehension(self, element_expr: Expr,
                            generator: TpyComprehensionGenerator) -> Expr:
-        return TpyListComprehension(element_expr=element_expr, generator=generator)
+        return TpyListComprehension(element_expr=element_expr, generators=[generator])
 
     def dict_comprehension(self, key_expr: Expr, value_expr: Expr,
                            generator: TpyComprehensionGenerator) -> Expr:
         return TpyDictComprehension(key_expr=key_expr, value_expr=value_expr,
-                                    generator=generator)
+                                    generators=[generator])
 
     def set_comprehension(self, element_expr: Expr,
                           generator: TpyComprehensionGenerator) -> Expr:
-        return TpySetComprehension(element_expr=element_expr, generator=generator)
+        return TpySetComprehension(element_expr=element_expr, generators=[generator])
 
     def if_expr(self, condition: Expr, then_expr: Expr, else_expr: Expr) -> Expr:
         return TpyIfExpr(condition=condition, then_expr=then_expr, else_expr=else_expr)

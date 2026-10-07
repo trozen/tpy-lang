@@ -1,0 +1,1 @@
+main.py:15: error: 'b_list' is iterated by this generator expression, but it is kept past the statement and can be rebound between pulls; bind it to a local first

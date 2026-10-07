@@ -13,7 +13,6 @@ from ...parse.nodes import (
     TpyDictComprehension,
     TpyFieldAccess,
     TpyGeneratorExpression,
-    TpyIntLiteral,
     TpyListComprehension,
     TpyListRepeat,
     TpyMethodCall,
@@ -37,7 +36,6 @@ from ...typesys import (
 )
 from ...type_def_registry import (
     is_array,
-    is_big_int_type,
     is_dict,
     is_dict_view,
     is_list,
@@ -51,8 +49,9 @@ from ...codegen_cpp.types import resolve_pending_container
 from ..reject import ThirUnsupported
 from ..faces import witness as _witness
 from ..nodes import (
-    THIRComprehension, THIRContainerLiteral, THIRExpr, THIRGenExpr, THIRMove,
-    THIRName)
+    THIRArrayComprehension, THIRComprehensionBlock, THIRCompInsert,
+    THIRContainerLiteral, THIRExpr, THIRGenExpr, THIRIf, THIRMove, THIRName,
+    THIRStmt, THIRTupleUnpack, TupleSourceBind)
 from .checks import (_combinator_pins_source, _container_storage_call_rvalue,
                      _user_iterator_iterable,
                      _native_iter_combinator,
@@ -68,7 +67,6 @@ from .predicates import (
     _eligible_enum,
     _eligible_scalar,
     _callable_value,
-    _f1_record,
     record_like,
     _field_decl_type,
     _field_receiver_ok,
@@ -98,7 +96,6 @@ from .expressions import (
     _lower_field_source,
     _lower_range_object,
     _lower_truthy,
-    _slot_literal_retype,
 )
 from . import statements as _statements
 
@@ -123,7 +120,10 @@ class _CompRoute:
     owns_elements: bool = False      # source yields Own[T]: sinks move
     gen_factory: bool = False        # value-yielding generator-call source
     native_combinator: bool = False  # zip/map/filter/... rvalue source
-    iter_protocol: bool = False      # driven by __iter__/__next__ (iter_range)
+    iter_protocol: bool = False      # driven by __iter__/__next__
+    # The counter loop's step arm (`_range_step_kind`), as the for
+    # statement's route carries it.
+    step_kind: str = "plus_one"
 
 
 @dataclass(frozen=True)
@@ -145,7 +145,7 @@ class _SourceRoute:
     native_combinator: bool = False  # zip/map/filter/... rvalue source
     # A source with no begin()/end() of its own -- a user iterable, an
     # Iterable/Iterator param -- is iterated through the iterator its
-    # `__iter__()` returns (`::tpy::iter_range`), the same family the for
+    # `__iter__()` returns, the same family the for
     # statement drives with `__iter__`/`__next__`.
     iter_protocol: bool = False
 
@@ -304,10 +304,10 @@ def _source_route(gen, declared: dict[str, TpyType],
         if not _eligible_scalar(counter):
             return None
         if len(it.args) == 3:
-            # 3-arg range is a begin/end loop over the Range object (an
-            # rvalue capture, never sized). Bounds render against the
-            # counter slot like the 1/2-arg
-            # arms, so they classify the same way.
+            # The Range object's begin/end loop (an rvalue capture, never
+            # sized): what a step the counter loop declines iterates. A
+            # comprehension clause takes the counter loop for every other
+            # step (`_clause_route`).
             return _SourceRoute(loop="begin_end", counter_type=None,
                                 it_type=analyzer.get_expr_type(it),
                                 et=counter, iterable_lvalue=False)
@@ -513,20 +513,39 @@ def _source_route(gen, declared: dict[str, TpyType],
                         gen_factory=genfac, native_combinator=combinator)
 
 
-def _comp_route(init, declared: dict[str, TpyType],
-                analyzer,
-                lc: '_LowerCtx | None' = None) -> '_CompRoute | None':
-    """Classify a comprehension init: the shared `_source_route` verdict plus
-    the comp's own result-slot / unpack-target gates and the reserve fact, or
-    None (the caller rejects)."""
-    kind = _COMP_KINDS.get(type(init))
-    if kind is None:
-        return None
-    gen = init.generator
+def _clause_bindings(gen, route: _CompRoute) -> list[tuple[str, TpyType]]:
+    """The names one `for` clause binds, with the types its body reads them
+    at."""
+    if route.unpack_types is not None:
+        return [(name, tt) for name, tt in zip(gen.unpack_vars,
+                                               route.unpack_types)
+                if name is not None]
+    return [(gen.var, route.et)]
+
+
+def _clause_route(kind: str, gen, declared: dict[str, TpyType],
+                  analyzer,
+                  lc: '_LowerCtx | None' = None) -> '_CompRoute | None':
+    """Classify one comprehension clause: the shared `_source_route` verdict
+    plus the comp's own unpack-target gates and the reserve fact, or None
+    (the caller rejects)."""
     src = _source_route(gen, declared, analyzer, lc)
     if src is None:
         return None
     if _is_range_call(gen.iterable):
+        args = gen.iterable.args
+        if len(args) == 3:
+            # The for statement's step verdict: a step the counter loop
+            # renders takes it, a declined one (zero, too wide for the
+            # overflow checks) iterates the Range object.
+            step_kind = _statements._range_step_kind(args[2], declared,
+                                                     analyzer)
+            if step_kind is not None:
+                return _CompRoute(kind=kind, loop="range",
+                                  counter_type=src.et, it_type=None,
+                                  et=src.et, iterable_lvalue=True,
+                                  sized_reserve=False, unpack_types=None,
+                                  step_kind=step_kind)
         return _CompRoute(kind=kind, loop=src.loop,
                           counter_type=src.counter_type, it_type=src.it_type,
                           et=src.et, iterable_lvalue=src.iterable_lvalue,
@@ -689,82 +708,81 @@ def _unpack_target_cpps(unpack_types, lc: '_LowerCtx',
         for tt in unpack_types)
 
 
-def _comp_lowering_route(
-        init, t: 'TpyType | None', declared: dict[str, TpyType],
-        pointers: AbstractSet[str], rebind_slots: AbstractSet[str],
+def _comp_result_slots_ok(
+        init, t: TpyType, pointers: AbstractSet[str],
+        rebind_slots: AbstractSet[str],
         storage_tuple_locals: AbstractSet[str],
-        narrowed: AbstractSet[str], analyzer,
-        lc: '_LowerCtx | None' = None) -> '_CompRoute | None':
-    """Resolve the route data consumed while lowering a comprehension."""
-    if t is None:
-        return None
-    if is_array(t):
-        return _comp_array_route(
-            init, t, declared, pointers, rebind_slots,
-            storage_tuple_locals, narrowed, analyzer)
-    route = _comp_route(init, declared, analyzer, lc)
-    if route is None:
-        return None
+        narrowed: AbstractSet[str], analyzer) -> bool:
+    """Whether a statement-loop comprehension's result slots and loop
+    targets are in the slice. Each clause's source routes while the clause
+    lowers, with the names in scope there; this gate reads only the kind
+    and the innermost clause's ownership, both fixed before any clause
+    lowers (sema refuses an owned source anywhere but the innermost
+    clause)."""
+    kind = _COMP_KINDS.get(type(init))
+    if kind is None:
+        return False
+    owns = init.generators[-1].owns_elements
     args = getattr(t, "type_args", None)
     if not args:
-        return None
+        return False
     # A `readonly[V]` VALUE slot (the readonly-receiver dict view's element,
     # copied into the result) gates as the plain value it renders as.
     args = tuple(_peel_value_readonly(a) for a in args)
-    if route.kind == "list" and not (is_list(t)
-                                     and (_comp_elem_slot_ok(
-                                              args[0], analyzer,
-                                              allow_container=True)
-                                          # A NON-VALUE tuple element slot,
-                                          # node-gated like the other
-                                          # shape-sensitive families: a tuple
-                                          # LITERAL rides the storage-direct/
-                                          # borrow-ladder rows, a NAME (bare
-                                          # or under copy()) the whole
-                                          # tuple_to_storage copy.
-                                          or ((isinstance(init.element_expr,
-                                                          TpyTupleLiteral)
-                                               or storage_tuple_name_source(
-                                                   init.element_expr,
-                                                   analyzer) is not None)
-                                              and isinstance(
-                                                  unwrap_readonly(
-                                                      unwrap_ref_type(
-                                                          unwrap_send_sync(
-                                                              args[0]))),
-                                                  TupleType))
-                                          # ... an Optional-result TERNARY
-                                          # element (the asdict/astuple
-                                          # recursion into a
-                                          # `list[Optional[DC]]` field),
-                                          # node-gated like the other
-                                          # shape-sensitive families.
-                                          or _storage_opt_ternary_elem(
-                                              init.element_expr, analyzer)
-                                          # ... and the MIXED-own-tuple CALL
-                                          # source (the non-move
-                                          # tuple_to_storage elem row).
-                                          or (isinstance(
-                                                  _mcl_b := unwrap_readonly(
-                                                      unwrap_ref_type(
-                                                          unwrap_send_sync(
-                                                              args[0]))),
-                                                  TupleType)
-                                              and _mixed_own_storage_source(
-                                                  init.element_expr, _mcl_b,
-                                                  frozenset(), analyzer)
-                                              is not None))):
-        return None
-    if route.kind == "set" and not (is_set(t)
-                                    and _comp_elem_slot_ok(args[0], analyzer,
-                                                           allow_container=True)):
-        return None
-    if route.kind == "dict":
+    if kind == "list" and not (is_list(t)
+                               and (_comp_elem_slot_ok(
+                                        args[0], analyzer,
+                                        allow_container=True)
+                                    # A NON-VALUE tuple element slot,
+                                    # node-gated like the other
+                                    # shape-sensitive families: a tuple
+                                    # LITERAL rides the storage-direct/
+                                    # borrow-ladder rows, a NAME (bare
+                                    # or under copy()) the whole
+                                    # tuple_to_storage copy.
+                                    or ((isinstance(init.element_expr,
+                                                    TpyTupleLiteral)
+                                         or storage_tuple_name_source(
+                                             init.element_expr,
+                                             analyzer) is not None)
+                                        and isinstance(
+                                            unwrap_readonly(
+                                                unwrap_ref_type(
+                                                    unwrap_send_sync(
+                                                        args[0]))),
+                                            TupleType))
+                                    # ... an Optional-result TERNARY
+                                    # element (the asdict/astuple
+                                    # recursion into a
+                                    # `list[Optional[DC]]` field),
+                                    # node-gated like the other
+                                    # shape-sensitive families.
+                                    or _storage_opt_ternary_elem(
+                                        init.element_expr, analyzer)
+                                    # ... and the MIXED-own-tuple CALL
+                                    # source (the non-move
+                                    # tuple_to_storage elem row).
+                                    or (isinstance(
+                                            _mcl_b := unwrap_readonly(
+                                                unwrap_ref_type(
+                                                    unwrap_send_sync(
+                                                        args[0]))),
+                                            TupleType)
+                                        and _mixed_own_storage_source(
+                                            init.element_expr, _mcl_b,
+                                            frozenset(), analyzer)
+                                        is not None))):
+        return False
+    if kind == "set" and not (is_set(t)
+                              and _comp_elem_slot_ok(args[0], analyzer,
+                                                     allow_container=True)):
+        return False
+    if kind == "dict":
         # An owned-move source admits a hashable record-like KEY (sema validated
         # hashability by giving the dict a record key type); every other dict
         # comp keeps the narrow key slice.
         key_ok = (_comp_slot_ok(args[0], analyzer)
-                  or (route.owns_elements and record_like(args[0], analyzer)))
+                  or (owns and record_like(args[0], analyzer)))
         # The list leg's node-gated tuple row, on the dict's VALUE slot: a
         # value `TupleType` slot fails the elem-slot ladder, but a tuple
         # LITERAL value_expr rides the storage-direct row the same way (a
@@ -787,23 +805,16 @@ def _comp_lowering_route(
                             init.value_expr, _mcd_b, frozenset(), analyzer)
                         is not None))
         if not (is_dict(t) and len(args) == 2 and key_ok and value_ok):
-            return None
-    gen = init.generator
+            return False
     # The comp vars shadow same-named outer locals for the element/filter
     # walk; a var shadowing a specially-classified local (pointer / rebind /
     # tuple-alias / narrowed) would need render-state save-restore the slice
     # does not carry -- reject.
     special = (pointers | rebind_slots | storage_tuple_locals | narrowed)
-    if route.unpack_types is not None:
-        for name in gen.unpack_vars:
-            if name is None:
-                continue
-            if name in special:
-                return None
-    else:
-        if gen.var in special:
-            return None
-    return route
+    if any(name in special
+           for gen in init.generators for name in gen.targets):
+        return False
+    return True
 
 def _comp_array_route(
         init, t: TpyType, declared: dict[str, TpyType],
@@ -817,9 +828,9 @@ def _comp_array_route(
     random-access loop over a sized Array source). No conditions can appear
     (a filtered comp has no static size, so sema never demotes one) --
     rejected defensively anyway."""
-    if not isinstance(init, TpyListComprehension):
+    if not isinstance(init, TpyListComprehension) or len(init.generators) != 1:
         return None
-    gen = init.generator
+    gen = init.generators[0]
     if gen.owns_elements or gen.conditions:
         return None
     args_t = getattr(t, "type_args", None)
@@ -866,8 +877,8 @@ def _comp_array_route(
     # the source once (`__obj_N`) and indexes it per slot. Reuse the
     # begin/end name/field classifier for the loop-var binding fact, then
     # require a statically-sized Array source (the only shape sema demotes to
-    # Array). A view result off the source rebinds it_type in _comp_route.
-    base = _comp_route(init, declared, analyzer)
+    # Array). A view result off the source rebinds it_type in _clause_route.
+    base = _clause_route("list", gen, declared, analyzer)
     if base is None or base.loop != "begin_end":
         return None
     # A storage-opt element under the INDEXED read (`__obj_N[__i_N]`) has no
@@ -889,12 +900,12 @@ def _comp_array_route(
 def _lower_array_comprehension(
         init, result_type: TpyType, route: _CompRoute, lc: '_LowerCtx',
         declared: dict[str, TpyType],
-        ptr_shadow: frozenset = frozenset()) -> THIRComprehension:
+        ptr_shadow: frozenset = frozenset()) -> THIRArrayComprehension:
     """The array_from_index range arm: a per-index lambda constructs each
     slot (`E var = start + E(__i_N) * (step); return elem;`)."""
     analyzer = lc.analyzer
     t = result_type
-    gen = init.generator
+    gen = init.generators[0]
     it = gen.iterable
     _witness("comp.array_range")
     counter = route.counter_type
@@ -912,12 +923,10 @@ def _lower_array_comprehension(
     with _scrubbed_pointers(lc, ptr_shadow):
         element = _lower_comp_container_elem(
             init.element_expr, elem_t, lc, body_declared, allow_temps=True)
-    return THIRComprehension(
+    return THIRArrayComprehension(
         result_type=t,
-        kind="list",
+        arm="range",
         var=gen.var,
-        loop="array_range",
-        elem_type=counter,
         counter_cpp=lc.render_type(counter),
         array_elem_cpp=lc.render_type(elem_t),
         array_size_cpp=str(t.type_args[1]),
@@ -930,14 +939,14 @@ def _lower_array_comprehension(
 def _lower_array_source_comprehension(
         init, result_type: TpyType, route: _CompRoute, lc: '_LowerCtx',
         declared: dict[str, TpyType],
-        ptr_shadow: frozenset = frozenset()) -> THIRComprehension:
+        ptr_shadow: frozenset = frozenset()) -> THIRArrayComprehension:
     """The array_from_index SOURCE arm: borrow a sized Array source once
     (`__obj_N`, lvalue-verdict binding) inside a `({...})` prelude, then index
     it per slot (`E var = __obj_N[__i_N];` value binding / `auto&& var = ...`
     borrow) -- the non-range Array comprehension. The element renders
     through the shared per-slot wrap after the loop-var binding."""
     analyzer = lc.analyzer
-    gen = init.generator
+    gen = init.generators[0]
     it = gen.iterable
     _witness("comp.array_source")
     elem_t = _comp_result_type(init.result_elem_type, analyzer)
@@ -963,13 +972,11 @@ def _lower_array_source_comprehension(
     with _scrubbed_pointers(lc, ptr_shadow):
         element = _lower_comp_container_elem(
             init.element_expr, elem_t, lc, body_declared)
-    return THIRComprehension(
+    return THIRArrayComprehension(
         result_type=result_type,
-        kind="list",
+        arm="source",
         var=gen.var,
-        loop="array_source",
         elem_type=route.et,
-        const_loop_var=gen.const_loop_var,
         array_elem_cpp=lc.render_type(elem_t),
         array_size_cpp=str(result_type.type_args[1]),
         iterable=iterable,
@@ -1058,7 +1065,7 @@ def _lower_comp_container_elem(e, vt: TpyType, lc: '_LowerCtx',
     _witness("comp.container_value")
     return value
 
-def _comp_pointer_shadow(gen, lc) -> frozenset:
+def _comp_pointer_shadow(init, lc) -> frozenset:
     """The comp vars that shadow a POINTER-SLOT GLOBAL at module scope --
     the subset scrubbed from `lc.pointers` for the element/filter walk.
     The comp binds a fresh C++-scoped local (the stmt-expr / lambda), so
@@ -1076,12 +1083,15 @@ def _comp_pointer_shadow(gen, lc) -> frozenset:
     stays OUT of the set, so the route's special check keeps rejecting it:
     the iterable read would land BARE against the pointer-slot global
     there (`auto& __obj_N = x;` on a `std::vector<T>*` -- ill-formed
-    C++, see the BUGS.md comprehension self-shadow entry)."""
+    C++, see the BUGS.md comprehension self-shadow entry).
+
+    Every clause's vars count; only clause 0's iterable evaluates in the
+    enclosing scope -- an inner one runs inside the walk, where an earlier
+    clause's var is the comp's own (sema rejects a read of a later one)."""
     if not lc.top_level_scope:
         return frozenset()
-    names = (set(gen.unpack_vars) if gen.unpack_vars is not None
-             else {gen.var})
-    it_refs = collect_name_refs(gen.iterable)
+    names = {n for gen in init.generators for n in gen.targets}
+    it_refs = collect_name_refs(init.generators[0].iterable)
     return frozenset(
         n for n in names
         if n is not None and n in lc.pointers
@@ -1127,7 +1137,7 @@ def _lower_owned_comp_sink(e, slot: 'TpyType | None', lc: '_LowerCtx',
 def _lower_comprehension(
         init, result_type: 'TpyType | None', lc: '_LowerCtx',
         declared: dict[str, TpyType],
-        pointers: AbstractSet[str]) -> THIRComprehension:
+        pointers: AbstractSet[str]) -> THIRExpr:
     global_scope = lc.global_binding_scope
     lc.global_binding_scope = False
     try:
@@ -1139,57 +1149,67 @@ def _lower_comprehension(
 def _lower_comprehension_impl(
         init, result_type: 'TpyType | None', lc: '_LowerCtx',
         declared: dict[str, TpyType],
-        pointers: AbstractSet[str]) -> THIRComprehension:
-    """Build the THIRComprehension node from its classified route. The
+        pointers: AbstractSet[str]) -> THIRExpr:
+    """Build the comprehension node from its classified routes. The
     container spelling composes from the node's sema-stamped result types;
     elements/keys/values lower through the S5 per-slot owned-str wrap
     (`_lower_container_elem`), target-typed against the slot."""
     analyzer = lc.analyzer
     loc = getattr(init, "loc", None)
-    ptr_shadow = _comp_pointer_shadow(init.generator, lc)
+    ptr_shadow = _comp_pointer_shadow(init, lc)
     if ptr_shadow:
         # The shadowed pointer-slot globals leave the route's special
         # check (the walk scrubs them scoped); every other special class
         # keeps its reject.
         _witness("comp.global_shadow")
         pointers = frozenset(pointers) - ptr_shadow
-    route = _comp_lowering_route(
-        init, result_type, declared, pointers, lc.rebind_slot_locals,
-        lc.storage_tuple_locals, lc.narrow.narrowed.keys(), analyzer, lc)
-    if route is None or result_type is None:
+    if result_type is None:
         raise ThirUnsupported("comp.route", detail=True)
-    if route.loop == "array_range":
-        return _lower_array_comprehension(
-            init, result_type, route, lc, declared, ptr_shadow=ptr_shadow)
-    if route.loop == "array_source":
+    special_args = (pointers, lc.rebind_slot_locals, lc.storage_tuple_locals,
+                    lc.narrow.narrowed.keys())
+    if is_array(result_type):
+        array_route = _comp_array_route(init, result_type, declared,
+                                        *special_args, analyzer)
+        if array_route is None:
+            raise ThirUnsupported("comp.route", detail=True)
+        if array_route.loop == "array_range":
+            return _lower_array_comprehension(
+                init, result_type, array_route, lc, declared,
+                ptr_shadow=ptr_shadow)
         return _lower_array_source_comprehension(
-            init, result_type, route, lc, declared, ptr_shadow=ptr_shadow)
-    gen = init.generator
-    body_declared = dict(declared)
-    if route.unpack_types is not None:
-        for name, tt in zip(gen.unpack_vars, route.unpack_types):
-            if name is not None:
-                body_declared[name] = tt
-    else:
-        body_declared[gen.var] = route.et
-    # A comprehension loop var over a container of pointer-repr tuples reads
-    # STORAGE form, exactly as the for-statement loop var does -- registered
-    # at comp-scope entry (`register_loop_var_storage_form`) so the element
-    # consumer sees it. Without the registration the element wrap re-lifts an
-    # already-storage read.
-    #
-    # Membership makes EVERY read of the name in the body STORAGE form (the Form
-    # verdict in `expressions.py`), not just the element wrap -- filters and
-    # subscripts included.
-    #
-    # PARTIAL against `register_loop_var_storage_form`, each part unreachable
-    # today via a gate elsewhere rather than anything here, so widening any of
-    # those routes must revisit this: no `is_native_iterable` gate (a generator
-    # yields borrow-form tuples; the owns-arm keeps `et` an OwnType), no
-    # `borrow_form_tuple_locals` exclusion (those shapes reject at the outer
-    # decl), no `const_storage_tuple_locals` channel, no storage-Optional
-    # family, and this sits AFTER the array_range/array_source early returns
-    # (those routes admit only value-tuple slots with literal elements).
+            init, result_type, array_route, lc, declared,
+            ptr_shadow=ptr_shadow)
+    if not _comp_result_slots_ok(init, result_type, *special_args, analyzer):
+        raise ThirUnsupported("comp.route", detail=True)
+    return _build_comprehension_body(init, result_type, lc, declared,
+                                     analyzer, loc, ptr_shadow)
+
+
+@contextmanager
+def _clause_registrations(gen, route: _CompRoute, lc: '_LowerCtx'):
+    """Register one clause's loop-var render facts for the walk of
+    everything nested in it, popped at exit -- so an inner clause's
+    registration pops before the outer one's.
+
+    A comprehension loop var over a container of pointer-repr tuples reads
+    STORAGE form, exactly as the for-statement loop var does -- registered
+    at comp-scope entry (`register_loop_var_storage_form`) so the element
+    consumer sees it. Without the registration the element wrap re-lifts an
+    already-storage read.
+
+    Membership makes EVERY read of the name in the body STORAGE form (the
+    Form verdict in `expressions.py`), not just the element wrap -- filters,
+    subscripts and inner clauses' sources included.
+
+    PARTIAL against `register_loop_var_storage_form`, each part unreachable
+    today via a gate elsewhere rather than anything here, so widening any of
+    those routes must revisit this: no `is_native_iterable` gate (a
+    generator yields borrow-form tuples; the owns-arm keeps `et` an
+    OwnType), no `borrow_form_tuple_locals` exclusion (those shapes reject
+    at the outer decl), no `const_storage_tuple_locals` channel, no
+    storage-Optional family, and the array_range/array_source routes never
+    get here (they admit only value-tuple slots with literal elements)."""
+    analyzer = lc.analyzer
     comp_storage_var = None
     et_peeled = unwrap_readonly(route.et) if route.et is not None else None
     if (route.unpack_types is None and isinstance(et_peeled, TupleType)
@@ -1231,9 +1251,7 @@ def _lower_comprehension_impl(
             comp_const_opt_vars.append(gen.var)
             lc.const_storage_opt_locals.add(gen.var)
     try:
-        return _build_comprehension_body(
-            init, result_type, route, lc, declared, body_declared, gen,
-            analyzer, loc, pointers, ptr_shadow)
+        yield
     finally:
         if comp_storage_var is not None:
             lc.storage_tuple_locals.discard(comp_storage_var)
@@ -1243,184 +1261,221 @@ def _lower_comprehension_impl(
             lc.const_storage_opt_locals.discard(uname)
 
 
-def _build_comprehension_body(init, result_type, route, lc, declared,
-                              body_declared, gen, analyzer, loc, pointers,
+def _build_comprehension_body(init, result_type, lc, declared,
+                              analyzer, loc,
                               ptr_shadow: frozenset = frozenset()):
-    """The comprehension body build, split out so the loop-var storage-form
-    registration above can scope itself symmetrically around the comp
-    scope's enter/exit."""
-    _witness(f"comp.{route.kind}")
-    _witness(f"comp.{route.loop}")
-    if gen.conditions:
+    """The comprehension as statements: one statement loop per `for`
+    clause, each nested inside the previous clause's filters (a clause's
+    source runs once per outer element that passed them), one nested `if`
+    per filter (Python evaluates a filter only when the earlier ones
+    passed), and the insert innermost."""
+    gens = init.generators
+    kind = _COMP_KINDS[type(init)]
+    _witness(f"comp.{kind}")
+    if len(gens) > 1:
+        _witness("comp.multi_clause")
+    if any(gen.conditions for gen in gens):
         _witness("comp.filter")
-    if route.sized_reserve:
-        _witness("comp.reserve")
-    conditions_lowered = None
-    # The element/filter walk runs under the pointer-shadow scrub (the
-    # comp vars bind fresh C++ locals, so their reads are bare); the
-    # iterable / range-bound lowering below stays OUTSIDE it -- those
-    # evaluate in the enclosing scope where the global's deref applies.
-    with _scrubbed_pointers(lc, ptr_shadow):
-        if any(contains_named_expr(c) for c in gen.conditions):
-            # PEP 572: a comp-filter walrus binds in the ENCLOSING scope --
-            # the predecl flushes before the statement-expr and the target
-            # stays readable after the comprehension. Conditions lower FIRST
-            # here so the element's read of the leaked name resolves (Python
-            # evaluates the filter before the element each iteration).
-            pre = set(body_declared)
-            with lc.moves_only(()):
-                conditions_lowered = tuple(
-                    _lower_truthy(c, lc, body_declared, temps_ok=True)
-                    for c in gen.conditions)
-            for leaked in set(body_declared) - pre:
-                declared[leaked] = body_declared[leaked]
-            _witness("comp.filter_walrus_leak")
-        # The element and the filters render inside the loop body, which
-        # flushes their temps per iteration, so they sit in a statement
-        # even when the comprehension itself does not (a ctor member-init).
-        # A dict's key and value have no such flush (the emit drains
-        # nothing around `insert_or_assign`), and a filter walrus above
-        # leaks its decl to the enclosing statement: both stay under the
-        # enclosing placement. A filter walrus never reaches a member-init:
-        # it binds a body local, so the readiness demote
-        # (`CTOR_DEMOTE_BINDS_LOCAL`) has already moved such an init to the
-        # body.
-        outer_placement = lc.placement
-        with lc.placement_scope(SlotPlacement.STATEMENT):
-            value_moved = False
-            if route.kind == "dict":
-                with lc.placement_scope(outer_placement):
-                    kt = _comp_result_type(init.result_key_type, analyzer)
-                    vt = _comp_result_type(init.result_value_type, analyzer)
-                    container = (f"::tpy::ordered_map<{lc.render_type(kt)}, "
-                                 f"{lc.render_type(vt)}>")
-                    element = None
-                    if route.owns_elements:
-                        # The value is the last sink (a bare owned loop var moves
-                        # unconditionally); the key is earlier, so it moves only when
-                        # it is itself the last use (the ordinary last-use gate). When
-                        # the value moves, the key is sequenced into `__dk_N` first at
-                        # emit.
-                        key = _lower_owned_comp_sink(init.key_expr, kt, lc,
-                                                     body_declared, gen,
-                                                     is_last_sink=False)
-                        value = _lower_owned_comp_sink(init.value_expr, vt, lc,
-                                                       body_declared, gen,
-                                                       is_last_sink=True)
-                        value_moved = isinstance(value, THIRMove)
-                    else:
-                        # The body runs once per iteration: a name bound outside it
-                        # is never moved there, whatever its last use says.
-                        with lc.moves_only(()):
-                            key = _lower_container_elem(init.key_expr, kt, lc,
-                                                        body_declared)
-                            value = _lower_comp_container_elem(
-                                init.value_expr, vt, lc, body_declared,
-                                typed_brace=True)
-            else:
-                elem_t = _comp_result_type(init.result_elem_type, analyzer)
-                cpp_elem = lc.render_type(elem_t)
-                container = (f"std::vector<{cpp_elem}>" if route.kind == "list"
-                             else f"::tpy::ordered_set<{cpp_elem}>")
-                if route.owns_elements:
-                    element = _lower_owned_comp_sink(
-                        init.element_expr, elem_t, lc, body_declared, gen,
-                        is_last_sink=True)
+    if kind == "dict":
+        kt = _comp_result_type(init.result_key_type, analyzer)
+        vt = _comp_result_type(init.result_value_type, analyzer)
+        container = (f"::tpy::ordered_map<{lc.render_type(kt)}, "
+                     f"{lc.render_type(vt)}>")
+    else:
+        elem_t = _comp_result_type(init.result_elem_type, analyzer)
+        cpp_elem = lc.render_type(elem_t)
+        container = (f"std::vector<{cpp_elem}>" if kind == "list"
+                     else f"::tpy::ordered_set<{cpp_elem}>")
+    # PEP 572: a comp-filter walrus binds in the ENCLOSING scope -- the
+    # predecl flushes before the statement-expr and the target stays
+    # readable after the comprehension. Every filter then lowers under the
+    # enclosing placement, as the leaked decl does.
+    walrus = any(contains_named_expr(c) for gen in gens for c in gen.conditions)
+    outer_placement = lc.placement
+    cond_placement = outer_placement if walrus else SlotPlacement.STATEMENT
+
+    def leaf(body_declared: dict[str, TpyType]) -> THIRCompInsert:
+        # The element renders inside the loop body, which flushes its temps
+        # per iteration, so it sits in a statement even when the
+        # comprehension itself does not (a ctor member-init). A dict's key
+        # and value lower without temps: hoisting either's temps above the
+        # insert would sequence the two, an order
+        # BUGS.md#dict-comp-key-value-order leaves open. A filter walrus
+        # never reaches a member-init: it binds a body local, so the
+        # readiness demote (`CTOR_DEMOTE_BINDS_LOCAL`) has already moved
+        # such an init to the body.
+        innermost = gens[-1]
+        value_moved = False
+        element = key = value = None
+        if kind == "dict":
+            with lc.placement_scope(outer_placement):
+                if innermost.owns_elements:
+                    # The value is the last sink (a bare owned loop var
+                    # moves unconditionally); the key is earlier, so it
+                    # moves only when it is itself the last use (the
+                    # ordinary last-use gate). When the value moves, the key
+                    # is sequenced into `__dk_N` first at emit.
+                    key = _lower_owned_comp_sink(init.key_expr, kt, lc,
+                                                 body_declared, innermost,
+                                                 is_last_sink=False)
+                    value = _lower_owned_comp_sink(init.value_expr, vt, lc,
+                                                   body_declared, innermost,
+                                                   is_last_sink=True)
+                    value_moved = isinstance(value, THIRMove)
                 else:
-                    # Element temps flush PER-ITERATION into the loop body (the
-                    # emit's element checkpoint/flush_since window), so the
-                    # list/set element is a flushable position:
-                    # `take(Probe(c, i))`-style arg temps hoist right above
-                    # push_back.
-                    # Dict key/value sinks keep the default (no emit window
-                    # there).
+                    # The body runs once per iteration: a name bound outside
+                    # it is never moved there, whatever its last use says.
                     with lc.moves_only(()):
-                        element = _lower_comp_container_elem(
-                            init.element_expr, elem_t, lc, body_declared,
-                            allow_temps=True)
-                key = value = None
-            if conditions_lowered is None:
-                with lc.moves_only(()):
-                    conditions_lowered = tuple(
+                        key = _lower_container_elem(init.key_expr, kt, lc,
+                                                    body_declared)
+                        value = _lower_comp_container_elem(
+                            init.value_expr, vt, lc, body_declared,
+                            typed_brace=True)
+        elif innermost.owns_elements:
+            element = _lower_owned_comp_sink(
+                init.element_expr, elem_t, lc, body_declared, innermost,
+                is_last_sink=True)
+        else:
+            # Element temps flush PER-ITERATION right above the insert, so
+            # the list/set element is a flushable position:
+            # `take(Probe(c, i))`-style arg temps hoist right above
+            # push_back.
+            with lc.moves_only(()):
+                element = _lower_comp_container_elem(
+                    init.element_expr, elem_t, lc, body_declared,
+                    allow_temps=True)
+        return THIRCompInsert(kind=kind, element=element, key=key,
+                              value=value, key_first=value_moved, loc=loc)
+
+    def clause(k: int, clause_declared: dict[str, TpyType]) -> THIRStmt:
+        # `clause_declared` is what clause k's source sees: the enclosing
+        # names plus every earlier clause's targets and leaked walrus names.
+        # The source routes against exactly those names, so a source read
+        # off an outer filter's walrus routes as the name it is.
+        gen = gens[k]
+        route = _clause_route(kind, gen, clause_declared, analyzer, lc)
+        if route is None:
+            raise ThirUnsupported("comp.route", detail=True)
+        _witness(f"comp.{route.loop}")
+        if len(gens) == 1 and route.sized_reserve:
+            _witness("comp.reserve")
+        body_declared = dict(clause_declared)
+        body_declared.update(_clause_bindings(gen, route))
+        with _clause_registrations(gen, route, lc):
+            # The comp vars bind fresh C++ locals, so their reads in the
+            # walk are bare (the pointer-shadow scrub); clause 0's source
+            # stays OUTSIDE it, evaluated in the enclosing scope.
+            with _scrubbed_pointers(lc, ptr_shadow):
+                pre = set(body_declared)
+                # Conditions lower before what they guard, in the order
+                # Python evaluates them, so a filter walrus is declared for
+                # the inner sources and the element that read it.
+                with lc.placement_scope(cond_placement), lc.moves_only(()):
+                    conditions = tuple(
                         _lower_truthy(c, lc, body_declared, temps_ok=True)
                         for c in gen.conditions)
-    range_start = range_stop = None
-    start_lit = stop_lit = False
-    iterable = None
-    if route.loop == "range":
-        a = gen.iterable.args
-        if len(a) == 2:
-            range_start = _slot_literal_retype(_lower_expr(a[0], lc, declared),
-                                               route.counter_type, lc)
-            start_lit = isinstance(a[0], TpyIntLiteral)
-        stop_arg = a[1] if len(a) == 2 else a[0]
-        range_stop = _slot_literal_retype(_lower_expr(stop_arg, lc, declared),
-                                          route.counter_type, lc)
-        stop_lit = isinstance(stop_arg, TpyIntLiteral)
-    elif _is_range_call(gen.iterable):
+                for name in set(body_declared) - pre:
+                    declared[name] = body_declared[name]
+                if any(contains_named_expr(c) for c in gen.conditions):
+                    _witness("comp.filter_walrus_leak")
+                with lc.placement_scope(SlotPlacement.STATEMENT):
+                    inner: THIRStmt = (clause(k + 1, body_declared)
+                                       if k + 1 < len(gens)
+                                       else leaf(body_declared))
+            for cond in reversed(conditions):
+                inner = THIRIf(condition=cond, then_body=(inner,), loc=loc)
+            body: tuple[THIRStmt, ...] = (inner,)
+            if route.unpack_types is not None:
+                # The for statement's unpack head: the loop var binds the
+                # whole element and the per-target decls read it through
+                # `__tup_N`.
+                _witness("comp.unpack")
+                body = (THIRTupleUnpack(
+                    source=gen.var, targets=tuple(gen.unpack_vars),
+                    target_cpps=_unpack_target_cpps(route.unpack_types, lc,
+                                                    gen.const_loop_var),
+                    source_bind=(TupleSourceBind.NAME_CREF
+                                 if gen.const_loop_var
+                                 else TupleSourceBind.NAME_REF),
+                    loc=loc),) + body
+            if k == 0:
+                return _comprehension_loop(
+                    route, gen, lc, declared, body,
+                    # The trip count is known up front only for one clause.
+                    "__result" if kind == "list" and len(gens) == 1
+                    else None, loc, outermost=True)
+            # An inner source runs once per outer iteration, inside the
+            # outer loop body: nothing in it may move, whatever liveness
+            # says.
+            with _scrubbed_pointers(lc, ptr_shadow), \
+                    lc.placement_scope(SlotPlacement.STATEMENT), \
+                    lc.moves_only(()):
+                return _comprehension_loop(route, gen, lc,
+                                           clause_declared, body, None, loc,
+                                           outermost=False)
+
+    _witness("comp.statement_body")
+    loop = clause(0, declared)
+    return THIRComprehensionBlock(result_type=result_type, kind=kind,
+                                  container_cpp=container, body=(loop,),
+                                  loc=loc)
+
+
+def _comprehension_loop(route: _CompRoute, gen, lc: '_LowerCtx',
+                        declared: dict[str, TpyType],
+                        body: tuple[THIRStmt, ...], presize: 'str | None',
+                        loc, *, outermost: bool) -> THIRStmt:
+    """The comprehension's loop over its source -- the loop node the for
+    statement builds over the same route (`build_loop_node`). `presize`
+    names the result the loop reserves, where its trip count is known up
+    front; `outermost` marks clause 0, whose source Python evaluates in the
+    enclosing scope."""
+    it = gen.iterable
+    if _is_range_call(it) and len(it.args) == 3:
         _witness("comp.range3")
-        iterable = _lower_range_object(gen.iterable, lc, declared)
-    elif isinstance(gen.iterable, TpyFieldAccess):
+    if route.loop == "range":
+        return _statements.build_loop_node(
+            "range", gen.var, route.et, body, lc, declared, range_call=it,
+            step_kind=route.step_kind,
+            presize=presize if route.step_kind == "plus_one" else None,
+            source_in_enclosing=outermost, loc=loc)
+    if _is_range_call(it):
+        iterable = _lower_range_object(it, lc, declared)
+    elif isinstance(it, TpyFieldAccess):
         # The non-value field read (storage form) -- the plain
         # `recv.field` / `recv->field` render.
         _witness("comp.field_iter")
-        iterable = _lower_field_source(gen.iterable, lc, declared)
+        iterable = _lower_field_source(it, lc, declared)
     else:
         if route.gen_factory:
             _witness("comp.genfac_source")
-        if route.iter_protocol:
-            _witness("comp.iter_protocol_source")
         if route.native_combinator:
             _witness("comp.combinator_source")
-        # allow_temps: the source-call's own arg temps (`int32_t __tmp_N =
-        # 8;` a generic factory's ref-slot literal) flush BEFORE the comp's
-        # enclosing statement.
+        # allow_temps: the source call's own arg temps (`int32_t __tmp_N =
+        # 8;` a generic factory's ref-slot literal) flush right before the
+        # loop's capture, or before the enclosing statement for clause 0.
         # The loop captures the OBJECT: a reassigned record local's pointer
-        # read derefs (`iter_range(*c)`, `auto& __obj_N = (*f);`), as the
-        # for statement's capture does.
+        # read derefs (`auto& __obj_N = (*f);`), as the for statement's
+        # capture does.
         iterable = _deref_loop_source(_lower_expr(
-            gen.iterable, lc, declared,
+            it, lc, declared,
             use=_ExprUse(result=_ExprResultUse.ITERABLE,
                          pos=SinkPos.ITER_SOURCE, allow_temps=True)), lc)
-    unpack_targets: tuple = ()
-    unpack_cpps: tuple = ()
-    if route.unpack_types is not None:
-        _witness("comp.unpack")
-        unpack_targets = tuple(gen.unpack_vars)
-        unpack_cpps = _unpack_target_cpps(route.unpack_types, lc,
-                                  gen.const_loop_var)
-    return THIRComprehension(
-        result_type=result_type,
-        kind=route.kind,
-        container_cpp=container,
-        var=gen.var,
-        loop=route.loop,
-        elem_type=route.et,
-        const_loop_var=gen.const_loop_var,
-        counter_cpp=(lc.render_type(route.counter_type)
-                     if route.counter_type is not None else ""),
-        counter_bigint=(route.counter_type is not None
-                        and is_big_int_type(route.counter_type)),
-        range_start=range_start,
-        range_stop=range_stop,
-        range_start_literal=start_lit,
-        range_stop_literal=stop_lit,
-        iterable=iterable,
+    if route.iter_protocol:
+        _witness("comp.iter_protocol_source")
+        # A source driven by `__iter__`/`__next__` has no size to reserve.
+        assert not route.sized_reserve
+        return _statements.build_loop_node(
+            "iter_proto", gen.var, route.et, body, lc, declared,
+            iterable=iterable, const_loop_var=gen.const_loop_var,
+            iterable_lvalue=route.iterable_lvalue,
+            source_in_enclosing=outermost, loc=loc)
+    return _statements.build_loop_node(
+        "each", gen.var, route.et, body, lc, declared, iterable=iterable,
+        source=it, const_loop_var=gen.const_loop_var,
         iterable_lvalue=route.iterable_lvalue,
-        iter_protocol=route.iter_protocol,
-        sized_reserve=route.sized_reserve,
-        unpack_targets=unpack_targets,
-        unpack_target_cpps=unpack_cpps,
-        # temps_ok: a filter's per-iteration temps (an owned-move ctor arg)
-        # render at loop-body indent before the `if` -- the emit flushes them
-        # inside the loop scope, where the loop var is declared.
-        conditions=conditions_lowered,
-        element=element,
-        key=key,
-        value=value,
-        value_moved=value_moved,
-        loc=loc,
-    )
+        presize=presize if route.sized_reserve else None,
+        source_in_enclosing=outermost, loc=loc)
 
 
 def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
@@ -1440,7 +1495,7 @@ def _lower_genexpr_impl(expr: TpyGeneratorExpression, lc: '_LowerCtx',
     rvalue) decides how the frame sema built takes its source. The body is
     that function's, lowered like any generator body."""
     analyzer = lc.analyzer
-    gen = expr.generator
+    gen = expr.generators[0]
     loc = getattr(expr, "loc", None)
     it = gen.iterable
     if expr.frame_range_args:
@@ -1478,7 +1533,7 @@ def _lower_genexpr_frame(expr: TpyGeneratorExpression, route: '_SourceRoute | No
     frame factory of the function sema built."""
     analyzer = lc.analyzer
     func = expr.frame_func
-    it = expr.generator.iterable
+    it = expr.generators[0].iterable
     fis = analyzer.ctx.registry.get_function(func.name)
     factory = free_callee_cpp(analyzer.ctx.module_attributes,
                               analyzer.ctx.module_name,

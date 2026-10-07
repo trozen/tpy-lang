@@ -1,0 +1,1 @@
+main.py:15: error: a walrus inside a comprehension cannot bind 'last' to a reference to an object; use a `for` loop

@@ -20,7 +20,7 @@ void jagged() {
         int32_t i = int32_t(__i_0);
         return ({
         std::vector<int32_t> __result;
-        const int32_t __stop_1 = i;
+        int32_t __stop_1 = i;
         if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
         for (int32_t k = 0; k < __stop_1; ++k) {
             __result.push_back(k);
@@ -40,9 +40,8 @@ void jagged() {
 void annotated_growable() {
     std::vector<std::vector<::tpy::BigInt>> rows = ({
         std::vector<std::vector<::tpy::BigInt>> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t i = 0; i < 3; ++i) {
             __result.push_back({i, (::tpy::add_check<int32_t>(i, 1))});
         }
         std::move(__result);

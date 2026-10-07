@@ -553,19 +553,18 @@ def _scan_walrus_in_expr(expr: TpyExpr | None, declared: set[str],
         val = getattr(expr, f.name)
         if isinstance(val, TpyExpr):
             _scan_walrus_in_expr(val, declared, result)
-        elif isinstance(val, TpyComprehensionGenerator):
-            # Comprehension-scoped, so not a body declaration -- but still a
-            # name a synthesized one must avoid (`bound_names`).
-            for name in (val.unpack_vars or [val.var]):
-                if name is not None:
-                    result.scoped_bind_loc.setdefault(name, expr.loc)
-            _scan_walrus_in_expr(val.iterable, declared, result)
-            for cond in val.conditions:
-                _scan_walrus_in_expr(cond, declared, result)
         elif isinstance(val, list):
             for item in val:
                 if isinstance(item, TpyExpr):
                     _scan_walrus_in_expr(item, declared, result)
+                elif isinstance(item, TpyComprehensionGenerator):
+                    # Comprehension-scoped, so not a body declaration -- but
+                    # still a name a synthesized one must avoid (`bound_names`).
+                    for name in item.targets:
+                        result.scoped_bind_loc.setdefault(name, expr.loc)
+                    _scan_walrus_in_expr(item.iterable, declared, result)
+                    for cond in item.conditions:
+                        _scan_walrus_in_expr(cond, declared, result)
                 elif isinstance(item, TpyFStringValue):
                     _scan_walrus_in_expr(item.expr, declared, result)
         elif isinstance(val, dict):
@@ -1267,9 +1266,9 @@ def _in_place_writes(block: BlockSummary) -> InPlaceWrites:
                     write(a, "<arg>")
             if isinstance(node, TpyLambda):
                 stack.append(node.body)
-            gen = getattr(node, 'generator', None)
-            if isinstance(gen, TpyComprehensionGenerator):
-                bind_elements(gen.unpack_vars or [gen.var], gen.iterable)
+            for gen in getattr(node, 'generators', None) or ():
+                if isinstance(gen, TpyComprehensionGenerator):
+                    bind_elements(gen.unpack_vars or [gen.var], gen.iterable)
             # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
             stack.extend(node.children())
 
@@ -1383,14 +1382,14 @@ def _kills_in_expr(expr: TpyExpr | None, kills: FactKills) -> None:
         val = getattr(expr, f.name)
         if isinstance(val, TpyExpr):
             _kills_in_expr(val, kills)
-        elif isinstance(val, TpyComprehensionGenerator):
-            _kills_in_expr(val.iterable, kills)
-            for cond in val.conditions:
-                _kills_in_expr(cond, kills)
         elif isinstance(val, list):
             for item in val:
                 if isinstance(item, TpyExpr):
                     _kills_in_expr(item, kills)
+                elif isinstance(item, TpyComprehensionGenerator):
+                    _kills_in_expr(item.iterable, kills)
+                    for cond in item.conditions:
+                        _kills_in_expr(cond, kills)
                 elif isinstance(item, TpyFStringValue):
                     _kills_in_expr(item.expr, kills)
         elif isinstance(val, dict):
@@ -1518,14 +1517,14 @@ def _names_read(expr: TpyExpr | None, out: set[str]) -> None:
         val = getattr(expr, f.name)
         if isinstance(val, TpyExpr):
             _names_read(val, out)
-        elif isinstance(val, TpyComprehensionGenerator):
-            _names_read(val.iterable, out)
-            for cond in val.conditions:
-                _names_read(cond, out)
         elif isinstance(val, list):
             for item in val:
                 if isinstance(item, TpyExpr):
                     _names_read(item, out)
+                elif isinstance(item, TpyComprehensionGenerator):
+                    _names_read(item.iterable, out)
+                    for cond in item.conditions:
+                        _names_read(cond, out)
                 elif isinstance(item, TpyFStringValue):
                     _names_read(item.expr, out)
         elif isinstance(val, dict):

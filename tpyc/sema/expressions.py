@@ -56,7 +56,7 @@ from ..type_def_registry import (
     int_traits_of,
     is_enum_type, is_int_enum_type, enum_info_of,
     find_factory_by_simple_name, protocol_info_of,
-    type_def_of,
+    type_def_of, is_borrowing_view_type,
 )
 from ..namespace import BindingKind, NameBinding
 from .frame_traits import build_closure_frame
@@ -64,7 +64,7 @@ from ..coercions import CoercionContext, resolve_coercion
 from ..prescan import (
     _expr_to_narrowing_key, bound_names_of, fold_int_constant,
     int_constant_too_wide, storage_spelling, walrus_names_of)
-from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
+from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
 from .context import PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
 from ..value_category import (frame_factory_callee, is_rvalue_source, async_result_aliases,
@@ -104,7 +104,7 @@ from .scope_tracker import lend_roots
 from .receiver_calls import (call_mutates_receiver, check_implicit_readonly_receiver,
                              credit_implicit_receiver_call, record_implicit_call,
                              record_protocol_arg_calls, record_truth_calls)
-from .iter_loans import (_record_iter_receiver_mutation, iterated_storage,
+from .iter_loans import (_record_iter_receiver_mutation, genexpr_iterated_roots, iterated_storage,
                          register_iteration_loans)
 
 if TYPE_CHECKING:
@@ -175,6 +175,18 @@ def _has_pending_literal_below(typ: TpyType, first_own: int) -> bool:
     return any(_has_pending_literal_below(t, first_own) for t in typ.inner_types())
 
 
+def _may_keep_reference(typ: TpyType) -> bool:
+    """Whether a binding of `typ` may keep a reference to another object: a
+    reference type or an open type parameter, a pointer or borrowing view,
+    or an Optional / tuple / union holding one at any depth. Unlike the copy
+    question (`contains_reference_type`) a view or pointer counts: it points
+    into storage just as a reference does."""
+    t = unwrap_readonly(unwrap_own(typ))
+    if not t.is_value_type() or t.is_pointer() or is_borrowing_view_type(t):
+        return True
+    return any(_may_keep_reference(i) for i in t.inner_types())
+
+
 def _names_rebound_by(stmt: TpyStmt) -> set[str]:
     """The names this ONE statement can leave bound to a different value than
     before: the whole-name binders and walruses prescan enumerates, an
@@ -199,6 +211,46 @@ def _rebound_in(stmts: list[TpyStmt]) -> set[str]:
     walk_body_stmts(stmts, lambda e: None,
                     lambda stmt: names.update(_names_rebound_by(stmt)))
     return names
+
+
+def reject_rebound_iterated_capture(ctx: SemanticContext,
+                                    gx: TpyGeneratorExpression,
+                                    func: TpyFunction,
+                                    rebindable: Iterable[str],
+                                    why: str) -> None:
+    """A capture an inner `for` clause iterates is iterated across pulls by
+    reference to the enclosing variable, so rebinding that variable between
+    two pulls pulls the storage out from under the live iteration. `why`
+    says what can rebind it."""
+    iterated = genexpr_iterated_roots(func)
+    for name in rebindable:
+        if name in func.capture_params and name in iterated:
+            raise ctx.error(
+                f"'{name}' is iterated by this generator expression, but {why}; "
+                f"bind it to a local first", gx)
+
+
+def _comp_free_names(expr: TpyExpr) -> set[str]:
+    """The names `expr` reads from the scope it is written in: a nested
+    comprehension's or lambda's own variables are not such reads (clause 0's
+    iterable of a nested comprehension is, it runs outside that scope)."""
+    if isinstance(expr, TpyName):
+        return {expr.name}
+    if isinstance(expr, TpyLambda):
+        return _comp_free_names(expr.body) - set(expr.param_names)
+    if isinstance(expr, (TpyListComprehension, TpySetComprehension,
+                         TpyDictComprehension, TpyGeneratorExpression)):
+        gens = expr.generators
+        inner: set[str] = set()
+        for e in expr.children():
+            if e is not gens[0].iterable:
+                inner |= _comp_free_names(e)
+        bound = {n for gen in gens for n in gen.targets}
+        return _comp_free_names(gens[0].iterable) | (inner - bound)
+    out: set[str] = set()
+    for child in expr.children():
+        out |= _comp_free_names(child)
+    return out
 
 
 def _nested_def_free_names(func: TpyFunction,
@@ -4067,13 +4119,7 @@ class ExpressionAnalyzer:
         """Analyze walrus operator: (x := expr)."""
         value_type = self.analyze_expr(expr.value)
         name = expr.target
-
-        # A `global`-declared target writes the MODULE variable, like the plain
-        # assignment path -- the global lives in `global_scope`, which is not in
-        # the function's scope chain, so without this the binding below would
-        # define a function-local shadow and the write would be lost.
-        if name in self.ctx.func.global_declarations:
-            return self._analyze_global_walrus(expr, name, value_type)
+        is_global = name in self.ctx.func.global_declarations
 
         # Resolve pending/literal types for the variable binding
         resolved = value_type
@@ -4107,7 +4153,24 @@ class ExpressionAnalyzer:
             target_scope = target_scope.parent
             levels -= 1
 
-        existing = target_scope.lookup(name)
+        existing = (self.ctx.global_scope.lookup(name) if is_global
+                    else target_scope.lookup(name))
+        # The target outlives the comprehension, while what an element
+        # reaches may die with the source or with one outer iteration;
+        # which source a reference comes from is not tracked here.
+        if self.ctx.in_comprehension and _may_keep_reference(
+                existing if existing is not None else resolved):
+            raise self.ctx.error(
+                f"a walrus inside a comprehension cannot bind '{name}' to a "
+                f"reference to an object; use a `for` loop", expr)
+
+        # A `global`-declared target writes the MODULE variable, like the plain
+        # assignment path -- the global lives in `global_scope`, which is not in
+        # the function's scope chain, so without this the binding below would
+        # define a function-local shadow and the write would be lost.
+        if is_global:
+            return self._analyze_global_walrus(expr, name, value_type)
+
         if existing is not None:
             # Reassignment via walrus. Non-value (and pointer-repr-tuple) locals
             # use a storage form (T* / std::optional<T> / borrow slot) the walrus
@@ -4784,13 +4847,79 @@ class ExpressionAnalyzer:
         return self._analyze_elem_comprehension(expr, expected_elem, kind="set")
 
     def _analyze_generator_expression(self, expr: TpyGeneratorExpression) -> TpyType:
-        gen = expr.generator
-        elem_type = self._resolve_comp_iterable(gen, expr)
+        self._check_comp_clause_names(expr)
+        elem_type = self._resolve_comp_iterable(expr.generators[0], expr)
         # Stamped where the comprehensions stamp it: lowering reads the fact
         # off the head (an `Iterator[Own[T]]` source has no genexpr lowering
         # yet).
-        gen.owns_elements = isinstance(elem_type, OwnType)
+        self._stamp_comp_source_facts(expr, 0, elem_type)
         return self._analyze_genexpr_function(expr, elem_type)
+
+    def _check_comp_clause_names(
+        self,
+        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension | TpyGeneratorExpression,
+    ) -> None:
+        """Reject the name reuse across `for` clauses that CPython either
+        resolves surprisingly or fails on at run time.
+
+        All clauses share one scope, so a name two clauses bind is one
+        variable rebound by the inner loop. And a name a LATER clause binds is
+        already that clause's variable in an earlier clause's filter or inner
+        iterable, where CPython raises UnboundLocalError -- except in clause
+        0's iterable, which runs in the enclosing scope and reads the
+        enclosing name. `_` is the conventional throwaway target, so binding
+        it in several clauses stays legal while nothing in the comprehension
+        reads it back."""
+        gens = expr.generators
+        if len(gens) < 2:
+            return
+        reads_underscore = any("_" in _comp_free_names(e)
+                               for e in expr.children()
+                               if e is not gens[0].iterable)
+        bound_by: dict[str, int] = {}
+        for k, gen in enumerate(gens):
+            for name in gen.targets:
+                if name in bound_by and (name != "_" or reads_underscore):
+                    raise self.ctx.error(
+                        f"'{name}' is bound by two `for` clauses of this "
+                        f"comprehension; rename one", gen.iterable)
+                bound_by.setdefault(name, k)
+        for k, gen in enumerate(gens):
+            # The iterable runs before this clause binds; its filters after.
+            reads = [(e, k) for e in gen.conditions]
+            if k > 0:
+                reads.insert(0, (gen.iterable, k - 1))
+            for e, last_bound in reads:
+                for name in sorted(_comp_free_names(e)):
+                    j = bound_by.get(name)
+                    if j is not None and j > last_bound:
+                        raise self.ctx.error(
+                            f"'{name}' is read before the `for` clause that "
+                            f"binds it", e)
+
+    def _stamp_comp_source_facts(
+        self,
+        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension | TpyGeneratorExpression,
+        k: int, elem_type: TpyType,
+    ) -> None:
+        """Stamp clause `k`'s source facts. Only the innermost clause's
+        element is handed to the sink, so only it may iterate a source that
+        hands its elements over."""
+        gen = expr.generators[k]
+        gen.owns_elements = isinstance(elem_type, OwnType)
+        if (gen.owns_elements and isinstance(expr, TpyGeneratorExpression)
+                and len(expr.generators) > 1):
+            # No generator-expression frame takes over its source's elements,
+            # so the last-clause rule of the comprehensions does not apply;
+            # the single-clause form keeps its lowering refusal.
+            raise self.ctx.error(
+                "a generator expression cannot iterate a source that yields "
+                "owned values; use a list comprehension or a `for` loop",
+                gen.iterable)
+        if gen.owns_elements and k + 1 < len(expr.generators):
+            raise self.ctx.error(
+                "a `for` clause over a source that yields owned values must be "
+                "the last clause of the comprehension", gen.iterable)
 
     def _analyze_genexpr_function(self, expr: TpyGeneratorExpression,
                                   elem_type: TpyType) -> TpyType:
@@ -4801,28 +4930,24 @@ class ExpressionAnalyzer:
         the element and filters read is a further param, taken by reference.
         The body is analyzed once, as a function, so every per-function fact
         the frame emitter reads comes from the ordinary lifecycle."""
-        gen = expr.generator
+        gens = expr.generators
+        gen = gens[0]
         outer = self.ctx.func.current_function
         loc = expr.loc
-        inner: list[TpyStmt] = [TpyYield(expr.element_expr, loc=expr.element_expr.loc or loc)]
-        for cond in reversed(gen.conditions):
-            inner = [TpyIf(cond, inner, [], loc=cond.loc or loc)]
-        # A `range(...)` source: its bounds are evaluated here, where the
-        # genexpr is written, and handed over by value; the body loops over a
-        # range of them, which the frame walks with plain counters instead of
-        # an iterator over a Range object.
-        # The function's own names (source, range bounds, unpack holder) must
+        # The function's own names (source, range bounds, unpack holders) must
         # not shadow a name the body reads from the enclosing function.
         body_names = collect_name_refs(expr.element_expr)
-        for cond in gen.conditions:
-            body_names |= collect_name_refs(cond)
+        for k, g in enumerate(gens):
+            if k > 0:
+                body_names |= collect_name_refs(g.iterable)
+            for cond in g.conditions:
+                body_names |= collect_name_refs(cond)
+        targets = {n for g in gens for n in g.targets}
         # Its body is analyzed under a function state of its own; its loop
         # variables only shadow an enclosing name.
         self.pend.settle_names(
-            body_names - {n for n in (gen.unpack_vars or [gen.var])
-                          if n is not None},
-            expr, "read by a generator expression")
-        body_names |= {n for n in (gen.unpack_vars or [gen.var]) if n is not None}
+            body_names - targets, expr, "read by a generator expression")
+        body_names |= targets
 
         def fresh(base: str) -> str:
             # A frame's constructor spells a param `<name>_`, so a name one
@@ -4832,7 +4957,34 @@ class ExpressionAnalyzer:
                       for other in body_names):
                 n += 1
                 name = f"{base}{n}"
+            body_names.add(name)
             return name
+
+        def clause_loop(g: TpyComprehensionGenerator, source: TpyExpr,
+                        body: list[TpyStmt], at: 'SourceLocation | None') -> TpyForEach:
+            if g.unpack_vars is None:
+                return TpyForEach(g.var, source, body, loc=at)
+            synth = fresh("__for_tup_gx")
+            unpack = TpyTupleUnpack(targets=list(g.unpack_vars),
+                                    value=TpyName(synth, loc=at), loc=at)
+            return TpyForEach(synth, source, [unpack] + body, loc=at,
+                              is_tuple_unpack=True)
+
+        # One nested loop per clause, each clause's filters guarding what
+        # runs inside it, the yield innermost. Only clause 0's source is the
+        # frame's param; an inner clause's source is evaluated in the body,
+        # once per outer element that passed the outer filters.
+        inner: list[TpyStmt] = [TpyYield(expr.element_expr, loc=expr.element_expr.loc or loc)]
+        for k in range(len(gens) - 1, -1, -1):
+            for cond in reversed(gens[k].conditions):
+                inner = [TpyIf(cond, inner, [], loc=cond.loc or loc)]
+            if k > 0:
+                inner = [clause_loop(gens[k], gens[k].iterable, inner,
+                                     gens[k].iterable.loc or loc)]
+        # A `range(...)` source: its bounds are evaluated here, where the
+        # genexpr is written, and handed over by value; the body loops over a
+        # range of them, which the frame walks with plain counters instead of
+        # an iterator over a Range object.
         range_args: list[TpyExpr] = []
         it = gen.iterable
         if (isinstance(it, TpyCall) and it.func_name == "range" and not it.kwargs
@@ -4845,13 +4997,7 @@ class ExpressionAnalyzer:
         if range_args:
             src = TpyCall(TpyName("range", loc=loc),
                           [TpyName(n, loc=loc) for n in bound_names], loc=loc)
-        if gen.unpack_vars is not None:
-            synth = fresh("__for_tup_gx")
-            unpack = TpyTupleUnpack(targets=list(gen.unpack_vars),
-                                    value=TpyName(synth, loc=loc), loc=loc)
-            loop = TpyForEach(synth, src, [unpack] + inner, loc=loc, is_tuple_unpack=True)
-        else:
-            loop = TpyForEach(gen.var, src, inner, loc=loc)
+        loop = clause_loop(gen, src, inner, loc)
         self.ctx.genexpr_counter += 1
         if not isinstance(outer, TpyFunction):
             outer = None    # module level: the init sentinel
@@ -4966,6 +5112,9 @@ class ExpressionAnalyzer:
         assert self.ctx.analyze_genexpr_function is not None
         self.ctx.analyze_genexpr_function(func, source_loans)
         assert func.generator_yield_type is not None
+        reject_rebound_iterated_capture(
+            self.ctx, expr, func, rebindable,
+            "the loop it feeds rebinds it between pulls")
         # Creating the frame hands the source and the captures to the function
         # the way a call hands over its arguments, so its mutation facts reach
         # this function the same way: a body that mutates through its loop var
@@ -4977,9 +5126,10 @@ class ExpressionAnalyzer:
             creation = TpyCall(TpyName(func.name, loc=loc),
                                (range_args or [gen.iterable]) + list(reads), loc=loc)
             creation.resolved_function_info = fis[-1]
-            # The frame iterates only its source and reads a capture afresh at
-            # each pull, so a capture is held whole -- unless the yield may
-            # point into it (`ys[i][1:]` views an element of `ys`).
+            # The frame reads a capture afresh at each pull, so a capture is
+            # held whole -- unless the yield may point into it (`ys[i][1:]`
+            # views an element of `ys`), or an inner `for` clause iterates it
+            # across pulls the way the frame iterates its source.
             lent = ({r.name for lo in lent_operands(
                          expr.element_expr, func.generator_yield_type,
                          expr_type=None)
@@ -4987,9 +5137,10 @@ class ExpressionAnalyzer:
                     if frame_yield_may_borrow(func.generator_yield_type)
                     else set())
             n_source = len(range_args) or 1
+            iterated = genexpr_iterated_roots(func)
             fis[-1].root.held_whole_params = frozenset(
                 n_source + k for k, name in enumerate(captures)
-                if name not in lent)
+                if name not in lent and name not in iterated)
             self.calls._check_borrow_arg_conflicts(creation)
             self.calls._check_loop_var_arg_mutation(creation)
             self.calls._record_mutation_call_edges(creation)
@@ -5028,16 +5179,16 @@ class ExpressionAnalyzer:
         kind: Literal["list", "set"],
     ) -> TpyType:
         """Shared analysis for list and set comprehensions."""
-        gen = expr.generator
-        elem_type = self._resolve_comp_iterable(gen, expr)
+        self._check_comp_clause_names(expr)
+        elem_type = self._resolve_comp_iterable(expr.generators[0], expr)
         # An Own[T]-yielding source (e.g. a generator) hands ownership to the
         # comprehension: a last-use bare-loop-var element is MOVED into the
         # result (codegen mirrors the consuming for-append), not copied.
-        gen.owns_elements = isinstance(elem_type, OwnType)
+        self._stamp_comp_source_facts(expr, 0, elem_type)
 
         if self.scopes is None:
             raise RuntimeError(f"{kind} comprehension requires ScopeTracker")
-        result_elem_type = self._enter_comp_scope(gen, expr, elem_type, expected)
+        result_elem_type = self._enter_comp_scope(expr, elem_type, expected)
         expected_elem = expected.type if expected is not None else None
         if self._converting_element([result_elem_type], expected) is not None:
             expected_elem = None
@@ -5054,7 +5205,8 @@ class ExpressionAnalyzer:
         # transfers ownership, so there is no copy to warn about. A derived sink
         # (`x.field`, `f(x)`) is not the move, so it still warns/copies.
         if (expr.element_expr.loc is not None and not isinstance(expected_elem, AnyType)
-                and not self._comp_elem_moves(gen, expr.element_expr, is_last_sink=True)):
+                and not self._comp_elem_moves(expr.generators[-1], expr.element_expr,
+                                              is_last_sink=True)):
             self._warn_storage_element_copy(expr.element_expr, result_elem_type)
 
         if expected_elem is not None and result_elem_type != expected_elem:
@@ -5109,7 +5261,9 @@ class ExpressionAnalyzer:
 
     def _try_comp_array_size(self, expr: TpyListComprehension) -> int | None:
         """Return the compile-time known size if this comprehension can be an Array."""
-        gen = expr.generator
+        if len(expr.generators) > 1:
+            return None
+        gen = expr.generators[0]
         if gen.conditions:
             return None
 
@@ -5179,14 +5333,15 @@ class ExpressionAnalyzer:
         value_hint: SlotHint | None = None,
     ) -> TpyType:
         """Analyze a dict comprehension: {key: value for var in iterable if cond}"""
-        gen = expr.generator
-        elem_type = self._resolve_comp_iterable(gen, expr)
-        gen.owns_elements = isinstance(elem_type, OwnType)
+        self._check_comp_clause_names(expr)
+        elem_type = self._resolve_comp_iterable(expr.generators[0], expr)
+        self._stamp_comp_source_facts(expr, 0, elem_type)
+        innermost = expr.generators[-1]
 
         if self.scopes is None:
             raise RuntimeError("dict comprehension requires ScopeTracker")
         key_type, value_type = self._enter_comp_scope(
-            gen, expr, elem_type, (key_hint, value_hint))
+            expr, elem_type, (key_hint, value_hint))
         expected_key = key_hint.type if key_hint is not None else None
         expected_value = value_hint.type if value_hint is not None else None
         if self._converting_element([key_type], key_hint) is not None:
@@ -5209,10 +5364,10 @@ class ExpressionAnalyzer:
         # sink (the one shape codegen moves) -- `{node.id: node}` moves the value
         # but still copies/warns the key.
         if (expr.key_expr.loc is not None and not isinstance(expected_key, AnyType)
-                and not self._comp_elem_moves(gen, expr.key_expr)):
+                and not self._comp_elem_moves(innermost, expr.key_expr)):
             self._warn_storage_element_copy(expr.key_expr, key_type)
         if (expr.value_expr.loc is not None and not isinstance(expected_value, AnyType)
-                and not self._comp_elem_moves(gen, expr.value_expr, is_last_sink=True)):
+                and not self._comp_elem_moves(innermost, expr.value_expr, is_last_sink=True)):
             self._warn_storage_element_copy(expr.value_expr, value_type)
 
         if expected_key is not None and key_type != expected_key:
@@ -5263,21 +5418,36 @@ class ExpressionAnalyzer:
 
     def _enter_comp_scope(
         self,
-        gen: TpyComprehensionGenerator,
-        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension | TpyGeneratorExpression,
+        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension,
         elem_type: TpyType,
-        hint: TpyType | tuple[TpyType | None, TpyType | None] | None,
+        hint: SlotHint | tuple[SlotHint | None, SlotHint | None] | None,
     ) -> TpyType | tuple[TpyType, TpyType]:
+        """Analyze the clauses and the element(s) in the comprehension's one
+        scope, clause 0's iterable already analyzed (`elem_type` is its
+        element) in the enclosing scope."""
+        assert self.scopes is not None
+        with self.scopes.comprehension_scope() as inner_scope:
+            return self._enter_comp_clause(expr, 0, elem_type, inner_scope, hint)
+
+    def _enter_comp_clause(
+        self,
+        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension,
+        k: int,
+        elem_type: TpyType,
+        inner_scope: Scope,
+        hint: SlotHint | tuple[SlotHint | None, SlotHint | None] | None,
+    ) -> TpyType | tuple[TpyType, TpyType]:
+        """Bind clause `k`'s targets and analyze what runs inside it: its
+        filters, then the next clause or, in the innermost, the element(s)."""
+        assert self.scopes is not None
+        gen = expr.generators[k]
         # unwrap_qualifiers (not unwrap_readonly) so a wrapped value-type
         # element still counts as value-type, matching the for-loop predicate
         # in sema/statements.py.
         unwrapped = unwrap_qualifiers(elem_type)
         worth_const_ref = (not unwrapped.is_value_type()
                            or unwrapped.is_expensive_copy())
-        if gen.unpack_vars is not None:
-            names = [u for u in gen.unpack_vars if u is not None]
-        else:
-            names = [gen.var]
+        names = gen.targets
         # Clear any prior marks in case an outer scope already used these
         # names; the post-body check at the bottom must see only marks from
         # this comp's body.
@@ -5285,27 +5455,43 @@ class ExpressionAnalyzer:
             self.ctx.func.mutated_loop_vars.discard(n)
             self.ctx.func.consumed_loop_vars.discard(n)
 
-        with self.scopes.comprehension_scope() as inner_scope:
-            self._register_comp_iter_loans(gen, names)
-            if gen.unpack_vars is not None:
-                if not isinstance(elem_type, TupleType):
-                    raise self.ctx.error(
-                        f"Cannot unpack non-tuple type {elem_type}", expr)
-                if len(gen.unpack_vars) != len(elem_type.element_types):
-                    raise self.ctx.error(
-                        f"Cannot unpack tuple of {len(elem_type.element_types)} "
-                        f"elements into {len(gen.unpack_vars)} targets", expr)
-                with ExitStack() as stack:
-                    for uvar, utype in zip(gen.unpack_vars, elem_type.element_types):
-                        if uvar is not None:
-                            stack.enter_context(
-                                self.scopes.loop_var(inner_scope, uvar, utype,
-                                                     inner_scope.depth, is_foreach=True))
-                    result = self._analyze_comp_body(gen, expr, hint)
-            else:
-                with self.scopes.loop_var(inner_scope, gen.var, elem_type,
-                                          inner_scope.depth, is_foreach=True):
-                    result = self._analyze_comp_body(gen, expr, hint)
+        # Clause 0's source is evaluated in the enclosing scope, where a name
+        # any clause binds is still the ENCLOSING binding; an inner clause's
+        # source reads the comprehension's own variables.
+        excluded = ([n for g in expr.generators for n in g.targets]
+                    if k == 0 else [])
+        self._register_comp_iter_loans(gen, names, excluded)
+        if gen.unpack_vars is not None:
+            if not isinstance(elem_type, TupleType):
+                raise self.ctx.error(
+                    f"Cannot unpack non-tuple type {elem_type}", expr)
+            if len(gen.unpack_vars) != len(elem_type.element_types):
+                raise self.ctx.error(
+                    f"Cannot unpack tuple of {len(elem_type.element_types)} "
+                    f"elements into {len(gen.unpack_vars)} targets", expr)
+            bindings = [(u, t) for u, t in zip(gen.unpack_vars, elem_type.element_types)
+                        if u is not None]
+        else:
+            bindings = [(gen.var, elem_type)]
+        with ExitStack() as stack:
+            for name, typ in bindings:
+                stack.enter_context(
+                    self.scopes.loop_var(inner_scope, name, typ,
+                                         inner_scope.depth, is_foreach=True))
+            self.ctx.func.comp_targets.extend(names)
+            try:
+                result = self._analyze_comp_body(expr, k, inner_scope, hint)
+            finally:
+                # Re-read: a trial scope inside the body restores the
+                # function state as a copy.
+                comp_targets = self.ctx.func.comp_targets
+                del comp_targets[len(comp_targets) - len(names):]
+        # The edge reaches only another comprehension's target: an enclosing
+        # `for` variable marked mutable may turn its loop consuming while a
+        # borrow of an element outlives the loop
+        # (BUGS.md#consuming-loop-outlived-by-loop-var-borrow).
+        self.ctx.credit_iter_source_mutation(
+            names, gen.iterable, reach=self.ctx.func.comp_targets)
 
         # An owned-yielding source binds the element non-const (`auto&&`) so a
         # last-use sink can move it -- mirrors the consuming for-loop, which
@@ -5316,21 +5502,22 @@ class ExpressionAnalyzer:
         return result
 
     def _register_comp_iter_loans(self, gen: TpyComprehensionGenerator,
-                                  names: list[str]) -> None:
+                                  names: list[str],
+                                  excluded: list[str]) -> None:
         """The comprehension's iteration loan -- the one a `for` over the same
         source files, so its condition or element growing the source is
         diagnosed the same way.
 
-        A source rooted at a name spelled like one of the targets
-        (`[grow(c) for c in c]`) is the ENCLOSING binding of that name, which
-        the comprehension's own code cannot reach by name, so no loan is filed
-        on it: inside the scope that name is the target."""
+        A source rooted at a name in `excluded` (`[grow(c) for c in c]`) is
+        the ENCLOSING binding of that name, which the comprehension's own
+        code cannot reach by name, so no loan is filed on it: inside the
+        scope that name is the target."""
         iterable_type = self.ctx.get_expr_type(gen.iterable)
         assert iterable_type is not None
         # `loan.unplaceable` needs no stamp here: a chain too deep for a loan
         # key never lowers as a comprehension source.
         register_iteration_loans(self.ctx, gen.iterable, iterable_type,
-                                 excluded_roots=names)
+                                 excluded_roots=excluded)
         # The targets' element origin is not recorded here, so a view hoist
         # must not read the roots an earlier `for` over the same name left.
         for name in names:
@@ -5338,12 +5525,19 @@ class ExpressionAnalyzer:
 
     def _analyze_comp_body(
         self,
-        gen: TpyComprehensionGenerator,
-        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension | TpyGeneratorExpression,
+        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension,
+        k: int,
+        inner_scope: Scope,
         hint: SlotHint | tuple[SlotHint | None, SlotHint | None] | None,
     ) -> TpyType | tuple[TpyType, TpyType]:
-        for cond in gen.conditions:
+        for cond in expr.generators[k].conditions:
             self.analyze_condition(cond)
+        if k + 1 < len(expr.generators):
+            # The next clause's source runs once per element that passed
+            # this clause's filters, with every outer target bound.
+            elem_type = self._resolve_comp_iterable(expr.generators[k + 1], expr)
+            self._stamp_comp_source_facts(expr, k + 1, elem_type)
+            return self._enter_comp_clause(expr, k + 1, elem_type, inner_scope, hint)
         if isinstance(expr, TpyDictComprehension):
             key_hint, value_hint = hint
             return (self.analyze_expr_with_hint(expr.key_expr, key_hint),

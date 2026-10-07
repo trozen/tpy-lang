@@ -20,8 +20,7 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ordered_map<int32_t, std::array<int32_t, 2>> fixed = ({
         ::tpy::ordered_map<int32_t, std::array<int32_t, 2>> __result;
-        const int32_t __stop_0 = 3;
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        for (int32_t i = 0; i < 3; ++i) {
             __result.insert_or_assign(i, std::array<int32_t, 2>{i, (::tpy::add_check<int32_t>(i, 1))});
         }
         std::move(__result);
@@ -29,17 +28,16 @@ void main() {
     std::cout << ::tpy::DictPrinter(fixed) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> jagged = ({
         ::tpy::ordered_map<int32_t, std::vector<int32_t>> __result;
-        const int32_t __stop_1 = 4;
-        for (int32_t i = 0; i < __stop_1; ++i) {
+        for (int32_t i = 0; i < 4; ++i) {
             __result.insert_or_assign(i, ({
-        std::vector<int32_t> __result;
-        const int32_t __stop_2 = i;
-        if (__stop_2 > 0) __result.reserve(static_cast<size_t>(__stop_2));
-        for (int32_t k = 0; k < __stop_2; ++k) {
-            __result.push_back(k);
-        }
-        std::move(__result);
-    }));
+                std::vector<int32_t> __result;
+                int32_t __stop_2 = i;
+                if (__stop_2 > 0) __result.reserve(static_cast<size_t>(__stop_2));
+                for (int32_t k = 0; k < __stop_2; ++k) {
+                    __result.push_back(k);
+                }
+                std::move(__result);
+            }));
         }
         std::move(__result);
     });

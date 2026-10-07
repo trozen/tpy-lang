@@ -74,8 +74,7 @@ int32_t via_nested_tuple(Box& b) {
 int32_t via_dict_comprehension(Box& b) {
     ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ({
         ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> __result;
-        const int32_t __stop_0 = 1;
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        for (int32_t i = 0; i < 1; ++i) {
             __result.insert_or_assign(i, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)));
         }
         std::move(__result);

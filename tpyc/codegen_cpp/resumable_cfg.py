@@ -125,6 +125,8 @@ class ResumableFuncState:
     # (None = it seeds at the first pull). Recorded at struct emission and read
     # by the body emission, which must not drop a seed the constructor lacks.
     ctor_loop_seed: 'list[str] | None' = None
+    # The uid of the loop those statements seed.
+    ctor_seeded_uid: 'int | None' = None
     async_for_struct_names: 'dict[int, str]' = field(default_factory=dict)
     # ptr-slot prescan (_prescan_resumable_ptr_slots): an rvalue write into a
     # pointer-form frame local materializes its backing storage in a

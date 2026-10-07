@@ -25,8 +25,8 @@ int32_t comp_in_ternary(Counter& c, bool cond, const std::vector<int32_t>& xs) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
-            std::optional<Probe> __tmp_1 = Probe(c, i);
-            __result.push_back(::tpyapp::main::take(&((*__tmp_1))));
+            Probe __tmp_1 = Probe(c, i);
+            __result.push_back(::tpyapp::main::take(&(__tmp_1)));
         }
         std::move(__result);
     })) : (std::vector<int32_t>{0}));
@@ -45,8 +45,8 @@ bool comp_in_and(Counter& c, bool cond, const std::vector<int32_t>& xs) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
-            std::optional<Probe> __tmp_1 = Probe(c, i);
-            __result.push_back(::tpyapp::main::take(&((*__tmp_1))));
+            Probe __tmp_1 = Probe(c, i);
+            __result.push_back(::tpyapp::main::take(&(__tmp_1)));
         }
         std::move(__result);
     })) > 0));

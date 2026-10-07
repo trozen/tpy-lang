@@ -24,34 +24,30 @@ void main() {
     std::array<double, 3> a = {1.0, 2.0, 3.0};
     std::cout << s.saverow(({
         std::vector<double> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t i = 0; i < 3; ++i) {
             __result.push_back(((2.0) * (::tpy::__getitem__(a, i))));
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
     std::cout << s.count(({
         ::tpy::ordered_set<::tpy::BigInt> __result;
-        const int32_t __stop_1 = 4;
-        for (int32_t i = 0; i < __stop_1; ++i) {
+        for (int32_t i = 0; i < 4; ++i) {
             __result.insert(::tpy::BigInt((::tpy::mul_check<int32_t>(i, 2))));
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
     std::cout << s.index(({
         ::tpy::ordered_map<::tpy::BigInt, double> __result;
-        const int32_t __stop_2 = 3;
-        for (int32_t i = 0; i < __stop_2; ++i) {
+        for (int32_t i = 0; i < 3; ++i) {
             __result.insert_or_assign(::tpy::BigInt(i), ::tpy::__getitem__(a, i));
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
     std::vector<double> __tmp_1 = ({
         std::vector<double> __result;
-        const int32_t __stop_3 = 3;
-        if (__stop_3 > 0) __result.reserve(static_cast<size_t>(__stop_3));
-        for (int32_t i = 0; i < __stop_3; ++i) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t i = 0; i < 3; ++i) {
             __result.push_back(((2.0) * (::tpy::__getitem__(a, i))));
         }
         std::move(__result);

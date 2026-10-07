@@ -172,9 +172,8 @@ void range_empty_negative() {
 void fallback_mutation() {
     std::vector<int32_t> items = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t x = 0; x < __stop_0; ++x) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t x = 0; x < 3; ++x) {
             __result.push_back(x);
         }
         std::move(__result);
@@ -214,9 +213,8 @@ void explicit_array_annotation() {
 void explicit_list_annotation() {
     std::vector<int32_t> items = ({
         std::vector<int32_t> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t x = 0; x < __stop_0; ++x) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t x = 0; x < 3; ++x) {
             __result.push_back(x);
         }
         std::move(__result);

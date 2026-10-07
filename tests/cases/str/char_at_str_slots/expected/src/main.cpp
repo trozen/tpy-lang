@@ -173,9 +173,8 @@ void main() {
     std::cout << "string" << " " << ::tpy::__len__(owned) << " " << ::tpy::__getitem__(owned, 0) << "\n" << ::tpy::check_signals;
     std::vector<std::string> comp = ({
         std::vector<std::string> __result;
-        const int32_t __stop_0 = 3;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t i = 0; i < __stop_0; ++i) {
+        if (3 > 0) __result.reserve(static_cast<size_t>(3));
+        for (int32_t i = 0; i < 3; ++i) {
             __result.push_back(std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, i))));
         }
         std::move(__result);
