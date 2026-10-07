@@ -4102,12 +4102,31 @@ class OptionalType(TpyType):
     def to_cpp_return(self) -> str:
         if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}*"
+        tup = self._returned_tuple()
+        if tup is not None:
+            return (f"std::optional<{tup.to_cpp_return_const()}>"
+                    if isinstance(self.inner, ReadonlyType)
+                    else f"std::optional<{tup.to_cpp_return()}>")
         return self.to_cpp()
 
     def to_cpp_return_const(self) -> str:
         if self.uses_pointer_repr():
             return f"const {self.inner.to_cpp()}*"
+        tup = self._returned_tuple()
+        if tup is not None:
+            return f"std::optional<{tup.to_cpp_return_const()}>"
         return self.to_cpp()
+
+    def _returned_tuple(self) -> 'TupleType | None':
+        """The borrowing tuple a nullable tuple return holds: the Optional is
+        transparent to the tuple's return layout, so a reference element is
+        returned in its borrow form inside the optional exactly as in the
+        bare tuple return (`std::optional<std::tuple<Box*, int32_t>>`).
+        An `Own[tuple]` inner is storage and keeps `to_cpp`."""
+        inner = unwrap_readonly(self.inner)
+        if isinstance(inner, TupleType) and inner.has_pointer_repr_element():
+            return inner
+        return None
 
     def to_cpp_param_type(self) -> str:
         if self.uses_generic_param_trait():

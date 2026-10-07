@@ -46,7 +46,7 @@ from ..parse import (
     TpyBinOp, TpyTupleLiteral, TpyTypeParamConstruct, TpyCoerce, TpyLambda,
     TpyDictLiteral, TpySetLiteral, lambda_of,
     TpyVarargPack, TpyStarUnpack, TpyFString, TpyFStringValue,
-    TpyGeneratorExpression, TpyStmt,
+    TpyGeneratorExpression, TpyStmt, TupleElemCapture,
 )
 from ..modules import extract_type_params
 from ..namespace import BindingKind
@@ -3298,6 +3298,18 @@ class CallAnalyzer:
         # Peel the transparent Send/Sync marker so a Send[Own[T]] destination
         # param gets the same ownership checks as a bare Own[T] param.
         ptype = unwrap_send_sync(ptype)
+        if isinstance(arg, TpyName) and arg in self.ctx.same_stmt_alias_reads:
+            # A by-VALUE slot (a tuple, `Own[value type]`) moves the name
+            # while the arguments bind, which C++ may sequence before an
+            # alias read in the same statement (`q = t; f(q[0].n, take(t))`):
+            # the slot copies instead (warned by the checks below). A
+            # reference slot (`T&&`) moves inside the callee, after every
+            # argument is bound, so it keeps the move.
+            bare = unwrap_readonly(ptype)
+            own = unwrap_optional_own(bare)
+            if (isinstance(bare, TupleType)
+                    or (own is not None and own.wrapped.is_value_type())):
+                self.ctx.all_last_uses.discard(arg)
         # tuple[Own[T_ref], ...] with a literal source: per-element ownership
         # check. Two shapes reach this -- `Own[tuple[T,...]]` (unwrapped to
         # the inner tuple below) and the canonical per-element form
@@ -3342,6 +3354,9 @@ class CallAnalyzer:
                         self.ctx.warning(
                             f"copies {bare} into owned storage; use copy() to "
                             f"make this explicit", arg)
+                        # Declared to the lowering, which builds only
+                        # declared copies of a name holding a reference.
+                        self.ctx.own_element_copies.add(arg)
         own_ptype = unwrap_optional_own(ptype)
         if own_ptype is None:
             return
@@ -3351,6 +3366,10 @@ class CallAnalyzer:
         if (isinstance(own_ptype.wrapped, TupleType)
                 and isinstance(arg, TpyTupleLiteral)):
             self._check_own_tuple_literal_arg(arg, own_ptype, pname)
+            # The parameter OWNS the tuple like a field: every member is held
+            # by value (a last-use owned one moved in, a borrowed one copied
+            # -- both decided by the member check above).
+            arg.elem_capture = [TupleElemCapture.VALUE] * len(arg.elements)
             self._warn_unnecessary_copy(arg)
             return
         # Unwrap OwnType from name lookup (implicit owned local) for the check.
@@ -3360,6 +3379,9 @@ class CallAnalyzer:
         if isinstance(arg_type, OwnType):
             if isinstance(arg, TpyName):
                 check_type = arg_type.wrapped  # implicit Own from local
+            elif self.compat.passed_owned_element(own_ptype, arg):
+                self._warn_unnecessary_copy(arg)
+                return
             else:
                 # Explicit Own from function return -- ownership acknowledged
                 self.compat.check_own_consumption(arg)

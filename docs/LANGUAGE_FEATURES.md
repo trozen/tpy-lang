@@ -282,10 +282,13 @@ element keeps aliasing, and so does a generator expression that hands a
 captured one on at each pull. A generator or `async def` moves the tuple
 into its frame. The generic
 `tuple[Own[T], T]` takes the same transfer (its `T` element is
-`val_or_ptr_t<T>`, a pointer at a reference instantiation). Still
+`val_or_ptr_t<T>`, a pointer at a reference instantiation). Passing the
+owned element on, `sink(p[0])` into an `Own[A]` slot, takes the rule
+`return p[0]` takes: at the tuple's last use (no hidden borrower) the element
+moves (`sink(std::move(std::get<0>(p)))`), otherwise the slot copies it with
+the element warning, and a `@nocopy` element there is an error. Still
 rejected, for the mixed parameter and its fully owned twin alike: binding
-a name to `p[0]`, a method call or augmented assignment on it, and the
-partial move `sink(p[0])` (unpack first)
+a name to `p[0]` and a method call or augmented assignment on it
 (`BUGS.md#consume-own-element-of-mixed-tuple`).
 
 At a LOCAL the mixed render is the local's own shape at every binding path
@@ -296,8 +299,9 @@ No storage slot is materialized on the way in; rebinding to an all-borrow
 STORAGE source is the one shape with no aliasing answer (the local's owned
 element is by value, so the source's element is copied into it) and it
 warns like the other owning sinks. A mixed tuple wrapped in `Optional`
-(`tuple[Own[A], B] | None`, spellable only as a return) does not build yet
--- see `BUGS.md`.
+(`tuple[Own[A], B] | None`, spellable only as a return) returns the same
+mixed render inside the optional (`std::optional<std::tuple<A, B*>>`), and
+the caller's local binds it whole.
 
 A tuple local's elements split by how it was bound: one bound from a fresh
 value or an owned local at its last use is the local's own, one bound from
@@ -316,9 +320,13 @@ It compiles at these positions: a list or dict literal element
 (`self.t = copy(t)`), a generic `Own[T]` parameter (`ident(copy(t))`), a
 plain tuple parameter (`f(copy(t))`, where `f(t)` compiles) and a
 returned `u` bound by `u = copy(t)` still reject
-(`BUGS.md#copy-tuple-name-position-rejects`), and so does a whole
-`Own[tuple[...]]` parameter
-(`BUGS.md#own-tuple-param-borrowed-local-rejects`). A local
+(`BUGS.md#copy-tuple-name-position-rejects`). At a whole
+`Own[tuple[...]]` parameter of a free function or a constructor the tuple
+is stored like a field: `take(t)` lifts the borrowed elements with the
+warned copy (`take(::tpy::tuple_to_storage<std::tuple<P, P>>(t))`),
+`take(copy(t))` declares it, a literal spells the storage tuple
+(`take(std::tuple<P, P>{p, q})`), and an owned name moves at its last use.
+A local
 that owns every element stores into a list or dict literal quietly (its
 elements are copied there rather than moved --
 `BUGS.md#tuple-local-last-use-copies-owned-elements`). As a
@@ -1879,7 +1887,9 @@ Restrictions:
   params do not lower on a frame yet
   (`BUGS.md#res-param-tuple-element-shapes`).
 - An `Optional` *of* a pointer-repr tuple (`tuple[..., Box] | None`) is a nullable borrow-form tuple local -- `std::optional<std::tuple<..., T*>>`. The optional wraps the *borrow*-form inner tuple, so reassigning the local (`t = h.pair`) ALIASES the source's reference elements rather than copying them (matching CPython); a write through the narrowed local (`if t is not None: t[1].val = ...`) is visible on the source. `t = None` is `std::nullopt`. An owning-call init (`= make_pair()`, whose return is `tuple[..., Own[T]]`) works with this same plain annotation: the owning return materializes into a slot the local aliases. Annotating the local itself with `Own` (`tuple[..., Own[T]] | None`) is rejected as redundant -- the local is borrow form regardless.
-- A value-repr `Optional` of a VALUE tuple (`tuple[float, int32] | None`, `tuple[str, int32] | None`) is `std::optional<std::tuple<...>>` by value at params, locals and the return slot: `return None`, a tuple literal and an un-narrowed value-tuple name all land in the return slot (the optional's converting ctor absorbs the bare tuple). A narrowed read (`if r is not None:`) derefs the optional, so `a, b = r` binds its holder to the contained tuple (`const auto& __tup_N = (*r);`, zero-copy -- a `str` element's view target aliases the tuple's owned element); the whole-optional read (the None test, `s: tuple[...] | None = r`) stays bare. A `str`/`bytes` unpack target is a view into the source tuple's element; a later rebind of the source while the target is live (`a, b = r; r = find(2); print(a)`) makes the target own its buffer. Not yet on a resumable frame's params/returns, at a method's param slot from a literal, or in container-element / `dict.get` / walrus positions (BUGS.md#res-param-value-opt-tuple, BUGS.md#method-arg-value-opt-tuple-literal, BUGS.md#value-opt-tuple-container-slots).
+- A nullable tuple RETURN holding a reference (`-> tuple[Box, int32] | None`, the mixed `-> tuple[Own[Box], Box] | None`) is returned like its bare twin: the optional holds the tuple's return layout (`std::optional<std::tuple<Box*, int32_t>>`, `std::optional<std::tuple<Box, Box*>>`; a `@readonly` method's is `std::optional<std::tuple<const Box*, int32_t>>`). The non-None value takes the bare return's renders and rules (`return (a, b)` -> `return std::tuple<Box*, Box*>{&(a), &(b)};`, the borrow-escape and local-member checks alike), `return None` is `std::nullopt`, and a nullable local or call of the slot's own type returns whole. The caller's `t = f(..)` binds the call with `auto`, so a narrowed element write (`if t is not None: t[0].n = 10`) reaches the caller's object. A coroutine returning one stays refused at its frame, as the bare twin is, and storing, printing or unpacking the nullable value is not supported yet (`BUGS.md#nullable-borrow-tuple-storage-sinks`).
+- A nullable OWNED-record tuple (`-> tuple[Own[Box], int32] | None`) is the by-value `std::optional<std::tuple<Box, int32_t>>` the value tuple takes: a call result binds it, narrowed reads go through `(*t)`, and it returns whole. Binding such a local whole into another local, an argument or a container element is refused -- it would copy records Python shares.
+- A value-repr `Optional` of a VALUE tuple (`tuple[float, int32] | None`, `tuple[str, int32] | None`) is `std::optional<std::tuple<...>>` by value at params, locals and the return slot: `return None`, a tuple literal and an un-narrowed value-tuple name all land in the return slot (the optional's converting ctor absorbs the bare tuple), and a local or call of the slot's own nullable type returns whole. A narrowed read (`if r is not None:`) derefs the optional, so `a, b = r` binds its holder to the contained tuple (`const auto& __tup_N = (*r);`, zero-copy -- a `str` element's view target aliases the tuple's owned element); the whole-optional read (the None test, `s: tuple[...] | None = r`) stays bare. A `str`/`bytes` unpack target is a view into the source tuple's element; a later rebind of the source while the target is live (`a, b = r; r = find(2); print(a)`) makes the target own its buffer. Not yet on a resumable frame's params/returns, at a method's param slot from a literal, or in container-element / `dict.get` / walrus positions (BUGS.md#res-param-value-opt-tuple, BUGS.md#method-arg-value-opt-tuple-literal, BUGS.md#value-opt-tuple-container-slots).
 - A tuple local can mix an OWNING value (a call returning `Own[tuple[...]]`) with a reference to existing storage -- a rebind (`t = make_pair(); t = h.pair`), branch-mixed first bindings (`if c: t = make_pair() else: t = h.pair`), and the walrus form (`(t := make_pair())[0]; t = h.pair`). The local takes one fixed C++ shape, borrow form (`std::tuple<..., T*>`): an owning-call RHS materializes into a function-local `std::optional<std::tuple<..., T>>` slot the local aliases via `tuple_to_pointer`, a storage-form lvalue RHS lifts element-wise, a borrow RHS assigns directly -- so a rebound alias shares the source's elements like CPython (mutation through it is visible on the source). The declared per-element const-ness is the OR over all binding sources' const-ness (a const source -> `const T*`). `return t` is rejected only when the local is *possibly* owning at the return (the slot is function-local), via a flow-sensitive (snapshot + UNION-merged) owning fact. An owning tuple local in a generator/async body is backed by a `tpy::frame_slot<std::tuple<..., T>>` storage field. The owning binding may be an outer-`Own` call (`Own[tuple[...]]`), a per-element-`Own` call (`tuple[..., Own[T]]`), or an `await`-result lift temp (`a, b = await f()`) -- an awaited tuple is always owned, so even a reference-element result (`tuple[list[T], int]`) gets owning `frame_slot` storage rather than a borrow-form field, and is moved out at the unpack. A reassigned per-element-`Own` local collapses to the unified borrow type (each `Own[T]` element -> `T`) so the same borrow-slot path applies -- except a MIXED tuple, which has no unified form to collapse onto and instead keeps the mixed render (`std::tuple<A, B*>`) at every binding path, assigned straight with no slot. A REASSIGNED owning-call local inside a resumable body takes the owning frame slot at every init (each rebind emplaces fresh storage); mixing an owning init with an aliasing one there is rejected by name, since the two need different fields -- see BUGS.md.
 - Comparison (`==`, `!=`) requires element-wise type compatibility; ordering (`<`, `>`, `<=`, `>=`) is lexicographic, but is rejected on tuples with an Optional element (CPython raises TypeError when `None` meets an ordering comparison)
 - An inferred ref-tuple of `@nocopy` elements (`p = (a, b)` of two `@nocopy` locals, no annotation) is rejected with a clean diagnostic. The default ref-capture (`std::tuple<T*, T*>`) cannot be promoted to a value tuple later, which would otherwise produce cryptic C++ errors on use. Annotate `p: tuple[T, ...]` to consume the sources (last-use `@nocopy` locals auto-move into the value tuple), or place the literal directly at its consumer.

@@ -157,8 +157,8 @@ class TestNativeSinkShape:
             "open_value_tuple_name",
             "own_move_source_slice",
             "copy_own",
+            "own_element_pass",
             "own_tuple_move",
-            "own_tuple_borrow_lift",
             "own_tuple_decay_copy",
             "walrus_frame_field",
         ]
@@ -252,6 +252,7 @@ class TestMethodArgSinkShape:
             "container_slot_call_rvalue",
             "own_record_rvalue",
             "copy_own",
+            "own_element_pass",
             "own_move",
             "own_lvalue",
             "native_iterable_literal",
@@ -277,7 +278,6 @@ class TestMethodArgSinkShape:
             "tparam_slot",
             "own_value_tuple_literal",
             "own_open_t_tuple_literal",
-            "own_btuple_literal",
             "own_tuple_storage",
             "own_tuple_mixed_call",
             "own_open_t_tuple_storage_source",
@@ -398,7 +398,6 @@ class TestMethodArgSinkShape:
             ("own_value_tuple_literal", "arg.own_value_tuple_literal"),
             ("own_open_t_tuple_literal",
              "arg.own_open_t_tuple_literal"),
-            ("own_btuple_literal", "arg.own_btuple_literal"),
             ("own_tuple_storage", "arg.own_tuple_storage"),
             ("own_open_t_tuple_storage_source",
              "arg.own_open_t_tuple_storage_source"),
@@ -566,7 +565,7 @@ class TestMethodArgSinkShape:
                      _PLAIN_ARG_SINK, _GENERIC_PLAIN_ARG_SINK):
             others |= {r.row for r in sink.rows}
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len([r for r in rows if r in others]) == 52
+        assert len([r for r in rows if r in others]) == 54
         assert [r for r in rows if r not in others] == [
             "scalar_at_template_slot",
             "protocol_bare_name",
@@ -593,8 +592,6 @@ class TestMethodArgSinkShape:
             "tparam_slot",
             "own_value_tuple_literal",
             "own_open_t_tuple_literal",
-            "own_btuple_literal",
-            "own_tuple_storage",
             "own_tuple_mixed_call",
             "own_open_t_tuple_storage_source",
             "ptr_addr_of_elem",
@@ -652,14 +649,14 @@ class TestMethodArgSinkShape:
         # edit here rather than a silent widening.
         plain = {r.row for r in _PLAIN_ARG_SINK.rows}
         mine = {r.row for r in _METHOD_ARG_SINK.rows}
-        assert len(plain - mine) == 60
+        assert len(plain - mine) == 56
         assert {"borrow_tuple_field", "borrow_tuple_subscript",
                 "callable_field", "container_module_var",
                 "covariant_temp", "deref_coerce", "dyn_own_coro_factory",
                 "dyn_own_forward_call", "dyn_own_handle", "list_repeat_proto",
                 "opt_own_record_rvalue", "opt_string_literal",
                 "opt_view_identity_coerce", "optional_ptr", "own_coerce_cast",
-                "own_tuple_storage_elem", "own_union_call_pass",
+                "own_union_call_pass",
                 "own_union_ctor", "readonly_container_rvalue",
                 "readonly_record_ctor", "record_borrow_call",
                 "record_field_ref",
@@ -752,7 +749,7 @@ class TestPlainSinkShape:
             "nullable_proto_addr",
             "tuple_literal",
             "tuple_literal_value_opt",
-            "own_tuple_storage_elem",
+            "own_tuple_storage",
             "wrapper_ref_tuple_elem",
             "record_borrow_call",
             "own_optional_record_rvalue",
@@ -784,9 +781,7 @@ class TestPlainSinkShape:
             "union_dict_literal_temp",
             "generic_open_slot_name",
             "generic_open_slot_elem",
-            "mixed_own_tuple_name",
             "btuple_pass",
-            "own_movable_tuple_pass",
             "value_opt_field_pass",
             "value_tuple_field_pass",
             "borrow_ret_record_marker",
@@ -795,8 +790,8 @@ class TestPlainSinkShape:
             "native_record_call",
             "own_move_source_slice",
             "copy_own",
+            "own_element_pass",
             "own_tuple_move",
-            "own_tuple_borrow_lift",
             "own_tuple_decay_copy",
             "walrus_frame_field",
         ]
@@ -815,6 +810,7 @@ class TestPlainSinkShape:
             ("list_repeat_proto", "argtemp.list_repeat_proto"),
             ("nullable_proto_addr", "arg.nullable_proto_addr"),
             ("tuple_literal_value_opt", "arg.tuple_literal_value_opt"),
+            ("own_tuple_storage", "arg.own_tuple_storage"),
             ("opt_own_record_rvalue", "arg.opt_own_record_rvalue"),
             ("opt_string_literal", "arg.opt_string_literal"),
             ("value_opt_member", "call.optval_member"),
@@ -888,7 +884,7 @@ class TestPlainSinkShape:
                      _METHOD_ARG_SINK):
             others |= {r.row for r in sink.rows}
         shared = [r.row for r in _PLAIN_ARG_SINK.rows if r.row in others]
-        assert len(shared) == 58
+        assert len(shared) == 59
         assert "lambda" in shared and "own_lvalue" in shared
 
     def test_the_coerce_peel_keeps_its_own_row_name(self):
@@ -1014,7 +1010,7 @@ class TestGenericPlainSinkShape:
         # quietly fill one and call it a transcription. The count is what
         # closes the gap: naming a subset leaves the unnamed absences free
         # to be filled silently.
-        assert len(set(plain) - set(generic)) == 72
+        assert len(set(plain) - set(generic)) == 70
         assert {"callable_field", "value_union_temp", "own_coerce_cast",
                 "container_literal", "covariant_temp", "union_pass_through",
                 "value_opt_pass_through",
@@ -1514,6 +1510,7 @@ class TestRecordCtorSinkShape:
             "opt_own_record_name",
             "opt_own_container_name",
             "copy_own",
+            "own_element_pass",
             "copy_open_elem",
             "generic_open_slot_elem",
             "func_ref",
@@ -1545,6 +1542,7 @@ class TestRecordCtorSinkShape:
             "value_union_temp",
             "value_union_narrowed_pass",
             "tuple_literal",
+            "own_tuple_storage",
             "lambda",
             "optional_ptr",
             "protocol_slot_ctor",
@@ -1619,6 +1617,7 @@ class TestRecordCtorSinkShape:
             ("ru_wrapper_own_literal", "ctor.ru_wrapper_own_literal"),
             ("union_pass_through", "ctor.union_pass_arg"),
             ("protocol_union", "ctor.protocol_union_arg"),
+            ("own_tuple_storage", "arg.own_tuple_storage"),
             ("lambda", "ctor.lambda_arg"),
         ]
         assert [(r.row, r.face) for r in _CTOR_NESTED_ARG_SINK.rows
@@ -1704,7 +1703,7 @@ class TestRecordCtorNestedIsNotADirectPrefix:
         # absences free to be filled silently later.
         direct = {r.row for r in _CTOR_ARG_SINK.rows}
         nested = {r.row for r in _CTOR_NESTED_ARG_SINK.rows}
-        assert len(direct - nested) == 50
+        assert len(direct - nested) == 52
         assert {"mutated_container_literal", "str_pass_through",
                 "own_lvalue", "own_bytes_literal",
                 "container_literal", "own_container_literal",
@@ -1763,7 +1762,7 @@ class TestRecordCtorSharedAndNewRows:
             "protocol_slot_ctor",
             "record_rvalue_temp_ctor",
         ]
-        assert len([r for r in rows if r in others]) == 42
+        assert len([r for r in rows if r in others]) == 44
 
     def test_the_shadow_rows_hold_a_different_predicate(self):
         # Each of these SHADOWS a shared row name and had to be given its

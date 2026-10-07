@@ -381,7 +381,7 @@ inline std::tuple<P*, int32_t> Holder::pair() {
 // def give(self: Own[Self]) -> int32:
 //     return take_both((self.a, self.a))  # tpyc: warning(/argument 't' tuple element 0\)/) warning(/argument 't' tuple element 1\)/)
 inline int32_t Holder::give() && {
-    return ::tpyapp::main::take_both(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(this->a), P(this->a)})));
+    return ::tpyapp::main::take_both(std::tuple<P, P>{P(this->a), P(this->a)});
 }
 
 // def __init__(self) -> None:

@@ -199,10 +199,12 @@ from .predicates import (
     _callable_value,
     _ptr_opt_borrow_call_ret,
     _f1_tuple,
+    _nullable_borrow_tuple_call,
+    _optional_borrow_tuple,
     _union_elem_tuple,
     _mixed_own_storage_source,
     _nested_storage_tuple,
-    _own_stripped_tuple_eq,
+    tuple_stores_into,
     _wrapper_ref_tuple_return,
     _arg_ptr_union_slot,
     _union_bytes_literal_temp_arg,
@@ -272,7 +274,6 @@ from .predicates import (
     copy_call_arg,
     storage_tuple_name_source,
     _tuple_literal_has_ref_elements,
-    _btuple_literal_elems_rvalue,
     _tuple_elem_slots_ptr_optional,
     _tuple_elem_slots_record_lvalue,
     _unbound_self_field_ok,
@@ -386,6 +387,7 @@ from .predicates import (
     _whole_value_opt_field_arg,
     _value_opt_pass_through_arg,
     _value_opt_tuple,
+    _value_opt_tuple_copyable,
     _value_opt_tuple_pass_arg,
     _tuple_literal_value_opt_arg,
     _value_opt_scalar,
@@ -807,6 +809,23 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
     element family."""
     if slot is None:
         return note_detail("container_lit.slot_family") if note else False
+    if (not is_rvalue_source(analyzer, e)
+            and _value_opt_tuple(analyzer.get_expr_type(e), analyzer)
+            is not None
+            and _value_opt_tuple_copyable(analyzer.get_expr_type(e),
+                                          analyzer) is None):
+        # The element would copy records another binding holds, where
+        # Python's list shares them.
+        return (note_detail("container_lit.elem.opt_own_tuple_lvalue")
+                if note else False)
+    if (_nullable_borrow_tuple_call(e, analyzer) is not None
+            or _optional_borrow_tuple(analyzer.get_expr_type(e), analyzer)
+            is not None):
+        # The value holds borrowed elements inside its optional (a call's
+        # result or a local bound from one); the storage slot has no lift
+        # for that layout.
+        return (note_detail("container_lit.elem.opt_btuple_source")
+                if note else False)
     fam = _container_lit_slot_family(slot, analyzer)
     if fam is None:  # value scalar / owned str (the original S5 slice)
         if (not threaded and _owned_str_slot(slot, analyzer)
@@ -4975,13 +4994,17 @@ def _borrow_tuple_arg(a: TpyExpr, ptype: 'TpyType | None', analyzer, *,
     if atu is None:
         return None
     if slot.is_mixed_own():
-        return (slot if copy_owed(a) and _own_stripped_tuple_eq(atu, slot)
+        return (slot if copy_owed(a) and tuple_stores_into(atu, slot)
                 else None)
     # Equal modulo per-element ownership: a storage name whose binding marks
     # a fresh element `Own` (a tuple global that owns its literal's record)
     # holds the slot's borrow element by value, which is what the lift
-    # points at -- the marking is the storage fact, not a different slot.
-    return slot if collapse_tuple_own_elements(atu) == slot else None
+    # points at -- the marking is the storage fact, not a different slot. A
+    # mixed source keeps its markers (it has no collapsed form) and matches
+    # modulo them.
+    return (slot if collapse_tuple_own_elements(atu) == slot
+            or (isinstance(atu, TupleType) and atu.is_mixed_own()
+                and tuple_stores_into(atu, slot)) else None)
 
 
 def _borrow_tuple_field_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -5011,39 +5034,21 @@ def _borrow_tuple_subscript_arg(a: TpyExpr, ptype: 'TpyType | None',
         arg_type=analyzer.get_expr_type)
 
 
-def _mixed_own_tuple_name_arg(a: TpyExpr, ptype: 'TpyType | None',
-                              locals_: dict[str, TpyType],
-                              own_borrow_tuple_locals: 'AbstractSet[str]',
-                              analyzer) -> 'TupleType | None':
-    """A MIXED-own-tuple LOCAL at a borrow-tuple param slot (`take(p)` ->
-    `::tpy::tuple_to_pointer<std::tuple<const Box*, const Box*>>(p)`): the
-    owned half is held by value, so the whole-tuple storage->borrow lift is
-    still owed -- `is_storage_form_source` stays True for the mixed render.
-    Own-collapsed slot equality; keyed on the mixed binding set."""
-    slot = _borrow_tuple_slot(ptype, analyzer)
-    if slot is None:
-        return None
-    if not (isinstance(a, TpyName) and a.name in own_borrow_tuple_locals):
-        return None
-    bt = locals_.get(a.name)
-    btu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt)))
-           if bt is not None else None)
-    if not isinstance(btu, TupleType):
-        return None
-    return slot if _own_stripped_tuple_eq(btu, slot) else None
-
-
 def _borrow_tuple_storage_name_arg(a: TpyExpr, ptype: 'TpyType | None',
                                    locals_: dict[str, TpyType],
                                    storage_tuple_locals: 'AbstractSet[str]',
                                    analyzer,
-                                   movable_locals: 'AbstractSet[str]'
+                                   movable_locals: 'AbstractSet[str]',
+                                   own_borrow_tuple_locals:
+                                   'AbstractSet[str]' = frozenset()
                                    ) -> 'TupleType | None':
     """The NAME sibling of the two lift rows above: a local ALREADY reading
     storage form (a loop var over a storage container, a local bound from
     another storage source) at a borrow-tuple param slot
     (`consume(it)` -> `::tpy::tuple_to_pointer<std::tuple<const T*, const
-    T*>>(it)`).
+    T*>>(it)`). A MIXED-render local (`p = make_mixed(b)`, `std::tuple<Box,
+    Box*>`) holds its owned half by value, so a plain borrow slot owes it the
+    same lift; a mixed slot binds it by its own rows.
 
     Keyed on `storage_tuple_locals` membership -- the positive fact
     `is_storage_form_source` reads for a Name. A borrow-form name is NOT in
@@ -5060,10 +5065,11 @@ def _borrow_tuple_storage_name_arg(a: TpyExpr, ptype: 'TpyType | None',
         return (x in analyzer.ctx.own_element_copies
                 or (x in analyzer.ctx.all_last_uses
                     and x.name not in movable_locals))
+    names = (storage_tuple_locals if _mixed_own_slot(ptype)
+             else storage_tuple_locals | own_borrow_tuple_locals)
     return _borrow_tuple_arg(
         a, ptype, analyzer,
-        shape_ok=lambda x: (isinstance(x, TpyName)
-                            and x.name in storage_tuple_locals),
+        shape_ok=lambda x: isinstance(x, TpyName) and x.name in names,
         arg_type=lambda x: locals_.get(x.name), copy_owed=copy_owed)
 
 
@@ -6904,16 +6910,15 @@ def _own_tuple_move_arg_facts(
         movable_locals: 'AbstractSet[str]', analyzer,
         func_name: 'str | None',
         own_borrow_tuple_locals: 'AbstractSet[str]') -> bool:
-    """A storage OWN-element tuple NAME at the matching rvalue tuple slot
-    (`consume(std::move(t))` on `tuple[Own[A], Own[A]]` -> the
-    `std::tuple<A, A>&&` param): the movable binding is consumed whole at
-    its last use. `_is_move_source_facts` carries the movable/last-use
-    verdict; a name whose element copy sema declared holds borrows, which
-    no move can hand over (a resumable frame's slot is movable all the
-    same)."""
-    if _own_tuple_shape_match_facts(a, ptype, locals_, narrowed,
-                                    inline_narrowed,
-                                    own_borrow_tuple_locals) is None:
+    """A mixed tuple NAME at the matching mixed slot (`consume(std::move(t))`)
+    is consumed whole at its last use. `_is_move_source_facts` carries the
+    movable/last-use verdict; a name whose element copy sema declared holds
+    borrows, which no move can hand over (a resumable frame's slot is movable
+    all the same). The fully owned spelling takes the storage conversion
+    (`own_tuple_storage`) instead."""
+    if not _mixed_own_slot(ptype) or _own_tuple_shape_match_facts(
+            a, ptype, locals_, narrowed, inline_narrowed,
+            own_borrow_tuple_locals) is None:
         return False
     if a in analyzer.ctx.own_element_copies:
         return False
@@ -6927,11 +6932,9 @@ def _own_tuple_borrow_lift_arg_facts(
         storage_tuple_locals: 'AbstractSet[str]',
         own_param_names: 'AbstractSet[str]',
         own_borrow_tuple_locals: 'AbstractSet[str]') -> bool:
-    """A BORROW-form Own-element tuple NAME at the `std::tuple<...>&&`
-    slot whose copy sema declared: the F3 `tuple_to_storage` lift copies the
-    referents in (the warned copy). STORAGE-form bindings stay out -- a
-    movable last use rides `_own_tuple_move_arg_facts`, and a still-live
-    storage binding needs the `auto(p)` decay-copy instead."""
+    """A BORROW-form tuple NAME at an Own-element tuple RETURN whose copy
+    sema declared: the F3 `tuple_to_storage` lift copies the referents in
+    (the warned copy). STORAGE-form bindings stay out."""
     au = _own_tuple_shape_match_facts(a, ptype, locals_, narrowed,
                                       inline_narrowed,
                                       own_borrow_tuple_locals)
@@ -6952,26 +6955,40 @@ def _own_tuple_decay_copy_arg_facts(
         movable_locals: 'AbstractSet[str]', analyzer,
         func_name: 'str | None', pointers: 'AbstractSet[str]',
         own_borrow_tuple_locals: 'AbstractSet[str]') -> bool:
-    """A STORAGE-form Own-element tuple NAME still live at the
-    `std::tuple<...>&&` slot: the render decay-copies (`sink(auto(p))` --
-    the warned copy; sema rejected the @nocopy case). A movable last use
-    rides `_own_tuple_move_arg_facts`, a borrow-form binding the
-    `tuple_to_storage` lift. A MIXED binding at a mixed slot decay-copies
-    the same way -- the copy takes the owned elements and the pointers --
-    but only where sema declared that copy: a name sema moves is never
-    copied here."""
-    au = _own_tuple_shape_match_facts(a, ptype, locals_, narrowed,
-                                      inline_narrowed,
-                                      own_borrow_tuple_locals)
-    if au is None or _is_move_source_facts(a, movable_locals, analyzer,
-                                           func_name):
+    """A mixed tuple NAME still live at the mixed `&&` slot decay-copies
+    (`sink(auto(p))` -- the copy takes the owned elements and the
+    pointers), but only where sema declared that copy: a name sema moves is
+    never copied here."""
+    if not _mixed_own_slot(ptype) or _own_tuple_shape_match_facts(
+            a, ptype, locals_, narrowed, inline_narrowed,
+            own_borrow_tuple_locals) is None:
         return False
-    if a.name in pointers:
+    if _is_move_source_facts(a, movable_locals, analyzer, func_name):
         return False
-    pu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-    if pu.is_mixed_own():
-        return a in analyzer.ctx.own_element_copies
-    return not au.has_pointer_repr_element() and pu.is_owned_movable()
+    return a.name not in pointers and a in analyzer.ctx.own_element_copies
+
+
+def _mixed_own_slot(ptype: 'TpyType | None') -> bool:
+    """An Own-element tuple slot that is no owning place (`tuple[Own[Box],
+    Box]`, the `std::tuple<Box, Box*>&&` param, or one whose borrowed half is
+    still an open `T`): its borrowed half stays a pointer, so a name reaching
+    it keeps its own move / copy rows rather than the field write's storage
+    conversion."""
+    pu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if isinstance(ptype, TpyType) else None)
+    return (isinstance(pu, TupleType) and pu.has_own_element()
+            and _owned_tuple_slot(pu) is None)
+
+
+def _owned_tuple_slot(pu: 'TpyType | None') -> 'TupleType | None':
+    """The per-element spelling of a fully owned concrete tuple (`tuple[Own[A],
+    Own[A]]`, the `std::tuple<A, A>&&` slot) -- the owning place `Own[tuple[A,
+    A]]` is -- Own-stripped."""
+    if not (isinstance(pu, TupleType) and pu.is_owned_movable()
+            and not contains_type_param(pu)):
+        return None
+    return TupleType(tuple(unwrap_readonly(_unwrap_own(e))
+                           for e in pu.element_types))
 
 
 def _btuple_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -6990,26 +7007,6 @@ def _btuple_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
     if pt is None:
         pt = _mixed_own_borrow_tuple(ptype, analyzer)
     if pt is None:
-        return False
-    at = analyzer.get_expr_type(a)
-    ab = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-          if at is not None else None)
-    return ab == pt
-
-
-def _own_movable_tuple_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
-                                analyzer) -> bool:
-    """An owned-movable tuple call RVALUE at the matching `&&` slot
-    (`take_owned(make_owned())` at `std::tuple<Box, Box>&&`): the prvalue
-    binds the rvalue-ref slot bare -- no move wrap (only NAME sources take
-    the std::move / auto() decay pair)."""
-    if not isinstance(a, (TpyCall, TpyMethodCall)):
-        return False
-    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-          if isinstance(ptype, TpyType) else None)
-    if not (isinstance(pt, TupleType) and pt.is_owned_movable()):
-        return False
-    if not is_rvalue_source(analyzer, a):
         return False
     at = analyzer.get_expr_type(a)
     ab = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
@@ -7083,6 +7080,24 @@ def _copy_own_arg(a: TpyExpr, ptype: TpyType | None,
     # with the live set and rejects pointer sources (gate-vs-lowering split).
     src = copy_construct_source(a, analyzer, frozenset())
     return src is not None and src == w and _witness("own.copy_construct")
+
+def own_element_pass_slot(a: TpyExpr, ptype: TpyType | None,
+                          analyzer) -> 'TpyType | None':
+    """An owned tuple element `p[i]` at a plain `Own[T]` slot of its own
+    payload, with sema's verdict on it: the move at the tuple's last use
+    (`element_moves`) or the declared copy (`own_element_copies`). Returns
+    the payload, or None."""
+    w = _plain_own_slot(ptype)
+    if (w is None or not isinstance(a, TpySubscript)
+            or not (a in analyzer.ctx.element_moves
+                    or a in analyzer.ctx.own_element_copies)):
+        return None
+    at = analyzer.get_expr_type(a)
+    at = (unwrap_readonly(_unwrap_own(unwrap_readonly(unwrap_ref_type(
+        unwrap_send_sync(at))))) if at is not None else None)
+    w = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(w)))
+    return w if at == w and record_like(w, analyzer) else None
+
 
 def _copy_open_elem_arg(a: TpyExpr, ptype: TpyType | None,
                         analyzer) -> 'TpyType | None':
@@ -10460,27 +10475,6 @@ def _wrapper_ref_tuple_elem_arg(a: TpyExpr, ptype: 'TpyType | None',
             and bool(_witness("arg.wrapper_ref_tuple_elem")))
 
 
-def _own_tuple_storage_elem_arg(a: TpyExpr, ptype: 'TpyType | None',
-                                analyzer) -> bool:
-    """A whole storage-tuple ELEMENT read at an `Own[tuple]` param slot
-    (`take(pairs[0])` -> the bare `__getitem__`): the container keeps
-    ownership of its elements, so the call COPIES the storage value --
-    no per-element move, no lift (`needs_tuple_storage_lift` is False
-    for a subscript source)."""
-    if not (isinstance(a, TpySubscript) and not isinstance(a.index, TpySlice)):
-        return False
-    w = _plain_own_slot(ptype)
-    inner = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(w)))
-             if w is not None else None)
-    if not (isinstance(inner, TupleType)
-            and inner.has_pointer_repr_element()
-            and _f1_tuple(inner, analyzer) is not None):
-        return False
-    return (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        analyzer.get_expr_type(a)))) == inner
-            and bool(_witness("arg.own_tuple_storage_elem")))
-
-
 def _own_tuple_call_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
                                analyzer) -> bool:
     """An owning-call rvalue whose result type IS the `Own[tuple]` element
@@ -11200,7 +11194,8 @@ def _r_native_iterable_comp(req: _ArgReq) -> bool:
 def _r_borrow_tuple_storage_name(req: _ArgReq) -> bool:
     return _borrow_tuple_storage_name_arg(
         req.a, req.ptype, req.locals_, req.storage_tuple_locals,
-        req.analyzer, req.movable_locals) is not None
+        req.analyzer, req.movable_locals,
+        req.own_borrow_tuple_locals) is not None
 
 
 def _r_borrow_tuple_field(req: _ArgReq) -> bool:
@@ -11264,6 +11259,10 @@ def _r_own_record_rvalue(req: _ArgReq) -> bool:
 
 def _r_copy_own(req: _ArgReq) -> bool:
     return _copy_own_arg(req.a, req.ptype, req.analyzer)
+
+
+def _r_own_element_pass(req: _ArgReq) -> bool:
+    return own_element_pass_slot(req.a, req.ptype, req.analyzer) is not None
 
 
 def _r_own_lvalue(req: _ArgReq) -> bool:
@@ -11369,28 +11368,20 @@ def _own_slot_reference_tuple(ptype: 'TpyType | None',
     """The Own[tuple[..]] element slot whose tuple holds a reference
     somewhere -- a pointer-repr element or a nested tuple with one -- so the
     slot OWNS what a borrowing source refers to and the value takes the
-    storage conversion."""
+    storage conversion. The per-element spelling of a fully owned tuple
+    (`tuple[Own[A], Own[A]]`, the `std::tuple<A, A>&&` slot) is the same
+    owning place, handed over Own-stripped."""
     bare = _own_slot_ptr_repr_tuple(ptype)
     if bare is not None:
         return bare
+    owned = _owned_tuple_slot(unwrap_readonly(unwrap_ref_type(
+        unwrap_send_sync(ptype))) if isinstance(ptype, TpyType) else None)
+    if owned is not None:
+        return owned
     own = _plain_own_slot(ptype)
     if own is None:
         return None
     return _nested_storage_tuple(own, analyzer)
-
-
-def _r_own_btuple_literal(req: _ArgReq) -> bool:
-    if not isinstance(req.a, TpyTupleLiteral):
-        return False
-    bare = _own_slot_ptr_repr_tuple(req.ptype)
-    return (bare is not None
-            and (_tuple_elem_slots_ptr_optional(bare)
-                 # Plain-record members admit for ALL-RVALUE literals only
-                 # (`pairs.append((Item(1), Item(2)))` -- the double-convert
-                 # tuple_to_storage_move over tuple_value_to_borrow); the
-                 # CONST_REF lvalue rule the borrow builder does not carry
-                 # never fires on an rvalue element.
-                 or _btuple_literal_elems_rvalue(req.a, bare, req.analyzer)))
 
 
 def _r_own_open_t_tuple_storage_source(req: _ArgReq) -> bool:
@@ -11463,9 +11454,9 @@ def _r_own_tuple_storage(req: _ArgReq) -> bool:
     at = req.analyzer.get_expr_type(a)
     ab = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
           if at is not None else None)
-    # Equal modulo per-element Own: a mixed local's type keeps its markers,
-    # the slot spells the materialized storage.
-    return (isinstance(ab, TupleType) and _own_stripped_tuple_eq(ab, bare)) or (
+    # A mixed local's type keeps its Own markers, the slot spells the
+    # materialized storage.
+    return (isinstance(ab, TupleType) and tuple_stores_into(ab, bare)) or (
         isinstance(a, (TpyCall, TpyMethodCall))
         and _mixed_own_storage_source(a, bare, frozenset(),
                                       req.analyzer) is not None)
@@ -11714,10 +11705,6 @@ def _r_nullable_proto_addr(req: _ArgReq) -> bool:
 
 def _r_tuple_literal_value_opt(req: _ArgReq) -> bool:
     return _tuple_literal_value_opt_arg(req.a, req.ptype, req.analyzer)
-
-
-def _r_own_tuple_storage_elem(req: _ArgReq) -> bool:
-    return _own_tuple_storage_elem_arg(req.a, req.ptype, req.analyzer)
 
 
 def _r_wrapper_ref_tuple_elem(req: _ArgReq) -> bool:
@@ -12505,18 +12492,8 @@ def _r_generic_open_slot_name(req: _ArgReq) -> bool:
             and _open_slot_match(req.locals_.get(req.a.name), req.ptype))
 
 
-def _r_mixed_own_tuple_name(req: _ArgReq) -> bool:
-    return _mixed_own_tuple_name_arg(req.a, req.ptype, req.locals_,
-                                     req.own_borrow_tuple_locals,
-                                     req.analyzer) is not None
-
-
 def _r_btuple_pass(req: _ArgReq) -> bool:
     return _btuple_pass_arg(req.a, req.ptype, req.analyzer)
-
-
-def _r_own_movable_tuple_pass(req: _ArgReq) -> bool:
-    return _own_movable_tuple_pass_arg(req.a, req.ptype, req.analyzer)
 
 
 def _r_own_tuple_move(req: _ArgReq) -> bool:
@@ -12524,13 +12501,6 @@ def _r_own_tuple_move(req: _ArgReq) -> bool:
         req.a, req.ptype, req.locals_, req.narrowed, req.inline_narrowed,
         req.movable_locals, req.analyzer, req.func_name,
         req.own_borrow_tuple_locals)
-
-
-def _r_own_tuple_borrow_lift(req: _ArgReq) -> bool:
-    return _own_tuple_borrow_lift_arg_facts(
-        req.a, req.ptype, req.locals_, req.narrowed, req.inline_narrowed,
-        req.analyzer, req.pointers, req.storage_tuple_locals,
-        req.own_param_names, req.own_borrow_tuple_locals)
 
 
 def _r_own_tuple_decay_copy(req: _ArgReq) -> bool:
@@ -12550,14 +12520,16 @@ def _r_walrus_frame_field(req: _ArgReq) -> bool:
 
 # The cells both free-call families (plain and native) end on, below every
 # row of their own: none renders through a callee-shaped decoration and all
-# are temp-free -- a move, a copy-construct, an Own-tuple move / lift /
+# are temp-free -- a move, a copy-construct, a mixed Own-tuple move /
 # decay-copy, an in-place frame-field write -- so a native and a plain callee
 # decide them alike.
 _FREE_CALL_TAIL_ROWS: 'tuple[_ArgRow, ...]' = (
     _ArgRow("own_move_source_slice", _r_own_move_source_slice),
     _ArgRow("copy_own", _r_copy_own),
+    # An owned tuple element at its payload's `Own[T]` slot: sema's move
+    # (`std::move(std::get<0>(p))`) or declared copy (`Box(std::get<0>(p))`).
+    _ArgRow("own_element_pass", _r_own_element_pass),
     _ArgRow("own_tuple_move", _r_own_tuple_move),
-    _ArgRow("own_tuple_borrow_lift", _r_own_tuple_borrow_lift),
     _ArgRow("own_tuple_decay_copy", _r_own_tuple_decay_copy),
     _ArgRow("walrus_frame_field", _r_walrus_frame_field),
 )
@@ -12731,6 +12703,9 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
                 face="arg.container_call_rvalue", extra=_x_comp_slot_const),
         _ArgRow("own_record_rvalue", _r_own_record_rvalue),
         _ArgRow("copy_own", _r_copy_own),
+        # ... and an owned tuple element at its payload's slot (the
+        # free-call rows' cell).
+        _ArgRow("own_element_pass", _r_own_element_pass),
         _ArgRow("own_move", _r_own_move),
         # The flush guard is the ONE thing the two halves spelled
         # differently at this cell, because their Own slots are different
@@ -12846,14 +12821,6 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # lives in the ladder and rejects there.
         _ArgRow("own_open_t_tuple_literal", _r_own_open_t_tuple_literal,
                 face="arg.own_open_t_tuple_literal"),
-        # A ref-element tuple LITERAL at an Own[tuple[T | None, ..]]
-        # element slot (`pairs.append((a, b))`): the consuming storage
-        # lift (`tuple_to_storage_move<S>(..)` over the borrow tuple
-        # with per-element moves). Per-element admission (last-use
-        # lvalue / fresh rvalue / copy() / None) lives in the ladder
-        # and rejects there.
-        _ArgRow("own_btuple_literal", _r_own_btuple_literal,
-                face="arg.own_btuple_literal"),
         # A tuple holding a reference, from any non-literal source, into
         # the same tuple's Own slot (`pairs2.append(pairs[0])`,
         # `pairs.append(make_pair(a, b))`, `xs.append(make_mixed(b))`,
@@ -13239,7 +13206,11 @@ _PLAIN_ARG_SINK = register_sink(_ArgSink(
         # into the optional in place, the ctor ladder's row.
         _ArgRow("tuple_literal_value_opt", _r_tuple_literal_value_opt,
                 face="arg.tuple_literal_value_opt"),
-        _ArgRow("own_tuple_storage_elem", _r_own_tuple_storage_elem),
+        # A tuple holding a reference at an `Own[tuple]` slot, from any
+        # non-literal source: the field write's storage conversion (the
+        # method ladder's rows; the slot is by value, so a prvalue binds).
+        _ArgRow("own_tuple_storage", _r_own_tuple_storage,
+                face="arg.own_tuple_storage"),
         _ArgRow("wrapper_ref_tuple_elem", _r_wrapper_ref_tuple_elem),
         _ArgRow("record_borrow_call", _r_record_borrow_call),
         _ArgRow("own_optional_record_rvalue",
@@ -13317,9 +13288,7 @@ _PLAIN_ARG_SINK = register_sink(_ArgSink(
                 face="call.generic_open_slot_name"),
         _ArgRow("generic_open_slot_elem", _r_generic_open_slot_elem,
                 face="call.generic_open_slot_elem"),
-        _ArgRow("mixed_own_tuple_name", _r_mixed_own_tuple_name),
         _ArgRow("btuple_pass", _r_btuple_pass),
-        _ArgRow("own_movable_tuple_pass", _r_own_movable_tuple_pass),
         # Member reads that bind their slot bare: a whole value-opt field and
         # a value-tuple field -- borrow and storage forms coincide for each.
         _ArgRow("value_opt_field_pass", _r_value_opt_field_pass),
@@ -13860,7 +13829,11 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # The mixed owned+borrow return (`auto x = m.mixed(c);`) rides
             # the same bare render (`_f1_tuple` admits Own elements; the
             # alias-decl arm gated the slot).
-            or (btuple_ret_ok and _f1_tuple(ret, analyzer) is not None
+            or (btuple_ret_ok
+                and (_f1_tuple(ret, analyzer) is not None
+                     # ... and the nullable one, its optional holding the
+                     # same borrow layout.
+                     or _nullable_borrow_tuple_call(e, analyzer) is not None)
                 and _witness("method.btuple_slot"))
             # The union-switch CALL-subject sink (`match p.choose(d):`): a
             # non-wrapper ptr-variant UNION return is consumed whole by the
@@ -15200,6 +15173,10 @@ def _value_opt_formatted(t: 'TpyType | None', analyzer) -> 'OptionalType | None'
     if not (isinstance(tb, OptionalType) and not tb.uses_pointer_repr()):
         return None
     inner = unwrap_readonly(tb.inner)
+    if isinstance(inner, TupleType) and inner.has_pointer_repr_element():
+        # A nullable borrow tuple holds the pointer layout, which the
+        # storage-spelled tuple Formatter cannot take.
+        return None
     return tb if _optional_print_formatter(inner, inner.to_cpp()) else None
 
 

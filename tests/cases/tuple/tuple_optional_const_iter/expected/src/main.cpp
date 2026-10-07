@@ -30,9 +30,9 @@ void main() {
     T t1 = T(1);
     T t2 = T(2);
     Holder h = Holder();
-    h.pairs.push_back(::tpy::tuple_to_storage_move<std::tuple<std::optional<T>, std::optional<T>>>(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T, T>{T(t1), T(t2)})));
-    h.pairs.push_back(::tpy::tuple_to_storage_move<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{std::move(&(t1)), nullptr}));
-    h.pairs.push_back(::tpy::tuple_to_storage_move<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{nullptr, nullptr}));
+    h.pairs.push_back(std::tuple<std::optional<T>, std::optional<T>>{T(t1), T(t2)});
+    h.pairs.push_back(std::tuple<std::optional<T>, std::optional<T>>{std::move(t1), std::nullopt});
+    h.pairs.push_back(std::tuple<std::optional<T>, std::optional<T>>{std::nullopt, std::nullopt});
     h.show_all_iter();
     h.show_all_unpack();
 }

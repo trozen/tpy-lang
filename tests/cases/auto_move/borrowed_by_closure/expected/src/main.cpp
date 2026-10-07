@@ -768,7 +768,7 @@ std::tuple<Point, int32_t> del_holder_tuple() {
         return ::tpy::__len__(p.items);
     };
     Holder h = Holder([g]() -> int32_t { return g(); });
-    return std::tuple<Point, int32_t>{p, 1};
+    return std::tuple<Point, int32_t>{Point(p), 1};
 }
 
 // # a lambda passed beside the value it reads, into the call that consumes it.

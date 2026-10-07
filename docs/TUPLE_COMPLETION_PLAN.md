@@ -303,8 +303,8 @@ per shape; the mixed tuple global (D2) waits on that entry.
     [`decl.slot_type`]
   - [ ] walrus of a tuple call: `(t := g(b))[1]` [`expr.walrus`]; a nested
     literal `(u := (1, (2, c)))` [`expr.walrus`] (sema warns the nested copy)
-  - [ ] a tuple local at an `Own[tuple[...]]` arg: `take(t)`
-    [`call.arg_shape.own_tuple`]
+  - [x] a tuple local at an `Own[tuple[...]]` arg: `take(t)` -- U5 step 3
+    (`tests/cases/tuple/tuple_argument_places`)
   - [x] the `bytes` element read `t[0]` (D6), and the `bytes` global unpack /
     `print(G)` rejects behind it (branch `u4-d6`)
   - [ ] `BUGS.md#rvalue-ref-tuple-unpack-address-of-rvalue` -- `a, b = stack.pop()`
@@ -318,11 +318,13 @@ per shape; the mixed tuple global (D2) waits on that entry.
   - [ ] a tuple-unpack for head over pre-bound names: `k, v = ...` then
     `for k, v in make_pairs()` [`tuple.reused_target`]
   - [ ] an ENUM element beside a reference element: `return (b, c)` into
-    `-> tuple[Box, Color]` [`return.slot_type`] and `b, c = mk(Color.Blue)`
-    off `-> tuple[Own[Box], Color]` [`stmt.tuple_unpack`], where the `int32`
-    twin compiles (found 2026-09-23)
-  - [ ] an owning tuple off a METHOD: `t = h.meth()` for
-    `-> tuple[Own[Box], int32]` [`method.ret_type`], the free twin compiles
+    `-> tuple[Box, Color]` -- DONE in U5 step 3 (`_f1_tuple_element_ok`
+    admits an enum like a scalar; `tests/cases/tuple/optional_tuple_return`
+    section `enum`); `b, c = mk(Color.Blue)` off `-> tuple[Own[Box], Color]`
+    still rejects [`stmt.tuple_unpack`] (the unpack ladder's own element
+    lists -- step 4), where the `int32` twin compiles (found 2026-09-23)
+  - [x] an owning tuple off a METHOD: `t = h.meth()` for
+    `-> tuple[Own[Box], int32]` -- compiles (verified 2026-10-08)
 - [ ] **U3 -- policy decisions, then the flips.** Each is small once decided;
   D1 is decided and done, the rest are not. Present each on its own, leading
   with the generated code.
@@ -341,8 +343,12 @@ per shape; the mixed tuple global (D2) waits on that entry.
     unwarned (`BUGS.md#global-tuple-name-own-return-unwarned`).
   - [ ] TODO: "Warn at the mixed-tuple module GLOBAL as a stopgap" -- only
     worth taking if D2's full fix slips out of 0.7.0.
-  - [ ] The `Optional`-wrapped mixed return ABI (`tuple[Own[A], B] | None`),
-    carved out of the design entry's step (b).
+  - [x] The `Optional`-wrapped mixed return ABI (`tuple[Own[A], B] | None`),
+    carved out of the design entry's step (b). Landed with U5 step 3: the
+    optional is transparent to the tuple's return layout
+    (`std::optional<std::tuple<A, B*>>`, the all-borrow and owned flavours
+    alike), `tests/cases/tuple/optional_tuple_return`; its storage sinks
+    are `BUGS.md#nullable-borrow-tuple-storage-sinks`.
 - [x] **U4 -- the mixed-param diagnostics.** Landed 2026-10-01 in the
   `tuple-u4` squash; item 1 was superseded by giving the mixed param
   the ownership-transfer ABI.
@@ -433,9 +439,45 @@ per shape; the mixed tuple global (D2) waits on that entry.
     `tests/cases/tuple/container_tuple_stores`; `error_own_tuple_mixed_call_
     local_insert` and `dict/error_setitem_nested_tuple_from_subscript`
     pinned closed gaps and fold into it.
-  - [ ] step 3 -- arguments and returns; carries the `-> tuple[...] | None`
-    return (`std::optional<R>`) and its escape fix from `tuple-u3` as one
-    small commit.
+  - [x] step 3 -- arguments and returns. A free function's or constructor's
+    `Own[tuple]` slot takes the step-2 conversion (`take(std::move(t))` at
+    a last use, the warned copy otherwise, `tuple_to_storage<..>(make_
+    mixed(b))` for the mixed call, a field read bare); an `Own[tuple]`
+    PARAMETER holding a reference is seeded movable; an owned tuple
+    ELEMENT passed to `Own[T]` (`sink(p[0])`, `p: tuple[Own[Box], ..]`)
+    moves at the tuple's last use through sema's one decider
+    (`is_auto_move_use`: last use and no hidden borrower -- a loan
+    `r = ident(p[0])` or a later read demotes to the warned copy, a
+    `@nocopy` element errors); the `Own[tuple]` argument LITERAL spells
+    the bare storage literal (`push_back(std::tuple<Box, int32_t>{b,
+    1})`, sema value-captures its members at the owning ARG sink); the
+    nested literal borrows one level down at a borrowing slot; a
+    `tuple[Box, int]` name stores (`tuple_stores_into`: equal modulo
+    `Own`, a widened scalar allowed). Deleted: plain rows
+    `own_tuple_storage_elem` / `mixed_own_tuple_name` /
+    `own_movable_tuple_pass`, tail `own_tuple_borrow_lift`, method
+    `own_btuple_literal`; `own_tuple_move` / `own_tuple_decay_copy` stay
+    for the MIXED `tuple[Own[Box], Box]` slot, which is no owning place.
+    Argument sweep (6 element shapes incl. `int`/`int32` x 15 sources x
+    free/ctor slot x free/method body, 360 programs): 84 -> 360 compile,
+    no `ok -> reject`. Returns: the nullable reference-tuple return is
+    `std::optional<R>`, R the bare return's layout (`std::optional<
+    std::tuple<Box*, Box*>>`, mixed `<Box, Box*>`, owned `<Box, int32_t>`,
+    `const Box*` under `@readonly`); the Optional is peeled at the prescan
+    fact (`ret_nullable_tuple`), so the bare arms render the value and
+    `return None` is `std::nullopt`; the caller binds `auto r = f(..)`
+    and a narrowed element write reaches the caller's object; relays by
+    local and by call; sema's return / yield escape and dangle checks
+    peel the Optional. An owned nullable tuple copied WHOLE (`u = t`,
+    `bump(t)`, `[t]`) rejects (it copied silently). Left for step 4: the
+    whole-`Own[tuple]` param's element pass (`sink(p[0])` with
+    `p: Own[tuple[Box, int32]]`, the binding owns its inline element
+    without a per-element `Own` marker). `tests/cases/tuple/
+    tuple_argument_places`, `tuple/optional_tuple_return` and their
+    `error_` pins; `error_mixed_own_param_element_move`,
+    `error_own_element_optional_member_copy` and
+    `error_own_tuple_still_live_storage_arg` pinned closed gaps and fold
+    into them.
   - [ ] step 4 -- the owned-param element places and the mixed global (D2).
   Also owned here, after the steps: the real fix of
   `BUGS.md#resumable-alias-identity` (the per-rebind-site element ownership

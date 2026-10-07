@@ -396,8 +396,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "unionlift.ctor_temp",          # ctor rvalue temp + `pv{&__tmp_N}`
     "unionlift.bytes_literal_temp", # owned-bytes literal temp + `pv{&__tmp_N}`
     "unionlift.dict_literal_temp",  # dict-literal typed temp + `pv{&__tmp_N}`
-    "call.own_tuple_pass",          # owned-movable tuple call rvalue bare at
-                                    # the matching && slot
     "binop.mixed_sign_cmp",         # mixed-sign fixed-int compare via
                                     # ::std::cmp_* (target-less slice)
     "binop.tuple_field_compare",    # ptr-repr tuple FIELD pair via
@@ -698,11 +696,11 @@ THIR_FACES: frozenset[str] = frozenset({
     # A ternary of borrow-returning calls at a pointer reseat
     # (`b = &(((flag) ? (g.itself()) : (h.itself())));`).
     "reseat.borrow_call_ternary",
-    # A borrow-form Own-element tuple name at the && slot lifts via
-    # the F3 tuple_to_storage (the warned copy).
-    "arg.own_tuple_borrow_lift",
-    "arg.own_tuple_decay_copy",     # still-live storage Own-tuple name at the
-                                    # && slot: `sink(auto(p))`
+    "arg.own_element_move",         # owned tuple element at its Own[T] slot,
+                                    # the tuple's last use: std::move(get)
+    "arg.own_element_copy",         # ... still live: the declared copy
+    "arg.own_tuple_decay_copy",     # still-live mixed Own-tuple name at the
+                                    # mixed && slot: `sink(auto(p))`
     "arg.open_value_tuple_name",    # bare NAME at a native `tuple[T, int32]`
                                     # slot -- no lift, the open tuple has none
     "method.recv.bytes_method",     # `srv.recv(32).decode()` -- a bytes-VALUE
@@ -1351,6 +1349,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.value_opt_tuple_none",
     "ret.value_opt_tuple_literal",
     "ret.value_opt_tuple_name",
+    "ret.value_opt_tuple_whole",     # the slot's own optional returned
+                                    # whole: a local or a call
     # Value-repr Optional[view] return (str or bytes): `None` -> `std::nullopt`,
     # a same-family Optional[view] param -> the view->owned arg-split shim
     # (THIROptViewArg), and a str/bytes literal -> bare owned literal.
@@ -1663,6 +1663,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # from its own sema type
     "ret.tuple_nested_elem",
     "btuple.literal",               # borrow-slot tuple literal (spelled + lifts)
+    "btuple.nested_elem",           # a nested literal element borrowing a
+                                    # level down: `{1, {2, &(c)}}`
     "btuple.elem_btuple_subscript",  # element read off a borrow-form tuple:
                                     # already a T*, no address-of
     "btuple.elem_optptr",           # pointer-repr Optional elem slot: None ->
@@ -1706,7 +1708,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # returns borrow form, so the relay is bare
     "ret.btuple_ternary",           # `return h.a if c else h.b` -- ONE
                                     # tuple_to_pointer around the conditional
-    "arg.btuple_name",              # already-borrow tuple name passed bare
+    "ret.nullable_tuple_none",      # `return None` at a nullable borrow
+                                    # tuple slot -> std::nullopt
+    "arg.btuple_name",             # already-borrow tuple name passed bare
     "arg.genrec_own_literal",       # container literal into an Own[genrec] slot:
                                     # the ru-instance spelled render, inline
     "arg.required_protocol_union",  # name at a required multi-protocol
@@ -1763,12 +1767,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the field write's storage conversion
     "arg.own_open_t_tuple_storage_source",  # open-T tuple element read at an
                                     # Own slot: no pointer repr, passes bare
-    "arg.own_btuple_literal",       # ref-element tuple literal at an
-                                    # Own[tuple[T|None, ..]] element slot ->
-                                    # tuple_to_storage_move<S>(borrow tuple
-                                    # with per-element moves)
-    "arg.own_tuple_storage_elem",   # storage element read at an Own[tuple]
-                                    # param slot -> bare __getitem__ copy
     "arg.wrapper_ref_tuple_elem",   # wrapper elem off a reference-element
                                     # tuple binding -> bare std::get pass
     "call.btuple_pass",             # borrow-tuple call result at a MATCHING
@@ -2347,6 +2345,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "decl.opt_btuple_lift",         # ... storage source: optional-wrapped
                                     # tuple_to_pointer lift
     "decl.opt_btuple_slot",         # ... owning call: __slot emplace alias
+    "decl.opt_btuple_call",         # ... a call returning that very form:
+                                    # `auto` binds it whole
     "reseat.opt_btuple_none",       # reseat rows of the same family
     "reseat.opt_btuple_lift",
     "reseat.opt_btuple_slot",
@@ -2632,10 +2632,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # tuple_to_pointer at a borrow-tuple slot
     "arg.borrow_tuple_subscript",   # the container-element twin: a checked
                                     # element read through the same wrap
-    "arg.btuple_storage_name",      # storage-form tuple LOCAL (loop var /
-                                    # storage-bound local) through the wrap
-    "arg.btuple_mixed_name",        # mixed-own-tuple local at a borrow-
-                                    # tuple param slot -> tuple_to_pointer
+    "arg.btuple_storage_name",      # storage-form or mixed tuple LOCAL (loop
+                                    # var / storage-bound / mixed-call local)
+                                    # through the wrap
     "subscript.value_record_elem",  # ValueType-record element read copied
                                     # into a by-value storage slot
     "subscript.value_tuple_source",  # value-tuple element as an unpack source

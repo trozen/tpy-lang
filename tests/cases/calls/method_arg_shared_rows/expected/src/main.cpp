@@ -92,7 +92,7 @@ void main() {
     std::cout << ::tpy::__len__(tags) << " " << ::tpy::__getitem__(tags, 0).ident << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<Tag, int32_t>> pairs = std::vector<std::tuple<Tag, int32_t>>{};
     Tag moved = Tag(5);
-    pairs.push_back(::tpy::tuple_to_storage_move<std::tuple<Tag, int32_t>>(std::tuple<Tag*, int32_t>{std::move(&(moved)), 3}));
+    pairs.push_back(std::tuple<Tag, int32_t>{std::move(moved), 3});
     auto& __obj_1 = pairs;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();

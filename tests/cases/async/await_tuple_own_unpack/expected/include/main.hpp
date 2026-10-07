@@ -220,7 +220,7 @@ inline void _RefPair::cancel() const {
 //     return poll_ready((xs, int32(2)))
 inline ::tpystd::tpy::Poll<std::tuple<std::vector<int32_t>, int32_t>> _RefPair::__poll__(::tpystd::coro::Waker w) const {
     std::vector<int32_t> xs = {10, 20};
-    return ::tpystd::coro::poll_ready<std::tuple<std::vector<int32_t>, int32_t>>(::tpy::tuple_to_storage_move<std::tuple<std::vector<int32_t>, int32_t>>(std::tuple<std::vector<int32_t>*, int32_t>{std::move(&(xs)), 2}));
+    return ::tpystd::coro::poll_ready<std::tuple<std::vector<int32_t>, int32_t>>(std::tuple<std::vector<int32_t>, int32_t>{std::move(xs), 2});
 }
 void __tpy_init();
 } // namespace tpyapp::main

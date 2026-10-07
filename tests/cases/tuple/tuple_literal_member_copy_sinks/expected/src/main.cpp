@@ -57,7 +57,7 @@ __gen_yield_mixed yield_mixed(const C& a, C& b) {
 //     return (b, b)  # tpyc: warning(/copies C into owned storage \(tuple element 0\)/) warning(/copies C into owned storage \(tuple element 1\)/)
 std::tuple<C, C> dup() {
     C b = C(1);
-    return std::tuple<C, C>{b, b};
+    return std::tuple<C, C>{C(b), C(b)};
 }
 
 // # async return: the same two copies.
@@ -71,7 +71,7 @@ std::tuple<C, C> dup() {
         __state = S_DONE;  // until a yield sets where to resume
         b.emplace(C(1));
         __state = S_DONE;
-        std::tuple<C, C> __tpy_async_ret = std::tuple<C, C>{(*b), (*b)};
+        std::tuple<C, C> __tpy_async_ret = std::tuple<C, C>{C((*b)), C((*b))};
         return ::tpystd::tpy::Poll<std::tuple<C, C>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

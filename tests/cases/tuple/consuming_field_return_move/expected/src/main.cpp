@@ -289,7 +289,7 @@ void __gen_H_gen::__finally_0() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        int32_t __tpy_async_ret = ::tpyapp::main::take_ro(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(__self.a), P(__self.b)})));
+        int32_t __tpy_async_ret = ::tpyapp::main::take_ro(std::tuple<P, P>{P(__self.a), P(__self.b)});
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

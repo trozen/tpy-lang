@@ -364,7 +364,7 @@ from .predicates import (
     _mixed_own_btuple_call,
     _nested_storage_tuple,
     _optional_borrow_tuple,
-    _own_stripped_tuple_eq,
+    _nullable_borrow_tuple_call,
     _mixed_own_storage_source,
     _alias_field_source_ok,
     _f2_reseat_ok,
@@ -425,6 +425,8 @@ from .predicates import (
     _value_opt_scalar,
     _value_opt_callable,
     _value_opt_tuple,
+    _value_opt_tuple_inner,
+    _value_opt_tuple_copyable,
     _narrowed_value_opt_tuple_name,
     _value_opt_bytes,
     _value_opt_string_owned,
@@ -4467,18 +4469,32 @@ def _lower_opt_btuple_decl(stmt: TpyVarDecl, opt_t: TpyType, bt: 'TupleType',
     its rejects)."""
     analyzer = lc.analyzer
     lc.ensure_borrow_tuple_const()
-    if stmt.name in lc.const_opt_borrow_tuple_locals:
-        # A const binding spells `const T*` element pointers -- unwitnessed,
-        # so the whole family rejects.
-        return None
-    borrow_cpp = bt.to_cpp_return()
-    opt_cpp = f"std::optional<{borrow_cpp}>"
 
     def _register() -> None:
         declared[stmt.name] = opt_t
         lc.optional_borrow_tuple_locals.add(stmt.name)
 
     init = stmt.init
+    if (_nullable_borrow_tuple_call(init, analyzer) is not None
+            and stmt.name not in lc.prescan.reassigned):
+        # The call hands back this local's own layout, so `auto` binds it
+        # whole (a `@readonly` method's const element pointers included)
+        # and the elements alias what the callee lent.
+        v = _lower_expr(init, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.VALUE,
+                                     allow_temps=True,
+                                     pos=SinkPos.LOCAL_DECL,
+                                     forms=_ONLY_BTUPLE_SLOT))
+        _register()
+        _witness("decl.opt_btuple_call")
+        return THIRVarDecl(name=stmt.name, resolved_type=opt_t, init=v,
+                           cpp_type="auto", form=Form.STORAGE, loc=loc)
+    if stmt.name in lc.const_opt_borrow_tuple_locals:
+        # A const binding spells `const T*` element pointers -- unwitnessed,
+        # so the whole family rejects.
+        return None
+    borrow_cpp = bt.to_cpp_return()
+    opt_cpp = f"std::optional<{borrow_cpp}>"
     if isinstance(init, TpyNoneLiteral):
         _register()
         _witness("decl.opt_btuple_none")
@@ -8736,10 +8752,17 @@ def _finally_deferred_recipe(
         return None
     base, indirect = captured
     if isinstance(ret_u, OptionalType) and not ret_u.uses_pointer_repr():
-        if not indirect:
-            return None
-        return THIRFinallyDeferredReturn(capture=base, optional_move=True,
-                                         loc=loc)
+        if indirect:
+            return THIRFinallyDeferredReturn(capture=base, optional_move=True,
+                                             loc=loc)
+        # An owned nullable tuple local IS the slot's by-value optional:
+        # shape A moves it out whole after the chain.
+        if (_value_opt_tuple(declared.get(name), lc.analyzer) is not None
+                and unwrap_readonly(unwrap_send_sync(declared[name]))
+                == unwrap_readonly(unwrap_send_sync(ret_u))):
+            return THIRFinallyDeferredReturn(capture=base, indirect=False,
+                                             optional_move=False, loc=loc)
+        return None
     if isinstance(ret_u, (OptionalType, TupleType, UnionType)):
         return None
     return THIRFinallyDeferredReturn(capture=base, indirect=indirect,
@@ -12030,6 +12053,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     # only WHOLE (has_value test, same-optional pass), which
                     # the name arms already gate.
                     or (_value_opt_tuple(vtype, analyzer) is not None
+                        # An owned-record inner binds only a fresh result:
+                        # copying another binding would not share its
+                        # records.
+                        and (_value_opt_tuple_copyable(vtype, analyzer)
+                             is not None
+                             or is_rvalue_source(analyzer, stmt.init))
                         and _witness("decl.value_opt_tuple_slot"))
                     or _owned_view_opt_whole_src(stmt, vtype, lc)
                     # ... and the source whose type is the INNER rather than
@@ -12870,7 +12899,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 slot_use = field_slot_use(eu, SlotConstruct.ASSIGN)
                 if isinstance(stmt.value, TpyTupleLiteral):
                     value = _field_write._storage_tuple_literal(
-                        stmt, eu, lc, declared, loc)
+                        stmt.value, eu, lc, declared,
+                        stmt_reject_reason(stmt))
                 else:
                     value = _field_write._storage_source(
                         stmt, eu, slot_use, lc, declared, loc)
@@ -13613,7 +13643,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                              lc, declared, temp_args=True)),
                 loc=loc)
         ret_tuple = lc.prescan.ret_borrow_tuple
+        ret_nt = lc.prescan.ret_nullable_tuple
         if stmt.value is not None and ret_tuple is not None:
+            if ret_nt is not None and isinstance(stmt.value, TpyNoneLiteral):
+                _witness("ret.nullable_tuple_none")
+                return THIRReturn(
+                    value=THIRLiteral(result_type=ret_nt, value=None,
+                                      form=Form.STORAGE, loc=loc), loc=loc)
             # Lift a storage tuple lvalue into the borrow-form tuple return via
             # `tuple_to_pointer` (F3). The element pointers' const-ness tracks the
             # source, like the F1 OPTIONAL_TO_PTR const bump; sema forces a
@@ -13630,11 +13666,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     # a ref-element tuple) needs no lift -- it returns bare.
                     if (stmt.value.name in declared
                             and stmt.value.name not in narrowed
-                            and _f1_tuple(declared[stmt.value.name], analyzer)
-                            is not None):
+                            and (_f1_tuple(declared[stmt.value.name], analyzer)
+                                 is not None
+                                 # ... and a nullable one at the nullable
+                                 # slot, the optional returned whole.
+                                 or (ret_nt is not None
+                                     and stmt.value.name
+                                     in lc.optional_borrow_tuple_locals))):
                         _witness("ret.btuple_name")
                         return THIRReturn(
-                            value=_lower_expr(stmt.value, lc, declared),
+                            value=_lower_expr(stmt.value, lc, declared,
+                                              allow_whole_optional=True),
                             loc=loc)
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 is_const = stmt.value.name in lc.const_locals
@@ -13663,7 +13705,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         or _own_return_const_projected(lc)))
                 _witness("ret.btuple_literal")
                 return THIRReturn(value=lit, loc=loc)
-            elif _borrow_form_tuple_call(stmt.value, analyzer):
+            elif (_borrow_form_tuple_call(stmt.value, analyzer)
+                  # ... and a call handing back this very nullable layout.
+                  or (ret_nt is not None
+                      and _nullable_borrow_tuple_call(stmt.value, analyzer)
+                      == ret_tuple)):
                 # `return h.get_pair()` -- the callee's F3 return is already
                 # borrow form, so `is_storage_form_source` says NO and no
                 # `tuple_to_pointer` wraps the relay. The call itself
@@ -14048,8 +14094,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # converting ctor absorbs it, as the scalar row's bare scalar
             # is absorbed); an un-narrowed value-tuple NAME rides the
             # generic tail bare. The scalar value-opt row's tuple twin.
-            _vot_inner = _value_tuple(unwrap_readonly(ret_vot.inner),
-                                      analyzer)
+            _vot_inner = _value_opt_tuple_inner(ret_vot, analyzer)
             assert _vot_inner is not None
             if isinstance(stmt.value, TpyNoneLiteral):
                 _witness("ret.value_opt_tuple_none")
@@ -14066,6 +14111,29 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         stmt, f"return.tuple_source:{ex.reason}")) from None
                 _witness("ret.value_opt_tuple_literal")
                 return THIRReturn(value=value, loc=loc)
+            src_vot = (_value_opt_tuple(declared.get(stmt.value.name), analyzer)
+                       if isinstance(stmt.value, TpyName)
+                       and stmt.value.name not in narrowed
+                       and stmt.value.name not in lc.prescan.param_names
+                       else _value_opt_tuple(
+                           stmt.value.resolved_function_info.return_type,
+                           analyzer)
+                       if isinstance(stmt.value, (TpyCall, TpyMethodCall))
+                       and stmt.value.resolved_function_info is not None
+                       else None)
+            if src_vot is not None and src_vot == ret_vot:
+                # The slot's own optional, whole: a local (moved out at the
+                # return, as C++ does a local) or a call's prvalue.
+                _witness("ret.value_opt_tuple_whole")
+                return THIRReturn(
+                    value=_flush_witness(
+                        "flush.return",
+                        _lower_expr(stmt.value, lc, declared,
+                                    use=_ExprUse(
+                                        result=_ExprResultUse.STORAGE,
+                                        allow_temps=True),
+                                    allow_whole_optional=True)),
+                    loc=loc)
             if not (isinstance(stmt.value, TpyName)
                     and stmt.value.name not in narrowed
                     and stmt.value.name in declared
@@ -14505,7 +14573,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     loc=loc)
             if (not record_ok
                     and lc.prescan.ret_record_storage is not None
-                    and stmt.value in analyzer.ctx.returned_element_moves):
+                    and stmt.value in analyzer.ctx.element_moves):
                 # `return p[0]` of an owned element at the tuple's last use:
                 # the element moves out (sema credits it consumed); the
                 # tuple's other elements are never read again.

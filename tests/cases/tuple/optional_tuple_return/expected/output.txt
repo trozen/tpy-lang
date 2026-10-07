@@ -1,0 +1,21 @@
+free both: 1 7 True
+free mixed: 8 12
+free mixed none: True
+free owned: 43
+free owned none: True
+method: 14 True
+method mixed: 40 15 True
+method field: 25 True
+method owned: 400 4 True
+readonly: 15 4 True
+relay: 11 12 True True
+relay mixed: 7 13
+relay owned: 1 2 True
+finally: 101 101 12
+finally none: True 201
+finally owned: 11 True
+match: 5 True
+roots: 15 61 32 True
+bare return: True
+truthy: 16 True
+enum: 14 True True True

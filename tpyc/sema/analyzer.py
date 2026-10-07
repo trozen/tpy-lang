@@ -3750,7 +3750,8 @@ class SemanticAnalyzer:
         self.ctx.func.closure_pinned = closure_pinned_names(stmts)
         self.ctx.all_last_uses |= analyze_last_uses(
             stmts, liveness_alias_sources(self.top_level_scan_result),
-            pinned=self.ctx.func.closure_pinned)
+            pinned=self.ctx.func.closure_pinned,
+            same_stmt_alias_reads=self.ctx.same_stmt_alias_reads)
         self.ctx.finally_return_candidates |= collect_finally_return_candidates(stmts)
         self.ctx.func.current_reassigned_vars = self.top_level_scan_result.reassigned.copy()
         self.ctx.func.current_fresh_ctor_locals = set()
