@@ -46,7 +46,7 @@ int32_t value_instantiation_in_head() {
 //     print("value_instantiation", value_instantiation_in_head())
 void main() {
     {
-        auto __src_0 = ::tpyapp::main::drain({1, 2, 3});
+        auto __src_0 = ::tpyapp::main::drain(std::vector<int32_t>{1, 2, 3});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

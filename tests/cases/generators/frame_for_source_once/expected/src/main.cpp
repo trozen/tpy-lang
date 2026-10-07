@@ -15,7 +15,7 @@ namespace tpyapp::main {
 int32_t churn() {
     std::vector<std::vector<int32_t>> junk = std::vector<std::vector<int32_t>>{};
     for (int32_t i = 0; i < 40; ++i) {
-        junk.push_back({i, (::tpy::add_check<int32_t>(i, 1)), (::tpy::add_check<int32_t>(i, 2))});
+        junk.push_back(std::vector<int32_t>{i, (::tpy::add_check<int32_t>(i, 1)), (::tpy::add_check<int32_t>(i, 2))});
     }
     return ::tpy::__len__(junk);
 }

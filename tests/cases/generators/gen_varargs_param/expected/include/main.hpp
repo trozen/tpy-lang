@@ -921,7 +921,7 @@ inline void Grower::grow_both(std::vector<std::vector<int32_t>>& p, std::vector<
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& v = ::tpy::unwrap_ref(*__r_1);
-            v.push_back({this->tag});
+            v.push_back(std::vector<int32_t>{this->tag});
         }
     }
 }

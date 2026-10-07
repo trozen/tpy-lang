@@ -476,7 +476,7 @@ void empty_seed_pos() {
     e.push_back(std::tuple<int64_t, int32_t>{1, 2});
     e.push_back(std::tuple<int64_t, int32_t>{::tpyapp::main::wide(), 3});
     std::vector<std::vector<int64_t>> e2 = std::vector<std::vector<int64_t>>{};
-    e2.push_back({1});
+    e2.push_back(std::vector<int64_t>{1});
     ::tpy::__getitem__(e2, 0).push_back(::tpyapp::main::wide());
     std::cout << "empty_seed:" << " " << ::tpy::ListPrinter(e) << " " << ::tpy::ListPrinter(e2) << "\n" << ::tpy::check_signals;
 }

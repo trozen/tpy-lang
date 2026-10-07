@@ -222,7 +222,7 @@ void main() {
             std::cout << "value" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    Holder h = Holder({::tpy::tuple_to_storage<std::tuple<int32_t, A>>(std::tuple<int32_t, A>{3, A(30)})});
+    Holder h = Holder(std::vector<std::tuple<int32_t, A>>{::tpy::tuple_to_storage<std::tuple<int32_t, A>>(std::tuple<int32_t, A>{3, A(30)})});
     {
         auto __src_4 = h.walk();
         auto&& __itr_4 = ::tpy::__iter__(__src_4);

@@ -41,9 +41,10 @@ def apply(xs: list[Rec], f: Callable[[Rec], Inner]) -> int32:
 
 
 def main() -> None:
-    # Annotated: an unannotated list local matches no candidate at all.
+    # Annotated, so the case pins the lambda's ambiguity alone.
     rs: list[Rec] = [Rec(2), Rec(1)]
     # Both candidates fit the lambda; neither may be dropped by the reject.
+    # They differ only in `Ref[Inner]` (BUGS.md#ambiguity-message-callable-ref-spelling).
     print(apply(rs, lambda r: mk(r).get_inner()))  # tpyc: error(/Ambiguous overload for 'apply'/)
 
 

@@ -265,7 +265,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_mutated::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        ds.push_back({Box(9)});
+        ds.push_back(std::vector<Box>{Box(9)});
         auto& __for_obj_0 = ds;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

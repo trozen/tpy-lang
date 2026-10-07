@@ -350,6 +350,8 @@ class SemanticAnalyzer:
         self.pend = PendingNums(self.ctx, self.compat)
         self.compat.pend = self.pend
         self.deduction.pend = self.pend
+        self.type_ops.pending_arg_leaves = self.pend.overload_leaves
+        self.type_ops.pending_wants_fit = self.pend.wants_fit
 
         # Wire up compatibility's deferred dependencies
         self.compat.type_ops = self.type_ops

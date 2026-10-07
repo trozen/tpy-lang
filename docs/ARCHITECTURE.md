@@ -1001,9 +1001,38 @@ list again. A list with an undecided element reaches only a
 consumer that named the node (`PendingNums.list_sink`: a subscript or method
 receiver, `print`, a second name, a row read bound to a name), a declared
 slot the value is then coerced to that holds a typed container of numbers,
-or, as a literal-element view, the arguments of a call whose one candidate
-is generic (`CallAnalyzer._adaptive_list_args`); `_pending_gate` settles the
-cells for every other consumer. A value that holds leaves by value -- a
+or, as a literal-element view (`PendingNums.adaptive_view`), the arguments
+of a call whose candidates are scored or whose one candidate is generic
+(`CallAnalyzer.open_call_args`, an `OpenCallArgs` scope on
+`SemanticContext.open_call_args`); `_pending_gate` settles the cells for
+every other consumer. Every path that scores candidates opens that scope
+(user-function and builtin overloads, constructor and method groups, the
+overloaded `raise` constructor, a record's operator dunder) and so do the
+single generic method and the inferred generic record constructor. The
+candidates are scored with nothing decided (the pure query of
+`docs/OVERLOAD_DESIGN.md` "Undecided container arguments"); ONE step then
+applies the winner (`CallAnalyzer.apply_winner`): a generic winner's
+resolved parameters decide the arguments as a generic call's do (the scope's
+`resolved` flag, which also lets a resolved view such as `Iterable[T]`
+decide), any other winner's parameter is a declared slot, so each container
+the scoring left open is analyzed again at it (`analyze_arg_at_param`, with
+the scope no longer handing it open) and the coercion decides it there --
+what a call to that one function does; the user-function path gets the same
+from the single-function call analysis it runs on the winner. Whether the
+winner is generic has one source (`overloads.winner_resolves_params`, on
+the winner as declared). The scope is a value: the path that opened it
+hands it to `apply_winner`, a call that opened none applies nothing, and the
+gate and the coercion find the scope that owns a node or a cell
+(`SemanticContext.call_scope_of_node` / `call_scope_of`), never "the
+innermost one". An empty container written as an argument (`[]`,
+`list()`, `{}`, `set()`) gets a record from the scoring analysis; the
+gate hands it to the scope (`OpenCallArgs.awaiting`), and when the
+winner's slot analyzes the node again and gives it a record of its own
+the scoring's is dropped (a view slot keeps it and decides it). Leaves
+still open when a generic call ends are settled then, as an argument to
+the call; a non-generic winner leaves nothing to settle, as a call to
+that one function would; under an overload trial nothing is collected or
+settled. A value that holds leaves by value -- a
 tuple read from a list of tuples -- passes one composite gate
 (`ExpressionAnalyzer._pending_composite_gate`, over
 `pending_num.value_leaves`): a consumer that named it (the receiver of
@@ -1149,7 +1178,9 @@ pending conversion to it, judged once the leaf settles; another numeric
 family is refused), and so are the operand of `in`, the key of a
 `d[k]` read and of `del` when the stub's `__contains__` /
 `__getitem__` / `__delitem__` declares an effect, so the shared
-overload resolver has no pending-leaf rule. A list has no
+overload resolver needs no rule for a pending LEAF (its one pending rule
+is for an undecided CONTAINER argument, `docs/OVERLOAD_DESIGN.md`
+"Undecided container arguments"). A list has no
 `__contains__`: `in` compares with the part its `__iter__` yields
 (`list_elem.iterated_step`), a lookup as its `remove` / `index` /
 `count` declare. A looked-up value is passed at the leaf only when the

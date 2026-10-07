@@ -201,7 +201,7 @@ void main() {
     std::vector<::tpy::Union<int32_t, std::string>> __tmp_2 = {"direct", 99};
     ::tpyapp::main::process_list(__tmp_2);
     ::tpyapp::main::consume_dict(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", "owned"}, {"b", 1}}));
-    ::tpyapp::main::consume_list({"own-hello", 1});
+    ::tpyapp::main::consume_list(std::vector<::tpy::Union<int32_t, std::string>>{"own-hello", 1});
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d4 = ::tpyapp::main::make_dict();
     ::tpy::Union<int32_t, std::string> v2 = ::tpy::__getitem__(d4, "b");
     if (std::holds_alternative<std::string>(v2)) {

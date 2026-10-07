@@ -39,7 +39,7 @@ namespace tpyapp::main {
 //     with m.lock() as ok:         # happy path still works
 //         print(sorted(ok.get()))  # [1, 2, 9]
 void main() {
-    ::tpystd::tpy::sync::Mutex<std::vector<int32_t>> m = ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_({1, 2});
+    ::tpystd::tpy::sync::Mutex<std::vector<int32_t>> m = ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_(std::vector<int32_t>{1, 2});
     ::tpystd::tpy::sync::MutexGuard<std::vector<int32_t>> g = m.lock();
     {
         try {
@@ -76,7 +76,7 @@ void main() {
             std::cout << "mutex post-exit rejected" << "\n" << ::tpy::check_signals;
         }
     }
-    ::tpystd::tpy::sync::RwLock<std::vector<int32_t>> rw = ::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_({0});
+    ::tpystd::tpy::sync::RwLock<std::vector<int32_t>> rw = ::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_(std::vector<int32_t>{0});
     ::tpystd::tpy::sync::ReadGuard<std::vector<int32_t>> r = rw.read();
     {
         try {

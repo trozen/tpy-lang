@@ -257,7 +257,7 @@ struct Holder {
     //     row.append(v)
     //     return len(self.box[0])  # tpyc: ok
     int32_t first(::tpy::param_val_or_ref_t<T> v) {
-        this->box.add({::tpy::param_to_storage<T>(v)});
+        this->box.add(std::vector<T>{::tpy::param_to_storage<T>(v)});
         std::vector<T>& row = this->box[0];
         row.push_back(::tpy::param_to_storage<T>(v));
         return ::tpy::__len__(this->box[0]);

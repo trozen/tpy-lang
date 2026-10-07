@@ -260,7 +260,7 @@ inline void Holder::run() const {
     std::vector<std::tuple<int64_t, int32_t>> xs = {std::tuple<int64_t, int32_t>{1, 2}};
     xs.push_back(std::tuple<int64_t, int32_t>{::tpyapp::main::wide(), 3});
     std::vector<std::array<int64_t, 1>> g = {{1}, {2}};
-    g.push_back({::tpyapp::main::wide()});
+    g.push_back(std::array<int64_t, 1>{::tpyapp::main::wide()});
     std::cout << "method:" << " " << ::tpy::TuplePrinter(::tpy::__getitem__(xs, 1)) << " " << ::tpy::ListPrinter(g) << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();

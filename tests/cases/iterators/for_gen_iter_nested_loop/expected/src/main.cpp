@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(c.total())   # (2+1+0) + (1+0)
 //     print(c.total())   # all sources drained -> 0
 void main() {
-    Consumer c = Consumer({Source(3), Source(2)});
+    Consumer c = Consumer(std::vector<Source>{Source(3), Source(2)});
     std::cout << c.total() << "\n" << ::tpy::check_signals;
     std::cout << c.total() << "\n" << ::tpy::check_signals;
 }

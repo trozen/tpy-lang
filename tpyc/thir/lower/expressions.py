@@ -621,6 +621,7 @@ from .checks import (
     _r_record_borrow_call,
     _own_container_comp_arg,
     _own_container_comp_slot,
+    _own_container_slot,
     _container_module_var_arg,
     _x_temps_ok,
     _r_callable_value_pass,
@@ -10526,16 +10527,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     minit = _lower_expr(
                         a, lc, declared,
                         use=replace(_NESTED_ARG_USE, slot_target=inner))
-                    # This temp's init renders through
-                    # the SPELLED container ctor; a bare `{...}` brace-init
-                    # would be the decl-slot render, not this one. The dict /
-                    # set / empty-list spellings are already self-describing,
-                    # so only the non-empty list brace needs the prefix.
-                    if (isinstance(minit, THIRContainerLiteral)
-                            and minit.typed_brace_cpp is None
-                            and is_list(inner)):
-                        minit = replace(
-                            minit, typed_brace_cpp=lc.render_type(inner))
+                    minit = _spell_brace(minit, inner, lc)
                     _witness("argtemp.optptr_container_literal")
                     return _hoisted(THIRArgTemp(
                         result_type=inner, cpp_type=lc.render_type(inner), movable=unwrap_ref_type(inner).is_movable(),
@@ -10643,9 +10635,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # the callee mutates or lends back keeps the mutable
             # `std::vector<T>&`): the in-place brace below cannot bind it, so
             # the literal hoists to a named temp, the free-call loop's render.
-            # The gate's `container_literal` cell carries the flush
-            # requirement; without a statement to flush into it rejects there
-            # and this arm is never reached.
+            # A const slot keeps the brace in place, where its elements run
+            # after the receiver. The gate's `container_literal` cell carries
+            # the flush requirement; without a statement to flush into it
+            # rejects there and this arm is never reached.
             if (temp_args and not ro_slot and not proto_recv
                     and not stub_recv
                     and _container_literal_arg(a, ptype, lc.analyzer)):
@@ -13650,6 +13643,20 @@ def _lower_literal_arg(a: TpyExpr, target: 'TpyType | None', lc: '_LowerCtx',
     return lowered
 
 
+def _spell_brace(lowered: THIRExpr, container: TpyType,
+                 lc: '_LowerCtx') -> THIRExpr:
+    """`lowered` spelling `container` in front of its brace where no
+    declaration or parameter supplies the type (`std::vector<int64_t>{1, 2}`):
+    a temp init, a template slot, a by-value slot of an overloaded callee.
+    Only a list / Array literal renders as a bare brace -- dict and set
+    literals, the empty list and the make-helper renders spell themselves."""
+    if (isinstance(lowered, THIRContainerLiteral)
+            and lowered.typed_brace_cpp is None
+            and (is_list(container) or is_array(container))):
+        return replace(lowered, typed_brace_cpp=lc.render_type(container))
+    return lowered
+
+
 def _container_literal_argtemp(a: TpyExpr, ptype: 'TpyType | None',
                                lc: '_LowerCtx', declared: dict[str, TpyType],
                                reject: str) -> THIRExpr:
@@ -15451,14 +15458,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             a, at, lc, declared,
             "container-literal native arg on the make path",
             array_retype=False)
-        # A list/Array brace-init self-describes (`std::array<int32_t, 1>
-        # {300}`): a bare `{..}` cannot bind the template slot, so the
-        # resolved type is spelled. Set/dict renders spell themselves.
-        if (isinstance(lowered, THIRContainerLiteral)
-                and lowered.typed_brace_cpp is None
-                and (is_list(at) or is_array(at))):
-            lowered = replace(lowered, typed_brace_cpp=lc.render_type(at))
-        return lowered
+        # A bare `{..}` cannot bind the template slot.
+        return _spell_brace(lowered, at, lc)
     if (isinstance(a, (TpyDictLiteral, TpySetLiteral)) and method_arg
             and _container_literal_method_arg(a, ptype, lc.analyzer)):
         # A dict / set literal into a builtin-container stub method slot
@@ -15637,10 +15638,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     a, atu, lc, declared,
                     "container-literal protocol arg on the make path",
                     array_retype=False)
-                if (isinstance(init, THIRContainerLiteral)
-                        and init.typed_brace_cpp is None
-                        and (is_list(atu) or is_array(atu))):
-                    init = replace(init, typed_brace_cpp=lc.render_type(atu))
+                init = _spell_brace(init, atu, lc)
             elif isinstance(a, TpySubscript):
                 # The record-getitem rvalue init binds like a compare
                 # operand (BORROW_BIND admits the by-value record result).
@@ -16346,14 +16344,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 a, lc, declared,
                 use=_ExprUse(result=_ExprResultUse.STORAGE,
                              slot_target=inner_ct))
-            if (isinstance(lit, THIRContainerLiteral)
-                    and lit.typed_brace_cpp is None):
-                # The temp init self-spells
-                # (`std::vector<std::string>{"a"}` -- no decl target is
-                # threaded here); dict/set renders already
-                # self-describe, and the emit applies the spell only to a
-                # bare brace render.
-                lit = replace(lit, typed_brace_cpp=lc.render_type(inner_ct))
+            lit = _spell_brace(lit, inner_ct, lc)
             _witness("optptr.container_temp")
             if isinstance(a, TpyCall):
                 _witness("optptr.container_call_temp")
@@ -16564,6 +16555,14 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                           allow_union_divergent=(
                               union_divergent_ok
                               or isinstance(slot_u, UnionType)))
+    own_payload = (_own_container_slot(ptype, lc.analyzer)
+                   if isinstance(lowered, THIRContainerLiteral) else None)
+    if own_payload is not None and not _is_type_param_slot(own_payload):
+        # A literal moving into an `Own[container]` slot is a typed prvalue
+        # of the slot's container: a bare brace leaves C++ to pick among the
+        # callee's overloads by the brace alone, and two by-value slots of
+        # different element types both take it.
+        lowered = _spell_brace(lowered, own_payload, lc)
     if (method_arg and isinstance(lowered, THIRLiteral)
             and isinstance(lowered.value, (int, float))
             and not isinstance(lowered.value, bool)):

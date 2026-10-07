@@ -770,7 +770,10 @@ def dispatch(func):
     accumulated by qualified name and each call tries them in declaration
     order, arity match first, then isinstance on the annotated parameter
     types. A concrete variant that matches is taken before a generic one,
-    wherever each is declared, as the compiler's tie rule prefers it. A
+    wherever each is declared -- the compiler's tie rule between equally
+    good candidates; it ranks a generic that converts nothing above a
+    concrete variant that widens a container argument, which this cannot
+    follow. A
     generic variant's value is not joined: `T` bound by an `int32` and an
     `int64` argument keeps each argument's own class here, where the
     compiler converts both to `int64`.

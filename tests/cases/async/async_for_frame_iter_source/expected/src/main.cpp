@@ -66,7 +66,7 @@ __coro_bump bump(Bag& bag) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        bag.emplace(Bag({Point(1), Point(2)}));
+        bag.emplace(Bag(std::vector<Point>{Point(1), Point(2)}));
         __sub_0.emplace((*bag));
         __state = S_RESUME_0;
         continue;

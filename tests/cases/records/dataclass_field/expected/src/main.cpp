@@ -31,7 +31,7 @@ void main() {
     std::cout << c1.value << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(c1.tags) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(c1.lookup) << "\n" << ::tpy::check_signals;
-    Config c2 = Config("prod", 99, {"a", "b"});
+    Config c2 = Config("prod", 99, std::vector<std::string>{"a", "b"});
     std::cout << c2.name << "\n" << ::tpy::check_signals;
     std::cout << c2.value << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(c2.tags) << "\n" << ::tpy::check_signals;

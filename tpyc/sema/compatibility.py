@@ -34,6 +34,7 @@ from ..value_category import (
     peel_value_wrappers,
     property_access_returns_cpp_ref, returns_borrow)
 from . import own_copy
+from .type_join import user_type_name
 from .frame_traits import frame_traits_of_function, frame_type_of_function
 from .send_chain import why_not_send, why_not_sync, why_not_frame, render_chain
 from .move_chain import why_not_movable, render_move_chain
@@ -64,7 +65,8 @@ from ..type_def_registry import (
 )
 from .overloads import type_matches_numeric
 from .pending_num import (ContainerCells, at_path, container_parts,
-                          is_numeric_slot, is_pending_num, map_leaves,
+                          is_numeric_slot, is_pending_num, literal_entries,
+                          map_leaves,
                           pending_list_of, root_of, strip_int,
                           value_family, value_leaves, with_container)
 from .iter_loans import iteration_copies_lent_reference, iteration_lend_pending
@@ -335,6 +337,7 @@ if TYPE_CHECKING:
     from .methods import MethodAnalyzer
     from .local_deduction import LocalTypeDeduction
     from .pending_num import PendingNums
+    from ..typesys import FunctionInfo
 
 
 class PendingIterCopyCheck(NamedTuple):
@@ -410,10 +413,16 @@ class TypeCompatibility:
             self.ctx.mark_param_mutated(root)
             self.ctx.mark_loop_var_mutated(root)
 
-    def is_type_compatible(self, actual: TpyType, expected: TpyType) -> bool:
-        """Non-raising check: is actual assignable to expected? A query:
-        it decides nothing about a list literal's element."""
-        return not isinstance(self._check_compat(actual, expected, ""), CompatError)
+    def is_type_compatible(self, actual: TpyType, expected: TpyType,
+                           coercion_ctx: CoercionContext | None = None) -> bool:
+        """Non-raising check: is actual assignable to expected (in
+        `coercion_ctx`: an argument converts as one does)? A query: it
+        writes nothing -- no container literal's element or storage, no
+        pending generic instance -- so an overload candidate can ask it and
+        lose without leaving a trace (only `commit` writes)."""
+        return not isinstance(
+            self._check_compat(actual, expected, "", coercion_ctx=coercion_ctx),
+            CompatError)
 
     def _list_at_container(
         self, actual: TpyType, expected: TpyType, context: str,
@@ -436,10 +445,9 @@ class TypeCompatibility:
             return self._literal_values_fit(actual, expected, context, loc)
         # A declared view converts each element as it reads it and decides
         # nothing about the list; a generic call's resolved one does.
-        scope = self.ctx.adaptive_list_args
-        adaptive = (bool(scope) and isinstance(into, ContainerCells)
-                    and any(c is cell for c in scope[-1][1]
-                            for cell in into.cells))
+        scope = (self.ctx.call_scope_of(into.cells)
+                 if isinstance(into, ContainerCells) else None)
+        adaptive = scope is not None and scope.resolves(source_expr)
         verb = coercion_ctx.verb if coercion_ctx is not None else "stored"
         container, shown, refusal = self.pend.meets_list(
             into, expected, verb, adaptive, self.member_order(actual))
@@ -478,6 +486,22 @@ class TypeCompatibility:
         if isinstance(result, CompatError):
             raise SemanticError(result.message, result.loc)
         return self.pend.lists_as_known(actual)
+
+    def _written_arg_entries(self, actual: TpyType, expected: TpyType,
+                             ) -> 'list[tuple[object, ...]] | None':
+        """The entries of a dict or set literal written as a call argument
+        and scored open against several candidates
+        (`ExpressionAnalyzer._await_winner`: no local, no cells, its
+        numbers still the literals written), meeting a container of its
+        own kind `expected`; None for anything else."""
+        if not (isinstance(actual, PendingDictType) and is_dict(expected)
+                or isinstance(actual, PendingSetType) and is_set(expected)):
+            return None
+        info = self.ctx.container_record(actual.literal_id)
+        if (info is None or info.variable_name is not None
+                or info.elem_cells is not None):
+            return None
+        return literal_entries(info.expr, actual) or None
 
     def _literal_values_fit(
         self, actual: TpyType, expected: TpyType, context: str,
@@ -974,9 +998,9 @@ class TypeCompatibility:
         # Pending generic instance: try to resolve from the expected type
         if isinstance(actual, PendingGenericInstanceType):
             resolved = self.methods.try_resolve_pending_from_expected_type(
-                actual, expected, loc)
+                actual, expected, loc, commit=commit)
             if resolved is not None:
-                if source_expr is not None:
+                if commit and source_expr is not None:
                     self.ctx.set_expr_type(source_expr, resolved)
                 return self._check_compat(
                     resolved, expected, context, loc, source_expr,
@@ -1136,14 +1160,16 @@ class TypeCompatibility:
                     and isinstance(actual_unwrapped, (UnionType, RecursiveAliasInstanceType))):
                 return self._check_compat(
                     actual_unwrapped, expected, context, loc, source_expr,
-                    is_return, coercion_ctx, target_is_storage_form, sink_owns)
+                    is_return, coercion_ctx, target_is_storage_form, sink_owns,
+                    commit)
             for member in _union_member_order(actual_unwrapped, union_members):
                 result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
                 if not isinstance(result, CompatError):
-                    if commit and self.pend.open_list(actual_unwrapped):
+                    if commit:
                         # The member that admits the value is the slot it
-                        # goes to: a list it holds is decided against that
-                        # member, not against one tried and refused.
+                        # goes to: what the check writes about the value is
+                        # written against that member, not against one
+                        # tried and refused.
                         return self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, commit)
                     return result
             # A concrete container variable whose elements would each fit a union
@@ -1673,7 +1699,9 @@ class TypeCompatibility:
         # jagged peer (different-size nested lists) to vector on the same pass.
         if isinstance(expected, (PendingListType, PendingDictType, PendingSetType)):
             if unify_literal_types(
-                    expected, actual, on_pending_pair=self._demote_pending_pair) is not None:
+                    expected, actual,
+                    on_pending_pair=(self._demote_pending_pair if commit
+                                     else None)) is not None:
                 return None
             # A list stored as a row of a list whose leaves cells decide:
             # the store admitted it there (`PendingNums.tree_store`), a
@@ -1725,6 +1753,7 @@ class TypeCompatibility:
                         actual_elem, e_elem,
                         context, loc, source_expr, is_return, coercion_ctx,
                         target_is_storage_form=True, sink_owns=True,
+                        commit=commit,
                     )
                     if not isinstance(result, CompatError):
                         return None  # element coercion is a probe, not propagated
@@ -1734,7 +1763,8 @@ class TypeCompatibility:
                         f"Type mismatch in {context}: expected {e}, got {a}", loc)
             # Compatible with Array[T, N] if element types and sizes match
             if is_array(expected):
-                if self.type_ops and self.type_ops.pending_list_matches_array(actual, expected):
+                if self.type_ops and self.type_ops.pending_list_matches_array(
+                        actual, expected, commit=commit):
                     return None
                 # Specific error for list repeat size mismatch
                 e_size = expected.type_args[1]
@@ -1771,6 +1801,19 @@ class TypeCompatibility:
         # Consult the literal's record for a key/value the binding lost to a loop_scope
         # revert (see the PendingList branch above); defer only when genuinely
         # unknown, else report the mismatch cleanly here.
+        written = self._written_arg_entries(actual, expected)
+        if written is not None:
+            # Every value written in the literal must fit the part of the
+            # container it is written at, as when the literal is analyzed
+            # at that container.
+            for step, want in enumerate(expected.type_args[:len(written[0])]):
+                if self.pend.first_unfit([e[step] for e in written],
+                                         want) is not None:
+                    return CompatError(
+                        f"Type mismatch in {context}: expected {expected}, "
+                        f"got {self.diag_type(actual)}", loc)
+            return None
+
         if isinstance(actual, PendingDictType) and is_dict(expected):
             e_k, e_v = expected.type_args[0], expected.type_args[1]
             canon = self.ctx.container_record(actual.literal_id)
@@ -1971,7 +2014,7 @@ class TypeCompatibility:
                 f"{self._conversion_hint(actual, expected, ctx, sink_owns)}",
                 loc)
 
-        if isinstance(actual, PendingListType) and is_span(expected):
+        if commit and isinstance(actual, PendingListType) and is_span(expected):
             info = self.ctx.list_literal(actual.literal_id)
             if info:
                 info.coerced_element_type = expected.type_args[0]
@@ -2561,6 +2604,25 @@ class TypeCompatibility:
         return disambiguated_pair(self.diag_type(expected),
                                   self.diag_type(actual))
 
+    def call_type_text(self, t: TpyType) -> str:
+        """How an overload diagnostic ("No matching overload", "Ambiguous
+        overload") spells an argument's or a candidate parameter's type:
+        the user-facing type (`diag_type`), without the ownership and
+        reference qualifiers the call machinery carries, an unresolved int
+        literal the Python `int`, an empty container that holds nothing yet
+        the bare container (`list`)."""
+        shown = self.diag_type(unwrap_own(unwrap_ref_type(t)))
+        if (isinstance(shown, NominalType) and shown.type_args
+                and all(isinstance(a, UnknownElementType)
+                        for a in shown.type_args)):
+            return shown.name
+        return user_type_name(shown)
+
+    def call_signature_text(self, fi: 'FunctionInfo') -> str:
+        """A candidate as an overload diagnostic lists it."""
+        return (f"{fi.name}("
+                f"{', '.join(self.call_type_text(p.type) for p in fi.params)})")
+
     def diag_type(self, t: TpyType, slot: TpyType | None = None) -> TpyType:
         """User-facing type for diagnostics: a pending container literal is
         unresolved during body analysis, so render the container it
@@ -2589,6 +2651,8 @@ class TypeCompatibility:
             if isinstance(e, PendingNumType):
                 # An element not decided yet: the type it has so far.
                 return self.pend.known_type(e)
+            if isinstance(e, TupleType):
+                return e.map_inner_types(elem)
             return self.diag_type(e)
         if isinstance(t, PendingListType):
             return make_list(elem(t.element_type))

@@ -638,14 +638,14 @@ print(uint8.trunc(2**100 + 42))  # 42 (low 8 bits)
 2. **Only a declared `float` converts an int.** Declared means: an annotated local (`x: float = a`, `x: float | None = a or 2.5`), a parameter, a `-> float` return, a field, a `list[float]` / `dict[K, float]` / `set[float]` / `tuple[..., float, ...]` element, a lambda's return at a `Callable[..., float]` slot, and the declaration a `nonlocal` or `global` write reaches. There an `int` becomes a `float` and prints `3.0` where CPython keeps `3` -- a documented divergence: the annotation states the one type the number has. A declared `int32` parameter likewise refuses a float or an `int64` (`Type mismatch in reassignment`). A wider `float` never converts into a declared `float32` slot -- a local (annotated or first bound to a `float32` value), an annotated initializer (`b: float32 = wide`), a parameter (at the call and inside the body, `x = wide` and `x *= wide` alike), a `-> float32` return, a field or a container element -- refused as a wider int into an `int32` slot is (*Type mismatch in argument 'x': expected float32, got float*); write `float32(v)` to narrow, as the generated C++ never rounds a `double` into a `float` unspelled. Within a family only an `int` narrows implicitly, into a fixed width, and that conversion checks the range at run time; an integer stored into a `float` or `float32` slot is the promotion of rule 2, converted as it is (a `float32` holds 24 bits of it exactly). A numeric type constructor call is a value of its type, so `f = float(0.5); f = 1` is the int/float mix of rule 1, as `f = 0.5; f = 1` is.
 3. **An expression keeps its values' own types.** A ternary's arms, a value-position `and`/`or`, and the elements of a list, dict, set or tuple literal that mix an int and a float are a compile error with a conversion hint -- unless the whole expression lands in a declared `float` (rule 2), where each part converts (`ys: list[float] = [1] or [2.5]`).
 4. **A variable's existing type is not an annotation.** When an unannotated local is rebound, its type only fills in what the new value leaves open -- a float literal's width (`float32`), an empty container's element types, a lambda's parameter types, a generic call's type argument nothing else fixes -- and converts none of its ints. Over a `list[float]` local `ys = xs`, the rebinds `ys = [1]`, `ys = [i for i in ints]` and `ys = [1] if c else [2]` are refused, and so are `x = 0.5; x = a if c else 2.5`, `x = 0.5; x = round(2.7)` (`round` returns an int, as in CPython; an integer local still picks its width, `n = int64(0); n = round(v)`, while a `bool` or `float | None` local does not), a lambda or function returning an int rebound over a `Callable[[float], float]` local, and `y = 0.5; y = first([a])` with `first[T](v: list[T]) -> T` (it returns the int `a`). Only positions the local's type decides stay unconverted: under `f[T](p: tuple[T, float]) -> T`, `y = 0; y = f((1, a))` still converts `a` at the declared `float`.
-5. **The arguments choose the overload.** A declared parameter of an overload converts as in rule 2 (`y = 0.5; y = twice(a)` with `twice(v: float)`). The variable being assigned never overrides what the arguments establish; when exactly one overload's return matches it and that overload is non-generic, its declared parameter types only fill what the arguments leave untyped -- an empty dict's or set's elements (`tot3({})`, `tots(set())`), a generic call's or record construction's unbound type parameter and the arguments it types (`tot2(empty_list(3))`, `tot2(peek(r, empty_list(3)))`, `usebag(Bag())`, `keep(call0(lambda: 2.5))`), a float literal's width (`f32d({"k": 0.25})` at `dict[str, float32]`), each arm of a ternary or operand of an `and`/`or`, and an overloaded call nested as the argument (`keep(tot3({}))`) -- and convert nothing. A generic overload's type parameters are seeded from the variable's type as any generic call's are (`ys = xs; ys = mk(3)` with `mk[T](n: int32) -> Own[list[T]]` beside `mk(s: str)`).
+5. **The arguments choose the overload.** A declared parameter of an overload converts as in rule 2 (`y = 0.5; y = twice(a)` with `twice(v: float)`). The variable being assigned never overrides what the arguments establish; when exactly one overload's return matches it and that overload is non-generic, its declared parameter types only fill what the arguments leave untyped -- an empty dict's or set's elements (`tot3({})`, `tots(set())`), a generic call's or record construction's unbound type parameter and the arguments it types (`tot2(empty_list(3))`, `tot2(peek(r, empty_list(3)))`, `usebag(Bag())`, `keep(call0(lambda: 2.5))`), a float literal's width (`f32d({"k": 0.25})` at `dict[str, float32]`), each arm of a ternary or operand of an `and`/`or`, and an overloaded call nested as the argument (`keep(tot3({}))`) -- and convert nothing. A generic overload's type parameters are seeded from the variable's type as any generic call's are (`ys = xs; ys = mk(3)` with `mk[T](n: int32) -> Own[list[T]]` beside `mk(s: str)`). An undecided container argument -- an unannotated container local or a list literal written in the call -- is scored at the types its leaves hold so far without being decided, and the winner's parameter decides it as a call to that one function would ("List Literal Inference").
 
 Known gaps -- where the compiler does not follow these rules yet:
 
-- An int/float select or literal INSIDE an overload argument is refused, although rule 5 lets the declared parameter convert it: `y = 0.5; y = twice(a if c else 2.5)`, fresh or rebound (`BUGS.md#overload-args-typed-before-candidate`).
+- An int/float select or literal INSIDE an overload argument is refused, although rule 5 lets the declared parameter convert it: `y = 0.5; y = twice(a if c else 2.5)`, fresh or rebound (`BUGS.md#overload-args-typed-before-candidate`). A list, dict or set literal written in the call (`z = f32d({"k": 1})` at `dict[str, float32]` converts the int), an empty container written there (`[]`, `list()`, `{}`, `set()`) and an unannotated container local are scored undecided (see "List Literal Inference").
 - Not refused yet, so these still convert silently: `max`/`min` over an int and a float (`BUGS.md#max-min-int-float-mix`); an empty container rebound over a float one and then filled with ints (`BUGS.md#empty-rebind-takes-float-elements`); a float list concatenated with a literal of ints (`BUGS.md#list-concat-float-list-int-literal-converted`); an int bound to an inferred union local whose only number is a float (`BUGS.md#union-local-int-into-float-member`); a walrus whose declared `float` target hands its converted value on (`BUGS.md#walrus-declared-slot-value-converted`); an int stored into a container whose float elements were inferred rather than declared, other than by `append` / `add` on a still-pending list or set literal (`d = {"a": 0.5}; d["b"] = 1`, `BUGS.md#inferred-container-store-converts`).
 - Rule 1 does not reach a `match` capture that reuses an earlier local (`BUGS.md#match-capture-reuses-local-unchecked`).
-- Not typed yet, so refused although valid: an empty list (`[]`, `list()`) passed to an overload (`BUGS.md#pending-container-overload-no-match`); a lambda passed straight to an overload (`BUGS.md#dispatch-lambda-arg-untyped`); a container ternary or `and`/`or` passed to an overload stops at code generation (`BUGS.md#container-select-argument-unlowered`).
+- Not typed yet, so refused although valid: a lambda passed straight to an overload (`BUGS.md#dispatch-lambda-arg-untyped`); a container ternary or `and`/`or` passed to an overload stops at code generation (`BUGS.md#container-select-argument-unlowered`).
 
 **Float promotion**: Any arithmetic operation involving `float` promotes to `float`:
 
@@ -1475,11 +1475,64 @@ Current limitations:
   `sorted(ys)`: it decides `ys`, and a wider store into `ys` after it is
   refused naming the call -- *'ys' holds int32 elements since line N (an
   argument to 'copy()'), and this value is int64*.
-- A call with several candidates decides the element before the candidates
-  are scored, so its parameter does not widen the list (`sum(ys)` then a
-  wider store is refused). Candidates that take the list as `list[T]` do not
-  match such a list at all yet
-  (`BUGS.md#pending-container-overload-no-match`); annotate the list.
+- A call with several candidates (`@dispatch`, `typing.overload`, a
+  builtin's overloads, a method or constructor group, a record's operator
+  dunder) scores an undecided container argument -- an unannotated list,
+  dict or set local, written or empty, a list literal written in the call,
+  or an empty container written there (`[]`, `list()`, `{}`, `set()`) --
+  WITHOUT deciding it: each leaf at the type it holds so far (a
+  literal-seeded leaf at the default int). A candidate is applicable when
+  a call to it alone would accept the container: it may widen an open
+  leaf, never narrow one, and never cross int/float for a local (a literal
+  written in the call adapts as in a single call); a container passed at
+  several positions, or two locals a store linked (`b = a`, a row stored
+  into a nested list), must be accepted by all of them together
+  (`f(ms, ms)` and `f(a, b)` at `(list[int32], list[int64])` are not
+  applicable). A `Span` parameter accepts an undecided list and decides it
+  as a single call does. Among the applicable
+  candidates the least widening of the containers wins, before anything
+  else is compared: an overload never widens a list that another
+  applicable overload takes as it is (`f(xs: list[int32])` over
+  `f(xs: list[int64])` for `ys = [1, 2]`, and a declared view
+  `f(xs: Iterable[int32])` over `f(xs: list[int64])`, whichever is
+  declared first and whatever the other arguments convert); after
+  `ys.append(big)` only `list[int64]` applies. Among equal widening the
+  usual order applies (the match tiers, then the cost); a tie is an
+  "Ambiguous overload" error. The winner's parameter then decides the
+  container as a call to that one function would: `f(ys)` with
+  `f(xs: list[int64])` / `f(s: str)` makes `ys` a `list[int64]`, so a
+  later wider store fits; a declared view (`sum(ys)` over
+  `Iterable[int32]`) converts per element and decides nothing (it widens
+  nothing) -- in a generic candidate too, where only a view naming one of
+  its type parameters (`Iterable[T]`) is resolved by the call and decides
+  -- and a leaf nothing decided is settled when the call ends
+  (`sum(ys)` then a wider store is refused). A dict or set literal
+  written in the call is scored like a list literal, its numbers still the
+  literals written: each written value must fit the candidate's key, value
+  or element (`f({"a": 1})` takes `dict[str, int64]` or `dict[str, float]`,
+  `f({1, 5000000000})` only a `set[int64]`), and the winner's parameter
+  types it as a call to it alone does. That holds where every candidate
+  declares a concrete parameter at that position; where one reads the
+  literal through a view or a type parameter (`max({2.5, 1.5})`, a
+  generic candidate) it is typed from its own values at once, as outside
+  a call. Not covered yet: a local inside a tuple or list literal
+  argument is decided first, and a dict or set literal nested in a
+  written one is typed at once (`f({"a": {"b": 1}})` at
+  `dict[str, dict[str, int64]]`;
+  `BUGS.md#overload-container-nested-in-argument`). Sema applies the rule
+  on every path, but some shapes stop at code generation whatever the
+  argument: a `typing.overload` set whose stubs narrow a container
+  parameter (`BUGS.md#overload-stub-narrows-container-param`), a user
+  class's `@dispatch` `__init__` group, constructed
+  (`BUGS.md#dispatch-ctor-group-unlowered`) or raised as a user exception
+  (`BUGS.md#dispatch-exception-ctor-unlowered`); and a literal written in
+  the call, a fresh call result, `list()` or `set()` passed to a
+  `@dispatch` method variant's read-only container slot compiles to C++
+  that the C++ compiler refuses (the variant's signature takes a mutable
+  reference, `BUGS.md#dispatch-method-rvalue-container-arg`), and so
+  does a non-empty list literal as the default of `d.get` / `d.pop`
+  (`BUGS.md#dict-get-list-literal-default-bare-brace`); bind the value
+  to a local first.
 - A literal stored into a list whose element is already decided counts as
   its own default type, so `ys = [1]; big(ys); ys.append(6000000000)` is
   refused (the literal counts as `int`); the annotation `ys: list[int64]`
@@ -5010,7 +5063,7 @@ spelling too).
 - **Working**: `__all__` with literal `+=` extension; `__all__` statements are compile-time export metadata and emit no runtime code. Dynamic mutation (non-literal `+=`, `.append(...)`) is a compile error.
 - **Declared divergence**: `raise E(...) from cause` warns and drops the cause -- TPy's exception model has no `__cause__`/`__context__` chaining. Remove the clause to silence the warning.
 - An `assert` message containing `await` is evaluated only on failure (desugared to an explicit conditional, matching CPython); `await` in a match-case guard is rejected with a bind-before-the-match hint.
-- **Working**: An EMPTY container literal (`[]`, `{}`, `list()`) at a `readonly[list/dict/set]` parameter binds INLINE on the const reference with the typed spelling (`std::vector<int32_t>{}`), since a bare brace names no type. A record METHOD's readonly slot also binds a NON-EMPTY literal inline (`t.ro_list({1, 2, 3})`), unless the method's return borrows that same parameter -- the temporary dies at the end of the statement, so the reference handed back would dangle, and the shape is refused; a FRAME-CAPTURING callee (a generator or coroutine factory) retains the argument past the statement, so there the literal hoists to a named local. A FREE function's container parameter -- declared readonly or not, whichever way the callee is spelled (`f([1, 2])`, `mod.f([1, 2])`, `Cls.static_f([1, 2])`), nested defs included -- takes a non-empty literal through a named local hoisted ahead of the call (`std::vector<int32_t> __tmp_1 = {1, 2}; f(__tmp_1, ...)`), which evaluates the elements before the later arguments, as CPython does. A constructor's readonly container parameter refuses a NON-EMPTY literal (`BUGS.md#readonly-container-literal-ctor-arg`): bind the literal to a local first.
+- **Working**: An EMPTY container literal (`[]`, `{}`, `list()`) at a `readonly[list/dict/set]` parameter binds INLINE on the const reference with the typed spelling (`std::vector<int32_t>{}`), since a bare brace names no type. A record METHOD's readonly slot also binds a NON-EMPTY literal inline (`t.ro_list({1, 2, 3})`), unless the method's return borrows that same parameter -- the temporary dies at the end of the statement, so the reference handed back would dangle, and the shape is refused; a FRAME-CAPTURING callee (a generator or coroutine factory) retains the argument past the statement, so there the literal hoists to a named local. A FREE function's container parameter -- declared readonly or not, whichever way the callee is spelled (`f([1, 2])`, `mod.f([1, 2])`, `Cls.static_f([1, 2])`), nested defs included -- takes a non-empty literal through a named local hoisted ahead of the call (`std::vector<int32_t> __tmp_1 = {1, 2}; f(__tmp_1, ...)`), which evaluates the elements before the later arguments, as CPython does. A constructor's readonly container parameter refuses a NON-EMPTY literal (`BUGS.md#readonly-container-literal-ctor-arg`): bind the literal to a local first. A list literal moving into an `Own[list[T]]` / `Own[Array[T, N]]` parameter renders in place as a prvalue of the parameter's container (`f(std::vector<int64_t>{1, 2})`): a bare brace would leave C++ to choose among the callee's overloads by the brace alone.
 - **Working**: Homogeneous `*args: T` -- `def f(*args: int32)`. Type annotation required. Inside the body, `args` has the distinct body-view type `varargs[T]` (sema-level; **not** `Span[T]`), supporting `len()`, indexing, iteration, and slicing (`args[1:]`, `args[i:j]`, etc.); a slice stays a `varargs[T]`. At call sites, trailing positional args are packed into a stack array. Works with fixed positional params before `*args` and keyword-only params after. C++ codegen uses `tpy::varargs<T>` -- a dual-mode span that stores value types directly (like `std::span<T>`) and non-value types via pointer indirection for correct reference semantics. Because `tpy::varargs<T>` has no conversion to `std::span<T>`, **passing a vararg (or a slice of it) where a `Span[T]` is expected is rejected at sema** with a clean type-mismatch (not a C++ build error). `varargs[T]` is compiler-internal and **not user-spellable** -- users write `*args: T`, never `varargs[T]` in an annotation. Mutations through `*args` to non-value types are visible to the caller. Works with `@nocopy` types (no copies made). Supported on free functions, module-qualified functions, and instance methods alike.
 - **Working**: Readonly `*args` -- `def f(*items: readonly[T])` is a genuinely-readonly vararg: codegen emits `tpy::varargs<const T>` (const element access), so the body cannot mutate elements -- a write through a reference element is rejected at sema (`Cannot mutate readonly reference`), with C++ const as the backstop, same as `Span[readonly[T]]`. Mutable args may be passed in (adding const is safe). The readonly slot is what makes unpacking a readonly source legal (see the unpacking entry below). The slot is **auto-inferred** to readonly when the body doesn't mutate the vararg (parallel to the existing non-vararg ref-param auto-const inference, propagating across vararg forwarding via Phase-2 mutation propagation). Plain `*args: T` whose body mutates an element keeps the mutable slot.
 - **Working**: `*list` unpacking at call sites -- `f(*my_list)` passes a list/array/span to a `*args` function. Zero-cost for contiguous containers (direct span mode). Supports forwarding: `def g(*args: T): f(*args)`. The unpacked element type must be compatible with the `*args` slot: into a **mutable** slot a `Span[readonly[T]]` source is rejected (the slot exposes mutable element access, so aliasing readonly data is unsafe), and into a **readonly** slot (`*items: readonly[T]`) a readonly source is accepted (the const-span source constructs `varargs<const T>` directly). Any element type that would need a per-element conversion is rejected. All rejections are clean diagnostics, not C++-build errors. (Forwarding a `*args` parameter is exempt from the readonly check: it carries the `varargs[readonly[T]]` body-view type but its runtime form is the mutable `tpy::varargs<T>`, forwarded via the varargs copy- or const-view ctor.)

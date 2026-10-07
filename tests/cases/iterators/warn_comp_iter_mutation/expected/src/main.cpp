@@ -24,7 +24,7 @@ bool grow(std::vector<int32_t>& ys) {
 //     rs.append([7])
 //     return True
 bool grow_rows(std::vector<std::vector<int32_t>>& rs) {
-    rs.push_back({7});
+    rs.push_back(std::vector<int32_t>{7});
     return true;
 }
 

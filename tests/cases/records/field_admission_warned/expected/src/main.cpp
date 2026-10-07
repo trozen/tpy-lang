@@ -445,7 +445,7 @@ void main() {
     Derived d = Derived(Item(5));
     d.ia.v = 55;
     std::cout << "ctor.base" << " " << d.ia.v << " " << d.ib.v << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::nested({1, 2, 3});
+    ::tpyapp::main::nested(std::vector<int32_t>{1, 2, 3});
     Opt o = Opt();
     std::vector<P> __tmp_1 = {P(7)};
     o.elem(__tmp_1);

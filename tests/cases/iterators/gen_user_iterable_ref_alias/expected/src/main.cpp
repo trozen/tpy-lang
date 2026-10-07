@@ -17,7 +17,7 @@ __gen_bump bump(Bag& bag) {
 //         print(v)
 //     print("mutations reached the bag:", bag.items[0].x, bag.items[1].x)
 void main() {
-    Bag bag = Bag({Point(1), Point(2)});
+    Bag bag = Bag(std::vector<Point>{Point(1), Point(2)});
     {
         auto __src_0 = ::tpyapp::main::bump(bag);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);

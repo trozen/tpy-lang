@@ -27,7 +27,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_run::__next__() {
         __state = S_DONE;  // until a yield sets where to resume
         work.emplace(std::vector<::tpy::Union<Emit, Push>>{});
         (*work).push_back(Emit("ab"));
-        (*work).push_back(Push({1, 2, 3}));
+        (*work).push_back(Push(std::vector<::tpy::BigInt>{1, 2, 3}));
         __state = S_JOIN_0;
         continue;
     }
@@ -110,7 +110,7 @@ void main() {
         }
     }
     {
-        Push __tmp_1 = Push({7, 8});
+        Push __tmp_1 = Push(std::vector<::tpy::BigInt>{7, 8});
         auto __src_2 = ::tpyapp::main::first_value(::tpy::Union<const Emit*, const Push*>{&__tmp_1});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
@@ -120,7 +120,7 @@ void main() {
             std::cout << "first" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    Push __tmp_2 = Push({1, 2, 3, 4});
+    Push __tmp_2 = Push(std::vector<::tpy::BigInt>{1, 2, 3, 4});
     std::cout << "plain" << " " << ::tpyapp::main::plain(::tpy::Union<const Emit*, const Push*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
     Emit __tmp_3 = Emit("z");
     std::cout << "plain" << " " << ::tpyapp::main::plain(::tpy::Union<const Emit*, const Push*>{&__tmp_3}) << "\n" << ::tpy::check_signals;

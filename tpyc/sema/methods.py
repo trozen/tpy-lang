@@ -506,79 +506,85 @@ class MethodAnalyzer:
                     expr.args, unresolved, type_subst, self.type_ops,
                     lambda msg: self.ctx.error(msg, expr))
         else:
-            resolved_overloads = [
-                self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
-                for m in overloads
-            ]
-            pre = self.ctx.func.pre_analyzed_method_args.get(expr)
-            if (pre is not None and len(pre) == len(expr.args)
-                    and any(is_pending_num(t) for t in pre)):
-                # An argument passed at a container's pending leaf is typed
-                # already: analyzing it again would settle the leaf.
-                arg_types = list(pre)
-            else:
-                arg_types = self.calls._probe_candidate_args(
-                    expr, expr.args, resolved_overloads)
-            kwarg_types: dict[str, TpyType] | None = None
-            if expr.kwargs:
-                kwarg_types = {k: self.expr.analyze_expr(v) for k, v in expr.kwargs.items()}
-            enriched_types = _enrich_literal_types(arg_types, expr.args, resolved_overloads)
-            try:
-                resolved = resolve_overload(
-                    resolved_overloads, enriched_types,
-                    protocol_checker=self.protocols.type_conforms_to_protocol,
-                    protocol_classifier=self.protocols.classify_protocol_conformance,
-                    deref_checker=self.type_ops.get_deref_coercion_target,
-                    default_int_type=self.ctx.default_int_type,
-                    subclass_checker=self.ctx.registry.is_subclass_of,
-                    is_readonly_receiver=is_readonly_receiver,
-                    is_consuming_receiver=is_consuming_receiver,
-                    type_ops=self.type_ops,
-                    kwarg_types=kwarg_types,
-                )
-            except OverloadAmbiguityError as e:
-                sigs = "; ".join(
-                    f"{c.name}({', '.join(str(p.type) for p in c.params)})"
-                    for c in e.candidates
-                )
-                raise self.ctx.error(
-                    f"Ambiguous overload for '{expr.method}': "
-                    f"multiple candidates match equally: {sigs}", expr)
-            if resolved is None:
-                if kwarg_types:
-                    accepted_names = {p.name for o in overloads for p in o.params}
-                    for kw_name in kwarg_types:
-                        if kw_name not in accepted_names:
-                            raise self.ctx.error(
-                                f"'{expr.method}' got unexpected keyword argument '{kw_name}'",
-                                expr)
-                arg_strs = ", ".join(str(t) for t in arg_types)
-                raise self.ctx.error(
-                    f"No matching overload for '{expr.method}' with argument types ({arg_strs})", expr)
-            expr.resolved_function_info = resolved
-            coerce_arg_types: list[TpyType] | None = arg_types
-            if expr.kwargs or resolved.materializes_defaults:
-                # Winner picked; expand kwargs into positional slots against its
-                # signature. A default with no C++ spelling must be filled even
-                # with no kwargs, or the emitted call is an argument short.
-                expr.args = resolve_kwargs(
-                    expr.args, expr.kwargs, resolved.params, expr.method,
-                    lambda msg: self.ctx.error(msg, expr),
-                    call_loc=expr.loc, is_member=True,
-                )
-                expr.kwargs = {}
-                # Pre-analyzed types no longer align with expanded expr.args;
-                # discard any stale empty-list inference cache so
-                # _check_and_coerce_args re-analyzes every arg with a param hint.
-                self.ctx.func.pre_analyzed_method_args.pop(expr, None)
-                coerce_arg_types = None
-            self._check_args_or_pack_varargs(expr, resolved, coerce_arg_types)
-            # Overloaded methods with generic defaults: find unresolved counterpart
-            if type_subst:
-                idx = resolved_overloads.index(resolved)
-                validate_generic_defaults(
-                    expr.args, overloads[idx], type_subst, self.type_ops,
-                    lambda msg: self.ctx.error(msg, expr))
+            with self.calls.open_call_args(
+                    expr, [*expr.args, *(expr.kwargs or {}).values()],
+                    expr.method, scored=True) as scope:
+                resolved_overloads = [
+                    self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
+                    for m in overloads
+                ]
+                self.calls.open_written_literals(
+                    scope, expr.args, expr.kwargs, resolved_overloads)
+                pre = self.ctx.func.pre_analyzed_method_args.get(expr)
+                if (pre is not None and len(pre) == len(expr.args)
+                        and any(is_pending_num(t) for t in pre)):
+                    # An argument passed at a container's pending leaf is typed
+                    # already: analyzing it again would settle the leaf.
+                    arg_types = list(pre)
+                else:
+                    arg_types = self.calls._probe_candidate_args(
+                        expr, expr.args, resolved_overloads)
+                kwarg_types: dict[str, TpyType] | None = None
+                if expr.kwargs:
+                    kwarg_types = {k: self.expr.analyze_expr(v) for k, v in expr.kwargs.items()}
+                enriched_types = _enrich_literal_types(arg_types, expr.args, resolved_overloads)
+                try:
+                    resolved = resolve_overload(
+                        resolved_overloads, enriched_types,
+                        protocol_checker=self.protocols.type_conforms_to_protocol,
+                        protocol_classifier=self.protocols.classify_protocol_conformance,
+                        deref_checker=self.type_ops.get_deref_coercion_target,
+                        default_int_type=self.ctx.default_int_type,
+                        subclass_checker=self.ctx.registry.is_subclass_of,
+                        is_readonly_receiver=is_readonly_receiver,
+                        is_consuming_receiver=is_consuming_receiver,
+                        type_ops=self.type_ops,
+                        kwarg_types=kwarg_types,
+                    )
+                except OverloadAmbiguityError as e:
+                    sigs = "; ".join(self.compat.call_signature_text(c)
+                                     for c in e.candidates)
+                    raise self.ctx.error(
+                        f"Ambiguous overload for '{expr.method}': "
+                        f"multiple candidates match equally: {sigs}", expr)
+                if resolved is None:
+                    if kwarg_types:
+                        accepted_names = {p.name for o in overloads for p in o.params}
+                        for kw_name in kwarg_types:
+                            if kw_name not in accepted_names:
+                                raise self.ctx.error(
+                                    f"'{expr.method}' got unexpected keyword argument '{kw_name}'",
+                                    expr)
+                    arg_strs = ", ".join(self.compat.call_type_text(t)
+                                         for t in arg_types)
+                    raise self.ctx.error(
+                        f"No matching overload for '{expr.method}' with argument types ({arg_strs})", expr)
+                arg_types = self.calls.apply_winner(
+                    scope, expr.args, resolved.params, arg_types, resolved)
+                expr.resolved_function_info = resolved
+                coerce_arg_types: list[TpyType] | None = arg_types
+                if expr.kwargs or resolved.materializes_defaults:
+                    # Winner picked; expand kwargs into positional slots against its
+                    # signature. A default with no C++ spelling must be filled even
+                    # with no kwargs, or the emitted call is an argument short.
+                    expr.args = resolve_kwargs(
+                        expr.args, expr.kwargs, resolved.params, expr.method,
+                        lambda msg: self.ctx.error(msg, expr),
+                        call_loc=expr.loc, is_member=True,
+                    )
+                    expr.kwargs = {}
+                    # Pre-analyzed types no longer align with expanded expr.args;
+                    # discard any stale empty-list inference cache so
+                    # _check_and_coerce_args re-analyzes every arg with a param hint.
+                    self.ctx.func.pre_analyzed_method_args.pop(expr, None)
+                    coerce_arg_types = None
+                self._check_args_or_pack_varargs(expr, resolved, coerce_arg_types)
+                # Overloaded methods with generic defaults: find unresolved counterpart
+                if type_subst:
+                    idx = resolved_overloads.index(resolved)
+                    validate_generic_defaults(
+                        expr.args, overloads[idx], type_subst, self.type_ops,
+                        lambda msg: self.ctx.error(msg, expr))
 
         # The one funnel every dispatch path reaches (instance call, generic
         # method, `super()`), and the only place carrying the class-level
@@ -1805,14 +1811,14 @@ class MethodAnalyzer:
 
     def try_resolve_pending_from_expected_type(
         self, pending: PendingGenericInstanceType, expected: TpyType,
-        loc: 'SourceLocation | None' = None,
+        loc: 'SourceLocation | None' = None, commit: bool = True,
     ) -> NominalType | None:
         """Try to resolve a pending generic instance from an expected type.
 
         Used when a pending-type variable is passed to a typed parameter or
         returned where the function return type is known. Returns the resolved
-        concrete type, or None if the expected type doesn't match.
-        """
+        concrete type, or None if the expected type doesn't match. Without
+        `commit` it only answers: the instance is left pending."""
         info = self.ctx.func.pending_generic_instances.get(pending.instance_id)
         if info is None:
             return None
@@ -1830,61 +1836,73 @@ class MethodAnalyzer:
         if not target.type_args or len(target.type_args) != len(info.type_params):
             return None
 
+        # Inferred on a copy: only `commit` writes it back.
+        inferred = dict(info.inferred)
         # Build pattern with TypeParamRefs for unresolved params
-        pattern_args = []
-        for tp in info.type_params:
-            if tp in info.inferred:
-                pattern_args.append(info.inferred[tp])
-            else:
-                pattern_args.append(TypeParamRef(tp))
         pattern = NominalType(
-            info.record_name, tuple(pattern_args),
+            info.record_name,
+            tuple(inferred.get(tp, TypeParamRef(tp)) for tp in info.type_params),
             _module_qname=info.record_info.qualified_name(),
         )
 
         # Match to extract constraints
-        if not self.type_ops.match_type_with_inference(pattern, target, info.inferred):
+        if not self.type_ops.match_type_with_inference(pattern, target, inferred):
             # Check if a previously-inferred param conflicts with the expected type
             for tp, expected_arg in zip(info.type_params, target.type_args):
-                if tp in info.inferred and isinstance(expected_arg, TpyType):
-                    if info.inferred[tp] != expected_arg:
-                        raise SemanticError(
-                            f"Conflicting type for '{tp}' in '{info.record_name}': "
-                            f"previously inferred as '{info.inferred[tp]}', "
-                            f"but expected type requires '{expected_arg}'",
-                            loc,
-                        )
+                if (commit and tp in info.inferred
+                        and isinstance(expected_arg, TpyType)
+                        and info.inferred[tp] != expected_arg):
+                    raise SemanticError(
+                        f"Conflicting type for '{tp}' in '{info.record_name}': "
+                        f"previously inferred as '{info.inferred[tp]}', "
+                        f"but expected type requires '{expected_arg}'",
+                        loc,
+                    )
             return None
 
         # Resolve literal markers in any newly inferred params
-        for k, v in list(info.inferred.items()):
+        for k, v in list(inferred.items()):
             if isinstance(v, TpyType):
-                info.inferred[k] = resolve_int_literals(v, self.ctx.default_int_for_literal)
+                inferred[k] = resolve_int_literals(v, self.ctx.default_int_for_literal)
+        if commit:
+            info.inferred.update(inferred)
 
         # Check if all type params are now resolved
-        if not all(tp in info.inferred for tp in info.type_params):
+        if not all(tp in inferred for tp in info.type_params):
             return None
-
+        if not commit:
+            resolved = self._pending_generic_type(info, inferred)
+            return resolved if self._pending_generic_bound_error(
+                info, resolved) is None else None
         return self._eagerly_resolve_pending_generic(info)
 
-    def _eagerly_resolve_pending_generic(self, info: 'PendingGenericInstanceInfo') -> NominalType:
-        """Resolve a pending generic instance to a concrete NominalType."""
-        type_args = tuple(info.inferred[tp] for tp in info.type_params)
-        resolved_type = NominalType(
-            info.record_name, type_args,
+    def _pending_generic_type(self, info: 'PendingGenericInstanceInfo',
+                              inferred: dict[str, TpyType]) -> NominalType:
+        """The type a pending generic instance resolves to at `inferred`."""
+        return NominalType(
+            info.record_name,
+            tuple(inferred[tp] for tp in info.type_params),
             _module_qname=info.record_info.qualified_name(),
         )
 
-        # Validate type param bounds
-        for param_name, type_arg in zip(info.type_params, type_args):
+    def _pending_generic_bound_error(self, info: 'PendingGenericInstanceInfo',
+                                     resolved: NominalType) -> str | None:
+        """Why `resolved` breaks a bound of the instance's record, or None."""
+        for param_name, type_arg in zip(info.type_params, resolved.type_args):
             if param_name in info.record_info.type_param_bounds:
                 bound = info.record_info.type_param_bounds[param_name]
                 if not self.protocols.satisfies_bound(type_arg, bound):
-                    raise self.ctx.error(
-                        f"Inferred type '{type_arg}' does not satisfy bound '{bound}' "
-                        f"for type parameter '{param_name}' of '{info.record_name}'",
-                        info.expr,
-                    )
+                    return (f"Inferred type '{type_arg}' does not satisfy bound "
+                            f"'{bound}' for type parameter '{param_name}' of "
+                            f"'{info.record_name}'")
+        return None
+
+    def _eagerly_resolve_pending_generic(self, info: 'PendingGenericInstanceInfo') -> NominalType:
+        """Resolve a pending generic instance to a concrete NominalType."""
+        resolved_type = self._pending_generic_type(info, info.inferred)
+        bound_error = self._pending_generic_bound_error(info, resolved_type)
+        if bound_error is not None:
+            raise self.ctx.error(bound_error, info.expr)
 
         # Update constructor expression
         info.expr.call_type = resolved_type
@@ -2178,6 +2196,26 @@ class MethodAnalyzer:
         # seed is only useful on paths that actually re-analyze args with a
         # contextual hint, so it (and the closure that consumes it) lives
         # inside the inference branches that need it.
+        has_wildcards = expr.type_args and None in expr.type_args
+        if expr.type_args and not has_wildcards:
+            return self._generic_method_tail(
+                expr, method_info, new_params, partial_func, class_subst)
+        # The arguments the method's type parameters are inferred from stay
+        # open until the resolved parameters decide them.
+        with self.calls.open_call_args(
+                expr, [*expr.args, *(expr.kwargs or {}).values()],
+                method_info.name, scored=False):
+            return self._generic_method_tail(
+                expr, method_info, new_params, partial_func, class_subst)
+
+    def _generic_method_tail(
+        self, expr: TpyMethodCall, method_info: FunctionInfo,
+        new_params: list[str], partial_func: FunctionInfo,
+        class_subst: dict[str, TpyType | int],
+    ) -> TpyType:
+        """`_analyze_generic_method_call` from the method-level type
+        arguments on: inferred (or taken from explicit ones), bound-checked
+        and applied to the arguments."""
         has_wildcards = expr.type_args and None in expr.type_args
         if expr.type_args:
             # Arity already validated before the no-new-params early return.

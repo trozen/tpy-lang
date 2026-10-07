@@ -6,7 +6,7 @@ Type validation, substitution, and inference operations.
 
 from __future__ import annotations
 from dataclasses import dataclass, field, replace as dc_replace
-from typing import Literal, Sequence, TYPE_CHECKING
+from typing import Callable, Literal, Mapping, Sequence, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, TypeParamRef, NominalType, RecursiveAliasInstanceType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, InteriorMutableType,
@@ -298,6 +298,16 @@ class TypeOperations:
         # pattern in TypeCompatibility. Used by validate_hashable_container_elem
         # for Hashable + Equatable conformance.
         self.protocols: ProtocolChecker
+        # How an undecided container argument meets one overload
+        # candidate's parameter (`PendingNums.overload_leaves`), for the
+        # overload matchers; wired like `protocols`.
+        self.pending_arg_leaves: Callable[
+            [TpyType, TpyType, bool],
+            list[tuple[object | None, TpyType, TpyType]] | None] | None = None
+        # Whether the cells a candidate's parameters want at those types
+        # can hold them together (`PendingNums.wants_fit`).
+        self.pending_wants_fit: Callable[
+            [Mapping[int, TpyType]], dict[int, int] | None] | None = None
 
     def resolve_type(self, typ: TpyType, *, protocols_only: bool = False) -> TpyType:
         """Sema-local type normalization.
@@ -2142,8 +2152,10 @@ class TypeOperations:
                 return None
         return inferred
 
-    def pending_list_matches_array(self, actual: PendingListType, expected: NominalType) -> bool:
-        """Check if a pending list literal can match an Array type (including nested arrays)."""
+    def pending_list_matches_array(self, actual: PendingListType, expected: NominalType,
+                                   commit: bool = True) -> bool:
+        """Check if a pending list literal can match an Array type (including
+        nested arrays). Under `commit` a literal element takes the Array's."""
         if actual.size != expected.type_args[1]:
             return False
 
@@ -2151,14 +2163,14 @@ class TypeOperations:
         expected_elem = expected.type_args[0]
 
         if isinstance(actual_elem, PendingListType) and is_array(expected_elem):
-            return self.pending_list_matches_array(actual_elem, expected_elem)
+            return self.pending_list_matches_array(actual_elem, expected_elem, commit)
 
         if actual_elem == expected_elem:
             return True
 
         if isinstance(actual_elem, IntLiteralType) and is_integer_type(expected_elem):
             info = self.ctx.list_literal(actual.literal_id)
-            if info:
+            if info and commit:
                 info.coerced_element_type = expected_elem
             return True
 

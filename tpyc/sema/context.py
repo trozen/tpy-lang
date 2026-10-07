@@ -2493,6 +2493,75 @@ LIVE_HANDLE_FIELDS = frozenset((
 
 
 @dataclass
+class OpenCallArgs:
+    """The arguments of one call under analysis that its candidates are
+    scored against, or a generic callee's type parameters are inferred
+    from, before any parameter decides them: a container argument whose
+    leaves are still open is handed over open (`PendingNums.adaptive_view`)
+    unless the winner `declared` its node's parameter, and its cells are
+    collected, to be settled when the call ends if nothing decided them.
+    `resolved` says the parameters the call resolved -- a generic
+    candidate's (`overloads.call_resolves_param`) -- decide such an
+    argument where they are a view (`Iterable[T]`); a declared view
+    converts per element and decides nothing. `scored` says several
+    candidates compete, so the winner is applied to the arguments after
+    selection (`CallAnalyzer.apply_winner`). `keywords` names the keyword
+    arguments among `nodes`."""
+    nodes: list['TpyExpr']
+    resolved: bool
+    scored: bool
+    keywords: dict[str, 'TpyExpr'] = field(default_factory=dict)
+    cells: list['PendingNumCell'] = field(default_factory=list)
+    # Which node handed over which of `cells`.
+    handed: list[tuple['TpyExpr', list['PendingNumCell']]] = field(
+        default_factory=list)
+    # The argument nodes the winner takes at a parameter it DECLARES (every
+    # node of a non-generic winner; a generic winner's `xs: Iterable[int64]`
+    # beside `t: T`): each is received as at a declared slot -- analyzed
+    # again there, not handed over open, not decided by a view.
+    declared: list['TpyExpr'] = field(default_factory=list)
+    # The records of the containers written as arguments that the scope
+    # handed over with no parameter to type them at yet -- an empty one
+    # (`[]`, `list()`, `{}`, `set()`), a dict or set literal with its
+    # numbers still the literals written: each awaits the winner's slot,
+    # which analyzes its node again and gives it the type or record it
+    # keeps (`CallAnalyzer.apply_winner`).
+    awaiting: list['ContainerLiteralInfo'] = field(default_factory=list)
+    # The dict and set literal arguments that stay open while the
+    # candidates are scored: every candidate declares the parameter that
+    # receives them plainly (`CallAnalyzer.open_written_literals`).
+    open_literals: list['TpyExpr'] = field(default_factory=list)
+
+    def declares(self, node: 'TpyExpr | None') -> bool:
+        return node is not None and any(n is node for n in self.declared)
+
+    def hands_over(self, node: 'TpyExpr') -> bool:
+        """Whether argument `node` is handed over open."""
+        return not self.declares(node)
+
+    def resolves(self, node: 'TpyExpr | None') -> bool:
+        """Whether the parameter that receives `node` -- or, asked of no
+        node (a query), any parameter of the call -- is one the call
+        resolved."""
+        return self.resolved and not self.declares(node)
+
+    def hand_over(self, node: 'TpyExpr',
+                  cells: list['PendingNumCell']) -> None:
+        self.cells.extend(cells)
+        self.handed.append((node, list(cells)))
+
+    def declare(self, nodes: list['TpyExpr']) -> None:
+        """The winner takes `nodes` at declared parameters: a call to it
+        alone settles nothing of theirs when it ends -- whatever its slots
+        leave open (a Span's list, decided where its storage is) stays open
+        as it would there."""
+        self.declared.extend(nodes)
+        released = {id(c) for node, cells in self.handed
+                    if any(node is n for n in nodes) for c in cells}
+        self.cells = [c for c in self.cells if id(c) not in released]
+
+
+@dataclass
 class SemanticContext:
     """Shared state for all semantic analysis components.
 
@@ -2559,10 +2628,9 @@ class SemanticContext:
     # the operands it distributes over): a container whose leaves are not
     # decided yet reaches them undecided (its truth is its size).
     truth_ok_node: tuple = ()
-    # Innermost last: for each call under analysis whose one candidate is
-    # generic, its argument nodes and the element cells of the list
-    # literals they showed as adaptive (`PendingNums.adaptive_view`).
-    adaptive_list_args: list[tuple[list[TpyExpr], list[PendingNumCell]]] = field(default_factory=list)
+    # Innermost last: the calls under analysis whose arguments are scored
+    # or inferred from before a parameter decides them (`OpenCallArgs`).
+    open_call_args: list[OpenCallArgs] = field(default_factory=list)
 
     # --- Test annotation facts (persist across functions) ---
     declared_var_types: dict[tuple[int, str], TpyType] = field(default_factory=dict)
@@ -3548,6 +3616,24 @@ class SemanticContext:
             yield
         finally:
             self.current_slot_hint = saved
+
+    def call_scope_of(self, cells: 'list[PendingNumCell]'
+                      ) -> OpenCallArgs | None:
+        """The innermost open call whose arguments handed over one of
+        `cells` (`OpenCallArgs.cells`): the call they are an argument of,
+        whatever call is innermost now."""
+        ids = {id(c) for c in cells}
+        for scope in reversed(self.open_call_args):
+            if any(id(c) in ids for c in scope.cells):
+                return scope
+        return None
+
+    def call_scope_of_node(self, node: TpyExpr) -> OpenCallArgs | None:
+        """The innermost open call `node` is an argument node of."""
+        for scope in reversed(self.open_call_args):
+            if any(n is node for n in scope.nodes):
+                return scope
+        return None
 
     @contextmanager
     def trial_scope(self) -> Iterator[None]:

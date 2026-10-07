@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType, TypeParamRef,
     ResolvedBinop, ResolvedUnaryop, FunctionInfo, TypeParamKind,
     INT32, FLOAT, PendingContainerType, OwnType, unwrap_ref_type,
-    unwrap_readonly, resolve_int_literals,
+    unwrap_readonly, resolve_int_literals, unwrap_qualifiers,
 )
 from .overloads import type_matches_numeric, type_matches_strict
 from ..coercions import (resolve_coercion, context_free_wrap_template,
@@ -204,11 +204,16 @@ class OperatorResolver:
         self, overloads: list[FunctionInfo], arg_type: TpyType,
         type_subst: dict[str, TpyType],
         protocol_checker: ProtocolChecker | None = None,
+        operand: TpyType | None = None,
     ) -> tuple[FunctionInfo, dict[str, TpyType]] | None:
         """Find an overload matching arg_type, substituting the receiver's
         type params first; a type param of the method's own is bound from
-        the operand as a call binds it from its argument. Returns the method
-        with the substitution to apply to it."""
+        the operand as a call binds it from its argument. `operand` is the
+        operand's type as analyzed: an undecided container is matched as
+        it is, as a call's argument is. Returns the method with the
+        substitution to apply to it."""
+        undecided = (operand is not None and isinstance(
+            unwrap_qualifiers(operand), PendingContainerType))
         for method in overloads:
             if len(method.params) == 1:
                 param = method.params[0]
@@ -225,7 +230,9 @@ class OperatorResolver:
                     if bound is not None:
                         return method, {**type_subst, **bound}
                     continue
-                if (type_matches_strict(arg_type, param_type, protocol_checker)
+                if (type_matches_strict(operand if undecided else arg_type,
+                                        param_type, protocol_checker,
+                                        type_ops=self.type_ops)
                         or type_matches_numeric(arg_type, param_type)):
                     return method, type_subst
         return None
@@ -280,6 +287,16 @@ class OperatorResolver:
             promotion=promotion,
             widens_operand=widens_operand,
         )
+
+    def forward_dunders(self, left_type: TpyType, op: str) -> list[FunctionInfo]:
+        """The overloads `resolve_binop` tries first for `left op right`:
+        the left operand's own dunder (`left.__add__`)."""
+        method_name = builtin_modules.BINOP_TO_METHOD.get(op)
+        if not method_name:
+            return []
+        record = self.ctx.registry.get_record_for_type(
+            self.get_effective_type_for_binop(left_type))
+        return record.get_method_overloads(method_name) if record else []
 
     def resolve_binop(
         self, left_type: TpyType, op: str, right_type: TpyType,
@@ -336,8 +353,9 @@ class OperatorResolver:
 
         # 1. Try direct: left.__add__(right)
         if left_record:
-            overloads = left_record.get_method_overloads(method_name)
-            if found := self._find_matching_overload(overloads, right_arg, left_subst, pc):
+            overloads = self.forward_dunders(left_effective, op)
+            if found := self._find_matching_overload(overloads, right_arg, left_subst, pc,
+                                                     right_type):
                 return self._make_resolved(*found, left_effective, loc_node)
 
         # 2. Try promoting left to right's type via __int__
@@ -359,7 +377,8 @@ class OperatorResolver:
         # 3. Try reverse: right.__radd__(left)
         if right_record and rmethod_name:
             overloads = right_record.get_method_overloads(rmethod_name)
-            if found := self._find_matching_overload(overloads, left_arg, right_subst, pc):
+            if found := self._find_matching_overload(overloads, left_arg, right_subst, pc,
+                                                     left_type):
                 return self._make_resolved(
                     *found, right_effective, loc_node, is_reverse=True,
                 )

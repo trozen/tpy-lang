@@ -23,7 +23,7 @@ namespace tpyapp::main {
 //     with rw.read() as r:
 //         print(len(r.get()))         # 3 -- read guard sees the write
 void main() {
-    ::tpystd::tpy::sync::Mutex<std::vector<int32_t>> m = ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_({1, 2, 3});
+    ::tpystd::tpy::sync::Mutex<std::vector<int32_t>> m = ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_(std::vector<int32_t>{1, 2, 3});
     auto __ctx_1 = m.lock();
     auto& ml = __ctx_1.__enter__();
     try {
@@ -81,7 +81,7 @@ void main() {
     }
     __with_exit_4:
     __ctx_4.__exit__({}, nullptr, {});
-    ::tpystd::tpy::sync::RwLock<std::vector<int32_t>> rw = ::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_({10, 20});
+    ::tpystd::tpy::sync::RwLock<std::vector<int32_t>> rw = ::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_(std::vector<int32_t>{10, 20});
     auto __ctx_5 = rw.write();
     auto& w = __ctx_5.__enter__();
     try {

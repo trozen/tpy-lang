@@ -25,7 +25,7 @@ int32_t total(std::span<const int32_t> xs) {
 //     p = make_pool([10, 20, 30])
 //     print(total(p))
 void main() {
-    ::tpyapp::pool::Pool<int32_t> p = ::tpyapp::pool::make_pool<int32_t>({10, 20, 30});
+    ::tpyapp::pool::Pool<int32_t> p = ::tpyapp::pool::make_pool<int32_t>(std::vector<int32_t>{10, 20, 30});
     std::cout << ::tpyapp::main::total(p.__span__()) << "\n" << ::tpy::check_signals;
 }
 

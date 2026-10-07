@@ -47,7 +47,7 @@ std::vector<std::vector<double>> rows(const std::vector<std::vector<double>>& sr
 //     print(len(local), len(local[0]), local[0][1])
 void main() {
     std::vector<std::vector<double>> base = std::vector<std::vector<double>>{};
-    base.push_back({1.0, 2.0});
+    base.push_back(std::vector<double>{1.0, 2.0});
     std::vector<std::vector<double>> out = ::tpyapp::main::rows(base);
     ::tpy::__getitem__(out, 0).push_back(9.0);
     std::cout << ::tpy::__len__(out) << " " << ::tpy::__len__(::tpy::__getitem__(out, 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(out, 0), 2)) << "\n" << ::tpy::check_signals;

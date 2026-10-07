@@ -197,7 +197,7 @@ void main() {
         }
     }
     {
-        ::tpyapp::gensrc::Box<int32_t> __tmp_2 = ::tpyapp::gensrc::Box<int32_t>({5, 6});
+        ::tpyapp::gensrc::Box<int32_t> __tmp_2 = ::tpyapp::gensrc::Box<int32_t>(std::vector<int32_t>{5, 6});
         auto __src_10 = ::tpyapp::main::generic_owner_imported(__tmp_2);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
@@ -208,7 +208,7 @@ void main() {
         }
     }
     {
-        LocalBox<int32_t> __tmp_3 = LocalBox<int32_t>({8, 9});
+        LocalBox<int32_t> __tmp_3 = LocalBox<int32_t>(std::vector<int32_t>{8, 9});
         auto __src_12 = ::tpyapp::main::generic_owner_local(__tmp_3);
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
         for (;;) {

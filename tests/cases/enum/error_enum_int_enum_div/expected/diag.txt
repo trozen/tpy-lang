@@ -1,1 +1,1 @@
-main.py:8: error: Invalid operand types for '/': P and IntLiteral(3)
+main.py:8: error: Invalid operand types for '/': P and int

@@ -14,12 +14,12 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, PendingNumType, RecordInfo, disambiguated_pair,
     NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_const, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType, unify_literal_types,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, AnyType, OptionalType, UnionType, VoidType,
-    ReadonlyType, unwrap_readonly, unwrap_qualifiers, is_any_str_type, PendingStrType, PendingViewType,
+    ReadonlyType, unwrap_readonly, unwrap_qualifiers, PendingContainerType, is_any_str_type, PendingStrType, PendingViewType,
     ValueForm,
     is_any_bytes_type, PendingBytesType,
     make_union,
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
-    PendingDictType, PendingSetType, DictLiteralInfo,
+    PendingDictType, PendingSetType, DictLiteralInfo, SetLiteralInfo,
     resolve_int_literals, CallableType, make_fn_type, is_fn_type,
     INT32, FLOAT, STR, FSTR, STRVIEW, CHAR, BOOL, BIGINT, NONE, BASIC_SLICE, SLICE, BYTES, BYTESVIEW, UINT8,
     is_protocol_type, container_to_str_template, contains_type_param,
@@ -109,7 +109,7 @@ from .iter_loans import (_record_iter_receiver_mutation, iterated_storage,
 
 if TYPE_CHECKING:
     from ..parse.nodes import SourceLocation
-    from .context import SemanticContext
+    from .context import OpenCallArgs, SemanticContext
     from .type_ops import TypeOperations
     from .operators import OperatorResolver
     from .protocols import ProtocolChecker
@@ -633,6 +633,7 @@ class ExpressionAnalyzer:
         rewrite of the node it named loses the pass and settles the local.
         `slot` is the declared slot the node's value is then coerced to
         (`analyze_at_slot`), None for any other analysis."""
+        self._written_empty_gate(expr, typ)
         lc = self.pend.container_cells(typ)
         if lc is not None:
             return self._cell_container_gate(expr, typ, lc, slot)
@@ -652,6 +653,77 @@ class ExpressionAnalyzer:
         forced = wrap(self.pend.force(expr, typ))
         self.ctx.set_expr_type(expr, forced)
         return forced
+
+    def _written_empty_gate(self, expr: TpyExpr, typ: TpyType) -> None:
+        """An empty container written as an argument of a call whose
+        candidates are scored (`[]`, `list()`, `{}`, `set()`) holds nothing
+        to be scored by: the record the scoring gave it awaits the winner's
+        slot (`OpenCallArgs.awaiting`), as a written dict or set literal's
+        does (`_await_winner`). When the winner's slot analyzes the
+        node again and gives it a record of its own (or a typed container),
+        that supersedes the scoring's, which is dropped unresolved; a slot
+        that keeps the node's record (a view) decides that one."""
+        if self.ctx.trial_depth or not self.ctx.open_call_args:
+            return
+        bare = unwrap_qualifiers(typ)
+        info = (self.pend.record_of(bare)
+                if isinstance(bare, PendingContainerType) else None)
+        written_empty = (info is not None and info.expr is expr
+                         and info.variable_name is None
+                         and not info.has_explicit_annotation
+                         and all(isinstance(p, UnknownElementType)
+                                 for p in bare.parts()))
+        if not written_empty and not any(s.awaiting
+                                         for s in self.ctx.open_call_args):
+            return
+        scope = self.ctx.call_scope_of_node(expr)
+        if scope is None:
+            return
+        if not scope.hands_over(expr):
+            for awaited in [r for r in scope.awaiting if r.expr is expr]:
+                if awaited is info:
+                    continue
+                scope.awaiting.remove(awaited)
+                if awaited.literal_id in self.ctx.func.pending_resolutions:
+                    self.ctx.func.pending_resolutions.remove(
+                        awaited.literal_id)
+            return
+        if written_empty and not any(r is info for r in scope.awaiting):
+            scope.awaiting.append(info)
+
+    def _scored_arg_scope(self, expr: TpyExpr,
+                          *hints: SlotHint | None) -> 'OpenCallArgs | None':
+        """The call that scores dict or set literal `expr` as an argument
+        against several candidates, each declaring the parameter it lands
+        at plainly (`OpenCallArgs.open_literals`), with no declared
+        parameter to type it at yet (`hints`): the literal stays open
+        there, its numbers the literals they are written as, as a list
+        literal's always are."""
+        if (self.ctx.trial_depth
+                or any(h is not None and h.is_declared for h in hints)
+                or not is_body_like_scope(self.ctx.func.current_function)):
+            return None
+        scope = self.ctx.call_scope_of_node(expr)
+        if (scope is None or not scope.hands_over(expr)
+                or not any(n is expr for n in scope.open_literals)):
+            return None
+        return scope
+
+    def _new_literal_id(self) -> int:
+        literal_id = self.ctx.literal_counter
+        self.ctx.literal_counter += 1
+        return literal_id
+
+    def _await_winner(self, scope: 'OpenCallArgs',
+                      info: 'ContainerLiteralInfo') -> TpyType:
+        """The type of a written dict or set literal the call of `scope`
+        scores open: its record awaits the winner's slot
+        (`OpenCallArgs.awaiting`), which analyzes the literal again at its
+        parameter."""
+        self.ctx.container_literals[info.literal_id] = info
+        self.ctx.func.pending_resolutions.append(info.literal_id)
+        scope.awaiting.append(info)
+        return info.pending_type()
 
     def _pending_composite_gate(self, expr: TpyExpr,
                                 typ: TpyType) -> TpyType:
@@ -682,13 +754,13 @@ class ExpressionAnalyzer:
         out as the cells have it."""
         if (not lc.settled and self.ctx.pending_list_ok_node is not expr
                 and not any(n is expr for n in self.ctx.truth_ok_node)):
-            scope = (self.ctx.adaptive_list_args[-1]
-                     if self.ctx.adaptive_list_args else None)
-            if scope is not None and any(n is expr for n in scope[0]):
-                # An argument of a generic call: its element stays open
-                # while the call's type parameters are inferred.
+            scope = self.ctx.call_scope_of_node(expr)
+            if scope is not None and scope.hands_over(expr):
+                # An argument of a call whose candidates are scored, or
+                # whose type parameters are inferred: its leaves stay open
+                # until a parameter decides them.
                 if not self.ctx.trial_depth:
-                    scope[1].extend(lc.cells)
+                    scope.hand_over(expr, lc.cells)
                 return self.pend.adaptive_view(typ, lc)
             if self._awaits_container(slot, lc.tree):
                 if not self.ctx.trial_depth:
@@ -1845,6 +1917,38 @@ class ExpressionAnalyzer:
         an and/or's value goes to; each operand is analysed against it, as
         a value that slot receives when the and/or is coerced to it (under
         `coercion_ctx`)."""
+        with ExitStack() as operand_scope:
+            return self._analyze_binop_in(expr, declared_slot, coercion_ctx,
+                                          operand_scope)
+
+    def _dunder_operand_scope(
+            self, expr: TpyBinOp, left_type: TpyType, stack: ExitStack,
+    ) -> 'tuple[OpenCallArgs, list[FunctionInfo]] | None':
+        """A right operand passed to the left operand's own operator dunder
+        is that method's argument: when the left is a user record whose
+        dunder the operator resolver tries first (`forward_dunders`, which
+        are returned with the scope), the operand is scored against its
+        overloads open and the winner decides it
+        (`CallAnalyzer.open_call_args`). A comparison, a membership or
+        identity test and `and` / `or` are answered before that resolver
+        runs, so their operands are not handed over
+        (BUGS.md#operator-dunder-container-operand)."""
+        if (expr.op in _COMPARE_OPS
+                or expr.op in ("&&", "||", "in", "not in", "is", "is not")):
+            return None
+        left = unwrap_qualifiers(left_type)
+        if not (isinstance(left, NominalType) and left.is_user_record):
+            return None
+        overloads = self.operators.forward_dunders(left, expr.op)
+        if not overloads:
+            return None
+        return stack.enter_context(self.calls.open_call_args(
+            expr, [expr.right], overloads[0].name, scored=True)), overloads
+
+    def _analyze_binop_in(self, expr: TpyBinOp,
+                          declared_slot: SlotHint | None,
+                          coercion_ctx: CoercionContext | None,
+                          operand_scope: ExitStack) -> TpyType:
         def operand(e: TpyExpr) -> TpyType:
             if declared_slot is not None and coercion_ctx is not None:
                 return self._analyze_select_operand(e, declared_slot,
@@ -1868,6 +1972,8 @@ class ExpressionAnalyzer:
                     left_type)
             return self.analyze_expr(e)
         left_type = operand(expr.left)
+        dunder_scope = self._dunder_operand_scope(expr, left_type,
+                                                  operand_scope)
         if expr.op in ("&&", "||"):
             record_truth_calls(self.ctx, truthy_operands(expr.left))
             type_true, type_false = self.narrowing.condition_type_facts(expr.left)
@@ -2212,7 +2318,8 @@ class ExpressionAnalyzer:
                                                left_type)
                     matched = resolve_overload(
                         subst_overloads,
-                        [leaf if leaf is not None else check_left])
+                        [leaf if leaf is not None else check_left],
+                        type_ops=self.type_ops)
                     if matched is not None:
                         # Map back to the original (un-substituted) method for codegen
                         idx = subst_overloads.index(matched)
@@ -2401,6 +2508,19 @@ class ExpressionAnalyzer:
         # Arithmetic/bitwise operators - use registry
         if result := self.operators.resolve_binop(left_effective, expr.op, right_effective, loc_node=expr):
             expr.resolved_binop = result
+            if (dunder_scope is not None
+                    and any(result.method.root is d.root
+                            for d in dunder_scope[1])
+                    and result.method.params
+                    and isinstance(unwrap_qualifiers(right_type),
+                                   PendingContainerType)):
+                # The winning dunder receives the operand as a call to it
+                # would: an undecided container is decided at its parameter.
+                operand_args = [expr.right]
+                self.calls.receive_winner_args(
+                    dunder_scope[0], operand_args, [right_type],
+                    result.method.params[:1], result.method.root)
+                expr.right = operand_args[0]
             # Check if divisor is provably non-zero for div/mod elision
             if expr.op in ("//", "%"):
                 self._check_divisor_non_zero(expr)
@@ -2461,7 +2581,9 @@ class ExpressionAnalyzer:
                             return ret_type
 
         raise SemanticError(
-            f"Invalid operand types for '{op_spelling(expr.op)}': {left_type} and {right_type}",
+            f"Invalid operand types for '{op_spelling(expr.op)}': "
+            f"{self.compat.call_type_text(left_type)} and "
+            f"{self.compat.call_type_text(right_type)}",
             expr.loc,
         )
 
@@ -2594,7 +2716,8 @@ class ExpressionAnalyzer:
         if result is None:
             raise self.ctx.error(
                 f"Invalid operand types for '{op_spelling(expr.op)}': "
-                f"{left} and {right}", expr)
+                f"{self.compat.call_type_text(left)} and "
+                f"{self.compat.call_type_text(right)}", expr)
         self.pend.check_late_result(expr, f"'{op_spelling(expr.op)}'",
                                     result.method.return_type, typed)
         expr.resolved_binop = result
@@ -4470,6 +4593,12 @@ class ExpressionAnalyzer:
                 for v, vt in zip(expr.values, value_types):
                     self._warn_storage_element_copy(v, vt)
 
+        scope = self._scored_arg_scope(expr, key_hint, value_hint)
+        if scope is not None:
+            return self._await_winner(scope, DictLiteralInfo(
+                literal_id=self._new_literal_id(), expr=expr,
+                key_type=key_type, value_type=value_type))
+
         # Resolve any literal types (bare or nested in tuples) using the
         # annotation as a structural hint.
         key_type = self._resolve_literals_with_hint(key_type, key_hint)
@@ -4556,6 +4685,12 @@ class ExpressionAnalyzer:
         if expr.loc is not None and not isinstance(expected_elem, AnyType):
             for elem, et in zip(expr.elements, elem_types):
                 self._warn_storage_element_copy(elem, et)
+
+        scope = self._scored_arg_scope(expr, elem_hint)
+        if scope is not None:
+            return self._await_winner(scope, SetLiteralInfo(
+                literal_id=self._new_literal_id(), expr=expr,
+                element_type=elem_type))
 
         elem_type = self._resolve_literals_with_hint(elem_type, elem_hint)
         # Container elements must be owned -- views can't be stored in a set.
@@ -5633,7 +5768,8 @@ class ExpressionAnalyzer:
             else:
                 arg = self.ctx.default_int_for_literal(arg)
         try:
-            matched = resolve_overload(subst_keyed, [arg])
+            matched = resolve_overload(subst_keyed, [arg],
+                                       type_ops=self.type_ops)
         except OverloadAmbiguityError:
             return None
         return next((keyed[i] for i, m in enumerate(subst_keyed) if m is matched),

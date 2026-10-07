@@ -46,7 +46,7 @@ void main() {
     MaybePoint mp2 = MaybePoint("none", std::nullopt);
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::optional<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::optional<::tpy::ordered_map<std::string, int32_t>>>>({{"label", mp2.label}, {"pos", (((mp2.pos.has_value())) ? (std::optional<::tpy::ordered_map<std::string, int32_t>>(::tpy::ordered_map<std::string, int32_t>({{"x", (*mp2.pos).x}, {"y", (*mp2.pos).y}}))) : (std::optional<::tpy::ordered_map<std::string, int32_t>>(std::nullopt)))}}))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::TuplePrinter(std::tuple<std::string, std::optional<std::tuple<int32_t, int32_t>>>{mp2.label, (((mp2.pos.has_value())) ? (std::optional<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{(*mp2.pos).x, (*mp2.pos).y})) : (std::optional<std::tuple<int32_t, int32_t>>(std::nullopt)))}) << "\n" << ::tpy::check_signals;
-    PointList pl = PointList({Point(1, 2), std::nullopt, Point(3, 4)});
+    PointList pl = PointList(std::vector<std::optional<Point>>{Point(1, 2), std::nullopt, Point(3, 4)});
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::vector<std::optional<::tpy::ordered_map<std::string, int32_t>>>>({{"items", ({
         std::vector<std::optional<::tpy::ordered_map<std::string, int32_t>>> __result;
         auto& __obj_0 = pl.items;

@@ -19,11 +19,11 @@ namespace tpyapp::main {
 //     with rw.read() as r:
 //         print(r.get())              # [20, 30, 40]
 void main() {
-    ::tpystd::tpy::sync::Mutex<std::vector<int32_t>> m = ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_({1, 2});
+    ::tpystd::tpy::sync::Mutex<std::vector<int32_t>> m = ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_(std::vector<int32_t>{1, 2});
     auto __ctx_1 = m.lock();
     auto& g = __ctx_1.__enter__();
     try {
-        g.set({7, 8, 9});
+        g.set(std::vector<int32_t>{7, 8, 9});
         g.__deref__().push_back(10);
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -49,11 +49,11 @@ void main() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    ::tpystd::tpy::sync::RwLock<std::vector<int32_t>> rw = ::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_({1, 2});
+    ::tpystd::tpy::sync::RwLock<std::vector<int32_t>> rw = ::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_(std::vector<int32_t>{1, 2});
     auto __ctx_3 = rw.write();
     auto& w = __ctx_3.__enter__();
     try {
-        w.set({20, 30});
+        w.set(std::vector<int32_t>{20, 30});
         w.__deref__().push_back(40);
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {

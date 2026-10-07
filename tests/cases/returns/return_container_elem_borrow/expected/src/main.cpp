@@ -36,7 +36,7 @@ std::vector<int32_t>& pick_nested(std::vector<std::vector<std::vector<int32_t>>>
 //     # Two element hops and still the root's storage -- a copy would print 1.
 //     print(cube[0][0][0])
 void main() {
-    Flat f = Flat({{1, 2}, {3, 4}});
+    Flat f = Flat(std::vector<std::vector<int32_t>>{{1, 2}, {3, 4}});
     std::vector<int32_t>& row = f.get_data(1);
     ::tpy::__setitem__(row, 0, 99);
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(f.data, 1), 0) << "\n" << ::tpy::check_signals;

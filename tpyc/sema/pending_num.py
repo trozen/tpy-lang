@@ -33,7 +33,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, Iterator, Sequence
+from typing import TYPE_CHECKING, Callable, Iterator, Mapping, Sequence
 
 from ..coercions import Coercion, CoercionContext
 from ..parse import (
@@ -1633,6 +1633,54 @@ class PendingNums:
         container, shown = self.compat.deduction.elem_container(
             declared, TypeParamRef("__empty_list_elem"))
         return container, shown, None
+
+    def overload_leaves(self, arg: TpyType, param: TpyType, view: bool
+                        ) -> list[tuple[int | None, TpyType,
+                                        TpyType]] | None:
+        """How an undecided container argument `arg` meets the parameter
+        `param` of one overload candidate, without deciding it: None when a
+        call to that candidate alone would refuse it (the compatibility
+        query), else each numeric type position of its tree as (the id of
+        the cell deciding it, None for a literal written in the call; the
+        type it holds so far; the type the parameter's container wants
+        there). Whether several cells can hold what a candidate wants of
+        them together is `wants_fit`.
+        `view`: `param` is a view a generic candidate's call resolved, which
+        decides the container as a typed one would. A literal leaf holds its
+        family's default (`literal_type`); an empty part holds nothing yet
+        and is not listed."""
+        if not self.compat.is_type_compatible(arg, param,
+                                              CoercionContext.ARG):
+            return None
+        into = self.cell_container(arg)
+        order = self.compat.member_order(arg)
+        if isinstance(into, ContainerCells):
+            container, _shown, refusal = self.meets_list(
+                into, param, "passed", adaptive=view, order=order)
+            if refusal is not None:
+                return None
+            if container is None:
+                return []
+            return [(c.cid, self.known_so_far(c),
+                     self.leaf_want(container, p))
+                    for c, p in zip(into.cells, into.paths)]
+        tree = bare_slot(arg)
+        if not isinstance(tree, PendingContainerType):
+            return []
+        containers = self.slot_containers(param, order, tree)
+        if not containers:
+            return []
+        out: list[tuple[int | None, TpyType, TpyType]] = []
+        for _path, part, want in zip_parts(tree, containers[0]):
+            if (_node_steps(part) or want is None
+                    or value_family(want) is None):
+                continue
+            if isinstance(part, (IntLiteralType, FloatLiteralType)):
+                out.append((None, self.literal_type(part), want))
+            elif value_family(part) is not None:
+                out.append((None, part, want))
+        return out
+
     def decide_list(self, t: TpyType, into: ContainerCells | ContainerRecord,
                     container: TpyType, node: TpyExpr | TpyStmt | None,
                     verb: str, shown: TpyType | None = None,
@@ -2070,6 +2118,70 @@ class PendingNums:
                     stack.extend(et.cells)
         return list(seen.values())
 
+    def _joined(self, cells: list[PendingNumCell],
+                wants: Mapping[int, TpyType] | None = None,
+                ) -> tuple[dict[int, TpyType | None],
+                           tuple[PendingNumCell, list[TpyType | None]] | None]:
+        """The types `cells` (a `_reach` set) come to from their evidence:
+        a fixed point, since cells joined through one another's stores
+        (`i = j + 1`, `j = i`) go up together until nothing changes.
+        `wants` gives some of them one more value each. Returns the types
+        and, when a cell's values have no common type, that cell with its
+        values (the types are then as far as the walk got)."""
+        cur: dict[int, TpyType | None] = {c.cid: None for c in cells}
+        changed = True
+        while changed:
+            changed = False
+            for cell in cells:
+                values = self._values(cell, cur, set())
+                want = wants.get(cell.cid) if wants is not None else None
+                t = lub_int([self._base(cell)] + values
+                            + ([want] if want is not None else []))
+                if t is NO_COMMON:
+                    return cur, (cell, values)
+                if t != cur[cell.cid]:
+                    cur[cell.cid] = t
+                    changed = True
+        return cur, None
+
+    def wants_fit(self, wants: Mapping[int, TpyType]
+                  ) -> dict[int, int] | None:
+        """Whether the cells `wants` names (by id) can be decided at the
+        types it gives them TOGETHER, deciding nothing: settled as the
+        settle walk would settle them with each want as one more value,
+        every one comes out at its want and every later store checked
+        against a cell (`must_fit`) still fits it. Cells a store ties --
+        both ways (a local rebound to another, a row stored into a nested
+        list) or one way (an element of one appended to the other) --
+        cannot be wanted at types one of them would be pushed past. None
+        when they cannot; else each wanted cell's group: the smallest id
+        among the wanted cells tied to it both ways, which hold one type
+        and widen as one."""
+        cells = self._reach(set(wants))
+        cur, clash = self._joined(cells, wants)
+        if clash is not None:
+            # Values that clash whatever is wanted are the deciding call's
+            # refusal, in its words, not a reason against this candidate.
+            if self._joined(cells)[1] is None:
+                return None
+        else:
+            for cell in cells:
+                t = cur[cell.cid]
+                held = t if t is not None else self.default_type(cell.is_float)
+                if wants.get(cell.cid, held) != held:
+                    return None
+                for ft, _node in cell.must_fit:
+                    v = self._eval(ft, cur, set())
+                    if (isinstance(v, TpyType)
+                            and not isinstance(v, (IntLiteralType,
+                                                   FloatLiteralType))
+                            and join_int(held, v) != held):
+                        return None
+        reach = {cid: {c.cid for c in self._reach({cid})} for cid in wants}
+        return {cid: min(o for o in wants
+                         if o == cid or (o in reach[cid] and cid in reach[o]))
+                for cid in wants}
+
     def settle(self, cids: set[int] | frozenset[int],
                use: TpyExpr | TpyStmt | None = None, what: str | None = None,
                via: str | None = None) -> None:
@@ -2079,22 +2191,11 @@ class PendingNums:
         cells = self._reach(cids)
         if not cells:
             return
-        # A fixed point: cells joined through one another's stores
-        # (`i = j + 1`, `j = i`) go up together until nothing changes.
-        cur: dict[int, TpyType | None] = {c.cid: None for c in cells}
-        changed = True
-        while changed:
-            changed = False
-            for cell in cells:
-                values = self._values(cell, cur, set())
-                t = lub_int([self._base(cell)] + values)
-                if t is NO_COMMON:
-                    # Arms that bind together are refused in their own words.
-                    self.check_arm_group(cell, cur)
-                    self._raise_no_common(cell, values)
-                if t != cur[cell.cid]:
-                    cur[cell.cid] = t
-                    changed = True
+        cur, clash = self._joined(cells)
+        if clash is not None:
+            # Arms that bind together are refused in their own words.
+            self.check_arm_group(clash[0], cur)
+            self._raise_no_common(*clash)
         for cell in cells:
             self.check_arm_group(cell, cur)
         self.ctx.pending_num_epoch += 1

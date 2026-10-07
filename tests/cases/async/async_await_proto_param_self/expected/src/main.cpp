@@ -14,7 +14,7 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        h.emplace(Holder({1, 2}));
+        h.emplace(Holder(std::vector<int32_t>{1, 2}));
         data.emplace(std::vector<int32_t>{3, 4});
         __sub_0.emplace((*h), (*data));
         __state = S_RESUME_0;

@@ -80,7 +80,7 @@ namespace tpyapp::main {
 //     return n
 ::tpy::BigInt or_rebind() {
     std::optional<::tpy::Union<A, B>> __slot_2;
-    ::tpy::Union<A, B> __slot_1 = A({1});
+    ::tpy::Union<A, B> __slot_1 = A(std::vector<::tpy::BigInt>{1});
     ::tpy::Union<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
     bool keep = true;
     int32_t n = 0;
@@ -103,7 +103,7 @@ namespace tpyapp::main {
 //     return n
 ::tpy::BigInt not_rebind() {
     std::optional<::tpy::Union<A, B>> __slot_2;
-    ::tpy::Union<A, B> __slot_1 = A({1, 2});
+    ::tpy::Union<A, B> __slot_1 = A(std::vector<::tpy::BigInt>{1, 2});
     ::tpy::Union<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
     int32_t n = 0;
     while ((!(std::holds_alternative<B*>(t)))) {
@@ -123,10 +123,10 @@ namespace tpyapp::main {
 //     print(or_rebind())
 //     print(not_rebind())
 void main() {
-    std::cout << ::tpyapp::main::drain({1, 2, 3}) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::invariant({7, 8}) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::compound({4, 5}, true) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::compound({4, 5}, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::drain(std::vector<::tpy::BigInt>{1, 2, 3}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::invariant(std::vector<::tpy::BigInt>{7, 8}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::compound(std::vector<::tpy::BigInt>{4, 5}, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::compound(std::vector<::tpy::BigInt>{4, 5}, false) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::or_rebind() << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::not_rebind() << "\n" << ::tpy::check_signals;
 }
