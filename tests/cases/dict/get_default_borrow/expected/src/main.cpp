@@ -766,6 +766,7 @@ void ro_copy(const ::tpy::ordered_map<std::string, P>& d, const P& a) {
 //     for n in owned_empty_gen(wd):
 //         print("own_empty_gen", n)
 //     ro_copy(d, fb)
+//     default_in_place()
 void main() {
     ::tpyapp::main::hit_miss();
     ::tpy::ordered_map<std::string, P> d = ::tpy::ordered_map<std::string, P>({{"a", P(1)}});
@@ -852,6 +853,29 @@ void main() {
         }
     }
     ::tpyapp::main::ro_copy(d, fb);
+    ::tpyapp::main::default_in_place();
+}
+
+// def logged(log: list[str]) -> int32:
+//     log.append("f")
+//     return 0
+int32_t logged(std::vector<std::string>& log) {
+    log.push_back("f");
+    return 0;
+}
+
+// # a constructor default of `pop` / `get` is handed over where it is written:
+// # moved, never copied (N is @nocopy), and built after the operands before it
+// def default_in_place() -> None:
+//     log: list[str] = []
+//     d = {"a": N(1, log)}
+//     print("in_place", d.pop("zz", N(5, log)).n, d.get("zz", N(6, log)).n)  # tpyc: ok
+//     print("in_place", logged(log), d.get("zz", N(2, log)).n, log)  # tpyc: ok
+void default_in_place() {
+    std::vector<std::string> log = std::vector<std::string>{};
+    ::tpy::ordered_map<std::string, N> d = ::tpy::make_ordered_map<std::string, N>("a", N(1, log));
+    std::cout << "in_place" << " " << ::tpy::dict_pop_default(d, "zz", N(5, log)).n << " " << ::tpy::dict_get_default(d, "zz", N(6, log)).n << "\n" << ::tpy::check_signals;
+    std::cout << "in_place" << " " << ::tpyapp::main::logged(log) << " " << ::tpy::dict_get_default(d, "zz", N(2, log)).n << " " << ::tpy::ListPrinter(log) << "\n" << ::tpy::check_signals;
 }
 
 // # dict.get(key, default) over reference-type values hands back the stored

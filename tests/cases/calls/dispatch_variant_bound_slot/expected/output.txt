@@ -1,0 +1,2 @@
+first-reads: 3
+first-writes: 7 4 2

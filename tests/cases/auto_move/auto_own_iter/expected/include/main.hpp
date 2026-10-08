@@ -26,7 +26,7 @@ struct Stack {
     int32_t consume() const &;
 
     // def consume(self: auto_own[Self]) -> auto_own[int32]:
-    int32_t consume() const &&;
+    int32_t consume() &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Stack";
 };
 
@@ -66,7 +66,7 @@ inline int32_t Stack::consume() const & {
 //     for x in it:
 //         total += x
 //     return total
-inline int32_t Stack::consume() const && {
+inline int32_t Stack::consume() && {
     auto it = ::tpy::__iter__(this->items);
     int32_t total = 0;
     auto& __src_0 = it;

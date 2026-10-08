@@ -41,11 +41,11 @@ struct C {
 
     // @dispatch
     // def kind(self, x: bool) -> str:
-    std::string kind(bool x);
+    std::string kind(bool x) const;
 
     // @dispatch
     // def kind(self, x: str) -> str:
-    std::string kind(std::string_view x);
+    std::string kind(std::string_view x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
@@ -58,14 +58,14 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 // @dispatch
 // def kind(self, x: bool) -> str:
 //     return "m-bool"
-inline std::string C::kind(bool x) {
+inline std::string C::kind(bool x) const {
     return "m-bool";
 }
 
 // @dispatch
 // def kind(self, x: str) -> str:
 //     return "m-str"
-inline std::string C::kind(std::string_view x) {
+inline std::string C::kind(std::string_view x) const {
     return "m-str";
 }
 // # Generic overload: a str literal resolving here binds T by deduction, so the

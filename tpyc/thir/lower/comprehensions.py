@@ -21,7 +21,7 @@ from ...parse.nodes import (
     collect_name_refs,
 )
 from ...typesys import (
-    IntLiteralType,
+    IntLiteralType, body_function_info,
     NominalType,
     OptionalType,
     OwnType,
@@ -1536,11 +1536,10 @@ def _lower_genexpr_frame(expr: TpyGeneratorExpression, route: '_SourceRoute | No
     analyzer = lc.analyzer
     func = expr.frame_func
     it = expr.generators[0].iterable
-    fis = analyzer.ctx.registry.get_function(func.name)
     factory = free_callee_cpp(analyzer.ctx.module_attributes,
                               analyzer.ctx.module_name,
                               analyzer.ctx.cpp_module_name, func.name,
-                              fis[-1] if fis else None)
+                              body_function_info(analyzer.ctx.registry, func))
     if factory is None:
         raise ThirUnsupported("genexpr.frame_factory")
     if func.type_params:

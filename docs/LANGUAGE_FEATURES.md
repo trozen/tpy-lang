@@ -1533,12 +1533,11 @@ Current limitations:
   parameter (`BUGS.md#overload-stub-narrows-container-param`), a user
   class's `@dispatch` `__init__` group, constructed
   (`BUGS.md#dispatch-ctor-group-unlowered`) or raised as a user exception
-  (`BUGS.md#dispatch-exception-ctor-unlowered`); and a literal written in
-  the call, a fresh call result, `list()` or `set()` passed to a
-  `@dispatch` method variant's read-only container slot compiles to C++
-  that the C++ compiler refuses (the variant's signature takes a mutable
-  reference, `BUGS.md#dispatch-method-rvalue-container-arg`), and so
-  does a non-empty list literal as the default of `d.get` / `d.pop`
+  (`BUGS.md#dispatch-exception-ctor-unlowered`); a fresh call result,
+  `list()` or `set()` passed to a method's container slot the body
+  mutates (`BUGS.md#record-rvalue-at-mutated-method-slot-unhoisted`); and
+  a non-empty list literal as the default of `d.get` / `d.pop` compiles
+  to C++ the C++ compiler refuses
   (`BUGS.md#dict-get-list-literal-default-bare-brace`); bind the value
   to a local first.
 - A literal stored into a list whose element is already decided counts as

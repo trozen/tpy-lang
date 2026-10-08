@@ -53,3 +53,5 @@ bound_stored 3 4
 own_empty_gen 7
 own_empty_gen 5
 ro_copy 9 8
+in_place 5 6
+in_place 0 2 ['mk 1', 'mk 5', 'mk 6', 'f', 'mk 2']

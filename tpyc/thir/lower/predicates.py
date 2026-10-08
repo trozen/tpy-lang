@@ -51,7 +51,7 @@ from ...modules.type_resolution import get_iterable_element_type
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...sema.context import expr_lends_storage
 from ...typesys import (
-    RecordInfo,
+    RecordInfo, body_function_info, body_method_info,
     ConcreteFrameType,
     ConcreteGenType,
     return_const_projected,
@@ -8188,24 +8188,13 @@ def copy_ptr_optional_peel(e: TpyExpr, analyzer) -> 'TpyExpr | None':
 
 def _owning_fi(func: TpyFunction, analyzer,
                record_name: str | None) -> 'FunctionInfo | None':
-    """The registry FunctionInfo a callable's param verdicts live on -- on the
-    owning record for a method, in the function registry otherwise. `[-1]` is
-    codegen's own last-overload pick (`_get_method_mutated_params`)."""
-    if func.is_nested_def:
-        # A nested def is bound in the enclosing body's namespace only, so a
-        # name lookup here answers with a same-named module function or
-        # method -- another callable's verdicts, by param index.
-        return None
+    """The registry FunctionInfo a callable's param verdicts live on: the one
+    registered from `func`'s body -- on the owning record for a method, in
+    the function registry otherwise -- the one codegen's signature reads
+    (`_get_method_mutated_params`)."""
     if record_name is not None:
-        return record_method_fi(analyzer.registry.get_record(record_name), func.name)
-    overloads = analyzer.registry.get_function(func.name)
-    return overloads[-1] if overloads else None
-
-def record_method_fi(record: 'RecordInfo | None', name: str) -> 'FunctionInfo | None':
-    """The FunctionInfo a record method's param verdicts live on: the last
-    registered overload of `name`, codegen's own pick."""
-    overloads = record.get_method_overloads(name) if record is not None else None
-    return overloads[-1] if overloads else None
+        return body_method_info(analyzer.registry.get_record(record_name), func)
+    return body_function_info(analyzer.registry, func)
 
 def param_in_verdict(fi: 'FunctionInfo | None', func: TpyFunction, name: str, attr: str) -> bool:
     """Whether param `name` of `func` is in `fi`'s `attr` verdict set (a
@@ -8223,10 +8212,7 @@ def _param_const_verdict(name: str, func: TpyFunction, analyzer,
     FunctionInfo). A method's FunctionInfo
     lives on the owning record (`record_name`), a free function's in the
     function registry -- the same lookup codegen's
-    `_get_method_mutated_params` uses. A property pair shares one overload
-    list (getter + setter); [-1] is safe only because a getter has no
-    non-self params (this lookup is never consulted for it) and the setter's
-    non-value param is forced Own[...] (routing around const entirely)."""
+    `_get_method_mutated_params` uses (`_owning_fi`)."""
     return param_in_verdict(_owning_fi(func, analyzer, record_name), func, name, attr)
 
 def _const_verdict_func(name: str, lc) -> TpyFunction:
@@ -8419,11 +8405,10 @@ def _own_return_const_projected(lc) -> bool:
     builds the slots that signature spells."""
     if not lc.record_name or lc.func.is_nested_def:
         return False
-    ri = lc.analyzer.registry.get_record(lc.record_name)
-    ovs = ri.get_method_overloads(lc.func.name) if ri is not None else None
-    if not ovs:
+    fi = body_method_info(lc.analyzer.registry.get_record(lc.record_name), lc.func)
+    if fi is None:
         return bool(getattr(lc.func, "is_readonly", False))
-    return return_const_projected(ovs[-1])
+    return return_const_projected(fi)
 
 def _already_pointer_source(expr: TpyExpr, lc) -> bool:
     """`ctx.is_already_pointer_source` mirror: True when `expr` renders as a

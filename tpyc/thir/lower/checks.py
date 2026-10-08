@@ -10735,8 +10735,11 @@ def _method_call_arg_ok(
         else:
             return False
     mfi = e.resolved_function_info
+    bound = bound_method_overload(overloads, mfi)
+    if bound is None:
+        return note_detail("method.arg_unbound_overload")
     return _record_method_arg_ok(
-        a, ptype, index, overloads[0], locals_, analyzer,
+        a, ptype, index, bound, locals_, analyzer,
         temps_ok=temps_ok, narrowed=narrowed, param_names=param_names,
         frame_capturing=(mfi is not None
                          and (mfi.is_generator or mfi.is_async)),
@@ -10777,7 +10780,7 @@ def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, Tpy
     `escape_cpp_name(e.method)` -- `_plain_method_fi_ok` already rejected the
     LiteralType params that would mangle it, and the @native rename is rejected
     below -- so no overload-set check is needed here (unlike the record arm,
-    whose arg-temp decisions read `overloads[0]`).
+    whose arg-temp decisions read the bound variant, `bound_method_overload`).
 
     Args: the shared pass-through rows only (`_shared_pass_through_arg` -- the
     rows whose render is decided by the arg itself, so the fallback
@@ -13542,14 +13545,16 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
     (`::tpy::deref_check(p).method(args)`, the caller's marker carve-out ->
     `THIRMethodCall.deref_check`).
 
-    Method: a single-overload plain instance method, resolvable through the
-    MRO (an inherited method emits identically for the admitted arg shapes).
-    Multi-overload sets are rejected wholesale: @auto_readonly
-    clones, property pairs, and literal-specialized overloads all land there,
-    and the temp decisions come from `overloads[0]` while
-    rendering against the RESOLVED overload -- a pairing the slice does not
-    reproduce. This also keeps the str-literal pin unreachable (the pin
-    fires only at overload_count > 1). A native_name RENAME on an actually-native
+    Method: a plain instance method, resolvable through the MRO (an
+    inherited method emits identically for the admitted arg shapes). An
+    overload set is admitted when its call renders the plain
+    `recv.method(args)` (or the mangled member of a literal set): an
+    `@auto_readonly` / `auto_own` clone pair, a property pair, a set whose
+    variants differ by C++ parameter types. A set with a TEMPLATE variant
+    (its own type params, or a protocol / `Fn` parameter that synthesizes
+    them) rejects: that variant is emitted through the template-header path,
+    which the plain member call does not name. The arguments read the
+    variant sema bound (`bound_method_overload`). A native_name RENAME on an actually-native
     record IS admitted (the file-handle `fh.write` shape -- member = native_name,
     a plain member call); a native_function (free-function form) / cpp_template
     each takes a different method-call arm and stays rejected.
@@ -14825,42 +14830,58 @@ def _none_unit_arg(a: TpyExpr, ptype: 'TpyType | None') -> 'NoneType | None':
         pt = unwrap_readonly(pt.wrapped)
     return pt if isinstance(pt, NoneType) else None
 
-def _raw_record_fi_for_type(t: 'TpyType | None', method_name: str,
-                            analyzer) -> 'object | None':
-    """The record's RAW fi for `method_name` (TypeParamRef params intact --
-    not the substituted resolved stub), or None for a non-record type.
-    `_tparam_slot_temp_arg` keys its temp decision on the RAW param being a
-    bare T, exactly like the user-record loop. Resolved through the
-    MRO (`get_method_overloads_with_parents`) so an INHERITED generic
-    method sees the same fi the shape gate admitted -- an own-methods-only
-    lookup would skip the temp arm the gate promised."""
+def bound_method_overload(overloads: 'list[FunctionInfo]',
+                          resolved: 'FunctionInfo | None') -> 'FunctionInfo | None':
+    """The RAW registry entry (TypeParamRef params intact, the phase-2
+    verdicts on it) of the variant sema bound the call to, or None when the
+    call names none of `overloads`. The method argument gate and the
+    method-call render both read the argument slots off this one entry, so
+    an overload set whose variants differ in what they mutate is judged
+    and rendered by the same variant."""
+    if resolved is None:
+        return None
+    return next((f for f in overloads if f.root is resolved.root), None)
+
+
+def _raw_record_overloads(t: 'TpyType | None', method_name: str,
+                          analyzer) -> 'list[FunctionInfo]':
+    """The record's RAW registry entries for `method_name`, or [] for a
+    non-record type. Resolved through the MRO
+    (`get_method_overloads_with_parents`) so an INHERITED generic method
+    sees the same entries the shape gate admitted."""
     rt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
           if t is not None else None)
     if isinstance(rt, OwnType):
         rt = unwrap_readonly(rt.wrapped)
     if not isinstance(rt, NominalType):
-        return None
+        return []
     ri = analyzer.registry.receiver_record(rt)
     if ri is None:
-        return None
-    overloads = analyzer.registry.get_method_overloads_with_parents(
-        ri, method_name)
-    return overloads[0] if overloads else None
+        return []
+    return analyzer.registry.get_method_overloads_with_parents(ri, method_name)
 
 
 def _raw_record_method_fi(e: TpyMethodCall, locals_: dict[str, TpyType],
-                          analyzer) -> 'object | None':
-    """The RECEIVER record's raw fi for the called method."""
-    return _raw_record_fi_for_type(
-        _method_receiver_type(e.obj, locals_, analyzer), e.method, analyzer)
+                          analyzer) -> 'FunctionInfo | None':
+    """The raw registry entry of the variant the call binds
+    (`bound_method_overload`). `_tparam_slot_temp_arg` keys its temp
+    decision on the RAW param being a bare T."""
+    return bound_method_overload(
+        _raw_record_overloads(_method_receiver_type(e.obj, locals_, analyzer),
+                              e.method, analyzer),
+        e.resolved_function_info)
 
 
 def _raw_record_ctor_fi(rtype: 'TpyType | None',
-                        analyzer) -> 'object | None':
+                        analyzer) -> 'FunctionInfo | None':
     """The CONSTRUCTED record's raw `__init__` fi. The ctor arg loop is
     handed the SUBSTITUTED slots, so the genericity of the emitted parameter
-    (`explicit Boxed(const T& value)`) is only readable here."""
-    return _raw_record_fi_for_type(rtype, "__init__", analyzer)
+    (`explicit Boxed(const T& value)`) is only readable here. The first
+    entry: a call resolves to a synthetic constructor FunctionInfo, not to
+    an `__init__` entry, and an `__init__` overload set does not lower
+    (BUGS.md#dispatch-ctor-group-unlowered)."""
+    overloads = _raw_record_overloads(rtype, "__init__", analyzer)
+    return overloads[0] if overloads else None
 
 
 def _tparam_slot_temp_arg(a: TpyExpr, ptype: 'TpyType | None', idx: int,
@@ -14880,19 +14901,18 @@ def _tparam_slot_temp_arg(a: TpyExpr, ptype: 'TpyType | None', idx: int,
 
     `_generic_arg_slot` is the verdict, the same one the free-callee seam
     takes."""
-    if method_fi is None or idx >= len(method_fi.params):
+    if (method_fi is None or idx >= len(method_fi.params)
+            or is_bodyless_binding(method_fi)):
+        # A bodyless binding (@native / @cpp_template) spells its own C++
+        # signature by hand -- a key BY VIEW, a forwarding `DefArg&&` default
+        # -- so its bare-T slot is NOT the emitted `param_val_or_ref_t<T>`
+        # this temp is for: the argument renders in place, as written.
         return None
     g = _generic_arg_slot(a, method_fi.params[idx].type, ptype, locals_,
                           param_names, analyzer)
     if g is None:
         return None
     if g.slot.is_value_type():
-        # A @native / @cpp_template callee spells its own C++ signature by
-        # hand (the runtime's lookups take a key BY VIEW), so its bare-T slot
-        # is NOT the emitted `param_val_or_ref_t<T>` this leg is about.
-        if (method_fi.cpp_template is not None or method_fi.native_function
-                or method_fi.native_name):
-            return None
         return g.slot if g.needs_temp else None
     # A non-value resolution owes the temp only for the SOURCE shapes this
     # seam renders as a temporary: the arg loop here judges the source, where

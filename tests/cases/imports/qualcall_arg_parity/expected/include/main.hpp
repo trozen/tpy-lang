@@ -74,14 +74,14 @@ struct GBox {
     // @dispatch
     // def ov(self, x: str) -> int:
     //     return len(x)
-    ::tpy::BigInt ov(std::string_view x) {
+    ::tpy::BigInt ov(std::string_view x) const {
         return ::tpy::BigInt(::tpy::__len__(x));
     }
 
     // @dispatch
     // def ov(self, x: bool) -> int:
     //     return 7
-    ::tpy::BigInt ov(bool x) {
+    ::tpy::BigInt ov(bool x) const {
         return ::tpy::BigInt(7);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.GBox";

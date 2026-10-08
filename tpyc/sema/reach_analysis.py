@@ -189,7 +189,7 @@ def _iter_typed_children(node) -> list[TpyType]:
             continue
         for k, v in d.items():
             # Declaration evidence must not make callers include callee-body types.
-            if isinstance(cur, FunctionInfo) and k == "declaration":
+            if isinstance(cur, FunctionInfo) and k in ("declaration", "body"):
                 continue
             # `enum_member_of` records WHICH enum a `E.A` access resolved
             # through (a binding fact for codegen), not a type the module

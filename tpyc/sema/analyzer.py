@@ -14,6 +14,7 @@ from ..typesys import (
     NoneType, INT32, ReadonlyType, unwrap_readonly, peel_value_readonly, unwrap_optional_own, unwrap_send_sync, OwnType, OptionalType, RecordInfo, FieldInfo,
     RecursiveUnionInfo, RecursiveAliasInstanceType,
     FunctionInfo, ParamInfo, MethodSignature, is_any_str_type, BIGINT, FLOAT,
+    body_function_info, body_method_info,
     make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType,
     TypeAliasInfo,
     is_integer_type, is_void_like_type,
@@ -1019,13 +1020,7 @@ class SemanticAnalyzer:
             for method in record.methods:
                 if method.is_stub:
                     continue
-                method_fi = record_info.get_method(method.name)
-                if method_fi is None and method.is_property_getter:
-                    prop = record_info.properties.get(method.name)
-                    method_fi = prop.getter if prop is not None else None
-                elif method_fi is None and method.is_property_setter:
-                    prop = record_info.properties.get(method.property_name)
-                    method_fi = prop.setter if prop is not None else None
+                method_fi = body_method_info(record_info, method, sema=True)
                 if method_fi is not None and method_fi.return_borrows_from is None:
                     pending.add(method_fi)
         for func in module.functions:
@@ -1033,9 +1028,9 @@ class SemanticAnalyzer:
                 continue
             if func.is_overload_stub and func.is_stub:
                 continue
-            func_overloads = self.ctx.registry.get_function(func.name)
-            if func_overloads and func_overloads[-1].return_borrows_from is None:
-                pending.add(func_overloads[-1])
+            func_info = body_function_info(self.ctx.registry, func)
+            if func_info is not None and func_info.return_borrows_from is None:
+                pending.add(func_info)
 
     def run_phase2_fixpoint(self, module: TpyModule) -> None:
         """Sub-phase 5: call-graph mutation-fact propagation + readonly
@@ -1181,7 +1176,9 @@ class SemanticAnalyzer:
                         seen.add(id(fi))
                         all_fis.append(fi)
             for rec in reg_or_mod.records.values():
-                for method_overloads in rec.methods.values():
+                groups = [*rec.methods.values(),
+                          *(prop.accessors for prop in rec.properties.values())]
+                for method_overloads in groups:
                     for fi in method_overloads:
                         if id(fi) in seen:
                             continue
@@ -1194,7 +1191,11 @@ class SemanticAnalyzer:
             if not mod_info.is_builtin:
                 _collect_from(mod_info)
         propagate_mutation_facts(all_fis)
-        infer_method_const(all_fis)
+        # An accessor's receiver keeps its declared const-ness: an inferred
+        # enum getter returning a module list would const-project the list
+        # (BUGS.md#enum-property-getter-non-const).
+        infer_method_const([fi for fi in all_fis
+                            if not (fi.is_property_getter or fi.is_property_setter)])
         # Materialize per-param const ABI facts AFTER readonly is finalized
         # (infer_method_const sets is_readonly): the union deep-const verdict
         # keys off fi.is_readonly, so it must run last. Imported inside the
@@ -1217,17 +1218,15 @@ class SemanticAnalyzer:
             for method in record.methods:
                 if method.is_readonly:
                     continue  # already readonly, no need to sync
-                # Phase 1 facts for @overload methods land on overloads[0]'s FI
-                # (see comment at get_method() call below). Syncing stub nodes
-                # would re-read via get_method() and hit the same FI repeatedly --
-                # skip them and let the non-stub TpyFunction node do the sync.
-                if method.is_overload_stub:
+                # A bodyless @overload stub carries no facts; its implementation
+                # syncs from the group's first FunctionInfo, where they land.
+                if method.overload_form is OverloadForm.OVERLOAD:
                     continue
                 # @auto_readonly mutable clones are paired with a const clone --
                 # keep them mutable so the pair generates both overloads correctly.
                 if method.is_auto_readonly_mutable_clone:
                     continue
-                fi = record_info.get_method(method.name)
+                fi = body_method_info(record_info, method, sema=True)
                 if fi is None or not fi.is_readonly:
                     continue
                 # @readonly(False) is an explicit opt-out -- respect it.
@@ -1289,24 +1288,21 @@ class SemanticAnalyzer:
         whose virtual slot is non-const.
         """
         for func in module.functions:
-            if func.is_overload_stub or func.native_function:
+            if func.overload_form is OverloadForm.OVERLOAD or func.native_function:
                 continue
             if func.vararg_name is None:
                 continue
-            # For @overload groups, mutation facts land on the implementation's
-            # FI (last in overload list); see analyzer.py:1142-1143 where
-            # Phase 1 writes them. Plain defs have a single entry.
-            overloads = self.ctx.registry.get_function(func.name)
-            if not overloads:
+            func_info = body_function_info(self.ctx.registry, func)
+            if func_info is None:
                 continue
-            self._maybe_flip_vararg_readonly(func, overloads[-1], dyn_pin_nonconst=False)
+            self._maybe_flip_vararg_readonly(func, func_info, dyn_pin_nonconst=False)
 
         for record in module.all_records():
             rec_info = self.ctx.registry.get_record(record.name)
             if rec_info is None:
                 continue
             for method in record.methods:
-                if method.is_overload_stub or method.native_function:
+                if method.overload_form is OverloadForm.OVERLOAD or method.native_function:
                     continue
                 if method.vararg_name is None:
                     continue
@@ -1317,7 +1313,7 @@ class SemanticAnalyzer:
                 # via its own ReadonlyType wrapping at clone time.
                 if method.is_auto_readonly_mutable_clone:
                     continue
-                method_fi = rec_info.get_method(method.name)
+                method_fi = body_method_info(rec_info, method, sema=True)
                 if method_fi is None:
                     continue
                 pin_nonconst = self._dynamic_proto_pins_vararg_nonconst(
@@ -1828,8 +1824,7 @@ class SemanticAnalyzer:
         # body sema reaches this gate, any reachable FI should carry
         # its defining module's name. A None at this point indicates a
         # missing-origin-stamping bug, not a reason to write through.
-        func_overloads = self.ctx.registry.get_function(func.name)
-        func_info = func_overloads[-1] if func_overloads else None
+        func_info = body_function_info(self.ctx.registry, func)
         if (func_info is not None
                 and func_info.direct_mutated_params is None
                 and func_info.originating_module == self.ctx.module_name):
@@ -1974,9 +1969,8 @@ class SemanticAnalyzer:
         finally:
             func.params = body_params
         func.return_type = make_ref(func.return_type)
-        fis = self.ctx.registry.get_function(func.name)
         enclosing = self._genexpr_enclosing[-1]
-        fi = fis[-1] if fis else None
+        fi = body_function_info(self.ctx.registry, func)
         for i, (_, ptype) in enumerate(func.params):
             if contains_pending_leaf(ptype):
                 enclosing.pending_elem_type_fields.append(
@@ -3341,26 +3335,13 @@ class SemanticAnalyzer:
             self.compat.drain_deferred_escape_checks()
             self._enqueue_generic_yield_settle()
 
-            # Store Phase 1 local mutation facts on method FunctionInfo.
-            # For @overload methods, get_method() returns overloads[0] (the first
-            # stub). The implementation's FI is not separately registered, so all
-            # Phase 1 facts are stored on stub[0] and Phase 2 / const inference
-            # work through it. This is consistent with _sync_inferred_const, which
-            # also reads back via get_method() and skips is_overload_stub nodes.
+            # Store Phase 1 local mutation facts on the method body's own
+            # FunctionInfo. A @overload implementation has none (callers
+            # resolve against its stubs), so its facts land on the first stub's
+            # and Phase 2 / const inference work through that one.
             record_info = self.ctx.registry.get_record(record.name)
             if record_info is not None and not method.is_stub:
-                method_fi = record_info.get_method(method.name)
-                # Property methods are not in the methods dict (popped during
-                # registration) -- look them up through the properties registry
-                # so their return_borrows_from facts are recorded.
-                if method_fi is None and method.is_property_getter:
-                    prop = record_info.properties.get(method.name)
-                    if prop is not None:
-                        method_fi = prop.getter
-                elif method_fi is None and method.is_property_setter:
-                    prop = record_info.properties.get(method.property_name)
-                    if prop is not None:
-                        method_fi = prop.setter
+                method_fi = body_method_info(record_info, method, sema=True)
                 if (method_fi is not None
                         and method_fi.direct_mutated_params is None
                         and method_fi.originating_module == self.ctx.module_name):

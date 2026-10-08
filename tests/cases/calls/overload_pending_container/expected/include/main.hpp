@@ -163,7 +163,7 @@ std::string pair(std::vector<int64_t>& xs, int64_t n);
 std::string two(std::vector<int64_t>& xs, std::vector<int64_t>& ys);
 // @dispatch
 // def two(xs: list[int32], ys: list[int32]) -> str:
-std::string two(std::vector<int32_t>& xs, std::vector<int32_t>& ys);
+std::string two(const std::vector<int32_t>& xs, const std::vector<int32_t>& ys);
 // @dispatch
 // def gen_or_str[T](xs: list[T], v: T) -> T:
 template<typename T>
@@ -197,7 +197,7 @@ std::string joint_views(const std::vector<int32_t>& a, const std::vector<int64_t
 std::string joint_wide(const std::vector<int64_t>& a, std::vector<int64_t>& b);
 // @dispatch
 // def joint_wide(a: list[int32], b: list[int64]) -> str:
-std::string joint_wide(const std::vector<int32_t>& a, std::vector<int64_t>& b);
+std::string joint_wide(const std::vector<int32_t>& a, const std::vector<int64_t>& b);
 // @dispatch
 // def gen_kw[T](xs: list[T], v: T) -> T:
 template<typename T>
@@ -210,7 +210,7 @@ std::string gen_kw(std::string_view xs);
 std::string linked(std::vector<int64_t>& a, std::vector<int64_t>& b);
 // @dispatch
 // def linked(a: list[int32], b: list[int64]) -> str:
-std::string linked(std::vector<int32_t>& a, std::vector<int64_t>& b);
+std::string linked(std::vector<int32_t>& a, const std::vector<int64_t>& b);
 // @dispatch
 // def two_names(a: list[int64], b: list[int64]) -> str:
 std::string two_names(std::vector<int64_t>& a, const std::vector<int64_t>& b);
@@ -299,7 +299,7 @@ std::string outer(int32_t n, std::string_view xs);
 std::string lose_array(std::vector<int32_t>& xs, int32_t n);
 // @dispatch
 // def lose_array(xs: Array[int64, 2], n: str) -> str:
-std::string lose_array(std::array<int64_t, 2>& xs, std::string_view n);
+std::string lose_array(const std::array<int64_t, 2>& xs, std::string_view n);
 // @dispatch
 // def lose_span(xs: list[int32], n: int32) -> str:
 std::string lose_span(std::vector<int32_t>& xs, int32_t n);
@@ -335,27 +335,27 @@ struct Acc {
 
     // @dispatch
     // def add(self, xs: list[int64]) -> str:
-    std::string add(std::vector<int64_t>& xs);
+    std::string add(std::vector<int64_t>& xs) const;
 
     // @dispatch
     // def add(self, xs: str) -> str:
-    std::string add(std::string_view xs);
+    std::string add(std::string_view xs) const;
 
     // @dispatch
     // def fill(self, xs: list[float]) -> int32:
-    int32_t fill(std::vector<double>& xs);
+    int32_t fill(std::vector<double>& xs) const;
 
     // @dispatch
     // def fill(self, xs: str) -> int32:
-    int32_t fill(std::string_view xs);
+    int32_t fill(std::string_view xs) const;
 
     // @dispatch
     // def fill_map(self, d: dict[str, float]) -> int32:
-    int32_t fill_map(::tpy::ordered_map<std::string, double>& d);
+    int32_t fill_map(::tpy::ordered_map<std::string, double>& d) const;
 
     // @dispatch
     // def fill_map(self, d: str) -> int32:
-    int32_t fill_map(std::string_view d);
+    int32_t fill_map(std::string_view d) const;
 
     // def push[T](self, xs: list[T], v: T) -> T:
     //     # Honest for any T: at a reference type the list holds a copy of `v`.
@@ -473,7 +473,7 @@ inline Acc::Acc() : total(0) {}
 // def add(self, xs: list[int64]) -> str:
 //     xs.append(8)
 //     return "list[int64]"
-inline std::string Acc::add(std::vector<int64_t>& xs) {
+inline std::string Acc::add(std::vector<int64_t>& xs) const {
     xs.push_back(8);
     return "list[int64]";
 }
@@ -481,7 +481,7 @@ inline std::string Acc::add(std::vector<int64_t>& xs) {
 // @dispatch
 // def add(self, xs: str) -> str:
 //     return "str"
-inline std::string Acc::add(std::string_view xs) {
+inline std::string Acc::add(std::string_view xs) const {
     return "str";
 }
 
@@ -489,7 +489,7 @@ inline std::string Acc::add(std::string_view xs) {
 // def fill(self, xs: list[float]) -> int32:
 //     xs.append(0.5)
 //     return len(xs)
-inline int32_t Acc::fill(std::vector<double>& xs) {
+inline int32_t Acc::fill(std::vector<double>& xs) const {
     xs.push_back(0.5);
     return ::tpy::__len__(xs);
 }
@@ -497,7 +497,7 @@ inline int32_t Acc::fill(std::vector<double>& xs) {
 // @dispatch
 // def fill(self, xs: str) -> int32:
 //     return -1
-inline int32_t Acc::fill(std::string_view xs) {
+inline int32_t Acc::fill(std::string_view xs) const {
     return -1;
 }
 
@@ -505,7 +505,7 @@ inline int32_t Acc::fill(std::string_view xs) {
 // def fill_map(self, d: dict[str, float]) -> int32:
 //     d["b"] = 0.5
 //     return len(d)
-inline int32_t Acc::fill_map(::tpy::ordered_map<std::string, double>& d) {
+inline int32_t Acc::fill_map(::tpy::ordered_map<std::string, double>& d) const {
     ::tpy::__setitem__(d, "b", 0.5);
     return ::tpy::__len__(d);
 }
@@ -513,7 +513,7 @@ inline int32_t Acc::fill_map(::tpy::ordered_map<std::string, double>& d) {
 // @dispatch
 // def fill_map(self, d: str) -> int32:
 //     return -1
-inline int32_t Acc::fill_map(std::string_view d) {
+inline int32_t Acc::fill_map(std::string_view d) const {
     return -1;
 }
 
@@ -552,9 +552,6 @@ template<typename T>
 }
 // # A declared view decides nothing; the list candidate would widen the
 // # list, so the view wins (declared first, as CPython's dispatch tries it).
-// # The loser does not write the list: a mutating `@dispatch` variant
-// # declared after a view variant gets a const parameter
-// # (BUGS.md#overload-group-borrow-facts-last-entry).
 // @dispatch
 // def view_first(n: int32, xs: Iterable[int64]) -> str:
 //     return "Iterable"

@@ -87,8 +87,7 @@ void main() {
     tags.push_back(Tag(2));
     Tag probe = Tag(2);
     std::cout << ::tpy::list_index(tags, probe) << " " << probe.ident << "\n" << ::tpy::check_signals;
-    Tag __tmp_1 = Tag(1);
-    ::tpy::list_remove(tags, __tmp_1);
+    ::tpy::list_remove(tags, Tag(1));
     std::cout << ::tpy::__len__(tags) << " " << ::tpy::__getitem__(tags, 0).ident << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<Tag, int32_t>> pairs = std::vector<std::tuple<Tag, int32_t>>{};
     Tag moved = Tag(5);

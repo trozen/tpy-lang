@@ -173,7 +173,10 @@ field name the node still carries.
 
 - Assignment analysis constructs setter `TpyMethodCall`, stores on `property_setter_call`
 - Property methods removed from `RecordInfo.methods` (not callable as `obj.prop()`)
-- Stored in `RecordInfo.properties` dict as `PropertyInfo(getter, setter)`
+- Stored in `RecordInfo.properties` dict as a `PropertyInfo` whose `accessors`
+  hold every accessor body's own `FunctionInfo` (each getter clone, then the
+  setter) -- the home of each body's analysis facts; `getter` (the first live
+  getter, the one calls bind) and `setter` are derived from it
 - Augmented assignment on properties rejected with clear error
 
 ### Codegen

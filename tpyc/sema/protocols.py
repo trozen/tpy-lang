@@ -1154,11 +1154,8 @@ class ProtocolChecker:
                 if type_subst:
                     return PropertyInfo(
                         name=inherited.name,
-                        getter=self.type_ops.substitute_method_type_params(
-                            inherited.getter, type_subst),
-                        setter=(self.type_ops.substitute_method_type_params(
-                            inherited.setter, type_subst)
-                            if inherited.setter else None),
+                        accessors=[self.type_ops.substitute_method_type_params(fi, type_subst)
+                                   for fi in inherited.accessors],
                     )
                 return inherited
         return None

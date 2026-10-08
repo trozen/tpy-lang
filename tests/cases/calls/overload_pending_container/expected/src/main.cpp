@@ -407,7 +407,7 @@ std::string two(std::vector<int64_t>& xs, std::vector<int64_t>& ys) {
 // @dispatch
 // def two(xs: list[int32], ys: list[int32]) -> str:
 //     return "32"
-std::string two(std::vector<int32_t>& xs, std::vector<int32_t>& ys) {
+std::string two(const std::vector<int32_t>& xs, const std::vector<int32_t>& ys) {
     return "32";
 }
 
@@ -451,7 +451,7 @@ std::string joint_wide(const std::vector<int64_t>& a, std::vector<int64_t>& b) {
 // @dispatch
 // def joint_wide(a: list[int32], b: list[int64]) -> str:
 //     return "split"
-std::string joint_wide(const std::vector<int32_t>& a, std::vector<int64_t>& b) {
+std::string joint_wide(const std::vector<int32_t>& a, const std::vector<int64_t>& b) {
     return "split";
 }
 
@@ -478,7 +478,7 @@ std::string linked(std::vector<int64_t>& a, std::vector<int64_t>& b) {
 // def linked(a: list[int32], b: list[int64]) -> str:
 //     a.append(1)
 //     return "split"
-std::string linked(std::vector<int32_t>& a, std::vector<int64_t>& b) {
+std::string linked(std::vector<int32_t>& a, const std::vector<int64_t>& b) {
     a.push_back(1);
     return "split";
 }
@@ -598,7 +598,7 @@ std::string lose_array(std::vector<int32_t>& xs, int32_t n) {
 // @dispatch
 // def lose_array(xs: Array[int64, 2], n: str) -> str:
 //     return "Array"
-std::string lose_array(std::array<int64_t, 2>& xs, std::string_view n) {
+std::string lose_array(const std::array<int64_t, 2>& xs, std::string_view n) {
     return "Array";
 }
 
@@ -741,8 +741,8 @@ std::string f_list32(std::string_view xs) {
 //     # the four spellings of a written empty container, at a function
 //     print("written empty:", fill_list([]), fill_list(list()), fill_dict({}),
 //           fill_set(set()))
-//     # ... and at a method group (`list()` / `set()` there do not build:
-//     # BUGS.md#dispatch-method-rvalue-container-arg)
+//     # ... and at a method group (`list()` / `set()` at its mutated slot
+//     # do not lower: BUGS.md#record-rvalue-at-mutated-method-slot-unhoisted)
 //     acc = Acc()
 //     print("written empty method:", acc.fill([]), acc.fill_map({}))
 //     # a literal written at a method group

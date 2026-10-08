@@ -18,6 +18,7 @@ struct C;
 struct R;
 struct K;
 struct W;
+struct N;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -103,6 +104,10 @@ __gen_owned_gen owned_gen(::tpy::ordered_map<std::string, P>& d, P& fb);
 void ro_copy(const ::tpy::ordered_map<std::string, P>& d, const P& a);
 // def main() -> None:
 void main();
+// def logged(log: list[str]) -> int32:
+int32_t logged(std::vector<std::string>& log);
+// def default_in_place() -> None:
+void default_in_place();
 
 // class P:
 struct P {
@@ -239,6 +244,28 @@ struct W {
 
 inline std::ostream& operator<<(std::ostream& os, const W& obj) {
     ::tpy::print_object_default(os, "W", obj);
+    return os;
+}
+
+// @nocopy
+// class N:
+struct N {
+    // self.n = n
+    int32_t n;
+
+    // def __init__(self, n: int32, log: list[str]) -> None:
+    N() = default;
+    explicit N(int32_t n, std::vector<std::string>& log);
+    // non-copyable (@nocopy)
+    N(const N&) = delete;
+    N& operator=(const N&) = delete;
+    N(N&&) = default;
+    N& operator=(N&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.N";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const N& obj) {
+    ::tpy::print_object_default(os, "N", obj);
     return os;
 }
 
@@ -486,6 +513,14 @@ inline bool K::__eq__(const K& o) const {
 inline W::W(int32_t n)
     : n(n),
       pad(std::vector<int32_t>{n, n, n, n}) {}
+
+// def __init__(self, n: int32, log: list[str]) -> None:
+//     log.append("mk " + str(n))
+//     self.n = n
+inline N::N(int32_t n, std::vector<std::string>& log) {
+    log.push_back((::tpy::str_concat("mk ", ::tpy::fixed_to_str<int32_t>(n))));
+    this->n = n;
+}
 // # generic body: the result is a copy at every V (a value V as before; a
 // # class V copied, warned), so it returns as Own[V]; read only, since CPython
 // # would alias the stored value

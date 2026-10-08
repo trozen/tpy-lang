@@ -53,10 +53,12 @@ def test_const_inference_consumers(
         result: TpyType, roots: frozenset[int] | None,
         mutated: frozenset[int] | None, readonly: bool,
         remaining: frozenset[int] | None) -> None:
+    method = TpyFunction("get", [], result, [])
     fi = FunctionInfo(
         name="get", params=[ParamInfo("borrowed", RECORD), ParamInfo("changed", RECORD)],
         return_type=result, is_method=True, direct_self_mutated=False,
         self_mutated=False, mutated_params=mutated, return_borrows_from=roots,
+        body=method,
     )
     infer_method_const([fi])
     assert fi.is_readonly is readonly
@@ -65,7 +67,6 @@ def test_const_inference_consumers(
     registry.records["Owner"] = RecordInfo("Owner", [], methods={"get": [fi]})
     ctx = SimpleNamespace(analyzer=SimpleNamespace(registry=registry))
     generator = FunctionGenerator(ctx, None, None)
-    method = TpyFunction("get", [], result, [])
     # Return-root subtraction must not drop mutations of unrelated parameters.
     assert generator._get_method_genuine_mutated_params(method, "Owner") == remaining
     assert fi.return_borrows_from is roots

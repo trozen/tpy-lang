@@ -22,7 +22,7 @@ template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<T>;
   }
-::tpy::val_or_ref_t<T> f(__F0&& g, const std::vector<T>& a);
+::tpy::val_or_ref_t<T> f(__F0&& g, std::vector<T>& a);
 // def add(x: int32, y: int32) -> int32:
 int32_t add(int32_t x, int32_t y);
 // def main() -> None:
@@ -45,7 +45,7 @@ template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<T>;
   }
-::tpy::val_or_ref_t<T> f(__F0&& g, const std::vector<T>& a) {
+::tpy::val_or_ref_t<T> f(__F0&& g, std::vector<T>& a) {
     return ::tpy::__getitem__(a, 0);
 }
 

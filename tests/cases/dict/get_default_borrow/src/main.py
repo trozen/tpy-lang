@@ -5,7 +5,7 @@
 # first store) holds a warned copy.
 import asyncio
 from typing import Callable, Iterator
-from tpy import copy, int32, readonly, Own
+from tpy import copy, int32, nocopy, readonly, Own
 
 
 class P:
@@ -515,6 +515,28 @@ def main() -> None:
     for n in owned_empty_gen(wd):
         print("own_empty_gen", n)
     ro_copy(d, fb)
+    default_in_place()
+
+
+@nocopy
+class N:
+    def __init__(self, n: int32, log: list[str]) -> None:
+        log.append("mk " + str(n))
+        self.n = n
+
+
+def logged(log: list[str]) -> int32:
+    log.append("f")
+    return 0
+
+
+# a constructor default of `pop` / `get` is handed over where it is written:
+# moved, never copied (N is @nocopy), and built after the operands before it
+def default_in_place() -> None:
+    log: list[str] = []
+    d = {"a": N(1, log)}
+    print("in_place", d.pop("zz", N(5, log)).n, d.get("zz", N(6, log)).n)  # tpyc: ok
+    print("in_place", logged(log), d.get("zz", N(2, log)).n, log)  # tpyc: ok
 
 
 main()

@@ -53,7 +53,7 @@ std::string tiers(std::vector<T>& xs);
 // @dispatch
 // def tiers(xs: Iterable[int32]) -> str:
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-std::string tiers(T_xs& xs);
+std::string tiers(const T_xs& xs);
 // def main() -> None:
 void main();
 
@@ -98,7 +98,7 @@ std::string tiers(std::vector<T>& xs) {
 // def tiers(xs: Iterable[int32]) -> str:
 //     return "Iterable[int32]"
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-std::string tiers(T_xs& xs) {
+std::string tiers(const T_xs& xs) {
     return "Iterable[int32]";
 }
 

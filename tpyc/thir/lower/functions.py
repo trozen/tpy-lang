@@ -48,7 +48,7 @@ from ...prescan import scan_reassigned_vars, scope_bound_names
 from ...sema.registration import receiver_self_type, skipped_base_inits
 from ...typesys import (
     IntLiteralType,
-    RecordInfo,
+    RecordInfo, body_method_info,
     is_dyn_protocol,
     is_fn_type,
     is_protocol_type,
@@ -1085,8 +1085,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     # shape rejects (`ctor.param_mutated_string`).
     # TpyCall lowering rejects the same mutated-String slots using these
     # synthetic-constructor mutation facts.
-    init_fis = ri.get_method_overloads("__init__")
-    mut = init_fis[-1].mutated_params if init_fis else None
+    init_fi = body_method_info(ri, init_method)
+    mut = init_fi.mutated_params if init_fi is not None else None
     if mut:
         for i, (_n, ptype) in enumerate(init_method.params):
             if i in mut and isinstance(ptype, TpyType) and _is_string_owned(ptype):
