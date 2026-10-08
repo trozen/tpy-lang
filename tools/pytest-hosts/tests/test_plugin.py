@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import textwrap
+import time
 
 import pytest
 
@@ -264,9 +265,19 @@ def remote_project(pytester, monkeypatch):
 def test_distributed_session_over_fake_ssh(remote_project, monkeypatch):
     pytester, checkout, root = remote_project
     monkeypatch.setenv("DEMO_TOKEN", "forwarded")
+    # a tree another checkout left 20 days ago, and its temp root
+    old = time.time() - 20 * 86400
+    (root / "abcdef01" / "demo").mkdir(parents=True)
+    (root / "abcdef01" / "stamp").touch()
+    os.utime(root / "abcdef01" / "stamp", (old, old))
+    (pytester.path / "hosttmp" / "pytest-hosts-abcdef01").mkdir(parents=True)
     result = run(pytester)
     result.assert_outcomes(passed=4)
     out = result.stdout.str()
+    result.stdout.fnmatch_lines(["hosts| box: removed 1 tree(s) unused for 14d+"])
+    assert "sweep failed" not in out
+    assert not (root / "abcdef01").exists()
+    assert not (pytester.path / "hosttmp" / "pytest-hosts-abcdef01").exists()
     assert workers_line(result, 3)  # 1 local + 2 "remote", not addopts' 7
     result.stdout.fnmatch_lines(["hosts| distributed per hosts file (see: pytest-hosts command)",
                                  "hosts| local: 1 worker (--hosts-local: stay on this machine)",
@@ -556,7 +567,7 @@ def test_cli_overview(pytester, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "(found)" in out and "project: demo at" in out
     assert "setup: make" in out and "local workers: 2" in out
-    assert "x: ssh x, 3 workers, 1 slot(s), root ~/.pytest-hosts, unreachable -> error" in out
+    assert "x: ssh x, 3 workers, 1 slot(s), root ~/.cache/pytest-hosts (or $XDG_CACHE_HOME/pytest-hosts), unreachable -> error" in out
 
     (pytester.path / ".config" / "pytest-hosts" / "hosts.toml").write_text("[hosts.x]\nworkers = 1\n")
     assert cli.main([]) == 0

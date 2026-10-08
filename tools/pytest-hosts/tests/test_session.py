@@ -5,6 +5,7 @@ import shlex
 import subprocess
 import threading
 import time
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -172,7 +173,8 @@ def test_after_sync_reports_and_dedups_pytest():
 
 
 def test_probe_reports_home_path_and_tmp():
-    assert session.probe_command() == 'printf "%s\\n%s\\n%s" "$HOME" "$PATH" "${TMPDIR:-/tmp}"'
+    assert session.probe_command() == ('printf "%s\\n%s\\n%s\\n%s" "$HOME" "$PATH" '
+                                       '"${TMPDIR:-/tmp}" "${XDG_CACHE_HOME:-}"')
 
 
 def test_worker_env_has_a_temp_root_per_worker_and_the_path_prefix():
@@ -425,16 +427,23 @@ def test_pull_all_skips_hosts_that_never_prepared(monkeypatch):
     assert pulled == [ready]
 
 
-def test_probe_learns_home_path_and_tmp(monkeypatch):
+@pytest.mark.parametrize("xdg, root", [("", "/home/u/.cache/pytest-hosts/"),
+                                       ("/var/cache/u/", "/var/cache/u/pytest-hosts/"),
+                                       ("relative", "/home/u/.cache/pytest-hosts/")])
+def test_probe_learns_home_path_tmp_and_cache(monkeypatch, xdg, root):
     s = make_session()
     hs = session.HostSession(remote=s.remotes[0])
     monkeypatch.setattr(session.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(
-        a[0], 0, stdout="/home/u\n/usr/bin:/bin\n/scratch/\n", stderr=""))
+        a[0], 0, stdout=f"/home/u\n/usr/bin:/bin\n/scratch/\n{xdg}\n", stderr=""))
     s.probe(hs)
-    assert hs.remote.parent.startswith("/home/u/.pytest-hosts/")
+    assert hs.remote.parent.startswith(root)
     assert hs.path == "/usr/bin:/bin"
     assert hs.tmp == "/scratch/"
     assert hs.worker_env(0)["PYTEST_DEBUG_TEMPROOT"].startswith("/scratch/pytest-hosts-")
+    monkeypatch.setattr(session.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(
+        a[0], 0, stdout="/home/u\n/usr/bin\nscratch\n\n", stderr=""))
+    s.probe(hs)
+    assert hs.tmp == "/tmp"  # a relative TMPDIR names no one place
 
 
 def test_run_converts_a_timeout_into_a_host_error():
@@ -504,3 +513,94 @@ def test_deletions_follow_the_run_but_local_changes_stay(tmp_path, monkeypatch):
     assert (repo / "examples" / "ex.py").exists() and (repo / "born.txt").exists()
     assert any("changed.txt was deleted on the host but changed locally" in l for l in lines)
     assert not any("born.txt" in l for l in lines)
+
+
+OWN, STALE, FRESH, FOREIGN, LINKED = "0000aaaa", "1111bbbb", "2222cccc", "3333dddd", "4444eeee"
+
+
+def _sweep_layout(tmp_path, tmp_base=True):
+    """A host root holding, besides the session's own tree (stale stamp):
+    a stale tree, a fresh tree, a stale tree-id directory with no stamp, a
+    stale stamp in a directory not named like a tree id, a stamp that is
+    a stale symlink, and a tree-id symlink to a directory outside the root
+    whose stamp is stale. Stale means 20 days."""
+    root, tmp, outside = tmp_path / "root", tmp_path / "tmp", tmp_path / "outside"
+    old = time.time() - 20 * 86400
+    for name, marker, age in [(OWN, "stamp", old), (STALE, "stamp", old), (FRESH, "stamp", None),
+                              (FOREIGN, "data", old), ("Documents", "stamp", old)]:
+        (root / name / "tree").mkdir(parents=True)
+        (root / name / marker).touch()
+        if age is not None:
+            os.utime(root / name / marker, (age, age))
+    for name in (OWN, STALE, FRESH, FOREIGN, "Documents", LINKED, "deadbeef"):
+        (tmp / f"pytest-hosts-{name}" / "w0").mkdir(parents=True)
+    outside.mkdir()
+    (outside / "fresh-target").touch()
+    (root / "deadbeef").mkdir()
+    (root / "deadbeef" / "stamp").symlink_to(outside / "fresh-target")
+    os.utime(root / "deadbeef" / "stamp", (old, old), follow_symlinks=False)
+    (outside / LINKED).mkdir()
+    (outside / LINKED / "stamp").touch()
+    os.utime(outside / LINKED / "stamp", (old, old))
+    (root / LINKED).symlink_to(outside / LINKED)
+    remote = replace(REMOTE, parent=f"{root}/{OWN}", tmp_base=str(tmp) if tmp_base else None)
+    return root, tmp, outside, remote
+
+
+def _run_sweep(remote, host_tmp):
+    return subprocess.run(["sh", "-c", session.sweep_command(remote, host_tmp)],
+                          capture_output=True, text=True, check=True)
+
+
+@pytest.mark.parametrize("configured_tmp", [True, False])
+def test_sweep_removes_only_stale_plugin_trees_and_their_temp_roots(tmp_path, configured_tmp):
+    root, tmp, outside, remote = _sweep_layout(tmp_path, configured_tmp)
+    # without a configured tmp, the probed host temp dir, trailing slash and all
+    proc = _run_sweep(remote, "/unused" if configured_tmp else f"{tmp}/")
+    assert sorted(proc.stdout.splitlines()) == [STALE, LINKED]
+    assert sorted(p.name for p in root.iterdir()) == sorted(
+        [OWN, FRESH, FOREIGN, "Documents", "deadbeef"])
+    # the symlinked tree: the link goes, what it pointed at stays
+    assert (outside / LINKED / "stamp").exists()
+    assert sorted(p.name for p in tmp.iterdir()) == sorted(
+        f"pytest-hosts-{n}" for n in (OWN, FRESH, FOREIGN, "Documents", "deadbeef"))
+
+
+def test_sweep_honours_max_age_and_odd_roots(tmp_path):
+    root, _, _, remote = _sweep_layout(tmp_path)
+    off = replace(remote, host=replace(remote.host, max_age=0))
+    assert session.sweep_command(off, "/tmp") is None
+    longer = replace(remote, host=replace(remote.host, max_age=30 * 86400))
+    assert _run_sweep(longer, "/tmp").stdout == ""
+    assert len(list(root.iterdir())) == 7
+    gone = replace(remote, parent=f"{tmp_path}/nowhere/{OWN}")
+    assert _run_sweep(gone, "/tmp").stdout == ""
+    # root "/" sweeps "/", never the directory ssh starts in
+    assert session.sweep_command(replace(remote, parent=f"/{OWN}"), "/tmp").startswith(
+        "sh -c 'cd / 2>/dev/null")
+
+
+def test_sweep_is_skipped_once_the_session_is_cancelled(monkeypatch):
+    s = make_session()
+    s._cancel.set()
+    monkeypatch.setattr(s, "run", lambda *a, **k: pytest.fail("swept a cancelled session"))
+    s.sweep(session.HostSession(remote=s.remotes[0]))
+
+
+def test_sweep_reports_and_never_fails_the_run(monkeypatch):
+    lines = []
+    s = make_session()
+    s.report = lines.append
+    hs = session.HostSession(remote=s.remotes[0])
+    monkeypatch.setattr(s, "run", lambda *a, **k: subprocess.CompletedProcess(
+        a[0], 0, stdout="aaaa\nbbbb\n! cccc\n", stderr=""))
+    s.sweep(hs)
+    assert lines == ["hosts| h: removed 2 tree(s) unused for 14d+",
+                     "hosts| h: could not remove 1 tree(s) unused for 14d+: cccc"]
+
+    def broken(*a, **k):
+        raise session.HostError("h: sweep failed (exit 255): connection closed")
+    monkeypatch.setattr(s, "run", broken)
+    lines.clear()
+    s.sweep(hs)
+    assert lines == ["hosts| h: sweep failed (exit 255): connection closed; the run goes on"]

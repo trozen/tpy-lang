@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Callable
 
 from .config import HostConfig, ProjectSettings
-from .plan import RemoteHost, with_home
+from .plan import TREE_ID_LENGTH, RemoteHost, with_home
 
 PROBE_TIMEOUT = 10
 LOCK_TIMEOUT = 60  # for the slot command to answer once the session is open
@@ -109,9 +109,10 @@ def ssh_argv(remote: RemoteHost, command: str, *, connect_timeout: int | None = 
 
 def probe_command() -> str:
     """Home (to make the root absolute), the non-interactive PATH (the base
-    a configured path_prepend goes in front of for the workers) and the
-    host's temp dir (where the workers' temp roots go)."""
-    return 'printf "%s\\n%s\\n%s" "$HOME" "$PATH" "${TMPDIR:-/tmp}"'
+    a configured path_prepend goes in front of for the workers), the
+    host's temp dir (where the workers' temp roots go) and its
+    XDG_CACHE_HOME, usually empty (where an unset root goes)."""
+    return 'printf "%s\\n%s\\n%s\\n%s" "$HOME" "$PATH" "${TMPDIR:-/tmp}" "${XDG_CACHE_HOME:-}"'
 
 
 def lock_command(host: HostConfig, slot: int) -> str:
@@ -216,6 +217,39 @@ def after_sync_command(remote: RemoteHost, settings: ProjectSettings, digest: st
         parts.append(f'{version} && if [ "$v" = {shlex.quote(local_pytest)} ]; '
                      f'then rm -rf {stale_copies}; fi')
     return f"cd {shlex.quote(remote.tree)} && " + " && ".join(parts)
+
+
+def sweep_command(remote: RemoteHost, host_tmp: str) -> str | None:
+    """Remove every tree under the host's root whose stamp is older than
+    `max_age`, with its venv and temp root; print each removed `<hash8>`,
+    `! <hash8>` for one that could not be removed. Only a directory named
+    like a tree id and holding a plain-file stamp was written by this
+    plugin (a root may be shared with anything, `~` included), and the
+    session's own tree is in use; everything else stays. The temp root
+    goes first, so a failure keeps the stamp and the next sweep retries.
+    None when the host disables the sweep. Run by `sh` whatever the login
+    shell is: an unmatched glob is an error in zsh."""
+    if not remote.host.max_age:
+        return None
+    root, own = remote.parent.rsplit("/", 1)
+    minutes = max(1, remote.host.max_age // 60)
+    tmp = shlex.quote(remote.tmp_dir(host_tmp))
+    tree_id = "[0-9a-f]" * TREE_ID_LENGTH
+    script = (f"cd {shlex.quote(root or '/')} 2>/dev/null || exit 0; "
+              f"for s in */stamp; do "
+              f'd="${{s%/stamp}}"; '
+              f'case "$d" in {tree_id}) ;; *) continue ;; esac; '
+              f'[ -f "$s" ] && [ ! -L "$s" ] || continue; '
+              f'[ "$d" = {shlex.quote(own)} ] && continue; '
+              f'[ -n "$(find "$s" -mmin +{minutes})" ] || continue; '
+              f'if rm -rf {tmp}/pytest-hosts-"$d" && rm -rf "$d"; '
+              f'then echo "$d"; else echo "! $d"; fi; '
+              f"done")
+    return f"sh -c {shlex.quote(script)}"
+
+
+def format_age(seconds: int) -> str:
+    return f"{seconds // 86400}d"
 
 
 def host_files_command(remote: RemoteHost) -> str:
@@ -407,12 +441,15 @@ class Session:
             raise HostError(f"{hs.name}: unreachable (ssh timed out)") from None
         if proc.returncode != 0:
             raise HostError(f"{hs.name}: unreachable: {proc.stderr.strip()}")
-        home, path, tmp = (proc.stdout.strip().split("\n") + ["", ""])[:3]
+        home, path, tmp, xdg_cache = (proc.stdout.strip("\n").split("\n") + ["", "", ""])[:4]
         if not home.startswith("/"):
             raise HostError(f"{hs.name}: probe returned no home directory ({home!r})")
-        hs.remote = with_home(hs.remote, home, self.checkout, self.source_host)
+        # the XDG spec ignores a relative XDG_CACHE_HOME
+        cache = xdg_cache.rstrip("/") if xdg_cache.startswith("/") else f"{home}/.cache"
+        hs.remote = with_home(hs.remote, home, self.checkout, self.source_host, cache)
         hs.path = path
-        hs.tmp = tmp or "/tmp"
+        # a relative TMPDIR would name a different place from every cwd
+        hs.tmp = tmp if tmp.startswith("/") else "/tmp"
 
     def take_slot(self, hs: HostSession) -> None:
         host = hs.remote.host
@@ -519,6 +556,27 @@ class Session:
             note += (f", tree has pytest {hs.pytest_version}, not {self.local_pytest}: "
                      f"xdist ships its own to every worker (slow)")
         self.say(f"{hs.name}: {slot}{hs.remote.workers} workers, tree {hs.remote.tree}{note}")
+        self.sweep(hs)
+
+    def sweep(self, hs: HostSession) -> None:
+        """Best effort: a sweep that fails is reported and the run goes on."""
+        command = sweep_command(hs.remote, hs.tmp)
+        if command is None or self._cancel.is_set():
+            return
+        try:
+            proc = self.run(ssh_argv(hs.remote, command), what=f"{hs.name}: sweep")
+        except HostError as exc:
+            self.say(f"{exc}; the run goes on")
+            return
+        lines = proc.stdout.split("\n")
+        failed = [line[2:] for line in lines if line.startswith("! ")]
+        removed = [line for line in lines if line and not line.startswith("! ")]
+        age = format_age(hs.remote.host.max_age)
+        if removed:
+            self.say(f"{hs.name}: removed {len(removed)} tree(s) unused for {age}+")
+        if failed:
+            self.say(f"{hs.name}: could not remove {len(failed)} tree(s) unused for {age}+: "
+                     + " ".join(failed))
 
     def prepare(self, take_slot: bool = True) -> list[HostSession]:
         """Probe, gate, sync and set up every host, in parallel. Raises the

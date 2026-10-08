@@ -39,6 +39,8 @@ unknown key is rejected with the list of valid ones.
 
 `~/.config/pytest-hosts/hosts.toml`:
 
+    max_age = "14d"             # sweep trees unused this many days; 0: never
+
     [local]
     workers = 8                 # local cap for every project ("auto" allowed; 0: none)
 
@@ -46,12 +48,13 @@ unknown key is rejected with the list of valid ones.
     ssh = "bigbox"              # an ssh alias; user/key/port come from ~/.ssh/config
     workers = 60
     slots = 1                   # concurrent sessions this host accepts
-    root = "~/.pytest-hosts"    # where synced trees and venvs live
+    # root = "/srv/pytest-hosts"  # trees and venvs; $XDG_CACHE_HOME/pytest-hosts when unset
     unreachable = "error"       # or "local": run without this host, loudly
     lock_dir = "/tmp/pytest-hosts"   # slot lock files; shared by every user of the box
     # tmp = "/scratch"                   # workers' temp root (absolute or ~); host TMPDIR when unset
     # ssh_config = "~/.ssh/bigbox.cfg"   # replaces the generated ssh config for this host
     # path_prepend = "/opt/toolchain/bin" # in front of PATH for workers and setup
+    # max_age = "30d"                    # overrides the top-level max_age for this host
 
     [projects.my-project]       # key: the [project] name in pyproject.toml
     local = 4
@@ -114,10 +117,13 @@ beyond the missing-entry warning from the Rules above, which is an
 ordinary pytest config warning.
 
 1. Probe each host: one ssh command with a short connect timeout that
-   prints `$HOME`, the non-interactive `$PATH` and the host's temp dir.
-   The home makes a `~` root absolute (execnet chdirs without expanding
-   it); the PATH is what a configured `path_prepend` goes in front of
-   for the workers; the temp dir is where their temp roots go. The
+   prints `$HOME`, the non-interactive `$PATH`, the host's temp dir and
+   its `$XDG_CACHE_HOME`. The home makes a `~` root absolute (execnet
+   chdirs without expanding it); the PATH is what a configured
+   `path_prepend` goes in front of for the workers; the temp dir is where
+   their temp roots go; an unset `root` is `pytest-hosts` in the cache
+   dir (`~/.cache` when the variable is unset or relative): trees and
+   venvs are rebuilt by any run, so they are cache data. The
    probe also opens the ControlMaster the rest of the session rides on.
    Unreachable: error, or, when the host says `unreachable = "local"`,
    a loud line and the run goes on without that host (the other hosts
@@ -149,7 +155,23 @@ ordinary pytest config warning.
    when the setup command or any `setup_when` file changed since the
    last run, or under `--hosts-setup`. Then touch a stamp file beside
    the tree: what setup wrote into the tree (a lockfile) is not the
-   run's output.
+   run's output. The stamp is also the tree's last-used mark: every run
+   and every `pytest-hosts setup` touches it.
+   Then sweep the host (best effort, one ssh command): every
+   `<root>/<hash8>/` whose stamp is older than `max_age` is removed with
+   its venv and its temp root under this session's temp dir, and one
+   line says how many (`hosts| bigbox: removed 3 tree(s) unused for
+   14d+`). Every checkout and every worktree gets a tree of its own, so
+   without this the trees of worktrees deleted long ago stay forever.
+   A directory without a stamp was not written by the plugin and the
+   session's own tree is in use; both stay. A tree another machine is
+   using has a fresh stamp, since a run takes less than a day and
+   `max_age` counts whole days. A failed sweep prints one line and the
+   run goes on. Only directories named like a tree id are candidates,
+   since a root may be shared with anything. Trees under a root the hosts
+   file no longer names are outside the sweep. The one race left: a tree unused for `max_age`, reused by
+   one machine at the moment another sweeps, can lose its sync; that
+   run fails and a rerun works.
 5. Build the xdist specs: `local` popen workers plus `workers` direct
    `ssh=` specs per host with the remote venv's python (or `python3` from
    the ssh session's PATH when the project has no setup command) and
@@ -234,6 +256,10 @@ ordinary pytest config warning.
   those hide (git's untracked listing minus the same listing restricted
   to `.gitignore`) and filters it by name. The pull-back's
   `git check-ignore` honours all three sources by itself.
+- Inside a live tree, ignored output (`__tpyc__`, `build/`, kept test
+  binaries) survives every sync by design (`--delete` without
+  `--delete-excluded`): the sweep removes only whole trees, and
+  `pytest-hosts clean` is the way to drop one checkout's tree now.
 - The pull-back lists files newer than a stamp touched on the host after
   the sync, while synced files keep their controller-side mtimes. A
   controller clock running ahead of the host's by more than the sync
@@ -319,8 +345,8 @@ failing session is a behaviour choice not yet taken.
   `nodemanager._rsynced_specs` (the one underscored attribute used) and
   forwarded env values are set on each remote `spec.env`; when the
   tree's pytest is used, `<parent>/pytest` and `<parent>/_pytest` (copies
-  an earlier controller shipped there) are removed on the host, the one
-  destructive remote command outside `clean`; a `trylast`
+  an earlier controller shipped there) are removed on the host (the
+  other destructive remote commands are the sweep and `clean`); a `trylast`
   `pytest_sessionfinish` pulls back and releases after the workers are
   torn down; the per-host tally reads `report.node`, which `DSession`
   sets on every report it relays.

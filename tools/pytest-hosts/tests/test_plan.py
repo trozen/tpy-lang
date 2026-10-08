@@ -35,7 +35,7 @@ def test_tree_layout_keeps_checkout_name():
     remote = plan_remote(HF.hosts["big"])
     tid = plan.tree_id("laptop", CHECKOUT)
     assert len(tid) == 8
-    assert remote.parent == f"~/.pytest-hosts/{tid}"
+    assert remote.parent == f"~/.cache/pytest-hosts/{tid}"
     assert remote.tree == f"{remote.parent}/demo"  # xdist resolves <name>/<rel> under chdir
     assert remote.venv == f"{remote.parent}/venv"  # beside the tree, not inside it
     assert remote.python == f"{remote.venv}/bin/python"
@@ -65,7 +65,11 @@ def test_tmp_base_expands_home_and_drops_a_trailing_slash():
 
 def test_home_expands_tilde_root_only():
     tilde = plan_remote(HF.hosts["big"], home="/home/u")
-    assert tilde.parent.startswith("/home/u/.pytest-hosts/")
+    assert tilde.parent.startswith("/home/u/.cache/pytest-hosts/")
+    # an unset root follows the host's cache dir; a configured one does not
+    cached = plan_remote(HF.hosts["big"], home="/home/u", cache="/var/cache/u")
+    assert cached.parent.startswith("/var/cache/u/pytest-hosts/")
+    assert plan_remote(HF.hosts["small"], cache="/var/cache/u").parent.startswith("/srv/ph/")
     absolute = plan_remote(HF.hosts["small"], home="/home/u")
     assert absolute.parent.startswith("/srv/ph/")
     # the probe's rewrite keeps everything but the root
@@ -73,7 +77,7 @@ def test_home_expands_tilde_root_only():
     after = plan.with_home(before, "/home/u", CHECKOUT, "laptop")
     assert (after.workers, after.python, after.ssh_config) == (7, "python3", CFG)
     assert after.control_dir == before.control_dir
-    assert after.tree == f"/home/u/.pytest-hosts/{plan.tree_id('laptop', CHECKOUT)}/demo"
+    assert after.tree == f"/home/u/.cache/pytest-hosts/{plan.tree_id('laptop', CHECKOUT)}/demo"
 
 
 def test_remote_specs_group_workers_per_connection():
