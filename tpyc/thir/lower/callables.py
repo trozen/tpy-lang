@@ -10,7 +10,8 @@ from ...type_def_registry import ParamPassing, get_type_def
 from ...typesys import (
     AnyType, FunctionInfo, FunctionLinkage, IntLiteralType, NominalType, ReadonlyType,
     RecordInfo, RefType, TpyType, VoidType, contains_pending_leaf, contains_type_param, is_fn_type, is_protocol_type,
-    accessor_role, return_const_projected, return_representation, unwrap_readonly, unwrap_ref_type,
+    accessor_role, body_method_info, return_const_projected, return_representation, unwrap_readonly,
+    unwrap_ref_type,
     unwrap_send_sync,
 )
 from ..nodes import (
@@ -18,7 +19,7 @@ from ..nodes import (
     THIRStubCallee, THIRStubContract, THIRStubIdentity, THIRSubscript, declared_param_type, receiver_param,
 )
 from ..scalar_leaves import leaf_constant, native_container_subject, record_owner
-from .predicates import param_passing, record_method_fi
+from .predicates import param_passing
 from .storage import borrowed_record
 
 if TYPE_CHECKING:
@@ -200,13 +201,12 @@ def _callable_body(owner: str | None, name: str, accessor: str | None) -> TpyFun
 
 def _role_fis(info: RecordInfo, name: str, accessor: str | None) -> list[FunctionInfo]:
     """The registry FunctionInfos a call of the role binds: an accessor's
-    from the property (sema pops accessors from the method table), a
-    method's from its overload list."""
+    from the property (sema pops accessors from the method table), each
+    clone's own, a method's from its overload list."""
     if accessor is None:
         return info.get_method_overloads(name)
     prop = info.properties.get(name)
-    fi = None if prop is None else prop.getter if accessor == "fget" else prop.setter
-    return [] if fi is None else [fi]
+    return [] if prop is None else [fi for fi in prop.accessors if accessor_role(fi) == accessor]
 
 
 def method_callee(fi: FunctionInfo | None, receiver: TpyType | None, analyzer: 'SemanticAnalyzer', *,
@@ -269,7 +269,7 @@ def method_callee(fi: FunctionInfo | None, receiver: TpyType | None, analyzer: '
         THIRFunctionIdentity(_identity_module(root, analyzer), root.name, root.owning_type_qname, role),
         THIRCallableSignature(types, ret, _borrowed_result(fi, body, analyzer, twin, return_type=ret),
                               (receiver_param(defined).passing,
-                               *_body_passings(body, record_method_fi(declaring, body.name))),
+                               *_body_passings(body, body_method_info(declaring, body))),
                               return_representation(ret), result_follows_receiver=twin))
 
 
@@ -286,10 +286,10 @@ def method_definition(func: TpyFunction, receiver: THIRBorrowedRecord | None,
     role = accessor_role(func)
     body = _callable_body(info.qualified_name(), func.name, role)
     twin = body is not None and func.clone_of is body
-    fis = _role_fis(info, func.name, role)
-    if body is None or not (body is func or twin) or not fis:
+    fi = body_method_info(info, body) if body is not None else None
+    if body is None or not (body is func or twin) or fi is None:
         return None, False
-    callee = (method_callee(fis[0], receiver.type, analyzer, arity=len(fis[0].params))
+    callee = (method_callee(fi, receiver.type, analyzer, arity=len(fi.params))
               if method_receiver(body, receiver.type, analyzer) is not None else None)
     return callee, twin and callee is not None
 

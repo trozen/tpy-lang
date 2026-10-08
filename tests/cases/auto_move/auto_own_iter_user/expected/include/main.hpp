@@ -27,7 +27,7 @@ struct IntList {
     auto __iter__() const &;
 
     // def __iter__(self: auto_own[Self]) -> auto_own[Iterator[int32]]:
-    auto __iter__() const &&;
+    auto __iter__() &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntList";
 };
 
@@ -49,7 +49,7 @@ inline auto IntList::__iter__() const & {
 
 // def __iter__(self: auto_own[Self]) -> auto_own[Iterator[int32]]:
 //     return iter(self.items)
-inline auto IntList::__iter__() const && {
+inline auto IntList::__iter__() && {
     return ::tpy::__iter__(this->items);
 }
 void __tpy_init();

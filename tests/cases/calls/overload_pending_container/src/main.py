@@ -308,9 +308,6 @@ def gen_or_str(xs: str, v: str) -> str:
 
 # A declared view decides nothing; the list candidate would widen the
 # list, so the view wins (declared first, as CPython's dispatch tries it).
-# The loser does not write the list: a mutating `@dispatch` variant
-# declared after a view variant gets a const parameter
-# (BUGS.md#overload-group-borrow-facts-last-entry).
 @dispatch
 def view_first(n: int32, xs: Iterable[int64]) -> str:
     return "Iterable"
@@ -410,9 +407,6 @@ def one_way(a: list[int64], b: list[int32]) -> str:
 
 
 # --- the least widening, in declaration orders CPython's dispatch follows ---
-# (a variant declared after another reads the list only: a group's later
-# variants get the last entry's const parameters,
-# BUGS.md#overload-group-borrow-facts-last-entry)
 
 # A view of int widens nothing a list of int64 would.
 @dispatch
@@ -717,8 +711,8 @@ def main() -> None:
     # the four spellings of a written empty container, at a function
     print("written empty:", fill_list([]), fill_list(list()), fill_dict({}),
           fill_set(set()))
-    # ... and at a method group (`list()` / `set()` there do not build:
-    # BUGS.md#dispatch-method-rvalue-container-arg)
+    # ... and at a method group (`list()` / `set()` at its mutated slot
+    # do not lower: BUGS.md#record-rvalue-at-mutated-method-slot-unhoisted)
     acc = Acc()
     print("written empty method:", acc.fill([]), acc.fill_map({}))
     # a literal written at a method group

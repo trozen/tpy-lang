@@ -32,13 +32,14 @@ from ..typesys import (
     error_return_to_cpp, error_return_uses_borrow_slot, unwrap_ref_type,
     property_getter_returns_storage_ref,
     bare_name, recorded_return_borrow_sources, return_const_projected,
+    body_function_info, body_method_info,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..type_def_registry import is_varargs, is_char_type, is_str_type, is_bytes_type, is_bytes_view_type, protocol_info_of
 from ..parse.nodes import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
     TpyBytesLiteral, TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct,
-    TpyCall, TpyName, TpyFieldAccess, TpyStmt,
+    TpyCall, TpyName, TpyFieldAccess, TpyStmt, OverloadForm,
 )
 from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, expand_cpp_template, enum_member_cpp, CodeGenError
 from . import emit_prims
@@ -782,57 +783,47 @@ class FunctionGenerator:
         result = scan.reassigned & param_names
         return result if result else None
 
+    def _func_body_info(self, func: TpyFunction) -> FunctionInfo | None:
+        """The FunctionInfo carrying `func`'s analysis facts. A bodyless
+        @overload stub reads its implementation's (the group's positional
+        pick); any other declaration-only stub (@native, a @dispatch binding)
+        has none."""
+        if func.is_stub and func.overload_form is not OverloadForm.OVERLOAD:
+            return None
+        return body_function_info(self.ctx.analyzer.registry, func)
+
+    def _method_body_info(self, method: TpyFunction, record_name: str) -> FunctionInfo | None:
+        """The FunctionInfo carrying `method`'s analysis facts; None for a
+        declaration-only stub."""
+        if method.is_stub:
+            return None
+        return body_method_info(self.ctx.analyzer.registry.get_record(record_name), method)
+
     def _get_func_mutated_params(self, func: TpyFunction) -> frozenset[int] | None:
         """Return finalized mutated_params for a free function, or None if unavailable."""
-        # Declaration-only stubs (@native) have no body -- no mutation analysis.
-        # @overload stubs share a name with their implementation; overloads[-1] is the
-        # implementation's FI, which has the analyzed mutated_params.
-        if func.is_stub and not func.is_overload_stub:
-            return None
-        overloads = self.ctx.analyzer.registry.get_function(func.name)
-        if overloads:
-            return overloads[-1].mutated_params
-        return None
+        fi = self._func_body_info(func)
+        return fi.mutated_params if fi is not None else None
 
     def _get_func_addr_escapes(self, func: TpyFunction) -> frozenset[int]:
         """Return param indices whose address escapes via a mutable Ptr[T] field."""
-        if func.is_stub and not func.is_overload_stub:
-            return frozenset()
-        overloads = self.ctx.analyzer.registry.get_function(func.name)
-        if overloads:
-            return overloads[-1].addr_escapes_params
-        return frozenset()
+        fi = self._func_body_info(func)
+        return fi.addr_escapes_params if fi is not None else frozenset()
 
     def _get_method_mutated_params(self, method: TpyFunction, record_name: str) -> frozenset[int] | None:
         """Return finalized mutated_params for a record method, or None if unavailable."""
-        if method.is_stub or method.is_overload_stub:
-            return None
-        record_info = self.ctx.analyzer.registry.get_record(record_name)
-        if record_info:
-            overloads = record_info.get_method_overloads(method.name)
-            if overloads:
-                return overloads[-1].mutated_params
-        return None
+        fi = self._method_body_info(method, record_name)
+        return fi.mutated_params if fi is not None else None
 
     def _get_method_addr_escapes(self, method: TpyFunction, record_name: str) -> frozenset[int]:
         """Return method param indices whose address escapes via a mutable Ptr[T] field."""
-        if method.is_stub or method.is_overload_stub:
-            return frozenset()
-        record_info = self.ctx.analyzer.registry.get_record(record_name)
-        if record_info:
-            overloads = record_info.get_method_overloads(method.name)
-            if overloads:
-                return overloads[-1].addr_escapes_params
-        return frozenset()
+        fi = self._method_body_info(method, record_name)
+        return fi.addr_escapes_params if fi is not None else frozenset()
 
     def _method_return_const_projected(self, method: TpyFunction, record_name: str) -> bool:
         """Whether a const method's borrowed return is const too."""
-        record_info = self.ctx.analyzer.registry.get_record(record_name)
-        overloads = record_info.get_method_overloads(method.name) if record_info else None
-        # Only an INFERRED verdict can split the two: the caller's `const` may
-        # come from a clone whose paired overload is the one listed last.
-        return (not overloads or not overloads[-1].root.readonly_inferred
-                or return_const_projected(overloads[-1]))
+        fi = body_method_info(self.ctx.analyzer.registry.get_record(record_name), method)
+        # Only an INFERRED verdict can split the two.
+        return fi is None or not fi.root.readonly_inferred or return_const_projected(fi)
 
     def _get_method_genuine_mutated_params(self, method: TpyFunction, record_name: str) -> frozenset[int] | None:
         """Return mutation indices excluding return-borrow roots for const codegen.
@@ -843,20 +834,13 @@ class FunctionGenerator:
         path through it. Finalized facts retain unrelated transitive
         mutations so those parameters stay non-const.
         """
-        if method.is_stub or method.is_overload_stub:
+        fi = self._method_body_info(method, record_name)
+        if fi is None or fi.mutated_params is None:
             return None
-        record_info = self.ctx.analyzer.registry.get_record(record_name)
-        if record_info:
-            overloads = record_info.get_method_overloads(method.name)
-            if overloads:
-                fi = overloads[-1]
-                mp = fi.mutated_params
-                if mp is None:
-                    return None
-                if fi.root.readonly_inferred and not return_const_projected(fi):
-                    return mp
-                return mp - recorded_return_borrow_sources(fi)
-        return None
+        mp = fi.mutated_params
+        if fi.root.readonly_inferred and not return_const_projected(fi):
+            return mp
+        return mp - recorded_return_borrow_sources(fi)
 
     def _has_dynamic_protocol_params(self, params: list[tuple[str, TpyType]]) -> bool:
         """Check if any params are @dynamic protocol types (need Base& codegen)."""

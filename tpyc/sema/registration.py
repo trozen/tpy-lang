@@ -63,7 +63,7 @@ from ..parse import (
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
     TpyNoneLiteral, TpyStrLiteral, TpyRaise, TpyTry, collect_name_refs,
 )
-from ..parse.nodes import is_base_init_call, returns_borrow_rooted_at_self
+from ..parse.nodes import OverloadForm, is_base_init_call, returns_borrow_rooted_at_self
 from ..identity_map import IdentitySet
 from ..parse.parser import auto_declare_fields_from_init, reorder_fields_by_init
 from ..namespace import NameBinding, BindingKind
@@ -1729,6 +1729,7 @@ class TypeRegistrar:
                 fi_method_return = method_return
             func_info = FunctionInfo(
                 name=method.name,
+                body=None if method.overload_form is OverloadForm.OVERLOAD else method,
                 params=method_param_infos,
                 return_type=fi_method_return,
                 async_inner_return=method_return if method.is_async else None,
@@ -2096,10 +2097,11 @@ class TypeRegistrar:
                             f"Property '{method_name}' conflicts with field of the same name",
                             record.loc,
                         )
-                    # Use the first overload for PropertyInfo (for type inference).
-                    # Both const and mutable overloads exist from parser cloning.
+                    # Both clones of a parser-cloned getter are accessors; the
+                    # first is the getter calls bind (`PropertyInfo.getter`).
                     if method_name not in properties:
-                        properties[method_name] = PropertyInfo(name=method_name, getter=fi)
+                        properties[method_name] = PropertyInfo(name=method_name)
+                    properties[method_name].accessors.append(fi)
                 elif fi.is_property_setter:
                     setter_target = fi.property_name
                     if setter_target and setter_target in properties:
@@ -2108,7 +2110,7 @@ class TypeRegistrar:
                                 f"Property '{setter_target}' already has a setter defined",
                                 record.loc,
                             )
-                        properties[setter_target].setter = fi
+                        properties[setter_target].accessors.append(fi)
                     else:
                         raise SemanticError(
                             f"@property setter '{method_name}' has no matching @property getter",
@@ -3006,6 +3008,13 @@ class TypeRegistrar:
                     if not (m.is_property_getter and m.name == prop_name
                             and m.is_auto_readonly_mutable_clone)
                 ]
+                # Every accessor FunctionInfo carries a live body: the pruned
+                # clone's leaves with it, so the surviving clone is the getter.
+                live = [fi for fi in prop_info.accessors
+                        if not (fi.is_property_getter and fi.root.body is not None
+                                and fi.root.body.is_auto_readonly_mutable_clone)]
+                if any(fi.is_property_getter for fi in live):
+                    prop_info.accessors = live
 
     def validate_value_type_fields(self, record: TpyRecord) -> None:
         """Validate that all fields of a ValueType record are themselves value types,
@@ -3974,6 +3983,7 @@ class TypeRegistrar:
         info = FunctionInfo(
             name=func.name,
             declaration=func if unique_declaration else None,
+            body=func,
             params=param_infos,
             return_type=fi_return_type,
             async_inner_return=resolved_return if func.is_async else None,
@@ -4156,6 +4166,9 @@ class TypeRegistrar:
             self._validate_param_defaults(stub_param_infos)
             info = FunctionInfo(
                 name=func.name,
+                # A @dispatch variant is its own body; a @overload stub only
+                # declares one signature of the trailing implementation.
+                body=func if func.overload_form is OverloadForm.DISPATCH else None,
                 params=stub_param_infos,
                 return_type=resolved_return,
                 is_noalloc=func.is_noalloc,

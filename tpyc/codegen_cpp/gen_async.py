@@ -65,7 +65,7 @@ _FRESH_COLLECTION_NODES = (
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
 )
-from ..typesys import IntLiteralType, NominalType, TpyType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, varargs_is_readonly, is_readonly_ptr, VoidType, is_fn_type, is_dyn_protocol, ConcreteFrameType, param_takes_ownership
+from ..typesys import IntLiteralType, NominalType, TpyType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, varargs_is_readonly, is_readonly_ptr, VoidType, is_fn_type, is_dyn_protocol, ConcreteFrameType, param_takes_ownership, body_function_info, body_method_info
 from ..value_category import (async_return_form, AsyncReturnForm,
                               declared_call_const,
                               for_source_is_rvalue, frame_factory_callee,
@@ -493,37 +493,17 @@ class AsyncCoroCodegen:
     def _frame_deep_const_verdict(
             self, func: TpyFunction,
             record_name: 'str | None') -> 'frozenset[int] | None':
-        """The per-param deep-const verdict off the RAW fi (methods: the
-        registry method fi; free defs: overloads[-1], the implementation).
-
-        `[-1]` is the implementation of a `typing.overload` set but only the
-        LAST variant of a `tpy.dispatch` one, which is
-        BUGS.md#frame-const-verdict-last-overload (unreachable today: an
-        overloaded generator does not get this far)."""
-        if record_name:
-            _ri = self.ctx.analyzer.registry.get_record(record_name)
-            _mfi = _ri.get_method(func.name) if _ri else None
-            return _mfi.const_borrow_params if _mfi else None
-        _fis = self.ctx.analyzer.registry.get_function(func.name)
-        return _fis[-1].const_borrow_params if _fis else None
+        """The per-param deep-const verdict off the RAW fi of `func`'s body."""
+        fi = self._frame_fi(func, record_name)
+        return fi.const_borrow_params if fi is not None else None
 
     def _frame_fi(self, func: TpyFunction,
                   record_name: 'str | None') -> 'FunctionInfo | None':
         """The registry FunctionInfo of the generator / coroutine `func`, or
-        None when the name does not single it out (a nested def lives in
-        its enclosing body's namespace; an overload set has several)."""
-        if func.is_nested_def:
-            return None
+        None for a nested def (it lives in its enclosing body's namespace)."""
         if record_name:
-            ri = self.ctx.analyzer.registry.get_record(record_name)
-            fis = ri.get_method_overloads(func.name) if ri else []
-        else:
-            fis = self.ctx.analyzer.registry.get_function(func.name) or []
-        # A single entry under the frame's own name is its own: a nested def
-        # is excluded above, and an overload set answers None. The entry's
-        # `declaration` is not compared -- a frame's is another node than
-        # `func` (TODO.md "One owning-FunctionInfo lookup").
-        return fis[0] if len(fis) == 1 else None
+            return body_method_info(self.ctx.analyzer.registry.get_record(record_name), func)
+        return body_function_info(self.ctx.analyzer.registry, func)
 
     def _frame_capture_const_names(
             self, func: TpyFunction,

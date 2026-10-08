@@ -113,6 +113,16 @@ and validates each def against it (a `@overload` stub with a body or a
 native binding, a `@dispatch` variant with neither); sema's
 `_require_overload_form` validates the group (no mixing under one name, a
 `@overload` set ends in an implementation, a `@dispatch` set does not).
+Each `@dispatch` variant's body is analyzed like a plain def and its facts
+(which parameters it mutates or lends back, whether it writes `self`) live
+on that variant's own `FunctionInfo` (`FunctionInfo.body`, found by
+`typesys.body_function_info` / `body_method_info`), so every variant's
+signature is the one it would have as the only def of its name. A
+`@overload` implementation has no `FunctionInfo` of its own -- its stubs
+are the callables -- so its facts land on one stub by position (the last
+for a free function, the first for a method) until the implementation is
+expanded into per-stub variants (TODO.md "`@overload` becomes `@dispatch`
+variants").
 `@dispatch` is the form the builtin stubs use throughout (`lib/tpy/tpy`),
 and the convenient one for arity-variant APIs in larger programs;
 `@overload` is the form to reach for when the source must also type-check

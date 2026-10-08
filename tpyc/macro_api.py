@@ -26,6 +26,7 @@ from .typesys import (
     is_float_type,
     unwrap_final,
     unwrap_readonly,
+    body_function_info,
 )
 from .type_def_registry import is_str_type, is_str_view_type
 from .symbol_binding import SymbolKind, lookup_imported
@@ -896,12 +897,11 @@ class PostSemaFunctionMacroContext(FunctionMacroContext):
             self.error(
                 "note_param_mutated: not supported on method hosts yet "
                 f"(function {self.function_name!r} is a method)")
-        overloads = self._ctx.registry.get_function(self.function_name)
-        if not overloads:
+        fi = body_function_info(self._ctx.registry, self._func)
+        if fi is None:
             self.error(
                 f"note_param_mutated: no FunctionInfo for "
                 f"{self.function_name!r}")
-        fi = overloads[-1]
         fi.direct_mutated_params = (
             (fi.direct_mutated_params or frozenset()) | {param_index})
 

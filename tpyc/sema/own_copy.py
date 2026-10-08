@@ -46,7 +46,7 @@ from ..identity_map import IdentityMap
 from ..parse import (ResultForm, TpyCallLike, TpyCoerce, TpyExpr, TpyFieldAccess,
                      TpyLambda, TpySubscript, is_property_getter_read)
 from ..parse.nodes import walk_expr_tree
-from ..typesys import (INT32, NominalType, TpyType, TypeParamRef,
+from ..typesys import (INT32, NominalType, ReadonlyType, TpyType, TypeParamRef,
                        substitute_type_params_simple, unwrap_readonly,
                        unwrap_ref_type)
 
@@ -303,13 +303,22 @@ def _apply(ctx, type_ops, obligation: OwnCopyObligation,
     verdicts.record(obligation, level, message)
 
 
+def _collapse_readonly(typ: TpyType) -> TpyType:
+    """`readonly[readonly[T]]` is `readonly[T]`. A const clone forwarding
+    `Rc[readonly[T]]` would otherwise compose one more layer per round and
+    never reach an instantiation `seen` already holds."""
+    while isinstance(typ, ReadonlyType) and isinstance(typ.wrapped, ReadonlyType):
+        typ = typ.wrapped
+    return typ.map_inner_types(_collapse_readonly)
+
+
 def _discharge_function(ctx, type_ops, fi, subst: dict, seen: set,
                         verdicts: OwnCopyVerdicts) -> None:
     for obligation in fi.own_copy_obligations:
         _apply(ctx, type_ops, obligation, subst, verdicts)
     for forward in fi.own_copy_forwards:
         composed = tuple(
-            (name, type_ops.substitute_types(value, subst))
+            (name, _collapse_readonly(type_ops.substitute_types(value, subst)))
             for name, value in forward.subst
         )
         discharge_edge(ctx, type_ops,
@@ -323,9 +332,7 @@ def _record_methods(record_info):
     for overloads in record_info.methods.values():
         yield from overloads
     for prop in record_info.properties.values():
-        yield prop.getter
-        if prop.setter is not None:
-            yield prop.setter
+        yield from prop.accessors
 
 
 def _discharge_record(ctx, type_ops, record_info, subst: dict,

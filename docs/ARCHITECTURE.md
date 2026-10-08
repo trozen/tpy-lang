@@ -375,6 +375,16 @@ variant unions, static-protocol template constraints). The
 diagnostic names the offending field/parent + cycle members and
 points the user at `Ptr[T]` as the workaround.
 
+A body's analysis facts (the Phase 1 mutation and return-borrow sets,
+frame materials, the inferred receiver const-ness) live on the
+`FunctionInfo` registered from that body, which names it in
+`FunctionInfo.body`: each `@dispatch` variant, each clone of an
+`@auto_readonly` / `auto_own` pair and each property accessor has its own.
+Writers and readers find it with `typesys.body_function_info` /
+`body_method_info` by identity, never by the callable's name; the one
+positional pick left is a `typing.overload` implementation's, which has no
+`FunctionInfo` of its own.
+
 Phase 2 mutation propagation runs workspace-wide: each analyzer's
 `_propagate_mutation_facts` collects FunctionInfos from every
 ModuleInfo in the shared `registry.modules` dict (deduplicated by

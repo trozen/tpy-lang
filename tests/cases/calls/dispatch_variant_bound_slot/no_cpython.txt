@@ -1,0 +1,3 @@
+The CPython @dispatch stub skips parameterized annotations (list[float] vs
+list[int32]) and runs the first variant whose arity fits, so it cannot pick
+the variant the compiler binds here.

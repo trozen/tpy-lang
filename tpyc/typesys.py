@@ -7087,8 +7087,18 @@ class FieldInfo:
 class PropertyInfo:
     """Descriptor for a @property on a record."""
     name: str
-    getter: 'FunctionInfo'
-    setter: Optional['FunctionInfo'] = None
+    # Every accessor body's own FunctionInfo, getter clones first, then the
+    # setter -- so each body's analysis facts have a home.
+    accessors: list['FunctionInfo'] = field(default_factory=list)
+
+    @property
+    def getter(self) -> 'FunctionInfo':
+        """The getter call sites bind: the first live getter body's."""
+        return next(fi for fi in self.accessors if fi.is_property_getter)
+
+    @property
+    def setter(self) -> Optional['FunctionInfo']:
+        return next((fi for fi in self.accessors if fi.is_property_setter), None)
 
     @property
     def type(self) -> TpyType:
@@ -7475,6 +7485,12 @@ class FunctionInfo:
     # from a regular function declared to return that type which would emit T&).
     # Only a unique ordinary source declaration; overloads/redefinitions stay absent.
     declaration: TpyFunction | None = field(default=None, repr=False, compare=False)
+    # The source body whose analysis facts (mutated params, return borrows,
+    # readonly inference, ...) this FunctionInfo carries -- set for every
+    # registered def, each `@dispatch` variant and each clone of a method
+    # pair alike, never for a bodyless `typing.overload` stub. Found back
+    # through `body_function_info` / `body_method_info`, never by name.
+    body: TpyFunction | None = field(default=None, repr=False, compare=False)
     special_handling: bool = False  # True if sema/codegen handle specially
     error_return_type: Optional[str] = None  # @error_return(E) exception type name
     builtin_decorator_key: Optional[str] = None  # e.g. "tpy.readonly" -- links .py function to decorator semantics
@@ -7744,6 +7760,51 @@ class FunctionInfo:
         if self.has_variadic:
             return 2**31
         return len(self.params)
+
+
+def _body_info(func: 'TpyFunction', candidates: 'list[FunctionInfo] | None', *,
+               sema_method: bool = False) -> 'FunctionInfo | None':
+    if func.is_nested_def or not candidates:
+        # A nested def is bound in its enclosing body's namespace only; a
+        # same-named registry entry belongs to another callable.
+        return None
+    found = [fi for fi in candidates if fi.root.body is func]
+    if len(found) > 1:
+        raise AssertionError(
+            f"Internal error: {len(found)} FunctionInfos carry the body of '{func.name}'")
+    if found:
+        return found[0]
+    if any(fi.root.body is not None for fi in candidates):
+        return None
+    # A `typing.overload` group: its FunctionInfos are the bodyless stubs and
+    # the implementation (or a per-stub specialization built from it) has
+    # none, so its facts take one stub by position -- the first of a method
+    # group on sema's side (where they are written and read back), the last
+    # everywhere else. The two disagree on a method group of several stubs
+    # (BUGS.md#overload-group-borrow-facts-last-entry).
+    return candidates[0 if sema_method else -1]
+
+
+def body_function_info(registry: 'TypeRegistry', func: 'TpyFunction') -> 'FunctionInfo | None':
+    """The FunctionInfo carrying the analysis facts of free function body
+    `func` -- the one registered from it, whatever else shares its name."""
+    return _body_info(func, registry.get_function(func.name))
+
+
+def body_method_info(record: 'RecordInfo | None', method: 'TpyFunction', *,
+                     sema: bool = False) -> 'FunctionInfo | None':
+    """The FunctionInfo carrying the analysis facts of method body `method`
+    of `record`: its own entry in the method's overload list, or a property
+    accessor's in the property. `sema` marks body analysis's own writers
+    and readers, which a `typing.overload` group answers differently."""
+    if record is None:
+        return None
+    if method.is_property_getter or method.is_property_setter:
+        prop = record.properties.get(
+            (method.property_name or method.name) if method.is_property_setter else method.name)
+        return _body_info(method, prop.accessors if prop is not None else None,
+                          sema_method=sema)
+    return _body_info(method, record.get_method_overloads(method.name), sema_method=sema)
 
 
 def param_may_be_written(fi: 'FunctionInfo', idx: int) -> bool:

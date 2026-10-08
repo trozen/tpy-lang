@@ -26,7 +26,7 @@ struct Buffer {
 
     // @auto_readonly
     // def merge_span(self, other: list[int32]) -> Span[auto_readonly[int32]]:
-    std::span<int32_t> merge_span(std::vector<int32_t>& other);
+    std::span<int32_t> merge_span(const std::vector<int32_t>& other);
 
     // @auto_readonly
     // def merge_span(self, other: list[int32]) -> Span[auto_readonly[int32]]:
@@ -47,7 +47,7 @@ inline Buffer::Buffer() : _data(std::vector<int32_t>{10, 20, 30}) {}
 // @auto_readonly
 // def merge_span(self, other: list[int32]) -> Span[auto_readonly[int32]]:
 //     return self._data
-inline std::span<int32_t> Buffer::merge_span(std::vector<int32_t>& other) {
+inline std::span<int32_t> Buffer::merge_span(const std::vector<int32_t>& other) {
     return ::tpy::as_mut_span(this->_data);
 }
 

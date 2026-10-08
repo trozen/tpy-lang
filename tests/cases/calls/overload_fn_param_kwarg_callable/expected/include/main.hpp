@@ -22,7 +22,7 @@ template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<T>;
   }
-::tpy::val_or_ref_t<T> reduce(const std::vector<T>& xs, __F0&& func);
+::tpy::val_or_ref_t<T> reduce(std::vector<T>& xs, __F0&& func);
 // def main() -> None:
 void main();
 
@@ -43,7 +43,7 @@ template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<T>;
   }
-::tpy::val_or_ref_t<T> reduce(const std::vector<T>& xs, __F0&& func) {
+::tpy::val_or_ref_t<T> reduce(std::vector<T>& xs, __F0&& func) {
     return ::tpy::__getitem__(xs, 0);
 }
 

@@ -1,0 +1,7 @@
+method-read: 4 1 2 0 -1
+method-empty: 0 0 1
+method-mutate: 2 [1.0, 2.5, 9.0]
+free-late: 4 3 [1, 2, 9]
+free-early: 2 1 [1, 5]
+generic-yield: 100
+setter-callee: 2 [0, 1]

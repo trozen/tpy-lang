@@ -9,7 +9,7 @@ from contextlib import AbstractContextManager, ExitStack, nullcontext
 from dataclasses import replace as dc_replace
 from typing import Callable, Iterable, Literal, Sequence, TYPE_CHECKING
 
-from ..typesys import peel_value_readonly
+from ..typesys import peel_value_readonly, body_function_info
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, PendingNumType, RecordInfo, disambiguated_pair,
     NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_const, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType, unify_literal_types,
@@ -5116,11 +5116,11 @@ class ExpressionAnalyzer:
         # or a capture keeps the enclosing param a mutable borrow, and one that
         # may grow or rewrite a capture conflicts with the loans held on it here
         # and demotes the views borrowed out of it.
-        fis = self.ctx.registry.get_function(func.name)
-        if fis:
+        frame_fi = body_function_info(self.ctx.registry, func)
+        if frame_fi is not None:
             creation = TpyCall(TpyName(func.name, loc=loc),
                                (range_args or [gen.iterable]) + list(reads), loc=loc)
-            creation.resolved_function_info = fis[-1]
+            creation.resolved_function_info = frame_fi
             # The frame reads a capture afresh at each pull, so a capture is
             # held whole -- unless the yield may point into it (`ys[i][1:]`
             # views an element of `ys`), or an inner `for` clause iterates it
@@ -5133,7 +5133,7 @@ class ExpressionAnalyzer:
                     else set())
             n_source = len(range_args) or 1
             iterated = genexpr_iterated_roots(func)
-            fis[-1].root.held_whole_params = frozenset(
+            frame_fi.root.held_whole_params = frozenset(
                 n_source + k for k, name in enumerate(captures)
                 if name not in lent and name not in iterated)
             self.calls._check_borrow_arg_conflicts(creation)
