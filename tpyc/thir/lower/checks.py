@@ -6375,18 +6375,23 @@ def _coro_factory_structural_arg(a: TpyExpr, proto, analyzer) -> bool:
 def _deref_coerce_arg(a: TpyExpr, ptype: 'TpyType | None',
                       locals_: dict[str, TpyType], analyzer
                       ) -> 'tuple[str, TpyType] | None':
-    """A deref auto-coercion (`deref_to_target`) over a bare in-scope NAME
-    into a plain F1-record slot (`print_point(r)` on a Deref-implementing
-    `Ref` / `describe(p)` on `p: Ptr[Point]`). Two renders, keyed on the
-    source: a `Ptr[T]` source is the inline `::tpy::deref_check(p)` lvalue
-    (binds the const ref directly); a record-wrapper source hoists the
-    slot-typed VALUE copy `Point __tmp_N = r.__deref__();` (the ref-param
-    cascade's temporary row) and passes the temp. Returns
+    """A deref auto-coercion (`deref_to_target`) into a plain F1-record slot
+    (`print_point(r)` on a Deref-implementing `Ref` / `describe(p)` on
+    `p: Ptr[Point]`). Two renders, keyed on the source: a `Ptr[T]` source is
+    the inline `::tpy::deref_check(<src>)` lvalue (binds the ref directly),
+    for any source expression -- a local, a field (`m._a`), a call result,
+    an element; a record-wrapper source hoists the slot-typed VALUE copy
+    `Point __tmp_N = r.__deref__();` (the ref-param cascade's temporary row)
+    and passes the temp, for a bare local only. Returns
     `("inline" | "temp", slot)` or None."""
     if not (isinstance(a, TpyCoerce) and a.coercion.name == "deref_to_target"):
         return None
     src = a.expr
-    if not (isinstance(src, TpyName) and src.name in locals_):
+    is_local = isinstance(src, TpyName) and src.name in locals_
+    # A non-local NAME is a module global, whose pointer-slot render belongs
+    # to the module-scope unit (TODO.md "Module scope is the body of
+    # __tpy_init").
+    if isinstance(src, TpyName) and not is_local:
         return None
     slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
             if isinstance(ptype, TpyType) else None)
@@ -6394,8 +6399,16 @@ def _deref_coerce_arg(a: TpyExpr, ptype: 'TpyType | None',
         return None
     actual = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a.actual_type)))
     if isinstance(actual, PtrType):
+        # `deref_check` evaluates its operand once and yields the pointee,
+        # whose lifetime does not depend on the pointer value, so the source
+        # shape does not matter.
         return "inline", slot
-    if isinstance(actual, NominalType) and actual.is_user_record:
+    # The wrapper flavor hands the callee a COPY, so a write through the
+    # param misses the wrapped object (BUGS.md#deref-wrapper-arg-mutates-copy);
+    # it stays at the bare-local slice until that is fixed rather than spread
+    # to more sources.
+    if (isinstance(actual, NominalType) and actual.is_user_record
+            and is_local):
         return "temp", slot
     return None
 

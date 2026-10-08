@@ -2029,7 +2029,7 @@ The plain `def __deref__` above implicitly gets mutable + const overloads becaus
 
 Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref__() -> Point`, then `box.x` resolves through both (max depth: 8). Auto-deref also works through `Optional` receivers (`Ref | None`).
 
-**Deref coercion:** Types with `__deref__() -> T` also coerce to `T` in assignment, argument, and return contexts. For example, a user `Ref` with `__deref__() -> Point` can be passed where `Point` is expected — the compiler inserts `ref.__deref__()` automatically. `Ptr[T]` uses `tpy::deref_check()` for null-checked coercion.
+**Deref coercion:** A `Ptr[T]` coerces to `T` in assignment, argument, and return contexts, from any source -- a local, a field (`return self._a`), a call result, a list element -- via the null-checked `tpy::deref_check()`; the result aliases the pointee, so a write through it reaches the original object. A user type with `__deref__() -> T` (e.g. a `Ref` with `__deref__() -> Point`) coerces only at an argument and only from a local name: the compiler passes a COPY of `ref.__deref__()`, so a write through the parameter does not reach the wrapped object (`BUGS.md#deref-wrapper-arg-mutates-copy`).
 
 **Pointer None semantics:**
 
