@@ -9,10 +9,12 @@ from contextlib import AbstractContextManager, ExitStack, nullcontext
 from dataclasses import replace as dc_replace
 from typing import Callable, Iterable, Literal, Sequence, TYPE_CHECKING
 
-from ..typesys import peel_value_readonly, body_function_info
+from ..typesys import canonical_readonly, make_readonly, substitute_type_params_simple
+from ..typesys import pointer_repr_optional, readonly_access, repr_shape
+from ..typesys import body_function_info
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, PendingNumType, RecordInfo, disambiguated_pair,
-    NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_const, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType, unify_literal_types,
+    NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType, unify_literal_types,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, AnyType, OptionalType, UnionType, VoidType,
     ReadonlyType, unwrap_readonly, unwrap_qualifiers, PendingContainerType, is_any_str_type, PendingStrType, PendingViewType,
     ValueForm,
@@ -31,6 +33,7 @@ from ..typesys import (
     RecursiveAliasInstanceType, recursive_union_alternatives)
 from ..parse.nodes import GENEXPR_FUNC_PREFIX, op_spelling
 from ..parse import (
+    const_tuple_index,
     ResultForm,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
@@ -66,7 +69,7 @@ from ..prescan import (
     int_constant_too_wide, storage_spelling, walrus_names_of)
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
-from .context import PENDING_CONTAINER_TYPES, readonly_reaches, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
+from .context import PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
 from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
@@ -95,7 +98,7 @@ from .slot_hint import (SlotHint, callable_return, element,
 from .local_deduction import (collect_pending_source_types,
                               mark_pending_list_mutated,
                               note_pending_elem_read, pending_elem_read)
-from .operators import DUNDER_CPP_TEMPLATES, _substitute_type_params
+from .operators import DUNDER_CPP_TEMPLATES
 from .bound_check import raise_if_class_param_bound_violated
 from .overloads import OverloadAmbiguityError, resolve_overload
 from .type_ops import frame_yield_may_borrow
@@ -326,11 +329,10 @@ _COMP_ARRAY_MAX_SIZE = 1024
 
 
 def _readonly_result(ret: TpyType) -> TpyType:
-    """A reference result read off a readonly receiver: `readonly[T]` under
-    the caller's `Ref`, the shape a builtin container element takes -- a
-    `__getitem__` declared to return a reference carries its own `Ref`,
-    which would otherwise end up INSIDE the readonly."""
-    return ReadonlyType(unwrap_readonly(unwrap_ref_type(ret)))
+    """A result read off a readonly receiver (`make_readonly`), under the
+    caller's `Ref` -- a `__getitem__` declared to return a reference carries
+    its own `Ref`, which would otherwise end up INSIDE the readonly."""
+    return make_readonly(unwrap_ref_type(ret))
 
 
 def _is_slice_getitem(fi: 'FunctionInfo') -> bool:
@@ -967,7 +969,7 @@ class ExpressionAnalyzer:
                 expr, self.calls.analyze_call(expr))
             if self.calls.stamp_result_borrow(expr, typ):
                 # What lends the result is read-only, so the result is too.
-                typ = ReadonlyType(unwrap_readonly(unwrap_ref_type(typ)))
+                typ = _readonly_result(typ)
             self._warn_frame_held_copies(expr)
             self.calls.defer_argument_copies(expr)
             record_protocol_arg_calls(self.ctx, expr)
@@ -978,7 +980,7 @@ class ExpressionAnalyzer:
             typ = self._concrete_generator_call(
                 expr, self.methods.analyze_method_call(expr))
             if self.calls.stamp_result_borrow(expr, typ):
-                typ = ReadonlyType(unwrap_readonly(unwrap_ref_type(typ)))
+                typ = _readonly_result(typ)
             self._warn_frame_held_copies(expr)
             self.calls.defer_argument_copies(expr)
             self.calls.defer_copy_receiver_call(expr)
@@ -1786,10 +1788,10 @@ class ExpressionAnalyzer:
                                             unwrap_readonly(e), t_expr, e_expr)
             if isinstance(joined, InferredJoin):
                 return joined
-            if (joined is not None and not joined.is_value_type()
+            if (joined is not None
                     and (isinstance(t, ReadonlyType)
                          or isinstance(e, ReadonlyType))):
-                return ReadonlyType(joined)
+                return make_readonly(joined)
             return joined
         return join_inferred_value_types(t, e, join)
 
@@ -2136,13 +2138,8 @@ class ExpressionAnalyzer:
 
         # Identity operators (is / is not) -- only valid with None or enums
         if expr.op in ("is", "is not"):
-            # Unwrap RefType, ReadonlyType, and OwnType for nullable checks.
-            left_check = unwrap_ref_type(unwrap_readonly(left_type))
-            if isinstance(left_check, OwnType):
-                left_check = left_check.wrapped
-            right_check = unwrap_ref_type(unwrap_readonly(right_type))
-            if isinstance(right_check, OwnType):
-                right_check = right_check.wrapped
+            left_check = repr_shape(left_type)
+            right_check = repr_shape(right_type)
             # Enum identity: lower to ==/!=
             if is_enum_type(left_check) and is_enum_type(right_check):
                 if left_check.name == right_check.name:
@@ -2339,7 +2336,7 @@ class ExpressionAnalyzer:
                 contains_overloads = right_record.get_method_overloads("__contains__")
                 if contains_overloads:
                     # Drop int-kind type args (e.g. N in Array[T, N]) --
-                    # _substitute_type_params only acts on TypeParamRef -> TpyType.
+                    # substitute_type_params_simple only acts on TypeParamRef -> TpyType.
                     type_subst = {
                         k: v for k, v in self.type_ops.build_type_substitution(right_type).items()
                         if isinstance(v, TpyType)
@@ -2349,7 +2346,7 @@ class ExpressionAnalyzer:
                     if type_subst:
                         subst_overloads = [
                             dc_replace(m, params=[
-                                ParamInfo(p.name, _substitute_type_params(p.type, type_subst))
+                                ParamInfo(p.name, substitute_type_params_simple(p.type, type_subst))
                                 for p in m.params
                             ]) for m in contains_overloads
                         ]
@@ -3012,7 +3009,6 @@ class ExpressionAnalyzer:
             type_subst = self.type_ops.build_type_substitution(typ)
             field_info = self.protocols.lookup_record_field(record, expr.field)
             if field_info:
-                expr.accessed_field_is_interior = field_info.is_interior_mutable
                 expr.native_field_name = field_info.native_name
                 field_type = field_info.type
                 if type_subst:
@@ -3223,13 +3219,8 @@ class ExpressionAnalyzer:
 
         # Readonly self propagates into non-value reads so writes through
         # the result are rejected and references come back const.
-        if current_fn.is_readonly and readonly_reaches(field_type):
-            if isinstance(field_type, PtrType) and not field_type.is_readonly:
-                field_type = field_type.as_const()
-            elif is_span(field_type) and not is_readonly_span(field_type):
-                field_type = span_as_const(field_type)
-            elif not isinstance(field_type, ReadonlyType):
-                field_type = ReadonlyType(field_type)
+        if current_fn.is_readonly:
+            field_type = make_readonly(field_type)
 
         expr.unbound_self_parent_type = parent_type
         expr.native_field_name = field_info.native_name
@@ -3332,12 +3323,8 @@ class ExpressionAnalyzer:
             obj_type = self.analyze_expr(expr.obj)
 
         # Unwrap transparent wrappers
-        is_readonly_obj = isinstance(obj_type, ReadonlyType)
-        actual_type = unwrap_ref_type(obj_type)
-        if isinstance(actual_type, ReadonlyType):
-            actual_type = actual_type.wrapped
-        if isinstance(actual_type, OwnType):
-            actual_type = actual_type.wrapped
+        is_readonly_obj = readonly_access(obj_type)
+        actual_type = repr_shape(obj_type)
         if isinstance(actual_type, OptionalType):
             if actual_type.inner.is_value_type():
                 raise self.ctx.error(f"Cannot access field '{expr.field}' on type {obj_type}", expr)
@@ -3405,21 +3392,12 @@ class ExpressionAnalyzer:
                         # applied immediately to avoid unsafe elision between
                         # unspecified-order siblings in the same expression.
                         self.ctx.func.pending_non_null_ptr_vars.add(obj_key)
-                # Propagate readonly: accessing a non-value field through a
-                # readonly reference yields a readonly result.
-                # Ptr[T] fields become Ptr[readonly[T]], Span[T] -> Span[readonly[T]].
-                # An `unsafe_interior_mutable` field is outside the readonly boundary: it keeps
-                # its declared (mutable) shape so refcount-style bookkeeping can
-                # be touched through a readonly receiver (the C++ `mutable`-via-
-                # raw-pointer pattern). Reassigning the slot is still rejected --
-                # that is enforced on the receiver, not here.
-                if is_readonly_obj and not expr.accessed_field_is_interior:
-                    if isinstance(result, PtrType) and not result.is_readonly:
-                        result = result.as_const()
-                    elif is_span(result) and not is_readonly_span(result):
-                        result = span_as_const(result)
-                    elif readonly_reaches(result):
-                        result = ReadonlyType(unwrap_readonly(result))
+                # Readonly protects the receiver's own storage: a non-value
+                # field read through it is readonly. A `Ptr` / `Span` field is
+                # a value-typed handle, so it is not wrapped -- what it points
+                # at keeps the access its type argument gives it.
+                if is_readonly_obj:
+                    result = make_readonly(result)
                 # A consuming method (self: Own[Self]) moves a field out only
                 # where its return value may (see consuming_return_fields);
                 # anywhere else the read is an ordinary borrow.
@@ -4012,12 +3990,13 @@ class ExpressionAnalyzer:
         """Strip `Awaitable[T]` / `Cancellable[T]` wrapping from an async
         def's return type. Cancellable is the post-registration shape of
         every async-def call result; Awaitable is the shape user types
-        with just `__poll__` declare. Both unwrap to `T` for `await`."""
+        with just `__poll__` declare. Both unwrap to `T` for `await`, a
+        result like any other (`canonical_readonly`)."""
         ret = unwrap_ref_type(ret_type)
         if (isinstance(ret, NominalType)
                 and ret.qualified_name() in (qnames.AWAITABLE, qnames.CANCELLABLE)
                 and len(ret.type_args) == 1):
-            return ret.type_args[0]
+            return canonical_readonly(ret.type_args[0])
         return ret
 
     def _extract_awaitable_inner(self, typ) -> 'tuple[TpyType | None, bool]':
@@ -4070,7 +4049,7 @@ class ExpressionAnalyzer:
                 # Recursively substitute T -> typ.type_args[i] -- handles
                 # both bare TypeParamRef and nested shapes like list[T],
                 # tuple[T, U], etc.
-                return (_substitute_type_params(ret.type_args[0], type_subst),
+                return (substitute_type_params_simple(ret.type_args[0], type_subst),
                         bool(fi.is_readonly))
         return (None, True)
 
@@ -5000,11 +4979,8 @@ class ExpressionAnalyzer:
         # A loop var binds a copy of a value element, so a `readonly` on one
         # (a view of a readonly dict) says nothing about it -- the for
         # statement peels it the same way.
-        src_elem = peel_value_readonly(
+        src_elem = canonical_readonly(
             resolve_int_literals(elem_type, self.ctx.default_int_for_literal))
-        if isinstance(src_elem, TupleType):
-            src_elem = TupleType(tuple(
-                peel_value_readonly(t) for t in src_elem.element_types))
         src_type: TpyType = NominalType("Iterable", (src_elem,), is_protocol=True,
                                         _module_qname=qnames.ITERABLE)
         # A borrowed container keeps its own type: the frame walks it by
@@ -5289,13 +5265,7 @@ class ExpressionAnalyzer:
     @staticmethod
     def _try_int_literal(expr: TpyExpr) -> int | None:
         """Extract an integer literal value, unwrapping TpyCoerce and unary minus."""
-        if isinstance(expr, TpyCoerce):
-            expr = expr.expr
-        if isinstance(expr, TpyIntLiteral):
-            return expr.value
-        if isinstance(expr, TpyUnaryOp) and expr.op == '-' and isinstance(expr.operand, TpyIntLiteral):
-            return -expr.operand.value
-        return None
+        return const_tuple_index(expr.expr if isinstance(expr, TpyCoerce) else expr)
 
     def _range_literal_size(self, call: TpyCall) -> int | None:
         """Extract compile-time size from range() with literal args."""
@@ -5457,6 +5427,11 @@ class ExpressionAnalyzer:
                     if k == 0 else [])
         self._register_comp_iter_loans(gen, names, excluded)
         if gen.unpack_vars is not None:
+            if (isinstance(elem_type, ReadonlyType)
+                    and isinstance(elem_type.wrapped, TupleType)):
+                # As the tuple-unpack statement reads it.
+                elem_type = TupleType(tuple(
+                    make_readonly(e) for e in elem_type.wrapped.element_types))
             if not isinstance(elem_type, TupleType):
                 raise self.ctx.error(
                     f"Cannot unpack non-tuple type {elem_type}", expr)
@@ -5593,13 +5568,8 @@ class ExpressionAnalyzer:
         n = len(tuple_type.element_types)
         # Register index type for codegen
         self.analyze_expr(index)
-        # Extract compile-time index
-        if isinstance(index, TpyIntLiteral):
-            idx = index.value
-        elif (isinstance(index, TpyUnaryOp) and index.op == "-"
-              and isinstance(index.operand, TpyIntLiteral)):
-            idx = -index.operand.value
-        else:
+        idx = const_tuple_index(index)
+        if idx is None:
             raise self.ctx.error(
                 "Tuple index must be a compile-time integer literal", expr
             )
@@ -5672,9 +5642,8 @@ class ExpressionAnalyzer:
             # `t[i]` of a readonly tuple is silently accepted. A nested tuple
             # holding a reference carries it on: `t[0][1].n = v` writes the
             # object the readonly tuple refers to.
-            if (isinstance(inner_obj_type, ReadonlyType)
-                    and readonly_reaches(elem)):
-                elem = ReadonlyType(unwrap_readonly(elem))
+            if isinstance(inner_obj_type, ReadonlyType):
+                elem = make_readonly(elem)
             return elem
 
         # Slice: obj[start:stop]
@@ -5743,15 +5712,15 @@ class ExpressionAnalyzer:
                 self.check_dict_key(expr, actual_obj.key_type,
                                     lookup_index_type)
             v_type = actual_obj.value_type
-            if readonly_dict and readonly_reaches(v_type):
-                v_type = ReadonlyType(unwrap_readonly(v_type))
+            if readonly_dict:
+                v_type = make_readonly(v_type)
             return make_ref(v_type)
         if is_dict(actual_obj):
             k_type = actual_obj.type_args[0]
             v_type = actual_obj.type_args[1]
             self.check_dict_key(expr, k_type, lookup_index_type)
-            if readonly_dict and readonly_reaches(v_type):
-                v_type = ReadonlyType(unwrap_readonly(v_type))
+            if readonly_dict:
+                v_type = make_readonly(v_type)
             return make_ref(v_type)
 
         # Slice-typed variable as index: route through __getitem__ overload
@@ -5779,12 +5748,13 @@ class ExpressionAnalyzer:
             ro_obj = isinstance(inner_obj_type, ReadonlyType)
             bare_obj = unwrap_readonly(inner_obj_type)
             if isinstance(bare_obj, NominalType) and bare_obj.is_record:
-                kr = self.narrowing.record_getitem_key_ret(bare_obj)
+                kr = self.narrowing.record_getitem_key_ret(
+                    bare_obj, readonly_receiver=ro_obj)
                 if kr is not None:
                     key_t, ret_t = kr
                     if self.compat.is_type_compatible(unwrap_readonly(index_type), unwrap_readonly(key_t)):
                         self._tag_record_getitem(expr, bare_obj, ret_t, index_type)
-                        if ro_obj and readonly_reaches(ret_t):
+                        if ro_obj:
                             ret_t = _readonly_result(ret_t)
                         return make_ref(ret_t)
 
@@ -5817,12 +5787,8 @@ class ExpressionAnalyzer:
                     info.needs_indexing = True
                 elem_type = pending_elem_read(self.ctx, actual_type,
                                               elem_type, expr)
-            # A tuple element holding a reference (`list[tuple[int32, Box]]`)
-            # is a value type that still reaches the object: readonly
-            # projects through it, so `xs[0][1].n = v` is refused like
-            # `xs[0].n = v` off a `readonly[list[Box]]`.
-            if is_readonly_obj and readonly_reaches(elem_type):
-                elem_type = ReadonlyType(unwrap_readonly(elem_type))
+            if is_readonly_obj:
+                elem_type = make_readonly(elem_type)
             return make_ref(elem_type)
 
         # Protocol types - lookup __getitem__ return type
@@ -5835,17 +5801,18 @@ class ExpressionAnalyzer:
                     and not _protocol_getitem_is_readonly(actual_type)):
                 credit_implicit_receiver_call(
                     self.ctx, expr.obj, actual_type, None, "__getitem__", expr)
-            if is_readonly_obj and readonly_reaches(ret):
-                ret = ReadonlyType(unwrap_readonly(ret))
+            if is_readonly_obj:
+                ret = make_readonly(ret)
             return make_ref(ret)
 
         # Records with __getitem__ method
         if isinstance(actual_type, NominalType) and actual_type.is_record:
-            ret = self.narrowing._get_record_getitem_type(actual_type)
+            ret = self.narrowing._get_record_getitem_type(
+                actual_type, readonly_receiver=is_readonly_obj)
             if ret is None:
                 raise self.ctx.error(f"Cannot index type {actual_type}: no __getitem__ method", expr)
             self._tag_record_getitem(expr, actual_type, ret, index_type)
-            if is_readonly_obj and readonly_reaches(ret):
+            if is_readonly_obj:
                 ret = _readonly_result(ret)
             return make_ref(ret)
 
@@ -5883,8 +5850,7 @@ class ExpressionAnalyzer:
         # there is no valid non-copying result to hand back. Reject loudly until
         # the general borrow/liveness pass (BUGS.md rvalue-subscript entry)
         # replaces this with scope-based reasoning.
-        if (isinstance(actual_ret, OptionalType)
-                and actual_ret.uses_pointer_repr()
+        if (pointer_repr_optional(actual_ret) is not None
                 and is_rvalue_source(self.ctx, expr.obj)):
             raise self.ctx.error(
                 "subscript into a temporary would dangle: the accessor returns "
@@ -5942,14 +5908,14 @@ class ExpressionAnalyzer:
             return keyed[0] if keyed else None
         instance_subst = self.type_ops.build_type_substitution(record_type)
         composed = {
-            k: (_substitute_type_params(v, {n: t for n, t in instance_subst.items()
+            k: (substitute_type_params_simple(v, {n: t for n, t in instance_subst.items()
                                             if isinstance(t, TpyType)})
                 if isinstance(v, TpyType) else v)
             for k, v in inherited_subst.items()}
         subst = {k: v for k, v in {**instance_subst, **composed}.items()
                  if isinstance(v, TpyType)}
         subst_keyed = [
-            dc_replace(m, params=[dc_replace(p, type=_substitute_type_params(p.type, subst))
+            dc_replace(m, params=[dc_replace(p, type=substitute_type_params_simple(p.type, subst))
                                   for p in m.params])
             for m in keyed] if subst else keyed
         # An int literal takes the first overload whose key it fits, as the

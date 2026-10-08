@@ -355,16 +355,16 @@ inline Inner& Rebound::__setitem__(int64_t i, int64_t v) {
 inline Flat::Flat(int64_t n) : n(n) {}
 
 // def itself(self) -> "readonly[Flat]":
-//     # A value class crosses by copy from EVERY source -- `return self`
-//     # included -- so the identity suppression must not apply and the
-//     # value-specific wording fires.
-//     return self  # tpyc: warning(/value-type class 'Flat' by reference, and a value class always crosses the CPython boundary as a copy/)
+//     # readonly over a value class protects nothing and is dropped, so this
+//     # is a by-value return: it crosses as a copy with no by-reference
+//     # warning, like any other value return.
+//     return self  # tpyc: ok
 inline Flat Flat::itself() const {
     return (*this);
 }
 
 // def __getitem__(self, i: int64) -> "readonly[Flat]":
-//     return self  # tpyc: warning(/value-type class 'Flat' by reference, and a value class always crosses/)
+//     return self  # tpyc: ok
 inline Flat Flat::__getitem__(int64_t i) const {
     return (*this);
 }

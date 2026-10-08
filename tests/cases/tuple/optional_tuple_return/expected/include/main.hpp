@@ -132,8 +132,16 @@ struct Holder {
     std::optional<std::tuple<Box, int32_t>> maybe_owned(bool k) const;
 
     // @readonly
-    // def peek(self, k: bool) -> tuple[Box, int32] | None:
+    // def peek(self, k: bool) -> tuple[readonly[Box], int32] | None:
     std::optional<std::tuple<const Box*, int32_t>> peek(bool k) const;
+
+    // @property
+    // def pair_prop(self) -> tuple[auto_readonly[Box], int32] | None:
+    std::optional<std::tuple<Box*, int32_t>> pair_prop();
+
+    // @property
+    // def pair_prop(self) -> tuple[auto_readonly[Box], int32] | None:
+    std::optional<std::tuple<const Box*, int32_t>> pair_prop() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -204,9 +212,10 @@ inline std::optional<std::tuple<Box, int32_t>> Holder::maybe_owned(bool k) const
     return std::tuple<Box, int32_t>{Box((::tpy::mul_check<int32_t>(this->k, 100))), this->k};
 }
 
-// # @readonly method: the field is handed out through a const element.
+// # @readonly method: the field is handed out through the declared const
+// # element, as the bare twin declares it.
 // @readonly
-// def peek(self, k: bool) -> tuple[Box, int32] | None:
+// def peek(self, k: bool) -> tuple[readonly[Box], int32] | None:
 //     if k:
 //         return None  # tpyc: ok
 //     return (self.item, self.k)  # tpyc: ok
@@ -215,6 +224,24 @@ inline std::optional<std::tuple<const Box*, int32_t>> Holder::peek(bool k) const
         return std::nullopt;
     }
     return std::tuple<const Box*, int32_t>{&(this->item), this->k};
+}
+
+// # @property: the marked element follows the receiver, so a mutable
+// # receiver's result is writable.
+// @property
+// def pair_prop(self) -> tuple[auto_readonly[Box], int32] | None:
+//     return self.pair  # tpyc: ok
+inline std::optional<std::tuple<Box*, int32_t>> Holder::pair_prop() {
+    return ::tpy::tuple_to_pointer<std::tuple<Box*, int32_t>>(this->pair);
+}
+
+// # @property: the marked element follows the receiver, so a mutable
+// # receiver's result is writable.
+// @property
+// def pair_prop(self) -> tuple[auto_readonly[Box], int32] | None:
+//     return self.pair  # tpyc: ok
+inline std::optional<std::tuple<const Box*, int32_t>> Holder::pair_prop() const {
+    return ::tpy::tuple_to_pointer<std::tuple<const Box*, int32_t>>(this->pair);
 }
 void __tpy_init();
 } // namespace tpyapp::main

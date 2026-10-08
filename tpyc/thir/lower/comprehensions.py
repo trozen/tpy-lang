@@ -27,7 +27,6 @@ from ...typesys import (
     OwnType,
     TpyType,
     TupleType,
-    peel_value_readonly,
     resolve_int_literals,
     unwrap_readonly,
     unwrap_ref_type,
@@ -191,14 +190,6 @@ def _comp_sized_iterable(t: TpyType) -> bool:
     return (is_array(t) or is_list(t) or is_dict(t) or is_set(t)
             or is_dict_view(t))
 
-def _peel_value_readonly(t: 'TpyType | None') -> 'TpyType | None':
-    """A `readonly[V]` VALUE element (`d.values()` / `d.items()` on a
-    `readonly[dict]` receiver: the view spells `auto_readonly[V]`) binds a
-    copy, so the readonly says nothing about the loop var -- the for-statement
-    binds `int32_t v = *__beg;` there too. The same peel a parameter gets
-    (`peel_value_readonly`), None-tolerant for the unpack targets."""
-    return None if t is None else peel_value_readonly(t)
-
 
 def _user_iterable_source(gen, declared: dict[str, TpyType], analyzer,
                           lc: '_LowerCtx | None') -> '_SourceRoute | None':
@@ -273,8 +264,8 @@ def _user_iterable_source(gen, declared: dict[str, TpyType], analyzer,
             or (isinstance(et_b, TupleType)
                 and et_b.has_pointer_repr_element())):
         return None
-    et = _peel_value_readonly(resolve_int_literals(
-        unwrap_ref_type(et), analyzer.ctx.default_int_for_literal))
+    et = resolve_int_literals(
+        unwrap_ref_type(et), analyzer.ctx.default_int_for_literal)
     return _SourceRoute(loop="begin_end", counter_type=None, it_type=u,
                         et=et, iterable_lvalue=lvalue, iter_protocol=True)
 
@@ -507,8 +498,8 @@ def _source_route(gen, declared: dict[str, TpyType],
                 or (isinstance(et_b, TupleType)
                     and et_b.has_pointer_repr_element())):
             return None
-    et = _peel_value_readonly(resolve_int_literals(
-        unwrap_ref_type(et), analyzer.ctx.default_int_for_literal))
+    et = resolve_int_literals(
+        unwrap_ref_type(et), analyzer.ctx.default_int_for_literal)
     return _SourceRoute(loop="begin_end", counter_type=None, it_type=it_type,
                         et=et, iterable_lvalue=lvalue, owns_elements=owns,
                         gen_factory=genfac, native_combinator=combinator)
@@ -568,7 +559,7 @@ def _clause_route(kind: str, gen, declared: dict[str, TpyType],
             return None  # defensive: sema errors on arity mismatch
         types: list = []
         for name, ett in zip(gen.unpack_vars, elem.element_types):
-            tt = _peel_value_readonly(unwrap_ref_type(ett))
+            tt = unwrap_ref_type(ett)
             if name is None:
                 types.append(None)
                 continue
@@ -728,9 +719,6 @@ def _comp_result_slots_ok(
     args = getattr(t, "type_args", None)
     if not args:
         return False
-    # A `readonly[V]` VALUE slot (the readonly-receiver dict view's element,
-    # copied into the result) gates as the plain value it renders as.
-    args = tuple(_peel_value_readonly(a) for a in args)
     if kind == "list" and not (is_list(t)
                                and (_comp_elem_slot_ok(
                                         args[0], analyzer,

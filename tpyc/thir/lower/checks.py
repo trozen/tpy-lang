@@ -50,13 +50,13 @@ from ...parse.nodes import (
     TpyUnaryOp,
     TpyVarDecl,
 )
+from ...typesys import pointer_repr_optional, pointer_variant_union
 from ...typesys import (
     param_may_be_written,
     ConcreteFrameType, ConcreteGenType,
     holds_borrowing_view, lands_in_view_member,
     collapse_tuple_own_elements,
     recorded_return_borrow_sources,
-    return_const_projected,
     AnyType,
     BOOL,
     CallableType,
@@ -86,7 +86,6 @@ from ...typesys import (
     is_dyn_protocol,
     is_fn_type,
     is_bodyless_binding,
-    is_ptr_variant_union,
     is_any_bytes_type,
     is_any_int_type,
     is_any_str_type,
@@ -139,7 +138,7 @@ from ...codegen_cpp.protocols import (classify_dyn_own_arg, dyn_forward_ok,
                                       resolve_own_source_type)
 from ...value_category import (
     call_hands_back_value, call_result_holdable, call_result_is_reference,
-    call_result_live_in_statement, call_returns_cpp_ref, declared_call_const,
+    call_result_live_in_statement, call_returns_cpp_ref,
     is_rvalue_source,
     property_getter_of,
 )
@@ -173,6 +172,7 @@ from ..nodes import (
     THIRStrSlice,
 )
 from .predicates import (
+    _expr_is_const_source,
     _call_storage_optional_return,
     _value_record_slot,
     _value_opt_call_ret_arg,
@@ -215,7 +215,6 @@ from .predicates import (
     _SPANLIKE_COERCIONS,
     _SPAN_METHOD_COERCIONS,
     _const_exact_field_receiver_ok,
-    _const_index,
     _container_pass_through_arg,
     _native_iterable_container_arg,
     _native_iterable_field_arg,
@@ -1763,34 +1762,16 @@ def _opt_ptr_addr_of_record_source(init, declared: dict[str, TpyType],
         return False
     if target_type is None:
         return True
-    tt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(target_type)))
-    return bool(isinstance(tt, OptionalType) and tt.uses_pointer_repr()
+    tt = pointer_repr_optional(target_type)
+    return bool(tt is not None
                 and _f1_record(unwrap_readonly(tt.inner), analyzer)
                 and analyzer.registry.is_subclass_of_or_equal(
                     st, unwrap_readonly(tt.inner)))
 
 
-def _const_borrow_call_result(call: TpyMethodCall, analyzer) -> bool:
-    """Whether a borrow-returning method call hands back a CONST reference --
-    either sema typed the result `readonly[...]`, or the method is readonly
-    (declared or inferred) and the emitted shim const-projects its return.
-
-    The same pair of facts `_expr_is_const_source` reads off a DIRECT
-    method-call init; spelled here because a consumer reached through a FIELD
-    hop has no `_LowerCtx` to ask that derivation with."""
-    declared = declared_call_const(analyzer, call)
-    if declared is not None:
-        return declared
-    if isinstance(analyzer.get_expr_type(call), ReadonlyType):
-        return True
-    fi = call.resolved_function_info
-    return fi is not None and return_const_projected(fi)
-
-
 def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                           declared: dict[str, TpyType], prescan: _Prescan,
-                          analyzer,
-                          pointers: 'AbstractSet[str]' = frozenset()
+                          analyzer, pointers: 'AbstractSet[str]', lc
                           ) -> 'LocalBinding | None':
     """The binding for a non-value local var-decl's *first* declaration, or None
     if it is outside the emit slice. The form decision comes from the shared
@@ -1810,8 +1791,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # that consumer: re-tag for the subscript-lift row
         # (`Box* first = ::tpy::optional_to_ptr(std::get<0>(h.t));`).
         if (stmt.name not in prescan.reassigned
-                and isinstance(target_type, OptionalType)
-                and target_type.uses_pointer_repr()
+                and pointer_repr_optional(target_type) is not None
                 and _tuple_field_opt_elem_subscript(stmt.init, declared,
                                                     analyzer)):
             return LocalBinding.OPTIONAL_TO_PTR
@@ -1841,11 +1821,9 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         if (isinstance(stmt.init, TpyName)
                 and stmt.init.name in pointers):
             src_t = declared.get(stmt.init.name)
-            tt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                target_type))) if target_type is not None else None)
-            st = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(src_t)))
-                  if src_t is not None else None)
-            if (isinstance(tt, OptionalType) and tt.uses_pointer_repr()
+            tt = pointer_repr_optional(target_type)
+            st = pointer_repr_optional(src_t)
+            if (tt is not None
                     and st == tt
                     and record_like(_unwrap_own(unwrap_readonly(tt.inner)),
                                    analyzer)):
@@ -2022,8 +2000,9 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # the receiver owns rather than a member of a dying temporary. A
         # by-VALUE receiver (`-> Own[T]`, a protocol or generic return)
         # answers False at `call_returns_cpp_ref` and keeps rejecting --
-        # that is a lifetime question, not a render one. A CONST-returning
-        # receiver call keeps rejecting for a second reason: the decl's
+        # that is a lifetime question, not a render one. A receiver call
+        # with a CONST result (`_expr_is_const_source`: declared, or
+        # following a const receiver) keeps rejecting: the decl's
         # const verdict does not travel through a field hop off a call
         # (`_f1_const_rooted_source` stops at the call node), so the alias
         # would be spelled `T&` over `const T` -- the defect the
@@ -2036,7 +2015,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and isinstance(stmt.init.obj, TpyMethodCall)
                 and call_returns_cpp_ref(
                     analyzer, stmt.init.obj.resolved_function_info)
-                and not _const_borrow_call_result(stmt.init.obj, analyzer)
+                and not _expr_is_const_source(stmt.init.obj, lc)
                 and _indirect_field_receiver_ok(stmt.init, declared,
                                                 analyzer, pointers)
                 and record_like(target_type, analyzer)):
@@ -2556,9 +2535,8 @@ def _optional_record_field_inner(t: 'TpyType | None', analyzer) -> 'TpyType | No
     by the value-storage optional field-write gate and its lowering. The
     `uses_pointer_repr` guard keeps a VALUE-record inner out: its
     borrow->storage convert has no plain-non-value emit arm."""
-    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if (isinstance(u, OptionalType) and u.uses_pointer_repr()
-            and _f1_record(u.inner, analyzer)):
+    u = pointer_repr_optional(t)
+    if u is not None and _f1_record(u.inner, analyzer):
         return u.inner
     return None
 
@@ -3073,13 +3051,14 @@ def _setitem_target_ok(
         rb = declared.get(recv.name)
         rbu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rb)))
                if rb is not None else None)
-        if (isinstance(rbu, OptionalType) and rbu.uses_pointer_repr()):
+        rb_opt = pointer_repr_optional(rb)
+        if rb_opt is not None:
             # A None-NARROWED ptr-repr Optional[container] receiver
             # writes through the same deref (`__setitem__((*d), k, v)`);
             # the un-narrowed flavor carries needs_optional_runtime_check
             # and rejected above, so reaching here implies the proof.
             rbu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                rbu.inner)))
+                rb_opt.inner)))
         if not _f1_container_ref(rbu):
             return note_detail("setitem.recv.name_shape")
     recv_t = _subscript_container_recv_type(recv, declared, analyzer,
@@ -6030,10 +6009,9 @@ def _ptr_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
         # `::tpy::optional_to_ptr(h.opt)` -- the PtrType-slot
         # storage-opt wrap (witnessed at the render arm); the pointee must
         # match the slot's.
-        at = analyzer.get_expr_type(a)
-        atu = unwrap_readonly(at) if at is not None else None
+        atu = pointer_repr_optional(analyzer.get_expr_type(a))
         pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-        return (isinstance(atu, OptionalType) and atu.uses_pointer_repr()
+        return (atu is not None
                 and isinstance(pt, PtrType)
                 and unwrap_readonly(atu.inner)
                 == unwrap_readonly(pt.pointee))
@@ -6796,8 +6774,8 @@ def _own_opt_record_slot(ptype: TpyType | None, analyzer) -> 'OptionalType | Non
     w = _plain_own_slot(ptype)
     if w is None:
         return None
-    w = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(w)))
-    if not (isinstance(w, OptionalType) and w.uses_pointer_repr()):
+    w = pointer_repr_optional(w)
+    if w is None:
         return None
     return w if record_like(unwrap_readonly(w.inner), analyzer) else None
 
@@ -6822,7 +6800,8 @@ def _own_opt_ptr_name_arg(a: TpyExpr, ptype: TpyType | None,
            if at is not None else None)
     if isinstance(atu, OwnType):
         atu = unwrap_readonly(atu.wrapped)
-    if not (isinstance(atu, OptionalType) and atu.uses_pointer_repr()):
+    atu = pointer_repr_optional(atu)
+    if atu is None:
         return None
     return w if unwrap_readonly(atu.inner) == unwrap_readonly(w.inner) else None
 
@@ -7366,8 +7345,8 @@ def _opt_own_ptr_opt_name_arg(a: TpyExpr, ptype: TpyType | None,
         return None
     if not (isinstance(a, TpyName) and a.name in locals_):
         return None
-    at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
-    if not (isinstance(at, OptionalType) and at.uses_pointer_repr()):
+    at = pointer_repr_optional(locals_[a.name])
+    if at is None:
         return None
     return (at.with_inner(w)
             if unwrap_readonly(at.inner) == w else None)
@@ -9343,8 +9322,13 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
         # `_call_arity_ok` rule); a defaultless or variadic tail rejects.
         return note_detail("method.qualcall.arity_defaults")
     ret = analyzer.get_expr_type(e)
-    if not (_eligible_scalar(ret) or _eligible_char(ret)
-            or _eligible_enum(ret, analyzer) is not None
+    # A readonly VALUE result (`T` bound to `readonly[int32]` through a
+    # `-> readonly[T]` callee) is the same C++ value: peeled for the value
+    # rows, as the stub-method gate's `_resolved_scalar` does.
+    value_ret = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
+                 if isinstance(ret, TpyType) else ret)
+    if not (_resolved_scalar(ret, analyzer) or _eligible_char(value_ret)
+            or _eligible_enum(value_ret, analyzer) is not None
             or _resolved_str_value(ret, analyzer) is not None
             or _resolved_bytes_value(ret, analyzer) is not None
             or _eligible_ptr_value(ret, analyzer)
@@ -10643,10 +10627,8 @@ def _borrow_form_at_storage_slot(e: TpyMethodCall, index: int,
     if not isinstance(unwrap_readonly(unwrap_ref_type(
             root.params[index].type)), TypeParamRef):
         return False
-    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-          if isinstance(ptype, TpyType) else None)
-    return ((isinstance(pt, OptionalType) and pt.uses_pointer_repr())
-            or (pt is not None and is_ptr_variant_union(pt)))
+    return (pointer_repr_optional(ptype) is not None
+            or pointer_variant_union(ptype) is not None)
 
 
 def _method_call_arg_ok(
@@ -13845,13 +13827,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # by-value dispatch local (`auto __match_subject_N = <call>;`);
             # every other consumer of a union result keeps rejecting.
             or (union_subject_ret_ok
-                and isinstance(ret, TpyType)
-                and isinstance(unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(ret))), UnionType)
-                and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    ret))).uses_pointer_repr()
-                and not unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    ret))).needs_wrapper()
+                and pointer_variant_union(ret) is not None
                 and _witness("method.union_subject_ret"))
             # A PROPERTY getter's ptr-variant union result at a
             # RECEIVER/BORROW_BIND sink (`s = c.shape` -- the getter
@@ -14302,9 +14278,8 @@ def _protocol_method_recv(recv_type: 'TpyType | None', analyzer,
     # gates. Sema forbids the un-narrowed call, so reaching lowering
     # implies the proof. Structural-protocol Optionals stay out (their
     # monomorphized spelling is unwitnessed).
-    u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_type)))
-         if isinstance(recv_type, TpyType) else None)
-    if isinstance(u, OptionalType) and u.uses_pointer_repr():
+    u = pointer_repr_optional(recv_type)
+    if u is not None:
         inner = unwrap_readonly(u.inner)
         return (isinstance(inner, NominalType) and is_dyn_protocol(inner)
                 and _witness("method.opt_dyn_recv"))

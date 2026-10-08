@@ -8,8 +8,10 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Callable, Iterator, NamedTuple
 
+from ..typesys import pointer_repr_optional, pointer_variant_union
 from ..typesys import (
-    TpyType, IntLiteralType, FloatLiteralType, OwnType, ReadonlyType,
+    TpyType, IntLiteralType, FloatLiteralType, OwnType, ReadonlyType, make_readonly,
+    is_indirection_type,
     FinalType,
     PendingListType, PendingDictType, PendingContainerType, make_list, PendingNumType, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, ContainerLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType,
@@ -17,6 +19,7 @@ from ..typesys import (
     C_ABI_TYPE_ERROR,
     is_void_like_type,
     unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType, own_tuple_target,
+    declared_result_readonly,
     RecursiveAliasInstanceType,
     collapse_tuple_own_elements, global_binds_by_reference, type_contains_own,
     LiteralType,
@@ -35,7 +38,8 @@ from ..typesys import (
     is_dyn_protocol, is_fn_type, coro_struct_owner,
     ConcreteCoroType, ConcreteFrameType, ConcreteGenType, make_concrete_coro,
     make_cancellable,
-    bare_name, held_whole_borrow_sources, recorded_return_borrow_sources)
+    bare_name, held_whole_borrow_sources,
+    result_borrow_sources)
 from ..parse import (
     collect_name_refs,
     walk_body_stmts,
@@ -73,7 +77,7 @@ from ..liveness import (analyze_last_uses, closure_pinned_names,
                         stmts_terminate, tuple_literal_leaves,
                         while_head_always_true)
 from ..parse.nodes import SourceLocation, VarLinkage, op_spelling
-from .context import (OwnSlot, readonly_reaches, PendingLocal, addr_taken_roots, call_borrow_operands,
+from .context import (OwnSlot, PendingLocal, addr_taken_roots, call_borrow_operands,
                       proven_lend_roots,
                       canonical_storage_key,
                       expr_yields_non_null_ptr, LoopClauseEdges,
@@ -95,6 +99,7 @@ from .scope_tracker import ScopeTracker
 from .init_tracker import InitTracker
 from .receiver_calls import (
     check_implicit_readonly_receiver, credit_implicit_receiver_call,
+    implicit_readonly_result_hint,
     record_implicit_call,
 )
 from .iter_loans import (
@@ -124,7 +129,7 @@ from .alias_rebind import decide_rebind_storage, stamp_bind_kind
 from .numeric_lattice import same_width_family
 from .type_join import operand_spelling, python_type_name, wider_store_message
 from .compatibility import TupleSink
-from .context import _is_borrowing_auto_readonly_accessor, _root_name_of_expr, BorrowKind, EphemeralKind, INVALIDATING_BORROW_KINDS, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, element_index_key, element_loan_mutation_warning, loan_mutation_warning, _borrow_storage_root, _borrow_storage_roots, call_lend_sources, iter_borrow_storage, field_chain_storage_key, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf, holds_no_pointer, value_may_point
+from .context import _root_name_of_expr, receiver_root, lent_receivers, BorrowKind, EphemeralKind, INVALIDATING_BORROW_KINDS, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, element_index_key, element_loan_mutation_warning, loan_mutation_warning, _borrow_storage_root, _borrow_storage_roots, call_lend_sources, iter_borrow_storage, field_chain_storage_key, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf, holds_no_pointer, value_may_point
 from ..value_category import (
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
     async_return_form, AsyncReturnForm, iterator_source_callee,
@@ -222,6 +227,9 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
 
     When a function has return_borrows_from facts, the result variable
     borrows from the indicated argument(s). None means unanalyzed -- skip.
+    A call that DECLARES lending its receiver by reference
+    (`receiver_lends`) loans it whatever its body was inferred to borrow:
+    the body may reach that storage through a `Ptr`, which records nothing.
     """
     while isinstance(expr, TpyCoerce):
         expr = expr.expr
@@ -246,6 +254,9 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
         return
     fi, obj = operands.fi, operands.obj
     bt = ctx.func.borrow_tracker
+    # A receiver loan only declared has an unknown shape, so it is a FIELD
+    # loan: a write through the result climbs it, and nothing invalidates it.
+    sources, declared_only = result_borrow_sources(fi)
     if fi.return_borrows_from is None:
         # The callee's body has not been analyzed yet (forward reference in
         # this module), so whether the result borrows an argument is
@@ -263,14 +274,16 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
                 for root in _borrow_storage_roots(src.expr):
                     if root != borrower:
                         bt.add_borrow(root, borrower, BorrowKind.OPAQUE)
-        return
+        if -1 not in sources:
+            return
+        sources = frozenset({-1})
     # An iterator-returning callee hands back a HANDLE into its sources (a
     # combinator object, a generator frame): advancing it touches nothing it
     # points at, which is what the ITER kind tells the mutation climb.
     kind = (BorrowKind.ITER if iterator_source_callee(fi)
             else BorrowKind.ELEMENT)
     temp_warned: set[int] = set()
-    for src in call_lend_sources(operands, recorded_return_borrow_sources(fi),
+    for src in call_lend_sources(operands, sources,
                                  held_whole_borrow_sources(fi),
                                  expr_type=None, temp_backing=True):
         if src.temp_backed:
@@ -290,15 +303,22 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
             hold_whole(bt, borrower, _borrow_storage_roots(src.expr))
             continue
         if src.idx == -1:
-            root = _borrow_storage_root(obj)
-            if root is not None:
-                bt.add_borrow(root, borrower, kind)
-            elif is_dangling_temporary_arg(obj):
+            dangling = False
+            for recv in lent_receivers(obj):
+                root = _borrow_storage_root(recv)
+                if root is not None:
+                    bt.add_borrow(root, borrower,
+                                  BorrowKind.FIELD if declared_only else kind)
+                else:
+                    dangling = dangling or is_dangling_temporary_arg(recv)
+            if dangling and not declared_only:
                 # A borrow-returning callee can hand back storage that
                 # OUTLIVES its receiver (a global, a longer-lived object), so
                 # the receiver dying at end-of-statement is never a reason to
                 # call the result unborrowed -- the provenance is the whole
-                # question here.
+                # question here. A receiver lent only by declaration is no
+                # evidence the other way: the body reached the result some
+                # other way (through a `Ptr`, a global).
                 ctx.warning(
                     f"Result borrows from temporary receiver object; "
                     f"the temporary is destroyed at end-of-statement",
@@ -1166,19 +1186,24 @@ class StatementAnalyzer:
                     # A borrowed name's `return b;` copies in C++ already.
                     if copies:
                         self._note_live_name_copy(stmt.value)
+            # `-> X | None` returns its non-None value exactly as `-> X` does.
+            tuple_slot = (expected.inner if isinstance(expected, OptionalType)
+                          else expected)
             # Check Own[T] elements in tuple literals.
             if isinstance(stmt.value, TpyTupleLiteral):
-                tuple_target = own_tuple_target(expected)
+                tuple_target = own_tuple_target(tuple_slot)
                 if tuple_target is not None:
                     # The Own-element checks, then the per-element
                     # capture mode (ref/value/const_ref).
                     self._annotate_tuple_elem_capture(
-                        stmt.value, tuple_target, sink=TupleSink.RETURN)
+                        stmt.value, tuple_target, sink=TupleSink.RETURN,
+                        return_slot=(expected if tuple_slot is not expected
+                                     else None))
             # A tuple LOCAL returned by name: the literal-element check
             # above never ran, so consult the construction-time
             # plain-borrow-into-Own hazard for each Own slot.
             elif isinstance(stmt.value, TpyName):
-                tuple_target = own_tuple_target(expected)
+                tuple_target = own_tuple_target(tuple_slot)
                 if tuple_target is not None:
                     self.compat.check_name_borrow_into_own(
                         stmt.value.name, tuple_target, stmt.value,
@@ -1224,27 +1249,26 @@ class StatementAnalyzer:
                     # mutated here would raise self_mutated on the enclosing
                     # method and, through the Phase-2 receiver edge, on every
                     # caller that reads the borrow.
-                    ro_return = isinstance(expected, ReadonlyType)
-                    if borrow_tuple is not None:
-                        ret_roots = tuple_borrow_escape_roots(
-                            stmt.value, borrow_tuple[0], borrow_tuple[1],
-                            expr_type=self.ctx.get_expr_type)
-                    else:
-                        ret_roots = [(root, not ro_return)
-                                     for root in addr_taken_roots(stmt.value)]
-                    for ret_root, grants_write in ret_roots:
-                        if not returns_borrowing_view and grants_write:
-                            # through_field: a returned reference grants
-                            # the caller write access, so the climb must
-                            # reach a field-path borrow root (`b = o.f;
-                            # return b` -> o), matching the direct
-                            # `return o.f` form.
+                    ret_roots = (tuple_borrow_escape_roots(
+                                     stmt.value, borrow_tuple[0],
+                                     expr_type=self.ctx.get_expr_type)
+                                 if borrow_tuple is not None
+                                 else addr_taken_roots(stmt.value))
+                    if not returns_borrowing_view:
+                        # through_field: a returned reference grants the
+                        # caller write access, so the climb must reach a
+                        # field-path borrow root (`b = o.f; return b` -> o),
+                        # matching the direct `return o.f` form. A borrow
+                        # taken through a handle writes its referent only.
+                        for write_root in self.ctx.escape_write_roots(
+                                stmt.value, expected):
                             self.ctx.mark_param_mutated(
-                                ret_root, through_field=True)
+                                write_root, through_field=True)
                             # A loop variable lent writable through a
                             # tuple member must not bind `const auto&`.
                             if borrow_tuple is not None:
-                                self.ctx.mark_loop_var_mutated(ret_root)
+                                self.ctx.mark_loop_var_mutated(write_root)
+                    for ret_root in ret_roots:
                         self.ctx.mark_param_returned(ret_root)  # 8b: track which param storage the return borrows
                     # 8b rule 3: transitive return -- if returning the result of a call
                     # whose return_borrows_from is known, propagate the borrow contract.
@@ -1254,8 +1278,7 @@ class StatementAnalyzer:
                     if ret_operands is not None:
                         fi_ret = ret_operands.fi
                         for lent in call_lend_sources(
-                                ret_operands,
-                                recorded_return_borrow_sources(fi_ret),
+                                ret_operands, result_borrow_sources(fi_ret)[0],
                                 expr_type=None):
                             # One argument position can hold many
                             # operands (a `*args` pack), and each is
@@ -1457,8 +1480,7 @@ class StatementAnalyzer:
             # Optional (Own[T] | None) -- the ptr_to_optional_move arm. The
             # analyzed type may be narrowed to T, so key on the declared
             # binding.
-            eligible = (isinstance(declared, OptionalType)
-                        and declared.uses_pointer_repr())
+            eligible = pointer_repr_optional(declared) is not None
             # An owned nullable tuple local holds the slot's own by-value
             # optional, so it defers like an Own[T] local (shape A): the
             # finally's write through it must reach the returned tuple.
@@ -1630,7 +1652,8 @@ class StatementAnalyzer:
     def _annotate_tuple_elem_capture(
         self, literal: TpyTupleLiteral, tuple_type: TupleType,
         *, sink: TupleSink = TupleSink.LOCAL,
-        sink_dest: str = "owned storage"
+        sink_dest: str = "owned storage",
+        return_slot: OptionalType | None = None
     ) -> None:
         """Annotate each element of a tuple literal with its capture mode,
         after the per-member copy check for the literal's `sink`.
@@ -1642,6 +1665,8 @@ class StatementAnalyzer:
                 element or a LOCAL; decides each member's copy rule and its
                 capture.
             sink_dest: How to name the destination in a copy diagnostic.
+            return_slot: The declared nullable return `tuple_type` is the
+                non-None value of, named as such in a remedy.
         """
         self.compat.check_tuple_literal_members(
             literal, tuple_type, sink, sink_dest)
@@ -1652,14 +1677,14 @@ class StatementAnalyzer:
         R = TupleElemCapture.REF
         CR = TupleElemCapture.CONST_REF
 
-        is_readonly = (self.ctx.func.current_function is not None
-                       and getattr(self.ctx.func.current_function, 'is_readonly', False))
-
         literal.elem_capture = []
         for i, et in enumerate(tuple_type.element_types):
             if i >= len(literal.elements):
                 literal.elem_capture.append(V)
                 continue
+            # The declared element type is the contract of a returned element:
+            # only a `readonly[...]` element hands out a const borrow.
+            elem_declared_readonly = isinstance(unwrap_ref_type(et), ReadonlyType)
             elem = literal.elements[i]
 
             # Value types, Own[T], and TypeParamRef are always VALUE.
@@ -1683,23 +1708,27 @@ class StatementAnalyzer:
                     # Will error separately in check_dangling_reference
                     literal.elem_capture.append(V)
                 elif self.compat.is_const_ref_source(elem):
-                    if is_readonly:
+                    if elem_declared_readonly:
                         literal.elem_capture.append(CR)
                     else:
+                        fix = TupleType(tuple(
+                            make_readonly(t) if j == i else t
+                            for j, t in enumerate(tuple_type.element_types)))
+                        slot: TpyType = tuple_type
+                        if return_slot is not None:
+                            slot, fix = return_slot, return_slot.with_inner(fix)
                         raise self.ctx.error(
-                            f"Cannot return readonly source as tuple element {i}. "
-                            f"Type '{et}' would be returned by mutable reference, "
-                            f"but the source is readonly. "
-                            f"Use Own[{et}] with copy() to return by value.",
+                            f"Cannot return readonly[{et}] as tuple element {i} "
+                            f"{self.compat.readonly_return_hint(slot, et, fix)}",
                             elem
                         )
-                elif is_readonly:
+                elif elem_declared_readonly:
                     literal.elem_capture.append(CR)
                 else:
                     literal.elem_capture.append(R)
                     # Returning a non-value element by reference takes its address.
                     # Mark source params as needing T& (not const T&).
-                    for tup_root in addr_taken_roots(elem):
+                    for tup_root in addr_taken_roots(elem, self.ctx.get_expr_type):
                         self.ctx.mark_param_mutated(tup_root)
                 continue
 
@@ -1710,18 +1739,19 @@ class StatementAnalyzer:
             # mixed `(t, None)` would otherwise yield std::tuple<T*,
             # std::optional<T>> and not match a uniformly pointer-form
             # downstream type.
-            if isinstance(et, OptionalType) and et.uses_pointer_repr():
+            et_opt = pointer_repr_optional(et)
+            if et_opt is not None:
                 if (not isinstance(elem, TpyNoneLiteral)
                         and not self.compat.is_lvalue(elem)
-                        and self.ctx.is_type_non_copyable(et.inner)):
+                        and self.ctx.is_type_non_copyable(et_opt.inner)):
                     raise self.ctx.error(
                         f"cannot bind tuple element {i} of non-copyable type "
-                        f"'{et.inner}' from rvalue. Bind to a local first, or "
+                        f"'{et_opt.inner}' from rvalue. Bind to a local first, or "
                         f"place the literal directly at its consumer"
                         f"{NOCOPY_REMEDIATION_HINT}",
                         elem,
                     )
-                if is_readonly or self.compat.is_const_ref_source(elem):
+                if self.compat.is_const_ref_source(elem):
                     literal.elem_capture.append(CR)
                 else:
                     literal.elem_capture.append(R)
@@ -1759,7 +1789,7 @@ class StatementAnalyzer:
                     # address into a mutable `T*` tuple slot; a source param
                     # can't stay the default `const T&` borrow (mirrors the
                     # return-context marking above).
-                    for tup_root in addr_taken_roots(elem):
+                    for tup_root in addr_taken_roots(elem, self.ctx.get_expr_type):
                         self.ctx.mark_param_mutated(tup_root)
 
     def _unfold_loop_killed_isinstance(
@@ -1832,7 +1862,7 @@ class StatementAnalyzer:
             if current is None or isinstance(current, ReadonlyType):
                 continue
             if any(isinstance(arm.get(name), ReadonlyType) for arm in arms):
-                merged = ReadonlyType(current)
+                merged = make_readonly(current)
                 self.ctx.func.current_scope.define(name, merged)
                 self._sync_ns_var_type(name, merged)
 
@@ -1871,7 +1901,7 @@ class StatementAnalyzer:
             if isinstance(current, ReadonlyType):
                 if unwrap_readonly(current) == canonical:
                     continue
-                target = ReadonlyType(canonical)
+                target = make_readonly(canonical)
             else:
                 target = canonical
             if target != current:
@@ -1960,12 +1990,14 @@ class StatementAnalyzer:
                 check_type = obj_type
                 if isinstance(check_type, OptionalType):
                     check_type = check_type.inner
-                if isinstance(check_type, ReadonlyType):
-                    raise self.ctx.error("Cannot mutate readonly reference", target)
-                # isinstance narrowing strips ReadonlyType from the expr type;
-                # the scope binding preserves it, so check there.
-                if isinstance(target.obj, TpyName) and self.ctx.is_readonly_name(target.obj.name):
-                    raise self.ctx.error("Cannot mutate readonly reference", target)
+                if (isinstance(check_type, ReadonlyType)
+                        # isinstance narrowing strips ReadonlyType from the
+                        # expr type; the scope binding preserves it.
+                        or isinstance(target.obj, TpyName)
+                        and self.ctx.is_readonly_name(target.obj.name)):
+                    raise self.ctx.error(
+                        "Cannot mutate readonly reference"
+                        + implicit_readonly_result_hint(self.ctx, target.obj), target)
                 # A field reached through a user __deref__ writes the deref
                 # TARGET, not the receiver: a mutable handle over a readonly
                 # payload (Rc[readonly[T]] / Box[readonly[T]]) is readonly there
@@ -2040,8 +2072,14 @@ class StatementAnalyzer:
                                 for check in records_to_check:
                                     for fld in check.fields:
                                         if fld.name == target.field and isinstance(fld.type, ReadonlyType):
+                                            # A readonly handle field cannot be
+                                            # re-pointed; what it points at
+                                            # stays writable either way.
+                                            repoint = (
+                                                f"; declare the field '{fld.type.wrapped}' to re-point it"
+                                                if is_indirection_type(fld.type.wrapped) else "")
                                             raise self.ctx.error(
-                                                f"Cannot assign to readonly field '{target.field}'",
+                                                f"Cannot assign to readonly field '{target.field}'{repoint}",
                                                 target,
                                             )
 
@@ -2607,8 +2645,8 @@ class StatementAnalyzer:
                 note_pending_elem_read(self.ctx, inner_iterable_type,
                                        stmt.iterable)
                 # Elements from a readonly iterable inherit readonly status
-                if is_readonly_iterable and not elem_type.is_value_type():
-                    elem_type = ReadonlyType(unwrap_readonly(elem_type))
+                if is_readonly_iterable:
+                    elem_type = make_readonly(elem_type)
                 elem_type = self._infer_new_local_type(
                     stmt.var, elem_type, None, None,
                     line=(stmt.loc.line if stmt.loc else None),
@@ -2638,7 +2676,8 @@ class StatementAnalyzer:
                     self._track_for_range_facts(stmt)
                     prior_iter = self.ctx.func.loop_var_iterable.get(stmt.var)
                     check_iter_receiver_loans(
-                        self.ctx, stmt.iterable, inner_iterable_type)
+                        self.ctx, stmt.iterable, inner_iterable_type,
+                        loop_var=True)
                     self._register_foreach_iter_loans(stmt, iterable_type)
                     # A user `__iter__` that mutates its receiver needs a
                     # non-const receiver; record that so an enclosing read-only
@@ -2646,7 +2685,7 @@ class StatementAnalyzer:
                     # self-tracing set above must already be populated).
                     _record_iter_receiver_mutation(
                         self.ctx, stmt.iterable, inner_iterable_type,
-                        check_loans=False)
+                        check_loans=False, loop_var=True)
                     if elem_source in (IterElementSource.HANDLE,
                                        IterElementSource.PROTOCOL):
                         iter_depth = inner_scope.depth
@@ -4091,17 +4130,9 @@ class StatementAnalyzer:
                     # still `Awaitable[T]` / `Cancellable[T]` here, which is never
                     # ReadonlyType, so recording it would file a wrong fact in a
                     # table shared with every other borrow consumer.
-                    #
-                    # A `@readonly __enter__` returns `const T&` without the
-                    # declared type being wrapped, so ask the method too -- the
-                    # same pair `record_stmt_borrow_binding` uses.
-                    const = isinstance(
-                        unwrap_ref_type(enter_info.return_type), ReadonlyType)
-                    if not const:
-                        const = bool(enter_info.is_readonly
-                                     and call_returns_cpp_ref(
-                                         self.ctx, enter_info))
-                    record_borrow_binding(self.ctx, item.target, const=const)
+                    record_borrow_binding(
+                        self.ctx, item.target,
+                        const=declared_result_readonly(enter_info))
                     self.ctx.func.nonstmt_borrow_bindings.add(item.target)
 
             if stmt.is_async:
@@ -5469,8 +5500,9 @@ class StatementAnalyzer:
         if (not elem_type.is_value_type()
                 and not isinstance(unwrap_readonly(unwrap_ref_type(elem_type)), OwnType)
                 and not isinstance(unwrap_ref_type(elem_type), ReadonlyType)):
-            for root in addr_taken_roots(stmt.value):
+            for root in addr_taken_roots(stmt.value, self.ctx.get_expr_type):
                 self.ctx.mark_param_mutated(root)
+            for root in addr_taken_roots(stmt.value):
                 self.ctx.mark_param_returned(root)
         # A tuple is a value type, but its borrow-form yield slot hands out
         # mutable element pointers into the source storage -- the same escape
@@ -5479,11 +5511,12 @@ class StatementAnalyzer:
         # (or element) grants no write access, so it records provenance only.
         borrow_tuple = escaping_borrow_tuple(unwrap_ref_type(elem_type))
         if borrow_tuple is not None:
-            for root, grants_write in tuple_borrow_escape_roots(
-                    stmt.value, borrow_tuple[0], borrow_tuple[1],
+            for root in self.ctx.escape_write_roots(
+                    stmt.value, unwrap_ref_type(elem_type)):
+                self.ctx.mark_param_mutated(root, through_field=True)
+            for root in tuple_borrow_escape_roots(
+                    stmt.value, borrow_tuple[0],
                     expr_type=self.ctx.get_expr_type):
-                if grants_write:
-                    self.ctx.mark_param_mutated(root, through_field=True)
                 self.ctx.mark_param_returned(root)
         # The yield value above was analyzed pre-suspension; everything
         # after the yield runs post-resume, when the caller may have
@@ -6191,8 +6224,8 @@ class StatementAnalyzer:
                                                          coercion_ctx=CoercionContext.INIT)
                 var_type = stmt.type
                 # Inherit ReadonlyType from init expression
-                if isinstance(init_type, ReadonlyType) and readonly_reaches(var_type):
-                    var_type = ReadonlyType(var_type)
+                if isinstance(init_type, ReadonlyType):
+                    var_type = make_readonly(var_type)
                 self.deduction.set_authoritative_annotation(
                     stmt.name,
                     stmt.type,
@@ -6274,7 +6307,7 @@ class StatementAnalyzer:
                 elif isinstance(init_type, OwnType):
                     inner = init_type.wrapped
                     if (isinstance(inner, UnionType)
-                            or (isinstance(inner, OptionalType) and inner.uses_pointer_repr())):
+                            or (pointer_repr_optional(inner) is not None)):
                         var_type = inner
                     else:
                         var_type = init_type
@@ -6629,15 +6662,6 @@ class StatementAnalyzer:
             init_unwrapped = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
             _register_call_result_borrow(self.ctx, stmt.name, init_unwrapped)
             warn_value_call_binding(self.ctx, init_unwrapped, f"local '{stmt.name}'")
-            # A non-const local alias of an @auto_readonly accessor result needs a
-            # mutable source binding (locals bind non-const references by default).
-            # Keep the receiver mutable so `x = o.b.get()` compiles whether x is
-            # later read or written; the eager-mark suppression only buys a const
-            # receiver for the direct, un-aliased read (`return o.b.get().v`).
-            if _is_borrowing_auto_readonly_accessor(init_unwrapped):
-                recv_root = _root_name_of_expr(init_unwrapped.obj)
-                if recv_root is not None:
-                    self.ctx.mark_param_mutated(recv_root)
         # Reassigned non-value locals generate T* local = &(source) in C++.
         # Mark source param as mutated so it stays T& (not const T&), regardless
         # of whether the borrow-tracking block above ran.
@@ -6645,7 +6669,7 @@ class StatementAnalyzer:
                 and stmt.name in self.ctx.func.current_reassigned_vars
                 and var_type is not None
                 and not var_type.is_value_type()):
-            for alias_root in addr_taken_roots(stmt.init):
+            for alias_root in addr_taken_roots(stmt.init, self.ctx.get_expr_type):
                 self.ctx.mark_param_mutated(alias_root)
         if stmt.init:
             self.init.mark_assigned(stmt.name)
@@ -6672,7 +6696,7 @@ class StatementAnalyzer:
                         and self.compat.is_auto_move_use(stmt.init)
                         and var_type is not None
                         and not var_type.is_value_type()
-                        and not (isinstance(var_type, OptionalType) and var_type.uses_pointer_repr())
+                        and pointer_repr_optional(var_type) is None
                         and not is_protocol_union(var_type)
                         and not holds_generator_object(var_type)):
                     self.ctx.func.rvalue_vars.add(stmt.name)
@@ -6857,8 +6881,8 @@ class StatementAnalyzer:
             stmt.is_owned.append(owned)
             if isinstance(elem_type, OwnType):
                 elem_type = elem_type.wrapped
-            if rhs_readonly and readonly_reaches(elem_type):
-                elem_type = ReadonlyType(unwrap_readonly(elem_type))
+            if rhs_readonly:
+                elem_type = make_readonly(elem_type)
             is_ref = (not owned and not elem_type.is_value_type()
                       and not isinstance(elem_type, TypeParamRef))
             stmt.is_ref.append(is_ref)
@@ -7207,7 +7231,7 @@ class StatementAnalyzer:
                                              target_is_storage_form=True)
 
         # Mutation tracking
-        root = _root_name_of_expr(stmt.target)
+        root = _root_name_of_expr(stmt.target, self.ctx.get_expr_type)
         if root is not None:
             self.ctx.mark_loop_var_mutated(root)
             self.ctx.mark_param_mutated(root, through_field=True)
@@ -7338,7 +7362,7 @@ class StatementAnalyzer:
             self.expr.analyze_expr(setter_call)
             stmt.target.dyn_setattr_call = setter_call
             # Mark mutation: writing through a dyn-attr is mutating self/obj.
-            root = _root_name_of_expr(stmt.target.obj)
+            root = receiver_root(stmt.target.obj, self.ctx.get_expr_type)
             if root is not None:
                 self.ctx.mark_loop_var_mutated(root)
                 self.ctx.mark_param_mutated(root, through_field=True)
@@ -7414,7 +7438,7 @@ class StatementAnalyzer:
                 )
         self._enforce_readonly_assignment_target(stmt.target)
         # Track mutation of for-each loop variables (prevents const-ref binding)
-        root = _root_name_of_expr(stmt.target)
+        root = _root_name_of_expr(stmt.target, self.ctx.get_expr_type)
         if root is not None:
             self.ctx.mark_loop_var_mutated(root)
             # Through-reference writes (field/subscript) mutate the param's object;
@@ -7469,8 +7493,7 @@ class StatementAnalyzer:
             stripped_value = self.ctx.get_expr_type(stmt.value)
             is_compound_ref = (
                 (isinstance(stripped_value, OptionalType) and not stripped_value.inner.is_value_type())
-                or (isinstance(stripped_value, UnionType) and stripped_value.uses_pointer_repr()
-                    and not stripped_value.needs_wrapper())
+                or pointer_variant_union(stripped_value) is not None
             )
             # Ptr[T] target takes the address of the source (`_a(&a)`), no copy.
             target_is_ptr = isinstance(unwrap_qualifiers(target_type), PtrType)
@@ -7594,8 +7617,8 @@ class StatementAnalyzer:
                     stmt.target.name, inner_target, inner_value, init_expr=stmt.value
                 )
                 # Readonly status flows from the value expression
-                if isinstance(value_type, ReadonlyType) and readonly_reaches(target_type):
-                    target_type = ReadonlyType(target_type)
+                if isinstance(value_type, ReadonlyType):
+                    target_type = make_readonly(target_type)
             self.ctx.func.current_scope.define(stmt.target.name, target_type)
             # Reassignment revives a consumed variable
             self.ctx.func.consumed_vars.discard(stmt.target.name)
@@ -7617,7 +7640,7 @@ class StatementAnalyzer:
             # Rebinding a non-value pointer-local generates local = &(source) in C++,
             # requiring source param to be T& (not const T&).
             if not inner_target.is_value_type() and self.compat.is_lvalue(stmt.value):
-                for rebind_root in addr_taken_roots(stmt.value):
+                for rebind_root in addr_taken_roots(stmt.value, self.ctx.get_expr_type):
                     self.ctx.mark_param_mutated(rebind_root)
             if self.ctx.func.current_ns:
                 self.ctx.func.current_ns.update_variable_type(stmt.target.name, target_type)
@@ -7862,7 +7885,7 @@ class StatementAnalyzer:
                     self.expr.describe_pending_use(subscript.obj))
                 self.ctx.set_expr_type(subscript.obj, del_obj_type)
             # Track mutation of for-each loop variables and parameters
-            del_root = _root_name_of_expr(subscript.obj)
+            del_root = receiver_root(subscript.obj, self.ctx.get_expr_type)
             if del_root is not None:
                 self.ctx.mark_loop_var_mutated(del_root)
                 self.ctx.mark_param_mutated(del_root, through_field=True)
@@ -7987,7 +8010,7 @@ class StatementAnalyzer:
         self.expr.analyze_expr(setter_call)
         stmt.target.dyn_setattr_call = setter_call
         # Mutation tracking parallel to plain field assignment.
-        root = _root_name_of_expr(stmt.target.obj)
+        root = receiver_root(stmt.target.obj, self.ctx.get_expr_type)
         if root is not None:
             self.ctx.mark_loop_var_mutated(root)
             self.ctx.mark_param_mutated(root, through_field=True)
@@ -8068,7 +8091,7 @@ class StatementAnalyzer:
             self.expr.analyze_expr(synth)
             target.dyn_delattr_call = synth
             # Mark mutation: deletion through dunder mutates the receiver.
-            root = _root_name_of_expr(target.obj)
+            root = receiver_root(target.obj, self.ctx.get_expr_type)
             if root is not None:
                 self.ctx.mark_loop_var_mutated(root)
                 self.ctx.mark_param_mutated(root, through_field=True)
@@ -8436,7 +8459,7 @@ class StatementAnalyzer:
                 if stored is not None:
                     value_type = self.pend.so_far(value_type, stored)
         # Track mutation of for-each loop variables and parameters
-        aug_root = _root_name_of_expr(stmt.target)
+        aug_root = _root_name_of_expr(stmt.target, self.ctx.get_expr_type)
         if aug_root is not None:
             self.ctx.mark_loop_var_mutated(aug_root)
             self.ctx.mark_param_mutated(aug_root, through_field=True)

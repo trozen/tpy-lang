@@ -28,5 +28,5 @@ main.py:427: warning: copies P into local 'a'; use copy() to make this explicit
 main.py:430: warning: copies P into local 'b'; use copy() to make this explicit
 main.py:440: warning: copies W into container; use copy() to make this explicit
 main.py:448: warning: copies P into owned storage; use copy() to make this explicit
-main.py:457: warning: copies readonly[P] into owned storage; use copy() to make this explicit
-main.py:459: warning: copies readonly[P] into owned storage; use copy() to make this explicit
+main.py:457: warning: copies P into owned storage; use copy() to make this explicit
+main.py:459: warning: copies P into owned storage; use copy() to make this explicit

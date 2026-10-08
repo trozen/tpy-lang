@@ -1508,13 +1508,11 @@ class RecordGenerator:
             pair = _split_readonly_clone_pair(group)
             if pair is not None:
                 const_stub, mutable_stub = pair
-                # Clone pair: const operator first, then mutable.
+                # Clone pair: const operator first, then mutable -- a pair's
+                # results differ by the receiver's access wherever it marks
+                # one (a `Ptr[auto_readonly[T]]` pointee included).
                 self._gen_const_subscript_operator(out, const_stub, record_name)
-                # Mutable only if return could be a reference.
-                needs_dual = (not mutable_stub.return_type.is_value_type()
-                              or isinstance(mutable_stub.return_type, TypeParamRef))
-                if needs_dual:
-                    self._gen_mutable_subscript_operator(out, mutable_stub, record_name)
+                self._gen_mutable_subscript_operator(out, mutable_stub, record_name)
                 continue
             # No clone pair: emit each stub via the standard logic.
             for stub in group:
@@ -1543,9 +1541,9 @@ class RecordGenerator:
         # Mirror __getitem__'s emitted key param (borrow form + the method's
         # inferred const-ness), like the call operator -- not the storage form.
         index_cpp = self.functions.gen_shim_params(method, record_name)
-        ret_const = method.return_type.to_cpp_return_const()
+        ret_cpp = self.functions.shim_return_cpp(method)
         index_arg = forward_param(escape_cpp_name(index_param_name), index_type)
-        out.write(f"\n{INDENT}{ret_const} operator[]({index_cpp}) const {{\n")
+        out.write(f"\n{INDENT}{ret_cpp} operator[]({index_cpp}) const {{\n")
         out.write(f"{INDENT}{INDENT}return __getitem__({index_arg});\n")
         out.write(f"{INDENT}}}\n")
 
@@ -1555,17 +1553,15 @@ class RecordGenerator:
 
         `method` is the mutable clone of an auto_readonly pair, a genuinely
         mutable single __getitem__, or -- for the single-readonly dual -- the
-        readonly method itself; in that last case the delegation hits the
-        const overload, so the return must render const to match it.
+        readonly method itself, whose return the delegation hands back.
         """
         if not method.params:
             return
         index_param_name, index_type = method.params[0]
         index_cpp = self.functions.gen_shim_params(method, record_name)
-        ret_mut = (method.return_type.to_cpp_return_const()
-                   if method.is_readonly else method.return_type.to_cpp_return())
+        ret_cpp = self.functions.shim_return_cpp(method)
         index_arg = forward_param(escape_cpp_name(index_param_name), index_type)
-        out.write(f"\n{INDENT}{ret_mut} operator[]({index_cpp}) {{\n")
+        out.write(f"\n{INDENT}{ret_cpp} operator[]({index_cpp}) {{\n")
         out.write(f"{INDENT}{INDENT}return __getitem__({index_arg});\n")
         out.write(f"{INDENT}}}\n")
 
@@ -1609,12 +1605,7 @@ class RecordGenerator:
             # The method's own param spelling (its const verdict), which the
             # delegation must bind.
             param_cpp = self.functions.gen_shim_params(method, record.name)
-            # Mirror the method's emitted return: a readonly dunder's borrow
-            # return is const-projected there (const=is_readonly), so the shim
-            # must render const too or the delegation discards qualifiers.
-            # Value/Own returns render identically either way.
-            ret_cpp = (method.return_type.to_cpp_return_const()
-                       if method.is_readonly else method.return_type.to_cpp())
+            ret_cpp = self.functions.shim_return_cpp(method)
             rec_short = bare_name(record.name)
             rec_cpp = escape_cpp_name(rec_short)
             arg = forward_param(escape_cpp_name(param_name), param_type)
@@ -1648,12 +1639,10 @@ class RecordGenerator:
             # every emitted __call__ signature, with matching const-ness.
             if method.name in impl_names and not method.is_overload_stub:
                 continue
-            # Mirror the method emit for both axes: the const-projected return
-            # (a readonly __call__ returning a borrow returns const&) and the
+            # Mirror the method emit for both axes: its return and the
             # inferred param const-ness (a mutated param stays T& in the
             # method; a const shim param wouldn't bind to it).
-            ret_cpp = (method.return_type.to_cpp_return_const()
-                       if method.is_readonly else method.return_type.to_cpp())
+            ret_cpp = self.functions.shim_return_cpp(method)
             const_suffix = " const" if method.is_readonly else ""
             params_cpp = self.functions.gen_shim_params(method, record.name)
             arg_names = ", ".join(forward_param(escape_cpp_name(p_name), p_type)
@@ -1747,9 +1736,7 @@ class RecordGenerator:
             if method.params:
                 continue  # Unary operators take no params
             cpp_op = DUNDER_TO_UNARY_OP[method.name]
-            # Same const mirroring as the binary shims (see _gen_binary_operators).
-            ret_cpp = (method.return_type.to_cpp_return_const()
-                       if method.is_readonly else method.return_type.to_cpp())
+            ret_cpp = self.functions.shim_return_cpp(method)
             rec_short = bare_name(record.name)
             out.write(f"\n{INDENT}friend {ret_cpp} operator{cpp_op}(const {escape_cpp_name(rec_short)}& operand) {{\n")
             out.write(f"{INDENT}{INDENT}return operand.{method.name}();\n")

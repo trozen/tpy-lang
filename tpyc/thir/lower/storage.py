@@ -7,6 +7,7 @@ from ...symbol_binding import SymbolKind
 from ...type_def_registry import zero_value_of
 
 from ...parse.nodes import TpyFieldAccess, TpyName, TpySubscript, TupleElemCapture
+from ...typesys import pointer_repr_optional
 from ...typesys import (
     NominalType, OptionalType, ReadonlyType, TupleType, TpyType,
     UnionType, is_void_like_type, unwrap_readonly, unwrap_ref_type,
@@ -135,7 +136,7 @@ def hoisted_binding(name: str, typ: TpyType, analyzer: 'SemanticAnalyzer', *,
                 return THIRHoistedBinding(name, typ, union_layout=layout,
                                          physical_default=THIRWrapperDefault(0, default))
         return None
-    if isinstance(typ, OptionalType) and typ.uses_pointer_repr():
+    if pointer_repr_optional(typ) is not None:
         layout = optional_layout(typ, analyzer, borrow=True, readonly=readonly)
         return THIRHoistedBinding(name, typ, optional_layout=layout) if layout is not None else None
     reference = borrowed_record(typ, readonly, analyzer)
@@ -336,7 +337,7 @@ def direct_field(expr: TpyFieldAccess,
             or expr.deref_depth or expr.needs_optional_runtime_check
             or expr.unbound_self_parent_type is not None
             or expr.class_constant_owner is not None
-            or expr.native_field_name is not None or expr.accessed_field_is_interior):
+            or expr.native_field_name is not None):
         return None
     typ = analyzer.get_expr_type(expr.obj)
     reference = borrowed_record(typ, False, analyzer) if typ is not None else None

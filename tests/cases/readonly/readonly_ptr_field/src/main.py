@@ -1,5 +1,6 @@
-# Ptr[T] field accessed through @readonly receiver becomes Ptr[readonly[T]],
-# enabling read-only deref while preventing mutation through the pointer.
+# A Ptr[T] field read through a readonly receiver (a @readonly method, a
+# readonly[...] param) derefs to read its pointee: readonly is shallow through
+# a Ptr, so the pointee keeps the access its type argument gives it.
 from tpy import int32, Ptr, readonly, take_ptr
 
 class Data:

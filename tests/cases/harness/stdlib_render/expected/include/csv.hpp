@@ -105,14 +105,14 @@ struct _Writer {
     //     self._fp.write(_format_row(
     //         row, self._delimiter, self._quotechar,
     //         self._doublequote, self._lineterminator))
-    void writerow(const std::vector<std::string>& row) {
+    void writerow(const std::vector<std::string>& row) const {
         ::tpy::deref_check(this->_fp).write(::tpystd::csv::_format_row(row, this->_delimiter, this->_quotechar, this->_doublequote, this->_lineterminator));
     }
 
     // def writerows(self, rows: list[list[str]]) -> None:
     //     for row in rows:
     //         self.writerow(row)
-    void writerows(const std::vector<std::vector<std::string>>& rows) {
+    void writerows(const std::vector<std::vector<std::string>>& rows) const {
         auto& __obj_0 = rows;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -221,7 +221,7 @@ struct DictWriter {
 
     // def writeheader(self) -> None:
     //     self._w.writerow(self.fieldnames)
-    void writeheader() {
+    void writeheader() const {
         this->_w.writerow(this->fieldnames);
     }
 
@@ -247,7 +247,7 @@ struct DictWriter {
     //     if matched < len(row):
     //         raise ValueError("dict contains fields not in fieldnames")
     //     self._w.writerow(ordered)
-    void writerow(const ::tpy::ordered_map<std::string, std::string>& row) {
+    void writerow(const ::tpy::ordered_map<std::string, std::string>& row) const {
         std::vector<std::string> ordered = std::vector<std::string>{};
         int32_t matched = 0;
         int32_t i = 0;
@@ -269,7 +269,7 @@ struct DictWriter {
     // def writerows(self, rows: list[dict[str, str]]) -> None:
     //     for row in rows:
     //         self.writerow(row)
-    void writerows(const std::vector<::tpy::ordered_map<std::string, std::string>>& rows) {
+    void writerows(const std::vector<::tpy::ordered_map<std::string, std::string>>& rows) const {
         auto& __obj_0 = rows;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();

@@ -407,13 +407,14 @@ so `next(it)` over `it = zip(xs, ys)` leaves `xs` and `ys` const.
 
 Const inference reads recorded return-borrow roots through
 `typesys.recorded_return_borrow_sources`. Receiver inference retains its
-inherently-const-view exception; const-method parameter emission subtracts
-the recorded roots from mutation facts where the return is const-projected
-(`typesys.return_const_projected`) -- an INFERRED-const method whose return
-borrows a parameter keeps that parameter in the mutated set, so the
-parameter stays mutable and the borrow keeps its declared type. These are
-distinct policies over the same body-analysis facts, not a second
-provenance analysis. A DECLARED borrow (`borrows=` / `element_of=`) is a mutable use
+inherently-const-view exception. Const-method parameter emission reads the
+finalized `mutated_params` whole, the same input `const_borrow_params` is
+built from: a readonly return marks no write on the root it borrows
+(`SemanticContext.escape_write_roots`), so there is nothing to subtract, and
+a parameter the body writes stays mutable even when it is also returned. An
+INFERRED-const method whose mutable return borrows a parameter keeps that
+parameter in the mutated set, so the parameter stays mutable and the borrow
+keeps its declared type. A DECLARED borrow (`borrows=` / `element_of=`) is a mutable use
 instead: a call whose result is a mutable reference into its operands marks
 every lending operand mutated at the call
 (`CallAnalyzer._mark_borrow_result_operands_written`), as an argument at an

@@ -263,7 +263,7 @@ class C:
     def other(self, o: C) -> C:
         return o
     @readonly
-    def other_ro(self, o: C) -> C:
+    def other_ro(self, o: C) -> readonly[C]:
         return o
     def other_w(self, o: C) -> C:
         self.n += 1
@@ -277,7 +277,7 @@ def free(a: C, o: C) -> C:
     return o
 
 @readonly
-def free_ro(a: C, o: C) -> C:
+def free_ro(a: C, o: C) -> readonly[C]:
     return o
 
 @pure

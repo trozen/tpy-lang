@@ -908,12 +908,8 @@ def boundary_optional_is_pointer(t: "TpyType | None") -> bool:
     any inner. The pointer form is a live borrow -- an alias candidate at a
     param, the identity/view ladder at a return; the value form is a copy
     either way. False for a non-Optional."""
-    from tpyc.typesys import OptionalType
-    if t is None:
-        return False
-    inner, owned = _boundary_peel(t)
-    return (isinstance(inner, OptionalType) and not owned
-            and inner.uses_pointer_repr())
+    from tpyc.typesys import pointer_repr_optional
+    return pointer_repr_optional(t) is not None
 
 
 def is_span_boundary_param(t: "TpyType | None") -> bool:

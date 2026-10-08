@@ -80,10 +80,10 @@ void main() {
 //             g.get().turn = 0
 //             s.cv.notify_one()      # single waiter here; covers notify_one
 //         i += 1
-void Worker::run() {
+void Worker::run() const {
     int32_t i = 0;
     while ((i < 5)) {
-        Shared& s = this->shared.get();
+        const Shared& s = this->shared.get();
         auto __ctx_3 = s.m.lock();
         auto& g = __ctx_3.__enter__();
         try {

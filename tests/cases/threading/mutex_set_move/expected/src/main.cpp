@@ -4,6 +4,19 @@
 namespace tpyapp::main {
 
 
+// # param: set() through a guard parameter keeps the parameter mutable
+// def put(g: MutexGuard[list[int32]], v: Own[list[int32]]) -> None:
+//     g.set(v)  # tpyc: ok
+void put(::tpystd::tpy::sync::MutexGuard<std::vector<int32_t>>& g, std::vector<int32_t>&& v) {
+    g.set(std::move(v));
+}
+
+// def put_w(g: WriteGuard[list[int32]], v: Own[list[int32]]) -> None:
+//     g.set(v)  # tpyc: ok
+void put_w(::tpystd::tpy::sync::WriteGuard<std::vector<int32_t>>& g, std::vector<int32_t>&& v) {
+    g.set(std::move(v));
+}
+
 // def main() -> None:
 //     m = Mutex.new([1, 2])
 //     with m.lock() as g:
@@ -18,6 +31,15 @@ namespace tpyapp::main {
 //         w.append(40)
 //     with rw.read() as r:
 //         print(r.get())              # [20, 30, 40]
+//
+//     with m.lock() as g3:
+//         put(g3, [5])
+//     with m.lock() as g4:
+//         print("param", g4.get())
+//     with rw.write() as w2:
+//         put_w(w2, [6])
+//     with rw.read() as r2:
+//         print("param", r2.get())
 void main() {
     ::tpystd::tpy::sync::Mutex<std::vector<int32_t>> m = ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_(std::vector<int32_t>{1, 2});
     auto __ctx_1 = m.lock();
@@ -79,13 +101,65 @@ void main() {
     }
     __with_exit_4:
     __ctx_4.__exit__({}, nullptr, {});
+    auto __ctx_5 = m.lock();
+    auto& g3 = __ctx_5.__enter__();
+    try {
+        ::tpyapp::main::put(g3, std::vector<int32_t>{5});
+        goto __with_exit_5;
+    } catch (::tpy::BaseException& __exc_5) {
+        __ctx_5.__exit__({}, &__exc_5, {});
+        throw;
+    } catch (...) {
+        __ctx_5.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_5:
+    __ctx_5.__exit__({}, nullptr, {});
+    auto __ctx_6 = m.lock();
+    auto& g4 = __ctx_6.__enter__();
+    try {
+        std::cout << "param" << " " << ::tpy::ListPrinter(g4.get()) << "\n" << ::tpy::check_signals;
+        goto __with_exit_6;
+    } catch (::tpy::BaseException& __exc_6) {
+        __ctx_6.__exit__({}, &__exc_6, {});
+        throw;
+    } catch (...) {
+        __ctx_6.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_6:
+    __ctx_6.__exit__({}, nullptr, {});
+    auto __ctx_7 = rw.write();
+    auto& w2 = __ctx_7.__enter__();
+    try {
+        ::tpyapp::main::put_w(w2, std::vector<int32_t>{6});
+        goto __with_exit_7;
+    } catch (::tpy::BaseException& __exc_7) {
+        __ctx_7.__exit__({}, &__exc_7, {});
+        throw;
+    } catch (...) {
+        __ctx_7.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_7:
+    __ctx_7.__exit__({}, nullptr, {});
+    auto __ctx_8 = rw.read();
+    auto& r2 = __ctx_8.__enter__();
+    try {
+        std::cout << "param" << " " << ::tpy::ListPrinter(r2.get()) << "\n" << ::tpy::check_signals;
+        goto __with_exit_8;
+    } catch (::tpy::BaseException& __exc_8) {
+        __ctx_8.__exit__({}, &__exc_8, {});
+        throw;
+    } catch (...) {
+        __ctx_8.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_8:
+    __ctx_8.__exit__({}, nullptr, {});
 }
 
-// # MutexGuard.set() / WriteGuard.set() take Own[T]: a fresh reference-type value
-// # is moved into the lock's storage, then mutated through the guard and observed
-// # through a later lock -- proving set() writes into the lock's live storage (an
-// # alias), not a throwaway copy. Byte-parity with CPython (which rebinds).
-// from tpy.sync import Mutex, RwLock
+// from tpy.sync import Mutex, MutexGuard, RwLock, WriteGuard
 //
 // main()
 void __tpy_init() {

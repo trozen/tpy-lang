@@ -2,7 +2,7 @@
 # is proven: a return that borrows a PARAMETER keeps its declared mutable type
 # (`Rec& pick(B& other) const`), as the free-function spelling does. Every
 # section writes through the result and reads the source afterwards, so a
-# const-projected or copied return would show.
+# const or copied return would show.
 from typing import Optional
 from tpy import int32, readonly
 
@@ -62,9 +62,10 @@ class K:
     def echo[U](self, v: U) -> U:
         return v
 
-    # DECLARED readonly: every parameter is readonly, so the result is const
+    # DECLARED readonly: every parameter is readonly, so the result is
+    # declared readonly too
     @readonly
-    def peek(self, other: B) -> Rec:
+    def peek(self, other: B) -> readonly[Rec]:
         return other.m
 
 

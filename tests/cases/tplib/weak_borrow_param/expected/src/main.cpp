@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     if upgraded is None:
 //         return int32(-1)
 //     return upgraded.get().val
-int32_t read_via_weak(const ::tpystd::tplib::rc::Weak<Cell>& w) {
+int32_t read_via_weak(::tpystd::tplib::rc::Weak<Cell>& w) {
     std::optional<::tpystd::tplib::rc::Rc<Cell>> upgraded = w.upgrade();
     if ((!upgraded.has_value())) {
         return -1;

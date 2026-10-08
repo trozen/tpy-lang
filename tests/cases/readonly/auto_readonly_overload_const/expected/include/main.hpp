@@ -79,6 +79,10 @@ struct Container {
     std::span<const T> operator[](::tpy::Slice index) const {
         return __getitem__(index);
     }
+
+    std::span<T> operator[](::tpy::Slice index) {
+        return __getitem__(index);
+    }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 

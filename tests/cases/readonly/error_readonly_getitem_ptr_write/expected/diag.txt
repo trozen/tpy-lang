@@ -1,0 +1,1 @@
+main.py:27: error: Cannot assign through read-only pointer

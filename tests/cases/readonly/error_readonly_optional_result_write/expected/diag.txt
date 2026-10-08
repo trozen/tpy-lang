@@ -1,0 +1,1 @@
+main.py:30: error: Cannot mutate readonly reference

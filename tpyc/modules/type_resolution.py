@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from tpyc.typesys import TypeRegistry, RecordInfo, FunctionInfo
 
 from tpyc.typesys import (
+    canonical_readonly, make_readonly,
     TypeParamRef, NominalType, PtrType, TupleType,
     TpyType, CHAR, OwnType, GenExprType, ReadonlyType,
     bound_as_spelled, is_any_str_type, is_protocol_type, unwrap_ref_type, unwrap_qualifiers, unwrap_readonly,
@@ -437,16 +438,17 @@ def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> 
     iterable: unwrap to inspect the container, then reproject readonly onto a
     non-value element (the const protecting the aliased element survives; value
     elements are copies), so membership / non-loop callers stay readonly-correct.
+    The element is a settled type (`canonical_readonly`): a view's
+    `readonly[V]` element at a value `V` is the copy `V`.
     """
     base = unwrap_ref_type(tpy_type)
     if isinstance(base, OwnType):
         base = base.wrapped
     if isinstance(base, ReadonlyType):
         elem = _iterable_element_type_inner(base.wrapped, registry)
-        if elem is not None and not elem.is_value_type():
-            return ReadonlyType(unwrap_readonly(elem))
-        return elem
-    return _iterable_element_type_inner(base, registry)
+        return make_readonly(elem) if elem is not None else None
+    elem = _iterable_element_type_inner(base, registry)
+    return canonical_readonly(elem) if elem is not None else None
 
 
 def _iterable_element_type_inner(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":

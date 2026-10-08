@@ -26,7 +26,7 @@ class Line:
 
     # method: a member returned by reference (return origin param0.a)
     @readonly
-    def first(self) -> Point:  # tpyc: mir(covered) mir_summary(known)
+    def first(self) -> readonly[Point]:  # tpyc: mir(covered) mir_summary(known)
         return self.a
 
     # method: a whole member replaced (a published write of param0.a)

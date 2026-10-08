@@ -46,7 +46,7 @@ int32_t count_readonly(const Sector* sector) {
 //     ceil_pic = seg.sector_front.ceil_pic  # tpyc: ok
 //     assert ceil_pic is not None
 //     return ceil_pic.width
-int32_t pic_width(Seg& seg) {
+int32_t pic_width(const Seg& seg) {
     Picture* ceil_pic = ::tpy::optional_to_ptr(::tpy::deref_check(seg.sector_front).ceil_pic);
     if (!((ceil_pic != nullptr))) ::tpy::raise_assertion_error();
     return ceil_pic->width;

@@ -11,7 +11,7 @@ class Box[T]:
         self.val = v
 
     @readonly
-    async def peek(self) -> T:
+    async def peek(self) -> readonly[T]:
         return self.val
 
 

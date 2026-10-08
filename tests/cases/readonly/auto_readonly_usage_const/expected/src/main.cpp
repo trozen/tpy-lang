@@ -28,11 +28,11 @@ void aug_through_get(Outer& o) {
     o.b.get().v = ::tpy::add_check<int32_t>(o.b.get().v, 1);
 }
 
-// def alias_read(o: Outer) -> int32:         # Outer&: non-const local alias needs a
-//     x = o.b.get()                          # mutable source, so the receiver stays mutable
-//     return x.v                             # until never-mutated locals can bind const
-int32_t alias_read(Outer& o) {
-    Inner& x = o.b.get();
+// def alias_read(o: Outer) -> int32:         # const Outer&: the alias is never written
+//     x = o.b.get()                          # through, so its loan on the receiver credits
+//     return x.v                             # nothing and the local binds const
+int32_t alias_read(const Outer& o) {
+    const Inner& x = o.b.get();
     return x.v;
 }
 

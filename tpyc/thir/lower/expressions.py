@@ -14,6 +14,7 @@ from .captures import capture_facts
 from ..scalar_leaves import record_owner
 from ... import qnames
 from ...parse.nodes import (
+    const_tuple_index,
     ResultForm,
     lambda_of,
     is_property_getter_read,
@@ -57,6 +58,7 @@ from ...parse.nodes import (
     TpyUnaryOp,
     TpyVarargPack,
 )
+from ...typesys import pointer_repr_optional, pointer_variant_union
 from ...typesys import (
     ConcreteFrameType,
     AliasRef,
@@ -326,7 +328,6 @@ from .predicates import (
     _container_value_leaf_read,
     _container_opt_record_elem,
     _container_value_optional_elem,
-    _const_index,
     _cpp_noncopyable_type,
     _ctor_arg_slot_ok,
     _int_type_param_value,
@@ -1055,9 +1056,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               # union result consumed whole by the sink's
               # `to_value_variant` lift.
               or (use.admits(SinkForm.UNION_VALUE_LIFT)
-                  and isinstance(record, UnionType)
-                  and record.uses_pointer_repr()
-                  and not record.needs_wrapper()
+                  and pointer_variant_union(record) is not None
                   and _witness("call.union_value_lift_ret"))
               # The Own[union] ARG slot: a same-union Own[A|B]-returning
               # call rvalue moves through the `&&` slot bare
@@ -1075,13 +1074,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               # by the by-value dispatch local -- the free-call twin of the
               # method gate's union_subject_ret_ok row.
               or (use.admits(SinkForm.UNION_SUBJECT)
-                  and isinstance(ret, TpyType)
-                  and isinstance(unwrap_readonly(unwrap_ref_type(
-                      unwrap_send_sync(ret))), UnionType)
-                  and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                      ret))).uses_pointer_repr()
-                  and not unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                      ret))).needs_wrapper()
+                  and pointer_variant_union(ret) is not None
                   and _witness("call.union_subject_ret"))
               # A DISCARDED @native record-rvalue call (`open(missing)` for
               # its raise, result unused): the bare call statement -- the
@@ -2368,7 +2361,7 @@ def _slice_bound_supported(b: 'TpyExpr | None', analyzer) -> bool:
     if bt is None:
         return False
     if _runtime_bigint(bt, analyzer):
-        return _const_index(_unwrap_lit_coerce(b)) is None
+        return const_tuple_index(_unwrap_lit_coerce(b)) is None
     bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt)))
     return is_fixed_int_type(
         resolve_int_literals(bt, analyzer.ctx.default_int_for_literal))
@@ -3800,11 +3793,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         elif (_f1_record(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                   rtype))) if rtype is not None else None, analyzer)
               and rb is not None):
-            # Record slice on purpose: a CONTAINER result reaches this arm
-            # only from a user dunder returning a borrow of a field, whose
-            # alias is bound const -- a write through it fails the C++ build
-            # instead of stopping here
-            # (BUGS.md#binop-borrow-result-alias-bound-const).
+            # Record slice: a CONTAINER result reaches this arm only from a
+            # user dunder returning a borrow of a field, which the dunder
+            # declares readonly (`readonly_result`); no lowering row binds
+            # that container alias yet (BUGS.md#dunder-borrow-container-own-return).
             # A RECORD-result dunder (`a // b` -> Meters via the injected
             # `({self}).__floordiv__({0})` template; `td1 + td2` via the
             # @native operator template): the template render is shared with
@@ -8800,7 +8792,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             enum_narrow_key = _narrow_key_type(e.args[0], declared, analyzer)
             if (not _resolved_scalar(enum_arg_type, analyzer)
                     or (_runtime_bigint(enum_narrow_key, analyzer)
-                        and _const_index(
+                        and const_tuple_index(
                             _unwrap_lit_coerce(e.args[0])) is not None)):
                 note_detail("call.enum_from_value.arg")
                 raise ThirUnsupported(call_reject_reason("expr.call"))
@@ -13227,8 +13219,7 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             # readonly-typed sema read forces const the same way).
             if et_bare.is_value_type():
                 mode = TupleElemCapture.VALUE
-            elif (isinstance(et_bare, OptionalType)
-                    and et_bare.uses_pointer_repr()):
+            elif pointer_repr_optional(et_bare) is not None:
                 # The slot-info ladder FORCES REF for pointer-repr Optional
                 # slots (uniform T* shape) ahead of the lvalue rule.
                 mode = (TupleElemCapture.CONST_REF if elem_readonly
@@ -13322,7 +13313,8 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             note_detail("container_elem.accessor_lends_storage")
             raise ThirUnsupported(call_reject_reason("expr.tuple_literal"))
         et_slot = et_bare
-        if (isinstance(et_slot, OptionalType) and et_slot.uses_pointer_repr()
+        et_opt = pointer_repr_optional(et_slot)
+        if (et_opt is not None
                 and rvalue_ok and not isinstance(elem, TpyNoneLiteral)
                 and is_rvalue_source(analyzer, elem)):
             # A pointer-repr Optional elem slot takes the same `Inner*` /
@@ -13330,8 +13322,8 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             # element (`tuple[Box | None, ...]` <- `Box(...)`, the
             # elem_target.inner unwrap); NAME sources keep the slot-info
             # optional arm -> the reject below.
-            et_slot = unwrap_readonly(unwrap_ref_type(et_slot.inner))
-        if (isinstance(et_slot, OptionalType) and et_slot.uses_pointer_repr()
+            et_slot = unwrap_readonly(unwrap_ref_type(et_opt.inner))
+        if (pointer_repr_optional(et_slot) is not None
                 and mode in (TupleElemCapture.REF, TupleElemCapture.CONST_REF)):
             # The pointer-repr Optional elem slot's witnessed faces: `None`
             # renders `nullptr`, a plain non-narrowed lvalue NAME lifts
@@ -14968,8 +14960,8 @@ def _own_opt_container_ptr_arg_facts(
           if isinstance(ptype, TpyType) else None)
     if not isinstance(pt, OwnType):
         return None
-    ot = unwrap_readonly(pt.wrapped)
-    if not (isinstance(ot, OptionalType) and ot.uses_pointer_repr()):
+    ot = pointer_repr_optional(pt.wrapped)
+    if ot is None:
         return None
     inner = unwrap_readonly(ot.inner)
     if not _f1_container_ref(inner):
@@ -16388,9 +16380,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # out (`push_back(::tpy::to_value_variant<std::variant<A, B>>(p))`).
         # Keyed on the BINDING set, not the type -- a value-variant-bound
         # name (a for-each element) keeps the plain copy machinery below.
-        _ow_u = unwrap_readonly(unwrap_send_sync(ow))
-        if (isinstance(_ow_u, UnionType) and _ow_u.uses_pointer_repr()
-                and not _ow_u.needs_wrapper()
+        _ow_u = pointer_variant_union(ow)
+        if (_ow_u is not None
                 and a.name in lc.ptr_variant_locals
                 # Defensive, not gate-trusted: a NARROWED name renders the
                 # concrete alternative (no wrap there), so the
@@ -17494,9 +17485,9 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
         _cp_dt = declared.get(src.name)
         _cp_du = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(_cp_dt)))
                   if _cp_dt is not None else None)
-        if (isinstance(_cp_du, OptionalType)
-                and _cp_du.uses_pointer_repr()):
-            _cp_du = unwrap_readonly(_cp_du.inner)
+        _cp_opt = pointer_repr_optional(_cp_dt)
+        if _cp_opt is not None:
+            _cp_du = unwrap_readonly(_cp_opt.inner)
         # Both pointer-local container flavors deref the same way: the
         # OPT_PTR slot (declared Optional[container]) and the REBIND
         # slot (declared plain container, the argparse accumulator).
@@ -18341,8 +18332,8 @@ def _to_opt_ptr(lowered: THIRExpr, popt: 'OptionalType', analyzer,
     all, whose address would dangle at the end of the statement -- rejects."""
     rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(lowered.result_type)))
     inner = unwrap_readonly(popt.inner)
-    if (isinstance(rt, OptionalType) and rt.uses_pointer_repr()
-            and unwrap_readonly(rt.inner) == inner):
+    rt_opt = pointer_repr_optional(rt)
+    if rt_opt is not None and unwrap_readonly(rt_opt.inner) == inner:
         return lowered
     if (lowered.form is Form.BORROW and not isinstance(rt, OptionalType)
             and (rt == inner

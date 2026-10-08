@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from ..parse.nodes import (
     TpyFieldAccess, TpyFunction, TpyGeneratorExpression, TpyStmt, TpyForEach, TpyCall, TpyCoerce, TpyMethodCall, TpyName, TpyExpr, TpySubscript, TpyTupleUnpack,
 )
+from ..typesys import pointer_repr_optional
 from ..typesys import IntLiteralType, NominalType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type, yield_borrow_slot_cpp, yield_slot_borrows
 from tpyc import modules as builtin_modules
 from ..compilation_context import get_current_compiler
@@ -431,8 +432,7 @@ class GeneratorCodegen:
                 opt_ptr_var = (
                     stmt.var
                     if (not yields_proxy
-                        and isinstance(unwrap_readonly(elem_for_form), OptionalType)
-                        and unwrap_readonly(elem_for_form).uses_pointer_repr())
+                        and pointer_repr_optional(elem_for_form) is not None)
                     else None)
                 pointer_form_var = (
                     stmt.var
@@ -512,8 +512,7 @@ class GeneratorCodegen:
         elem_opt = unwrap_readonly(elem_bare) if elem_bare is not None else None
         opt_ptr_var = (
             stmt.var if (not stmt.is_tuple_unpack
-                         and isinstance(elem_opt, OptionalType)
-                         and elem_opt.uses_pointer_repr())
+                         and pointer_repr_optional(elem_opt) is not None)
             else None)
         loop_var_field = (
             None if (stmt.is_tuple_unpack or opt_ptr_var is not None

@@ -47,7 +47,7 @@ struct Runner {
     // def pick[R, T: Container[R]](self, x: T) -> R:
     //     return x.get()
     template<typename R, Container<R> T>
-    ::tpy::val_or_cref_t<R> pick(::tpy::param_val_or_ref_t<T> x) const {
+    ::tpy::val_or_ref_t<R> pick(::tpy::param_val_or_ref_t<T> x) const {
         return x.get();
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Runner";

@@ -900,12 +900,12 @@ the split an extension needs (`PyInit_` replaces `main`, still calls
 **3. `Own[PyRef]` / `PyCallable` as library types -- Holds with caveats.** A
 new instance of the `Rc` pattern, *not* a new compiler feature: `@nocopy`
 move-only emit, `__del__`-into-destructor with the `__tpy_owned_` double-drop
-guard, opaque `@native` types behind `Ptr`, and `unsafe_interior_mutable[]` mutate-through-
-readonly all exist; `.clone()` is an ordinary method, so `clone()=Py_INCREF`
+guard, opaque `@native` types behind `Ptr`, and mutate-through-
+readonly (readonly does not reach through a `Ptr`) all exist; `.clone()` is an ordinary method, so `clone()=Py_INCREF`
 and `__del__=Py_DECREF` are just bodies over a tiny C++ facade. *Caveats:*
 sharing must go through `.clone()` (the `Rc(other)` sharing-ctor gap applies);
-whether `.clone()` must work through a `readonly[PyRef]` decides if the
-`unsafe_interior_mutable[]` hatch is needed.
+`.clone()` works through a `readonly[PyRef]` because readonly does not reach
+through the pointer.
 
 **4. GIL as a flow fact -- Holds (correction applied).** `gil_held` is a
 natural new boolean `FlowFacts` field modeled on `init_terminated` (AND-merge,
@@ -1172,11 +1172,11 @@ abstraction is frozen either way.)
   operator-protocol `TypeError` before the method body runs, rather than a
   duck-typed error from inside it). Q4 is fully landed within its resolved
   scope.
-- **Q7 `PyRef` through `readonly` -- RESOLVED (no `unsafe_interior_mutable[]` hatch).** Unlike
+- **Q7 `PyRef` through `readonly` -- RESOLVED (no field marker needed).** Unlike
   `Rc` (whose refcount cell is a TPy field), `PyRef`'s refcount lives in the
   foreign CPython object and is bumped via `Py_INCREF(ptr)` through the raw
   pointer -- outside TPy field-mutation tracking -- so `clone()` is a
-  `@readonly` method needing no `unsafe_interior_mutable[]`. Largely moot in v1 (Q3). Phase-1
+  `@readonly` method needing no field marker. Largely moot in v1 (Q3). Phase-1
   check: passing a `readonly[PyRef]`'s ptr to a mutating native fn must be
   allowed (operates on the opaque pointee).
 

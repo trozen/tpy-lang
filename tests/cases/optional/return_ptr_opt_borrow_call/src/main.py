@@ -3,7 +3,7 @@
 # returned pointer and read the source afterwards, so a copy instead of the
 # alias would show. A record METHOD lending a PARAMETER's Optional is inferred
 # const for its receiver only, so its result stays a mutable `R*`; the
-# DECLARED `@readonly` twin is the other half -- it const-projects, so its
+# DECLARED `@readonly` twin with a readonly return is the other half -- its
 # result binds `const R*` and the section reads through it while the source
 # is mutated by another path. (A method
 # relaying a FREE function's result is left out: free functions are analyzed
@@ -41,10 +41,10 @@ class B:
     def ret_self(self) -> Optional[R]:
         return self.opt_m()  # tpyc: ok
 
-    # DECLARED readonly: the borrowed result is const-projected, so a local
+    # DECLARED readonly: the borrowed result is declared readonly, so a local
     # bound to it is `const R*` rather than the mutable `R*` above
     @readonly
-    def opt_ro(self) -> Optional[R]:
+    def opt_ro(self) -> readonly[Optional[R]]:
         return self._opt
 
 

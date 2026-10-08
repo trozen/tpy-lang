@@ -44,7 +44,7 @@ struct Wrapper {
     explicit Wrapper(const Container& inner);
 
     // @readonly
-    // def get_pair(self) -> tuple[Container, int32]:
+    // def get_pair(self) -> tuple[readonly[Container], int32]:
     std::tuple<const Container*, int32_t> get_pair() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
@@ -70,7 +70,7 @@ inline std::string Container::__repr__() const {
 inline Wrapper::Wrapper(const Container& inner) : inner(inner) {}
 
 // @readonly
-// def get_pair(self) -> tuple[Container, int32]:
+// def get_pair(self) -> tuple[readonly[Container], int32]:
 //     return (self.inner, self.inner.value)
 inline std::tuple<const Container*, int32_t> Wrapper::get_pair() const {
     return std::tuple<const Container*, int32_t>{&(this->inner), this->inner.value};

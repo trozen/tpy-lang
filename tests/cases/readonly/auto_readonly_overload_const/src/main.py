@@ -23,7 +23,7 @@ class Container[T]:
     def __getitem__(self, index: slice) -> Span[auto_readonly[T]]: ...
 
     @auto_readonly
-    def __getitem__(self, index: int32 | slice) -> T | Span[auto_readonly[T]]:
+    def __getitem__(self, index: int32 | slice) -> auto_readonly[T] | Span[auto_readonly[T]]:
         if isinstance(index, slice):
             s_start = index.start
             s_stop = index.stop

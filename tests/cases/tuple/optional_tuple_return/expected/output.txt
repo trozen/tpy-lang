@@ -8,6 +8,7 @@ method mixed: 40 15 True
 method field: 25 True
 method owned: 400 4 True
 readonly: 15 4 True
+property: 55
 relay: 11 12 True True
 relay mixed: 7 13
 relay owned: 1 2 True

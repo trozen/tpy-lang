@@ -1,0 +1,29 @@
+inline 13 2
+place_alias 201 302
+optional 401
+return 16 101
+readonly_param 1016 3 101
+implicit 102
+error_return 1017
+error_return_bind 1018
+generator 2039 1020
+async 1021
+elements 53
+field_readonly_ptr 55
+ctor_write 56
+generic 57
+generic_local 1 57
+declared_bound 7
+implicit_frozen 8
+frozen_optout 10
+varargs 3 1 1 3 2
+varargs_write 102 112
+value_result 8 8 16 8
+value_protocol 8 8
+shim 9 5
+shim_write 20
+implicit_tuple 2 2 5 3
+span_field_readonly 2 12
+union_through_ptr 110
+stub_get 7
+async_payload 5

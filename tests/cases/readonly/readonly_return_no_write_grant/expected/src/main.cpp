@@ -63,6 +63,17 @@ std::tuple<const Point*, const Point*> first_two(const std::vector<Point>& items
 //     print("tuple:", pair[0].x, pair[1].x)
 //     ps[0].x = 70
 //     print("tuple after write:", pair[0].x)
+//
+//     w = Writer()
+//     q = Point(3)
+//     seen = w.pick(q)
+//     pt = Point(0)
+//     # written through the param, then returned as a const borrow of it
+//     out = w.touch(pt)
+//     print("param write:", out.x, pt.x, seen.x)
+//     pt.x = 5
+//     q.x = 6
+//     print("param after write:", out.x, seen.x)
 void main() {
     Reg r = Reg(1);
     const Point& v = r.view();
@@ -83,6 +94,15 @@ void main() {
     std::cout << "tuple:" << " " << std::get<0>(pair)->x << " " << std::get<1>(pair)->x << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(ps, 0).x = 70;
     std::cout << "tuple after write:" << " " << std::get<0>(pair)->x << "\n" << ::tpy::check_signals;
+    Writer w = Writer();
+    Point q = Point(3);
+    const Point& seen = w.pick(q);
+    Point pt = Point(0);
+    const Point& out = w.touch(pt);
+    std::cout << "param write:" << " " << out.x << " " << pt.x << " " << seen.x << "\n" << ::tpy::check_signals;
+    pt.x = 5;
+    q.x = 6;
+    std::cout << "param after write:" << " " << out.x << " " << seen.x << "\n" << ::tpy::check_signals;
 }
 
 // main()

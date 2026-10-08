@@ -40,15 +40,17 @@ from ..typesys import (
     FunctionInfo, ParamInfo, RecordInfo,
     is_dyn_protocol, contains_pending_leaf, is_bufferless_scalar,
     is_protocol_type, TypeParamRef, substitute_type_params_structural,
+    is_indirection_type, following_components,
 )
 from ..namespace import BindingKind, NameBinding, Namespace
 from ..type_def_registry import (int_traits_of, is_borrowing_view_type,
                                  is_bytes_type, is_str_type, type_def_of)
 from ..parse import (
+    const_tuple_index,
     ResultForm,
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
     TpyCall, TpyCallLike, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp,
-    TpyUnaryOp, TpyIfExpr, TpyVarargPack, TpyStarUnpack,
+    TpyIfExpr, TpyVarargPack, TpyStarUnpack,
     TpyNestedDef, TpyNamedExpr, TpyIntLiteral, TpyStrLiteral,
     TpyGeneratorExpression, TpyForEach, TpyWhile,
     is_parse_node,
@@ -57,7 +59,7 @@ from ..parse import (
 from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
 from ..value_category import (
     CallOperands, call_operands,
-    ExprTypeOf, ValueCategoryAnalyzer, call_returns_cpp_ref, declared_call_const,
+    ExprTypeOf, ValueCategoryAnalyzer, call_returns_cpp_ref,
     frame_factory_callee,
     is_rvalue_source, lent_operands, lent_operand_binds_open_param,
     peel_coerce,
@@ -70,20 +72,29 @@ from .type_ops import signature_may_return_borrow
 PENDING_CONTAINER_TYPES = (PendingListType, PendingDictType, PendingSetType)
 
 
-def addr_taken_roots(expr: TpyExpr) -> list[str]:
+def addr_taken_roots(expr: TpyExpr,
+                     type_of: 'ExprTypeOf | None' = None) -> list[str]:
     """Return all variable names whose storage is potentially aliased by expr.
 
     Used to mark params as mutated when their address is taken (directly or
     implicitly). Handles or/and (TpyBinOp ||/&&) and ternary (TpyIfExpr),
     returning all possible roots across branches.
+
+    With `type_of`, the names a WRITABLE borrow of `expr` may write: a borrow
+    taken through a handle (a `Ptr` dereference, a borrowing-view element)
+    is a borrow of the referent (`_root_name_of_expr`'s mutation mode).
     """
     if isinstance(expr, TpyCoerce):
-        return addr_taken_roots(expr.expr)
+        if type_of is not None and is_indirection_type(type_of(expr.expr)):
+            root = _handle_referent_root(expr.expr, type_of)
+            return [root] if root is not None else []
+        return addr_taken_roots(expr.expr, type_of)
     if isinstance(expr, TpyName):
         return [expr.name]
-    if isinstance(expr, TpySubscript):
-        return addr_taken_roots(expr.obj)
-    if isinstance(expr, TpyFieldAccess):
+    if isinstance(expr, (TpySubscript, TpyFieldAccess)):
+        if type_of is not None:
+            root = _root_name_of_expr(expr, type_of)
+            return [root] if root is not None else []
         return addr_taken_roots(expr.obj)
     if (is_property_getter_read(expr)
             and signature_may_return_borrow(expr.resolved_function_info)):
@@ -95,11 +106,20 @@ def addr_taken_roots(expr: TpyExpr) -> list[str]:
         # reference at a reference instantiation and must be taken as aliasing
         # -- this is an escape question, where the conservative answer is the
         # safe one.
+        if type_of is not None:
+            root = receiver_root(expr.obj, type_of)
+            return [root] if root is not None else []
         return addr_taken_roots(expr.obj)
+    if type_of is not None and _call_lends_receiver_at(expr, ()):
+        # The result IS the receiver's storage for writing; its lifetime is
+        # the callee's recorded return borrow (`result_borrow_sources`).
+        root = receiver_root(expr.obj, type_of)
+        return [root] if root is not None else []
     if isinstance(expr, TpyBinOp) and expr.op in ("||", "&&"):
-        return addr_taken_roots(expr.left) + addr_taken_roots(expr.right)
+        return addr_taken_roots(expr.left, type_of) + addr_taken_roots(expr.right, type_of)
     if isinstance(expr, TpyIfExpr):
-        return addr_taken_roots(expr.then_expr) + addr_taken_roots(expr.else_expr)
+        return (addr_taken_roots(expr.then_expr, type_of)
+                + addr_taken_roots(expr.else_expr, type_of))
     return []
 
 
@@ -118,15 +138,12 @@ def escaping_borrow_tuple(slot: TpyType) -> 'tuple[TupleType, bool] | None':
     return None
 
 
-def tuple_borrow_escape_roots(expr: 'TpyExpr', tuple_bare: 'TupleType',
-                              ro_tuple: bool, *,
-                              expr_type: 'ExprTypeOf | None'
-                              ) -> list[tuple[str, bool]]:
-    """(root, grants_write) pairs for a borrow-form tuple escaping through a
-    yield/return slot: what the tuple lends at that slot (`lent_operands`,
-    which also decides each element's write access), with a readonly slot
-    recording provenance only."""
-    return [(root, not ro_tuple and lent.grants_write)
+def tuple_borrow_escape_roots(expr: 'TpyExpr', tuple_bare: 'TupleType', *,
+                              expr_type: 'ExprTypeOf | None') -> list[str]:
+    """The roots a borrow-form tuple escaping through a yield/return slot
+    lends (`lent_operands`): the provenance the slot records, whatever
+    access each element grants."""
+    return [root
             for lent in lent_operands(expr, tuple_bare, expr_type=expr_type)
             for root in addr_taken_roots(lent.expr)]
 
@@ -360,15 +377,18 @@ def _local_traces_to_self(borrow_tracker: 'BorrowTracker', name: str) -> bool:
 def _is_self_call_deferred(
     expr_obj: TpyExpr, obj_root: str | None,
     loop_var_iterable: dict[str, list[str]],
-    borrow_tracker: 'BorrowTracker',
+    borrow_tracker: 'BorrowTracker', type_of: 'ExprTypeOf',
 ) -> bool:
     """Check if a method call receiver traces to self through field accesses or loop vars.
 
     When True, self-mutation is deferred to Phase 2 via call edges
     (a receiver_idx) instead of being marked directly in Phase 1.
     This enables readonly inference for methods that call non-mutating
-    methods on fields or loop elements.
+    methods on fields or loop elements. A handle receiver runs the call on
+    its referent, never on the storage the handle was read out of.
     """
+    if is_indirection_type(type_of(expr_obj)):
+        return False
     if obj_root == "self":
         # Verify the chain is purely field accesses (no subscripts like
         # self.items[0].method()). _root_name_of_expr strips both FieldAccess
@@ -395,32 +415,48 @@ def _is_self_call_deferred(
     return False
 
 
-def _root_name_of_expr(expr: TpyExpr) -> str | None:
+def _root_name_of_expr(expr: TpyExpr,
+                       type_of: 'ExprTypeOf | None' = None) -> str | None:
     """Extract the root TpyName from a chain of field/subscript accesses.
 
     e.g. p.inner.v -> "p", c.items[0] -> "c", x -> "x".
     Returns None for non-name roots (calls, literals, etc.).
 
-    Transparent to a borrowing @auto_readonly accessor call (`o.b.get()` -> "o"):
-    the result borrows the receiver, so it is the same storage object. This
-    serves both the mutation-root callers (a write through the result mutates
-    the receiver) and the borrow-source callers (the result borrows the
-    receiver's storage); both want the receiver's root.
+    Transparent to a call that declares lending its receiver at the part the
+    place is in (`_call_lends_receiver_at`: `o.b.get()` -> "o"): the result
+    is the receiver's storage. This serves both the mutation-root callers (a
+    write through the result mutates the receiver) and the borrow-source
+    callers (the result borrows the receiver's storage).
 
     Unbound-self field access (BaseN.field, set by sema) reports "self"
     since the implicit receiver is `this` -- the syntactic root name is
     the ancestor class, but the mutation travels through self.
+
+    Without `type_of` the walk answers a LIFETIME question: a place reached
+    through a `Ptr` or a `Span` stays conservatively tied to whatever holds
+    the handle. With it, the MUTATION question -- which name a write to the
+    place credits: the walk stops at the first step taken through an
+    indirection (`indirection_referent_readonly`), whose referent is what is
+    written (`_handle_referent_root`), not the holder of the handle; and the
+    walk tracks which element of a tuple result the place is in.
     """
+    path: tuple = ()
     while True:
-        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+        if type_of is not None and isinstance(expr, TpyCoerce):
+            expr = expr.expr
+        elif isinstance(expr, (TpyFieldAccess, TpySubscript)):
             if (isinstance(expr, TpyFieldAccess)
                     and expr.unbound_self_parent_type is not None):
                 return "self"
+            if type_of is not None:
+                if is_indirection_type(type_of(expr.obj)):
+                    return _handle_referent_root(expr.obj, type_of)
+                index = _tuple_subscript_index(expr, type_of)
+                path = (index,) + path if index is not None else ()
             expr = expr.obj
-        elif _is_borrowing_auto_readonly_accessor(expr):
-            # An @auto_readonly accessor (Box.get / Rc.get / Deref) whose result
-            # borrows its receiver is transparent for mutation rooting: writing
-            # through `o.b.get().v` mutates `o`, so the root is the receiver's.
+        elif _call_lends_receiver_at(expr, path):
+            if type_of is not None:
+                return receiver_root(expr.obj, type_of)
             expr = expr.obj
         else:
             break
@@ -441,15 +477,93 @@ def iter_source_root(expr: TpyExpr) -> str | None:
     return _storage_root(key) if key is not None else _root_name_of_expr(expr)
 
 
-def _is_borrowing_auto_readonly_accessor(expr: TpyExpr) -> bool:
-    """Whether a mutation through this call's result roots back to the receiver.
+def _tuple_subscript_index(expr: TpyExpr, type_of: 'ExprTypeOf') -> int | None:
+    """The element `t[i]` reads off a tuple-typed `t`, or None for any other
+    step: the one place step that stays a component of a call's result."""
+    if not isinstance(expr, TpySubscript):
+        return None
+    tup = unwrap_qualifiers(type_of(expr.obj)) if type_of(expr.obj) is not None else None
+    if not isinstance(tup, TupleType):
+        return None
+    i = const_tuple_index(expr.index)
+    if i is None:
+        return None
+    n = len(tup.element_types)
+    return i + n if i < 0 else i
 
-    Only a borrowing accessor (result aliases the receiver) qualifies; a
-    value-returning @auto_readonly clone hands back a copy that can't.
-    """
+
+def _call_lends_receiver_at(expr: TpyExpr, path: tuple) -> bool:
+    """Whether `expr` is a call whose result, at component `path` or a part
+    containing it, is its receiver's storage by declaration
+    (`following_components`): the one test of a call transparent to its
+    receiver."""
     return (isinstance(expr, TpyMethodCall)
-            and expr.resolved_function_info is not None
-            and expr.resolved_function_info.borrows_receiver_via_auto_readonly)
+            and any(path[:len(c)] == c
+                    for c in following_components(expr.resolved_function_info)))
+
+
+def lent_receivers(recv: TpyExpr) -> list[TpyExpr]:
+    """The expressions whose storage the receiver `recv` may be: each operand
+    it can pick (`receiver_leaves`), through every call whose whole result is
+    its own receiver's storage (`_call_lends_receiver_at`), so
+    `w.me().ref()` lends `w`."""
+    out: list[TpyExpr] = []
+    for leaf in receiver_leaves(recv):
+        if _call_lends_receiver_at(leaf, ()):
+            out.extend(lent_receivers(leaf.obj))
+        else:
+            out.append(leaf)
+    return out
+
+
+def _handle_referent_root(handle: TpyExpr, type_of: 'ExprTypeOf') -> str | None:
+    """The name a write into what the handle `handle` points at credits: the
+    handle's own name when it is a local or parameter (its referent is what
+    was handed in, so the effect travels with the name), and nothing for a
+    handle read out of some holder's storage -- the holder itself is not
+    written -- or returned by a call: a call lending a writable handle into
+    its receiver demoted the receiver itself (`receiver_lends`)."""
+    while True:
+        if isinstance(handle, TpyCoerce):
+            handle = handle.expr
+        elif _tuple_subscript_index(handle, type_of) is not None:
+            handle = handle.obj
+        else:
+            break
+    return handle.name if isinstance(handle, TpyName) else None
+
+
+def receiver_root(recv: TpyExpr, type_of: 'ExprTypeOf | None' = None) -> str | None:
+    """`_root_name_of_expr` for the receiver of a call: with `type_of`, a
+    handle receiver is dereferenced by the call itself, so the call reaches
+    the handle's referent."""
+    if type_of is not None and is_indirection_type(type_of(recv)):
+        return _handle_referent_root(recv, type_of)
+    return _root_name_of_expr(recv, type_of)
+
+
+def value_root(expr: TpyExpr, type_of: 'ExprTypeOf') -> str | None:
+    """The name credited when a callee writes through what `expr` hands it:
+    a handle's referent (`_handle_referent_root`), else the place."""
+    while isinstance(expr, TpyCoerce):
+        if is_indirection_type(type_of(expr.expr)):
+            return _handle_referent_root(expr.expr, type_of)
+        expr = expr.expr
+    return receiver_root(expr, type_of)
+
+
+def receiver_leaves(expr: TpyExpr) -> list[TpyExpr]:
+    """The operands a value may BE: the expression itself, or for a ternary /
+    value and/or select every operand it can pick (recursively) -- a call on
+    it runs on whichever one it is, a binding of it holds whichever one."""
+    while isinstance(expr, TpyCoerce):
+        expr = expr.expr
+    if isinstance(expr, TpyIfExpr):
+        return (receiver_leaves(expr.then_expr)
+                + receiver_leaves(expr.else_expr))
+    if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
+        return receiver_leaves(expr.left) + receiver_leaves(expr.right)
+    return [expr]
 
 
 def _borrow_storage_roots(expr: TpyExpr) -> list[str]:
@@ -501,18 +615,6 @@ def holds_no_pointer(t: TpyType) -> bool:
     storage: a bufferless scalar or an owned `str` / `bytes`."""
     t = unwrap_qualifiers(t)
     return is_bufferless_scalar(t) or is_str_type(t) or is_bytes_type(t)
-
-
-def readonly_reaches(t: TpyType) -> bool:
-    """Whether a readonly source projects `readonly` onto a member of this
-    type: a reference type, or a tuple / Optional holding one -- the tuple
-    is a value type, but its record element is the object the source
-    refers to. A `Ptr` or a view stops the projection (its pointee's
-    const-ness is its own type's business), as does any other value."""
-    t = unwrap_readonly(unwrap_ref_type(t))
-    if isinstance(t, (TupleType, OptionalType)):
-        return any(readonly_reaches(m) for m in t.inner_types())
-    return not t.is_value_type()
 
 
 def value_may_point(t: TpyType) -> bool:
@@ -1573,12 +1675,16 @@ def _register_source_borrow(ctx: 'SemanticContext', name: str,
         # The arms stay eagerly marked mutated rather than deferred: a select
         # has no single root that a later write through the borrower could
         # re-mark, so the conservative mark is the only one it gets.
-        for alias_root in addr_taken_roots(source_expr):
+        for alias_root in addr_taken_roots(source_expr, ctx.get_expr_type):
             ctx.mark_param_mutated(alias_root)
         return
     root = _borrow_storage_root(source_expr)
     if root is None:
-        for alias_root in addr_taken_roots(source_expr):
+        if (isinstance(unwrapped, (TpyMethodCall, TpyCall))
+                and not is_property_getter_read(unwrapped)):
+            # A call result's loans are the call's (`_register_call_result_borrow`).
+            return
+        for alias_root in addr_taken_roots(source_expr, ctx.get_expr_type):
             ctx.mark_param_mutated(alias_root)
         return
     if root == name:
@@ -1651,24 +1757,9 @@ def record_stmt_borrow_binding(ctx: 'SemanticContext', name: str,
     alias_key = field_chain_storage_key(inner)
     if alias_key is not None:
         ctx.mark_all_view_borrowers_mutated(alias_key)
-    declared = declared_call_const(ctx, inner)
-    if declared is not None:
-        record_borrow_binding(ctx, name, const=declared)
-        return
+    # A call's result is readonly exactly when its declared return says so,
+    # which is the type sema gave the expression.
     const = isinstance(ctx.get_expr_type(inner), ReadonlyType)
-    if not const and isinstance(inner, TpyMethodCall):
-        fi = inner.resolved_function_info
-        const = bool(fi is not None and fi.is_readonly
-                     and call_returns_cpp_ref(ctx, fi))
-    # Operator dispatch mirrors the method-call arm (same rule as
-    # _is_const_indirect): a readonly dunder's borrow return binds const,
-    # so a branch pre-decl must pick the const pointer form.
-    if not const and isinstance(inner, TpyBinOp) and inner.resolved_binop is not None:
-        fi = inner.resolved_binop.method
-        const = bool(fi.is_readonly and call_returns_cpp_ref(ctx, fi))
-    if not const and isinstance(inner, TpyUnaryOp) and inner.resolved_unaryop is not None:
-        fi = inner.resolved_unaryop.method
-        const = bool(fi.is_readonly and call_returns_cpp_ref(ctx, fi))
     record_borrow_binding(ctx, name, const=const)
 
 
@@ -3983,8 +4074,17 @@ class SemanticContext:
             self.func.current_mutated_param_names.add(name)
             if via_element:
                 self.func.current_elem_mutated_param_names.add(name)
-        for iterable in self.func.loop_var_iterable.get(name, ()):
-            # Field-path iterables ("c.items") need root extraction for param lookup
+        # A loop variable that is itself a handle (`for p in ps` over
+        # `list[Ptr[A]]`) is written only through its referent, which is not
+        # the iterable's storage -- as for a handle copied out of it.
+        loop_type = (self.func.current_scope.lookup(name)
+                     if self.func.current_scope else None)
+        for iterable in (() if is_indirection_type(loop_type)
+                         else self.func.loop_var_iterable.get(name, ())):
+            # Field-path iterables ("c.items") need root extraction for param
+            # lookup; one iterating a handle field iterates its referent.
+            if self._key_member_is_indirection(iterable):
+                continue
             self.mark_param_mutated(_storage_root(iterable), through_field=through_field,
                                     via_element=True)
         for src in self.func.bp_borrow_source_roots(name):
@@ -4006,7 +4106,7 @@ class SemanticContext:
         # inline form (`o.items[0].v = 9`); this climbs the alias form to the param.
         if through_field:
             field_root = _storage_root(name)
-            if field_root != name:
+            if field_root != name and not self._key_member_is_indirection(name):
                 self.mark_param_mutated(field_root, through_field=through_field,
                                         via_element=True)
 
@@ -4073,29 +4173,51 @@ class SemanticContext:
             self.mark_param_returned(field_root, seen)
 
     def _key_member_is_indirection(self, key: str) -> bool:
-        """`root.member` names a field that points AT storage (a `Ptr`, a
-        borrowing view) rather than holding it, so a borrow reached through it
-        is a borrow of the pointee and outlives `root`.
+        """Some field along the storage key `root.a.b` points AT storage (a
+        `Ptr`, a borrowing view) rather than holding it, so whatever is
+        reached past it is the referent's, not `root`'s: a borrow of it
+        outlives `root`, and a write through it leaves `root` unchanged.
 
         Assumes the pointer aims OUTSIDE its own record; one aimed at a
         sibling field (`self.p = take_ptr(self.m)`) does lend `root`, and
         nothing here can tell."""
-        root, _, member = key.partition(".")
-        root_type = (self.func.current_scope.lookup(root)
-                     if self.func.current_scope else None)
-        if root_type is None:
+        root, _, rest = key.partition(".")
+        if not rest:
             return False
-        bare = unwrap_ref_type(unwrap_qualifiers(root_type))
-        record = (self.registry.find_record(bare.name)
-                  if isinstance(bare, NominalType) else None)
-        if record is None:
-            return False
-        for info in self.registry.get_all_fields(record):
-            if info.name == member:
-                field_type = unwrap_ref_type(unwrap_qualifiers(info.type))
-                return (field_type.is_pointer()
-                        or is_borrowing_view_type(field_type))
+        cur = (self.func.current_scope.lookup(root)
+               if self.func.current_scope else None)
+        for member in rest.split("."):
+            if cur is None:
+                return False
+            bare = unwrap_ref_type(unwrap_qualifiers(cur))
+            record = (self.registry.find_record(bare.name)
+                      if isinstance(bare, NominalType) else None)
+            if record is None:
+                return False
+            cur = next((info.type for info in self.registry.get_all_fields(record)
+                        if info.name == member), None)
+            if is_indirection_type(cur):
+                return True
         return False
+
+    def escape_write_roots(self, expr: TpyExpr, slot: TpyType) -> list[str]:
+        """The names a returned / yielded borrow of `expr` at `slot` lets the
+        caller write: none for a readonly slot, per lent element for a
+        borrow-form tuple, nullable or not (each element grants what it
+        would alone)."""
+        type_of = self.get_expr_type
+        if isinstance(slot, ReadonlyType):
+            return []
+        borrow_tuple = escaping_borrow_tuple(slot)
+        if borrow_tuple is not None:
+            bare, ro = borrow_tuple
+            if ro:
+                return []
+            return [root
+                    for lent in lent_operands(expr, bare, expr_type=type_of)
+                    if lent.grants_write
+                    for root in addr_taken_roots(lent.expr, type_of)]
+        return addr_taken_roots(expr, type_of)
 
     def mark_own_param_consumed(self, name: str) -> None:
         """Mark an Own[T] param as consumed (stored, forwarded, or returned)."""

@@ -65,7 +65,7 @@ struct Producer {
     Producer& operator=(Producer&&) = default;
 
     // def run(self) -> None:
-    void run();
+    void run() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Producer";
 };
 
@@ -91,7 +91,7 @@ inline Producer::Producer(::tpystd::tplib::channel::Sender<Item>&& tx, int32_t b
 //     while i < 3:
 //         self.tx.send(Item(self.base + i))
 //         i += 1
-inline void Producer::run() {
+inline void Producer::run() const {
     int32_t i = 0;
     while ((i < 3)) {
         this->tx.send(Item((::tpy::add_check<int32_t>(this->base, i))));

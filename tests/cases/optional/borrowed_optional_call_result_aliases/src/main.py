@@ -1,9 +1,9 @@
 # A local bound from a call that lends a pointer-form result (`-> Optional[R]`,
-# `-> R | S`) aliases the lent object at every position; an owning sink copies
-# it under the copy warning and never moves it.
+# `-> readonly[Optional[R]]`, `-> R | S`) aliases the lent object at every
+# position; an owning sink copies it under the copy warning and never moves it.
 from typing import Optional, Iterator
 import asyncio
-from tpy import int32, Own, error_return, ReturnException
+from tpy import int32, readonly, Own, error_return, ReturnException
 
 
 class NotFound(Exception, ReturnException):
@@ -31,6 +31,10 @@ class H:
         self.o = R()
 
     def geto(self) -> Optional[R]:
+        return self.o
+
+    @readonly
+    def get(self) -> readonly[Optional[R]]:
         return self.o
 
     @property
@@ -144,6 +148,16 @@ def s_union(a: R, b: S) -> None:
     print("union", len(a.xs))
 
 
+# readonly face: the rebind sees a later write to the source
+def s_readonly(h: H) -> None:
+    q = h.get()
+    if q is not None:
+        r = q
+        if h.o is not None:
+            h.o.xs.append(9)
+        print("readonly", len(r.xs))
+
+
 # walrus
 def s_walrus(h: H) -> None:
     if (q := h.geto()) is not None:
@@ -243,7 +257,7 @@ def s_append(h: H) -> None:
 
 
 def s_own_arg(h: H) -> None:
-    q = h.geto()
+    q = h.get()
     if q is not None:
         t = take(q)  # tpyc: warning(/copies R into owned storage/)
         print("own_arg", len(t.xs), olen(h))
@@ -348,6 +362,7 @@ def main() -> None:
     s_free(H())
     s_generic([R()])
     s_union(R(), S(1))
+    s_readonly(H())
     s_walrus(H())
     s_assert(H())
     s_closure(H())

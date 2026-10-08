@@ -43,7 +43,7 @@ struct H {
 
     // @error_return(E)
     // @readonly
-    // def rview(self) -> list[int32]:
+    // def rview(self) -> readonly[list[int32]]:
     std::expected<::tpy::val_or_ref<const std::vector<int32_t>>, E> rview() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.H";
 };
@@ -67,7 +67,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, E> H::view() {
 
 // @error_return(E)
 // @readonly
-// def rview(self) -> list[int32]:
+// def rview(self) -> readonly[list[int32]]:
 //     return self.items
 inline std::expected<::tpy::val_or_ref<const std::vector<int32_t>>, E> H::rview() const {
     return this->items;

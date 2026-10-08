@@ -1,7 +1,8 @@
-# unsafe_interior_mutable[Ptr[T]] on a user type: a @readonly method mutates through the
-# interior field (the bump is bookkeeping outside the readonly boundary);
-# observing the bumped value proves the mutation took effect.
-from tpy import int32, Ptr, nocopy, unsafe_interior_mutable, readonly
+# Refcount-style bookkeeping behind a Ptr field on a user type: a @readonly
+# method mutates through the pointer (readonly does not reach through a Ptr,
+# so the field needs no marker); observing the bumped value proves the
+# mutation took effect.
+from tpy import int32, Ptr, nocopy, readonly
 from tpy.unsafe import unsafe_take, unsafe_release
 
 
@@ -18,7 +19,7 @@ class Cell:
 
 @nocopy
 class Counter:
-    _cell: unsafe_interior_mutable[Ptr[Cell]]
+    _cell: Ptr[Cell]
 
     def __init__(self) -> None:
         self._cell = unsafe_take(Cell(0))

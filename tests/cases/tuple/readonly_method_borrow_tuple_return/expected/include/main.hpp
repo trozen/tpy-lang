@@ -49,7 +49,7 @@ struct Maker {
     std::tuple<Cell*, Cell*> pair(Cell& c) const;
 
     // @readonly
-    // def declared_pair(self, c: Cell) -> tuple[Cell, Cell]:
+    // def declared_pair(self, c: Cell) -> tuple[readonly[Cell], readonly[Cell]]:
     std::tuple<const Cell*, const Cell*> declared_pair(const Cell& c) const;
 
     // def mixed(self, c: Cell) -> tuple[Own[Cell], Cell]:
@@ -83,7 +83,7 @@ inline std::tuple<Cell*, Cell*> Maker::pair(Cell& c) const {
 }
 
 // @readonly
-// def declared_pair(self, c: Cell) -> tuple[Cell, Cell]:
+// def declared_pair(self, c: Cell) -> tuple[readonly[Cell], readonly[Cell]]:
 //     return (c, c)
 inline std::tuple<const Cell*, const Cell*> Maker::declared_pair(const Cell& c) const {
     return std::tuple<const Cell*, const Cell*>{&(c), &(c)};

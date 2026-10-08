@@ -456,7 +456,7 @@ def ro_copy(d: readonly[dict[str, P]], a: readonly[P]) -> None:
     xs = []
     xs.append(d.get("zz", P(4)))  # tpyc: warning(/copies .*P.* into owned storage/)
     xs[0].n = 9
-    ys = [a]  # tpyc: warning(/copies readonly\[P\] into owned storage/)
+    ys = [a]  # tpyc: warning(/copies P into owned storage/)
     ys[0].n = 8
     print("ro_copy", xs[0].n, ys[0].n)
 

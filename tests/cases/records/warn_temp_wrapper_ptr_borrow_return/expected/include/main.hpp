@@ -64,7 +64,7 @@ struct Wrapper {
     explicit Wrapper(Obj* p);
 
     // def get(self) -> Obj:
-    const Obj& get() const;
+    Obj& get() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -89,7 +89,7 @@ inline Wrapper::Wrapper(Obj* p) : p(p) {}
 // def get(self) -> Obj:
 //     # Borrows through the pointer field, not from the Wrapper.
 //     return self.p.__deref__()
-inline const Obj& Wrapper::get() const {
+inline Obj& Wrapper::get() const {
     return ::tpy::deref_check(this->p);
 }
 void __tpy_init();

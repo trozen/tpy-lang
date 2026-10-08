@@ -277,4 +277,3 @@ def infer_method_const(all_fis: list[FunctionInfo]) -> None:
                 continue
         if not fi.self_mutated:
             fi.is_readonly = True
-            fi.readonly_inferred = True

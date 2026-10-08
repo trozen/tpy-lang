@@ -97,7 +97,7 @@ struct K {
     }
 
     // @readonly
-    // def peek(self, other: B) -> Rec:
+    // def peek(self, other: B) -> readonly[Rec]:
     const Rec& peek(const B& other) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.K";
 };
@@ -199,9 +199,10 @@ inline Rec& K::second(B& first, B& other) const {
     return other.m;
 }
 
-// # DECLARED readonly: every parameter is readonly, so the result is const
+// # DECLARED readonly: every parameter is readonly, so the result is
+// # declared readonly too
 // @readonly
-// def peek(self, other: B) -> Rec:
+// def peek(self, other: B) -> readonly[Rec]:
 //     return other.m
 inline const Rec& K::peek(const B& other) const {
     return other.m;

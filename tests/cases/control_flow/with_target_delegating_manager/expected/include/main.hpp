@@ -50,7 +50,7 @@ struct Wrapper {
     ~Wrapper();
 
     // def __enter__(self) -> Sentinel:
-    const Sentinel& __enter__() const;
+    Sentinel& __enter__() const;
 
     // def __exit__(self, et, ev, tb) -> None:
     void __exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const;
@@ -110,7 +110,7 @@ inline Wrapper::~Wrapper() {
 
 // def __enter__(self) -> Sentinel:
 //     return SHARED
-inline const Sentinel& Wrapper::__enter__() const {
+inline Sentinel& Wrapper::__enter__() const {
     return (*SHARED);
 }
 

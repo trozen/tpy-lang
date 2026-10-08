@@ -1,0 +1,4 @@
+The subject is a write through a lent handle, which the CPython stubs cannot
+express: a `Ptr` to an int is the int itself there (`unsafe_store` fails on
+it), and an ArrayList view or slice is a copied list, so the write never
+reaches the ArrayList.

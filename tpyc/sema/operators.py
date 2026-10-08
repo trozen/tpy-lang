@@ -13,6 +13,7 @@ from ..typesys import (
     ResolvedBinop, ResolvedUnaryop, FunctionInfo, TypeParamKind,
     INT32, FLOAT, PendingContainerType, OwnType, unwrap_ref_type,
     unwrap_readonly, resolve_int_literals, unwrap_qualifiers,
+    substitute_type_params_simple,
 )
 from .overloads import type_matches_numeric, type_matches_strict
 from ..coercions import (resolve_coercion, context_free_wrap_template,
@@ -88,13 +89,6 @@ OPERATOR_DUNDERS: frozenset[str] = frozenset(
     + list(builtin_modules.BINOP_TO_RMETHOD.values())
     + list(builtin_modules.AUGOP_TO_IMETHOD.values())
     + list(builtin_modules.UNARYOP_TO_METHOD.values()))
-
-
-def _substitute_type_params(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
-    """Substitute TypeParamRef instances in a type according to subst map."""
-    if isinstance(typ, TypeParamRef) and typ.name in subst:
-        return subst[typ.name]
-    return typ.map_inner_types(lambda t: _substitute_type_params(t, subst))
 
 
 def _literal_beside(t: TpyType, effective: TpyType, other: TpyType,
@@ -181,7 +175,7 @@ class OperatorResolver:
         concrete element type if available, otherwise resolves to default int.
         """
         # Drop int-kind type args (e.g. N in Array[T, N]) --
-        # _substitute_type_params only acts on TypeParamRef -> TpyType.
+        # substitute_type_params_simple only acts on TypeParamRef -> TpyType.
         subst: dict[str, TpyType] = {
             k: v for k, v in self.type_ops.build_type_substitution(receiver_type).items()
             if isinstance(v, TpyType)
@@ -219,7 +213,7 @@ class OperatorResolver:
                 param = method.params[0]
                 param_type = unwrap_ref_type(param.type)
                 if type_subst:
-                    param_type = _substitute_type_params(param_type, type_subst)
+                    param_type = substitute_type_params_simple(param_type, type_subst)
                 own_params = [tp for tp in method.type_params if tp not in type_subst]
                 if own_params:
                     view = dc_replace(method, params=[dc_replace(param, type=param_type)],
@@ -250,10 +244,10 @@ class OperatorResolver:
         self._check_class_bounds(method, receiver_type, type_subst, loc_node)
         if type_subst:
             new_params = [
-                dc_replace(p, type=_substitute_type_params(p.type, type_subst))
+                dc_replace(p, type=substitute_type_params_simple(p.type, type_subst))
                 for p in method.params
             ]
-            new_return = _substitute_type_params(method.return_type, type_subst)
+            new_return = substitute_type_params_simple(method.return_type, type_subst)
             method = dc_replace(method, params=new_params, return_type=new_return,
                                 canonical_fi=method.root)
         # Unwrap Ref from return type -- Ref is a codegen-level concern,
@@ -494,7 +488,7 @@ class OperatorResolver:
         type_subst = self._build_type_subst(target_effective, target_effective)
         _, param_type = candidates[0].params[0]
         if type_subst:
-            param_type = _substitute_type_params(param_type, type_subst)
+            param_type = substitute_type_params_simple(param_type, type_subst)
         return param_type
 
     def resolve_unaryop(

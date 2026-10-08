@@ -58,7 +58,7 @@ __gen_framegen framegen(const std::vector<int32_t>& xs);
 __coro_aio aio(const std::vector<int32_t>& xs);
 // @error_return(Err)
 // def fallible(d: dict[int32, int32]) -> int32:
-std::expected<int32_t, Err> fallible(::tpy::ordered_map<int32_t, int32_t>& d);
+std::expected<int32_t, Err> fallible(const ::tpy::ordered_map<int32_t, int32_t>& d);
 // def by_match(n: int32, xs: list[int32]) -> int32:
 int32_t by_match(int32_t n, const std::vector<int32_t>& xs);
 // def big(v: int32) -> bool:

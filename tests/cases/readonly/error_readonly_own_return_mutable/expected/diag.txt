@@ -1,0 +1,1 @@
+main.py:21: error: Cannot return readonly[A] at mutable return type 'A'; declare the return as 'readonly[A]'

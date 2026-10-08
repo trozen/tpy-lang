@@ -43,11 +43,15 @@ void _require_locked(bool locked) {
 // `unsafe impl<T: Send + Sync>`, and sound on the safe surface: a safe not-`Sync`
 // `T` is always a container whose not-`Sync`-ness is shared-mutability that the
 // readonly read guard removes (TPy has no safe interior mutability, unlike Rust's
-// `Cell`, so the guard suffices for every safe payload). It is NOT sound in
-// general: a `Send`-but-not-`Sync` interior-mutable payload from the unsafe
-// `unsafe_interior_mutable` hatch (a user `Cell`-analog) gets a `Sync` the author
-// never asserted, and concurrent readonly reads race -- a latent hole, low
-// priority. See docs/SEND_SYNC_DESIGN.md (RwLock Sync bound) and BUGS.md.
+// `Cell`, so the guard suffices for every safe payload: a safe `Send` `T` holds no
+// writable `Ptr`, and the `@unsafe_send` types that do -- `Arc`, `Mutex`,
+// `RwLock` -- expose their payload only through readonly-following accessors). It
+// is NOT sound in general: a `Send`-but-not-`Sync` `@unsafe_send` payload that
+// mutates through a pointer from a readonly method (a user `Cell`-analog) gets a
+// `Sync` the author never asserted, and concurrent readonly reads race -- a latent
+// hole, low priority. The guarantees also assume no caller touches the `_`-prefixed
+// implementation fields (`_payload` reached around the lock). See
+// docs/SEND_SYNC_DESIGN.md (RwLock Sync bound) and BUGS.md.
 // """
 //
 // from tpy.mem import UninitStorage

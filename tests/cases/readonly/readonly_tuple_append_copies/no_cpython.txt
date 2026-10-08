@@ -1,0 +1,4 @@
+Documented divergence: an owning argument (`list.append`) stores a copy of
+a borrowed reference element, as the copy warning says; CPython stores the
+same object, so mutating the source after the append shows through the
+list element in CPython, not in TPy.

@@ -18,7 +18,7 @@ class H:
         return self.items
 
     @readonly
-    def rview(self) -> list[int32]:
+    def rview(self) -> readonly[list[int32]]:
         return self.items
 
     @error_return(E)

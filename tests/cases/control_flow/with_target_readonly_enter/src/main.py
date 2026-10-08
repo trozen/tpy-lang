@@ -1,7 +1,6 @@
-# A `@readonly __enter__` returns `const T&`, so a branch-hoisted target must
-# take the CONST pointer form. Getting that verdict from the declared return type
-# alone misses it -- readonly is a property of the method, not of the annotation --
-# and a non-const slot against a const-returning __enter__ fails the C++ build.
+# A `@readonly __enter__` declared `-> readonly[T]` returns `const T&`, so a
+# branch-hoisted target must take the CONST pointer form; a non-const slot
+# against a const-returning __enter__ fails the C++ build.
 # The target is first declared inside branches and read after, which is what
 # forces the hoist. Mutating the MANAGER and reading through the target proves
 # the hoisted slot aliases rather than copies (the target itself is const).
@@ -13,7 +12,7 @@ class Reg:
         self.n = n
 
     @readonly
-    def __enter__(self) -> "Reg":
+    def __enter__(self) -> readonly["Reg"]:
         return self
 
     def __exit__(self, et, ev, tb) -> None:

@@ -267,6 +267,9 @@ def genexpr_local(b: Box) -> int32:
 # operator shims: the friend `operator+` / `operator-` a dunder gets hands its
 # ownership-transfer parameter on with `std::move`, tuple and scalar alike (TPy's
 # `+` takes no tuple operand, so the C++ build is what checks the tuple one).
+# A dunder is implicitly readonly, which reaches the borrowed element of its
+# tuple parameter, so this one only reads it (the refused write is
+# tuple/error_dunder_tuple_param_element_write).
 class Adder:
     k: int32
 
@@ -275,8 +278,7 @@ class Adder:
 
     def __add__(self, o: tuple[Own[Tok], Box]) -> int32:  # tpyc: ok
         a, c = o
-        c.n += 1
-        return self.k + take(a)
+        return self.k + take(a) + c.n
 
     def __sub__(self, o: Own[Tok]) -> int32:  # tpyc: ok
         return self.k - take(o)

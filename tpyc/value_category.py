@@ -17,12 +17,14 @@ and `registry`. Both the sema `AnalyzerContext` and the codegen
 from enum import Enum, auto
 from typing import Any, Callable, NamedTuple, Protocol
 
+from .typesys import pointer_repr_optional, pointer_variant_union
 from .typesys import (
     FunctionInfo, NominalType, PtrType, ReadonlyType, TpyType, TupleType,
     TypeParamRef, OwnType,
     OptionalType, ResultPosition, ResultRepresentation, classify_result_representation,
-    is_bodyless_binding, is_open_type_param_return, is_primitive_type,
-    is_protocol_type, is_ptr_variant_union,
+    is_bodyless_binding, is_open_type_param_return, is_primitive_type, is_protocol_type,
+    indirection_referent_readonly, declared_result_readonly, result_follows_receiver_root,
+    declares_whole_result_following,
     property_getter_returns_storage_ref, returns_cpp_reference_shape,
     unwrap_optional_own, unwrap_readonly, unwrap_ref_type,
     unwrap_send_sync,
@@ -261,13 +263,8 @@ def lends_pointer_form_result(analyzer: 'ValueCategoryAnalyzer',
     if fi is not None and fi.is_constructor:
         return False
     t = analyzer.get_expr_type(expr)
-    if not isinstance(t, TpyType):
-        return False
-    # An `Own` left after the access wrappers is the storage form, which
-    # neither shape test matches.
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    return ((isinstance(t, OptionalType) and t.uses_pointer_repr())
-            or is_ptr_variant_union(t))
+    return (pointer_repr_optional(t) is not None
+            or pointer_variant_union(t) is not None)
 
 
 def binds_owned_value(analyzer: 'ValueCategoryAnalyzer',
@@ -291,8 +288,7 @@ def call_value_optional(call: TpyExpr) -> 'OptionalType | None':
         call.resolved_function_info.return_type)))
     if isinstance(rt, OwnType):
         rt = unwrap_readonly(rt.wrapped)
-    return (rt if isinstance(rt, OptionalType) and rt.uses_pointer_repr()
-            else None)
+    return pointer_repr_optional(rt)
 
 
 def call_result_holdable(analyzer: ValueCategoryAnalyzer,
@@ -688,6 +684,76 @@ def peel_coerce(e: TpyExpr) -> TpyExpr:
     while isinstance(e, TpyCoerce):
         e = e.expr
     return e
+
+
+def const_place(expr: TpyExpr, type_of: "ExprTypeOf",
+                const_node: Callable[[TpyExpr, bool], bool],
+                const_referent: Callable[[TpyExpr], bool] = lambda _h: False) -> bool:
+    """Whether the place `expr` is const, walked toward its root. A step
+    taken through an indirection (a `Ptr` dereference, a borrowing-view
+    element) ends the walk with the handle's referent access
+    (`handle_referent_const`): readonly protects what holds a handle, not
+    what it points at. Every other step -- a field, an owning container's
+    element -- is storage of what it is taken off, so the place is const
+    when a node the walk reaches is: `const_node(node, stepped)` is the
+    consumer's verdict for one node (`stepped` once it is reached through a
+    step rather than being `expr` itself)."""
+    stepped = False
+    while True:
+        expr = peel_coerce(expr)
+        if const_node(expr, stepped):
+            return True
+        if not isinstance(expr, (TpyFieldAccess, TpySubscript)):
+            return False
+        referent = handle_referent_const(expr.obj, type_of, const_referent)
+        if referent is not None:
+            return referent
+        expr, stepped = expr.obj, True
+
+
+def handle_referent_const(handle: TpyExpr, type_of: "ExprTypeOf",
+                          const_referent: Callable[[TpyExpr], bool]) -> bool | None:
+    """Whether what the handle `handle` points at is const
+    (`indirection_referent_readonly` of its type), None when it is no
+    handle. `const_referent` is the consumer's verdict a handle's type
+    cannot carry: a `*args` pack the body leaves unmutated is emitted over
+    const elements (`varargs<const T>`) though its declared type is not."""
+    referent = indirection_referent_readonly(type_of(handle))
+    if referent is None:
+        return None
+    return referent or const_referent(peel_coerce(handle))
+
+
+def receiver_const(recv: TpyExpr, type_of: "ExprTypeOf",
+                   place_const: Callable[[TpyExpr], bool],
+                   const_referent: Callable[[TpyExpr], bool] = lambda _h: False) -> bool:
+    """Whether the object a member call runs on is const: a handle receiver
+    is dereferenced by the call, so its referent's access; any other
+    receiver is the place it names (`place_const`)."""
+    referent = handle_referent_const(recv, type_of, const_referent)
+    if referent is not None:
+        return referent
+    return place_const(recv)
+
+
+def call_result_const(call: TpyMethodCall, type_of: "ExprTypeOf",
+                      place_const: Callable[[TpyExpr], bool],
+                      const_referent: Callable[[TpyExpr], bool] = lambda _h: False) -> bool:
+    """Whether a method call's result is const: its callee's declared
+    result access (sema typed the call off it), or, for a callee declaring
+    its whole result as following the receiver, the receiver's
+    (`receiver_const`) -- C++ picks the clone by it, whichever clone sema
+    resolved. A borrowing VIEW so declared (`d.values()`) counts though
+    readonly does not attach to a view (`following_components` drops it):
+    its elements are the receiver's storage, and the C++ overload set hands
+    a const receiver a const view."""
+    fi = call.resolved_function_info
+    if isinstance(type_of(call), ReadonlyType) or declared_result_readonly(fi):
+        return True
+    follows = result_follows_receiver_root(fi) or (
+        fi is not None and declares_whole_result_following(fi.root)
+        and is_borrowing_view_type(unwrap_ref_type(fi.return_type)))
+    return follows and receiver_const(call.obj, type_of, place_const, const_referent)
 
 
 def materializing_temp_source(a: TpyExpr, analyzer) -> bool:

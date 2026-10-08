@@ -56,8 +56,10 @@ from ..type_def_registry import (
     is_slice_type, is_span, is_str_type, is_str_view_type, is_string_type,
     zero_value_of,
 )
+from ..typesys import pointer_repr_optional
 from ..typesys import (
-    AnyType, NominalType, OptionalType, OwnType, PtrType, ReadonlyType, Representation, TupleType,
+    AnyType, NominalType, OptionalType, OwnType, PtrType, ReadonlyType, Representation,
+    TupleType, receiver_neutral_return,
     UnionType, TpyType,
     TypeParamRef,
     is_inert_leaf, return_representation, is_void_like_type, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
@@ -891,7 +893,7 @@ def _pointer_lifted_storage(t) -> bool:
     if t is None:
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if isinstance(t, OptionalType) and t.uses_pointer_repr():
+    if pointer_repr_optional(t) is not None:
         return True
     if is_ptr_variant_union(t):
         return True
@@ -1312,7 +1314,9 @@ def validate_function(fn: THIRFunction) -> None:
                 or fn.name != fn.resolved_callee.identity.name
                 or tuple(declared_param_type(p.type) for p in params)
                 != tuple(declared_param_type(t) for t in signature.param_types)
-                or fn.return_type != signature.return_type
+                or signature.return_type not in (
+                    fn.return_type, receiver_neutral_return(
+                        fn.return_type, signature.result_follows_receiver))
                 or (signature.passings is not None and all(p.passing is not None for p in params)
                     and signature.passings[skip:] != tuple(p.passing for p in params)[skip:])):
             _fail(fn.name, fn, "resolved callee disagrees with definition")

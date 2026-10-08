@@ -52,7 +52,7 @@ struct H {
     std::vector<int32_t>& view();
 
     // @readonly
-    // def rview(self) -> list[int32]:
+    // def rview(self) -> readonly[list[int32]]:
     const std::vector<int32_t>& rview() const;
 
     // @error_return(E)
@@ -82,7 +82,7 @@ inline std::vector<int32_t>& H::view() {
 }
 
 // @readonly
-// def rview(self) -> list[int32]:
+// def rview(self) -> readonly[list[int32]]:
 //     return self.items
 inline const std::vector<int32_t>& H::rview() const {
     return this->items;

@@ -6,10 +6,11 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field, fields, replace
 from enum import Enum, auto
 from typing import NamedTuple
-from ...parse.nodes import (TpyAssign, TpyCoerce, TpyExpr, TpyFieldAccess,
+from ...parse.nodes import (TpyAssign, TpyCoerce, TpyExpr,
                             TpyFunction, TpyGlobal, TpyIfExpr, TpyName,
-                            TpyNamedExpr, TpySubscript, TpyVarDecl)
+                            TpyNamedExpr, TpyVarDecl)
 from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
+from ...typesys import pointer_repr_optional
 from ...type_def_registry import has_view_param_form
 from ...typesys import (
     AnyType,
@@ -32,6 +33,7 @@ from ...typesys import (
     unwrap_send_sync,
 )
 from ...codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
+from ...value_category import const_place
 from ...typesys import (
     holds_borrowing_view,
     property_getter_returns_storage_ref,
@@ -493,7 +495,7 @@ def _decl_slot_forms(slot: 'TpyType | None', analyzer, *,
                           or tup.has_ref_elements() or tup.is_mixed_own()):
             return _ONLY_BTUPLE_SLOT
         return _NO_FORMS
-    if ((isinstance(u, OptionalType) and u.uses_pointer_repr())
+    if (pointer_repr_optional(u) is not None
             or _eligible_ptr_value(slot, analyzer)):
         return _ONLY_PTR_OPT_PASSTHROUGH
     if from_call and ptr_local and u is not None and is_plain_nonvalue(u):
@@ -2533,19 +2535,12 @@ def _btuple_const_root(name: str, lc: _LowerCtx) -> bool:
 def _btuple_const_storage(expr, lc: _LowerCtx) -> bool:
     # `is_const_storage_source` mirror (including the
     # `is_const_union_source` lvalue-chain half).
-    if isinstance(expr, TpyCoerce):
-        return _btuple_const_storage(expr.expr, lc)
-    if isinstance(expr, (TpyFieldAccess, TpySubscript)):
-        obj = expr.obj
-        if isinstance(obj, TpyName):
-            return _btuple_const_root(obj.name, lc)
-        return _btuple_const_storage(obj, lc)
-    if isinstance(expr, TpyName):
-        return (expr.name in lc.const_storage_tuple_locals
-                or expr.name in lc.const_borrow_tuple_locals
-                or expr.name in lc.const_opt_borrow_tuple_locals
-                or _btuple_const_root(expr.name, lc))
-    return False
+    return const_place(expr, lc.analyzer.get_expr_type, lambda e, stepped: (
+        isinstance(e, TpyName)
+        and (_btuple_const_root(e.name, lc)
+             or not stepped and (e.name in lc.const_storage_tuple_locals
+                                 or e.name in lc.const_borrow_tuple_locals
+                                 or e.name in lc.const_opt_borrow_tuple_locals))))
 
 
 @dataclass

@@ -13,13 +13,13 @@ namespace tpyapp::main {
 //         else:
 //             result.append(upgraded.get().value)
 //     return result
-std::vector<int32_t> observed_values(const std::vector<::tpystd::tplib::rc::Weak<Node>>& observers) {
+std::vector<int32_t> observed_values(std::vector<::tpystd::tplib::rc::Weak<Node>>& observers) {
     std::vector<int32_t> result = std::vector<int32_t>{};
     auto& __obj_0 = observers;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        const auto& w = *__beg_0;
+        auto&& w = *__beg_0;
         std::optional<::tpystd::tplib::rc::Rc<Node>> upgraded = w.upgrade();
         if ((!upgraded.has_value())) {
             result.push_back(-1);

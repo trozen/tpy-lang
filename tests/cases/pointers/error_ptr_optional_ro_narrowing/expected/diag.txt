@@ -1,1 +1,1 @@
-main.py:23: error: Type mismatch in argument 'n': expected Point, got Ptr[readonly[Point]]
+main.py:23: error: Type mismatch in argument 'n': expected Point, got Ptr[readonly[Point]] -- declare the parameter 'readonly[Point]'

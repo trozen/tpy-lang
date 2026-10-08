@@ -28,7 +28,7 @@ struct M {
     bool read() const;
 
     // def write(self) -> None:
-    void write();
+    void write() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.M";
 };
 
@@ -50,7 +50,7 @@ inline bool M::read() const {
 
 // def write(self) -> None:
 //     self.s.a.q.flag = True       # tpyc: ok
-inline void M::write() {
+inline void M::write() const {
     ::tpy::deref_check(this->s).a.q.flag = true;
 }
 void __tpy_init();

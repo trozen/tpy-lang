@@ -1,6 +1,6 @@
 # Const inference for methods returning self.field[i]:
 # - without @readonly: non-const (returns mutable ref, caller can mutate self's data)
-# - with @readonly: const (returns const ref, correct for read-only access)
+# - with @readonly and a readonly return type: const (returns const ref)
 # Transitive return through a non-@readonly callee marks self as mutated -> non-const.
 from tpy import readonly
 
@@ -22,7 +22,7 @@ class Container:
         return self._items[0]
 
     @readonly
-    def first_readonly(self) -> Point:   # const: explicitly read-only
+    def first_readonly(self) -> readonly[Point]:   # const: explicitly read-only
         return self._items[0]
 
     def first_x(self) -> int:            # auto-const: value return, no self borrow

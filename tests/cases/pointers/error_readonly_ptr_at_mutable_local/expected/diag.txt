@@ -1,0 +1,1 @@
+main.py:15: error: Type mismatch in variable 'q': expected Point, got Ptr[readonly[Point]] -- keep the pointer: bind it to a name without an annotation or to a 'Ptr[readonly[Point]]' slot

@@ -80,8 +80,9 @@ from ...parse.nodes import (
     is_docstring,
     is_super_del_call,
 )
+from ...typesys import pointer_repr_optional, repr_shape
 from ...typesys import (
-    return_const_projected,
+    is_readonly_result_type,
     unwrap_qualifiers,
     AnyType,
     BIGINT,
@@ -185,7 +186,7 @@ from ...value_category import (
     call_hands_back_value, call_result_holdable, call_returns_cpp_ref, for_source_is_rvalue,
     is_rvalue_source, wants_move,
     property_access_returns_cpp_ref,
-    async_return_form, AsyncReturnForm,
+    async_return_form, AsyncReturnForm, receiver_const,
 )
 from ..faces import witness as _witness
 from ..reject import (
@@ -296,10 +297,10 @@ from .predicates import (
     _alias_call_source_ok,
     _call_storage_optional_return,
     receiver_is_const,
+    _expr_is_const_source,
     _record_getitem_key,
     copy_call_arg,
     _storage_family_ok,
-    _own_return_const_projected,
     _binding_peel,
     _narrow_alias_name,
     _fresh_narrow_local,
@@ -422,6 +423,7 @@ from .predicates import (
     _plain_member_call_markers_ok,
     _plain_method_fi_ok,
     _param_is_const,
+    _f1_const_rooted_source,
     _value_opt_scalar,
     _value_opt_callable,
     _value_opt_tuple,
@@ -519,7 +521,6 @@ from .checks import (
     declared_call_elem_copy_ok,
     own_element_copy_type,
     _chained_subscript_recv_type,
-    _const_borrow_call_result,
     _container_comp_arg,
     _value_opt_scalar_elem_arg,
     _borrow_form_tuple_call,
@@ -1132,7 +1133,7 @@ def _native_iteration(iterable: THIRExpr, source: TpyExpr, et: TpyType,
             signature = iterable.resolved_callee.signature
             source_fact = native_container(
                 iterable.result_type,
-                isinstance(unwrap_ref_type(signature.return_type), ReadonlyType)
+                is_readonly_result_type(signature.return_type)
                 or signature.result_follows_receiver and isinstance(iterable, THIRMethodCall)
                 and iterable.receiver_access.readonly, analyzer)
     elif (not consuming and isinstance(iterable, THIRMethodCall)
@@ -3238,10 +3239,8 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
             # A pointer-repr Optional is the same nullable pointer over its
             # inner; `declared` keeps the Optional so reads narrow on it.
             vtype = resolve_pending_container(vtype, lc.analyzer) or vtype
-            pointee = vtype
-            if (isinstance(vtype, OptionalType)
-                    and vtype.uses_pointer_repr()):
-                pointee = vtype.inner
+            vopt = pointer_repr_optional(vtype)
+            pointee = vtype if vopt is None else vopt.inner
             hoist_decls.append(HoistDecl(name, f"{lc.render_type(pointee)}*"))
             _record_hoisted_binding(bindings, name, vtype, lc, borrow=True)
             lc.pointers.add(name)
@@ -3265,10 +3264,14 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
         if flavor is HoistFlavor.CONST_POINTER:
             # The CONST borrow-decl flavor (`const Tree<int32_t>* v;` --
             # sema's stmt-borrow const bit): same pointer local, const
-            # spelling and registration; never movable.
+            # spelling and registration; never movable. A pointer-repr
+            # Optional is the same nullable pointer over its inner, as in
+            # the POINTER arm.
             vtype = resolve_pending_container(vtype, lc.analyzer) or vtype
+            vopt = pointer_repr_optional(vtype)
+            pointee = unwrap_readonly(vtype if vopt is None else vopt.inner)
             hoist_decls.append(
-                HoistDecl(name, f"const {lc.render_type(unwrap_readonly(vtype))}*"))
+                HoistDecl(name, f"const {lc.render_type(pointee)}*"))
             _record_hoisted_binding(bindings, name, vtype, lc, borrow=True, readonly=True)
             lc.pointers.add(name)
             lc.const_locals.add(name)
@@ -3477,8 +3480,9 @@ def _rebind_slot_target(target_t: TpyType, analyzer) -> TpyType:
     source's own lowering all read it, so a literal's element types
     resolve against the same slot the assign writes."""
     slot_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(target_t)))
-    if isinstance(slot_t, OptionalType) and slot_t.uses_pointer_repr():
-        slot_t = unwrap_readonly(slot_t.inner)
+    slot_opt = pointer_repr_optional(slot_t)
+    if slot_opt is not None:
+        slot_t = unwrap_readonly(slot_opt.inner)
     return resolve_pending_container(slot_t, analyzer) or slot_t
 
 
@@ -3955,9 +3959,9 @@ def _nonvalue_hoist_flavor(name: str, var_type: TpyType,
                                     HoistFlavor.POINTER)
                 else inner_flavor)
     analyzer = lc.analyzer
-    ptr_opt = (isinstance(var_type, OptionalType)
-               and var_type.uses_pointer_repr()
-               and not isinstance(var_type.inner, ReadonlyType))
+    var_opt = pointer_repr_optional(var_type)
+    ptr_opt = (var_opt is not None
+               and not isinstance(var_opt.inner, ReadonlyType))
     if not (ptr_opt or is_plain_nonvalue(var_type)):
         return HoistFlavor.NOT_PLAIN
     if lc.func.is_generator or lc.func.is_async:
@@ -4097,10 +4101,8 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
         # Pointer-repr Optional predecls the bare inner `T* name;` (nullable
         # pointer-local); readonly inners are the const-indirect arm (a later
         # rung, like every const hoist below).
-        resolve_type = var_type
-        if (isinstance(var_type, OptionalType)
-                and var_type.uses_pointer_repr()):
-            resolve_type = var_type.inner
+        var_opt = pointer_repr_optional(var_type)
+        resolve_type = var_type if var_opt is None else var_opt.inner
         # A readonly-TYPED hoist spells its pointee like every const
         # borrow; the classifier answers CONST_POINTER for it.
         resolve_type = unwrap_readonly(resolve_type)
@@ -4242,33 +4244,18 @@ def _lower_error_return_bind(stmt, name: str, init: TpyExpr, er_fi, vtype,
         # FIRST-DECL alias bind (the aliases arm:
         # `T* v;` predecl + `v = &(::tpy::unwrap_ref(*tmp));`, e.g. the
         # auto-propagate body with no try hoist). Routed slice is the
-        # provably NON-const flavor only: any const-indirect
-        # indicator -- readonly sema/return type, readonly callee, or a
-        # method receiver beyond a plain mutable name (the
-        # `is_const_storage_source` walk) -- rejects rather than
-        # reproducing the const-set topology.
+        # NON-const flavor only: a const result (`_expr_is_const_source`)
+        # rejects rather than reproducing the const-set topology.
         bare = unwrap_readonly(unwrap_ref_type(er_fi.return_type)) \
             if isinstance(er_fi.return_type, TpyType) else None
         if (name not in declared and name not in lc.pointers
                 and not (lc.func.is_generator or lc.func.is_async)
                 and bare is not None and is_plain_nonvalue(bare)):
-            _sema_t = analyzer.get_expr_type(init)
             _svt = analyzer.var_types.get(stmt)
             const_like = (
-                isinstance(_sema_t, ReadonlyType)
-                or isinstance(unwrap_ref_type(er_fi.return_type),
-                              ReadonlyType)
+                _expr_is_const_source(init, lc)
                 or (isinstance(_svt, OptionalType)
-                    and isinstance(_svt.inner, ReadonlyType))
-                or return_const_projected(er_fi))
-            if not const_like and isinstance(init, TpyMethodCall):
-                recv = init.obj
-                const_like = not (
-                    isinstance(recv, TpyName)
-                    and recv.name not in lc.const_locals
-                    and recv.name not in lc.const_storage_tuple_locals
-                    and not _param_is_const(recv.name, lc.func, analyzer,
-                                            lc.record_name))
+                    and isinstance(_svt.inner, ReadonlyType)))
             if not const_like:
                 call_node = _lower_expr(
                     init, lc, declared, error_return_raw=True,
@@ -4556,6 +4543,7 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
     REBIND_SLOT (F2d) binds a plain-record rvalue (a ctor / by-value call) and
     the emitter materializes the init slot the pointer aims at; the init lowers
     as a plain value-form call (no conversion node)."""
+    vopt = pointer_repr_optional(vtype)
     if binding is LocalBinding.REBIND_SLOT:
         # The slot init is target-threaded (`target_type=vtype`) --
         # load-bearing for a container literal's element renders, inert for
@@ -4767,7 +4755,7 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         return THIRPtrLocalDecl(
             name=stmt.name, resolved_type=vtype, kind=PtrSlotKind.PTR_ADDR,
             init=_lower_expr(stmt.init, lc, declared),
-            cpp_type=lc.render_type(unwrap_readonly(vtype.inner)),
+            cpp_type=lc.render_type(unwrap_readonly(vopt.inner)),
             is_const=is_const, loc=loc)
     if (binding is LocalBinding.OPTIONAL_TO_PTR
             and isinstance(stmt.init, TpyName)
@@ -4794,7 +4782,7 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         _witness("decl.opt_name_copy")
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=src,
-            cpp_type=lc.render_type(vtype.inner), form=Form.BORROW,
+            cpp_type=lc.render_type(vopt.inner), form=Form.BORROW,
             is_const=is_const, cpp_local_representation=binding, loc=loc)
     if (binding is LocalBinding.OPTIONAL_TO_PTR
             and isinstance(stmt.init, TpyIfExpr)):
@@ -4810,7 +4798,7 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         _witness("decl.opt_ternary")
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=src,
-            cpp_type=lc.render_type(vtype.inner), form=Form.BORROW,
+            cpp_type=lc.render_type(vopt.inner), form=Form.BORROW,
             is_const=is_const, cpp_local_representation=binding, loc=loc)
     if (binding is LocalBinding.OPTIONAL_TO_PTR
             and isinstance(stmt.init, TpySubscript)):
@@ -4823,7 +4811,7 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         _witness("decl.opt_tuple_elem_lift")
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=convert,
-            cpp_type=lc.render_type(vtype.inner), form=Form.BORROW,
+            cpp_type=lc.render_type(vopt.inner), form=Form.BORROW,
             is_const=is_const, cpp_local_representation=binding, loc=loc)
     if (binding is LocalBinding.OPTIONAL_TO_PTR
             and is_property_getter_read(stmt.init)):
@@ -4839,7 +4827,7 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         _witness("decl.opt_property_lift")
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=convert,
-            cpp_type=lc.render_type(vtype.inner), form=Form.BORROW,
+            cpp_type=lc.render_type(vopt.inner), form=Form.BORROW,
             is_const=is_const, cpp_local_representation=binding, loc=loc)
     field = _lower_field_source(stmt.init, lc, declared)
     if binding is LocalBinding.POINTER:
@@ -4850,7 +4838,7 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
             storage_borrow=storage_borrow(field, vtype, is_const, lc.analyzer),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
-    inner = vtype.inner  # OptionalType(Inner) -- the borrow points at Inner
+    inner = vopt.inner  # OptionalType(Inner) -- the borrow points at Inner
     convert = THIRFormConvert(result_type=vtype, value=field, form=Form.BORROW,
                               is_const=is_const, loc=loc)
     return THIRVarDecl(
@@ -5053,7 +5041,7 @@ def _lower_opt_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'OptionalType',
     Const indirection, non-F1 pointees, Own[Opt] lifts and polymorphic slots
     reject with named details -- their arms are later rungs."""
     analyzer = lc.analyzer
-    inner = vtype.inner
+    inner = pointer_repr_optional(vtype).inner
     # `const T*` when the pointee is a readonly source: an explicit readonly[T]
     # inner, or sema holding Optional[readonly[T]] for a plain-annotated decl (a
     # readonly-seeded None local). Those are the only const-indirection arms
@@ -5347,9 +5335,8 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
     # A ptr-repr Optional global's slot carries the INNER spelling
     # (`T` of `T* g`), everything else its own.
     vt_bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vtype)))
-    slot_t = (vt_bare.inner
-              if isinstance(vt_bare, OptionalType) and vt_bare.uses_pointer_repr()
-              else vt_bare)
+    vt_opt = pointer_repr_optional(vtype)
+    slot_t = vt_opt.inner if vt_opt is not None else vt_bare
     if is_protocol_type(slot_t) or is_dyn_protocol(slot_t):
         # A @dynamic-protocol target takes the adapter-slot rebind on EVERY
         # module-init write (the global is pre-declared at namespace scope,
@@ -7694,15 +7681,18 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
         note_detail("return.borrow_form")
         raise ThirUnsupported(stmt_reject_reason(ret))
     if form is AsyncReturnForm.TRAIT:
-        # Generic `-> T` slot (`val_or_ptr_t<T>`): the trait lift. The move
-        # gate skips non-STORAGE forms, so no THIRMove composes with this
-        # wrap.
-        t_cpp = lc.render_type(unwrap_readonly(unwrap_ref_type(
-            unwrap_send_sync(lc.func.return_type))))
+        # Generic `-> T` slot (`val_or_ptr_t<T>`, `val_or_cptr_t<T>` for a
+        # declared `-> readonly[T]` -- the frame's payload type): the trait
+        # lift. The move gate skips non-STORAGE forms, so no THIRMove
+        # composes with this wrap.
+        declared = unwrap_ref_type(unwrap_send_sync(lc.func.return_type))
+        t_cpp = lc.render_type(unwrap_readonly(declared))
+        trait = ("val_or_cptr_t" if is_readonly_result_type(declared)
+                 else "val_or_ptr_t")
         return THIRCoerce(
             result_type=value.result_type, expr=value,
             coercion_name="async_ret_val_or_ptr",
-            wrap=(f"::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<{t_cpp}>>"
+            wrap=(f"::tpy::to_val_or_ptr<::tpy::{trait}<{t_cpp}>>"
                   f"({{0}})"),
             loc=getattr(ret, "loc", None))
     # The direct-ready last-use move. lc.movable_locals is deliberately
@@ -9219,8 +9209,6 @@ def _overload_adjusted_return(stmt: TpyReturn, lc: _LowerCtx) -> TpyReturn:
     if stmt.value is None or stmt.value_type is None:
         return stmt
     rt = stub_ret
-    if isinstance(rt, ReadonlyType) and isinstance(rt.wrapped, OptionalType):
-        rt = rt.wrapped
     vt = stmt.value_type
     if isinstance(vt, IntLiteralType):
         vt = BIGINT
@@ -9240,9 +9228,10 @@ def _overload_adjusted_return(stmt: TpyReturn, lc: _LowerCtx) -> TpyReturn:
                                                    stmt.loc)
     value = stmt.value
     if isinstance(value, TpyCoerce):
-        keep = (value.expected_type == rt
-                or (isinstance(rt, OptionalType)
-                    and value.expected_type == rt.inner))
+        shape = repr_shape(rt)
+        keep = (value.expected_type in (rt, shape)
+                or (isinstance(shape, OptionalType)
+                    and value.expected_type == shape.inner))
         if not keep:
             value = value.expr
     if value is stmt.value:
@@ -9541,8 +9530,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 nt = _value_slot_render_type(vt0, lc)
             if (nt is None and not scope.in_branch
                     and vt0 is not None and stmt.name not in declared
-                    and isinstance(vt0, OptionalType)
-                    and vt0.uses_pointer_repr()):
+                    and pointer_repr_optional(vt0) is not None):
                 # `h: Handle | None` (no init): the OPT_PTR_SLOT decl's
                 # None flavor (`Handle* h = nullptr;`), reseats ride the
                 # pointer-local assign arms. Same registrations as the
@@ -9720,8 +9708,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # wherever it lands. Const follows the loop var's binding.
             if (isinstance(stmt.init, TpyName)
                     and stmt.init.name in lc.storage_opt_locals
-                    and isinstance(vtype, OptionalType)
-                    and vtype.uses_pointer_repr()
+                    and pointer_repr_optional(vtype) is not None
                     and stmt.name not in lc.prescan.reassigned
                     and stmt.name not in lc.prescan.hoisted
                     and stmt.name not in lc.prescan.move_through
@@ -9741,7 +9728,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         value=_lower_expr(stmt.init, lc, declared,
                                           allow_whole_optional=True),
                         form=Form.BORROW, is_const=so_const, loc=loc),
-                    cpp_type=lc.render_type(unwrap_readonly(vtype.inner)),
+                    cpp_type=lc.render_type(unwrap_readonly(
+                        pointer_repr_optional(vtype).inner)),
                     form=Form.BORROW, is_const=so_const,
                     cpp_local_representation=LocalBinding.OPTIONAL_TO_PTR,
                     loc=loc)
@@ -9782,7 +9770,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 if node is not None:
                     return node
             binding = _borrow_local_binding(stmt, vtype, declared, lc.prescan,
-                                            analyzer, lc.pointers)
+                                            analyzer, lc.pointers, lc)
             if binding is not None:
                 if binding is LocalBinding.OPT_PTR_SLOT:
                     check_polymorphic_rvalue_opt_rebind(
@@ -9847,7 +9835,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         declared[stmt.name] = vtype
                         return THIRVarDecl(
                             name=stmt.name, resolved_type=vtype, init=src,
-                            cpp_type=lc.render_type(vtype.inner),
+                            cpp_type=lc.render_type(pointer_repr_optional(vtype).inner),
                             form=Form.BORROW, is_const=is_const,
                             cpp_local_representation=(
                                 LocalBinding.OPTIONAL_TO_PTR),
@@ -9895,7 +9883,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                             name=stmt.name, resolved_type=vtype,
                             kind=PtrSlotKind.OPT_STORAGE_CALL, init=src,
                             cpp_type=lc.render_type(
-                                unwrap_readonly(vtype.inner)),
+                                unwrap_readonly(pointer_repr_optional(vtype).inner)),
                             loc=loc)
                     # Slot-hoist Optional pointer-local (None / rvalue init).
                     # Branch-first too: the F1 rvalue `__slot_N` is declared
@@ -9949,8 +9937,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # call tier materializes OPT_STORAGE_CALL above).
             if (fn_top and isinstance(stmt.init, TpyName)
                     and stmt.init.name in lc.optional_locals
-                    and isinstance(vtype, OptionalType)
-                    and vtype.uses_pointer_repr()
+                    and pointer_repr_optional(vtype) is not None
                     and _own_storage_opt_param(declared.get(stmt.init.name),
                                                analyzer) == vtype
                     and stmt.name not in lc.prescan.reassigned):
@@ -9964,7 +9951,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 declared[stmt.name] = vtype
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=vtype, init=src,
-                    cpp_type=lc.render_type(unwrap_readonly(vtype.inner)),
+                    cpp_type=lc.render_type(unwrap_readonly(
+                        pointer_repr_optional(vtype).inner)),
                     form=Form.BORROW,
                     cpp_local_representation=LocalBinding.OPTIONAL_TO_PTR,
                     loc=loc)
@@ -9974,8 +9962,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # it DIRECTLY (`Box* e = std::get<1>(p);`) -- no
             # optional_to_ptr lift (the FIELD / Own-param flavor keeps its
             # lift row in `_lower_borrow_local`).
-            if (fn_top and isinstance(vtype, OptionalType)
-                    and vtype.uses_pointer_repr()
+            if (fn_top and pointer_repr_optional(vtype) is not None
                     and stmt.name not in lc.prescan.reassigned
                     and stmt.name not in lc.prescan.hoisted
                     and stmt.name not in lc.prescan.move_through
@@ -9989,7 +9976,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 declared[stmt.name] = vtype
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=vtype, init=src,
-                    cpp_type=lc.render_type(unwrap_readonly(vtype.inner)),
+                    cpp_type=lc.render_type(unwrap_readonly(
+                        pointer_repr_optional(vtype).inner)),
                     form=Form.BORROW,
                     cpp_local_representation=LocalBinding.OPTIONAL_TO_PTR,
                     loc=loc)
@@ -10066,7 +10054,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                    init=comp, loc=loc)
             # Open-T local from a T-returning call in a generic body:
             # `item = box.get()` -> `::tpy::val_or_ref_t<T> item = box.get();`
-            # (val_or_cref_t for a readonly method). Form-neutral like a T
+            # (val_or_cref_t for a const result). Form-neutral like a T
             # param slot: the trait resolves value-vs-ref per instantiation,
             # so the local reads bare. Reassigned/hoisted names fall through
             # (references can't rebind).
@@ -10083,7 +10071,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         and isinstance(unwrap_ref_type(t_fi.return_type),
                                        TypeParamRef)):
                     trait = ("::tpy::val_or_cref_t"
-                             if return_const_projected(t_fi)
+                             if _expr_is_const_source(stmt.init, lc)
                              else "::tpy::val_or_ref_t")
                     init = _lower_expr(
                         stmt.init, lc, declared,
@@ -10511,10 +10499,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 and stmt.name in declared
                 and _eligible_ptr_union_wide(declared[stmt.name],
                                              lc.analyzer) is None):
-            decl_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                declared[stmt.name])))
-            if (isinstance(decl_u, OptionalType)
-                    and decl_u.uses_pointer_repr()):
+            decl_u = pointer_repr_optional(declared[stmt.name])
+            if decl_u is not None:
                 # OPT_PTR_SLOT reseats: None -> `p = nullptr;`; an exact-type
                 # F1 rvalue rides THIRAssign's rebind-slot arm
                 # (`p = &*(__slot_N = <rvalue>);`). Lvalue reseats (pointer
@@ -10657,10 +10643,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         stmt.init, lc, declared,
                         use=_ExprUse(slot_target=concrete_type)),
                     val_cpp=slot_cpp, loc=loc)
-            reseat_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                declared[stmt.name])))
-            if (isinstance(reseat_u, OptionalType)
-                    and reseat_u.uses_pointer_repr()):
+            reseat_u = pointer_repr_optional(declared[stmt.name])
+            if reseat_u is not None:
                 # A slotless OPT_PTR_SLOT local (never rvalue-reassigned --
                 # the slot-holders reseat via the rebind-slot arm above)
                 # reseats to None (`p = nullptr;`) or lifts a new pointee via
@@ -11278,17 +11262,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                                form=Form.STORAGE, loc=loc)
             elif (isinstance(stmt.init, TpyFieldAccess)
                     or is_property_getter_read(stmt.init)):
-                recv = stmt.init.obj
-                if isinstance(recv, TpyName) and recv.name != "self":
-                    u_const = (recv.name in lc.const_locals
-                               or _param_is_const(recv.name, lc.func,
-                                                  lc.analyzer,
-                                                  lc.record_name))
-                else:
-                    # A self-rooted receiver (bare or chained,
-                    # `self.inner.pet`): const iff the method is readonly
-                    # (`this` is const, so every member down the chain is).
-                    u_const = bool(getattr(lc.func, "is_readonly", False))
+                # Const iff the member's storage is: the place walk, which
+                # stops at a step through a `Ptr` / `Span` (`self.p.pet` is
+                # the pointee's, whatever `this` is).
+                u_const = (receiver_const(stmt.init.obj, lc.analyzer.get_expr_type,
+                                          lambda r: _f1_const_rooted_source(r, lc))
+                           if is_property_getter_read(stmt.init)
+                           else _f1_const_rooted_source(stmt.init, lc))
                 # A @property read is a getter CALL that hands back the
                 # FIELD's storage variant by reference, so it lifts exactly
                 # as the plain member read does -- a method returning the
@@ -13717,14 +13697,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # make the coverage metric lie.
                 lit = _lower_borrow_tuple_literal(
                     stmt.value, ret_tuple, lc, declared,
-                    # A readonly method renders its borrow return with const
-                    # element pointers, so the literal owes the same slots --
-                    # the same fact the signature reads.
-                    target_readonly=(
-                        isinstance(
-                            unwrap_ref_type(unwrap_send_sync(
-                                _fn_return_type(lc))), ReadonlyType)
-                        or _own_return_const_projected(lc)))
+                    # A declared readonly result renders with const element
+                    # pointers, so the literal owes the same slots -- the
+                    # same fact the signature reads.
+                    target_readonly=is_readonly_result_type(_fn_return_type(lc)))
                 _witness("ret.btuple_literal")
                 return THIRReturn(value=lit, loc=loc)
             elif (_borrow_form_tuple_call(stmt.value, analyzer)
@@ -17824,7 +17800,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                     and isinstance(ctx, TpyMethodCall)
                     and call_returns_cpp_ref(lc.analyzer,
                                              ctx.resolved_function_info)
-                    and not _const_borrow_call_result(ctx, lc.analyzer)
+                    and not _expr_is_const_source(ctx, lc)
                     and not is_rvalue_source(lc.analyzer, ctx.obj)
                     and record_like(lc.analyzer.get_expr_type(ctx),
                                    lc.analyzer)):
@@ -17834,8 +17810,9 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 # storage rather than a copy of it -- the getter row one
                 # spelling over, keyed on the return convention the two
                 # share. Two terms the getter row gets from elsewhere are
-                # spelled here. A CONST-projected result (a `@readonly`
-                # callee, a `readonly[...]` return) stays out: the bind would
+                # spelled here. A CONST result (declared `readonly[...]`,
+                # or following a const receiver: `_expr_is_const_source`)
+                # stays out: the bind would
                 # deduce `const CM&` and the non-readonly
                 # `__enter__`/`__exit__` would not compile through it. And
                 # the RECEIVER must not be a temporary -- the term

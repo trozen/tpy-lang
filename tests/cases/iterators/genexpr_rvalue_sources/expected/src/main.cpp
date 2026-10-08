@@ -319,7 +319,7 @@ __genexpr_fallible_11_frame<std::invoke_result_t<F_make>> __genexpr_fallible_11(
 //     if t < 0:
 //         raise Err
 //     return t
-std::expected<int32_t, Err> fallible(::tpy::ordered_map<int32_t, int32_t>& d) {
+std::expected<int32_t, Err> fallible(const ::tpy::ordered_map<int32_t, int32_t>& d) {
     int32_t t = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_fallible_11(std::in_place, [&]() { return ::tpy::dict_values(d); }));
     if ((t < 0)) {
         return ::tpy::make_unexpected(Err{});

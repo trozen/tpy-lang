@@ -35,7 +35,7 @@ from ..typesys import (
     PendingSetType, TpyType, TupleType, TypeParamRef, make_dict, make_list,
     make_set,
     held_whole_borrow_sources,
-    is_protocol_type, recorded_return_borrow_sources, type_param_names,
+    is_protocol_type, result_borrow_sources, type_param_names,
     unwrap_own, unwrap_readonly, unwrap_ref_type,
 )
 from ..value_category import (
@@ -48,7 +48,7 @@ from .context import (
     iter_borrow_storage,
 )
 from .receiver_calls import (
-    call_mutates_receiver, check_implicit_readonly_receiver,
+    check_implicit_readonly_receiver, implicit_call_mutates_receiver,
     check_receiver_call_loans, credit_implicit_receiver_call,
 )
 from .own_copy import contains_reference_type
@@ -450,7 +450,10 @@ def _provenance_storage(ctx: SemanticContext,
     # ITER borrow goes directly on those source containers so that
     # structural mutations during the loop generate conflict warnings.
     fi_iter = operands.fi
-    iter_sources = recorded_return_borrow_sources(fi_iter)
+    # A receiver lent only by declaration (`result_borrow_sources`) is a
+    # FIELD loan, as a bound result's is: the loop variable's writes climb
+    # it, and the storage it names is not known to be the receiver's.
+    iter_sources, declared_only = result_borrow_sources(fi_iter)
     if not iter_sources:
         return IteratedStorage([], [])
     loans: list[tuple[str, LoanInfo]] = []
@@ -476,8 +479,15 @@ def _provenance_storage(ctx: SemanticContext,
             lent = [r for r in lend_roots(ctx, src.expr) if not r.assumed]
             srcs = [r.name for r in lent if not r.held_whole]
             held_whole.extend(r.name for r in lent if r.held_whole)
+        receiver_declared = declared_only and src.idx == -1
+        if receiver_declared and not srcs:
+            # A receiver lent only by declaration is no evidence the result
+            # lives in it, temporary or not (the body reached the result
+            # through a `Ptr` or a global).
+            continue
         borrowed.append(_BorrowedOperand(src.idx, src.expr, srcs, src.slot))
-        loans.extend((key, LoanInfo(BorrowKind.ITER)) for key in srcs)
+        kind = BorrowKind.FIELD if receiver_declared else BorrowKind.ITER
+        loans.extend((key, LoanInfo(kind)) for key in srcs)
     loans.extend(frame_capture_loans(iterable))
     return IteratedStorage(loans, held_whole, fi_iter, borrowed)
 
@@ -515,41 +525,61 @@ def iter_receiver_callee(ctx: 'SemanticContext',
                      record_info, "__iter__") if not fi.is_consuming), None)
 
 
+def _loop_var_climbs(ctx: 'SemanticContext', iterable_expr: TpyExpr,
+                     loop_var: bool) -> bool:
+    """Whether the handle an `__iter__` lends is reached only through a loop
+    variable whose writes climb to the iterable: the loop variable's
+    `loop_var_iterable` sources, the iteration's loans
+    (`register_iteration_loans`). A comprehension's variable does not climb
+    (BUGS.md#comprehension-loop-var-mutation-not-propagated), and the climb
+    misses a write made through a callee the variable is passed to
+    (BUGS.md#loop-element-callee-mutation-not-propagated) or inside a nested
+    def (BUGS.md#loop-var-write-routes-miss-write-set)."""
+    return loop_var and bool(iterated_storage(ctx, iterable_expr).loans)
+
+
 def check_iter_receiver_loans(ctx: 'SemanticContext', iterable_expr: TpyExpr,
-                              iterable_type: 'TpyType') -> None:
+                              iterable_type: 'TpyType', *,
+                              loop_var: bool = False) -> None:
     """The loan half of `_record_iter_receiver_mutation`, for a caller that
     files the iteration's own loan in between: a mutating `__iter__` runs
     before that loan exists, so it must not be reported as a mutation of the
     storage being iterated."""
     iter_fi = iter_receiver_callee(ctx, iterable_type)
-    if iter_fi is not None and call_mutates_receiver(iter_fi):
+    if iter_fi is not None and implicit_call_mutates_receiver(
+            ctx, iterable_expr, iter_fi,
+            handle_climbs=_loop_var_climbs(ctx, iterable_expr, loop_var)):
         check_receiver_call_loans(ctx, iterable_expr, iterable_type,
                                   "__iter__", iterable_expr, callee=iter_fi)
 
 
 def _record_iter_receiver_mutation(
     ctx: 'SemanticContext', iterable_expr: TpyExpr, iterable_type: 'TpyType',
-    *, check_loans: bool = True,
+    *, check_loans: bool = True, loop_var: bool = False,
 ) -> None:
     """Record that iterating `iterable_expr` calls its `__iter__`.
 
     `for v in obj:` is an implicit `obj.__iter__()` call: a mutating one
     needs a non-const receiver and may invalidate loans into it.
     `check_loans=False` when the caller asked the loan question before
-    filing the iteration's own loan.
+    filing the iteration's own loan. `loop_var` when a `for` statement's
+    loop variable takes the elements (`_loop_var_climbs`).
     """
     iter_fi = iter_receiver_callee(ctx, iterable_type)
     if iter_fi is None:
         return
     # An rvalue iterable (a call result) has no durable root to credit, but
-    # a readonly one still rejects a mutating `__iter__`.
+    # a readonly one still rejects a mutating `__iter__`. A loop variable's
+    # climb cannot change that verdict: only an @auto_readonly pair lends a
+    # handle, and a readonly receiver runs its const clone.
     if _root_name_of_expr(iterable_expr) is None:
         check_implicit_readonly_receiver(ctx, iterable_expr, iter_fi,
                                          "__iter__", iterable_expr)
         return
-    credit_implicit_receiver_call(ctx, iterable_expr, iterable_type, iter_fi,
-                                  "__iter__", iterable_expr,
-                                  check_loans=check_loans)
+    credit_implicit_receiver_call(
+        ctx, iterable_expr, iterable_type, iter_fi, "__iter__", iterable_expr,
+        check_loans=check_loans,
+        handle_climbs=_loop_var_climbs(ctx, iterable_expr, loop_var))
 
 
 def register_iteration_loans(

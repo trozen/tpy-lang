@@ -1,5 +1,5 @@
-# Attempting to write through a Ptr[T] field in a @readonly context should fail
-# because the Ptr becomes Ptr[readonly[T]] (read-only pointer) via readonly propagation.
+# Readonly does not reach through a Ptr field; a Ptr[readonly[T]] field
+# protects its pointee, through a mutable receiver as well.
 from tpy import int32, Ptr, readonly
 
 class Data:
@@ -9,12 +9,11 @@ class Data:
         self.value = v
 
 class Container:
-    ptr: Ptr[Data]
+    ptr: Ptr[readonly[Data]]
 
     def __init__(self) -> None:
-        self.ptr = Ptr[Data]()
+        self.ptr = Ptr[readonly[Data]]()
 
-    @readonly
     def try_mutate(self) -> None:
         self.ptr.value = int32(99)  # tpyc: error(/Cannot assign through read-only pointer/)
 

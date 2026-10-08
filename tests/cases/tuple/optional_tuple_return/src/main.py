@@ -4,7 +4,7 @@
 # section writes through one and prints the object it reached).
 from enum import Enum
 
-from tpy import int32, Own, readonly
+from tpy import auto_readonly, int32, Own, readonly
 
 
 class Color(Enum):
@@ -51,12 +51,19 @@ class Holder:
             return None  # tpyc: ok
         return (Box(self.k * 100), self.k)  # tpyc: ok
 
-    # @readonly method: the field is handed out through a const element.
+    # @readonly method: the field is handed out through the declared const
+    # element, as the bare twin declares it.
     @readonly
-    def peek(self, k: bool) -> tuple[Box, int32] | None:
+    def peek(self, k: bool) -> tuple[readonly[Box], int32] | None:
         if k:
             return None  # tpyc: ok
         return (self.item, self.k)  # tpyc: ok
+
+    # @property: the marked element follows the receiver, so a mutable
+    # receiver's result is writable.
+    @property
+    def pair_prop(self) -> tuple[auto_readonly[Box], int32] | None:
+        return self.pair  # tpyc: ok
 
 
 # free function: every element borrowed.
@@ -222,6 +229,10 @@ def section_method() -> None:
     r = h.peek(False)  # tpyc: ok
     if r is not None:
         print("readonly:", r[0].n, r[1], h.peek(True) is None)
+    q = h.pair_prop  # tpyc: ok
+    if q is not None:
+        q[0].n += 30  # a write through a mutable receiver's property result
+    print("property:", h.pair[0].n)
 
 
 def section_relay() -> None:

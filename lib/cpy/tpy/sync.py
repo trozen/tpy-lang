@@ -58,6 +58,10 @@ class _Guard(Generic[T]):
         return getattr(self._mutex._value, name)
 
 
+# The TPy guard types, for annotations: one guard class serves all three.
+MutexGuard = ReadGuard = WriteGuard = _Guard
+
+
 class Mutex(Generic[T]):
     def __init__(self, value: T) -> None:
         self._value = value

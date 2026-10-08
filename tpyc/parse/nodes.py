@@ -557,7 +557,6 @@ class TpyFieldAccess(TpyExpr):
     unbound_self_parent_type: Optional[TpyType] = None  # Set by sema for BaseN.field access on an ancestor subobject
     class_constant_owner: Optional['RecordInfo'] = None  # Set by sema: RecordInfo for ClassName.X class-constant access; codegen emits <cpp_qname>::<member>
     module_var_access: Optional[tuple[str, str]] = None  # Set by sema for `pkg.sub.X` variable access on a dotted module: (module_qname, var_name)
-    accessed_field_is_interior: bool = False  # Set by sema: matched field is `unsafe_interior_mutable[...]` (outside the readonly boundary)
     native_field_name: Optional[str] = None  # Set by sema: the matched field's native_field() C++ rename (own-fields-first lookup, so a subclass redeclaration shadows an ancestor's rename)
     enum_member_of: Optional[TpyType] = None  # Set by sema: type-level enum member access (Color.RED); the enum NominalType
     # Set by sema: a consuming method's `self.<field>` read that MAY move the
@@ -590,6 +589,17 @@ class TpyFieldAccess(TpyExpr):
 
     def children(self) -> list[TpyExpr]:
         return [self.obj]
+
+
+def const_tuple_index(index: TpyExpr) -> int | None:
+    """The compile-time index of a tuple subscript: an int literal or a
+    negated one (still negative here), else None."""
+    if isinstance(index, TpyIntLiteral):
+        return index.value
+    if (isinstance(index, TpyUnaryOp) and index.op == "-"
+            and isinstance(index.operand, TpyIntLiteral)):
+        return -index.operand.value
+    return None
 
 
 def lambda_of(expr: TpyExpr) -> TpyExpr:
@@ -1701,6 +1711,12 @@ class TpyFunction:
     # finds the defining body without a lookup; kept out of eq/repr, which
     # would otherwise walk into the other clone.
     clone_of: TpyFunction | None = field(default=None, compare=False, repr=False)
+    # On both clones: the result as declared, with its `auto_readonly[...]`
+    # markers (a property getter's, or an `@auto_readonly` def's unmarked
+    # reference result, marked whole), and the components those markers sit
+    # at (`typesys.auto_readonly_components`).
+    marked_return_type: Any = field(default=None, compare=False, repr=False)
+    following_components: frozenset = frozenset()
     # Set on both clones after _clone_auto_readonly resolves AutoReadonlyType
     # in params. Tells sema/codegen not to blanket-apply readonly to all params
     # (each param already carries ReadonlyType or not from the clone).

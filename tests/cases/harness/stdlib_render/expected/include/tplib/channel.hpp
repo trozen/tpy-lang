@@ -296,8 +296,8 @@ struct Sender {
     //             raise ChannelClosed("send on closed channel")
     //         g.get()._push(value)
     //     c._not_empty.notify_one()
-    void send(::tpy::own_param_t<T> value) {
-        _Chan<T>& c = this->_chan.get();
+    void send(::tpy::own_param_t<T> value) const {
+        const _Chan<T>& c = this->_chan.get();
         auto __ctx_3 = c._buf.lock();
         auto& g = __ctx_3.__enter__();
         try {
@@ -328,8 +328,8 @@ struct Sender {
     //     # Wake every parked side so blocked sends/recvs observe the close.
     //     c._not_empty.notify_all()
     //     c._not_full.notify_all()
-    void close() {
-        _Chan<T>& c = this->_chan.get();
+    void close() const {
+        const _Chan<T>& c = this->_chan.get();
         auto __ctx_4 = c._buf.lock();
         auto& g = __ctx_4.__enter__();
         try {
@@ -425,8 +425,8 @@ struct Receiver {
     //         value = g.get()._pop()
     //     c._not_full.notify_one()
     //     return value
-    ::tpy::own_return_t<T> recv() {
-        _Chan<T>& c = this->_chan.get();
+    ::tpy::own_return_t<T> recv() const {
+        const _Chan<T>& c = this->_chan.get();
         std::optional<T> value;
         auto __ctx_6 = c._buf.lock();
         auto& g = __ctx_6.__enter__();
@@ -452,7 +452,7 @@ struct Receiver {
         return std::move((*value));
     }
 
-    __gen_Receiver___iter__<T> __iter__();
+    __gen_Receiver___iter__<T> __iter__() const;
     static constexpr std::string_view __tpy_class_name__ = "tplib.channel.Receiver";
 };
 
@@ -466,7 +466,7 @@ inline std::ostream& operator<<(std::ostream& os, const Receiver<T>& obj) {
 template <typename T>
 struct __gen_Receiver___iter__ : public ::tpy::next_iter_mixin<__gen_Receiver___iter__<T>, T> {
     ::tpy::frame_state __state;
-    Receiver<T>& __self;
+    const Receiver<T>& __self;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -477,7 +477,7 @@ struct __gen_Receiver___iter__ : public ::tpy::next_iter_mixin<__gen_Receiver___
         S_DONE = 5,
     };
 
-    __gen_Receiver___iter__(Receiver<T>& __self)
+    __gen_Receiver___iter__(const Receiver<T>& __self)
         : __state(S_INITIAL),
           __self(__self) {}
 
@@ -530,7 +530,7 @@ std::expected<T, ::tpy::StopIteration> __gen_Receiver___iter__<T>::__next__() {
 
 
 template <typename T>
-inline __gen_Receiver___iter__<T> Receiver<T>::__iter__() {
+inline __gen_Receiver___iter__<T> Receiver<T>::__iter__() const {
     return __gen_Receiver___iter__<T>(*this);
 }
 

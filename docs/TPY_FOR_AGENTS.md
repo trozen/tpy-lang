@@ -301,7 +301,9 @@ child.parent = root              # plain assignment; no take_ptr() needed
 ```
 
 `Ptr[T]` is always nullable; assign `None` to clear. Null dereferences are
-checked at runtime.
+checked at runtime. Const does not protect what a `Ptr` (or `Span`) points
+at: a method that only writes through a `Ptr` field is still a `const`
+method. Write `Ptr[readonly[T]]` when the pointee must stay unchanged.
 
 Do **not** reach for `Ptr[T]` for:
 - Function parameters -- plain `T` is better.
@@ -327,7 +329,9 @@ patterns (non-mutating parameters become const-ref, etc.). You write
 - **Communicating intent on spans or pointers**: `Span[readonly[T]]`,
   `Ptr[readonly[T]]`.
 
-In pure-TPy code you rarely write it by hand.
+If you do write `@readonly` on a method, its return type is taken
+literally: returning the object's own storage needs `-> readonly[T]`
+(the compiler says so). In pure-TPy code you rarely write either by hand.
 
 ### 5.8 Advanced: consuming iteration
 

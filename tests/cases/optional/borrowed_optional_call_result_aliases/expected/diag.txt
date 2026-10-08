@@ -1,9 +1,9 @@
-main.py:57: warning: copies R into field; use copy() to make this explicit
-main.py:232: warning: copies R into owned storage; use copy() to make this explicit
-main.py:241: warning: copies R into owned storage; use copy() to make this explicit
-main.py:248: warning: copies R into owned storage; use copy() to make this explicit
+main.py:61: warning: copies R into field; use copy() to make this explicit
+main.py:246: warning: copies R into owned storage; use copy() to make this explicit
 main.py:255: warning: copies R into owned storage; use copy() to make this explicit
-main.py:262: warning: copies R into field; use copy() to make this explicit
+main.py:262: warning: copies R into owned storage; use copy() to make this explicit
 main.py:269: warning: copies R into owned storage; use copy() to make this explicit
-main.py:275: warning: copies R | None into field; use copy() to make this explicit
-main.py:281: warning: copies R | None into owned storage; use copy() to make this explicit
+main.py:276: warning: copies R into field; use copy() to make this explicit
+main.py:283: warning: copies R into owned storage; use copy() to make this explicit
+main.py:289: warning: copies R | None into field; use copy() to make this explicit
+main.py:295: warning: copies R | None into owned storage; use copy() to make this explicit

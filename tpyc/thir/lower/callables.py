@@ -10,8 +10,8 @@ from ...type_def_registry import ParamPassing, get_type_def
 from ...typesys import (
     AnyType, FunctionInfo, FunctionLinkage, IntLiteralType, NominalType, ReadonlyType,
     RecordInfo, RefType, TpyType, VoidType, contains_pending_leaf, contains_type_param, is_fn_type, is_protocol_type,
-    accessor_role, body_method_info, return_const_projected, return_representation, unwrap_readonly,
-    unwrap_ref_type,
+    accessor_role, body_method_info, declares_whole_result_following,
+    receiver_neutral_return, return_representation, unwrap_readonly, unwrap_ref_type,
     unwrap_send_sync,
 )
 from ..nodes import (
@@ -92,14 +92,20 @@ def _declared_return(declaration: TpyFunction) -> TpyType:
     return declaration.return_type if isinstance(declaration.return_type, TpyType) else VoidType()
 
 
-def _declares(root: FunctionInfo, declaration: TpyFunction, accessor: str | None = None) -> bool:
+def _declares(root: FunctionInfo, declaration: TpyFunction, accessor: str | None = None,
+              twin: bool = False) -> bool:
     """Whether `declaration` is the body `root` binds: the same parameter
-    names and declared types and the same return. An accessor's
-    FunctionInfo holds the value type of the reference its body returns,
-    and a setter's name is its property's (Python has no differently named
-    setter)."""
-    returns = (unwrap_ref_type(root.return_type) == unwrap_ref_type(_declared_return(declaration))
-               if accessor is not None else root.return_type == declaration.return_type)
+    names and declared types and the same return -- for an access-twin pair
+    the pair's one receiver-neutral result (`receiver_neutral_return`),
+    whichever clone `root` is. An accessor's FunctionInfo holds the value
+    type of the reference its body returns, and a setter's name is its
+    property's (Python has no differently named setter)."""
+    mine, declared = root.return_type, _declared_return(declaration)
+    if twin:
+        mine = receiver_neutral_return(mine, declares_whole_result_following(root.root))
+        declared = receiver_neutral_return(declared, declares_whole_result_following(declaration))
+    returns = (unwrap_ref_type(mine) == unwrap_ref_type(declared)
+               if accessor is not None else mine == declared)
     return (returns and (accessor != "fset" or root.property_name == root.name)
             and tuple(p.name for p in root.params) == tuple(n for n, _ in declaration.params)
             and tuple(declared_param_type(p.type) for p in root.params)
@@ -120,22 +126,19 @@ def _identity_module(root: FunctionInfo, analyzer: 'SemanticAnalyzer') -> str:
     return analyzer.ctx.cpp_module_name if owner == analyzer.ctx.module_name else owner
 
 
-def _borrowed_result(fi: FunctionInfo, declaration: TpyFunction, analyzer: 'SemanticAnalyzer',
+def _borrowed_result(fi: FunctionInfo, analyzer: 'SemanticAnalyzer',
                      follows_receiver: bool = False, *,
                      return_type: TpyType | None = None) -> THIRBorrowedRecord | None:
-    # Readonly exactly when the emitted result is const. The declaration's
-    # verdict is the signature's (a free function's `@pure` alone leaves it
-    # mutable); an inferred method verdict const-projects only a result that
-    # borrows the receiver. A follows-receiver callable publishes the result
-    # its definition -- the const clone -- binds; a call derives its own
-    # access from its receiver (`call_contract.bound_result`), since C++
-    # picks the clone by the receiver's constness.
+    # Readonly exactly when the declared result is: the return type is the
+    # contract. A follows-receiver callable publishes the result its
+    # definition -- the const clone -- binds; a call derives its own access
+    # from its receiver (`call_contract.bound_result`), since C++ picks the
+    # clone by the receiver's constness.
     returned = fi.return_type if return_type is None else return_type
     if not isinstance(returned, (RefType, ReadonlyType)):
         return None
     explicit = isinstance(unwrap_ref_type(returned), ReadonlyType)
-    readonly = follows_receiver or (declaration.is_readonly and return_const_projected(fi)) or explicit
-    return borrowed_record(returned, readonly, analyzer)
+    return borrowed_record(returned, follows_receiver or explicit, analyzer)
 
 
 def _body_passings(declaration: TpyFunction, owning: FunctionInfo | None) -> tuple[ParamPassing, ...]:
@@ -169,7 +172,7 @@ def resolved_callee(fi: FunctionInfo | None, analyzer: 'SemanticAnalyzer',
         return None
     types = tuple(p.type for p in fi.params)
     return THIRResolvedCallee(THIRFunctionIdentity(module, root.name),
-                              THIRCallableSignature(types, fi.return_type, _borrowed_result(fi, declaration, analyzer),
+                              THIRCallableSignature(types, fi.return_type, _borrowed_result(fi, analyzer),
                                                     _body_passings(declaration, group[0]),
                                                     return_representation(fi.return_type)))
 
@@ -259,15 +262,17 @@ def method_callee(fi: FunctionInfo | None, receiver: TpyType | None, analyzer: '
     # when its single defining body is the pair's const clone.
     twin = defined is not None and body.auto_readonly_polarity is not None
     if (defined is None or twin != (role == "fget" or root.overloaded)
-            or not twin and defined != owner or not _declares(root, body, role)):
+            or not twin and defined != owner or not _declares(root, body, role, twin)):
         return None
-    ret = _declared_return(body)
+    ret = (receiver_neutral_return(_declared_return(body),
+                                   declares_whole_result_following(body))
+           if twin else _declared_return(body))
     types = (owner.type, *(p.type for p in fi.params))
     if not _closed_types((*types, ret)):
         return None
     return THIRResolvedCallee(
         THIRFunctionIdentity(_identity_module(root, analyzer), root.name, root.owning_type_qname, role),
-        THIRCallableSignature(types, ret, _borrowed_result(fi, body, analyzer, twin, return_type=ret),
+        THIRCallableSignature(types, ret, _borrowed_result(fi, analyzer, twin, return_type=ret),
                               (receiver_param(defined).passing,
                                *_body_passings(body, body_method_info(declaring, body))),
                               return_representation(ret), result_follows_receiver=twin))

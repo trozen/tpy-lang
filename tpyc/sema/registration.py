@@ -27,10 +27,11 @@ def _adopt_skeleton(skeleton, full):
 
 from .may_interrupt import binding_may_interrupt, warn_dead_interrupt_handlers
 from ..typesys import (
+    ImplicitReadonly, readonly_result, readonly_protects, RESULT_ROOT,
     mark_overload_group,
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, InitInheritBlock, InitInheritBlocker, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type, AnyType, PtrType, RefType,
-    ReadonlyType, InteriorMutableType,
+    InteriorMutableType,
     BaseInitDuty, CppDefaultInit, cpp_default_init, cpp_default_init_blocker,
     init_is_default_ctor,
     is_c_abi_allowed, c_abi_type_hint, C_ABI_TYPE_ERROR,
@@ -63,7 +64,7 @@ from ..parse import (
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
     TpyNoneLiteral, TpyStrLiteral, TpyRaise, TpyTry, collect_name_refs,
 )
-from ..parse.nodes import OverloadForm, is_base_init_call, returns_borrow_rooted_at_self
+from ..parse.nodes import COPY_HOOK, OverloadForm, is_base_init_call, returns_borrow_rooted_at_self
 from ..identity_map import IdentitySet
 from ..parse.parser import auto_declare_fields_from_init, reorder_fields_by_init
 from ..namespace import NameBinding, BindingKind
@@ -1130,40 +1131,31 @@ class TypeRegistrar:
             loc,
         )
 
-    def _strip_interior_field_markers(self, record: TpyRecord) -> None:
-        """Lower `unsafe_interior_mutable[Ptr[T]]` field annotations to a FieldInfo flag.
+    def _reject_interior_field_markers(self, record: TpyRecord) -> None:
+        """Reject `unsafe_interior_mutable[...]` field annotations.
 
-        `unsafe_interior_mutable[...]` is an unsafe escape hatch from the readonly
-        boundary; only `unsafe_interior_mutable[Ptr[T]]` on a field is meaningful (the
-        refcount-cell pattern). Reject the forms that would silently widen the
-        hatch -- nested markers, readonly/Own inside, or a non-pointer payload -- so
-        misuse fails at the declaration with a clear message rather than
-        surfacing as wrong const-ness later.
+        On a `Ptr` field the marker is redundant -- readonly never reaches
+        through a pointer -- and the name is reserved for an inline field that
+        stays mutable through a readonly owner, which does not exist yet.
         """
         for fld in record.fields:
             if not isinstance(fld.type, InteriorMutableType):
                 continue
             inner = fld.type.wrapped
-            if isinstance(inner, InteriorMutableType):
+            if isinstance(unwrap_readonly(inner), PtrType):
                 raise SemanticError(
-                    f"unsafe_interior_mutable[unsafe_interior_mutable[...]] on field "
-                    f"'{fld.name}' is redundant",
+                    f"unsafe_interior_mutable[...] on field '{fld.name}' is no "
+                    f"longer needed: readonly does not reach through a Ptr, so "
+                    f"declare the field as '{inner}'",
                     loc=fld.loc,
                 )
-            if isinstance(inner, (ReadonlyType, OwnType)):
-                raise SemanticError(
-                    f"unsafe_interior_mutable[...] on field '{fld.name}' cannot wrap "
-                    f"'{inner}'; unsafe_interior_mutable applies to a plain Ptr[T] field",
-                    loc=fld.loc,
-                )
-            if not isinstance(inner, PtrType):
-                raise SemanticError(
-                    f"unsafe_interior_mutable[...] on field '{fld.name}' is only "
-                    f"supported on a Ptr[T] field, not '{inner}'",
-                    loc=fld.loc,
-                )
-            fld.type = inner
-            fld.is_interior_mutable = True
+            raise SemanticError(
+                f"unsafe_interior_mutable[...] on field '{fld.name}' is not "
+                f"supported: the marker is reserved for an inline field that "
+                f"stays mutable through a readonly owner, which is not "
+                f"implemented yet",
+                loc=fld.loc,
+            )
 
     def _validate_instance_field(
         self, fld: FieldInfo, record: TpyRecord, is_generic: bool,
@@ -1300,7 +1292,7 @@ class TypeRegistrar:
         class_constants, class_constants_finality = self._partition_class_constants(record)
         self._check_class_constant_conflicts(record, class_constants, class_constants_finality)
 
-        self._strip_interior_field_markers(record)
+        self._reject_interior_field_markers(record)
 
         # Validate field types
         for fld in record.fields:
@@ -1629,10 +1621,28 @@ class TypeRegistrar:
             # auto_readonly pair -- the clone hands out a mutable borrow, so
             # its receiver must stay non-const (same reason as the
             # implicit_readonly exemption).
+            implicit_result: ImplicitReadonly | None = None
             resolved_readonly = (method.is_readonly
                 or (method.is_pure and not is_mutable_propagate_clone)
                 or is_implicit_readonly
-                or (record.is_frozen and method.name != "__init__"))
+                or (record.is_frozen and method.name != "__init__"
+                    and not method.readonly_opt_out and not is_mutable_propagate_clone))
+            # A readonly the user did not spell (an implicitly-readonly
+            # dunder, `@pure`, a frozen record) declares what the result
+            # borrows readonly with it -- in the declared type, which every
+            # reader of the result takes its access from. An explicit
+            # `@readonly` leaves the return type as written.
+            if (resolved_readonly and not method.is_readonly and not method.is_generator
+                    and not method.is_staticmethod and not method.is_classmethod
+                    # `copy()` hands out what `__copy__` returns: a fresh
+                    # object however its type is spelled.
+                    and method.name != COPY_HOOK):
+                implied = readonly_result(method_return)
+                if not isinstance(unwrap_ref_type(implied), OwnType):
+                    implicit_result = (ImplicitReadonly.PURE if method.is_pure
+                                       else ImplicitReadonly.FROZEN if record.is_frozen
+                                       else ImplicitReadonly.DUNDER)
+                method_return = implied
             method.is_readonly = resolved_readonly
             method_type_param_bounds = self._resolve_type_param_bounds(
                 method.type_param_bounds, method.loc or record.loc,
@@ -1772,6 +1782,8 @@ class TypeRegistrar:
                 is_auto_readonly_mutable_clone=method.is_auto_readonly_mutable_clone,
                 originating_module=self.ctx.module_name,
             )
+            func_info.following_components = method.following_components
+            func_info.implicit_readonly_result = implicit_result
             compiler = get_current_compiler()
             if compiler is not None and not method.is_stub:
                 compiler.method_bodies.setdefault(
@@ -1797,9 +1809,12 @@ class TypeRegistrar:
                 # so derive the receiver borrow from the signature: a native
                 # accessor returning a non-value, non-Own type hands out a
                 # borrow of (or view into) its receiver (dict views,
-                # __getitem__, get, setdefault). Readonly inference is not
-                # affected -- builtin stubs declare readonly-ness explicitly.
+                # __getitem__, get, setdefault), whose access is the
+                # receiver's: the C++ overload set picks the const half for a
+                # const receiver. Readonly inference is not affected --
+                # builtin stubs declare readonly-ness explicitly.
                 func_info.return_borrows_from = frozenset({-1})
+                func_info.following_components = frozenset({RESULT_ROOT})
             # @inline: store the body expression for call-site inlining.
             # Body must be a single call statement. Cloned and substituted at call sites.
             if method.is_inline and not method.is_stub:
@@ -2989,9 +3004,12 @@ class TypeRegistrar:
 
     def prune_value_property_clones(self, record: TpyRecord) -> None:
         """Drop the mutable getter clone of a @property whose return is a
-        value type -- a single const overload suffices (no T& vs const T&
-        aliasing distinction), and keeping both emits two identical const
-        C++ signatures (redefinition error).
+        value type readonly protects nothing in (`readonly_protects`) -- a
+        single const overload suffices (no T& vs const T& aliasing
+        distinction), and keeping both emits two identical const C++
+        signatures (redefinition error). A value holding a reference (a
+        tuple / Optional with a record element) keeps both: a mutable
+        receiver may write through its result.
 
         Runs with validate_value_type_fields, after the protocol pass, so
         user-record ValueType flags are authoritative (register_record is
@@ -3002,7 +3020,8 @@ class TypeRegistrar:
             return
         for prop_name, prop_info in record_info.properties.items():
             ret = prop_info.getter.return_type
-            if ret is not None and ret.is_value_type():
+            if (ret is not None and ret.is_value_type()
+                    and not readonly_protects(ret)):
                 record.methods = [
                     m for m in record.methods
                     if not (m.is_property_getter and m.name == prop_name

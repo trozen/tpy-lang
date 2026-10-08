@@ -48,7 +48,7 @@ struct Atomic {
     // @readonly
     // def load(self, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
     //     return self._raw.load(order)
-    ::tpy::val_or_cref_t<T> load(::std::memory_order order = ::std::memory_order::seq_cst) const {
+    ::tpy::val_or_ref_t<T> load(::std::memory_order order = ::std::memory_order::seq_cst) const {
         return this->_raw.load(order);
     }
 

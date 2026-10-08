@@ -27,7 +27,7 @@ struct Wrapper {
 
     // def load_at(self, index: uint32) -> T:
     //     return self._storage.load(index)
-    ::tpy::val_or_cref_t<T> load_at(uint32_t index) const {
+    ::tpy::val_or_ref_t<T> load_at(uint32_t index) const {
         return ::tpy::deref_check(this->_storage).load(index);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";

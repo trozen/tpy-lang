@@ -1,0 +1,3 @@
+source: 9
+scalar copy: 1
+tuple copy: 1 2

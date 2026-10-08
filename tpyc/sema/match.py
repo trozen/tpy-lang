@@ -9,6 +9,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Iterator
 
 from ..typesys import (
+    make_readonly,
     TpyType,
     NominalType, AliasRef, RecursiveAliasInstanceType, ReadonlyType,
     NoneType, OptionalType, UnionType, PendingStrType, TupleType,
@@ -347,7 +348,7 @@ class MatchAnalyzer:
                 # free-copy scalar capture is a durable copy, not an alias, so
                 # it keeps the bare type.
                 if subject_readonly and not self._capture_binds_by_value(ty):
-                    ty = ReadonlyType(ty)
+                    ty = make_readonly(ty)
                     pattern_bindings[name] = ty
                 self.ctx.func.current_scope.define(name, ty)
                 self.ctx.func.nonstmt_bound_names.add(name)

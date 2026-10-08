@@ -42,6 +42,19 @@ class Reader:
         return v.x
 
 
+class Writer:
+    # param position in an inferred-const method: the readonly return grants
+    # no write, so `a` stays `const Point&`...
+    def pick(self, a: Point) -> readonly[Point]:  # tpyc: ok
+        return a
+
+    # ...but the body's own write keeps `r` a mutable `Point&` -- the return
+    # borrow must not erase it
+    def touch(self, r: Point) -> readonly[Point]:  # tpyc: ok
+        r.x = 1
+        return r
+
+
 # free function: the param is returned as a const borrow
 def view_items(items: list[int32]) -> readonly[list[int32]]:  # tpyc: ok
     return items
@@ -87,6 +100,17 @@ def main() -> None:
     print("tuple:", pair[0].x, pair[1].x)
     ps[0].x = 70
     print("tuple after write:", pair[0].x)
+
+    w = Writer()
+    q = Point(3)
+    seen = w.pick(q)
+    pt = Point(0)
+    # written through the param, then returned as a const borrow of it
+    out = w.touch(pt)
+    print("param write:", out.x, pt.x, seen.x)
+    pt.x = 5
+    q.x = 6
+    print("param after write:", out.x, seen.x)
 
 
 main()

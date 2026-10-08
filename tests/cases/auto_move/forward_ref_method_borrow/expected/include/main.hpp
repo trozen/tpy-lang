@@ -61,7 +61,7 @@ inline P::P() : vals(std::vector<int32_t>{5}) {}
 //     return r + n.vals[0]
 inline int32_t Picker::run() const {
     std::vector<P> xs = {P()};
-    const P& n = this->first(xs);
+    P& n = this->first(xs);
     std::vector<P> __tmp_1 = xs;
     int32_t r = ::tpyapp::main::drop(std::move(__tmp_1));
     return (::tpy::add_check<int32_t>(r, ::tpy::__getitem__(n.vals, 0)));

@@ -22,6 +22,7 @@ from ...parse.nodes import (
     TpyValuePattern,
     TpyWildcardPattern,
 )
+from ...typesys import pointer_repr_optional, pointer_variant_union
 from ...typesys import (
     LiteralType,
     NominalType,
@@ -554,9 +555,7 @@ def _match_keywords_ok(
             if _of_cap:
                 # A ptr-repr Optional FIELD captured into the registered
                 # P* frame member (`v = optional_to_ptr(subject.f);`).
-                _ofu = unwrap_readonly(ft)
-                if not (isinstance(_ofu, OptionalType)
-                        and _ofu.uses_pointer_repr()):
+                if pointer_repr_optional(ft) is None:
                     return False
             elif not _match_capture_field_ok(ft, analyzer):
                 return False
@@ -1154,9 +1153,10 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
         if not nonvalue_ok and name in captures:
             return None
         vtype = resolve_pending_container(vtype, analyzer) or vtype
-        if (isinstance(vtype, OptionalType) and vtype.uses_pointer_repr()
-                and not isinstance(vtype.inner, ReadonlyType)
-                and record_like(vtype.inner, analyzer)):
+        vopt = pointer_repr_optional(vtype)
+        if (vopt is not None
+                and not isinstance(vopt.inner, ReadonlyType)
+                and record_like(vopt.inner, analyzer)):
             # Pointer-repr Optional hoist: the bare inner `T* name;`
             # (nullable pointer-local, `_emit_branch_decls`' Optional arm) --
             # a full-Optional whole-subject capture of a pointer-repr
@@ -1309,9 +1309,7 @@ def _match_route(
                 kind == "switch_union"
                 and isinstance(subj, (TpyCall, TpyMethodCall))
                 and is_rvalue_source(analyzer, subj)
-                and isinstance(unwrap_readonly(stmt.subject_type), UnionType)
-                and unwrap_readonly(stmt.subject_type).uses_pointer_repr()
-                and not unwrap_readonly(stmt.subject_type).needs_wrapper())
+                and pointer_variant_union(stmt.subject_type) is not None)
             # A BORROW-returning WRAPPER call subject binds by reference
             # (`auto& __match_subject_N = h.get();` -- the accessor's
             # `Tree<T>&` return): subject_ref stays True, the existing

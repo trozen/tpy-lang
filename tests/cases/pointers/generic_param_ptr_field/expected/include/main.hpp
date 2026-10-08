@@ -55,7 +55,7 @@ struct Adder {
 
     // def push(self, n: int32) -> None:
     //     self._sink.add(n)
-    void push(int32_t n) {
+    void push(int32_t n) const {
         ::tpy::deref_check(this->_sink).add(n);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Adder";

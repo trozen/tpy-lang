@@ -700,7 +700,7 @@ __gen_owned_gen owned_gen(::tpy::ordered_map<std::string, P>& d, P& fb) {
 //     xs = []
 //     xs.append(d.get("zz", P(4)))  # tpyc: warning(/copies .*P.* into owned storage/)
 //     xs[0].n = 9
-//     ys = [a]  # tpyc: warning(/copies readonly\[P\] into owned storage/)
+//     ys = [a]  # tpyc: warning(/copies P into owned storage/)
 //     ys[0].n = 8
 //     print("ro_copy", xs[0].n, ys[0].n)
 void ro_copy(const ::tpy::ordered_map<std::string, P>& d, const P& a) {

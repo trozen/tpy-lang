@@ -40,6 +40,8 @@ The model is **conservative on by default**: `is_value_type(T)` implies both Sen
 
 - **No interior mutability primitive.** TPy has no `Cell`/`RefCell`/`UnsafeCell`, so we never need the "T is Send but not Sync because of interior mutability" branch as a built-in. User types that want shared-mutable semantics must reach for `Mutex[T]` (Phase 6) which encodes the Sync uplift explicitly.
 
+- **`readonly[T]` does not reach through a pointer.** `readonly` protects the storage a reference names, not what its `Ptr` / `Span` fields point at (docs/READONLY_DESIGN.md "Pointers and spans are access boundaries"). This is why `Ptr[T]` is never Sync while `Ptr[readonly[T]]` is Sync iff `T` is: a readonly view of a record with a writable `Ptr` field still writes the pointee.
+
 - **`readonly[T]` is a borrow-side attribute, not a deep freeze.** A `readonly[list[int]]` parameter promises *this handle* won't mutate, but the underlying list may still be mutated through another (non-readonly) handle elsewhere. This bounds what `readonly[T]` can lift to Sync (see Open Question 1 below).
 
 - **`Ptr[T]` is always non-Send, non-Sync** -- raw pointer, no ownership guarantee. `Ptr[readonly[T]]` is Sync iff `T` is Sync (multiple read-only views are fine if the underlying type's shared state is fine).
@@ -411,7 +413,7 @@ The marker layer is unobservable until something *uses* it. The planned sites, i
 
 4. **`Arc[T]`** (Phase 6) -- requires `T: Send + Sync`. The standard atomic shared-ownership requirement.
 
-5. **`Mutex[T]` / `RwLock[T]`** (Phase 6, shipped) -- the Sync uplift primitives. Both are Sync iff `T` is Send. For `RwLock` this is looser than Rust's `T: Send + Sync`, and correct for TPy: the read guard hands out `readonly[T]`, and a not-Sync `T` is either a container (not-Sync from shared-mutability, removed by the readonly guard) or an interior-mutable type from the unsafe `unsafe_interior_mutable` hatch (user owns Send/Sync). Rust needs `T: Sync` only because its `Cell` is *safe* interior mutability. Both enable shared-mutable across threads safely. (Sound only on the *safe* surface: it also grants Sync to a `Send`-but-not-`Sync` interior-mutable payload -- a user `Cell`-analog via the hatch -- a latent hole that opens on the first such type. The precise fix is RwLock-local -- `Sync iff T: Send AND (freezable(T) OR T: Sync)` -- not the OQ1 `readonly[container]: Sync` refinement; see the RwLock Sync bound follow-up below.)
+5. **`Mutex[T]` / `RwLock[T]`** (Phase 6, shipped) -- the Sync uplift primitives. Both are Sync iff `T` is Send. For `RwLock` this is looser than Rust's `T: Send + Sync`, and correct for TPy: the read guard hands out `readonly[T]`, and a not-Sync `T` is either a container (not-Sync from shared-mutability, removed by the readonly guard) or an `@unsafe_send` type that writes through a pointer from a readonly method (readonly does not reach through a `Ptr`; the author owns Send/Sync). Rust needs `T: Sync` only because its `Cell` is *safe* interior mutability. Both enable shared-mutable across threads safely. (Sound only on the *safe* surface: it also grants Sync to a `Send`-but-not-`Sync` such payload -- a user `Cell`-analog -- a latent hole that opens on the first such type. The library guarantees also assume no caller touches the `_`-prefixed implementation fields of `Arc` / `Mutex` / `RwLock`, which are private by Python convention only. The precise fix is RwLock-local -- `Sync iff T: Send AND (freezable(T) OR T: Sync)` -- not the OQ1 `readonly[container]: Sync` refinement; see the RwLock Sync bound follow-up below.)
 
 ## Interaction with Other Features
 
@@ -539,8 +541,9 @@ Gated on `docs/ASYNC_DESIGN.md` v3+ decision. Adds:
    T: Send` bound treats all not-Sync `T` alike, but there are two kinds: a
    *container* (not-Sync purely from shared-mutability, which the `readonly`
    read guard removes) and an *interior-mutable* type (not-Sync because it
-   mutates through `readonly` -- TPy's only such types come from the unsafe
-   `unsafe_interior_mutable` hatch). (Other not-Sync safe forms -- e.g. a
+   mutates through `readonly` -- TPy's only such types are `@unsafe_send`
+   types writing through a pointer from a readonly method, since readonly
+   does not reach through a `Ptr`). (Other not-Sync safe forms -- e.g. a
    `Send[Callable[...]]`-wrapped closure, structurally not-Sync -- reduce to the
    *container* case for this argument: an ordinary lambda's by-value captures
    are not `mutable` and pointer/reference captures are excluded from `Send`, so
@@ -550,14 +553,14 @@ Gated on `docs/ASYNC_DESIGN.md` v3+ decision. Adds:
    The current bound is sound for the whole *safe* surface (safe not-Sync types
    are all container-shaped, frozen by the read guard). It is **not** sound in
    general: it also grants Sync to a `Send`-but-not-`Sync` interior-mutable
-   payload -- a user `Cell`-analog built with the hatch -- where two readers
+   payload -- a user `Cell`-analog writing through a pointer -- where two readers
    mutate through their own `readonly[T]` handles and race. This is a latent
    hole, not merely imprecision: the `Cell` author spends one honest
    `@unsafe_send` (a cell *is* safe to move) and correctly withholds
    `@unsafe_sync`; RwLock then fabricates the `Sync` the author never asserted,
    and the race surfaces in a *different*, fully-safe-looking `Arc[RwLock[Cell]]`.
    It is unreachable today only because no such type exists yet (no stdlib type
-   is simultaneously `Send`, not-`Sync`, and hatch-based -- `Rc`/`Weak` are
+   is simultaneously `Send`, not-`Sync`, and pointer-mutating -- `Rc`/`Weak` are
    not-`Send`; `Atomic`/`Mutex`/`Arc` are correctly `Sync`); it opens on the
    first user `Cell`.
 
@@ -567,11 +570,12 @@ Gated on `docs/ASYNC_DESIGN.md` v3+ decision. Adds:
        RwLock[T]: Sync  iff  T: Send  AND  (freezable(T) OR T: Sync)
 
    where `freezable(T)` = no mutation is reachable through `readonly[T]` -- `T`
-   transitively reaches no `unsafe_interior_mutable` field AND no `@native`
+   transitively reaches no writable `Ptr` / `Span` field of an `@unsafe_send`
+   type AND no `@native`
    interior-mutable leaf (e.g. `Atomic`, whose `@readonly` ops mutate a
-   `std::atomic` through a shared handle with no hatch field). Note `freezable`
-   is defined on the mutation route, not the hatch alone: a `@native`
-   `readonly`-mutating leaf is *not* freezable even without a hatch field. Such
+   `std::atomic` through a shared handle with no pointer field). Note
+   `freezable` is defined on the mutation route, not on a pointer field alone:
+   a `@native` `readonly`-mutating leaf is *not* freezable even without one. Such
    leaves that are genuinely `Sync` (`Atomic`) are still admitted via the
    `OR T: Sync` disjunct; the freezable disjunct exists to admit the safe
    container surface. `freezable` waives Rust's second gate exactly where the

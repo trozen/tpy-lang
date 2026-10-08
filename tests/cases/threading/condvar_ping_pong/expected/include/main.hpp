@@ -80,7 +80,7 @@ struct Worker {
     Worker& operator=(Worker&&) = default;
 
     // def run(self) -> None:
-    void run();
+    void run() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Worker";
 };
 

@@ -1,0 +1,1 @@
+main.py:7: error: unsafe_interior_mutable[...] on field 'hits' is not supported: the marker is reserved for an inline field that stays mutable through a readonly owner, which is not implemented yet

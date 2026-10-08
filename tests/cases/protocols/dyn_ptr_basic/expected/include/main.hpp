@@ -105,7 +105,7 @@ struct Notifier {
     void aim(Awaker* p, int32_t tid);
 
     // def fire(self) -> None:
-    void fire();
+    void fire() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Notifier";
 };
 
@@ -173,7 +173,7 @@ inline void Notifier::aim(Awaker* p, int32_t tid) {
 //     if self.awaker is None:
 //         return
 //     self.awaker.mark(self.task_id)
-inline void Notifier::fire() {
+inline void Notifier::fire() const {
     if ((this->awaker == nullptr)) {
         return;
     }

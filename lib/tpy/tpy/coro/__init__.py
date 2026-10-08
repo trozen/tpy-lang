@@ -49,10 +49,6 @@ class Waker(ValueType):
         self.task_id = task_id
         self.generation = generation
 
-    # Not @readonly: wake() doesn't mutate self, but it dispatches into
-    # the awaker's `mark_runnable`, which mutates the executor's runnable
-    # queue. Marking wake() readonly would narrow `self.awaker` to
-    # `Ptr[readonly[Awaker]]` and reject the call.
     def wake(self) -> None:
         if self.awaker is None:
             return

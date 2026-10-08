@@ -10,9 +10,10 @@ from itertools import chain
 from typing import TYPE_CHECKING
 
 from ..typesys import (
+    make_readonly,
     TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NominalType, AliasRef,
     TypeParamRef, IntLiteralType, AnyType,
-    ReadonlyType, UnionType, unwrap_readonly, unwrap_qualifiers, unwrap_ref_type, make_union, union_none_narrow,
+    UnionType, repr_shape, readonly_access, unwrap_readonly, unwrap_qualifiers, unwrap_ref_type, make_union, union_none_narrow,
     is_protocol_type, is_dynamic_dispatch_inner, polymorphic_source_inner,
     LiteralType, LiteralValue, is_any_int_type,
 
@@ -251,12 +252,15 @@ class NarrowingTracker:
                 return method_sig.return_type
         return None
 
-    def _get_record_getitem_type(self, record_type: NominalType) -> TpyType | None:
-        """Get __getitem__ return type for a record (returns None on failure)."""
+    def _get_record_getitem_type(self, record_type: NominalType, *,
+                                 readonly_receiver: bool = False) -> TpyType | None:
+        """Get __getitem__ return type for a record (returns None on failure),
+        on a readonly receiver the const clone's (`lookup_record_method`)."""
         record = self.ctx.registry.get_record_for_type(record_type)
         if record is None:
             return None
-        getitem = self.protocols.lookup_record_method(record, "__getitem__")
+        getitem = self.protocols.lookup_record_method(
+            record, "__getitem__", readonly_receiver=readonly_receiver)
         if getitem is None:
             return None
         type_subst = self.type_ops.build_type_substitution(record_type)
@@ -264,7 +268,8 @@ class NarrowingTracker:
             return self.type_ops.substitute_type_params(getitem.return_type, type_subst)
         return getitem.return_type
 
-    def record_getitem_key_ret(self, record_type: NominalType) -> tuple[TpyType, TpyType] | None:
+    def record_getitem_key_ret(self, record_type: NominalType, *,
+                               readonly_receiver: bool = False) -> tuple[TpyType, TpyType] | None:
         """(key-param type, return type) of a record's single-arg __getitem__.
 
         Returns None when there is no single-key __getitem__ (e.g. only a slice
@@ -273,7 +278,8 @@ class NarrowingTracker:
         record = self.ctx.registry.get_record_for_type(record_type)
         if record is None:
             return None
-        getitem = self.protocols.lookup_record_method(record, "__getitem__")
+        getitem = self.protocols.lookup_record_method(
+            record, "__getitem__", readonly_receiver=readonly_receiver)
         # params excludes self; a single-key accessor has exactly one param.
         if getitem is None or len(getitem.params) != 1:
             return None
@@ -289,24 +295,15 @@ class NarrowingTracker:
 
     @staticmethod
     def _is_optional_type(typ: TpyType | None) -> bool:
-        """Check if type is Optional (possibly wrapped in ReadonlyType)."""
-        if typ is None:
-            return False
-        if isinstance(typ, ReadonlyType):
-            typ = typ.wrapped
-        return isinstance(typ, OptionalType)
+        """Check if type has the Optional shape (`repr_shape`)."""
+        return typ is not None and isinstance(repr_shape(typ), OptionalType)
 
     @staticmethod
     def _optional_inner_type(typ: TpyType) -> TpyType:
-        """Extract inner type from Optional, preserving ReadonlyType/OwnType wrappers."""
-        if isinstance(typ, ReadonlyType):
-            return ReadonlyType(typ.wrapped.inner)
-        if isinstance(typ, OwnType):
-            inner = typ.wrapped
-            if isinstance(inner, OptionalType):
-                return inner.inner
-            return inner
-        return typ.inner
+        """The inner type of an Optional-shaped type, readonly when the
+        Optional is."""
+        inner = repr_shape(typ).inner
+        return make_readonly(inner) if readonly_access(typ) else inner
 
     def _effective_type_for_key(self, key: str) -> TpyType | None:
         """Get the effective type for a narrowing key (name or dotted path)."""
@@ -1019,10 +1016,7 @@ class NarrowingTracker:
         if isinstance(rhs_inner, TpyIntLiteral):
             self.ctx.func.value_ranges[name] = ValueRange.from_literal(rhs_inner.value)
         # For Optional targets, re-narrow if RHS is provably non-None
-        inner_target = unwrap_readonly(target_type)
-        if isinstance(inner_target, OwnType):
-            inner_target = inner_target.wrapped
-        if not isinstance(inner_target, OptionalType):
+        if not self._is_optional_type(target_type):
             return
         if rhs_type is None:
             return

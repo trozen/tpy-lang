@@ -89,7 +89,7 @@ def readonly_forward(cell: readonly[Cell]) -> readonly[Cell]:
     return observe(cell)
 
 @readonly
-def decorated(cell: Cell) -> Cell:
+def decorated(cell: Cell) -> readonly[Cell]:
     return cell
 
 @pure
@@ -233,9 +233,8 @@ def test_decorated_result_preserves_emitted_access(artifacts: Artifacts) -> None
     functions, bodies, definitions = artifacts
     assert bodies["decorated"].borrowed_result.readonly
     result = summarize_function(functions["decorated"], bodies["decorated"], definitions)
-    assert result.state is MIRSummaryState.OPAQUE
-    # The returned parameter is passed const while its record fact is mutable.
-    assert result.reason == "unsupported record call parameter"
+    # The declared readonly return agrees with the const parameter it returns.
+    assert result.state is MIRSummaryState.KNOWN, result.reason
 
 
 def test_borrowed_call_requires_known_callee(artifacts: Artifacts) -> None:

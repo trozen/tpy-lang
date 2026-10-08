@@ -25,7 +25,7 @@
 # std::sync::Weak vs std::rc::Weak in Rust.
 from __future__ import annotations
 from typing import Protocol
-from tpy import Own, Ptr, uint32, uint64, Deref, Covariant, Equatable, Comparable, Hashable, dynamic, nocopy, auto_readonly, unsafe_interior_mutable, unsafe_send, unsafe_sync
+from tpy import Own, Ptr, uint32, uint64, Deref, Covariant, Equatable, Comparable, Hashable, dynamic, nocopy, auto_readonly, unsafe_send, unsafe_sync
 from tpy.mem import UninitStorage
 from tpy.atomic import Atomic, MemoryOrder, fence
 from tpy.unsafe import unsafe_take, unsafe_release
@@ -106,11 +106,13 @@ class _ArcCell[U](_ArcCellBase):
 @unsafe_send(if_params_send=True, if_params_sync=True)
 @unsafe_sync(if_params_send=True, if_params_sync=True)
 class Arc[T](Deref[T], Covariant[T]):
-    # `_cell` is bookkeeping outside the readonly boundary (the refcount lives
-    # behind it): clone/downgrade bump it through a readonly handle, the
-    # std::shared_ptr const-copy pattern. `_payload` stays inside the boundary
-    # so a readonly handle still yields readonly T.
-    _cell: unsafe_interior_mutable[Ptr[_ArcCellBase]]
+    # Readonly protects the handle, not what its pointers point at: clone /
+    # downgrade bump the refcount behind `_cell` through a readonly handle, the
+    # std::shared_ptr const-copy pattern. A readonly handle yields readonly T
+    # only through `get` / `__deref__` (their declared `auto_readonly[T]`);
+    # `_payload` is an implementation field the guarantee assumes callers do
+    # not touch.
+    _cell: Ptr[_ArcCellBase]
     _payload: Ptr[T]
 
     def __init__(self, cell: Ptr[_ArcCellBase], payload: Ptr[T]) -> None:
@@ -179,9 +181,10 @@ class Arc[T](Deref[T], Covariant[T]):
 @unsafe_send(if_params_send=True, if_params_sync=True)
 @unsafe_sync(if_params_send=True, if_params_sync=True)
 class Weak[T]:
-    _cell: unsafe_interior_mutable[Ptr[_ArcCellBase]]
+    _cell: Ptr[_ArcCellBase]
     # _payload dangles between strong=0 and weak=0, but is only dereferenced
-    # via upgrade() after the strong-count check confirms the payload is live.
+    # via upgrade() after the strong-count check confirms the payload is live;
+    # dereferencing the field directly can read a dropped payload.
     _payload: Ptr[T]
 
     def __init__(self, cell: Ptr[_ArcCellBase], payload: Ptr[T]) -> None:

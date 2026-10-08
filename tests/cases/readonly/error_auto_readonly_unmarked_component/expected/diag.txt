@@ -1,0 +1,1 @@
+main.py:27: error: Cannot return readonly[T] at a mutable part of return type 'Span[auto_readonly[T]] | T' of an @auto_readonly method; mark that part 'auto_readonly[T]'

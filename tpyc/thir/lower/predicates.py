@@ -11,6 +11,7 @@ from __future__ import annotations
 import math
 from dataclasses import replace
 from ...parse.nodes import (
+    const_tuple_index,
     ResultForm,
     is_property_getter_read,
     FunctionLinkage,
@@ -50,11 +51,11 @@ from ...modules.defs import BINOP_TO_METHOD, get_dunder_cpp_template
 from ...modules.type_resolution import get_iterable_element_type
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...sema.context import expr_lends_storage
+from ...typesys import make_readonly, pointer_repr_optional, readonly_access
 from ...typesys import (
     RecordInfo, body_function_info, body_method_info,
     ConcreteFrameType,
     ConcreteGenType,
-    return_const_projected,
     substitute_type_params_simple,
     collapse_tuple_own_elements,
     contains_type_param,
@@ -145,10 +146,11 @@ from ...sema.numeric_lattice import widen_numeric_types
 from ...coercions import BIGINT_NARROW, CoercionContext, context_free_wrap_template
 from ...value_category import (
     CONTAINER_LITERAL_NODES,
-    declared_call_const,
     call_hands_back_value, call_value_optional,
     call_result_is_reference,
     call_returns_cpp_ref,
+    const_place,
+    receiver_const, call_result_const,
     FrameTempElem,
     frame_temp_elem_plan,
     frame_temp_arg_source,
@@ -585,8 +587,8 @@ def _foreach_storage_opt_elem(et: TpyType | None, analyzer) -> bool:
     must not register storage."""
     if not isinstance(et, TpyType):
         return False
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
-    if not (isinstance(t, OptionalType) and t.uses_pointer_repr()):
+    t = pointer_repr_optional(et)
+    if t is None:
         return False
     return record_like(_unwrap_own(unwrap_readonly(t.inner)), analyzer)
 
@@ -2380,14 +2382,16 @@ def _pointer_slot_global_type(gt: TpyType | None, analyzer, *,
     if name is not None and (name in native_globals
                              or name in analyzer.ctx.final_globals):
         return None
-    gt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(gt)))
     # A ptr-repr Optional global is the SAME `T* g{};` slot as its plain
     # sibling (nullable); reads ride the pointer-binding arms (bare copy,
-    # `g == nullptr` tests, narrowed derefs) like an opt-ptr LOCAL's.
-    if (isinstance(gt, OptionalType) and gt.uses_pointer_repr()
-            and not isinstance(gt.inner, ReadonlyType)
-            and record_like(gt.inner, analyzer)):
-        return gt
+    # `g == nullptr` tests, narrowed derefs) like an opt-ptr LOCAL's; a
+    # readonly one keeps its access, so its slot and reads are `const T*`.
+    g_opt = pointer_repr_optional(gt)
+    if (g_opt is not None
+            and not isinstance(g_opt.inner, ReadonlyType)
+            and record_like(g_opt.inner, analyzer)):
+        return make_readonly(g_opt) if readonly_access(gt) else g_opt
+    gt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(gt)))
     if gt.is_value_type() or gt.needs_wrapper():
         return None
     if (record_like(gt, analyzer)
@@ -2515,12 +2519,12 @@ def _bigint_index_disposition(index: TpyExpr, obj_type: 'TpyType | None',
         return "bare"
     narrow = (INT32 if obj_type is None
               else bigint_index_narrow_type(obj_type, analyzer))
-    c = _const_index(index)
+    c = const_tuple_index(index)
     if c is not None:
         if -(2**31) <= c <= 2**31 - 1:
             return "bare"
         return "bare" if narrow is None else "reject"
-    if _const_index(_unwrap_lit_coerce(index)) is not None:
+    if const_tuple_index(_unwrap_lit_coerce(index)) is not None:
         # A coerce-wrapped literal is not a plain int constant, so the
         # narrow would wrap the literal's target-typed render -- a shape no
         # index position produces (the one coercion sema puts on an index,
@@ -2874,8 +2878,8 @@ def _opt_record_inner(t: TpyType | None) -> 'TpyType | None':
     half of the un-narrowed truthiness dispatch. Builtin containers fail
     `is_user_record` here, so they keep the bare non-null test (BUGS.md's
     un-narrowed container entry)."""
-    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))) if t else None
-    if not (isinstance(u, OptionalType) and u.uses_pointer_repr()):
+    u = pointer_repr_optional(t)
+    if u is None:
         return None
     inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(u.inner)))
     if not (isinstance(inner, NominalType) and inner.is_user_record):
@@ -4334,10 +4338,8 @@ def _optional_ptr_borrow_wide(t: TpyType | None,
     """`_optional_ptr_borrow` over `_opt_pointee_wide` -- see the scoping
     contract there. The narrow F1 accessor keeps every binding-level
     consumer."""
-    if not isinstance(t, TpyType):
-        return None
-    t = unwrap_readonly(unwrap_send_sync(t))
-    if not (isinstance(t, OptionalType) and t.uses_pointer_repr()):
+    t = pointer_repr_optional(t)
+    if t is None:
         return None
     inner = unwrap_readonly(t.inner)
     if isinstance(inner, OwnType):
@@ -4417,10 +4419,8 @@ def _optional_ptr_borrow(t: TpyType | None, analyzer) -> 'OptionalType | None':
     (`std::optional<A>`) and excluded -- the OwnType check is defensive on
     top of `uses_pointer_repr` (an Own inner must never slip in via
     `record_like`'s own Own-peel)."""
-    if not isinstance(t, TpyType):
-        return None
-    t = unwrap_readonly(unwrap_send_sync(t))
-    if not (isinstance(t, OptionalType) and t.uses_pointer_repr()):
+    t = pointer_repr_optional(t)
+    if t is None:
         return None
     inner = unwrap_readonly(t.inner)
     if isinstance(inner, OwnType):
@@ -4975,7 +4975,7 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer, *,
                 or _value_opt_string_owned(u) is not None):
             return None
         return "name.optval_read"
-    if (isinstance(u, OptionalType) and u.uses_pointer_repr()
+    if (pointer_repr_optional(u) is not None
             and _optional_ptr_borrow_wide(u, analyzer) is None):
         # A nullable static-protocol param reads through the pointer set
         # (narrowed `(*x)` derefs; the None test is the constexpr swap).
@@ -5017,9 +5017,9 @@ def _f1_tuple_element_ok(e: TpyType, analyzer) -> bool:
     if _eligible_ptr_value(unwrap_readonly(unwrap_ref_type(
             unwrap_send_sync(e))), analyzer):
         return True
-    inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e)))
-    if isinstance(inner, OptionalType) and inner.uses_pointer_repr():
-        return _f1_record(_unwrap_own(inner.inner), analyzer)
+    opt = pointer_repr_optional(e)
+    if opt is not None:
+        return _f1_record(_unwrap_own(opt.inner), analyzer)
     return False
 
 def _f1_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
@@ -5868,18 +5868,6 @@ def _ptr_tuple_field_compare_pair(
     return (pair[0], pair[1])
 
 
-def _const_index(index: TpyExpr) -> 'int | None':
-    """The compile-time integer index of a tuple subscript: a bare int
-    literal or a negated int literal. A
-    non-constant tuple index never reaches lowering (sema rejects it); the
-    lowering uses this to confirm the literal form regardless."""
-    if isinstance(index, TpyIntLiteral):
-        return index.value
-    if (isinstance(index, TpyUnaryOp) and index.op == "-"
-            and isinstance(index.operand, TpyIntLiteral)):
-        return -index.operand.value
-    return None
-
 def _subscript_index_and_tuple(sub: TpySubscript,
                                analyzer) -> 'tuple[TupleType, int] | None':
     """`(tuple_type, normalized_idx)` for a tuple subscript with a compile-time-const,
@@ -5891,7 +5879,7 @@ def _subscript_index_and_tuple(sub: TpySubscript,
         analyzer.get_expr_type(sub.obj))))
     if not isinstance(recv_t, TupleType):
         return None
-    idx = _const_index(sub.index)
+    idx = const_tuple_index(sub.index)
     if idx is None:
         return None
     n = len(recv_t.element_types)
@@ -6347,8 +6335,8 @@ def _subscript_optional_field_recv(e: TpyExpr, locals_: dict[str, TpyType],
     if res is None:
         return None
     recv_t, idx = res
-    inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_t.element_types[idx])))
-    if not (isinstance(inner, OptionalType) and inner.uses_pointer_repr()):
+    inner = pointer_repr_optional(recv_t.element_types[idx])
+    if inner is None:
         return None
     return idx if record_like(_unwrap_own(inner.inner), analyzer) else None
 
@@ -6899,8 +6887,8 @@ def _container_opt_record_elem(t: TpyType | None, analyzer) -> bool:
     def elem_ok(a: 'TpyType | int') -> bool:
         if not isinstance(a, TpyType):
             return False
-        au = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a)))
-        return (isinstance(au, OptionalType) and au.uses_pointer_repr()
+        au = pointer_repr_optional(a)
+        return (au is not None
                 and _f1_record(_unwrap_own(unwrap_readonly(au.inner)),
                                analyzer))
     return _container_elem_family(t, analyzer, elem_ok)
@@ -7184,9 +7172,7 @@ def _lvalue_chain_hop_ok(link: TpyExpr, declared: dict[str, TpyType],
     recv = link.obj
     if isinstance(recv, TpyName):
         rt = declared.get(recv.name)
-        rtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
-               if rt is not None else None)
-        if (isinstance(rtu, OptionalType) and rtu.uses_pointer_repr()
+        if (pointer_repr_optional(rt) is not None
                 and not (isinstance(link, TpySubscript)
                          and link.needs_optional_runtime_check)):
             if (link.needs_optional_runtime_check
@@ -7387,9 +7373,8 @@ def _optional_checked_recv_call(recv: TpyExpr, analyzer) -> bool:
            if fi.return_type is not None else None)
     if isinstance(frt, OwnType):
         return False
-    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        analyzer.get_expr_type(recv))))
-    if not (isinstance(rt, OptionalType) and rt.uses_pointer_repr()):
+    rt = pointer_repr_optional(analyzer.get_expr_type(recv))
+    if rt is None:
         return False
     return _f1_record(_unwrap_own(rt.inner), analyzer)
 
@@ -7433,9 +7418,8 @@ def _optional_checked_field_over_field_ok(e: TpyExpr,
     if not (isinstance(recv, TpyFieldAccess)
             and _field_receiver_ok(recv, declared, analyzer)):
         return False
-    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        analyzer.get_expr_type(recv))))
-    if not (isinstance(rt, OptionalType) and rt.uses_pointer_repr()):
+    rt = pointer_repr_optional(analyzer.get_expr_type(recv))
+    if rt is None:
         return False
     return _f1_record(_unwrap_own(rt.inner), analyzer)
 
@@ -7582,10 +7566,8 @@ def _subscript_container_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
             et = analyzer.get_expr_type(recv)
             if et is not None:
                 return et
-        dtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-               if isinstance(dt, TpyType) else None)
-        if (narrowed_ok and isinstance(dtu, OptionalType)
-                and dtu.uses_pointer_repr()):
+        dtu = pointer_repr_optional(dt)
+        if narrowed_ok and dtu is not None:
             # A sema-NARROWED Optional[container] field receiver
             # (`a2.coord[0]` after the assert-narrow): the receiver read
             # renders the `(*recv.field)` deref (the narrowed-field arm),
@@ -7685,9 +7667,8 @@ def _ptr_opt_binding_inner(recv: TpyExpr, recv_t: 'TpyType | None',
     sema proved the name non-None -- that is the subscript's own
     `needs_optional_runtime_check`, which picks the checked unwrap.
     """
-    rtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_t)))
-           if recv_t is not None else None)
-    if (isinstance(rtu, OptionalType) and rtu.uses_pointer_repr()
+    rtu = pointer_repr_optional(recv_t)
+    if (rtu is not None
             and isinstance(recv, TpyName) and recv.name in pointers):
         return rtu.inner
     return None
@@ -7701,9 +7682,7 @@ def _ptr_opt_binding_name(recv: TpyExpr, declared: dict[str, TpyType],
     if not (isinstance(recv, TpyName) and recv.name in pointers
             and recv.name in declared):
         return False
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        declared[recv.name])))
-    return isinstance(t, OptionalType) and t.uses_pointer_repr()
+    return pointer_repr_optional(declared[recv.name]) is not None
 
 
 def _record_method_with_parents(ri, name: str, analyzer):
@@ -7853,7 +7832,7 @@ def _is_borrow_ptr_local(e: TpyExpr, declared: dict[str, TpyType],
     if e.name in pointers:
         return True
     t = declared.get(e.name)
-    return isinstance(t, OptionalType) and t.uses_pointer_repr()
+    return pointer_repr_optional(t) is not None
 
 def _tuple_literal_has_ref_elements(e: TpyTupleLiteral,
                                     slot: 'TupleType') -> bool:
@@ -8019,8 +7998,7 @@ def _tuple_elem_slots_ptr_optional(slot: 'TupleType') -> bool:
     def elem_ok(t: TpyType) -> bool:
         if t.is_value_type():
             return True
-        bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-        return isinstance(bare, OptionalType) and bare.uses_pointer_repr()
+        return pointer_repr_optional(t) is not None
 
     return all(elem_ok(t) for t in slot.element_types)
 
@@ -8182,7 +8160,7 @@ def copy_ptr_optional_peel(e: TpyExpr, analyzer) -> 'TpyExpr | None':
     if arg is None:
         return None
     at = analyzer.get_expr_type(arg)
-    return (arg if isinstance(at, OptionalType) and at.uses_pointer_repr()
+    return (arg if pointer_repr_optional(at) is not None
             else None)
 
 
@@ -8255,8 +8233,7 @@ def _opt_ptr_param_deep_const(name: str, func: TpyFunction, analyzer,
     pt = next((t for n, t in func.params if n == name), None)
     if pt is None:
         return False
-    bare = unwrap_readonly(unwrap_send_sync(pt))
-    return (isinstance(bare, OptionalType) and bare.uses_pointer_repr()
+    return (pointer_repr_optional(pt) is not None
             and _param_is_deep_const(name, func, analyzer, record_name))
 
 def _param_is_const(name: str, func: TpyFunction, analyzer,
@@ -8399,17 +8376,6 @@ def _readonly_self(lc) -> bool:
         return False
     return bool(lc.func.is_readonly)
 
-def _own_return_const_projected(lc) -> bool:
-    """Whether the enclosing method's SIGNATURE const-projects its borrowed
-    return -- the fact the signature generator reads, so a returned literal
-    builds the slots that signature spells."""
-    if not lc.record_name or lc.func.is_nested_def:
-        return False
-    fi = body_method_info(lc.analyzer.registry.get_record(lc.record_name), lc.func)
-    if fi is None:
-        return bool(getattr(lc.func, "is_readonly", False))
-    return return_const_projected(fi)
-
 def _already_pointer_source(expr: TpyExpr, lc) -> bool:
     """`ctx.is_already_pointer_source` mirror: True when `expr` renders as a
     `T*` with no further lifting, so an `&(...)` lift would produce `T**`.
@@ -8443,12 +8409,10 @@ def _poly_subject_const(expr: TpyExpr, lc) -> bool:
     # target `const Sub*` or the dynamic_cast casts away constness.
     if is_readonly_ptr(st):
         return True
-    while isinstance(expr, (TpyFieldAccess, TpySubscript)):
-        expr = expr.obj
-    if isinstance(expr, TpyName):
-        return (isinstance(lc.analyzer.get_expr_type(expr), ReadonlyType)
-                or _const_borrow_name(expr.name, lc))
-    return False
+    return const_place(expr, lc.analyzer.get_expr_type, lambda e, _stepped: (
+        isinstance(e, TpyName)
+        and (isinstance(lc.analyzer.get_expr_type(e), ReadonlyType)
+             or _const_borrow_name(e.name, lc))), lambda h: _const_pack(h, lc))
 
 def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
                  stmt: TpyVarDecl, lc) -> bool:
@@ -8512,83 +8476,57 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
 
 def _f1_const_rooted_source(expr: TpyExpr, lc) -> bool:
     """Mirror of codegen's `is_const_union_source`: True when `expr` is an
-    lvalue rooted in a const source, recursing through chained
-    field/subscript access to the base name. Which SOURCES are const is
-    `_const_borrow_name`'s to say and not re-listed here -- a const LOOP VAR
-    is one of them, and a borrow taken out of one (`x = h`, `x = h.b`) must
-    bind `const T&` or the C++ reference discards qualifiers."""
-    if isinstance(expr, TpyCoerce):
-        return _f1_const_rooted_source(expr.expr, lc)
-    if isinstance(expr, TpyName):
-        return _const_borrow_name(expr.name, lc, const_locals=True)
-    if isinstance(expr, (TpyFieldAccess, TpySubscript)):
-        obj = expr.obj
-        if isinstance(obj, TpyName):
-            # The Optional-ptr param disjunct mirrors const_indirect_locals
-            # membership (seed_param_locals' deep-const seeding); a const
-            # OPTIONAL_TO_PTR local rides `const_locals` like any F1 local.
-            return (_const_borrow_name(obj.name, lc, const_locals=True)
-                    or _opt_ptr_param_deep_const(obj.name, lc.func,
-                                                 lc.analyzer, lc.record_name))
-        return _f1_const_rooted_source(obj, lc)
-    return False
+    lvalue rooted in a const source (`const_place`). Which SOURCES are const
+    is `_const_borrow_name`'s to say and not re-listed here -- a const LOOP
+    VAR is one of them, and a borrow taken out of one (`x = h`, `x = h.b`)
+    must bind `const T&` or the C++ reference discards qualifiers. The
+    Optional-ptr param disjunct mirrors const_indirect_locals membership
+    (seed_param_locals' deep-const seeding); a const OPTIONAL_TO_PTR local
+    rides `const_locals` like any F1 local."""
+    return const_place(expr, lc.analyzer.get_expr_type, lambda e, stepped: (
+        isinstance(e, TpyName)
+        and (_const_borrow_name(e.name, lc, const_locals=True)
+             or stepped and _opt_ptr_param_deep_const(e.name, lc.func, lc.analyzer,
+                                                       lc.record_name))),
+        lambda h: _const_pack(h, lc))
+
+
+def _const_pack(handle: TpyExpr, lc) -> bool:
+    """Whether `handle` names a `*args` pack emitted over const elements
+    (`_vararg_pack_is_const`): the referent access its declared type does
+    not carry."""
+    return (isinstance(handle, TpyName)
+            and _vararg_pack_is_const(handle.name, _const_verdict_func(handle.name, lc)))
 
 def _expr_is_const_source(src: TpyExpr, lc) -> bool:
     """The const-ness a borrow binding's SOURCE EXPRESSION carries on its own,
     independent of the binding kind and of any decl node: a readonly raw sema
-    type, a readonly method / dunder whose borrow return is const-projected on
-    the shim, and a subscript / method call on a const-rooted receiver.
+    type (a call's is its callee's declared result access), a call whose
+    callee declares its whole result as following the receiver run on a
+    const receiver (C++ picks the const clone, whichever clone sema
+    resolved; the receiver is itself such a source, `w.me().ref()`), and an
+    element of a const-rooted container.
 
     Shared by the decl (`_f1_is_const`) and walrus (`_walrus_src_is_const`)
     derivations so the two cannot drift; each adds the arms only it can see."""
-    analyzer = lc.analyzer
-    declared = declared_call_const(analyzer, src)
-    if declared is not None:
-        return declared
-    if isinstance(analyzer.get_expr_type(src), ReadonlyType):  # raw sema type
-        return True
-    # A readonly method's ref return binds `const T&` -- the method-call
-    # branch of the indirect-const rule.
+    type_of = lc.analyzer.get_expr_type
     if isinstance(src, TpyMethodCall):
-        fi = src.resolved_function_info
-        # Both borrow forms of the return are projected: `const T&` and
-        # the pointer-repr Optional's `const T*`. The pointer half holds
-        # only for a signature THIS compiler emits: a native's C++
-        # overload set decides its own pointee const-ness.
-        if (fi is not None and return_const_projected(fi)
-                and (call_returns_cpp_ref(analyzer, fi)
-                     or (fi.native_name is None and fi.cpp_template is None
-                         and _ptr_opt_borrow_call_ret(
-                             src, unwrap_ref_type(fi.return_type))))):
-            return True
-    # Operator dispatch follows that arm: a readonly dunder's borrow return is
-    # const-projected on the friend shim, so `c = a + b` / `c = -a` bind
-    # `const T&`. Keyed on the RAW `fi.is_readonly`
-    # -- readonly-ness here is usually INFERRED, so it never shows up as a
-    # ReadonlyType on the source and the raw-sema branch above misses it.
-    if isinstance(src, TpyBinOp) and src.resolved_binop is not None:
-        fi = src.resolved_binop.method
-        if return_const_projected(fi) and call_returns_cpp_ref(analyzer, fi):
-            return True
-    if isinstance(src, TpyUnaryOp) and src.resolved_unaryop is not None:
-        fi = src.resolved_unaryop.method
-        if return_const_projected(fi) and call_returns_cpp_ref(analyzer, fi):
-            return True
-    # A subscript / method call on a const-rooted receiver binds const even
-    # when sema resolved the MUTABLE twin (the enclosing method's
-    # readonly-ness is INFERRED post body-analysis, so fi.is_readonly above
-    # misses; C++ overload resolution on the const receiver picks the const
-    # twin regardless) -- the receiver-const arm of the indirect-const
-    # rule.
-    return (isinstance(src, (TpySubscript, TpyMethodCall))
-            and _f1_const_rooted_source(src.obj, lc))
+        return call_result_const(src, type_of,
+                                 lambda r: _walrus_src_is_const(r, lc),
+                                 lambda h: _const_pack(h, lc))
+    if isinstance(type_of(src), ReadonlyType):  # raw sema type
+        return True
+    return isinstance(src, TpySubscript) and _f1_const_rooted_source(src, lc)
 
 def receiver_is_const(obj: TpyExpr, lc) -> bool:
     """Whether a member call's receiver expression is emitted const, so C++
     binds the const overload of an access-polymorphic callee: the const-
     source rule every borrow alias reads (`self` by the body's own verdict,
-    a const parameter, local or field path rooted in one)."""
-    return _walrus_src_is_const(obj, lc)
+    a const parameter, local or field path rooted in one; a handle receiver
+    is dereferenced by the call, so its referent's access)."""
+    return receiver_const(obj, lc.analyzer.get_expr_type,
+                          lambda r: _walrus_src_is_const(r, lc),
+                          lambda h: _const_pack(h, lc))
 
 def _walrus_src_is_const(src: TpyExpr, lc) -> bool:
     """`const T*` for a walrus borrow-alias / pointer-Optional predecl: the
@@ -8971,8 +8909,8 @@ def _tuple_field_opt_elem_subscript(init: TpyExpr,
     idx = fixed_int_literal_value_from_expr(init.index)
     if idx is None or not (0 <= idx < len(rtu.element_types)):
         return False
-    et = unwrap_readonly(rtu.element_types[idx])
-    return (isinstance(et, OptionalType) and et.uses_pointer_repr()
+    et = pointer_repr_optional(rtu.element_types[idx])
+    return (et is not None
             and _f1_record(_unwrap_own(unwrap_readonly(et.inner)), analyzer))
 
 
@@ -9003,8 +8941,8 @@ def _tuple_local_ptr_elem_subscript(init: TpyExpr,
     idx = fixed_int_literal_value_from_expr(init.index)
     if idx is None or not (0 <= idx < len(btu.element_types)):
         return False
-    et = unwrap_readonly(btu.element_types[idx])
-    return (isinstance(et, OptionalType) and et.uses_pointer_repr()
+    et = pointer_repr_optional(btu.element_types[idx])
+    return (et is not None
             and _f1_record(_unwrap_own(unwrap_readonly(et.inner)), analyzer))
 
 
@@ -9048,8 +8986,8 @@ def _own_storage_opt_param(t: 'TpyType | None', analyzer) -> 'OptionalType | Non
     u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if not isinstance(u, OwnType):
         return None
-    ow = unwrap_readonly(u.wrapped)
-    if not (isinstance(ow, OptionalType) and ow.uses_pointer_repr()):
+    ow = pointer_repr_optional(u.wrapped)
+    if ow is None:
         return None
     return ow if record_like(unwrap_readonly(ow.inner), analyzer) else None
 
@@ -9197,10 +9135,8 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
             # None` on a `-> Node | None` callee): the `T*` return takes
             # the same bare pointer compare.
             and not (isinstance(operand, (TpyCall, TpyMethodCall))
-                     and ((_ipoc := unwrap_readonly(
-                              analyzer.get_expr_type(operand))) is not None)
-                     and isinstance(_ipoc, OptionalType)
-                     and _ipoc.uses_pointer_repr())):
+                     and pointer_repr_optional(
+                         analyzer.get_expr_type(operand)) is not None)):
         return None
     return operand
 
@@ -9558,9 +9494,8 @@ def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
                     # tuple[Own[P|None], int32]`): a storage-optional
                     # element the pointer-lift unpack consumes (opt_ptr
                     # targets off the tuple_to_pointer'd capture).
-                    or (isinstance(ew, OptionalType)
-                        and ew.uses_pointer_repr()
-                        and _f1_record(unwrap_readonly(ew.inner),
+                    or ((ew_opt := pointer_repr_optional(ew)) is not None
+                        and _f1_record(unwrap_readonly(ew_opt.inner),
                                        analyzer))
                     # The Own[A | B] element (`pair() -> tuple[Own[A|B],
                     # int32]`): the capture holds the VALUE variant, and
@@ -9763,7 +9698,7 @@ def _ptr_opt_borrow_call_ret(e: 'TpyCall | TpyMethodCall',
     this predicate has nine callers and the shape reaches only one of them,
     so the decl pass-through asks `reads_storage_form_optional` itself and
     the other eight keep their answers."""
-    return (isinstance(ret, OptionalType) and ret.uses_pointer_repr()
+    return (pointer_repr_optional(ret) is not None
             and not call_hands_back_value(e))
 
 
@@ -9992,11 +9927,11 @@ def _ru_wrapper_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     # `Tree[int] | None` after the None test): sema admits the Optional at
     # the same-wrapper slot only on a proven-non-null occurrence, so the
     # pointer-local deref (`(*t)`) binds the slot bare.
-    return (isinstance(dt, OptionalType)
-            and dt.uses_pointer_repr()
+    dt_opt = pointer_repr_optional(dt)
+    return (dt_opt is not None
             and _resolve_plain_alias(
                 unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    dt.inner))), analyzer) == ut
+                    dt_opt.inner))), analyzer) == ut
             and _witness("arg.ru_wrapper_opt_narrowed"))
 
 def _ru_wrapper_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -10810,15 +10745,11 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
 
 def _optional_ptr_arg_slot(ptype: TpyType | None, analyzer) -> 'OptionalType | None':
     """The pointer-repr `Optional[F1-record]` call-arg slot of the
-    optional-ptr arg render's non-protocol tail, or None. Unwraps readonly
-    only -- the arm keys on the raw param type, no Send/Sync
-    peel. A protocol inner (the typed-null / adapter faces) fails the F1
-    check; an `Own[T] | None` slot is storage-repr and never reaches here."""
-    pt = ptype if isinstance(ptype, TpyType) else None
+    optional-ptr arg render's non-protocol tail, or None. A protocol inner
+    (the typed-null / adapter faces) fails the F1 check; an `Own[T] | None`
+    slot is storage-repr (`pointer_repr_optional`)."""
+    pt = pointer_repr_optional(ptype)
     if pt is None:
-        return None
-    pt = unwrap_readonly(pt)
-    if not (isinstance(pt, OptionalType) and pt.uses_pointer_repr()):
         return None
     # WIDE pointee class: every face render is pointee-blind (`nullptr`,
     # the bare pointer pass, `&(name)`, the optional_to_ptr lift); the
@@ -11963,8 +11894,8 @@ def _dict_view_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
         # so the element predicates below apply to the INNER container. The
         # runtime-check reject above is what keeps an UNPROVEN receiver --
         # which needs the deref_check method face -- off this row.
-        _rb = unwrap_readonly(unwrap_send_sync(recv_t))
-        if isinstance(_rb, OptionalType) and _rb.uses_pointer_repr():
+        _rb = pointer_repr_optional(recv_t)
+        if _rb is not None:
             recv_t = unwrap_readonly(_rb.inner)
             _witness("iter.narrowed_opt_container_view")
     # Record-VALUE dicts admit too (`[p for _, p in point_map.items()]`):
